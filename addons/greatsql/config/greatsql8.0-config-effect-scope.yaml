@@ -78,7 +78,7 @@ staticParameters:
   - log_bin_index
   - log_bin_use_v1_row_events
   - log_error
-  - log_slave_updates
+  - log_replica_updates
   - master-info-repository
   - max_digest_length
   - mecab_rc_file
@@ -570,7 +570,6 @@ immutableParameters:
   - log-bin
   - log_bin_basename
   - log_bin_index
-  - log_slave_updates
   - lower_case_file_system
   - lower_case_table_names
   - mecab_rc_file

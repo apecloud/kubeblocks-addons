@@ -50,6 +50,7 @@ thread_cache_size=60
 # ulimit -n
 open_files_limit=1048576
 local_infile=ON
+persisted_globals_load=OFF
 sql_mode=NO_ENGINE_SUBSTITUTION
 #Default 4000
 table_open_cache=4000
@@ -66,6 +67,8 @@ read_rnd_buffer_size={{ $read_rnd_buffer_size }}
 join_buffer_size={{ $join_buffer_size }}
 sort_buffer_size={{ $sort_buffer_size }}
 
+# default_authentication_plugin=mysql_native_password    #From mysql8.0.23 is deprecated.
+# authentication_policy=mysql_native_password,
 back_log=5285
 host_cache_size=867
 connect_timeout=10
@@ -73,10 +76,11 @@ connect_timeout=10
 # character-sets-dir=/usr/share/mysql-8.0/charsets
 
 port={{ $mysql_port }}
+mysqlx-port=33060
+mysqlx=0
 
 tmpdir={{ $data_root }}/temp
 datadir={{ $data_root }}/data
-plugin_dir=/usr/lib64/mysql/plugin/
 
 {{- $log_root := printf "%s/log" $data_root }}
 log_error={{ $log_root }}/mysqld-error.log
@@ -87,6 +91,7 @@ general_log_file={{ $log_root }}/mysqld.log
 log_statements_unsafe_for_binlog=OFF
 log_error_verbosity=2
 log_output=FILE
+{{- $log_root := "/var/lib/mysql/log" }}
 {{- if hasKey $.component "enabledLogs" }}
 {{- if mustHas "slow" $.component.enabledLogs }}
 slow_query_log=ON
@@ -99,13 +104,39 @@ general_log=ON
 {{ end }}
 
 #innodb
+innodb_doublewrite_batch_size=16
+innodb_doublewrite_pages=32
 innodb_flush_method=O_DIRECT
 innodb_io_capacity=200
 innodb_io_capacity_max=2000
 innodb_log_buffer_size=8388608
+#innodb_log_file_size and innodb_log_files_in_group are deprecated in MySQL 8.0.30. These variables are superseded by innodb_redo_log_capacity.
 #innodb_log_file_size=134217728
 #innodb_log_files_in_group=2
 
+{{- /* dynamic render innodb_redo_log_capacity */}}
+{{- /* reference url: https://dev.mysql.com/doc/refman/8.0/en/innodb-dedicated-server.html */}}
+{{- if gt $phy_memory 0 }}
+  {{- $redo_log_capacity := 104857600 }}
+  {{- $phy_memory_gb := div $phy_memory 1073741824 | int }}
+  {{- if lt $phy_memory_gb  2 }}
+    {{- /* < 2GB: 100MB */}}
+    {{- $redo_log_capacity = 104857600 }}
+  {{- else if lt $phy_memory_gb 4 }}
+    {{- /* [2GB: 4GB):  round(0.5 * detected server memory in GB) * 0.5 GB */}}
+    {{- $redo_log_capacity = ( mulf ( round ( mulf $phy_memory_gb 0.5 ) 0 )  512 1024 1024 ) | int }}
+  {{- else if lt $phy_memory_gb 11 }}
+    {{- /* [4GB: 11GB):  round(0.75 * detected server memory in GB) * 0.5 GB */}}
+    {{- $redo_log_capacity = ( mulf ( round ( mulf $phy_memory_gb 0.75 ) 0 ) 512 1024 1024 ) | int }}
+  {{- else if lt $phy_memory_gb 170 }}
+    {{- /* [11GB: 170GBH):  round(0.6525 * detected server memory in GB) * 0.5 GB */}}
+    {{- $redo_log_capacity = ( mulf ( round ( mulf $phy_memory_gb 0.6525 ) 0 ) 512 1024 1024 ) | int }}
+  {{- else }}
+    {{- /* >= 17GB: 128GB */}}
+    {{- $redo_log_capacity = ( mul 128 1024 1024 1024 ) | int }}
+  {{- end }}
+innodb_redo_log_capacity={{- $redo_log_capacity }}
+{{- end }}
 innodb_open_files=4000
 innodb_purge_threads=1
 innodb_read_io_threads=4
@@ -113,21 +144,28 @@ innodb_read_io_threads=4
 key_buffer_size=16777216
 
 # binlog
-master_info_repository=TABLE
+# master_info_repository=TABLE
 # From mysql8.0.23 is deprecated.
 binlog_cache_size={{ $binlog_cache_size }}
 # AWS binlog_format=MIXED, Aliyun is ROW
-binlog_format=MIXED
-binlog_row_image=FULL
+# binlog_format=MIXED
+# binlog_row_image=FULL
 # Aliyun AWS binlog_order_commits=ON
 binlog_order_commits=ON
 log-bin={{ $data_root }}/binlog/mysql-bin
 log_bin_index={{ $data_root }}/binlog/mysql-bin.index
-expire_logs_days=7
+binlog_expire_logs_seconds=604800
 max_binlog_size=134217728
+log_replica_updates=1
 # binlog_rows_query_log_events=ON #AWS not set
 # binlog_transaction_dependency_tracking=WRITESET    #Default Commit Order, Aws not set
-log_slave_updates=ON
+
+# replay log
+# relay_log_info_repository=TABLE
+# From mysql8.0.23 is deprecated.
+relay_log_recovery=ON
+relay_log=relay-bin
+relay_log_index=relay-bin.index
 
 # audit log
 loose_audit_log_handler=FILE # FILE, SYSLOG
@@ -150,15 +188,13 @@ loose_audit_log_rotations=5
 ## +-----------+------------------+
 loose_audit_log_exclude_accounts=root@%,root@localhost,kbadmin@%
 
-# replay log
-relay_log_info_repository=TABLE
-# From mysql8.0.23 is deprecated.
-relay_log_recovery=ON
-relay_log=relay-bin
-relay_log_index=relay-bin.index
+# semi sync, it works
+# loose_rpl-semi-sync-source-enabled = 1
+# loose_rpl_semi_sync_source_timeout = 0
+# loose_rpl-semi-sync-replica-enabled = 1
 
-pid-file=/var/run/mysqld/mysqld.pid
-socket=/var/run/mysqld/mysqld.sock
+pid-file={{ $data_root }}/mysqld.pid
+socket={{ $data_root }}/mysqld.sock
 
 ## smartengine base config
 #default_storage_engine=smartengine
@@ -171,14 +207,7 @@ default_tmp_storage_engine=innodb
 collation_server = utf8mb4_unicode_520_ci
 character_set_server = utf8mb4
 
-# rpl-semi-sync-master-enabled = 1
-# rpl_semi_sync_master_timeout = 1000
-# rpl-semi-sync-slave-enabled = 1
-
-[mysql]
-default-character-set=utf8mb4
 
 [client]
 port={{ $mysql_port }}
-socket=/var/run/mysqld/mysqld.sock
-default-character-set=utf8mb4
+socket={{ $data_root }}/mysqld.sock

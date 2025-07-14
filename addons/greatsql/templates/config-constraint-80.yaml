@@ -1,8 +1,8 @@
-{{- $cc := .Files.Get "config/mysql8-config-effect-scope.yaml" | fromYaml }}
+{{- $cc := .Files.Get "config/greatsql8.0-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: oracle-mysql8.0-config-constraints
+  name: greatsql8.0-config-constraints
   labels:
     {{- include "greatsql.labels" . | nindent 4 }}
 spec:
@@ -11,7 +11,7 @@ spec:
   reloadAction:
     tplScriptTrigger:
       sync: true
-      scriptConfigMapRef: mysql8.0-reload-script
+      scriptConfigMapRef: greatsql8.0-reload-script
       namespace: {{ .Release.Namespace }}
 
 
@@ -23,7 +23,7 @@ spec:
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
-      {{- .Files.Get "config/mysql8-config-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "config/greatsql8.0-config-constraint.cue" | nindent 6 }}
 
   ## define static parameter list
   {{- if hasKey $cc "staticParameters" }}

@@ -1,35 +1,23 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "greatsql.componentDefName" . }}
+  name: {{ include "greatsql.componentDefName80" . }}
   labels:
       {{- include "greatsql.labels" . | nindent 4 }}
 spec:
   {{- include "greatsql.spec.common" . | nindent 2 }}
-  serviceVersion: 8.0.33
+  serviceVersion: 8.0.32
   minReadySeconds: 10
   configs:
     - name: greatsql-replication-config
-      templateRef: oracle-mysql8.0-mgr-config-template
-      constraintRef: oracle-mysql8.0-config-constraints
+      templateRef: greatsql8.0-config-template
+      constraintRef: greatsql8.0-config-constraints
       volumeName: greatsql-config
       namespace: {{ .Release.Namespace }}
       reRenderResourceTypes:
         - vscale
   runtime:
     initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
-        name: init-data
-        command:
-          - bash
-          - -c
-          - |
-            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
-            cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-        volumeMounts:
-          - mountPath: {{ .Values.dataMountPath }}
-            name: data
       - command:
           - cp
           - -r
@@ -44,7 +32,6 @@ spec:
       {{- include "greatsql.spec.runtime.common" . | nindent 6 }}
     containers:
       - name: greatsql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
           - syncer
@@ -54,21 +41,29 @@ spec:
           - bash
           - -c
           - |
-            cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "arm64" || "$ARCH" == "aarch64" ]]; then
+              echo "ARM system detected. Skipping jemalloc configuration."
+              export LD_PRELOAD=""
+            fi
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
             chown -R mysql:root {{ .Values.dataMountPath }}
             SERVICE_ID=$((${KB_POD_NAME##*-} + 1))
-            docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
-               --report-host ${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless \
-               --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
-               --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
-               --plugin-load-add=audit_log=audit_log.so \
-               --log-bin=/var/lib/mysql/binlog/${KB_POD_NAME}-bin \
-               --skip-slave-start=ON
+            echo "$(sed "s/FAST_MODE/1/g" /etc/my.cnf)" > /etc/my.cnf
+            echo "$(sed "s/MYSQL_MGR_VIEWID/'AUTOMATIC'/g" /etc/my.cnf)" > /etc/my.cnf
+            echo "$(sed "s/SINGLE_PRIMARY/ON/g" /etc/my.cnf)" > /etc/my.cnf
+            echo "$(sed "s/EVERYWHERE_CHECKS/OFF/g" /etc/my.cnf)" > /etc/my.cnf
+            echo "$(sed "s/MYSQL_MGR_ARBITRATOR/OFF/g" /etc/my.cnf)" > /etc/my.cnf
+            /greatsql-init.sh mysqld --defaults-extra-file=/etc/mysql/my.cnf \
+              --server-id $SERVICE_ID \
+              --report-host ${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless \
+              --loose-plugin-load-add=audit_log=audit_log.so \
+              --log-bin=/var/lib/mysql/binlog/${KB_POD_NAME}-bin 
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
-          - mountPath: /etc/mysql/conf.d
-            name: mysql-config
+          - mountPath: /etc/mysql/
+            name: greatsql-config
           - name: scripts
             mountPath: /scripts
           - mountPath: /tools

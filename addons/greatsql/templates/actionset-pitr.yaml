@@ -1,0 +1,64 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  labels:
+    {{- include "greatsql.labels" . | nindent 4 }}
+  name: greatsql-pitr
+spec:
+  backupType: Continuous
+  env:
+    - name: VOLUME_DATA_DIR
+      value: "{{ .Values.dataMountPath }}"
+    - name: DATA_DIR
+      value: "{{ .Values.dataMountPath }}/data"
+    - name: PITR_RELATIVE_PATH
+      value: pitr-logs
+    - name: PITR_DIR
+      value: "$(VOLUME_DATA_DIR)/$(PITR_RELATIVE_PATH)"
+    - name: CONF_DIR
+      value: "$(VOLUME_DATA_DIR)/conf"
+    - name: TIME_FORMAT
+      value: 2006-01-02T15:04:05Z
+    - name: TARGET_POD_ROLE
+      value: primary
+    - name: DP_DB_PORT
+      value: "3306"
+    - name: BINLOG_ARCHIVE_INTERVAL
+      value: "10"
+    - name: FLUSH_BINLOG_INTERVAL_SECONDS
+      value: $(DP_ARCHIVE_INTERVAL)
+    - name: FLUSH_BINLOG_AFTER_SIZE
+      # if the binlog size greater than 500Mi, will flush the bin log.
+      value: "524288000"
+    - name: USE_REPLICA_STATUS
+      value: "false"
+    - name: PURGE_BINLOG
+      value: "on"
+  backup:
+    backupData:
+      image: {{ .Values.image.registry }}/{{ .Values.image.walgImage.repository }}:{{ .Values.image.walgImage.tag }}
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        #!/bin/bash
+        set -e;
+        {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/mysql-pitr-backup.sh" | nindent 8 }}
+  restore:
+    postReady:
+    - job:
+        image: {{ .Values.image.registry }}/{{ .Values.image.walgImage.repository }}:{{ .Values.image.walgImage.tag }}
+        runOnTargetPodNode: true
+        command:
+        - bash
+        - -c
+        - |
+          #!/bin/bash
+          set -e;
+          {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/mysql-pitr-restore.sh" | nindent 10 }}

@@ -81,17 +81,6 @@ Define greatsql component definition regex regular
 {{/*
 Define greatsql component definition name
 */}}
-{{- define "greatsql.componentDefName57" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-greatsql-5.7
-{{- else -}}
-{{- printf "greatsql-5.7-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define greatsql component definition name
-*/}}
 {{- define "greatsql.componentDefName80" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
 greatsql-8.0
@@ -121,13 +110,6 @@ services:
         - name: greatsql
           port: 3306
           targetPort: greatsql
-
-scripts:
-  - name: greatsql-scripts
-    templateRef: greatsql-scripts
-    namespace: {{ .Release.Namespace }}
-    volumeName: scripts
-    defaultMode: 0555
 logConfigs:
   {{- range $name,$pattern := .Values.logConfigs }}
   - name: {{ $name }}
@@ -177,7 +159,7 @@ vars:
         password: Required
 lifecycleActions:
   roleProbe:
-    builtinHandler: greatsql
+    builtinHandler: mysql
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
   accountProvision:
@@ -185,7 +167,7 @@ lifecycleActions:
       container: greatsql
       exec:
         command:
-          - greatsql
+          - mysql
         args:
           - -u$(MYSQL_ROOT_USER)
           - -p$(MYSQL_ROOT_PASSWORD)

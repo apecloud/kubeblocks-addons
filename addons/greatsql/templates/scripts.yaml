@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: greatsql.0-reload-script
+  name: greatsql8.0-reload-script
   labels:
     {{- include "greatsql.labels" . | nindent 4 }}
 data:
