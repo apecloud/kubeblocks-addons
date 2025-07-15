@@ -75,4 +75,9 @@ External object storage service reference
     secretKeyRef:
       key: bucketnames
       name: {{ .Values.storage.object.secret }}
+- name: MINIO_STORAGETYPE
+  valueFrom:
+    secretKeyRef:
+      key: storageType
+      name: {{ .Values.storage.object.secret }}
 {{- end -}}
