@@ -303,10 +303,10 @@ Milvus cluster external storage services reference
     - serviceKind: etcd
       serviceVersion: "^3.*"
   optional: true
-- name: milvus-log-storage
+- name: milvus-log-storage-kafka
   serviceRefDeclarationSpecs:
-    - serviceKind: pulsar
-      serviceVersion: "^2.*"
+    - serviceKind: kafka
+      serviceVersion: "^3.*"
   optional: true
 - name: milvus-object-storage
   serviceRefDeclarationSpecs:
@@ -319,25 +319,12 @@ Milvus cluster external storage services reference
 Milvus cluster vars for external storage services reference
 */}}
 {{- define "milvus.cluster.serviceRefVars" }}
-- name: ETCD_ENDPOINT
-  valueFrom:
-    serviceRefVarRef:
-      name: milvus-meta-storage
-      optional: false
-      endpoint: Required
-  expression: {{ `{{ index (splitList ":" .ETCD_ENDPOINT) 0 }}:{{ .ETCD_PORT }}` | toYaml }}
-- name: ETCD_PORT
-  valueFrom:
-    serviceRefVarRef:
-      name: milvus-meta-storage
-      optional: false
-      port: Required
-- name: MINIO_SERVER
+- name: MINIO_HOST
   valueFrom:
     serviceRefVarRef:
       name: milvus-object-storage
       optional: false
-      endpoint: Required
+      host: Required
 - name: MINIO_PORT
   valueFrom:
     serviceRefVarRef:
@@ -356,17 +343,61 @@ Milvus cluster vars for external storage services reference
       name: milvus-object-storage
       optional: false
       password: Required
-- name: PULSAR_SERVER
+- name: ETCD_HOST_SVC_REF
   valueFrom:
     serviceRefVarRef:
-      name: milvus-log-storage
-      optional: false
-      endpoint: Required
-  expression: {{ `{{ index (splitList ":" .PULSAR_SERVER) 0 }}` | toYaml }}
-- name: PULSAR_PORT
+      name: milvus-meta-storage
+      optional: true
+      host: Required
+- name: ETCD_PORT_SVC_REF
   valueFrom:
     serviceRefVarRef:
-      name: milvus-log-storage
-      optional: false
+      name: milvus-meta-storage
+      optional: true
+      port: Required
+- name: ETCD_HOST_IN_CLUSTER
+  valueFrom:
+    serviceVarRef:
+      compDef: etcd
+      name: headless
+      optional: true
+      host: Required
+- name: ETCD_PORT_IN_CLUSTER
+  valueFrom:
+    serviceVarRef:
+      compDef: etcd
+      name: headless
+      optional: true
+      port:
+        name: client
+        option: Required
+- name: KAFKA_HOST_IN_CLUSTER
+  valueFrom:
+    serviceVarRef:
+      compDef: kafka
+      name: advertised-listener
+      optional: true
+      host: Required
+- name: KAFKA_PORT_IN_CLUSTER
+  valueFrom:
+    serviceVarRef:
+      compDef: kafka
+      name: advertised-listener
+      optional: true
+      port:
+        name: broker
+        option: Required
+- name: KAFKA_HOST_SVC_REF
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-log-storage-kafka
+      optional: true
+      host: Required
+- name: KAFKA_PORT_SVC_REF
+  valueFrom:
+    serviceVarRef:
+    serviceRefVarRef:
+      name: milvus-log-storage-kafka
+      optional: true
       port: Required
 {{- end }}
