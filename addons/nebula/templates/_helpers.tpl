@@ -177,7 +177,7 @@ Define agent container
   image: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
   imagePullPolicy: {{ default $.Values.images.pullPolicy "IfNotPresent"}}
   command:
-  - /bin/sh
+  - /bin/bash
   - -ecx
   - sh /scripts/start-agent.sh
   env:
@@ -211,5 +211,8 @@ Define agent container
   ports:
   - containerPort: 8888
     name: agent
+    protocol: TCP
+  - containerPort: 8999
+    name: restore-agent
     protocol: TCP
 {{- end -}}

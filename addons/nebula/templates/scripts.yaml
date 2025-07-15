@@ -19,3 +19,5 @@ data:
     {{- .Files.Get "scripts/update-parameter.sh" | nindent 4 }}
   start-agent.sh: |
     {{- .Files.Get "scripts/start-agent.sh" | nindent 4 }}
+  common.sh: |
+    {{- .Files.Get "scripts/common.sh" | nindent 4 }}

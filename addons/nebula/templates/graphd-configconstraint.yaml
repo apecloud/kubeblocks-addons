@@ -55,4 +55,4 @@ spec:
 
 
   fileFormatConfig:
-    format: properties
+    format: properties-ultra

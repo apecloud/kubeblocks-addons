@@ -33,8 +33,6 @@ spec:
       value: {{ .Values.clusterDomain }}
     - name: HTTP_PORT
       value: "19559"
-    - name: IS_METAD
-      value: "true"
     - name: NEBULA_METAD_SVC
       valueFrom:
         componentVarRef:

@@ -34,6 +34,8 @@ spec:
       value: {{ .Values.clusterDomain }}
     - name: HTTP_PORT
       value: "19779"
+    - name: IS_STORAGED
+      value: "true"
     - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
@@ -50,6 +52,17 @@ spec:
         componentVarRef:
           optional: false
           replicas: Required
+    - name: GRAPHD_POD_FQDNS
+      valueFrom:
+        componentVarRef:
+          compDef: nebula-graphd
+          optional: false
+          podFQDNs: Required
+    - name: STORAGED_POD_FQDNS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
     - name: NEBULA_METAD_SVC
       valueFrom:
         componentVarRef:

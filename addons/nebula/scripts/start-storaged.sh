@@ -1,8 +1,7 @@
 #!/bin/bash
 set -ex
 trap : TERM INT
-root_dir=/usr/local/nebula
-logs_dir=${root_dir}/logs
+source /scripts/common.sh
 
 function retry_add_hosts() {
   sql="ADD HOSTS \"${POD_FQDN}\":9779"
@@ -35,19 +34,24 @@ function register_storaged_and_tail_logs() {
   tail -F ${logs_dir}/nebula-storaged.{INFO,WARNING,ERROR}
 }
 
+
 register_storaged_and_tail_logs &
 if [ -f "${root_dir}/logs/.kb_restore" ]; then
-  # TODO: restore data, start agent
-  cp ${root_dir}/config/nebula-storaged.conf ${root_dir}/etc/nebula-storaged.conf
-  printf "\n--local_ip=${POD_FQDN}" >> ${root_dir}/etc/nebula-storaged.conf
-  ${root_dir}/scripts/nebula.service -c ${root_dir}/etc/nebula-storaged.conf start storaged
-  meta_ep=$(echo $NEBULA_METAD_SVC | cut -d',' -f1 | cut -d':' -f1)
-  until curl -L  http://${meta_ep}:19559/status; do sleep 5; done
-  /usr/local/nebula/console/agent  --agent="${POD_FQDN}:8888" --meta="${meta_ep}:9559"
+  # 1. start agent
+  start_nebula_agent
+
+  # 2. start storaged for restoration
+  nebula_service_start storaged
+
+  # 3. wait for restoration to complete
   while true; do
     sleep 5
+    if [[ ! -f "${root_dir}/logs/.kb_restore" ]]; then
+      end_restore storaged
+      break
+    fi
     echo "$(date): Waiting for Nebula restoration to complete..."
   done
-else
-  exec ${root_dir}/bin/nebula-storaged --flagfile=${root_dir}/config/nebula-storaged.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
 fi
+
+exec ${root_dir}/bin/nebula-storaged --flagfile=${root_dir}/config/nebula-storaged.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
