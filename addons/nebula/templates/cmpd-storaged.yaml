@@ -36,6 +36,8 @@ spec:
       value: "19779"
     - name: IS_STORAGED
       value: "true"
+    - name: COMPONENT_TYPE
+      value: storaged
     - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
@@ -181,3 +183,4 @@ spec:
           - name: nebula-console
             mountPath: /usr/local/nebula/console
       {{- include "nebula.agentContainer" . | nindent 6 }}
+      {{- include "nebula.exporterContainer" . | nindent 6 }}

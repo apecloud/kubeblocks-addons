@@ -42,4 +42,8 @@ images:
       registry: ""
       repository: apecloud/nebula-br
       tag: 3.6.0
+    exporter:
+      registry: ""
+      repository: apecloud/nebula-stats-exporter
+      tag: v3.8.0
 clusterDomain: "cluster.local"

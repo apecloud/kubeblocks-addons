@@ -216,3 +216,33 @@ Define agent container
     name: restore-agent
     protocol: TCP
 {{- end -}}
+
+{{- define "nebula.exporterContainer" -}}
+- name: exporter
+  image: {{ $.Values.images.nebula.exporter.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.exporter.repository }}:v3.8.0
+  imagePullPolicy: {{ default $.Values.images.pullPolicy "IfNotPresent"}}
+  command:
+  - /bin/sh
+  - -ecx
+  - /scripts/start-exporter.sh
+  env:
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.name
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.namespace
+  - name: POD_FQDN
+    value: $(POD_NAME).$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+  ports:
+  - containerPort: 9100
+    name: metrics
+    protocol: TCP
+  volumeMounts:
+  - mountPath: /scripts
+    name: scripts
+{{- end -}}

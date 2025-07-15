@@ -31,18 +31,21 @@ spec:
       images:
         graphd: {{ $.Values.images.nebula.graphd.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.graphd.repository }}:{{ $version }}
         agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
+        exporter: {{ $.Values.images.nebula.exporter.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.exporter.repository }}:v3.8.0
         init-console: {{ $.Values.images.nebula.console.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.console.repository }}:{{ $version }}
         init-agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
     - name: metad-{{ $version }}
       serviceVersion: {{ $version }}
       images:
         metad: {{ $.Values.images.nebula.metad.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.metad.repository }}:{{ $version }}
+        exporter: {{ $.Values.images.nebula.exporter.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.exporter.repository }}:v3.8.0
         agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
         init-agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
     - name: storaged-{{ $version }}
       serviceVersion: {{ $version }}
       images:
         init-console: {{ $.Values.images.nebula.console.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.console.repository }}:{{ $version }}
+        exporter: {{ $.Values.images.nebula.exporter.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.exporter.repository }}:v3.8.0
         storaged: {{ $.Values.images.nebula.storaged.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.storaged.repository }}:{{ $version }}
         agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
         init-agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1

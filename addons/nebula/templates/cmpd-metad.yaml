@@ -33,6 +33,8 @@ spec:
       value: {{ .Values.clusterDomain }}
     - name: HTTP_PORT
       value: "19559"
+    - name: COMPONENT_TYPE
+      value: metad
     - name: NEBULA_METAD_SVC
       valueFrom:
         componentVarRef:
@@ -112,3 +114,4 @@ spec:
           - name: nebula-console
             mountPath: /usr/local/nebula/console
       {{- include "nebula.agentContainer" . | nindent 6 }}
+      {{- include "nebula.exporterContainer" . | nindent 6 }}

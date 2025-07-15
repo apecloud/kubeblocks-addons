@@ -21,3 +21,5 @@ data:
     {{- .Files.Get "scripts/start-agent.sh" | nindent 4 }}
   common.sh: |
     {{- .Files.Get "scripts/common.sh" | nindent 4 }}
+  start-exporter.sh: |
+    {{- .Files.Get "scripts/start-exporter.sh" | nindent 4 }}
