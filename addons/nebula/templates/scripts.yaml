@@ -15,3 +15,11 @@ data:
     {{- .Files.Get "scripts/logrotate.sh" | nindent 4 }}
   member-leave.py: |
     {{- .Files.Get "scripts/member-leave.py" | nindent 4 }}
+  update-parameter.sh: |
+    {{- .Files.Get "scripts/update-parameter.sh" | nindent 4 }}
+  start-agent.sh: |
+    {{- .Files.Get "scripts/start-agent.sh" | nindent 4 }}
+  common.sh: |
+    {{- .Files.Get "scripts/common.sh" | nindent 4 }}
+  start-exporter.sh: |
+    {{- .Files.Get "scripts/start-exporter.sh" | nindent 4 }}

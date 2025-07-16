@@ -1,18 +1,27 @@
 #!/bin/bash
 set -ex
 trap : TERM INT
-root_dir=/usr/local/nebula
-logs_dir=${root_dir}/logs
 
-function tail_logs() {
+source /scripts/common.sh
+
+tail_logs graphd &
+
+if [ -f "${root_dir}/logs/.kb_restore" ]; then
+  # 1. start agent
+  start_nebula_agent
+
+  # 2. start graphd for restoration
+  nebula_service_start graphd
+
+  # 3. wait for restoration to complete
   while true; do
-    sleep 1
-    if [[ -f ${logs_dir}/nebula-graphd.INFO || -f ${logs_dir}/nebula-graphd.WARNING || -f ${logs_dir}/nebula-graphd.ERROR ]] ; then
+    sleep 5
+    if [[ ! -f "${root_dir}/logs/.kb_restore" ]]; then
+      end_restore graphd
       break
     fi
+    echo "$(date): Waiting for Nebula restoration to complete..."
   done
-  tail -F ${logs_dir}/nebula-graphd.{INFO,WARNING,ERROR}
-}
+fi
 
-tail_logs &
-exec ${root_dir}/bin/nebula-graphd --flagfile=${root_dir}/etc/nebula-graphd.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
+exec ${root_dir}/bin/nebula-graphd --flagfile=${root_dir}/config/nebula-graphd.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false

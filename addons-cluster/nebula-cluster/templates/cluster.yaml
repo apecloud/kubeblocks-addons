@@ -9,10 +9,10 @@ spec:
   clusterDefinitionRef: nebula
   terminationPolicy: {{ .Values.nebula.terminationPolicy }}
   topology: default
-  serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   componentSpecs:
     - name: graphd
       replicas: {{ .Values.nebula.graphd.replicas }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- with  .Values.nebula.graphd.resources }}
       resources:
         {{- with .limits }}
@@ -37,6 +37,7 @@ spec:
                 storage: {{ .Values.nebula.graphd.logStorage }}
     - name: metad
       replicas: {{ .Values.nebula.metad.replicas }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- with  .Values.nebula.metad.resources }}
       resources:
         {{- with .limits }}
@@ -69,6 +70,7 @@ spec:
                 storage: {{ .Values.nebula.metad.logStorage }}
     - name: storaged
       replicas: {{ .Values.nebula.storaged.replicas }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- with  .Values.nebula.storaged.resources }}
       resources:
         {{- with .limits }}

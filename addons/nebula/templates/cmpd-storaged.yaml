@@ -12,8 +12,10 @@ spec:
   serviceKind: nebula
   serviceVersion: {{ .Chart.AppVersion }}
   podManagementPolicy: Parallel
+  minReadySeconds: 10
   configs:
     - name: nebula-storaged-config
+      constraintRef: nebula-storaged-config-constraints
       templateRef: {{ include "nebula-storaged.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-storaged
@@ -30,7 +32,13 @@ spec:
   vars:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
-    - name: STORAGED_COMPONENT_NAME
+    - name: HTTP_PORT
+      value: "19779"
+    - name: IS_STORAGED
+      value: "true"
+    - name: COMPONENT_TYPE
+      value: storaged
+    - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
           optional: false
@@ -46,6 +54,17 @@ spec:
         componentVarRef:
           optional: false
           replicas: Required
+    - name: GRAPHD_POD_FQDNS
+      valueFrom:
+        componentVarRef:
+          compDef: nebula-graphd
+          optional: false
+          podFQDNs: Required
+    - name: STORAGED_POD_FQDNS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
     - name: NEBULA_METAD_SVC
       valueFrom:
         componentVarRef:
@@ -98,6 +117,16 @@ spec:
         volumeMounts:
           - name: nebula-console
             mountPath: /usr/local/nebula/console
+      - name: init-agent
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp /usr/local/bin/agent /usr/local/nebula/console/agent
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        volumeMounts:
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
     containers:
       - name: storaged
         command:
@@ -131,7 +160,7 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.namespace
           - name: POD_FQDN
-            value: $(POD_NAME).$(STORAGED_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+            value: $(POD_NAME).$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
         readinessProbe:
           failureThreshold: 3
           httpGet:
@@ -143,7 +172,7 @@ spec:
           successThreshold: 1
           timeoutSeconds: 5
         volumeMounts:
-          - mountPath: /usr/local/nebula/etc
+          - mountPath: /usr/local/nebula/config
             name: nebula-storaged
           - mountPath: /usr/local/nebula/data
             name: data
@@ -153,4 +182,5 @@ spec:
             mountPath: /scripts
           - name: nebula-console
             mountPath: /usr/local/nebula/console
-      {{- include "nebula.logrotateContainer" . | nindent 6 }}
+      {{- include "nebula.agentContainer" . | nindent 6 }}
+      {{- include "nebula.exporterContainer" . | nindent 6 }}

@@ -33,6 +33,7 @@ spec:
             protocol: TCP
   configs:
     - name: nebula-graphd-config
+      constraintRef: nebula-graphd-config-constraints
       templateRef: {{ include "nebula-graphd.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-graphd
@@ -65,7 +66,11 @@ spec:
   vars:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
-    - name: GRAPHD_COMPONENT_NAME
+    - name: HTTP_PORT
+      value: "19669"
+    - name: COMPONENT_TYPE
+      value: graphd
+    - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
           optional: false
@@ -118,6 +123,16 @@ spec:
         volumeMounts:
           - name: nebula-console
             mountPath: /usr/local/nebula/console
+      - name: init-agent
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp /usr/local/bin/agent /usr/local/nebula/console/agent
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        volumeMounts:
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
     containers:
       - name: graphd
         command:
@@ -148,7 +163,7 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.namespace
           - name: POD_FQDN
-            value: $(POD_NAME).$(GRAPHD_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+            value: $(POD_NAME).$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
         readinessProbe:
           failureThreshold: 3
           httpGet:
@@ -164,10 +179,11 @@ spec:
             name: data
           - mountPath: /usr/local/nebula/logs
             name: logs
-          - mountPath: /usr/local/nebula/etc
+          - mountPath: /usr/local/nebula/config
             name: nebula-graphd
           - name: scripts
             mountPath: /scripts
           - name: nebula-console
             mountPath: /usr/local/nebula/console
-          {{- include "nebula.logrotateContainer" . | nindent 6 }}
+      {{- include "nebula.agentContainer" . | nindent 6 }}
+      {{- include "nebula.exporterContainer" . | nindent 6 }}

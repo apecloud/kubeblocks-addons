@@ -1,3 +1,5 @@
+{{- $metad_svc := getEnvByName ( getContainerByName $.podSpec.containers "metad" ) "NEBULA_METAD_SVC" }}
+
 ########## basics ##########
 # Whether to run as a daemon process
 --daemonize=true
@@ -26,11 +28,11 @@
 
 ########## networking ##########
 # Comma separated Meta Server addresses
---meta_server_addrs=127.0.0.1:9559
+--meta_server_addrs={{ $metad_svc }}
 # Local IP used to identify the nebula-metad process.
 # Change it to an address other than loopback if the service is distributed or
 # will be accessed remotely.
---local_ip=127.0.0.1
+# --local_ip=127.0.0.1
 # Meta daemon listening port
 --port=9559
 # HTTP service ip
