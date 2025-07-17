@@ -43,8 +43,7 @@ DISABLE_EXPLORER=${TAOS_DISABLE_EXPLORER:-0}
 unset TAOS_DISABLE_EXPLORER
 
 export TAOS_FIRST_EP=$(get_first_ep)
-export TAOS_SECOND_EP=$(get_second_ep)
-echo $TAOS_FIRST_EP, $TAOS_SECOND_EP
+echo $TAOS_FIRST_EP
 # Get DATA_DIR from taosd -C
 DATA_DIR=$(taosd -C|grep -E 'dataDir\s+(\S+)' -o |head -n1|sed 's/dataDir *//')
 DATA_DIR=${DATA_DIR:-/var/lib/taos}
