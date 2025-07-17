@@ -7,12 +7,13 @@ metadata:
     {{ include "nebula-cluster.labels" . | indent 4 }}
 spec:
   clusterDefinitionRef: nebula
-  terminationPolicy: {{ .Values.nebula.terminationPolicy }}
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
   topology: default
   componentSpecs:
     - name: graphd
       replicas: {{ .Values.nebula.graphd.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      componentDef: nebula-graphd
       {{- with  .Values.nebula.graphd.resources }}
       resources:
         {{- with .limits }}
@@ -37,6 +38,7 @@ spec:
                 storage: {{ .Values.nebula.graphd.logStorage }}
     - name: metad
       replicas: {{ .Values.nebula.metad.replicas }}
+      componentDef: nebula-metad
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- with  .Values.nebula.metad.resources }}
       resources:
@@ -70,6 +72,7 @@ spec:
                 storage: {{ .Values.nebula.metad.logStorage }}
     - name: storaged
       replicas: {{ .Values.nebula.storaged.replicas }}
+      componentDef: nebula-storaged
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- with  .Values.nebula.storaged.resources }}
       resources:
