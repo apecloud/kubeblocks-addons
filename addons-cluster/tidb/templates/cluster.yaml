@@ -21,10 +21,10 @@ spec:
       resources:
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
       volumeClaimTemplates:
       - name: data
@@ -34,7 +34,7 @@ spec:
             - ReadWriteOnce
           resources:
             requests:
-              storage: {{ .persistence.data.size }}
+              storage: {{ print .persistence.data.size "Gi" }}
     {{- end }}
     {{- with $.Values.tikv }}
     - name: tikv
@@ -48,10 +48,10 @@ spec:
       resources:
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
       volumeClaimTemplates:
       - name: data
@@ -61,7 +61,7 @@ spec:
             - ReadWriteOnce
           resources:
             requests:
-              storage: {{ .persistence.data.size }}
+              storage: {{ print .persistence.data.size "Gi" }}
     {{- end }}
     {{- with $.Values.tidb }}
     - name: tidb
@@ -75,9 +75,9 @@ spec:
       resources:
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
     {{- end }}

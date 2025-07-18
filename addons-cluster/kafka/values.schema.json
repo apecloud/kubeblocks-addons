@@ -131,7 +131,7 @@
         "replicas": {
           "title": "Monitor Replicas",
           "description": "Number of replicas for the monitor component.",
-          "type": "integer",
+          "type": [ "number", "string" ],
           "default": 1,
           "minimum": 1
         },
@@ -141,11 +141,11 @@
           "type": "object",
           "properties": {
             "cpu": {
-              "type": "number",
+              "type": [ "number", "string" ],
               "default": 0.1
             },
             "memory": {
-              "type": "number",
+              "type": [ "number", "string" ],
               "default": 0.2
             }
           }
@@ -156,11 +156,11 @@
           "type": "object",
           "properties": {
             "cpu": {
-              "type": "number",
+              "type": [ "number", "string" ],
               "default": 0.5
             },
             "memory": {
-              "type": "number",
+              "type": [ "number", "string" ],
               "default": 1
             }
           }

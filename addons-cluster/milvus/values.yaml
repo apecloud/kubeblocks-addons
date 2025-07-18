@@ -44,7 +44,7 @@ persistence:
     storageClassName:
     # -- Size of persistent volume claim
     # @default 10Gi
-    size: 10Gi
+    size: 10
 
 #################################################
 # Cluster Mode Parameters

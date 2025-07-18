@@ -76,9 +76,24 @@
     "proxysql": {
       "type": "object",
       "properties": {
-        "replicas": { "type": "integer", "default": 1 },
-        "cpu": { "type": "number", "default": 1 },
-        "memory": { "type": "number", "default": 1, "description": "Memory, the unit is Gi." }
+        "replicas": {
+          "title": "Proxysql Replicas",
+          "description": "The number of replicas for Proxysql.",
+          "type": "integer",
+          "default": 1
+        },
+        "cpu": {
+          "title": "Proxysql CPU",
+          "description": "Proxysql CPU cores.",
+          "type": [ "number", "string" ],
+          "default": 1
+        },
+        "memory": {
+          "title": "Proxysql Memory(Gi)",
+          "description": "Proxysql Memory, the unit is Gi.",
+          "type": [ "number", "string" ],
+          "default": 1
+        }
       },
       "description": "Proxysql configuration"
     },

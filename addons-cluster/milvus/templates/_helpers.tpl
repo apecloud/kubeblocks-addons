@@ -9,7 +9,7 @@ Data volume claim
       - ReadWriteOnce
     resources:
       requests:
-        storage: {{ .Values.persistence.data.size }}
+        storage: {{ print .Values.persistence.data.size "Gi" }}
 {{- end }}
 
 {{/*

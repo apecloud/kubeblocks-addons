@@ -15,12 +15,12 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       {{- if .Values.persistence.enabled }}
@@ -32,6 +32,6 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.persistence.data.size }}
+                storage: {{ print .Values.persistence.data.size "Gi" }}
       {{- end }}
 

@@ -11,9 +11,31 @@ spec:
   componentSpecs:
     - name: vmstorage
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      replicas: {{ .Values.replicas }}
-      {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentStorages" . | indent 6 }}
+      replicas: {{ .Values.vmstorage.replicas }}
+      {{- with .Values.vmstorage.resources }}
+      resources:
+        {{- with .limits }}
+        limits:
+          cpu: {{ .cpu | quote }}
+          memory: {{ print .memory "Gi" | quote }}
+        {{- end }}
+        {{- with .requests }}
+        requests:
+          cpu: {{ .cpu | quote }}
+          memory: {{ print .memory "Gi" | quote }}
+        {{- end }}
+      {{- end }}
+      volumeClaimTemplates:
+        - name: data # ref clusterDefinition components.containers.volumeMounts.name
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ print .Values.vmstorage.storage "Gi" }}
+            {{- if .Values.vmstorage.storageClassName }}
+            storageClassName: {{ .Values.vmstorage.storageClassName | quote }}
+            {{- end }}
       env:
         - name: RETENTION_PERIOD
           value: "{{ .Values.retentionPeriod }}"
@@ -27,7 +49,7 @@ spec:
         {{- end }}
     - name: vmselect
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      replicas: {{ .Values.vmselect.replicas }}
+      replicas: {{ .Values.vmselect.replicas | default 1 }}
       instanceUpdateStrategy:
         type: RollingUpdate
         rollingUpdate:
@@ -37,12 +59,12 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       env:
@@ -60,18 +82,18 @@ spec:
       instanceUpdateStrategy:
         type: RollingUpdate
         rollingUpdate:
-          maxUnavailable: {{ .Values.vminsert.maxUnavailable | default 1 }}
+          maxUnavailable: {{ .Values.vminsert.maxUnavailable | default 0 }}
       {{- with .Values.vminsert.resources }}
       resources:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       env:

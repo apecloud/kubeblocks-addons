@@ -17,21 +17,54 @@ read:
   httpMetricsPort: 3100
   grpcPort: 9095
   httpMemberlistPort: 7946
+  resources:
+    limits:
+      cpu: 1
+      memory: 1
+    requests:
+      cpu: 1
+      memory: 1
 
 write:
   replicas: 1
   httpMetricsPort: 3100
   grpcPort: 9095
   httpMemberlistPort: 7946
+  resources:
+    limits:
+      cpu: 1
+      memory: 1
+    requests:
+      cpu: 1
+      memory: 1
+
 
 backend:
+  storageClassName: ""
+  storage: 20
   replicas: 1
   httpMetricsPort: 3100
   grpcPort: 9095
   httpMemberlistPort: 7946
+  resources:
+    limits:
+      cpu: 1
+      memory: 1
+    requests:
+      cpu: 1
+      memory: 1
 
 gateway:
+  resources:
+    limits:
+      cpu: 1
+      memory: 1
+    requests:
+      cpu: 1
+      memory: 1
+
   replicas: 1
+
   basicAuth:
     # -- Enables basic authentication for the gateway
     enabled: false
@@ -71,29 +104,6 @@ nameOverride: ""
 fullnameOverride: ""
 minio:
   enabled: false
-## @param storageClassName, storage class name
-##
-storageClassName: ""
-
-## @param replicas specify cluster replicas
-##
-replicas: 1
-
-## @param cpu
-##
-cpu: 0.5
-
-## @param memory, the unit is Gi
-##
-memory: 0.5
-
-requests:
-#  cpu:
-#  memory:
-
-## @param storage size, the unit is Gi
-##
-storage: 20
 
 s3:
   ## "s3", "local" or "oss"

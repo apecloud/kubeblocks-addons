@@ -16,12 +16,12 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       {{- if .Values.gms.persistence.enabled }}
@@ -33,7 +33,7 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.gms.persistence.data.size }}
+                storage: {{ print .Values.gms.persistence.data.size "Gi" | quote }}
       {{- end }}
     {{- $i := 0 }}
     {{- range .Values.dn }}
@@ -45,12 +45,12 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       {{- if .persistence.enabled }}
@@ -62,7 +62,7 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage:  {{ .persistence.data.size }}
+                storage:  {{ print .persistence.data.size "Gi" }}
       {{- end }}
       {{- $i = add1 $i }}
     {{- end }}
@@ -74,12 +74,12 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
     - name: cdc
@@ -90,11 +90,11 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
