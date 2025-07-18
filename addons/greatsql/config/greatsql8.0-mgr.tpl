@@ -1,0 +1,6 @@
+[mysqld]
+binlog_format=ROW
+binlog_checksum=NONE
+loose_group_replication_recovery_get_public_key=ON
+loose_group_replication_start_on_boot=off
+loose_group_replication_bootstrap_group=off

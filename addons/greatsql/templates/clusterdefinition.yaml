@@ -1,0 +1,14 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: greatsql
+  labels:
+    {{- include "greatsql.labels" . | nindent 4 }}
+spec:
+  type: greatsql
+  topologies:
+    - name: cluster
+      components:
+        - name: greatsql
+          compDef: greatsql
+      default: true

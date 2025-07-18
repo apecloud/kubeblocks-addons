@@ -1,0 +1,35 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: greatsql-volumesnapshot
+  labels:
+    {{- include "greatsql.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+  - name: DATA_DIR
+    value: "{{ .Values.dataMountPath }}/data"
+  - name: MYSQL_DIR
+    value: {{ .Values.dataMountPath }}
+  restore:
+    prepareData:
+      image: {{ .Values.image.xtraBackup.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackup.repository }}:8.0
+      command:
+      - bash
+      - -c
+      - |
+        rm -rf ${DATA_DIR}/auto.cnf
+        if [ "${RESTORE_STANDBY}" != "true" ]; then
+           rm -rf ${DATA_DIR}/relay-bin.*
+           if [ -f ${DATA_DIR}/relay-log.info ]; then
+              rm -rf ${DATA_DIR}/relay-log.info
+           fi
+           touch ${DATA_DIR}/.restore_new_cluster
+        fi
+    postReady:
+    - exec:
+        command:
+        - sh
+        - -c
+        - |
+          rm -rf {{ .Values.dataMountPath }}/data/.restore_new_cluster

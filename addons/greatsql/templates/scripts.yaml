@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: greatsql8.0-reload-script
+  labels:
+    {{- include "greatsql.labels" . | nindent 4 }}
+data:
+  reload.tpl: |-
+    {{- .Files.Get "config/greatsql-reload.tpl" | nindent 4 }}
+  reload.yaml: |-
+    scripts: reload.tpl
+    fileRegex: my.cnf
+    formatterConfig:
+      format: ini
+      iniConfig:
+        sectionName: mysqld
+
+    dataType: mysql
+    dsn: |-
+      {%- $user := env "MYSQL_ADMIN_USER" | default ( env "MYSQL_ROOT_USER" ) | default ( env "MYSQL_USER" ) %}
+      {%- $pass := env "MYSQL_ADMIN_PASSWORD" | default ( env "MYSQL_ROOT_PASSWORD" ) | default ( env "MYSQL_PASSWORD" ) %}
+      {%- printf "%s:%s@(localhost:3306)/" $user $pass | trim %}
