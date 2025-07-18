@@ -55,10 +55,6 @@ service:
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: ClusterIP
 
-## The RBAC permission used by cluster component pod, now include event.create
-serviceAccount:
-  name: ""
-
 ## TLS configuration for ClickHouse cluster
 tls:
   enabled: false

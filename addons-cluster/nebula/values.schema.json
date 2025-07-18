@@ -13,11 +13,8 @@
           "description": "Version of nebula-graph, check https://docs.nebula-graph.io/ for latest and LTS versions"
         },
         "storageClassName": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": "",
+          "type": ["string", "null"],
+          "default": null,
           "description": "Storage class name"
         },
         "console": {
@@ -35,12 +32,22 @@
                   "type": "object",
                   "properties": {
                     "cpu": {
-                      "type": "string",
-                      "default": "100m"
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     },
                     "memory": {
-                      "type": "string",
-                      "default": "100Mi"
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     }
                   }
                 },
@@ -48,12 +55,22 @@
                   "type": "object",
                   "properties": {
                     "cpu": {
-                      "type": "string",
-                      "default": "500m"
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     },
                     "memory": {
-                      "type": "string",
-                      "default": "500Mi"
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     }
                   }
                 }
@@ -86,12 +103,22 @@
                   "type": "object",
                   "properties": {
                     "cpu": {
-                      "type": "string",
-                      "default": "500m"
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     },
                     "memory": {
-                      "type": "string",
-                      "default": "500Mi"
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     }
                   }
                 },
@@ -99,20 +126,33 @@
                   "type": "object",
                   "properties": {
                     "cpu": {
-                      "type": "string",
-                      "default": "1"
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     },
                     "memory": {
-                      "type": "string",
-                      "default": "500Mi"
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     }
                   }
                 }
               }
             },
             "logStorage": {
-              "type": "string",
-              "default": "500Mi",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1,
               "description": "Log storage size"
             }
           }
@@ -132,12 +172,22 @@
                   "type": "object",
                   "properties": {
                     "cpu": {
-                      "type": "string",
-                      "default": "500m"
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     },
                     "memory": {
-                      "type": "string",
-                      "default": "500Mi"
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     }
                   }
                 },
@@ -145,26 +195,44 @@
                   "type": "object",
                   "properties": {
                     "cpu": {
-                      "type": "string",
-                      "default": "1"
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     },
                     "memory": {
-                      "type": "string",
-                      "default": "1Gi"
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     }
                   }
                 }
               }
             },
             "logStorage": {
-              "type": "string",
-              "default": "500Mi",
-              "description": "Log storage size"
+              "title": "Log Storage(Gi)",
+              "description": "Log storage size, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1
             },
             "dataStorage": {
-              "type": "string",
-              "default": "1Gi",
-              "description": "Data storage size"
+              "title": "Data Storage(Gi)",
+              "description": "Data storage size, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1
             }
           }
         },
@@ -183,12 +251,22 @@
                   "type": "object",
                   "properties": {
                     "cpu": {
-                      "type": "string",
-                      "default": "500m"
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     },
                     "memory": {
-                      "type": "string",
-                      "default": "500Mi"
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     }
                   }
                 },
@@ -196,26 +274,44 @@
                   "type": "object",
                   "properties": {
                     "cpu": {
-                      "type": "string",
-                      "default": "1"
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     },
                     "memory": {
-                      "type": "string",
-                      "default": "1Gi"
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
                     }
                   }
                 }
               }
             },
             "logStorage": {
-              "type": "string",
-              "default": "500Mi",
-              "description": "Log storage size"
+              "title": "Log Storage(Gi)",
+              "description": "Log storage size, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1
             },
             "dataStorage": {
-              "type": "string",
-              "default": "1Gi",
-              "description": "Data storage size"
+              "title": "Data Storage(Gi)",
+              "description": "Data storage size, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1
             }
           }
         }

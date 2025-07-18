@@ -5,18 +5,20 @@
   "description": "Configuration schema for the Loki Helm chart with cluster modes.",
   "properties": {
     "mode": {
+      "title": "Mode",
+      "description": "Mode of the cluster, optional: standalone, cluster",
       "type": "string",
       "enum": [
         "standalone",
         "cluster"
       ],
-      "default": "standalone",
-      "description": "Mode of the cluster, optional: standalone, cluster"
+      "default": "standalone"
     },
     "replicas": {
+      "title": "Replicas",
+      "description": "Number of replicas for standalone mode",
       "type": "integer",
-      "default": 1,
-      "description": "Number of replicas for standalone mode"
+      "default": 1
     },
     "cpu": {
       "title": "CPU",
@@ -45,27 +47,38 @@
       "type": "object",
       "properties": {
         "enabled": {
+          "title": "Enabled",
+          "description": "Enable or disable persistence.",
           "type": "boolean",
           "default": true
         },
         "data": {
+          "title": "Data",
+          "description": "Data settings for persistence.",
           "type": "object",
           "properties": {
             "storageClassName": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "title": "Storage Class Name",
+              "description": "Storage class name of the data volume",
+              "type": ["string", "null"],
+              "default": null
             },
             "size": {
-              "type": "string",
-              "default": "10Gi"
+              "title": "Size(Gi)",
+              "description": "Size of the data volume, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 10
             }
           }
         }
       }
     },
     "proxy": {
+      "title": "Proxy",
+      "description": "Parameters for proxy in cluster mode",
       "type": "object",
       "properties": {
         "enabled": {
@@ -73,51 +86,64 @@
           "default": true
         },
         "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for proxy in cluster mode",
           "type": "integer",
           "default": 1
         }
-      },
-      "description": "Parameters for proxy in cluster mode"
+      }
     },
     "mixcoord": {
+      "title": "Mixcoord",
+      "description": "Parameters for mixcoord in cluster mode",
       "type": "object",
       "properties": {
         "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for mixcoord in cluster mode",
           "type": "integer",
           "default": 1
         }
-      },
-      "description": "Replica settings for mixcoord in cluster mode"
+      }
     },
     "datanode": {
+      "title": "Datanode",
+      "description": "Parameters for datanode in cluster mode",
       "type": "object",
       "properties": {
         "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for datanode in cluster mode",
           "type": "integer",
           "default": 1
         }
-      },
-      "description": "Replica settings for datanode in cluster mode"
+      }
     },
     "indexnode": {
+      "title": "Indexnode",
+      "description": "Parameters for indexnode in cluster mode",
       "type": "object",
       "properties": {
         "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for indexnode in cluster mode",
           "type": "integer",
           "default": 1
         }
-      },
-      "description": "Replica settings for indexnode in cluster mode"
+      }
     },
     "querynode": {
+      "title": "Querynode",
+      "description": "Parameters for querynode in cluster mode",
       "type": "object",
       "properties": {
         "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for querynode in cluster mode",
           "type": "integer",
           "default": 1
         }
-      },
-      "description": "Replica settings for querynode in cluster mode"
+      }
     }
   }
 }

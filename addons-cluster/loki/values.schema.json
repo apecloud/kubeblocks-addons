@@ -18,10 +18,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "title": "CPU limit",
+                  "description": "CPU limit",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string"
+                  "title": "Memory limit(Gi)",
+                  "description": "Memory limit, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 }
               }
             },
@@ -31,10 +43,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "title": "CPU request",
+                  "description": "CPU request",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string"
+                  "title": "Memory request(Gi)",
+                  "description": "Memory request, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 }
               }
             }
@@ -60,10 +84,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "title": "CPU limit",
+                  "description": "CPU limit",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string"
+                  "title": "Memory limit(Gi)",
+                  "description": "Memory limit, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 }
               }
             },
@@ -73,10 +109,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "title": "CPU request",
+                  "description": "CPU request",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string"
+                  "title": "Memory request(Gi)",
+                  "description": "Memory request, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 }
               }
             }
@@ -102,10 +150,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "title": "CPU limit",
+                  "description": "CPU limit",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string"
+                  "title": "Memory limit(Gi)",
+                  "description": "Memory limit, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 }
               }
             },
@@ -115,10 +175,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "title": "CPU request",
+                  "description": "CPU request",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string"
+                  "title": "Memory request(Gi)",
+                  "description": "Memory request, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 }
               }
             }
@@ -127,6 +199,17 @@
         "replicas": {
           "type": "integer",
           "default": 1
+        },
+        "storageClassName": {
+          "type": "string",
+          "default": ""
+        },
+        "storage": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 20
         }
       }
     },
@@ -144,10 +227,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "title": "CPU limit",
+                  "description": "CPU limit",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
-                "memory": {
-                  "type": "string"
+                  "memory": {
+                    "title": "Memory limit(Gi)",
+                    "description": "Memory limit, the unit is Gi.",
+                    "type": [
+                      "number",
+                      "string"
+                    ],
+                  "default": 1
                 }
               }
             },
@@ -157,20 +252,36 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "title": "CPU request",
+                  "description": "CPU request",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string"
+                  "title": "Memory request(Gi)",
+                  "description": "Memory request, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 }
               }
             }
           }
         },
         "replicas": {
+          "title": "Replicas",
+          "description": "The number of replicas.",
           "type": "integer",
           "default": 1
         },
         "basicAuth": {
+          "title": "Basic Auth",
+          "description": "Enable or disable basic auth.",
           "type": "object",
           "properties": {
             "enabled": {
@@ -181,6 +292,8 @@
         }
       },
       "minio": {
+        "title": "Minio",
+        "description": "Enable or disable minio.",
         "type": "object",
         "properties": {
           "enabled": {
@@ -188,26 +301,6 @@
             "default": false
           }
         }
-      },
-      "storageClassName": {
-        "type": "string",
-        "default": ""
-      },
-      "replicas": {
-        "type": "integer",
-        "default": 1
-      },
-      "cpu": {
-        "type": "number",
-        "default": 0.5
-      },
-      "memory": {
-        "type": "number",
-        "default": 0.5
-      },
-      "storage": {
-        "type": "number",
-        "default": 20
       }
     }
   }
