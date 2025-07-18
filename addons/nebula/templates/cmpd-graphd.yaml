@@ -70,6 +70,8 @@ spec:
       value: "19669"
     - name: COMPONENT_TYPE
       value: graphd
+    - name: DEFAULT_TIMEZONE
+      value: "UTC+00:00:00"
     - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:

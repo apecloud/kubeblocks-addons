@@ -1,4 +1,5 @@
 {{- $metad_svc := getEnvByName ( getContainerByName $.podSpec.containers "metad" ) "NEBULA_METAD_SVC" }}
+{{- $time_zone := getEnvByName ( getContainerByName $.podSpec.containers "metad" ) "DEFAULT_TIMEZONE" }}
 
 ########## basics ##########
 # Whether to run as a daemon process
@@ -6,6 +7,7 @@
 # The file to host the process id
 --pid_file=pids/nebula-metad.pid
 --license_path=nebula.license
+--timezone_name={{ $time_zone }}
 
 ########## logging ##########
 # The directory to host logging files

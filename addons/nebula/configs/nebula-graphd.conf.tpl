@@ -1,4 +1,5 @@
 {{- $metad_svc := getEnvByName ( getContainerByName $.podSpec.containers "graphd" ) "NEBULA_METAD_SVC" }}
+{{- $time_zone := getEnvByName ( getContainerByName $.podSpec.containers "graphd" ) "DEFAULT_TIMEZONE" }}
 
 ########## basics ##########
 # Whether to run as a daemon process
@@ -13,6 +14,7 @@
 --default_collate=utf8_bin
 # Whether to use the configuration obtained from the configuration file
 --local_config=true
+--timezone_name={{ $time_zone }}
 
 ########## logging ##########
 # The directory to host logging files

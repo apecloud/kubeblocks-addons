@@ -33,6 +33,8 @@ spec:
       value: {{ .Values.clusterDomain }}
     - name: HTTP_PORT
       value: "19559"
+    - name: DEFAULT_TIMEZONE
+      value: "UTC+00:00:00"
     - name: COMPONENT_TYPE
       value: metad
     - name: NEBULA_METAD_SVC

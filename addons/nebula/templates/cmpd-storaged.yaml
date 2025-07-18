@@ -36,6 +36,8 @@ spec:
       value: "19779"
     - name: IS_STORAGED
       value: "true"
+    - name: DEFAULT_TIMEZONE
+      value: "UTC+00:00:00"
     - name: COMPONENT_TYPE
       value: storaged
     - name: COMPONENT_NAME

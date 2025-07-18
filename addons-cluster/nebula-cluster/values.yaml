@@ -2,6 +2,8 @@
 nebula:
   ## @param nebula.version, version of nebula-graph
   ## more info: check https://docs.nebula-graph.io/ for latest and LTS versions
+  # default timezone is UTC+00:00:00, The setting for the Eastern Eight Zone is --timezone_name=UTC+08:00
+  timezone: "UTC+00:00:00"
   version: v3.5.0
   ## @param nebula.storageClassName, storage class name
   storageClassName: ""
