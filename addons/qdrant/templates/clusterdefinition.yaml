@@ -130,8 +130,6 @@ spec:
                 containerPort: 6333
               - name: grpc-qdrant
                 containerPort: 6334
-              - name: tcp-metrics
-                containerPort: 9091
               - name: p2p
                 containerPort: 6335
             command: ["/bin/sh", "-c"]
