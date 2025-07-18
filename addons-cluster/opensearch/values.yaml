@@ -37,7 +37,7 @@ service:
 persistence:
   enabled: true
   data:
-    storageClassName: ""
+    storageClassName:
     size: 1
 
 dashboard:

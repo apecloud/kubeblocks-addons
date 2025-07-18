@@ -142,11 +142,11 @@
           "properties": {
             "cpu": {
               "type": [ "number", "string" ],
-              "default": 1
+              "default": 0.1
             },
             "memory": {
               "type": [ "number", "string" ],
-              "default": 1
+              "default": 0.2
             }
           }
         },
@@ -157,7 +157,7 @@
           "properties": {
             "cpu": {
               "type": [ "number", "string" ],
-              "default": 1
+              "default": 0.5
             },
             "memory": {
               "type": [ "number", "string" ],

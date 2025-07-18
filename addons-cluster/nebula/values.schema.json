@@ -13,8 +13,8 @@
           "description": "Version of nebula-graph, check https://docs.nebula-graph.io/ for latest and LTS versions"
         },
         "storageClassName": {
-          "type": "string",
-          "default": "",
+          "type": ["string", "null"],
+          "default": null,
           "description": "Storage class name"
         },
         "console": {

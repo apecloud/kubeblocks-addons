@@ -73,8 +73,8 @@
                     "type": "object",
                     "properties": {
                         "storageClassName": {
-                            "type": "string",
-                            "default": "",
+                            "type": ["string", "null"],
+                            "default": null,
                             "description": "Storage class name used by persistent volumes"
                         },
                         "size": {

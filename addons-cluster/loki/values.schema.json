@@ -18,6 +18,8 @@
               "type": "object",
               "properties": {
                 "cpu": {
+                  "title": "CPU limit",
+                  "description": "CPU limit",
                   "type": [
                     "number",
                     "string"
@@ -25,6 +27,8 @@
                   "default": 1
                 },
                 "memory": {
+                  "title": "Memory limit(Gi)",
+                  "description": "Memory limit, the unit is Gi.",
                   "type": [
                     "number",
                     "string"
@@ -39,6 +43,8 @@
               "type": "object",
               "properties": {
                 "cpu": {
+                  "title": "CPU request",
+                  "description": "CPU request",
                   "type": [
                     "number",
                     "string"
@@ -46,6 +52,8 @@
                   "default": 1
                 },
                 "memory": {
+                  "title": "Memory request(Gi)",
+                  "description": "Memory request, the unit is Gi.",
                   "type": [
                     "number",
                     "string"
@@ -76,6 +84,8 @@
               "type": "object",
               "properties": {
                 "cpu": {
+                  "title": "CPU limit",
+                  "description": "CPU limit",
                   "type": [
                     "number",
                     "string"
@@ -83,6 +93,8 @@
                   "default": 1
                 },
                 "memory": {
+                  "title": "Memory limit(Gi)",
+                  "description": "Memory limit, the unit is Gi.",
                   "type": [
                     "number",
                     "string"
@@ -97,6 +109,8 @@
               "type": "object",
               "properties": {
                 "cpu": {
+                  "title": "CPU request",
+                  "description": "CPU request",
                   "type": [
                     "number",
                     "string"
@@ -104,6 +118,8 @@
                   "default": 1
                 },
                 "memory": {
+                  "title": "Memory request(Gi)",
+                  "description": "Memory request, the unit is Gi.",
                   "type": [
                     "number",
                     "string"
@@ -134,6 +150,8 @@
               "type": "object",
               "properties": {
                 "cpu": {
+                  "title": "CPU limit",
+                  "description": "CPU limit",
                   "type": [
                     "number",
                     "string"
@@ -141,6 +159,8 @@
                   "default": 1
                 },
                 "memory": {
+                  "title": "Memory limit(Gi)",
+                  "description": "Memory limit, the unit is Gi.",
                   "type": [
                     "number",
                     "string"
@@ -155,6 +175,8 @@
               "type": "object",
               "properties": {
                 "cpu": {
+                  "title": "CPU request",
+                  "description": "CPU request",
                   "type": [
                     "number",
                     "string"
@@ -162,6 +184,8 @@
                   "default": 1
                 },
                 "memory": {
+                  "title": "Memory request(Gi)",
+                  "description": "Memory request, the unit is Gi.",
                   "type": [
                     "number",
                     "string"
@@ -203,6 +227,8 @@
               "type": "object",
               "properties": {
                 "cpu": {
+                  "title": "CPU limit",
+                  "description": "CPU limit",
                   "type": [
                     "number",
                     "string"
@@ -210,6 +236,8 @@
                   "default": 1
                 },
                   "memory": {
+                    "title": "Memory limit(Gi)",
+                    "description": "Memory limit, the unit is Gi.",
                     "type": [
                       "number",
                       "string"
@@ -224,6 +252,8 @@
               "type": "object",
               "properties": {
                 "cpu": {
+                  "title": "CPU request",
+                  "description": "CPU request",
                   "type": [
                     "number",
                     "string"
@@ -231,6 +261,8 @@
                   "default": 1
                 },
                 "memory": {
+                  "title": "Memory request(Gi)",
+                  "description": "Memory request, the unit is Gi.",
                   "type": [
                     "number",
                     "string"
@@ -242,10 +274,14 @@
           }
         },
         "replicas": {
+          "title": "Replicas",
+          "description": "The number of replicas.",
           "type": "integer",
           "default": 1
         },
         "basicAuth": {
+          "title": "Basic Auth",
+          "description": "Enable or disable basic auth.",
           "type": "object",
           "properties": {
             "enabled": {
@@ -256,6 +292,8 @@
         }
       },
       "minio": {
+        "title": "Minio",
+        "description": "Enable or disable minio.",
         "type": "object",
         "properties": {
           "enabled": {

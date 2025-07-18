@@ -35,6 +35,8 @@
           "type": "object",
           "properties": {
             "cpu": {
+              "title": "CPU request",
+              "description": "CPU request",
               "type": [
                 "string",
                 "number"
@@ -42,6 +44,8 @@
               "default": 1
             },
             "memory": {
+              "title": "Memory request(Gi)",
+              "description": "Memory request, the unit is Gi.",
               "type": [
                 "string",
                 "number"
@@ -87,8 +91,7 @@
       "description": "The number of replicas.",
       "type": "integer",
       "default": 1,
-      "minimum": 1,
-      "maximum": 5
+      "minimum": 1
     }
   }
 }

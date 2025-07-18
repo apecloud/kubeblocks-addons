@@ -79,7 +79,7 @@
         "replicas": {
           "title": "Proxysql Replicas",
           "description": "The number of replicas for Proxysql.",
-          "type": [ "number", "string" ],
+          "type": "integer",
           "default": 1
         },
         "cpu": {

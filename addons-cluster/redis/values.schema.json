@@ -98,7 +98,7 @@
         "cpu": {
           "description": "twemproxy component cpu cores.",
           "title": "sentinel cpu",
-          "type": [ "number", "string" ],
+          "type": "number",
           "default": 0.2,
           "minimum": 0.1,
           "maximum": 8
@@ -106,7 +106,7 @@
         "memory": {
           "description": "twemproxy component memory, the unit is Gi.",
           "title": "sentinel memory",
-          "type": [ "number", "string" ],
+          "type": "number",
           "default": 0.2,
           "minimum": 0.1,
           "maximum": 4
@@ -114,7 +114,7 @@
         "replicas": {
           "description": "twemproxy component replicas",
           "title": "twemproxy replicas",
-          "type": [ "number", "string" ],
+          "type": "number",
           "default": 3,
           "minimum": 1,
           "maximum": 5
@@ -152,7 +152,7 @@
         "cpu": {
           "description": "Sentinel component cpu cores.",
           "title": "sentinel cpu",
-          "type": [ "number", "string" ],
+          "type": "number",
           "default": 0.2,
           "minimum": 0.1,
           "maximum": 8
@@ -160,7 +160,7 @@
         "memory": {
           "description": "Sentinel component memory, the unit is Gi.",
           "title": "sentinel memory",
-          "type": [ "number", "string" ],
+          "type": "number",
           "default": 0.2,
           "minimum": 0.1,
           "maximum": 4
@@ -168,7 +168,7 @@
         "storage": {
           "description": "Sentinel component storage size, the unit is Gi.",
           "title": "sentinel storage",
-          "type": [ "number", "string" ],
+          "type": "number",
           "default": 20,
           "minimum": 1,
           "maximum": 1024
@@ -182,7 +182,7 @@
         "replicas": {
           "description": "Sentinel component replicas",
           "title": "sentinel replicas",
-          "type": [ "number", "string" ],
+          "type": "number",
           "default": 3,
           "minimum": 1,
           "maximum": 5
@@ -196,7 +196,7 @@
         "shardCount": {
           "description": "The number of shards in the redis cluster",
           "title": "shardCount",
-          "type": [ "number", "string" ],
+          "type": "number",
           "default": 3,
           "minimum": 3,
           "maximum": 2048

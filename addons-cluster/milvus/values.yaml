@@ -41,7 +41,7 @@ persistence:
   data:
     # -- Storage class for PVC
     # @optional If empty, uses cluster default
-    storageClassName: ""
+    storageClassName:
     # -- Size of persistent volume claim
     # @default 10Gi
     size: 10
