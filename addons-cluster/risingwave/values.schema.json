@@ -22,12 +22,22 @@
                                     "type": "object",
                                     "properties": {
                                         "cpu": {
-                                            "type": "string",
-                                            "default": "500m"
+                                            "title": "CPU request",
+                                            "description": "CPU request",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         },
                                         "memory": {
-                                            "type": "string",
-                                            "default": "500Mi"
+                                            "title": "Memory request(Gi)",
+                                            "description": "Memory request, the unit is Gi.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         }
                                     }
                                 },
@@ -35,12 +45,22 @@
                                     "type": "object",
                                     "properties": {
                                         "cpu": {
-                                            "type": "string",
-                                            "default": "1"
+                                            "title": "CPU limit",
+                                            "description": "CPU limit",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         },
                                         "memory": {
-                                            "type": "string",
-                                            "default": "1Gi"
+                                            "title": "Memory limit(Gi)",
+                                            "description": "Memory limit, the unit is Gi.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         }
                                     }
                                 }
@@ -63,12 +83,22 @@
                                     "type": "object",
                                     "properties": {
                                         "cpu": {
-                                            "type": "string",
-                                            "default": "500m"
+                                            "title": "CPU request",
+                                            "description": "CPU request",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         },
                                         "memory": {
-                                            "type": "string",
-                                            "default": "500Mi"
+                                            "title": "Memory request(Gi)",
+                                            "description": "Memory request, the unit is Gi.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         }
                                     }
                                 },
@@ -76,12 +106,22 @@
                                     "type": "object",
                                     "properties": {
                                         "cpu": {
-                                            "type": "string",
-                                            "default": "1"
+                                            "title": "CPU limit",
+                                            "description": "CPU limit",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         },
                                         "memory": {
-                                            "type": "string",
-                                            "default": "1Gi"
+                                            "title": "Memory limit(Gi)",
+                                            "description": "Memory limit, the unit is Gi.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         }
                                     }
                                 }
@@ -104,12 +144,22 @@
                                     "type": "object",
                                     "properties": {
                                         "cpu": {
-                                            "type": "string",
-                                            "default": "500m"
+                                            "title": "CPU request",
+                                            "description": "CPU request",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         },
                                         "memory": {
-                                            "type": "string",
-                                            "default": "500Mi"
+                                            "title": "Memory request(Gi)",
+                                            "description": "Memory request, the unit is Gi.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         }
                                     }
                                 },
@@ -117,12 +167,22 @@
                                     "type": "object",
                                     "properties": {
                                         "cpu": {
-                                            "type": "string",
-                                            "default": "1"
+                                            "title": "CPU limit",
+                                            "description": "CPU limit",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         },
                                         "memory": {
-                                            "type": "string",
-                                            "default": "1Gi"
+                                            "title": "Memory limit(Gi)",
+                                            "description": "Memory limit, the unit is Gi.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         }
                                     }
                                 }
@@ -145,12 +205,22 @@
                                     "type": "object",
                                     "properties": {
                                         "cpu": {
-                                            "type": "string",
-                                            "default": "500m"
+                                            "title": "CPU request",
+                                            "description": "CPU request",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         },
                                         "memory": {
-                                            "type": "string",
-                                            "default": "500Mi"
+                                            "title": "Memory request(Gi)",
+                                            "description": "Memory request, the unit is Gi.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         }
                                     }
                                 },
@@ -158,12 +228,22 @@
                                     "type": "object",
                                     "properties": {
                                         "cpu": {
-                                            "type": "string",
-                                            "default": "1"
+                                            "title": "CPU limit",
+                                            "description": "CPU limit",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         },
                                         "memory": {
-                                            "type": "string",
-                                            "default": "1Gi"
+                                            "title": "Memory limit(Gi)",
+                                            "description": "Memory limit, the unit is Gi.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         }
                                     }
                                 }
@@ -186,12 +266,22 @@
                                     "type": "object",
                                     "properties": {
                                         "cpu": {
-                                            "type": "string",
-                                            "default": "500m"
+                                            "title": "CPU request",
+                                            "description": "CPU request",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         },
                                         "memory": {
-                                            "type": "string",
-                                            "default": "500Mi"
+                                            "title": "Memory request(Gi)",
+                                            "description": "Memory request, the unit is Gi.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         }
                                     }
                                 },
@@ -199,12 +289,22 @@
                                     "type": "object",
                                     "properties": {
                                         "cpu": {
-                                            "type": "string",
-                                            "default": "1"
+                                            "title": "CPU limit",
+                                            "description": "CPU limit",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         },
                                         "memory": {
-                                            "type": "string",
-                                            "default": "1Gi"
+                                            "title": "Memory limit(Gi)",
+                                            "description": "Memory limit, the unit is Gi.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "default": 1
                                         }
                                     }
                                 }

@@ -21,11 +21,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   frontend:
@@ -40,11 +40,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   compute:
@@ -59,11 +59,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   compactor:
@@ -78,11 +78,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   connector:
@@ -97,11 +97,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   metaStore:

@@ -52,14 +52,15 @@
           "type": "object",
           "properties": {
             "storageClassName": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "string",
+              "default": ""
             },
             "size": {
-              "type": "string",
-              "default": "10Gi"
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 10
             }
           }
         }

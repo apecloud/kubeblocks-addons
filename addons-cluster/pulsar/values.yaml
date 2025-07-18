@@ -44,19 +44,19 @@ bookies:
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     limits:
-      memory: 512Mi
+      memory: 1
     requests:
-      cpu: 200m
-      memory: 512Mi
+      cpu: 1
+      memory: 1
 
   persistence:
     enabled: true
     data:
       storageClassName:
-      size: 8Gi
+      size: 8
     log:
       storageClassName:
-      size: 8Gi
+      size: 8
 
 ## Bookies-recovery configuration
 bookiesRecovery:
@@ -71,10 +71,10 @@ bookiesRecovery:
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     limits:
-      memory: 512Mi
+      memory: 1
     requests:
-      cpu: 200m
-      memory: 512Mi
+      cpu: 1
+      memory: 1
 
 ## Zookeeper configuration
 zookeeper:
@@ -91,19 +91,19 @@ zookeeper:
     ## lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     ##
     limits:
-      memory: 512Mi
+      memory: 1
     requests:
-      cpu: 100m
-      memory: 512Mi
+      cpu: 1
+      memory: 1
 
   persistence:
     enabled: true
     data:
       storageClassName:
-      size: 8Gi
+      size: 8
     log:
       storageClassName:
-      size: 8Gi
+      size: 8
 
   ## @param keeper.tolerations Tolerations for *Keeper pods assignment
   ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
@@ -120,10 +120,10 @@ broker:
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     limits:
-      memory: 512Mi
+      memory: 1
     requests:
-      cpu: 200m
-      memory: 512Mi
+      cpu: 1
+      memory: 1
 
 proxy:
   ## @param proxy.replicaCount Number of Proxy replicas
@@ -136,14 +136,11 @@ proxy:
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     limits:
-      memory: 512Mi
+      memory: 1
     requests:
-      cpu: 200m
-      memory: 512Mi
+      cpu: 1
+      memory: 1
 
-# The RBAC permission used by cluster component pod, now include event.create
-serviceAccount:
-  name: ""
 
 # Cluster domain
 #

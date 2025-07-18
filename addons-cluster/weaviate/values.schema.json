@@ -12,20 +12,22 @@
           "type": "object",
           "properties": {
             "cpu": {
+              "title": "CPU limit",
+              "description": "CPU limit",
               "type": [
                 "string",
-                "null"
+                "number"
               ],
-              "default": null,
-              "description": "CPU limit."
+              "default": 1
             },
             "memory": {
+              "title": "Memory limit(Gi)",
+              "description": "Memory limit, the unit is Gi.",
               "type": [
                 "string",
-                "null"
+                "number"
               ],
-              "default": null,
-              "description": "Memory limit."
+              "default": 1
             }
           }
         },
@@ -35,18 +37,16 @@
             "cpu": {
               "type": [
                 "string",
-                "null"
+                "number"
               ],
-              "default": null,
-              "description": "CPU request."
+              "default": 1
             },
             "memory": {
               "type": [
                 "string",
-                "null"
+                "number"
               ],
-              "default": null,
-              "description": "Memory request."
+              "default": 1
             }
           }
         }
@@ -64,26 +64,31 @@
           "type": "object",
           "properties": {
             "storageClassName": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null,
-              "description": "Storage class name for persistent volumes. If omitted, uses the default storage class."
+              "title": "Storage Class Name",
+              "description": "Storage class name for persistent volumes.",
+              "type":"string",
+              "default": ""
             },
             "size": {
-              "type": "string",
-              "default": "10Gi",
-              "description": "Size of persistent volume claim."
+              "title": "Size of persistent volume claim(Gi)",
+              "description": "Size of persistent volume claim, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 10
             }
           }
         }
       }
     },
     "replicaCount": {
+      "title": "Replicas",
+      "description": "The number of replicas.",
       "type": "integer",
       "default": 1,
-      "description": "Number of replicas."
+      "minimum": 1,
+      "maximum": 5
     }
   }
 }

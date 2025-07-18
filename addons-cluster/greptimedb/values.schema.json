@@ -90,10 +90,18 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string"
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 }
               }
             },
@@ -103,10 +111,18 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string"
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 }
               }
             }
@@ -120,8 +136,11 @@
             "storage": {
               "title": "Storage Size (Gi)",
               "description": "Size of the persistent storage volume in Gi.",
-              "type": "string",
-              "default": "10Gi"
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 10
             }
           }
         }
@@ -152,8 +171,11 @@
             "storage": {
               "title": "Storage Size (Gi)",
               "description": "Size of the persistent storage volume in Gi.",
-              "type": "string",
-              "default": "10Gi"
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 10
             }
           }
         }
@@ -182,10 +204,18 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string"
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 }
               }
             },
@@ -195,10 +225,18 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string"
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 }
               }
             }
@@ -229,10 +267,18 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string"
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 }
               }
             },
@@ -242,10 +288,18 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string"
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string"
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 }
               }
             }

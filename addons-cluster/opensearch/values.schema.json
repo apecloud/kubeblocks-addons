@@ -17,18 +17,22 @@
                     "type": "object",
                     "properties": {
                         "cpu": {
+                            "title": "CPU",
+                            "description": "CPU limit",
                             "type": [
-                                "string",
-                                "null"
+                                "number",
+                                "string"
                             ],
-                            "description": "CPU limit"
+                            "default": 1
                         },
                         "memory": {
+                            "title": "Memory(Gi)",
+                            "description": "Memory limit, the unit is Gi.",
                             "type": [
-                                "string",
-                                "null"
+                                "number",
+                                "string"
                             ],
-                            "description": "Memory limit"
+                            "default": 1
                         }
                     }
                 },
@@ -36,18 +40,22 @@
                     "type": "object",
                     "properties": {
                         "cpu": {
+                            "title": "CPU",
+                            "description": "CPU request",
                             "type": [
-                                "string",
-                                "null"
+                                "number",
+                                "string"
                             ],
-                            "description": "CPU request"
+                            "default": 1
                         },
                         "memory": {
+                            "title": "Memory(Gi)",
+                            "description": "Memory request, the unit is Gi.",
                             "type": [
-                                "string",
-                                "null"
+                                "number",
+                                "string"
                             ],
-                            "description": "Memory request"
+                            "default": 1
                         }
                     }
                 }
@@ -65,17 +73,18 @@
                     "type": "object",
                     "properties": {
                         "storageClassName": {
-                            "type": [
-                                "string",
-                                "null"
-                            ],
-                            "default": null,
+                            "type": "string",
+                            "default": "",
                             "description": "Storage class name used by persistent volumes"
                         },
                         "size": {
-                            "type": "string",
-                            "default": "1Gi",
-                            "description": "Size of persistent volume claim"
+                            "title": "Storage Size(Gi)",
+                            "description": "Storage size, the unit is Gi.",
+                            "type": [
+                                "number",
+                                "string"
+                            ],
+                            "default": 1
                         }
                     }
                 }
@@ -92,18 +101,22 @@
                             "type": "object",
                             "properties": {
                                 "cpu": {
+                                    "title": "CPU",
+                                    "description": "CPU limit",
                                     "type": [
-                                        "string",
-                                        "null"
+                                        "number",
+                                        "string"
                                     ],
-                                    "description": "CPU limit"
+                                    "default": 1
                                 },
                                 "memory": {
+                                    "title": "Memory(Gi)",
+                                    "description": "Memory limit, the unit is Gi.",
                                     "type": [
-                                        "string",
-                                        "null"
+                                        "number",
+                                        "string"
                                     ],
-                                    "description": "Memory limit"
+                                    "default": 1
                                 }
                             }
                         },
@@ -111,18 +124,22 @@
                             "type": "object",
                             "properties": {
                                 "cpu": {
+                                    "title": "CPU",
+                                    "description": "CPU request",
                                     "type": [
-                                        "string",
-                                        "null"
+                                        "number",
+                                        "string"
                                     ],
-                                    "description": "CPU request"
+                                    "default": 1
                                 },
                                 "memory": {
+                                    "title": "Memory(Gi)",
+                                    "description": "Memory request, the unit is Gi.",
                                     "type": [
-                                        "string",
-                                        "null"
+                                        "number",
+                                        "string"
                                     ],
-                                    "description": "Memory request"
+                                    "default": 1
                                 }
                             }
                         }
@@ -132,18 +149,6 @@
                     "type": "integer",
                     "default": 1,
                     "description": "Number of dashboard replicas"
-                }
-            }
-        },
-        "serviceAccount": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "default": ""
                 }
             }
         }

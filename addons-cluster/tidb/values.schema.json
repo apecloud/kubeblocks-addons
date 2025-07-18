@@ -14,15 +14,47 @@
             "limits": {
               "type": "object",
               "properties": {
-                "cpu": { "type": "number", "default": 2 },
-                "memory": { "type": "string", "default": "8Gi" }
+                "cpu": {
+                  "title": "CPU limit",
+                  "description": "CPU limit",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 2
+                },
+                "memory": {
+                  "title": "Memory limit(Gi)",
+                  "description": "Memory limit, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 8
+                }
               }
             },
             "requests": {
               "type": "object",
               "properties": {
-                "cpu": { "type": "number", "default":2 },
-                "memory": { "type": "string", "default": "8Gi" }
+                "cpu": {
+                  "title": "CPU request",
+                  "description": "CPU request",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 2
+                },
+                "memory": {
+                  "title": "Memory request(Gi)",
+                  "description": "Memory request, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 8
+                }
               }
             }
           }
@@ -33,8 +65,21 @@
             "data": {
               "type": "object",
               "properties": {
-                "storageClassName": { "type": ["string", "null"], "default": null, "description": "Storage class name for persistent volumes." },
-                "size": { "type": "string", "default": "20Gi", "description": "Size of persistent volume claim." }
+                "storageClassName": {
+                  "title": "Storage Class Name",
+                  "description": "Storage class name for persistent volumes.",
+                  "type": "string",
+                  "default": ""
+                },
+                "size": {
+                  "title": "Size of persistent volume claim(Gi)",
+                  "description": "Size of persistent volume claim, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 20
+                }
               }
             }
           }
@@ -57,15 +102,47 @@
             "limits": {
               "type": "object",
               "properties": {
-                "cpu": { "type": "number", "default": 4 },
-                "memory": { "type": "string", "default": "16Gi" }
+                "cpu": {
+                  "title": "CPU limit",
+                  "description": "CPU limit",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 4
+                },
+                "memory": {
+                  "title": "Memory limit(Gi)",
+                  "description": "Memory limit, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 16
+                }
               }
             },
             "requests": {
               "type": "object",
               "properties": {
-                "cpu": { "type": "number", "default": 4 },
-                "memory": { "type": "string", "default": "16Gi" }
+                "cpu": {
+                  "title": "CPU request",
+                  "description": "CPU request",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 4
+                },
+                "memory": {
+                  "title": "Memory request(Gi)",
+                  "description": "Memory request, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 16
+                }
               }
             }
           }
@@ -76,8 +153,21 @@
             "data": {
               "type": "object",
               "properties": {
-                "storageClassName": { "type": ["string", "null"], "default": null, "description": "Storage class name for persistent volumes." },
-                "size": { "type": "string", "default": "500Gi", "description": "Size of persistent volume claim." }
+                "storageClassName": {
+                  "title": "Storage Class Name",
+                  "description": "Storage class name for persistent volumes.",
+                  "type": "string",
+                  "default": ""
+                },
+                "size": {
+                  "title": "Size of persistent volume claim(Gi)",
+                  "description": "Size of persistent volume claim, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 500
+                }
               }
             }
           }
@@ -105,12 +195,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "number",
+                  "title": "CPU limit",
+                  "description": "CPU limit",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
                   "default": 4
                 },
                 "memory": {
-                  "type": "string",
-                  "default": "16Gi"
+                  "title": "Memory limit(Gi)",
+                  "description": "Memory limit, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 16
                 }
               }
             },
@@ -118,12 +218,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "number",
+                  "title": "CPU request",
+                  "description": "CPU request",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
                   "default": 4
                 },
                 "memory": {
-                  "type": "string",
-                  "default": "16Gi"
+                  "title": "Memory request(Gi)",
+                  "description": "Memory request, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 16
                 }
               }
             }

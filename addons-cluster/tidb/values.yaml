@@ -12,14 +12,14 @@ pd:
   resources:
     limits:
       cpu: 2
-      memory: 8Gi
+      memory: 8
     requests:
       cpu: 2
-      memory: 8Gi
+      memory: 8
   persistence:
     data:
       storageClassName: ""
-      size: 20Gi
+      size: 20
   tolerations: []
 
 tikv:
@@ -27,14 +27,14 @@ tikv:
   resources:
     limits:
       cpu: 4
-      memory: 16Gi
+      memory: 16
     requests:
       cpu: 4
-      memory: 16Gi
+      memory: 16
   persistence:
     data:
       storageClassName: ""
-      size: 500Gi
+      size: 500
   tolerations: []
 
 tidb:
@@ -42,15 +42,11 @@ tidb:
   resources:
     limits:
       cpu: 4
-      memory: 16Gi
+      memory: 16
     requests:
       cpu: 4
-      memory: 16Gi
+      memory: 16
   tolerations: []
-
-# The RBAC permission used by cluster component pod, now include event.create
-serviceAccount:
-  name: ""
 
 extra:
   # @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Delete, WipeOut.

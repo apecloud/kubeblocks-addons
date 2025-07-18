@@ -15,10 +15,10 @@ spec:
       resources:
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
       {{- if .Values.persistence.enabled }}
       volumeClaimTemplates:
@@ -29,7 +29,7 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.persistence.data.size }}
+                storage: {{ print .Values.persistence.data.size "Gi" }}
       {{- end }}
     - name: dashboard
       componentDef: opensearch-dashboard
@@ -38,8 +38,8 @@ spec:
       resources:
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}

@@ -10,10 +10,7 @@
       "description": "Version of the Neon cluster"
     },
     "storageClassName": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": "string",
       "default": "",
       "description": "Storage class name used by persistent volumes"
     },
@@ -32,12 +29,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string",
-                  "default": "500m"
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
                 },
                 "memory": {
-                  "type": "string",
-                  "default": "500Mi"
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
                 }
               }
             },
@@ -45,12 +52,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string",
-                  "default": "1"
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string",
-                  "default": "2Gi"
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 2
                 }
               }
             }
@@ -73,12 +90,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string",
-                  "default": "500m"
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
                 },
                 "memory": {
-                  "type": "string",
-                  "default": "500Mi"
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
                 }
               }
             },
@@ -86,12 +113,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string",
-                  "default": "1"
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string",
-                  "default": "2Gi"
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 2
                 }
               }
             }
@@ -114,12 +151,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string",
-                  "default": "500m"
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
                 },
                 "memory": {
-                  "type": "string",
-                  "default": "500Mi"
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
                 }
               }
             },
@@ -127,20 +174,33 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string",
-                  "default": "1"
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string",
-                  "default": "2Gi"
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 2
                 }
               }
             }
           }
         },
         "dataStorage": {
-          "type": "string",
-          "default": "20Gi",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 20,
           "description": "Data storage size for each safekeeper replica"
         }
       }
@@ -160,12 +220,22 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string",
-                  "default": "500m"
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
                 },
                 "memory": {
-                  "type": "string",
-                  "default": "500Mi"
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
                 }
               }
             },
@@ -173,21 +243,35 @@
               "type": "object",
               "properties": {
                 "cpu": {
-                  "type": "string",
-                  "default": "1"
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
                 },
                 "memory": {
-                  "type": "string",
-                  "default": "2Gi"
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 2
                 }
               }
             }
           }
         },
         "dataStorage": {
-          "type": "string",
-          "default": "20Gi",
-          "description": "Data storage size for each pageserver replica"
+          "title": "Data Storage(Gi)",
+          "description": "Data storage size for each pageserver replica",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 20
         }
       }
     }

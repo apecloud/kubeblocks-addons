@@ -17,11 +17,11 @@ nebula:
     ## more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
     resources:
       requests:
-        cpu: "100m"
-        memory: "100Mi"
+        cpu: 1
+        memory: 1
       limits:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: 1
+        memory: 1
   graphd:
     ## @param nebula.graph.replicas, number of nebula-graph instances
     ## in a nebula-graph cluster, all nebula-graphd instances are independent
@@ -33,13 +33,13 @@ nebula:
     ## more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: 1
+        memory: 1
       limits:
-        cpu: "1"
-        memory: "500Mi"
+        cpu: 1
+        memory: 1
     ## @param nebula.graphd.resoruces.logStorage
-    logStorage: "500Mi"
+    logStorage: 1
   metad:
     ## @param nebula.metad.replicas, number of nebula-graph instances
     ## in a nebula-graph cluter, nebula-metad instances form a raft group
@@ -49,15 +49,15 @@ nebula:
     ## more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: 1
+        memory: 1
       limits:
-        cpu: "1"
-        memory: "1Gi"
+        cpu: 1
+        memory: 1
     ## @param nebula.metad.logStorage
-    logStorage: "500Mi"
+    logStorage: 1
     ## @param nebula.metad.dataStorage
-    dataStorage: "1Gi"
+    dataStorage: 1
   storaged:
     ## @param nebula.storaged.replicas, number of nebula-graph instances
     ## in a nebula-graph cluter, nebula-storaged instances form a raft group
@@ -67,12 +67,12 @@ nebula:
     ## more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: 1
+        memory: 1
       limits:
-        cpu: "1"
-        memory: "1Gi"
+        cpu: 1
+        memory: 1
     ## @param nebula.metad.logStorage
-    logStorage: "500Mi"
+    logStorage: 1
     ## @param nebula.metad.dataStorage
-    dataStorage: "1Gi"
+    dataStorage: 1
