@@ -1,0 +1,21 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: rocketmq
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rocketmq.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "rocketmq.cmpdNamePrefix" . }}
+      releases:
+        - 5.3.2
+  releases:
+    - name: 5.3.2
+      changes:
+      serviceVersion: 5.3.2
+      images:
+        rocketmq: {{ .Values.rocketmq.registry | default "docker.io" }}/{{ .Values.rocketmq.repository }}:5.3.2
+        dashboard: {{ .Values.dashboard.registry | default "docker.io" }}/{{ .Values.dashboard.repository }}:1.0.0
