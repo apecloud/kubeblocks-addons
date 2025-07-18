@@ -1,3 +1,5 @@
+#!/bin/bash
+
 component_name=${instanceName%-*}
 instance_fqdn=${instanceName}.${component_name}-headless
 
