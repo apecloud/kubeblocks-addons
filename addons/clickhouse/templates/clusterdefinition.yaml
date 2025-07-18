@@ -4,12 +4,6 @@ metadata:
   name: clickhouse
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
 spec:
   topologies:
     - name: standalone
@@ -26,18 +20,3 @@ spec:
         provision:
           - ch-keeper
           - clickhouse
-  type: clickhouse
-  connectionCredential:
-    username: "admin"
-    admin-password: "$(RANDOM_PASSWD)"
-    endpoint: "http://$(SVC_FQDN):$(SVC_PORT_http)"
-    tcpEndpoint: "$(SVC_FQDN):$(SVC_PORT_tcp)"
-    mysqlEndpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-mysql)"
-    pgEndpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-postgresql)"
-  componentDefs:
-    - name: zookeeper
-      {{- include "zookeeper.clusterComponent" . | nindent 6 }}
-    - name: clickhouse
-      {{- include "clickhouse.clusterComponent" . | nindent 6 }}
-    - name: ch-keeper
-      {{- include "clickhouse-keeper.clusterComponent" . | nindent 6 }}

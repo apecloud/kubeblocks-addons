@@ -1,5 +1,3 @@
-{{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
 <clickhouse>
   <listen_host>0.0.0.0</listen_host>
   {{- if $.component.tlsConfig }}
@@ -14,7 +12,15 @@
   <tcp_port replace="replace" from_env="CLICKHOUSE_TCP_PORT"/>
   <interserver_http_port replace="replace" from_env="CLICKHOUSE_INTERSERVER_HTTP_PORT"/>
   {{- end }}
+  <logger>
+      <level>information</level>
+      <log>/bitnami/clickhouse/log/keeper-server.log</log>
+      <errorlog>/bitnami/clickhouse/log/keeper-server.err.log</errorlog>
+      <size>100M</size>
+      <count>3</count>
+  </logger>
   <keeper_server>
+      <enable_reconfiguration>true</enable_reconfiguration>
       {{- if $.component.tlsConfig }}
       <tcp_port_secure replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_TLS_PORT"/>
       <secure>1</secure>
@@ -33,18 +39,17 @@
       {{- if $.component.tlsConfig }}
       <secure>true</secure>
       {{- end }}
-      {{- $replicas := $.component.replicas | int }}
-      {{- range $i, $e := until $replicas }}
+      {{- range $id, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
         <server>
-          <id>{{ $i }}</id>
-          <hostname>{{ $clusterName }}-{{ $.component.name }}-{{ $i }}.{{ $clusterName }}-{{ $.component.name }}-headless.{{ $namespace }}.svc.{{- $.clusterDomain }}</hostname>
+          <id>{{ add $id 1 }}</id>
+          <hostname>{{ $host }}</hostname>
           {{- if $.component.tlsConfig }}
           <port replace="replace" from_env="CLICKHOUSE_KEEPER_RAFT_TLS_PORT"/>
           {{- else }}
           <port replace="replace" from_env="CLICKHOUSE_KEEPER_RAFT_PORT"/>
           {{- end }}
         </server>
-      {{- end }}
+        {{- end }}
       </raft_configuration>
   </keeper_server>
   <!-- Prometheus metrics -->

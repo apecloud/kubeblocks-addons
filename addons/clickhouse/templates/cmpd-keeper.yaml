@@ -4,47 +4,57 @@ metadata:
   name: ch-keeper-24
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: clickhouse-keeper
   serviceVersion: "24.8.3"
+  minReadySeconds: 10
+  scripts:
+    - name: clickhouse-scripts
+      templateRef: clickhouse-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
   runtime:
     securityContext:
-      fsGroup: 1001
+      fsGroup: 0
       seccompProfile:
         type: RuntimeDefault
+    initContainers:
+      - name: copy-tools
+        imagePullPolicy: {{ .Values.busyboxImage.pullPolicy }}
+        command:
+          - sh
+          - -c
+          - |
+            cp /bin/nc /shared-tools/
+            chmod +x /shared-tools/nc
+        volumeMounts:
+          - name: shared-tools
+            mountPath: /shared-tools
+
     containers:
       - name: clickhouse
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          runAsNonRoot: true
-          runAsUser: 1001
+          runAsUser: 0
+          privileged: true
         command:
           - bash
-          - -xc
+          - -c
           - |
-            HOSTNAME="$(hostname -s)"
-            export CH_KEEPER_ID=${HOSTNAME##*-}
-            exec /opt/bitnami/scripts/clickhouse/entrypoint.sh /opt/bitnami/scripts/clickhouse/run.sh -- --listen_host=0.0.0.0
+            /scripts/bootstrap-keeper.sh
         ports:
           # clickhouse ports
+          - name: tcp
+            containerPort: 9000
           - name: http
             containerPort: 8123
           - name: https
             containerPort: 8443
-          - name: tcp
-            containerPort: 9000
           - name: http-intersrv
             containerPort: 9009
           - name: https-intersrv
@@ -62,27 +72,20 @@ spec:
             containerPort: 9281
           - name: chk-raft-tls
             containerPort: 9444
-        # livenessProbe:
-        #   failureThreshold: 6
-        #   initialDelaySeconds: 30
-        #   periodSeconds: 10
-        #   successThreshold: 1
-        #   timeoutSeconds: 5
-        #   exec:
-        #     command: ['/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok']
-        # readinessProbe:
-        #   failureThreshold: 6
-        #   initialDelaySeconds: 5
-        #   periodSeconds: 10
-        #   successThreshold: 1
-        #   timeoutSeconds: 5
-        #   exec:
-        #     command: ['/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok']
         volumeMounts:
           - name: data
             mountPath: /bitnami/clickhouse
           - name: config
-            mountPath: /bitnami/clickhouse/etc/conf.d/default
+            mountPath: /opt/bitnami/clickhouse/etc/conf.d
+          - name: scripts
+            mountPath: /scripts
+          - name: client-config
+            mountPath: /etc/clickhouse-client
+          - name: shared-tools
+            mountPath: /shared-tools
+    volumes:
+      - name: shared-tools
+        emptyDir: {}
   services:
     - name: default
       spec:
@@ -135,6 +138,11 @@ spec:
       namespace: {{ .Release.Namespace }}
       reRenderResourceTypes:
         - hscale
+    - name: clickhouse-client-tpl
+      templateRef: clickhouse-client-tpl
+      constraintRef: clickhouse-constraints
+      volumeName: client-config
+      namespace: {{ .Release.Namespace }}
   systemAccounts:
     - name: admin
       initAccount: true
@@ -167,13 +175,85 @@ spec:
       value: "$(CLICKHOUSE_METRICS_PORT)"
     - name: KEEPER_REPLICA_ID
       value: "$(KB_POD_NAME)"
+    - name: CLICKHOUSE_ADMIN_USER
+      value: admin
     - name: CLICKHOUSE_ADMIN_PASSWORD
       valueFrom:
         credentialVarRef:
           name: admin
           optional: false
           password: Required
+    - name: CH_KEEPER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
   updateStrategy: Serial
   podManagementPolicy: Parallel
   volumes:
     - name: data
+  roles:
+  - name: leader
+    serviceable: true
+    writable: true
+  - name: follower
+    serviceable: true
+    writable: false
+  - name: observer
+    serviceable: false
+    writable: false
+  lifecycleActions:
+    roleProbe:
+      initialDelaySeconds: {{ .Values.roleProbe.initialDelaySeconds }}
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      builtinHandler: custom
+      customHandler:
+        container: clickhouse
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major24 }}
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              /scripts/keeper-role-probe.sh
+    switchover:
+      scriptSpecSelectors:
+        - name: clickhouse-scripts
+      withCandidate:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag.major24 }}
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              /scripts/keeper-switchover.sh
+      withoutCandidate:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag.major24 }}
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              /scripts/keeper-switchover.sh
+    memberJoin:
+      builtinHandler: custom
+      customHandler:
+        preCondition: RuntimeReady
+        container: clickhouse
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              /scripts/keeper-member-join.sh > /tmp/keeper-member-join.log 2>&1
+    memberLeave:
+      builtinHandler: custom
+      customHandler:
+        container: clickhouse
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              /scripts/keeper-member-leave.sh > /tmp/keeper-member-leave.log 2>&1

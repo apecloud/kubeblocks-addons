@@ -4,19 +4,32 @@ metadata:
   name: clickhouse-constraints
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
 spec:
+  reloadAction:
+    autoTrigger:
+      processName: ""
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
-    # top level mysql configuration type
+    # top level clickhouse configuration type
     topLevelKey: ClickhouseParameter
 
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
       {{- .Files.Get "configs/clickhouse-config-constraint.cue" | nindent 6 }}
-  # mysql configuration file format
+
   fileFormatConfig:
     format: xml
+
+  immutableParameters:
+  - clickhouse.allow_experimental_cluster_discovery
+  - clickhouse.http_port
+  - clickhouse.https_port
+  - clickhouse.interserver_http_port
+  - clickhouse.macros
+  - clickhouse.logger
+  - clickhouse.tcp_port
+  - clickhouse.listen_host
+
+  staticParameters:
+  - none

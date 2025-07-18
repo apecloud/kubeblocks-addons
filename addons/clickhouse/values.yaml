@@ -5,32 +5,34 @@
 nameOverride: ""
 fullnameOverride: ""
 
-## @param commonLabels Labels to add to all deployed objects
-##
-commonLabels: {}
-
 logConfigs: {}
-
-commonAnnotations: {}
 
 image:
   registry: docker.io
-  repository: bitnami/clickhouse
+  repository: apecloud/clickhouse
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 24.8.3-debian-12-r1
+  tag:
+    major24: 24.8.3-debian-12-r1
+    major22: 22.9.4-debian-11-r1
+    major25: 25.4.4-debian-12-r1
 
-# Zookeeper is Legacy component
-# The following section contains legacy values for the zookeeper dependency.
-# These values are kept for backward compatibility
-# if you are upgrading from 0.8 version of the chart.
-
-zookeeper:
-  image:
-    registry: docker.io
-    repository: bitnami/zookeeper
+busyboxImage:
+  # if the value of busyboxImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+  registry: ""
+  repository: apecloud/busybox
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: 3.8.0-debian-11-r47
-  logConfigs: {}
-  configuration: ""
+  tag: 1.36
+
+roleProbe:
+  initialDelaySeconds: 15
+  failureThreshold: 3
+  periodSeconds: 3
+  timeoutSeconds: 3
+
+backupImage:
+  registry: ""
+  repository: apecloud/clickhouse-backup-full
+  pullPolicy: IfNotPresent
+  tag: 2.6.14
