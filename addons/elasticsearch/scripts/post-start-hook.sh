@@ -14,23 +14,23 @@ else
     READINESS_PROBE_PROTOCOL=http
 fi
 ENDPOINT="${READINESS_PROBE_PROTOCOL}://${LOOPBACK}:9200"
-COMMON_OPTIONS="--connect-timeout 3 -k -u elastic:${ELASTIC_PASSWORD}"
+COMMON_OPTIONS="--connect-timeout 3 -k -u root:${ELASTIC_USER_PASSWORD}"
 
 # Function to create a local superuser using elasticsearch-users command
 # This is needed to authenticate API calls when security is enabled
-# function add_local_user()
-# {
-#     username=$1
-#     password=$2
-#     result=$(bin/elasticsearch-users useradd ${username} -r superuser -p "${password}" 2>&1)
-#     if [ $? != 0 ]; then
-#         echo "${result}" | grep 'already exists'
-#         if [ $? != 0 ]; then
-#             echo "Failed to create user ${user}"
-#             exit 1
-#         fi
-#     fi
-# }
+function add_local_user()
+{
+    username=$1
+    password=$2
+    result=$(bin/elasticsearch-users useradd ${username} -r superuser -p "${password}" 2>&1)
+    if [ $? != 0 ]; then
+        echo "${result}" | grep 'already exists'
+        if [ $? != 0 ]; then
+            echo "Failed to create user ${user}"
+            exit 1
+        fi
+    fi
+}
 
 # Function to reset password for built-in users using ES API
 function reset_password()
@@ -65,18 +65,16 @@ if grep '\- master\|master: true' config/elasticsearch.yml > /dev/null 2>&1; the
             echo "waiting for elasticsearch to start..."
             sleep 1
         done
-
-        # # If security is enabled, create a temporary root user for API authentication
-        # if [ -n "${KB_TLS_CERT_FILE}" ]; then
-        #     echo "add root user"
-        #     add_local_user root ${ELASTIC_USER_PASSWORD}
-        # fi
-
+        
+        # If security is enabled, create a temporary root user for API authentication
+        if [ -n "${KB_TLS_CERT_FILE}" ]; then
+            echo "add root user"
+            add_local_user root ${ELASTIC_USER_PASSWORD}
+        fi
+        
         wait_for_cluster_health
         touch ${CLUSTER_FORMED_FILE}
     fi
-else
-    exit 0
 fi
 
 # The following operations only need to be performed on master-0
@@ -102,11 +100,11 @@ echo "wait for cluster ready"
 wait_for_cluster_health
 
 # Reset built-in elastic user's password
-# echo "reset elastic password"
-# reset_password elastic ${ELASTIC_USER_PASSWORD}
-# if [ $? != 0 ]; then
-#     exit 1
-# fi
+echo "reset elastic password"
+reset_password elastic ${ELASTIC_USER_PASSWORD}
+if [ $? != 0 ]; then
+    exit 1
+fi
 
 # Configure kibana_system user
 # For ES versions < 7.8, kibana_system user needs to be created manually

@@ -5,7 +5,7 @@ set -o errexit
 
 cat /etc/datasafed/datasafed.conf
 toolConfig=/etc/datasafed/datasafed.conf
-ES_ENDPOINT=http://${DP_DB_HOST}:9200
+ES_ENDPOINT=http://${DP_DB_HOST}.${KB_NAMESPACE}.svc.cluster.local:9200
 REPOSITORY=kb-restore
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
@@ -22,7 +22,7 @@ trap handle_exit EXIT
 
 function getToolConfigValue() {
     local var=$1
-    cat $toolConfig | grep "$var" | awk '{print $NF}'
+    cat $toolConfig | grep "$var[[:space:]]*=" | awk '{print $NF}'
 }
 
 s3_endpoint=$(getToolConfigValue endpoint)
@@ -212,6 +212,20 @@ curl -f -s -X POST "${ES_ENDPOINT}/_snapshot/${REPOSITORY}/${backup_name}/_resto
   "include_global_state": true
 }
 '
+
+# Wait for the cluster health to become green after restore
+wait_interval=10      # Check every 10 seconds
+
+while true; do
+  # Query cluster health status
+  health_status=$(curl -s "${ES_ENDPOINT}/_cluster/health" | grep -o '"status":"[^\"]*"' | awk -F: '{print $2}' | tr -d '"')
+  echo "Current cluster health status: $health_status"
+  if [[ "$health_status" == "green" ]]; then
+    echo "Cluster health is green, restore is complete."
+    break
+  fi
+  sleep $wait_interval
+done
 
 enable_indexing_and_geoip true
 
