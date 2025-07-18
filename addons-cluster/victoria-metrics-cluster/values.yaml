@@ -8,9 +8,6 @@ fullnameOverride: ""
 ## @param storageClassName, storage class name
 ##
 storageClassName: ""
-## @param terminationPolicy, temination policy for victoria-metrics-cluster
-##
-terminationPolicy: "Delete"
 
 ## @param replicas specify cluster replicas
 ##
