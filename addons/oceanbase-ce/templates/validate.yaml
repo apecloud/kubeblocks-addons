@@ -1,3 +1,0 @@
-{{- if lt (.Values.replicas|int) (.Values.zoneCount|int) }}
-  {{- fail (print "replicas must be greater than or equal to zoneCount") }}
-{{- end }}
