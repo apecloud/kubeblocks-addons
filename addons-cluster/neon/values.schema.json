@@ -196,12 +196,14 @@
           }
         },
         "dataStorage": {
+          "title": "Data Storage(Gi)",
+          "description": "Data storage size for each safekeeper replica",
           "type": [
             "number",
             "string"
           ],
           "default": 20,
-          "description": "Data storage size for each safekeeper replica"
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
         }
       }
     },
@@ -271,7 +273,8 @@
             "number",
             "string"
           ],
-          "default": 20
+          "default": 20,
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
         }
       }
     }

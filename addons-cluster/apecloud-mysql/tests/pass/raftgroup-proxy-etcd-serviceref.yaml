@@ -1,0 +1,8 @@
+mode: raftGroup
+replicas: 3
+proxyEnabled: true
+etcd:
+  mode: serviceRef
+  serviceRef:
+    cluster:
+      name: my-etcd

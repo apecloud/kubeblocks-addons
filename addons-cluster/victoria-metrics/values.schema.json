@@ -31,10 +31,7 @@
         "replicas": {
           "title": "Replicas for vminsert",
           "description": "The number of replicas for vminsert component.",
-          "type": [
-            "number",
-            "string"
-          ],
+          "type": "integer",
           "default": 1,
           "minimum": 1,
           "maximum": 5
@@ -52,9 +49,7 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5,
-                  "minimum": 0.5,
-                  "maximum": 1000
+                  "default": 0.5
                 },
                 "cpu": {
                   "title": "CPU for vminsert",
@@ -63,10 +58,7 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5,
-                  "minimum": 0.5,
-                  "maximum": 64,
-                  "multipleOf": 0.5
+                  "default": 0.5
                 }
               }
             },
@@ -80,9 +72,7 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5,
-                  "minimum": 0.5,
-                  "maximum": 1000
+                  "default": 0.5
                 },
                 "cpu": {
                   "title": "CPU for vminsert",
@@ -91,10 +81,7 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5,
-                  "minimum": 0.5,
-                  "maximum": 64,
-                  "multipleOf": 0.5
+                  "default": 0.5
                 }
               }
             }
@@ -108,10 +95,7 @@
         "replicas": {
           "title": "Replicas for vmselect",
           "description": "The number of replicas for vmselect component.",
-          "type": [
-            "number",
-            "string"
-          ],
+          "type": "integer",
           "default": 1,
           "minimum": 1,
           "maximum": 5
@@ -129,9 +113,7 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5,
-                  "minimum": 0.5,
-                  "maximum": 1000
+                  "default": 0.5
                 },
                 "cpu": {
                   "title": "CPU for vmselect",
@@ -140,10 +122,7 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5,
-                  "minimum": 0.5,
-                  "maximum": 64,
-                  "multipleOf": 0.5
+                  "default": 0.5
                 }
               }
             },
@@ -157,9 +136,7 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5,
-                  "minimum": 0.5,
-                  "maximum": 1000
+                  "default": 0.5
                 },
                 "cpu": {
                   "title": "CPU for vmselect",
@@ -168,10 +145,7 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5,
-                  "minimum": 0.5,
-                  "maximum": 64,
-                  "multipleOf": 0.5
+                  "default": 0.5
                 }
               }
             }
@@ -185,10 +159,7 @@
         "replicas": {
           "title": "Replicas for vmstorage",
           "description": "The number of replicas for vmstorage component.",
-          "type": [
-            "number",
-            "string"
-          ],
+          "type": "integer",
           "default": 1,
           "minimum": 1,
           "maximum": 5
@@ -206,9 +177,7 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5,
-                  "minimum": 0.5,
-                  "maximum": 1000
+                  "default": 0.5
                 },
                 "cpu": {
                   "title": "CPU for vmstorage",
@@ -217,10 +186,7 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5,
-                  "minimum": 0.5,
-                  "maximum": 64,
-                  "multipleOf": 0.5
+                  "default": 0.5
                 }
               }
             },
@@ -234,9 +200,7 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5,
-                  "minimum": 0.5,
-                  "maximum": 1000
+                  "default": 0.5
                 },
                 "cpu": {
                   "title": "CPU for vmstorage",
@@ -245,10 +209,7 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5,
-                  "minimum": 0.5,
-                  "maximum": 64,
-                  "multipleOf": 0.5
+                  "default": 0.5
                 }
               }
             }
@@ -257,8 +218,8 @@
         "storageClassName": {
           "title": "Storage Class Name",
           "description": "Storage class name for persistent volumes.",
-          "type": "string",
-          "default": ""
+          "type": ["string", "null"],
+          "default": null
         },
         "storage": {
           "title": "Storage(Gi)",
@@ -268,8 +229,7 @@
             "string"
           ],
           "default": 10,
-          "minimum": 1,
-          "maximum": 10000
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
         }
       }
     }

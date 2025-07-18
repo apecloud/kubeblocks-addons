@@ -89,7 +89,8 @@
                   ],
                   "title": "Size of data volume(Gi)",
                   "description": "Size of data volume, the unit is Gi.",
-                  "default": 20
+                  "default": 20,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }

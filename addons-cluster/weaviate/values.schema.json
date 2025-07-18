@@ -70,8 +70,8 @@
             "storageClassName": {
               "title": "Storage Class Name",
               "description": "Storage class name for persistent volumes.",
-              "type":"string",
-              "default": ""
+              "type": ["string", "null"],
+              "default": null
             },
             "size": {
               "title": "Size of persistent volume claim(Gi)",
@@ -80,7 +80,8 @@
                 "number",
                 "string"
               ],
-              "default": 10
+              "default": 10,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             }
           }
         }

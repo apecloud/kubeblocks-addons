@@ -1,0 +1,4 @@
+mode: shared-backend
+serviceReference:
+  metadb:
+    cluster: "my-mysql-cluster"

@@ -18,7 +18,8 @@
       "title": "Replicas",
       "description": "Number of replicas for standalone mode",
       "type": "integer",
-      "default": 1
+      "default": 1,
+      "minimum": 1
     },
     "cpu": {
       "title": "CPU",
@@ -27,10 +28,7 @@
         "number",
         "string"
       ],
-      "default": 0.5,
-      "minimum": 0.5,
-      "maximum": 64,
-      "multipleOf": 0.5
+      "default": 0.5
     },
     "memory": {
       "title": "Memory(Gi)",
@@ -39,9 +37,7 @@
         "number",
         "string"
       ],
-      "default": 0.5,
-      "minimum": 0.5,
-      "maximum": 1000
+      "default": 0.5
     },
     "persistence": {
       "type": "object",

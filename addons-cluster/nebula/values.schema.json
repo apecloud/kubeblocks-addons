@@ -148,12 +148,14 @@
               }
             },
             "logStorage": {
+              "title": "Log Storage(Gi)",
+              "description": "Log storage size, the unit is Gi.",
               "type": [
                 "number",
                 "string"
               ],
               "default": 1,
-              "description": "Log storage size"
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             }
           }
         },
@@ -223,7 +225,8 @@
                 "number",
                 "string"
               ],
-              "default": 1
+              "default": 1,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             },
             "dataStorage": {
               "title": "Data Storage(Gi)",
@@ -302,7 +305,8 @@
                 "number",
                 "string"
               ],
-              "default": 1
+              "default": 1,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             },
             "dataStorage": {
               "title": "Data Storage(Gi)",
@@ -311,7 +315,8 @@
                 "number",
                 "string"
               ],
-              "default": 1
+              "default": 1,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             }
           }
         }

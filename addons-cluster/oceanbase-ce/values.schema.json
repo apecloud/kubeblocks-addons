@@ -21,9 +21,7 @@
         "replicas": {
             "title": "Replicas",
             "description": "The number of replicas, no less than zoneCount.",
-            "type": [
-                "integer"
-            ],
+            "type": "integer",
             "minimum": 1
         },
         "cpu": {

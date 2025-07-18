@@ -196,7 +196,7 @@
         "shardCount": {
           "description": "The number of shards in the redis cluster",
           "title": "shardCount",
-          "type": "number",
+          "type": "integer",
           "default": 3,
           "minimum": 3,
           "maximum": 2048

@@ -1,0 +1,5 @@
+mode: replication-twemproxy
+replicas: 2
+twemproxy:
+  enabled: true
+  replicas: 2

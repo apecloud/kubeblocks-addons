@@ -367,6 +367,7 @@
                                     "type": "string",
                                     "default": "REPLACE-WITH-YOUR-REGION",
                                     "description": "Region of S3 bucket."
+
                                 },
                                 "bucket": {
                                     "type": "string",

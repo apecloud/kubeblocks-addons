@@ -131,7 +131,7 @@
         "replicas": {
           "title": "Monitor Replicas",
           "description": "Number of replicas for the monitor component.",
-          "type": [ "number", "string" ],
+          "type": "integer",
           "default": 1,
           "minimum": 1
         },

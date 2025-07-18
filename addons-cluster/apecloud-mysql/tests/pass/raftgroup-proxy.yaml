@@ -1,0 +1,3 @@
+mode: raftGroup
+replicas: 3
+proxyEnabled: true

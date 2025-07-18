@@ -6,7 +6,7 @@
 ##
 version: 5.26.5
 
-## @param mode cluster topology mode, singlealone
+## @param mode cluster topology mode, singlealone, clustermode
 ##
 mode: singlealone
 

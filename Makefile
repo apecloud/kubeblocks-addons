@@ -121,3 +121,7 @@ SHELLSPEC_INCLUDE_PATH := $(shell ./utils/get_shellspec_include_path.sh)
 .PHONY: scripts-test-kcov
 scripts-test-kcov: install-shellspec ##    Run shellspec unit test cases.
 	@shellspec --load-path $(SHELLSPEC_LOAD_PATH) --default-path $(SHELLSPEC_DEFAULT_PATH) --shell $(SHELLSPEC_DEFAULT_SHELL) --kcov --kcov-options "--include-path=$(SHELLSPEC_INCLUDE_PATH) --path-strip-level=1"
+
+.PHONY: test-charts
+test-charts: ##    Run helm template tests for all charts.
+	@./hack/test-charts.sh
