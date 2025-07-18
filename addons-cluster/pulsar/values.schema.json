@@ -26,8 +26,11 @@
                     "description": "The number of bookies replicas.",
                     "type": "integer",
                     "default": 1,
-                    "minimum": 1,
-                    "maximum": 5
+                    "enum": [
+                        1,
+                        3,
+                        5
+                    ]
                 },
                 "mode": {
                     "type": "string",

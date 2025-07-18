@@ -11,6 +11,6 @@
   {{- end -}}
 {{- end -}}
 {{- if ne $count 1 }}
-{{- println "there must be one and one one master node" -}}
+{{- println "there must be one and only one master node" -}}
 {{- end }}
 {{- end }}
