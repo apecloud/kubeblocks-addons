@@ -28,4 +28,4 @@ debugEnabled: true
 
 dataMountPath: /qdrant/storage
 
-clusterDomain: ".cluster.local"
+clusterDomain: "cluster.local"

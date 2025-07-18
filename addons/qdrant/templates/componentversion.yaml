@@ -14,6 +14,7 @@ spec:
     - 1.8.1
     - 1.8.4
     - 1.10.0
+    - 1.13.4
   releases:
   - name: 1.5.0
     serviceVersion: 1.5.0
@@ -39,4 +40,9 @@ spec:
     serviceVersion: 1.10.0
     images:
       qdrant: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:v1.10.0
+      qdrant-tools:  {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
+  - name: 1.13.4
+    serviceVersion: 1.13.4
+    images:
+      qdrant: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:v1.13.4
       qdrant-tools:  {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
