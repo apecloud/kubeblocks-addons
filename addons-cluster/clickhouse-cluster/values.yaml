@@ -3,15 +3,17 @@ nameOverride: ""
 # Override the full name of the chart
 fullnameOverride: ""
 
+## Clickhouse cluster version
+version: 24.8.3
+
 ## ClickHouse cluster topology mode defined in ClusterDefinition.Spec.topologies, support standalone and cluster
 ## - `standalone`: single clickhouse instance
 ## - `cluster`: clickhouse with ClickHouse Keeper as coordinator
 mode: cluster
 
 ## Sharding configuration
-# sharding topology is not stable in kb 0.9, it's recommended to set sharding to false
-shards: 1
-sharding: false
+shards: 2
+sharding: true
 
 ## Number of ClickHouse replicas per shard to deploy
 replicas: 2
@@ -25,7 +27,7 @@ requests:
 # cpu: ""
 # memory: ""
 
-storageClassName:
+storageClassName: ""
 storage: 10
 disableExporter: false
 
@@ -36,19 +38,26 @@ tolerations: []
 ## ClickHouse Keeper configuration
 keeper:
   ## Number of ClickHouse Keeper replicas
-  replicas: 1
-  storageClassName:
+  replicas: 3
+  storageClassName: ""
   cpu: 1
   memory: 2
   storage: 10
   tolerations: []
+
+clickhouse:
+  initClusterName: "default"
+
+## @param nodePortEnabled if true, the redis will use nodePort as the announce IP
+## This option is mutually exclusive with fixedPodIPEnabled, hostNetworkEnabled and loadBalancerEnabled. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled, loadBalancerEnabled are false, the default announce IP will be a headless service.
+nodePortEnabled: false
 
 ## Service configurations
 service:
   ## ClickHouse service type
   ## Valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  type: ClusterIP
+  type: NodePort
 
 ## The RBAC permission used by cluster component pod, now include event.create
 serviceAccount:
@@ -57,15 +66,13 @@ serviceAccount:
 ## TLS configuration for ClickHouse cluster
 tls:
   enabled: false
-  ## KubeBlocks or UserProvided
+  ## UserProvided will automatically generate TLS file by cluster-tls-secrets.yaml
   issuer: UserProvided
-  ## If issuer is UserProvided, will automatically generate TLS file by cluster-tls-secrets.yaml
-  secretName: clickhouse-cluster-tls
 
 extra:
   ## Define Cluster termination policy.
   ## Options: DoNotTerminate, Halt, Delete, WipeOut.
-  terminationPolicy: DoNotTerminate
+  terminationPolicy: Delete
 
   ## If true, RBAC resources will be created
   rbacEnabled: false

@@ -4,45 +4,50 @@ metadata:
   name: clickhouse-24
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: "24.8.3"
+  minReadySeconds: 10
   runtime:
     securityContext:
-      fsGroup: 1001
+      fsGroup: 0
       seccompProfile:
         type: RuntimeDefault
     containers:
       - name: clickhouse
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/bootstrap-server.sh
         securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          runAsNonRoot: true
-          runAsUser: 1001
+          runAsUser: 0
+          privileged: true
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: 8123
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          timeoutSeconds: 3
         ports:
-          - name: http-metrics
-            containerPort: 8001
+          - name: tcp
+            containerPort: 9000
           - name: http
             containerPort: 8123
           - name: https
             containerPort: 8443
-          - name: tcp
-            containerPort: 9000
           - name: tcp-mysql
             containerPort: 9004
           - name: tcp-postgresql
             containerPort: 9005
+          - name: http-metrics
+            containerPort: 8001
           - name: http-intersrv
             containerPort: 9009
           - name: https-intersrv
@@ -53,11 +58,13 @@ spec:
           - name: data
             mountPath: /bitnami/clickhouse
           - name: config
-            mountPath: /bitnami/clickhouse/etc/conf.d/default
+            mountPath: /opt/bitnami/clickhouse/etc/conf.d
           - name: user-config
             mountPath: /bitnami/clickhouse/etc/users.d/default
           - name: client-config
-            mountPath: /etc/clickhouse-client/
+            mountPath: /etc/clickhouse-client
+          - name: scripts
+            mountPath: /scripts
   updateStrategy: BestEffortParallel
   logConfigs:
     {{- range $name, $pattern := .Values.logConfigs }}
@@ -67,6 +74,12 @@ spec:
   exporter:
     scrapePath: /metrics
     scrapePort: "8001"
+  scripts:
+    - name: clickhouse-scripts
+      templateRef: clickhouse-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
   configs:
     - name: clickhouse-tpl
       templateRef: clickhouse-tpl
@@ -75,9 +88,10 @@ spec:
       namespace: {{ .Release.Namespace }}
       reRenderResourceTypes:
         - hscale
+        - shardingHScale
     - name: clickhouse-user-tpl
       templateRef: clickhouse-user-tpl
-      constraintRef: clickhouse-constraints
+      constraintRef: clickhouse-user-constraints
       volumeName: user-config
       namespace: {{ .Release.Namespace }}
     - name: clickhouse-client-tpl
@@ -89,6 +103,8 @@ spec:
     - name: admin
       initAccount: true
   vars:
+    - name: INIT_CLUSTER_NAME
+      value: "default"
     - name: BITNAMI_DEBUG
       value: "false"
     - name: CLICKHOUSE_HTTP_PORT
@@ -123,6 +139,17 @@ spec:
           name: admin
           optional: false
           password: Required
+    - name: CLICKHOUSE_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: CH_KEEPER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: ch-keeper-24
+          optional: true
+          podFQDNs: Required
     - name: ALL_SHARDS_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
@@ -130,31 +157,41 @@ spec:
           optional: false
           podFQDNs: Required
           multipleClusterObjectOption:
+            requireAllComponentObjects: true
             strategy: individual
+    - name: ALL_COMBINED_SHARDS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: clickhouse-24
+          optional: false
+          podFQDNs: Required
+          multipleClusterObjectOption:
+            requireAllComponentObjects: true
+            strategy: combined
   volumes:
     - name: data
   services:
     - name: default
       spec:
         ports:
-          - name: http-metrics
-            targetPort: http-metrics
-            port: 8001
+          - name: tcp
+            targetPort: tcp
+            port: 9000
           - name: http
             targetPort: http
             port: 8123
           - name: https
             targetPort: https
             port: 8443
-          - name: tcp
-            targetPort: tcp
-            port: 9000
           - name: tcp-mysql
             targetPort: tcp-mysql
             port: 9004
           - name: tcp-postgresql
             targetPort: tcp-postgresql
             port: 9005
+          - name: http-metrics
+            targetPort: http-metrics
+            port: 8001
           - name: http-intersrv
             targetPort: http-intersrv
             port: 9009
@@ -164,3 +201,15 @@ spec:
           - name: tcp-secure
             targetPort: tcp-secure
             port: 9440
+  lifecycleActions:
+    memberJoin:
+      builtinHandler: custom
+      customHandler:
+        preCondition: RuntimeReady
+        container: clickhouse
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              /scripts/member-join.sh > /tmp/member-join.log 2>&1

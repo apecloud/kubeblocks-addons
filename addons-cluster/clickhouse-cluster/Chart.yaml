@@ -4,7 +4,7 @@ description: A ClickHouse cluster Helm chart for KubeBlocks.
 
 type: application
 
-version: 0.9.1
+version: 0.9.3
 
 appVersion: 24.8.3
 
@@ -21,5 +21,5 @@ keywords:
 - sharding
 
 maintainers:
-- name: Nash Tsai
-  url: https://github.com/apecloud/kubeblocks/deploy
+  - name: ApeCloud
+    url: https://kubeblocks.io/

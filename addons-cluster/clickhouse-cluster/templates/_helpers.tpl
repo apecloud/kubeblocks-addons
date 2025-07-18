@@ -61,6 +61,10 @@ Create the name of the service account to use
 {{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
 {{- end }}
 
+{{- define "clickhouse-cluster.tlsname" -}}
+{{- printf "%s-tls" (include "kblib.clusterName" .) }}
+{{- end }}
+
 {{/*
 TLS file
 */}}
@@ -71,7 +75,7 @@ issuer:
   name: {{ $.Values.tls.issuer }}
   {{- if eq $.Values.tls.issuer "UserProvided" }}
   secretRef:
-    name: {{ $.Values.tls.secretName }}
+    name: {{ include "clickhouse-cluster.tlsname" . }}
     ca: ca.crt
     cert: tls.crt
     key: tls.key
@@ -87,6 +91,7 @@ Define clickhouse componentSpec with ComponentDefinition.
   componentDef: clickhouse-24
   replicas: {{ $.Values.replicas | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
+  serviceVersion: {{ $.Values.version }}
   serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
   systemAccounts:
     - name: admin
@@ -111,6 +116,12 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
 - name: ch-keeper
   componentDef: ch-keeper-24
   replicas: {{ .Values.keeper.replicas }}
+  serviceVersion: {{ $.Values.version }}
+  {{- if .Values.nodePortEnabled }}
+  services:
+    - name: default
+      serviceType: NodePort
+  {{- end }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
   {{- with .Values.keeper.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
@@ -148,14 +159,23 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
 Define clickhouse shardingComponentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-sharding-component" -}}
-- name: shard
+- name: clickhouse
   shards: {{ .Values.shards }}
   template:
     name: clickhouse
     componentDef: clickhouse-24
+    env:
+    - name: "INIT_CLUSTER_NAME"
+      value: "{{ .Values.clickhouse.initClusterName }}"
     replicas: {{ $.Values.replicas | default 2 }}
+    serviceVersion: {{ $.Values.version }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
     serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
+    {{- if .Values.nodePortEnabled }}
+    services:
+    - name: default
+      serviceType: NodePort
+    {{- end }}
     systemAccounts:
     - name: admin
       passwordConfig:
@@ -177,9 +197,17 @@ Define clickhouse componentSpec with compatible ComponentDefinition API
 */}}
 {{- define "clickhouse-nosharding-component" -}}
 {{- range $i := until (.Values.shards | int) }}
-- name: shard-{{ $i }}
+{{- $name := printf "clickhouse-%d" $i }}
+{{- if eq $i 0 }}
+{{- $name = "clickhouse" }}
+{{- end}}
+- name: {{ $name }}
   componentDef: clickhouse-24
   replicas: {{ $.Values.replicas | default 2 }}
+  env:
+  - name: "INIT_CLUSTER_NAME"
+    value: "{{ .Values.clickhouse.initClusterName }}"
+  serviceVersion: {{ $.Values.version }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
   serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
   {{- with $.Values.tolerations }}
@@ -188,5 +216,10 @@ Define clickhouse componentSpec with compatible ComponentDefinition API
   {{- include "kblib.componentResources" $ | indent 2 }}
   {{- include "kblib.componentStorages" $ | indent 2 }}
   {{- include "clickhouse-cluster.tls" $ | indent 2 }}
+  {{- if .Values.nodePortEnabled }}
+  services:
+    - name: default
+      serviceType: NodePort
+  {{- end }}
 {{- end }}
 {{- end }}

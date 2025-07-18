@@ -1,5 +1,4 @@
-{{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
+{{- $cluster_name := getEnvByName ( getContainerByName $.podSpec.containers "clickhouse" ) "INIT_CLUSTER_NAME" | default "default" }}
 <clickhouse>
   <listen_host>0.0.0.0</listen_host>
   {{- if $.component.tlsConfig }}
@@ -18,8 +17,10 @@
   <macros>
     <shard from_env="KB_COMP_NAME"/>
     <replica from_env="KB_POD_NAME"/>
-    <layer>{{ $clusterName }}</layer>
+    <layer>{{ $.cluster.metadata.name }}</layer>
   </macros>
+  <default_replica_path>/clickhouse/tables/{layer}/{shard}/{database}/{table}</default_replica_path>
+  <default_replica_name>{replica}</default_replica_name>
   <!-- Log Level -->
   <logger>
     <level>information</level>
@@ -30,11 +31,9 @@
   </logger>
   <!-- Cluster configuration - Any update of the shards and replicas requires helm upgrade -->
   <remote_servers>
-    <default>
-      {{- $newAPI := false }}
+    <{{ $cluster_name }}>
       {{- range $key, $value := . }}
       {{- if and (hasPrefix "ALL_SHARDS_POD_FQDN_LIST" $key) (ne $value "") }}
-      {{- $newAPI = true }}
       <shard>
         <internal_replication>true</internal_replication>
         {{- range $_, $host := splitList "," $value }}
@@ -53,50 +52,14 @@
       </shard>
       {{- end }}
       {{- end }}
-      {{- if not $newAPI }}
-      {{- range $.cluster.spec.componentSpecs }}
-      {{- $compIter := . }}
-      {{- $compName := "" }}
-      {{- if hasKey $compIter "componentDef" }}
-      {{- $compName = $compIter.componentDef }}
-      {{- else }}
-      {{- $compName = $compIter.componentDefRef }}
-      {{- end }}
-      {{- if or (eq $compName "clickhouse") (eq $compName "clickhouse-24") }}
-        <shard>
-        {{- $replicas := $compIter.replicas | int }}
-        {{- range $i, $_e := until $replicas }}
-          <replica>
-            <host>{{ $clusterName }}-{{ $compIter.name }}-{{ $i }}.{{ $clusterName }}-{{ $compIter.name }}-headless.{{ $namespace }}.svc.{{- $.clusterDomain }}</host>
-            {{- if $.component.tlsConfig }}
-            <port replace="replace" from_env="CLICKHOUSE_TCP_SECURE_PORT"/>
-            <secure>1</secure>
-            {{- else }}
-            <port replace="replace" from_env="CLICKHOUSE_TCP_PORT"/>
-            {{- end }}
-          </replica>
-        {{- end }}
-        </shard>
-      {{- end }}
-      {{- end }}
-      {{- end }}
-    </default>
+    </{{ $cluster_name }}>
   </remote_servers>
-  {{- range $.cluster.spec.componentSpecs }}
-  {{- $compIter := . }}
-  {{- $compName := "" }}
-  {{- if hasKey $compIter "componentDef" }}
-  {{- $compName = $compIter.componentDef }}
-  {{- else }}
-  {{- $compName = $compIter.componentDefRef }}
-  {{- end }}
-  {{- if not (or (eq $compName "clickhouse") (eq $compName "clickhouse-24")) }}
+  {{- if (index . "CH_KEEPER_POD_FQDN_LIST") -}}
   <!-- Zookeeper configuration -->
   <zookeeper>
-  {{- $replicas := $compIter.replicas | int }}
-  {{- range $i, $_e := until $replicas }}
+    {{- range $_, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
     <node>
-      <host>{{ $clusterName }}-{{ $compIter.name }}-{{ $i }}.{{ $clusterName }}-{{ $compIter.name }}-headless.{{ $namespace }}.svc.{{- $.clusterDomain }}</host>
+      <host>{{ $host }}</host>
       {{- if $.component.tlsConfig }}
       <port replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_TLS_PORT"/>
       <secure>1</secure>
@@ -104,9 +67,8 @@
       <port replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_PORT"/>
       {{- end }}
     </node>
-  {{- end }}
+    {{- end }}
   </zookeeper>
-  {{- end }}
   {{- end }}
   <!-- Prometheus metrics -->
   <prometheus>
@@ -116,11 +78,11 @@
     <events>true</events>
     <asynchronous_metrics>true</asynchronous_metrics>
   </prometheus>
-  <!-- tls configuration -->
   {{- if $.component.tlsConfig -}}
-  {{- $CA_FILE := "/etc/pki/tls/ca.pem" -}}
-  {{- $CERT_FILE := "/etc/pki/tls/cert.pem" -}}
-  {{- $KEY_FILE := "/etc/pki/tls/key.pem" }}
+  {{- $CA_FILE := getCAFile -}}
+  {{- $CERT_FILE := getCertFile -}}
+  {{- $KEY_FILE := getKeyFile }}
+  <!-- tls configuration -->
   <protocols>
     <prometheus_protocol>
       <type>prometheus</type>
@@ -171,4 +133,34 @@
     <verbose_logs>false</verbose_logs>
   </grpc>
   {{- end }}
+  <query_log>
+    <database>system</database>
+    <table>query_log</table>
+    <partition_by>event_date</partition_by>
+    <order_by>event_time</order_by>
+    <ttl>event_date + INTERVAL 7 day</ttl>
+    <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+    <max_size_rows>1048576</max_size_rows>
+    <reserved_size_rows>8192</reserved_size_rows>
+    <buffer_size_rows_flush_threshold>524288</buffer_size_rows_flush_threshold>
+    <flush_on_crash>false</flush_on_crash>
+  </query_log>
+  <!-- User directories configuration -->
+  <!-- see https://github.com/ClickHouse/ClickHouse/issues/78830 -->
+  <user_directories replace="replace">
+    <users_xml>
+      <!-- Local static user directory (local path) -->
+      <path>/bitnami/clickhouse/etc/users.d/default/user.xml</path>
+    </users_xml>
+    {{- if (index . "CH_KEEPER_POD_FQDN_LIST") }}
+    <replicated>
+      <!-- Keeper-based replicated user directory (keeper path) -->
+      <zookeeper_path>/clickhouse/access</zookeeper_path>
+    </replicated>
+    {{- end }}
+    <local_directory>
+      <!-- Local dynamic user directory (local path, for standalone mode) -->
+      <path>/bitnami/clickhouse/data/access/</path>
+    </local_directory>
+  </user_directories>
 </clickhouse>
