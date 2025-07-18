@@ -1,0 +1,26 @@
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: clickhouse-user-constraints
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+spec:
+  reloadAction:
+    autoTrigger:
+      processName: ""
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # top level clickhouse user configuration type
+    topLevelKey: ClickhouseUserParameter
+
+    # schemaInJSON: auto generate from cue scripts
+    # example: ../../pkg/configuration/testdata/mysql_openapi.json
+    cue: |-
+      {{- .Files.Get "configs/clickhouse-user-constraint.cue" | nindent 6 }}
+
+  fileFormatConfig:
+    format: xml
+
+  staticParameters:
+    - none
