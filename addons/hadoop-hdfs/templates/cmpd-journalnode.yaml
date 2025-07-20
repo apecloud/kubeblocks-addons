@@ -1,0 +1,125 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: hdfs-journalnode
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceKind: hdfs-journalnode
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: jn
+            port: 8485
+          - name: http
+            port: 8480
+  runtime:
+    initContainers:
+      - name: hadoop-common
+        imagePullPolicy: IfNotPresent
+        command:
+          - /bin/bash
+        args:
+          - -ec
+          - |
+            cp -r /opt/software/hadoop-3.3.4/* /opt/kubeemr/hadoop/hadoop-3.3.4
+            mkdir -p /hadoop/dfs/journal
+            chown -R 10000:1000 /hadoop/dfs/journal
+            chown -R 10000:1000 /opt/kubeemr/hadoop/hadoop-3.3.4
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
+          - name: edits-dir
+            mountPath: /hadoop/dfs/journal
+            subPath: journal
+    containers:
+      - name: hdfs-journalnode
+        imagePullPolicy: {{ default "IfNotPresent" .Values.journalNode.image.pullPolicy }}
+        ports:
+          - containerPort: 8485
+            name: jn
+          - containerPort: 8480
+            name: http
+        env:
+          - name: DEBUG_MODEL
+            value: "false"
+          - name: WAIT_ZK_TO_READY
+            value: "false"
+        livenessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - /kubeblocks/scripts/check-journal-status.sh
+        readinessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - /kubeblocks/scripts/check-journal-status.sh
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
+          - name: edits-dir
+            mountPath: /hadoop/dfs/journal
+            subPath: journal
+          - name: hadoop-core-config
+            mountPath: /hadoop/conf/core-site.xml
+            subPath: core-site.xml
+          - name: journalnode-config
+            mountPath: /hadoop/conf/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - mountPath: /hadoop/conf/log4j.properties
+            name: journalnode-config
+            subPath: log4j.properties
+          - name: scripts
+            mountPath: /kubeblocks/scripts
+        securityContext:
+          runAsUser: 10000
+          runAsGroup: 1000
+          runAsNonRoot: true
+          privileged: false
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ "ALL" ]
+          seccompProfile:
+            type: "RuntimeDefault"
+    securityContext:
+      fsGroupChangePolicy: Always
+      fsGroup: 1000
+    updateStrategy: BestEffortParallel
+    volumes:
+      - name: hadoop-common
+        emptyDir: {}
+  vars:
+    - name: JOURNALNODE_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+  configs:
+    - name: config
+      namespace: {{ .Release.Namespace }}
+      templateRef: journalnode-config-template
+      # constraintRef: journalnode-config-constraints
+      volumeName: journalnode-config
+      defaultMode: 0755
+  scripts:
+    - name: {{ include "hadoop-hdfs.name" . }}-scripts
+      templateRef: {{ include "hadoop-hdfs.name" . }}-scripts
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755

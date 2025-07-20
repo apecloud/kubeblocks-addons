@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "replicas": {
+      "type": "object",
+      "properties": {
+        "core": { "type": "integer", "default": 1, "minimum": 1, "maximum": 5 },
+        "journalnode": { "type": "integer", "default": 3, "minimum": 1, "maximum": 5 },
+        "namenode": { "type": "integer", "default": 2, "minimum": 1, "maximum": 5 },
+        "datanode": { "type": "integer", "default": 1, "minimum": 1, "maximum": 5 }
+      },
+      "required": ["core", "journalnode", "namenode", "datanode"],
+      "description": "Number of replicas for each component."
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "core": { "$ref": "#/definitions/resourceSchema" },
+        "journalnode": { "$ref": "#/definitions/resourceSchema" },
+        "namenode": { "$ref": "#/definitions/resourceSchema" },
+        "datanode": { "$ref": "#/definitions/resourceSchema" }
+      },
+      "required": ["core", "journalnode", "namenode", "datanode"],
+      "description": "Resource requests and limits for each component."
+    },
+    "storage": {
+      "type": "object",
+      "properties": {
+        "journalnode": { "type": "string", "default": "10Gi" },
+        "namenode": { "type": "string", "default": "10Gi" },
+        "datanode": { "type": "string", "default": "30Gi" }
+      },
+      "required": ["journalnode", "namenode", "datanode"],
+      "description": "Storage requirements for each component."
+    },
+    "serviceRefs": {
+      "type": "object",
+      "properties": {
+        "hadoopZookeeper": {
+          "type": "object",
+          "properties": {
+            "namespace": { "type": "string", "default": "default" },
+            "clusterServiceSelector": {
+              "type": "object",
+              "properties": {
+                "cluster": { "type": "string", "default": "zkcluster" },
+                "service": {
+                  "type": "object",
+                  "properties": {
+                    "component": { "type": "string", "default": "zookeeper" },
+                    "service": { "type": "string", "default": "headless" },
+                    "port": { "type": "string", "default": "client" }
+                  },
+                  "required": ["component", "service", "port"]
+                }
+              },
+              "required": ["cluster", "service"]
+            }
+          },
+          "required": ["namespace", "clusterServiceSelector"],
+          "description": "References to external services."
+        }
+      },
+      "required": ["hadoopZookeeper"],
+      "description": "Service references for external dependencies."
+    },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "default": "kb-hadoop-cluster" },
+        "create": { "type": "boolean", "default": true }
+      },
+      "required": ["name", "create"],
+      "description": "Configuration for the service account."
+    },
+    "terminationPolicy": {
+      "type": "string",
+      "default": "Delete",
+      "description": "Policy for terminating the release."
+    },
+    "clusterDefinitionRef": {
+      "type": "string",
+      "default": "hadoop-hdfs",
+      "description": "Reference to the cluster definition."
+    },
+    "topology": {
+      "type": "string",
+      "default": "hadoop-ha-cluster",
+      "description": "Cluster topology configuration."
+    }
+  },
+  "required": ["replicas", "resources", "storage", "serviceRefs", "serviceAccount", "terminationPolicy", "clusterDefinitionRef", "topology"],
+  "definitions": {
+    "resourceSchema": {
+      "type": "object",
+      "properties": {
+        "requests": {
+          "type": "object",
+          "properties": {
+            "cpu": { "type": "string", "default": "0.5" },
+            "memory": { "type": "string", "default": "0.5Gi" }
+          },
+          "required": ["cpu", "memory"],
+          "description": "Resource requests for the component."
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "cpu": { "type": "string", "default": "0.5" },
+            "memory": { "type": "string", "default": "2Gi" }
+          },
+          "required": ["cpu", "memory"],
+          "description": "Resource limits for the component."
+        }
+      },
+      "required": ["requests", "limits"],
+      "description": "Resource configuration for a component."
+    }
+  },
+  "description": "Schema for Hadoop HDFS Helm chart values."
+}
