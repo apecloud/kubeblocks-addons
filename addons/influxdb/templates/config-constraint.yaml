@@ -1,0 +1,18 @@
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: {{ include "influxdb.configConstraintName" . }}
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+spec:
+  fileFormatConfig:
+    format: toml
+
+  parametersSchema:
+    # top level pg configuration type
+    topLevelKey: InfluxdbParameter
+
+    # schemaInJSON: auto generate from cue scripts
+    # example: ../../pkg/configuration/testdata/mysql_openapi.json
+    cue: |-
+      {{- .Files.Get "config/influxdb-config-constraint.cue" | nindent 6 }}

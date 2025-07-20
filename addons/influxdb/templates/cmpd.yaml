@@ -1,0 +1,150 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "influxdb.cmpdName" . }}
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+spec:
+  provider: Community
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  services:
+    - name: influxdb
+      serviceName: influxdb
+      spec:
+        ports:
+          - name: console
+            port: 8086
+            targetPort: http
+  configs:
+    - name: influxdb-config
+      templateRef: {{ include "influxdb.configurationTemplate" . }}
+      constraintRef: {{ include "influxdb.configConstraintName" . }}
+      keys:
+        - config.toml
+      namespace: {{ .Release.Namespace }}
+      volumeName: influxdb-config
+      defaultMode: 0555
+  vars:
+    - name: INFLUXDB_ADMIN_USER
+      value: admin
+    - name: INFLUXDB_ADMIN_USER_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+    - name: INFLUXDB_ADMIN_USER_TOKEN
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+  systemAccounts:
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 3
+        numSymbols: 4
+        letterCase: MixedCases
+  runtime:
+    initContainers:
+      - name: init-chmod-data
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.init.repository }}:{{ .Values.image.init.tag }}
+        imagePullPolicy: IfNotPresent
+        command:
+          - /bin/bash
+          - -c
+          - |
+            mkdir -p /bitnami/influxdb/{data,meta,wal}
+            chmod 700 /bitnami/influxdb/{data,meta,wal}
+            chown -R 1001 /bitnami/influxdb
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/influxdb
+    containers:
+      - name: influxdb
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdb.repository }}:{{ .Values.image.influxdb.tag.major2.minor711 }}
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1001
+          seccompProfile:
+            type: RuntimeDefault
+        env:
+          - name: BITNAMI_DEBUG
+            value: "false"
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: INFLUXDB_HTTP_AUTH_ENABLED
+            value: "true"
+          - name: INFLUXDB_CREATE_USER_TOKEN
+            value: "no"
+          - name: INFLUXDB_ADMIN_BUCKET
+            value: "primary"
+          - name: INFLUXDB_ADMIN_ORG
+            value: "primary"
+          - name: INFLUXDB_CONF_FILE_FORMAT
+            value: "toml"
+          - name: SERVICE_PORT
+            value: "8086"
+        ports:
+          - name: http
+            containerPort: 8086
+            protocol: TCP
+          - name: rpc
+            containerPort: 8088
+            protocol: TCP
+        livenessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 180
+          periodSeconds: 45
+          successThreshold: 1
+          timeoutSeconds: 30
+          exec:
+            command:
+              - bash
+              - -c
+              - |
+                . /opt/bitnami/scripts/libinfluxdb.sh
+
+                influxdb_env
+                export INFLUX_USERNAME="$INFLUXDB_ADMIN_USER"
+                export INFLUX_PASSWORD="$INFLUXDB_ADMIN_USER_PASSWORD"
+
+                timeout 29s influx ping --host http://$POD_IP:8086
+        readinessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 60
+          periodSeconds: 45
+          successThreshold: 1
+          timeoutSeconds: 30
+          exec:
+            command:
+              - bash
+              - -c
+              - |
+                . /opt/bitnami/scripts/libinfluxdb.sh
+
+                influxdb_env
+                export INFLUX_USERNAME="$INFLUXDB_ADMIN_USER"
+                export INFLUX_PASSWORD="$INFLUXDB_ADMIN_USER_PASSWORD"
+
+                timeout 29s influx ping --host http://$POD_IP:8086
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/influxdb
+          - name: influxdb-config
+            mountPath: {{ .Values.configPath }}

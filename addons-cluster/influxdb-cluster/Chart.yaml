@@ -1,5 +1,5 @@
 apiVersion: v2
-name: influxdb
+name: influxdb-cluster
 type: application
 
 version: 0.9.3
@@ -22,3 +22,9 @@ annotations:
   licenses: Apache-2.0
   addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "time-series"
+
+dependencies:
+  - name: kblib
+    version: 0.1.1
+    repository: file://../kblib-v2
+    alias: extra
