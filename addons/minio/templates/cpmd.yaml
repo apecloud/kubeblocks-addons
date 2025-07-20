@@ -10,8 +10,11 @@ spec:
   provider: kubeblocks
   description: Minio is a High Performance Object Storage.
   serviceKind: minio
-  serviceVersion: 0.9.0
-
+  serviceVersion: {{ .Values.componentServiceVersion.minio }}
+  minReadySeconds: 10
+  replicasLimit:
+    minReplicas: 2
+    maxReplicas: 32
   systemAccounts:
     - name: root
       initAccount: true
@@ -33,12 +36,22 @@ spec:
           name: root
           optional: false
           password: Required
+    - name: SERVICE_PORT
+      value: "9000"
 
   roles:
     - name: readwrite
       serviceable: true
       votable: false
       writable: true
+    # add notready role for minio cluster hscale
+    # minio add new node, need restart all nodes to ensure the hscale completed
+    # ensure the cluster can be in running state
+    # then can restart the cluster to ensure the hscale completed
+    - name: notready
+      serviceable: false
+      votable: false
+      writable: false
 
   lifecycleActions:
     roleProbe:
@@ -51,6 +64,8 @@ spec:
             - |
               if mc config host add minio http://127.0.0.1:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD &>/dev/null; then
                 echo -n "readwrite"
+              else
+                echo -n "notready"
               fi
 
   services:
@@ -109,7 +124,7 @@ spec:
           - |
             FILE="/minio-config/MINIO_REPLICAS_HISTORY"
             if [ ! -f "$FILE" ]; then
-              echo "minio config don't existed"
+              echo "minio config is not existing"
               exit
             fi
 
@@ -163,6 +178,10 @@ spec:
             value: $(MINIO_ROOT_PASSWORD)
           - name: MINIO_BROWSER_LOGIN_ANIMATION
             value: "off"
+          - name: MINIO_PROMETHEUS_AUTH_TYPE
+            value: "public"
+          - name: SERVICE_PORT
+            value: "9000"
         volumeMounts:
           - name: data
             mountPath: /data
