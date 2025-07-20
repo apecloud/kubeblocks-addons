@@ -1,0 +1,62 @@
+# HBase Configuration
+
+nameOverride: ""
+
+fullnameOverride: ""
+
+# Replicas for each component
+replicas:
+  hmaster: 1
+  hregionserver: 1
+
+# Resource requirements for each component
+resources:
+  hmaster:
+    requests:
+      cpu: "0.1"
+      memory: 0.5Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  hregionserver:
+    requests:
+      cpu: "0.1"
+      memory: 0.5Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+
+# Storage requirements for each component
+storage:
+  hbaseLog: 2Gi
+  hbaseTempData: 10Gi
+
+# Service references for external dependencies
+serviceRefs:
+  hbaseZookeeper:
+    namespace: default
+    clusterServiceSelector:
+      cluster: zkcluster
+      service:
+        component: zookeeper
+        service: headless
+        port: client
+  hadoopNamenode:
+    namespace: default
+    clusterServiceSelector:
+      cluster: hadoop2
+      service:
+        component: namenode
+        service: headless
+        port: client
+
+# Service account configuration
+serviceAccount:
+  name: kb-hbase-cluster
+  create: true
+
+# Advanced configurations
+terminationPolicy: Delete
+clusterDefinitionRef: hbase
+topology: hbase-cluster
+hadoopClusterName: hadoop2

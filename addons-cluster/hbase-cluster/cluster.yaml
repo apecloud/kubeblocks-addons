@@ -1,0 +1,104 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: hbase2
+  namespace: default
+  labels:
+    helm.sh/chart: hbase-cluster-0.9.0
+    app.kubernetes.io/version: "2.5.6"
+    app.kubernetes.io/instance: hbase
+spec:
+  terminationPolicy: Delete
+  clusterDefinitionRef: hbase
+  topology: hbase-cluster
+  componentSpecs:
+  - name: hmaster
+    serviceVersion: 2.5.6
+    replicas: 1
+    serviceRefs:
+      - name: hbase-zookeeper
+        namespace: default
+        clusterServiceSelector:
+          cluster: zkcluster
+          service:
+            component: zookeeper
+            service: "headless"
+            port: "client"
+      - name: hadoop-namenode
+        namespace: default
+        clusterServiceSelector:
+          cluster: hadoop2
+          service:
+            component: namenode
+            service: "headless"
+            port: "client"
+    env:
+        - name: "HADOOP_CLUSTER_NAME"
+          value: "hadoop2"
+    resources:
+      requests:
+        cpu: '0.1'
+        memory: 0.5Gi
+      limits:
+        cpu: '1'
+        memory: 2Gi
+    volumes:
+      - name: hadoop-core-config
+        configMap:
+          name: hadoop2-hadoop-core-config
+      - name: hadoop-hdfs-config
+        configMap:
+          name: hadoop2-namenode-config
+    volumeClaimTemplates:
+      - name: hbase-log
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+  - name: hregionserver
+    serviceVersion: 2.5.6
+    replicas: 1
+    serviceRefs:
+      - name: hbase-zookeeper
+        namespace: default
+        clusterServiceSelector:
+          cluster: zkcluster
+          service:
+            component: zookeeper
+            service: "headless"
+            port: "client"
+      - name: hadoop-namenode
+        namespace: default
+        clusterServiceSelector:
+          cluster: hadoop2
+          service:
+            component: namenode
+            service: "headless"
+            port: "client"
+    env:
+        - name: "HADOOP_CLUSTER_NAME"
+          value: "hadoop2"
+    resources:
+      requests:
+        cpu: '0.1'
+        memory: 0.5Gi
+      limits:
+        cpu: '1'
+        memory: 2Gi
+    volumes:
+      - name: hadoop-core-config
+        configMap:
+          name: hadoop2-hadoop-core-config
+      - name: hadoop-hdfs-config
+        configMap:
+          name: hadoop2-namenode-config
+    volumeClaimTemplates:
+      - name: hbase-temp-data
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi

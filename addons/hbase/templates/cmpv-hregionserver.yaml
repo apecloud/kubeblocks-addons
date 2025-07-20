@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: hbase-hregionserver
+  labels:
+    {{- include "hbase.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - hbase-hregionserver-2.5
+      releases:
+        - 2.5.6
+  releases:
+    - name: 2.5.6
+      serviceVersion: 2.5.6
+      images:
+        hbase-hregionserver: "{{ .Values.hregionserver.image.repository }}:{{ .Values.hregionserver.image.tag }}"
