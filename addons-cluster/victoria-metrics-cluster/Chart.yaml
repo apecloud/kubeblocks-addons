@@ -4,7 +4,7 @@ description: A VictoriaMetrics cluster Helm chart for KubeBlocks.
 
 type: application
 
-version: 0.9.0
+version: 0.9.1
 
 appVersion: "1.100.1"
 
@@ -15,6 +15,6 @@ keywords:
 
 dependencies:
   - name: kblib
-    version: 0.1.0
-    repository: file://../kblib
+    version: 0.1.1
+    repository: file://../kblib-v2
     alias: extra
