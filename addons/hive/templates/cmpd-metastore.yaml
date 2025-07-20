@@ -1,0 +1,114 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: hive-metastore
+  labels:
+    {{- include "hive.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceKind: hive-metastore
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: metastore
+            port: 9083
+  serviceRefDeclarations:
+    - name: hive-mysql-metadb
+      serviceRefDeclarationSpecs:
+        - serviceKind: mysql
+          serviceVersion: "^*"
+  runtime:
+    initContainers:
+      - name: hadoop-common
+        imagePullPolicy: IfNotPresent
+        command:
+          - /bin/bash
+        args:
+          - -ec
+          - |
+            cp -r /opt/software/hadoop-3.3.4/* /opt/kubeemr/hadoop/hadoop-3.3.4
+            mkdir -p /hive/metadata
+            mkdir -p /hive/conf
+            chown -R 10000:1000 /hive/metadata
+            chown -R 10000:1000 /hive/conf
+            chown -R 10000:1000 /opt/kubeemr/hadoop/hadoop-3.3.4
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
+          - name: metadata
+            mountPath: /hive/metadata
+            subPath: metadata
+    containers:
+      - name: hive-metastore
+        imagePullPolicy: {{ default "IfNotPresent" .Values.metastore.image.pullPolicy }}
+        ports:
+          - containerPort: 9083
+            name: metastore
+        env:
+          - name: DEBUG_MODEL
+            value: "false"
+          - name: CURRENT_POD
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
+          - name: metadata
+            mountPath: /hive/metadata
+            subPath: metadata
+          - name: hive-metastore-config
+            mountPath: /hive/conf/hive-site.xml
+            subPath: hive-site.xml
+          - name: hadoop-core-config
+            mountPath: /hadoop/conf/core-site.xml
+            subPath: core-site.xml
+          - name: hadoop-hdfs-config
+            mountPath: /hadoop/conf/hdfs-site.xml
+            subPath: hdfs-site.xml 
+        securityContext:
+          runAsUser: 10000
+          runAsGroup: 1000
+          runAsNonRoot: true
+          privileged: false
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ "ALL" ]
+          seccompProfile:
+            type: "RuntimeDefault"
+    securityContext:
+      fsGroupChangePolicy: Always
+      fsGroup: 1000
+    updateStrategy: BestEffortParallel
+    volumes:
+      - name: hadoop-common
+        emptyDir: {}
+  vars:
+    - name: METADB_MYSQL_ENDPOINTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hive-mysql-metadb
+          endpoint: Required
+          optional: true
+    - name: METADB_MYSQL_USERNAME
+      valueFrom:
+        serviceRefVarRef:
+          name: hive-mysql-metadb
+          username: Required
+          optional: true
+    - name: METADB_MYSQL_PASSWORD
+      valueFrom:
+        serviceRefVarRef:
+          name: hive-mysql-metadb
+          password: Required
+          optional: true
+  configs:
+    - name: config
+      namespace: {{ .Release.Namespace }}
+      templateRef: hive-metastore-config-template
+      volumeName: hive-metastore-config
+      defaultMode: 0755
