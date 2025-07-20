@@ -31,3 +31,41 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
+
+{{/*
+Define influxdb component definition name
+*/}}
+{{- define "influxdb.cmpdName" -}}
+influxdb
+{{- end -}}
+
+{{/*
+Define influxdb component definition regex pattern
+*/}}
+{{- define "influxdb.cmpdRegexpPattern" -}}
+^influxdb
+{{- end -}}
+
+{{/*
+Define influxdb configuration template name
+*/}}
+{{- define "influxdb.configurationTemplate" -}}
+influxdb-configuration
+{{- end -}}
+
+{{/*
+Define influxdb config constraint name
+*/}}
+{{- define "influxdb.configConstraintName" -}}
+influxdb-cc
+{{- end -}}
+
+{{/*
+Generate scripts configmap
+*/}}
+{{- define "influxdb.extend.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}

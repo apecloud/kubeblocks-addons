@@ -1,16 +1,22 @@
 # Default values for mysql.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+
+nameOverride: ""
+
+fullnameOverride: ""
+
 image:
   registry: docker.io
   pullPolicy: IfNotPresent
   influxdb:
     repository: bitnami/influxdb
-    tag: 2.7.4-debian-11-r0
+    tag:
+      major2:
+        # Must be greater than or equal to version r18
+        minor711: 2.7.11-debian-12-r18
   init:
     repository: bitnami/os-shell
     tag: 11-debian-11-r93
 
-nameOverride: ""
-fullnameOverride: ""
-clusterVersionOverride: "2.7.4"
+configPath: /opt/bitnami/influxdb/etc
