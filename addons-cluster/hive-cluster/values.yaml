@@ -1,0 +1,47 @@
+# Hive Configuration
+
+nameOverride: ""
+
+fullnameOverride: ""
+
+# Replicas for each component
+replicas:
+  metastore: 1
+
+# Resource requirements for each component
+resources:
+  metastore:
+    requests:
+      cpu: "0.1"
+      memory: 0.5Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+
+# Storage requirements for each component
+storage:
+  metastore: 5Gi
+
+# Service references for external dependencies
+serviceRefs:
+  hiveMysqlMetadb:
+    namespace: default
+    clusterServiceSelector:
+      cluster: mysql-meta
+      service:
+        component: mysql
+        service: headless
+        port: client
+      credential:
+        component: mysql
+        name: root
+
+# Service account configuration
+serviceAccount:
+  name: kb-hive-cluster
+  create: true
+
+# Advanced configurations
+terminationPolicy: Delete
+clusterDefinitionRef: hive
+topology: hive-cluster

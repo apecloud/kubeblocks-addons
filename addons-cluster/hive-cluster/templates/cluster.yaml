@@ -1,0 +1,49 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ include "kblib.clusterName" . }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: Delete
+  {{- include "kblib.affinity" . | indent 2 }}
+  clusterDefinitionRef: hive
+  topology: hive-cluster
+  componentSpecs:
+    - name: metastore
+      componentDef: hive-metastore
+      serviceRefs:
+        - name: hive-mysql-metadb
+          namespace: {{ .Values.serviceRefs.hiveMysqlMetadb.namespace }}
+          clusterServiceSelector:
+            cluster: {{ .Values.serviceRefs.hiveMysqlMetadb.clusterServiceSelector.cluster }}
+            service:
+              component: {{ .Values.serviceRefs.hiveMysqlMetadb.clusterServiceSelector.service.component }}
+              service: {{ .Values.serviceRefs.hiveMysqlMetadb.clusterServiceSelector.service.service }}
+              port: {{ .Values.serviceRefs.hiveMysqlMetadb.clusterServiceSelector.service.port }}
+            credential:
+              component: {{ .Values.serviceRefs.hiveMysqlMetadb.clusterServiceSelector.credential.component }}
+              name: {{ .Values.serviceRefs.hiveMysqlMetadb.clusterServiceSelector.credential.name }}
+      replicas: {{ .Values.replicas.metastore }}
+      resources:
+        requests:
+          cpu: {{ .Values.resources.metastore.requests.cpu | quote }}
+          memory: {{ .Values.resources.metastore.requests.memory }}
+        limits:
+          cpu: {{ .Values.resources.metastore.limits.cpu | quote }}
+          memory: {{ .Values.resources.metastore.limits.memory }}
+      volumes:
+        - name: hadoop-core-config
+          configMap:
+            name: {{ include "kblib.clusterName" . }}-hadoop-core-config
+        - name: hadoop-hdfs-config
+          configMap:
+            name: {{ include "kblib.clusterName" . }}-namenode-config
+      volumeClaimTemplates:
+        - name: metadata
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ .Values.storage.metastore }}
