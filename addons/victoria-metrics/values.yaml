@@ -3,23 +3,20 @@
 # Declare variables to be passed into your templates.
 images:
   # Overrides the image tag whose default is the chart appVersion.
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
+  tag: v1.101.0-cluster
   vmsingle:
-    repository: apecloud/victoria-metrics
+    repository: victoriametrics/victoria-metrics
     pullPolicy: IfNotPresent
-    tag: v1.101.0
   vminsert:
-    repository: apecloud/vminsert
+    repository: victoriametrics/vminsert
     pullPolicy: IfNotPresent
-    tag: v1.101.0-cluster
   vmselect:
-    repository: apecloud/vmselect
+    repository: victoriametrics/vmselect
     pullPolicy: IfNotPresent
-    tag: v1.101.0-cluster
   vmstorage:
-    repository: apecloud/vmstorage
+    repository: victoriametrics/vmstorage
     pullPolicy: IfNotPresent
-    tag: v1.101.0-cluster
 
 enableTCP6: false
 
@@ -49,6 +46,10 @@ vminsert:
     envflag.enable: "true"
     envflag.prefix: VM_
     loggerFormat: json
+    maxLabelsPerTimeseries: 60
+    maxLabelValueLen: 16384
+    disableReroutingOnUnavailable: false
+    disableRerouting: true
 
 vmstorage:
   # -- Service port

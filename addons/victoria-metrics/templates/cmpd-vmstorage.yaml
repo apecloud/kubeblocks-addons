@@ -11,6 +11,7 @@ spec:
   serviceVersion: 1.0.0
   services:
     - name: vmstorage
+      podService: true
       spec:
         ports:
           - port: {{ .Values.vmstorage.servicePort }}
@@ -25,7 +26,6 @@ spec:
             targetPort: vminsert
             protocol: TCP
             name: vminsert
-      podService: true
   updateStrategy: BestEffortParallel
   exporter:
     scrapePath: /metrics
@@ -38,8 +38,8 @@ spec:
         imagePullPolicy: {{ .Values.images.vminsert.pullPolicy }}
         securityContext: {}
         args:
-          - --retentionPeriod=1
           - --storageDataPath=/storage
+          - --retentionPeriod=$(RETENTION_PERIOD)
           {{- range $key, $value := .Values.vmstorage.extraArgs }}
           - --{{ $key }}={{ $value }}
           {{- end }}
