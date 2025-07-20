@@ -15,11 +15,11 @@ spec:
     - name: loki-read
       spec:
         ports:
-          - port: {{ .Values.read.httpMetricsPort }}
+          - port: {{ .Values.server.httpMetricsPort }}
             protocol: TCP
             name: http-metrics
             targetPort: http-metrics
-          - port: {{ .Values.read.grpcPort }}
+          - port: {{ .Values.server.grpcPort }}
             protocol: TCP
             name: grpc
             targetPort: grpc
@@ -33,9 +33,23 @@ spec:
               matchLabels:
                 app.kubernetes.io/component: read
             topologyKey: kubernetes.io/hostname
+    initContainers:
+      - name: init
+        imagePullPolicy: {{ .Values.images.pullPolicy }}
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}
+        securityContext:
+          runAsUser: 0
+          privileged: true
+        command:
+          - /bin/sh
+          - -c
+          - chown loki:loki /var/loki
+        volumeMounts:
+          - mountPath: /var/loki
+            name: data
     containers:
       - name: read
-        imagePullPolicy: {{ .Values.images.read.pullPolicy }}
+        imagePullPolicy: {{ .Values.images.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -43,18 +57,20 @@ spec:
               - ALL
         args:
           - -config.file=/etc/loki/config/config.yaml
+          - -runtime-config.file=/etc/loki/runtime-config/runtime-config.yaml
           - -target=read
           - -legacy-read-mode=false
           - -query-scheduler.use-scheduler-ring=false
-          - -common.compactor-grpc-address=loki-backend.default.svc.cluster.local:9095
+          - -config.expand-env=true
+          - -common.compactor-grpc-address=$(KB_CLUSTER_NAME)-backend.$(KB_NAMESPACE).svc.{{ .Values.global.clusterDomain }}:{{ .Values.server.grpcPort }}
         ports:
-          - containerPort: {{ .Values.read.httpMetricsPort }}
+          - containerPort: {{ .Values.server.httpMetricsPort }}
             name: http-metrics
             protocol: TCP
-          - containerPort: {{ .Values.read.grpcPort }}
+          - containerPort: {{ .Values.server.grpcPort }}
             name: grpc
             protocol: TCP
-          - containerPort: {{ .Values.read.httpMemberlistPort }}
+          - containerPort: {{ .Values.server.httpMemberlistPort }}
             name: http-memberlist
             protocol: TCP
         readinessProbe:
@@ -78,10 +94,19 @@ spec:
             name: data
   configs:
     - name: loki-config
-      templateRef: loki
+      templateRef: loki-tpl
       volumeName: config
       namespace: {{ .Release.Namespace }}
     - name: loki-runtime-config
-      templateRef: loki-runtime
+      templateRef: loki-runtime-tpl
       volumeName: runtime-config
       namespace: {{ .Release.Namespace }}
+  vars:
+    - name: SERVER_HTTP_PORT
+      value: {{ .Values.server.httpMetricsPort | quote }}
+    - name: SERVER_GRPC_PORT
+      value: {{ .Values.server.grpcPort | quote }}
+    - name: LOCAL_RULES_DIR
+      value: /var/loki/rules
+    - name: LOCAL_CHUNKS_DIR
+      value: /var/loki/chunks

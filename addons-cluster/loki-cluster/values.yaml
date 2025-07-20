@@ -1,27 +1,6 @@
-# Default values for victoria-metrics.
+# Default values for loki-cluster.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-images:
-  registry: docker.io  
-  tag: 2.9.4
-  repository: grafana/loki
-  pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  gateway:
-    tag: 1.24-alpine
-    repository: nginxinc/nginx-unprivileged
-    pullPolicy: IfNotPresent
-
-nameOverride: ""
-fullnameOverride: ""
-clusterVersionOverride: ""
-
-## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
-## if you install multiple releases of this chart.
-## If specified, the cluster definition will use it as name.
-resourceNamePrefix: ""
-
-
 global:
   # -- configures cluster domain ("cluster.local" by default)
   clusterDomain: "cluster.local"
@@ -33,12 +12,26 @@ global:
 enterprise:
   enabled: false
 
-server:
+read:
+  replicas: 1
+  httpMetricsPort: 3100
+  grpcPort: 9095
+  httpMemberlistPort: 7946
+
+write:
+  replicas: 1
+  httpMetricsPort: 3100
+  grpcPort: 9095
+  httpMemberlistPort: 7946
+
+backend:
+  replicas: 1
   httpMetricsPort: 3100
   grpcPort: 9095
   httpMemberlistPort: 7946
 
 gateway:
+  replicas: 1
   basicAuth:
     # -- Enables basic authentication for the gateway
     enabled: false
@@ -70,6 +63,44 @@ gateway:
     # -- Config file contents for Nginx. Passed through the `tpl` function to allow templating
     # @default -- See values.yaml
     file: |
-      {{- include "loki.nginxFile" . | indent 2 -}}
+      {{- include "loki-cluster.nginxFile" . | indent 2 -}}
   httpMetricsContainerPort: 8080
   httpMetricsSvcPort: 80
+
+nameOverride: ""
+fullnameOverride: ""
+minio:
+  enabled: false
+## @param storageClassName, storage class name
+##
+storageClassName: ""
+## @param terminationPolicy, temination policy for loki-cluster
+##
+terminationPolicy: "Delete"
+
+## @param replicas specify cluster replicas
+##
+replicas: 1
+
+## @param cpu
+##
+cpu: 0.5
+
+## @param memory, the unit is Gi
+##
+memory: 0.5
+
+requests:
+#  cpu:
+#  memory:
+
+## @param storage size, the unit is Gi
+##
+storage: 20
+
+s3:
+  ## "s3", "local" or "oss"
+  storageType: "local"
+  secret: ""
+
+
