@@ -6,9 +6,9 @@
       "title": "Replicas",
       "description": "The number of replicas",
       "type": "integer",
-      "default": 1,
-      "minimum": 1,
-      "maximum": 5
+      "default": 2,
+      "minimum": 2,
+      "maximum": 8
     },
     "cpu": {
       "title": "CPU",
@@ -19,7 +19,7 @@
       ],
       "default": 0.5,
       "minimum": 0.5,
-      "maximum": 64,
+      "maximum": 256,
       "multipleOf": 0.5
     },
     "memory": {
