@@ -7,8 +7,8 @@ minio:
   port: {{ .MINIO_PORT }}
   accessKeyID: MINIO_ACCESS_KEY
   secretAccessKey: MINIO_SECRET_KEY
-  bucketName: MINIO_BUCKETNAME
-  rootPath: {{ .KB_CLUSTER_NAME }}
+  bucketName: MINIO_BUCKET
+  rootPath: MINIO_ROOT_PATH
   cloudProvider: aws
 mq:
   type: kafka

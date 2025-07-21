@@ -86,3 +86,6 @@ storage:
         port:
         credential:
       serviceDescriptor:
+    bucket:
+    path:
+    usePathStyle:

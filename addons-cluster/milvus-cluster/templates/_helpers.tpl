@@ -65,19 +65,27 @@ External object storage service reference
 {{- if eq .Values.storage.object.mode "serviceref" }}
 - name: milvus-object-storage
   namespace: {{ .Release.Namespace }}
-  serviceDescriptor: {{ include "kblib.clusterName" . }}
+  {{- if not .Values.storage.object.serviceRef.serviceDescriptor }}
+  clusterServiceSelector:
+    cluster: {{ .Values.storage.log.serviceRef.cluster.name }}
+    service:
+      component: {{ .Values.storage.log.serviceRef.cluster.component }}
+      service: {{ .Values.storage.log.serviceRef.cluster.service }}
+      port: {{ .Values.storage.log.serviceRef.cluster.port }}
+    # credential:
+    #   component: {{ .Values.storage.log.serviceRef.cluster.component }}
+    #   name: {{ .Values.storage.log.serviceRef.cluster.credential }}
+  {{- else }}
+  serviceDescriptor: {{ .Values.storage.log.serviceRef.serviceDescriptor }}
+  {{- end }}
 {{- end }}
 {{- end }}
 
 {{- define "milvus.objectstorage.env" }}
-- name: MINIO_BUCKETNAME
-  valueFrom:
-    secretKeyRef:
-      key: bucketnames
-      name: {{ .Values.storage.object.secret }}
-- name: MINIO_STORAGETYPE
-  valueFrom:
-    secretKeyRef:
-      key: storageType
-      name: {{ .Values.storage.object.secret }}
+- name: MINIO_BUCKET
+  value: {{ .Values.storage.object.bucket }}
+- name: MINIO_ROOT_PATH
+  value: {{ .Values.storage.object.path }}
+- name: MINIO_USE_PATH_STYLE
+  value: {{ .Values.storage.object.usePathStyle }}
 {{- end -}}
