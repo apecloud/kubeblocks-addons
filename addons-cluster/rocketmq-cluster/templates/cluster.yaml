@@ -1,0 +1,53 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+    {{- include "rocketmq-cluster.annotations.extra-envs" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+  componentSpecs:
+    - name: namesrv
+      replicas: {{ .Values.namesrv.replicas }}
+      componentDef: rocketmq-namesrv-4
+      serviceVersion: {{ .Values.version }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+    {{- if .Values.monitorEnable }}
+    - name: exporter
+      replicas: {{ $.Values.monitor.replicas }}
+      componentDef: rocketmq-exporter
+      serviceVersion: 0.0.3
+      monitor: true
+      env:
+        - name: ROCKETMQ_VERSION
+          value: {{ .Values.version }}
+      {{- include "rocketmq-exporter.resources" . | nindent 6 }}
+    {{- end }}
+    {{- if .Values.dashboardEnable }}
+    - name: dashboard
+      replicas: {{ $.Values.dashboard.replicas }}
+      componentDef: rocketmq-dashboard
+      serviceVersion: 2.0.1
+      {{- include "rocketmq-dashboard.resources" . | nindent 6 }}
+    {{- end }}
+  shardingSpecs:
+    - name: broker
+      shards: {{ .Values.broker.shardCount }}
+      template:
+        name: rocketmq-broker
+        replicas: {{ .Values.broker.replicas }}
+        componentDef: rocketmq-broker-4
+        serviceVersion: {{ .Values.version }}
+        systemAccounts:
+          - name: rocketmq-admin
+            passwordConfig:
+              length: 8
+              numDigits: 6
+              letterCase: MixedCases
+              # useless seed, will be overRide by system accounts defined in cluster.
+              seed: {{ include "kblib.clusterName" . }}
+        {{- include "kblib.componentResources" . | indent 8 }}
+        {{- include "kblib.componentStorages" . | indent 8 }}
