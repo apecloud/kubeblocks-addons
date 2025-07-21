@@ -1,0 +1,2 @@
+mode: raftGroup
+replicas: 5

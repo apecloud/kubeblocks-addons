@@ -1,0 +1,10 @@
+mode: separated
+replicas: 1
+brokerReplicas: 1
+controllerReplicas: 1
+cpu: 0.5
+memory: 0.5
+storage: 1
+metaStorage: 1
+monitor:
+  replicas: 1
