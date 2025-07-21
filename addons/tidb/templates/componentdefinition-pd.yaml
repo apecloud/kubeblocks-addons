@@ -88,7 +88,29 @@ spec:
               ADDRESS=${KB_MEMBER_ADDRESSES%%,*}
               echo $KB_LEAVE_MEMBER_POD_NAME
               echo $ADDRESS
-              /pd-ctl -u $ADDRESS member delete name $KB_LEAVE_MEMBER_POD_NAME
+              res=$(/pd-ctl -u "$ADDRESS" member delete name "$KB_LEAVE_MEMBER_POD_NAME")
+              echo "$res"
+              not_found_pattern="Failed to delete member.*not found"
+              if [[ $res != "Success!" && ! $res =~ $not_found_pattern ]]; then
+                  exit 1
+              fi
+    switchover:
+      withCandidate:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+        exec:
+          command:
+          - /bin/bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/pd_switchover.sh" | nindent 12 }}
+      withoutCandidate:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+        exec:
+          command:
+          - /bin/bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/pd_switchover.sh" | nindent 12 }}
   exporter:
     containerName: pd
     scrapePort: "2379"
