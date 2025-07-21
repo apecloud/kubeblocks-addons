@@ -1,11 +1,11 @@
 ## @param version Kafka cluster version
 ##
-version: kafka-3.3.2
+version: 3.3.2
 
 ## @param mode for Kafka cluster mode, 'combined' is combined Kafka controller (KRaft) and broker,
 ## 'separated' is a Kafka KRaft and Kafka broker cluster.
-##
-mode: combined
+## 'withZookeeper 'is a Kafka using Zookeeper, now only support kafka 2.8.2
+mode: separated
 
 # Enable TLS
 # Todo: Monitoring is not supported when tls is enabled
@@ -13,6 +13,7 @@ tlsEnable: false
 
 # Enable SASL
 saslEnable: false
+saslScramEnable: false
 
 # Enable Monitor
 monitorEnable: true
@@ -59,9 +60,10 @@ monitor:
   ## kafka monitor component replicas
   ## only effective when monitorEnable=true
   replicas: 1
+  # memory unit is Gi
   request:
     cpu: 0.1
-    memory: 0.2
+    memory: 0.25
   limit:
     cpu: 0.5
     memory: 1
@@ -74,6 +76,20 @@ brokerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
 controllerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
 
 ## @param nodePortEnabled
+## Whether to enable NodePort mode.
+## If set to true, Kafka's `advertised.listeners` will use the NodePort address, suitable for scenarios where clients are outside the Kubernetes cluster but can access the NodePort.
 nodePortEnabled: false
 
-useLegacyCompDef: false
+## @param fixedPodIPEnabled
+## Whether to enable fixed Pod IP mode.
+## If set to true, Kafka's `advertised.listeners` will use the Pod IP address, suitable for scenarios where clients can directly communicate with the Kafka Pod's network.
+fixedPodIPEnabled: false
+
+zookeeper:
+  replicas: 3
+  data:
+    storageClassName:
+    size: 20Gi
+  log:
+    storageClassName:
+    size: 20Gi

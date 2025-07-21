@@ -1,0 +1,17 @@
+{{/*
+Validate kafka version and mode
+*/}}
+{{- if .Values.mode }}
+  {{- if eq .Values.mode "withZookeeper" }}
+    {{- if not (regexMatch "^2\\.8\\.[0-9]+$" .Values.version) }}
+      {{ fail "version parameter only supports '2.8.X' when mode is 'withZookeeper'." }}
+    {{- end }}
+  {{- else }}
+    {{- if regexMatch "^2\\.8\\.[0-9]+$" .Values.version }}
+      {{ fail "version '2.8.X' is not supported when mode is not 'withZookeeper'." }}
+    {{- end }}
+    {{- if .Values.saslScramEnable }}
+      {{ fail "SCRAM auth is only supported when mode is 'withZookeeper'." }}
+    {{- end }}
+  {{- end }}
+{{- end }}

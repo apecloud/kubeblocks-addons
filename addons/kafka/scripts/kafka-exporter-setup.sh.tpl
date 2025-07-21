@@ -1,4 +1,6 @@
 #!/bin/bash
+# Deprecated: This file was used for compatibility with 0.8/0.7 api and will be removed in the future.
+
 {{- $clusterName := $.cluster.metadata.name }}
 {{- $namespace := $.cluster.metadata.namespace }}
 {{- /* find kafka-server component */}}
