@@ -5,16 +5,103 @@ metadata:
   labels:
     clusterdefinition.kubeblocks.io/name: mysql
     {{- include "mysql.labels" . | nindent 4 }}
+    service-kind/mysql: "true"
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
   clusterDefinitionRef: mysql
   backupPolicies:
-  - componentDefs: [mysql-5.7, mysql-8.0, mysql-8.4]
+  - componentDefs: [mysql-orc-5.7, mysql-5.7, mysql-orc-8.0, mysql-8.0, mysql-8.4]
     target:
       role: secondary
       fallbackRole: primary
-      account: root
+      account: kbadmin
+      useParentSelectedPods: true
+    backupMethods:
+    - name: xtrabackup
+      snapshotVolumes: false
+      actionSetName: mysql-xtrabackup
+      envMapping:
+        - key: IMAGE_TAG
+          valueFrom:
+            componentDef:
+            - names: [mysql-8.4]
+              mappingValue: "8.4"
+            - names: [mysql-8.0, mysql-orc-8.0 ]
+              mappingValue: "8.0"
+            - names: [ mysql-5.7, mysql-orc-5.7]
+              mappingValue: "2.4"
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}
+    - name: xtrabackup-inc
+      compatibleMethod: xtrabackup
+      snapshotVolumes: false
+      actionSetName: mysql-xtrabackup-inc
+      envMapping:
+        - key: IMAGE_TAG
+          valueFrom:
+            componentDef:
+            - names: [mysql-8.4]
+              mappingValue: "8.4"
+            - names: [mysql-8.0, mysql-orc-8.0 ]
+              mappingValue: "8.0"
+            - names: [ mysql-5.7, mysql-orc-5.7]
+              mappingValue: "2.4"
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}
+    - name: archive-binlog
+      target:
+        role: primary
+        account: kbadmin
+      snapshotVolumes: false
+      actionSetName: mysql-pitr
+      envMapping:
+        - key: USE_REPLICA_STATUS
+          valueFrom:
+            componentDef:
+              - names: [ mysql-8.4 ]
+                mappingValue: "true"
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+    - name: volume-snapshot
+      snapshotVolumes: true
+      actionSetName: mysql-volumesnapshot
+      target:
+        role: primary
+      targetVolumes:
+        volumes:
+        - data
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}
+    schedules:
+      - backupMethod: xtrabackup
+        enabled: false
+        cronExpression: "0 18 * * 0"
+        retentionPeriod: 8d
+      - backupMethod: xtrabackup-inc
+        enabled: false
+        cronExpression: "0 19 * * *"
+        retentionPeriod: 7d
+      - backupMethod: volume-snapshot
+        enabled: false
+        cronExpression: "0 18 * * 0"
+        retentionPeriod: 7d
+      - backupMethod: archive-binlog
+        enabled: false
+        cronExpression: "*/30 * * * *"
+        retentionPeriod: 8d
+  - componentDefRef: mysql
+    target:
+      role: secondary
+      fallbackRole: primary
+      useParentSelectedPods: true
     backupMethods:
       - name: xtrabackup
         snapshotVolumes: false
@@ -22,12 +109,30 @@ spec:
         envMapping:
           - key: IMAGE_TAG
             valueFrom:
-              componentDef:
-                - names: [mysql-8.4]
+              clusterVersionRef:
+                - names: [mysql-8.4.2]
                   mappingValue: "8.4"
-                - names: [mysql-8.0]
+                - names: [mysql-8.0.33]
                   mappingValue: "8.0"
-                - names: [ mysql-5.7]
+                - names: [mysql-5.7.42, mysql-5.7.44]
+                  mappingValue: "2.4"
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: xtrabackup-inc
+        compatibleMethod: xtrabackup
+        snapshotVolumes: false
+        actionSetName: mysql-xtrabackup-inc
+        envMapping:
+          - key: IMAGE_TAG
+            valueFrom:
+              clusterVersionRef:
+                - names: [mysql-8.4.2]
+                  mappingValue: "8.4"
+                - names: [mysql-8.0.33]
+                  mappingValue: "8.0"
+                - names: [mysql-5.7.42, mysql-5.7.44]
                   mappingValue: "2.4"
         targetVolumes:
           volumeMounts:
@@ -44,45 +149,20 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
-  - componentDefRef: mysql
-    target:
-      role: secondary
-      fallbackRole: primary
-    backupMethods:
-    - name: xtrabackup
-      snapshotVolumes: false
-      actionSetName: mysql-xtrabackup
-      envMapping:
-        - key: IMAGE_TAG
-          valueFrom:
-            clusterVersionRef:
-            - names: [mysql-8.4.2]
-              mappingValue: "8.4"
-            - names: [mysql-8.0.33]
-              mappingValue: "8.0"
-            - names: [mysql-5.7.42, mysql-5.7.44]
-              mappingValue: "2.4"
-      targetVolumes:
-        volumeMounts:
-        - name: data
-          mountPath: {{ .Values.dataMountPath }}
-    - name: volume-snapshot
-      snapshotVolumes: true
-      actionSetName: mysql-volumesnapshot
-      target:
-        role: primary
-      targetVolumes:
-        volumes:
-        - data
-        volumeMounts:
-        - name: data
-          mountPath: {{ .Values.dataMountPath }}
     schedules:
     - backupMethod: xtrabackup
       enabled: false
       cronExpression: "0 18 * * 0"
+      retentionPeriod: 8d
+    - backupMethod: xtrabackup-inc
+      enabled: false
+      cronExpression: "0 19 * * *"
       retentionPeriod: 7d
     - backupMethod: volume-snapshot
       enabled: false
       cronExpression: "0 18 * * 0"
       retentionPeriod: 7d
+    - backupMethod: archive-binlog
+      enabled: false
+      cronExpression: "*/30 * * * *"
+      retentionPeriod: 8d

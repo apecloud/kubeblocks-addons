@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "mysql.componentDefName80" . }}
+  name: {{ include "mysql.componentDefNameMGR80" . }}
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
 spec:
@@ -10,7 +10,7 @@ spec:
   minReadySeconds: 10
   configs:
     - name: mysql-replication-config
-      templateRef: oracle-mysql8.0-config-template
+      templateRef: oracle-mysql8.0-mgr-config-template
       constraintRef: oracle-mysql8.0-config-constraints
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
@@ -24,23 +24,12 @@ spec:
           - bash
           - -c
           - |
-            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
             cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
-      - command:
-          - cp
-          - -r
-          - /xtrabackup
-          - /tools/xtrabackup
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        name: init-xtrabackup
-        volumeMounts:
-          - mountPath: /tools
-            name: tools
       - command:
           - cp
           - -r
@@ -67,9 +56,9 @@ spec:
           - |
             cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
             chown -R mysql:root {{ .Values.dataMountPath }}
-            export LD_PRELOAD=/tools/lib/libjemalloc.so.2 
             SERVICE_ID=$((${KB_POD_NAME##*-} + 1))
             docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
+               --report-host ${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless \
                --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
                --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
                --plugin-load-add=audit_log=audit_log.so \
@@ -92,8 +81,12 @@ spec:
         env:
           - name: PATH
             value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-          - name: KB_SERVICE_CHARACTER_TYPE
+          - name: LD_PRELOAD
+            value: /tools/lib/libjemalloc.so.2
+          - name: KB_ENGINE_TYPE
             value: mysql
+          - name: KB_WORKLOAD_TYPE
+            value: mgr
           - name: MYSQL_INITDB_SKIP_TZINFO
             value: "1"
           - name: MYSQL_ROOT_HOST

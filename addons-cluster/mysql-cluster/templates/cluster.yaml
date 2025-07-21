@@ -4,28 +4,59 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
-    kubeblocks.io/extra-env: '{ "MYSQL_TOPOLOGY_MODE": {{ default "standalone" .Values.mode | quote }} }'
+  {{- if eq .Values.topology "server-with-proxy" }}
+    kubeblocks.io/extra-env: '{"PROXY_ENABLED":"on"}'
+  {{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
+  clusterDefinitionRef: mysql
   {{- if .Values.useLegacyCompDef }}
-  clusterDefinitionRef: mysql 
   clusterVersionRef: {{ .Values.version }}
+  {{- else }}
+  {{- if .Values.orchestrator.enable }}
+  topology: replication-orc
+  {{- else }}
+  topology: {{ .Values.topology }}
+  {{- end }}
   {{- end }}
   componentSpecs:
     - name: mysql
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: mysql # ref clusterdefinition componentDefs.name
+      componentDefRef: mysql
       {{- else }}
-      componentDef: {{ .Values.compdef }}
-      serviceVersion: {{ .Values.componentVersion}}
-      {{- end}}
+      serviceVersion: {{ .Values.serviceVersion }}
+      {{- end }}
       enabledLogs:
       - error
       - slow
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- if .Values.orchestrator.enable }}
+      serviceRefs:
+        {{- if eq .Values.orchestrator.clusterServiceSelector.cluster ""}}
+        - name: orchestrator
+          namespace: {{ .Values.orchestrator.serviceReference.namespace | default .Release.Namespace }}
+          serviceDescriptor: {{ include "kblib.clusterName" . }}-orc-descriptor
+        {{- else }}
+        - name: orchestrator
+          namespace: {{ .Values.orchestrator.serviceReference.namespace | default .Release.Namespace }}
+          clusterServiceSelector:
+            cluster:  {{ .Values.orchestrator.clusterServiceSelector.cluster }}
+            service:
+              component: orchestrator
+              service: orchestrator
+              port:  {{ .Values.orchestrator.clusterServiceSelector.portName }}
+        {{- end }}
+      {{- end }}
+    {{- if eq .Values.topology "server-with-proxy" }}
+    - name: proxysql
+      componentDef: proxysql
+      replicas: {{.Values.proxysql.replicas}}
+      resources:
+        limits:
+          cpu: {{ .Values.proxysql.cpu | quote }}
+          memory: {{ print .Values.proxysql.memory "Gi" | quote }}
+    {{- end }}

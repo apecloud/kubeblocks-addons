@@ -79,6 +79,7 @@ staticParameters:
   - log_bin_use_v1_row_events
   - log_error
   - log_slave_updates
+  - log_replica_updates
   - master-info-repository
   - max_digest_length
   - mecab_rc_file
@@ -220,13 +221,11 @@ dynamicParameters:
   - bulk_insert_buffer_size
   - character_set_client
   - character_set_connection
-  - character_set_database
   - character_set_filesystem
   - character_set_results
   - character_set_server
   - check_proxy_users
   - collation_connection
-  - collation_database
   - collation_server
   - completion_type
   - concurrent_insert
@@ -572,7 +571,6 @@ immutableParameters:
   - log-bin
   - log_bin_basename
   - log_bin_index
-  - log_slave_updates
   - lower_case_file_system
   - lower_case_table_names
   - mecab_rc_file

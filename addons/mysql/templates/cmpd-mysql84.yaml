@@ -7,7 +7,7 @@ metadata:
 spec:
   {{- include "mysql.spec.common" . | nindent 2 }}
   serviceVersion: 8.4.2
-
+  minReadySeconds: 10
   configs:
     - name: mysql-replication-config
       templateRef: oracle-mysql8.0-config-template
@@ -53,20 +53,16 @@ spec:
           - bash
           - -c
           - |
-            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
             chown -R mysql:root {{ .Values.dataMountPath }}
-            skip_slave_start="OFF"
             export LD_PRELOAD=/tools/lib/libjemalloc.so.2 
-            if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
-              skip_slave_start="ON"
-            fi
             REPORT_HOST=${KB_CLUSTER_COMP_NAME}-mysql-${KB_POD_NAME##*-}
             SERVICE_ID=$((${KB_POD_NAME##*-} + 1))
             docker-entrypoint.sh mysqld --server-id $SERVICE_ID --report-host ${REPORT_HOST} \
                --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
                --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
                --log-bin=/var/lib/mysql/binlog/${KB_POD_NAME}-bin \
-               --skip-slave-start=$skip_slave_start
+               --skip-slave-start=ON
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data

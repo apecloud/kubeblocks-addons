@@ -11,7 +11,7 @@ spec:
   reloadAction:
     tplScriptTrigger:
       sync: true
-      scriptConfigMapRef: oracle-mysql8.0-reload-script
+      scriptConfigMapRef: mysql8.0-reload-script
       namespace: {{ .Release.Namespace }}
 
 

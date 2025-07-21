@@ -67,8 +67,8 @@ read_rnd_buffer_size={{ $read_rnd_buffer_size }}
 join_buffer_size={{ $join_buffer_size }}
 sort_buffer_size={{ $sort_buffer_size }}
 
-#default_authentication_plugin=mysql_native_password    #From mysql8.0.23 is deprecated.
-#authentication_policy=mysql_native_password,
+# default_authentication_plugin=mysql_native_password    #From mysql8.0.23 is deprecated.
+# authentication_policy=mysql_native_password,
 back_log=5285
 host_cache_size=867
 connect_timeout=10
@@ -79,7 +79,9 @@ port={{ $mysql_port }}
 mysqlx-port=33060
 mysqlx=0
 
+tmpdir={{ $data_root }}/temp
 datadir={{ $data_root }}/data
+plugin_dir=/usr/lib64/mysql/plugin/
 
 {{- $log_root := printf "%s/log" $data_root }}
 log_error={{ $log_root }}/mysqld-error.log
@@ -170,11 +172,22 @@ relay_log_index=relay-bin.index
 loose_audit_log_handler=FILE # FILE, SYSLOG
 loose_audit_log_file={{ $data_root }}/auditlog/audit.log
 loose_audit_log_buffer_size=1Mb
-loose_audit_log_policy=ALL # ALL, LOGINS, QUERIES, NONE
+loose_audit_log_policy=QUERIES # ALL, LOGINS, QUERIES, NONE
 loose_audit_log_strategy=ASYNCHRONOUS
 loose_audit_log_rotate_on_size=10485760
 loose_audit_log_rotations=5
-loose_audit_log_exclude_accounts=kbadmin@%
+## mysql> select host, user from mysql.user;
+## +-----------+------------------+
+## | host      | user             |
+## +-----------+------------------+
+## | %         | root             |
+## | %         | u1               |
+## | localhost | mysql.infoschema |
+## | localhost | mysql.session    |
+## | localhost | mysql.sys        |
+## | localhost | root             |
+## +-----------+------------------+
+loose_audit_log_exclude_accounts=root@%,root@localhost,kbadmin@%
 
 # semi sync, it works
 # loose_rpl-semi-sync-source-enabled = 1
@@ -195,10 +208,7 @@ default_tmp_storage_engine=innodb
 collation_server = utf8mb4_unicode_520_ci
 character_set_server = utf8mb4
 
-[mysql]
-default-character-set=utf8mb4
 
 [client]
 port={{ $mysql_port }}
 socket=/var/run/mysqld/mysqld.sock
-default-character-set=utf8mb4

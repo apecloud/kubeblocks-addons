@@ -117,7 +117,7 @@ spec:
                     key: password
                     optional: false
           - name: metrics
-            image:  {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+            image:  {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/apecloud/agamotto:0.1.2-beta.1
             imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
             securityContext:
               runAsNonRoot: false
@@ -153,3 +153,34 @@ spec:
                 readOnly: false
               - name: scripts
                 mountPath: /scripts
+
+  topologies:
+    - name: replication
+      components:
+        - name: mysql
+          compDef: {{ include "mysql.componentDefRegex" . }}
+      default: true
+    - name: mgr
+      components:
+        - name: mysql
+          compDef: {{ include "mysql.componentDefMGRRegex" . }}
+    - name: replication-orc
+      components:
+        - name: mysql
+          compDef: {{ include "mysql.componentDefOrcRegex" . }}
+    - name: replication-proxy
+      components:
+        - name: mysql
+          compDef: {{ include "mysql.componentDefRegex" . }}
+        - name: proxysql
+          compDef: {{ include "proxysql.componentDefName" . }}
+      orders:
+        provision: # The server will start before the proxy is created.
+          - mysql
+          - proxysql
+        terminate: # The proxy will be shut down (destroyed) before the server.
+          - proxysql
+          - mysql
+        update: # When there are multiple component update operations, follow the order specified here.
+          - mysql
+          - proxysql

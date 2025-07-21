@@ -21,10 +21,12 @@
       }
     ]
   },
+  "description": "",
   "editable": true,
   "fiscalYearStartMonth": 0,
+  "gnetId": 11323,
   "graphTooltip": 0,
-  "id": 47,
+  "id": 27,
   "links": [
     {
       "asDropdown": false,
@@ -51,9 +53,13 @@
       "url": "https://github.com/apecloud/kubeblocks"
     }
   ],
+  "liveNow": false,
   "panels": [
     {
       "collapsed": false,
+      "datasource": {
+        "uid": "$datasource"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -62,6 +68,14 @@
       },
       "id": 382,
       "panels": [],
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A"
+        }
+      ],
       "title": "Summary",
       "type": "row"
     },
@@ -103,6 +117,8 @@
         "y": 1
       },
       "id": 12,
+      "interval": "",
+      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "value",
@@ -114,7 +130,6 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "mean"
@@ -122,12 +137,10 @@
           "fields": "",
           "values": false
         },
-        "showPercentChange": false,
         "text": {},
-        "textMode": "auto",
-        "wideLayout": true
+        "textMode": "auto"
       },
-      "pluginVersion": "11.4.1",
+      "pluginVersion": "9.2.4",
       "targets": [
         {
           "calculatedInterval": "10m",
@@ -183,6 +196,7 @@
         "y": 1
       },
       "id": 13,
+      "interval": "",
       "links": [
         {
           "targetBlank": true,
@@ -201,7 +215,6 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "mean"
@@ -209,11 +222,9 @@
           "fields": "",
           "values": false
         },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
+        "textMode": "auto"
       },
-      "pluginVersion": "11.4.1",
+      "pluginVersion": "9.2.4",
       "targets": [
         {
           "calculatedInterval": "10m",
@@ -269,6 +280,7 @@
         "y": 1
       },
       "id": 51,
+      "interval": "",
       "links": [
         {
           "targetBlank": true,
@@ -287,7 +299,6 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "mean"
@@ -295,11 +306,9 @@
           "fields": "",
           "values": false
         },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
+        "textMode": "auto"
       },
-      "pluginVersion": "11.4.1",
+      "pluginVersion": "9.2.4",
       "targets": [
         {
           "calculatedInterval": "10m",
@@ -338,9 +347,7 @@
           },
           "custom": {
             "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
+            "displayMode": "auto",
             "inspect": false
           },
           "decimals": 1,
@@ -364,10 +371,8 @@
             },
             "properties": [
               {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
+                "id": "custom.displayMode",
+                "value": "color-text"
               },
               {
                 "id": "unit",
@@ -382,10 +387,8 @@
             },
             "properties": [
               {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
+                "id": "custom.displayMode",
+                "value": "color-text"
               },
               {
                 "id": "unit",
@@ -400,10 +403,8 @@
             },
             "properties": [
               {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
+                "id": "custom.displayMode",
+                "value": "color-text"
               },
               {
                 "id": "unit",
@@ -420,11 +421,11 @@
         "y": 1
       },
       "id": 403,
+      "interval": "",
+      "links": [],
       "maxDataPoints": 100,
       "options": {
-        "cellHeight": "sm",
         "footer": {
-          "countRows": false,
           "fields": "",
           "reducer": [
             "sum"
@@ -433,7 +434,7 @@
         },
         "showHeader": true
       },
-      "pluginVersion": "11.4.1",
+      "pluginVersion": "9.2.4",
       "targets": [
         {
           "calculatedInterval": "10m",
@@ -549,6 +550,9 @@
     },
     {
       "collapsed": false,
+      "datasource": {
+        "uid": "$datasource"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -557,6 +561,14 @@
       },
       "id": 383,
       "panels": [],
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A"
+        }
+      ],
       "title": "Connections",
       "type": "row"
     },
@@ -572,13 +584,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -587,7 +597,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 5,
@@ -668,7 +677,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.4.1",
+      "pluginVersion": "9.2.4",
       "targets": [
         {
           "calculatedInterval": "2m",
@@ -738,13 +747,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "Threads",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -753,7 +760,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 5,
@@ -855,6 +861,7 @@
         "y": 7
       },
       "id": 10,
+      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -872,7 +879,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.4.1",
+      "pluginVersion": "9.2.4",
       "targets": [
         {
           "calculatedInterval": "2m",
@@ -941,13 +948,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -956,7 +961,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 5,
@@ -1036,7 +1040,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.4.1",
+      "pluginVersion": "9.2.4",
       "targets": [
         {
           "calculatedInterval": "2m",
@@ -1103,13 +1107,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -1118,7 +1120,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 5,
@@ -1162,6 +1163,7 @@
         "y": 14
       },
       "id": 47,
+      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -1179,7 +1181,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.4.1",
+      "pluginVersion": "9.2.4",
       "targets": [
         {
           "calculatedInterval": "2m",
@@ -1220,6 +1222,9 @@
     },
     {
       "collapsed": false,
+      "datasource": {
+        "uid": "$datasource"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1228,6 +1233,14 @@
       },
       "id": 384,
       "panels": [],
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A"
+        }
+      ],
       "title": "Queries",
       "type": "row"
     },
@@ -1242,13 +1255,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -1257,7 +1268,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 5,
@@ -1325,7 +1335,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.4.1",
+      "pluginVersion": "9.2.4",
       "targets": [
         {
           "calculatedInterval": "2m",
@@ -1358,13 +1368,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -1373,7 +1381,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 5,
@@ -1417,6 +1424,7 @@
         "y": 22
       },
       "id": 48,
+      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -1434,7 +1442,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.4.1",
+      "pluginVersion": "9.2.4",
       "targets": [
         {
           "calculatedInterval": "2m",
@@ -1467,13 +1475,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -1482,7 +1488,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 5,
@@ -1526,6 +1531,7 @@
         "y": 22
       },
       "id": 311,
+      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -1543,7 +1549,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.4.1",
+      "pluginVersion": "9.2.4",
       "targets": [
         {
           "calculatedInterval": "2m",
@@ -1640,13 +1646,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -1655,7 +1659,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 5,
@@ -1699,6 +1702,7 @@
         "y": 29
       },
       "id": 30,
+      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -1716,7 +1720,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.4.1",
+      "pluginVersion": "9.2.4",
       "targets": [
         {
           "calculatedInterval": "2m",
@@ -1796,13 +1800,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
@@ -1811,7 +1813,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 5,
@@ -1855,6 +1856,7 @@
         "y": 29
       },
       "id": 22,
+      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -1872,7 +1874,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.4.1",
+      "pluginVersion": "9.2.4",
       "targets": [
         {
           "calculatedInterval": "2m",
@@ -1925,6 +1927,9 @@
     },
     {
       "collapsed": true,
+      "datasource": {
+        "uid": "$datasource"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -2115,6 +2120,7 @@
             "y": 76
           },
           "id": 8,
+          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -2222,6 +2228,7 @@
             "y": 83
           },
           "id": 28,
+          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -2261,6 +2268,14 @@
           ],
           "title": "MySQL Transaction Handlers",
           "type": "timeseries"
+        }
+      ],
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A"
         }
       ],
       "title": "Command, Handlers, Processes",
@@ -2343,6 +2358,7 @@
             "y": 70
           },
           "id": 9,
+          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -2408,6 +2424,9 @@
     },
     {
       "collapsed": true,
+      "datasource": {
+        "uid": "$datasource"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -3202,6 +3221,14 @@
           "type": "timeseries"
         }
       ],
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A"
+        }
+      ],
       "title": "Buffers",
       "type": "row"
     },
@@ -3281,6 +3308,7 @@
             "y": 72
           },
           "id": 32,
+          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -3602,6 +3630,9 @@
     },
     {
       "collapsed": true,
+      "datasource": {
+        "uid": "$datasource"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -3676,6 +3707,7 @@
             "y": 73
           },
           "id": 41,
+          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -4150,7 +4182,574 @@
           "type": "timeseries"
         }
       ],
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A"
+        }
+      ],
       "title": "Files and Tables",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 41
+      },
+      "id": 396,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 74
+          },
+          "id": 401,
+          "links": [],
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max",
+                "min"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "9.2.4",
+          "targets": [
+            {
+              "calculatedInterval": "2m",
+              "datasource": {
+                "uid": "$datasource"
+              },
+              "datasourceErrors": {},
+              "editorMode": "code",
+              "errors": {},
+              "expr": "sum(mysql_info_schema_wesql_consensus_commit_index{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
+              "format": "time_series",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{namespace}} | {{app_kubernetes_io_instance}} | {{pod}} | {{instance_role}}",
+              "metric": "",
+              "range": true,
+              "refId": "A",
+              "step": 20
+            }
+          ],
+          "title": "Commit Index",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 8,
+            "y": 74
+          },
+          "id": 402,
+          "links": [],
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max",
+                "min"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "9.2.4",
+          "targets": [
+            {
+              "calculatedInterval": "2m",
+              "datasource": {
+                "uid": "$datasource"
+              },
+              "datasourceErrors": {},
+              "editorMode": "code",
+              "errors": {},
+              "expr": "sum(mysql_info_schema_wesql_consensus_last_log_index{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
+              "format": "time_series",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{namespace}} | {{app_kubernetes_io_instance}} | {{pod}} | {{instance_role}}",
+              "metric": "",
+              "range": true,
+              "refId": "A",
+              "step": 20
+            }
+          ],
+          "title": "Last Log Index",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 74
+          },
+          "id": 400,
+          "links": [],
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max",
+                "min"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "9.2.4",
+          "targets": [
+            {
+              "calculatedInterval": "2m",
+              "datasource": {
+                "uid": "$datasource"
+              },
+              "datasourceErrors": {},
+              "editorMode": "code",
+              "errors": {},
+              "expr": "sum(mysql_info_schema_wesql_consensus_last_apply_index{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
+              "format": "time_series",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{namespace}} | {{app_kubernetes_io_instance}} | {{pod}} | {{instance_role}}",
+              "metric": "",
+              "range": true,
+              "refId": "A",
+              "step": 20
+            }
+          ],
+          "title": "Last Apply Index",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 0,
+            "y": 81
+          },
+          "id": 399,
+          "links": [],
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max",
+                "min"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "9.2.4",
+          "targets": [
+            {
+              "calculatedInterval": "2m",
+              "datasource": {
+                "uid": "$datasource"
+              },
+              "datasourceErrors": {},
+              "editorMode": "code",
+              "errors": {},
+              "expr": "sum(mysql_info_schema_wesql_consensus_current_term{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
+              "format": "time_series",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{namespace}} | {{app_kubernetes_io_instance}} | {{pod}} | {{instance_role}}",
+              "metric": "",
+              "range": true,
+              "refId": "A",
+              "step": 20
+            }
+          ],
+          "title": "Current Term",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 81
+          },
+          "id": 398,
+          "links": [],
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max",
+                "min"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "9.2.4",
+          "targets": [
+            {
+              "calculatedInterval": "2m",
+              "datasource": {
+                "uid": "$datasource"
+              },
+              "datasourceErrors": {},
+              "editorMode": "code",
+              "errors": {},
+              "expr": "sum(mysql_info_schema_wesql_consensus_last_log_term{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
+              "format": "time_series",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{namespace}} | {{app_kubernetes_io_instance}} | {{pod}} | {{instance_role}}",
+              "metric": "",
+              "range": true,
+              "refId": "A",
+              "step": 20
+            }
+          ],
+          "title": "Last Log Term",
+          "type": "timeseries"
+        }
+      ],
+      "title": "ApeCloud MySQL Consensus",
       "type": "row"
     },
     {
@@ -4159,7 +4758,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 41
+        "y": 42
       },
       "id": 415,
       "panels": [],
@@ -4177,13 +4776,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -4192,7 +4789,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -4230,7 +4826,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 42
+        "y": 43
       },
       "id": 417,
       "options": {
@@ -4245,7 +4841,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.4.1",
       "targets": [
         {
           "datasource": {
@@ -4273,13 +4868,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -4288,7 +4881,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -4326,7 +4918,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 42
+        "y": 43
       },
       "id": 419,
       "options": {
@@ -4341,7 +4933,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.4.1",
       "targets": [
         {
           "datasource": {
@@ -4369,13 +4960,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -4384,7 +4973,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -4422,7 +5010,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 42
+        "y": 43
       },
       "id": 421,
       "options": {
@@ -4437,7 +5025,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.4.1",
       "targets": [
         {
           "datasource": {
@@ -4466,13 +5053,11 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -4481,7 +5066,6 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -4519,7 +5103,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 42
+        "y": 43
       },
       "id": 422,
       "options": {
@@ -4534,7 +5118,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.4.1",
       "targets": [
         {
           "datasource": {
@@ -4552,9 +5135,9 @@
       "type": "timeseries"
     }
   ],
-  "preload": false,
   "refresh": "",
-  "schemaVersion": 40,
+  "schemaVersion": 37,
+  "style": "dark",
   "tags": [
     "mysql",
     "db"
@@ -4563,29 +5146,40 @@
     "list": [
       {
         "current": {
+          "selected": false,
           "text": "default",
           "value": "default"
         },
+        "hide": 0,
         "includeAll": false,
         "label": "data source",
+        "multi": false,
         "name": "datasource",
         "options": [],
         "query": "prometheus",
+        "queryValue": "",
         "refresh": 1,
         "regex": "",
+        "skipUrlSync": false,
         "type": "datasource"
       },
       {
         "allValue": ".+",
         "current": {
-          "text": "All",
-          "value": "$__all"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "type": "prometheus",
           "uid": "$datasource"
         },
         "definition": "label_values(mysql_up{job=\"$job\"}, namespace)",
+        "hide": 0,
         "includeAll": true,
         "label": "namespace",
         "multi": true,
@@ -4597,20 +5191,30 @@
         },
         "refresh": 1,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 5,
-        "type": "query"
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       },
       {
         "allValue": ".+",
         "current": {
-          "text": "All",
-          "value": "$__all"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "type": "prometheus",
           "uid": "$datasource"
         },
         "definition": "label_values(mysql_up{job=\"$job\"}, app_kubernetes_io_instance)",
+        "hide": 0,
         "includeAll": true,
         "label": "cluster",
         "multi": true,
@@ -4622,20 +5226,30 @@
         },
         "refresh": 1,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 5,
-        "type": "query"
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       },
       {
         "allValue": ".+",
         "current": {
-          "text": "All",
-          "value": "$__all"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "type": "prometheus",
           "uid": "$datasource"
         },
         "definition": "label_values(mysql_up{job=\"$job\",namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\"}, pod)",
+        "hide": 0,
         "includeAll": true,
         "label": "instance",
         "multi": true,
@@ -4647,30 +5261,34 @@
         },
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 5,
-        "type": "query"
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       },
       {
         "current": {
-          "text": "kubeblocks",
-          "value": "kubeblocks"
+          "selected": true,
+          "text": "oteld-app-metrics",
+          "value": "oteld-app-metrics"
         },
+        "hide": 0,
         "includeAll": false,
         "label": "job",
+        "multi": false,
         "name": "job",
         "options": [
           {
             "selected": true,
-            "text": "kubeblocks",
-            "value": "kubeblocks"
-          },
-          {
-            "selected": false,
             "text": "oteld-app-metrics",
             "value": "oteld-app-metrics"
           }
         ],
-        "query": "kubeblocks,oteld-app-metrics",
+        "query": "oteld-app-metrics",
+        "queryValue": "",
+        "skipUrlSync": false,
         "type": "custom"
       }
     ]
@@ -4680,6 +5298,11 @@
     "to": "now"
   },
   "timepicker": {
+    "collapse": false,
+    "enable": true,
+    "hidden": false,
+    "notice": false,
+    "now": true,
     "refresh_intervals": [
       "10s",
       "30s",
@@ -4690,11 +5313,24 @@
       "1h",
       "2h",
       "1d"
-    ]
+    ],
+    "status": "Stable",
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ],
+    "type": "timepicker"
   },
   "timezone": "",
   "title": "APPS / Oracle MySQL",
-  "uid": "oracle-mysql",
+  "uid": "mysql",
   "version": 1,
   "weekStart": ""
 }

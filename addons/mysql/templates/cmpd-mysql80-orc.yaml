@@ -1,0 +1,58 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mysql.componentDefNameOrc80" . }}
+  labels:
+      {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  {{- include "mysql-orc.spec.common" . | nindent 2 }}
+  serviceVersion: 8.0.33
+  minReadySeconds: 10
+  lifecycleActions:
+    {{- include "mysql-orc.spec.lifecycle.common" . | nindent 4 }}
+    postProvision:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        exec:
+          command:
+            - bash
+            - -c
+            - "/scripts/mysql-orchestrator-register.sh"
+        preCondition: RuntimeReady
+    preTerminate:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        exec:
+          command:
+            - bash
+            - -c
+            - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${KB_CLUSTER_NAME} || true
+  configs:
+    - name: mysql-replication-config
+      templateRef: oracle-mysql8.0-config-template
+      constraintRef: oracle-mysql8.0-config-constraints
+      volumeName: mysql-config
+      namespace: {{ .Release.Namespace }}
+      reRenderResourceTypes:
+        - vscale
+  runtime:
+    initContainers:
+      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
+        name: init-data
+        command:
+          - bash
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+            cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+      {{- include "mysql-orc.spec.initcontainer.common" . | nindent 6 }}
+    containers:
+      - name: mysql
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        {{- include "mysql-orc.spec.runtime.mysql" . | nindent 8 }}
+      - name: mysql-exporter
+        {{- include "mysql-orc.spec.runtime.exporter" . | nindent 8 }}

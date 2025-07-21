@@ -7,7 +7,7 @@ metadata:
 spec:
   {{- include "mysql.spec.common" . | nindent 2 }}
   serviceVersion: 5.7.44
-
+  minReadySeconds: 10
   configs:
     - name: mysql-replication-config
       templateRef: oracle-mysql5.7-config-template
@@ -24,7 +24,7 @@ spec:
           - bash
           - -c
           - |
-            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
             cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         volumeMounts:
@@ -68,17 +68,14 @@ spec:
             cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
             chown -R mysql:root {{ .Values.dataMountPath }}
             export LD_PRELOAD=/tools/lib/libjemalloc.so.2
-            skip_slave_start="OFF"
-            if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
-              skip_slave_start="ON"
-            fi
-            /scripts/docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
-            --ignore-db-dir=lost+found \
-            --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
-            --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
-            --plugin-load-add=audit_log=audit_log.so \
-            --log-bin={{.Values.dataMountPath}}/binlog/$(KB_POD_NAME)-bin \
-            --skip-slave-start=$skip_slave_start
+            SERVICE_ID=$((${KB_POD_NAME##*-} + 1))
+            docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
+              --ignore-db-dir=lost+found \
+              --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
+              --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
+              --plugin-load-add=audit_log=audit_log.so \
+              --log-bin=/var/lib/mysql/binlog/${KB_POD_NAME}-bin \
+              --skip-slave-start=ON
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -104,4 +101,3 @@ spec:
             value: {{ .Values.auth.rootHost | default "%" | quote }}
           - name: SERVICE_PORT
             value: "3306"
-
