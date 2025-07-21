@@ -1,0 +1,152 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: greatsql-backup-policy-template
+  labels:
+    clusterdefinition.kubeblocks.io/name: greatsql
+    {{- include "greatsql.labels" . | nindent 4 }}
+    service-kind/greatsql: "true"
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+spec:
+  clusterDefinitionRef: greatsql
+  backupPolicies:
+  - componentDefs: [greatsql-8.0]
+    target:
+      role: secondary
+      fallbackRole: primary
+      account: kbadmin
+      useParentSelectedPods: true
+    backupMethods:
+    - name: xtrabackup
+      snapshotVolumes: false
+      actionSetName: greatsql-xtrabackup
+      envMapping:
+        - key: IMAGE_TAG
+          valueFrom:
+            componentDef:
+            - names: [greatsql-8.0]
+              mappingValue: "8.0"
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}
+    - name: xtrabackup-inc
+      compatibleMethod: xtrabackup
+      snapshotVolumes: false
+      actionSetName: greatsql-xtrabackup-inc
+      envMapping:
+        - key: IMAGE_TAG
+          valueFrom:
+            componentDef:
+            - names: [greatsql-8.0]
+              mappingValue: "8.0"
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}
+    - name: archive-binlog
+      target:
+        role: primary
+        account: kbadmin
+      snapshotVolumes: false
+      actionSetName: greatsql-pitr
+      envMapping:
+        - key: USE_REPLICA_STATUS
+          valueFrom:
+            componentDef:
+              - names: [ greatsql-8.4 ]
+                mappingValue: "true"
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+    - name: volume-snapshot
+      snapshotVolumes: true
+      actionSetName: greatsql-volumesnapshot
+      target:
+        role: primary
+      targetVolumes:
+        volumes:
+        - data
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}
+    schedules:
+      - backupMethod: xtrabackup
+        enabled: false
+        cronExpression: "0 18 * * 0"
+        retentionPeriod: 8d
+      - backupMethod: xtrabackup-inc
+        enabled: false
+        cronExpression: "0 19 * * *"
+        retentionPeriod: 7d
+      - backupMethod: volume-snapshot
+        enabled: false
+        cronExpression: "0 18 * * 0"
+        retentionPeriod: 7d
+      - backupMethod: archive-binlog
+        enabled: false
+        cronExpression: "*/30 * * * *"
+        retentionPeriod: 8d
+  - componentDefRef: greatsql
+    target:
+      role: secondary
+      fallbackRole: primary
+      useParentSelectedPods: true
+    backupMethods:
+      - name: xtrabackup
+        snapshotVolumes: false
+        actionSetName: greatsql-xtrabackup
+        envMapping:
+          - key: IMAGE_TAG
+            valueFrom:
+              clusterVersionRef:
+                - names: [greatsql-8.0.32]
+                  mappingValue: "8.0"
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: xtrabackup-inc
+        compatibleMethod: xtrabackup
+        snapshotVolumes: false
+        actionSetName: greatsql-xtrabackup-inc
+        envMapping:
+          - key: IMAGE_TAG
+            valueFrom:
+              clusterVersionRef:
+                - names: [greatsql-8.0.32]
+                  mappingValue: "8.0"
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: volume-snapshot
+        snapshotVolumes: true
+        actionSetName: greatsql-volumesnapshot
+        target:
+          role: primary
+        targetVolumes:
+          volumes:
+            - data
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+    schedules:
+    - backupMethod: xtrabackup
+      enabled: false
+      cronExpression: "0 18 * * 0"
+      retentionPeriod: 8d
+    - backupMethod: xtrabackup-inc
+      enabled: false
+      cronExpression: "0 19 * * *"
+      retentionPeriod: 7d
+    - backupMethod: volume-snapshot
+      enabled: false
+      cronExpression: "0 18 * * 0"
+      retentionPeriod: 7d
+    - backupMethod: archive-binlog
+      enabled: false
+      cronExpression: "*/30 * * * *"
+      retentionPeriod: 8d

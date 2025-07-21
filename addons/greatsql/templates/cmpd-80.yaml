@@ -1,0 +1,90 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "greatsql.componentDefName80" . }}
+  labels:
+      {{- include "greatsql.labels" . | nindent 4 }}
+spec:
+  {{- include "greatsql.spec.common" . | nindent 2 }}
+  serviceVersion: 8.0.32
+  minReadySeconds: 10
+  configs:
+    - name: greatsql-replication-config
+      templateRef: greatsql8.0-config-template
+      constraintRef: greatsql8.0-config-constraints
+      volumeName: greatsql-config
+      namespace: {{ .Release.Namespace }}
+      reRenderResourceTypes:
+        - vscale
+  runtime:
+    initContainers:
+      - command:
+          - cp
+          - -r
+          - /jemalloc/lib/
+          - /tools/lib
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-jemalloc
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+      {{- include "greatsql.spec.runtime.common" . | nindent 6 }}
+    containers:
+      - name: greatsql
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        command:
+          - syncer
+          - --port
+          - "3601"
+          - --
+          - bash
+          - -c
+          - |
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "arm64" || "$ARCH" == "aarch64" ]]; then
+              echo "ARM system detected. Skipping jemalloc configuration."
+              export LD_PRELOAD=""
+            fi
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
+            chown -R mysql:root {{ .Values.dataMountPath }}
+            SERVICE_ID=$((${KB_POD_NAME##*-} + 1))
+            echo "$(sed "s/FAST_MODE/1/g" /etc/my.cnf)" > /etc/my.cnf
+            echo "$(sed "s/MYSQL_MGR_VIEWID/'AUTOMATIC'/g" /etc/my.cnf)" > /etc/my.cnf
+            echo "$(sed "s/SINGLE_PRIMARY/ON/g" /etc/my.cnf)" > /etc/my.cnf
+            echo "$(sed "s/EVERYWHERE_CHECKS/OFF/g" /etc/my.cnf)" > /etc/my.cnf
+            echo "$(sed "s/MYSQL_MGR_ARBITRATOR/OFF/g" /etc/my.cnf)" > /etc/my.cnf
+            /greatsql-init.sh mysqld --defaults-extra-file=/etc/mysql/my.cnf \
+              --server-id $SERVICE_ID \
+              --report-host ${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless \
+              --loose-plugin-load-add=audit_log=audit_log.so \
+              --log-bin=/var/lib/mysql/binlog/${KB_POD_NAME}-bin 
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/
+            name: greatsql-config
+          - name: scripts
+            mountPath: /scripts
+          - mountPath: /tools
+            name: tools
+        ports:
+          - containerPort: 3306
+            name: greatsql
+          - containerPort: 3601
+            name: syncer
+        env:
+          - name: PATH
+            value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: LD_PRELOAD
+            value: /tools/lib/libjemalloc.so.2
+          - name: KB_ENGINE_TYPE
+            value: mysql
+          - name: KB_WORKLOAD_TYPE
+            value: mgr
+          - name: MYSQL_INITDB_SKIP_TZINFO
+            value: "1"
+          - name: MYSQL_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: SERVICE_PORT
+            value: "3306"

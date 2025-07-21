@@ -1,0 +1,20 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: greatsql
+  labels:
+    {{- include "greatsql.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "greatsql.componentDefName80" . }}
+      releases:
+        - 8.0.32
+  releases:
+    - name: 8.0.32
+      changes:
+      serviceVersion: 8.0.32
+      images:
+        greatsql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.32-27
+        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
+        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}

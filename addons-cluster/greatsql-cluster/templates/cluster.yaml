@@ -1,0 +1,20 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  topology: {{ .Values.topology }}
+  {{- include "kblib.affinity" . | indent 2 }}
+  clusterDefinitionRef: greatsql
+  componentSpecs:
+    - name: greatsql
+      serviceVersion: {{ .Values.serviceVersion }}
+      replicas: {{ .Values.replicas }}
+      enabledLogs:
+      - error
+      - slow
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}

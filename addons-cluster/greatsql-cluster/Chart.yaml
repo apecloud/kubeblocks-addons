@@ -1,0 +1,31 @@
+annotations:
+  category: Database
+apiVersion: v2
+name: greatsql-cluster
+type: application
+version: 0.9.0
+description: GreatSQL is an open-source, free database that can meet financial-grade application scenarios on ordinary hardware.
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+
+appVersion: "8.0.32"
+
+keywords:
+  - greatsql
+  - database
+  - sql
+  - cluster
+
+home: https://github.com/apecloud/kubeblocks/deploy/greatsql-cluster
+icon: https://kubeblocks.io/img/logo.png
+
+maintainers:
+  - name: ApeCloud
+    url: https://kubeblocks.io/
+
+sources:
+  - https://github.com/apecloud/kubeblocks/
+  - https://github.com/apecloud/kubeblocks/tree/main/deploy/greatsql
