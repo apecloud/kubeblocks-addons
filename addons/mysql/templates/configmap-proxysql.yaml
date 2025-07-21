@@ -1,0 +1,7 @@
+apiVersion: v1
+data:
+  proxysql.cnf: |-
+    {{- .Files.Get "config/proxysql.tpl" | nindent 4 }}
+kind: ConfigMap
+metadata:
+  name: proxysql-config

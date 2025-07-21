@@ -1,16 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "mysql.componentDefName80" . }}
+  name: {{ include "mysql.componentDefNameMGR84" . }}
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
 spec:
   {{- include "mysql.spec.common" . | nindent 2 }}
-  serviceVersion: 8.0.33
+  serviceVersion: 8.4.2
   minReadySeconds: 10
   configs:
     - name: mysql-replication-config
-      templateRef: oracle-mysql8.0-config-template
+      templateRef: oracle-mysql8.0-mgr-config-template
       constraintRef: oracle-mysql8.0-config-constraints
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
@@ -18,29 +18,6 @@ spec:
         - vscale
   runtime:
     initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
-        name: init-data
-        command:
-          - bash
-          - -c
-          - |
-            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
-            cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-        volumeMounts:
-          - mountPath: {{ .Values.dataMountPath }}
-            name: data
-      - command:
-          - cp
-          - -r
-          - /xtrabackup
-          - /tools/xtrabackup
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        name: init-xtrabackup
-        volumeMounts:
-          - mountPath: /tools
-            name: tools
       - command:
           - cp
           - -r
@@ -55,7 +32,7 @@ spec:
       {{- include "mysql.spec.runtime.common" . | nindent 6 }}
     containers:
       - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.2
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
           - syncer
@@ -65,14 +42,14 @@ spec:
           - bash
           - -c
           - |
-            cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
             chown -R mysql:root {{ .Values.dataMountPath }}
-            export LD_PRELOAD=/tools/lib/libjemalloc.so.2 
+            REPORT_HOST=${KB_CLUSTER_COMP_NAME}-mysql-${KB_POD_NAME##*-}
             SERVICE_ID=$((${KB_POD_NAME##*-} + 1))
-            docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
+            docker-entrypoint.sh mysqld --server-id $SERVICE_ID --report-host ${REPORT_HOST} \
+               --report-host ${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless \
                --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
                --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
-               --plugin-load-add=audit_log=audit_log.so \
                --log-bin=/var/lib/mysql/binlog/${KB_POD_NAME}-bin \
                --skip-slave-start=ON
         volumeMounts:
@@ -87,13 +64,19 @@ spec:
         ports:
           - containerPort: 3306
             name: mysql
+          - containerPort: 33061
+            name: mgr
           - containerPort: 3601
             name: ha
         env:
           - name: PATH
             value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-          - name: KB_SERVICE_CHARACTER_TYPE
+          - name: LD_PRELOAD
+            value: /tools/lib/libjemalloc.so.2
+          - name: KB_ENGINE_TYPE
             value: mysql
+          - name: KB_WORKLOAD_TYPE
+            value: mgr
           - name: MYSQL_INITDB_SKIP_TZINFO
             value: "1"
           - name: MYSQL_ROOT_HOST

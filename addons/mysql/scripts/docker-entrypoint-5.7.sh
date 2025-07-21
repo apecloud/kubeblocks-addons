@@ -472,6 +472,7 @@ _main() {
 			mysql_socket_fix
 		fi
 	fi
+
 	exec "$@"
 }
 

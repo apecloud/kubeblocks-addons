@@ -88,9 +88,6 @@
 	// The character set used for literals specified without a character set introducer and for number-to-string conversion.
 	character_set_connection?: string | *"utf8"
 
-	// The character set used by the default database.
-	character_set_database?: string | *"latin1"
-
 	// The file system character set.
 	character_set_filesystem?: string | *"binary"
 
@@ -111,9 +108,6 @@
 
 	// The collation of the connection character set.
 	collation_connection?: string
-
-	// The collation used by the default database.
-	collation_database?: string | *"latin1_swedish_ci"
 
 	// The server's default collation.
 	collation_server?: string | *"latin1_swedish_ci"

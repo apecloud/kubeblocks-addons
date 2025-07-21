@@ -74,7 +74,9 @@ connect_timeout=10
 
 port={{ $mysql_port }}
 
+tmpdir={{ $data_root }}/temp
 datadir={{ $data_root }}/data
+plugin_dir=/usr/lib64/mysql/plugin/
 
 {{- $log_root := printf "%s/log" $data_root }}
 log_error={{ $log_root }}/mysqld-error.log
@@ -131,11 +133,22 @@ log_slave_updates=ON
 loose_audit_log_handler=FILE # FILE, SYSLOG
 loose_audit_log_file={{ $data_root }}/auditlog/audit.log
 loose_audit_log_buffer_size=1Mb
-loose_audit_log_policy=ALL # ALL, LOGINS, QUERIES, NONE
+loose_audit_log_policy=QUERIES # ALL, LOGINS, QUERIES, NONE
 loose_audit_log_strategy=ASYNCHRONOUS
 loose_audit_log_rotate_on_size=10485760
 loose_audit_log_rotations=5
-loose_audit_log_exclude_accounts=kbadmin@%
+## mysql> select host, user from mysql.user;
+## +-----------+------------------+
+## | host      | user             |
+## +-----------+------------------+
+## | %         | root             |
+## | %         | u1               |
+## | localhost | mysql.infoschema |
+## | localhost | mysql.session    |
+## | localhost | mysql.sys        |
+## | localhost | root             |
+## +-----------+------------------+
+loose_audit_log_exclude_accounts=root@%,root@localhost,kbadmin@%
 
 # replay log
 relay_log_info_repository=TABLE

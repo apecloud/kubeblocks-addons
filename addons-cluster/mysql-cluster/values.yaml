@@ -5,9 +5,9 @@
 ## @param version MySQL cluster version
 ##
 version: mysql-8.0.33
+serviceVersion: 8.0.33
 
-componentVersion: 8.0.33
-## @param mode MySQL cluster topology mode, standalone, replication or raftGroup
+## @param mode MySQL cluster topology mode, standalone or replication
 ##
 mode: standalone
 
@@ -17,11 +17,11 @@ replicas: 1
 
 ## @param cpu
 ##
-cpu: 1
+cpu: 0.5
 
 ## @param memory, the unit is Gi
 ##
-memory: 1
+memory: 0.5
 
 ## @param requests.cpu if not set, use cpu
 ## @param requests.memory, if not set, use memory
@@ -34,5 +34,32 @@ requests:
 ##
 storage: 20
 
-compdef: mysql-8.0
-useLegacyCompDef: true
+topology: replication
+
+mysql:
+  version: mysql-8.0
+
+proxysql:
+  enable: false
+  replicas: 1
+  cpu: 1
+  memory: 1
+
+## @param extra.rbacEnabled if true, create rbac
+# extra:
+#   rbacEnabled: true
+
+orchestrator:
+  enable: false
+  # monitor_password: proxysql
+  # cluster_password: nb2wZpZ9OXXTF2Mv
+
+  serviceReference:
+    namespace: ""
+    port: 80
+    endpoint: "myorc-orchestrator"
+  clusterServiceSelector:
+    cluster: ""
+    portName: "http"
+
+useLegacyCompDef: false

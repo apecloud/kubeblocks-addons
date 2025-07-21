@@ -1,11 +1,11 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: mysql-xtrabackup
+  name: mysql-xtrabackup-inc
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
-  backupType: Full
+  backupType: Incremental
   env:
   - name: DATA_DIR
     value: "{{ .Values.dataMountPath }}/data"
@@ -25,7 +25,7 @@ spec:
       - bash
       - -c
       - |
-        {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/xtrabackup-incremental-backup.sh" | nindent 8 }}
       syncProgress:
         enabled: true
         intervalSeconds: 5
@@ -36,7 +36,7 @@ spec:
       - bash
       - -c
       - |
-        {{- .Files.Get "dataprotection/restore.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/xtrabackup-incremental-restore.sh" | nindent 8 }}
     postReady:
     - exec:
         command:

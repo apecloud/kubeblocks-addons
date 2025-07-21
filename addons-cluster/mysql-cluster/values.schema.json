@@ -2,12 +2,6 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "version": {
-      "title": "Version",
-      "description": "Cluster version, run \"kbcli cv list --devel\" to see all versions.",
-      "type": "string",
-      "default": "ac-mysql-8.0.30"
-    },
     "mode": {
       "title": "Mode",
       "description": "Cluster topology mode.",
@@ -16,18 +10,7 @@
       "enum": [
         "standalone",
         "replication",
-        "raftGroup"
-      ]
-    },
-    "compdef": {
-      "title": "componentdefinition",
-      "description": "Cluster component definition.",
-      "type": "string",
-      "default": "mysql-8.0",
-      "enum": [
-        "mysql-5.7",
-        "mysql-8.0",
-        "mysql-8.4"
+        "mgr"
       ]
     },
     "replicas": {
@@ -47,7 +30,7 @@
       ],
       "default": 1,
       "minimum": 0.5,
-      "maximum": 64,
+      "maximum": 256,
       "multipleOf": 0.5
     },
     "memory": {
