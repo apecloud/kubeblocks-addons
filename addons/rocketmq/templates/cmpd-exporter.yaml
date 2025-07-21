@@ -1,0 +1,61 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "rocketmq.compDefRocketMQExporter" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 6 }}
+spec:
+  provider: community
+  serviceKind: {{ .Chart.Name }}-exporter
+  description: RocketMQ Exporter
+  serviceVersion: 0.0.2
+  minReadySeconds: 10
+  updateStrategy: BestEffortParallel
+  scripts:
+    - name: rocketmq-exporter-scripts
+      templateRef: {{ include "rocketmq-exporter.scriptsTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  vars:
+    - name: NAMESRV_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "rocketmq.compDefRocketMQNameSrv4" . }}
+          host: Required
+    - name: NAMESRV_HOST
+      value: $(NAMESRV_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}
+    - name: ROCKETMQ_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "rocketmq.compDefRocketMQBroker4" . }}
+          name: rocketmq-admin
+          optional: false
+          username: Required
+          multipleClusterObjectOption:
+            strategy: individual
+    - name: ROCKETMQ_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "rocketmq.compDefRocketMQBroker4" . }}
+          name: rocketmq-admin
+          optional: false
+          password: Required
+          multipleClusterObjectOption:
+            strategy: individual
+  runtime:
+    containers:
+      - name: rocketmq-exporter
+        command: [ "/scripts/exporter-setup.sh" ]
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        volumeMounts:
+          - mountPath: /scripts
+            name: scripts
+        ports:
+          - name: metrics
+            containerPort: 5557
+        env:
+          - name: SERVICE_PORT
+            value: "5557"
+          - name: NAMESRV_PORT
+            value: "{{ .Values.nameserver.port }}"

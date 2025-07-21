@@ -1,0 +1,49 @@
+# Default values for gaussdb.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+nameOverride: ""
+
+image:
+  # refer: https://github.com/apecloud-inc/spilo/blob/main/postgres-appliance/Dockerfile
+  # this is the image of postgresql, which is built from Dockerfile of apecloud-inc/spilo forked from zalando/spilo.
+  registry: docker.io
+  repository: apecloud/rocketmq
+  tag: 4.9.6-r1
+  pullPolicy: "IfNotPresent"
+
+  exporter:
+    repository: apecloud/rocketmq-exporter
+    tag: 0.0.3
+
+  dashboard:
+    repository: apecloud/rocketmq-dashboard
+    tag: 2.0.1
+
+  jmxExporter:
+    repository: apecloud/jmx-exporter
+    tag: 0.18.0-debian-11-r20
+
+## @param compDefinitionVersion for each ComponentDefinition resources name created by this chart, that can avoid name conflict
+componentDefinitionVersion:
+  rocketMQ4: "4"
+
+nameserver:
+  heapSize: "1792M"
+  port: 9876
+  logPath: /home/rocketmq/logs
+
+broker:
+  # BROKER_MEM sets the broker JVM, if set to "" then Xms = Xmx = max(min(1/2 ram, 1024MB), min(1/4 ram, 8GB))
+  # fixme: image has bug which get system memory from 'free' instead of cgroup.
+  jvmMemory: ""
+  dataMountPath: /home/rocketmq/store
+  logPath: /home/rocketmq/logs
+  port: 10911
+  jxmPort: 5555
+  dledgerPort: 40911
+
+dashboard:
+  dataPath: /configs
+
+clusterDomain: cluster.local
