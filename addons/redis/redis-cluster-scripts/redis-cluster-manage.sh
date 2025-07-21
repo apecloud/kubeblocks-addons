@@ -10,6 +10,21 @@ declare -gA initialize_pod_name_to_advertise_host_port_map
 declare -gA scale_out_shard_default_primary_node
 declare -gA scale_out_shard_default_other_nodes
 
+init_environment(){
+  if [[ -z "${REDIS_CLUSTER_ADVERTISED_PORT}" ]]; then
+    REDIS_CLUSTER_ADVERTISED_PORT="${REDIS_CLUSTER_LB_ADVERTISED_PORT}"
+  fi
+  if [[ -z "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}" ]]; then
+    REDIS_CLUSTER_ADVERTISED_BUS_PORT="${REDIS_CLUSTER_LB_ADVERTISED_BUS_PORT}"
+  fi
+  if [[ -z "${REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_PORT}" ]]; then
+    REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_PORT="${REDIS_CLUSTER_ALL_SHARDS_LB_ADVERTISED_PORT}"
+  fi
+  if [[ -z "${REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_BUS_PORT}" ]]; then
+    REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_BUS_PORT="${REDIS_CLUSTER_ALL_SHARDS_LB_ADVERTISED_BUS_PORT}"
+  fi
+}
+
 # initialize the other component and pods info
 init_other_components_and_pods_info() {
   local component="$1"
@@ -73,7 +88,7 @@ init_other_components_and_pods_info() {
 
     local port=$SERVICE_PORT
     # if redis cluster is using host network, the port should be the host network port
-    if [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ]; then
+    if [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
       IFS=',' read -ra port_mappings <<< "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"
       for mapping in "${port_mappings[@]}"; do
         shard_name=$(echo "$mapping" | cut -d':' -f1)
@@ -195,6 +210,7 @@ check_redis_server_ready() {
   local retry_interval=3
   local retry_count=0
   local check_cmd
+
   set +x
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
     check_cmd="redis-cli -h $host -p $port ping"
@@ -232,6 +248,7 @@ is_node_in_cluster() {
   local random_node_endpoint="$1"
   local random_node_port="$2"
   local node_name="$3"
+
   set +x
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
     cluster_nodes_info=$(redis-cli -h "$random_node_endpoint" -p "$random_node_port" cluster nodes)
@@ -239,6 +256,7 @@ is_node_in_cluster() {
     cluster_nodes_info=$(redis-cli -h "$random_node_endpoint" -p "$random_node_port" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
   fi
   set -x
+
   # if the cluster_nodes_info contains multiple lines and the node_name is in the cluster_nodes_info, return true
   if [ "$(echo "$cluster_nodes_info" | wc -l)" -gt 1 ] && echo "$cluster_nodes_info" | grep -q "$node_name"; then
     true
@@ -305,7 +323,7 @@ is_redis_cluster_initialized() {
 
     local port=$SERVICE_PORT
     ## if redis cluster is using host network, the port should be the host network port
-    if [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ]; then
+    if [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
       IFS=',' read -ra port_mappings <<< "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"
       for mapping in "${port_mappings[@]}"; do
         shard_name=$(echo "$mapping" | cut -d':' -f1)
@@ -354,6 +372,21 @@ is_redis_cluster_initialized() {
   [ "$initialized" = "true" ]
 }
 
+extract_lb_host_by_svc_name() {
+  local svc_name="$1"
+  for lb_composed_name in $(echo "$REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_LB_HOST" | tr ',' '\n' ); do
+    lb_composed_name=${lb_composed_name#*@}
+    if [[ ${lb_composed_name} == *":"* ]]; then
+       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
+         echo "${lb_composed_name#*:}"
+         break
+       fi
+    else
+       break
+    fi
+  done
+}
+
 # get the current component primary node and other nodes for scale in
 get_current_comp_nodes_for_scale_in() {
   local cluster_node="$1"
@@ -387,7 +420,7 @@ get_current_comp_nodes_for_scale_in() {
       port=$(echo $i | cut -d':' -f2)
       advertised_ports[$port]=1
     done
-  elif [ -n "$REDIS_CLUSTER_HOST_NETWORK_PORT" ]; then
+  elif [ -n "$REDIS_CLUSTER_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
     using_host_network=true
   fi
 
@@ -405,7 +438,7 @@ get_current_comp_nodes_for_scale_in() {
     node_ip_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}')
     node_ip=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f1)
     node_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f2)
-    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc
+    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local
     node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
     node_role=$(echo "$line" | awk '{print $3}')
     if $using_advertised_ports; then
@@ -463,7 +496,14 @@ init_current_comp_default_nodes_for_scale_out() {
         advertised_port=$(echo "$advertised_info" | cut -d':' -f2)
         advertised_svc_ordinal=$(extract_ordinal_from_object_name "$advertised_svc")
         if [ "$pod_name_ordinal" == "$advertised_svc_ordinal" ]; then
-          pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST")
+          lb_host=$(extract_lb_host_by_svc_name "${advertised_svc}")
+          if [ -n "$lb_host" ]; then
+            echo "Found load balancer host for svcName '$advertised_svc', value is '$lb_host'."
+            pod_host_ip="$lb_host"
+            advertised_port="6379"
+          else
+            pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_HOST_IP_LIST")
+          fi
           if [ -z "$pod_host_ip" ]; then
             echo "Failed to get the host ip of the pod $pod_name"
             exit 1
@@ -482,7 +522,7 @@ init_current_comp_default_nodes_for_scale_out() {
         exit 1
       fi
     ## deal with host network mode
-    elif [ -n "$REDIS_CLUSTER_HOST_NETWORK_PORT" ]; then
+    elif [ -n "$REDIS_CLUSTER_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
       pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST")
       if [ -z "$pod_host_ip" ]; then
         echo "Failed to get the host ip of the pod $pod_name in host network mode"
@@ -553,7 +593,14 @@ gen_initialize_redis_cluster_node() {
           shard_advertised_port=$(echo "$shard_advertised_info" | cut -d':' -f2)
           shard_advertised_svc_ordinal=$(extract_ordinal_from_object_name "$shard_advertised_svc")
           if [ "$pod_name_ordinal" == "$shard_advertised_svc_ordinal" ]; then
-            pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_HOST_IP_LIST")
+            lb_host=$(extract_lb_host_by_svc_name "${shard_advertised_svc}")
+            if [ -n "$lb_host" ]; then
+              echo "Found load balancer host for svcName '$shard_advertised_svc', value is '$lb_host'."
+              pod_host_ip="$lb_host"
+              shard_advertised_port="6379"
+            else
+              pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_HOST_IP_LIST")
+            fi
             if [ -z "$pod_host_ip" ]; then
               echo "Failed to get the host ip of the pod $pod_name"
               exit 1
@@ -570,7 +617,7 @@ gen_initialize_redis_cluster_node() {
       done
     ## deal with host network mode
     ## the value format of REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT is "shard-chg:1060,shard-khh:1059,shard-mpg:1054"
-    elif [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ]; then
+    elif [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
       old_ifs="$IFS"
       IFS=','
       set -f
@@ -603,7 +650,7 @@ gen_initialize_redis_cluster_node() {
     else
       local port=$SERVICE_PORT
       pod_name_prefix=$(extract_pod_name_prefix "$pod_name")
-      local pod_fqdn="$pod_name.$pod_name_prefix-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
+      local pod_fqdn="$pod_name.$pod_name_prefix-headless.$KB_NAMESPACE.svc.cluster.local"
       if [ "$is_primary" = true ]; then
         initialize_redis_cluster_primary_nodes["$pod_name"]="$pod_fqdn:$port"
       else
@@ -643,6 +690,7 @@ initialize_redis_cluster() {
     echo "Primary nodes health check failed"
     exit 1
   fi
+
   # check all the secondary nodes are ready
   if [ ${#initialize_redis_cluster_secondary_nodes[@]} -gt 0 ]; then
     secondary_node_list=()
@@ -682,7 +730,6 @@ initialize_redis_cluster() {
   fi
 
   # initialize all the secondary nodes
-  gen_initialize_redis_cluster_secondary_nodes
   if [ ${#initialize_redis_cluster_secondary_nodes[@]} -eq 0 ]; then
     echo "No secondary nodes to initialize"
     return
@@ -726,6 +773,7 @@ initialize_redis_cluster() {
       echo "Failed to verify secondary node $secondary_pod_name in all primary nodes"
       exit 1
     fi
+
     echo "Secondary node $secondary_pod_name successfully joined the cluster and verified in all primaries"
   done
 }
@@ -733,17 +781,21 @@ initialize_redis_cluster() {
 verify_secondary_in_all_primaries() {
   local secondary_node_name="$1"
   local primary_nodes=("$@")
+
   # Skip the first argument (secondary_node_name)
   shift
+
   for primary_node in "$@"; do
     local primary_host primary_port
     primary_host=$(echo "$primary_node" | cut -d':' -f1)
     primary_port=$(echo "$primary_node" | cut -d':' -f2)
+
     retry_count=0
     while ! is_node_in_cluster "$primary_host" "$primary_port" "$secondary_node_name" && [ $retry_count -lt 30 ]; do
       sleep 3
       ((retry_count++))
     done
+
     # shellcheck disable=SC2086
     if [ $retry_count -eq 30 ]; then
       echo "Secondary node $secondary_node_name not found in primary $primary_node after 30 seconds"
@@ -946,6 +998,7 @@ initialize_or_scale_out_redis_cluster() {
 
 # main
 if [ $# -eq 1 ]; then
+  init_environment
   case $1 in
   --help)
     echo "Usage: $0 [options]"

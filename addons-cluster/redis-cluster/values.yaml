@@ -55,20 +55,24 @@ twemproxy:
   enabled: false
   replicas: 3
   cpu: 0.2
-  memory: 0.2
+  memory: 0.25
 
 ## @param nodePortEnabled if true, the redis will use nodePort as the announce IP
-## This option is mutually exclusive with fixedPodIPEnabled and hostNetworkEnabled. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled are false, the default announce IP will be a headless service.
+## This option is mutually exclusive with fixedPodIPEnabled, hostNetworkEnabled and loadBalancerEnabled. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled, loadBalancerEnabled are false, the default announce IP will be a headless service.
 nodePortEnabled: false
 
 ## If the K8s environment supports immutable pod IPs (usually requiring additional CNI plugins or other methods),
 ## you can set fixedPodIPEnabled to true. When fixedPodIPEnabled is true, the Redis will use the pod IP as the announce IP to meet network requirements in certain scenarios.
-## This option is mutually exclusive with nodePortEnabled and hostNetworkEnabled. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled are false, the default announce IP will be a headless service.
+## This option is mutually exclusive with nodePortEnabled, hostNetworkEnabled and loadBalancerEnabled. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled, loadBalancerEnabled are false, the default announce IP will be a headless service.
 fixedPodIPEnabled: false
 
 ## @param hostNetworkEnabled if true, the redis will use hostNetwork
-## This option is mutually exclusive with fixedPodIPEnabled and nodePortEnabled, When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled are false, the default announce IP will be a headless service.
+## This option is mutually exclusive with fixedPodIPEnabled, nodePortEnabled and loadBalancerEnable. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled, loadBalancerEnabled are false, the default announce IP will be a headless service.
 hostNetworkEnabled: false
+
+## @param loadBalancerEnabled if true, the redis announce IP will use loadBalancer ip/hostname
+## This option is mutually exclusive with fixedPodIPEnabled, nodePortEnabled and hostNetworkEnabled. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled, loadBalancerEnabled are false, the default announce IP will be a headless service.
+loadBalancerEnabled: false
 
 ## @param sentinel.cpu
 ## @param sentinel.memory
@@ -77,7 +81,7 @@ hostNetworkEnabled: false
 sentinel:
   enabled: true
   cpu: 0.2
-  memory: 0.2
+  memory: 0.25
   storage: 20
   replicas: 3
   customMasterName: ""
@@ -85,7 +89,6 @@ sentinel:
   # the secret must contain keys named 'username' and 'password'
   customSecretName: ""
   customSecretNamespace: ""
-  storageClassName: ""
 
 ## if mode is cluster, specify the redis cluster parameters
 ## @param redisCluster.shardCount specify the number of shards in the cluster, the minimum value is 3

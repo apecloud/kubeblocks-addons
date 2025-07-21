@@ -11,12 +11,22 @@ set -ex
   {{- if index $e "componentDefRef" }}
     {{- if eq $e.componentDefRef "redis-7" }}
       {{- $redis_component = $e }}
+    {{- else if eq $e.componentDefRef "redis-6" }}
+      {{- $redis_component = $e }}
+    {{- else if eq $e.componentDefRef "redis-5" }}
+      {{- $redis_component = $e }}
     {{- else if eq $e.componentDefRef "redis" }}
       {{- $redis_component = $e }}
     {{- end }}
   {{- end }}
   {{- if index $e "componentDef" }}
-    {{- if eq $e.componentDef "redis-7" }}
+    {{- if eq $e.componentDef "redis-8" }}
+      {{- $redis_component = $e }}
+    {{- else if eq $e.componentDef "redis-7" }}
+      {{- $redis_component = $e }}
+    {{- else if eq $e.componentDef "redis-6" }}
+      {{- $redis_component = $e }}
+    {{- else if eq $e.componentDef "redis-5" }}
       {{- $redis_component = $e }}
     {{- else if eq $e.componentDef "redis" }}
       {{- $redis_component = $e }}
@@ -24,7 +34,7 @@ set -ex
   {{- end }}
 {{- end }}
 {{- /* build redis engine service */}}
-{{- $primary_svc := printf "%s-%s.%s.svc" $clusterName $redis_component.name $namespace }}
+{{- $primary_svc := printf "%s-%s.%s.svc.cluster.local" $clusterName $redis_component.name $namespace }}
 echo "Waiting for redis service {{ $primary_svc }} to be ready..."
 set +x
 if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
@@ -38,7 +48,7 @@ if [ $? -ne 0 ]; then
 fi
 set -x
 echo "Redis service ready, Starting sentinel..."
-kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
+kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
 echo "sentinel announce-ip $kb_pod_fqdn" >> /etc/sentinel/redis-sentinel.conf
 exec redis-server /etc/sentinel/redis-sentinel.conf --sentinel
 echo "Start sentinel succeeded!"

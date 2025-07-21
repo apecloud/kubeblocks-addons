@@ -1,14 +1,35 @@
+{{- range .Values.redisVersions }}
+{{- $redisClusterImage  := printf "%s/%s:%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository .defaultImageTag }}
+{{- $redisClusterStartScripts := "redis-cluster-server-start.sh" }}
+{{- $redisClusterManageScripts := "redis-cluster-manage.sh" }}
+{{- $redisClusterSwitchoverScripts := "redis-cluster-switchover.sh" }}
+{{- if eq .major "5" }}
+  {{- $redisClusterStartScripts = "redis-cluster5-server-start.sh" }}
+  {{- $redisClusterManageScripts = "redis-cluster5-manage.sh" }}
+  {{- $redisClusterSwitchoverScripts = "redis-cluster5-switchover.sh" }}
+{{- else if eq .major "6" }}
+  {{- $redisClusterStartScripts = "redis-cluster6-server-start.sh" }}
+  {{- $redisClusterManageScripts = "redis-cluster6-manage.sh" }}
+  {{- $redisClusterSwitchoverScripts = "redis-cluster6-switchover.sh" }}
+{{- end }}
+{{- if or (eq .major "8") (eq .major "5") }}
+  {{- $redisClusterImage  = printf "%s/%s:%s" ( $.Values.ceImage.registry | default ( $.Values.image.registry | default "docker.io" ) )  $.Values.ceImage.repository .defaultImageTag }}
+{{- end }}
+---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "redis-cluster.componentDefName" . }}
+  name: {{ .clusterComponentDef }}
   labels:
-    {{- include "redis.labels" . | nindent 4 }}
+    {{- include "redis.labels" $ | nindent 4 }}
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
 spec:
   provider: kubeblocks
-  description: An official v7.0 Redis Cluster(distributed implementation of Redis) component definition for Kubernetes
+  description: An official v{{ .major }}.0 Redis Cluster(distributed implementation of Redis) component definition for Kubernetes
   serviceKind: redis-cluster
-  serviceVersion: {{ .Values.componentServiceVersion.redisCluster }}
+  serviceVersion: {{ .serviceVersion }}
+  minReadySeconds: 10
   services:
     - name: redis-advertised
       serviceName: redis-advertised
@@ -24,6 +45,21 @@ spec:
           targetPort: cluster-bus
       podService: true
       disableAutoProvision: true
+    - name: redis-lb-advertised
+      serviceName: redis-lb-advertised
+      spec:
+        ## the type can override in cluster componentSpec services, type can loadBalancer
+        type: LoadBalancer
+        # allocateLoadBalancerNodePorts: false
+        ports:
+          - name: redis-advertised
+            port: 6379
+            targetPort: redis-cluster
+          - name: advertised-bus
+            port: 16379
+            targetPort: cluster-bus
+      podService: true
+      disableAutoProvision: true
   updateStrategy: BestEffortParallel
   podManagementPolicy: OrderedReady
   volumes:
@@ -37,31 +73,22 @@ spec:
       serviceable: false
       writable: false
   logConfigs:
-    {{- range $name,$pattern := .Values.logConfigs }}
+    {{- range $name,$pattern := $.Values.logConfigs }}
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
-  exporter:
-    containerName: metrics
-    scrapePath: /metrics
-    scrapePort: http-metrics
   configs:
     - name: redis-cluster-config
-      templateRef: redis-cluster7-config-template
-      constraintRef: redis-cluster7-config-constraints
-      namespace: {{ .Release.Namespace }}
+      templateRef: redis-cluster{{ .major }}-config-template
+      constraintRef: redis-cluster{{ .major }}-config-constraints
+      namespace: {{ $.Release.Namespace }}
       volumeName: redis-cluster-config
       reRenderResourceTypes:
         - vscale
-    - name: redis-metrics-config
-      templateRef: redis-metrics-config
-      namespace: {{ .Release.Namespace }}
-      volumeName: redis-metrics-config
-      defaultMode: 0444
   scripts:
     - name: redis-cluster-scripts
       templateRef: redis-cluster-scripts
-      namespace: {{ .Release.Namespace }}
+      namespace: {{ $.Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
   systemAccounts:
@@ -80,20 +107,17 @@ spec:
         ports:
           - redis-cluster
           - cluster-bus
-      - container: metrics
-        ports:
-          - http-metrics
-          - server-metrics
   vars:
-    ## the cluster domain without . prefix
-    - name: CLUSTER_DOMAIN
-      value: {{ .Values.clusterDomain }}
+{{- if eq .major "8" }}
+    - name: IS_REDIS8
+      value: "true"
+{{- end }}
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ .clusterComponentDef }}
           name: default
           username: Required
     ## the default password of redis connection
@@ -101,14 +125,14 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ .clusterComponentDef }}
           name: default
           password: Required
     ## the redis cluster advertised service port list for each pod of current shard, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
     - name: REDIS_CLUSTER_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ .clusterComponentDef }}
           name: redis-advertised
           optional: true
           port:
@@ -118,26 +142,53 @@ spec:
     - name: REDIS_CLUSTER_ADVERTISED_BUS_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ .clusterComponentDef }}
           name: redis-advertised
           optional: true
           port:
             name: advertised-bus
             option: Required
-    ## the redis cluster advertised service name list for each pod of current shard, the value format is "pod1Svc,pod2Svc,..."
-    - name: REDIS_CLUSTER_ADVERTISED_SVC_NAME
+    - name: REDIS_ADVERTISED_LB_HOST
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
-          name: redis-advertised
+          compDef: {{ .clusterComponentDef }}
+          name: redis-lb-advertised
           optional: true
+          loadBalancer: Required
           host: Required
+    - name: REDIS_CLUSTER_LB_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ .clusterComponentDef }}
+          name: redis-lb-advertised
+          optional: true
+          port:
+            name: redis-advertised
+            option: Required
+    ## the redis cluster advertised service bus port list for each pod of current shard, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: REDIS_CLUSTER_LB_ADVERTISED_BUS_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ .clusterComponentDef }}
+          name: redis-lb-advertised
+          optional: true
+          port:
+            name: advertised-bus
+            option: Required
+    - name: REDIS_CLUSTER_ALL_SHARDS
+      valueFrom:
+        componentVarRef:
+          compDef: {{ .clusterComponentDef }}
+          componentName: Required
+          optional: false
+          multipleClusterObjectOption:
+            strategy: combined
     ## the redis cluster advertised service port list for each pod of all shard pods
     ## the value format is like "shard-98x@redis-shard-98x-redis-advertised-0:32024,redis-shard-98x-redis-advertised-1:31318.shard-cq7@redis-shard-cq7-redis-advertised-0:31828,redis-shard-cq7-redis-advertised-1:32000"
     - name: REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ .clusterComponentDef }}
           name: redis-advertised
           optional: true
           multipleClusterObjectOption:
@@ -154,7 +205,7 @@ spec:
     - name: REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_BUS_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ .clusterComponentDef }}
           name: redis-advertised
           optional: true
           multipleClusterObjectOption:
@@ -166,13 +217,13 @@ spec:
           port:
             name: advertised-bus
             option: Required
-    ## the redis cluster advertised service name list for each pod of all shard pods.
-    ## the value format is like "shard-98x@redis-shard-98x-redis-advertised-0,redis-shard-98x-redis-advertised-1.shard-cq7@redis-shard-cq7-redis-advertised-0,redis-shard-cq7-redis-advertised-1"
-    - name: REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_SVC_NAME
+    ## the redis cluster advertised service port list for each pod of all shard pods
+    ## the value format is like "shard-98x@redis-shard-98x-redis-advertised-0:32024,redis-shard-98x-redis-advertised-1:31318.shard-cq7@redis-shard-cq7-redis-advertised-0:31828,redis-shard-cq7-redis-advertised-1:32000"
+    - name: REDIS_CLUSTER_ALL_SHARDS_LB_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
-          name: redis-advertised
+          compDef: {{ .clusterComponentDef }}
+          name: redis-lb-advertised
           optional: true
           multipleClusterObjectOption:
             strategy: combined
@@ -180,7 +231,40 @@ spec:
               flattenFormat:
                 delimiter: "."
                 keyValueDelimiter: "@"
+          port:
+            name: redis-advertised
+            option: Required
+    ## the redis cluster advertised service bus port list for each pod of all shard pods
+    ## the value format is like "shard-98x@redis-shard-98x-redis-advertised-0:30654,redis-shard-98x-redis-advertised-1:30971.shard-cq7@redis-shard-cq7-redis-advertised-0:32555,redis-shard-cq7-redis-advertised-1:32368"
+    - name: REDIS_CLUSTER_ALL_SHARDS_LB_ADVERTISED_BUS_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ .clusterComponentDef }}
+          name: redis-lb-advertised
+          optional: true
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: "."
+                keyValueDelimiter: "@"
+          port:
+            name: advertised-bus
+            option: Required
+    - name: REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_LB_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ .clusterComponentDef }}
+          name: redis-lb-advertised
+          optional: true
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: ","
+                keyValueDelimiter: "@"
           host: Required
+          loadBalancer: Required
     ## the redis cluster server host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 6379
     - name: REDIS_CLUSTER_HOST_NETWORK_PORT
       valueFrom:
@@ -191,9 +275,7 @@ spec:
             port:
               name: redis-cluster
               option: Required
-    - name: SERVICE_PORT
-      value: "6379"
-      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_PORT}}{{else}}6379{{end}}` | toYaml }}
     ## the redis cluster server host network bus port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 16379
     - name: REDIS_CLUSTER_HOST_NETWORK_BUS_PORT
       valueFrom:
@@ -204,41 +286,11 @@ spec:
             port:
               name: cluster-bus
               option: Required
-    - name: CLUSTER_BUS_PORT
-      value: "16379"
-      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_BUS_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}}{{else}}{{.CLUSTER_BUS_PORT}}{{end}}` | toYaml }}
-    ## the redis server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 9121
-    - name: REDIS_METRICS_HOST_NETWORK_PORT
-      valueFrom:
-        hostNetworkVarRef:
-          optional: true
-          container:
-            name: metrics
-            port:
-              name: http-metrics
-              option: Required
-    - name: REDIS_METRICS_HTTP_PORT
-      value: "9121"
-      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}{{.REDIS_METRICS_HTTP_PORT}}{{end}}` | toYaml }}
-    ## the redis server metrics container host network server port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 8888
-    - name: REDIS_METRICS_HOST_NETWORK_SERVER_PORT
-      valueFrom:
-        hostNetworkVarRef:
-          optional: true
-          container:
-            name: metrics
-            port:
-              name: server-metrics
-              option: Required
-    - name: REDIS_METRICS_SERVER_PORT
-      value: "8888"
-      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
-    ## the redis cluster host network port list for all shard pods, the all pods in same shard has the same host network port allocated automatically by KubeBlocks.
-    ## the value format is like "shard-chg:1057,shard-khh:1056,shard-mpg:1053"
+      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_BUS_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}}{{else}}16379{{end}}` | toYaml }}
     - name: REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT
       valueFrom:
         hostNetworkVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ .clusterComponentDef }}
           optional: true
           container:
             name: redis-cluster
@@ -256,7 +308,7 @@ spec:
     - name: REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_BUS_PORT
       valueFrom:
         hostNetworkVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ .clusterComponentDef }}
           optional: true
           container:
             name: redis-cluster
@@ -276,39 +328,56 @@ spec:
       timeoutSeconds: 1
     postProvision:
       customHandler:
-        image: {{ include "redis.image" . }}
+        image: {{ $redisClusterImage }}
         exec:
           command:
             - /bin/bash
             - -c
-            - /scripts/redis-cluster-manage.sh --post-provision
+            - /scripts/{{ $redisClusterManageScripts }} --post-provision
         ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
         preCondition: ComponentReady
         retryPolicy:
           maxRetries: 10
     preTerminate:
       customHandler:
-        image: {{ include "redis.image" . }}
+        image: {{ $redisClusterImage }}
         exec:
           command:
             - /bin/bash
             - -c
-            - /scripts/redis-cluster-manage.sh --pre-terminate
+            - /scripts/{{ $redisClusterManageScripts }} --pre-terminate
         retryPolicy:
           maxRetries: 10
     memberLeave:
       customHandler:
-        image: {{ include "redis.image" . }}
+        image: {{ $redisClusterImage }}
         exec:
           command:
             - /bin/bash
             - -c
             - /scripts/redis-cluster-replica-member-leave.sh
+    switchover:
+      scriptSpecSelectors:
+        - name: redis-cluster-scripts
+      withCandidate:
+        image: {{ $redisClusterImage }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /scripts/{{ $redisClusterSwitchoverScripts }}
+      withoutCandidate:
+        image: {{ $redisClusterImage }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /scripts/{{ $redisClusterSwitchoverScripts }}
   runtime:
     containers:
       - name: redis-cluster
-        image: {{ include "redis.image" . }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        image: {{ $redisClusterImage }}
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
         ports:
           - name: redis-cluster
             containerPort: 6379
@@ -316,7 +385,7 @@ spec:
             containerPort: 16379
         volumeMounts:
           - name: data
-            mountPath: {{ .Values.dataMountPath }}
+            mountPath: {{ $.Values.dataMountPath }}
           - name: redis-cluster-config
             mountPath: /etc/conf
           - name: scripts
@@ -325,14 +394,16 @@ spec:
             mountPath: /etc/redis
         env:
           - name: SERVICE_PORT
-            value: "$(SERVICE_PORT)"
+            value: "$(REDIS_CLUSTER_HOST_NETWORK_PORT)"
+{{- if gt .major "6" }}
           - name: CLUSTER_BUS_PORT
-            value: "$(CLUSTER_BUS_PORT)"
+            value: "$(REDIS_CLUSTER_HOST_NETWORK_BUS_PORT)"
+{{- end }}
           - name: REDIS_REPL_USER
             value: "kbreplicator"
           - name: REDIS_REPL_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
-        command: [ "/scripts/redis-cluster-server-start.sh" ]
+        command: [ "/scripts/{{ $redisClusterStartScripts }}" ]
         readinessProbe:
           initialDelaySeconds: 10
           periodSeconds: 5
@@ -351,31 +422,4 @@ spec:
                 - /bin/bash
                 - -c
                 - /scripts/redis-cluster-replica-pre-stop.sh
-      - name: metrics
-        image: {{ include "metrics.image" . }}
-        imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: 1001
-        env:
-          - name: ENDPOINT
-            value: "localhost:$(SERVICE_PORT)"
-          - name: METRICS_HTTP_PORT
-            value: $(REDIS_METRICS_HTTP_PORT)
-          - name: METRICS_SERVER_PORT
-            value: $(REDIS_METRICS_SERVER_PORT)
-          - name: REDIS_USER
-            value: $(REDIS_DEFAULT_USER)
-          - name: REDIS_PASSWORD
-            value: $(REDIS_DEFAULT_PASSWORD)
-        command:
-          - "/bin/agamotto"
-          - "--config=/opt/conf/metrics-config.yaml"
-        ports:
-          - name: http-metrics
-            containerPort: {{ .Values.metrics.service.port }}
-          - name: server-metrics
-            containerPort: {{ .Values.metrics.service.serverPort }}
-        volumeMounts:
-          - name: redis-metrics-config
-            mountPath: /opt/conf
+{{- end }}

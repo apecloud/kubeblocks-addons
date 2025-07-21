@@ -33,7 +33,7 @@ spec:
     - name: REDIS_SERVICE_NAMES
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis.componentDefNameRegularExpression" . }}
           name: redis
           optional: false
           host: Required
@@ -43,7 +43,7 @@ spec:
     - name: REDIS_SERVICE_PORTS
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis.componentDefNameRegularExpression" . }}
           name: redis
           optional: false
           port:
@@ -56,7 +56,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis.componentDefNameRegularExpression" . }}
           name: default
           username: Required
           multipleClusterObjectOption:
@@ -66,7 +66,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis.componentDefNameRegularExpression" . }}
           name: default
           password: Required
           multipleClusterObjectOption:

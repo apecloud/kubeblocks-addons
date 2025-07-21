@@ -1,14 +1,26 @@
+{{- range .Values.redisVersions }}
+{{- $redisSentinelStartScripts := "redis-sentinel-start-v2.sh" }}
+{{- if eq .major "5" }}
+  {{- $redisSentinelStartScripts = "redis5-sentinel-start-v2.sh" }}
+{{- end }}
+{{- $redisSentinelImage := printf "%s/%s:%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository .defaultImageTag }}
+{{- if or (eq .major "8") (eq .major "5") }}
+  {{- $redisSentinelImage = printf "%s/%s:%s" ( $.Values.ceImage.registry | default ( $.Values.image.registry | default "docker.io" ) )  $.Values.ceImage.repository .defaultImageTag }}
+{{- end }}
+---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "redis-sentinel.componentDefName" . }}
+  name: {{ .sentinelComponentDef  }}
   labels:
-    {{- include "redis.labels" . | nindent 4 }}
+    {{- include "redis.labels" $ | nindent 4 }}
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
 spec:
   provider: kubeblocks
-  description: A Redis Sentinel v7.0 component definition for Kubernetes
+  description: A Redis Sentinel v{{ .major }}.0 component definition for Kubernetes
   serviceKind: redis-sentinel
-  serviceVersion: {{ .Values.componentServiceVersion.sentinel }}
+  serviceVersion: {{ .serviceVersion }}
   services:
     - name: redis-sentinel
       serviceName: redis-sentinel
@@ -24,7 +36,18 @@ spec:
         ports:
           - name: sentinel-advertised
             port: 26379
-            targetPort: 26379
+            targetPort: redis-sentinel
+      podService: true
+      disableAutoProvision: true
+    - name: sentinel-lb-advertised
+      serviceName: sentinel-lb-advertised
+      spec:
+        type: LoadBalancer
+        # allocateLoadBalancerNodePorts: false
+        ports:
+          - name: sentinel-advertised
+            port: 26379
+            targetPort: redis-sentinel
       podService: true
       disableAutoProvision: true
   updateStrategy: BestEffortParallel
@@ -32,20 +55,20 @@ spec:
     - name: data
       needSnapshot: true
   logConfigs:
-    {{- range $name,$pattern := .Values.logConfigs }}
+    {{- range $name,$pattern := $.Values.logConfigs }}
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
   configs:
     - name: redis-replication-config
-      templateRef: redis7-config-template
-      constraintRef: redis7-config-constraints
-      namespace: {{ .Release.Namespace }}
+      templateRef: redis{{ .major }}-config-template
+      constraintRef: redis{{ .major }}-config-constraints
+      namespace: {{ $.Release.Namespace }}
       volumeName: redis-config
   scripts:
     - name: redis-scripts
       templateRef: redis-scripts
-      namespace: {{ .Release.Namespace }}
+      namespace: {{ $.Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
   systemAccounts:
@@ -63,15 +86,10 @@ spec:
         ports:
           - redis-sentinel
   vars:
-    ## the cluster domain without . prefix
-    - name: CLUSTER_DOMAIN
-      value: {{ .Values.clusterDomain }}
     ## the username of redis sentinel
     - name: SENTINEL_USER
       valueFrom:
         credentialVarRef:
-          ## reference the redis-sentinel component definition name
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
           name: default
           optional: false
           username: Required
@@ -79,8 +97,6 @@ spec:
     - name: SENTINEL_PASSWORD
       valueFrom:
         credentialVarRef:
-          ## reference the redis-sentinel component definition name
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
           name: default
           optional: false
           password: Required
@@ -88,20 +104,26 @@ spec:
     - name: REDIS_SENTINEL_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
           name: sentinel-advertised
           optional: true
           port:
             name: sentinel-advertised
             option: Required
-    ## the redis sentinel advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
-    - name: REDIS_SENTINEL_ADVERTISED_SVC_NAME
+    - name: REDIS_SENTINEL_ADVERTISED_LB_HOST
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
-          name: sentinel-advertised
+          name: sentinel-lb-advertised
           optional: true
+          loadBalancer: Required
           host: Required
+    - name: REDIS_SENTINEL_LB_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          name: sentinel-lb-advertised
+          optional: true
+          port:
+            name: sentinel-advertised
+            option: Required
     ## the redis sentinel server host network port when using host network mode, the port will be allocated automatically by KubeBlocks
     - name: REDIS_SENTINEL_HOST_NETWORK_PORT
       valueFrom:
@@ -112,13 +134,11 @@ spec:
             port:
               name: redis-sentinel
               option: Required
-    - name: SENTINEL_SERVICE_PORT
-      value: "26379"
-      expression: {{ `{{if ne (index . "REDIS_SENTINEL_HOST_NETWORK_PORT") ""}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}{{.SENTINEL_SERVICE_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if ne (index . "REDIS_SENTINEL_HOST_NETWORK_PORT") ""}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}26379{{end}}` | toYaml }}
   lifecycleActions:
     accountProvision:
       customHandler:
-        image: {{ include "redis.image" . }}
+        image: {{ $redisSentinelImage }}
         exec:
           command:
             - sh
@@ -128,7 +148,7 @@ spec:
   runtime:
     containers:
     - name: redis-sentinel
-      image: {{ include "redis-sentinel.image" . }}
+      image: {{ $redisSentinelImage }}
       imagePullPolicy: IfNotPresent
       ports:
         - containerPort: 26379
@@ -140,18 +160,25 @@ spec:
           mountPath: /scripts
       env:
         - name: SENTINEL_SERVICE_PORT
-          value: "$(SENTINEL_SERVICE_PORT)"
+          value: "$(REDIS_SENTINEL_HOST_NETWORK_PORT)"
       command:
         - /bin/bash
       args:
         - -c
         - |
           set -e
-          /scripts/redis-sentinel-start-v2.sh
+          /scripts/{{ $redisSentinelStartScripts }}
+{{- if eq .major "6" }}
+      lifecycle:
+        postStart:
+          exec:
+            command: [ "/scripts/redis6-sentinel-post-start.sh" ]
+{{- else if ge .major "7" }}
       lifecycle:
         postStart:
           exec:
             command: [ "/scripts/redis-sentinel-post-start.sh" ]
+{{- end }}
       livenessProbe:
         initialDelaySeconds: 10
         periodSeconds: 5
@@ -174,3 +201,4 @@ spec:
             - sh
             - -c
             - /scripts/redis-sentinel-ping.sh
+{{- end }}

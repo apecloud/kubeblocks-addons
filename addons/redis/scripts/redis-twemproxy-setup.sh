@@ -13,6 +13,10 @@ set -ex
       {{- $proxy_component = $e }}
     {{- else if eq $e.componentDefRef "redis-7" }}
       {{- $redis_component = $e }}
+    {{- else if eq $e.componentDefRef "redis-6" }}
+      {{- $redis_component = $e }}
+    {{- else if eq $e.componentDefRef "redis-5" }}
+      {{- $redis_component = $e }}
     {{- else if eq $e.componentDefRef "redis" }}
       {{- $redis_component = $e }}
     {{- end }}
@@ -22,7 +26,13 @@ set -ex
       {{- $proxy_component = $e }}
     {{- else if eq $e.componentDef "redis-twemproxy" }}
       {{- $proxy_component = $e }}
+    {{- else if eq $e.componentDef "redis-8" }}
+      {{- $redis_component = $e }}
     {{- else if eq $e.componentDef "redis-7" }}
+      {{- $redis_component = $e }}
+    {{- else if eq $e.componentDef "redis-6" }}
+      {{- $redis_component = $e }}
+    {{- else if eq $e.componentDef "redis-5" }}
       {{- $redis_component = $e }}
     {{- else if eq $e.componentDef "redis" }}
       {{- $redis_component = $e }}
@@ -39,4 +49,4 @@ echo "  redis: true" >> /etc/proxy/nutcracker.conf
 echo "  server_retry_timeout: 2000" >> /etc/proxy/nutcracker.conf
 echo "  server_failure_limit: 1" >> /etc/proxy/nutcracker.conf
 echo "  servers:" >> /etc/proxy/nutcracker.conf
-echo "    - {{ $clusterName }}-{{ $redis_component.name }}.{{ $namespace }}.svc:6379:1 {{ $clusterName }}" >> /etc/proxy/nutcracker.conf
+echo "    - {{ $clusterName }}-{{ $redis_component.name }}.{{ $namespace }}.svc.cluster.local:6379:1 {{ $clusterName }}" >> /etc/proxy/nutcracker.conf

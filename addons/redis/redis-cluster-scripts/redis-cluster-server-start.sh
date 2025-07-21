@@ -36,7 +36,7 @@ build_announce_ip_and_port() {
       echo "redis use immutable pod ip $KB_POD_IP to announce"
       echo "replica-announce-ip $KB_POD_IP" >> /etc/redis/redis.conf
     else
-      kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
+      kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
       echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
       echo "replica-announce-ip $kb_pod_fqdn" >> /etc/redis/redis.conf
     fi
@@ -45,7 +45,7 @@ build_announce_ip_and_port() {
 
 build_cluster_announce_info() {
   # build announce ip and port according to whether the advertised svc is enabled
-  kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
+  kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
   if [ -n "$redis_announce_host_value" ] && [ -n "$redis_announce_port_value" ] && [ -n "$redis_announce_bus_port_value" ]; then
     echo "redis cluster use advertised svc $redis_announce_host_value:$redis_announce_port_value@$redis_announce_bus_port_value to announce"
     {
@@ -131,6 +131,7 @@ wait_random_second() {
 get_cluster_id() {
   local cluster_node="$1"
   local cluster_node_port="$2"
+  local pod_fqdn="$3"
   set +x
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
     cluster_nodes_info=$(retry redis-cli -h "$cluster_node" -p "$cluster_node_port" cluster nodes)
@@ -138,7 +139,11 @@ get_cluster_id() {
     cluster_nodes_info=$(retry redis-cli -h "$cluster_node" -p "$cluster_node_port" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
   fi
   set -x
-  cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
+  if [[ -n "${pod_fqdn}" ]]; then
+    cluster_id=$(echo "$cluster_nodes_info" | grep "${pod_fqdn}" | awk '{print $1}')
+  else
+    cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
+  fi
   echo "$cluster_id"
 }
 
@@ -303,8 +308,9 @@ get_current_comp_nodes_for_scale_out_replica() {
   other_comp_other_nodes=()
 
   # if the cluster_nodes_info contains only one line, it means that the cluster not be initialized
-  if [ "$(echo "$cluster_nodes_info" | wc -l)" -eq 1 ]; then
-    echo "Cluster nodes info contains only one line, returning..."
+  shard_count=$(echo "${REDIS_CLUSTER_ALL_SHARDS}" | tr ',' '\n' | wc -l)
+  if [ "$(echo "$cluster_nodes_info" | wc -l)" -lt ${shard_count} ]; then
+    echo "Cluster nodes info contains less than ${shard_count} nodes, returning..."
     return
   fi
 
@@ -322,7 +328,7 @@ get_current_comp_nodes_for_scale_out_replica() {
       port=$(echo $i | cut -d':' -f2)
       advertised_ports[$port]=1
     done
-  elif [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ]; then
+  elif [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
     using_host_network=true
     IFS=',' read -ra port_mappings <<< "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"
     for mapping in "${port_mappings[@]}"; do
@@ -395,6 +401,34 @@ get_current_comp_nodes_for_scale_out_replica() {
   echo "other_comp_other_nodes: ${other_comp_other_nodes[*]}"
 }
 
+# Note: During rebuild-instance, a new PVC is created without existing data and having the rebuild.flag file.
+# Therefore, we must rejoin this instance to the cluster as a secondary node.
+is_rebuild_instance() {
+  # Early return if rebuild flag doesn't exist
+  [[ ! -f /data/rebuild.flag ]] && return 1
+
+  # Check if nodes.conf exists
+  if [[ ! -f /data/nodes.conf ]]; then
+    echo "Rebuild instance detected: nodes.conf missing"
+    return 0
+  fi
+
+  # Check if nodes.conf contains only one node
+  if [[ $(grep -c ":" /data/nodes.conf) -eq 1 ]]; then
+    echo "Rebuild instance detected: single node configuration"
+    return 0
+  fi
+
+  return 1
+}
+
+remove_rebuild_instance_flag() {
+  if [ -f /data/rebuild.flag ]; then
+    rm -f /data/rebuild.flag
+    echo "remove rebuild.flag file succeeded!"
+  fi
+}
+
 # scale out replica of redis cluster shard if needed
 scale_redis_cluster_replica() {
   # Waiting for redis-server to start
@@ -415,21 +449,28 @@ scale_redis_cluster_replica() {
   fi
 
   current_pod_name=$KB_POD_NAME
-  current_pod_fqdn="$current_pod_name.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
-  # check if exists KB_LEADER env, if exists, it means that is scale out replica
-  if [ -n "$KB_LEADER" ]; then
-    target_node_fqdn="$KB_LEADER.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
-  else
-    # if not exists KB_LEADER env, try to get the redis cluster info from pod which index=0
-    pod_name_prefix=$(extract_pod_name_prefix "$current_pod_name")
-    target_node_fqdn="$pod_name_prefix-0.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
-  fi
-
+  current_pod_fqdn="$current_pod_name.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
   # get the current component nodes for scale out replica
-  get_current_comp_nodes_for_scale_out_replica "$target_node_fqdn" "$service_port"
+  pod_name_prefix=$(extract_pod_name_prefix "$current_pod_name")
+  for ((i=0; i < $KB_COMP_REPLICAS; i++))
+  do
+     target_node_fqdn="$pod_name_prefix-${i}.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
+     if [ -f /data/rebuild.flag ] && [ "${KB_POD_NAME}" == "$pod_name_prefix-${i}" ]; then
+       continue
+     fi
+     get_current_comp_nodes_for_scale_out_replica "$target_node_fqdn" "$service_port"
+     if [ $? -eq 0 ]; then
+       break
+     fi
+  done
 
   # check current_comp_primary_node is empty or not
   if [ ${#current_comp_primary_node[@]} -eq 0 ]; then
+    if is_rebuild_instance; then
+      echo "current instance is a rebuild-instance, the current shard primary cannot be empty, please check the cluster status"
+      shutdown_redis_server
+      exit 1
+    fi
     echo "current_comp_primary_node is empty, skip scale out replica"
     exit 0
   fi
@@ -441,7 +482,8 @@ scale_redis_cluster_replica() {
   primary_node_port=$(echo "$primary_node_endpoint_with_port" | awk -F ':' '{print $2}')
   primary_node_fqdn=$(echo "$primary_node_info" | awk -F '#' '{print $2}')
   primary_node_bus_port=$(echo "$primary_node_info" | awk -F '@' '{print $2}')
-  if is_node_in_cluster "$primary_node_endpoint" "$primary_node_port" "$current_pod_name"; then
+  # if the current pod is not a rebuild-instance and is already in the cluster, skip scale out replica
+  if ! is_rebuild_instance && is_node_in_cluster "$primary_node_endpoint" "$primary_node_port" "$current_pod_name"; then
     current_pod_with_svc="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME"
     if [[ $primary_node_fqdn == *"$current_pod_with_svc"* ]]; then
       echo "Current pod $current_pod_name is primary node, check and correct other primary nodes..."
@@ -461,6 +503,17 @@ scale_redis_cluster_replica() {
     shutdown_redis_server
     exit 1
   fi
+
+  if is_rebuild_instance; then
+    echo "Current instance is a rebuild-instance, forget node id in the cluster firstly."
+    node_id=$(get_cluster_id "$primary_node_endpoint" "$primary_node_port" "$current_pod_fqdn")
+    if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
+      redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
+    else
+      redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
+    fi
+  fi
+
   # current_node_with_port do not use advertised svc and port, because advertised svc and port are not ready when Pod is not Ready.
   current_node_with_port="$current_pod_fqdn:$service_port"
   set +x
@@ -480,7 +533,7 @@ scale_redis_cluster_replica() {
 
   while [ $attempt -le $max_attempts ]
   do
-    # Avoid exiting with non-zero code and avoid printing password 
+    # Avoid exiting with non-zero code and avoid printing password
     set +ex
     replicated_output=$($replicated_command)
     replicated_exit_code=$?
@@ -489,7 +542,10 @@ scale_redis_cluster_replica() {
     if [ $replicated_exit_code -eq 0 ]; then
       break
     fi
-    if [[ $replicated_output == *"is not empty"* ]]; then
+    if is_rebuild_instance && [[ $replicated_output == *"is not empty"* ]]; then
+      echo "Current instance is a rebuild-instance, but the node already knows other nodes (check with CLUSTER NODES) or contains some key in database 0, shutdown redis server..."
+      shutdown_redis_server
+    elif [[ $replicated_output == *"is not empty"* ]]; then
       echo "Replica is not empty, Either the node already knows other nodes (check with CLUSTER NODES) or contains some key in database 0"
       break
     elif [[ $replicated_output == *"Not all 16384 slots are covered by nodes"* ]]; then
@@ -510,8 +566,13 @@ scale_redis_cluster_replica() {
     exit 1
   fi
 
+  if is_rebuild_instance; then
+    echo "replicate the node $current_pod_fqdn to the primary node $primary_node_endpoint_with_port successfully in rebuild-instance, remove rebuild.flag file..."
+    remove_rebuild_instance_flag
+  fi
+
   # Hacky: When the entire redis cluster is restarted, a hacky sleep is used to wait for all primaries to enter the restarting state
-  sleep 60
+  sleep 5
 
   # cluster meet the primary node until the current node is successfully added to the cluster
   current_primary_met=false
@@ -598,9 +659,24 @@ extract_ordinal_from_object_name() {
   echo "$ordinal"
 }
 
-parse_advertised_port() {
+extract_lb_host_by_svc_name() {
+  local svc_name="$1"
+  for lb_composed_name in $(echo "$REDIS_ADVERTISED_LB_HOST" | tr ',' '\n' ); do
+    if [[ ${lb_composed_name} == *":"* ]]; then
+       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
+         echo "${lb_composed_name#*:}"
+         break
+       fi
+    else
+       break
+    fi
+  done
+}
+
+parse_advertised_svc_and_port() {
   local pod_name="$1"
   local advertised_ports="$2"
+  local only_port=$3
   local pod_name_ordinal
   local found=false
 
@@ -614,7 +690,11 @@ parse_advertised_port() {
 
     svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
-      echo "$port"
+      if [[ "${only_port}" == "true" ]]; then
+         echo "$port"
+      else
+         echo "$svc_name:$port"
+      fi
       found=true
       return 0
     fi
@@ -632,7 +712,7 @@ parse_redis_cluster_announce_addr() {
   if [[ -z "${REDIS_CLUSTER_ADVERTISED_PORT}" ]] || [[ -z "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}" ]]; then
     echo "Environment variable REDIS_CLUSTER_ADVERTISED_PORT and REDIS_CLUSTER_ADVERTISED_BUS_PORT not found. Ignoring."
     # if redis cluster is in host network mode, use the host ip and port as the announce ip and port
-    if [[ -n "${REDIS_CLUSTER_HOST_NETWORK_PORT}" ]] && [[ -n "${REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}" ]]; then
+    if [[ -n "${REDIS_CLUSTER_HOST_NETWORK_PORT}" ]] && [[ -n "${REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}" ]] && [[ -n "$HOST_NETWORK_ENABLED" ]]; then
       echo "redis cluster server is in host network mode, use the host ip:$KB_HOST_IP and port:$REDIS_CLUSTER_HOST_NETWORK_PORT, bus port:$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT as the announce ip and port."
       redis_announce_port_value="$REDIS_CLUSTER_HOST_NETWORK_PORT"
       redis_announce_bus_port_value="$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT"
@@ -642,16 +722,24 @@ parse_redis_cluster_announce_addr() {
   fi
 
   local port
-  port=$(parse_advertised_port "$pod_name" "${REDIS_CLUSTER_ADVERTISED_PORT}")
-  if [[ $? -ne 0 ]] || [[ -z "$port" ]]; then
+  svc_and_port=$(parse_advertised_svc_and_port "$pod_name" "${REDIS_CLUSTER_ADVERTISED_PORT}")
+  if [[ $? -ne 0 ]] || [[ -z "$svc_and_port" ]]; then
     echo "Exiting due to error in REDIS_CLUSTER_ADVERTISED_PORT."
     exit 1
   fi
-  redis_announce_port_value="$port"
-  redis_announce_host_value="$KB_HOST_IP"
+  redis_announce_port_value="${svc_and_port#*:}"
+  svc_name=${svc_and_port%:*}
+  lb_host=$(extract_lb_host_by_svc_name "${svc_name}")
+  if [ -n "$lb_host" ]; then
+    echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
+    redis_announce_host_value="$lb_host"
+    redis_announce_port_value="6379"
+  else
+    redis_announce_host_value="$KB_HOST_IP"
+  fi
 
   if [[ -n "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}" ]]; then
-    port=$(parse_advertised_port "$pod_name" "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}")
+    port=$(parse_advertised_svc_and_port "$pod_name" "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}" "true")
     if [[ $? -ne 0 ]] || [[ -z "$port" ]]; then
       echo "Exiting due to error in REDIS_CLUSTER_ADVERTISED_BUS_PORT."
       exit 1
@@ -671,27 +759,31 @@ rebuild_redis_acl_file() {
 }
 
 start_redis_server() {
+    module_path="/opt/redis-stack/lib"
+    if [[ "$IS_REDIS8" == "true" ]]; then
+       module_path="/usr/local/lib/redis/modules"
+    fi
     exec_cmd="exec redis-server /etc/redis/redis.conf"
-    if [ -f /opt/redis-stack/lib/redisearch.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisearch.so ${REDISEARCH_ARGS}"
+    if [ -f ${module_path}/redisearch.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisearch.so ${REDISEARCH_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redistimeseries.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redistimeseries.so ${REDISTIMESERIES_ARGS}"
+    if [ -f ${module_path}/redistimeseries.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redistimeseries.so ${REDISTIMESERIES_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/rejson.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rejson.so ${REDISJSON_ARGS}"
+    if [ -f ${module_path}/rejson.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/rejson.so ${REDISJSON_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redisbloom.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisbloom.so ${REDISBLOOM_ARGS}"
+    if [ -f ${module_path}/redisbloom.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisbloom.so ${REDISBLOOM_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redisgraph.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgraph.so ${REDISGRAPH_ARGS}"
+    if [ -f ${module_path}/redisgraph.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgraph.so ${REDISGRAPH_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/rediscompat.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rediscompat.so"
+    if [ -f ${module_path}/rediscompat.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/rediscompat.so"
     fi
-    if [ -f /opt/redis-stack/lib/redisgears.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgears.so v8-plugin-path /opt/redis-stack/lib/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
+    if [ -f ${module_path}/redisgears.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgears.so v8-plugin-path ${module_path}/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
     fi
     echo "Starting redis server cmd: $exec_cmd"
     eval "$exec_cmd"
@@ -707,6 +799,16 @@ build_redis_conf() {
   build_redis_default_accounts
 }
 
+init_environment(){
+  if [[ -z "${REDIS_CLUSTER_ADVERTISED_PORT}" ]]; then
+    REDIS_CLUSTER_ADVERTISED_PORT="${REDIS_CLUSTER_LB_ADVERTISED_PORT}"
+  fi
+  if [[ -z "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}" ]]; then
+    REDIS_CLUSTER_ADVERTISED_BUS_PORT="${REDIS_CLUSTER_LB_ADVERTISED_BUS_PORT}"
+  fi
+}
+
+init_environment
 parse_redis_cluster_announce_addr "$KB_POD_NAME"
 build_redis_conf
 scale_redis_cluster_replica &

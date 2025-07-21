@@ -17,14 +17,14 @@ redis
 {{- end -}}
 
 {{/*
-Define redis component defintion name prefix
+Define redis component defintion name regular expression pattern
 */}}
-{{- define "redis.componentDefNamePrefix" -}}
-{{- printf "redis-%s" .Values.compDefinitionVersion.redis -}}
+{{- define "redis.componentDefNameRegularExpression" -}}
+{{- printf "^redis-\\d+$" -}}
 {{- end -}}
 
 {{/*
-Define redis-sentinel component defintion name
+Define redis-sentinel v7.x component defintion name
 */}}
 {{- define "redis-sentinel.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersion.sentinel) 0 -}}
@@ -35,28 +35,10 @@ redis-sentinel
 {{- end -}}
 
 {{/*
-Define redis-sentinel component defintion name prefix
+Define redis-sentinel component defintion name regular expression pattern
 */}}
-{{- define "redis-sentinel.componentDefNamePrefix" -}}
-{{- printf "redis-sentinel-%s" .Values.compDefinitionVersion.sentinel -}}
-{{- end -}}
-
-{{/*
-Define redis-cluster component defintion name
-*/}}
-{{- define "redis-cluster.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersion.redisCluster) 0 -}}
-redis-cluster
-{{- else -}}
-{{- printf "redis-cluster-%s" .Values.compDefinitionVersion.redisCluster -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define redis-cluster component defintion name prefix
-*/}}
-{{- define "redis-cluster.componentDefNamePrefix" -}}
-{{- printf "redis-cluster-%s" .Values.compDefinitionVersion.redisCluster -}}
+{{- define "redis-sentinel.componentDefNameRegularExpression" -}}
+{{- printf "^redis-sentinel-\\d+$" -}}
 {{- end -}}
 
 {{/*
@@ -75,6 +57,13 @@ Define redis-twemproxy component defintion name prefix
 */}}
 {{- define "redis-twemproxy.componentDefNamePrefix" -}}
 {{- printf "redis-twemproxy-%s" .Values.compDefinitionVersion.twemproxy -}}
+{{- end -}}
+
+{{/*
+Define redis component defintion name regular expression pattern
+*/}}
+{{- define "redis-twemproxy.componentDefNameRegularExpression" -}}
+{{- printf "^redis-twemproxy-\\d+(\\.\\d+)?$" -}}
 {{- end -}}
 
 {{/*
@@ -129,15 +118,18 @@ Define image
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
 {{- end }}
 
+{{/*
+Define image
+*/}}
+{{- define "redis8.repository" -}}
+{{ .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ceImage.repository }}
+{{- end }}
+
+{{- define "redis8.image" -}}
+{{ .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ceImage.repository }}:8.0.1
+{{- end }}
+
 {{- define "redis.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
-{{- end }}
-
-{{- define "redis-sentinel.repository" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
-{{- end }}
-
-{{- define "redis-sentinel.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
 {{- end }}
 
@@ -157,16 +149,12 @@ Define image
 {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository}}:{{ .Values.busyboxImage.tag }}
 {{- end }}}
 
-{{- define "metrics.repository" -}}
-{{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository}}
-{{- end }}}
-
-{{- define "metrics.image" -}}
-{{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository}}:{{ .Values.metrics.image.tag }}
-{{- end }}}
-
 {{- define "apeDts.image" -}}
 {{ .Values.image.apeDts.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.apeDts.repository}}:{{ .Values.image.apeDts.tag }}
+{{- end }}}
+
+{{- define "apeDts.reshard.image" -}}
+{{ .Values.image.apeDts.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.apeDts.repository}}:{{ .Values.image.apeDts.reshardTag }}
 {{- end }}}
 
 
@@ -189,3 +177,7 @@ Generate scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+
+
+============>
