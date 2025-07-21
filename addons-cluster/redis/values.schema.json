@@ -65,7 +65,8 @@
     "storageClassName": {
       "title": "Storage Class Name",
       "description": "Storage class name of the data volume",
-      "type": "string"
+      "type": "string",
+      "default": ""
     },
     "nodePortEnabled": {
       "type": "boolean",
@@ -114,7 +115,7 @@
         "replicas": {
           "description": "twemproxy component replicas",
           "title": "twemproxy replicas",
-          "type": "number",
+          "type": "integer",
           "default": 3,
           "minimum": 1,
           "maximum": 5
@@ -182,7 +183,7 @@
         "replicas": {
           "description": "Sentinel component replicas",
           "title": "sentinel replicas",
-          "type": "number",
+          "type": "integer",
           "default": 3,
           "minimum": 1,
           "maximum": 5
@@ -196,7 +197,7 @@
         "shardCount": {
           "description": "The number of shards in the redis cluster",
           "title": "shardCount",
-          "type": "number",
+          "type": "integer",
           "default": 3,
           "minimum": 3,
           "maximum": 2048

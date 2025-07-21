@@ -12,7 +12,8 @@
     "storageClassName": {
       "type": ["string", "null"],
       "default": null,
-      "description": "Storage class name used by persistent volumes"
+      "description": "Storage class name used by persistent volumes",
+      "title": "Storage Class Name"
     },
     "compute": {
       "type": "object",
@@ -20,7 +21,8 @@
         "replicas": {
           "type": "integer",
           "default": 1,
-          "description": "Number of compute replicas"
+          "description": "Number of compute replicas",
+          "minimum": 1
         },
         "resources": {
           "type": "object",
@@ -81,7 +83,8 @@
         "replicas": {
           "type": "integer",
           "default": 1,
-          "description": "Number of storage broker replicas"
+          "description": "Number of storage broker replicas",
+          "minimum": 1
         },
         "resources": {
           "type": "object",
@@ -142,7 +145,8 @@
         "replicas": {
           "type": "integer",
           "default": 3,
-          "description": "Number of safekeeper replicas, forming a raft group"
+          "description": "Number of safekeeper replicas, forming a raft group",
+          "minimum": 1
         },
         "resources": {
           "type": "object",
@@ -196,12 +200,13 @@
           }
         },
         "dataStorage": {
+          "title": "Data Storage(Gi)",
+          "description": "Data storage size for each safekeeper replica",
           "type": [
             "number",
             "string"
           ],
-          "default": 20,
-          "description": "Data storage size for each safekeeper replica"
+          "default": 20
         }
       }
     },
@@ -211,7 +216,8 @@
         "replicas": {
           "type": "integer",
           "default": 1,
-          "description": "Number of pageserver replicas"
+          "description": "Number of pageserver replicas",
+          "minimum": 1
         },
         "resources": {
           "type": "object",

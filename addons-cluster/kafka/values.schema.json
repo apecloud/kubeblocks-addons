@@ -47,11 +47,11 @@
       "minimum": 1,
       "maximum": 10000
     },
-    "storageClass": {
-      "title": "StorageClass",
+    "storageClassName": {
+      "title": "StorageClassName",
       "description": "The StorageClass for Kafka Data Storage.",
-      "type": "string",
-      "default": ""
+      "type": ["string", "null"],
+      "default": null
     },
     "metaStorage": {
       "title": "MetaStorage(Gi)",
@@ -64,11 +64,11 @@
       "minimum": 1,
       "maximum": 10000
     },
-    "metaStorageClass": {
-      "title": "MetaStorageClass",
+    "metaStorageClassName": {
+      "title": "MetaStorageClassName",
       "description": "The StorageClass for Kafka Metadata Storage.",
-      "type": "string",
-      "default": ""
+      "type": ["string", "null"],
+      "default": null
     },
     "replicas": {
       "title": "Replicas",
@@ -131,7 +131,7 @@
         "replicas": {
           "title": "Monitor Replicas",
           "description": "Number of replicas for the monitor component.",
-          "type": [ "number", "string" ],
+          "type": "integer",
           "default": 1,
           "minimum": 1
         },

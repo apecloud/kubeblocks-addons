@@ -29,7 +29,7 @@ requests:
 
 storageClassName: ""
 storage: 20
-disableExporter: false
+
 
 ## Tolerations for ClickHouse pods assignment
 ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
@@ -67,3 +67,4 @@ extra:
   ## Define Cluster termination policy.
   ## Options: DoNotTerminate, Delete, WipeOut.
   terminationPolicy: Delete
+  disableExporter: false

@@ -4,7 +4,8 @@
 
 replicaCount: 1
 
-terminationPolicy: Delete
+extra:
+  terminationPolicy: Delete
 
 nameOverride: ""
 

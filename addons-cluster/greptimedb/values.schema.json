@@ -141,6 +141,12 @@
                 "string"
               ],
               "default": 10
+            },
+            "storageClassName": {
+              "title": "Storage Class Name",
+              "description": "Storage class name of the data volume",
+              "type": "string",
+              "default": ""
             }
           }
         }
@@ -176,6 +182,12 @@
                 "string"
               ],
               "default": 10
+            },
+            "storageClassName": {
+              "title": "Storage Class Name",
+              "description": "Storage class name of the data volume",
+              "type": "string",
+              "default": ""
             }
           }
         }

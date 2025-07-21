@@ -9,11 +9,11 @@
         "replicas": {
           "type": "integer",
           "description": "data replicas of gms instance. Default value is 3, which means a paxos group: leader, follower, follower",
-          "default": 3
+          "default": 3,
+          "minimum": 1
         },
         "resources": {
           "type": "object",
-          "description": "resource management for gms component. more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
           "properties": {
             "requests": {
               "type": "object",
@@ -68,28 +68,28 @@
           "description": "Enable persistence using Persistent Volume Claims",
           "properties": {
             "enabled": {
-              "type": "boolean",
+              "title": "Enabled",
               "description": "Enable persistence using Persistent Volume Claims",
-              "default": true
+              "default": true,
+              "type": "boolean"
             },
             "data": {
               "type": "object",
-              "description": "`data` volume settings",
               "properties": {
                 "storageClassName": {
-                  "title": "Storage Class Name",
                   "description": "Storage class name of the data volume",
                   "type": ["string", "null"],
-                  "default": null
+                  "default": null,
+                  "title": "Storage Class Name"
                 },
                 "size": {
                   "type": [
                     "number",
                     "string"
                   ],
-                  "title": "Size of data volume(Gi)",
                   "description": "Size of data volume, the unit is Gi.",
-                  "default": 20
+                  "default": 20,
+                  "title": "Size of data volume(Gi)"
                 }
               }
             }
@@ -104,11 +104,11 @@
         "replicas": {
           "type": "integer",
           "description": "number of polardb-x cn nodes",
-          "default": 2
+          "default": 2,
+          "minimum": 1
         },
         "resources": {
           "type": "object",
-          "description": "resource management for cn component. more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
           "properties": {
             "requests": {
               "type": "object",
@@ -167,11 +167,11 @@
         "replicas": {
           "type": "integer",
           "description": "number of polardb-x cdc nodes",
-          "default": 2
+          "default": 2,
+          "minimum": 1
         },
         "resources": {
           "type": "object",
-          "description": "resource management for cdc component. more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
           "properties": {
             "requests": {
               "type": "object",

@@ -7,7 +7,15 @@
     "pd": {
       "type": "object",
       "properties": {
-        "replicas": { "type": "integer", "default": 3, "description": "Number of PD replicas." },
+        "replicas": {
+          "type": "integer",
+          "default": 3,
+          "description": "Number of PD replicas. Must be an odd number for consensus.",
+          "minimum": 1,
+          "not": {
+            "multipleOf": 2
+          }
+        },
         "resources": {
           "type": "object",
           "properties": {
@@ -68,8 +76,8 @@
                 "storageClassName": {
                   "title": "Storage Class Name",
                   "description": "Storage class name for persistent volumes.",
-                  "type": "string",
-                  "default": ""
+                  "type": ["string", "null"],
+                  "default": null
                 },
                 "size": {
                   "title": "Size of persistent volume claim(Gi)",
@@ -95,7 +103,12 @@
     "tikv": {
       "type": "object",
       "properties": {
-        "replicas": { "type": "integer", "default": 3, "description": "Number of TiKV replicas." },
+        "replicas": {
+          "type": "integer",
+          "default": 3,
+          "description": "Number of TiKV replicas. Must be an odd number for consensus.",
+          "minimum": 1
+        },
         "resources": {
           "type": "object",
           "properties": {
@@ -156,8 +169,8 @@
                 "storageClassName": {
                   "title": "Storage Class Name",
                   "description": "Storage class name for persistent volumes.",
-                  "type": "string",
-                  "default": ""
+                  "type": ["string", "null"],
+                  "default": null
                 },
                 "size": {
                   "title": "Size of persistent volume claim(Gi)",
@@ -186,7 +199,8 @@
         "replicas": {
           "type": "integer",
           "default": 2,
-          "description": "Number of TiDB replicas."
+          "description": "Number of TiDB replicas.",
+          "minimum": 1
         },
         "resources": {
           "type": "object",

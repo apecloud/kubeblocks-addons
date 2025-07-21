@@ -14,27 +14,13 @@
       "type": "string",
       "default": ""
     },
-    "terminationPolicy": {
-      "title": "TerminationPolicy",
-      "description": "The policy of termination.",
-      "type": "string",
-      "default": "Delete",
-      "enum": [
-        "Delete",
-        "DoNotTerminate",
-        "WipeOut"
-      ]
-    },
     "vminsert": {
       "type": "object",
       "properties": {
         "replicas": {
           "title": "Replicas for vminsert",
           "description": "The number of replicas for vminsert component.",
-          "type": [
-            "number",
-            "string"
-          ],
+          "type": "integer",
           "default": 1,
           "minimum": 1,
           "maximum": 5
@@ -108,10 +94,7 @@
         "replicas": {
           "title": "Replicas for vmselect",
           "description": "The number of replicas for vmselect component.",
-          "type": [
-            "number",
-            "string"
-          ],
+          "type": "integer",
           "default": 1,
           "minimum": 1,
           "maximum": 5
@@ -185,10 +168,7 @@
         "replicas": {
           "title": "Replicas for vmstorage",
           "description": "The number of replicas for vmstorage component.",
-          "type": [
-            "number",
-            "string"
-          ],
+          "type": "integer",
           "default": 1,
           "minimum": 1,
           "maximum": 5
@@ -257,8 +237,8 @@
         "storageClassName": {
           "title": "Storage Class Name",
           "description": "Storage class name for persistent volumes.",
-          "type": "string",
-          "default": ""
+          "type": ["string", "null"],
+          "default": null
         },
         "storage": {
           "title": "Storage(Gi)",
@@ -267,9 +247,7 @@
             "number",
             "string"
           ],
-          "default": 10,
-          "minimum": 1,
-          "maximum": 10000
+          "default": 10
         }
       }
     }

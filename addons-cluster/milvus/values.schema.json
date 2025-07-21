@@ -18,7 +18,8 @@
       "title": "Replicas",
       "description": "Number of replicas for standalone mode",
       "type": "integer",
-      "default": 1
+      "default": 1,
+      "minimum": 1
     },
     "cpu": {
       "title": "CPU",
