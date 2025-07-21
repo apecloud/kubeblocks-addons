@@ -1,0 +1,4 @@
+mode: cluster
+replicas: 2 # 1 primary, 1 secondary per shard
+redisCluster:
+  shardCount: 3

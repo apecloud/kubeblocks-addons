@@ -1,0 +1,2 @@
+peerService:
+  type: LoadBalancer

@@ -1,0 +1,6 @@
+compute:
+  replicas: 2
+safekeeper:
+  replicas: 3
+pageserver:
+  replicas: 2
