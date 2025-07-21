@@ -27,20 +27,14 @@
         "cpu": {
             "title": "CPU",
             "description": "CPU cores.",
-            "type": [
-                "number",
-                "string"
-            ],
+            "type": "integer",
             "default": 8,
             "minimum": 3
         },
         "memory": {
             "title": "Memory(Gi)",
             "description": "Memory, the unit is Gi.",
-            "type": [
-                "number",
-                "string"
-            ],
+            "type": "integer",
             "default": 16,
             "minimum": 4
         },
@@ -68,12 +62,10 @@
             "type": "object",
             "properties": {
                 "storageClassName": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
+                    "type": "string",
                     "default": "",
-                    "description": "Storage class name used by persistent volumes"
+                    "description": "Storage class name used by persistent volumes",
+                    "title": "Storage Class Name"
                 },
                 "storages": {
                     "type": "object",

@@ -100,7 +100,7 @@ Define clickhouse componentSpec with ComponentDefinition.
 - name: clickhouse
   componentDef: {{ include "clickhouse-cluster.cmpdName" . }}
   replicas: {{ $.Values.replicas | default 2 }}
-  disableExporter: {{ $.Values.disableExporter | default "false" }}
+  disableExporter: {{ $.Values.extra.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}
   services:
   - name: default
@@ -128,7 +128,7 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
 - name: ch-keeper
   componentDef: {{ include "clickhouse-cluster.keeperCmpdName" . }}
   replicas: {{ .Values.keeper.replicas }}
-  disableExporter: {{ $.Values.disableExporter | default "false" }}
+  disableExporter: {{ $.Values.extra.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}
   {{- with .Values.keeper.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
@@ -178,7 +178,7 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
     - name: "INIT_CLUSTER_NAME"
       value: "{{ .Values.clickhouse.initClusterName }}"
     replicas: {{ .Values.replicas | default 2 }}
-    disableExporter: {{ .Values.disableExporter | default "false" }}
+    disableExporter: {{ .Values.extra.disableExporter | default "false" }}
     serviceVersion: {{ .Values.version }}
     services:
     - name: default
@@ -214,7 +214,7 @@ Define clickhouse componentSpec with compatible ComponentDefinition API
     value: "{{ $.Values.clickhouse.initClusterName }}"
   componentDef: {{ include "clickhouse-cluster.cmpdName" $ }}
   replicas: {{ $.Values.replicas | default 2 }}
-  disableExporter: {{ $.Values.disableExporter | default "false" }}
+  disableExporter: {{ $.Values.extra.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}
   {{- with $.Values.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}

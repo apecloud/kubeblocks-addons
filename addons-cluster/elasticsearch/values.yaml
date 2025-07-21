@@ -28,6 +28,8 @@ memory: 2
 ##
 storage: 20
 
+storageClassName: ""
+
 nameOverride: ""
 
 fullnameOverride: ""

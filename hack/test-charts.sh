@@ -16,11 +16,26 @@ ADDONS_CLUSTER_DIR="${PROJECT_ROOT}/addons-cluster"
 FAILURES=0
 TOTAL_TESTS=0
 
+# Get folder name from command line argument
+FOLDER_TO_TEST=${1:-""}
+if [ -n "$FOLDER_TO_TEST" ]; then
+    if [ ! -d "${ADDONS_CLUSTER_DIR}/${FOLDER_TO_TEST}" ]; then
+        echo -e "${RED}Error: Folder '${FOLDER_TO_TEST}' not found in ${ADDONS_CLUSTER_DIR}${NC}"
+        exit 1
+    fi
+fi
+
 echo "Starting Helm chart template tests..."
 echo "====================================="
 
 # Find all chart directories
-for chart_dir in "${ADDONS_CLUSTER_DIR}"/*; do
+if [ -n "$FOLDER_TO_TEST" ]; then
+    chart_dirs=("${ADDONS_CLUSTER_DIR}/${FOLDER_TO_TEST}")
+else
+    chart_dirs=("${ADDONS_CLUSTER_DIR}"/*)
+fi
+
+for chart_dir in "${chart_dirs[@]}"; do
     if [ -d "${chart_dir}" ]; then
         chart_name=$(basename "${chart_dir}")
         pass_dir="${chart_dir}/tests/pass"
@@ -90,12 +105,61 @@ for chart_dir in "${ADDONS_CLUSTER_DIR}"/*; do
                 for test_file in "${pass_dir}"/*.yaml; do
                     TOTAL_TESTS=$((TOTAL_TESTS + 1))
                     test_name=$(basename "${test_file}" .yaml)
-                    if ! helm template "test" "${chart_dir}" --namespace "test-ns" --values "${test_file}" > /dev/null; then
+                    # Run helm template and capture output
+                    if ! output=$(helm template "test" "${chart_dir}" --namespace "test-ns" --values "${test_file}"); then
                         echo -e "    ${RED}[FAIL] Expected pass, but failed: '${test_name}'${NC}"
                         FAILURES=$((FAILURES + 1))
-                    else
-                        echo -e "    ${GREEN}[OK] Test case '${test_name}' passed as expected${NC}"
+                        continue
                     fi
+
+                    # using yq to parse  'asserts' section
+                    asserts=$(yq -r '.asserts' "${test_file}")
+                    # if asserts is not nil, then it is an array
+                    if [ "$asserts" == "null" ]; then
+                        # echo "asserts is not an array"
+                        continue
+                    fi
+
+                    # Get number of assertions
+                    num_asserts=$(echo "$asserts" | yq -r 'length')
+                    # echo "num_asserts: $num_asserts"
+                    # Loop through each assertion by index
+                    for i in $(seq 0 $((num_asserts-1))); do
+                        assertion=$(echo "$asserts" | yq -r ".[$i]")
+                        # echo "assertion: $assertion"
+                        ## - equal:
+                        ##     path: ".spec.componentSpecs[0].volumeClaimTemplates[0].spec.storageClassName"
+                        ##     value: "my-storage-class2"
+
+                        # parse operator 'equal' or 'notEqual'
+                        operator=$(echo "$assertion" | yq -r 'keys[0]')
+
+                        # parse path
+                        path=$(echo "$assertion" | yq -r ".${operator}.path")
+
+                        # parse value
+                        value=$(echo "$assertion" | yq -r ".${operator}.value")
+
+                        # parse actual value
+                        actual=$(echo "$output" | yq -r "$path")
+
+                        # compare w.r.t operators
+                        if [ "$operator" == "equal" ]; then
+                            if [ "$actual" != "$value" ]; then
+                                echo -e "    ${RED}[FAIL] Assertion failed for '${test_name}': expected '${value}' at path '${path}' but got '${actual}'${NC}"
+                                FAILURES=$((FAILURES + 1))
+                                continue
+                            fi
+                        elif [ "$operator" == "notEqual" ]; then
+                            if [ "$actual" == "$value" ]; then
+                                echo -e "    ${RED}[FAIL] Assertion failed for '${test_name}': expected '${value}' at path '${path}' but got '${actual}'${NC}"
+                                FAILURES=$((FAILURES + 1))
+                                continue
+                            fi
+                        fi
+                    done
+
+                    echo -e "    ${GREEN}[OK] Test case '${test_name}' passed as expected${NC}"
                 done
             fi
 

@@ -14,17 +14,6 @@
       "type": "string",
       "default": ""
     },
-    "terminationPolicy": {
-      "title": "TerminationPolicy",
-      "description": "The policy of termination.",
-      "type": "string",
-      "default": "Delete",
-      "enum": [
-        "Delete",
-        "DoNotTerminate",
-        "WipeOut"
-      ]
-    },
     "vminsert": {
       "type": "object",
       "properties": {
@@ -49,7 +38,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "cpu": {
                   "title": "CPU for vminsert",
@@ -58,7 +48,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -72,7 +63,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "cpu": {
                   "title": "CPU for vminsert",
@@ -81,7 +73,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -113,7 +106,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "cpu": {
                   "title": "CPU for vmselect",
@@ -122,7 +116,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -136,7 +131,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "cpu": {
                   "title": "CPU for vmselect",
@@ -177,7 +173,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "cpu": {
                   "title": "CPU for vmstorage",
@@ -186,7 +183,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -200,7 +198,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "cpu": {
                   "title": "CPU for vmstorage",
@@ -209,7 +208,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }

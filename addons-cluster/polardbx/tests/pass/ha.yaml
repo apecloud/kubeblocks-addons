@@ -1,0 +1,6 @@
+gms:
+  replicas: 5
+cn:
+  replicas: 3
+cdc:
+  replicas: 3

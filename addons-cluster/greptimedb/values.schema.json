@@ -140,7 +140,14 @@
                 "number",
                 "string"
               ],
-              "default": 10
+              "default": 10,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
+            },
+            "storageClassName": {
+              "title": "Storage Class Name",
+              "description": "Storage class name of the data volume",
+              "type": "string",
+              "default": ""
             }
           }
         }
@@ -175,7 +182,14 @@
                 "number",
                 "string"
               ],
-              "default": 10
+              "default": 10,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
+            },
+            "storageClassName": {
+              "title": "Storage Class Name",
+              "description": "Storage class name of the data volume",
+              "type": "string",
+              "default": ""
             }
           }
         }
@@ -208,14 +222,16 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "type": [
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -229,14 +245,16 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "type": [
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -271,14 +289,16 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "type": [
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -292,14 +312,16 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "type": [
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
