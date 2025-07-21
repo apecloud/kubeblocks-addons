@@ -40,7 +40,8 @@
                   ],
                   "default": 0.5,
                   "minimum": 0.5,
-                  "maximum": 1000
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "cpu": {
                   "title": "CPU for vminsert",
@@ -52,7 +53,8 @@
                   "default": 0.5,
                   "minimum": 0.5,
                   "maximum": 64,
-                  "multipleOf": 0.5
+                  "multipleOf": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -68,7 +70,8 @@
                   ],
                   "default": 0.5,
                   "minimum": 0.5,
-                  "maximum": 1000
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "cpu": {
                   "title": "CPU for vminsert",
@@ -80,7 +83,8 @@
                   "default": 0.5,
                   "minimum": 0.5,
                   "maximum": 64,
-                  "multipleOf": 0.5
+                  "multipleOf": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -114,7 +118,8 @@
                   ],
                   "default": 0.5,
                   "minimum": 0.5,
-                  "maximum": 1000
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "cpu": {
                   "title": "CPU for vmselect",
@@ -126,7 +131,8 @@
                   "default": 0.5,
                   "minimum": 0.5,
                   "maximum": 64,
-                  "multipleOf": 0.5
+                  "multipleOf": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -142,7 +148,8 @@
                   ],
                   "default": 0.5,
                   "minimum": 0.5,
-                  "maximum": 1000
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "cpu": {
                   "title": "CPU for vmselect",
@@ -154,7 +161,8 @@
                   "default": 0.5,
                   "minimum": 0.5,
                   "maximum": 64,
-                  "multipleOf": 0.5
+                  "multipleOf": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -188,7 +196,8 @@
                   ],
                   "default": 0.5,
                   "minimum": 0.5,
-                  "maximum": 1000
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "cpu": {
                   "title": "CPU for vmstorage",
@@ -200,7 +209,8 @@
                   "default": 0.5,
                   "minimum": 0.5,
                   "maximum": 64,
-                  "multipleOf": 0.5
+                  "multipleOf": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -216,7 +226,8 @@
                   ],
                   "default": 0.5,
                   "minimum": 0.5,
-                  "maximum": 1000
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "cpu": {
                   "title": "CPU for vmstorage",
@@ -228,7 +239,8 @@
                   "default": 0.5,
                   "minimum": 0.5,
                   "maximum": 64,
-                  "multipleOf": 0.5
+                  "multipleOf": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -247,7 +259,10 @@
             "number",
             "string"
           ],
-          "default": 10
+          "default": 10,
+          "minimum": 1,
+          "maximum": 10000,
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
         }
       }
     }

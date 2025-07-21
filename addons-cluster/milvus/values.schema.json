@@ -31,6 +31,7 @@
       "default": 0.5,
       "minimum": 0.5,
       "maximum": 64,
+      "pattern": "^[0-9]+(\\.[0-9]+)?$",
       "multipleOf": 0.5
     },
     "memory": {
@@ -42,7 +43,8 @@
       ],
       "default": 0.5,
       "minimum": 0.5,
-      "maximum": 1000
+      "maximum": 1000,
+      "pattern": "^[0-9]+(\\.[0-9]+)?$"
     },
     "persistence": {
       "type": "object",
@@ -71,7 +73,10 @@
                 "number",
                 "string"
               ],
-              "default": 10
+              "default": 10,
+              "minimum": 1,
+              "maximum": 10000,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             }
           }
         }
@@ -90,7 +95,8 @@
           "title": "Replicas",
           "description": "Number of replicas for proxy in cluster mode",
           "type": "integer",
-          "default": 1
+          "default": 1,
+          "minimum": 1
         }
       }
     },
@@ -116,7 +122,8 @@
           "title": "Replicas",
           "description": "Number of replicas for datanode in cluster mode",
           "type": "integer",
-          "default": 1
+          "default": 1,
+          "minimum": 1
         }
       }
     },
@@ -129,7 +136,8 @@
           "title": "Replicas",
           "description": "Number of replicas for indexnode in cluster mode",
           "type": "integer",
-          "default": 1
+          "default": 1,
+          "minimum": 1
         }
       }
     },
@@ -142,7 +150,8 @@
           "title": "Replicas",
           "description": "Number of replicas for querynode in cluster mode",
           "type": "integer",
-          "default": 1
+          "default": 1,
+          "minimum": 1
         }
       }
     }

@@ -25,7 +25,11 @@
                   ],
                   "title": "CPU request",
                   "description": "CPU request",
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "type": [
@@ -34,7 +38,11 @@
                   ],
                   "title": "Memory request(Gi)",
                   "description": "Memory request",
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             },
@@ -48,7 +56,11 @@
                   ],
                   "title": "CPU limit",
                   "description": "CPU limit",
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "type": [
@@ -57,7 +69,11 @@
                   ],
                   "title": "Memory limit(Gi)",
                   "description": "Memory limit",
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             }
@@ -89,7 +105,10 @@
                   ],
                   "description": "Size of data volume, the unit is Gi.",
                   "default": 20,
-                  "title": "Size of data volume(Gi)"
+                  "title": "Size of data volume(Gi)",
+                  "minimum": 1,
+                  "maximum": 10000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -120,7 +139,11 @@
                   ],
                   "title": "CPU request",
                   "description": "CPU request",
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "type": [
@@ -129,7 +152,11 @@
                   ],
                   "title": "Memory request(Gi)",
                   "description": "Memory request",
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             },
@@ -143,7 +170,11 @@
                   ],
                   "title": "CPU limit",
                   "description": "CPU limit",
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "type": [
@@ -152,7 +183,11 @@
                   ],
                   "title": "Memory limit(Gi)",
                   "description": "Memory limit",
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             }
@@ -183,7 +218,11 @@
                   ],
                   "title": "CPU request",
                   "description": "CPU request",
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "type": [
@@ -192,7 +231,11 @@
                   ],
                   "title": "Memory request(Gi)",
                   "description": "Memory request",
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             },
@@ -206,7 +249,11 @@
                   ],
                   "title": "CPU limit",
                   "description": "CPU limit",
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "type": [
@@ -215,7 +262,11 @@
                   ],
                   "title": "Memory limit(Gi)",
                   "description": "Memory limit",
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             }

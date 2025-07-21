@@ -63,7 +63,7 @@ etcd:
     etcdctlApi: "3" # the etcd tool etcdctl api version
     replicas: 3 # no support other num
     resources:
-      storage: 20Gi
+      storage: 20
   serviceRef:
     # -- Kubernetes namespace for etcd
     # @default default

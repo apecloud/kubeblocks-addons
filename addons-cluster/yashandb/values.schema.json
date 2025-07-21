@@ -26,6 +26,7 @@
       "default": 1,
       "minimum": 0.5,
       "maximum": 64,
+      "pattern": "^[0-9]+(\\.[0-9]+)?$",
       "multipleOf": 0.5
     },
     "memory": {
@@ -37,7 +38,9 @@
       ],
       "default": 1,
       "minimum": 0.5,
-      "maximum": 128
+      "maximum": 128,
+      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+      "multipleOf": 0.5
     },
     "storage": {
       "title": "Storage(Gi)",
@@ -48,7 +51,8 @@
       ],
       "default": 20,
       "minimum": 1,
-      "maximum": 500
+      "maximum": 500,
+      "pattern": "^[0-9]+(\\.[0-9]+)?$"
     },
     "storageClassName": {
       "title": "Storage Class Name",

@@ -29,7 +29,9 @@
                     "number",
                     "string"
                   ],
-                  "default": 2
+                  "default": 2,
+                  "minimum": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "title": "Memory limit(Gi)",
@@ -38,7 +40,9 @@
                     "number",
                     "string"
                   ],
-                  "default": 8
+                  "default": 8,
+                  "minimum": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -52,7 +56,9 @@
                     "number",
                     "string"
                   ],
-                  "default": 2
+                  "default": 2,
+                  "minimum": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "title": "Memory request(Gi)",
@@ -61,7 +67,9 @@
                     "number",
                     "string"
                   ],
-                  "default": 8
+                  "default": 8,
+                  "minimum": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -86,7 +94,10 @@
                     "number",
                     "string"
                   ],
-                  "default": 20
+                  "default": 20,
+                  "minimum": 1,
+                  "maximum": 10000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -122,7 +133,9 @@
                     "number",
                     "string"
                   ],
-                  "default": 4
+                  "default": 4,
+                  "minimum": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "title": "Memory limit(Gi)",
@@ -131,7 +144,9 @@
                     "number",
                     "string"
                   ],
-                  "default": 16
+                  "default": 16,
+                  "minimum": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -145,7 +160,9 @@
                     "number",
                     "string"
                   ],
-                  "default": 4
+                  "default": 4,
+                  "minimum": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "title": "Memory request(Gi)",
@@ -154,7 +171,9 @@
                     "number",
                     "string"
                   ],
-                  "default": 16
+                  "default": 16,
+                  "minimum": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -179,7 +198,10 @@
                     "number",
                     "string"
                   ],
-                  "default": 500
+                  "default": 500,
+                  "minimum": 1,
+                  "maximum": 10000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -215,7 +237,9 @@
                     "number",
                     "string"
                   ],
-                  "default": 4
+                  "default": 4,
+                  "minimum": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "title": "Memory limit(Gi)",
@@ -224,7 +248,9 @@
                     "number",
                     "string"
                   ],
-                  "default": 16
+                  "default": 16,
+                  "minimum": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -238,7 +264,9 @@
                     "number",
                     "string"
                   ],
-                  "default": 4
+                  "default": 4,
+                  "minimum": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "title": "Memory request(Gi)",
@@ -247,7 +275,9 @@
                     "number",
                     "string"
                   ],
-                  "default": 16
+                  "default": 16,
+                  "minimum": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
