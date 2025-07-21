@@ -29,7 +29,19 @@ if [[ -f $DATA_DIR/join ]]; then
 elif [[ ! -d $DATA_DIR/member/wal ]]; then
     echo "first started pod"
     replicas=$(echo "${KB_POD_LIST}" | tr ',' '\n')
-    if [[ -n $KB_LEADER || -n $KB_FOLLOWERS ]]; then
+    if [[ -n $KB_LEADER ]]; then
+        echo "query member list from leader"
+        leader_name=$(echo "$replicas" | grep "$KB_LEADER")
+        leader_fqdn=${leader_name}.${SUBDOMAIN}.${DOMAIN}
+        members=$(/pd-ctl --pd "http://$leader_fqdn:2379" member | jq -r '.members[] | .name')
+        if echo "$members" | grep -q "$KB_POD_NAME"; then
+            echo "current pod already in cluster, delete member first"
+            res=$(/pd-ctl --pd "http://$leader_fqdn:2379" member delete name "$KB_POD_NAME")
+            if [[ $res != "Success!" ]]; then
+                exit 1
+            fi
+        fi
+
         echo "joining an existing cluster"
         join=""
 

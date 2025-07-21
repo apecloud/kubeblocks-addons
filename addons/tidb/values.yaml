@@ -6,6 +6,7 @@ image:
   registry: docker.io
   br:
     repository: apecloud/br
+    tag7: v7.1.6
     tag8: v8.4.0
   pd:
     repository: apecloud/pd
@@ -13,6 +14,9 @@ image:
     repository: apecloud/tidb
   tikv:
     repository: apecloud/tikv
+  mysqlClient:
+    repository: apecloud/alpine-mysql-client
+    tag: "15.1"
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "v7.1.5"
