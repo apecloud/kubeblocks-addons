@@ -45,7 +45,7 @@ wal-g backup-fetch ${DATA_DIR} ${backupName}
 if [ ! -z "${DP_RESTORE_TIMESTAMP}" ]; then
    exit 0
 fi
-# 3. config restore script for leader
+# 3. config restore script
 touch ${DATA_DIR}/recovery.signal;
 mkdir -p ${RESTORE_SCRIPT_DIR} && chmod 777 -R ${RESTORE_SCRIPT_DIR} && touch ${RESTORE_SCRIPT_DIR}/kb_restore.signal;
 echo "#!/bin/bash" > ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
