@@ -19,9 +19,9 @@ function config_wal_g_for_fetch_wal_log() {
 
 # 1. config restore script
 touch ${DATA_DIR}/recovery.signal;
-mkdir -p ${RESTORE_SCRIPT_DIR} && chmod 777 -R ${RESTORE_SCRIPT_DIR};
+mkdir -p ${RESTORE_SCRIPT_DIR} && chmod 777 -R ${RESTORE_SCRIPT_DIR} && touch ${RESTORE_SCRIPT_DIR}/kb_restore.signal;
 echo "#!/bin/bash" > ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
-echo "[[ -d '${DATA_DIR}.old' ]] && mv -f ${DATA_DIR}.old/* ${DATA_DIR}/;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
+echo "[[ -d '${DATA_DIR}.old' ]] && mv -f ${DATA_DIR}.old/* ${DATA_DIR}/ && rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 echo "sync;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 chmod +x ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 

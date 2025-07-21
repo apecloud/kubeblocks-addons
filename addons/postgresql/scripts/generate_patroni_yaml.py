@@ -55,10 +55,11 @@ def main(filename):
             postgresql['pg_hba'] = lines
     if restore_dir and os.path.isfile(
             os.path.join(restore_dir, 'kb_restore.signal')):
-        if 'bootstrap' not in local_config:
-            local_config['bootstrap'] = {}
-        with open('/home/postgres/conf/kb_restore.conf', 'r') as f:
-            local_config['bootstrap'].update(yaml.safe_load(f))
+        if 'postgresql' not in local_config:
+            local_config['postgresql'] = {}
+        with open('/home/postgres/conf/replica_restore.conf', 'r') as f:
+            replica_restore_conf = yaml.safe_load(f)
+            local_config['postgresql'].update(replica_restore_conf)
 
     # point in time recovery(PITR)
     if os.path.isfile("/home/postgres/pgdata/conf/recovery.conf"):
