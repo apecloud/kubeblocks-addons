@@ -52,7 +52,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 
 {{/*
-Define kafka.combine component defintion name
+Define kafka.combine component definition name
 */}}
 {{- define "kafka-combine.componentDefName" -}}
 {{- if eq (len .Values.clusterVersionOverride) 0 -}}
@@ -63,7 +63,7 @@ kafka-combine
 {{- end -}}
 
 {{/*
-Define kafka-exporter component defintion name
+Define kafka-exporter component definition name
 */}}
 {{- define "kafka-exporter.componentDefName" -}}
 {{- if eq (len .Values.clusterVersionOverride) 0 -}}
@@ -74,7 +74,7 @@ kafka-exporter
 {{- end -}}
 
 {{/*
-Define kafka-controller component defintion name
+Define kafka-controller component definition name
 */}}
 {{- define "kafka-controller.componentDefName" -}}
 {{- if eq (len .Values.clusterVersionOverride) 0 -}}
@@ -85,12 +85,42 @@ kafka-controller
 {{- end -}}
 
 {{/*
-Define kafka-broker component defintion name
+Define kafka-broker component definition name
 */}}
-{{- define "kafka-broker.componentDefName" -}}
+{{- define "kafka-broker2_8.componentDefName" -}}
 {{- if eq (len .Values.clusterVersionOverride) 0 -}}
-kafka-broker
+kafka-broker-2.8
 {{- else -}}
-{{- printf "kafka-broker-%s" .Values.clusterVersionOverride -}}
+{{- printf "kafka-broker-2.8-%s" .Values.clusterVersionOverride -}}
 {{- end -}}
+{{- end -}}
+
+{{- define "kafka-broker3_2.componentDefName" -}}
+{{- if eq (len .Values.clusterVersionOverride) 0 -}}
+kafka-broker-3.2
+{{- else -}}
+{{- printf "kafka-broker-3.2-%s" .Values.clusterVersionOverride -}}
+{{- end -}}
+{{- end -}}
+
+
+{{- define "kafka-zookeeper.componentDefName" -}}
+{{- if eq (len .Values.clusterVersionOverride) 0 -}}
+kafka-zookeeper
+{{- else -}}
+{{- printf "kafka-zookeeper-%s" .Values.clusterVersionOverride -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "kafka.cm.common.metadata" -}}
+namespace: {{ .Release.Namespace | quote }}
+labels:
+  {{- include "common.labels.standard" . | nindent 2 }}
+  {{- if .Values.commonLabels }}
+  {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 2 }}
+  {{- end }}
+{{- if .Values.commonAnnotations }}
+annotations:
+  {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 2 }}
+{{- end }}
 {{- end -}}

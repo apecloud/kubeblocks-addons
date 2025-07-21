@@ -34,6 +34,8 @@ metadata:
 data:
   kafka-server-setup.sh: |-
     {{- .Files.Get "scripts/kafka-server-setup.tpl" | nindent 4 }}
+  kafka-server-zk-setup.sh: |-
+    {{- .Files.Get "scripts/kafka-server-zk-setup.sh.tpl" | nindent 4 }}
   kafka-exporter-setup.sh: |-
     {{- .Files.Get "scripts/kafka-exporter-setup.tpl" | nindent 4 }}
   kafka-env.sh: |-

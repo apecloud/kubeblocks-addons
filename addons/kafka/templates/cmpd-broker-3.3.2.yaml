@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "kafka-combine.componentDefName" . }}
+  name: "{{ include "kafka-broker3_2.componentDefName" . }}"
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -22,49 +22,42 @@ spec:
             port: 9092
             targetPort: kafka-client
   vars:
-    - name: SUPER_USER
-      valueFrom:
-        credentialVarRef:
-          name: admin
-          username: Required
-          optional: false
+    # - name: SUPER_USER
+    #   valueFrom:
+    #    credentialVarRef:
+    #      name: admin
+    #      username: Required
+    #      optional: false
     ## Todo: currently only nodeport and clusterip network modes are supported. LoadBalance is not supported yet and needs future support.
     - name: BROKER_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "kafka-combine.componentDefName" . }}
+          compDef: "{{ include "kafka-broker3_2.componentDefName" . }}"
           name: advertised-listener
           optional: true
           port:
             name: broker
             option: Optional
   provider: kubeblocks
-  description: |-
-    Kafka servers that act as both brokers and controllers are referred to as "combined" servers. Combined servers
-    are simpler to operate for small use cases like a development environment. Combined mode is not recommended in critical
-    deployment environments.
+  description: Kafka broker.
   serviceKind: kafka
-  serviceVersion: {{ .Values.componentServiceVersion.combine }}
-  systemAccounts:
-    - name: client
-      secretRef:
-        name: {{ include "kafka.name" . }}-client-secret
-        namespace: {{ .Release.Namespace }}
-    - name: admin
-      secretRef:
-        name: {{ include "kafka.name" . }}-superusers-secret
-        namespace: {{ .Release.Namespace }}
+  serviceVersion: {{ .Values.componentServiceVersion.broker }}
+  # currently authn is not enabled for 3.3.2
+  # systemAccounts:
+  #   - name: client
+  #     secretRef:
+  #       name: {{ include "kafka.name" . }}-client-secret
+  #       namespace: {{ .Release.Namespace }}
+  #   - name: admin
+  #     secretRef:
+  #       name: {{ include "kafka.name" . }}-superusers-secret
+  #       namespace: {{ .Release.Namespace }}
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
-  monitor:
-    builtIn: false
-    exporterConfig:
-      scrapePath: /metrics
-      scrapePort: 5556
   configs:
     - name: kafka-configuration-tpl
-      constraintRef: {{ include "kafka.name" . }}-cc
-      templateRef: {{ include "kafka.name" . }}-configuration-tpl
+      constraintRef: {{ include "kafka.name" . }}-3.3.2-cc
+      templateRef: {{ include "kafka.name" . }}-3.3.2-configuration-tpl
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
     - name: {{ include "kafka.name" . }}-jmx-configuration-tpl
@@ -87,7 +80,6 @@ spec:
       fsGroup: 1001
     containers:
       - name: kafka
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
@@ -106,17 +98,17 @@ spec:
           - name: KAFKA_ENABLE_KRAFT
             value: "yes"
           - name: KAFKA_CFG_PROCESS_ROLES
-            value: "broker,controller"
+            value: "broker"
           - name: KAFKA_CFG_CONTROLLER_LISTENER_NAMES # required for KRaft
             value: "CONTROLLER"
           - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
             value: "INTERNAL"
           - name: KAFKA_CFG_LISTENERS # required for KRaft
-            value: "CONTROLLER://:9093,INTERNAL://:9094,CLIENT://:9092"
+            value: "INTERNAL://:9094,CLIENT://:9092"
           - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
-            value: "CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,CLIENT:PLAINTEXT"
+            value: "INTERNAL:PLAINTEXT,CLIENT:PLAINTEXT,CONTROLLER:PLAINTEXT"
           - name: KAFKA_CFG_ADVERTISED_LISTENERS
-            #value: "INTERNAL://$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc:9094,CLIENT://$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc:9092"
+            # value: "INTERNAL://$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}:9094,CLIENT://$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}:9092"
             value: "INTERNAL://$(KB_POD_IP):9094,CLIENT://$(KB_POD_IP):9092"
           - name: KAFKA_CFG_INITIAL_BROKER_REGISTRATION_TIMEOUT_MS
             value: "240000"
@@ -137,17 +129,19 @@ spec:
             value: /scripts/server.properties
           - name: KAFKA_KRAFT_CLUSTER_ID
             value: $(KB_CLUSTER_UID)
-          - name: KAFKA_CFG_SUPER_USERS
-            value: "User:$(SUPER_USER)"
+          # - name: KAFKA_CFG_SUPER_USERS
+          #   value: "User:$(SUPER_USER)"
           # - name: KB_KAFKA_ENABLE_SASL  # enable the SASL with plain mode
-          # value: "false"
+          #   value: "true"
           - name: KB_KAFKA_SASL_CONFIG_PATH  # specify the SASL jaas users
             value: /tools/server-jaas.properties
+          - name: BROKER_MIN_NODE_ID
+            value: {{ .Values.kafkaBroker.minNodeId | quote }}
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain | quote }}
         ports:
           - name: kafka-client
             containerPort: 9092
-          - name: kafka-ctrlr
-            containerPort: 9093
           - name: kafka-internal
             containerPort: 9094
         livenessProbe:
@@ -157,7 +151,7 @@ spec:
           successThreshold: 1
           timeoutSeconds: 5
           tcpSocket:
-            port: kafka-ctrlr
+            port: kafka-client
         startupProbe:
           failureThreshold: 30
           initialDelaySeconds: 5
@@ -165,7 +159,7 @@ spec:
           successThreshold: 1
           timeoutSeconds: 5
           tcpSocket:
-            port: kafka-ctrlr
+            port: kafka-client
         volumeMounts:
           - name: data
             mountPath: /bitnami/kafka
@@ -184,7 +178,6 @@ spec:
             mountPath: /tools/server-jaas.properties
             subPath: server-jaas.properties
       - name: jmx-exporter
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         securityContext:
           runAsNonRoot: true

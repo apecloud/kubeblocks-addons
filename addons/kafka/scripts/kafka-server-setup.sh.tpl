@@ -1,4 +1,5 @@
 #!/bin/bash
+# Deprecated: This file was used for compatibility with 0.8/0.7 api and will be removed in the future.
 
 # TLS setting
 {{- if $.component.tlsConfig }}
@@ -132,7 +133,7 @@ if [[ "broker,controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] || [[ "broker" = "$KAF
     fi
 
     if [[ "true" = "$KB_KAFKA_PUBLIC_ACCESS" ]]; then
-      export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc:9094,CLIENT://${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc:9092"
+      export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc.${CLUSTER_DOMAIN}:9094,CLIENT://${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc.${CLUSTER_DOMAIN}:9092"
       echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
     fi
 fi

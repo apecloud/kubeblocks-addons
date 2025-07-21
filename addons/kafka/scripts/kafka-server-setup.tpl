@@ -228,4 +228,22 @@ else
     echo "[cfg]export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=$KAFKA_CFG_CONTROLLER_QUORUM_VOTERS,for kafka-server."
 fi
 
+# log to file, ref: https://github.com/bitnami/containers/issues/11360#issuecomment-1315860087
+# reload4j manual: https://reload4j.qos.ch/manual.html
+LOG_DIR="$KAFKA_VOLUME_DIR/logs"
+mkdir -p $LOG_DIR
+sed -i "s/^log4j.rootLogger=\(.*\)$/log4j.rootLogger=\1, R/" /opt/bitnami/kafka/config/log4j.properties
+cat << EOF >> /opt/bitnami/kafka/config/log4j.properties
+log4j.appender.R=org.apache.log4j.RollingFileAppender
+log4j.appender.R.File=$LOG_DIR/kafka.log
+
+log4j.appender.R.MaxFileSize=100MB
+# Keep one backup file
+log4j.appender.R.MaxBackupIndex=1
+
+log4j.appender.R.layout=org.apache.log4j.PatternLayout
+log4j.appender.R.layout.ConversionPattern=[%d] %p %m (%c)%n
+EOF
+echo "[cfg]log to $LOG_DIR log4j configuration added."
+
 exec /entrypoint.sh /run.sh

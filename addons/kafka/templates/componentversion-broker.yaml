@@ -7,12 +7,30 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "kafka-broker.componentDefName" . }}
+        - "{{ include "kafka-broker3_2.componentDefName" . }}"
       releases:
         - 3.3.2-debian-11-r54
+    - compDefs:
+        - "{{ include "kafka-broker2_8.componentDefName" . }}"
+      releases:
+        - 2.8.2-debian-11-r7
+        - 2.8.1-debian-11-r7
   releases:
     - name: 3.3.2-debian-11-r54
       changes:
       serviceVersion: 3.3.2
       images:
-        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag.v3_3_2 }}
+        jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+    - name: 2.8.2-debian-11-r7
+      changes:
+      serviceVersion: 2.8.2
+      images:
+        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ .Values.images.kafka.tag.v2_8_2 }}
+        jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+    - name: 2.8.1-debian-11-r7
+      changes:
+      serviceVersion: 2.8.1
+      images:
+        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag.v2_8_1 }}
+        jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}

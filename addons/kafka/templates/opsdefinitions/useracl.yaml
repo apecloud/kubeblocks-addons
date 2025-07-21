@@ -100,7 +100,7 @@ spec:
         podSpec:
           containers:
           - name: kafka-topic
-            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag.v3_3_2 }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             command:
             - bash
