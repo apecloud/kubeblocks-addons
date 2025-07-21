@@ -10,8 +10,6 @@ spec:
   env:
     - name: DATA_DIR
       value: {{ .Values.dataMountPath }}
-    - name: DP_DB_PORT
-      value: "6379"
   backup:
     preBackup: []
     postBackup: []
@@ -58,8 +56,6 @@ spec:
   env:
     - name: DATA_DIR
       value: {{ .Values.dataMountPath }}
-    - name: DP_DB_PORT
-      value: "6379"
     - name: MODE
       value: "cluster"
   backup:
@@ -77,6 +73,14 @@ spec:
       - |
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
+    prepareData:
+      image: {{ include "redis.image" . }}
+      command:
+      - bash
+      - -c
+      - |
+        #!/bin/bash
+        {{- .Files.Get "dataprotection/restore-cluster-users.sh" | nindent 8 }}
     postReady:
     - job:
         command:
@@ -100,8 +104,6 @@ spec:
   env:
     - name: DATA_DIR
       value: {{ .Values.dataMountPath }}
-    - name: DP_DB_PORT
-      value: "6379"
     - name: LOG_ARCHIVE_SECONDS
       value: "3"
   backup:
@@ -142,3 +144,38 @@ spec:
         onError: Fail
         runOnTargetPodNode: true
     baseBackupRequired: false
+---
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: redis-for-rebuild-instance
+  labels:
+    clusterdefinition.kubeblocks.io/name: redis
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}
+    - name: REBUILD_CLUSTER_INSTANCE
+      value: "false"
+  backup:
+    backupData:
+      image: {{ include "busybox.image" . }}
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+      - sh
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/backup_for_rebuild.sh" | nindent 8 }}
+  restore:
+    prepareData:
+      image: {{ include "busybox.image" . }}
+      command:
+      - sh
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/restore-cluster-users.sh" | nindent 8 }}

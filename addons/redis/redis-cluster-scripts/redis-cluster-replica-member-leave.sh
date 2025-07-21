@@ -7,7 +7,7 @@ set -ex
 remove_replica_from_shard_if_need() {
   # initialize the current pod info
   current_pod_name=$KB_POD_NAME
-  current_pod_fqdn="$current_pod_name.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
+  current_pod_fqdn="$current_pod_name.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
 
   # get the cluster nodes info
   set +x
@@ -26,7 +26,7 @@ remove_replica_from_shard_if_need() {
   fi
 
   # get the current node role, if the current node is a slave, remove it from the cluster
-  current_node_role=$(echo "$cluster_nodes_info" | grep "$current_pod_name" | awk '{print $3}')
+  current_node_role=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $3}')
   if [[ "$current_node_role" =~ "slave" ]]; then
     echo "Current node $current_pod_name is a slave, removing it from the cluster..."
     current_node_cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')

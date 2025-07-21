@@ -33,7 +33,16 @@ spec:
       snapshotVolumes: true
       targetVolumes:
         volumes:
-        - data
+        - {{ .Values.dataMountPath }}
+    - name: backup-for-rebuild-instance
+      actionSetName: redis-for-rebuild-instance
+      env:
+        - name: REBUILD_CLUSTER_INSTANCE
+          value: "true"
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
     schedules: &backupschedules
     - backupMethod: datafile
       enabled: false
@@ -48,7 +57,10 @@ spec:
       cronExpression: "0 18 * * 0"
       retentionPeriod: 7d
   - componentDefs:
-      - {{ include "redis.componentDefName" . }}
+      - redis-7
+      - redis-8
+      - redis-5
+      - redis-6
     target:
       role: secondary
       fallbackRole: primary
@@ -56,7 +68,10 @@ spec:
     backupMethods: *backupMethods
     schedules: *backupschedules
   - componentDefs:
-      - {{ include "redis-cluster.componentDefName" . }}
+      - redis-cluster-5
+      - redis-cluster-6
+      - redis-cluster-7
+      - redis-cluster-8
     target:
       role: secondary
       fallbackRole: primary
@@ -65,6 +80,15 @@ spec:
     - name: datafile
       snapshotVolumes: false
       actionSetName: redis-cluster-backup
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+    - name: backup-for-rebuild-instance
+      actionSetName: redis-for-rebuild-instance
+      env:
+        - name: REBUILD_CLUSTER_INSTANCE
+          value: "true"
       targetVolumes:
         volumeMounts:
           - name: data

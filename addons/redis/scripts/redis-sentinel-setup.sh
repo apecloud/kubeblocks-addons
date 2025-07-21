@@ -20,6 +20,10 @@ set -e
       {{- $sentinel_component = $e }}
     {{- else if eq $e.componentDefRef "redis-7" }}
       {{- $redis_component = $e }}
+    {{- else if eq $e.componentDefRef "redis-6" }}
+      {{- $redis_component = $e }}
+    {{- else if eq $e.componentDefRef "redis-5" }}
+      {{- $redis_component = $e }}
     {{- else if eq $e.componentDefRef "redis" }}
       {{- $redis_component = $e }}
     {{- end }}
@@ -29,7 +33,13 @@ set -e
       {{- $sentinel_component = $e }}
     {{- else if eq $e.componentDef "redis-sentinel" }}
       {{- $sentinel_component = $e }}
+    {{- else if eq $e.componentDef "redis-8" }}
+      {{- $redis_component = $e }}
     {{- else if eq $e.componentDef "redis-7" }}
+      {{- $redis_component = $e }}
+    {{- else if eq $e.componentDef "redis-6" }}
+      {{- $redis_component = $e }}
+    {{- else if eq $e.componentDef "redis-5" }}
       {{- $redis_component = $e }}
     {{- else if eq $e.componentDef "redis" }}
       {{- $redis_component = $e }}
@@ -39,7 +49,6 @@ set -e
 {{- /* build primary pod message, because currently does not support cross-component acquisition of environment variables, the service of the redis master node is assembled here through specific rules  */}}
 {{- $primary_pod = printf "%s-%s-%d.%s-%s-headless.%s.svc.cluster.local" $clusterName $redis_component.name $candidate_instance_index $clusterName $redis_component.name $namespace }}
 {{- $sentinel_monitor := printf "%s-%s %s" $clusterName $redis_component.name $primary_pod }}
-# shellcheck disable=SC1073
 {{- /* build sentinel config */}}
 echo "port 26379" > /etc/sentinel/redis-sentinel.conf
 echo "sentinel resolve-hostnames yes" >> /etc/sentinel/redis-sentinel.conf
@@ -56,5 +65,3 @@ if [ ! -z "$SENTINEL_PASSWORD" ]; then
   echo "sentinel sentinel-user $SENTINEL_USER" >> /etc/sentinel/redis-sentinel.conf
   echo "sentinel sentinel-pass $SENTINEL_PASSWORD" >> /etc/sentinel/redis-sentinel.conf
 fi
-
-{{- /* $primary_svc := printf "%s-%s.%s.svc.cluster.local" $clusterName $redis_component.name $namespace */}}

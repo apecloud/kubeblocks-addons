@@ -8,7 +8,6 @@ pidfile /var/run/redis_6379.pid
 loglevel notice
 logfile "/data/running.log"
 {{ end }}
-databases 16
 always-show-logo no
 set-proc-title yes
 proc-title-template "{title} {listen-addr} {server-mode}"
@@ -45,7 +44,7 @@ auto-aof-rewrite-percentage 100
 auto-aof-rewrite-min-size 64mb
 aof-load-truncated yes
 aof-use-rdb-preamble yes
-aof-timestamp-enabled no
+aof-timestamp-enabled yes
 slowlog-log-slower-than 10000
 slowlog-max-len 128
 latency-monitor-threshold 0
@@ -74,6 +73,11 @@ aclfile /etc/redis/users.acl
 # TODO: dynamic config for io-threads
 io-threads 4
 io-threads-do-reads yes
+# maxmemory <bytes>
+{{- $request_memory := getContainerRequestMemory ( index $.podSpec.containers 0 ) }}
+{{- if gt $request_memory 0 }}
+maxmemory {{ $request_memory }}
+{{- end }}
   
 # configuration for redis cluster
 cluster-enabled yes
@@ -84,8 +88,3 @@ cluster-replica-validity-factor 0
 cluster-require-full-coverage yes
 cluster-allow-reads-when-down no
 
-# maxmemory <bytes>
-{{- $request_memory := getContainerRequestMemory ( index $.podSpec.containers 0 ) }}
-{{- if gt $request_memory 0 }}
-maxmemory {{ $request_memory }}
-{{- end }}

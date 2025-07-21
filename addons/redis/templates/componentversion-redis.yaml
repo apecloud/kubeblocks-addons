@@ -6,35 +6,25 @@ metadata:
     {{- include "redis.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
+  {{- range .Values.redisVersions }}
     - compDefs:
-        - {{ include "redis.componentDefNamePrefix" . }}
+        - {{ .componentDef }}
       releases:
-        - 7.2.7
-        - 7.2.4
-        - 7.0.6
-        - 7.2.10
+    {{- range .mirrorVersions }}
+        - {{ .version }}
+    {{- end }}
+  {{- end }}
   releases:
-    - name: 7.2.7
+  {{- range .Values.redisVersions }}
+    {{- $redisRepository := printf "%s/%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository }}
+    {{- if or (eq .major "8") (eq .major "5") }}
+      {{- $redisRepository = printf "%s/%s" ( $.Values.ceImage.registry | default ( $.Values.image.registry | default "docker.io" ) )  $.Values.ceImage.repository }}
+    {{- end }}
+    {{- range .mirrorVersions }}
+    - name: {{ .version }}
       changes:
-      serviceVersion: 7.2.7
+      serviceVersion: {{ .version }}
       images:
-        redis: {{ include "redis.repository" . }}:7.2.0-v14
-        metrics: {{ include "metrics.repository" . }}:0.1.2-beta.1
-    - name: 7.2.10
-      changes:
-      serviceVersion: 7.2.10
-      images:
-        redis: {{ include "redis.repository" . }}:7.2.0-v18
-        metrics: {{ include "metrics.repository" . }}:0.1.2-beta.1
-    - name: 7.2.4
-      changes:
-      serviceVersion: 7.2.4
-      images:
-        redis: {{ include "redis.repository" . }}:7.2.0-v10
-        metrics: {{ include "metrics.repository" . }}:0.1.2-beta.1
-    - name: 7.0.6
-      changes:
-      serviceVersion: 7.0.6
-      images:
-        redis: {{ include "redis.repository" . }}:7.0.6-RC4
-        metrics: {{ include "metrics.repository" . }}:0.1.2-beta.1
+        redis: {{ $redisRepository }}:{{ .imageTag }}
+    {{- end }}
+  {{- end }}

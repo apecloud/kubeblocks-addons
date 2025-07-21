@@ -83,14 +83,30 @@ extract_ordinal_from_object_name() {
   echo "$ordinal"
 }
 
+extract_lb_host_by_svc_name() {
+  local svc_name="$1"
+  for lb_composed_name in $(echo "$REDIS_ADVERTISED_LB_HOST" | tr ',' '\n' ); do
+    if [[ ${lb_composed_name} == *":"* ]]; then
+       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
+         echo "${lb_composed_name#*:}"
+         break
+       fi
+    else
+       break
+    fi
+  done
+}
+
 parse_redis_primary_announce_addr() {
   local pod_name="$1"
   local pod_fqdn="$2"
-
+  if [[ -z "${REDIS_ADVERTISED_PORT}" ]]; then
+     REDIS_ADVERTISED_PORT="$REDIS_LB_ADVERTISED_PORT"
+  fi
   if [[ -z "${REDIS_ADVERTISED_PORT}" ]]; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
     # if redis primary is in host network mode, use the host ip and port as the announce ip and port first
-    if [[ -n "${REDIS_HOST_NETWORK_PORT}" ]]; then
+    if [[ -n "${REDIS_HOST_NETWORK_PORT}" ]] && [[ -n "$HOST_NETWORK_ENABLED" ]]; then
       redis_announce_port_value="$REDIS_HOST_NETWORK_PORT"
       # when in host network mode, the pod ip is the host ip
       pod_host_ip=$(get_default_primary_pod_ip "$pod_fqdn")
@@ -114,7 +130,14 @@ parse_redis_primary_announce_addr() {
       echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
       redis_announce_port_value="$port"
       # TODO: currently, kb doesn't support reference another component pod's HOST_IP, so we need to ensure the script is executed on the same node as the redis primary pod.
-      redis_announce_host_value="$KB_HOST_IP"
+      lb_host=$(extract_lb_host_by_svc_name "$svc_name")
+      if [ -n "$lb_host" ]; then
+        echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
+        redis_announce_host_value="$lb_host"
+        redis_announce_port_value="6379"
+      else
+        redis_announce_host_value="$KB_HOST_IP"
+      fi
       found=true
       break
     fi
@@ -195,7 +218,9 @@ register_to_sentinel() {
   execute_redis_cli SENTINEL set "$master_name" down-after-milliseconds 5000
   execute_redis_cli SENTINEL set "$master_name" failover-timeout 60000
   execute_redis_cli SENTINEL set "$master_name" parallel-syncs 1
-  execute_redis_cli SENTINEL set "$master_name" auth-user "$REDIS_SENTINEL_USER"
+  if [ "$IS_REDIS5" != "true" ]; then
+    execute_redis_cli SENTINEL set "$master_name" auth-user "$REDIS_SENTINEL_USER"
+  fi
   execute_redis_cli SENTINEL set "$master_name" auth-pass "$REDIS_SENTINEL_PASSWORD"
   set -x
 
@@ -227,6 +252,47 @@ get_default_primary_pod_ip() {
   return 1
 }
 
+function register_to_sentinel_for_redis5() {
+  local sentinel_pod=${1:? "Error: Required argument sentinel_pod is not set."}
+  sentinel_pod_fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME.$KB_NAMESPACE.svc.cluster.local"
+  sentinel_pod_ip=$(getent hosts "$sentinel_pod_fqdn" | awk '{ print $1 }')
+  if [ -z "$sentinel_pod_ip" ]; then
+    echo "Error: Failed to resolve pod ip for $sentinel_pod_fqdn."
+    exit 1
+  fi
+  if [ -n "$redis_announce_host_value" ] && [ -n "$redis_announce_port_value" ]; then
+    echo "register to sentinel:$sentinel_pod_fqdn with announce addr: redis_announce_host_value=$redis_announce_host_value, redis_announce_port_value=$redis_announce_port_value"
+    register_to_sentinel "$sentinel_pod_ip" "$master_name" "$redis_announce_host_value" "$redis_announce_port_value"
+  else
+    default_primary_pod_ip=$(get_default_primary_pod_ip "$redis_default_primary_pod_headless_fqdn")
+    if [ -n "$FIXED_POD_IP_ENABLED" ]; then
+      echo "register to sentinel:$sentinel_pod_fqdn with fixed primary pod ip: fixed_pod_ip=$default_primary_pod_ip, redis_default_service_port=$redis_default_service_port"
+      register_to_sentinel "$sentinel_pod_ip" "$master_name" "$default_primary_pod_ip" "$redis_default_service_port"
+    else
+      echo "register to sentinel:$sentinel_pod_fqdn with primary pod ip: default_primary_pod_ip=$default_primary_pod_ip, redis_default_service_port=$redis_default_service_port"
+      register_to_sentinel "$sentinel_pod_ip" "$master_name" "$default_primary_pod_ip" "$redis_default_service_port"
+    fi
+  fi
+}
+
+function register_to_sentinel_for_redis() {
+  local sentinel_pod=${1:? "Error: Required argument sentinel_pod is not set."}
+  sentinel_pod_fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME.$KB_NAMESPACE.svc.cluster.local"
+  if [ -n "$redis_announce_host_value" ] && [ -n "$redis_announce_port_value" ]; then
+    echo "register to sentinel:$sentinel_pod_fqdn with announce addr: redis_announce_host_value=$redis_announce_host_value, redis_announce_port_value=$redis_announce_port_value"
+    register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$redis_announce_host_value" "$redis_announce_port_value"
+  else
+    if [ -n "$FIXED_POD_IP_ENABLED" ]; then
+      default_primary_pod_ip=$(get_default_primary_pod_ip "$redis_default_primary_pod_headless_fqdn")
+      echo "register to sentinel:$sentinel_pod_fqdn with fixed primary pod ip: fixed_pod_ip=$default_primary_pod_ip, redis_default_service_port=$redis_default_service_port"
+      register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$default_primary_pod_ip" "$redis_default_service_port"
+    else
+      echo "register to sentinel:$sentinel_pod_fqdn with ClusterIP service: redis_default_primary_pod_fqdn=$redis_default_primary_pod_headless_fqdn, redis_default_service_port=$redis_default_service_port"
+      register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$redis_default_primary_pod_headless_fqdn" "$redis_default_service_port"
+    fi
+  fi
+}
+
 register_to_sentinel_wrapper() {
   # parse redis sentinel pod list from $SENTINEL_POD_NAME_LIST env
   if [ -z "$SENTINEL_POD_NAME_LIST" ]; then
@@ -243,7 +309,7 @@ register_to_sentinel_wrapper() {
   # get minimum ordinal pod name as default primary node (the same logic as redis initialize primary node selection)
   get_minimum_initialize_pod_ordinal
   default_redis_primary_pod_name="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal"
-  redis_default_primary_pod_headless_fqdn="$default_redis_primary_pod_name.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
+  redis_default_primary_pod_headless_fqdn="$default_redis_primary_pod_name.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc.cluster.local"
   init_redis_service_port
   parse_redis_primary_announce_addr $default_redis_primary_pod_name $redis_default_primary_pod_headless_fqdn
 
@@ -259,19 +325,10 @@ register_to_sentinel_wrapper() {
     master_name="$CUSTOM_SENTINEL_MASTER_NAME"
   fi
   for sentinel_pod in "${sentinel_pod_list[@]}"; do
-    sentinel_pod_fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
-    if [ -n "$redis_announce_host_value" ] && [ -n "$redis_announce_port_value" ]; then
-      echo "register to sentinel:$sentinel_pod_fqdn with announce addr: redis_announce_host_value=$redis_announce_host_value, redis_announce_port_value=$redis_announce_port_value"
-      register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$redis_announce_host_value" "$redis_announce_port_value"
+    if [ "$IS_REDIS5" == "true" ]; then
+       register_to_sentinel_for_redis5 "${sentinel_pod}"
     else
-      if [ -n "$FIXED_POD_IP_ENABLED" ]; then
-        default_primary_pod_ip=$(get_default_primary_pod_ip "$redis_default_primary_pod_headless_fqdn")
-        echo "register to sentinel:$sentinel_pod_fqdn with fixed primary pod ip: fixed_pod_ip=$default_primary_pod_ip, redis_default_service_port=$redis_default_service_port"
-        register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$default_primary_pod_ip" "$redis_default_service_port"
-      else
-        echo "register to sentinel:$sentinel_pod_fqdn with ClusterIP service: redis_default_primary_pod_fqdn=$redis_default_primary_pod_headless_fqdn, redis_default_service_port=$redis_default_service_port"
-        register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$redis_default_primary_pod_headless_fqdn" "$redis_default_service_port"
-      fi
+       register_to_sentinel_for_redis "${sentinel_pod}"
     fi
   done
 }

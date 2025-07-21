@@ -6,25 +6,34 @@ Define redis cluster shardingSpec with ComponentDefinition.
   shards: {{ .Values.redisCluster.shardCount }}
   template:
     name: redis
-    componentDef: redis-cluster-7
+    componentDef: redis-cluster
     replicas: {{ .Values.replicas }}
-    {{- if and .Values.nodePortEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) }}
+    {{- if and .Values.nodePortEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled) }}
     services:
     - name: redis-advertised
       serviceType: NodePort
       podService: true
     {{- end }}
-    {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+    {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) }}
+    services:
+    - name: redis-lb-advertised
+      serviceType: LoadBalancer
+      podService: true
+      {{- include "kblib.loadBalancerAnnotations" . | indent 4 }}
+    env:
+    - name: LOAD_BALANCER_ENABLED
+      value: "true"
+    {{- end }}
+    {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled)  }}
     env:
     - name: FIXED_POD_IP_ENABLED
       value: "true"
     {{- end }}
-    {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) }}
+    {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) (not .Values.loadBalancerEnabled) }}
     env:
     - name: HOST_NETWORK_ENABLED
       value: "true"
     {{- end }}
-    serviceAccountName: {{ include "kblib.serviceAccountName" . }}
     serviceVersion: {{ .Values.version }}
     systemAccounts:
     - name: default
@@ -43,7 +52,7 @@ Define redis cluster shardingSpec with ComponentDefinition.
     resources:
       limits:
         cpu: {{ .Values.cpu | quote }}
-        memory:  {{ print .Values.memory "Gi" | quote }}
+        memory:  {{ print (mulf .Values.memory 3) "Gi" | quote }}
       requests:
         cpu: {{ .Values.cpu | quote }}
         memory:  {{ print .Values.memory "Gi" | quote }}
@@ -63,27 +72,37 @@ Define redis ComponentSpec with ComponentDefinition.
 {{- define "redis-cluster.componentSpec" }}
 - name: redis
   {{- include "redis-cluster.replicaCount" . | indent 2 }}
-  {{- if and .Values.nodePortEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) }}
+  {{- if and .Values.nodePortEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled) }}
   services:
   - name: redis-advertised
     serviceType: NodePort
     podService: true
   {{- end }}
+  {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) }}
+  services:
+  - name: redis-lb-advertised
+    serviceType: LoadBalancer
+    podService: true
+    {{- include "kblib.loadBalancerAnnotations" . | indent 4 }}
+  {{- end }}
   env:
   - name: CUSTOM_SENTINEL_MASTER_NAME
     value: {{ .Values.sentinel.customMasterName | default "" }}
-  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+  {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) }}
+  - name: LOAD_BALANCER_ENABLED
+    value: "true"
+  {{- end }}
+  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled) }}
   - name: FIXED_POD_IP_ENABLED
     value: "true"
   {{- end }}
-  {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) }}
+  {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) (not .Values.loadBalancerEnabled) }}
   - name: HOST_NETWORK_ENABLED
     value: "true"
   {{- end }}
   enabledLogs:
     - running
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-  serviceVersion: {{ .Values.version }}
   {{- if and .Values.customSecretName .Values.customSecretNamespace }}
   systemAccounts:
     - name: default
@@ -91,9 +110,16 @@ Define redis ComponentSpec with ComponentDefinition.
         name: {{ .Values.customSecretName }}
         namespace: {{ .Values.customSecretNamespace }}
   {{- end }}
+  serviceVersion: {{ .Values.version }}
   switchPolicy:
     type: Noop
-  {{- include "kblib.componentResources" . | indent 2 }}
+  resources:
+    limits:
+      cpu: {{ .Values.cpu | quote }}
+      memory:  {{ print (mulf .Values.memory 3) "Gi" | quote }}
+    requests:
+      cpu: {{ .Values.cpu | quote }}
+      memory:  {{ print .Values.memory "Gi" | quote }}
   {{- include "kblib.componentStorages" . | indent 2 }}
 {{- end }}
 
@@ -103,23 +129,22 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
 {{- define "redis-cluster.sentinelComponentSpec" }}
 - name: redis-sentinel
   replicas: {{ .Values.sentinel.replicas }}
-  {{- if and .Values.nodePortEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) }}
+  {{- if and .Values.nodePortEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled) }}
   services:
   - name: sentinel-advertised
     serviceType: NodePort
     podService: true
   {{- end }}
-  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled) }}
   env:
   - name: FIXED_POD_IP_ENABLED
     value: "true"
   {{- end }}
-  {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) }}
+  {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) (not .Values.loadBalancerEnabled) }}
   env:
   - name: HOST_NETWORK_ENABLED
     value: "true"
   {{- end }}
-  serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   serviceVersion: {{ .Values.version }}
   {{- if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}
   systemAccounts:
@@ -138,7 +163,6 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   volumeClaimTemplates:
     - name: data
       spec:
-        storageClassName: {{ .Values.sentinel.storageClassName | quote }}
         accessModes:
           - ReadWriteOnce
         resources:
@@ -173,6 +197,7 @@ Define redis ComponentSpec with legacy ClusterDefinition which will be deprecate
   enabledLogs:
     - running
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+  serviceVersion: {{ .Values.version }}
   switchPolicy:
     type: Noop
   {{- include "kblib.componentResources" . | indent 2 }}
@@ -195,6 +220,7 @@ Define redis sentinel ComponentSpec with legacy ClusterDefinition which will be 
 - name: redis-sentinel
   componentDefRef: redis-sentinel
   replicas: {{ .Values.sentinel.replicas }}
+  serviceVersion: {{ .Values.version }}
   resources:
     limits:
       cpu: {{ .Values.sentinel.cpu | quote }}

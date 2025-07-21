@@ -12,6 +12,20 @@ extract_ordinal_from_object_name() {
   echo "$ordinal"
 }
 
+extract_lb_host_by_svc_name() {
+  local svc_name="$1"
+  for lb_composed_name in $(echo "$REDIS_ADVERTISED_LB_HOST" | tr ',' '\n' ); do
+    if [[ ${lb_composed_name} == *":"* ]]; then
+       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
+         echo "${lb_composed_name#*:}"
+         break
+       fi
+    else
+       break
+    fi
+  done
+}
+
 get_minimum_initialize_pod_ordinal() {
   if [ -z "$KB_POD_LIST" ]; then
     echo "KB_POD_LIST is empty, use default initialize pod_ordinal:0 as primary node."
@@ -71,7 +85,7 @@ build_announce_ip_and_port() {
       echo "redis use immutable pod ip $KB_POD_IP to announce"
       echo "replica-announce-ip $KB_POD_IP" >> /etc/redis/redis.conf
     else
-      kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
+      kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
       echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
       echo "replica-announce-ip $kb_pod_fqdn" >> /etc/redis/redis.conf
     fi
@@ -240,7 +254,7 @@ get_default_initialize_primary_node() {
   # TODO: if has advertise svc and port, we should use it as default primary node info instead of the headless svc
   get_minimum_initialize_pod_ordinal
   echo "use default initialize pod_ordinal:$default_initialize_pod_ordinal as primary node."
-  primary="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE"
+  primary="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc.cluster.local"
   primary_port=$service_port
 }
 
@@ -297,27 +311,31 @@ check_pod_is_primary_in_kernel() {
 }
 
 start_redis_server() {
+    module_path="/opt/redis-stack/lib"
+    if [[ "$IS_REDIS8" == "true" ]]; then
+       module_path="/usr/local/lib/redis/modules"
+    fi
     exec_cmd="exec redis-server /etc/redis/redis.conf"
-    if [ -f /opt/redis-stack/lib/redisearch.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisearch.so ${REDISEARCH_ARGS}"
+    if [ -f ${module_path}/redisearch.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisearch.so ${REDISEARCH_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redistimeseries.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redistimeseries.so ${REDISTIMESERIES_ARGS}"
+    if [ -f ${module_path}/redistimeseries.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redistimeseries.so ${REDISTIMESERIES_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/rejson.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rejson.so ${REDISJSON_ARGS}"
+    if [ -f ${module_path}/rejson.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/rejson.so ${REDISJSON_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redisbloom.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisbloom.so ${REDISBLOOM_ARGS}"
+    if [ -f ${module_path}/redisbloom.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisbloom.so ${REDISBLOOM_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redisgraph.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgraph.so ${REDISGRAPH_ARGS}"
+    if [ -f ${module_path}/redisgraph.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgraph.so ${REDISGRAPH_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/rediscompat.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rediscompat.so"
+    if [ -f ${module_path}/rediscompat.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/rediscompat.so"
     fi
-    if [ -f /opt/redis-stack/lib/redisgears.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgears.so v8-plugin-path /opt/redis-stack/lib/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
+    if [ -f ${module_path}/redisgears.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgears.so v8-plugin-path ${module_path}/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
     fi
     echo "Starting redis server cmd: $exec_cmd"
     eval "$exec_cmd"
@@ -326,17 +344,21 @@ start_redis_server() {
 parse_redis_announce_addr() {
   local pod_name="$1"
 
+  if [[ -z "${REDIS_ADVERTISED_PORT}" ]]; then
+     REDIS_ADVERTISED_PORT="$REDIS_LB_ADVERTISED_PORT"
+  fi
   # try to get the announce ip and port from REDIS_ADVERTISED_PORT(support NodePort currently) first
   if [[ -z "${REDIS_ADVERTISED_PORT}" ]]; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
     # if redis is in host network mode, use the host ip and port as the announce ip and port
-    if [[ -n "${REDIS_HOST_NETWORK_PORT}" ]]; then
+    if [[ -n "${REDIS_HOST_NETWORK_PORT}" ]] && [[ -n "$HOST_NETWORK_ENABLED" ]]; then
       echo "redis is in host network mode, use the host ip:$KB_HOST_IP and port:$REDIS_HOST_NETWORK_PORT as the announce ip and port."
       redis_announce_port_value="$REDIS_HOST_NETWORK_PORT"
       redis_announce_host_value="$KB_HOST_IP"
     fi
     return 0
   fi
+
 
   # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   IFS=',' read -ra advertised_ports <<< "${REDIS_ADVERTISED_PORT}"
@@ -351,7 +373,14 @@ parse_redis_announce_addr() {
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
       redis_announce_port_value="$port"
-      redis_announce_host_value="$KB_HOST_IP"
+      lb_host=$(extract_lb_host_by_svc_name "$svc_name")
+      if [ -n "$lb_host" ]; then
+        echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
+        redis_announce_host_value="$lb_host"
+        redis_announce_port_value="6379"
+      else
+        redis_announce_host_value="$KB_HOST_IP"
+      fi
       found=true
       break
     fi

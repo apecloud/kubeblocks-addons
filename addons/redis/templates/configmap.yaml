@@ -1,9 +1,16 @@
+{{- range .Values.redisVersions }}
+{{- $version := .major }}
+{{- if eq .major "8" }}
+  {{ $version = "7" }}
+{{- end }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: redis7-config-template
+  name: redis{{ .major }}-config-template
   labels:
-    {{- include "redis.labels" . | nindent 4 }}
+    {{- include "redis.labels" $ | nindent 4 }}
 data:
   redis.conf: |-
-    {{- .Files.Get "config/redis7-config.tpl" | nindent 4 }}
+    {{- $.Files.Get (printf "config/redis%s-config.tpl" $version ) | nindent 4 }}
+{{- end }}
