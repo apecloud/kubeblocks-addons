@@ -15,11 +15,11 @@ spec:
     - name: loki-backend
       spec:
         ports:
-          - port: {{ .Values.backend.httpMetricsPort }}
+          - port: {{ .Values.server.httpMetricsPort }}
             protocol: TCP
             name: http-metrics
             targetPort: http-metrics
-          - port: {{ .Values.backend.grpcPort }}
+          - port: {{ .Values.server.grpcPort }}
             protocol: TCP
             name: grpc
             targetPort: grpc
@@ -33,30 +33,25 @@ spec:
               matchLabels:
                 app.kubernetes.io/component: backend
             topologyKey: kubernetes.io/hostname
-    containers:
-      - name: loki-sc-rules
-        image: {{ .Values.images.registry | default "docker.io"}}/{{ .Values.images.sidecar.repository }}:{{ .Values.images.sidecar.tag }}
-        imagePullPolicy: IfNotPresent
-        env:
-          - name: METHOD
-            value: WATCH
-          - name: LABEL
-            value: loki_rule
-          - name: FOLDER
-            value: /rules
-          - name: RESOURCE
-            value: both
-          - name: WATCH_SERVER_TIMEOUT
-            value: "60"
-          - name: WATCH_CLIENT_TIMEOUT
-            value: "60"
-          - name: LOG_LEVEL
-            value: INFO
+    initContainers:
+      - name: init
+        imagePullPolicy: {{ .Values.images.pullPolicy }}
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}
+        securityContext:
+          runAsUser: 0
+          privileged: true
+        command:
+          - /bin/sh
+          - -c
+          - chown loki:loki /var/loki && chown loki:loki /rules
         volumeMounts:
+          - mountPath: /var/loki
+            name: data
           - mountPath: /rules
             name: sc-rules-volume
+    containers:
       - name: backend
-        imagePullPolicy: {{ .Values.images.backend.pullPolicy }}
+        imagePullPolicy: {{ .Values.images.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -64,16 +59,18 @@ spec:
               - ALL
         args:
           - -config.file=/etc/loki/config/config.yaml
+          - -runtime-config.file=/etc/loki/runtime-config/runtime-config.yaml
           - -target=backend
           - -legacy-read-mode=false
+          - -config.expand-env=true
         ports:
-          - containerPort: {{ .Values.backend.httpMetricsPort }}
+          - containerPort: {{ .Values.server.httpMetricsPort }}
             name: http-metrics
             protocol: TCP
-          - containerPort: {{ .Values.backend.grpcPort }}
+          - containerPort: {{ .Values.server.grpcPort }}
             name: grpc
             protocol: TCP
-          - containerPort: {{ .Values.backend.httpMemberlistPort }}
+          - containerPort: {{ .Values.server.httpMemberlistPort }}
             name: http-memberlist
             protocol: TCP
         readinessProbe:
@@ -87,7 +84,7 @@ spec:
           successThreshold: 1
           timeoutSeconds: 1
         volumeMounts:
-          - mountPath: /etc/loki/config          
+          - mountPath: /etc/loki/config
             name: config
           - mountPath: /etc/loki/runtime-config
             name: runtime-config
@@ -99,10 +96,19 @@ spec:
             name: sc-rules-volume
   configs:
     - name: loki-config
-      templateRef: loki
+      templateRef: loki-tpl
       volumeName: config
       namespace: {{ .Release.Namespace }}
     - name: loki-runtime-config
-      templateRef: loki-runtime
+      templateRef: loki-runtime-tpl
       volumeName: runtime-config
       namespace: {{ .Release.Namespace }}
+  vars:
+    - name: SERVER_HTTP_PORT
+      value: {{ .Values.server.httpMetricsPort | quote }}
+    - name: SERVER_GRPC_PORT
+      value: {{ .Values.server.grpcPort | quote }}
+    - name: LOCAL_RULES_DIR
+      value: /rules/rules_data
+    - name: LOCAL_CHUNKS_DIR
+      value: /var/loki/chunks_data

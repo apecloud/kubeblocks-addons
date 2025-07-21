@@ -1,22 +1,30 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
-kind: Cluster
-metadata:
-  name: {{ include "clustername" . }}
-  labels: 
-    {{- include "loki-cluster.labels" . | nindent 4 }}
-spec:
+{{- include "kblib.clusterCommon" . }}
   clusterDefinitionRef: loki
   terminationPolicy: {{ .Values.terminationPolicy }}
   topology: loki-cluster
+  services:
+    - name: default
+      serviceName: memberlist
+      spec:
+        ports:
+          - name: tcp
+            port: 7946
+            targetPort: http-memberlist
+            protocol: TCP
+        selector:
+          {{- include "loki-cluster.selectorLabels" . | nindent 10 }}
+          app.kubernetes.io/part-of: memberlist
   componentSpecs:
     - name: backend
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "loki-cluster.s3storage" . | indent 6 }}
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
     - name: write
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.write.replicas }}
+      {{- include "loki-cluster.s3storage" . | indent 6 }}
       {{- with .Values.write.resources }}
       resources:
         {{- with .limits }}
@@ -33,6 +41,7 @@ spec:
     - name: read
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.read.replicas | default 1 }}
+      {{- include "loki-cluster.s3storage" . | indent 6 }}
       {{- with  .Values.read.resources }}
       resources:
         {{- with .limits }}

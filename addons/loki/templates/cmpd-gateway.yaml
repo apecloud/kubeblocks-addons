@@ -58,6 +58,15 @@ spec:
             name: docker-entrypoint-d-override
   configs:
     - name: config-gateway
-      templateRef: loki-gateway
+      templateRef: loki-gateway-tpl
       volumeName: config
       namespace: {{ .Release.Namespace }}
+  vars:
+    - name: DNS_SERVICE
+      value: {{ .Values.global.dnsService }}
+    - name: DNS_NAMESPACE
+      value: {{ .Values.global.dnsNamespace}}
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.global.clusterDomain}}
+    - name: ENABLE_IPV6
+      value: {{ .Values.gateway.nginxConfig.enableIPv6 | quote }}
