@@ -20,6 +20,16 @@ function config_wal_g() {
     echo "${datasafed_base_path}" > ${walg_env}/DATASAFED_BACKEND_BASE_PATH
     echo "true" > ${walg_env}/PG_READY_RENAME
     echo "zstd" > ${walg_env}/WALG_COMPRESSION_METHOD
+    if [ -n ${DATASAFED_ENCRYPTION_ALGORITHM} ]; then
+      echo "${DATASAFED_ENCRYPTION_ALGORITHM}" > ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM
+    elif [ -f ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM ]; then
+       rm ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM
+    fi
+    if [ -n ${DATASAFED_ENCRYPTION_PASS_PHRASE} ]; then
+       echo "${DATASAFED_ENCRYPTION_PASS_PHRASE}" > ${walg_env}/DATASAFED_ENCRYPTION_PASS_PHRASE
+    elif [ -f ${walg_env}/DATASAFED_ENCRYPTION_PASS_PHRASE ]; then
+       rm ${walg_env}/DATASAFED_ENCRYPTION_PASS_PHRASE
+    fi
 }
 
 config_wal_g "$(dirname $(dirname $DP_BACKUP_BASE_PATH))/wal-g"
