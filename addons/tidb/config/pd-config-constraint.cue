@@ -1,9 +1,9 @@
 #PDParameter: {
 	// The timeout of the PD Leader Key lease. After the timeout, the system re-elects a Leader. Unit: second
-	"lease": string | *"3"
+	"lease": int | *3
 
 	// The storage size of the meta-information database, which is 8GiB by default
-	"quota-backend-bytes": string | *"8589934592"
+	"quota-backend-bytes": int | *8589934592
 
 	// The automatic compaction modes of the meta-information database. Available options: `periodic` (by cycle) and `revision` (by version number).
 	"auto-compaction-mod": string | *"periodic"
@@ -30,10 +30,10 @@
 	"pd-server.gc-tuner-threshold": float & >=0 & <=0.90 | *0.6
 
 	// PD rounds the lowest digits of the flow number, which reduces the update of statistics caused by the changes of the Region flow information. This configuration item is used to specify the number of lowest digits to round for the Region flow information. For example, the flow `100512` will be rounded to `101000` because the default value is `3`. This configuration replaces `trace-region-flow`.
-	"pd-server.flow-round-by-digit": string | *"3"
+	"pd-server.flow-round-by-digit": int | *3
 
 	// Determines the interval at which the minimum resolved timestamp is persistent to the PD. If this value is set to `0`, it means that the persistence is disabled. Unit: second
-	"pd-server.min-resolved-ts-persistence-interval": float & >=0 | *1
+	"pd-server.min-resolved-ts-persistence-interval": int & >=0 | *1
 
 	// The path of the CA file
 	"security.cacert-path": string
@@ -57,22 +57,22 @@
 	"log.disable-timestamp": bool | *false
 
 	// The maximum size of a single log file. When this value is exceeded, the system automatically splits the log into several files. Unit: MiB
-	"log.file.max-size": float & >=1 | *300
+	"log.file.max-size": int & >=1 | *300
 
 	// The maximum number of days in which a log is kept. If the configuration item is not set, or the value of it is set to the default value 0, PD does not clean log files.
-	"log.file.max-days": string | *"0"
+	"log.file.max-days": int | *0
 
 	// The maximum number of log files to keep. If the configuration item is not set, or the value of it is set to the default value 0, PD keeps all log files.
-	"log.file.max-backups": string | *"0"
+	"log.file.max-backups": int | *0
 
 	// The interval at which monitoring metric data is pushed to Prometheus
 	"metric.interval": string | *"15s"
 
 	// Controls the size limit of `Region Merge`. When the Region size is greater than the specified value, PD does not merge the Region with the adjacent Regions. Unit: MiB
-	"schedule.max-merge-region-size": string | *"20"
+	"schedule.max-merge-region-size": int | *20
 
 	// Specifies the upper limit of the `Region Merge` key. When the Region key is greater than the specified value, the PD does not merge the Region with its adjacent Regions.
-	"schedule.max-merge-region-keys": string | *"200000"
+	"schedule.max-merge-region-keys": int | *200000
 
 	// Controls the running frequency at which `replicaChecker` checks the health state of a Region. The smaller this value is, the faster `replicaChecker` runs. Normally, you do not need to adjust this parameter.
 	"schedule.patrol-region-interval": string | *"10ms"
@@ -81,10 +81,10 @@
 	"schedule.split-merge-interval": string | *"1h"
 
 	// Controls the maximum number of snapshots that a single store receives or sends at the same time. PD schedulers depend on this configuration to prevent the resources used for normal traffic from being preempted.
-	"schedule.max-snapshot-count": string | *"Default value value: `64"
+	"schedule.max-snapshot-count": int | *64
 
 	// Controls the maximum number of pending peers in a single store. PD schedulers depend on this configuration to prevent too many Regions with outdated logs from being generated on some nodes.
-	"schedule.max-pending-peer-count": string | *"64"
+	"schedule.max-pending-peer-count": int | *64
 
 	// The downtime after which PD judges that the disconnected store cannot be recovered. When PD fails to receive the heartbeat from a store after the specified period of time, it adds replicas at other nodes.
 	"schedule.max-store-down-time": string | *"30m"
@@ -93,33 +93,33 @@
 	"schedule.max-store-preparing-time": string | *"48h"
 
 	// The number of Leader scheduling tasks performed at the same time
-	"schedule.leader-schedule-limit": string | *"4"
+	"schedule.leader-schedule-limit": int | *4
 
 	// The number of Region scheduling tasks performed at the same time
-	"schedule.region-schedule-limit": string | *"2048"
+	"schedule.region-schedule-limit": int | *2048
 
 	// Controls whether to enable the diagnostic feature. When it is enabled, PD records the state during scheduling to help diagnose. If enabled, it might slightly affect the scheduling speed and consume more memory when there are many stores.
 	"schedule.enable-diagnostic": bool | *true
 
 	// Controls the hot Region scheduling tasks that are running at the same time. It is independent of the Region scheduling.
-	"schedule.hot-region-schedule-limit": string | *"4"
+	"schedule.hot-region-schedule-limit": int | *4
 
 	// The threshold used to set the number of minutes required to identify a hot Region. PD can participate in the hotspot scheduling only after the Region is in the hotspot state for more than this number of minutes.
-	"schedule.hot-region-cache-hits-threshold": string | *"3"
+	"schedule.hot-region-cache-hits-threshold": int | *3
 
 	// The number of Replica scheduling tasks performed at the same time
-	"schedule.replica-schedule-limit": string | *"64"
+	"schedule.replica-schedule-limit": int | *64
 
 	// The number of the `Region Merge` scheduling tasks performed at the same time. Set this parameter to `0` to disable `Region Merge`.
-	"schedule.merge-schedule-limit": string | *"8"
+	"schedule.merge-schedule-limit": int | *8
 
 	// The threshold ratio below which the capacity of the store is sufficient. If the space occupancy ratio of the store is smaller than this threshold value, PD ignores the remaining space of the store when performing scheduling, and balances load mainly based on the Region size. This configuration takes effect only when `region-score-formula-version` is set to `v1`.
-	"schedule.high-space-ratio": string & >=0 & <=0 | *"0.7"
+	"schedule.high-space-ratio": float & >=0 & <=1 | *0.7
 
 	// The threshold ratio above which the capacity of the store is insufficient. If the space occupancy ratio of a store exceeds this threshold value, PD avoids migrating data to this store as much as possible. Meanwhile, to avoid the disk space of the corresponding store being exhausted, PD performs scheduling mainly based on the remaining space of the store.
-	"schedule.low-space-ratio": string & >=0 & <=0 | *"0.8"
+	"schedule.low-space-ratio": float & >=0 & <=1 | *0.8
 
-	// Controls the `balance` buffer size
+	// Controls the `balance` buffer size. Default value: 0 (automatically adjusts the buffer size)
 	"schedule.tolerant-size-ratio": float & >=0 | *0
 
 	// Determines whether to enable the merging of cross-table Regions
@@ -138,10 +138,10 @@
 	"schedule.hot-regions-write-interval": string | *"10m"
 
 	// Specifies how many days the hot Region information is retained.
-	"schedule.hot-regions-reserved-days": string | *"7"
+	"schedule.hot-regions-reserved-days": int | *7
 
 	// The number of replicas, that is, the sum of the number of leaders and followers. The default value `3` means 1 leader and 2 followers. When this configuration is modified dynamically, PD will schedule Regions in the background so that the number of replicas matches this configuration.
-	"replication.max-replicas": string | *"3"
+	"replication.max-replicas": int | *3
 
 	// The topology information of a TiKV cluster. [Cluster topology configuration](/schedule-replicas-by-topology-labels.md)
 	"replication.location-labels": [...string] | *[]
@@ -172,9 +172,6 @@
 
 	// Time to wait to trigger the degradation mode. Degradation mode means that when the Local Token Bucket (LTB) and Global Token Bucket (GTB) are lost, the LTB falls back to the default resource group configuration and no longer has a GTB authorization token, thus ensuring that the service is not affected in the event of network isolation or anomalies. The degradation mode is disabled by default.
 	"controller.degraded-mode-wait-duration": string | *"0s"
-
-	// Basis factor for conversion from a read request to RU
-	"controller.request-unit": string | *"0.125"
 
 	...
 }

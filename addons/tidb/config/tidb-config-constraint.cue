@@ -111,16 +111,16 @@
 	"log.slow-query-file": string | *"tidb-slow.log"
 
 	// Outputs the threshold value of consumed time in the slow log. Unit: Milliseconds. When the time consumed by a query is larger than this value, this query is considered as a slow query and its log is output to the slow query log. Note that when the output level of [`log.level`](#level) is `"debug"`, all queries are recorded in the slow query log, regardless of the setting of this parameter. Since v6.1.0, the threshold value of consumed time in the slow log is specified by the TiDB configuration item [`instance.tidb_slow_log_threshold`](/tidb-configuration-file.md#tidb_slow_log_threshold) or the system variable [`tidb_slow_log_threshold`](/system-variables.md#tidb_slow_log_threshold). `slow-threshold` still takes effect. But if `slow-threshold` and `instance.tidb_slow_log_threshold` are set at the same time, the latter takes effect.
-	"log.slow-threshold": string | *"300"
+	"log.slow-threshold": int | *300
 
 	// Determines whether to record execution plans in the slow log. Since v6.1.0, whether to record execution plans in the slow log is determined by the TiDB configuration item [`instance.tidb_record_plan_in_slow_log`](/tidb-configuration-file.md#tidb_record_plan_in_slow_log) or the system variable [`tidb_record_plan_in_slow_log`](/system-variables.md#tidb_record_plan_in_slow_log). `record-plan-in-slow-log` still takes effect. But if `record-plan-in-slow-log` and `instance.tidb_record_plan_in_slow_log` are set at the same time, the latter takes effect.
-	"log.record-plan-in-slow-log": string | *"1"
+	"log.record-plan-in-slow-log": int | *1
 
 	// Outputs the threshold value of the number of rows for the `expensive` operation. When the number of query rows (including the intermediate results based on statistics) is larger than this value, it is an `expensive` operation and outputs log with the `[EXPENSIVE_QUERY]` prefix.
-	"log.expensive-threshold": string | *"10000"
+	"log.expensive-threshold": int | *10000
 
-	// Sets the timeout for log-writing operations in TiDB. In case of a disk failure that prevents logs from being written, this configuration item can trigger the TiDB process to panic instead of hang. Unit: second. In some user scenarios, TiDB logs might be stored on hot-pluggable or network-attached disks, which might become permanently unavailable. In these cases, TiDB cannot recover automatically from such disaster and the log-writing operations will be permanently blocked. Although the TiDB process might seem to be running, it does not respond to any requests. This configuration item is designed to handle such situations.
-	"log.timeout": string | *"0"
+	// Sets the timeout for log-writing operations in TiDB. In case of a disk failure that prevents logs from being written, this configuration item can trigger the TiDB process to panic instead of hang. Unit: second. In some user scenarios, TiDB logs might be stored on hot-pluggable or network-attached disks, which might become permanently unavailable. In these cases, TiDB cannot recover automatically from such disaster and the log-writing operations will be permanently blocked. Although the TiDB process might seem to be running, it does not respond to any requests. This configuration item is designed to handle such situations. Default value: 0, indicating no timeout is set.
+	"log.timeout": int | *0
 
 	// Enables the Security Enhanced Mode (SEM). The status of SEM is available via the system variable [`tidb_enable_enhanced_security`](/system-variables.md#tidb_enable_enhanced_security).
 	"security.enable-sem": bool | *false
@@ -170,20 +170,20 @@
 	// The key file path used by [TiProxy](https://docs.pingcap.com/tidb/stable/tiproxy-overview) for session migration. Refer to the descriptions of [`session-token-signing-cert`](#session-token-signing-cert-new-in-v640).
 	"security.session-token-signing-key": string
 
-	// The number of CPUs used by TiDB. The default `0` indicates using all the CPUs on the machine. You can also set it to n, and then TiDB uses n CPUs.
-	"performance.max-procs": string | *"0"
+	// The number of CPUs used by TiDB. The default `0` indicates using all the CPUs on the machine. You can also set it to n, and then TiDB uses n CPUs. The default 0 indicates using all the CPUs on the machine. You can also set it to n, and then TiDB uses n CPUs.
+	"performance.max-procs": int | *0
 
 	// The longest time that a single transaction can hold locks. If this time is exceeded, the locks of a transaction might be cleared by other transactions so that this transaction cannot be successfully committed. Unit: Millisecond. The transaction that holds locks longer than this time can only be committed or rolled back. The commit might not be successful.
-	"performance.max-txn-ttl": string | *"3600000"
+	"performance.max-txn-ttl": int | *3600000
 
 	// The maximum number of statements allowed in a single TiDB transaction. If a transaction does not roll back or commit after the number of statements exceeds `stmt-count-limit`, TiDB returns the `statement count 5001 exceeds the transaction limitation, autocommit = false` error. This configuration takes effect **only** in the retryable optimistic transaction. If you use the pessimistic transaction or have disabled the transaction retry, the number of statements in a transaction is not limited by this configuration.
-	"performance.stmt-count-limit": string | *"5000"
+	"performance.stmt-count-limit": int | *5000
 
-	// The size limit of a single row of data in TiDB. The size limit of a single key-value record in a transaction. If the size limit is exceeded, TiDB returns the `entry too large` error. The maximum value of this configuration item does not exceed `125829120` (120 MB). Note that TiKV has a similar limit. If the data size of a single write request exceeds [`raft-entry-max-size`](/tikv-configuration-file.md#raft-entry-max-size), which is 8 MB by default, TiKV refuses to process this request. When a table has a row of large size, you need to modify both configurations at the same time. The default value of [`max_allowed_packet`](/system-variables.md#max_allowed_packet-new-in-v610) (the maximum size of a packet for the MySQL protocol) is 67108864 (64 MiB). If a row is larger than `max_allowed_packet`, the row gets truncated. The default value of [`txn-total-size-limit`](#txn-total-size-limit) (the size limit of a single transaction in TiDB) is 100 MiB. If you increase the `txn-entry-size-limit` value to be over 100 MiB, you need to increase the `txn-total-size-limit` value accordingly.
-	"performance.txn-entry-size-limit": string | *"6291456"
+	// The size limit of a single row of data in TiDB. The unit is in bytes. The size limit of a single key-value record in a transaction. If the size limit is exceeded, TiDB returns the `entry too large` error. The maximum value of this configuration item does not exceed `125829120` (120 MB). Note that TiKV has a similar limit. If the data size of a single write request exceeds [`raft-entry-max-size`](/tikv-configuration-file.md#raft-entry-max-size), which is 8 MB by default, TiKV refuses to process this request. When a table has a row of large size, you need to modify both configurations at the same time. The default value of [`max_allowed_packet`](/system-variables.md#max_allowed_packet-new-in-v610) (the maximum size of a packet for the MySQL protocol) is 67108864 (64 MiB). If a row is larger than `max_allowed_packet`, the row gets truncated. The default value of [`txn-total-size-limit`](#txn-total-size-limit) (the size limit of a single transaction in TiDB) is 100 MiB. If you increase the `txn-entry-size-limit` value to be over 100 MiB, you need to increase the `txn-total-size-limit` value accordingly.
+	"performance.txn-entry-size-limit": int | *6291456
 
-	// The size limit of a single transaction in TiDB. In a single transaction, the total size of key-value records cannot exceed this value. The maximum value of this parameter is `1099511627776` (1 TB). Note that if you have used the binlog to serve the downstream consumer Kafka (such as the `arbiter` cluster), the value of this parameter must be no more than `1073741824` (1 GB). This is because 1 GB is the upper limit of a single message size that Kafka can process. Otherwise, an error is returned if this limit is exceeded. In TiDB v6.5.0 and later versions, this configuration is no longer recommended. The memory size of a transaction will be accumulated into the memory usage of the session, and the [`tidb_mem_quota_query`](/system-variables.md#tidb_mem_quota_query) variable will take effect when the session memory threshold is exceeded. To be compatible with previous versions, this configuration works as follows when you upgrade from an earlier version to TiDB v6.5.0 or later:If this configuration is not set or is set to the default value (`104857600`), after an upgrade, the memory size of a transaction will be accumulated into the memory usage of the session, and the `tidb_mem_quota_query` variable will take effect.If this configuration is not defaulted (`104857600`), it still takes effect and its behavior on controlling the size of a single transaction remains unchanged before and after the upgrade. This means that the memory size of the transaction is not controlled by the `tidb_mem_quota_query` variable.
-	"performance.txn-total-size-limit": string | *"104857600"
+	// The size limit of a single transaction in TiDB. The unit is in bytes. In a single transaction, the total size of key-value records cannot exceed this value. The maximum value of this parameter is `1099511627776` (1 TB). Note that if you have used the binlog to serve the downstream consumer Kafka (such as the `arbiter` cluster), the value of this parameter must be no more than `1073741824` (1 GB). This is because 1 GB is the upper limit of a single message size that Kafka can process. Otherwise, an error is returned if this limit is exceeded. In TiDB v6.5.0 and later versions, this configuration is no longer recommended. The memory size of a transaction will be accumulated into the memory usage of the session, and the [`tidb_mem_quota_query`](/system-variables.md#tidb_mem_quota_query) variable will take effect when the session memory threshold is exceeded. To be compatible with previous versions, this configuration works as follows when you upgrade from an earlier version to TiDB v6.5.0 or later:If this configuration is not set or is set to the default value (`104857600`), after an upgrade, the memory size of a transaction will be accumulated into the memory usage of the session, and the `tidb_mem_quota_query` variable will take effect.If this configuration is not defaulted (`104857600`), it still takes effect and its behavior on controlling the size of a single transaction remains unchanged before and after the upgrade. This means that the memory size of the transaction is not controlled by the `tidb_mem_quota_query` variable.
+	"performance.txn-total-size-limit": int | *104857600
 
 	// Determines whether to enable `keepalive` in the TCP layer.
 	"performance.tcp-keep-alive": bool | *true
@@ -198,7 +198,7 @@
 	"performance.stats-lease": string | *"3s"
 
 	// The ratio of (number of modified rows)/(total number of rows) in a table. If the value is exceeded, the system assumes that the statistics have expired and the pseudo statistics will be used. The minimum value is `0` and the maximum value is `1`.
-	"performance.pseudo-estimate-ratio": string | *"0.8"
+	"performance.pseudo-estimate-ratio": float & >=0 & <=1 | *0.8
 
 	// Sets the priority for all statements. Value options: The default value `NO_PRIORITY` means that the priority for statements is not forced to change. Other options are `LOW_PRIORITY`, `DELAYED`, and `HIGH_PRIORITY` in ascending order. Since v6.1.0, the priority for all statements is determined by the TiDB configuration item [`instance.tidb_force_priority`](/tidb-configuration-file.md#tidb_force_priority) or the system variable [`tidb_force_priority`](/system-variables.md#tidb_force_priority). `force-priority` still takes effect. But if `force-priority` and `instance.tidb_force_priority` are set at the same time, the latter takes effect.
 	"performance.force-priority": string | *"NO_PRIORITY"
@@ -213,10 +213,10 @@
 	"performance.enable-stats-cache-mem-quota": bool | *true
 
 	// The maximum number of columns that the TiDB synchronously loading statistics feature can process concurrently. Currently, the valid value range is `[1, 128]`.
-	"performance.stats-load-concurrency": string | *"5"
+	"performance.stats-load-concurrency": int | *5
 
 	// The maximum number of column requests that the TiDB synchronously loading statistics feature can cache. Currently, the valid value range is `[1, 100000]`.
-	"performance.stats-load-queue-size": string | *"1000"
+	"performance.stats-load-queue-size": int | *1000
 
 	// Controls whether to initialize statistics concurrently during TiDB startup.
 	"performance.concurrently-init-stats": bool | *false
@@ -237,22 +237,22 @@
 	"opentracing.sampler.type": string | *"const"
 
 	// The parameter of the opentracing sampler.For the `const` type, the value can be `0` or `1`, which indicates whether to enable the `const` sampler.For the `probabilistic` type, the parameter specifies the sampling probability, which can be a float number between `0` and `1`.For the `ratelimiting` type, the parameter specifies the number of spans sampled per second.For the `remote` type, the parameter specifies the sampling probability, which can be a float number between `0` and `1`.
-	"opentracing.sampler.param": string | *"1.0"
+	"opentracing.sampler.param": float | *1.0
 
 	// The HTTP URL of the jaeger-agent sampling server.
 	"opentracing.sampler.sampling-server-url": string
 
 	// The maximum number of operations that the sampler can trace. If an operation is not traced, the default probabilistic sampler is used.
-	"opentracing.sampler.max-operations": string | *"0"
+	"opentracing.sampler.max-operations": int | *0
 
 	// Controls the frequency of polling the jaeger-agent sampling policy.
-	"opentracing.sampler.sampling-refresh-interval": string | *"0"
+	"opentracing.sampler.sampling-refresh-interval": int | *0
 
 	// The queue size with which the reporter records spans in memory.
-	"opentracing.reporter.queue-size": string | *"0"
+	"opentracing.reporter.queue-size": int | *0
 
 	// The interval at which the reporter flushes the spans in memory to the storage.
-	"opentracing.reporter.buffer-flush-interval": string | *"0"
+	"opentracing.reporter.buffer-flush-interval": int | *0
 
 	// Determines whether to print the log for all submitted spans.
 	"opentracing.reporter.log-spans": bool | *false
@@ -261,13 +261,13 @@
 	"opentracing.reporter.local-agent-host-port": string
 
 	// The maximum number of connections established with each TiKV.
-	"tikv-client.grpc-connection-count": string | *"4"
+	"tikv-client.grpc-connection-count": int | *4
 
 	// The `keepalive` time interval of the RPC connection between TiDB and TiKV nodes. If there is no network packet within the specified time interval, the gRPC client executes `ping` command to TiKV to see if it is alive. Default: `10`. Unit: second
 	"tikv-client.grpc-keepalive-time": string
 
 	// The timeout of the RPC `keepalive` check between TiDB and TiKV nodes. Unit: second
-	"tikv-client.grpc-keepalive-timeout": string | *"3"
+	"tikv-client.grpc-keepalive-timeout": int | *3
 
 	// Specifies the compression type used for data transfer between TiDB and TiKV nodes. The default value is `"none"`, which means no compression. To enable the gzip compression, set this value to `"gzip"`. Value options: `"none"`, `"gzip"`
 	"tikv-client.grpc-compression-type": string | *"none"
@@ -276,28 +276,28 @@
 	"tikv-client.commit-timeout": string | *"41s"
 
 	// The maximum number of RPC packets sent in batch. If the value is not `0`, the `BatchCommands` API is used to send requests to TiKV, and the RPC latency can be reduced in the case of high concurrency. It is recommended that you do not modify this value.
-	"tikv-client.max-batch-size": string | *"128"
+	"tikv-client.max-batch-size": int | *128
 
 	// Waits for `max-batch-wait-time` to encapsulate the data packets into a large packet in batch and send it to the TiKV node. It is valid only when the value of `tikv-client.max-batch-size` is greater than `0`. It is recommended not to modify this value. Unit: nanoseconds
-	"tikv-client.max-batch-wait-time": string | *"0"
+	"tikv-client.max-batch-wait-time": int | *0
 
 	// The maximum number of packets sent to TiKV in batch. It is recommended not to modify this value. If the value is `0`, this feature is disabled.
-	"tikv-client.batch-wait-size": string | *"8"
+	"tikv-client.batch-wait-size": int | *8
 
 	// The threshold of the TiKV load. If the TiKV load exceeds this threshold, more `batch` packets are collected to relieve the pressure of TiKV. It is valid only when the value of `tikv-client.max-batch-size` is greater than `0`. It is recommended not to modify this value.
-	"tikv-client.overload-threshold": string | *"200"
+	"tikv-client.overload-threshold": int | *200
 
 	// The timeout of a single Coprocessor request. Unit: second
-	"tikv-client.copr-req-timeout": string | *"60"
+	"tikv-client.copr-req-timeout": int | *60
 
 	// The total size of the cached data. When the cache space is full, old cache entries are evicted. When the value is `0.0`, the Coprocessor Cache feature is disabled. Unit: MB. Type: Float
-	"tikv-client.copr-cache.capacity-mb": string | *"1000.0"
+	"tikv-client.copr-cache.capacity-mb": float | *1000.0
 
 	// Determines whether to enable the memory lock of transactions.
 	"txn-local-latches.enabled": bool | *false
 
 	// The number of slots corresponding to Hash, which automatically adjusts upward to an exponential multiple of 2. Each slot occupies 32 Bytes of memory. If set too small, it might result in slower running speed and poor performance in the scenario where data writing covers a relatively large range (such as importing data).
-	"txn-local-latches.capacity": string | *"2048000"
+	"txn-local-latches.capacity": int | *2048000
 
 	// Enables or disables binlog.
 	"binlog.enable": bool | *false
@@ -348,25 +348,25 @@
 	"instance.tidb_enable_slow_log": bool | *true
 
 	// Outputs the threshold value of the time consumed by the slow log. Range: `[-1, 9223372036854775807]`. Unit: Milliseconds. When the time consumed by a query is larger than this value, this query is considered as a slow query and its log is output to the slow query log. Note that when the output level of [`log.level`](#level) is `"debug"`, all queries are recorded in the slow query log, regardless of the setting of this parameter. Before v6.1.0, this configuration is set by `slow-threshold`.
-	"instance.tidb_slow_log_threshold": string | *"300"
+	"instance.tidb_slow_log_threshold": int | *300
 
 	// The configuration controls the number of slowest queries that are cached in memory.
-	"instance.in-mem-slow-query-topn-num": string | *"30"
+	"instance.in-mem-slow-query-topn-num": int | *30
 
 	// The configuration controls the number of recently used slow queries that are cached in memory.
-	"instance.in-mem-slow-query-recent-num": string | *"500"
+	"instance.in-mem-slow-query-recent-num": int | *500
 
 	// This configuration is used to set the threshold value that determines whether to print expensive query logs. The difference between expensive query logs and slow query logs is:Slow logs are printed after the statement is executed.Expensive query logs print the statements that are being executed, with execution time exceeding the threshold value, and their related information. Range: `[10, 2147483647]`. Unit: Seconds. Before v5.4.0, this configuration is set by `expensive-threshold`.
-	"instance.tidb_expensive_query_time_threshold": string | *"60"
+	"instance.tidb_expensive_query_time_threshold": int | *60
 
 	// This configuration is used to control whether to include the execution plan of slow queries in the slow log. Value options: `1` (enabled, default) or `0` (disabled). The value of this configuration will initialize the value of system variable [`tidb_record_plan_in_slow_log`](/system-variables.md#tidb_record_plan_in_slow_log). Before v6.1.0, this configuration is set by `record-plan-in-slow-log`.
-	"instance.tidb_record_plan_in_slow_log": string | *"1"
+	"instance.tidb_record_plan_in_slow_log": int | *1
 
 	// This configuration is used to change the default priority for statements executed on a TiDB server. The default value `NO_PRIORITY` means that the priority for statements is not forced to change. Other options are `LOW_PRIORITY`, `DELAYED`, and `HIGH_PRIORITY` in ascending order. Before v6.1.0, this configuration is set by `force-priority`.
 	"instance.tidb_force_priority": string | *"NO_PRIORITY"
 
 	// The maximum number of connections permitted for a single TiDB instance. It can be used for resources control. Range: `[0, 100000]`. The default value `0` means no limit. When the value of this variable is larger than `0`, and the number of connections reaches the value, the TiDB server will reject new connections from clients. The value of this configuration will initialize the value of system variable [`max_connections`](/system-variables.md#max_connections). Before v6.2.0, this configuration is set by `max-server-connections`.
-	"instance.max_connections": string | *"0"
+	"instance.max_connections": int | *0
 
 	// This configuration controls whether the corresponding TiDB instance can become a DDL owner or not. Possible values: `OFF`, `ON`. The value of this configuration will initialize the value of the system variable [`tidb_enable_ddl`](/system-variables.md#tidb_enable_ddl-new-in-v630). Before v6.3.0, this configuration is set by `run-ddl`.
 	"instance.tidb_enable_ddl": bool | *true
@@ -378,13 +378,13 @@
 	"instance.tidb_stmt_summary_filename": string | *"tidb-statements.log"
 
 	// When statements summary persistence is enabled, this configuration specifies the maximum number of days to keep persistent data files. Unit: day. You can adjust the value based on the data retention requirements and disk space usage.
-	"instance.tidb_stmt_summary_file_max_days": string | *"3"
+	"instance.tidb_stmt_summary_file_max_days": int | *3
 
 	// When statements summary persistence is enabled, this configuration specifies the maximum size of a persistent data file. Unit: MiB. You can adjust the value based on the data retention requirements and disk space usage.
-	"instance.tidb_stmt_summary_file_max_size": string | *"64"
+	"instance.tidb_stmt_summary_file_max_size": int | *64
 
 	// When statements summary persistence is enabled, this configuration specifies the maximum number of data files that can be persisted. `0` means no limit on the number of files. You can adjust the value based on the data retention requirements and disk space usage.
-	"instance.tidb_stmt_summary_file_max_backups": string | *"0"
+	"instance.tidb_stmt_summary_file_max_backups": int | *0
 
 	// The list of proxy server's IP addresses allowed to connect to TiDB using the [PROXY protocol](https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt). In general cases, when you access TiDB behind a reverse proxy, TiDB takes the IP address of the reverse proxy server as the IP address of the client. By enabling the PROXY protocol, reverse proxies that support this protocol, such as HAProxy, can pass the real client IP address to TiDB. After configuring this parameter, TiDB allows the configured source IP address to connect to TiDB using the PROXY protocol; if a protocol other than PROXY is used, this connection will be denied. If this parameter is left empty, no IP address can connect to TiDB using the PROXY protocol. The value can be an IP address (192.168.1.50) or CIDR (192.168.1.0/24) with `,` as the separator. `*` means any IP addresses.
 	"proxy-protocol.networks": string
