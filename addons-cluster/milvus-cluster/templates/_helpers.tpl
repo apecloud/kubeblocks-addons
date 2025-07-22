@@ -19,7 +19,7 @@ External meta storage service reference
 {{- if eq .Values.storage.meta.mode "serviceref" }}
 - name: milvus-meta-storage
   namespace: {{ .Values.storage.meta.serviceRef.namespace }}
-  {{- if not .Values.storage.object.serviceRef.serviceDescriptor }}
+  {{- if not .Values.storage.meta.serviceRef.serviceDescriptor }}
   clusterServiceSelector:
     cluster: {{ .Values.storage.meta.serviceRef.cluster.name }}
     service:
@@ -42,7 +42,7 @@ External log storage service reference
 {{- if eq .Values.storage.log.mode "serviceref" }}
 - name: milvus-log-storage-kafka
   namespace: {{ .Values.storage.log.serviceRef.namespace }}
-  {{- if not .Values.storage.object.serviceRef.serviceDescriptor }}
+  {{- if not .Values.storage.log.serviceRef.serviceDescriptor }}
   clusterServiceSelector:
     cluster: {{ .Values.storage.log.serviceRef.cluster.name }}
     service:
@@ -67,16 +67,16 @@ External object storage service reference
   namespace: {{ .Release.Namespace }}
   {{- if not .Values.storage.object.serviceRef.serviceDescriptor }}
   clusterServiceSelector:
-    cluster: {{ .Values.storage.log.serviceRef.cluster.name }}
+    cluster: {{ .Values.storage.object.serviceRef.cluster.name }}
     service:
-      component: {{ .Values.storage.log.serviceRef.cluster.component }}
-      service: {{ .Values.storage.log.serviceRef.cluster.service }}
-      port: {{ .Values.storage.log.serviceRef.cluster.port }}
-    # credential:
-    #   component: {{ .Values.storage.log.serviceRef.cluster.component }}
-    #   name: {{ .Values.storage.log.serviceRef.cluster.credential }}
+      component: {{ .Values.storage.object.serviceRef.cluster.component }}
+      service: {{ .Values.storage.object.serviceRef.cluster.service }}
+      port: {{ .Values.storage.object.serviceRef.cluster.port }}
+    credential:
+      component: {{ .Values.storage.object.serviceRef.cluster.component }}
+      name: {{ .Values.storage.object.serviceRef.cluster.credential }}
   {{- else }}
-  serviceDescriptor: {{ .Values.storage.log.serviceRef.serviceDescriptor }}
+  serviceDescriptor: {{ .Values.storage.object.serviceRef.serviceDescriptor }}
   {{- end }}
 {{- end }}
 {{- end }}
@@ -87,5 +87,5 @@ External object storage service reference
 - name: MINIO_ROOT_PATH
   value: {{ .Values.storage.object.path }}
 - name: MINIO_USE_PATH_STYLE
-  value: {{ .Values.storage.object.usePathStyle }}
+  value: {{ .Values.storage.object.usePathStyle | quote }}
 {{- end -}}

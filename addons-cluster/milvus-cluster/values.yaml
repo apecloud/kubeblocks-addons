@@ -81,11 +81,11 @@ storage:
       namespace:
       cluster:
         name:
-        component:
-        service:
-        port:
-        credential:
+        component: minio
+        service: default
+        port: api
+        credential: root
       serviceDescriptor:
     bucket:
     path:
-    usePathStyle:
+    usePathStyle: true

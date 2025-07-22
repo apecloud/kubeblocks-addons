@@ -10,6 +10,7 @@ minio:
   bucketName: MINIO_BUCKET
   rootPath: MINIO_ROOT_PATH
   cloudProvider: aws
+  useSSL: false
 mq:
   type: kafka
 messageQueue: kafka
