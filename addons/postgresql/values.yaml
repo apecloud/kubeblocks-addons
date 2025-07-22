@@ -30,7 +30,7 @@ image:
     major16:
       minor040: 16.4.0
   walg:
-    tag: postgres-1.1
+    tag: postgres-1.2
   # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
   dbctl:
     repository: apecloud/dbctl
