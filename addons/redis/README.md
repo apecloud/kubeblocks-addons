@@ -109,6 +109,7 @@ spec:
                 # Set the storage size as needed
                 storage: 20Gi
     - name: redis-sentinel
+      serviceVersion: "7.2.4"
       replicas: 3
       resources:
         limits:
@@ -1041,6 +1042,7 @@ spec:
                 # Set the storage size as needed
                 storage: 20Gi
     - name: redis-sentinel
+      serviceVersion: "7.2.4"
       replicas: 3
       resources:
         limits:
@@ -1130,6 +1132,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
   name: redis-replication-pod-monitor
+  namespace: demo
   labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
     release: prometheus
 spec:
