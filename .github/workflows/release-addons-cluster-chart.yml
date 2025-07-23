@@ -60,6 +60,7 @@ on:
           - yashandb-cluster
           - zookeeper-cluster
           - loki
+          - rocketmq-cluster
       chart_version:
         description: 'release specify chart version or empty to release default'
         required: false
