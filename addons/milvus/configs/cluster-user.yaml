@@ -1,21 +1,22 @@
 etcd:
   endpoints:
-    # port is actually endpoint, maybe a bug of kb
-    - {{ .KB_CLUSTER_NAME }}-etcd-headless.{{ .KB_NAMESPACE }}.svc.cluster.local:2379
+    - {{ .ETCD_HOST_SVC_REF }}:{{ .ETCD_PORT_SVC_REF }}
   rootPath: {{ .KB_CLUSTER_NAME }}
 minio:
-  address: MINIO_HOST
-  port: MINIO_PORT
+  address: {{ .MINIO_HOST }}
+  port: {{ .MINIO_PORT }}
   accessKeyID: MINIO_ACCESS_KEY
   secretAccessKey: MINIO_SECRET_KEY
-  bucketName: MINIO_BUCKETNAME
-  rootPath: {{ .KB_CLUSTER_NAME }}
+  bucketName: MINIO_BUCKET
+  rootPath: MINIO_ROOT_PATH
+  cloudProvider: aws
+  useSSL: false
 mq:
   type: kafka
 messageQueue: kafka
 kafka:
   # port is actually endpoint, maybe a bug of kb
-  brokerList: {{ .KAFKA_PORT }}
+  brokerList: {{ .KAFKA_PORT_SVC_REF }}
 msgChannel:
   chanNamePrefix:
     cluster: {{ .KB_CLUSTER_NAME }}
