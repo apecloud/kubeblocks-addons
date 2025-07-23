@@ -199,8 +199,8 @@ app.kubernetes.io/component: gateway
 - name: S3_BUCKET
   value: {{ .Values.s3.bucket }}
 # FIXME: path is not supported yet
-# - name: S3_PATH
-#   value: {{ .Values.storage.object.path }}
+{{/* - name: S3_PATH
+  value: {{ .Values.storage.object.path }} */}}
 - name: S3_USE_PATH_STYLE
   value: {{ .Values.s3.usePathStyle | quote }}
 {{- end -}}
