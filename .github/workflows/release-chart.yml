@@ -59,6 +59,7 @@ on:
           - yashandb
           - zookeeper
           - loki
+          - rocketmq
       chart_version:
         description: 'release specify chart version or empty to release default'
         required: false
