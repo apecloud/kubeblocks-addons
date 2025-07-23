@@ -112,3 +112,6 @@ spec:
       value: /rules/rules_data
     - name: LOCAL_CHUNKS_DIR
       value: /var/loki/chunks_data
+    {{- include "loki.object.serviceRefVars" . | indent 4 }}
+  serviceRefDeclarations:
+    {{- include "loki.object.serviceRef" . | indent 4 }}

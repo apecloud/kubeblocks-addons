@@ -17,14 +17,16 @@
   componentSpecs:
     - name: backend
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- include "loki-cluster.s3storage" . | indent 6 }}
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
+      serviceRefs:
+        {{- include "loki.objectstorage.serviceRef" . | indent 8 }}
+      env:
+        {{- include "loki.objectstorage.env" . | indent 8 }}
     - name: write
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.write.replicas }}
-      {{- include "loki-cluster.s3storage" . | indent 6 }}
       {{- with .Values.write.resources }}
       resources:
         {{- with .limits }}
@@ -38,10 +40,13 @@
           memory: {{ .memory | quote }}
         {{- end }}
       {{- end }}
+      serviceRefs:
+        {{- include "loki.objectstorage.serviceRef" . | indent 8 }}
+      env:
+        {{- include "loki.objectstorage.env" . | indent 8 }}
     - name: read
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.read.replicas | default 1 }}
-      {{- include "loki-cluster.s3storage" . | indent 6 }}
       {{- with  .Values.read.resources }}
       resources:
         {{- with .limits }}
@@ -55,6 +60,10 @@
           memory: {{ .memory | quote }}
         {{- end }}
       {{- end }}
+      serviceRefs:
+        {{- include "loki.objectstorage.serviceRef" . | indent 8 }}
+      env:
+        {{- include "loki.objectstorage.env" . | indent 8 }}
     - name: gateway
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.gateway.replicas | default 1 }}

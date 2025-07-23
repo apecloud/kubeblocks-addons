@@ -17,46 +17,30 @@ common:
   path_prefix: /var/loki
   replication_factor: 1
   storage:
-    {{- if eq $storageType "oss" }}
-    alibabacloud:
-      endpoint: ${ENDPOINT}
-      access_key_id: ${ACCESS_KEY_ID}
-      secret_access_key: ${SECRET_ACCESS_KEY}
-      bucket: ${BUCKETNAMES}
-    {{- else if eq $storageType "local" }}
+    {{- if eq $storageType "local" }}
     filesystem:
       chunks_directory: ${LOCAL_CHUNKS_DIR}
       rules_directory: ${LOCAL_RULES_DIR}
     {{- else }}
     s3:
-      endpoint: ${ENDPOINT}
-      region: ${REGION}
+      endpoint: ${S3_ENDPOINT}
       access_key_id: ${ACCESS_KEY_ID}
       secret_access_key: ${SECRET_ACCESS_KEY}
-      bucketnames: ${BUCKETNAMES}
-      insecure: true
-      s3forcepathstyle: true
+      bucketnames: ${S3_BUCKET}
+      s3forcepathstyle: ${S3_USE_PATH_STYLE}
     {{- end }}
 
 storage_config:
-  {{- if eq $storageType "oss" }}
-  alibabacloud:
-    endpoint: ${ENDPOINT}
-    access_key_id: ${ACCESS_KEY_ID}
-    secret_access_key: ${SECRET_ACCESS_KEY}
-    bucket: ${BUCKETNAMES}
-  {{- else if eq $storageType "local" }}
+  {{- if eq $storageType "local" }}
   filesystem:
     directory: ${LOCAL_CHUNKS_DIR}
   {{- else }}
   aws:
-    endpoint: ${ENDPOINT}
-    region: ${REGION}
+    endpoint: ${S3_ENDPOINT}
     access_key_id: ${ACCESS_KEY_ID}
     secret_access_key: ${SECRET_ACCESS_KEY}
-    bucketnames: ${BUCKETNAMES}
-    insecure: true
-    s3forcepathstyle: true
+    bucketnames: ${S3_BUCKET}
+    s3forcepathstyle: ${S3_USE_PATH_STYLE}
   {{- end }}
 
 limits_config:
@@ -76,9 +60,7 @@ schema_config:
     index:
       period: 24h
       prefix: loki_index_
-    {{- if eq $storageType "oss" }}
-    object_store: alibabacloud
-    {{- else if eq $storageType "local" }}
+    {{- if eq $storageType "local" }}
     object_store: filesystem
     {{- else }}
     object_store: s3
@@ -88,19 +70,14 @@ schema_config:
 
 ruler:
   storage:
-    {{- if eq $storageType "oss" }}
-    alibabacloud:
-      bucket: ${RULER_BUCKETNAMES}
-    {{- else if eq $storageType "local" }}
+    {{- if eq $storageType "local" }}
     local:
       directory: ${LOCAL_RULES_DIR}
     {{- else }}
     s3:
-      bucketnames: ${RULER_BUCKETNAMES}
+      bucketnames: ${S3_BUCKET}
     {{- end }}
-    {{- if eq $storageType "oss" }}
-    type: alibabacloud
-    {{- else if eq $storageType "local" }}
+    {{- if eq $storageType "local" }}
     type: local
     {{- else }}
     type: s3
@@ -111,9 +88,7 @@ compactor:
   compaction_interval: 5m
   retention_delete_worker_count: 500
   retention_enabled: true
-  {{- if eq $storageType "oss" }}
-  shared_store: alibabacloud
-  {{- else if eq $storageType "local" }}
+  {{- if eq $storageType "local" }}
   shared_store: filesystem
   {{- else }}
   shared_store: s3

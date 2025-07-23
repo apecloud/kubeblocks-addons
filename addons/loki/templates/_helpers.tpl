@@ -225,3 +225,37 @@ query-scheduler fullname
 {{- define "loki.querySchedulerFullname" -}}
 {{ include "loki.fullname" . }}-query-scheduler
 {{- end }}
+
+{{/*
+object storage serviceRef declarations
+*/}}
+{{- define "loki.object.serviceRef" }}
+- name: loki-object-storage
+  serviceRefDeclarationSpecs:
+    - serviceKind: minio
+      serviceVersion: "^*"
+{{- end }}
+
+{{/*
+object storage serviceRef vars
+*/}}
+{{- define "loki.object.serviceRefVars" }}
+- name: S3_ENDPOINT
+  valueFrom:
+    serviceRefVarRef:
+      name: loki-object-storage
+      optional: false
+      endpoint: Required
+- name: ACCESS_KEY_ID
+  valueFrom:
+    serviceRefVarRef:
+      name: loki-object-storage
+      optional: false
+      username: Required
+- name: SECRET_ACCESS_KEY
+  valueFrom:
+    serviceRefVarRef:
+      name: loki-object-storage
+      optional: false
+      password: Required
+{{- end }}
