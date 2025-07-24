@@ -177,48 +177,30 @@ gateway common labels
 app.kubernetes.io/component: gateway
 {{- end }}
 
-{{- define "loki-cluster.s3storage" }}
-env:
-  - name: STORAGE_TYPE
-    {{- with .Values.s3.storageType }}
-    value: {{ . }}
-    {{- else }}
-    valueFrom:
-      secretKeyRef:
-        key: storageType
-        optional: true
-        name: {{ .Values.s3.secret }}
-    {{- end }}
-  {{- if or ( not .Values.s3.storageType ) ( ne .Values.s3.storageType "local") }}
-  - name: ENDPOINT
-    valueFrom:
-      secretKeyRef:
-        key: endpoint
-        name: {{ .Values.s3.secret }}
-  - name: REGION
-    valueFrom:
-      secretKeyRef:
-        key: region
-        name: {{ .Values.s3.secret }}
-  - name: ACCESS_KEY_ID
-    valueFrom:
-      secretKeyRef:
-        key: accessKey
-        name: {{ .Values.s3.secret }}
-  - name: SECRET_ACCESS_KEY
-    valueFrom:
-      secretKeyRef:
-        key: secretKey
-        name: {{ .Values.s3.secret }}
-  - name: BUCKETNAMES
-    valueFrom:
-      secretKeyRef:
-        key: bucketnames
-        name: {{ .Values.s3.secret }}
-  - name: RULER_BUCKETNAMES
-    valueFrom:
-      secretKeyRef:
-        key: rulerBucketnames
-        name: {{ .Values.s3.secret }}
+{{- define "loki.objectstorage.serviceRef" }}
+- name: loki-object-storage
+  namespace: {{ .Release.Namespace }}
+  {{- if not .Values.s3.serviceRef.serviceDescriptor }}
+  clusterServiceSelector:
+    cluster: {{ .Values.s3.serviceRef.cluster.name }}
+    service:
+      component: {{ .Values.s3.serviceRef.cluster.component }}
+      service: {{ .Values.s3.serviceRef.cluster.service }}
+      port: {{ .Values.s3.serviceRef.cluster.port }}
+    credential:
+      component: {{ .Values.s3.serviceRef.cluster.component }}
+      name: {{ .Values.s3.serviceRef.cluster.credential }}
+  {{- else }}
+  serviceDescriptor: {{ .Values.s3.serviceRef.serviceDescriptor }}
   {{- end }}
+{{- end }}
+
+{{- define "loki.objectstorage.env" }}
+- name: S3_BUCKET
+  value: {{ .Values.s3.bucket }}
+# FIXME: path is not supported yet
+{{/* - name: S3_PATH
+  value: {{ .Values.storage.object.path }} */}}
+- name: S3_USE_PATH_STYLE
+  value: {{ .Values.s3.usePathStyle | quote }}
 {{- end -}}
