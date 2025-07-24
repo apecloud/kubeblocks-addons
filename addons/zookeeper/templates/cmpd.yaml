@@ -120,7 +120,6 @@ spec:
           - name: MY_MEMORY_LIMIT
             valueFrom:
               resourceFieldRef:
-                containerName: zookeeper
                 resource: limits.memory
         ports:
           - name: client
