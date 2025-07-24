@@ -59,7 +59,7 @@ on:
           - xinference-cluster
           - yashandb-cluster
           - zookeeper-cluster
-          - loki
+          - loki-cluster
           - rocketmq-cluster
       chart_version:
         description: 'release specify chart version or empty to release default'
