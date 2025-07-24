@@ -1,0 +1,130 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "rocketmq.cmpdName" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rocketmq.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks.io
+  description: RocketMQ Nameserver is a reliable and mature messaging and streaming broker.
+  serviceKind: nameserver
+  serviceVersion: {{ .Values.componentServiceVersion.nameserver }}
+  services:
+    - name: svc-headless
+      spec:
+        ## headless service
+        clusterIP: None
+        publishNotReadyAddresses: true
+        ports:
+          - name: main
+            port: 9876
+            targetPort: main
+    - name: svr
+      spec:
+        ports:
+          - name: main
+            port: 9876
+            targetPort: main
+  configs:
+    - name: config
+      template: {{ include "rocketmq.configTplName" . }}
+      volumeName: rocketmq-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0644
+      restartOnFileChange: true
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+  policyRules:
+    - apiGroups:
+      - ""
+      resources:
+      - endpoints
+      verbs:
+      - get
+    - apiGroups:
+      - ""
+      resources:
+      - events
+      verbs:
+      - create
+  runtime:
+    automountServiceAccountToken: true
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: nameserver
+            topologyKey: kubernetes.io/hostname
+    containers:
+      - name: nameserver
+        command:
+          - /bin/sh
+          - -c
+          - /rocketmq-start.sh
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: ROCKETMQ_PROCESS_ROLE
+          value: nameserver
+        {{- if eq (include "rocketmq.enableControllerInNamesrv" $) "true" }}
+        - name: enableControllerInNamesrv
+          value: "true"
+        {{- end }}
+        image: {{ .Values.rocketmq.registry | default "docker.io" }}/{{ .Values.rocketmq.repository }}:{{ .Values.rocketmq.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.rocketmq.pullPolicy }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - sleep 5; ./mqshutdown namesrv
+        ports:
+        - containerPort: 9876
+          name: main
+          protocol: TCP
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath:  /etc/rocketmq/base-cm
+            name: rocketmq-config
+          - mountPath: /rocketmq-start.sh
+            name: rocketmq-config
+            subPath: rocketmq-start.sh
+          - mountPath: {{ .Values.dataMountPath }}/controller-data
+            name: data
+            subPath: controller-data
+          - mountPath: {{ .Values.dataMountPath }}/logs
+            name: data
+            subPath: logs
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
