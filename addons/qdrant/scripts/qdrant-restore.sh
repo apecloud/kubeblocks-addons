@@ -22,7 +22,7 @@ restore_snapshot() {
   collection_name="${snapshot%.*}"
   # skip file kubeblocks-backup.json which is not a snapshot
   if [ "${collection_name}" == "kubeblocks-backup" ]; then
-    continue
+    return
   fi
 
   echo "INFO: start to restore collection ${collection_name}..."
