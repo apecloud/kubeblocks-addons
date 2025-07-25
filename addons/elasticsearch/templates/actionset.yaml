@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: elasticsearch-physical-br
+  name: elasticsearch-physical-backup
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
@@ -32,7 +32,7 @@ spec:
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: elasticsearch-set-up-keystore
+  name: elasticsearch-setup-keystore
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:

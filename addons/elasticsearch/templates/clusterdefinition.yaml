@@ -1,41 +1,39 @@
-apiVersion: apps.kubeblocks.io/v1
+apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterDefinition
 metadata:
   name: elasticsearch
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
-  annotations:
-    {{- include "elasticsearch.apiVersion" . | nindent 4 }}
 spec:
   topologies:
   - name: single-node
     components:
     - name: mdit
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: elasticsearch
   - name: multi-node
     components:
     - name: master
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: elasticsearch
     - name: dit
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: elasticsearch
     default: true
   - name: m-dit
     components:
     - name: master
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: elasticsearch
     - name: dit
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: elasticsearch
   - name: mdit
     components:
     - name: mdit
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: elasticsearch
   - name: m-d-i-t
     components:
     - name: m
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: elasticsearch
     - name: d
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: elasticsearch
     - name: i
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: elasticsearch
     - name: t
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: elasticsearch
