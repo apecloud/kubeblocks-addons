@@ -1,0 +1,8 @@
+mode: separated
+replicas: 5
+brokerReplicas: 100
+controllerReplicas: 5
+cpu: 64
+memory: 1000
+storage: 10000
+metaStorage: 10000

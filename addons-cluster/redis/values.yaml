@@ -37,6 +37,7 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
+storageClassName: ""
 
 # custom password of default user for redis by passing a secret
 # the secret must contain keys named 'username' and 'password'
@@ -97,6 +98,7 @@ redisCluster:
   customSecretNamespace: ""
 
 extra:
+  terminationPolicy: Delete
   disableExporter: true
 
 prometheus:

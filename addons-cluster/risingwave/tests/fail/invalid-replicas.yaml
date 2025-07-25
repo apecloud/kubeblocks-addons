@@ -1,0 +1,3 @@
+risingwave:
+  meta:
+    replicas: "invalid"

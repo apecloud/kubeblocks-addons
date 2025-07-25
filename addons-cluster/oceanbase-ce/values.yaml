@@ -21,5 +21,5 @@ clusterIP: "enabled"
 clusterID: "1"
 
 extra:
-  disableExporter: false
   terminationPolicy: Delete
+  disableExporter: false

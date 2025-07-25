@@ -1,0 +1,4 @@
+mode: raftGroup
+proxyEnabled: true
+etcd:
+  mode: invalid

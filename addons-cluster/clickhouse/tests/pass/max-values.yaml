@@ -1,0 +1,9 @@
+replicas: 10
+cpu: 64
+memory: 1000
+storage: 10000
+keeper:
+  replicas: 5
+  cpu: 64
+  memory: 1000
+  storage: 10000

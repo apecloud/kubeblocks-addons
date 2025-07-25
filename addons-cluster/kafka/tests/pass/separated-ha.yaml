@@ -1,0 +1,3 @@
+mode: separated
+brokerReplicas: 3
+controllerReplicas: 3

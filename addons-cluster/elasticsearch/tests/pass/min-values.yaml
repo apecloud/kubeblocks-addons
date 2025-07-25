@@ -1,0 +1,4 @@
+replicas: 1
+cpu: 0.5
+memory: 1
+storage: 1

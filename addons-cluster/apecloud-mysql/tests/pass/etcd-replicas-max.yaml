@@ -1,0 +1,6 @@
+mode: raftGroup
+proxyEnabled: true
+etcd:
+  mode: local
+  local:
+    replicas: 3

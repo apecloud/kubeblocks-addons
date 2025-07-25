@@ -1,0 +1,27 @@
+dn:
+  - replicas: 3
+    resources:
+      requests:
+        cpu: 1
+        memory: 1
+      limits:
+        cpu: 1
+        memory: 1
+    persistence:
+      enabled: true
+      data:
+        storageClassName:
+        size: 20
+  - replicas: 3
+    resources:
+      requests:
+        cpu: 1
+        memory: 1
+      limits:
+        cpu: 1
+        memory: 1
+    persistence:
+      enabled: true
+      data:
+        storageClassName:
+        size: 20

@@ -1,0 +1,3 @@
+risingwave:
+  compute:
+    replicas: 0

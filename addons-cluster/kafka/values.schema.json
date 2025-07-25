@@ -45,13 +45,14 @@
       ],
       "default": 10,
       "minimum": 1,
-      "maximum": 10000
+      "maximum": 10000,
+      "pattern": "^[0-9]+(\\.[0-9]+)?$"
     },
-    "storageClass": {
-      "title": "StorageClass",
+    "storageClassName": {
+      "title": "StorageClassName",
       "description": "The StorageClass for Kafka Data Storage.",
-      "type": "string",
-      "default": ""
+      "type": ["string", "null"],
+      "default": null
     },
     "metaStorage": {
       "title": "MetaStorage(Gi)",
@@ -62,13 +63,14 @@
       ],
       "default": 5,
       "minimum": 1,
-      "maximum": 10000
+      "maximum": 10000,
+      "pattern": "^[0-9]+(\\.[0-9]+)?$"
     },
-    "metaStorageClass": {
-      "title": "MetaStorageClass",
+    "metaStorageClassName": {
+      "title": "MetaStorageClassName",
       "description": "The StorageClass for Kafka Metadata Storage.",
-      "type": "string",
-      "default": ""
+      "type": ["string", "null"],
+      "default": null
     },
     "replicas": {
       "title": "Replicas",
@@ -108,9 +110,9 @@
         "string"
       ],
       "default": 0.5,
-      "minimum": 0.5,
+      "minimum": 0.1,
       "maximum": 64,
-      "multipleOf": 0.5
+      "pattern": "^[0-9]+(\\.[0-9]+)?$"
     },
     "memory": {
       "title": "Memory(Gi)",
@@ -120,8 +122,9 @@
         "string"
       ],
       "default": 0.5,
-      "minimum": 0.5,
-      "maximum": 1000
+      "minimum": 0.1,
+      "maximum": 1000,
+      "pattern": "^[0-9]+(\\.[0-9]+)?$"
     },
     "monitor": {
       "title": "Monitor Configuration",
@@ -131,7 +134,7 @@
         "replicas": {
           "title": "Monitor Replicas",
           "description": "Number of replicas for the monitor component.",
-          "type": [ "number", "string" ],
+          "type": "integer",
           "default": 1,
           "minimum": 1
         },
@@ -142,11 +145,17 @@
           "properties": {
             "cpu": {
               "type": [ "number", "string" ],
-              "default": 0.1
+              "default": 0.5,
+              "minimum": 0.1,
+              "maximum": 64,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             },
             "memory": {
               "type": [ "number", "string" ],
-              "default": 0.2
+              "default": 0.5,
+              "minimum": 0.1,
+              "maximum": 1000,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             }
           }
         },
@@ -157,11 +166,17 @@
           "properties": {
             "cpu": {
               "type": [ "number", "string" ],
-              "default": 0.5
+              "default": 0.5,
+              "minimum": 0.1,
+              "maximum": 64,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             },
             "memory": {
               "type": [ "number", "string" ],
-              "default": 1
+              "default": 0.5,
+              "minimum": 0.1,
+              "maximum": 1000,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             }
           }
         }

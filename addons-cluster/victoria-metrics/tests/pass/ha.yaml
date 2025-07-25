@@ -1,0 +1,6 @@
+vminsert:
+  replicas: 3
+vmselect:
+  replicas: 3
+vmstorage:
+  replicas: 3

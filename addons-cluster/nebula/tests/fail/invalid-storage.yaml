@@ -1,0 +1,3 @@
+nebula:
+  graphd:
+    logStorage: "invalid"

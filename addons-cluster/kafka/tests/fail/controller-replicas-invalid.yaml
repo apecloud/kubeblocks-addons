@@ -1,0 +1,2 @@
+mode: separated
+controllerReplicas: 2

@@ -1,0 +1,3 @@
+gateway:
+  basicAuth:
+    enabled: true

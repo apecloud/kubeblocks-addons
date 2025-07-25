@@ -1,0 +1,3 @@
+tls:
+  enabled: true
+  issuer: KubeBlocks
