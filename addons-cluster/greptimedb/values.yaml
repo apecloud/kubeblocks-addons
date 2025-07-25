@@ -25,6 +25,7 @@ datanode:
     #   memory: 512Mi
 
   volume:
+    storageClassName: ""
     storage: 10
 
 ## @param etcd configs
@@ -33,6 +34,7 @@ etcd:
   replicas: 3
   resources: {}
   volume:
+    storageClassName: ""
     storage: 10
 
 ## @param meta configs
