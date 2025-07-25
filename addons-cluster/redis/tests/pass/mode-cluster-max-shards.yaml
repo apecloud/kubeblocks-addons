@@ -1,0 +1,3 @@
+mode: cluster
+redisCluster:
+  shardCount: 2048

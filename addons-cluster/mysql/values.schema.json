@@ -36,7 +36,8 @@
       "default": 1,
       "minimum": 0.5,
       "maximum": 64,
-      "multipleOf": 0.5
+      "multipleOf": 0.5,
+      "pattern": "^[0-9]+(\\.[0-9]+)?$"
     },
     "memory": {
       "title": "Memory(Gi)",
@@ -47,7 +48,8 @@
       ],
       "default": 1,
       "minimum": 0.5,
-      "maximum": 1000
+      "maximum": 1000,
+      "pattern": "^[0-9]+(\\.[0-9]+)?$"
     },
     "storage": {
       "title": "Storage(Gi)",
@@ -58,7 +60,14 @@
       ],
       "default": 20,
       "minimum": 1,
-      "maximum": 10000
+      "maximum": 10000,
+      "pattern": "^[0-9]+(\\.[0-9]+)?$"
+    },
+    "storageClassName": {
+      "title": "Storage Class Name",
+      "description": "Storage class name of the data volume",
+      "type": "string",
+      "default": ""
     },
     "topology": {
       "type": "string",
@@ -86,13 +95,15 @@
           "title": "Proxysql CPU",
           "description": "Proxysql CPU cores.",
           "type": [ "number", "string" ],
-          "default": 1
+          "default": 1,
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
         },
         "memory": {
           "title": "Proxysql Memory(Gi)",
           "description": "Proxysql Memory, the unit is Gi.",
           "type": [ "number", "string" ],
-          "default": 1
+          "default": 1,
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
         }
       },
       "description": "Proxysql configuration"

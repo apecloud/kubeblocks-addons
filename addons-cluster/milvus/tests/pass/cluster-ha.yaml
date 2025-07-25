@@ -1,0 +1,11 @@
+mode: cluster
+proxy:
+  replicas: 2
+mixcoord:
+  replicas: 2
+datanode:
+  replicas: 2
+indexnode:
+  replicas: 2
+querynode:
+  replicas: 2

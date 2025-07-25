@@ -1,0 +1,16 @@
+storageClassName: "my-storage-class"
+proxy:
+  storageClassName: "my-proxy-storage-class"
+mode: raftGroup
+proxyEnabled: true
+
+asserts:
+  - equal:
+      path: ".spec.componentSpecs[0].volumeClaimTemplates[0].spec.storageClassName"
+      value: "my-storage-class"
+  - equal:
+      path: ".spec.componentSpecs[1].volumeClaimTemplates[0].spec.storageClassName"
+      value: "my-proxy-storage-class"
+  - equal:
+      path: ".spec.componentSpecs[3].volumeClaimTemplates[0].spec.storageClassName"
+      value: "my-proxy-storage-class"

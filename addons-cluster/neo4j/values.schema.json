@@ -18,7 +18,8 @@
       "type": "string",
       "default": "singlealone",
       "enum": [
-        "singlealone"
+        "singlealone",
+        "clustermode"
       ]
     },
     "replicas": {

@@ -1,0 +1,3 @@
+risingwave:
+  frontend:
+    replicas: 0

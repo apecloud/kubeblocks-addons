@@ -1,0 +1,4 @@
+fe:
+  replicas: 3
+be:
+  replicas: 3

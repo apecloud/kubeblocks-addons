@@ -1,0 +1,3 @@
+nebula:
+  console:
+    replicas: "invalid"

@@ -1,0 +1,3 @@
+risingwave:
+  compactor:
+    replicas: 0

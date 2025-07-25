@@ -34,7 +34,7 @@ requests:
 
 storageEnable: true
 
-storageClassName:
+storageClassName: ""
 
 ## kafka data storage setting,the unit is Gi
 storage: 10
@@ -42,7 +42,7 @@ storage: 10
 ## kafka metaadata storage setting,the unit is Gi
 metaStorage: 5
 
-metaStorageClassName:
+metaStorageClassName: ""
 
 ## kafka replicas for combined mode
 replicas: 1

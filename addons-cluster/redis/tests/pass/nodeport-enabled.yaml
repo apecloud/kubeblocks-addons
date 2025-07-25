@@ -1,0 +1,3 @@
+# Tests default replication mode with nodePort enabled
+mode: replication
+nodePortEnabled: true

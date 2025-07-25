@@ -1,0 +1,4 @@
+topology: orc
+orchestrator:
+  serviceReference:
+    endpoint: "myorc-orchestrator:80"

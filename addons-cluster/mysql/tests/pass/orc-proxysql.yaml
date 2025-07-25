@@ -1,0 +1,4 @@
+topology: orc-proxysql
+orchestrator:
+  serviceReference:
+    endpoint: "myorc-orchestrator:80"

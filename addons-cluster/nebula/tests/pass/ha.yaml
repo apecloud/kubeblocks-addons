@@ -1,0 +1,9 @@
+nebula:
+  console:
+    replicas: 2
+  graphd:
+    replicas: 2
+  metad:
+    replicas: 5
+  storaged:
+    replicas: 5

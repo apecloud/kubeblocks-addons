@@ -1,0 +1,9 @@
+risingwave:
+  meta:
+    replicas: 3
+  frontend:
+    replicas: 2
+  compute:
+    replicas: 2
+  compactor:
+    replicas: 2

@@ -1,0 +1,2 @@
+mode: clustermode
+replicas: 3

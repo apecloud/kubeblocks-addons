@@ -110,7 +110,8 @@
           ],
           "default": 1,
           "minimum": 0.1,
-          "maximum": 64
+          "maximum": 64,
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
         },
         "memory": {
           "title": "Keeper Memory(Gi)",
@@ -121,7 +122,8 @@
           ],
           "default": 2,
           "minimum": 0.5,
-          "maximum": 1000
+          "maximum": 1000,
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
         },
         "storage": {
           "title": "Keeper Storage(Gi)",

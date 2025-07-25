@@ -30,6 +30,7 @@ memory: 2
 
 ## @param storage, the unit is Gi
 storage: 10
+storageClassName: ""
 
 ## @param log storage, the unit is Gi
 logStorage: 2

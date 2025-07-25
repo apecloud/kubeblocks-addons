@@ -6,7 +6,7 @@
 ##
 version: 5.26.5
 
-## @param mode cluster topology mode, singlealone
+## @param mode cluster topology mode, singlealone, clustermode
 ##
 mode: singlealone
 
@@ -28,6 +28,7 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
+storageClassName: ""
 
 extra:
   terminationPolicy: Delete

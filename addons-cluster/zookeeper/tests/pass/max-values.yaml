@@ -1,0 +1,5 @@
+replicas: 5
+cpu: 64
+memory: 1000
+storage: 10000
+logStorage: 10000

@@ -1,0 +1,2 @@
+mode: replicaset
+replicas: 3

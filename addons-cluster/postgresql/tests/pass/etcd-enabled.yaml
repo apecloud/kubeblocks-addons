@@ -1,0 +1,7 @@
+etcd:
+  enabled: true
+  meta:
+    mode: incluster
+    serviceRef:
+      cluster:
+        name: "my-etcd-cluster"

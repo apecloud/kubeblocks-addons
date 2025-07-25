@@ -1,0 +1,4 @@
+replicas: 32
+cpu: 64
+memory: 1000
+storage: 10000
