@@ -50,6 +50,9 @@ spec:
               - serviceVersions:
                   - "16"
                 mappedValue: "16.4.0"
+              - serviceVersions:
+                  - "17"
+                mappedValue: "17.5"
       targetVolumes:
         volumeMounts:
           - name: data
