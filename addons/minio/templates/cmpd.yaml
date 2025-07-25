@@ -11,6 +11,7 @@ spec:
   description: Minio is a High Performance Object Storage.
   serviceKind: minio
   serviceVersion: {{ .Values.defaultServiceVersion.minio }}
+  minReadySeconds: 10
   replicasLimit:
     minReplicas: 2
     maxReplicas: 32
@@ -96,6 +97,8 @@ spec:
       value: {{ .Values.minioConsolePort | quote}}
     - name: HTTP_PROTOCOL
       value: {{ .Values.tls.enabled | ternary "https" "http" | quote }}
+    - name: SERVICE_PORT
+      value: "9000"
   roles:
     - name: readwrite
       updatePriority: 1
@@ -158,6 +161,10 @@ spec:
             value: $(MINIO_ROOT_PASSWORD)
           - name: MINIO_BROWSER_LOGIN_ANIMATION
             value: "off"
+          - name: MINIO_PROMETHEUS_AUTH_TYPE
+            value: "public"
+          - name: SERVICE_PORT
+            value: "9000"
         volumeMounts:
           - name: data
             mountPath: /data
