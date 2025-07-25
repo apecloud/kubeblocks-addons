@@ -20,16 +20,26 @@ init_restore() {
 restore_snapshot() {
   snapshot="$1"
   collection_name="${snapshot%.*}"
+  # skip file kubeblocks-backup.json which is not a snapshot
+  if [ "${collection_name}" == "kubeblocks-backup" ]; then
+    continue
+  fi
 
   echo "INFO: start to restore collection ${collection_name}..."
   datasafed pull "${snapshot}" "${SNAPSHOT_DIR}/${snapshot}"
 
-  curl -X POST \
-    "http://${DP_DB_HOST}:6333/collections/${collection_name}/snapshots/upload?priority=snapshot" \
-    -H 'Content-Type:multipart/form-data' \
-    -F "snapshot=@${SNAPSHOT_DIR}/${snapshot}"
-
-  echo "upload collection ${collection_name} successfully"
+  while true; do
+    curl -X POST "http://${DP_DB_HOST}:6333/collections/${collection_name}/snapshots/upload?priority=snapshot" \
+      -H 'Content-Type:multipart/form-data' \
+      -F "snapshot=@${SNAPSHOT_DIR}/${snapshot}" > /tmp/qdrant-restore.log 2>&1
+    if grep -q '"status":"ok"' /tmp/qdrant-restore.log; then
+      echo "restore collection ${collection_name} successfully"
+      break
+    else
+      echo "INFO: failed to restore collection ${collection_name}, retry..."
+      sleep 5
+    fi
+  done
 }
 
 restore_all() {
