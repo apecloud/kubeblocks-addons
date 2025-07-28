@@ -450,7 +450,7 @@ get_current_comp_nodes_for_scale_in() {
 
     if $using_advertised_ports; then
       if [[ ${advertised_ports[$node_port]+_} ]]; then
-        if [[ "$node_role" =~ "master" ]]; then
+        if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
           current_comp_primary_node+=("$node_ip_port")
         else
           current_comp_other_nodes+=("$node_ip_port")
@@ -458,7 +458,7 @@ get_current_comp_nodes_for_scale_in() {
       fi
     elif $using_host_network; then
       if $belong_current_comp; then
-        if [[ "$node_role" =~ "master" ]]; then
+        if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
           current_comp_primary_node+=("$node_ip:$REDIS_CLUSTER_HOST_NETWORK_PORT")
         else
           current_comp_other_nodes+=("$node_ip:$REDIS_CLUSTER_HOST_NETWORK_PORT")
@@ -466,7 +466,7 @@ get_current_comp_nodes_for_scale_in() {
       fi
     else
       if $belong_current_comp; then
-        if [[ "$node_role" =~ "master" ]]; then
+        if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
           current_comp_primary_node+=("$node_ip:$SERVICE_PORT")
         else
           current_comp_other_nodes+=("$node_ip:$SERVICE_PORT")

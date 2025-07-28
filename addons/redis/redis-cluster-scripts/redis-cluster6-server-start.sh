@@ -314,13 +314,13 @@ get_current_comp_nodes_for_scale_out_replica() {
     done
 
     if $belong_current_comp; then
-      if [[ "$node_role" =~ "master" ]]; then
+      if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
         current_comp_primary_node+=("$node_announce_ip#$node_announce_ip_port@$node_bus_port")
       else
         current_comp_other_nodes+=("$node_announce_ip#$node_announce_ip_port@$node_bus_port")
       fi
     else
-      if [[ "$node_role" =~ "master" ]]; then
+      if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
         other_comp_primary_nodes+=("$node_announce_ip#$node_announce_ip_port@$node_bus_port")
       else
         other_comp_other_nodes+=("$node_announce_ip#$node_announce_ip_port@$node_bus_port")

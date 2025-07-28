@@ -345,6 +345,7 @@ get_current_comp_nodes_for_scale_out_replica() {
   # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@31888,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
   # 3. using the host network ip as the nodeAddr
   # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:1050@1051,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+  current_pod_is_fail=false
   while read -r line; do
     node_ip_port_fields=$(echo "$line" | awk '{print $2}')
     node_announce_ip_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}')
@@ -366,13 +367,13 @@ get_current_comp_nodes_for_scale_out_replica() {
 
     if $using_advertised_ports; then
       if [[ ${advertised_ports[$node_port]+_} ]]; then
-        if [[ "$node_role" =~ "master" ]]; then
+        if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
           current_comp_primary_node+=("$node_announce_ip#$node_fqdn#$node_announce_ip_port@$node_bus_port")
         else
           current_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_announce_ip_port@$node_bus_port")
         fi
       else
-        if [[ "$node_role" =~ "master" ]]; then
+        if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
           other_comp_primary_nodes+=("$node_announce_ip#$node_fqdn#$node_announce_ip_port@$node_bus_port")
         else
           other_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_announce_ip_port@$node_bus_port")
@@ -380,19 +381,20 @@ get_current_comp_nodes_for_scale_out_replica() {
       fi
     else
       if [[ "$node_fqdn" =~ "$KB_CLUSTER_COMP_NAME"* ]]; then
-        if [[ "$node_role" =~ "master" ]]; then
+        if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
           current_comp_primary_node+=("$node_announce_ip#$node_fqdn#$node_fqdn:$final_port@$node_bus_port")
         else
           current_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$final_port@$node_bus_port")
         fi
       else
-        if [[ "$node_role" =~ "master" ]]; then
+        if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
           other_comp_primary_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$final_port@$node_bus_port")
         else
           other_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$final_port@$node_bus_port")
         fi
       fi
     fi
+    # TODO: auto forget fail node??
   done <<< "$cluster_nodes_info"
 
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"

@@ -443,7 +443,7 @@ get_current_comp_nodes_for_scale_in() {
     node_role=$(echo "$line" | awk '{print $3}')
     if $using_advertised_ports; then
       if [[ ${advertised_ports[$node_port]+_} ]]; then
-        if [[ "$node_role" =~ "master" ]]; then
+        if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
           current_comp_primary_node+=("$node_ip_port")
         else
           current_comp_other_nodes+=("$node_ip_port")
@@ -451,7 +451,7 @@ get_current_comp_nodes_for_scale_in() {
       fi
     elif $using_host_network; then
       if [[ "$node_fqdn" =~ "$KB_CLUSTER_COMP_NAME"* ]]; then
-        if [[ "$node_role" =~ "master" ]]; then
+        if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
           current_comp_primary_node+=("$node_ip:$REDIS_CLUSTER_HOST_NETWORK_PORT")
         else
           current_comp_other_nodes+=("$node_ip:$REDIS_CLUSTER_HOST_NETWORK_PORT")
@@ -459,7 +459,7 @@ get_current_comp_nodes_for_scale_in() {
       fi
     else
       if [[ "$node_fqdn" =~ "$KB_CLUSTER_COMP_NAME"* ]]; then
-        if [[ "$node_role" =~ "master" ]]; then
+        if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
           current_comp_primary_node+=("$node_fqdn:$SERVICE_PORT")
         else
           current_comp_other_nodes+=("$node_fqdn:$SERVICE_PORT")
