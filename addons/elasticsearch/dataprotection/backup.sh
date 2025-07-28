@@ -9,7 +9,7 @@ export PATH=$PATH:/usr/share/elasticsearch/bin
 cat /etc/datasafed/datasafed.conf
 toolConfig=/etc/datasafed/datasafed.conf
 REPOSITORY=kb-backup
-ES_ENDPOINT=http://${DP_DB_HOST}:9200
+ES_ENDPOINT=http://${DP_DB_HOST}.${KB_NAMESPACE}.svc.cluster.local:9200
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
 # the sync progress container will check this file and exit if it exists
@@ -28,7 +28,7 @@ trap handle_exit EXIT
 
 function getToolConfigValue() {
     local var=$1
-    cat $toolConfig | grep "$var" | awk '{print $NF}'
+    cat $toolConfig | grep "$var[[:space:]]*=" | awk '{print $NF}'
 }
 
 s3_endpoint=$(getToolConfigValue endpoint)
