@@ -114,7 +114,7 @@ spec:
         create: CREATE USER '${KB_ACCOUNT_NAME}'@'%' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT ALL PRIVILEGES ON *.* TO '${KB_ACCOUNT_NAME}'@'%';
   lifecycleActions:
     postProvision:
-      preCondition: RuntimeReady
+      preCondition: ComponentReady
       exec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
         command:
