@@ -16,7 +16,7 @@ spec:
     # update patroni master
     targetPodSelector:
       matchLabels:
-        "apps.kubeblocks.postgres.patroni/role": "master"
+        "kubeblocks.io/role": "primary"
 
   mergeReloadAndRestart: false
 
