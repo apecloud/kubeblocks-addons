@@ -75,7 +75,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
   configs:
-    - name: config
+    - name: zookeeper-config
       namespace: {{ .Release.Namespace }}
       template: {{ include "zookeeper.configTplName" . }}
       volumeName: config

@@ -112,3 +112,10 @@ Define zookeeper parameter config renderer name
 {{- define "zookeeper.pcrName" -}}
 zookeeper-pcr
 {{- end -}}
+
+{{/*
+Define zookeeper parameters definition name
+*/}}
+{{- define "zookeeper.paramsDefName" -}}
+zookeeper-pd
+{{- end -}}
