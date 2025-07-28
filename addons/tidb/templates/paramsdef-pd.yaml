@@ -9,6 +9,11 @@ metadata:
 spec:
   fileName: pd.toml
 
+  parametersSchema:
+    topLevelKey: PDParameter
+    cue: |-
+      {{- .Files.Get "config/pd-config-constraint.cue" | nindent 6 }}
+
   reloadAction:
     # execute action in one pod is enough
     targetPodSelector:
