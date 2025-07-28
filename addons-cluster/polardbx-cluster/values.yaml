@@ -1,5 +1,6 @@
 ## cluster settings for polardbx cluster
 nameOverride: pxc
+version: 2.4.1
 polardbx:
   ## @param polardbx.terminationPolicy, temination policy for polardbx cluster
   terminationPolicy: WipeOut

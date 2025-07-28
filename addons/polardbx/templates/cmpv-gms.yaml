@@ -1,0 +1,21 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: polardbx-gms
+  labels:
+    {{- include "polardbx.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "polardbx-gms.cmpdRegexPattern" . }}
+      releases:
+        - 2.3.0
+  releases:
+    - name: 2.3.0
+      changes:
+      serviceVersion: 2.3.0
+      images:
+        tools-updater: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.toolsUpdater.repository }}:v1.5.0
+        engine: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.dn.repository}}:80-8.0.18-20231101115000
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.prom.mysqld_exporter.repository}}:v0.14.0
+        roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.roleProbe.image.repository }}:latest
