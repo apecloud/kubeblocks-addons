@@ -7,11 +7,6 @@
 {{- $mode = $.mode }}
 {{- end }}
 
-{{- $esVersion := "0.1.0" }}
-{{- if index . "version" }}
-{{- $esVersion = $.version }}
-{{- end }}
-
 cluster:
   name: {{ .CLUSTER_NAMESPACE }}
   routing:
