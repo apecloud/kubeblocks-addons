@@ -3,13 +3,15 @@ kind: ComponentDefinition
 metadata:
   name: {{ include "elasticsearch7.cmpdName" . }}
   labels:
-    {{- include "elasticsearch.labels" . | nindent 6 }}
+    {{- include "elasticsearch.labels" . | nindent 4 }}
   annotations:
-    {{- include "elasticsearch.annotations" . | nindent 6 }}
+    apps.kubeblocks.io/skip-immutable-check: "true"
+    {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: Elasticsearch is a distributed, restful search engine optimized for speed and relevance on production-scale workloads.
   serviceKind: elasticsearch
+  serviceVersion: 7.10.1
   updateStrategy: Parallel
   podManagementPolicy: Parallel
   exporter:
@@ -22,6 +24,12 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
       restartOnFileChange: true
+  tls:
+    volumeName: tls
+    mountPath: /etc/pki/tls
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem
   scripts:
     - name: scripts
       template: {{ include "elasticsearch.scriptsTplName" . }}
@@ -123,6 +131,30 @@ spec:
               flattenFormat:
                 delimiter: ";"
                 keyValueDelimiter: ":"
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+    - name: TLS_CA_FILE
+      valueFrom:
+        tlsVarRef:
+          name: caFile
+          optional: true
+    - name: TLS_CERT_FILE
+      valueFrom:
+        tlsVarRef:
+          name: certFile
+          optional: true
+    - name: TLS_KEY_FILE
+      valueFrom:
+        tlsVarRef:
+          name: keyFile
+          optional: true
+    - name: TLS_CERT_PATH
+      valueFrom:
+        tlsVarRef:
+          name: mountPath
+          optional: true
   lifecycleActions:
     memberLeave:
       exec:
@@ -191,7 +223,7 @@ spec:
           - sh
           - -c
           - |
-            cp ${KB_TLS_CERT_PATH}/* /usr/share/elasticsearch/config/
+            cp ${TLS_CERT_PATH}/* /usr/share/elasticsearch/config/
             # remove initial master nodes block if cluster has been formed
             if [ -f "${CLUSTER_FORMED_FILE}" ]; then
               sed -i '/# INITIAL_MASTER_NODES_BLOCK_START/,/# INITIAL_MASTER_NODES_BLOCK_END/d' config/elasticsearch.yml

@@ -8,7 +8,7 @@ else
 fi
 
 # Configure protocol based on TLS settings
-if [ -n "${KB_TLS_CERT_FILE}" ]; then
+if [ "${TLS_ENABLED}" == "true" ]; then
     READINESS_PROBE_PROTOCOL=https
 else
     READINESS_PROBE_PROTOCOL=http

@@ -185,10 +185,24 @@ Define kibana component definition regex pattern
 {{- end -}}
 
 {{/*
+Define kibana v7.X component definition name
+*/}}
+{{- define "kibana7.cmpdName" -}}
+kibana-7-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
 Define kibana v7.X component definition regex pattern
 */}}
 {{- define "kibana7.cmpdRegexPattern" -}}
 ^kibana-7-
+{{- end -}}
+
+{{/*
+Define kibana config tpl name
+*/}}
+{{- define "kibana.configTplName" -}}
+kibana-config-tpl
 {{- end -}}
 
 {{- define "kibana-7.7.1.image" -}}

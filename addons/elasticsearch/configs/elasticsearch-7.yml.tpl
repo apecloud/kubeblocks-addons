@@ -117,15 +117,15 @@ xpack:
         enabled: true
         verification_mode: certificate
         client_authentication: required
-        key: /usr/share/elasticsearch/config/${KB_TLS_KEY_FILE}
-        certificate: /usr/share/elasticsearch/config/${KB_TLS_CERT_FILE}
-        certificate_authorities: ["/usr/share/elasticsearch/config/${KB_TLS_CA_FILE}"]
+        key: /usr/share/elasticsearch/config/${TLS_KEY_FILE}
+        certificate: /usr/share/elasticsearch/config/${TLS_CERT_FILE}
+        certificate_authorities: ["/usr/share/elasticsearch/config/${TLS_CA_FILE}"]
     http:
       ssl:
         enabled: true
-        key: /usr/share/elasticsearch/config/${KB_TLS_KEY_FILE}
-        certificate: /usr/share/elasticsearch/config/${KB_TLS_CERT_FILE}
-        certificate_authorities: ["/usr/share/elasticsearch/config/${KB_TLS_CA_FILE}"]
+        key: /usr/share/elasticsearch/config/${TLS_KEY_FILE}
+        certificate: /usr/share/elasticsearch/config/${TLS_CERT_FILE}
+        certificate_authorities: ["/usr/share/elasticsearch/config/${TLS_CA_FILE}"]
     audit:
       enabled: true
 {{- else }}
