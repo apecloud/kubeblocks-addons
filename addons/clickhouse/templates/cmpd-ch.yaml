@@ -12,6 +12,7 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Chart.AppVersion }}
+  podManagementPolicy: Parallel
   minReadySeconds: 10
   runtime:
     securityContext:
