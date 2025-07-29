@@ -1,0 +1,17 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: nebula-metad-pcr-{{ .Chart.Version }}
+  labels:
+    {{- include "nebula.labels" . | nindent 4 }}
+  annotations:
+    {{- include "nebula.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "nebula-metad.cmpdName" . }}
+  parametersDefs:
+    - nebula-metad-pd
+
+  configs:
+    - name: nebula-metad.conf
+      fileFormatConfig:
+        format: props-ultra

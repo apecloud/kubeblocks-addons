@@ -11,6 +11,7 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: nebula
   serviceVersion: {{ .Chart.AppVersion }}
+  podManagementPolicy: Parallel
   volumes:
     - name: logs
   services:
@@ -35,19 +36,78 @@ spec:
       template: {{ include "nebula-graphd.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-graphd
-      restartOnFileChange: true
+      externalManaged: true
+  scripts:
+    - name: nebula-scripts
+      template: {{ include "nebula.scriptsTemplateName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 3
+        letterCase: MixedCases
+  lifecycleActions:
+    postProvision:
+      exec:
+        container: graphd
+        image: {{ $.Values.images.nebula.console.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.console.repository }}:v3.8.0
+        command:
+          - /bin/sh
+          - -c
+          - |
+            set -e
+            /usr/local/bin/nebula-console --addr ${SVC_NAME} --port ${SVC_PORT} --user root --password nebula -e "ALTER USER root WITH PASSWORD '${NEBULA_ROOT_PASSWORD}';"
   vars:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
+    - name: HTTP_PORT
+      value: "19669"
+    - name: COMPONENT_TYPE
+      value: graphd
+    - name: DEFAULT_TIMEZONE
+      value: "UTC+00:00:00"
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
     - name: CLUSTER_NAMESPACE
       valueFrom:
         clusterVarRef:
           namespace: Required
-    - name: GRAPHD_COMPONENT_NAME
+    - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: NEBULA_ROOT_USER
+      valueFrom:
+        credentialVarRef:
+          name: root
+          username: Required
+    - name: NEBULA_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: root
+          password: Required
+    - name: SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          name: thrift
+          optional: false
+          host: Required
+    - name: SVC_PORT
+      valueFrom:
+        serviceVarRef:
+          name: thrift
+          optional: false
+          port:
+            name: thrift
+            option: Required
     - name: NEBULA_METAD_SVC
       valueFrom:
         componentVarRef:
@@ -56,17 +116,39 @@ spec:
           podFQDNs: Required
       expression: {{ `{{ $hosts := splitList "," .NEBULA_METAD_SVC }}{{ range $idx, $host := $hosts }}{{ $host }}:9559{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
   runtime:
+    volumes:
+    - name: nebula-console
+      emptyDir: {}
     securityContext:
       fsGroup: 1001
+    initContainers:
+      - name: init-console
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp /usr/local/bin/nebula-console /usr/local/nebula/console/nebula-console
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        volumeMounts:
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
+      - name: init-agent
+        command:
+        - /bin/sh
+        - -c
+        - |
+          cp /usr/local/bin/agent /usr/local/nebula/console/agent
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        volumeMounts:
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
     containers:
       - name: graphd
         command:
           - /bin/bash
           - -c
           - |
-            set -ex
-            trap : TERM INT
-            exec /usr/local/nebula/bin/nebula-graphd --flagfile=/usr/local/nebula/etc/nebula-graphd.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
+            /scripts/start-graphd.sh
         imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         ports:
           - containerPort: 9669
@@ -85,7 +167,7 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.name
           - name: POD_FQDN
-            value: $(POD_NAME).$(GRAPHD_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+            value: $(POD_NAME).$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
         readinessProbe:
           failureThreshold: 3
           httpGet:
@@ -101,5 +183,11 @@ spec:
             name: data
           - mountPath: /usr/local/nebula/logs
             name: logs
-          - mountPath: /usr/local/nebula/etc
+          - mountPath: /usr/local/nebula/config
             name: nebula-graphd
+          - name: scripts
+            mountPath: /scripts
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
+      {{- include "nebula.agentContainer" . | nindent 6 }}
+      {{- include "nebula.exporterContainer" . | nindent 6 }}
