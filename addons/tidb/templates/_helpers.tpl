@@ -93,6 +93,14 @@ tikv-config-constraints
 tidb-pd-params
 {{- end -}}
 
+{{- define "tidb.tidb.paramName" -}}
+tidb-tidb-params
+{{- end -}}
+
+{{- define "tidb.tikv.paramName" -}}
+tidb-tikv-params
+{{- end -}}
+
 {{- define "tidb.pd.pcrName" -}}
 tidb-pd-pcr-{{ .Chart.Version }}
 {{- end -}}

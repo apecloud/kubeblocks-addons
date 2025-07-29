@@ -1,7 +1,7 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: {{ include "tidb.pd.paramName" . }}
+  name: {{ include "tidb.tidb.paramName" . }}
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
 spec:
