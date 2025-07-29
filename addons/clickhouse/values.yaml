@@ -17,11 +17,18 @@ image:
   registry: docker.io
   repository: bitnami/clickhouse
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag:
-    major25: 25.4.4-debian-12-r1
-    major24: 24.8.3-debian-12-r1
-    major22: 22.9.4-debian-11-r1
+
+clickhouseVersions:
+  - version: 25.4.4
+    imageTag: 25.4.4-debian-12-r1
+  - version: 24.8.3
+    imageTag: 24.8.3-debian-12-r1
+  - version: 22.8.21
+    imageTag: 22.8.21-debian-11-r33
+  - version: 22.3.20
+    imageTag: 22.3.20
+  - version: 22.3.18
+    imageTag: 22.3.18-debian-11-r3
 
 roleProbe:
   initialDelaySeconds: 15

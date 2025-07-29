@@ -9,42 +9,26 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - 24.8.3
-        - 22.9.4
-        - 25.4.4
+      {{- range .Values.clickhouseVersions }}
+      - {{ .version }}
+      {{- end }}
       compDefs:
         - {{ include "clickhouse.cmpdRegexpPattern" . }}
     - releases:
-        - 24.8.3
-        - 22.9.4
-        - 25.4.4
+      {{- range .Values.clickhouseVersions }}
+        - {{ .version }}
+      {{- end }}
       compDefs:
         - {{ include "clickhouse-keeper.cmpdRegexpPattern" . }}
   releases:
-    - name: 25.4.4
-      serviceVersion: 25.4.4
+  {{- range .Values.clickhouseVersions }}
+    - name: {{ .version }}
+      serviceVersion: {{ .version }}
       images:
-        copy-tools: {{ include "busybox.image" . }}
-        clickhouse: {{ include "clickhouse25.image" . }}
-        role-probe: {{ include "clickhouse25.image" . }}
-        switchover: {{ include "clickhouse25.image" . }}
-        member-join: {{ include "clickhouse25.image" . }}
-        member-leave: {{ include "clickhouse25.image" . }}
-    - name: 24.8.3
-      serviceVersion: 24.8.3
-      images:
-        copy-tools: {{ include "busybox.image" . }}
-        clickhouse: {{ include "clickhouse24.image" . }}
-        role-probe: {{ include "clickhouse24.image" . }}
-        switchover: {{ include "clickhouse24.image" . }}
-        member-join: {{ include "clickhouse24.image" . }}
-        member-leave: {{ include "clickhouse24.image" . }}
-    - name: 22.9.4
-      serviceVersion: 22.9.4
-      images:
-        copy-tools: {{ include "busybox.image" . }}
-        clickhouse: {{ include "clickhouse22.image" . }}
-        role-probe: {{ include "clickhouse22.image" . }}
-        switchover: {{ include "clickhouse22.image" . }}
-        member-join: {{ include "clickhouse22.image" . }}
-        member-leave: {{ include "clickhouse22.image" . }}
+        copy-tools: {{ include "busybox.image" $ }}
+        clickhouse: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
+        role-probe: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
+        switchover: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
+        member-join: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
+        member-leave: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
+  {{- end }}
