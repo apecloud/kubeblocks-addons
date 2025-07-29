@@ -14,10 +14,11 @@ spec:
           compDef: {{ include "clickhouse.cmpdRegexpPattern" . }}
     - name: cluster
       components:
-        - name: clickhouse
-          compDef: {{ include "clickhouse.cmpdRegexpPattern" .}}
         - name: ch-keeper
           compDef: {{ include "clickhouse-keeper.cmpdRegexpPattern" .}}
+      shardings:
+        - name: clickhouse
+          shardingDef: clickhouse
       orders:
         provision:
           - ch-keeper
