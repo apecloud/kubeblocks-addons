@@ -306,6 +306,7 @@ get_current_comp_nodes_for_scale_out_replica() {
   current_comp_other_nodes=()
   other_comp_primary_nodes=()
   other_comp_other_nodes=()
+  current_pod_fail_node_ids=()
 
   # if the cluster_nodes_info contains only one line, it means that the cluster not be initialized
   shard_count=$(echo "${REDIS_CLUSTER_ALL_SHARDS}" | tr ',' '\n' | wc -l)
@@ -345,7 +346,6 @@ get_current_comp_nodes_for_scale_out_replica() {
   # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@31888,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
   # 3. using the host network ip as the nodeAddr
   # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:1050@1051,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
-  current_pod_is_fail=false
   while read -r line; do
     node_ip_port_fields=$(echo "$line" | awk '{print $2}')
     node_announce_ip_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}')
@@ -394,13 +394,17 @@ get_current_comp_nodes_for_scale_out_replica() {
         fi
       fi
     fi
-    # TODO: auto forget fail node??
+    if [[ "$node_role" =~ "fail" && "$node_fqdn" =~ "${KB_POD_NAME}.$KB_CLUSTER_COMP_NAME-headless" ]]; then
+      current_node_id=$(echo "$line" | awk '{print $1}')
+      current_pod_fail_node_ids+=("$current_node_id")
+    fi
   done <<< "$cluster_nodes_info"
 
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"
   echo "current_comp_other_nodes: ${current_comp_other_nodes[*]}"
   echo "other_comp_primary_nodes: ${other_comp_primary_nodes[*]}"
   echo "other_comp_other_nodes: ${other_comp_other_nodes[*]}"
+  echo "current_pod_fail_node_ids: ${current_pod_fail_node_ids[*]}"
 }
 
 # Note: During rebuild-instance, a new PVC is created without existing data and having the rebuild.flag file.
@@ -429,6 +433,24 @@ remove_rebuild_instance_flag() {
     rm -f /data/rebuild.flag
     echo "remove rebuild.flag file succeeded!"
   fi
+}
+
+
+forget_fail_node(){
+  local primary_node_endpoint_with_port="$1"
+  local node_id="$2"
+  if [[ -z "$node_id" ]]; then
+    return
+  fi
+  set +x
+  forget_cmd="redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}"
+  echo "$forget_cmd -a ***"
+  if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
+    $forget_cmd
+  else
+    $forget_cmd -a ${REDIS_DEFAULT_PASSWORD}
+  fi
+  set -x
 }
 
 # scale out replica of redis cluster shard if needed
@@ -484,6 +506,12 @@ scale_redis_cluster_replica() {
   primary_node_port=$(echo "$primary_node_endpoint_with_port" | awk -F ':' '{print $2}')
   primary_node_fqdn=$(echo "$primary_node_info" | awk -F '#' '{print $2}')
   primary_node_bus_port=$(echo "$primary_node_info" | awk -F '@' '{print $2}')
+
+  for node_id in "${current_pod_fail_node_ids[@]}"; do
+    echo "pod: ${KB_POD_NAME} is fail, forget node id $node_id"
+    forget_fail_node "$primary_node_endpoint_with_port" "$node_id"
+  done
+
   # if the current pod is not a rebuild-instance and is already in the cluster, skip scale out replica
   if ! is_rebuild_instance && is_node_in_cluster "$primary_node_endpoint" "$primary_node_port" "$current_pod_name"; then
     current_pod_with_svc="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME"
@@ -509,11 +537,7 @@ scale_redis_cluster_replica() {
   if is_rebuild_instance; then
     echo "Current instance is a rebuild-instance, forget node id in the cluster firstly."
     node_id=$(get_cluster_id "$primary_node_endpoint" "$primary_node_port" "$current_pod_fqdn")
-    if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
-      redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
-    else
-      redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
-    fi
+    forget_fail_node "$primary_node_endpoint_with_port" "$node_id"
   fi
 
   # current_node_with_port do not use advertised svc and port, because advertised svc and port are not ready when Pod is not Ready.
