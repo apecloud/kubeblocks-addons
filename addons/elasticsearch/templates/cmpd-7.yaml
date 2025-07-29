@@ -160,32 +160,32 @@ spec:
               /tini -- /usr/local/bin/docker-entrypoint.sh
             fi
         env:
-        - name: POD_IP
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: status.podIP
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.name
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: spec.nodeName
-        - name: NAMESPACE
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.namespace
-        - name: POD_FQDN
-          value: $(POD_NAME).$(ES_COMPONENT_NAME)-headless.$(NAMESPACE).svc.$(CLUSTER_DOMAIN)
-        - name: READINESS_PROBE_PROTOCOL
-          value: http
-        - name: NSS_SDB_USE_CACHE
-          value: "no"
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: spec.nodeName
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_FQDN
+            value: $(POD_NAME).$(ES_COMPONENT_NAME)-headless.$(NAMESPACE).svc.$(CLUSTER_DOMAIN)
+          - name: READINESS_PROBE_PROTOCOL
+            value: http
+          - name: NSS_SDB_USE_CACHE
+            value: "no"
         ports:
           - containerPort: 9200
             name: es-http
