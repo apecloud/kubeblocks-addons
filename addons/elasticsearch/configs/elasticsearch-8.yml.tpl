@@ -76,7 +76,6 @@ node:
   {{- range $i, $e := $myRoles }}
   - {{ $e }}
   {{- end }}
-  {{- end }}
 {{- end }}
 
 path:
