@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "elasticsearch.annotations" -}}
-{{ include "kblib.helm.resourcePolicy" . }}
+helm.sh/resource-policy: keep
 {{ include "elasticsearch.apiVersion" . }}
 {{- end }}
 
@@ -163,3 +163,54 @@ Define elasticsearch v8.X parameter config renderer name
 elasticsearch8-pcr
 {{- end }}
 
+{{/*
+Define kibana v8.X component definition name
+*/}}
+{{- define "kibana8.cmpdName" -}}
+kibana-8-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define kibana v8.X component definition regex pattern
+*/}}
+{{- define "kibana8.cmpdRegexPattern" -}}
+^kibana-8-
+{{- end -}}
+
+{{/*
+Define kibana component definition regex pattern
+*/}}
+{{- define "kibana.cmpdRegexPattern" -}}
+^kibana-
+{{- end -}}
+
+{{/*
+Define kibana v7.X component definition regex pattern
+*/}}
+{{- define "kibana7.cmpdRegexPattern" -}}
+^kibana-7-
+{{- end -}}
+
+{{- define "kibana-7.7.1.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/kibana:7.7.1
+{{- end }}
+
+{{- define "kibana-7.8.1.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/kibana:7.8.1
+{{- end }}
+
+{{- define "kibana-7.10.1.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/kibana:7.10.1
+{{- end }}
+
+{{- define "kibana-8.1.3.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/kibana:8.1.3
+{{- end }}
+
+{{- define "kibana-8.8.2.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/kibana:8.8.2
+{{- end }}
+
+{{- define "kibana-8.9.1.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/kibana:8.9.1
+{{- end }}
