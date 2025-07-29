@@ -36,10 +36,47 @@ spec:
         ipFamilies:
           - IPv4
         ports:
-          - name: es-http
+          - name: http
             port: 9200
-            targetPort: es-http
+            targetPort: http
+  systemAccounts:
+  - name: elastic
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 5
+      numSymbols: 0
+      letterCase: MixedCases
+  - name: kibana_system
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 5
+      numSymbols: 0
+      letterCase: MixedCases
   vars:
+    - name: ELASTIC_USER_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "elasticsearch8.cmpdName" . }}
+          name: elastic
+          optional: false
+          password: Required
+    - name: ELASTIC_PASSWORD
+      value: $(ELASTIC_USER_PASSWORD)
+    - name: KIBANA_SYSTEM_USER_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "elasticsearch8.cmpdName" . }}
+          name: kibana_system
+          optional: false
+          password: Required
+    - name: ELASTICSEARCH_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "elasticsearch8.cmpdName" . }}
+          name: http
+          host: Required
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
     - name: ES_COMPONENT_NAME
@@ -154,11 +191,17 @@ spec:
           - sh
           - -c
           - |
+            cp ${KB_TLS_CERT_PATH}/* /usr/share/elasticsearch/config/
+            # remove initial master nodes block if cluster has been formed
+            if [ -f "${CLUSTER_FORMED_FILE}" ]; then
+              sed -i '/# INITIAL_MASTER_NODES_BLOCK_START/,/# INITIAL_MASTER_NODES_BLOCK_END/d' config/elasticsearch.yml
+            fi
             if [ -f /bin/tini ]; then
               /bin/tini -- /usr/local/bin/docker-entrypoint.sh
             else
               /tini -- /usr/local/bin/docker-entrypoint.sh
             fi
+
         env:
           - name: POD_IP
             valueFrom:
@@ -186,9 +229,11 @@ spec:
             value: http
           - name: NSS_SDB_USE_CACHE
             value: "no"
+          - name: CLUSTER_FORMED_FILE
+            value: /usr/share/elasticsearch/data/cluster-formed
         ports:
           - containerPort: 9200
-            name: es-http
+            name: http
             protocol: TCP
           - containerPort: 9300
             name: transport
@@ -200,18 +245,25 @@ spec:
               - -c
               - /mnt/remote-scripts/readiness-probe-script.sh
           failureThreshold: 3
-          initialDelaySeconds: 10
+          initialDelaySeconds: 30
           periodSeconds: 5
           successThreshold: 1
           timeoutSeconds: 5
         lifecycle:
+          postStart:
+            exec:
+              command:
+              - bash
+              - -c
+              - |
+                /mnt/remote-scripts/post-start-hook.sh > /tmp/post-start-hook.log 2>&1
           preStop:
             exec:
               command:
                 - bash
                 - -c
                 - |
-                  /mnt/remote-scripts/pre-stop-hook-script.sh
+                  /mnt/remote-scripts/pre-stop-hook.sh > /tmp/pre-stop-hook.log 2>&1
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -244,6 +296,7 @@ spec:
         command:
           - /bin/elasticsearch_exporter
           - "--es.uri=http://localhost:9200"
+          - "--es.ssl-skip-verify"
         ports:
           - name: metrics
             containerPort: {{.Values.exporter.service.port}}
