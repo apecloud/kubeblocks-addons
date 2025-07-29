@@ -1,8 +1,6 @@
-{{- $clusterName := $.cluster.metadata.name }}
+{{- $clusterName := .CLUSTER_NAME }}
 {{- $defaultRoles := "master,data" }}
-{{- $namespace := $.cluster.metadata.namespace }}
-{{- $extraEnv := index $.cluster.metadata.annotations "kubeblocks.io/extra-env" | default "{}" | fromJson }}
-{{- $mode := index $extraEnv "mode" | default "multi-node" }}
+{{- $namespace := .CLUSTER_NAMESPACE }}
 
 {{- $mode := "multi-node" }}
 {{- if index . "mode" }}
@@ -60,7 +58,7 @@ http:
     enabled: true
     allow-origin: "*"
     allow-headers: Authorization,X-Requested-With,Content-Type,Content-Length
-  publish_host: ${KB_POD_FQDN}
+  publish_host: ${POD_FQDN}
 
 network:
   host: "0"
