@@ -1,4 +1,3 @@
-{{- $metad_svc := getEnvByName ( getContainerByName $.podSpec.containers "graphd" ) "NEBULA_METAD_SVC" }}
 {{- $time_zone := getEnvByName ( getContainerByName $.podSpec.containers "graphd" ) "DEFAULT_TIMEZONE" }}
 
 ########## basics ##########
@@ -44,7 +43,7 @@
 
 ########## networking ##########
 # Comma separated Meta Server Addresses
---meta_server_addrs={{ $metad_svc }}
+--meta_server_addrs={{ .NEBULA_METAD_SVC }}
 # Local IP used to identify the nebula-graphd process.
 # Change it to an address other than loopback if the service is distributed or
 # will be accessed remotely.
