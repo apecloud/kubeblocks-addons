@@ -36,8 +36,8 @@
 # These settings enable SSL for outgoing requests from the Kibana server to the browser.
 {{- if $.component.tlsConfig }}
 server.ssl.enabled: true
-server.ssl.certificate: ${TLS_CERT_PATH}/${TLS_CERT_FILE}
-server.ssl.key: ${TLS_CERT_PATH}/${TLS_KEY_FILE}
+server.ssl.certificate: /etc/pki/tls/cert.pem
+server.ssl.key: /etc/pki/tls/key.pem
 {{- end }}
 
 # =================== System: Elasticsearch ===================
@@ -87,8 +87,8 @@ elasticsearch.password: "${KIBANA_SYSTEM_USER_PASSWORD}"
 # =================== System: Elasticsearch (Optional) ===================
 # These files are used to verify the identity of Kibana to Elasticsearch and are required when
 # xpack.security.http.ssl.client_authentication in Elasticsearch is set to required.
-elasticsearch.ssl.certificate: ${TLS_CERT_PATH}/${TLS_CERT_FILE}
-elasticsearch.ssl.key: ${TLS_CERT_PATH}/${TLS_KEY_FILE}
+elasticsearch.ssl.certificate: /etc/pki/tls/cert.pem
+elasticsearch.ssl.key: /etc/pki/tls/key.pem
 
 # Enables you to specify a path to the PEM file for the certificate
 # authority for your Elasticsearch instance.

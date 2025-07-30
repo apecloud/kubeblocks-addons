@@ -135,26 +135,6 @@ spec:
       valueFrom:
         tlsVarRef:
           enabled: Optional
-    - name: TLS_CA_FILE
-      valueFrom:
-        tlsVarRef:
-          name: caFile
-          optional: true
-    - name: TLS_CERT_FILE
-      valueFrom:
-        tlsVarRef:
-          name: certFile
-          optional: true
-    - name: TLS_KEY_FILE
-      valueFrom:
-        tlsVarRef:
-          name: keyFile
-          optional: true
-    - name: TLS_CERT_PATH
-      valueFrom:
-        tlsVarRef:
-          name: mountPath
-          optional: true
   lifecycleActions:
     memberLeave:
       exec:
@@ -223,7 +203,7 @@ spec:
           - sh
           - -c
           - |
-            cp ${TLS_CERT_PATH}/* /usr/share/elasticsearch/config/
+            cp /etc/pki/tls/* /usr/share/elasticsearch/config/
             # remove initial master nodes block if cluster has been formed
             if [ -f "${CLUSTER_FORMED_FILE}" ]; then
               sed -i '/# INITIAL_MASTER_NODES_BLOCK_START/,/# INITIAL_MASTER_NODES_BLOCK_END/d' config/elasticsearch.yml
