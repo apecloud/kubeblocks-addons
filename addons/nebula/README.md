@@ -46,15 +46,6 @@ spec:
   clusterDef: nebula
   terminationPolicy: Delete
   componentSpecs:
-    - name: console
-      replicas: 1
-      resources:
-        limits:
-          cpu: "500m"
-          memory: "500Mi"
-        requests:
-          cpu: "100m"
-          memory: "100Mi"
     - name: graphd
       replicas: 1
       resources:

@@ -11,12 +11,19 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: nebula
   serviceVersion: {{ .Chart.AppVersion }}
+  podManagementPolicy: Parallel
   configs:
     - name: nebula-metad-config
       template: {{ include "nebula-metad.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-metad
-      restartOnFileChange: true
+      externalManaged: true
+  scripts:
+    - name: nebula-scripts
+      template: {{ include "nebula.scriptsTemplateName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
   volumes:
     - name: data
       needSnapshot: true
@@ -24,6 +31,16 @@ spec:
   vars:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
+    - name: HTTP_PORT
+      value: "19559"
+    - name: DEFAULT_TIMEZONE
+      value: "UTC+00:00:00"
+    - name: COMPONENT_TYPE
+      value: metad
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
     - name: CLUSTER_NAMESPACE
       valueFrom:
         clusterVarRef:
@@ -34,21 +51,33 @@ spec:
           optional: false
           podFQDNs: Required
       expression: {{ `{{ $hosts := splitList "," .NEBULA_METAD_SVC }}{{ range $idx, $host := $hosts }}{{ $host }}:9559{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
-    - name: METAD_COMPONENT_NAME
+    - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
           optional: false
           componentName: Required
   runtime:
+    volumes:
+      - name: nebula-console
+        emptyDir: {}
+    initContainers:
+      - name: init-agent
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp /usr/local/bin/agent /usr/local/nebula/console/agent
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        volumeMounts:
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
     containers:
       - name: metad
         command:
           - /bin/bash
           - -c
           - |
-            set -ex
-            trap : TERM INT
-            exec /usr/local/nebula/bin/nebula-metad --flagfile=/usr/local/nebula/etc/nebula-metad.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
+            /scripts/start-metad.sh
         imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         ports:
           - containerPort: 9559
@@ -67,21 +96,27 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.name
           - name: POD_FQDN
-            value: $(POD_NAME).$(METAD_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
-        # readinessProbe:
-        #   failureThreshold: 3
-        #   httpGet:
-        #     path: /status
-        #     port: http
-        #     scheme: HTTP
-        #   initialDelaySeconds: 10
-        #   periodSeconds: 10
-        #   successThreshold: 1
-        #   timeoutSeconds: 5
+            value: $(POD_NAME).$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /status
+            port: http
+            scheme: HTTP
+          periodSeconds: 5
+          initialDelaySeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
         volumeMounts:
           - mountPath: /usr/local/nebula/data
             name: data
           - mountPath: /usr/local/nebula/logs
             name: logs
-          - mountPath: /usr/local/nebula/etc
+          - mountPath: /usr/local/nebula/config
             name: nebula-metad
+          - name: scripts
+            mountPath: /scripts
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
+      {{- include "nebula.agentContainer" . | nindent 6 }}
+      {{- include "nebula.exporterContainer" . | nindent 6 }}

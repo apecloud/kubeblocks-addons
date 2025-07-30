@@ -1,0 +1,17 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: nebula-graphd-pcr-{{ .Chart.Version }}
+  labels:
+    {{- include "nebula.labels" . | nindent 4 }}
+  annotations:
+    {{- include "nebula.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "nebula-graphd.cmpdName" . }}
+  parametersDefs:
+    - nebula-graphd-pd
+
+  configs:
+    - name: nebula-graphd.conf
+      fileFormatConfig:
+        format: props-ultra
