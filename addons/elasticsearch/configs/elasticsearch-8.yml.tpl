@@ -83,10 +83,7 @@ path:
   logs: /usr/share/elasticsearch/logs
 
 xpack:
-{{- if $.component.tlsConfig }}
-{{- $ca_file := getCAFile }}
-{{- $cert_file := getCertFile }}
-{{- $key_file := getKeyFile }}
+{{- if eq (index $ "TLS_ENABLED") "true" }}
 # The ssl files must be placed in the ES config directory, otherwise, the following error will be reported:
 # failed to load SSL configuration [xpack.security.transport.ssl] - cannot read configured PEM certificate_authorities [/etc/pki/tls/ca.crt]
 # because access to read the file is blocked; SSL resources should be placed in the [/usr/share/elasticsearch/config] directory
