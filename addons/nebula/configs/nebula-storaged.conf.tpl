@@ -1,3 +1,6 @@
+
+{{- $time_zone := getEnvByName ( getContainerByName $.podSpec.containers "storaged" ) "DEFAULT_TIMEZONE" }}
+
 ########## basics ##########
 # Whether to run as a daemon process
 --daemonize=true
@@ -5,6 +8,7 @@
 --pid_file=pids/nebula-storaged.pid
 # Whether to use the configuration obtained from the configuration file
 --local_config=true
+--timezone_name={{ $time_zone }}
 
 ########## logging ##########
 # The directory to host logging files
@@ -27,11 +31,11 @@
 
 ########## networking ##########
 # Comma separated Meta server addresses
---meta_server_addrs=127.0.0.1:9559
+--meta_server_addrs={{ .NEBULA_METAD_SVC }}
 # Local IP used to identify the nebula-storaged process.
 # Change it to an address other than loopback if the service is distributed or
 # will be accessed remotely.
---local_ip=127.0.0.1
+#--local_ip=127.0.0.1
 # Storage daemon listening port
 --port=9779
 # HTTP service ip
@@ -49,7 +53,7 @@
 # recycle Raft WAL
 --wal_ttl=14400
 # whether send raft snapshot by files via http
---snapshot_send_files=true
+#--snapshot_send_files=true
 
 ########## Disk ##########
 # Root data path. Split by comma. e.g. --data_path=/disk1/path1/,/disk2/path2/
@@ -110,26 +114,26 @@
 
 ############## storage cache ##############
 # Whether to enable storage cache
---enable_storage_cache=false
+#--enable_storage_cache=false
 # Total capacity reserved for storage in memory cache in MB
---storage_cache_capacity=0
+#--storage_cache_capacity=0
 # Estimated number of cache entries on this storage node in base 2 logarithm. E.g., in case of 20, the estimated number of entries will be 2^20.
 # A good estimate can be log2(#vertices on this storage node). The maximum allowed is 31.
---storage_cache_entries_power=20
+#--storage_cache_entries_power=20
 
 # Whether to add vertex pool in cache. Only valid when storage cache is enabled.
---enable_vertex_pool=false
+#--enable_vertex_pool=false
 # Vertex pool size in MB
---vertex_pool_capacity=50
+#--vertex_pool_capacity=50
 # TTL in seconds for vertex items in the cache
---vertex_item_ttl=300
+#--vertex_item_ttl=300
 
 # Whether to add negative pool in cache. Only valid when storage cache is enabled.
---enable_negative_pool=false
+#--enable_negative_pool=false
 # Negative pool size in MB
---negative_pool_capacity=50
+#--negative_pool_capacity=50
 # TTL in seconds for negative items in the cache
---negative_item_ttl=300
+#--negative_item_ttl=300
 
 ############### misc ####################
 # Whether turn on query in multiple thread
@@ -188,3 +192,5 @@
 --memory_purge_enabled=true
 # memory background purge interval in seconds
 --memory_purge_interval_seconds=10
+
+--containerized=false

@@ -1,0 +1,17 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: nebula-storaged-pcr-{{ .Chart.Version }}
+  labels:
+    {{- include "nebula.labels" . | nindent 4 }}
+  annotations:
+    {{- include "nebula.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "nebula-storaged.cmpdName" . }}
+  parametersDefs:
+    - nebula-storaged-pd
+
+  configs:
+    - name: nebula-storaged.conf
+      fileFormatConfig:
+        format: props-ultra
