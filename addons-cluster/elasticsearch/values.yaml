@@ -43,6 +43,8 @@ tls:
   ## KubeBlocks or UserProvided
   issuer: UserProvided
   ## If issuer is UserProvided, will automatically generate TLS file by cluster-tls-secrets.yaml
-  secretName: elasticsearch-cluster-tls
+  secretName:
+  elasticAccountSecretName:
+  kibanaAccountSecretName:
 
 enableKibana: true

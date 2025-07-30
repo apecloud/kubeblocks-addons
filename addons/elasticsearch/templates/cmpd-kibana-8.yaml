@@ -38,6 +38,8 @@ spec:
         name: elastic
         optional: false
         password: Required
+        multipleClusterObjectOption:
+          strategy: individual
   - name: KIBANA_SYSTEM_USER_PASSWORD
     valueFrom:
       credentialVarRef:
@@ -45,19 +47,23 @@ spec:
         name: kibana_system
         optional: false
         password: Required
+        multipleClusterObjectOption:
+          strategy: individual
   - name: ELASTICSEARCH_HOST
     valueFrom:
       serviceVarRef:
         compDef: {{ include "elasticsearch8.cmpdName" . }}
         name: http
         host: Required
+        multipleClusterObjectOption:
+          strategy: individual
   - name: TLS_ENABLED
     valueFrom:
       tlsVarRef:
         enabled: Optional
   configs:
   - name: kibana-cm
-    templateRef: {{ include "kibana.configTplName" . }}
+    template: {{ include "kibana.configTplName" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: kibana-cm
     restartOnFileChange: true
