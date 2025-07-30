@@ -44,3 +44,5 @@ tls:
   issuer: UserProvided
   ## If issuer is UserProvided, will automatically generate TLS file by cluster-tls-secrets.yaml
   secretName: elasticsearch-cluster-tls
+
+enableKibana: true

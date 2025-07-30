@@ -88,7 +88,7 @@ spec:
         endpoint="${READINESS_PROBE_PROTOCOL}://${ELASTICSEARCH_HOST}.${KB_NAMESPACE}.svc.${CLUSTER_DOMAIN}:9200"
         common_options="-s -u elastic:${ELASTIC_USER_PASSWORD} --fail --connect-timeout 3 -k"
         while true; do
-          if [ -n "${KB_TLS_CERT_FILE}" ]; then
+          if [ "${TLS_ENABLED}" == "true" ]; then
             out=$(curl ${common_options} -X GET "${endpoint}/kubeblocks_ca_crt/_doc/1?pretty")
             if [ $? == 0 ]; then
               echo "$out" | grep '"ca.crt" :' | awk -F: '{print $2}' | tr -d '",' | xargs | base64 -d > /tmp/elastic.ca.crt
@@ -140,7 +140,7 @@ spec:
                   set -- "$@" -u "${ELASTICSEARCH_USERNAME}:${ELASTICSEARCH_PASSWORD}"
                 fi
 
-                if [ -n "${KB_TLS_CERT_FILE}" ]; then
+                if [ "${TLS_ENABLED}" == "true" ]; then
                   READINESS_PROBE_PROTOCOL=https
                 else
                   READINESS_PROBE_PROTOCOL=http

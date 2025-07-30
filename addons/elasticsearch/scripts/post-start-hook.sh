@@ -80,13 +80,13 @@ else
 fi
 
 # The following operations only need to be performed on master-0
-idx=${KB_POD_NAME##*-}
+idx=${POD_NAME##*-}
 if [ $idx -ne 0 ]; then
     exit 0
 fi
 
 # Skip user initialization if security is disabled
-if [ -z "${KB_TLS_CERT_FILE}" ]; then
+if [ "${TLS_ENABLED}" != "true" ]; then
     echo "tls and authentication is disabled, skip account initialization"
     exit 0
 fi
