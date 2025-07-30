@@ -16,6 +16,10 @@ spec:
         namespace: {{ .Release.Namespace }}
       toolsSetup:
         mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            image: {{ .Values.images.registry | default "docker.io" }}/apecloud/kubeblocks-tools:0.9.4
+            asContainerImage: true
 
   fileName: nebula-storaged.conf
 

@@ -5,7 +5,7 @@ nebula:
 
   ## @param nebula.version, version of nebula-graph
   ## more info: check https://docs.nebula-graph.io/ for latest and LTS versions
-  version: v3.5.0
+  version: v3.8.0
   ## @param nebula.storageClassName, storage class name
   storageClassName: ""
   ## @param nebula.terminationPolicy, temination policy for nebula-cluster

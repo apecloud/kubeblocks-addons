@@ -48,6 +48,12 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: NEBULA_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: nebula-graphd
+          name: root
+          password: Required
     - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
@@ -95,6 +101,7 @@ spec:
   lifecycleActions:
     memberLeave:
       exec:
+        image: {{ $.Values.images.registry | default "docker.io"  }}/{{ $.Values.images.nebula.tool }}
         command:
           - /bin/sh
           - -c
@@ -102,6 +109,17 @@ spec:
             python /scripts/member-leave.py > /usr/local/nebula/logs/member-leave.log 2>&1
         targetPodSelector: Any
         container: storaged
+  policyRules:
+    - apiGroups:
+        - ""
+      resources:
+        - configmaps
+      verbs:
+        - create
+        - get
+        - list
+        - patch
+        - update
   runtime:
     volumes:
       - name: nebula-console

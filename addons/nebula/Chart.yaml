@@ -4,7 +4,7 @@ description: NebulaGraph is a popular open-source graph database that can handle
 
 version: 1.0.1
 
-appVersion: "v3.5.0"
+appVersion: "v3.8.0"
 
 home: https://nebula-graph.io
 

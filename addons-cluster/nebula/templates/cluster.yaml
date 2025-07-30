@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: {{ include "nebula-cluster.name" . }}
+  name: {{ .Release.Name }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{ include "nebula-cluster.labels" . | indent 4 }}
@@ -11,6 +11,7 @@ spec:
   componentSpecs:
     - name: graphd
       componentDef: nebula-graphd
+      serviceVersion: {{ .Values.nebula.version }}
       replicas: {{ .Values.nebula.graphd.replicas }}
       env:
         - name: DEFAULT_TIMEZONE
@@ -39,6 +40,7 @@ spec:
                 storage: {{ print .Values.nebula.graphd.logStorage "Gi" }}
     - name: metad
       componentDef: nebula-metad
+      serviceVersion: {{ .Values.nebula.version }}
       replicas: {{ .Values.nebula.metad.replicas }}
       env:
         - name: DEFAULT_TIMEZONE
@@ -75,6 +77,7 @@ spec:
                 storage: {{ print .Values.nebula.metad.logStorage "Gi" }}
     - name: storaged
       componentDef: nebula-storaged
+      serviceVersion: {{ .Values.nebula.version }}
       replicas: {{ .Values.nebula.storaged.replicas }}
       env:
         - name: DEFAULT_TIMEZONE
