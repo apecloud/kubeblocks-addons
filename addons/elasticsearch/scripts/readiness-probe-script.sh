@@ -9,7 +9,7 @@ function fail {
 
 READINESS_PROBE_TIMEOUT=${READINESS_PROBE_TIMEOUT:=3}
 
-if [ -n "${KB_TLS_CERT_FILE}" ]; then
+if [ "${TLS_ENABLED}" == "true" ]; then
     READINESS_PROBE_PROTOCOL=https
 else
     READINESS_PROBE_PROTOCOL=http

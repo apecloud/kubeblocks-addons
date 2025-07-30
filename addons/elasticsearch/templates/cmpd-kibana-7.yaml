@@ -55,21 +55,6 @@ spec:
     valueFrom:
       tlsVarRef:
         enabled: Optional
-  - name: TLS_CERT_FILE
-    valueFrom:
-      tlsVarRef:
-        name: certFile
-        optional: true
-  - name: TLS_KEY_FILE
-    valueFrom:
-      tlsVarRef:
-        name: keyFile
-        optional: true
-  - name: TLS_CERT_PATH
-    valueFrom:
-      tlsVarRef:
-        name: mountPath
-        optional: true
   configs:
   - name: kibana-cm
     templateRef: {{ include "kibana.configTplName" . }}

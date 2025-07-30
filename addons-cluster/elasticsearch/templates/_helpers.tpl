@@ -94,3 +94,19 @@ schedulingPolicy:
             apps.kubeblocks.io/component-name: mdit
         topologyKey: kubernetes.io/hostname
 {{- end -}}
+
+{{- define "elasticsearch-cluster.tls" }}
+tls: {{ .Values.tls.enabled }}
+{{- if .Values.tls.enabled }}
+issuer:
+  name: {{ .Values.tls.issuer }}
+  {{- if eq .Values.tls.issuer "UserProvided" }}
+  secretRef:
+    name: {{ .Values.tls.secretName }}
+    namespace: {{ .Release.Namespace }}
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+  {{- end }}
+{{- end }}
+{{- end }}

@@ -34,7 +34,7 @@
 # =================== System: Kibana Server (Optional) ===================
 # Enables SSL and paths to the PEM-format SSL certificate and SSL key files, respectively.
 # These settings enable SSL for outgoing requests from the Kibana server to the browser.
-{{- if $.component.tlsConfig }}
+{{- if eq (index $ "TLS_ENABLED") "true" }}
 server.ssl.enabled: true
 server.ssl.certificate: /etc/pki/tls/cert.pem
 server.ssl.key: /etc/pki/tls/key.pem
@@ -83,7 +83,7 @@ elasticsearch.password: "${KIBANA_SYSTEM_USER_PASSWORD}"
 # Time in milliseconds for Elasticsearch to wait for responses from shards. Set to 0 to disable.
 #elasticsearch.shardTimeout: 30000
 
-{{- if $.component.tlsConfig }}
+{{- if eq (index $ "TLS_ENABLED") "true" }}
 # =================== System: Elasticsearch (Optional) ===================
 # These files are used to verify the identity of Kibana to Elasticsearch and are required when
 # xpack.security.http.ssl.client_authentication in Elasticsearch is set to required.

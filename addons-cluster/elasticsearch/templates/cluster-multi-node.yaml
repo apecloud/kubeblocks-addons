@@ -22,6 +22,7 @@ spec:
       {{- include "kblib.componentMonitor" $ | indent 6 }}
       {{- include "kblib.componentResources" $ | indent 6 }}
       {{- include "kblib.componentStorages" $ | indent 6 }}
+      {{- include "elasticsearch-cluster.tls" $ | indent 6 }}
   {{- end }}
   {{- if .Values.enableKibana }}
     - name: kibana
