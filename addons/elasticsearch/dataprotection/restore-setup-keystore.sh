@@ -22,5 +22,4 @@ s3_secret_access_key=$(getToolConfigValue secret_access_key)
 # Any changes to the keystore will take effect when you restart Elasticsearch. Some secure settings can be explicitly reloaded without restart.
 echo "${s3_access_key_id}" | elasticsearch-keystore add s3.client.default.access_key -f
 echo "${s3_secret_access_key}" | elasticsearch-keystore add s3.client.default.secret_key -f
-mv /usr/share/elasticsearch/config/elasticsearch.keystore /usr/share/elasticsearch/data/elasticsearch.keystore
 

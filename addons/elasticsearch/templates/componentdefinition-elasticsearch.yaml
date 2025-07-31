@@ -41,6 +41,16 @@ items:
         - name: http
           port: 9200
           targetPort: http
+    - name: agent
+      serviceName: agent
+      spec:
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+        - IPv4
+        ports:
+        - name: agent
+          port: 8080
+          targetPort: agent
     systemAccounts: &systemAccounts
     - name: elastic
       initAccount: true
@@ -262,6 +272,59 @@ items:
           initialDelaySeconds: 1
           timeoutSeconds: 5
           periodSeconds: 5
+      - name: agent
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.agent.repository }}:{{ .Values.image.agent.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: agent
+          containerPort: 8080
+          protocol: TCP
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: ELASTIC_USERNAME
+          value: "elastic"
+        - name: ELASTIC_PASSWORD
+          value: "$(ELASTIC_USER_PASSWORD)"
+        - name: ELASTICSEARCH_HOST
+          value: "localhost"
+        - name: ELASTICSEARCH_PORT
+          value: "9200"
+        - name: AGENT_PORT
+          value: "8080"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: agent
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: agent
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+          periodSeconds: 5
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/bin
+          name: local-bin
+        - mountPath: /usr/share/elasticsearch/config
+          name: local-config
+        - mountPath: /usr/share/elasticsearch/data
+          name: data
       initContainers:
       - name: prepare-plugins
         imagePullPolicy: IfNotPresent
