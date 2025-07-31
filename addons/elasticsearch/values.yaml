@@ -24,6 +24,9 @@ image:
   kibana:
     repository: kibana
     tag: "8.8.2"
+  agent:
+    repository: apecloud/elasticsearch-agent
+    tag: "0.1.0"
 
 exporter:
   service:

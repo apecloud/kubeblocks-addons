@@ -112,3 +112,7 @@ Create the name of the service account to use
 {{- define "kibana-7.10.1.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:7.10.1
 {{- end }}
+
+{{- define "elasticsearch-agent.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.agent.repository }}:0.1.0
+{{- end }}
