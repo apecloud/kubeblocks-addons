@@ -115,7 +115,7 @@ spec:
         create: CREATE USER '${KB_ACCOUNT_NAME}'@'%' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT ALL PRIVILEGES ON *.* TO '${KB_ACCOUNT_NAME}'@'%';
   lifecycleActions:
     postProvision:
-      preCondition: ComponentReady
+      preCondition: RuntimeReady
       exec:
         command:
           - sh
