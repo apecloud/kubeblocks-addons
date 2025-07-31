@@ -300,6 +300,3 @@ if [[ "${idx_template_management}" == *"true"* ]]; then
 fi
 
 enable_destructive_requires_name null
-
-
-sleep 10000000
