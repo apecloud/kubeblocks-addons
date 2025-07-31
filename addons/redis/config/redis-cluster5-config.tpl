@@ -60,7 +60,7 @@ dynamic-hz yes
 aof-rewrite-incremental-fsync yes
 rdb-save-incremental-fsync yes
 # maxmemory <bytes>
-{{- $request_memory := getContainerRequestMemory ( index $.podSpec.containers 0 ) }}
+{{- $request_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
 {{- if gt $request_memory 0 }}
 maxmemory {{ $request_memory }}
 {{- end }}

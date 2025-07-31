@@ -57,7 +57,7 @@ client-output-buffer-limit normal 0 0 0
 client-output-buffer-limit replica 256mb 64mb 60
 client-output-buffer-limit pubsub 32mb 8mb 60
 # maxmemory <bytes>
-{{- $request_memory := getContainerRequestMemory ( index $.podSpec.containers 0 ) }}
+{{- $request_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
 {{- if gt $request_memory 0 }}
 maxmemory {{ $request_memory }}
 {{- end }}
