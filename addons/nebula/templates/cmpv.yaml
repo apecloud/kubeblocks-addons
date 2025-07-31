@@ -9,36 +9,46 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - console-v3.5.0
-      compDefs:
-        - {{ include "nebula-console.cmpdRegexpPattern" . }}
-    - releases:
-        - graphd-v3.5.0
+      {{- range $i, $version := .Values.nebula.versions }}
+      - graphd-{{ $version }}
+      {{- end }}
       compDefs:
         - {{ include "nebula-graphd.cmpdRegexpPattern" . }}
     - releases:
-        - metad-v3.5.0
+    {{- range $i, $version := .Values.nebula.versions }}
+      - metad-{{ $version }}
+    {{- end }}
       compDefs:
-        - {{ include "nebula-metad.cmpdRegexpPattern" . }}
+      - {{ include "nebula-metad.cmpdRegexpPattern" . }}
     - releases:
-        - storaged-v3.5.0
+    {{- range $i, $version := .Values.nebula.versions }}
+      - storaged-{{ $version }}
+    {{- end }}
       compDefs:
-        - {{ include "nebula-storaged.cmpdRegexpPattern" . }}
+      - {{ include "nebula-storaged.cmpdRegexpPattern" . }}
   releases:
-    - name: console-v3.5.0
-      serviceVersion: v3.5.0
-      images:
-        console: {{ .Values.images.nebula.console.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.nebula.console.repository }}:{{ .Values.images.nebula.console.tag }}
-    - name: graphd-v3.5.0
-      serviceVersion: v3.5.0
-      images:
-        graphd: {{ .Values.images.nebula.graphd.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.nebula.graphd.repository }}:{{ .Values.images.nebula.graphd.tag }}
-    - name: metad-v3.5.0
-      serviceVersion: v3.5.0
-      images:
-        metad: {{ .Values.images.nebula.metad.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.nebula.metad.repository }}:{{ .Values.images.nebula.metad.tag }}
-    - name: storaged-v3.5.0
-      serviceVersion: v3.5.0
-      images:
-        console: {{ .Values.images.nebula.console.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.nebula.console.repository }}:{{ .Values.images.nebula.console.tag }}
-        storaged: {{ .Values.images.nebula.storaged.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.nebula.storaged.repository }}:{{ .Values.images.nebula.storaged.tag }}
+{{- range $i, $version := .Values.nebula.versions }}
+  - name: graphd-{{ $version }}
+    serviceVersion: {{ $version }}
+    images:
+      graphd: {{ $.Values.images.nebula.graphd.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.graphd.repository }}:{{ $version }}
+      agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
+      exporter: {{ $.Values.images.nebula.exporter.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.exporter.repository }}:v3.8.0
+      init-console: {{ $.Values.images.nebula.console.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.console.repository }}:{{ $version }}
+      init-agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
+  - name: metad-{{ $version }}
+    serviceVersion: {{ $version }}
+    images:
+      metad: {{ $.Values.images.nebula.metad.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.metad.repository }}:{{ $version }}
+      exporter: {{ $.Values.images.nebula.exporter.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.exporter.repository }}:v3.8.0
+      agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
+      init-agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
+  - name: storaged-{{ $version }}
+    serviceVersion: {{ $version }}
+    images:
+      init-console: {{ $.Values.images.nebula.console.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.console.repository }}:{{ $version }}
+      exporter: {{ $.Values.images.nebula.exporter.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.exporter.repository }}:v3.8.0
+      storaged: {{ $.Values.images.nebula.storaged.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.storaged.repository }}:{{ $version }}
+      agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
+      init-agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
+{{- end }}

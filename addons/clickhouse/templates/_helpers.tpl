@@ -65,12 +65,6 @@ API version annotation
 kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
-{{/*
-Extract major version from AppVersion (e.g., "25.4.4" -> "25")
-*/}}
-{{- define "clickhouse.majorVersion" -}}
-{{- .Chart.AppVersion | regexFind "^[0-9]+" }}
-{{- end }}
 
 {{/*
 === CLICKHOUSE COMPONENT DEFINITIONS ===
@@ -80,14 +74,14 @@ Extract major version from AppVersion (e.g., "25.4.4" -> "25")
 Define clickhouse component definition name
 */}}
 {{- define "clickhouse.cmpdName" -}}
-clickhouse-{{ include "clickhouse.majorVersion" . }}-{{ .Chart.Version }}
+clickhouse-{{ .Chart.Version }}
 {{- end }}
 
 {{/*
 Define clickhouse component definition regex pattern
 */}}
 {{- define "clickhouse.cmpdRegexpPattern" -}}
-^clickhouse-{{ include "clickhouse.majorVersion" . }}.*
+^clickhouse-1.*
 {{- end }}
 
 {{/*
@@ -98,14 +92,14 @@ Define clickhouse component definition regex pattern
 Define clickhouse-keeper component definition name
 */}}
 {{- define "clickhouse-keeper.cmpdName" -}}
-clickhouse-keeper-{{ include "clickhouse.majorVersion" . }}-{{ .Chart.Version }}
+clickhouse-keeper-{{ .Chart.Version }}
 {{- end }}
 
 {{/*
 Define clickhouse-keeper component definition regex pattern
 */}}
 {{- define "clickhouse-keeper.cmpdRegexpPattern" -}}
-^clickhouse-keeper-{{ include "clickhouse.majorVersion" . }}.*
+^clickhouse-keeper-1.*
 {{- end }}
 
 {{/*
@@ -116,28 +110,28 @@ Define clickhouse-keeper component definition regex pattern
 Define clickhouse config parameter definition name
 */}}
 {{- define "clickhouse.paramsDefName" -}}
-clickhouse-{{ include "clickhouse.majorVersion" . }}-pd
+clickhouse-pd
 {{- end }}
 
 {{/*
 Define clickhouse user parameter definition name
 */}}
 {{- define "clickhouse.userParamsDefinition" -}}
-clickhouse-{{ include "clickhouse.majorVersion" . }}-user-pd
+clickhouse-user-pd
 {{- end }}
 
 {{/*
 Define clickhouse config parameter definition name
 */}}
 {{- define "clickhouse.configParamsDefinition" -}}
-clickhouse-{{ include "clickhouse.majorVersion" . }}-config-pd
+clickhouse-config-pd
 {{- end }}
 
 {{/*
 Define clickhouse keeper parameter definition name
 */}}
 {{- define "clickhouse.keeperParamsDefinition" -}}
-clickhouse-{{ include "clickhouse.majorVersion" . }}-keeper-pd
+clickhouse-keeper-pd
 {{- end }}
 
 {{/*
@@ -148,14 +142,14 @@ clickhouse-{{ include "clickhouse.majorVersion" . }}-keeper-pd
 Define clickhouse keeper PCR with chart version
 */}}
 {{- define "clickhouse.keeperPcr" -}}
-clickhouse-{{ include "clickhouse.majorVersion" . }}-keeper-pcr-{{ .Chart.Version }}
+clickhouse-keeper-pcr-{{ .Chart.Version }}
 {{- end }}
 
 {{/*
 Define clickhouse PCR with chart version
 */}}
 {{- define "clickhouse.pcr" -}}
-clickhouse-{{ include "clickhouse.majorVersion" . }}-pcr-{{ .Chart.Version }}
+clickhouse-pcr-{{ .Chart.Version }}
 {{- end }}
 
 {{/*
@@ -166,28 +160,28 @@ clickhouse-{{ include "clickhouse.majorVersion" . }}-pcr-{{ .Chart.Version }}
 Define clickhouse default overrides configuration template name
 */}}
 {{- define "clickhouse.configurationTplName" -}}
-clickhouse-{{ include "clickhouse.majorVersion" . }}-configuration-tpl
+clickhouse-configuration-tpl
 {{- end }}
 
 {{/*
 Define clickhouse client configuration template name
 */}}
 {{- define "clickhouse.clientTplName" -}}
-clickhouse-{{ include "clickhouse.majorVersion" . }}-client-configuration-tpl
+clickhouse-client-configuration-tpl
 {{- end }}
 
 {{/*
 Define clickhouse user configuration template name
 */}}
 {{- define "clickhouse.userTplName" -}}
-clickhouse-{{ include "clickhouse.majorVersion" . }}-user-configuration-tpl
+clickhouse-user-configuration-tpl
 {{- end }}
 
 {{/*
 Define clickhouse-keeper configuration template name
 */}}
 {{- define "clickhouse-keeper.configurationTplName" -}}
-clickhouse-keeper-{{ include "clickhouse.majorVersion" . }}-configuration-tpl
+clickhouse-keeper-configuration-tpl
 {{- end }}
 
 {{/*
@@ -207,41 +201,4 @@ Define busybox image
 
 {{- define "clickhouse.repository" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
-{{- end }}
-
-{{/*
-Define clickhouse image based on current major version
-*/}}
-{{- define "clickhouse.image" -}}
-{{- $majorVersion := include "clickhouse.majorVersion" . }}
-{{- if eq $majorVersion "22" }}
-{{ include "clickhouse.repository" . }}:{{ .Values.image.tag.major22 }}
-{{- else if eq $majorVersion "24" }}
-{{ include "clickhouse.repository" . }}:{{ .Values.image.tag.major24 }}
-{{- else if eq $majorVersion "25" }}
-{{ include "clickhouse.repository" . }}:{{ .Values.image.tag.major25 }}
-{{- else }}
-{{ include "clickhouse.repository" . }}:{{ .Values.image.tag.major25 }}
-{{- end }}
-{{- end }}
-
-{{/*
-Define clickhouse22 image
-*/}}
-{{- define "clickhouse22.image" -}}
-{{ include "clickhouse.repository" . }}:{{ .Values.image.tag.major22 }}
-{{- end }}
-
-{{/*
-Define clickhouse24 image
-*/}}
-{{- define "clickhouse24.image" -}}
-{{ include "clickhouse.repository" . }}:{{ .Values.image.tag.major24 }}
-{{- end }}
-
-{{/*
-Define clickhouse25 image
-*/}}
-{{- define "clickhouse25.image" -}}
-{{ include "clickhouse.repository" . }}:{{ .Values.image.tag.major25 }}
 {{- end }}

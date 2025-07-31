@@ -30,25 +30,19 @@ Create chart name and version as used by the chart label.
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{/*
-Extract major version from Version (e.g., "25.4.4" -> "25")
-*/}}
-{{- define "clickhouse-cluster.majorVersion" -}}
-{{- .Values.version | regexFind "^[0-9]+" }}
-{{- end }}
 
 {{/*
 Dynamic component definition name for clickhouse
 */}}
 {{- define "clickhouse-cluster.cmpdName" -}}
-clickhouse-{{ include "clickhouse-cluster.majorVersion" . }}
+clickhouse-1
 {{- end }}
 
 {{/*
 Dynamic component definition name for clickhouse-keeper
 */}}
 {{- define "clickhouse-cluster.keeperCmpdName" -}}
-clickhouse-keeper-{{ include "clickhouse-cluster.majorVersion" . }}
+clickhouse-keeper-1
 {{- end }}
 
 {{/*

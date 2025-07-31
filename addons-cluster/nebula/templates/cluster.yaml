@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: {{ include "nebula-cluster.name" . }}
+  name: {{ .Release.Name }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{ include "nebula-cluster.labels" . | indent 4 }}
@@ -9,23 +9,13 @@ spec:
   clusterDef: nebula
   terminationPolicy: {{ .Values.nebula.terminationPolicy }}
   componentSpecs:
-    - name: console
-      replicas: 1
-      {{- with  .Values.nebula.console.resources }}
-      resources:
-        {{- with .limits }}
-        limits:
-          cpu: {{ .cpu | quote }}
-          memory: {{ print .memory "Gi" | quote }}
-        {{- end }}
-        {{- with .requests }}
-        requests:
-          cpu: {{ .cpu | quote }}
-          memory: {{ print .memory "Gi" | quote }}
-        {{- end }}
-      {{- end }}
     - name: graphd
+      componentDef: nebula-graphd
+      serviceVersion: {{ .Values.nebula.version }}
       replicas: {{ .Values.nebula.graphd.replicas }}
+      env:
+        - name: DEFAULT_TIMEZONE
+          value: {{ .Values.nebula.timezone }}
       {{- with  .Values.nebula.graphd.resources }}
       resources:
         {{- with .limits }}
@@ -49,7 +39,12 @@ spec:
               requests:
                 storage: {{ print .Values.nebula.graphd.logStorage "Gi" }}
     - name: metad
+      componentDef: nebula-metad
+      serviceVersion: {{ .Values.nebula.version }}
       replicas: {{ .Values.nebula.metad.replicas }}
+      env:
+        - name: DEFAULT_TIMEZONE
+          value: {{ .Values.nebula.timezone }}
       {{- with  .Values.nebula.metad.resources }}
       resources:
         {{- with .limits }}
@@ -81,7 +76,12 @@ spec:
               requests:
                 storage: {{ print .Values.nebula.metad.logStorage "Gi" }}
     - name: storaged
+      componentDef: nebula-storaged
+      serviceVersion: {{ .Values.nebula.version }}
       replicas: {{ .Values.nebula.storaged.replicas }}
+      env:
+        - name: DEFAULT_TIMEZONE
+          value: {{ .Values.nebula.timezone }}
       {{- with  .Values.nebula.storaged.resources }}
       resources:
         {{- with .limits }}
