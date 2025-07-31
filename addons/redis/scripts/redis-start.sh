@@ -289,9 +289,10 @@ start_redis_server() {
     if [ -f ${module_path}/rediscompat.so ]; then
         exec_cmd="$exec_cmd --loadmodule ${module_path}/rediscompat.so"
     fi
-    if [ -f ${module_path}/redisgears.so ]; then
-        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgears.so v8-plugin-path ${module_path}/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
-    fi
+    # NOTE: in replication mode, load this module will lead a memory leak for slave instance.
+    #if [ -f ${module_path}/redisgears.so ]; then
+    #    exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgears.so v8-plugin-path ${module_path}/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
+    #fi
     echo "Starting redis server cmd: $exec_cmd"
     eval "$exec_cmd"
 }
