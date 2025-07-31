@@ -31,12 +31,12 @@ func init() {
 func main() {
 	r := gin.Default()
 
-	// 健康检查接口
+	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// 设置keystore接口
+	// Set keystore endpoint
 	r.POST("/keystore", authMiddleware(), setKeystore)
 
 	log.Printf("Agent starting on port %s", agentPort)
@@ -45,7 +45,7 @@ func main() {
 
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 如果ES没有启用认证，则跳过认证
+		// Skip authentication if ES doesn't have authentication enabled
 		if esUsername == "" || esPassword == "" {
 			c.Next()
 			return
@@ -78,7 +78,7 @@ func setKeystore(c *gin.Context) {
 }
 
 func updateKeystore(accessKeyID, secretAccessKey string) error {
-	// 设置access key
+	// Set access key
 	cmd := exec.Command("elasticsearch-keystore", "add", "s3.client.default.access_key", "-f")
 	cmd.Stdin = strings.NewReader(accessKeyID)
 	cmd.Env = append(os.Environ(), "PATH=/usr/share/elasticsearch/bin:"+os.Getenv("PATH"))
@@ -86,7 +86,7 @@ func updateKeystore(accessKeyID, secretAccessKey string) error {
 		return fmt.Errorf("failed to set access key: %v, output: %s", err, output)
 	}
 
-	// 设置secret key
+	// Set secret key
 	cmd = exec.Command("elasticsearch-keystore", "add", "s3.client.default.secret_key", "-f")
 	cmd.Stdin = strings.NewReader(secretAccessKey)
 	cmd.Env = append(os.Environ(), "PATH=/usr/share/elasticsearch/bin:"+os.Getenv("PATH"))

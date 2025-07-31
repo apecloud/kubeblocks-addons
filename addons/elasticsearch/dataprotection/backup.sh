@@ -36,7 +36,7 @@ s3_bucket=$(getToolConfigValue root)
 s3_access_key_id=$(getToolConfigValue access_key_id)
 s3_secret_access_key=$(getToolConfigValue secret_access_key)
 
-# 获取集群所有节点信息并设置keystore
+# Get cluster nodes information and set keystore
 echo "INFO: Getting cluster nodes information"
 if [ -n "${ELASTIC_USER_PASSWORD}" ]; then
     BASIC_AUTH="-u elastic:${ELASTIC_USER_PASSWORD}"
@@ -46,14 +46,14 @@ else
     AGENT_AUTH=""
 fi
 
-# 获取集群节点列表
+# Get cluster node list
 nodes_response=$(curl -s ${BASIC_AUTH} -X GET "${ES_ENDPOINT}/_nodes")
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to get cluster nodes information"
     exit 1
 fi
 
-# 解析节点IP地址
+# Parse node IP addresses
 node_ips=$(echo "$nodes_response" | grep -o '"ip":"[^"]*"' | cut -d'"' -f4 | sort -u)
 if [ -z "$node_ips" ]; then
     echo "ERROR: No nodes found in cluster"
@@ -62,7 +62,7 @@ fi
 
 echo "INFO: Found nodes: $node_ips"
 
-# 为每个节点设置keystore
+# Set keystore for each node
 for node_ip in $node_ips; do
     echo "INFO: Setting keystore for node $node_ip"
     

@@ -1,16 +1,16 @@
 #!/bin/bash
 
-# Elasticsearch Agent 构建脚本
+# Elasticsearch Agent Build Script
 
 set -e
 
-# 配置
+# Configuration
 IMAGE_REGISTRY=${IMAGE_REGISTRY:-"apecloud"}
 IMAGE_NAME=${IMAGE_NAME:-"elasticsearch-agent"}
 IMAGE_TAG=${IMAGE_TAG:-"latest"}
 FULL_IMAGE_NAME="${IMAGE_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 
-# 颜色输出
+# Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -28,7 +28,7 @@ echo_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 检查Docker是否可用
+# Check if Docker is available
 check_docker() {
     if ! command -v docker &> /dev/null; then
         echo_error "Docker is not installed or not in PATH"
@@ -41,7 +41,7 @@ check_docker() {
     fi
 }
 
-# 检查Go模块
+# Check Go modules
 check_go_modules() {
     if [ ! -f "go.mod" ]; then
         echo_error "go.mod not found. Please run this script from the agent directory."
@@ -54,11 +54,11 @@ check_go_modules() {
     fi
 }
 
-# 构建镜像
+# Build image
 build_image() {
     echo_info "Building Docker image: ${FULL_IMAGE_NAME}"
     
-    # 创建临时的go.sum文件（如果不存在）
+    # Create temporary go.sum file if it doesn't exist
     if [ ! -f "go.sum" ]; then
         echo_warn "go.sum not found, creating empty file"
         touch go.sum
@@ -74,7 +74,7 @@ build_image() {
     fi
 }
 
-# 推送镜像
+# Push image
 push_image() {
     echo_info "Pushing Docker image: ${FULL_IMAGE_NAME}"
     
@@ -88,7 +88,7 @@ push_image() {
     fi
 }
 
-# 显示帮助信息
+# Show help information
 show_help() {
     cat << EOF
 Elasticsearch Agent Build Script
@@ -119,7 +119,7 @@ Examples:
 EOF
 }
 
-# 解析命令行参数
+# Parse command line arguments
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -159,7 +159,7 @@ parse_args() {
     done
 }
 
-# 主函数
+# Main function
 main() {
     local COMMAND="build"
     
@@ -194,5 +194,5 @@ main() {
     echo_info "Build process completed successfully!"
 }
 
-# 运行主函数
+# Run main function
 main "$@"

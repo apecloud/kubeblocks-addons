@@ -2,36 +2,36 @@ FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
-# 复制go mod文件
+# Copy go mod files
 COPY go.mod go.sum ./
 
-# 下载依赖
+# Download dependencies
 RUN go mod download
 
-# 复制源代码
+# Copy source code
 COPY main.go ./
 
-# 构建应用
+# Build application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o agent main.go
 
-# 使用elasticsearch基础镜像，这样可以访问elasticsearch-keystore命令
+# Use elasticsearch base image to access elasticsearch-keystore command
 FROM docker.io/elasticsearch:8.8.2
 
-# 安装必要的工具
+# Install necessary tools
 USER root
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# 复制agent二进制文件
+# Copy agent binary
 COPY --from=builder /app/agent /usr/local/bin/agent
 
-# 确保agent可执行
+# Make agent executable
 RUN chmod +x /usr/local/bin/agent
 
-# 切换回elasticsearch用户
+# Switch back to elasticsearch user
 USER elasticsearch
 
-# 暴露agent端口
+# Expose agent port
 EXPOSE 8080
 
-# 启动agent
+# Start agent
 CMD ["/usr/local/bin/agent"]
