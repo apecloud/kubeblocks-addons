@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "nebula.labels" . | nindent 4 }}
 spec:
-  serviceKind: Redis
+  serviceKind: Nebula
   compDefs:
     - ^nebula-graphd.*$
   backupMethods:

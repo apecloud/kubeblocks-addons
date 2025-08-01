@@ -11,11 +11,14 @@ spec:
     - compDefs:
         - {{ include "tdengine.cmpdRegexPattern" . }}
       releases:
-        - 3.0.5
+        - 3.3.6-9
   releases:
-    - name: 3.0.5
+    - name: 3.3.6-9
       changes:
-      serviceVersion: 3.0.5
+      serviceVersion: 3.3.6-9
       images:
-        tdengine: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.0.5.0
-        metrics: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+        tdengine: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.3.6.9
+        metrics: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.3.6.9
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.3.6.9
+        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.3.6.9
+        roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.3.6.9
