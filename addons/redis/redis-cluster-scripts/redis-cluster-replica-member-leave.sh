@@ -59,7 +59,11 @@ remove_replica_from_shard_if_need() {
     echo "Current node $CURRENT_POD_NAME is a slave, removing it from the cluster..."
     current_node_cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
     current_node_ip_and_port="127.0.0.1:$service_port"
-    if secondary_member_leave_del_node_with_retry "$current_node_ip_and_port" "$current_node_cluster_id"; then
+    do_forget_node=false
+    if contains "$current_node_role" "fail"; then
+      do_forget_node=true
+    fi
+    if secondary_member_leave_del_node_with_retry "$current_node_ip_and_port" "$current_node_cluster_id" "$do_forget_node"; then
       echo "Successfully removed replica from shard."
     else
       echo "Failed to remove replica from shard." >&2

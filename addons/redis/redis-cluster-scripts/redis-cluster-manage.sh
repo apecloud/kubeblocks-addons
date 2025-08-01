@@ -220,7 +220,7 @@ get_current_comp_nodes_for_scale_in() {
     local node_role="$3"
 
     if [[ "$node_fqdn" =~ "$CURRENT_SHARD_COMPONENT_NAME"* ]]; then
-      if [[ "$node_role" =~ "master" ]]; then
+      if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
         current_comp_primary_node+=("$node_address")
       else
         current_comp_other_nodes+=("$node_address")
