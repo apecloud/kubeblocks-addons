@@ -228,3 +228,7 @@ kibana-config-tpl
 {{- define "kibana-8.9.1.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.9.1
 {{- end }}
+
+{{- define "elasticsearch-agent.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.agent.repository }}:0.1.0
+{{- end }}
