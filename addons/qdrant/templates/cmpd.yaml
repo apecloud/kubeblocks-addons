@@ -11,6 +11,7 @@ spec:
   description: High-performance, massive-scale Vector Database for the next generation of AI.
   serviceKind: qdrant
   updateStrategy: BestEffortParallel
+  minReadySeconds: 10
   services:
   - name: qdrant
     serviceName: qdrant
@@ -38,6 +39,8 @@ spec:
   volumes:
   - name: data
     needSnapshot: true
+  - name: log
+    emptyDir: {}
   vars:
     - name: QDRANT_POD_NAME_LIST
       valueFrom:
@@ -49,6 +52,10 @@ spec:
         componentVarRef:
           optional: false
           podFQDNs: Required
+    - name: KB_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
   lifecycleActions:
     memberLeave:
       exec:
@@ -58,6 +65,9 @@ spec:
           - /qdrant/scripts/member-leave.sh
         targetPodSelector: Any
         container: qdrant
+  logConfigs:
+    - name: qdrant
+      filePathPattern: /qdrant/logs/server.log
   runtime:
     securityContext:
       fsGroup: 1001
@@ -125,13 +135,13 @@ spec:
         name: scripts
       - mountPath: /qdrant/tools
         name: tools
+      - mountPath: /qdrant/logs
+        name: log
       ports:
       - name: tcp-qdrant
         containerPort: 6333
       - name: grpc-qdrant
         containerPort: 6334
-      - name: tcp-metrics
-        containerPort: 9091
       - name: p2p
         containerPort: 6335
       command: ["/bin/sh", "-c"]
@@ -141,7 +151,9 @@ spec:
         value: "true"
       - name: SERVICE_PORT
         value: "6333"
-      - name: CURRENT_POD_NAME
+      - name: CLUSTER_DOMAIN
+        value: {{ .Values.clusterDomain | quote }}
+      - name: KB_POD_NAME
         valueFrom:
           fieldRef:
             apiVersion: v1
