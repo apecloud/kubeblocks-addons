@@ -90,7 +90,7 @@ Define tdengine component definition regex pattern
 Define tdengine component configuration template name
 */}}
 {{- define "tdengine.configurationTemplate" -}}
-tdengine-configuration-template
+tdengine-config-template
 {{- end -}}
 
 {{/*
@@ -105,4 +105,28 @@ Define tdengine component metrice configuration name
 */}}
 {{- define "tdengine.metricsConfiguration" -}}
 tdengine-metrics-configuration-template
+{{- end -}}
+
+
+{{/*
+Define tdengine component adapter configuration name
+*/}}
+{{- define "tdengine.adapterConfiguration" -}}
+tdengine-adapter-config-template
+{{- end -}}
+
+
+{{/*
+Define tdengine component parameter definition name
+*/}}
+{{- define "tdengine.parameterDefinitionName" -}}
+tdengine-pd
+{{- end -}}
+
+
+{{/*
+Define tdengine component parameter config renderer
+*/}}
+{{- define "tdengine.parameterConfigRenderer" -}}
+tdengine-pcr-{{ .Chart.Version }}
 {{- end -}}
