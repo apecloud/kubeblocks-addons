@@ -32,3 +32,4 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 10
+storageClassName: ""

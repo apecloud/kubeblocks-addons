@@ -24,7 +24,7 @@ memory: 2
 ## @param storage size, the unit is Gi
 ##
 storage: 20
-
+storageClassName: ""
 ## customized default values to override kblib chart's values
 extra:
   terminationPolicy: Delete

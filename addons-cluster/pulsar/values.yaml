@@ -6,9 +6,8 @@ nameOverride: ""
 
 fullnameOverride: ""
 
-## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Delete, WipeOut.
-##
-terminationPolicy: Delete
+extra:
+  terminationPolicy: Delete
 
 ## Annotation configurations
 commonAnnotations:
