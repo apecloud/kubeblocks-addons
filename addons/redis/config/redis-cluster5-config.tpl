@@ -62,9 +62,9 @@ rdb-save-incremental-fsync yes
 # maxmemory <bytes>
 {{- $request_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
 {{- if gt $request_memory 0 }}
-maxmemory {{ $request_memory }}
+maxmemory {{ mulf $request_memory 0.8 | int }}
 {{- end }}
-
+maxmemory-policy volatile-lru
 # configuration for redis cluster
 cluster-enabled yes
 cluster-config-file /data/nodes.conf

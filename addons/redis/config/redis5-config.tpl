@@ -59,10 +59,11 @@ client-output-buffer-limit pubsub 32mb 8mb 60
 # maxmemory <bytes>
 {{- $request_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
 {{- if gt $request_memory 0 }}
-maxmemory {{ $request_memory }}
+maxmemory {{ mulf $request_memory 0.8 | int }}
 {{- end }}
 hz 10
 dynamic-hz yes
+maxmemory-policy volatile-lru
 aof-rewrite-incremental-fsync yes
 rdb-save-incremental-fsync yes
 

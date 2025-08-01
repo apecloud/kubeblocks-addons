@@ -74,8 +74,9 @@ aclfile /etc/redis/users.acl
 # maxmemory <bytes>
 {{- $request_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
 {{- if gt $request_memory 0 }}
-maxmemory {{ $request_memory }}
+maxmemory {{ mulf $request_memory 0.8 | int }}
 {{- end }}
+maxmemory-policy volatile-lru
 # TODO: dynamic config for io-threads
 io-threads 4
 io-threads-do-reads yes
