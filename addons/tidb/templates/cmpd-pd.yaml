@@ -89,10 +89,7 @@ spec:
           - bash
           - -c
           - |
-            ADDRESS=${PD_POD_FQDN_LIST%%,*}
-            echo $KB_LEAVE_MEMBER_POD_NAME
-            echo $ADDRESS
-            /pd-ctl -u "$ADDRESS:2379" member delete name $KB_LEAVE_MEMBER_POD_NAME
+            {{- .Files.Get "scripts/pd_memberleave.sh" | nindent 14 }}
     switchover:
       exec:
         targetPodSelector: Role

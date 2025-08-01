@@ -100,6 +100,7 @@ spec:
       template: {{ include "tidb.tidb.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
+      externalManaged: true
   systemAccounts:
     - name: root
       initAccount: true
@@ -116,7 +117,6 @@ spec:
     postProvision:
       preCondition: RuntimeReady
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
         command:
           - sh
           - -c
@@ -124,7 +124,6 @@ spec:
             {{- .Files.Get "scripts/tidb_postprovision.sh" | nindent 12 }}
     accountProvision:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
         command:
           - sh
           - -c

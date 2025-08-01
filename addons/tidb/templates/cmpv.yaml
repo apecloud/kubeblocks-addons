@@ -61,21 +61,29 @@ spec:
       images:
         tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.repository }}:v8.4.0
         slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}:{{ .Values.image.helper.tag }}
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
     - name: "7.5.2"
       serviceVersion: "7.5.2"
       images:
         tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.repository }}:v7.5.2
         slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}:{{ .Values.image.helper.tag }}
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
     - name: "7.1.5"
       serviceVersion: "7.1.5"
       images:
         tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.repository }}:v7.1.5
         slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}:{{ .Values.image.helper.tag }}
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
     - name: "6.5.12"
       serviceVersion: "6.5.12"
       images:
         tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.repository }}:v6.5.12
         slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}:{{ .Values.image.helper.tag }}
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
   compatibilityRules:
     - compDefs:
         - {{ include "tidb.tidb7.cmpdRegexpPattern" . }}
