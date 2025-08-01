@@ -51,15 +51,75 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Common annotations
 */}}
-{{- define "elasticsearch.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "elasticsearch.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "elasticsearch.annotations" -}}
+helm.sh/resource-policy: keep
+{{ include "elasticsearch.apiVersion" . }}
 {{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "elasticsearch.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
+
+{{/*
+Define elasticsearch component definition regex pattern
+*/}}
+{{- define "elasticsearch.cmpdRegexPattern" -}}
+^elasticsearch-
+{{- end -}}
+
+{{/*
+Define elasticsearch v7.X component definition name
+*/}}
+{{- define "elasticsearch7.cmpdName" -}}
+elasticsearch-7-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define elasticsearch v7.X component definition regex pattern
+*/}}
+{{- define "elasticsearch7.cmpdRegexPattern" -}}
+^elasticsearch-7-
+{{- end -}}
+
+{{/*
+Define elasticsearch v8.X component definition name
+*/}}
+{{- define "elasticsearch8.cmpdName" -}}
+elasticsearch-8-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define elasticsearch v8.X component definition regex pattern
+*/}}
+{{- define "elasticsearch8.cmpdRegexPattern" -}}
+^elasticsearch-8-
+{{- end -}}
+
+{{/*
+Define elasticsearch scripts tpl name
+*/}}
+{{- define "elasticsearch.scriptsTplName" -}}
+elasticsearch-scripts-tpl
+{{- end -}}
+
+{{/*
+Define elasticsearch v7.X config tpl name
+*/}}
+{{- define "elasticsearch7.configTplName" -}}
+elasticsearch-7-config-tpl
+{{- end -}}
+
+{{/*
+Define elasticsearch v8.X config tpl name
+*/}}
+{{- define "elasticsearch8.configTplName" -}}
+elasticsearch-8-config-tpl
+{{- end -}}
 
 {{- define "elasticsearch-8.1.3.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.1.3
@@ -89,17 +149,61 @@ Create the name of the service account to use
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag | default "latest" }}
 {{- end }}
 
-{{- define "kibana-8.1.3.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.1.3
+{{/*
+Define elasticsearch v7.X parameter config renderer name
+*/}}
+{{- define "elasticsearch7.pcrName" -}}
+elasticsearch7-pcr
 {{- end }}
 
-{{- define "kibana-8.8.2.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.8.2
+{{/*
+Define elasticsearch v8.X parameter config renderer name
+*/}}
+{{- define "elasticsearch8.pcrName" -}}
+elasticsearch8-pcr
 {{- end }}
 
-{{- define "kibana-8.9.1.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.9.1
-{{- end }}
+{{/*
+Define kibana v8.X component definition name
+*/}}
+{{- define "kibana8.cmpdName" -}}
+kibana-8-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define kibana v8.X component definition regex pattern
+*/}}
+{{- define "kibana8.cmpdRegexPattern" -}}
+^kibana-8-
+{{- end -}}
+
+{{/*
+Define kibana component definition regex pattern
+*/}}
+{{- define "kibana.cmpdRegexPattern" -}}
+^kibana-
+{{- end -}}
+
+{{/*
+Define kibana v7.X component definition name
+*/}}
+{{- define "kibana7.cmpdName" -}}
+kibana-7-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define kibana v7.X component definition regex pattern
+*/}}
+{{- define "kibana7.cmpdRegexPattern" -}}
+^kibana-7-
+{{- end -}}
+
+{{/*
+Define kibana config tpl name
+*/}}
+{{- define "kibana.configTplName" -}}
+kibana-config-tpl
+{{- end -}}
 
 {{- define "kibana-7.7.1.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:7.7.1
@@ -111,6 +215,18 @@ Create the name of the service account to use
 
 {{- define "kibana-7.10.1.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:7.10.1
+{{- end }}
+
+{{- define "kibana-8.1.3.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.1.3
+{{- end }}
+
+{{- define "kibana-8.8.2.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.8.2
+{{- end }}
+
+{{- define "kibana-8.9.1.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.9.1
 {{- end }}
 
 {{- define "elasticsearch-agent.image" -}}

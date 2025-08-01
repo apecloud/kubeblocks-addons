@@ -15,3 +15,5 @@ data:
     {{- .Files.Get "scripts/readiness-probe-script.sh" | nindent 4 }}
   install-plugins.sh: |-
     {{- .Files.Get "scripts/install-plugins.sh" | nindent 4 }}
+  member-leave.sh: |-
+    {{- .Files.Get "scripts/member-leave.sh" | nindent 4 }}
