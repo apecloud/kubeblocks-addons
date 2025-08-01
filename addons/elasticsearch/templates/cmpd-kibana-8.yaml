@@ -5,11 +5,12 @@ metadata:
   annotations:
     apps.kubeblocks.io/skip-immutable-check: "true"
   labels:
-    {{- include "elasticsearch.labels" . | nindent 6 }}
+    {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: Kibana is a browser-based analytics and search dashboard for Elasticsearch.
   serviceKind: kibana
+  serviceVersion: 8.8.2
   updateStrategy: Parallel
   services:
   - name: http
