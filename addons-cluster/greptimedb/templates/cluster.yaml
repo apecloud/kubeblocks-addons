@@ -44,6 +44,9 @@ spec:
           spec:
             accessModes:
               - ReadWriteOnce
+            {{- if .Values.datanode.volume.storageClassName }}
+            storageClassName: {{ .Values.datanode.volume.storageClassName | quote }}
+            {{- end }}
             resources:
               requests:
                 storage: {{ print .Values.datanode.volume.storage "Gi" }}
@@ -82,6 +85,9 @@ spec:
           spec:
             accessModes:
               - ReadWriteOnce
+            {{- if .Values.etcd.volume.storageClassName }}
+            storageClassName: {{ .Values.etcd.volume.storageClassName | quote }}
+            {{- end }}
             resources:
               requests:
                 storage: {{ print .Values.etcd.volume.storage "Gi" }}

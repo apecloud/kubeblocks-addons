@@ -94,7 +94,7 @@ Define clickhouse componentSpec with ComponentDefinition.
 - name: clickhouse
   componentDef: {{ include "clickhouse-cluster.cmpdName" . }}
   replicas: {{ $.Values.replicas | default 2 }}
-  disableExporter: {{ $.Values.disableExporter | default "false" }}
+  disableExporter: {{ $.Values.extra.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}
   services:
   - name: default
@@ -122,7 +122,7 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
 - name: ch-keeper
   componentDef: {{ include "clickhouse-cluster.keeperCmpdName" . }}
   replicas: {{ .Values.keeper.replicas }}
-  disableExporter: {{ $.Values.disableExporter | default "false" }}
+  disableExporter: {{ $.Values.extra.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}
   {{- with .Values.keeper.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
@@ -171,9 +171,9 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
     env:
     - name: "INIT_CLUSTER_NAME"
       value: "{{ .Values.clickhouse.initClusterName }}"
-    replicas: {{ $.Values.replicas | default 2 }}
-    disableExporter: {{ $.Values.disableExporter | default "false" }}
-    serviceVersion: {{ $.Values.version }}
+    replicas: {{ .Values.replicas | default 2 }}
+    disableExporter: {{ .Values.extra.disableExporter | default "false" }}
+    serviceVersion: {{ .Values.version }}
     services:
     - name: default
       serviceType: {{ .Values.service.type | default "NodePort" }}
@@ -185,7 +185,7 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
         numSymbols: 0
         letterCase: MixedCases
         seed: {{ include "kblib.clusterName" . }}
-    {{- with $.Values.tolerations }}
+    {{- with .Values.tolerations }}
     tolerations: {{ .| toYaml | nindent 6 }}
     {{- end }}
     {{- include "kblib.componentResources" . | indent 4 }}
@@ -205,16 +205,16 @@ Define clickhouse componentSpec with compatible ComponentDefinition API
 - name: {{ $name }}
   env:
   - name: "INIT_CLUSTER_NAME"
-    value: "{{ .Values.clickhouse.initClusterName }}"
-  componentDef: {{ include "clickhouse-cluster.cmpdName" . }}
+    value: "{{ $.Values.clickhouse.initClusterName }}"
+  componentDef: {{ include "clickhouse-cluster.cmpdName" $ }}
   replicas: {{ $.Values.replicas | default 2 }}
-  disableExporter: {{ $.Values.disableExporter | default "false" }}
+  disableExporter: {{ $.Values.extra.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}
   {{- with $.Values.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
   services:
   - name: default
-    serviceType: {{ .Values.service.type | default "NodePort" }}
+    serviceType: {{ $.Values.service.type | default "NodePort" }}
   {{- end }}
   {{- include "kblib.componentResources" $ | indent 2 }}
   {{- include "kblib.componentStorages" $ | indent 2 }}

@@ -11,8 +11,10 @@
                     "type": "object",
                     "properties": {
                         "replicas": {
+                            "title": "Replicas",
                             "type": "integer",
                             "default": 1,
+                            "minimum": 1,
                             "description": "Number of meta replicas."
                         },
                         "resources": {
@@ -28,7 +30,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         },
                                         "memory": {
                                             "title": "Memory request(Gi)",
@@ -37,7 +40,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         }
                                     }
                                 },
@@ -51,7 +55,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         },
                                         "memory": {
                                             "title": "Memory limit(Gi)",
@@ -60,7 +65,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         }
                                     }
                                 }
@@ -72,8 +78,10 @@
                     "type": "object",
                     "properties": {
                         "replicas": {
+                            "title": "Replicas",
                             "type": "integer",
                             "default": 1,
+                            "minimum": 1,
                             "description": "Number of frontend replicas."
                         },
                         "resources": {
@@ -89,7 +97,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         },
                                         "memory": {
                                             "title": "Memory request(Gi)",
@@ -98,7 +107,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         }
                                     }
                                 },
@@ -112,7 +122,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         },
                                         "memory": {
                                             "title": "Memory limit(Gi)",
@@ -121,7 +132,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         }
                                     }
                                 }
@@ -133,8 +145,10 @@
                     "type": "object",
                     "properties": {
                         "replicas": {
+                            "title": "Replicas",
                             "type": "integer",
                             "default": 1,
+                            "minimum": 1,
                             "description": "Number of compute replicas."
                         },
                         "resources": {
@@ -150,7 +164,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         },
                                         "memory": {
                                             "title": "Memory request(Gi)",
@@ -159,7 +174,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         }
                                     }
                                 },
@@ -173,7 +189,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         },
                                         "memory": {
                                             "title": "Memory limit(Gi)",
@@ -182,7 +199,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         }
                                     }
                                 }
@@ -194,8 +212,10 @@
                     "type": "object",
                     "properties": {
                         "replicas": {
+                            "title": "Replicas",
                             "type": "integer",
                             "default": 1,
+                            "minimum": 1,
                             "description": "Number of compactor replicas."
                         },
                         "resources": {
@@ -211,7 +231,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         },
                                         "memory": {
                                             "title": "Memory request(Gi)",
@@ -220,7 +241,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         }
                                     }
                                 },
@@ -234,7 +256,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         },
                                         "memory": {
                                             "title": "Memory limit(Gi)",
@@ -243,7 +266,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         }
                                     }
                                 }
@@ -255,8 +279,10 @@
                     "type": "object",
                     "properties": {
                         "replicas": {
+                            "title": "Replicas",
                             "type": "integer",
                             "default": 1,
+                            "minimum": 1,
                             "description": "Number of connector replicas."
                         },
                         "resources": {
@@ -272,7 +298,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         },
                                         "memory": {
                                             "title": "Memory request(Gi)",
@@ -281,7 +308,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         }
                                     }
                                 },
@@ -295,7 +323,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         },
                                         "memory": {
                                             "title": "Memory limit(Gi)",
@@ -304,7 +333,8 @@
                                                 "number",
                                                 "string"
                                             ],
-                                            "default": 1
+                                            "default": 1,
+                                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                         }
                                     }
                                 }
@@ -319,6 +349,7 @@
                             "type": "object",
                             "properties": {
                                 "endpoints": {
+                                    "title": "Endpoints",
                                     "type": "string",
                                     "default": "REPLACE-WITH-YOUR-ETCD-ENDPOINT:2379",
                                     "description": "etcd endpoint."
@@ -327,16 +358,19 @@
                                     "type": "object",
                                     "properties": {
                                         "enabled": {
+                                            "title": "Enabled",
                                             "type": "boolean",
                                             "default": false,
                                             "description": "Enable authentication or not."
                                         },
                                         "username": {
+                                            "title": "Username",
                                             "type": "string",
                                             "default": "",
                                             "description": "etcd username. Leave it empty for no authentication."
                                         },
                                         "password": {
+                                            "title": "Password",
                                             "type": "string",
                                             "default": "",
                                             "description": "etcd password. Leave it empty for no authentication."
@@ -351,6 +385,7 @@
                     "type": "object",
                     "properties": {
                         "dataDirectory": {
+                            "title": "Data Directory",
                             "type": "string",
                             "default": "risingwave",
                             "description": "data directory."
@@ -359,16 +394,20 @@
                             "type": "object",
                             "properties": {
                                 "endpoint": {
+                                    "title": "Endpoint",
                                     "type": "string",
                                     "default": "https://s3.REPLACE-WITH-YOUR-REGION.amazonaws.com.cn",
                                     "description": "Endpoint for S3 compatible services. Leave it empty for standard AWS S3."
                                 },
                                 "region": {
+                                    "title": "Region",
                                     "type": "string",
                                     "default": "REPLACE-WITH-YOUR-REGION",
                                     "description": "Region of S3 bucket."
+
                                 },
                                 "bucket": {
+                                    "title": "Bucket",
                                     "type": "string",
                                     "default": "REPLACE-WITH-YOUR-BUCKET",
                                     "description": "S3 bucket name."
@@ -377,16 +416,19 @@
                                     "type": "object",
                                     "properties": {
                                         "serviceAccountName": {
+                                            "title": "Service Account Name",
                                             "type": "string",
                                             "default": "",
                                             "description": "Use IAM role on service account for authentication. If set, accessKey and secretAccessKey will be ignored."
                                         },
                                         "accessKey": {
+                                            "title": "Access Key",
                                             "type": "string",
                                             "default": "REPLACE-WITH-YOUR-AK",
                                             "description": "S3 access key."
                                         },
                                         "secretAccessKey": {
+                                            "title": "Secret Access Key",
                                             "type": "string",
                                             "default": "REPLACE-WITH-YOUR-SK",
                                             "description": "S3 secret access key."

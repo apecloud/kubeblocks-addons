@@ -9,7 +9,7 @@ metadata:
     {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
 spec:
-  terminationPolicy: {{ $.Values.terminationPolicy }}
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- $topologyEnable :=  ne .Values.mode "" | default false }}
   {{- if $topologyEnable}}
   clusterDef: pulsar

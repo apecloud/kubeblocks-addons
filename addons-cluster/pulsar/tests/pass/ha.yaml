@@ -1,0 +1,4 @@
+broker:
+  replicaCount: 3
+proxy:
+  replicaCount: 3

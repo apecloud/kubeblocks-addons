@@ -12,7 +12,8 @@
     "storageClassName": {
       "type": ["string", "null"],
       "default": null,
-      "description": "Storage class name used by persistent volumes"
+      "description": "Storage class name used by persistent volumes",
+      "title": "Storage Class Name"
     },
     "compute": {
       "type": "object",
@@ -20,7 +21,8 @@
         "replicas": {
           "type": "integer",
           "default": 1,
-          "description": "Number of compute replicas"
+          "description": "Number of compute replicas",
+          "minimum": 1
         },
         "resources": {
           "type": "object",
@@ -35,7 +37,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -44,7 +47,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -58,7 +62,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -67,7 +72,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 2
+                  "default": 2,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -81,7 +87,8 @@
         "replicas": {
           "type": "integer",
           "default": 1,
-          "description": "Number of storage broker replicas"
+          "description": "Number of storage broker replicas",
+          "minimum": 1
         },
         "resources": {
           "type": "object",
@@ -96,7 +103,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -105,7 +113,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -119,7 +128,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -128,7 +138,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 2
+                  "default": 2,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -142,7 +153,8 @@
         "replicas": {
           "type": "integer",
           "default": 3,
-          "description": "Number of safekeeper replicas, forming a raft group"
+          "description": "Number of safekeeper replicas, forming a raft group",
+          "minimum": 1
         },
         "resources": {
           "type": "object",
@@ -157,7 +169,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -166,7 +179,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -180,76 +194,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
-                },
-                "memory": {
-                  "title": "Memory(Gi)",
-                  "description": "Memory, the unit is Gi.",
-                  "type": [
-                    "number",
-                    "string"
-                  ],
-                  "default": 2
-                }
-              }
-            }
-          }
-        },
-        "dataStorage": {
-          "type": [
-            "number",
-            "string"
-          ],
-          "default": 20,
-          "description": "Data storage size for each safekeeper replica"
-        }
-      }
-    },
-    "pageserver": {
-      "type": "object",
-      "properties": {
-        "replicas": {
-          "type": "integer",
-          "default": 1,
-          "description": "Number of pageserver replicas"
-        },
-        "resources": {
-          "type": "object",
-          "properties": {
-            "requests": {
-              "type": "object",
-              "properties": {
-                "cpu": {
-                  "title": "CPU",
-                  "description": "CPU cores.",
-                  "type": [
-                    "number",
-                    "string"
-                  ],
-                  "default": 0.5
-                },
-                "memory": {
-                  "title": "Memory(Gi)",
-                  "description": "Memory, the unit is Gi.",
-                  "type": [
-                    "number",
-                    "string"
-                  ],
-                  "default": 0.5
-                }
-              }
-            },
-            "limits": {
-              "type": "object",
-              "properties": {
-                "cpu": {
-                  "title": "CPU",
-                  "description": "CPU cores.",
-                  "type": [
-                    "number",
-                    "string"
-                  ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -266,12 +212,89 @@
         },
         "dataStorage": {
           "title": "Data Storage(Gi)",
+          "description": "Data storage size for each safekeeper replica",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 20,
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        }
+      }
+    },
+    "pageserver": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "default": 1,
+          "description": "Number of pageserver replicas",
+          "minimum": 1
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
+                },
+                "memory": {
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
+                },
+                "memory": {
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 2,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
+                }
+              }
+            }
+          }
+        },
+        "dataStorage": {
+          "title": "Data Storage(Gi)",
           "description": "Data storage size for each pageserver replica",
           "type": [
             "number",
             "string"
           ],
-          "default": 20
+          "default": 20,
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
         }
       }
     }

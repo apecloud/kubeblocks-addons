@@ -1,0 +1,2 @@
+etcd:
+  replicas: 0

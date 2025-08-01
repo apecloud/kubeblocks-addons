@@ -1,0 +1,4 @@
+replicas: 5
+cpu: 64
+memory: 1000
+gpu: 64

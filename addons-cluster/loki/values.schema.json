@@ -65,8 +65,11 @@
           }
         },
         "replicas": {
+          "title": "Replicas",
+          "description": "The number of replicas.",
           "type": "integer",
-          "default": 1
+          "default": 1,
+          "minimum": 1
         }
       }
     },
@@ -131,8 +134,11 @@
           }
         },
         "replicas": {
+          "title": "Replicas",
+          "description": "The number of replicas.",
           "type": "integer",
-          "default": 1
+          "default": 1,
+          "minimum": 1
         }
       }
     },
@@ -197,19 +203,27 @@
           }
         },
         "replicas": {
+          "title": "Replicas",
+          "description": "The number of replicas.",
           "type": "integer",
-          "default": 1
+          "default": 1,
+          "minimum": 1
         },
         "storageClassName": {
-          "type": "string",
-          "default": ""
+          "title": "Storage Class Name",
+          "description": "Storage class name of the data volume",
+          "type": ["string", "null"],
+          "default": null
         },
         "storage": {
+          "title": "Storage(Gi)",
+          "description": "Storage size, the unit is Gi.",
           "type": [
             "number",
             "string"
           ],
-          "default": 20
+          "default": 20,
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
         }
       }
     },
@@ -233,7 +247,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                   "memory": {
                     "title": "Memory limit(Gi)",
@@ -242,7 +257,8 @@
                       "number",
                       "string"
                     ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -258,7 +274,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 },
                 "memory": {
                   "title": "Memory request(Gi)",
@@ -267,7 +284,8 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -277,7 +295,8 @@
           "title": "Replicas",
           "description": "The number of replicas.",
           "type": "integer",
-          "default": 1
+          "default": 1,
+          "minimum": 1
         },
         "basicAuth": {
           "title": "Basic Auth",
