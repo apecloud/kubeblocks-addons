@@ -14,9 +14,6 @@ spec:
     - name: postgresql
       serviceVersion: "14.7.2"
       disableExporter: true
-      labels:
-        # NOTE: update the label accordingly
-        apps.kubeblocks.postgres.patroni/scope: pg-restore-postgresql
       replicas: 2
       resources:
         limits:
