@@ -18,194 +18,29 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": 135,
+  "id": 134,
   "links": [],
   "liveNow": false,
   "panels": [
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
+      "collapsed": false,
       "gridPos": {
-        "h": 5,
+        "h": 1,
         "w": 24,
         "x": 0,
         "y": 0
       },
-      "id": 1,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "10.1.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "pd_cluster_metadata{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"}",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Metadata",
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "Value": true,
-              "__name__": true,
-              "app_kubernetes_io_component": true,
-              "app_kubernetes_io_instance": true,
-              "app_kubernetes_io_managed_by": true,
-              "app_kubernetes_io_name": true,
-              "app_kubernetes_io_version": true,
-              "apps_kubeblocks_io_component_name": true,
-              "http_scheme": true,
-              "job": true,
-              "kubeblocks_clusterdefinition": true,
-              "kubeblocks_component_name": true,
-              "kubeblocks_componentdefinition": true,
-              "kubeblocks_instance": true,
-              "namespace": true,
-              "net_host_name": true,
-              "net_host_port": true,
-              "replicas": true,
-              "server_address": true,
-              "server_port": true,
-              "service_instance_id": true,
-              "service_name": true,
-              "type": false,
-              "url_scheme": true
-            },
-            "indexByName": {},
-            "renameByName": {
-              "type": "Cluster ID"
-            }
-          }
-        }
-      ],
-      "type": "table"
+      "id": 7,
+      "panels": [],
+      "title": "Cluster",
+      "type": "row"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "The count of healthy stores",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 5,
-        "x": 0,
-        "y": 5
-      },
-      "id": 2,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.1.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(pd_cluster_status{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", type=\"store_up_count\"})",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Normal stores",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "It records the unusual Regions' count which may include pending peers, down peers, extra peers, offline peers, missing peers or learner peers",
+      "description": "The storage size per TiKV instance",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -218,7 +53,7 @@
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 0,
+            "fillOpacity": 16,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -236,172 +71,7 @@
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 19,
-        "x": 5,
-        "y": 5
-      },
-      "id": 3,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "max(pd_regions_status{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"}) by (type)",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Region health",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "dateTimeAsIso"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 5,
-        "x": 0,
-        "y": 9
-      },
-      "id": 4,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.1.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "max(pd_cluster_tso{type=\"tso\", dc=\"global\"})",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Current TSO",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "The time consumed of handling TiDB TSO requests",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
+              "mode": "normal"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -421,7 +91,7 @@
               }
             ]
           },
-          "unit": "s"
+          "unit": "bytes"
         },
         "overrides": []
       },
@@ -429,9 +99,9 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 13
+        "y": 1
       },
-      "id": 6,
+      "id": 1,
       "options": {
         "legend": {
           "calcs": [],
@@ -451,9 +121,106 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.90, sum(rate(pd_server_handle_tso_duration_seconds_bucket{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"}[30s])) by (type, le))",
+          "exemplar": false,
+          "expr": "sum(tikv_store_size_bytes{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\", type=\"used\"}) by (pod)",
           "instant": false,
-          "legendFormat": "90%",
+          "legendFormat": "{{pod}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Store size",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "The total bytes of read and write in each TiKV instance",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "binBps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(tikv_engine_flow_bytes{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\", db=\"kv\", type=\"wal_file_bytes\"}[1m])) by (pod)",
+          "instant": false,
+          "legendFormat": "{{pod}}-write",
           "range": true,
           "refId": "A"
         },
@@ -463,10 +230,215 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(pd_server_handle_tso_duration_seconds_bucket{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"}[30s])) by (type, le))",
+          "expr": "sum(rate(tikv_engine_flow_bytes{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\", db=\"kv\", type=~\"bytes_read|iter_bytes_read\"}[1m])) by (pod)",
           "hide": false,
           "instant": false,
-          "legendFormat": "99%",
+          "legendFormat": "{{pod}}-read",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "R/W",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "The QPS of different kinds of commands in each TiKV instance",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(tikv_grpc_msg_duration_seconds_count{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\", type!=\"kv_gc\"}[1m])) by (pod,type)",
+          "instant": false,
+          "legendFormat": "{{pod}}-{{type}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "QPS",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "The total number of the gRPC message failures",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(tikv_grpc_msg_fail_total{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\", type!=\"kv_gc\"}[1m])) by (pod)",
+          "instant": false,
+          "legendFormat": "{{pod}}-grpc-msg-fail",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(delta(tikv_pd_heartbeat_message_total{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\", type=\"noop\"}[1m])) by (pod) < 1",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{pod}}-pd-heartbeat",
           "range": true,
           "refId": "B"
         },
@@ -476,15 +448,15 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.999, sum(rate(pd_server_handle_tso_duration_seconds_bucket{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"}[30s])) by (type, le))",
+          "expr": "sum(rate(tikv_critical_error_total{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\"}[1m])) by (pod, type)",
           "hide": false,
           "instant": false,
-          "legendFormat": "99.9%",
+          "legendFormat": "{{pod}}-{{type}}",
           "range": true,
           "refId": "C"
         }
       ],
-      "title": "PD server TSO handle time",
+      "title": "Errps",
       "type": "timeseries"
     },
     {
@@ -492,7 +464,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "PD process current goroutines count",
+      "description": "The number of leaders per TiKV instance",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -549,8 +521,8 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 12,
-        "y": 13
+        "x": 0,
+        "y": 17
       },
       "id": 5,
       "options": {
@@ -572,14 +544,14 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "go_goroutines{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", kubeblocks_component_name=\"tidb-pd\"}",
+          "expr": "sum(tikv_raftstore_region_count{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\", type=\"leader\"}) by (pod)",
           "instant": false,
           "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Goroutine Count",
+      "title": "Leader",
       "type": "timeseries"
     },
     {
@@ -587,7 +559,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "The number of different operators that are newly created",
+      "description": "The number of Regions on each TiKV instance",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -644,10 +616,10 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 21
+        "x": 12,
+        "y": 17
       },
-      "id": 7,
+      "id": 6,
       "options": {
         "legend": {
           "calcs": [],
@@ -667,14 +639,14 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(delta(pd_schedule_operators_count{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", event=\"create\"}[1m])) by (type)",
+          "expr": "sum(tikv_raftstore_region_count{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\", type=\"region\"}) by (pod)",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Schedule operator create",
+      "title": "Region",
       "type": "timeseries"
     },
     {
@@ -682,7 +654,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "The time consumed when the operator is finished in .99",
+      "description": "The approximate Region size",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -733,15 +705,15 @@
               }
             ]
           },
-          "unit": "s"
+          "unit": "bytes"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 12,
-        "y": 21
+        "x": 0,
+        "y": 25
       },
       "id": 8,
       "options": {
@@ -763,14 +735,137 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(pd_schedule_finish_operators_duration_seconds_bucket{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"}[5m])) by (type, le))",
+          "expr": "histogram_quantile(0.95, sum(tikv_raftstore_region_size_bucket{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\"}) by (le))",
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "95%",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(tikv_raftstore_region_size_bucket{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\"}) by (le))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "99%",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(tikv_raftstore_region_size_sum{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\"}) / sum(tikv_raftstore_region_size_count{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\"}) ",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Avg",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Region size",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "The gRPC message duration per message type (P99)",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "log": 10,
+              "type": "log"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 25
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(rate(tikv_grpc_msg_duration_seconds_bucket{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", pod=~\"$instance\", type!=\"kv_gc\"}[1m])) by (le, type))",
+          "instant": false,
+          "legendFormat": "{{type}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Operator finish duration",
+      "title": "99% gRPC message duration",
       "type": "timeseries"
     }
   ],
@@ -853,14 +948,14 @@
       {
         "allValue": ".*",
         "current": {
-          "selected": false,
+          "selected": true,
           "text": "All",
           "value": "$__all"
         },
         "datasource": {
           "uid": "$datasource"
         },
-        "definition": "label_values(pd_cluster_metadata{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"},pod)",
+        "definition": "label_values(tikv_store_size_bytes{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"},pod)",
         "hide": 0,
         "includeAll": true,
         "label": "Instance",
@@ -868,7 +963,7 @@
         "name": "instance",
         "options": [],
         "query": {
-          "query": "label_values(pd_cluster_metadata{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"},pod)",
+          "query": "label_values(tikv_store_size_bytes{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"},pod)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
@@ -912,8 +1007,8 @@
     ]
   },
   "timezone": "browser",
-  "title": "tidb-pd",
-  "uid": "tidb-pd",
-  "version": 3,
+  "title": "tikv",
+  "uid": "tikv",
+  "version": 6,
   "weekStart": ""
 }

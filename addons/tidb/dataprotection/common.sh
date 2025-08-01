@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -exo pipefail
+set -eo pipefail
 
 function getToolConfigValue() {
   local var=$1
@@ -9,7 +9,6 @@ function getToolConfigValue() {
 
 # shellcheck disable=SC2034
 function setStorageVar() {
-  cat /etc/datasafed/datasafed.conf
   TOOL_CONFIG=/etc/datasafed/datasafed.conf
 
   ACCESS_KEY_ID=$(getToolConfigValue access_key_id)

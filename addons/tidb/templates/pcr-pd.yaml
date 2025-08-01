@@ -10,7 +10,6 @@ spec:
   componentDef: {{ include "tidb.pd7.compDefName" . }}
   parametersDefs:
     - {{ include "tidb.pd.paramName" . }}
-
   configs:
     - name: pd.toml
       fileFormatConfig:
