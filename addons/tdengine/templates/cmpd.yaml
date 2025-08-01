@@ -12,6 +12,7 @@ spec:
   serviceKind: tdengine
   serviceVersion: {{ .Chart.AppVersion }}
   podManagementPolicy: Parallel
+  minReadySeconds: 10
   services:
     - name: taosd
       serviceName: taosd
@@ -74,20 +75,18 @@ spec:
           /scripts/role-probe.sh
     postProvision:
       exec:
-        targetPodSelector: Role
-        matchingKey: ready
+        targetPodSelector: Any
         container: tdengine
         command:
           - /bin/bash
           - -c
           - |
             /scripts/create-mnode.sh
-      preCondition: RuntimeReady
+      preCondition: ComponentReady
     memberLeave:
       exec:
         container: tdengine
-        targetPodSelector: Role
-        matchingKey: ready
+        targetPodSelector: Any
         command:
           - bash
           - -c
