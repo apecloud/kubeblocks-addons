@@ -12,7 +12,8 @@
     "storageClassName": {
       "type": ["string", "null"],
       "default": null,
-      "description": "Storage class name used by persistent volumes"
+      "description": "Storage class name used by persistent volumes",
+      "title": "Storage Class Name"
     },
     "compute": {
       "type": "object",
@@ -20,7 +21,8 @@
         "replicas": {
           "type": "integer",
           "default": 1,
-          "description": "Number of compute replicas"
+          "description": "Number of compute replicas",
+          "minimum": 1
         },
         "resources": {
           "type": "object",
@@ -35,7 +37,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -44,7 +50,10 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -58,7 +67,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -67,7 +80,10 @@
                     "number",
                     "string"
                   ],
-                  "default": 2
+                  "default": 2,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -81,7 +97,8 @@
         "replicas": {
           "type": "integer",
           "default": 1,
-          "description": "Number of storage broker replicas"
+          "description": "Number of storage broker replicas",
+          "minimum": 1
         },
         "resources": {
           "type": "object",
@@ -96,7 +113,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -105,7 +126,10 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -119,7 +143,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -128,7 +156,10 @@
                     "number",
                     "string"
                   ],
-                  "default": 2
+                  "default": 2,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
@@ -142,7 +173,8 @@
         "replicas": {
           "type": "integer",
           "default": 3,
-          "description": "Number of safekeeper replicas, forming a raft group"
+          "description": "Number of safekeeper replicas, forming a raft group",
+          "minimum": 1
         },
         "resources": {
           "type": "object",
@@ -157,7 +189,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -166,7 +202,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             },
@@ -180,7 +220,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -189,19 +233,26 @@
                     "number",
                     "string"
                   ],
-                  "default": 2
+                  "default": 2,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }
           }
         },
         "dataStorage": {
+          "title": "Data Storage(Gi)",
+          "description": "Data storage size for each safekeeper replica",
           "type": [
             "number",
             "string"
           ],
           "default": 20,
-          "description": "Data storage size for each safekeeper replica"
+          "minimum": 1,
+          "maximum": 10000,
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
         }
       }
     },
@@ -211,7 +262,8 @@
         "replicas": {
           "type": "integer",
           "default": 1,
-          "description": "Number of pageserver replicas"
+          "description": "Number of pageserver replicas",
+          "minimum": 1
         },
         "resources": {
           "type": "object",
@@ -226,7 +278,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -235,7 +291,10 @@
                     "number",
                     "string"
                   ],
-                  "default": 0.5
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             },
@@ -249,7 +308,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory(Gi)",
@@ -258,7 +321,10 @@
                     "number",
                     "string"
                   ],
-                  "default": 2
+                  "default": 2,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
                 }
               }
             }

@@ -16,6 +16,6 @@ spec:
     - name: mongodb
       serviceVersion: {{ .Values.version }}
       {{- include "mongodb-cluster.replicaCount" . | indent 6 }}
-      disableExporter: {{ $.Values.disableExporter | default "false" }}
+      disableExporter: {{ $.Values.extra.disableExporter | default "false" }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}

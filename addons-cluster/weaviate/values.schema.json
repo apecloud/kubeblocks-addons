@@ -18,7 +18,11 @@
                 "string",
                 "number"
               ],
-              "default": 1
+              "default": 1,
+              "minimum": 0.5,
+              "maximum": 64,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$",
+              "multipleOf": 0.5
             },
             "memory": {
               "title": "Memory limit(Gi)",
@@ -27,7 +31,11 @@
                 "string",
                 "number"
               ],
-              "default": 1
+              "default": 1,
+              "minimum": 0.5,
+              "maximum": 1000,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$",
+              "multipleOf": 0.5
             }
           }
         },
@@ -41,7 +49,11 @@
                 "string",
                 "number"
               ],
-              "default": 1
+              "default": 1,
+              "minimum": 0.5,
+              "maximum": 64,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$",
+              "multipleOf": 0.5
             },
             "memory": {
               "title": "Memory request(Gi)",
@@ -50,7 +62,11 @@
                 "string",
                 "number"
               ],
-              "default": 1
+              "default": 1,
+              "minimum": 0.5,
+              "maximum": 1000,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$",
+              "multipleOf": 0.5
             }
           }
         }
@@ -70,8 +86,8 @@
             "storageClassName": {
               "title": "Storage Class Name",
               "description": "Storage class name for persistent volumes.",
-              "type":"string",
-              "default": ""
+              "type": ["string", "null"],
+              "default": null
             },
             "size": {
               "title": "Size of persistent volume claim(Gi)",
@@ -80,7 +96,10 @@
                 "number",
                 "string"
               ],
-              "default": 10
+              "default": 10,
+              "minimum": 1,
+              "maximum": 10000,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             }
           }
         }

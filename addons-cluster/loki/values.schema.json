@@ -24,7 +24,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory limit(Gi)",
@@ -33,7 +37,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             },
@@ -49,7 +57,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory request(Gi)",
@@ -58,15 +70,22 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             }
           }
         },
         "replicas": {
+          "title": "Replicas",
+          "description": "The number of replicas.",
           "type": "integer",
-          "default": 1
+          "default": 1,
+          "minimum": 1
         }
       }
     },
@@ -90,7 +109,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory limit(Gi)",
@@ -99,7 +122,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             },
@@ -115,7 +142,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory request(Gi)",
@@ -124,15 +155,22 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             }
           }
         },
         "replicas": {
+          "title": "Replicas",
+          "description": "The number of replicas.",
           "type": "integer",
-          "default": 1
+          "default": 1,
+          "minimum": 1
         }
       }
     },
@@ -156,7 +194,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory limit(Gi)",
@@ -165,7 +207,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             },
@@ -181,7 +227,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory request(Gi)",
@@ -190,26 +240,40 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             }
           }
         },
         "replicas": {
+          "title": "Replicas",
+          "description": "The number of replicas.",
           "type": "integer",
-          "default": 1
+          "default": 1,
+          "minimum": 1
         },
         "storageClassName": {
-          "type": "string",
-          "default": ""
+          "title": "Storage Class Name",
+          "description": "Storage class name of the data volume",
+          "type": ["string", "null"],
+          "default": null
         },
         "storage": {
+          "title": "Storage(Gi)",
+          "description": "Storage size, the unit is Gi.",
           "type": [
             "number",
             "string"
           ],
-          "default": 20
+          "default": 20,
+          "minimum": 1,
+          "maximum": 10000,
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
         }
       }
     },
@@ -233,7 +297,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                   "memory": {
                     "title": "Memory limit(Gi)",
@@ -242,7 +310,11 @@
                       "number",
                       "string"
                     ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             },
@@ -258,7 +330,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 },
                 "memory": {
                   "title": "Memory request(Gi)",
@@ -267,7 +343,11 @@
                     "number",
                     "string"
                   ],
-                  "default": 1
+                  "default": 1,
+                  "minimum": 0.5,
+                  "maximum": 1000,
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                  "multipleOf": 0.5
                 }
               }
             }
@@ -277,7 +357,8 @@
           "title": "Replicas",
           "description": "The number of replicas.",
           "type": "integer",
-          "default": 1
+          "default": 1,
+          "minimum": 1
         },
         "basicAuth": {
           "title": "Basic Auth",

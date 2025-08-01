@@ -23,7 +23,11 @@
                                 "number",
                                 "string"
                             ],
-                            "default": 1
+                            "default": 1,
+                            "minimum": 0.5,
+                            "maximum": 64,
+                            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                            "multipleOf": 0.5
                         },
                         "memory": {
                             "title": "Memory(Gi)",
@@ -32,7 +36,10 @@
                                 "number",
                                 "string"
                             ],
-                            "default": 1
+                            "default": 1,
+                            "minimum": 0.5,
+                            "maximum": 1000,
+                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                         }
                     }
                 },
@@ -46,7 +53,11 @@
                                 "number",
                                 "string"
                             ],
-                            "default": 1
+                            "default": 1,
+                            "minimum": 0.5,
+                            "maximum": 64,
+                            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                            "multipleOf": 0.5
                         },
                         "memory": {
                             "title": "Memory(Gi)",
@@ -55,7 +66,10 @@
                                 "number",
                                 "string"
                             ],
-                            "default": 1
+                            "default": 1,
+                            "minimum": 0.5,
+                            "maximum": 1000,
+                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                         }
                     }
                 }
@@ -75,7 +89,8 @@
                         "storageClassName": {
                             "type": ["string", "null"],
                             "default": null,
-                            "description": "Storage class name used by persistent volumes"
+                            "description": "Storage class name used by persistent volumes",
+                            "title": "Storage Class Name"
                         },
                         "size": {
                             "title": "Storage Size(Gi)",
@@ -84,7 +99,10 @@
                                 "number",
                                 "string"
                             ],
-                            "default": 1
+                            "default": 1,
+                            "minimum": 1,
+                            "maximum": 10000,
+                            "pattern": "^[0-9]+(\\.[0-9]+)?$"
                         }
                     }
                 }
@@ -107,7 +125,11 @@
                                         "number",
                                         "string"
                                     ],
-                                    "default": 1
+                                    "default": 1,
+                                    "minimum": 0.5,
+                                    "maximum": 64,
+                                    "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                                    "multipleOf": 0.5
                                 },
                                 "memory": {
                                     "title": "Memory(Gi)",
@@ -116,7 +138,10 @@
                                         "number",
                                         "string"
                                     ],
-                                    "default": 1
+                                    "default": 1,
+                                    "minimum": 0.5,
+                                    "maximum": 1000,
+                                    "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                 }
                             }
                         },
@@ -130,7 +155,11 @@
                                         "number",
                                         "string"
                                     ],
-                                    "default": 1
+                                    "default": 1,
+                                    "minimum": 0.5,
+                                    "maximum": 64,
+                                    "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                                    "multipleOf": 0.5
                                 },
                                 "memory": {
                                     "title": "Memory(Gi)",
@@ -139,15 +168,20 @@
                                         "number",
                                         "string"
                                     ],
-                                    "default": 1
+                                    "default": 1,
+                                    "minimum": 0.5,
+                                    "maximum": 1000,
+                                    "pattern": "^[0-9]+(\\.[0-9]+)?$"
                                 }
                             }
                         }
                     }
                 },
                 "replicaCount": {
+                    "title": "Replica Count",
                     "type": "integer",
                     "default": 1,
+                    "minimum": 1,
                     "description": "Number of dashboard replicas"
                 }
             }

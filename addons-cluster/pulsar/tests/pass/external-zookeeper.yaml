@@ -1,0 +1,5 @@
+serviceReference:
+  enabled: true
+  zookeeper:
+    clusterServiceSelector:
+      cluster: my-zk

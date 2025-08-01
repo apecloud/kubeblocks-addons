@@ -115,7 +115,7 @@ raftGroup mode: max(replicas, 3)
           - ReadWriteOnce
         resources:
           requests:
-            storage: {{ .Values.etcd.local.resources.storage }}
+            storage: {{ print .Values.etcd.local.resources.storage "Gi" }}
 {{- end -}}
 
 {{- define "apecloud-mysql-cluster.schedulingPolicy" }}

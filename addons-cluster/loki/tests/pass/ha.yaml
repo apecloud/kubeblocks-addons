@@ -1,0 +1,8 @@
+read:
+  replicas: 2
+write:
+  replicas: 2
+backend:
+  replicas: 2
+gateway:
+  replicas: 2

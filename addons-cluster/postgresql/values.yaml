@@ -2,9 +2,8 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Delete, WipeOut.
-##
-terminationPolicy: Delete
+extra:
+  terminationPolicy: Delete
 
 ## @param version, mapping cluster.spec.componentSpec[].serviceVersion which defined in ComponentVersion
 ##
@@ -36,6 +35,10 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
+
+## @param storageClassName class name
+storageClassName: ""
+
 
 etcd:
   enabled: false

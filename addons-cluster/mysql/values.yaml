@@ -28,6 +28,10 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
+
+## @param storageClassName
+storageClassName: ""
+
 topology: semisync
 proxysql:
   replicas: 1

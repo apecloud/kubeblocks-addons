@@ -33,6 +33,9 @@ requests:
 ##
 storage: 20
 
+## @param storageClassName
+storageClassName: ""
+
 ## @param proxyEnabled if true, enable the proxy
 ## if mode is standalone, proxyEnabled is always false
 ## if mode is raftGroup, proxyEnabled can be true or false
@@ -60,7 +63,7 @@ etcd:
     etcdctlApi: "3" # the etcd tool etcdctl api version
     replicas: 3 # no support other num
     resources:
-      storage: 20Gi
+      storage: 20
   serviceRef:
     # -- Kubernetes namespace for etcd
     # @default default

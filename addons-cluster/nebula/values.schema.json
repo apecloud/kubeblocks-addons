@@ -15,7 +15,8 @@
         "storageClassName": {
           "type": ["string", "null"],
           "default": null,
-          "description": "Storage class name"
+          "description": "Storage class name",
+          "title": "Storage Class Name"
         },
         "console": {
           "type": "object",
@@ -38,7 +39,11 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 64,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                      "multipleOf": 0.5
                     },
                     "memory": {
                       "title": "Memory(Gi)",
@@ -47,7 +52,10 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 1000,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$"
                     }
                   }
                 },
@@ -61,7 +69,11 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 64,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                      "multipleOf": 0.5
                     },
                     "memory": {
                       "title": "Memory(Gi)",
@@ -70,7 +82,10 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 1000,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$"
                     }
                   }
                 }
@@ -109,7 +124,11 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 64,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                      "multipleOf": 0.5
                     },
                     "memory": {
                       "title": "Memory(Gi)",
@@ -118,7 +137,10 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 1000,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$"
                     }
                   }
                 },
@@ -132,7 +154,11 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 64,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                      "multipleOf": 0.5
                     },
                     "memory": {
                       "title": "Memory(Gi)",
@@ -141,19 +167,26 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 1000,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$"
                     }
                   }
                 }
               }
             },
             "logStorage": {
+              "title": "Log Storage(Gi)",
+              "description": "Log storage size, the unit is Gi.",
               "type": [
                 "number",
                 "string"
               ],
               "default": 1,
-              "description": "Log storage size"
+              "minimum": 1,
+              "maximum": 10000,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             }
           }
         },
@@ -178,7 +211,11 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 64,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                      "multipleOf": 0.5
                     },
                     "memory": {
                       "title": "Memory(Gi)",
@@ -187,7 +224,10 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 1000,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$"
                     }
                   }
                 },
@@ -201,7 +241,11 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 64,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                      "multipleOf": 0.5
                     },
                     "memory": {
                       "title": "Memory(Gi)",
@@ -210,7 +254,10 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 1000,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$"
                     }
                   }
                 }
@@ -223,7 +270,10 @@
                 "number",
                 "string"
               ],
-              "default": 1
+              "default": 1,
+              "minimum": 1,
+              "maximum": 10000,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             },
             "dataStorage": {
               "title": "Data Storage(Gi)",
@@ -232,7 +282,10 @@
                 "number",
                 "string"
               ],
-              "default": 1
+              "default": 1,
+              "minimum": 1,
+              "maximum": 10000,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             }
           }
         },
@@ -257,7 +310,11 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 64,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                      "multipleOf": 0.5
                     },
                     "memory": {
                       "title": "Memory(Gi)",
@@ -266,7 +323,10 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 1000,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$"
                     }
                   }
                 },
@@ -280,7 +340,11 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 64,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+                      "multipleOf": 0.5
                     },
                     "memory": {
                       "title": "Memory(Gi)",
@@ -289,7 +353,10 @@
                         "number",
                         "string"
                       ],
-                      "default": 1
+                      "default": 1,
+                      "minimum": 0.5,
+                      "maximum": 1000,
+                      "pattern": "^[0-9]+(\\.[0-9]+)?$"
                     }
                   }
                 }
@@ -302,7 +369,10 @@
                 "number",
                 "string"
               ],
-              "default": 1
+              "default": 1,
+              "minimum": 1,
+              "maximum": 10000,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             },
             "dataStorage": {
               "title": "Data Storage(Gi)",
@@ -311,7 +381,10 @@
                 "number",
                 "string"
               ],
-              "default": 1
+              "default": 1,
+              "minimum": 1,
+              "maximum": 10000,
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
             }
           }
         }
