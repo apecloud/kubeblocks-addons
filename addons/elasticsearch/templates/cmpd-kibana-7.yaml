@@ -1,0 +1,158 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: kibana-7
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 6 }}
+spec:
+  provider: kubeblocks
+  description: Kibana is a browser-based analytics and search dashboard for Elasticsearch.
+  serviceKind: kibana
+  updateStrategy: Parallel
+  services:
+  - name: http
+    serviceName: http
+    spec:
+      ipFamilyPolicy: PreferDualStack
+      ipFamilies:
+      - IPv4
+      ports:
+      - name: http
+        port: 5601
+        targetPort: http
+  vars:
+  - name: ELASTIC_USER_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        compDef: elasticsearch-7
+        name: elastic
+        optional: false
+        password: Required
+  - name: KIBANA_SYSTEM_USER_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        compDef: elasticsearch-7
+        name: kibana_system
+        optional: false
+        password: Required
+  - name: ELASTICSEARCH_HOST
+    valueFrom:
+      serviceVarRef:
+        compDef: elasticsearch-7
+        name: http
+        host: Required
+  configs:
+  - name: kibana-cm
+    templateRef: {{ include "elasticsearch.name" . }}-kibana-config
+    namespace: {{ .Release.Namespace }}
+    volumeName: kibana-cm
+  runtime:
+    containers:
+    - env:
+      - name: NSS_SDB_USE_CACHE
+        value: "no"
+      - name: CLUSTER_DOMAIN
+        value: {{ .Values.clusterDomain | quote }}
+      - name: POD_IP
+        valueFrom:
+          fieldRef:
+            fieldPath: status.podIP
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+      - bash
+      - -c
+      - |
+        function info() {
+          echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
+        }
+        if [ -n "${KB_TLS_CERT_FILE}" ]; then
+          READINESS_PROBE_PROTOCOL=https
+        else
+          READINESS_PROBE_PROTOCOL=http
+        fi
+        endpoint="${READINESS_PROBE_PROTOCOL}://${ELASTICSEARCH_HOST}.${KB_NAMESPACE}.svc.${CLUSTER_DOMAIN}:9200"
+        common_options="-s -u elastic:${ELASTIC_USER_PASSWORD} --fail --connect-timeout 3 -k"
+        while true; do
+          if [ -n "${KB_TLS_CERT_FILE}" ]; then
+            out=$(curl ${common_options} -X GET "${endpoint}/kubeblocks_ca_crt/_doc/1?pretty")
+            if [ $? == 0 ]; then
+              echo "$out" | grep '"ca.crt" :' | awk -F: '{print $2}' | tr -d '",' | xargs | base64 -d > /tmp/elastic.ca.crt
+              info "elasticsearch is ready"
+              break
+            fi
+          else
+            curl ${common_options} -X GET "${endpoint}"
+            if [ $? == 0 ]; then
+              info "elasticsearch is ready"
+              break
+            fi
+          fi
+          info "waiting for elasticsearch to be ready"
+          sleep 1
+        done
+        if [ -f /bin/tini ]; then
+          /bin/tini -- /usr/local/bin/kibana-docker -e ${endpoint} -H ${POD_IP}
+        else
+          /usr/local/bin/kibana-docker -e ${endpoint} -H ${POD_IP}
+        fi
+      name: kibana
+      ports:
+      - containerPort: 5601
+        name: http
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        successThreshold: 3
+        timeoutSeconds: 5
+        exec:
+          command:
+          - bash
+          - -c
+          - |
+            #!/usr/bin/env bash -e
+
+            # Disable nss cache to avoid filling dentry cache when calling curl
+            # This is required with Kibana Docker using nss < 3.52
+            export NSS_SDB_USE_CACHE=no
+
+            http () {
+                local path="${1}"
+                set -- -XGET -s --fail -L
+
+                if [ -n "${ELASTICSEARCH_USERNAME}" ] && [ -n "${ELASTICSEARCH_PASSWORD}" ]; then
+                  set -- "$@" -u "${ELASTICSEARCH_USERNAME}:${ELASTICSEARCH_PASSWORD}"
+                fi
+
+                if [ -n "${KB_TLS_CERT_FILE}" ]; then
+                  READINESS_PROBE_PROTOCOL=https
+                else
+                  READINESS_PROBE_PROTOCOL=http
+                fi
+                endpoint="${READINESS_PROBE_PROTOCOL}://${POD_IP}:5601"
+                STATUS=$(curl --output /dev/null --write-out "%{http_code}" -k "$@" "${endpoint}${path}")
+                if [[ "${STATUS}" -eq 200 ]]; then
+                  exit 0
+                fi
+
+                echo "Error: Got HTTP code ${STATUS} but expected a 200"
+                exit 1
+            }
+
+            http "/app/kibana"
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        runAsNonRoot: true
+        runAsUser: 1000
+      volumeMounts:
+      - mountPath: /usr/share/kibana/config
+        name: kibana-cm
+    securityContext:
+      fsGroup: 1000
