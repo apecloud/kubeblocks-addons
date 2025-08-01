@@ -82,21 +82,6 @@ spec:
       # Component's headless Service.
       # Valid options are [true, false]
       disableExporter: false
-      # Specifies Labels to override or add for underlying Pods, PVCs, Account & TLS
-      # Secrets, Services Owned by Component.
-      labels:
-        # PostgreSQL's CMPD specifies `KUBERNETES_SCOPE_LABEL=apps.kubeblocks.postgres.patroni/scope` through ENVs
-        # The KUBERNETES_SCOPE_LABEL is used to define the label key that Patroni will use to tag Kubernetes resources.
-        # This helps Patroni identify which resources belong to the specified scope (or cluster) used to define the label key
-        # that Patroni will use to tag Kubernetes resources.
-        # This helps Patroni identify which resources belong to the specified scope (or cluster).
-        #
-        # Note: DO NOT REMOVE THIS LABEL
-        # update the value w.r.t your cluster name
-        # the value must follow the format <cluster.metadata.name>-postgresql
-        # which is pg-cluster-postgresql in this examples
-        # replace `pg-cluster` with your cluster name
-        apps.kubeblocks.postgres.patroni/scope: pg-cluster-postgresql
       # Update `replicas` to your need.
       replicas: 2
       # Specifies the resources required by the Component.
@@ -260,8 +245,6 @@ spec:
   componentSpecs:
     - name: postgresql
       serviceVersion: "14.7.2"
-      labels:
-        apps.kubeblocks.postgres.patroni/scope: pg-cluster-postgresql
       replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
 ```
 
@@ -856,9 +839,6 @@ spec:
     - name: postgresql
       serviceVersion: "14.7.2"
       disableExporter: true
-      labels:
-        # NOTE: update the label accordingly
-        apps.kubeblocks.postgres.patroni/scope: pg-restore-postgresql
       replicas: 2
       resources:
         limits:
@@ -1160,21 +1140,6 @@ spec:
       # Component's headless Service.
       # Valid options are [true, false]
       disableExporter: false
-      # Specifies Labels to override or add for underlying Pods, PVCs, Account & TLS
-      # Secrets, Services Owned by Component.
-      labels:
-        # PostgreSQL's CMPD specifies `KUBERNETES_SCOPE_LABEL=apps.kubeblocks.postgres.patroni/scope` through ENVs
-        # The KUBERNETES_SCOPE_LABEL is used to define the label key that Patroni will use to tag Kubernetes resources.
-        # This helps Patroni identify which resources belong to the specified scope (or cluster) used to define the label key
-        # that Patroni will use to tag Kubernetes resources.
-        # This helps Patroni identify which resources belong to the specified scope (or cluster).
-        #
-        # Note: DO NOT REMOVE THIS LABEL
-        # update the value w.r.t your cluster name
-        # the value must follow the format <cluster.metadata.name>-postgresql
-        # which is pg-cluster-postgresql in this examples
-        # replace `pg-cluster` with your cluster name
-        apps.kubeblocks.postgres.patroni/scope: pg-cluster-postgresql
       # Update `replicas` to your need.
       replicas: 2
       # Specifies the resources required by the Component.
