@@ -20,8 +20,6 @@ Define postgresql ComponentSpec with ComponentDefinition.
   componentSpecs:
     - name: {{ include "postgresql-cluster.component-name" . }}
       serviceVersion: {{ .Values.version }}
-      labels:
-        {{- include "postgresql-cluster.patroni-scope-label" . | indent 8 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "postgresql-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
@@ -56,10 +54,3 @@ Define postgresql componentName
 {{- define "postgresql-cluster.component-name" -}}
 postgresql
 {{- end }}
-
-{{/*
-Define patroni scope label which postgresql cluster depends on, the named pattern is `apps.kubeblocks.postgres.patroni/scope: <clusterName>-<componentName>`
-*/}}
-{{- define "postgresql-cluster.patroni-scope-label" }}
-apps.kubeblocks.postgres.patroni/scope: {{ include "kblib.clusterName" . }}-{{ include "postgresql-cluster.component-name" . }}
-{{- end -}}
