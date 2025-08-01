@@ -47,8 +47,7 @@ spec:
           command:
           - /bin/sh
           - -c
-          - |
-            {{- .Files.Get "scripts/qdrant-member-leave.sh" | nindent 12 }}
+          - /qdrant/scripts/member-leave.sh
         targetPodSelector: Any
         container: qdrant
   logConfigs:
