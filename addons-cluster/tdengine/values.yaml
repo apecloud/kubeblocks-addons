@@ -4,7 +4,7 @@
 
 ## @param version MySQL cluster version
 ##
-version: 3.0.5
+version: 3.3.6-9
 
 ## @param mode TDengine cluster topology mode: standalone(=1) or raftGroup(=3)
 ##
@@ -31,4 +31,10 @@ requests:
 
 ## @param storage size, the unit is Gi
 ##
-storage: 10
+dataStorageSize: 100
+archStorageSize: 50
+
+## customized values to override kblib chart's values
+extra:
+  monitoringInterval: 60
+  rbacEnabled: true
