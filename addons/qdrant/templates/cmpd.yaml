@@ -49,6 +49,10 @@ spec:
         componentVarRef:
           optional: false
           podFQDNs: Required
+    - name: KB_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
   lifecycleActions:
     memberLeave:
       exec:
@@ -141,7 +145,7 @@ spec:
         value: "true"
       - name: SERVICE_PORT
         value: "6333"
-      - name: CURRENT_POD_NAME
+      - name: KB_POD_NAME
         valueFrom:
           fieldRef:
             apiVersion: v1
