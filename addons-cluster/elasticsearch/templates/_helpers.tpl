@@ -94,3 +94,58 @@ schedulingPolicy:
             apps.kubeblocks.io/component-name: mdit
         topologyKey: kubernetes.io/hostname
 {{- end -}}
+
+{{- define "tlsSecretName" -}}
+{{- if .Values.tls.secretName -}}
+{{- .Values.tls.secretName -}}
+{{- else -}}
+{{- include "kblib.clusterName" . -}}-tls-secret
+{{- end -}}
+{{- end -}}
+
+{{- define "elasticAccountSecretname" -}}
+{{- if .Values.tls.elasticAccountSecretName -}}
+{{- .Values.tls.elasticAccountSecretName -}}
+{{- else -}}
+{{- include "kblib.clusterName" . -}}-account-elastic
+{{- end -}}
+{{- end -}}
+
+{{- define "kibanaAccountSecretname" -}}
+{{- if .Values.tls.kibanaAccountSecretName -}}
+{{- .Values.tls.kibanaAccountSecretName -}}
+{{- else -}}
+{{- include "kblib.clusterName" . -}}-account-kibana-system
+{{- end -}}
+{{- end -}}
+
+
+{{- define "elasticsearch-cluster.tls" }}
+tls: {{ .Values.tls.enabled }}
+{{- if .Values.tls.enabled }}
+issuer:
+  name: {{ .Values.tls.issuer }}
+{{- if eq .Values.tls.issuer "UserProvided" }}
+  secretRef:
+    name: {{ include "tlsSecretName" . }}
+    namespace: {{ .Release.Namespace }}
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- define "elasticsearch-cluster.accounts" }}
+{{- if .Values.tls.enabled }}
+systemAccounts:
+- name: elastic
+  secretRef:
+    name: {{ include "elasticAccountSecretname" .}}
+    namespace: {{ .Release.Namespace }}
+- name: kibana_system
+  secretRef:
+    name: {{ include "kibanaAccountSecretname" .}}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+{{- end }}
