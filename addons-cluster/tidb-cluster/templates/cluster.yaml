@@ -8,6 +8,23 @@ spec:
   clusterDefinitionRef: tidb  # ref clusterdefinition.name
   terminationPolicy: {{ $.Values.extra.terminationPolicy }}
   topology: cluster
+  {{- if .Values.nodePortEnabled }}
+  services:
+    - name: tidb
+      serviceName: tidb
+      componentSelector: tidb
+      spec:
+        type: NodePort
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies: ["IPv4","IPv6"]
+        ports:
+          - name: client
+            protocol: TCP
+            port: 4000
+          - name: status
+            protocol: TCP
+            port: 10080
+  {{- end }}
   affinity:
     {{- with $.Values.topologyKeys }}
     topologyKeys: {{ . | toYaml | nindent 6 }}
