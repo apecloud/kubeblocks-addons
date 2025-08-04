@@ -111,4 +111,11 @@ restart_for_pending_restart_flag 2>&1 >> /home/postgres/.kb_set_up.log &
 echo "$(date) restart_for_pending_restart_flag PID=$!" >> /home/postgres/.kb_set_up.log
 python3 /kb-scripts/generate_patroni_yaml.py tmp_patroni.yaml
 export SPILO_CONFIGURATION=$(cat tmp_patroni.yaml)
+
+# if ETCD exist, unset KUBERNETES_SERVICE_HOST to use ETCD as DCS
+if [ ! -z "$ETCD3_HOST" ] || [ ! -z "$ETCD_HOST" ]; then
+  unset KUBERNETES_SERVICE_HOST
+  unset DCS_ENABLE_KUBERNETES_API
+fi
+
 exec /launch.sh init
