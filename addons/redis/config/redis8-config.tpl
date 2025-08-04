@@ -78,5 +78,6 @@ io-threads-do-reads yes
 # maxmemory <bytes>
 {{- $request_memory := default 0 $.PHY_MEMORY | int }}
 {{- if gt $request_memory 0 }}
-maxmemory {{ $request_memory }}
+maxmemory {{ mulf $request_memory 0.8 | int }}
 {{- end -}}
+maxmemory-policy volatile-lru

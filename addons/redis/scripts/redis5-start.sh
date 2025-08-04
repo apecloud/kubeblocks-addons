@@ -40,38 +40,16 @@ load_redis_template_conf() {
   echo "include $redis_template_conf" >> $redis_real_conf
 }
 
-extract_lb_host_by_svc_name() {
-  local svc_name="$1"
-  for lb_composed_name in $(echo "$REDIS_ADVERTISED_LB_HOST" | tr ',' '\n' ); do
-    if [[ ${lb_composed_name} == *":"* ]]; then
-       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
-         echo "${lb_composed_name#*:}"
-         break
-       fi
-    else
-       break
-    fi
-  done
-}
-
 build_redis_default_accounts() {
   unset_xtrace_when_ut_mode_false
-  if ! is_empty "$REDIS_REPL_PASSWORD"; then
-    echo "masteruser $REDIS_REPL_USER" >> $redis_real_conf
-    echo "masterauth $REDIS_REPL_PASSWORD" >> $redis_real_conf
-    echo "user $REDIS_REPL_USER on +psync +replconf +ping >$REDIS_REPL_PASSWORD" >> $redis_acl_file
-  fi
-  if ! is_empty "$REDIS_SENTINEL_PASSWORD"; then
-    echo "user $REDIS_SENTINEL_USER on allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill >$REDIS_SENTINEL_PASSWORD" >> $redis_acl_file
-  fi
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     echo "protected-mode yes" >> $redis_real_conf
-    echo "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all " >> $redis_acl_file
+    echo "requirepass $REDIS_DEFAULT_PASSWORD" >> $redis_real_conf
+    echo "masterauth $REDIS_DEFAULT_PASSWORD" >> $redis_real_conf
   else
     echo "protected-mode no" >> $redis_real_conf
   fi
   set_xtrace_when_ut_mode_false
-  echo "aclfile /data/users.acl" >> $redis_real_conf
   echo "build default accounts succeeded!"
 }
 
@@ -86,15 +64,12 @@ build_announce_ip_and_port() {
   elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
       echo "" > /data/.fixed_pod_ip_enabled
       echo "redis use immutable pod ip $CURRENT_POD_IP to announce"
-      echo "replica-announce-ip $CURRENT_POD_IP" >> /etc/redis/redis.conf
+      echo "replica-announce-ip $CURRENT_POD_IP" >> $redis_real_conf
   else
-    current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$CURRENT_POD_NAME")
-    if is_empty "$current_pod_fqdn"; then
-      echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from redis pod fqdn list: $REDIS_POD_FQDN_LIST. Exiting."
-      exit 1
-    fi
+    # only above v6.2.x sentinel has optional support for host names.
+    # https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/#ip-addresses-and-dns-names
     echo "redis use kb pod fqdn $current_pod_fqdn to announce"
-    echo "replica-announce-ip $current_pod_fqdn" >> $redis_real_conf
+    echo "replica-announce-ip $CURRENT_POD_IP" >> $redis_real_conf
   fi
 }
 
@@ -112,16 +87,6 @@ build_replicaof_config() {
     return
   else
     echo "replicaof $primary $primary_port" >> $redis_real_conf
-  fi
-}
-
-rebuild_redis_acl_file() {
-  if [ -f $redis_acl_file ]; then
-    sed "/user default on/d" $redis_acl_file > $redis_acl_file_bak && mv $redis_acl_file_bak $redis_acl_file
-    sed "/user $REDIS_REPL_USER on/d" $redis_acl_file > $redis_acl_file_bak && mv $redis_acl_file_bak $redis_acl_file
-    sed "/user $REDIS_SENTINEL_USER on/d" $redis_acl_file > $redis_acl_file_bak && mv $redis_acl_file_bak $redis_acl_file
-  else
-    touch $redis_acl_file
   fi
 }
 
@@ -146,7 +111,12 @@ init_or_get_primary_from_redis_sentinel() {
   sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
   for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
     # get primary info from sentinel
-    if retry_get_master_addr_by_name_from_sentinel $retry_times $retry_delay_second "$sentinel_pod_fqdn"; then
+    sentinel_pod_ip=$(getent hosts "$sentinel_pod_fqdn" | awk '{ print $1 }')
+    if [ -z "$sentinel_pod_ip" ]; then
+      echo "Failed to resolve the IP address of sentinel: $sentinel_pod_fqdn. Skipping this sentinel."
+      continue
+    fi
+    if retry_get_master_addr_by_name_from_sentinel $retry_times $retry_delay_second "$sentinel_pod_ip"; then
       echo "sentinel:$sentinel_pod_fqdn has master info: ${REDIS_SENTINEL_PRIMARY_INFO[*]}"
       if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -ne 2 ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
         echo "Empty primary info retrieved from sentinel: $sentinel_pod_fqdn. Skipping this sentinel."
@@ -192,21 +162,21 @@ init_or_get_primary_from_redis_sentinel() {
 }
 
 build_sentinel_get_master_addr_by_name_command() {
-  local sentinel_pod_fqdn="$1"
+  local sentinel_pod_addr="$1"
   local timeout_value=5
   # TODO: replace $SENTINEL_SERVICE_PORT with each sentinel pod's port when sentinel service port is not the same, for example in HostNetwork mode
   if is_empty "$SENTINEL_PASSWORD"; then
-    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
+    echo "timeout $timeout_value redis-cli -h $sentinel_pod_addr -p $SENTINEL_SERVICE_PORT sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
   else
-    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
+    echo "timeout $timeout_value redis-cli -h $sentinel_pod_addr -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
   fi
 }
 
 get_master_addr_by_name_from_sentinel() {
   local master_addr_by_name_command
-  local sentinel_pod_fqdn="$1"
+  local sentinel_pod_addr="$1"
   unset_xtrace_when_ut_mode_false
-  master_addr_by_name_command=$(build_sentinel_get_master_addr_by_name_command "$sentinel_pod_fqdn")
+  master_addr_by_name_command=$(build_sentinel_get_master_addr_by_name_command "$sentinel_pod_addr")
   logging_mask_password_command="${master_addr_by_name_command/$SENTINEL_PASSWORD/********}"
   echo "execute get-master-addr-by-name command: $logging_mask_password_command"
   output=$(eval "$master_addr_by_name_command")
@@ -280,42 +250,13 @@ check_current_pod_is_primary() {
 }
 
 start_redis_server() {
-    module_path="/opt/redis-stack/lib"
-    if [[ "$IS_REDIS8" == "true" ]]; then
-       module_path="/usr/local/lib/redis/modules"
-    fi
-    exec_cmd="exec redis-server /etc/redis/redis.conf"
-    if [ -f ${module_path}/redisearch.so ]; then
-        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisearch.so ${REDISEARCH_ARGS}"
-    fi
-    if [ -f ${module_path}/redistimeseries.so ]; then
-        exec_cmd="$exec_cmd --loadmodule ${module_path}/redistimeseries.so ${REDISTIMESERIES_ARGS}"
-    fi
-    if [ -f ${module_path}/rejson.so ]; then
-        exec_cmd="$exec_cmd --loadmodule ${module_path}/rejson.so ${REDISJSON_ARGS}"
-    fi
-    if [ -f ${module_path}/redisbloom.so ]; then
-        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisbloom.so ${REDISBLOOM_ARGS}"
-    fi
-    if [ -f ${module_path}/redisgraph.so ]; then
-        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgraph.so ${REDISGRAPH_ARGS}"
-    fi
-    if [ -f ${module_path}/rediscompat.so ]; then
-        exec_cmd="$exec_cmd --loadmodule ${module_path}/rediscompat.so"
-    fi
-    # NOTE: in replication mode, load this module will lead a memory leak for slave instance.
-    #if [ -f ${module_path}/redisgears.so ]; then
-    #    exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgears.so v8-plugin-path ${module_path}/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
-    #fi
-    echo "Starting redis server cmd: $exec_cmd"
-    eval "$exec_cmd"
+  exec_cmd="exec redis-server /etc/redis/redis.conf"
+  echo "Starting redis server cmd: $exec_cmd"
+  eval "$exec_cmd"
 }
 
 # TODO: if instanceTemplate is specified, the pod service could not be parsed from the pod ordinal.
 parse_redis_announce_addr() {
-  if is_empty "$REDIS_ADVERTISED_PORT"; then
-     REDIS_ADVERTISED_PORT="$REDIS_LB_ADVERTISED_PORT"
-  fi
   # try to get the announce ip and port from REDIS_ADVERTISED_PORT(support NodePort currently) first
   if is_empty "${REDIS_ADVERTISED_PORT}"; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
@@ -341,14 +282,8 @@ parse_redis_announce_addr() {
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
       redis_announce_port_value="$port"
-      lb_host=$(extract_lb_host_by_svc_name "$svc_name")
-      if [ -n "$lb_host" ]; then
-        echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
-        redis_announce_host_value="$lb_host"
-        redis_announce_port_value="6379"
-      else
-        redis_announce_host_value="$CURRENT_POD_HOST_IP"
-      fi
+      redis_announce_host_value="$CURRENT_POD_HOST_IP"
+      found=true
       break
     fi
   done

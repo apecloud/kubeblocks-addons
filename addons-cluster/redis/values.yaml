@@ -4,7 +4,7 @@
 
 ## @param version redis cluster version
 ##
-version: 7.2.7
+version: 7.2.10
 
 ## @param mode redis cluster topology mode, standalone, replication and cluster
 ## standalone: single redis instance

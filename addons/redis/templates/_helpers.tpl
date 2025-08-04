@@ -30,6 +30,7 @@ Common annotations
 {{- define "redis.annotations" -}}
 {{ include "kblib.helm.resourcePolicy" . }}
 {{ include "redis.apiVersion" . }}
+apps.kubeblocks.io/skip-immutable-check: "true"
 {{- end }}
 
 {{/*

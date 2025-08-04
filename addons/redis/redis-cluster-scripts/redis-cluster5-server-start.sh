@@ -37,7 +37,6 @@ current_comp_other_nodes=()
 other_comp_primary_nodes=()
 other_comp_other_nodes=()
 
-
 init_environment(){
   if [[ -z "${CURRENT_SHARD_ADVERTISED_PORT}" ]]; then
     CURRENT_SHARD_ADVERTISED_PORT="${CURRENT_SHARD_LB_ADVERTISED_PORT}"
@@ -117,9 +116,9 @@ check_and_meet_other_primary_nodes() {
     return
   fi
 
-  # node_info value format: cluster_announce_ip#pod_fqdn#endpoint:port@bus_port
+  # node_info value format: cluster_announce_ip#endpoint:port@bus_port
   for node_info in "${other_comp_primary_nodes[@]}"; do
-    node_endpoint_with_port=$(echo "$node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $3}')
+    node_endpoint_with_port=$(echo "$node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $2}')
     node_endpoint=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $1}')
     node_port=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $2}')
     node_bus_port=$(echo "$node_info" | awk -F '@' '{print $2}')
@@ -190,46 +189,27 @@ get_current_comp_nodes_for_scale_out_replica() {
     local node_bus_port
     node_bus_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $2}' | awk -F ',' '{print $1}')
 
-    local node_fqdn
-    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local
-    node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
-
     local node_role
     node_role=$(echo "$line" | awk '{print $3}')
 
-    printf "%s %s %s %s %s" "$node_announce_ip" "$node_fqdn" "$node_port" "$node_bus_port" "$node_role"
+    printf "%s %s %s %s" "$node_announce_ip" "$node_port" "$node_bus_port" "$node_role"
   }
 
   build_node_entry() {
     local mode="$1"
     local announce_ip="$2"
-    local fqdn="$3"
-    local port="$4"
-    local bus_port="$5"
-
-    case "$mode" in
-      "advertised_svc")
-        # example format using nodeport: 172.10.0.1#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#172.10.0.1:31000@31888
-        echo "$announce_ip#$fqdn#$announce_ip:$port@$bus_port"
-        ;;
-      "host_network")
-        # example format using host network: 172.10.0.1#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#172.10.0.1:1050@1051
-        echo "$announce_ip#$fqdn#$announce_ip:$port@$bus_port"
-        ;;
-      *)
-        # example format using pod fqdn: 10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379
-        echo "$announce_ip#$fqdn#$fqdn:$port@$bus_port"
-        ;;
-    esac
+    local port="$3"
+    local bus_port="$4"
+    echo "$announce_ip#$announce_ip:$port@$bus_port"
   }
 
   # categorize node into appropriate array
   categorize_node() {
     local node_entry="$1"
-    local node_fqdn="$2"
-    local node_role="$3"
+    local node_role="$2"
+    local belong_current_comp="$3"
 
-    if contains "$node_fqdn" "$CURRENT_SHARD_COMPONENT_NAME"; then
+    if [[ "$belong_current_comp" == "true" ]]; then
       if contains "$node_role" "master" && ! contains "$node_role" "fail"; then
         current_comp_primary_node+=("$node_entry")
       else
@@ -244,19 +224,41 @@ get_current_comp_nodes_for_scale_out_replica() {
     fi
   }
 
+  # get current pod ip list from KB_POD_LIST
+  IFS=',' read -ra CURRENT_POD_LIST <<< "$CURRENT_SHARD_POD_NAME_LIST"
+  CURRENT_POD_IP_LIST=()
+  for pod_name in "${CURRENT_POD_LIST[@]}"; do
+    local pod_fqdn="$pod_name.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.cluster.local"
+    pod_mapping_ip=$(getent hosts "$pod_fqdn" | awk '{ print $1 }')
+    echo "pod_name: $pod_name, pod_fqdn: $pod_fqdn, pod_mapping_ip: $pod_mapping_ip"
+    CURRENT_POD_IP_LIST+=("$pod_mapping_ip")
+  done
+  # check length of CURRENT_POD_IP_LIST must equal to CURRENT_POD_LIST
+  if [ ${#CURRENT_POD_IP_LIST[@]} -ne ${#CURRENT_POD_LIST[@]} ]; then
+    echo "Error: failed to get the pod ip list from KB_POD_LIST"
+    return 1
+  fi
+
   # process each node
   while read -r line; do
     local node_info
     node_info=$(parse_node_line_info "$line")
-    local node_announce_ip node_fqdn node_port node_bus_port node_role
-    read -r node_announce_ip node_fqdn node_port node_bus_port node_role <<< "$node_info"
+    local node_announce_ip node_port node_bus_port node_role
+    read -r node_announce_ip node_port node_bus_port node_role <<< "$node_info"
+
+    belong_current_comp=false
+    for i in "${CURRENT_POD_IP_LIST[@]}"; do
+      if [[ "$i" = "$node_announce_ip" ]]; then
+        belong_current_comp=true
+      fi
+    done
 
     # build node entry based on network mode
     local node_entry
-    node_entry=$(build_node_entry "$network_mode" "$node_announce_ip" "$node_fqdn" "$node_port" "$node_bus_port")
+    node_entry="$announce_ip#$announce_ip:$node_port@$node_bus_port"
 
     # categorize nodes
-    categorize_node "$node_entry" "$node_fqdn" "$node_role"
+    categorize_node "$node_entry" "$node_role" "$belong_current_comp"
   done <<< "$cluster_nodes_info"
 
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"
@@ -337,21 +339,20 @@ scale_redis_cluster_replica() {
     exit 0
   fi
 
-  # primary_node_info value format: cluster_announce_ip#pod_fqdn#endpoint:port@bus_port
+  # primary_node_info value format: cluster_announce_ip#endpoint:port@bus_port
   primary_node_info=${current_comp_primary_node[0]}
-  primary_node_endpoint_with_port=$(echo "$primary_node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $3}')
+  primary_node_endpoint_with_port=$(echo "$primary_node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $2}')
   primary_node_endpoint=$(echo "$primary_node_endpoint_with_port" | awk -F ':' '{print $1}')
   primary_node_port=$(echo "$primary_node_endpoint_with_port" | awk -F ':' '{print $2}')
-  primary_node_fqdn=$(echo "$primary_node_info" | awk -F '#' '{print $2}')
   primary_node_bus_port=$(echo "$primary_node_info" | awk -F '@' '{print $2}')
-  if contains "$primary_node_fqdn" "$CURRENT_POD_NAME"; then
+  if contains "$primary_node_endpoint" "$CURRENT_POD_IP"; then
      echo "Current pod $CURRENT_POD_NAME is primary node, check and correct other primary nodes..."
      check_and_meet_other_primary_nodes "$primary_node_endpoint" "$primary_node_port"
      echo "Node $CURRENT_POD_NAME is already in the cluster, skipping scale out replica..."
      exit 0
   fi
   # if the current pod is not a rebuild-instance and is already in the cluster, skip scale out replica
-  if ! is_rebuild_instance && check_node_in_cluster_with_retry "$primary_node_endpoint" "$primary_node_port" "$CURRENT_POD_NAME"; then
+  if ! is_rebuild_instance && check_node_in_cluster_with_retry "$primary_node_endpoint" "$primary_node_port" "$CURRENT_POD_IP"; then
     # if current pod is primary node, check the others primary info, if the others primary node info is expired, send cluster meet command again
     echo "Current pod $CURRENT_POD_NAME is a secondary node, check and meet current primary node..."
     check_and_meet_current_primary_node "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port"
@@ -368,17 +369,16 @@ scale_redis_cluster_replica() {
     exit 1
   fi
   # current_node_with_port do not use advertised svc and port, because advertised svc and port are not ready when Pod is not Ready.
-  current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$CURRENT_POD_NAME")
   if is_rebuild_instance; then
     echo "Current instance is a rebuild-instance, forget node id in the cluster firstly."
-    node_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port" "$current_pod_fqdn")
+    node_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port" "$CURRENT_POD_IP")
     if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
       redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
     else
       redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
     fi
   fi
-  current_node_with_port="$current_pod_fqdn:$service_port"
+  current_node_with_port="$CURRENT_POD_IP:$service_port"
   replicated_output=$(secondary_replicated_to_primary "$current_node_with_port" "$primary_node_endpoint_with_port" "$primary_node_cluster_id")
   status=$?
   if [ $status -ne 0 ] ; then
@@ -394,14 +394,14 @@ scale_redis_cluster_replica() {
       shutdown_redis_server
       exit 1
     else
-      echo "Failed to add the node $current_pod_fqdn to the cluster in scale_redis_cluster_replica, Error message: $replicated_output, shutdown redis server" >&2
+      echo "Failed to add the node $CURRENT_POD_IP to the cluster in scale_redis_cluster_replica, Error message: $replicated_output, shutdown redis server" >&2
       shutdown_redis_server "$service_port"
       exit 1
     fi
   fi
 
   if is_rebuild_instance; then
-    echo "replicate the node $current_pod_fqdn to the primary node $primary_node_endpoint_with_port successfully in rebuild-instance, remove rebuild.flag file..."
+    echo "replicate the node $CURRENT_POD_IP to the primary node $primary_node_endpoint_with_port successfully in rebuild-instance, remove rebuild.flag file..."
     remove_rebuild_instance_flag
   fi
 
@@ -419,7 +419,7 @@ scale_redis_cluster_replica() {
 
     # meet current component primary node if not met yet
     if ! $current_primary_met; then
-      if scale_out_replica_send_meet "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port" "$CURRENT_POD_NAME"; then
+      if scale_out_replica_send_meet "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port" "$CURRENT_POD_IP"; then
         echo "Successfully meet the primary node $primary_node_endpoint_with_port in scale_redis_cluster_replica"
         current_primary_met=true
       else
@@ -431,12 +431,12 @@ scale_redis_cluster_replica() {
     # meet the other components primary nodes if not met yet
     for node_info in "${other_comp_primary_nodes[@]}"; do
       if [ "${other_primary_met[$node_info]}" = false ]; then
-        node_endpoint_with_port=$(echo "$node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $3}')
+        node_endpoint_with_port=$(echo "$node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $2}')
         node_endpoint=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $1}')
         node_port=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $2}')
         node_bus_port=$(echo "$node_info" | awk -F '@' '{print $2}')
 
-        if scale_out_replica_send_meet "$node_endpoint" "$node_port" "$node_bus_port" "$CURRENT_POD_NAME"; then
+        if scale_out_replica_send_meet "$node_endpoint" "$node_port" "$node_bus_port" "$CURRENT_POD_IP"; then
           echo "Successfully meet the primary node $node_endpoint_with_port in scale_redis_cluster_replica"
           other_primary_met["$node_info"]=true
         else
@@ -485,30 +485,14 @@ load_redis_template_conf() {
 
 build_redis_default_accounts() {
   unset_xtrace_when_ut_mode_false
-  if ! is_empty "$REDIS_REPL_PASSWORD"; then
-    echo "masteruser $REDIS_REPL_USER" >> $redis_real_conf
-    echo "masterauth $REDIS_REPL_PASSWORD" >> $redis_real_conf
-    echo "user $REDIS_REPL_USER on +psync +replconf +ping >$REDIS_REPL_PASSWORD" >> $redis_acl_file
-  fi
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     echo "protected-mode yes" >> $redis_real_conf
-    echo "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all " >> $redis_acl_file
+    echo "requirepass $REDIS_DEFAULT_PASSWORD" >> $redis_acl_file
   else
     echo "protected-mode no" >> $redis_real_conf
   fi
   set_xtrace_when_ut_mode_false
-  echo "aclfile /data/users.acl" >> $redis_real_conf
   echo "build redis default accounts succeeded!"
-}
-
-rebuild_redis_acl_file() {
-  if [ -f $redis_acl_file ]; then
-    sed "/user default on/d" $redis_acl_file > $redis_acl_file_bak && mv $redis_acl_file_bak $redis_acl_file
-    sed "/user $REDIS_REPL_USER on/d" $redis_acl_file > $redis_acl_file_bak && mv $redis_acl_file_bak $redis_acl_file
-    sed "/user $REDIS_SENTINEL_USER on/d" $redis_acl_file > $redis_acl_file_bak && mv $redis_acl_file_bak $redis_acl_file
-  else
-    touch $redis_acl_file
-  fi
 }
 
 build_announce_ip_and_port() {
@@ -523,13 +507,8 @@ build_announce_ip_and_port() {
     echo "redis use fixed pod ip: $CURRENT_POD_IP to announce"
     echo "replica-announce-ip $CURRENT_POD_IP" >> $redis_real_conf
   else
-    current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$CURRENT_POD_NAME")
-    if is_empty "$current_pod_fqdn"; then
-      echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting."
-      exit 1
-    fi
-    echo "redis use kb pod fqdn $current_pod_fqdn to announce"
-    echo "replica-announce-ip $current_pod_fqdn" >> $redis_real_conf
+    echo "redis use pod id $CURRENT_POD_IP to announce"
+    echo "replica-announce-ip $CURRENT_POD_IP" >> $redis_real_conf
   fi
 }
 
@@ -546,36 +525,30 @@ build_cluster_announce_info() {
       echo "cluster-announce-ip $redis_announce_host_value"
       echo "cluster-announce-port $redis_announce_port_value"
       echo "cluster-announce-bus-port $redis_announce_bus_port_value"
-      echo "cluster-announce-hostname $current_pod_fqdn"
       echo "cluster-preferred-endpoint-type ip"
     } >> $redis_real_conf
   elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
     echo "redis cluster use fixed pod ip: $CURRENT_POD_IP to announce"
     {
       echo "cluster-announce-ip $CURRENT_POD_IP"
-      echo "cluster-announce-hostname $current_pod_fqdn"
       echo "cluster-preferred-endpoint-type ip"
     } >> $redis_real_conf
   else
-    echo "redis cluster use pod fqdn $current_pod_fqdn to announce"
+    echo "redis cluster use pod ip $CURRENT_POD_IP to announce"
     {
       echo "cluster-announce-ip $CURRENT_POD_IP"
-      echo "cluster-announce-hostname $current_pod_fqdn"
-      echo "cluster-preferred-endpoint-type hostname"
+      echo "cluster-preferred-endpoint-type ip"
     } >> $redis_real_conf
   fi
 }
 
 build_redis_cluster_service_port() {
+  service_port=6379
   if ! is_empty "$SERVICE_PORT"; then
     service_port=$SERVICE_PORT
   fi
-  if ! is_empty "$CLUSTER_BUS_PORT"; then
-    cluster_bus_port=$CLUSTER_BUS_PORT
-  fi
   {
     echo "port $service_port"
-    echo "cluster-port $cluster_bus_port"
   } >> $redis_real_conf
 }
 
@@ -622,35 +595,9 @@ parse_redis_cluster_shard_announce_addr() {
 }
 
 start_redis_server() {
-    module_path="/opt/redis-stack/lib"
-    if [[ "$IS_REDIS8" == "true" ]]; then
-       module_path="/usr/local/lib/redis/modules"
-    fi
-    exec_cmd="exec redis-server /etc/redis/redis.conf"
-    if [ -f ${module_path}/redisearch.so ]; then
-        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisearch.so ${REDISEARCH_ARGS}"
-    fi
-    if [ -f ${module_path}/redistimeseries.so ]; then
-        exec_cmd="$exec_cmd --loadmodule ${module_path}/redistimeseries.so ${REDISTIMESERIES_ARGS}"
-    fi
-    if [ -f ${module_path}/rejson.so ]; then
-        exec_cmd="$exec_cmd --loadmodule ${module_path}/rejson.so ${REDISJSON_ARGS}"
-    fi
-    if [ -f ${module_path}/redisbloom.so ]; then
-        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisbloom.so ${REDISBLOOM_ARGS}"
-    fi
-    if [ -f ${module_path}/redisgraph.so ]; then
-        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgraph.so ${REDISGRAPH_ARGS}"
-    fi
-    if [ -f ${module_path}/rediscompat.so ]; then
-        exec_cmd="$exec_cmd --loadmodule ${module_path}/rediscompat.so"
-    fi
-    # NOTE: in replication mode, load this module will lead a memory leak for slave instance.
-    #if [ -f ${module_path}/redisgears.so ]; then
-    #    exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgears.so v8-plugin-path ${module_path}/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
-    #fi
-    echo "Starting redis server cmd: $exec_cmd"
-    eval "$exec_cmd"
+  exec_cmd="exec redis-server /etc/redis/redis.conf"
+  echo "Starting redis server cmd: $exec_cmd"
+  eval "$exec_cmd"
 }
 
 # build redis cluster configuration redis.conf
@@ -659,7 +606,6 @@ build_redis_conf() {
   build_redis_cluster_service_port
   build_announce_ip_and_port
   build_cluster_announce_info
-  rebuild_redis_acl_file
   build_redis_default_accounts
 }
 
