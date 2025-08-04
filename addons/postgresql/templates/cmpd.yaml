@@ -110,16 +110,9 @@ spec:
       passwordGenerationPolicy: *defaultPasswdGenerationPolicy
   lifecycleActions:
     roleProbe:
+      builtinHandler: postgresql
       periodSeconds: 1
-      timeoutSeconds: 1
-      builtinHandler: custom
-      customHandler:
-        image: {{ include "postgresql.actionImageByMajor" (dict "major" .major "root" $) }}
-        exec:
-          command:
-            - /bin/bash
-            - -c
-            - /kb-scripts/role_probe.sh
+      timeoutSeconds: 2
     switchover:
       withCandidate:
         image: {{ include "postgresql.actionImageByMajor" (dict "major" .major "root" $) }}
