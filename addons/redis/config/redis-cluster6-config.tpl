@@ -70,12 +70,12 @@ aclfile /etc/redis/users.acl
 # TODO: dynamic config for io-threads
 io-threads 4
 io-threads-do-reads yes
+maxmemory-policy volatile-lru
 # maxmemory <bytes>
 {{- $request_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
 {{- if gt $request_memory 0 }}
 maxmemory {{ mulf $request_memory 0.8 | int }}
 {{- end }}
-maxmemory-policy volatile-lru
 # configuration for redis cluster
 cluster-enabled yes
 cluster-config-file /data/nodes.conf

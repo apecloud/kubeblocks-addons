@@ -1,0 +1,60 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: redis-cluster-rebalance
+spec:
+  podInfoExtractors:
+    - name: redisUrl
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: REDIS_DEFAULT_USER
+          valueFrom:
+            envRef:
+              envName: REDIS_DEFAULT_USER
+        - name: REDIS_DEFAULT_PASSWORD
+          valueFrom:
+            envRef:
+              envName: REDIS_DEFAULT_PASSWORD
+        - name: POD_FQDN
+          valueFrom:
+            envRef:
+              envName: POD_FQDN
+  actions:
+    - name: rebalance
+      workload:
+        type: Job
+        podInfoExtractorName: redisUrl
+        podSpec:
+          containers:
+          - name: busybox-init
+            image: {{ include "busybox.image" . }}
+            command: ["/bin/sh", "-c"]
+            args:
+              - |
+                REDIS_URL="redis://${REDIS_DEFAULT_USER}:${REDIS_DEFAULT_PASSWORD}@${POD_FQDN}"
+                echo ${REDIS_URL}
+                cat <<EOF > /tmp/reshard.ini
+                [extractor]
+                db_type=redis
+                extract_type=reshard
+                url=${REDIS_URL}
+                [sinker]
+                sink_type=dummy
+                EOF
+            volumeMounts:
+            - name: reshard-config
+              mountPath: /tmp
+          - name: redis-rebalance
+            image: {{ include "apeDts.reshard.image" . }}
+            imagePullPolicy: IfNotPresent
+            command: ["/ape-dts"]
+            args:
+              - /tmp/reshard.ini
+            volumeMounts:
+            - name: reshard-config
+              mountPath: /tmp
+          restartPolicy: Never
+          volumes:
+          - name: reshard-config
+            emptyDir: {}

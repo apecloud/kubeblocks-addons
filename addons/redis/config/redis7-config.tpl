@@ -75,9 +75,9 @@ aclfile /etc/redis/users.acl
 io-threads 4
 io-threads-do-reads yes
 
+maxmemory-policy volatile-lru
 # maxmemory <bytes>
 {{- $request_memory := default 0 $.PHY_MEMORY | int }}
 {{- if gt $request_memory 0 }}
 maxmemory {{ mulf $request_memory 0.8 | int }}
 {{- end -}}
-maxmemory-policy volatile-lru

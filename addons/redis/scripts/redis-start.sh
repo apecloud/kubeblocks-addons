@@ -42,7 +42,7 @@ load_redis_template_conf() {
 
 extract_lb_host_by_svc_name() {
   local svc_name="$1"
-  for lb_composed_name in $(echo "$REDIS_ADVERTISED_LB_HOST" | tr ',' '\n' ); do
+  for lb_composed_name in $(echo "$REDIS_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
     if [[ ${lb_composed_name} == *":"* ]]; then
        if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
          echo "${lb_composed_name#*:}"
@@ -349,6 +349,7 @@ parse_redis_announce_addr() {
       else
         redis_announce_host_value="$CURRENT_POD_HOST_IP"
       fi
+      found=true
       break
     fi
   done

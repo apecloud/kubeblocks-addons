@@ -102,10 +102,12 @@ spec:
       - container: redis
         ports:
           - redis
+  {{- if $.Values.enableMetrics }}
       - container: metrics
         ports:
           - http-metrics
           - server-metrics
+  {{- end }}
   vars:
   {{- if eq .major "5" }}
     - name: IS_REDIS5
@@ -121,9 +123,8 @@ spec:
           clusterName: Required
     - name: CLUSTER_NAMESPACE
       valueFrom:
-        fieldRef:
-          apiVersion: v1
-          fieldPath: metadata.namespace
+        clusterVarRef:
+          namespace: Required
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:
@@ -172,7 +173,7 @@ spec:
             name: redis-advertised
             option: Required
     ## the redis advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
-    - name: REDIS_ADVERTISED_LB_HOST
+    - name: REDIS_LB_ADVERTISED_HOST
       valueFrom:
         serviceVarRef:
           name: redis-lb-advertised
@@ -301,13 +302,6 @@ spec:
       valueFrom:
         resourceVarRef:
           memory: Required
-    - name: REDIS_ADVERTISED_LB_HOST
-      valueFrom:
-        serviceVarRef:
-          name: redis-lb-advertised
-          optional: true
-          loadBalancer: Required
-          host: Required
   lifecycleActions:
     roleProbe:
       periodSeconds: 1

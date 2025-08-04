@@ -59,12 +59,12 @@ hz 10
 dynamic-hz yes
 aof-rewrite-incremental-fsync yes
 rdb-save-incremental-fsync yes
+maxmemory-policy volatile-lru
 # maxmemory <bytes>
 {{- $request_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
 {{- if gt $request_memory 0 }}
 maxmemory {{ mulf $request_memory 0.8 | int }}
 {{- end }}
-maxmemory-policy volatile-lru
 # configuration for redis cluster
 cluster-enabled yes
 cluster-config-file /data/nodes.conf

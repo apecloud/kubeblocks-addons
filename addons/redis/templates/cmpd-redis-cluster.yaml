@@ -110,10 +110,12 @@ spec:
         ports:
           - redis-cluster
           - cluster-bus
+  {{- if $.Values.enableMetrics }}
       - container: metrics
         ports:
           - http-metrics
           - server-metrics
+  {{- end }}
   vars:
   {{- if eq .major "8" }}
     - name: IS_REDIS8

@@ -49,7 +49,7 @@ init_redis_service_port() {
 
 extract_lb_host_by_svc_name() {
   local svc_name="$1"
-  for lb_composed_name in $(echo "$REDIS_ADVERTISED_LB_HOST" | tr ',' '\n' ); do
+  for lb_composed_name in $(echo "$REDIS_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
     if [[ ${lb_composed_name} == *":"* ]]; then
        if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
          echo "${lb_composed_name#*:}"
@@ -303,9 +303,9 @@ register_to_sentinel_wrapper() {
   sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
   for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
     if [ "$IS_REDIS5" == "true" ]; then
-       register_to_sentinel_for_redis5 "${sentinel_pod}"
+       register_to_sentinel_for_redis5 "${sentinel_pod_fqdn}"
     else
-       register_to_sentinel_for_redis "${sentinel_pod}"
+       register_to_sentinel_for_redis "${sentinel_pod_fqdn}"
     fi
   done
 }

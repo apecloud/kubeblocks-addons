@@ -44,8 +44,8 @@ function env_pre_check() {
         exit 1
     fi
 
-    if [ -z "$REDIS_HOST_NETWORK_PORT" ]; then
-        echo "REDIS_HOST_NETWORK_PORT is empty, skip ACL operation"
+    if [ -z "$SERVICE_PORT" ]; then
+        echo "SERVICE_PORT is empty, skip ACL operation"
         exit 1
     fi
 
@@ -59,13 +59,13 @@ function env_pre_check() {
         exit 1
     fi
 
-    # cluster mode don't have KB_POD_LIST, but have KB_POD_FQDN and get hosts from redis-cli
-    if [ "$SHARD_MODE" != "TRUE" ] && [ -z "$KB_POD_LIST" ]; then
-        echo "KB_POD_LIST is empty, skip ACL operation"
+    # cluster mode don't have KB_POD_LIST, but have REDIS_POD_FQDN_LIS and get hosts from redis-cli
+    if [ "$SHARD_MODE" != "TRUE" ] && [ -z "$REDIS_POD_FQDN_LIST" ]; then
+        echo "REDIS_POD_FQDN_LIS is empty, skip ACL operation"
         exit 0
     fi
 
-    if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$KB_POD_NAME" ]; then
+    if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$POD_FQDN" ]; then
         echo "KB_POD_NAME is empty, skip ACL operation"
         exit 0
     fi
@@ -84,7 +84,7 @@ function create_post_check() {
 
 function get_cluster_host_list() {
     host_list=$(redis-cli -c -h "$POD_FQDN" \
-        -p $REDIS_HOST_NETWORK_PORT \
+        -p $SERVICE_PORT \
         --user $REDIS_DEFAULT_USER \
         -a $REDIS_DEFAULT_PASSWORD \
         CLUSTER NODES |
@@ -103,7 +103,7 @@ function main() {
     else
         host_list="$REDIS_POD_FQDN_LIST"
     fi
-    do_acl_command "$host_list" "$REDIS_HOST_NETWORK_PORT" "$REDIS_DEFAULT_USER" "$REDIS_DEFAULT_PASSWORD"
+    do_acl_command "$host_list" "$SERVICE_PORT" "$REDIS_DEFAULT_USER" "$REDIS_DEFAULT_PASSWORD"
 }
 
 main

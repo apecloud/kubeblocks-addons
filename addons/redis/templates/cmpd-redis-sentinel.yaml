@@ -84,9 +84,8 @@ spec:
           clusterName: Required
     - name: CLUSTER_NAMESPACE
       valueFrom:
-        fieldRef:
-          apiVersion: v1
-          fieldPath: metadata.namespace
+        clusterVarRef:
+          namespace: Required
     ## the username of redis sentinel
     - name: SENTINEL_USER
       valueFrom:
@@ -122,21 +121,6 @@ spec:
           port:
             name: sentinel-advertised
             option: Required
-    - name: REDIS_SENTINEL_ADVERTISED_LB_HOST
-      valueFrom:
-        serviceVarRef:
-          name: sentinel-lb-advertised
-          optional: true
-          loadBalancer: Required
-          host: Required
-    - name: REDIS_SENTINEL_LB_ADVERTISED_PORT
-      valueFrom:
-        serviceVarRef:
-          name: sentinel-lb-advertised
-          optional: true
-          port:
-            name: sentinel-advertised
-            option: Required
     ## the redis sentinel advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
     - name: REDIS_SENTINEL_ADVERTISED_SVC_NAME
       valueFrom:
@@ -144,7 +128,7 @@ spec:
           name: sentinel-advertised
           optional: true
           host: Required
-    - name: REDIS_SENTINEL_ADVERTISED_LB_HOST
+    - name: REDIS_SENTINE_LBL_ADVERTISED_HOST
       valueFrom:
         serviceVarRef:
           name: sentinel-lb-advertised
@@ -262,12 +246,12 @@ spec:
       lifecycle:
         postStart:
           exec:
-          command: [ "/scripts/redis6-sentinel-post-start.sh" ]
+            command: [ "/scripts/redis6-sentinel-post-start.sh" ]
 {{- else if ge .major "7" }}
       lifecycle:
         postStart:
           exec:
-          command: [ "/scripts/redis-sentinel-post-start.sh" ]
+            command: [ "/scripts/redis-sentinel-post-start.sh" ]
 {{- end }}
       livenessProbe:
         initialDelaySeconds: 10
