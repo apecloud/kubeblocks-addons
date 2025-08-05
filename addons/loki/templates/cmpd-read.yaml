@@ -51,6 +51,12 @@ spec:
           - -query-scheduler.use-scheduler-ring=false
           - -config.expand-env=true
           - -common.compactor-grpc-address=$(KB_CLUSTER_NAME)-backend.$(KB_NAMESPACE).svc.{{ .Values.global.clusterDomain }}:{{ .Values.server.grpcPort }}
+        env:
+          - name: KB_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
         ports:
           - containerPort: {{ .Values.server.httpMetricsPort }}
             name: http-metrics
