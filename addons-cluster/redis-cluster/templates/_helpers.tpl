@@ -145,6 +145,16 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   - name: HOST_NETWORK_ENABLED
     value: "true"
   {{- end }}
+  {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) (hasPrefix "5." .Values.version) }}
+  services:
+  - name: sentinel-lb-advertised
+    serviceType: LoadBalancer
+    podService: true
+    {{- include "kblib.loadBalancerAnnotations" . | indent 4 }}
+  env:
+  - name: LOAD_BALANCER_ENABLED
+    value: "true"
+  {{- end }}
   serviceVersion: {{ .Values.version }}
   {{- if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}
   systemAccounts:

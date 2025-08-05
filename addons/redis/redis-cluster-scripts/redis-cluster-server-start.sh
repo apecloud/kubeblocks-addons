@@ -729,17 +729,6 @@ parse_redis_cluster_announce_addr() {
     echo "Exiting due to error in REDIS_CLUSTER_ADVERTISED_PORT."
     exit 1
   fi
-  redis_announce_port_value="${svc_and_port#*:}"
-  svc_name=${svc_and_port%:*}
-  lb_host=$(extract_lb_host_by_svc_name "${svc_name}")
-  if [ -n "$lb_host" ]; then
-    echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
-    redis_announce_host_value="$lb_host"
-    redis_announce_port_value="6379"
-  else
-    redis_announce_host_value="$KB_HOST_IP"
-  fi
-
   if [[ -n "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}" ]]; then
     port=$(parse_advertised_svc_and_port "$pod_name" "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}" "true")
     if [[ $? -ne 0 ]] || [[ -z "$port" ]]; then
@@ -747,6 +736,17 @@ parse_redis_cluster_announce_addr() {
       exit 1
     fi
     redis_announce_bus_port_value="$port"
+  fi
+  redis_announce_port_value="${svc_and_port#*:}"
+  svc_name=${svc_and_port%:*}
+  lb_host=$(extract_lb_host_by_svc_name "${svc_name}")
+  if [ -n "$lb_host" ]; then
+    echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
+    redis_announce_host_value="$lb_host"
+    redis_announce_port_value="6379"
+    redis_announce_bus_port_value="16379"
+  else
+    redis_announce_host_value="$KB_HOST_IP"
   fi
 }
 
