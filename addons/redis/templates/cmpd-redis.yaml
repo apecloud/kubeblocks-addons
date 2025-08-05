@@ -307,6 +307,21 @@ spec:
       periodSeconds: 1
       timeoutSeconds: 1
       exec:
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: KB_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+          - name: KB_POD_FQDN
+            value: "$(CURRENT_POD_NAME).$(REDIS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
+          - name: KB_CLUSTER_COMP_NAME
+            value: $(REDIS_COMPONENT_NAME)
         container: redis
         command:
           - /tools/dbctl
@@ -348,7 +363,7 @@ spec:
           - sh
           - -c
         args:
-          - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
+          - "redis-cli -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -a $REDIS_DEFAULT_PASSWORD acl save "
     switchover:
       exec:
         container: redis
@@ -404,7 +419,7 @@ spec:
                 apiVersion: v1
                 fieldPath: status.hostIP
           - name: POD_FQDN
-            value: "$(CURRENT_POD_NAME).$(REDIS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ .clusterDomain }}"
+            value: "$(CURRENT_POD_NAME).$(REDIS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
         readinessProbe:
           initialDelaySeconds: 10
           periodSeconds: 5

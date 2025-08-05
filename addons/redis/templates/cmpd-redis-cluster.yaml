@@ -423,6 +423,23 @@ spec:
       timeoutSeconds: 1
       exec:
         container: redis-cluster
+        env:
+        - name: CURRENT_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: KB_HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: KB_POD_FQDN
+          value: "$(CURRENT_POD_NAME).$(CURRENT_SHARD_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
+        - name: KB_CLUSTER_COMP_NAME
+          value: $(CURRENT_SHARD_COMPONENT_NAME)
+        - name: REDIS_LB_ADVERTISED_HOST
+          value: $(CURRENT_SHARD_LB_ADVERTISED_HOST)
         command:
           - /tools/dbctl
           - --config-path
@@ -530,7 +547,7 @@ spec:
                 apiVersion: v1
                 fieldPath: status.hostIP
           - name: POD_FQDN
-            value: "$(CURRENT_POD_NAME).$(REDIS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ .clusterDomain }}"
+            value: "$(CURRENT_POD_NAME).$(CURRENT_SHARD_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
         command: [ "/scripts/{{ $redisClusterStartScripts }}" ]
         readinessProbe:
           initialDelaySeconds: 10

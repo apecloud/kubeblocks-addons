@@ -241,7 +241,7 @@ spec:
         - -c
         - |
           set -e
-          /scripts/redis-sentinel-start-v2.sh
+          /scripts/{{ $redisSentinelStartScripts }}
 {{- if eq .major "6" }}
       lifecycle:
         postStart:

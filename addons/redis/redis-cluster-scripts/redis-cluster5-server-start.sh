@@ -525,19 +525,16 @@ build_cluster_announce_info() {
       echo "cluster-announce-ip $redis_announce_host_value"
       echo "cluster-announce-port $redis_announce_port_value"
       echo "cluster-announce-bus-port $redis_announce_bus_port_value"
-      echo "cluster-preferred-endpoint-type ip"
     } >> $redis_real_conf
   elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
     echo "redis cluster use fixed pod ip: $CURRENT_POD_IP to announce"
     {
       echo "cluster-announce-ip $CURRENT_POD_IP"
-      echo "cluster-preferred-endpoint-type ip"
     } >> $redis_real_conf
   else
     echo "redis cluster use pod ip $CURRENT_POD_IP to announce"
     {
       echo "cluster-announce-ip $CURRENT_POD_IP"
-      echo "cluster-preferred-endpoint-type ip"
     } >> $redis_real_conf
   fi
 }
