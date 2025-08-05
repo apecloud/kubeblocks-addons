@@ -35,6 +35,7 @@ spec:
         - name: querynode
           compDef: milvus-querynode
     # with dependencies (etcd/kafka) included
+    # it is broken for now
     - name: cluster-with-dep
       components:
         - name: etcd
