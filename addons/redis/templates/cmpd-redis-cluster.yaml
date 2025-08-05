@@ -452,7 +452,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-cluster-manage.sh --post-provision  > /tmp/post-provision.log 2>&1
+          - /scripts/{{ $redisClusterManageScripts }} --post-provision  > /tmp/post-provision.log 2>&1
         ## all lifecycle actions share the same env
         env:
           - name: CURRENT_POD_NAME
@@ -479,7 +479,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-cluster-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
+          - /scripts/{{ $redisClusterManageScripts }} --pre-terminate > /tmp/pre-terminate.log 2>&1
       retryPolicy:
         maxRetries: 10
     memberLeave:
@@ -497,7 +497,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-cluster-switchover.sh  > /tmp/switchover.log 2>&1
+          - /scripts/{{ $redisClusterSwitchoverScripts }}  > /tmp/switchover.log 2>&1
   runtime:
     initContainers:
       - name: init-dbctl

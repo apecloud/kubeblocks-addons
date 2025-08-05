@@ -25,8 +25,6 @@ service_port=6379
 cluster_bus_port=16379
 redis_template_conf="/etc/conf/redis.conf"
 redis_real_conf="/etc/redis/redis.conf"
-redis_acl_file="/data/users.acl"
-redis_acl_file_bak="/data/users.acl.bak"
 retry_times=3
 check_ready_times=30
 retry_delay_second=2
@@ -487,7 +485,8 @@ build_redis_default_accounts() {
   unset_xtrace_when_ut_mode_false
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     echo "protected-mode yes" >> $redis_real_conf
-    echo "requirepass $REDIS_DEFAULT_PASSWORD" >> $redis_acl_file
+    echo "requirepass $REDIS_DEFAULT_PASSWORD" >> $redis_real_conf
+    echo "masterauth $REDIS_DEFAULT_PASSWORD" >> $redis_real_conf
   else
     echo "protected-mode no" >> $redis_real_conf
   fi
