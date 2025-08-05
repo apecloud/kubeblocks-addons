@@ -67,6 +67,10 @@ hostNetworkEnabled: false
 ## This option is mutually exclusive with nodePortEnabled, hostNetworkEnabled and loadBalancerEnabled. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled, loadBalancerEnabled are false, the default announce IP will be a headless service.
 fixedPodIPEnabled: false
 
+## @param loadBalancerEnabled if true, the redis announce IP will use loadBalancer ip/hostname
+## This option is mutually exclusive with fixedPodIPEnabled, nodePortEnabled and hostNetworkEnabled. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled, loadBalancerEnabled are false, the default announce IP will be a headless service.
+loadBalancerEnabled: false
+
 ## @param podAntiAffinityEnabled if true, the redis will add podAntiAffinity
 podAntiAffinityEnabled: false
 

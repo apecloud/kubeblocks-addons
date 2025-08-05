@@ -34,7 +34,7 @@ redis_sentinel_real_conf_bak="/data/sentinel/redis-sentinel.conf.bak"
 
 extract_lb_host_by_svc_name() {
   local svc_name="$1"
-  for lb_composed_name in $(echo "$REDIS_SENTINE_LBL_ADVERTISED_HOST" | tr ',' '\n' ); do
+  for lb_composed_name in $(echo "$REDIS_SENTINEL_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
     if [[ ${lb_composed_name} == *":"* ]]; then
        if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
          echo "${lb_composed_name#*:}"

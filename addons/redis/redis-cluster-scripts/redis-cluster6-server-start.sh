@@ -42,7 +42,7 @@ init_environment(){
     CURRENT_SHARD_ADVERTISED_PORT="${CURRENT_SHARD_LB_ADVERTISED_PORT}"
   fi
   if [[ -z "${CURRENT_SHARD_ADVERTISED_BUS_PORT}" ]]; then
-    CURRENT_SHARD_ADVERTISED_BUS_PORT="${REDIS_CLUSTER_LB_ADVERTISED_BUS_PORT}"
+    CURRENT_SHARD_ADVERTISED_BUS_PORT="${CURRENT_SHARD_LB_ADVERTISED_BUS_PORT}"
   fi
 }
 
@@ -595,16 +595,18 @@ parse_redis_cluster_shard_announce_addr() {
     echo "Exiting due to error in CURRENT_SHARD_ADVERTISED_BUS_PORT."
     exit 1
   fi
+  redis_announce_bus_port_value="$bus_port"
   redis_announce_port_value="${svc_and_port#*:}"
   svc_name=${svc_and_port%:*}
   lb_host=$(extract_lb_host_by_svc_name "${svc_name}")
   if [ -n "$lb_host" ]; then
     echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
     redis_announce_host_value="$lb_host"
+    redis_announce_port_value="6379"
+    redis_announce_bus_port_value="16379"
   else
     redis_announce_host_value="$CURRENT_POD_HOST_IP"
   fi
-  redis_announce_bus_port_value="$bus_port"
 }
 
 start_redis_server() {

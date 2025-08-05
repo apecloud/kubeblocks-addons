@@ -128,7 +128,7 @@ spec:
           name: sentinel-advertised
           optional: true
           host: Required
-    - name: REDIS_SENTINE_LBL_ADVERTISED_HOST
+    - name: REDIS_SENTINEL_LB_ADVERTISED_HOST
       valueFrom:
         serviceVarRef:
           name: sentinel-lb-advertised

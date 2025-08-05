@@ -29,6 +29,20 @@ redis_acl_file_bak="/data/users.acl.bak"
 retry_times=3
 retry_delay_second=2
 
+extract_lb_host_by_svc_name() {
+  local svc_name="$1"
+  for lb_composed_name in $(echo "$REDIS_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
+    if [[ ${lb_composed_name} == *":"* ]]; then
+       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
+         echo "${lb_composed_name#*:}"
+         break
+       fi
+    else
+       break
+    fi
+  done
+}
+
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
   common_library_file="/scripts/common.sh"
@@ -257,6 +271,9 @@ start_redis_server() {
 
 # TODO: if instanceTemplate is specified, the pod service could not be parsed from the pod ordinal.
 parse_redis_announce_addr() {
+  if is_empty "$REDIS_ADVERTISED_PORT"; then
+     REDIS_ADVERTISED_PORT="$REDIS_LB_ADVERTISED_PORT"
+  fi
   # try to get the announce ip and port from REDIS_ADVERTISED_PORT(support NodePort currently) first
   if is_empty "${REDIS_ADVERTISED_PORT}"; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
@@ -282,7 +299,14 @@ parse_redis_announce_addr() {
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
       redis_announce_port_value="$port"
-      redis_announce_host_value="$CURRENT_POD_HOST_IP"
+      lb_host=$(extract_lb_host_by_svc_name "$svc_name")
+      if [ -n "$lb_host" ]; then
+        echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
+        redis_announce_host_value="$lb_host"
+        redis_announce_port_value="6379"
+      else
+        redis_announce_host_value="$CURRENT_POD_HOST_IP"
+      fi
       found=true
       break
     fi

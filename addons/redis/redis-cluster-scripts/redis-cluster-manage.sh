@@ -37,7 +37,7 @@ init_environment(){
     CURRENT_SHARD_ADVERTISED_PORT="${CURRENT_SHARD_LB_ADVERTISED_PORT}"
   fi
   if [[ -z "${CURRENT_SHARD_ADVERTISED_BUS_PORT}" ]]; then
-    CURRENT_SHARD_ADVERTISED_BUS_PORT="${REDIS_CLUSTER_LB_ADVERTISED_BUS_PORT}"
+    CURRENT_SHARD_ADVERTISED_BUS_PORT="${CURRENT_SHARD_LB_ADVERTISED_BUS_PORT}"
   fi
   if [[ -z "${ALL_SHARDS_ADVERTISED_PORT}" ]]; then
     ALL_SHARDS_ADVERTISED_PORT="${ALL_SHARDS_LB_ADVERTISED_PORT}"
@@ -181,7 +181,7 @@ extract_pod_name_prefix() {
 
 extract_lb_host_by_svc_name() {
   local svc_name="$1"
-  for lb_composed_name in $(echo "$CURRENT_SHARD_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
+  for lb_composed_name in $(echo "$ALL_SHARDS_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
     lb_composed_name=${lb_composed_name#*@}
     if [[ ${lb_composed_name} == *":"* ]]; then
        if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
@@ -347,6 +347,7 @@ init_current_comp_default_nodes_for_scale_out() {
         if ! is_empty "$lb_host"; then
             echo "Found load balancer host for svcName '$advertised_svc', value is '$lb_host'."
             pod_host_ip="$lb_host"
+            advertised_port="6379"
         else
             pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST")
         fi
@@ -535,6 +536,7 @@ gen_initialize_redis_cluster_node() {
           if [ -n "$lb_host" ]; then
             echo "Found load balancer host for svcName '$shard_advertised_svc', value is '$lb_host'."
             pod_host_ip="$lb_host"
+            shard_advertised_port="6379"
           fi
           categorize_node_maps "$pod_name" "$pod_host_ip" "$shard_advertised_port" "$is_primary"
           return 0
