@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rocketmq-broker4.configurationTemplate" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+data:
+  broker.conf: |-
+    {{- .Files.Get "configs/rocketmq4-broker-config.tpl" | nindent 4 }}
+  logback_broker.xml: |-
+    {{- .Files.Get "configs/logback_broker.xml" | nindent 4 }}
+  logback_tools.xml: |-
+    {{- .Files.Get "configs/logback_tools.xml" | nindent 4 }}
+  plain_acl.yml: |-
+    {{- .Files.Get "configs/plain_acl.yml" | nindent 4 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rocketmq.jxm-exporter.configurationTemplate" . }}
+data:
+  jmx-rocketmq-prometheus.yml: |-
+    jmxUrl: service:jmx:rmi:///jndi/rmi://127.0.0.1:{{ .Values.broker.jxmPort }}/jmxrmi
+    lowercaseOutputLabelNames: true
+    lowercaseOutputName: true
+    whitelistObjectNames: [ "java.lang:type=OperatingSystem" ]
+    blacklistObjectNames: [ ]
+    rules:
+    - pattern: 'java.lang<type=Memory><HeapMemoryUsage>(\w+)'
+      name: jvm_memory_heap_$1
+      type: GAUGE
+    - pattern: 'java.lang<type=Memory><NonHeapMemoryUsage>(\w+)'
+      name: jvm_memory_nonheap_$1
+      type: GAUGE
+    - pattern: 'java.lang<type=MemoryPool, name=(\w+)><>Usage'
+      name: jvm_memory_pool_usage
+      labels:
+        pool: "$1"
+      type: GAUGE
+    - pattern: 'java.lang<type=GarbageCollector, name=(.+)><>LastGcInfo(\w+)'
+      name: jvm_gc_last_info_$2
+      labels:
+        gc: "$1"
+      type: GAUGE
+    - pattern: 'java.lang<type=OperatingSystem><>(\w+)'
+      name: system_$1
+      type: GAUGE
+    - pattern: 'java.lang<type=GarbageCollector, name=(.+)><>(\w+Time)'
+      name: jvm_gc_$2
+      labels:
+        gc: "$1"
+      type: COUNTER
+    - pattern: 'java.lang<type=Threading><>(\w+)ThreadCount'
+      name: jvm_threads_$1_count
+      type: GAUGE
+    - pattern: 'java.lang<type=Threading><>PeakThreadCount'
+      name: jvm_threads_peak_count
+      type: GAUGE
+    - pattern: 'java.lang<type=Threading><>TotalStartedThreadCount'
+      name: jvm_threads_total_started_count
+      type: COUNTER
+    - pattern: 'java.nio<type=BufferPool, name=(\w+)><>(\w+)'
+      name: jvm_buffer_pool_$2
+      labels:
+        pool: "$1"
+      type: GAUGE
+    - pattern: 'java.lang<type=OperatingSystem><>(\w+)FileDescriptorCount'
+      name: system_file_descriptor_$1
+      type: GAUGE
+    - pattern: 'java.nio<type=BufferPool, name=direct><>(\w+)'
+      name: jvm_direct_memory_$1
+      type: GAUGE

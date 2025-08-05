@@ -1,0 +1,18 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: rocketmq-dashboard
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+spec:
+  releases:
+    - name: rocketmq-dashboard-2.0.1
+      serviceVersion: 2.0.1
+      images:
+        rocketmq-dashboard: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dashboard.repository }}:{{ .Values.image.dashboard.tag }}
+
+  compatibilityRules:
+    - releases:
+        - rocketmq-dashboard-2.0.1
+      compDefs:
+        - {{ include "rocketmq.compDefRocketMQDashboard" . }}

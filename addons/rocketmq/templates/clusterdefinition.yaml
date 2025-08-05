@@ -1,0 +1,34 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: {{ include "rocketmq.name" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+spec:
+  topologies:
+    - name: master-slave
+      components:
+        - name: rocketmq-namesrv
+          compDef: {{ include "rocketmq.compDefRocketMQNameSrv4" . }}
+        - name: rocketmq-broker
+          compDef: {{ include "rocketmq.compDefRocketMQBroker4" . }}
+        - name: exporter
+          compDef: {{ include "rocketmq.compDefRocketMQExporter" . }}
+        - name: dashboard
+          compDef: {{ include "rocketmq.compDefRocketMQDashboard" . }}
+      orders:
+        provision:
+          - rocketmq-namesrv
+          - rocketmq-broker
+          - exporter
+          - dashboard
+        terminate:
+          - dashboard
+          - exporter
+          - rocketmq-broker
+          - rocketmq-namesrv
+        update:
+          - rocketmq-namesrv
+          - rocketmq-broker
+          - exporter
+          - dashboard
