@@ -1,0 +1,64 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "dmdb-cluster.name" . }}
+  labels: {{ include "dmdb-cluster.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: dmdb
+  clusterVersionRef: dmdb-0.1.0
+  terminationPolicy: Delete
+  {{- if .Values.nodePortEnabled }}
+  services:
+    - name: dmdb
+      serviceName: dmdb
+      componentSelector: dmdb
+      spec:
+        type: NodePort
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies: ["IPv4","IPv6"]
+        ports:
+          - name: tcp-dmdb
+            protocol: TCP
+            port: 5236
+          - name: tcp-dmap
+            protocol: TCP
+            port: 4236
+  {{- end }}
+  {{- with $.Values.affinity }}
+  affinity: {{ . | toYaml | nindent 4 }}
+  {{- end }}
+  {{- with $.Values.tolerations }}
+  tolerations: {{ . | toYaml | nindent 4 }}
+  {{- end }}
+  componentSpecs:
+    - name: dmdb
+      componentDefRef: dmdb
+      replicas: {{ .Values.replicas }}
+      {{- with  .Values.resources }}
+      env:
+        - name: LD_LIBRARY_PATH
+          value: /opt/dmdbms/bin
+        # It's wierd that the db cannot startup if we mount secret to SYSDBA_PWD, but we could specify the values directly
+        # - name: SYSDBA_PWD
+        #   value: "ChangeIt"
+      resources:
+        {{- with .limits }}
+        limits:
+          cpu: {{ .cpu | quote }}
+          memory: {{ .memory | quote }}
+        {{- end }}
+        {{- with .requests }}
+        requests:
+          cpu: {{ .cpu | quote }}
+          memory: {{ .memory | quote }}
+        {{- end }}
+      {{- end }}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: {{ .Values.storageClassName | default "" | quote }}
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ .Values.dataStorage | quote }}
