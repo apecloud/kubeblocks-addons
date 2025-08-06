@@ -168,9 +168,10 @@ check_redis_server_ready() {
   fi
 }
 
-parse_advertised_port() {
+parse_advertised_svc_and_port() {
   local pod_name="$1"
   local advertised_ports="$2"
+  local svc_and_port="$3"
   local pod_name_ordinal
   local found=false
 
@@ -184,7 +185,11 @@ parse_advertised_port() {
 
     svc_name_ordinal=$(extract_obj_ordinal "$svc_name")
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
-      echo "$port"
+      if [[ "${svc_and_port}" == "true" ]]; then
+         echo "$svc_name:$port"
+      else
+         echo "$port"
+      fi
       found=true
       return 0
     fi
@@ -566,12 +571,19 @@ build_rebalance_to_zero_command() {
 build_del_node_command() {
   local available_node="$1"
   local node_to_del_cluster_id="$2"
+  local do_forget_node="$3"
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
     del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT"
+    if [[ "$do_forget_node" == "true" ]]; then
+      del_node_command="redis-cli -p $SERVICE_PORT --cluster call $available_node cluster forget $node_to_del_cluster_id"
+    fi
     logging_mask_del_node_command="$del_node_command"
   else
     del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
+    if [[ "$do_forget_node" == "true" ]]; then
+      del_node_command="redis-cli -p $SERVICE_PORT --cluster call $available_node cluster forget $node_to_del_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+    fi
     logging_mask_del_node_command="${del_node_command/$REDIS_DEFAULT_PASSWORD/********}"
   fi
   echo "del node command: $logging_mask_del_node_command" >&2
@@ -667,7 +679,8 @@ scale_in_shard_del_node() {
 secondary_member_leave_del_node() {
   local available_node="$1"
   local node_to_del_cluster_id="$2"
-  del_node_command=$(build_del_node_command "$available_node" "$node_to_del_cluster_id")
+  local do_forget_node="$3"
+  del_node_command=$(build_del_node_command "$available_node" "$node_to_del_cluster_id" "$do_forget_node")
   if ! $del_node_command; then
     echo "Failed to delete the node $available_node from the cluster when secondary_member_leave_del_node" >&2
     return 1
@@ -677,8 +690,8 @@ secondary_member_leave_del_node() {
 
 secondary_member_leave_del_node_with_retry() {
   local available_node="$1"
-  local node_to_del_cluster_id="$2"
-  check_result=$(call_func_with_retry $check_ready_times $retry_delay_second secondary_member_leave_del_node "$available_node" "$node_to_del_cluster_id")
+  local do_forget_node="$3"
+  check_result=$(call_func_with_retry $check_ready_times $retry_delay_second secondary_member_leave_del_node "$available_node" "$node_to_del_cluster_id" "$do_forget_node")
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to remove replica when member leave after retry" >&2

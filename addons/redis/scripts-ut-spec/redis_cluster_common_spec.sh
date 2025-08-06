@@ -102,15 +102,15 @@ Describe "Redis Cluster Common Bash Script Tests"
     End
   End
 
-  Describe "parse_advertised_port()"
+  Describe "parse_advertised_svc_and_port()"
     It "parses advertised port from pod name and advertised ports"
-      When call parse_advertised_port "redis-shard-98x-0" "redis-shard-98x-advertised-0:6379,redis-shard-98x-advertised-1:6380"
+      When call parse_advertised_svc_and_port "redis-shard-98x-0" "redis-shard-98x-advertised-0:6379,redis-shard-98x-advertised-1:6380"
       The status should be success
       The output should eq "6379"
     End
 
     It "returns 1 when advertised port not found"
-      When call parse_advertised_port "redis-shard-98x-2" "redis-shard-98x-advertised-0:6379,redis-shard-98x-advertised-1:6380"
+      When call parse_advertised_svc_and_port "redis-shard-98x-2" "redis-shard-98x-advertised-0:6379,redis-shard-98x-advertised-1:6380"
       The status should be failure
     End
   End

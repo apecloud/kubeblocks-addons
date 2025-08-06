@@ -84,8 +84,9 @@ cluster-replica-validity-factor 0
 cluster-require-full-coverage yes
 cluster-allow-reads-when-down no
 
+maxmemory-policy volatile-lru
 # maxmemory <bytes>
 {{- $request_memory := default 0 $.PHY_MEMORY | int }}
 {{- if gt $request_memory 0 }}
-maxmemory {{ $request_memory }}
+maxmemory {{ mulf $request_memory 0.8 | int }}
 {{- end }}

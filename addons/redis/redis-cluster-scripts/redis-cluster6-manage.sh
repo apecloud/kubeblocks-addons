@@ -47,6 +47,21 @@ init_environment(){
   fi
 }
 
+extract_lb_host_by_svc_name() {
+  local svc_name="$1"
+  for lb_composed_name in $(echo "$ALL_SHARDS_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
+    lb_composed_name=${lb_composed_name#*@}
+    if [[ ${lb_composed_name} == *":"* ]]; then
+       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
+         echo "${lb_composed_name#*:}"
+         break
+       fi
+    else
+       break
+    fi
+  done
+}
+
 load_redis_cluster_common_utils() {
   # the common.sh and redis-cluster-common.sh scripts are defined in the redis-cluster-scripts-template configmap
   # and are mounted to the same path which defined in the cmpd.spec.scripts
@@ -135,9 +150,7 @@ init_other_components_and_pods_info() {
     service_port=$(get_pod_service_port_by_network_mode "${pod_names[$index]}")
 
     # TODO: resolve the pod fqdn from the Vars
-    pod_name_prefix=$(extract_pod_name_prefix "${pod_names[$index]}")
-    pod_fqdn="${pod_names[$index]}.$pod_name_prefix-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN"
-    other_undeleted_component_nodes+=("$pod_fqdn:$service_port")
+    other_undeleted_component_nodes+=("${pod_ips[$index]}:$service_port")
   done
 
   echo "other_components: ${other_components[*]}"
@@ -179,21 +192,6 @@ extract_pod_name_prefix() {
   echo "$prefix"
 }
 
-extract_lb_host_by_svc_name() {
-  local svc_name="$1"
-  for lb_composed_name in $(echo "$ALL_SHARDS_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
-    lb_composed_name=${lb_composed_name#*@}
-    if [[ ${lb_composed_name} == *":"* ]]; then
-       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
-         echo "${lb_composed_name#*:}"
-         break
-       fi
-    else
-       break
-    fi
-  done
-}
-
 # get the current component primary node and other nodes for scale in
 get_current_comp_nodes_for_scale_in() {
 
@@ -214,21 +212,16 @@ get_current_comp_nodes_for_scale_in() {
     local node_port
     node_port=$(echo "$node_ip_port" | cut -d':' -f2)
 
-    local node_fqdn
-    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc
-    node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
-
     local node_role
     node_role=$(echo "$line" | awk '{print $3}')
 
-    echo "$node_ip $node_port $node_fqdn $node_role"
+    echo "$node_ip $node_port $node_role"
   }
 
   get_node_address_by_network_mode() {
     local network_mode="$1"
     local node_ip="$2"
     local node_port="$3"
-    local node_fqdn="$4"
 
     case "$network_mode" in
       "advertised_svc")
@@ -239,17 +232,17 @@ get_current_comp_nodes_for_scale_in() {
         ;;
       *)
         # shellcheck disable=SC2153
-        echo "$node_fqdn:$SERVICE_PORT"
+        echo "$node_ip:$SERVICE_PORT"
         ;;
     esac
   }
 
   categorize_node() {
     local node_address="$1"
-    local node_fqdn="$2"
-    local node_role="$3"
+    local node_role="$2"
+    local belong_current_comp="$3"
 
-    if [[ "$node_fqdn" =~ "$CURRENT_SHARD_COMPONENT_NAME"* ]]; then
+    if [[ "$belong_current_comp" == "true"* ]]; then
       if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
         current_comp_primary_node+=("$node_address")
       else
@@ -280,25 +273,44 @@ get_current_comp_nodes_for_scale_in() {
   local network_mode="default"
   if ! is_empty "$CURRENT_SHARD_ADVERTISED_PORT"; then
     network_mode="advertised_svc"
+    IFS=',' read -ra ADDR <<< "$CURRENT_SHARD_ADVERTISED_PORT"
+    for i in "${ADDR[@]}"; do
+      port=$(echo $i | cut -d':' -f2)
+      advertised_ports[$port]=1
+    done
   elif ! is_empty "$REDIS_CLUSTER_HOST_NETWORK_PORT"; then
     network_mode="host_network"
   fi
 
+  IFS=',' read -ra CURRENT_POD_IP_LIST <<< "$KB_CLUSTER_COMPONENT_POD_IP_LIST"
   # the output of line is like:
   # 1. using the pod fqdn as the nodeAddr
-  # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+  # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379 master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
   # 2. using the nodeport or lb ip as the nodeAddr
-  # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@31888,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+  # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@31888 master master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
   # 3. using the host network ip as the nodeAddr
-  # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:1050@1051,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+  # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:1050@1051 master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
   while read -r line; do
     local node_info
     node_info=$(parse_node_line_info "$line")
-    read -r node_ip node_port node_fqdn node_role <<< "$node_info"
+    read -r node_ip node_port node_role <<< "$node_info"
+
+    belong_current_comp=false
+    if [[ "$network_mode" == "advertised_svc" ]]; then
+      if [[ ${advertised_ports[$node_port]+_} ]]; then
+        belong_current_comp=true
+      fi
+    else
+      for i in "${CURRENT_POD_IP_LIST[@]}"; do
+        if [[ "$i" = "$node_ip" ]]; then
+          belong_current_comp=true
+        fi
+      done
+    fi
 
     local node_address
-    node_address=$(get_node_address_by_network_mode "$network_mode" "$node_ip" "$node_port" "$node_fqdn")
-    categorize_node "$node_address" "$node_fqdn" "$node_role"
+    node_address=$(get_node_address_by_network_mode "$network_mode" "$node_ip" "$node_port")
+    categorize_node "$node_address" "$node_role" "$belong_current_comp"
   done <<< "$cluster_nodes_info"
 
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"
@@ -394,13 +406,13 @@ init_current_comp_default_nodes_for_scale_out() {
     local pod_fqdn
     local port="$SERVICE_PORT"
 
-    pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$pod_name")
-    if is_empty "$pod_fqdn"; then
-      echo "Error: Failed to get pod $pod_name fqdn from list: $CURRENT_SHARD_POD_FQDN_LIST" >&2
+    pod_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_IP_LIST")
+    if is_empty "$pod_ip"; then
+      echo "Error: Failed to get pod ip for pod $pod_name: $KB_CLUSTER_COMPONENT_POD_IP_LIST " >&2
       return 1
     fi
 
-    categorize_scale_out_node_map "$pod_name" "$pod_fqdn:$port" "$pod_name_ordinal"
+    categorize_scale_out_node_map "$pod_name" "$pod_ip:$port" "$pod_name_ordinal"
     return 0
   }
 
@@ -578,29 +590,13 @@ gen_initialize_redis_cluster_node() {
       return 1
     }
 
-    local all_shard_pod_fqdns
-    all_shard_pod_fqdns=$(get_all_shards_pod_fqdns) || {
-      echo "Failed to get all shard pod FQDNs" >&2
+    local pod_ip
+    pod_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_IP_LIST") || {
+      echo "Failed to get pod IP for pod: $pod_name" >&2
       return 1
     }
 
-    if is_empty "$all_shard_pod_fqdns"; then
-      echo "Failed to get all shard pod FQDNs" >&2
-      return 1
-    fi
-
-    local pod_fqdn
-    pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$all_shard_pod_fqdns" "$pod_name") || {
-      echo "Failed to get FQDN for pod: $pod_name" >&2
-      return 1
-    }
-
-    if is_empty "$pod_fqdn"; then
-      echo "Failed to get pod $pod_name fqdn from list: $all_shard_pod_fqdns" >&2
-      return 1
-    fi
-
-    categorize_node_maps "$pod_name" "$pod_fqdn" "$service_port" "$is_primary"
+    categorize_node_maps "$pod_name" "$pod_ip" "$service_port" "$is_primary"
     return 0
   }
 
@@ -746,12 +742,13 @@ initialize_redis_cluster() {
     sleep_when_ut_mode_false 5
 
     # verify secondary node is already in all primary nodes
-    if ! verify_secondary_in_all_primaries "$secondary_pod_name" "${primary_node_list[@]}"; then
-      echo "Failed to verify secondary node $secondary_pod_name in all primary nodes" >&2
+    secondary_pod_ip=$(echo "$secondary_endpoint_with_port" | cut -d':' -f1)
+    if ! verify_secondary_in_all_primaries "$secondary_pod_ip" "${primary_node_list[@]}"; then
+      echo "Failed to verify secondary node $secondary_pod_ip in all primary nodes" >&2
       all_secondaries_ready=false
       continue
     fi
-    echo "Secondary node $secondary_pod_name successfully joined the cluster and verified in all primaries"
+    echo "Secondary node $secondary_pod_ip successfully joined the cluster and verified in all primaries"
   done
 
   if [ "$all_secondaries_ready" = false ]; then
@@ -763,7 +760,7 @@ initialize_redis_cluster() {
 }
 
 verify_secondary_in_all_primaries() {
-  local secondary_pod_name="$1"
+  local secondary_pod_ip="$1"
   local primary_nodes=("$@")
   # Skip the first argument
   shift
@@ -772,13 +769,13 @@ verify_secondary_in_all_primaries() {
     primary_host=$(echo "$primary_node" | cut -d':' -f1)
     primary_port=$(echo "$primary_node" | cut -d':' -f2)
     retry_count=0
-    while ! check_node_in_cluster "$primary_host" "$primary_port" "$secondary_pod_name" && [ $retry_count -lt 30 ]; do
+    while ! check_node_in_cluster "$primary_host" "$primary_port" "$secondary_pod_ip" && [ $retry_count -lt 30 ]; do
       sleep_when_ut_mode_false 3
       ((retry_count++))
     done
     # shellcheck disable=SC2086
     if [ $retry_count -eq 30 ]; then
-      echo "Secondary node $secondary_pod_name not found in primary $primary_node after retry" >&2
+      echo "Secondary node $secondary_pod_ip not found in primary $primary_node after retry" >&2
       return 1
     fi
   done

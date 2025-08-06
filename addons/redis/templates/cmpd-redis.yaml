@@ -1,5 +1,8 @@
 {{- range .Values.redisVersions }}
 {{- $redisStartScripts := "redis-start.sh" }}
+{{- if eq .major "5" }}
+  {{- $redisStartScripts = "redis5-start.sh" }}
+{{- end }}
 ---
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
@@ -15,6 +18,7 @@ spec:
   serviceKind: redis
   serviceVersion: {{ .serviceVersion }}
   podManagementPolicy: OrderedReady
+  minReadySeconds: 10
   services:
     - name: redis
       serviceName: redis
@@ -29,6 +33,18 @@ spec:
       spec:
         ## the type can override in cluster componentSpec services, type can be NodePort, LoadBalancer(not support yet)
         type: NodePort
+        ports:
+          - name: redis-advertised
+            port: 6379
+            targetPort: redis
+      podService: true
+      disableAutoProvision: true
+    - name: redis-lb-advertised
+      serviceName: redis-lb-advertised
+      spec:
+        ## the type can override in cluster componentSpec services, type can loadBalancer
+        type: LoadBalancer
+        # allocateLoadBalancerNodePorts: false
         ports:
           - name: redis-advertised
             port: 6379
@@ -86,12 +102,17 @@ spec:
       - container: redis
         ports:
           - redis
+  {{- if $.Values.enableMetrics }}
       - container: metrics
         ports:
           - http-metrics
           - server-metrics
+  {{- end }}
   vars:
-  {{- if eq .major "8" }}
+  {{- if eq .major "5" }}
+    - name: IS_REDIS5
+      value: "true"
+  {{- else if eq .major "8" }}
     - name: IS_REDIS8
       value: "true"
   {{- end }}
@@ -100,6 +121,10 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:
@@ -139,12 +164,21 @@ spec:
           port:
             name: redis-advertised
             option: Required
-    ## the redis advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
-    - name: REDIS_ADVERTISED_SVC_NAME
+    - name: REDIS_LB_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          name: redis-advertised
+          name: redis-lb-advertised
           optional: true
+          port:
+            name: redis-advertised
+            option: Required
+    ## the redis advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
+    - name: REDIS_LB_ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          name: redis-lb-advertised
+          optional: true
+          loadBalancer: Required
           host: Required
     ## the redis pod name list for each pod, the value format is "pod1,pod2,..."
     - name: REDIS_POD_NAME_LIST
@@ -180,6 +214,7 @@ spec:
     ## the env of redis server port for dbctl to connect to redis server
     - name: DBCTL_REDIS_SERVICE_PORT
       value: $(SERVICE_PORT)
+  {{- if $.Values.enableMetrics }}
     ## the redis server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 9121
     - name: REDIS_METRICS_HOST_NETWORK_PORT
       valueFrom:
@@ -206,6 +241,7 @@ spec:
     - name: REDIS_METRICS_SERVER_PORT
       value: "8888"
       expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
+  {{- end }}
     ## the component name of redis sentinel when redis sentinel is enabled, it's the fullname of redis-sentinel component
     - name: SENTINEL_COMPONENT_NAME
       valueFrom:
@@ -222,6 +258,13 @@ spec:
           name: default
           optional: true
           username: Required
+    - name: SENTINEL_HEADLESS_SERVICE_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ .sentinelComponentDef }}
+          name: headless
+          optional: true
+          host: Optional
     ## the password of redis sentinel for redis connection, it is optional
     - name: SENTINEL_PASSWORD
       valueFrom:
@@ -264,6 +307,21 @@ spec:
       periodSeconds: 1
       timeoutSeconds: 1
       exec:
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: KB_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+          - name: KB_POD_FQDN
+            value: "$(CURRENT_POD_NAME).$(REDIS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
+          - name: KB_CLUSTER_COMP_NAME
+            value: $(REDIS_COMPONENT_NAME)
         container: redis
         command:
           - /tools/dbctl
@@ -305,7 +363,7 @@ spec:
           - sh
           - -c
         args:
-          - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
+          - "redis-cli -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -a $REDIS_DEFAULT_PASSWORD acl save "
     switchover:
       exec:
         container: redis
@@ -360,6 +418,8 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: status.hostIP
+          - name: POD_FQDN
+            value: "$(CURRENT_POD_NAME).$(REDIS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
         readinessProbe:
           initialDelaySeconds: 10
           periodSeconds: 5
@@ -378,6 +438,7 @@ spec:
                 - /bin/bash
                 - -c
                 - /scripts/redis-pre-stop.sh
+  {{- if $.Values.enableMetrics }}
       - name: metrics
         imagePullPolicy: {{ $.Values.metrics.image.pullPolicy | quote }}
         securityContext:
@@ -405,4 +466,5 @@ spec:
         volumeMounts:
           - name: redis-metrics-config
             mountPath: /opt/conf
+  {{- end }}
 {{- end }}

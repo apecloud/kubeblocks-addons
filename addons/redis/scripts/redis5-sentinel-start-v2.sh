@@ -21,17 +21,6 @@ test || __() {
   set -ex;
 }
 
-load_common_library() {
-  # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
-  common_library_file="/scripts/common.sh"
-  # shellcheck disable=SC1090
-  source "${common_library_file}"
-}
-
-redis_sentinel_conf_dir="/data/sentinel"
-redis_sentinel_real_conf="/data/sentinel/redis-sentinel.conf"
-redis_sentinel_real_conf_bak="/data/sentinel/redis-sentinel.conf.bak"
-
 extract_lb_host_by_svc_name() {
   local svc_name="$1"
   for lb_composed_name in $(echo "$REDIS_SENTINEL_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
@@ -45,6 +34,17 @@ extract_lb_host_by_svc_name() {
     fi
   done
 }
+
+load_common_library() {
+  # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
+  common_library_file="/scripts/common.sh"
+  # shellcheck disable=SC1090
+  source "${common_library_file}"
+}
+
+redis_sentinel_conf_dir="/data/sentinel"
+redis_sentinel_real_conf="/data/sentinel/redis-sentinel.conf"
+redis_sentinel_real_conf_bak="/data/sentinel/redis-sentinel.conf.bak"
 
 # TODO: if instanceTemplate is specified, the pod service could not be parsed from the pod ordinal.
 parse_redis_sentinel_announce_addr() {
@@ -94,14 +94,6 @@ parse_redis_sentinel_announce_addr() {
   fi
 }
 
-rebuild_redis_sentinel_acl_file() {
-  if [ -f /data/users.acl ]; then
-    sed -i "/user default on/d" /data/users.acl
-  else
-    touch /data/users.acl
-  fi
-}
-
 reset_redis_sentinel_conf() {
   echo "reset redis sentinel conf"
   sentinel_port=26379
@@ -112,22 +104,16 @@ reset_redis_sentinel_conf() {
   if [ -f $redis_sentinel_real_conf ]; then
     sed "/sentinel announce-ip/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
     sed "/sentinel announce-port/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-    sed "/sentinel resolve-hostnames/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-    sed "/sentinel announce-hostnames/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
     unset_xtrace_when_ut_mode_false
     if [ -n "$SENTINEL_PASSWORD" ]; then
-      sed "/sentinel sentinel-user/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-      sed "/sentinel sentinel-pass/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+      sed "/requirepass/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
     fi
     set_xtrace_when_ut_mode_false
     sed "/port $sentinel_port/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-    sed "/aclfile \/data\/users.acl/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-    # backward compatible for previous versions without ACL
-    sed "/user default on/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
   fi
 
   # hack for redis sentinel when nodeport is enabled, remove known-replica line which has the same nodeport port with master
-  if [ -f $redis_sentinel_real_conf ] && ! is_empty "$REDIS_SENTINEL_ADVERTISED_PORT"; then
+  if [ -f $redis_sentinel_real_conf ] && ! is_empty "$REDIS_SENTINEL_ADVERTISED_PORT" && ! is_empty "$REDIS_SENTINEL_ADVERTISED_SVC_NAME"; then
     temp_file=$(mktemp)
     grep "^sentinel monitor" $redis_sentinel_real_conf > "$temp_file"
     while read -r line; do
@@ -166,28 +152,20 @@ build_redis_sentinel_conf() {
     } >> $redis_sentinel_real_conf
   else
     # shellcheck disable=SC2153
-    current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$SENTINEL_POD_FQDN_LIST" "$CURRENT_POD_NAME")
-    if is_empty "$current_pod_fqdn"; then
-      echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from sentinel pod fqdn list: $SENTINEL_POD_FQDN_LIST. Exiting."
-      exit 1
-    fi
-    echo "redis sentinel use current pod fqdn: $current_pod_fqdn to announce"
+   echo "redis sentinel use the pod ip $CURRENT_POD_IP:$sentinel_port to announce"
     {
       echo "port $sentinel_port"
-      echo "sentinel announce-ip $current_pod_fqdn"
-      echo "sentinel resolve-hostnames yes"
-      echo "sentinel announce-hostnames yes"
+      echo "sentinel announce-ip $CURRENT_POD_IP"
+      echo "sentinel announce-port $sentinel_port"
     } >> $redis_sentinel_real_conf
   fi
   unset_xtrace_when_ut_mode_false
   if [ -n "$SENTINEL_PASSWORD" ]; then
     {
-      echo "sentinel sentinel-user $SENTINEL_USER"
-      echo "sentinel sentinel-pass $SENTINEL_PASSWORD"
+      echo "requirepass $SENTINEL_PASSWORD"
     } >> $redis_sentinel_real_conf
   fi
   set_xtrace_when_ut_mode_false
-  echo "aclfile /data/users.acl">> $redis_sentinel_real_conf
   echo "build redis sentinel conf succeeded!"
 }
 
@@ -207,7 +185,6 @@ ${__SOURCED__:+false} : || return 0
 # main
 load_common_library
 parse_redis_sentinel_announce_addr "$CURRENT_POD_NAME"
-rebuild_redis_sentinel_acl_file
 reset_redis_sentinel_conf
 build_redis_sentinel_conf
 start_redis_sentinel_server
