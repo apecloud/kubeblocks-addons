@@ -96,7 +96,7 @@ Define parameter config renderername
 */}}
 {{- define "mongodb.pcrName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mongodb-pcr
+mongodb-pcr-{{ .Chart.Version }}
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-pcr
 {{- end -}}
