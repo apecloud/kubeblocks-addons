@@ -598,7 +598,7 @@ parse_redis_cluster_shard_announce_addr() {
   local bus_port
   svc_and_port=$(parse_advertised_svc_and_port "$pod_name" "$CURRENT_SHARD_ADVERTISED_PORT" "true")
   status=$?
-  if [[ $status -ne 0 ]] || is_empty "$svc_and_port"; then
+  if [[ $status -ne 0 ]] || [[ "$svc_and_port" != *":"* ]]; then
     echo "Exiting due to error in CURRENT_SHARD_ADVERTISED_PORT."
     exit 1
   fi
