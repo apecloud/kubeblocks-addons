@@ -12,13 +12,23 @@ Define redis cluster shardingSpec with ComponentDefinition.
     {{- include "redis-cluster.shardingSchedulingPolicy" . | indent 2 }}
     {{- end }}
     {{- include "redis-cluster.exporter" . | indent 4 }}
-    {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled)  (not .Values.fixedPodIPEnabled) }}
+    {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled)  (not .Values.fixedPodIPEnabled) (not .Values.loadBalancerEnabled) }}
     services:
     - name: redis-advertised
       serviceType: NodePort
       podService: true
     {{- end }}
-    {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+    {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) }}
+    services:
+    - name: redis-lb-advertised
+      serviceType: LoadBalancer
+      podService: true
+      {{- include "kblib.loadBalancerAnnotations" . | indent 4 }}
+    env:
+    - name: LOAD_BALANCER_ENABLED
+      value: "true"
+    {{- end }}
+    {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled) }}
     env:
       - name: FIXED_POD_IP_ENABLED
         value: "true"
@@ -65,19 +75,30 @@ Define redis ComponentSpec with ComponentDefinition.
   {{- if .Values.podAntiAffinityEnabled }}
   {{- include "redis-cluster.schedulingPolicy" . | indent 2 }}
   {{- end }}
-  {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) (not .Values.fixedPodIPEnabled) }}
+  {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) (not .Values.fixedPodIPEnabled) (not .Values.loadBalancerEnabled)}}
   services:
   - name: redis-advertised
     serviceType: NodePort
     podService: true
+  {{- end }}
+  {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) }}
+  services:
+  - name: redis-lb-advertised
+    serviceType: LoadBalancer
+    podService: true
+    {{- include "kblib.loadBalancerAnnotations" . | indent 4 }}
   {{- end }}
   env:
   {{- if .Values.sentinel.customMasterName }}
   - name: CUSTOM_SENTINEL_MASTER_NAME
     value: {{ .Values.sentinel.customMasterName }}
   {{- end }}
-  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled) }}
   - name: FIXED_POD_IP_ENABLED
+    value: "true"
+  {{- end }}
+  {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) }}
+  - name: LOAD_BALANCER_ENABLED
     value: "true"
   {{- end }}
   serviceVersion: {{ .Values.version }}
@@ -101,15 +122,25 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   {{- if .Values.podAntiAffinityEnabled }}
   {{- include "redis-cluster.sentinelschedulingPolicy" . | indent 2 }}
   {{- end }}
-  {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) (not .Values.fixedPodIPEnabled) }}
+  {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) (not .Values.fixedPodIPEnabled) (not .Values.loadBalancerEnabled)  }}
   services:
   - name: sentinel-advertised
     serviceType: NodePort
     podService: true
   {{- end }}
-  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled)  }}
   env:
   - name: FIXED_POD_IP_ENABLED
+    value: "true"
+  {{- end }}
+  {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) (hasPrefix "5." .Values.version) }}
+  services:
+  - name: sentinel-lb-advertised
+    serviceType: LoadBalancer
+    podService: true
+    {{- include "kblib.loadBalancerAnnotations" . | indent 4 }}
+  env:
+  - name: LOAD_BALANCER_ENABLED
     value: "true"
   {{- end }}
   serviceVersion: {{ .Values.version }}

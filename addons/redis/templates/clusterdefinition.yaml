@@ -50,3 +50,7 @@ spec:
           - redis-sentinel
           - redis-twemproxy
           - redis
+    - name: cluster
+      shardings:
+        - name: shard
+          shardingDef: redis-cluster

@@ -1,0 +1,46 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: redis-reset-master
+spec:
+  podInfoExtractors:
+    - name: reset-master
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: SENTINEL_PASSWORD
+          valueFrom:
+            envRef:
+              envName: SENTINEL_PASSWORD
+        - name: REDIS_COMPONENT_NAME
+          valueFrom:
+            envRef:
+              envName: REDIS_COMPONENT_NAME
+        - name: CLUSTER_NAMESPACE
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAMESPACE
+        - name: SENTINEL_HEADLESS_SERVICE_NAME
+          valueFrom:
+            envRef:
+              envName: SENTINEL_HEADLESS_SERVICE_NAME
+        - name: SENTINEL_POD_NAME_LIST
+          valueFrom:
+            envRef:
+              envName: SENTINEL_POD_NAME_LIST
+  actions:
+    - name: reset-master
+      workload:
+        type: Pod
+        podInfoExtractorName: reset-master
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: reset-master
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/reset-master.sh" | nindent 18 }}

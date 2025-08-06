@@ -30,6 +30,7 @@ Common annotations
 {{- define "redis.annotations" -}}
 {{ include "kblib.helm.resourcePolicy" . }}
 {{ include "redis.apiVersion" . }}
+apps.kubeblocks.io/skip-immutable-check: "true"
 {{- end }}
 
 {{/*
@@ -186,3 +187,7 @@ Generate scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{- define "apeDts.reshard.image" -}}
+{{ .Values.image.apeDts.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.apeDts.repository}}:{{ .Values.image.apeDts.reshardTag }}
+{{- end }}}

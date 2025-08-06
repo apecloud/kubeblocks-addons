@@ -97,7 +97,7 @@ Describe "Redis Cluster Replica Member Leave Bash Script Tests"
       It "returns 0 when cluster nodes info contains only one line or is empty"
         When call remove_replica_from_shard_if_need
         The status should be success
-        The output should include "Cluster nodes info contains only one line or is empty, returning..."
+        The output should include "Cluster nodes info contains only one line or is empty, returning.."
       End
     End
 

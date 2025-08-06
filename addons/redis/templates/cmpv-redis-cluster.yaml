@@ -19,7 +19,7 @@ spec:
   releases:
   {{- range .Values.redisVersions }}
   {{- $redisRepository := printf "%s/%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository }}
-  {{- if eq .major "8"}}
+  {{- if or (eq .major "8") (eq .major "5") }}
     {{- $redisRepository = printf "%s/%s" ( $.Values.ceImage.registry | default ( $.Values.image.registry | default "docker.io" ) )  $.Values.ceImage.repository }}
   {{- end }}
   {{- range .mirrorVersions }}

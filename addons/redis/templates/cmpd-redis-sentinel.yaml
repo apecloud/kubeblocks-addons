@@ -1,5 +1,8 @@
 {{- range .Values.redisVersions }}
 {{- $redisSentinelStartScripts := "redis-sentinel-start-v2.sh" }}
+{{- if eq .major "5" }}
+  {{- $redisSentinelStartScripts = "redis5-sentinel-start-v2.sh" }}
+{{- end }}
 ---
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
@@ -31,6 +34,17 @@ spec:
           - name: sentinel-advertised
             port: 26379
             targetPort: 26379
+      podService: true
+      disableAutoProvision: true
+    - name: sentinel-lb-advertised
+      serviceName: sentinel-lb-advertised
+      spec:
+        type: LoadBalancer
+        # allocateLoadBalancerNodePorts: false
+        ports:
+          - name: sentinel-advertised
+            port: 26379
+            targetPort: redis-sentinel
       podService: true
       disableAutoProvision: true
   updateStrategy: BestEffortParallel
@@ -68,6 +82,10 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
     ## the username of redis sentinel
     - name: SENTINEL_USER
       valueFrom:
@@ -110,6 +128,21 @@ spec:
           name: sentinel-advertised
           optional: true
           host: Required
+    - name: REDIS_SENTINEL_LB_ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          name: sentinel-lb-advertised
+          optional: true
+          loadBalancer: Required
+          host: Required
+    - name: REDIS_SENTINEL_LB_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          name: sentinel-lb-advertised
+          optional: true
+          port:
+            name: sentinel-advertised
+            option: Required
     ## the redis sentinel server host network port when using host network mode, the port will be allocated automatically by KubeBlocks
     - name: REDIS_SENTINEL_HOST_NETWORK_PORT
       valueFrom:
@@ -208,11 +241,18 @@ spec:
         - -c
         - |
           set -e
-          /scripts/redis-sentinel-start-v2.sh
+          /scripts/{{ $redisSentinelStartScripts }}
+{{- if eq .major "6" }}
+      lifecycle:
+        postStart:
+          exec:
+            command: [ "/scripts/redis6-sentinel-post-start.sh" ]
+{{- else if ge .major "7" }}
       lifecycle:
         postStart:
           exec:
             command: [ "/scripts/redis-sentinel-post-start.sh" ]
+{{- end }}
       livenessProbe:
         initialDelaySeconds: 10
         periodSeconds: 5
