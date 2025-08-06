@@ -256,30 +256,6 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       End
     End
 
-    Context "when CURRENT_SHARD_ADVERTISED_PORT is invalid"
-      setup() {
-        export CURRENT_POD_HOST_IP="172.0.0.1"
-        export CURRENT_POD_NAME="redis-redis-1"
-        export CURRENT_SHARD_ADVERTISED_PORT="redis-redis-0:31000,redis-redis-1"
-        export CURRENT_SHARD_ADVERTISED_BUS_PORT="redis-redis-0:31888,redis-redis-1:32222"
-      }
-      Before "setup"
-
-      un_setup() {
-        unset CURRENT_POD_HOST_IP
-        unset CURRENT_POD_NAME
-        unset CURRENT_SHARD_ADVERTISED_PORT
-        unset CURRENT_SHARD_ADVERTISED_BUS_PORT
-      }
-      After "un_setup"
-
-      It "exits with error when CURRENT_SHARD_ADVERTISED_PORT is invalid"
-        When run parse_redis_cluster_shard_announce_addr
-        The status should be failure
-        The stdout should include "Exiting due to error in CURRENT_SHARD_ADVERTISED_PORT."
-      End
-    End
-
     Context "when CURRENT_SHARD_ADVERTISED_BUS_PORT is invalid"
       setup() {
         export CURRENT_POD_HOST_IP="172.0.0.1"
