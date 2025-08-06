@@ -128,15 +128,15 @@ init_broker() {
         cp -f /kb-config/broker.conf "${DATA_DIR}"/broker.conf
         chmod +w "${DATA_DIR}"/broker.conf
 
-        index=$(echo "${KB_POD_NAME}" | awk -F'-' '{print $NF}')
+        index=$(echo "${MY_POD_NAME}" | awk -F'-' '{print $NF}')
         if [ "$ENABLE_DLEDGER" = "true" ]; then
-            printf "\ndLegerGroup=%s" "${KB_COMP_NAME}" >> "${DATA_DIR}"/broker.conf
+            printf "\ndLegerGroup=%s" "${MY_COMP_NAME}" >> "${DATA_DIR}"/broker.conf
             printf "\ndLegerSelfId=n%s" "${index}" >> "${DATA_DIR}"/broker.conf
-            replicas=$(eval echo "${KB_POD_LIST}" | tr ',' '\n')
+            replicas=$(eval echo "${MY_POD_LIST}" | tr ',' '\n')
             dLegerPeers=""
             for replica in ${replicas}; do
                 replica_index=$(echo "${replica}" | awk -F'-' '{print $NF}')
-                replica_host="n${replica_index}-${replica}.${KB_CLUSTER_COMP_NAME}-headless:${DLEDGER_PORT}"
+                replica_host="n${replica_index}-${replica}.${MY_CLUSTER_COMP_NAME}-headless:${DLEDGER_PORT}"
                 if [ -z "$dLegerPeers" ]; then
                     dLegerPeers=$replica_host
                 else
@@ -154,10 +154,10 @@ init_broker() {
         fi
     else
         if grep -q "brokerIP1" "${DATA_DIR}"/broker.conf; then
-            sed -i "s/brokerIP1=.*/brokerIP1=${KB_POD_IP}/" "${DATA_DIR}"/broker.conf
+            sed -i "s/brokerIP1=.*/brokerIP1=${MY_POD_IP}/" "${DATA_DIR}"/broker.conf
         fi
         if grep -q "brokerIP2" "${DATA_DIR}"/broker.conf; then
-            sed -i "s/brokerIP2=.*/brokerIP2=${KB_POD_IP}/" "${DATA_DIR}"/broker.conf
+            sed -i "s/brokerIP2=.*/brokerIP2=${MY_POD_IP}/" "${DATA_DIR}"/broker.conf
         fi
     fi
 }

@@ -34,5 +34,5 @@ maxMessageSize=5242880
 # stream
 # litePullMessageEnable=true
 
-brokerClusterName={{ .KB_CLUSTER_NAME }}
-brokerName={{ .KB_COMP_NAME }}
+brokerClusterName={{ .MY_CLUSTER_NAME }}
+brokerName={{ .MY_COMPONENT_NAME }}

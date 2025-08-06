@@ -91,6 +91,29 @@ spec:
       value: "{{ .Values.broker.port }}"
     - name: DLEDGER_PORT
       value: "{{ .Values.broker.dledgerPort }}"
+    - name: MY_CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: MY_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: MY_CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: MY_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: MY_POD_LIST
+      valueFrom:
+        componentVarRef:
+          optional: true
+          podNames: Optional
   runtime:
     securityContext:
       # uid=3000(rocketmq) gid=3000(rocketmq) groups=3000(rocketmq)
@@ -148,6 +171,16 @@ spec:
             value: {{ .Values.broker.dataMountPath }}
           - name: JMX_PORT
             value: "{{ .Values.broker.jxmPort }}"
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
       - name: jmx-exporter
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         securityContext:

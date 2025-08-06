@@ -45,5 +45,3 @@ broker:
 
 dashboard:
   dataPath: /configs
-
-clusterDomain: cluster.local

@@ -25,13 +25,11 @@ spec:
             port: 8080
             targetPort: console
   vars:
-    - name: NAMESRV_SVC_NAME
+    - name: NAMESRV_HOST
       valueFrom:
         serviceVarRef:
           compDef: {{ include "rocketmq.compDefRocketMQNameSrv4" . }}
           host: Required
-    - name: NAMESRV_HOST
-      value: $(NAMESRV_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}
     - name: NAMESRV_PORT
       value: "{{ .Values.nameserver.port }}"
     - name: CONFIG_PATH
