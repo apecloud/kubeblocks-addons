@@ -4,6 +4,8 @@ metadata:
   name: rocketmq-broker
   labels:
     {{- include "rocketmq.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rocketmq.apiVersion" . | nindent 4 }}
 spec:
   releases:
     - name: rocketmq-4.9.6

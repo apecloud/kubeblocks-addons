@@ -35,4 +35,4 @@ maxMessageSize=5242880
 # litePullMessageEnable=true
 
 brokerClusterName={{ .MY_CLUSTER_NAME }}
-brokerName={{ .MY_COMPONENT_NAME }}
+brokerName={{ .MY_COMP_NAME }}

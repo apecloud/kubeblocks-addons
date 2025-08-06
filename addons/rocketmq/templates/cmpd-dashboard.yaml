@@ -4,6 +4,8 @@ metadata:
   name: {{ include "rocketmq.compDefRocketMQDashboard" . }}
   labels:
     {{- include "rocketmq.labels" . | nindent 6 }}
+  annotations:
+    {{- include "rocketmq.annotations" . | nindent 4}}
 spec:
   provider: community
   serviceKind: {{ .Chart.Name }}-dashboard
@@ -13,7 +15,7 @@ spec:
   updateStrategy: BestEffortParallel
   scripts:
     - name: rocketmq-dashboard-scripts
-      templateRef: {{ include "rocketmq-dashboard.scriptsTemplate" . }}
+      template: {{ include "rocketmq-dashboard.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

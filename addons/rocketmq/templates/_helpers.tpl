@@ -13,6 +13,21 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
+API version annotation
+*/}}
+{{- define "rocketmq.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "rocketmq.annotations" -}}
+helm.sh/resource-policy: keep
+{{ include "rocketmq.apiVersion" . }}
+{{- end }}
+
+{{/*
 Selector labels
 */}}
 {{- define "rocketmq.selectorLabels" -}}
@@ -51,9 +66,9 @@ Define rocketmq broker 4.x component definition name
 */}}
 {{- define "rocketmq.compDefRocketMQBroker4" -}}
 {{- if eq (len .Values.componentDefinitionVersion.rocketMQ4) 0 -}}
-{{ include "rocketmq.name" . }}-broker-4
+{{ include "rocketmq.name" . }}-broker-4-{{ .Chart.Version }}
 {{- else -}}
-{{ include "rocketmq-broker.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.rocketMQ4 }}
+{{ include "rocketmq-broker.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.rocketMQ4 }}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
@@ -62,9 +77,9 @@ Define rocketmq nameserver 4.x component definition name
 */}}
 {{- define "rocketmq.compDefRocketMQNameSrv4" -}}
 {{- if eq (len .Values.componentDefinitionVersion.rocketMQ4) 0 -}}
-{{ include "rocketmq.name" . }}-namesrv-4
+{{ include "rocketmq.name" . }}-namesrv-4-{{ .Chart.Version }}
 {{- else -}}
-{{ include "rocketmq-namesrv.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.rocketMQ4 }}
+{{ include "rocketmq-namesrv.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.rocketMQ4 }}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
@@ -72,14 +87,14 @@ Define rocketmq nameserver 4.x component definition name
 Define rocketmq exporter component definition name
 */}}
 {{- define "rocketmq.compDefRocketMQExporter" -}}
-{{ include "rocketmq.name" . }}-exporter
+{{ include "rocketmq.name" . }}-exporter-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define rocketmq dashboard component definition name
 */}}
 {{- define "rocketmq.compDefRocketMQDashboard" -}}
-{{ include "rocketmq.name" . }}-dashboard
+{{ include "rocketmq.name" . }}-dashboard-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -106,8 +121,12 @@ rocketmq-jmx-configuration-tpl
 {{/*
 Define rocketmq broker 4 component config constraint name
 */}}
-{{- define "rocketmq-broker4.configConstraint" -}}
-rocketmq-broker4-cc
+{{- define "rocketmq-broker4.pdName" -}}
+rocketmq-broker4-pd
+{{- end -}}
+
+{{- define "rocketmq-broker4.prcName" -}}
+rocketmq-broker4-pcr
 {{- end -}}
 
 {{/*

@@ -7,8 +7,9 @@ metadata:
   annotations:
     {{- include "rocketmq-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
+  clusterDef: rocketmq
+  topology: master-slave
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: namesrv
       replicas: {{ .Values.namesrv.replicas }}
@@ -20,10 +21,14 @@ spec:
       replicas: {{ $.Values.monitor.replicas }}
       componentDef: rocketmq-exporter
       serviceVersion: 0.0.3
-      monitor: true
       env:
         - name: ROCKETMQ_VERSION
           value: {{ .Values.version }}
+        # add "rocketmq-cluster.extra-envs" in helpers.tpl
+        {{- range $key, $value := include "rocketmq-cluster.extra-envs" . | fromYaml }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
       {{- include "rocketmq-exporter.resources" . | nindent 6 }}
     {{- end }}
     {{- if .Values.dashboardEnable }}
@@ -31,9 +36,14 @@ spec:
       replicas: {{ $.Values.dashboard.replicas }}
       componentDef: rocketmq-dashboard
       serviceVersion: 2.0.1
+      env:
+        {{- range $key, $value := include "rocketmq-cluster.extra-envs" . | fromYaml }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
       {{- include "rocketmq-dashboard.resources" . | nindent 6 }}
     {{- end }}
-  shardingSpecs:
+  shardings:
     - name: broker
       shards: {{ .Values.broker.shardCount }}
       template:
@@ -41,6 +51,11 @@ spec:
         replicas: {{ .Values.broker.replicas }}
         componentDef: rocketmq-broker-4
         serviceVersion: {{ .Values.version }}
+        env:
+          {{- range $key, $value := include "rocketmq-cluster.extra-envs" . | fromYaml }}
+          - name: {{ $key }}
+            value: {{ $value | quote }}
+          {{- end }}
         systemAccounts:
           - name: rocketmq-admin
             passwordConfig:

@@ -4,6 +4,8 @@ metadata:
   name: rocketmq-exporter
   labels:
     {{- include "rocketmq.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rocketmq.apiVersion" . | nindent 4 }}
 spec:
   releases:
     - name: rocketmq-exporter-0.0.3

@@ -34,8 +34,6 @@ nameserver:
   logPath: /home/rocketmq/logs
 
 broker:
-  # BROKER_MEM sets the broker JVM, if set to "" then Xms = Xmx = max(min(1/2 ram, 1024MB), min(1/4 ram, 8GB))
-  # fixme: image has bug which get system memory from 'free' instead of cgroup.
   jvmMemory: ""
   dataMountPath: /home/rocketmq/store
   logPath: /home/rocketmq/logs

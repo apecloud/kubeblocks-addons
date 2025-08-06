@@ -4,28 +4,29 @@ metadata:
   name: {{ include "rocketmq.compDefRocketMQBroker4" . }}
   labels:
     {{- include "rocketmq.labels" . | nindent 6 }}
+  annotations:
+    {{- include "rocketmq.annotations" . | nindent 4}}
 spec:
   provider: community
   serviceKind: {{ .Chart.Name }}-broker
   description: RocketMQ Broker
   serviceVersion: 4.9.6
   minReadySeconds: 10
+  podManagementPolicy: Parallel
   configs:
     - name: rocketmq-broker-config
-      templateRef: {{ include "rocketmq-broker4.configurationTemplate" . }}
-      constraintRef: {{ include "rocketmq-broker4.configConstraint" . }}
-      keys:
-        - broker.conf
+      template: {{ include "rocketmq-broker4.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: rocketmq-broker-config
+      externalManaged: true
       defaultMode: 0555
     - name: {{ include "rocketmq.jxm-exporter.configurationTemplate" . }}
-      templateRef: {{ include "rocketmq.jxm-exporter.configurationTemplate" . }}
+      template: {{ include "rocketmq.jxm-exporter.configurationTemplate" . }}
       volumeName: jmx-config
       namespace: {{ .Release.Namespace }}
   scripts:
     - name: rocketmq-broker-scripts
-      templateRef: {{ include "rocketmq-broker4.scriptsTemplate" . }}
+      template: {{ include "rocketmq-broker4.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -38,18 +39,17 @@ spec:
       initialDelaySeconds: 10
       periodSeconds: 5
       timeoutSeconds: 3
-      builtinHandler: custom
-      customHandler:
+      exec:
         container: rocketmq-broker
-        exec:
-          command: [ "/scripts/get-role.sh" ]
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        command: [ "/scripts/get-role.sh" ]
   roles:
     - name: master
-      serviceable: true
-      writable: true
+      updatePriority: 2
+      participatesInQuorum: false
     - name: slave
-      serviceable: true
-      writable: false
+      updatePriority: 1
+      participatesInQuorum: false
   volumes:
     - name: data
   vars:
@@ -95,20 +95,16 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
-    - name: MY_COMPONENT_NAME
+    - name: MY_COMP_NAME
       valueFrom:
         componentVarRef:
           optional: false
           shortName: Required
-    - name: MY_CLUSTER_COMPONENT_NAME
+    - name: MY_CLUSTER_COMP_NAME
       valueFrom:
         componentVarRef:
           optional: false
           componentName: Required
-    - name: MY_NAMESPACE
-      valueFrom:
-        clusterVarRef:
-          namespace: Required
     - name: MY_POD_LIST
       valueFrom:
         componentVarRef:

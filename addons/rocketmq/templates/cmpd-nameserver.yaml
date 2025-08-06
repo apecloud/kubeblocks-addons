@@ -4,6 +4,8 @@ metadata:
   name: {{ include "rocketmq.compDefRocketMQNameSrv4" . }}
   labels:
     {{- include "rocketmq.labels" . | nindent 6 }}
+  annotations:
+    {{- include "rocketmq.annotations" . | nindent 4}}
 spec:
   provider: community
   serviceKind: {{ .Chart.Name }}-namesrv
@@ -12,38 +14,32 @@ spec:
   minReadySeconds: 10
   configs:
     - name: rocketmq-namesrv-config
-      templateRef: {{ include "rocketmq-namesrv4.configurationTemplate" . }}
-      keys:
-        - namesrv.p
+      template: {{ include "rocketmq-namesrv4.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: rocketmq-namesrv-config
       defaultMode: 0555
     - name: {{ include "rocketmq.jxm-exporter.configurationTemplate" . }}
-      templateRef: {{ include "rocketmq.jxm-exporter.configurationTemplate" . }}
+      template: {{ include "rocketmq.jxm-exporter.configurationTemplate" . }}
       volumeName: jmx-config
       namespace: {{ .Release.Namespace }}
   lifecycleActions:
     memberJoin:
-      builtinHandler: custom
-      customHandler:
-        exec:
-          command:
-            - bash
-            - -c
-            - |
-              /scripts/update-nameserver-addrs.sh
+      exec:
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/update-nameserver-addrs.sh
     memberLeave:
-      builtinHandler: custom
-      customHandler:
-        exec:
-          command:
-            - bash
-            - -c
-            - |
-              /scripts/update-nameserver-addrs.sh
+      exec:
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/update-nameserver-addrs.sh
   scripts:
     - name: rocketmq-namesrv-scripts
-      templateRef: {{ include "rocketmq-namesrv4.scriptsTemplate" . }}
+      template: {{ include "rocketmq-namesrv4.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

@@ -4,31 +4,34 @@ metadata:
   name: {{ include "rocketmq.name" . }}
   labels:
     {{- include "rocketmq.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rocketmq.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: master-slave
       components:
-        - name: rocketmq-namesrv
+        - name: namesrv
           compDef: {{ include "rocketmq.compDefRocketMQNameSrv4" . }}
-        - name: rocketmq-broker
-          compDef: {{ include "rocketmq.compDefRocketMQBroker4" . }}
         - name: exporter
           compDef: {{ include "rocketmq.compDefRocketMQExporter" . }}
         - name: dashboard
           compDef: {{ include "rocketmq.compDefRocketMQDashboard" . }}
+      shardings:
+        - name: broker
+          shardingDef: rocketmq-broker
       orders:
         provision:
-          - rocketmq-namesrv
-          - rocketmq-broker
+          - namesrv
+          - broker
           - exporter
           - dashboard
         terminate:
           - dashboard
           - exporter
-          - rocketmq-broker
-          - rocketmq-namesrv
+          - broker
+          - namesrv
         update:
-          - rocketmq-namesrv
-          - rocketmq-broker
+          - namesrv
+          - broker
           - exporter
           - dashboard

@@ -4,6 +4,8 @@ metadata:
   name: {{ include "rocketmq.compDefRocketMQExporter" . }}
   labels:
     {{- include "rocketmq.labels" . | nindent 6 }}
+  annotations:
+    {{- include "rocketmq.annotations" . | nindent 4}}
 spec:
   provider: community
   serviceKind: {{ .Chart.Name }}-exporter
@@ -13,7 +15,7 @@ spec:
   updateStrategy: BestEffortParallel
   scripts:
     - name: rocketmq-exporter-scripts
-      templateRef: {{ include "rocketmq-exporter.scriptsTemplate" . }}
+      template: {{ include "rocketmq-exporter.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
