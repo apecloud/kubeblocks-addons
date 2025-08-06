@@ -1,0 +1,38 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: mongodb-pitr
+  labels:
+    clusterdefinition.kubeblocks.io/name: mongodb
+spec:
+  backupType: Continuous
+  env:
+    - name: ARCHIVE_AFTER_SIZE
+      value: "20971520"
+  backup:
+    backupData:
+      image: {{ .Values.image.registry | default .Values.image.registry }}/{{ .Values.image.walg.repository }}:{{ .Values.image.walg.tag }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        #!/bin/bash
+        set -e;
+        {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/mongo-pitr-backup.sh" | nindent 8 }}
+  restore:
+    postReady:
+    - job:
+        image: {{ .Values.image.registry | default .Values.image.registry }}/{{ .Values.image.walg.repository }}:{{ .Values.image.walg.tag }}
+        runOnTargetPodNode: false
+        command:
+        - bash
+        - -c
+        - |
+          #!/bin/bash
+          set -e;
+          {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/mongo-pitr-restore.sh" | nindent 10 }}

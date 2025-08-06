@@ -129,6 +129,9 @@ busybox:
     tag: "1.35"
     pullPolicy: IfNotPresent
 
+walg:
+  image: apecloud/wal-g:mysql-8.0
+
 
 ## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
 ## if you install multiple releases of this chart.
