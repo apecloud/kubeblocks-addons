@@ -1,0 +1,15 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: rocketmq
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rocketmq.apiVersion" . | nindent 4 }}
+spec:
+  topologies:
+    - name: clustermode
+      components:
+        - name: rocketmq
+          compDef: {{ include "rocketmq.cmpdNamePrefix" . }}
+      default: true
