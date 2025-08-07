@@ -49,8 +49,8 @@ spec:
       env:
         {{- include "kafka-cluster.commonEnv" . | nindent 8 }}
       {{- include "kafka-cluster.brokerVCT" . | indent 6 }}
-      {{- if eq "withZookeeper" $.Values.mode -}}
-      serviceRef:
+      {{- if eq "withZookeeper" $.Values.mode }}
+      serviceRefs:
         - name: kafkaZookeeper
           namespace: {{ .Values.zookeeper.serviceRef.namespace }}
           {{- if not .Values.zookeeper.serviceRef.serviceDescriptor }}

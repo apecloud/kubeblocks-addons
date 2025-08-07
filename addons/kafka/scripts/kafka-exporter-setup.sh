@@ -59,7 +59,7 @@ start_kafka_exporter() {
   cmd=$(get_start_kafka_exporter_cmd)
   status=$?
   if [[ $status -ne 0 ]]; then
-    ehco "failed to get start kafka_exporter command. Exiting." >&2
+    echo "failed to get start kafka_exporter command. Exiting." >&2
     exit 1
   fi
   $cmd

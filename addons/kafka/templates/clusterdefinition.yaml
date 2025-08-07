@@ -70,3 +70,5 @@ spec:
       components:
         - name: kafka-broker
           compDef: {{ include "kafka2-broker.cmpdRegexpPattern" . }}
+        - name: kafka-exporter
+          compDef: {{ include "kafka-exporter.cmpdRegexpPattern" . }}

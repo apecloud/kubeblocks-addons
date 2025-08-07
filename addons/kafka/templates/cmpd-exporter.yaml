@@ -20,7 +20,8 @@ spec:
     - name: BROKER_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
+          # supports both 2.x and 3.x
+          compDef: "^kafka\d*-broker-"
           optional: true
           podFQDNs: Required
     ## when server mode is kafka-combine

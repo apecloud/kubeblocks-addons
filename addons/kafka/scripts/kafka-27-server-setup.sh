@@ -92,8 +92,8 @@ convert_server_properties_to_env_var() {
       fi
       env_suffix=${kv[0]^^}
       env_suffix=${env_suffix//./_}
-      env_suffix=`eval echo "${env_suffix}"`
-      env_value=`eval echo "${kv[1]}"`
+      env_suffix=$(eval echo "${env_suffix}")
+      env_value=$(eval echo "${kv[1]}")
       export KAFKA_CFG_${env_suffix}="${env_value}"
       echo "[cfg]export KAFKA_CFG_${env_suffix}=${env_value}"
     done <$SERVER_PROP_FILE
@@ -226,7 +226,7 @@ set_zookeeper_connect() {
     fi
 
     # Optionally, print the value to verify
-    echo "[cfg]export KAFKA_CFG_ZOOKEEPER_CONNECT=$KAFKA_CFG_ZOOKEEPER_CONNECT,for kafka-server."
+    echo "[cfg]export KAFKA_CFG_ZOOKEEPER_CONNECT=$KAFKA_CFG_ZOOKEEPER_CONNECT"
 }
 
 set_log_config() {

@@ -79,12 +79,14 @@ resources:
   {{- else -}}
     combined
   {{- end -}}
-{{- else -}}
+{{- else if eq "separated" .Values.mode -}}
   {{- if .Values.monitorEnable -}}
     separated_monitor
   {{- else -}}
     separated
   {{- end -}}
+{{- else -}}
+kafka2-external-zk
 {{- end -}}
 {{- end -}}
 
