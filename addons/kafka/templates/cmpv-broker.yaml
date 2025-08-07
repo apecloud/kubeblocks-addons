@@ -22,7 +22,7 @@ spec:
       changes:
       serviceVersion: 3.3.2
       images:
-        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag.v3_3_2 }}
         jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
     - name: 2.8.2-debian-11-r7
       changes:
@@ -34,5 +34,5 @@ spec:
       changes:
       serviceVersion: 2.7.0
       images:
-        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Values.images.kafka2.tag }}
+        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Values.images.kafka.tag.v2_7_0 }}
         jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}

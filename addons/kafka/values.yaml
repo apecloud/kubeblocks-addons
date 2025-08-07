@@ -19,9 +19,10 @@ images:
   kafka:
     repository: bitnami/kafka
 #    tag: 3.4.0-debian-11-r22
-    tag: 3.3.2-debian-11-r54
-  kafka2:
-    tag: 2.7.0-debian-10-r124
+    tag:
+      v3_3_2: 3.3.2-debian-11-r54
+      v2_7_0: 2.7.0-debian-10-r124
+      v2_8_2: 2.8.2
   kafkaExporter:
     # bitnami/kafka-exporter has been archived by bitnami as bitnami/kafka-exporter-archived. Here we use apecloud instead.
     repository: apecloud/kafka-exporter
