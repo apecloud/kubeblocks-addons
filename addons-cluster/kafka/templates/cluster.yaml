@@ -27,7 +27,7 @@ spec:
           podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
       env:
-        {{- include "kafka-cluster.commonEnv" . | indent 8 }}
+        {{- include "kafka-cluster.commonEnv" . | nindent 8 }}
       {{- include "kafka-cluster.brokerVCT" . | indent 6 }}
     {{- else }}
     - name: kafka-broker
@@ -47,7 +47,7 @@ spec:
           podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
       env:
-        {{- include "kafka-cluster.commonEnv" . | indent 8 }}
+        {{- include "kafka-cluster.commonEnv" . | nindent 8 }}
       {{- include "kafka-cluster.brokerVCT" . | indent 6 }}
       {{- if eq "withZookeeper" $.Values.mode -}}
       serviceRef:
