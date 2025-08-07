@@ -199,6 +199,14 @@ Define kafka jmx configuration tpl name
 kafka-jmx-configuration-tpl
 {{- end -}}
 
+{{- define "kafka.paramsDefName" -}}
+kafka-pd
+{{- end -}}
+
+{{- define "kafka2.paramsDefName" -}}
+kafka2-pd
+{{- end -}}
+
 {{/*
 Define kafka server scripts tpl name
 */}}
