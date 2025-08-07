@@ -38,7 +38,7 @@ spec:
       constraintRef: {{ include "mongodb.configConstraintName" . }}
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
-      defaultMode: 0666  # for only read
+      defaultMode: 0400  # for only read
       keys:
         - mongodb.conf
   logConfigs:
