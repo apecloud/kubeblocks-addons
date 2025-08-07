@@ -3,13 +3,8 @@ kind: ConfigMap
 metadata:
   name: {{ include "kafka.serverScriptsTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "common.labels.standard" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  labels: 
+    {{- include "kafka.labels" . | nindent 4 }}
 data:
   common.sh: |-
     #!/bin/bash
@@ -27,13 +22,8 @@ kind: ConfigMap
 metadata:
   name: {{ include "kafka2.serverScriptsTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "common.labels.standard" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  labels: 
+    {{- include "kafka.labels" . | nindent 4 }}
 data:
   common.sh: |-
     #!/bin/bash
@@ -51,13 +41,8 @@ kind: ConfigMap
 metadata:
   name: {{ include "kafka.toolsScriptsTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "common.labels.standard" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  labels: 
+    {{- include "kafka.labels" . | nindent 4 }}
 data:
   client-ssl.properties: |-
     {{- .Files.Get "scripts/kafka-ssl.prop.tpl" | nindent 4 }}

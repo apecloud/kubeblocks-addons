@@ -4,13 +4,6 @@ nameOverride: ""
 
 fullnameOverride: ""
 
-## @param commonLabels Labels to add to all deployed objects
-##
-commonLabels: {}
-
-## @param commonLabels Annotations to add to all deployed objects
-commonAnnotations: {}
-
 ## @param application images
 ##
 images:
