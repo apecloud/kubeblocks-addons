@@ -97,9 +97,9 @@ convert_server_properties_to_env_var() {
       fi
       env_suffix=${kv[0]^^}
       env_suffix=${env_suffix//./_}
-      env_suffix=`eval echo "${env_suffix}"`
-      env_value=`eval echo "${kv[1]}"`
-      export KAFKA_CFG_${env_suffix}="${env_value}"
+      env_suffix=$(eval echo "${env_suffix}")
+      env_value=$(eval echo "${kv[1]}")
+      export KAFKA_CFG_${env_suffix}""="${env_value}"
       echo "[cfg]export KAFKA_CFG_${env_suffix}=${env_value}"
     done <$SERVER_PROP_FILE
     unset IFS
@@ -280,6 +280,24 @@ set_cfg_metadata() {
   fi
 }
 
+set_log_config() {
+  # log to file, ref: https://github.com/bitnami/containers/issues/11360#issuecomment-1315860087
+  # reload4j manual: https://reload4j.qos.ch/manual.html
+  LOG_DIR="$KAFKA_VOLUME_DIR/logs"
+  mkdir -p $LOG_DIR
+  sed -i "s/^log4j.rootLogger=\(.*\)$/log4j.rootLogger=\1, R/" /opt/bitnami/kafka/config/log4j.properties
+  cat << EOF >> /opt/bitnami/kafka/config/log4j.properties
+log4j.appender.R=org.apache.log4j.RollingFileAppender
+log4j.appender.R.File=$LOG_DIR/kafka.log
+log4j.appender.R.MaxFileSize=100MB
+# Keep one backup file
+log4j.appender.R.MaxBackupIndex=1
+log4j.appender.R.layout=org.apache.log4j.PatternLayout
+log4j.appender.R.layout.ConversionPattern=[%d] %p %m (%c)%n
+EOF
+  echo "[cfg]log to $LOG_DIR log4j configuration added."
+}
+
 start_server() {
   load_common_library
   set_tls_configuration_if_needed
@@ -288,6 +306,7 @@ start_server() {
   generate_kraft_cluster_id
   set_jvm_configuration
   set_cfg_metadata
+  set_log_config
 
   exec /entrypoint.sh /run.sh
 }
