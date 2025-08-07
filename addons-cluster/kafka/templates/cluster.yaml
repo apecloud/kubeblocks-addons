@@ -27,37 +27,8 @@ spec:
           podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
       env:
-        - name: KB_KAFKA_ENABLE_SASL
-          value: "{{ .Values.saslEnable }}"
-        - name: KB_KAFKA_BROKER_HEAP
-          value: "{{ .Values.brokerHeap }}"
-        - name: KB_KAFKA_CONTROLLER_HEAP
-          value: "{{ .Values.controllerHeap }}"
-        - name: KB_BROKER_DIRECT_POD_ACCESS
-          {{- if .Values.fixedPodIPEnabled }}
-          value: "true"
-          {{- else }}
-          value: "false"
-          {{- end }}
-      {{- if .Values.storageEnable }}
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: {{ .Values.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print .Values.storage "Gi" }}
-        - name: metadata
-          spec:
-            storageClassName: {{ .Values.metaStorageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print .Values.metaStorage "Gi" }}
-      {{- end }}
+        {{- include "kafka-cluster.commonEnv" . | indent 8 }}
+      {{- include "kafka-cluster.brokerVCT" . | indent 6 }}
     {{- else }}
     - name: kafka-broker
       tls: {{ .Values.tlsEnable }}
@@ -76,37 +47,24 @@ spec:
           podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
       env:
-        - name: KB_KAFKA_ENABLE_SASL
-          value: "{{ .Values.saslEnable }}"
-        - name: KB_KAFKA_BROKER_HEAP
-          value: "{{ .Values.brokerHeap }}"
-        - name: KB_KAFKA_CONTROLLER_HEAP
-          value: "{{ .Values.controllerHeap }}"
-        - name: KB_BROKER_DIRECT_POD_ACCESS
-          {{- if .Values.fixedPodIPEnabled }}
-          value: "true"
+        {{- include "kafka-cluster.commonEnv" . | indent 8 }}
+      {{- include "kafka-cluster.brokerVCT" . | indent 6 }}
+      {{- if eq "withZookeeper" $.Values.mode -}}
+      serviceRef:
+        - name: kafkaZookeeper
+          namespace: {{ .Values.zookeeper.serviceRef.namespace }}
+          {{- if not .Values.zookeeper.serviceRef.serviceDescriptor }}
+          clusterServiceSelector:
+            cluster: {{ .Values.zookeeper.serviceRef.cluster.name }}
+            service:
+              component: {{ .Values.zookeeper.serviceRef.cluster.component }}
+              service: {{ .Values.zookeeper.serviceRef.cluster.service }}
+              port: {{ .Values.zookeeper.serviceRef.cluster.port }}
           {{- else }}
-          value: "false"
+          serviceDescriptor: {{ .Values.zookeeper.serviceRef.serviceDescriptor }}
           {{- end }}
-      {{- if .Values.storageEnable }}
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: {{ .Values.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print .Values.storage "Gi" }}
-        - name: metadata
-          spec:
-            storageClassName: {{ .Values.metaStorageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print .Values.metaStorage "Gi" }}
       {{- end }}
+      {{- if eq "separated" $.Values.mode -}}
     - name: kafka-controller
       tls: {{ .Values.tlsEnable }}
       {{- if .Values.tlsEnable }}
@@ -115,16 +73,7 @@ spec:
       {{- end }}
       replicas: {{ .Values.controllerReplicas }}
       {{- include "kblib.componentResources" . | indent 6 }}
-      {{- if .Values.storageEnable }}
-      volumeClaimTemplates:
-        - name: metadata
-          spec:
-            storageClassName: {{ .Values.metaStorageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print .Values.metaStorage "Gi" }}
+      {{- include "kafka-cluster.controllerVCT" . | indent 6 }}
       {{- end }}
     {{- end }}
     {{- if .Values.monitorEnable }}

@@ -15,7 +15,8 @@
       "default": "combined",
       "enum": [
         "combined",
-        "separated"
+        "separated",
+        "withZookeeper"
       ]
     },
     "saslEnable": {
