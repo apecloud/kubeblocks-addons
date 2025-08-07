@@ -63,6 +63,12 @@ spec:
           - -target=backend
           - -legacy-read-mode=false
           - -config.expand-env=true
+        env:
+          - name: KB_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
         ports:
           - containerPort: {{ .Values.server.httpMetricsPort }}
             name: http-metrics
