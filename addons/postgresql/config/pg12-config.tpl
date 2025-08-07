@@ -283,4 +283,4 @@ xmloption = 'content'
 ## the following parameters have been deprecated in postgresql 14
 operator_precedence_warning = 'off'
 vacuum_cleanup_index_scale_factor = '0.1'
-wal_keep_segments = '0'
+wal_keep_segments = '96'
