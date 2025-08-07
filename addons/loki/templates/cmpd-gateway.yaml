@@ -41,6 +41,12 @@ spec:
           - containerPort: {{ .Values.gateway.httpMetricsContainerPort }}
             name: http
             protocol: TCP
+        env:
+          - name: KB_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
         readinessProbe:
           failureThreshold: 3
           httpGet:
