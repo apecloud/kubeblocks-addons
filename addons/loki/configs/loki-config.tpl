@@ -13,6 +13,8 @@ server:
   grpc_server_max_recv_msg_size: 52428800
 
 memberlist:
+   bind_addr:
+   - ${KB_POD_IP}
    join_members:
    - {{ .KB_CLUSTER_NAME }}-memberlist
 
