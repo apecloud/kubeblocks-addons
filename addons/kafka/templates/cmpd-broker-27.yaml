@@ -4,14 +4,8 @@ metadata:
   name: {{ include "kafka2-broker.componentDefName" . }}
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
   annotations:
     {{- include "kafka.annotations" . | nindent 4 }}
-    {{- if .Values.commonAnnotations }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-    {{- end }}
 spec:
   provider: kubeblocks
   description: Kafka 2.x broker component definition
@@ -38,8 +32,30 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterUID: Required
-    - name: SUPER_USER
-      value: admin
+    - name: KAFKA_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          username: Required
+    - name: KAFKA_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+    - name: KAFKA_CLIENT_USER
+      valueFrom:
+        credentialVarRef:
+          name: client
+          optional: false
+          username: Required
+    - name: KAFKA_CLIENT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: client
+          optional: false
+          password: Required
     - name: POD_FQDN_LIST
       valueFrom:
         componentVarRef:
@@ -87,7 +103,7 @@ spec:
       template: {{ include "kafka2.configurationTplName" . }}
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
-      restartOnFileChange: true
+      externalManaged: true
     - name: kafka-jmx-configuration-tpl
       template: {{ include "kafka.jmxConfigurationTplName" . }}
       volumeName: jmx-config
@@ -103,6 +119,29 @@ spec:
       volumeName: tools
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
+  systemAccounts:
+    - name: client
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        letterCase: MixedCases
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        letterCase: MixedCases
+  lifecycleActions:
+    accountProvision:
+      exec:
+        command:
+          - bash
+          - -c
+          - |
+            kafka-configs.sh --zookeeper $KB_KAFKA_ZOOKEEPER_CONN --alter \
+              --add-config "SCRAM-SHA-256=[iterations=8192,password=$KB_ACCOUNT_PASSWORD],SCRAM-SHA-512=[password=$KB_ACCOUNT_PASSWORD]" \
+              --entity-type users --entity-name $KB_ACCOUNT_NAME
   runtime:
     {{- if .Values.securityContext }}
     securityContext:
@@ -165,11 +204,7 @@ spec:
           - name: KAFKA_KRAFT_CLUSTER_ID
             value: $(CLUSTER_UID)
           - name: KAFKA_CFG_SUPER_USERS
-            value: "User:$(SUPER_USER)"
-          # - name: KB_KAFKA_ENABLE_SASL  # enable the SASL with plain mode
-          #   value: "true"
-          - name: KB_KAFKA_SASL_CONFIG_PATH  # specify the SASL jaas users
-            value: /tools/server-jaas.properties
+            value: "User:$(KAFKA_ADMIN_USER)"
           - name: BROKER_MIN_NODE_ID
             value: {{ .Values.kafkaBroker.minNodeId | quote }}
           {{- with .Values.extraEnvs.kafka }}

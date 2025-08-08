@@ -92,8 +92,8 @@ convert_server_properties_to_env_var() {
       fi
       env_suffix=${kv[0]^^}
       env_suffix=${env_suffix//./_}
-      env_suffix=`eval echo "${env_suffix}"`
-      env_value=`eval echo "${kv[1]}"`
+      env_suffix=$(eval echo "${env_suffix}")
+      env_value=$(eval echo "${kv[1]}")
       export KAFKA_CFG_${env_suffix}="${env_value}"
       echo "[cfg]export KAFKA_CFG_${env_suffix}=${env_value}"
     done <$SERVER_PROP_FILE
@@ -114,6 +114,37 @@ override_sasl_configuration() {
     export KAFKA_CFG_SASL_ENABLED_MECHANISMS="PLAIN"
     echo "[sasl]export KAFKA_CFG_SASL_ENABLED_MECHANISMS=${KAFKA_CFG_SASL_ENABLED_MECHANISMS}"
     export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL="PLAIN"
+    echo "[sasl]export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL=${KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL}"
+  fi
+
+  if [[ "true" == "$KB_KAFKA_ENABLE_SASL_SCRAM" ]]; then
+    # bitnami default jaas setting: /opt/bitnami/kafka/config/kafka_jaas.conf
+    cat << EOF > /opt/bitnami/kafka/config/kafka_jaas.conf
+KafkaServer {
+  org.apache.kafka.common.security.scram.ScramLoginModule required
+  username="$KAFKA_ADMIN_USER"
+  password="$KAFKA_ADMIN_PASSWORD";
+};
+EOF
+    echo "[sasl] write jaas config to /opt/bitnami/kafka/config/kafka_jaas.conf "
+    # NB: use the endpoint with sub path
+    first_zoopkeeper=${KAFKA_CFG_ZOOKEEPER_CONNECT%%,*}
+    echo "[sasl] zookeeper address: $first_zoopkeeper"
+    kafka-configs.sh --zookeeper "$first_zoopkeeper" --alter \
+      --add-config "SCRAM-SHA-256=[iterations=8192,password=$KAFKA_ADMIN_PASSWORD],SCRAM-SHA-512=[password=$KAFKA_ADMIN_PASSWORD]" \
+      --entity-type users --entity-name "$KAFKA_ADMIN_USER"
+    echo "[sasl] add user $KAFKA_ADMIN_USER to zookeeper"
+
+    kafka-configs.sh --zookeeper "$first_zoopkeeper" --alter \
+      --add-config "SCRAM-SHA-256=[iterations=8192,password=$KAFKA_CLIENT_PASSWORD],SCRAM-SHA-512=[password=$KAFKA_CLIENT_PASSWORD]" \
+      --entity-type users --entity-name "$KAFKA_CLIENT_USER"
+    echo "[sasl] add user $KAFKA_CLIENT_USER to zookeeper"
+
+    export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:SASL_PLAINTEXT,CLIENT:SASL_PLAINTEXT
+    echo "[sasl]KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
+    export KAFKA_CFG_SASL_ENABLED_MECHANISMS="SCRAM-SHA-256,SCRAM-SHA-512"
+    echo "[sasl]export KAFKA_CFG_SASL_ENABLED_MECHANISMS=${KAFKA_CFG_SASL_ENABLED_MECHANISMS}"
+    export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL="SCRAM-SHA-512"
     echo "[sasl]export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL=${KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL}"
   fi
 }
@@ -226,17 +257,36 @@ set_zookeeper_connect() {
     fi
 
     # Optionally, print the value to verify
-    echo "[cfg]export KAFKA_CFG_ZOOKEEPER_CONNECT=$KAFKA_CFG_ZOOKEEPER_CONNECT,for kafka-server."
+    echo "[cfg]export KAFKA_CFG_ZOOKEEPER_CONNECT=$KAFKA_CFG_ZOOKEEPER_CONNECT"
+}
+
+set_log_config() {
+  # log to file, ref: https://github.com/bitnami/containers/issues/11360#issuecomment-1315860087
+  # reload4j manual: https://reload4j.qos.ch/manual.html
+  LOG_DIR="$KAFKA_VOLUME_DIR/logs"
+  mkdir -p $LOG_DIR
+  sed -i "s/^log4j.rootLogger=\(.*\)$/log4j.rootLogger=\1, R/" /opt/bitnami/kafka/config/log4j.properties
+  cat << EOF >> /opt/bitnami/kafka/config/log4j.properties
+log4j.appender.R=org.apache.log4j.RollingFileAppender
+log4j.appender.R.File=$LOG_DIR/kafka.log
+log4j.appender.R.MaxFileSize=100MB
+# Keep one backup file
+log4j.appender.R.MaxBackupIndex=1
+log4j.appender.R.layout=org.apache.log4j.PatternLayout
+log4j.appender.R.layout.ConversionPattern=[%d] %p %m (%c)%n
+EOF
+  echo "[cfg]log to $LOG_DIR log4j configuration added."
 }
 
 start_server() {
   load_common_library
   set_tls_configuration_if_needed
   convert_server_properties_to_env_var
+  set_zookeeper_connect
   override_sasl_configuration
   set_jvm_configuration
-  set_zookeeper_connect
   set_cfg_metadata
+  set_log_config
 
   exec /entrypoint.sh /run.sh
 }

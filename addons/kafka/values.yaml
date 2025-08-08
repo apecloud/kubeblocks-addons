@@ -4,30 +4,24 @@ nameOverride: ""
 
 fullnameOverride: ""
 
-## @param commonLabels Labels to add to all deployed objects
-##
-commonLabels: {}
-
-## @param commonLabels Annotations to add to all deployed objects
-commonAnnotations: {}
-
 ## @param application images
 ##
 images:
   registry: docker.io
   pullPolicy: IfNotPresent
+  # these images are originally from bitnami repos. bitnami repos will soon be archived so we use apecloud's repos.
   kafka:
-    repository: bitnami/kafka
-#    tag: 3.4.0-debian-11-r22
-    tag: 3.3.2-debian-11-r54
-  kafka2:
-    tag: 2.7.0-debian-10-r124
+    repository: apecloud/kafka
+    tag:
+      v3_3_2: 3.3.2-debian-11-r54
+      v2_7_0: 2.7.0-debian-10-r124
+      # 2.8.2 is built from https://github.com/apecloud/containers/tree/main/apecloud/kafka-2.8.2
+      v2_8_2: 2.8.2-r1
   kafkaExporter:
-    # bitnami/kafka-exporter has been archived by bitnami as bitnami/kafka-exporter-archived. Here we use apecloud instead.
     repository: apecloud/kafka-exporter
     tag: 1.6.0-debian-11-r67
   jmxExporter:
-    repository: bitnami/jmx-exporter
+    repository: apecloud/jmx-exporter
     tag: 0.18.0-debian-11-r20
 
 ## @param define default serviceVersion of each Component

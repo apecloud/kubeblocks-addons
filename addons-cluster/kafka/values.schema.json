@@ -15,12 +15,19 @@
       "default": "combined",
       "enum": [
         "combined",
-        "separated"
+        "separated",
+        "withZookeeper-10"
       ]
     },
     "saslEnable": {
       "title": "SaslEnable",
       "description": "Enable authentication using SASL/PLAIN for Kafka.",
+      "type": "boolean",
+      "default": false
+    },
+    "saslScramEnable": {
+      "title": "SaslScramEnable",
+      "description": "Enable authentication using SASL/SCRAM for Kafka.",
       "type": "boolean",
       "default": false
     },

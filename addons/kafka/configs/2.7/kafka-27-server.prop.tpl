@@ -158,8 +158,8 @@ sasl.login.refresh.window.factor=0.8
 sasl.login.refresh.window.jitter=0.05
 sasl.mechanism.inter.broker.protocol=GSSAPI
 # sasl.server.callback.handler.class=
-security.inter.broker.protocol=PLAINTEXT
-# security.providers=
+# 'inter.broker.listener.name' and 'security.inter.broker.protocol' are mutually exclusive
+# security.inter.broker.protocol=PLAINTEXT# security.providers=
 socket.connection.setup.timeout.max.ms=127000
 socket.connection.setup.timeout.ms=10000
 socket.receive.buffer.bytes=102400

@@ -136,20 +136,6 @@ Define kafka-broker component definition regex pattern
 {{- end -}}
 
 {{/*
-Define kafka config constraint name
-*/}}
-{{- define "kafka.paramsDefName" -}}
-kafka-config-constraints
-{{- end -}}
-
-{{/*
-Define kafka config constraint name
-*/}}
-{{- define "kafka2.paramsDefName" -}}
-kafka2-config-constraints
-{{- end -}}
-
-{{/*
 Define kafka parameter config renderer name
 */}}
 {{- define "kafka.brokerPCRName" -}}
@@ -197,6 +183,14 @@ Define kafka jmx configuration tpl name
 */}}
 {{- define "kafka.jmxConfigurationTplName" -}}
 kafka-jmx-configuration-tpl
+{{- end -}}
+
+{{- define "kafka.paramsDefName" -}}
+kafka-pd
+{{- end -}}
+
+{{- define "kafka2.paramsDefName" -}}
+kafka2-pd
 {{- end -}}
 
 {{/*
