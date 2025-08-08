@@ -93,6 +93,8 @@ kafka2-external-zk
 {{- define "kafka-cluster.brokerCommonEnv" -}}
 - name: KB_KAFKA_ENABLE_SASL
   value: "{{ .Values.saslEnable }}"
+- name: KB_KAFKA_ENABLE_SASL_SCRAM
+  value: "{{ .Values.saslScramEnable }}"
 - name: KB_KAFKA_BROKER_HEAP
   value: "{{ .Values.brokerHeap }}"
 - name: KB_KAFKA_CONTROLLER_HEAP

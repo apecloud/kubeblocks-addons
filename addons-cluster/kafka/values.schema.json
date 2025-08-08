@@ -25,6 +25,12 @@
       "type": "boolean",
       "default": false
     },
+    "saslScramEnable": {
+      "title": "SaslScramEnable",
+      "description": "Enable authentication using SASL/SCRAM for Kafka.",
+      "type": "boolean",
+      "default": false
+    },
     "monitorEnable": {
       "title": "MonitorEnable",
       "description": "Enable monitor for Kafka.",

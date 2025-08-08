@@ -11,8 +11,11 @@ mode: combined
 # Todo: Monitoring is not supported when tls is enabled
 tlsEnable: false
 
-# Enable SASL
+# Enable SASL plain auth
 saslEnable: false
+
+# Enable SASL Scram auth
+saslScramEnable: false
 
 # Enable Monitor
 monitorEnable: true

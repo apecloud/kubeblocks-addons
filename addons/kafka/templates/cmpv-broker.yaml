@@ -30,9 +30,11 @@ spec:
       images:
         kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ .Values.images.kafka.tag.v2_8_2 }}
         jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+        accountProvision: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ .Values.images.kafka.tag.v2_8_2 }}
     - name: 2.7.0-debian-10-r124
       changes:
       serviceVersion: 2.7.0
       images:
         kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Values.images.kafka.tag.v2_7_0 }}
         jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+        accountProvision: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ .Values.images.kafka.tag.v2_7_0 }}
