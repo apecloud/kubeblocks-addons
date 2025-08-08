@@ -26,6 +26,12 @@ image:
   tools:
     repository: apecloud/curl-jq
     tag: 0.1.0
+  kibana:
+    repository: apecloud/kibana
+    tag: "8.8.2"
+  agent:
+    repository: apecloud/elasticsearch-agent
+    tag: "0.1.0"
 
 exporter:
   service:

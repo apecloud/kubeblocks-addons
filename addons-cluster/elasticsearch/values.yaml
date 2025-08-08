@@ -36,3 +36,15 @@ fullnameOverride: ""
 extra:
   terminationPolicy: Delete
   disableExporter: false
+
+## TLS configuration
+tls:
+  enabled: false
+  ## KubeBlocks or UserProvided
+  issuer: UserProvided
+  ## If issuer is UserProvided, will automatically generate TLS file by cluster-tls-secrets.yaml
+  secretName:
+  elasticAccountSecretName:
+  kibanaAccountSecretName:
+
+enableKibana: true
