@@ -16,7 +16,7 @@
       "enum": [
         "combined",
         "separated",
-        "withZookeeper"
+        "withZookeeper-10"
       ]
     },
     "saslEnable": {

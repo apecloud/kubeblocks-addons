@@ -86,7 +86,7 @@ nodePortEnabled: false
 ## If set to true, Kafka's `advertised.listeners` will use the Pod IP address, suitable for scenarios where clients can directly communicate with the Kafka Pod's network.
 fixedPodIPEnabled: false
 
-# zookeeper config, valid only if mode is withZookeeper
+# zookeeper config, valid only if mode is withZookeeper-10
 zookeeper:
   serviceRef:
     namespace:
