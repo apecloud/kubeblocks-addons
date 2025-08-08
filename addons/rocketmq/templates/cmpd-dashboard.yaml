@@ -1,0 +1,97 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "rocketmq.compDefRocketMQDashboard" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 6 }}
+  annotations:
+    {{- include "rocketmq.annotations" . | nindent 4}}
+spec:
+  provider: community
+  serviceKind: {{ .Chart.Name }}-dashboard
+  description: RocketMQ Dashboard
+  serviceVersion: 2.0.0
+  minReadySeconds: 10
+  updateStrategy: BestEffortParallel
+  scripts:
+    - name: rocketmq-dashboard-scripts
+      template: {{ include "rocketmq-dashboard.scriptsTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: console
+            port: 8080
+            targetPort: console
+  vars:
+    - name: NAMESRV_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "rocketmq.compDefRocketMQNameSrv4" . }}
+          host: Required
+    - name: NAMESRV_PORT
+      value: "{{ .Values.nameserver.port }}"
+    - name: CONFIG_PATH
+      value: {{ .Values.dashboard.dataPath }}
+    - name: CONSOLE_USER
+      valueFrom:
+        credentialVarRef:
+          name: console-admin
+          optional: false
+          username: Required
+    - name: CONSOLE_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: console-admin
+          optional: false
+          password: Required
+    - name: ROCKETMQ_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "rocketmq.compDefRocketMQBroker4" . }}
+          name: rocketmq-admin
+          optional: false
+          username: Required
+          multipleClusterObjectOption:
+            strategy: individual
+    - name: ROCKETMQ_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "rocketmq.compDefRocketMQBroker4" . }}
+          name: rocketmq-admin
+          optional: false
+          password: Required
+          multipleClusterObjectOption:
+            strategy: individual
+  systemAccounts:
+    - name: console-admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 8
+        numDigits: 6
+        letterCase: MixedCases
+  runtime:
+    volumes:
+      - name: configs
+        emptyDir: { }
+    containers:
+      - name: rocketmq-dashboard
+        command: [ "/scripts/dashboard-setup.sh" ]
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        ports:
+          - name: console
+            containerPort: 8080
+          - name: namesrv
+            containerPort: {{ .Values.nameserver.port }}
+          - name: broker
+            containerPort: {{ .Values.broker.port }}
+          - name: vip-channel
+            containerPort: {{ sub .Values.broker.port 2 }}
+        volumeMounts:
+          - mountPath: {{ .Values.dashboard.dataPath }}
+            name: configs
+          - mountPath: /scripts
+            name: scripts

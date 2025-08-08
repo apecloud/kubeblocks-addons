@@ -94,6 +94,9 @@ addons-cluster/redis/ @wangyelei @leon-inf @apecloud/kb-reviewers @apecloud/kb-a
 addons/risingwave/ @RisingWave_Labs @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/risingwave/ @RisingWave_Labs @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
+addons/rocketmq/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/rocketmq/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+
 addons/starrocks-ce/ @yandongxiao @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/starrocks-ce/ @yandongxiao @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
