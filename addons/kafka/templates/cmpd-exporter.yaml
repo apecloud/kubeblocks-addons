@@ -4,14 +4,8 @@ metadata:
   name: {{ include "kafka-exporter.componentDefName" . }}
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
   annotations:
     {{- include "kafka.annotations" . | nindent 4 }}
-    {{- if .Values.commonAnnotations }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-    {{- end }}
 spec:
   provider: kubeblocks
   description: |-
@@ -26,7 +20,8 @@ spec:
     - name: BROKER_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
+          # supports both 2.x and 3.x
+          compDef: "^kafka\\d*-broker-"
           optional: true
           podFQDNs: Required
     ## when server mode is kafka-combine
@@ -36,6 +31,20 @@ spec:
           compDef: {{ include "kafka-combine.cmpdRegexpPattern" . }}
           optional: true
           podFQDNs: Required
+    - name: KAFKA_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: "^kafka\\d*-broker-"
+          name: admin
+          optional: true
+          username: Required
+    - name: KAFKA_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: "^kafka\\d*-broker-"
+          name: admin
+          optional: true
+          password: Required
   scripts:
   - name: kafka-scripts-tpl
     template: {{ include "kafka.serverScriptsTplName" . }}

@@ -19,11 +19,6 @@ keywords:
   - consumer
 
 dependencies:
-- name: common
-  repository: oci://registry-1.docker.io/bitnamicharts
-  tags:
-  - bitnami-common
-  version: 2.x.x
 - name: kblib
   version: 0.1.0
   repository: file://../kblib

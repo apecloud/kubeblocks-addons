@@ -44,12 +44,18 @@ get_start_kafka_exporter_cmd() {
     return 1
   fi
 
+  saslArgs=""
+  if [[ $KB_KAFKA_ENABLE_SASL_SCRAM == "true" ]]; then
+    echo "sasl is enabled, setting sasl args" >&2
+    saslArgs="--sasl.enabled --sasl.mechanism=scram-sha512 --sasl.username=$KAFKA_ADMIN_USER --sasl.password=$KAFKA_ADMIN_PASSWORD"
+  fi
+
   if [[ -n "$TLS_ENABLED" ]]; then
     echo "TLS_ENABLED is set to true, start kafka_exporter with tls enabled." >&2
-    echo "kafka_exporter --web.listen-address=:9308 --tls.enabled ${servers}"
+    echo "kafka_exporter --web.listen-address=:9308 --tls.enabled ${servers} $saslArgs"
   else
     echo "TLS_ENABLED is not set, start kafka_exporter with tls disabled." >&2
-    echo "kafka_exporter --web.listen-address=:9308 ${servers}"
+    echo "kafka_exporter --web.listen-address=:9308 ${servers} $saslArgs"
   fi
   return 0
 }
@@ -59,7 +65,7 @@ start_kafka_exporter() {
   cmd=$(get_start_kafka_exporter_cmd)
   status=$?
   if [[ $status -ne 0 ]]; then
-    ehco "failed to get start kafka_exporter command. Exiting." >&2
+    echo "failed to get start kafka_exporter command. Exiting." >&2
     exit 1
   fi
   $cmd

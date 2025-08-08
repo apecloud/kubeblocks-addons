@@ -16,16 +16,25 @@ spec:
         - {{ include "kafka2-broker.cmpdRegexpPattern" . }}
       releases:
         - 2.7.0-debian-10-r124
+        - 2.8.2-debian-11-r7
   releases:
     - name: 3.3.2-debian-11-r54
       changes:
       serviceVersion: 3.3.2
       images:
-        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag.v3_3_2 }}
         jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+    - name: 2.8.2-debian-11-r7
+      changes:
+      serviceVersion: 2.8.2
+      images:
+        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ .Values.images.kafka.tag.v2_8_2 }}
+        jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+        accountProvision: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ .Values.images.kafka.tag.v2_8_2 }}
     - name: 2.7.0-debian-10-r124
       changes:
       serviceVersion: 2.7.0
       images:
-        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Values.images.kafka2.tag }}
+        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Values.images.kafka.tag.v2_7_0 }}
         jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+        accountProvision: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ .Values.images.kafka.tag.v2_7_0 }}
