@@ -95,13 +95,14 @@ spec:
           - cp
           - -r
           - /bin/syncer
-          - /kubeblocks/
+          - /bin/syncerctl
+          - /tools/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-syncer
         volumeMounts:
-          - mountPath: /kubeblocks
-            name: kubeblocks
+          - mountPath: /tools
+            name: tools
       - command:
           - sh
           - -c
@@ -118,15 +119,15 @@ spec:
           - sh
           - -c
           - |
-            cp -r /usr/bin/pbm /kubeblocks
-            cp -r /usr/bin/pbm-agent /kubeblocks
-            cp -r /usr/bin/pbm-agent-entrypoint /kubeblocks
+            cp -r /usr/bin/pbm /tools
+            cp -r /usr/bin/pbm-agent /tools
+            cp -r /usr/bin/pbm-agent-entrypoint /tools
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-pbm-agent
         volumeMounts:
-          - mountPath: /kubeblocks
-            name: kubeblocks
+          - mountPath: /tools
+            name: tools
     containers:
       - name: mongodb
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -144,7 +145,7 @@ spec:
           - /scripts/replicaset-setup.sh
         env:
           - name: PATH
-            value: /kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+            value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mongodb
           - name: SERVICE_PORT
@@ -178,8 +179,8 @@ spec:
             subPath: keyfile
           - name: scripts
             mountPath: /scripts
-          - mountPath: /kubeblocks
-            name: kubeblocks
+          - mountPath: /tools
+            name: tools
       - name: mongodb-backup-agent
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
@@ -194,7 +195,7 @@ spec:
               exec pbm-agent-entrypoint
         env:
           - name: PATH
-            value: /kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+            value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: PBM_AGENT_MONGODB_USERNAME
             value: $(MONGODB_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
@@ -218,6 +219,8 @@ spec:
             name: data
           - name: scripts
             mountPath: /scripts
+          - mountPath: /tools
+            name: tools
       - name: exporter
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
