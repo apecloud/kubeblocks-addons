@@ -219,6 +219,8 @@ spec:
             name: data
           - name: scripts
             mountPath: /scripts
+          - mountPath: /tools
+            name: tools
       - name: exporter
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
