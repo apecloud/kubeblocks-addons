@@ -81,7 +81,7 @@ spec:
       template: {{ include "kafka2.configurationTplName" . }}
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
-      restartOnFileChange: true
+      externalManaged: true
     - name: kafka-jmx-configuration-tpl
       template: {{ include "kafka.jmxConfigurationTplName" . }}
       volumeName: jmx-config
