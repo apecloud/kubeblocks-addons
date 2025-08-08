@@ -1,0 +1,207 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "kibana7.cmpdName" . }}
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
+    {{- include "elasticsearch.annotations" . | nindent 4 }}
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Kibana is a browser-based analytics and search dashboard for Elasticsearch.
+  serviceKind: kibana
+  serviceVersion: 7.10.1
+  updateStrategy: Parallel
+  services:
+  - name: http
+    serviceName: http
+    spec:
+      ipFamilyPolicy: PreferDualStack
+      ipFamilies:
+      - IPv4
+      ports:
+      - name: http
+        port: 5601
+        targetPort: http
+  tls:
+    volumeName: tls
+    mountPath: /etc/pki/tls
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem
+  vars:
+  - name: ELASTIC_USER_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        compDef: {{ include "elasticsearch7.cmpdName" . }}
+        name: elastic
+        optional: false
+        password: Required
+        multipleClusterObjectOption:
+          strategy: individual
+  - name: KIBANA_SYSTEM_USER_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        compDef: {{ include "elasticsearch7.cmpdName" . }}
+        name: kibana_system
+        optional: false
+        password: Required
+        multipleClusterObjectOption:
+          strategy: individual
+  - name: ELASTICSEARCH_HOST
+    valueFrom:
+      serviceVarRef:
+        compDef: {{ include "elasticsearch7.cmpdName" . }}
+        name: http
+        host: Required
+        multipleClusterObjectOption:
+          strategy: individual
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      clusterVarRef:
+        namespace: Required
+  - name: TLS_ENABLED
+    valueFrom:
+      tlsVarRef:
+        enabled: Optional
+  configs:
+  - name: kibana-cm
+    template: {{ include "kibana.configTplName" . }}
+    namespace: {{ .Release.Namespace }}
+    volumeName: kibana-cm
+    restartOnFileChange: true
+  runtime:
+    containers:
+    - env:
+      - name: NSS_SDB_USE_CACHE
+        value: "no"
+      - name: CLUSTER_DOMAIN
+        value: {{ .Values.clusterDomain | quote }}
+      - name: POD_IP
+        valueFrom:
+          fieldRef:
+            fieldPath: status.podIP
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+      - bash
+      - -c
+      - |
+        function info() {
+          echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
+        }
+        if [ "${TLS_ENABLED}" == "true" ]; then
+          READINESS_PROBE_PROTOCOL=https
+        else
+          READINESS_PROBE_PROTOCOL=http
+        fi
+        # All the components' password of elastic must be the same, So we find the first environment variable that starts with ELASTIC_USER_PASSWORD
+        ELASTIC_AUTH_PASSWORD=""
+        last_value=""
+        set +x
+        for env_var in $(env | grep -E '^ELASTIC_USER_PASSWORD'); do
+          value="${env_var#*=}"
+          if [ -n "$value" ]; then
+            if [ -n "$last_value" ] && [ "$last_value" != "$value" ]; then
+              echo "Error conflicting env $env_var of elastic password values found, all the components' password of elastic must be the same."
+              exit 1
+            fi
+            last_value="$value"
+          fi
+        done
+        ELASTIC_AUTH_PASSWORD="$last_value"
+        for env_var in $(env | grep -E '^ELASTICSEARCH_HOST'); do
+          value="${env_var#*=}"
+          if [ -n "$value" ]; then
+            ELASTICSEARCH_HOST="$value"
+            break
+          fi
+        done
+        if [ -z "$ELASTICSEARCH_HOST" ]; then
+          echo "Invalid ELASTICSEARCH_HOST"
+          exit 1
+        fi
+        endpoint="${READINESS_PROBE_PROTOCOL}://${ELASTICSEARCH_HOST}.${CLUSTER_NAMESPACE}.svc.${CLUSTER_DOMAIN}:9200"
+        common_options="-s -u elastic:${ELASTIC_AUTH_PASSWORD} --fail --connect-timeout 3 -k"
+        while true; do
+          if [ "${TLS_ENABLED}" == "true" ]; then
+            out=$(curl ${common_options} -X GET "${endpoint}/kubeblocks_ca_crt/_doc/1?pretty")
+            if [ $? == 0 ]; then
+              echo "$out" | grep '"ca.crt" :' | awk -F: '{print $2}' | tr -d '",' | xargs | base64 -d > /tmp/elastic.ca.crt
+              info "elasticsearch is ready"
+              break
+            fi
+          else
+            curl ${common_options} -X GET "${endpoint}"
+            if [ $? == 0 ]; then
+              info "elasticsearch is ready"
+              break
+            fi
+          fi
+          info "waiting for elasticsearch to be ready"
+          sleep 1
+        done
+        if [ -f /bin/tini ]; then
+          /bin/tini -- /usr/local/bin/kibana-docker -e ${endpoint} -H ${POD_IP}
+        else
+          /usr/local/bin/kibana-docker -e ${endpoint} -H ${POD_IP}
+        fi
+      name: kibana
+      ports:
+      - containerPort: 5601
+        name: http
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        successThreshold: 3
+        timeoutSeconds: 5
+        exec:
+          command:
+          - bash
+          - -c
+          - |
+            #!/usr/bin/env bash -e
+
+            # Disable nss cache to avoid filling dentry cache when calling curl
+            # This is required with Kibana Docker using nss < 3.52
+            export NSS_SDB_USE_CACHE=no
+
+            http () {
+                local path="${1}"
+                set -- -XGET -s --fail -L
+
+                if [ -n "${ELASTICSEARCH_USERNAME}" ] && [ -n "${ELASTICSEARCH_PASSWORD}" ]; then
+                  set -- "$@" -u "${ELASTICSEARCH_USERNAME}:${ELASTICSEARCH_PASSWORD}"
+                fi
+
+                if [ "${TLS_ENABLED}" == "true" ]; then
+                  READINESS_PROBE_PROTOCOL=https
+                else
+                  READINESS_PROBE_PROTOCOL=http
+                fi
+                endpoint="${READINESS_PROBE_PROTOCOL}://${POD_IP}:5601"
+                STATUS=$(curl --output /dev/null --write-out "%{http_code}" -k "$@" "${endpoint}${path}")
+                if [[ "${STATUS}" -eq 200 ]]; then
+                  exit 0
+                fi
+
+                echo "Error: Got HTTP code ${STATUS} but expected a 200"
+                exit 1
+            }
+
+            http "/app/kibana"
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        runAsNonRoot: true
+        runAsUser: 1000
+      volumeMounts:
+      - mountPath: /usr/share/kibana/config
+        name: kibana-cm
+    securityContext:
+      fsGroup: 1000

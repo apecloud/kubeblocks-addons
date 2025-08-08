@@ -1,0 +1,67 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: elasticsearch
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+  annotations:
+    {{- include "elasticsearch.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+  - compDefs:
+    - {{ include "elasticsearch8.cmpdRegexPattern" . }}
+    releases:
+    - 8.1.3
+    - 8.8.2
+  - compDefs:
+    - {{ include "elasticsearch7.cmpdRegexPattern" . }}
+    releases:
+    - 7.7.1
+    - 7.8.1
+    - 7.10.1
+  releases:
+  - name: 7.7.1
+    serviceVersion: 7.7.1
+    images:
+      elasticsearch: {{ include "elasticsearch-7.7.1.image" . }}
+      prepare-plugins: {{ include "elasticsearch-7.7.1.image" . }}
+      install-plugins: {{ include "elasticsearch-7.7.1.image" . }}
+      exporter: {{ include "elasticsearch-exporter.image" . }}
+      memberleave: {{ include "elasticsearch-lfa.image" . }}
+      agent: {{ include "elasticsearch-agent.image" . }}
+  - name: 7.8.1
+    serviceVersion: 7.8.1
+    images:
+      elasticsearch: {{ include "elasticsearch-7.8.1.image" . }}
+      prepare-plugins: {{ include "elasticsearch-7.8.1.image" . }}
+      install-plugins: {{ include "elasticsearch-7.8.1.image" . }}
+      exporter: {{ include "elasticsearch-exporter.image" . }}
+      memberleave: {{ include "elasticsearch-lfa.image" . }}
+      agent: {{ include "elasticsearch-agent.image" . }}
+  - name: 7.10.1
+    serviceVersion: 7.10.1
+    images:
+      elasticsearch: {{ include "elasticsearch-7.10.1.image" . }}
+      prepare-plugins: {{ include "elasticsearch-7.10.1.image" . }}
+      install-plugins: {{ include "elasticsearch-7.10.1.image" . }}
+      exporter: {{ include "elasticsearch-exporter.image" . }}
+      memberleave: {{ include "elasticsearch-lfa.image" . }}
+      agent: {{ include "elasticsearch-agent.image" . }}
+  - name: 8.1.3
+    serviceVersion: 8.1.3
+    images:
+      elasticsearch: {{ include "elasticsearch-8.1.3.image" . }}
+      prepare-plugins: {{ include "elasticsearch-8.1.3.image" . }}
+      install-plugins: {{ include "elasticsearch-8.1.3.image" . }}
+      exporter: {{ include "elasticsearch-exporter.image" . }}
+      memberleave: {{ include "elasticsearch-lfa.image" . }}
+      agent: {{ include "elasticsearch-agent.image" . }}
+  - name: 8.8.2
+    serviceVersion: 8.8.2
+    images:
+      elasticsearch: {{ include "elasticsearch-8.8.2.image" . }}
+      prepare-plugins: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
+      install-plugins: {{ include "elasticsearch-8.8.2.image" . }}
+      exporter: {{ include "elasticsearch-exporter.image" . }}
+      memberleave: {{ include "elasticsearch-lfa.image" . }}
+      agent: {{ include "elasticsearch-agent.image" . }}

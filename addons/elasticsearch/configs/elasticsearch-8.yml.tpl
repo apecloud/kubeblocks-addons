@@ -13,6 +13,7 @@ cluster:
     allocation:
       awareness:
         attributes: k8s_node_name
+# INITIAL_MASTER_NODES_BLOCK_START
 {{- if eq $mode "multi-node" }}
   initial_master_nodes:
   {{- $parts := splitList ";" .ALL_CMP_REPLICA_LIST }}
@@ -26,6 +27,7 @@ cluster:
     {{- end }}
   {{- end }}
 {{- end }}
+# INITIAL_MASTER_NODES_BLOCK_END
 
 discovery:
 # the default of discovery.type is multi-node, but can't set it to multi-node explicitly in 7.x version
@@ -81,7 +83,38 @@ path:
   logs: /usr/share/elasticsearch/logs
 
 xpack:
+{{- if eq (index $ "TLS_ENABLED") "true" }}
+# The ssl files must be placed in the ES config directory, otherwise, the following error will be reported:
+# failed to load SSL configuration [xpack.security.transport.ssl] - cannot read configured PEM certificate_authorities [/etc/pki/tls/ca.crt]
+# because access to read the file is blocked; SSL resources should be placed in the [/usr/share/elasticsearch/config] directory
+  security:
+    enabled: "true"
+    authc:
+      realms:
+        file:
+          file1:
+            order: 0
+        native:
+          native1:
+            order: 1
+            enabled: true
+    transport:
+      ssl:
+        enabled: true
+        verification_mode: certificate
+        client_authentication: required
+        key: /usr/share/elasticsearch/config/key.pem
+        certificate: /usr/share/elasticsearch/config/cert.pem
+        certificate_authorities: ["/usr/share/elasticsearch/config/ca.pem"]
+    http:
+      ssl:
+        enabled: true
+        key: /usr/share/elasticsearch/config/key.pem
+        certificate: /usr/share/elasticsearch/config/cert.pem
+        certificate_authorities: ["/usr/share/elasticsearch/config/ca.pem"]
+    audit:
+      enabled: true
+{{- else }}
   security:
     enabled: "false"
-  ml:
-    enabled: "false"
+{{- end }}
