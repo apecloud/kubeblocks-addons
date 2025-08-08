@@ -127,6 +127,7 @@ KafkaServer {
 };
 EOF
     echo "[sasl] write jaas config to /opt/bitnami/kafka/config/kafka_jaas.conf "
+    # NB: use the endpoint with sub path
     first_zoopkeeper=${KAFKA_CFG_ZOOKEEPER_CONNECT%%,*}
     echo "[sasl] zookeeper address: $first_zoopkeeper"
     kafka-configs.sh --zookeeper "$first_zoopkeeper" --alter \

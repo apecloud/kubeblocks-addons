@@ -46,6 +46,7 @@ get_start_kafka_exporter_cmd() {
 
   saslArgs=""
   if [[ $KB_KAFKA_ENABLE_SASL_SCRAM == "true" ]]; then
+    echo "sasl is enabled, setting sasl args"
     saslArgs="--sasl.enabled --sasl.mechanism=scram-sha512 --sasl.username=$KAFKA_ADMIN_USER --sasl.password=$KAFKA_ADMIN_PASSWORD"
   fi
 

@@ -31,6 +31,20 @@ spec:
           compDef: {{ include "kafka-combine.cmpdRegexpPattern" . }}
           optional: true
           podFQDNs: Required
+    - name: KAFKA_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: kafka-broker
+          name: admin
+          optional: true
+          username: Required
+    - name: KAFKA_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: kafka-broker
+          name: admin
+          optional: true
+          password: Required
   scripts:
   - name: kafka-scripts-tpl
     template: {{ include "kafka.serverScriptsTplName" . }}

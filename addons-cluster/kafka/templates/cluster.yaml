@@ -79,5 +79,8 @@ spec:
     {{- if .Values.monitorEnable }}
     - name: kafka-exporter
       replicas: {{ .Values.monitor.replicas }}
+      env:
+        - name: KB_KAFKA_ENABLE_SASL_SCRAM
+          value: "{{ .Values.saslScramEnable }}"
       {{- include "kafka-exporter.resources" . | nindent 6 }}
     {{- end }}
