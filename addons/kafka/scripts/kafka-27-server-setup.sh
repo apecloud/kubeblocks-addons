@@ -128,6 +128,7 @@ KafkaServer {
 EOF
     echo "[sasl] write jaas config to /opt/bitnami/kafka/config/kafka_jaas.conf "
     first_zoopkeeper=${KAFKA_CFG_ZOOKEEPER_CONNECT%%,*}
+    echo "[sasl] zookeeper address: $first_zoopkeeper"
     kafka-configs.sh --zookeeper "$first_zoopkeeper" --alter \
       --add-config "SCRAM-SHA-256=[iterations=8192,password=$KAFKA_ADMIN_PASSWORD],SCRAM-SHA-512=[password=$KAFKA_ADMIN_PASSWORD]" \
       --entity-type users --entity-name "$KAFKA_ADMIN_USER"
