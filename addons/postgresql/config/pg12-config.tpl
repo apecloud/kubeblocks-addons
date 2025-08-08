@@ -261,7 +261,7 @@ wal_buffers = '{{ printf "%dMB" ( div ( min ( max ( div $phy_memory 2097152 ) 20
 wal_compression = 'True'
 wal_init_zero = off
 wal_level = 'replica'
-wal_log_hints = 'False'
+wal_log_hints = 'True'
 wal_receiver_status_interval = '1s'
 wal_receiver_timeout = '60000'
 wal_sender_timeout = '60000'
@@ -274,4 +274,4 @@ xmloption = 'content'
 ## the following parameters have been deprecated in postgresql 14
 operator_precedence_warning = 'off'
 vacuum_cleanup_index_scale_factor = '0.1'
-wal_keep_segments = '0'
+wal_keep_segments = '96'

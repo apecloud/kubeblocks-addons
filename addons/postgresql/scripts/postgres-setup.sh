@@ -66,6 +66,8 @@ init_etcd_dcs_config_if_needed() {
     echo "PATRONI_DCS_ETCD_SERVICE_ENDPOINT is set. Use etcd as DCS backend and unset DCS_ENABLE_KUBERNETES_API"
     export ETCDCTL_API=${PATRONI_DCS_ETCD_VERSION:-'2'}
     export DCS_ENABLE_KUBERNETES_API=""
+    # if ETCD exist, unset KUBERNETES_SERVICE_HOST to use ETCD as DCS
+    unset KUBERNETES_SERVICE_HOST
     if [ "$ETCDCTL_API" = "3" ]; then
       export ETCD3_HOSTS=$PATRONI_DCS_ETCD_SERVICE_ENDPOINT
     else
