@@ -15,6 +15,7 @@ images:
     tag:
       v3_3_2: 3.3.2-debian-11-r54
       v2_7_0: 2.7.0-debian-10-r124
+      # 2.8.2 is built from https://github.com/apecloud/containers/tree/main/apecloud/kafka-2.8.2
       v2_8_2: 2.8.2-r1
   kafkaExporter:
     repository: apecloud/kafka-exporter
