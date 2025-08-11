@@ -97,7 +97,7 @@ storage:
       cluster:
         # -- Name of the etcd cluster
         # @required
-        name: etcdm-cluster
+        name: 
         # -- Component name for etcd
         # @default etcd
         component: etcd
@@ -117,6 +117,8 @@ storage:
     # -- Service mode type
     # @default serviceref
     mode: serviceref
+    # type can be kafka or pulsar 
+    type: kafka
     serviceRef:
       # -- Kubernetes namespace for Pulsar
       # @default default
@@ -124,7 +126,7 @@ storage:
       cluster:
         # -- Name of the Pulsar cluster
         # @required
-        name: pulsarm-cluster
+        name: 
         # -- Component name for Pulsar broker
         # @default broker
         component: broker
@@ -151,7 +153,7 @@ storage:
       cluster:
         # -- Name of the MinIO cluster
         # @required
-        name: miniom-cluster
+        name: 
         # -- Component name for MinIO
         # @default minio
         component: minio
@@ -165,3 +167,10 @@ storage:
         # @optional
         credential: admin
       serviceDescriptor:
+    # bucket name of the object storage
+    bucket:
+    # root path of the bucket
+    path:
+    # if true, path style will be used. If false, virtual host style will be used.
+    usePathStyle: true
+

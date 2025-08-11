@@ -392,6 +392,8 @@ Milvus cluster external storage services reference
   serviceRefDeclarationSpecs:
     - serviceKind: pulsar
       serviceVersion: "^2.*"
+    - serviceKind: kafka
+      serviceVersion: "^3.*"
 - name: milvus-object-storage
   serviceRefDeclarationSpecs:
     - serviceKind: minio
@@ -447,14 +449,14 @@ Milvus cluster vars for external storage services reference
       name: milvus-object-storage
       optional: false
       password: Required
-- name: PULSAR_SERVER
+- name: LOG_SERVICE_SERVER
   valueFrom:
     serviceRefVarRef:
       name: milvus-log-storage
       optional: false
       endpoint: Required
   expression: {{ `{{ index (splitList ":" .PULSAR_SERVER) 0 }}` | toYaml }}
-- name: PULSAR_PORT
+- name: LOG_SERVICE_PORT
   valueFrom:
     serviceRefVarRef:
       name: milvus-log-storage

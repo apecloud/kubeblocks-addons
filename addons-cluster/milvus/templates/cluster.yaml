@@ -19,6 +19,8 @@ spec:
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      configs:
+        {{- include "milvus.configs" . | indent 8 }}
     {{- end }}
     - name: mixcoord
       replicas: {{ .Values.mixcoord.replicas}}
@@ -28,6 +30,8 @@ spec:
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      configs:
+        {{- include "milvus.configs" . | indent 8 }}
     - name: datanode
       replicas: {{ .Values.datanode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
@@ -37,6 +41,8 @@ spec:
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      configs:
+        {{- include "milvus.configs" . | indent 8 }}
     - name: indexnode
       replicas: {{ .Values.indexnode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
@@ -46,6 +52,8 @@ spec:
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      configs:
+        {{- include "milvus.configs" . | indent 8 }}
     - name: querynode
       replicas: {{ .Values.querynode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
@@ -55,4 +63,6 @@ spec:
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      configs:
+        {{- include "milvus.configs" . | indent 8 }}
 {{- end }}
