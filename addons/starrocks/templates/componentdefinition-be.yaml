@@ -1,11 +1,12 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  annotations:
-    apps.kubeblocks.io/skip-immutable-check: "true"
   name: {{ include "be.componentDefName" . }}
   labels:
     {{- include "starrocks.labels" . | nindent 4 }}
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
+    {{- include "starrocks.apiVersion" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A StarRocks BE component definition for Kubernetes

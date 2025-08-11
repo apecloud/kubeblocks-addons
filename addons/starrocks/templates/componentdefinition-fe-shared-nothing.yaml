@@ -3,6 +3,7 @@ kind: ComponentDefinition
 metadata:
   annotations:
     apps.kubeblocks.io/skip-immutable-check: "true"
+    {{- include "starrocks.apiVersion" . | nindent 4 }}
   name: {{ include "fe-shared-nothing.componentDefName" . }}
   labels:
     {{- include "starrocks.labels" . | nindent 4 }}
