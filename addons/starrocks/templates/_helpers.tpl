@@ -311,7 +311,7 @@ lifecycleActions:
       container: fe
 scripts:
 - name: scripts
-  templateRef: {{ include "starrocks.scriptsTemplate" . }}
+  template: {{ include "starrocks.scriptsTemplate" . }}
   namespace: {{ .Release.Namespace }}
   volumeName: scripts
   defaultMode: 0555
