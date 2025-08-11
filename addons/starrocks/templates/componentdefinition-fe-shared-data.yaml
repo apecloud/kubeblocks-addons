@@ -13,7 +13,7 @@ spec:
   {{- include "fe.commonDef" . | nindent 2 }}
   configs:
     - name: fe-cm
-      templateRef: {{ include "fe-shared-data.configTemplate" . }}
+      template: {{ include "fe-shared-data.configTemplate" . }}
       constraintRef: {{ include "fe.configConstraintsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: fe-cm

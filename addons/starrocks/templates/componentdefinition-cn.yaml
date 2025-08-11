@@ -42,7 +42,7 @@ spec:
     defaultMode: 0555
   configs:
     - name: cn-cm
-      templateRef: {{ include "cn.configTemplate" . }}
+      template: {{ include "cn.configTemplate" . }}
       namespace: {{ .Release.Namespace }}
       constraintRef: {{ include "cn.configConstraintsName" . }}
       volumeName: cn-cm
