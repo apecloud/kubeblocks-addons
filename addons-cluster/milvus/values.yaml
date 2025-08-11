@@ -133,8 +133,8 @@ storage:
         # @default headless
         service: headless
         # -- Port name for Pulsar/kafka
-        # @default broker
-        port: broker
+        # @default kafka-client
+        port: kafka-client
         # -- Credentials for Pulsar/kafka
         # @optional
         credential:
