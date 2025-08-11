@@ -26,7 +26,6 @@ images:
 
 # refer: addons/zookeeper/zoocreeper/Dockerfile
 zoocreeperImage:
-  registry: ""
   repository: apecloud/zoocreeper
   tag: 1.0.1
 

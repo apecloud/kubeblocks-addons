@@ -67,7 +67,7 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{- define "zoocreeper.image" -}}
-{{ .Values.zoocreeperImage.registry | default (.Values.zoocreeperImage.registry | default "docker.io") }}/{{ .Values.zoocreeperImage.repository }}:{{ .Values.zoocreeperImage.tag }}
+{{ .Values.images.registry | default (.Values.zoocreeperImage.registry | default "docker.io") }}/{{ .Values.zoocreeperImage.repository }}:{{ .Values.zoocreeperImage.tag }}
 {{- end }}}
 
 {{/*
