@@ -12,7 +12,7 @@ spec:
       command:
       - "be-update-dynamic-config.sh"
       scriptConfig:
-        scriptConfigMapRef: {{ include "starrocks.name" . }}-scripts
+        scriptConfigMapRef: {{ include "starrocks.scriptsTemplate" . }}
         namespace: {{ .Release.Namespace }}
 
   fileName: be.conf

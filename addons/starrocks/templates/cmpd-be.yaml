@@ -47,6 +47,11 @@ spec:
   - name: data
     needSnapshot: true
   vars:
+  - name: CURRENT_SHARD_COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        componentName: Required
   - name: FE_DISCOVERY_SVC_NAME
     valueFrom:
       serviceVarRef:

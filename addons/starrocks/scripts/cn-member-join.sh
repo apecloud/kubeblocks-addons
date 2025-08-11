@@ -5,7 +5,7 @@ function info() {
 }
 
 DEFAULT_WAREHOUSE=default_warehouse
-member=${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc.cluster.local
+member=${POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc.cluster.local
 member_heartbeat_port=9050
 mysql_exec="mysql -h ${FE_DISCOVERY_ADDR} -P 9030 -u${STARROCKS_USER} -p${STARROCKS_PASSWORD}"
 

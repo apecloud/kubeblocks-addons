@@ -450,6 +450,13 @@ runtime:
     fieldRef:
       apiVersion: v1
       fieldPath: metadata.namespace
+- name: KB_NAMESPACE
+  valueFrom:
+    fieldRef:
+      apiVersion: v1
+      fieldPath: metadata.namespace
+- name: KB_CLUSTER_COMP_NAME
+  value: $(CURRENT_SHARD_COMPONENT_NAME)
 {{- end }}
 
 {{- define "params.priority_networks" }}
