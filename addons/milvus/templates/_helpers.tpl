@@ -383,13 +383,13 @@ Milvus cluster external storage services reference
 - name: milvus-meta-storage
   serviceRefDeclarationSpecs:
     - serviceKind: etcd
-      serviceVersion: "^3.*"
+      serviceVersion: "^*"
 - name: milvus-log-storage
   serviceRefDeclarationSpecs:
     - serviceKind: pulsar
       serviceVersion: "^2.*"
     - serviceKind: kafka
-      serviceVersion: "^3.*"
+      serviceVersion: "^*"
 - name: milvus-object-storage
   serviceRefDeclarationSpecs:
     - serviceKind: minio
