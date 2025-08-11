@@ -11,9 +11,9 @@ spec:
   - name: shared-nothing
     components:
     - name: fe
-      compDef: starrocks-fe-sn
+      compDef: {{ include "fe-shared-nothing.cmpdRegexPattern" . }}
     - name: be
-      compDef: starrocks-be
+      compDef: {{ include "be.cmpdRegexPattern" . }}
     orders:
       provision:
       - fe
@@ -24,9 +24,9 @@ spec:
   - name: shared-data
     components:
     - name: fe
-      compDef: starrocks-fe-sd
+      compDef: {{ include "fe-shared-data.cmpdRegexPattern" . }}
     - name: cn
-      compDef: starrocks-cn
+      compDef: {{ include "cn.cmpdRegexPattern" . }}
       template: true
     orders:
       provision:

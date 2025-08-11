@@ -9,7 +9,7 @@ metadata:
 spec:
   compatibilityRules:
   - compDefs:
-    - starrocks-cn
+    - {{ include "cn.cmpdRegexPattern" . }}
     releases:
     - 3.2.2
     - 3.3.0

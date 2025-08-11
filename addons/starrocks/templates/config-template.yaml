@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "fe-shared-nothing.componentDefName" . }}-cm
+  name: {{ include "fe-shared-nothing.configTemplate" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "starrocks.labels" . | nindent 4 }}
@@ -15,7 +15,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "fe-shared-data.componentDefName" . }}-cm
+  name: {{ include "fe-shared-data.configTemplate" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "starrocks.labels" . | nindent 4 }}
@@ -29,7 +29,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "be.componentDefName" . }}-cm
+  name: {{ include "be.configTemplate" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "starrocks.labels" . | nindent 4 }}
@@ -45,7 +45,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "cn.componentDefName" . }}-cm
+  name: {{ include "cn.configTemplate" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "starrocks.labels" . | nindent 4 }}

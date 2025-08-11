@@ -9,8 +9,8 @@ metadata:
 spec:
   compatibilityRules:
   - compDefs:
-    - starrocks-fe-sd
-    - starrocks-fe-sn
+    - {{ include "fe-shared-data.cmpdRegexPattern" . }}
+    - {{ include "fe-shared-nothing.cmpdRegexPattern" . }}
     releases:
     - 3.2.2
     - 3.3.0

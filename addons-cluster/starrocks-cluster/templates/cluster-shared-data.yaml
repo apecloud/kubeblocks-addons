@@ -25,7 +25,7 @@ spec:
         value: {{ .Values.s3.bucket | default "kubeblocks"}}
       - name: S3_PATH
         value: {{ .Values.s3.path | quote }}
-      {{- if not .Values.enableStorageServiceRef }}
+    {{- if not .Values.enableStorageServiceRef }}
       - name: S3_REGION
         valueFrom:
           secretKeyRef:

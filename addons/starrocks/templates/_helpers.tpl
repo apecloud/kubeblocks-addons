@@ -54,6 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "starrocks.annotations" -}}
+helm.sh/resource-policy: keep
 {{ include "starrocks.apiVersion" . }}
 {{- end }}
 
@@ -65,92 +66,43 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*
-Create the name of the service account to use
-*/}}
-{{- define "starrocks.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "starrocks.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{/*
-Define component defintion name
-*/}}
-{{- define "cn.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-{{ include "starrocks.name" . }}-cn
-{{- else -}}
-{{ include "starrocks.name" . }}-{{ printf "cn-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define component defintion name
-*/}}
-{{- define "be.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-{{ include "starrocks.name" . }}-be
-{{- else -}}
-{{ include "starrocks.name" . }}-{{ printf "be-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define component defintion name
-*/}}
-{{- define "fe.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-{{ include "starrocks.name" . }}-fe
-{{- else -}}
-{{ include "starrocks.name" . }}-{{ printf "fe-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define component defintion name
-*/}}
-{{- define "fe-proxy.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-{{ include "starrocks.name" . }}-fe-proxy
-{{- else -}}
-{{ include "starrocks.name" . }}-{{ printf "fe-proxy-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Define component defintion name
 */}}
 {{- define "fe-shared-data.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-{{ include "starrocks.name" . }}-fe-sd
-{{- else -}}
-{{ include "starrocks.name" . }}-{{ printf "fe-sd-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
+starrocks-fe-shared-data-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define component defintion name
 */}}
 {{- define "fe-shared-nothing.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-{{ include "starrocks.name" . }}-fe-sn
-{{- else -}}
-{{ include "starrocks.name" . }}-{{ printf "fe-sn-%s" .Values.compDefinitionVersionSuffix -}}
+starrocks-fe-shared-nothing-{{ .Chart.Version }}
 {{- end -}}
+
+{{/*
+Define component defintion name
+*/}}
+{{- define "cn.componentDefName" -}}
+starrocks-cn-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define component defintion name
+*/}}
+{{- define "be.componentDefName" -}}
+starrocks-be-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "fe.configConstraintsName" -}}
-{{ include "starrocks.name" . }}-fe-config-constraints
+starrocks-fe-config-constraints
 {{- end -}}
 
 {{- define "be.configConstraintsName" -}}
-{{ include "starrocks.name" . }}-be-config-constraints
+starrocks-be-config-constraints
 {{- end -}}
 
 {{- define "cn.configConstraintsName" -}}
-{{ include "starrocks.name" . }}-cn-config-constraints
+starrocks-cn-config-constraints
 {{- end -}}
 
 
@@ -359,7 +311,7 @@ lifecycleActions:
       container: fe
 scripts:
 - name: scripts
-  templateRef: {{ include "starrocks.name" . }}-scripts
+  templateRef: {{ include "starrocks.scriptsTemplate" . }}
   namespace: {{ .Release.Namespace }}
   volumeName: scripts
   defaultMode: 0555
@@ -524,3 +476,66 @@ net_use_ipv6_when_priority_networks_empty=false
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{/*
+Define fe shared data component definition regex pattern
+*/}}
+{{- define "fe-shared-data.cmpdRegexPattern" -}}
+^starrocks-fe-shared-data-
+{{- end -}}
+
+{{/*
+Define fe shared nothing component definition regex pattern
+*/}}
+{{- define "fe-shared-nothing.cmpdRegexPattern" -}}
+^starrocks-fe-shared-nothing-
+{{- end -}}
+
+{{/*
+Define cn component definition regex pattern
+*/}}
+{{- define "cn.cmpdRegexPattern" -}}
+^starrocks-cn-
+{{- end -}}
+
+{{/*
+Define be component definition regex pattern
+*/}}
+{{- define "be.cmpdRegexPattern" -}}
+^starrocks-be-
+{{- end -}}
+
+{{/*
+Define fe component configuration template name
+*/}}
+{{- define "fe-shared-data.configTemplate" -}}
+starrocks-fe-shared-data-config-template
+{{- end -}}
+
+{{/*
+Define fe component configuration template name
+*/}}
+{{- define "fe-shared-nothing.configTemplate" -}}
+starrocks-fe-shared-nothing-config-template
+{{- end -}}
+
+{{/*
+Define cn component configuration template name
+*/}}
+{{- define "cn.configTemplate" -}}
+starrocks-cn-configuration-template
+{{- end -}}
+
+{{/*
+Define be component configuration template name
+*/}}
+{{- define "be.configTemplate" -}}
+starrocks-be-configuration-template
+{{- end -}}
+
+{{/*
+Define starrocks scripts configMap template name
+*/}}
+{{- define "starrocks.scriptsTemplate" -}}
+starrocks-scripts-template
+{{- end -}}

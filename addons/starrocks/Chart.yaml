@@ -24,6 +24,6 @@ version: 0.9.1
 appVersion: "3.3.3"
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.9.2"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
   addon.kubeblocks.io/model: "RDBMS"
   addon.kubeblocks.io/provider: "enterprise"

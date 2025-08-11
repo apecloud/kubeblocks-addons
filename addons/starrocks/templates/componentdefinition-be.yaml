@@ -33,13 +33,13 @@ spec:
         targetPort: proxy-port
   scripts:
   - name: scripts
-    templateRef: {{ include "starrocks.name" . }}-scripts
+    templateRef: {{ include "starrocks.scriptsTemplate" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555
   configs:
     - name: be-cm
-      templateRef: {{ include "be.componentDefName" . }}-cm
+      templateRef: {{ include "be.configTemplate" . }}
       namespace: {{ .Release.Namespace }}
       constraintRef: {{ include "be.configConstraintsName" . }}
       volumeName: be-cm
