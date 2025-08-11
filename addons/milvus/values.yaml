@@ -22,11 +22,9 @@ images:
   operator:
     registry: ""
     repository: milvusdb/milvus-operator
-    tag: v0.8.4
   milvus:
     registry: ""
     repository: milvusdb/milvus
-    tag: v2.3.2
   
 
 livenessProbe:
