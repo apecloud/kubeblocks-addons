@@ -14,9 +14,8 @@ fullnameOverride: ""
 #################################################
 # -- Cluster deployment mode configuration
 # @param mode The deployment mode of the cluster
-# @valid standalone, cluster
-mode:
-  standalone
+# @valid standalone, distributed
+mode: standalone
 
 #################################################
 # Standalone Mode Parameters
@@ -47,7 +46,7 @@ persistence:
     size: 10
 
 #################################################
-# Cluster Mode Parameters
+# Distributed Mode Parameters
 #################################################
 proxy:
   # -- Enable/disable proxy component
