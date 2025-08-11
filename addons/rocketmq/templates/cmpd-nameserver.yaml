@@ -1,0 +1,129 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "rocketmq.compDefRocketMQNameSrv4" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 6 }}
+  annotations:
+    {{- include "rocketmq.annotations" . | nindent 4}}
+spec:
+  provider: community
+  serviceKind: {{ .Chart.Name }}-namesrv
+  description: RocketMQ NameServer
+  serviceVersion: 4.9.6
+  minReadySeconds: 10
+  configs:
+    - name: rocketmq-namesrv-config
+      template: {{ include "rocketmq-namesrv4.configurationTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: rocketmq-namesrv-config
+      defaultMode: 0555
+    - name: {{ include "rocketmq.jxm-exporter.configurationTemplate" . }}
+      template: {{ include "rocketmq.jxm-exporter.configurationTemplate" . }}
+      volumeName: jmx-config
+      namespace: {{ .Release.Namespace }}
+  lifecycleActions:
+    memberJoin:
+      exec:
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/update-nameserver-addrs.sh
+    memberLeave:
+      exec:
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/update-nameserver-addrs.sh
+  scripts:
+    - name: rocketmq-namesrv-scripts
+      template: {{ include "rocketmq-namesrv4.scriptsTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  updateStrategy: BestEffortParallel
+  logConfigs:
+    - name: namesrv
+      filePathPattern: {{ .Values.broker.logPath }}/rocketmqlogs/namesrv*
+  vars:
+    - name: LISTEN_PORT
+      value: "{{ .Values.nameserver.port }}"
+    - name: LOG_PATH
+      value: {{ .Values.nameserver.logPath }}
+  services:
+    - name: namesrv-internal
+      spec:
+        ports:
+          - name: nameserver
+            port: 9876
+            targetPort: nameserver
+  runtime:
+    volumes:
+      - name: logs
+        emptyDir: { }
+      - name: conf
+        emptyDir: { }
+    containers:
+      - name: rocketmq-namesrv
+        command: [ "/scripts/nameserver-setup.sh" ]
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        ports:
+          - name: nameserver
+            containerPort: {{ .Values.nameserver.port }}
+            protocol: TCP
+        env:
+          - name: JMX_PORT
+            value: "{{ .Values.broker.jxmPort }}"
+        volumeMounts:
+          - mountPath: /kb-config
+            name: rocketmq-namesrv-config
+          - mountPath: /scripts
+            name: scripts
+          - mountPath: {{ .Values.nameserver.logPath }}
+            name: logs
+          - mountPath: /home/rocketmq/rocketmq-4.9.6/conf
+            name: conf
+        startupProbe:
+          tcpSocket:
+            port: nameserver
+          periodSeconds: 5
+          initialDelaySeconds: 20
+          failureThreshold: 3
+        livenessProbe:
+          tcpSocket:
+            port: nameserver
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: nameserver
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 1
+          failureThreshold: 3
+      - name: jmx-exporter
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        command:
+          - java
+        args:
+          - -XX:MaxRAMPercentage=100
+          - -XshowSettings:vm
+          - -jar
+          - jmx_prometheus_httpserver.jar
+          - "5556"
+          - /etc/jmx-rocketmq/jmx-rocketmq-prometheus.yml
+        ports:
+          - name: metrics
+            containerPort: 5556
+        env:
+          - name: SERVICE_PORT
+            value: "5556"
+        volumeMounts:
+          - name: jmx-config
+            mountPath: /etc/jmx-rocketmq
