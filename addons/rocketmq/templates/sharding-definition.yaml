@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ShardingDefinition
+metadata:
+  name: rocketmq-broker
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rocketmq.apiVersion" . | nindent 4 }}
+spec:
+  template:
+    compDef: {{ include "rocketmq-broker.componentDefNamePrefix" . }}
+  shardsLimit:
+    minShards: 1
+    maxShards: 128
+  provisionStrategy: Parallel
+  updateStrategy: Parallel

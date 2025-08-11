@@ -1,0 +1,35 @@
+apiVersion: v2
+name: rocketmq
+description: RocketMQ is a distributed messaging and streaming platform originally developed by Alibaba, 
+  featuring high throughput, low latency, and strong reliability for processing millions of messages per second.
+
+type: application
+
+version: 1.0.1-beta.0
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+
+appVersion: "4.9.6"
+
+home: https://kubeblocks.io/
+icon: https://kubeblocks.io/img/logo.png
+keywords:
+  - rocketmq
+  - streaming
+  - producer
+  - consumer
+
+maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/
+
+sources:
+  - https://github.com/apecloud/kubeblocks/
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/model: "streaming"
+  addon.kubeblocks.io/provider: "apecloud"
