@@ -14,11 +14,9 @@ spec:
   configs:
     - name: fe-cm
       template: {{ include "fe-shared-data.configTemplate" . }}
-      constraintRef: {{ include "fe.configConstraintsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: fe-cm
-      keys:
-      - fe.conf
+      externalManaged: true
   vars:
   {{- if .Values.enableStorageServiceRef }}
   {{- include "fe.serviceRefVars" . | nindent 2 }}

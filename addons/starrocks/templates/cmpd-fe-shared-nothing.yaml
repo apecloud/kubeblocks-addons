@@ -14,11 +14,9 @@ spec:
   configs:
     - name: fe-cm
       template: {{ include "fe-shared-nothing.configTemplate" . }}
-      constraintRef: {{ include "fe.configConstraintsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: fe-cm
-      keys:
-      - fe.conf
+      externalManaged: true
   vars:
   - name: FE_DISCOVERY_SVC_NAME
     valueFrom:

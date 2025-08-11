@@ -44,10 +44,8 @@ spec:
     - name: cn-cm
       template: {{ include "cn.configTemplate" . }}
       namespace: {{ .Release.Namespace }}
-      constraintRef: {{ include "cn.configConstraintsName" . }}
       volumeName: cn-cm
-      keys:
-      - cn.conf
+      externalManaged: true
   lifecycleActions:
     preTerminate:
       customHandler:

@@ -93,19 +93,6 @@ Define component defintion name
 starrocks-be-{{ .Chart.Version }}
 {{- end -}}
 
-{{- define "fe.configConstraintsName" -}}
-starrocks-fe-config-constraints
-{{- end -}}
-
-{{- define "be.configConstraintsName" -}}
-starrocks-be-config-constraints
-{{- end -}}
-
-{{- define "cn.configConstraintsName" -}}
-starrocks-cn-config-constraints
-{{- end -}}
-
-
 {{- define "POD_IP" -}}
 POD_IP_V4=
 POD_IP_V6=
@@ -538,4 +525,53 @@ Define starrocks scripts configMap template name
 */}}
 {{- define "starrocks.scriptsTemplate" -}}
 starrocks-scripts-template
+{{- end -}}
+
+{{/*
+Define starrocks parameters definition name
+*/}}
+{{- define "fe.paramsDefName" -}}
+starrocks-fe-pd
+{{- end -}}
+
+{{/*
+Define starrocks parameters definition name
+*/}}
+{{- define "be.paramsDefName" -}}
+starrocks-be-pd
+{{- end -}}
+
+{{/*
+Define starrocks parameters definition name
+*/}}
+{{- define "cn.paramsDefName" -}}
+starrocks-cn-pd
+{{- end -}}
+
+{{/*
+Define starrocks parameters config render name
+*/}}
+{{- define "fe-shared-data.pcrName" -}}
+starrocks-fe-shared-data-pcr
+{{- end -}}
+
+{{/*
+Define starrocks parameters config render name
+*/}}
+{{- define "fe-shared-nothing.pcrName" -}}
+starrocks-fe-shared-nothing-pcr
+{{- end -}}
+
+{{/*
+Define starrocks parameters config render name
+*/}}
+{{- define "cn.pcrName" -}}
+starrocks-cn-pcr
+{{- end -}}
+
+{{/*
+Define starrocks parameters config render name
+*/}}
+{{- define "be.pcrName" -}}
+starrocks-be-pcr
 {{- end -}}

@@ -1,0 +1,14 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "fe-shared-nothing.pcrName" . }}
+  labels:
+    {{- include "starrocks.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "fe-shared-nothing.componentDefName" . }}
+  parametersDefs:
+    - {{ include "fe.paramsDefName" . }}
+  configs:
+    - name: fe.conf
+      fileFormatConfig:
+        format: props-plus

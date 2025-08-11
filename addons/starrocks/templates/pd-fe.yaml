@@ -1,8 +1,8 @@
-{{- $cc := .Files.Get "config/be-config-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1beta1
-kind: ConfigConstraint
+{{- $cc := .Files.Get "config/fe-config-effect-scope.yaml" | fromYaml }}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
 metadata:
-  name: {{ include "be.configConstraintsName" . }}
+  name: {{ include "fe.paramsDefName" . }}
   labels:
     {{- include "starrocks.labels" . | nindent 4 }}
 spec:
@@ -10,20 +10,31 @@ spec:
     shellTrigger:
       sync: true
       command:
-      - "be-update-dynamic-config.sh"
+        - "fe-update-dynamic-config.sh"
       scriptConfig:
-        scriptConfigMapRef: {{ include "starrocks.name" . }}-scripts
+        scriptConfigMapRef: {{ include "starrocks.scriptsTemplate" . }}
         namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+        - name: starrocks-tools
+          command:
+          - cp
+          - /bin/mysql
+          - /kb_tools/mysql
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag }}
+
+  fileName: fe.conf
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level mysql configuration type
-    topLevelKey: BEParameter
+    topLevelKey: FEParameter
 
     # schemaInJSON: auto generate from cue scripts
     # example: ../../internal/configuration/testdata/mysql_openapi.json
     cue: |-
-      {{- .Files.Get "config/be-config-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "config/fe-config-constraint.cue" | nindent 6 }}
 
   ## define static parameter list
   {{- if hasKey $cc "staticParameters" }}
@@ -51,8 +62,3 @@ spec:
       - {{ . }}
       {{- end }}
   {{- end}}
-
-
-  # mysql configuration file format
-  fileFormatConfig:
-    format: props-plus

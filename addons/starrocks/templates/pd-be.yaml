@@ -1,8 +1,8 @@
-{{- $cc := .Files.Get "config/cn-config-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1beta1
-kind: ConfigConstraint
+{{- $cc := .Files.Get "config/be-config-effect-scope.yaml" | fromYaml }}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
 metadata:
-  name: {{ include "cn.configConstraintsName" . }}
+  name: {{ include "be.paramsDefName" . }}
   labels:
     {{- include "starrocks.labels" . | nindent 4 }}
 spec:
@@ -15,15 +15,17 @@ spec:
         scriptConfigMapRef: {{ include "starrocks.name" . }}-scripts
         namespace: {{ .Release.Namespace }}
 
+  fileName: be.conf
+
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level mysql configuration type
-    topLevelKey: CNParameter
+    topLevelKey: BEParameter
 
     # schemaInJSON: auto generate from cue scripts
     # example: ../../internal/configuration/testdata/mysql_openapi.json
     cue: |-
-      {{- .Files.Get "config/cn-config-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "config/be-config-constraint.cue" | nindent 6 }}
 
   ## define static parameter list
   {{- if hasKey $cc "staticParameters" }}
@@ -51,8 +53,3 @@ spec:
       - {{ . }}
       {{- end }}
   {{- end}}
-
-
-  # mysql configuration file format
-  fileFormatConfig:
-    format: props-plus

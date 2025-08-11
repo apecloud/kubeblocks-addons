@@ -41,10 +41,8 @@ spec:
     - name: be-cm
       template: {{ include "be.configTemplate" . }}
       namespace: {{ .Release.Namespace }}
-      constraintRef: {{ include "be.configConstraintsName" . }}
       volumeName: be-cm
-      keys:
-      - be.conf
+      externalManaged: true
   volumes:
   - name: data
     needSnapshot: true
