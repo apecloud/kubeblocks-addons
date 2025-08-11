@@ -1,0 +1,66 @@
+# Default values for starrocks.
+# This is a YAML-formatted file.
+
+nameOverride: ""
+fullnameOverride: ""
+clusterVersionOverride: ""
+
+timezone: Asia/Shanghai
+
+image:
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  pullPolicy: IfNotPresent
+  fe:
+    repository: apecloud/fe-ubuntu
+    tag: 3.2.2
+  be:
+    repository: apecloud/be-ubuntu
+    tag: 3.2.2
+  cn:
+    repository: apecloud/cn-ubuntu
+    tag: 3.2.2
+  tools:
+    repository: apecloud/starrocks-tools
+    tag: 3.2.2
+  nginx:
+    repository: apecloud/nginx
+    tag: 1.24.0
+
+# @param ipFamily ip family, valid values: IPv4, IPv6, if the priorityNetworks is specified, the ipFamily will be ignored
+ipFamily: IPv4
+
+# @param hostType host type, valid values: FQDN, IP
+hostType: FQDN
+
+# @param priorityNetworks priority networks, if specified, the ipFamily will be ignored
+priorityNetworks:
+
+fe:
+  queryPort: 9030
+  logConfigs:
+    error: /opt/starrocks/fe/log/fe.warn.log
+    slow: /opt/starrocks/fe/log/fe.big_query.log
+    running: /opt/starrocks/fe/log/fe.log
+    audit: /opt/starrocks/fe/log/fe.audit.log
+  # inotify parameters for initContainer
+  inotify:
+    maxFsInstances: 16384
+
+be:
+  logConfigs:
+    error: /opt/starrocks/be/log/be.WARNING
+    running: /opt/starrocks/be/log/be.INFO
+
+cn:
+  logConfigs:
+    error: /opt/starrocks/be/log/cn.WARNING
+    running: /opt/starrocks/be/log/cn.INFO
+
+enableStorageServiceRef: true
+
+## @param compDefinitionVersionSuffix for all ComponentDefinition resources name created by this chart, that can avoid name conflict
+## if you install multiple releases of this chart.
+## If specified, the component definition will use it as name.
+compDefinitionVersionSuffix: ""
+
+clusterDomain: cluster.local

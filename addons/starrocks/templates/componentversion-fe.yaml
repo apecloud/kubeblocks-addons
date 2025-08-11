@@ -1,0 +1,43 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: starrocks-fe
+  labels:
+    {{- include "starrocks.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+  - compDefs:
+    - starrocks-fe-sd
+    - starrocks-fe-sn
+    releases:
+    - 3.2.2
+    - 3.3.0
+    - 3.3.2
+    - 3.3.3
+    - 3.4.1
+  releases:
+  - name: 3.2.2
+    serviceVersion: 3.2.2
+    images:
+      fe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.2.2
+      sysctl-tuner: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.2.2
+  - name: 3.3.0
+    serviceVersion: 3.3.0
+    images:
+      fe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.3.0
+      sysctl-tuner: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.3.0
+  - name: 3.3.2
+    serviceVersion: 3.3.2
+    images:
+      fe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.3.2
+      sysctl-tuner: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.3.2
+  - name: 3.3.3
+    serviceVersion: 3.3.3
+    images:
+      fe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.3.3
+      sysctl-tuner: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.3.3
+  - name: 3.4.1
+    serviceVersion: 3.4.1
+    images:
+      fe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.4.1
+      sysctl-tuner: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.4.1

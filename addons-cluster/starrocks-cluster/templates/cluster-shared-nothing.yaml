@@ -1,0 +1,43 @@
+{{- if eq .Values.mode "shared-nothing" }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+  clusterDefinitionRef: starrocks
+  topology: shared-nothing
+  {{- include "starrocks.services" . | indent 2}}
+  componentSpecs:
+    - name: fe
+      componentDef: starrocks-fe-sn
+      serviceVersion: {{ include "starrocks.version" . }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      replicas: {{ .Values.replicas | default 1 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+    - name: be
+      componentDef: starrocks-be
+      serviceVersion: {{ include "starrocks.version" . }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      replicas: {{ index .Values.beReplicas | default 1 }}
+      resources:
+        limits:
+          cpu: {{ .Values.beCPU | quote }}
+          memory: {{ print .Values.beMemory "Gi" | quote }}
+        requests:
+          cpu: {{ .Values.beCPU | quote }}
+          memory: {{ print .Values.beMemory "Gi" | quote }}
+      volumeClaimTemplates:
+        - name: data # ref clusterdefinition components.containers.volumeMounts.name
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ print .Values.beStorage "Gi" | quote }}
+{{- end }}

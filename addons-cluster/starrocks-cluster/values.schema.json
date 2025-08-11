@@ -1,0 +1,177 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "version": {
+      "title": "Version",
+      "description": "The version of StarRocks.",
+      "type": "string",
+      "default": "3.3.3"
+    },
+    "mode": {
+      "title": "Mode",
+      "description": "The mode of StarRocks.",
+      "type": "string",
+      "default": "shared-data",
+      "enum": [
+        "shared-data",
+        "shared-nothing"
+      ]
+    },
+    "replicas": {
+      "title": "FE Replicas",
+      "description": "The number of replicas for FE.",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "cpu": {
+      "title": "FE CPU",
+      "description": "FE CPU cores.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 1,
+      "minimum": 0.5,
+      "maximum": 64,
+      "multipleOf": 0.5
+    },
+    "memory": {
+      "title": "FE Memory(Gi)",
+      "description": "FE Memory, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 2,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "storage": {
+      "title": "FE Storage(Gi)",
+      "description": "FE Storage size, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 20,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "beReplicas": {
+      "title": "BE Replicas",
+      "description": "The number of replicas for BE.",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "beCPU": {
+      "title": "BE CPU",
+      "description": "BE CPU cores.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 1,
+      "minimum": 0.5,
+      "maximum": 64,
+      "multipleOf": 0.5
+    },
+    "beMemory": {
+      "title": "BE Memory(Gi)",
+      "description": "BE Memory, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 2,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "beStorage": {
+      "title": "BE Storage(Gi)",
+      "description": "BE Storage size, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 20,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "cnReplicas": {
+      "title": "CN Replicas",
+      "description": "The number of replicas for CN.",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "cnCPU": {
+      "title": "CN CPU",
+      "description": "CN CPU cores.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 1,
+      "minimum": 0.5,
+      "maximum": 64,
+      "multipleOf": 0.5
+    },
+    "cnMemory": {
+      "title": "CN Memory(Gi)",
+      "description": "CN Memory, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 2,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "cnStorage": {
+      "title": "CN Storage(Gi)",
+      "description": "CN Storage size, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 20,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "s3": {
+      "type": "object",
+      "properties": {
+        "bucket": {
+          "title": "S3 Bucket",
+          "description": "The bucket of S3.",
+          "type": "string",
+          "default": ""
+        },
+        "path": {
+          "title": "S3 Path",
+          "description": "The path prefix of S3.",
+          "type": "string",
+          "default": ""
+        },
+        "secret": {
+          "title": "S3 Secret",
+          "description": "The secret of S3",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "nodePortEnabled": {
+      "type": "boolean",
+      "default": false,
+      "title": "nodePortEnabled",
+      "description":"Whether NodePort service is enabled, default is true"
+    }
+  }
+}

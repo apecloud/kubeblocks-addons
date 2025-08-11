@@ -1,0 +1,87 @@
+{{- if eq .Values.mode "shared-data" }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+  clusterDefinitionRef: starrocks
+  topology: shared-data
+  {{- include "starrocks.services" . | indent 2}}
+  componentSpecs:
+    - name: fe
+      componentDef: starrocks-fe-sd
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      serviceVersion: {{ include "starrocks.version" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      replicas: {{ .Values.replicas | default 1 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      env:
+      - name: S3_BUCKET
+        value: {{ .Values.s3.bucket | default "kubeblocks"}}
+      - name: S3_PATH
+        value: {{ .Values.s3.path | quote }}
+      {{- if not .Values.enableStorageServiceRef }}
+      - name: S3_REGION
+        valueFrom:
+          secretKeyRef:
+            key: region
+            name: {{ .Values.s3.secret }}
+      - name: S3_ENDPOINT
+        valueFrom:
+          secretKeyRef:
+            key: endpoint
+            name: {{ .Values.s3.secret }}
+      - name: S3_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            key: accessKey
+            name: {{ .Values.s3.secret }}
+      - name: S3_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            key: secretKey
+            name: {{ .Values.s3.secret }}
+      {{- else }}
+      serviceRefs:
+      - name: s3-object-storage
+        namespace: {{ .Release.Namespace }}
+        {{- if not .Values.s3.serviceRef.serviceDescriptor }}
+        clusterServiceSelector:
+          cluster: {{ .Values.s3.serviceRef.cluster.name }}
+          service:
+            component: {{ .Values.s3.serviceRef.cluster.component }}
+            service: {{ .Values.s3.serviceRef.cluster.service }}
+            port: {{ .Values.s3.serviceRef.cluster.port }}
+          credential:
+            component: {{ .Values.s3.serviceRef.cluster.component }}
+            name: {{ .Values.s3.serviceRef.cluster.credential }}
+        {{- else }}
+        serviceDescriptor: {{ .Values.s3.serviceRef.serviceDescriptor }}
+        {{- end }}
+      {{- end }}
+    - name: cn
+      componentDef: starrocks-cn
+      serviceVersion: {{ include "starrocks.version" . }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      replicas: {{ index .Values.cnReplicas | default 1 }}
+      resources:
+        limits:
+          cpu: {{ .Values.cnCPU | quote }}
+          memory: {{ print .Values.cnMemory "Gi" | quote }}
+        requests:
+          cpu: {{ .Values.cnCPU | quote }}
+          memory: {{ print .Values.cnMemory "Gi" | quote }}
+      volumeClaimTemplates:
+      - name: data # ref clusterdefinition components.containers.volumeMounts.name
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ print .Values.cnStorage "Gi" | quote }}
+{{- end }}

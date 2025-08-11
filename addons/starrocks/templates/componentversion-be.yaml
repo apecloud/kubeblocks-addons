@@ -1,0 +1,42 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: starrocks-be
+  labels:
+    {{- include "starrocks.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+  - compDefs:
+    - starrocks-be
+    releases:
+    - 3.2.2
+    - 3.3.0
+    - 3.3.2
+    - 3.3.3
+    - 3.4.1
+  releases:
+  - name: 3.2.2
+    serviceVersion: 3.2.2
+    images:
+      be: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.be.repository }}:3.2.2
+      nginx: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.nginx.repository }}:{{ default .Values.image.nginx.tag }}
+  - name: 3.3.0
+    serviceVersion: 3.3.0
+    images:
+      be: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.be.repository }}:3.3.0
+      nginx: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.nginx.repository }}:{{ default .Values.image.nginx.tag }}
+  - name: 3.3.2
+    serviceVersion: 3.3.2
+    images:
+      be: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.be.repository }}:3.3.2
+      nginx: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.nginx.repository }}:{{ default .Values.image.nginx.tag }}
+  - name: 3.3.3
+    serviceVersion: 3.3.3
+    images:
+      be: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.be.repository }}:3.3.3
+      nginx: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.nginx.repository }}:{{ default .Values.image.nginx.tag }}
+  - name: 3.4.1
+    serviceVersion: 3.4.1
+    images:
+      be: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.be.repository }}:3.4.1
+      nginx: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.nginx.repository }}:{{ default .Values.image.nginx.tag }}

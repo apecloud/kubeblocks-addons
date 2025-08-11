@@ -1,0 +1,220 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
+  name: {{ include "cn.componentDefName" . }}
+  labels:
+    {{- include "starrocks.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A StarRocks CN component definition for Kubernetes
+  serviceKind: starrocks-cn
+  updateStrategy: BestEffortParallel
+  volumes:
+  - name: data
+    needSnapshot: true
+  logConfigs:
+    {{- range $name,$pattern := .Values.cn.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  services:
+  - name: cn
+    serviceName: cn
+    spec:
+      ipFamilyPolicy: PreferDualStack
+      ipFamilies:
+      - IPv4
+      ports:
+      - name: cn-http
+        port: 8040
+        targetPort: http-port
+      - name: proxy-http
+        port: 8080
+        targetPort: proxy-port
+  scripts:
+  - name: scripts
+    templateRef: {{ include "starrocks.name" . }}-scripts
+    namespace: {{ .Release.Namespace }}
+    volumeName: scripts
+    defaultMode: 0555
+  configs:
+    - name: cn-cm
+      templateRef: {{ include "cn.componentDefName" . }}-cm
+      namespace: {{ .Release.Namespace }}
+      constraintRef: {{ include "cn.configConstraintsName" . }}
+      volumeName: cn-cm
+      keys:
+      - cn.conf
+  lifecycleActions:
+    preTerminate:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.cn.repository }}:{{ default .Values.image.cn.tag }}
+        exec:
+          command:
+          - /bin/bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/cn-drop-warehouse.sh" | nindent 12 }}
+        targetPodSelector: Any
+        container: cn
+    memberLeave:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.cn.repository }}:{{ default .Values.image.cn.tag }}
+        exec:
+          command:
+          - /bin/bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/cn-member-leave.sh" | nindent 12 }}
+        targetPodSelector: Any
+        container: cn
+  vars:
+  - name: FE_DISCOVERY_SVC_NAME
+    valueFrom:
+      serviceVarRef:
+        compDef: {{ include "fe-shared-data.componentDefName" . }}
+        name: fe
+        host: Required
+  - name: FE_DISCOVERY_ADDR
+    value: $(FE_DISCOVERY_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}
+  - name: STARROCKS_USER
+    valueFrom:
+      credentialVarRef:
+        compDef: {{ include "fe-shared-data.componentDefName" . }}
+        name: root
+        optional: false
+        username: Required
+  - name: STARROCKS_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        compDef: {{ include "fe-shared-data.componentDefName" . }}
+        name: root
+        optional: false
+        password: Required
+  - name: MYSQL_PWD
+    valueFrom:
+      credentialVarRef:
+        compDef: {{ include "fe-shared-data.componentDefName" . }}
+        name: root
+        optional: false
+        password: Required
+  runtime:
+    containers:
+    - name: cn
+      imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+      command:
+      - bash
+      - -c
+      - |
+        /scripts/check-suspend.sh
+        {{ if eq .Values.hostType "FQDN" -}}
+        /opt/starrocks/cn_entrypoint.sh ${FE_DISCOVERY_ADDR}
+        {{- else -}}
+        {{ include "POD_IP" . | nindent 8 }}
+        /scripts/cn_entrypoint.sh ${FE_DISCOVERY_ADDR}
+        {{- end }}
+      env:
+      {{- include "commonEnvs" . | nindent 6}}
+      - name: COMPONENT_NAME
+        value: cn
+      - name: FE_QUERY_PORT
+        value: "{{ .Values.fe.queryPort }}"
+      - name: CONFIGMAP_MOUNT_PATH
+        value: /etc/starrocks/cn/conf
+      - name: SERVICE_PORT
+        value: "8040"
+      lifecycle:
+        preStop:
+          exec:
+            command:
+            - bash
+            - -c
+            - |
+              /opt/starrocks/cn_prestop.sh > /tmp/pre-stop-hook.log 2>&1
+        postStart:
+          exec:
+            command:
+            - bash
+            - -c
+            - |
+              /scripts/cn-member-join.sh > /tmp/post-start-hook.log 2>&1
+      ports:
+      - containerPort: 9060
+        name: rpc-port
+        protocol: TCP
+      - containerPort: 8040
+        name: http-port
+        protocol: TCP
+      - containerPort: 9050
+        name: heartbeat-port
+        protocol: TCP
+      - containerPort: 8060
+        name: brpc-port
+        protocol: TCP
+      - containerPort: 9070
+        name: starlet-port
+        protocol: TCP
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+      livenessProbe:
+        failureThreshold: 3
+        {{- include "cn.probe" . | nindent 8 }}
+      readinessProbe:
+        failureThreshold: 3
+        {{- include "cn.probe" . | nindent 8 }}
+      startupProbe:
+        failureThreshold: 90
+        {{- include "cn.probe" . | nindent 8 }}
+      volumeMounts:
+      - mountPath: /opt/starrocks/cn/conf/cn.conf
+        name: cn-cm
+        subPath: cn.conf
+      - mountPath: /opt/starrocks/cn/log
+        name: log
+      - mountPath: /scripts
+        name: scripts
+      - mountPath: /opt/starrocks/cn/storage
+        name: data
+      - mountPath: /opt/starrocks/kb/suspend
+        name: cn-cm
+        subPath: suspend
+    - name: nginx
+      imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+      livenessProbe:
+        failureThreshold: 3
+        httpGet:
+          path: /nginx/health
+          port: 8080
+          scheme: HTTP
+        periodSeconds: 5
+        successThreshold: 1
+        timeoutSeconds: 1
+      ports:
+      - containerPort: 8080
+        name: proxy-port
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        httpGet:
+          path: /nginx/health
+          port: 8080
+          scheme: HTTP
+        periodSeconds: 5
+        successThreshold: 1
+        timeoutSeconds: 1
+      volumeMounts:
+      - mountPath: /etc/nginx/nginx.conf
+        name: cn-cm
+        subPath: nginx.conf
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        runAsGroup: 101
+        runAsNonRoot: true
+        runAsUser: 101
+    volumes:
+    - name: log
+      emptyDir: {}

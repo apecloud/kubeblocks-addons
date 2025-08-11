@@ -1,0 +1,36 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: starrocks
+  labels:
+    {{- include "starrocks.labels" . | nindent 4 }}
+spec:
+  topologies:
+  - name: shared-nothing
+    components:
+    - name: fe
+      compDef: starrocks-fe-sn
+    - name: be
+      compDef: starrocks-be
+    orders:
+      provision:
+      - fe
+      - be
+      terminate:
+      - be
+      - fe
+  - name: shared-data
+    components:
+    - name: fe
+      compDef: starrocks-fe-sd
+    - name: cn
+      compDef: starrocks-cn
+      template: true
+    orders:
+      provision:
+      - fe
+      - cn
+      terminate:
+      - cn
+      - fe
+    default: true

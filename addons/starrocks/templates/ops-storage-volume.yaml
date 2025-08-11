@@ -1,0 +1,136 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: starrocks-storage-volume
+spec:
+  preConditions:
+  - rule:
+      expression: '{{`{{ eq .component.status.phase "Running" }}`}}'
+      message: "Component is not in Running status."
+  componentInfos:
+    - componentDefinitionName: starrocks-fe-sd
+    - componentDefinitionName: starrocks-fe-sn
+  podInfoExtractors:
+  - name: fe-pod
+    podSelector:
+      multiPodSelectionPolicy: Any
+    env:
+    - name: STARROCKS_USER
+      valueFrom:
+        envRef:
+          targetContainerName: fe
+          envName: STARROCKS_USER
+    - name: STARROCKS_PASSWORD
+      valueFrom:
+        envRef:
+          targetContainerName: fe
+          envName: STARROCKS_PASSWORD
+    - name: FE_DISCOVERY_ADDR
+      valueFrom:
+        envRef:
+          targetContainerName: fe
+          envName: FE_DISCOVERY_ADDR
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        operation:
+          description: "operation type, supports value: [create, update, delete]."
+          type: string
+          enum:
+          - create
+          - update
+          - delete
+        endpoint:
+          description: "The endpoint URL used to access your S3 bucket, for example, https://s3.us-west-2.amazonaws.com."
+          type: string
+        accessKey:
+          description: "The Access Key ID used to access your S3 bucket."
+          type: string
+        secretKey:
+          description: "The Secret Access Key used to access your S3 bucket."
+          type: string
+        location:
+          description: |
+            The storage locations. The format is as follows:
+            s3://<s3_path>. <s3_path> must be an absolute path, for example, s3://testbucket/subpath. Note that if you want to enable the Partitioned Prefix feature for the storage volume, you can only specify the bucket name, and specifying a sub-path is not allowed.
+          type: string
+        default:
+          description: "Whether the storage volume is the default storage volume."
+          type: boolean
+        volume:
+          description: "The storage volume name."
+          type: string
+          default: def_volume
+      required:
+      - operation
+      - volume
+      type: object
+  actions:
+  - name: storage-volume
+    failurePolicy: Fail
+    workload:
+      type: Job
+      backoffLimit: 3
+      podInfoExtractorName: fe-pod
+      podSpec:
+        containers:
+        - name: storage-volume
+          image: '{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:{{ default .Values.image.fe.tag }}'
+          imagePullPolicy: IfNotPresent
+          command:
+          - bash
+          - -c
+          - |
+            set -e
+            set -x
+            function execSQL() {
+              local sql=$1
+              if [[ ! -z "${sql}" ]]; then
+                mysql -h ${FE_DISCOVERY_ADDR} -P 9030 -u${STARROCKS_USER} -p${STARROCKS_PASSWORD} -e "$sql"
+              fi
+            }
+
+            function checkCreateParams() {
+              if [[ -z "$location" ]]; then
+                echo "location is required"
+                exit 1
+              fi
+            }
+
+            function checkBasicParams() {
+              if [[ -z "$endpoint" ]]; then
+                echo "endpoint is required"
+                exit 1
+              fi
+              if [[ -z "$accessKey" ]]; then
+                echo "accessKey is required"
+                exit 1
+              fi
+              if [[ -z "$secretKey" ]]; then
+                echo "secretKey is required"
+                exit 1
+              fi
+            }
+
+            case "$operation" in
+              create)
+                checkBasicParams
+                checkCreateParams
+                execSQL "CREATE STORAGE VOLUME IF NOT EXISTS $volume TYPE=S3 LOCATIONS=('$location') PROPERTIES('aws.s3.endpoint'='${endpoint}', 'aws.s3.access_key'='${accessKey}', 'aws.s3.secret_key'='${secretKey}');"
+                ;;
+              update)
+                checkBasicParams
+                execSQL "ALTER STORAGE VOLUME $volume SET('aws.s3.endpoint'='${endpoint}', 'aws.s3.access_key'='${accessKey}', 'aws.s3.secret_key'='${secretKey}');"
+                ;;
+              delete)
+                execSQL "DROP STORAGE VOLUME $volume;"
+                ;;
+              *)
+                echo "unknown operation: $operation"
+                exit 1
+                ;;
+            esac
+
+            if [[ "$operation" != "delete" ]] && [[ "$default" == "true" ]]; then
+              execSQL "SET $volume AS DEFAULT STORAGE VOLUME;"
+            fi

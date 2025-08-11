@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "starrocks.name" . }}-scripts
+  labels:
+    {{- include "starrocks.labels" . | nindent 4 }}
+data:
+  fe-post-start.sh: |-
+    {{- .Files.Get "scripts/fe-post-start.sh" | nindent 4 }}
+  fe-update-dynamic-config.sh: |
+    #!/bin/sh
+    set -ex
+    key="${1:?missing parameterkey}"
+    value="${2:?missing parametervalue}"
+    echo "key: $key, value: $value"
+    /kb_tools/mysql -host=127.0.0.1 -port=9030 -user=root -password=${MYSQL_PWD} -sql="ADMIN SET FRONTEND CONFIG ('$key' = '$value');"
+  be-update-dynamic-config.sh: |
+    #!/bin/sh
+    set -ex
+    key="${1:?missing parameterkey}"
+    value="${2:?missing parametervalue}"
+    echo "key: $key, value: $value"
+    curl -XPOST http://localhost:8040/api/update_config?$key=$value
+  cn_entrypoint.sh: |-
+    {{- .Files.Get "scripts/cn_entrypoint.sh" | nindent 4 }}
+  be_entrypoint.sh: |-
+    {{- .Files.Get "scripts/be_entrypoint.sh" | nindent 4 }}
+  check-suspend.sh: |-
+    {{- .Files.Get "scripts/check-suspend.sh" | nindent 4 }}
+  cn-member-join.sh: |-
+    {{- .Files.Get "scripts/cn-member-join.sh" | nindent 4 }}
