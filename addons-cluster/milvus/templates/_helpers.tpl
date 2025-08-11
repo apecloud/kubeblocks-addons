@@ -93,5 +93,5 @@ External object storage service reference
     mq_type: {{ .Values.storage.log.type }}
     minio_bucket: {{ .Values.storage.object.bucket }}
     minio_root_path: {{ .Values.storage.object.path }}
-    minio_use_path_style: {{ .Values.storage.object.usePathStyle }}
+    minio_use_path_style: {{ .Values.storage.object.usePathStyle | quote }}
 {{- end }}

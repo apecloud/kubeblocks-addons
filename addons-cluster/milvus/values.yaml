@@ -120,23 +120,23 @@ storage:
     # type can be kafka or pulsar 
     type: kafka
     serviceRef:
-      # -- Kubernetes namespace for Pulsar
+      # -- Kubernetes namespace
       # @default default
       namespace: default
       cluster:
-        # -- Name of the Pulsar cluster
+        # -- Name of the Pulsar/kafka cluster
         # @required
         name: 
-        # -- Component name for Pulsar broker
+        # -- Component name for Pulsar/kafka broker
         # @default broker
         component: broker
-        # -- Service type for Pulsar
+        # -- Service name for Pulsar/kafka
         # @default headless
         service: headless
-        # -- Port name for Pulsar protocol
-        # @default pulsar
-        port: pulsar
-        # -- Credentials for Pulsar
+        # -- Port name for Pulsar/kafka
+        # @default broker
+        port: broker
+        # -- Credentials for Pulsar/kafka
         # @optional
         credential:
       serviceDescriptor:
@@ -161,16 +161,17 @@ storage:
         # @default headless
         service: headless
         # -- Port name for MinIO API protocol
-        # @default http
-        port: http
+        # @default api
+        port: api
         # -- Credentials for MinIO
         # @optional
-        credential: admin
+        credential: root
       serviceDescriptor:
     # bucket name of the object storage
     bucket:
     # root path of the bucket
     path:
     # if true, path style will be used. If false, virtual host style will be used.
-    usePathStyle: true
+    # @type string
+    usePathStyle: "true"
 

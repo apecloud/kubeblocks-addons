@@ -194,10 +194,8 @@ Startup probe
 {{- define "milvus.probe.startup" }}
 {{- if .Values.startupProbe.enabled }}
 startupProbe:
-  httpGet:
-    path: /healthz
+  tcpSocket:
     port: metrics
-    scheme: HTTP
   initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
   periodSeconds: {{ .Values.startupProbe.periodSeconds }}
   timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
@@ -212,10 +210,8 @@ Liveness probe
 {{- define "milvus.probe.liveness" }}
 {{- if .Values.livenessProbe.enabled }}
 livenessProbe:
-  httpGet:
-    path: /healthz
+  tcpSocket:
     port: metrics
-    scheme: HTTP
   initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
   periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
   timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
@@ -455,7 +451,7 @@ Milvus cluster vars for external storage services reference
       name: milvus-log-storage
       optional: false
       endpoint: Required
-  expression: {{ `{{ index (splitList ":" .PULSAR_SERVER) 0 }}` | toYaml }}
+  expression: {{ `{{ index (splitList ":" .LOG_SERVICE_SERVER) 0 }}` | toYaml }}
 - name: LOG_SERVICE_PORT
   valueFrom:
     serviceRefVarRef:

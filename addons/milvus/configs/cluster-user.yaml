@@ -6,7 +6,7 @@ messageQueue: pulsar
 minio:
   address: {{ .MINIO_SERVER }}
   port: {{ .MINIO_PORT }}
-  {{- if eq $MINIO_PORT "443" }}
+  {{- if eq .MINIO_PORT "443" }}
   useSSL: true
   {{- else }}
   useSSL: false
@@ -15,7 +15,7 @@ minio:
   secretAccessKey: MINIO_SECRET_KEY
   bucketName: {{ .minio_bucket }}
   rootPath: {{ .minio_root_path }}
-  {{- if eq $minio_use_path_style "true" }}
+  {{- if eq .minio_use_path_style "true" }}
   cloudProvider: aws
   {{- else }}
   cloudProvider: aliyun
@@ -25,11 +25,11 @@ mq:
 msgChannel:
   chanNamePrefix:
     cluster: {{ .CLUSTER_NAME }}
-{{- if eq $mq_type "pulsar" }}
+{{- if eq .mq_type "pulsar" }}
 pulsar:
   address: {{ .LOG_SERVICE_SERVER }}
   port: {{ .LOG_SERVICE_PORT }}
-{{- else if eq $mq_type "kafka" }}
+{{- else if eq .mq_type "kafka" }}
 kafka:
   # port is actually endpoint, maybe a bug of kb
   brokerList: {{ .LOG_SERVICE_SERVER }}:{{ .LOG_SERVICE_PORT }}
