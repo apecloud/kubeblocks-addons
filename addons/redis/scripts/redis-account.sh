@@ -59,9 +59,9 @@ function env_pre_check() {
         exit 1
     fi
 
-    # cluster mode don't have KB_POD_LIST, but have REDIS_POD_FQDN_LIS and get hosts from redis-cli
+    # cluster mode don't have KB_POD_LIST, but have REDIS_POD_FQDN_LIST and get hosts from redis-cli
     if [ "$SHARD_MODE" != "TRUE" ] && [ -z "$REDIS_POD_FQDN_LIST" ]; then
-        echo "REDIS_POD_FQDN_LIS is empty, skip ACL operation"
+        echo "REDIS_POD_FQDN_LIST is empty, skip ACL operation"
         exit 0
     fi
 

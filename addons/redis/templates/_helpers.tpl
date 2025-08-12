@@ -186,6 +186,10 @@ Generate scripts configmap
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
+{{- if $.Files.Get "scripts/redis-account.sh" }}
+redis-account.sh: |-
+{{- $.Files.Get "scripts/redis-account.sh" | nindent 2 }}
+{{- end }}
 {{- end }}
 
 {{- define "apeDts.reshard.image" -}}

@@ -84,11 +84,11 @@ spec:
         - name: REDIS_POD_FQDN_LIST
           valueFrom:
             envRef:
-              envName: REDIS_POD_FQDN_LIST
+              envName: SENTINEL_POD_FQDN_LIST
         - name: SERVICE_PORT
           valueFrom:
             envRef:
-              envName: SERVICE_PORT
+              envName: SENTINEL_SERVICE_PORT
         - name: REDIS_DEFAULT_USER
           valueFrom:
             envRef:
