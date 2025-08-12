@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-idx=${POD_NAME##*-}
+idx=${KB_POD_NAME##*-}
 if [ $idx -ne 0 ]; then
     exit 0
 fi

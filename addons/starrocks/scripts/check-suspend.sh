@@ -11,9 +11,9 @@ function info() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
 }
 
-while grep "$POD_NAME" $suspend_file > /dev/null; do
-    info "waiting for $POD_NAME to be removed from suspend list"
+while grep "$KB_POD_NAME" $suspend_file > /dev/null; do
+    info "waiting for $KB_POD_NAME to be removed from suspend list"
     sleep 5
 done
 
-info "$POD_NAME is not in suspend list anymore, ready to start."
+info "$KB_POD_NAME is not in suspend list anymore, ready to start."
