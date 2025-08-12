@@ -194,10 +194,8 @@ Startup probe
 {{- define "milvus.probe.startup" }}
 {{- if .Values.startupProbe.enabled }}
 startupProbe:
-  httpGet:
-    path: /healthz
+  tcpSocket:
     port: metrics
-    scheme: HTTP
   initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
   periodSeconds: {{ .Values.startupProbe.periodSeconds }}
   timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
@@ -212,10 +210,8 @@ Liveness probe
 {{- define "milvus.probe.liveness" }}
 {{- if .Values.livenessProbe.enabled }}
 livenessProbe:
-  httpGet:
-    path: /healthz
+  tcpSocket:
     port: metrics
-    scheme: HTTP
   initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
   periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
   timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
@@ -257,8 +253,8 @@ Milvus init container - setup
   imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
   command:
     - /cp
-    - /run.sh,/merge
-    - /milvus/tools/run.sh,/milvus/tools/merge
+    - /run.sh,/merge,/iam-verify
+    - /milvus/tools/run.sh,/milvus/tools/merge,/milvus/tools/iam-verify
   volumeMounts:
     {{- include "milvus.volumeMount.tools" . | indent 4 }}
 {{- end }}
@@ -328,7 +324,7 @@ Milvus volume mounts - tools
 Milvus volume mounts - user
 */}}
 {{- define "milvus.volumeMount.user" }}
-- mountPath: /milvus/configs/user.yaml.raw
+- mountPath: /milvus/configs/operator/user.yaml.raw
   name: milvus-config
   readOnly: true
   subPath: user.yaml
@@ -387,11 +383,13 @@ Milvus cluster external storage services reference
 - name: milvus-meta-storage
   serviceRefDeclarationSpecs:
     - serviceKind: etcd
-      serviceVersion: "^3.*"
+      serviceVersion: "^*"
 - name: milvus-log-storage
   serviceRefDeclarationSpecs:
     - serviceKind: pulsar
       serviceVersion: "^2.*"
+    - serviceKind: kafka
+      serviceVersion: "^*"
 - name: milvus-object-storage
   serviceRefDeclarationSpecs:
     - serviceKind: minio
@@ -447,14 +445,14 @@ Milvus cluster vars for external storage services reference
       name: milvus-object-storage
       optional: false
       password: Required
-- name: PULSAR_SERVER
+- name: LOG_SERVICE_SERVER
   valueFrom:
     serviceRefVarRef:
       name: milvus-log-storage
       optional: false
       endpoint: Required
-  expression: {{ `{{ index (splitList ":" .PULSAR_SERVER) 0 }}` | toYaml }}
-- name: PULSAR_PORT
+  expression: {{ `{{ index (splitList ":" .LOG_SERVICE_SERVER) 0 }}` | toYaml }}
+- name: LOG_SERVICE_PORT
   valueFrom:
     serviceRefVarRef:
       name: milvus-log-storage
