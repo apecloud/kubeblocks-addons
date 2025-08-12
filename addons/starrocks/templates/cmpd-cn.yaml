@@ -81,8 +81,6 @@ spec:
         compDef: {{ include "fe-shared-data.componentDefName" . }}
         name: fe
         host: Required
-  - name: FE_DISCOVERY_ADDR
-    value: $(FE_DISCOVERY_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}
   - name: STARROCKS_USER
     valueFrom:
       credentialVarRef:
@@ -121,6 +119,8 @@ spec:
         {{- end }}
       env:
       {{- include "commonEnvs" . | nindent 6}}
+      - name: FE_DISCOVERY_ADDR
+        value: $(FE_DISCOVERY_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}
       - name: COMPONENT_NAME
         value: cn
       - name: FE_QUERY_PORT
