@@ -16,6 +16,7 @@ on:
           - elasticsearch
           - etcd
           - greptimedb
+          - influxdb
           - kafka
           - llm
           - loki
