@@ -8,7 +8,7 @@ spec:
   componentSpecs:
     - name: influxdb
       componentDef: influxdb
-      serviceVersion: 2.7.4
+      serviceVersion: 2.7.11
       replicas: 1
       resources:
         limits:

@@ -11,6 +11,21 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Chart.AppVersion }}
+  configs:
+    - name: influxdb-config
+      template: {{ include "influxdb.configurationTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: influxdb-config
+      defaultMode: 0555
+      externalManaged: true
+  services:
+    - name: influxdb
+      serviceName: influxdb
+      spec:
+        ports:
+          - name: console
+            port: 8086
+            targetPort: http
   vars:
     - name: INFLUXDB_ADMIN_USER
       value: admin

@@ -60,3 +60,18 @@ Define influxdb component definition regex pattern
 {{- define "influxdb.cmpdRegexpPattern" -}}
 ^influxdb-
 {{- end -}}
+
+{{/*
+Define influxdb configuration template name
+*/}}
+{{- define "influxdb.configurationTemplate" -}}
+influxdb-configuration
+{{- end -}}
+
+{{- define "influxdb.prcName" -}}
+influxdb-pcr
+{{- end -}}
+
+{{- define "influxdb.pdName" -}}
+influxdb-pd
+{{- end -}}
