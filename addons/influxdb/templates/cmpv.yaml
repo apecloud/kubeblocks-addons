@@ -11,11 +11,11 @@ spec:
     - compDefs:
         - {{ include "influxdb.cmpdRegexpPattern" . }}
       releases:
-        - 2.7.4
+        - 2.7.11
   releases:
-    - name: 2.7.4
+    - name: 2.7.11
       changes:
-      serviceVersion: 2.7.4
+      serviceVersion: 2.7.11
       images:
         init-chmod-data: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.init.repository }}:11-debian-11-r93
-        influxdb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdb.repository }}:2.7.4-debian-11-r0
+        influxdb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdb.repository }}:2.7.11-debian-12-r18
