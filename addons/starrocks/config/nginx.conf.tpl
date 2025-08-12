@@ -2,7 +2,7 @@
 {{- $namespace := $.cluster.metadata.namespace }}
 {{- $fe_component := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if or (eq $e.componentDef "starrocks-fe-sd") (eq $e.componentDef "starrocks-fe-sn") }}
+  {{- if or (hasPrefix "starrocks-fe-sd" $e.componentDef) (hasPrefix "starrocks-fe-sn" $e.componentDef) }}
   {{- $fe_component = $e }}
   {{- end }}
 {{- end }}

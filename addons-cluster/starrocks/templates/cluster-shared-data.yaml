@@ -7,14 +7,12 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
-  clusterDefinitionRef: starrocks
+  clusterDef: starrocks
   topology: shared-data
   {{- include "starrocks.services" . | indent 2}}
   componentSpecs:
     - name: fe
       componentDef: starrocks-fe-sd
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       serviceVersion: {{ include "starrocks.version" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas | default 1 }}
@@ -67,7 +65,6 @@ spec:
     - name: cn
       componentDef: starrocks-cn
       serviceVersion: {{ include "starrocks.version" . }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       replicas: {{ index .Values.cnReplicas | default 1 }}
       resources:
         limits:

@@ -69,14 +69,14 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 Define component defintion name
 */}}
 {{- define "fe-shared-data.componentDefName" -}}
-starrocks-fe-shared-data-{{ .Chart.Version }}
+starrocks-fe-sd-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define component defintion name
 */}}
 {{- define "fe-shared-nothing.componentDefName" -}}
-starrocks-fe-shared-nothing-{{ .Chart.Version }}
+starrocks-fe-sn-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -475,14 +475,14 @@ net_use_ipv6_when_priority_networks_empty=false
 Define fe shared data component definition regex pattern
 */}}
 {{- define "fe-shared-data.cmpdRegexPattern" -}}
-^starrocks-fe-shared-data-
+^starrocks-fe-sd-
 {{- end -}}
 
 {{/*
 Define fe shared nothing component definition regex pattern
 */}}
 {{- define "fe-shared-nothing.cmpdRegexPattern" -}}
-^starrocks-fe-shared-nothing-
+^starrocks-fe-sn-
 {{- end -}}
 
 {{/*
@@ -503,28 +503,28 @@ Define be component definition regex pattern
 Define fe component configuration template name
 */}}
 {{- define "fe-shared-data.configTemplate" -}}
-starrocks-fe-shared-data-config-template
+starrocks-fe-sd-config-template
 {{- end -}}
 
 {{/*
 Define fe component configuration template name
 */}}
 {{- define "fe-shared-nothing.configTemplate" -}}
-starrocks-fe-shared-nothing-config-template
+starrocks-fe-sn-config-template
 {{- end -}}
 
 {{/*
 Define cn component configuration template name
 */}}
 {{- define "cn.configTemplate" -}}
-starrocks-cn-configuration-template
+starrocks-cn-config-template
 {{- end -}}
 
 {{/*
 Define be component configuration template name
 */}}
 {{- define "be.configTemplate" -}}
-starrocks-be-configuration-template
+starrocks-be-config-template
 {{- end -}}
 
 {{/*
@@ -559,14 +559,14 @@ starrocks-cn-pd
 Define starrocks parameters config render name
 */}}
 {{- define "fe-shared-data.pcrName" -}}
-starrocks-fe-shared-data-pcr
+starrocks-fe-sd-pcr
 {{- end -}}
 
 {{/*
 Define starrocks parameters config render name
 */}}
 {{- define "fe-shared-nothing.pcrName" -}}
-starrocks-fe-shared-nothing-pcr
+starrocks-fe-sn-pcr
 {{- end -}}
 
 {{/*
