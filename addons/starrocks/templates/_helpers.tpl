@@ -375,6 +375,8 @@ runtime:
         value: /etc/starrocks/fe/conf
       - name: SERVICE_PORT
         value: "8030"
+      - name: FE_DISCOVERY_ADDR
+        value: $(FE_DISCOVERY_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}
       securityContext:
         allowPrivilegeEscalation: false
         readOnlyRootFilesystem: false
