@@ -14,7 +14,7 @@ InfluxDB enables real-time analytics by serving as a purpose-built database that
 
 | Versions |
 |----------|
-| 2.7.4 |
+| 2.7.11   |
 
 ## Prerequisites
 
