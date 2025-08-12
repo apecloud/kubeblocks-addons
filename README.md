@@ -28,7 +28,7 @@ KubeBlocks add-ons.
 | llm | ggml-0.1.0<br>llm-0.2.7 | Large language models. | ApeCloud |
 | loki | loki-1.0.0 | Loki is a horizontally-scalable, highly-available, multi-tenant log aggregation system inspired by Prometheus. It is designed to be very cost effective and easy to operate. | Chen-speculation |
 | mariadb | mariadb-10.6.15 | MariaDB is a high performance open source relational database management system that is widely used for web and application servers | yinmin |
-| milvus | milvus-v2.3.2 | A cloud-native vector database, storage for next generation AI applications. | leon-inf |
+| milvus | milvus-2.5.13<br>milvus-v2.3.2 | A cloud-native vector database, storage for next generation AI applications. | leon-inf |
 | minio | minio-2024.6.29 | High Performance, Kubernetes Native Object Storage | fengluodb |
 | mogdb | mogdb-5.0.5 | A Helm chart for Kubernetes | yabinji shanshanying |
 | mongodb | mongodb-4.0.28<br>mongodb-4.2.24<br>mongodb-4.4.29<br>mongodb-5.0.28<br>mongodb-5.0.30<br>mongodb-6.0.16<br>mongodb-6.0.20<br>mongodb-6.0.22<br>mongodb-7.0.12<br>mongodb-7.0.16<br>mongodb-7.0.19<br>mongodb-8.0.4<br>mongodb-8.0.6<br>mongodb-8.0.8 | MongoDB is a document database designed for ease of application development and scaling. | xuriwuyun |
