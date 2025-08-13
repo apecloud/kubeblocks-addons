@@ -109,6 +109,10 @@ function get_cluster_host_list() {
         awk '{print $2}' |
         cut -d ',' -f2 |
         paste -sd,)
+    if [ -z "$host_list" ]; then
+        echo "GET CLUSTER HOST LIST FAILED, SKIP ACL OPERATION"
+        exit 1
+    fi
 }
 
 function main() {
