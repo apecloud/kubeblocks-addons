@@ -23,7 +23,7 @@ image:
 ## @param supported versions with detailed information
 versions:
   - major: "1"
-    componentDef: "^qdrant-"
+    componentDef: "^qdrant"
     minors:
       # [version, serviceVersion, tag, deprecated]
       - ["1.5.0", "1.5.0", "v1.5.0", false]
