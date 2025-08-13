@@ -146,10 +146,6 @@ spec:
           valueFrom:
             envRef:
               envName: CLUSTER_NAMESPACE
-        - name: POD_FQDN
-          valueFrom:
-            envRef:
-              envName: POD_FQDN
         - name: CLUSTER_NAMESPACE
           valueFrom:
             envRef:
@@ -174,6 +170,10 @@ spec:
           valueFrom:
             envRef:
               envName: REDIS_DEFAULT_PASSWORD
+        - name: CLUSTER_DOMAIN
+          valueFrom:
+            envRef:
+              envName: CLUSTER_DOMAIN
   parametersSchema:
     openAPIV3Schema:
       properties:
