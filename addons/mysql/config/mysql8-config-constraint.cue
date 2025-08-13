@@ -1530,6 +1530,9 @@
 	// For SQL window functions, determines whether to enable inversion optimization for moving window frames also for floating values.
 	windowing_use_high_precision: string & "OFF" | "ON" | *"ON"
 
+	// This variable is used to specify which events should be logged.
+	audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
+
 	// other parameters
 	// reference mysql parameters
 	...

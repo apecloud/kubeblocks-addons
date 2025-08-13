@@ -167,7 +167,6 @@ staticParameters:
   - skip_show_database
   - skip-slave-start
   - slave_load_tmpdir
-  - slave_parallel_type
   - slave_type_conversions
   - socket
   - ssl_ca
@@ -485,6 +484,7 @@ dynamicParameters:
   - slave_compressed_protocol
   - slave_exec_mode
   - slave_net_timeout
+  - slave_parallel_type
   - slave_parallel_workers
   - slave_pending_jobs_size_max
   - slave_preserve_commit_order
@@ -537,6 +537,7 @@ dynamicParameters:
   - wait_timeout
   - windowing_use_high_precision
   - innodb_redo_log_capacity
+  - audit_log_policy
 
 immutableParameters:
   - allow-suspicious-udfs
