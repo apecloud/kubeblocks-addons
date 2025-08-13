@@ -39,6 +39,7 @@ performance_schema=OFF
 
 # alias replica_exec_mode. Aliyun slave_exec_mode=STRICT
 slave_exec_mode=IDEMPOTENT
+slave_parallel_workers=4
 
 # gtid
 gtid_mode=ON
@@ -125,7 +126,7 @@ log_slave_updates=ON
 loose_audit_log_handler=FILE # FILE, SYSLOG
 loose_audit_log_file={{ $data_root }}/auditlog/audit.log
 loose_audit_log_buffer_size=1Mb
-loose_audit_log_policy=QUERIES # ALL, LOGINS, QUERIES, NONE
+loose_audit_log_policy=ALL # ALL, LOGINS, QUERIES, NONE
 loose_audit_log_strategy=ASYNCHRONOUS
 loose_audit_log_rotate_on_size=10485760
 loose_audit_log_rotations=5
