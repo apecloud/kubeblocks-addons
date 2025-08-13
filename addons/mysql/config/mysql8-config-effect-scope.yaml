@@ -538,6 +538,7 @@ dynamicParameters:
   - wait_timeout
   - windowing_use_high_precision
   - innodb_redo_log_capacity
+  - audit_log_policy
 
 immutableParameters:
   - allow-suspicious-udfs

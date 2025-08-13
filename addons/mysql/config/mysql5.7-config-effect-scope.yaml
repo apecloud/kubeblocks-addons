@@ -254,6 +254,7 @@ dynamicParameters:
   - transaction_write_set_extraction
   - unique_checks
   - updatable_views_with_limit
+  - audit_log_policy
 immutableParameters:
   - auto_generate_certs
   - basedir
