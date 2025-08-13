@@ -65,10 +65,26 @@ function env_pre_check() {
         exit 0
     fi
 
-    if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$POD_FQDN" ]; then
-        echo "KB_POD_NAME is empty, skip ACL operation"
+    if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$CURRENT_POD_NAME" ]; then
+        echo "CURRENT_POD_NAME is empty, skip ACL operation"
         exit 0
     fi
+
+    if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$CURRENT_SHARD_COMPONENT_NAME" ]; then
+        echo "CURRENT_SHARD_COMPONENT_NAME is empty, skip ACL operation"
+        exit 0
+    fi
+    
+    if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$CLUSTER_NAMESPACE" ]; then
+        echo "CLUSTER_NAMESPACE is empty, skip ACL operation"
+        exit 0
+    fi
+
+    if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$CLUSTER_DOMAIN" ]; then
+        echo "CLUSTER_DOMAIN is empty, skip ACL operation"
+        exit 0
+    fi
+    
 }
 
 function create_post_check() {
@@ -83,7 +99,7 @@ function create_post_check() {
 }
 
 function get_cluster_host_list() {
-    host_list=$(redis-cli -c -h "$POD_FQDN" \
+    host_list=$(redis-cli -c -h "$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN" \
         -p $SERVICE_PORT \
         --user $REDIS_DEFAULT_USER \
         -a $REDIS_DEFAULT_PASSWORD \
@@ -93,6 +109,10 @@ function get_cluster_host_list() {
         awk '{print $2}' |
         cut -d ',' -f2 |
         paste -sd,)
+    if [ -z "$host_list" ]; then
+        echo "GET CLUSTER HOST LIST FAILED, SKIP ACL OPERATION"
+        exit 1
+    fi
 }
 
 function main() {
