@@ -39,6 +39,7 @@ performance_schema=OFF
 
 # alias replica_exec_mode. Aliyun slave_exec_mode=STRICT
 slave_exec_mode=IDEMPOTENT
+slave_parallel_workers=4
 
 # gtid
 gtid_mode=ON

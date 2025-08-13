@@ -1085,6 +1085,19 @@
 	// This variable is used to specify which events should be logged.
 	audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
 
+	// slave_exec_mode controls how a replication thread resolves conflicts and errors during replication.
+	slave_exec_mode?: string & "IDEMPOTENT" | "STRICT"
+
+	slave_load_tmpdir?: string
+
+	// The number of seconds to wait for more data from a master/slave connection before aborting the read.
+	slave_net_timeout?: int & >=1 & <=31536000
+
+	// Enable parallel execution on the slave of all uncommitted threads already in the prepare phase, without violating consistency.
+	slave_parallel_type?: string & "DATABASE" | "LOGICAL_CLOCK"
+
+	// Sets the number of slave worker threads for executing replication events (transactions) in parallel. Setting this variable to 0 (the default) disables parallel execution.
+	slave_parallel_workers?: int & >=0 & <=1024
 	// other parameters
 	// reference mysql parameters
 	...

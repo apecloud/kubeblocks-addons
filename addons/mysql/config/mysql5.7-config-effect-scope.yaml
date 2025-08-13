@@ -255,6 +255,10 @@ dynamicParameters:
   - unique_checks
   - updatable_views_with_limit
   - audit_log_policy
+  - slave_exec_mode
+  - slave_net_timeout
+  - slave_parallel_type
+  - slave_parallel_workers
 immutableParameters:
   - auto_generate_certs
   - basedir
@@ -358,6 +362,7 @@ staticParameters:
   - ssl_cipher
   - ssl_crl
   - ssl_crlpath
+  - slave_load_tmpdir
   - system_time_zone
   - secure_file_priv
   - table_open_cache_instances
