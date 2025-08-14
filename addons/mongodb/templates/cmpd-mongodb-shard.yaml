@@ -1,0 +1,339 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mongodbShard.componentDefName" . }}
+  labels:
+    {{- include "mongodb.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks.io
+  serviceKind: mongodb
+  serviceVersion: "8.0.8"
+  configs:
+    - name: mongodb-config
+      templateRef: {{ include "mongodbShard.configTplName" . }}
+      volumeName: mongodb-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0400
+      externalManaged: true
+  logConfigs:
+    {{- range $name,$pattern := .Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  scripts:
+    - name: mongodb-scripts
+      templateRef: {{ include "mongodbShard.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555  # for read and execute, mysql container switched user account.
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: true
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: true
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+    scrapePort: exporter
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      exec:
+        container: mongodb
+        command:
+          - /tools/syncerctl
+          - getrole
+    memberLeave:
+      exec:
+        container: mongodb
+        command:
+          - /bin/sh
+          - -c
+          - |
+            /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
+    switchover:
+      exec:
+        container: mongodb
+        command:
+          - /bin/sh
+          - -c
+          - |
+
+            if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
+                echo "switchover not triggered for primary, nothing to do, exit 0."
+                exit 0
+            fi
+
+            /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
+    postProvision:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /scripts/mongodb-shard-manage.sh --post-provision
+        preCondition: ComponentReady
+        retryPolicy:
+          maxRetries: 10
+    preTerminate:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /scripts/mongodb-shard-manage.sh --pre-terminate
+        retryPolicy:
+          maxRetries: 10
+  runtime:
+    securityContext:
+      # percona-server-mongodb needs run as root to have privilege to access to keyfile
+      runAsUser: 0
+    initContainers:
+      - command:
+          - cp
+          - -r
+          - /bin/syncer
+          - /bin/syncerctl
+          - /tools/
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-syncer
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+      - command:
+          - sh
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/tmp/bin
+            cp -r /opt/bitnami/kubectl/bin/kubectl {{ .Values.dataMountPath }}/tmp/bin
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-kubectl
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+      - command:
+          - sh
+          - -c
+          - |
+            cp -r /usr/bin/pbm /tools
+            cp -r /usr/bin/pbm-agent /tools
+            cp -r /usr/bin/pbm-agent-entrypoint /tools
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-pbm-agent
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+    containers:
+      - name: mongodb
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        ports:
+          - name: mongodb
+            protocol: TCP
+            containerPort: &mongodbPort 27017
+          - name: ha
+            protocol: TCP
+            containerPort: 3601
+        command:
+          - syncer
+          - --
+          - /scripts/mongodb-shard-setup.sh
+        env:
+          - name: PATH
+            value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mongodb
+          - name: SERVICE_PORT
+            value: $(KB_SERVICE_PORT)
+          - name: MONGODB_ROOT_USER
+            value: $(MONGODB_ADMIN_USER)
+          - name: MONGODB_ROOT_PASSWORD
+            value: $(MONGODB_ADMIN_PASSWORD)
+          - name: MONGODB_GRANT_ANYACTION_PRIVILEGE
+            value: "true"
+          - name: PBM_AGENT_MONGODB_USERNAME
+            value: $(MONGODB_ADMIN_USER)
+          - name: PBM_AGENT_MONGODB_PASSWORD
+            value: $(MONGODB_ADMIN_PASSWORD)
+          - name: PBM_MONGODB_REPLICA_SET
+            value: $(KB_CLUSTER_COMP_NAME)
+          - name: PBM_AGENT_SIDECAR
+            value: "true"
+          - name: PBM_AGENT_SIDECAR_SLEEP
+            value: "5"
+          - name: SHARDED
+            value: "TRUE"
+          - name: POD_NAME
+            value: $(KB_POD_NAME)
+          - name: PBM_MONGODB_URI
+            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mongodb/mongodb.conf
+            name: mongodb-config
+            subPath: mongodb.conf
+          - mountPath: /etc/mongodb/keyfile
+            name: mongodb-config
+            subPath: keyfile
+          - name: scripts
+            mountPath: /scripts
+          - mountPath: /tools
+            name: tools
+      - name: mongodb-backup-agent
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/backup-agent-setup.sh
+        env:
+          - name: PATH
+            value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: PBM_AGENT_MONGODB_USERNAME
+            value: $(MONGODB_ADMIN_USER)
+          - name: PBM_AGENT_MONGODB_PASSWORD
+            value: $(MONGODB_ADMIN_PASSWORD)
+          - name: PBM_MONGODB_REPLICA_SET
+            value: $(KB_CLUSTER_COMP_NAME)
+          - name: PBM_AGENT_SIDECAR
+            value: "true"
+          - name: PBM_AGENT_SIDECAR_SLEEP
+            value: "5"
+          - name: SHARDED
+            value: "TRUE"
+          - name: POD_NAME
+            value: $(KB_POD_NAME)
+          - name: PBM_MONGODB_URI
+            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+          - name: PBM_DATA_MOUNT_POINT
+            value: {{ .Values.dataMountPath }}
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - name: scripts
+            mountPath: /scripts
+          - mountPath: /tools
+            name: tools
+      - name: exporter
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /mongodb_exporter
+        args:
+          - --compatible-mode
+          - --discovering-mode
+          - --mongodb.direct-connect
+          - --mongodb.global-conn-pool
+          - --collect-all
+        ports:
+          - name: exporter
+            protocol: TCP
+            containerPort: 9216
+        env:
+          - name: MONGODB_URI
+            value: mongodb://127.0.0.1:$(KB_SERVICE_PORT)
+    volumes:
+      {{- if .Values.logCollector.enabled }}
+      - name: log-data
+        hostPath:
+          path: /var/log/kubeblocks
+          type: DirectoryOrCreate
+      {{- end }}
+  vars:
+    - name: MONGODB_USER
+      value: $(MONGODB_ADMIN_USER)
+    - name: MONGODB_PASSWORD
+      value: $(MONGODB_ADMIN_PASSWORD)
+    - name: KB_SERVICE_PORT
+      value: "27017"
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: mongodb
+            port:
+              name: mongodb
+              option: Optional
+    - name: SYNCER_SERVICE_PORT  
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: mongodb
+            port:
+              name: ha
+              option: Optional
+    - name: MONGODB_CLUSTER_ROLE
+      value: "shardsvr"
+    - name: MONGODB_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          # use config server credential to access to mongos
+          compDef: {{ include "mongodbShard.componentDefName" . }}
+          name: root
+          optional: false
+          username: Required
+    - name: MONGODB_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          # use config server credential to access to mongos
+          compDef: {{ include "mongodbShard.componentDefName" . }}
+          name: root
+          optional: false
+          password: Required
+    - name: MONGOS_INTERNAL_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "mongos.componentDefName" . }}
+          optional: false
+          host: Required
+    - name: MONGOS_INTERNAL_PORT 
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "mongos.componentDefName" . }}
+          optional: false
+          port:
+            name: mongos
+    - name: MONGOS_INTERNAL_HOST
+      value: "$(MONGOS_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+    - name: MONGODB_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: KUBERNETES_CLUSTER_DOMAIN
+      # syncer will use this env to get the cluster domain to generate the pod FQDN to initialize the replica set
+      value: "{{ .Values.clusterDomain }}"
+    - name: EXPORTER_SERVICE_PORT  
+      value: "9216"
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: exporter
+            port:
+              name: exporter
+              option: Optional
+  hostNetwork:
+    containerPorts:
+      - container: mongodb
+        ports:
+          - mongodb
+          - ha
