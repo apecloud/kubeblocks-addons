@@ -1,9 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "cfgServer.componentDefName" . }}
+  name: {{ include "cfgServer.compDefName" . }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
   serviceKind: mongodb
@@ -11,12 +13,10 @@ spec:
   configs:
     - name: mongodb-config
       templateRef: {{ include "mongodbShard.configTplName" . }}
-      constraintRef: {{ include "mongodb.configConstraintName" . }}
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0400
-      keys:
-        - mongodb.conf
+      externalManaged: true
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}
     - name: {{ $name }}
@@ -38,31 +38,47 @@ spec:
         letterCase: MixedCases
   roles:
     - name: primary
-      serviceable: true
-      writable: true
-      votable: true
+      updatePriority: 2
+      participatesInQuorum: true
     - name: secondary
-      serviceable: true
-      writable: false
-      votable: true
+      updatePriority: 1
+      participatesInQuorum: true
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   exporter:
     containerName: exporter
     scrapePath: /metrics
     scrapePort: exporter
   lifecycleActions:
     roleProbe:
-      builtinHandler: mongodb
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
-      #   container: mongodb
-      #   exec:
-      #     command:
-      #       - bash
-      #       - -c
-      #       - |
-      #         Status=$(export CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`; $CLIENT -u $KB_SERVICE_USER -p $KB_SERVICE_PASSWORD 127.0.0.1:27017 --quiet --eval "JSON.stringify(rs.status())") &&
-      #         MyState=$(echo $Status | jq '.myState') &&
-      #         echo $Status | jq ".members[] | select(.state == ($MyState | tonumber)) | .stateStr" |tr '[:upper:]' '[:lower:]'|uniq| xargs echo -n
+      exec:
+        container: mongodb
+        command:
+          - /tools/syncerctl
+          - getrole
+    memberLeave:
+      exec:
+        container: mongodb
+        command:
+          - /bin/sh
+          - -c
+          - |
+            /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
+    switchover:
+      exec:
+        container: mongodb
+        command:
+          - /bin/sh
+          - -c
+          - |
+
+            if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
+                echo "switchover not triggered for primary, nothing to do, exit 0."
+                exit 0
+            fi
+
+            /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
   runtime:
     securityContext:
       # percona-server-mongodb needs run as root to have privilege to access to keyfile
@@ -107,7 +123,7 @@ spec:
             name: tools
     containers:
       - name: mongodb
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: mongodb
@@ -121,6 +137,26 @@ spec:
           - --
           - /scripts/mongodb-shard-setup.sh
         env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_UID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.uid
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
           - name: PATH
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: KB_SERVICE_CHARACTER_TYPE
@@ -141,8 +177,6 @@ spec:
             value: "5"
           - name: SHARDED
             value: "TRUE"
-          - name: POD_NAME
-            value: $(KB_POD_NAME)
           - name: PBM_AGENT_MONGODB_USERNAME
             value: $(MONGODB_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
@@ -180,8 +214,6 @@ spec:
             value: "5"
           - name: SHARDED
             value: "TRUE"
-          - name: POD_NAME
-            value: $(KB_POD_NAME)
           - name: PBM_AGENT_MONGODB_USERNAME
             value: $(MONGODB_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
@@ -230,6 +262,28 @@ spec:
             targetPort: mongodb
       roleSelector: primary
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     - name: MONGODB_USER
       valueFrom:
         credentialVarRef:
@@ -285,13 +339,13 @@ spec:
     - name: MONGOS_INTERNAL_SVC_NAME
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mongos.componentDefName" . }}
+          compDef: {{ include "mongos.compDefName" . }}
           optional: false
           host: Required
     - name: MONGOS_INTERNAL_PORT 
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mongos.componentDefName" . }}
+          compDef: {{ include "mongos.compDefName" . }}
           optional: false
           port:
             name: mongos
@@ -300,7 +354,7 @@ spec:
     - name: MONGODB_SHARD_REPLICA_SET_NAME_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "mongodbShard.componentDefName" . }}
+          compDef: {{ include "mongodbShard.compDefName" . }}
           optional: false
           instanceNames: Required
           multipleClusterObjectOption:
@@ -309,24 +363,24 @@ spec:
               flattenFormat:
                 delimiter: "."
                 keyValueDelimiter: "@"
-    - name: MONGODB_ADMIN_USER
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "mongodbShard.componentDefName" . }}
-          name: root
-          optional: false
-          username: Required
-          multipleClusterObjectOption:
-            strategy: individual
-    - name: MONGODB_ADMIN_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "mongodbShard.componentDefName" . }}
-          name: root
-          optional: false
-          password: Required
-          multipleClusterObjectOption:
-            strategy: individual
+    # - name: MONGODB_ADMIN_USER
+    #   valueFrom:
+    #     credentialVarRef:
+    #       compDef: {{ include "mongodbShard.compDefName" . }}
+    #       name: root
+    #       optional: false
+    #       username: Required
+    #       multipleClusterObjectOption:
+    #         strategy: individual
+    # - name: MONGODB_ADMIN_PASSWORD
+    #   valueFrom:
+    #     credentialVarRef:
+    #       compDef: {{ include "mongodbShard.compDefName" . }}
+    #       name: root
+    #       optional: false
+    #       password: Required
+    #       multipleClusterObjectOption:
+    #         strategy: individual
     - name: EXPORTER_SERVICE_PORT  
       value: "9216"
       valueFrom:

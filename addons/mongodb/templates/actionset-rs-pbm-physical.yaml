@@ -20,7 +20,7 @@ spec:
     - name: PBM_IMAGE_TAG
       value: {{ .Values.image.percona.backup.tag }}
     - name: PSM_IMAGE_TAG
-      value: {{ .Values.image.percona.tag }}
+      value: {{ .Values.image.tag }}
   backupType: Full
   backup:
     preBackup: []

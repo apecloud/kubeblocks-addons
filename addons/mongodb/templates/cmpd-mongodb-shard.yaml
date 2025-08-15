@@ -1,9 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "mongodbShard.componentDefName" . }}
+  name: {{ include "mongodbShard.compDefName" . }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
   serviceKind: mongodb
@@ -26,14 +28,14 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
-  systemAccounts:
-    - name: root
-      initAccount: true
-      passwordGenerationPolicy:
-        length: 16
-        numDigits: 8
-        numSymbols: 0
-        letterCase: MixedCases
+  # systemAccounts:
+  #   - name: root
+  #     initAccount: true
+  #     passwordGenerationPolicy:
+  #       length: 16
+  #       numDigits: 8
+  #       numSymbols: 0
+  #       letterCase: MixedCases
   roles:
     - name: primary
       updatePriority: 2
@@ -78,26 +80,24 @@ spec:
 
             /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
     postProvision:
-      customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
-        exec:
-          command:
-            - /bin/bash
-            - -c
-            - /scripts/mongodb-shard-manage.sh --post-provision
-        preCondition: ComponentReady
-        retryPolicy:
-          maxRetries: 10
+      exec:
+        container: mongodb
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/mongodb-shard-manage.sh --post-provision
+      preCondition: ComponentReady
+      retryPolicy:
+        maxRetries: 10
     preTerminate:
-      customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
-        exec:
-          command:
-            - /bin/bash
-            - -c
-            - /scripts/mongodb-shard-manage.sh --pre-terminate
-        retryPolicy:
-          maxRetries: 10
+      exec:
+        container: mongodb
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/mongodb-shard-manage.sh --pre-terminate
+      retryPolicy:
+        maxRetries: 10
   runtime:
     securityContext:
       # percona-server-mongodb needs run as root to have privilege to access to keyfile
@@ -142,7 +142,7 @@ spec:
             name: tools
     containers:
       - name: mongodb
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: mongodb
@@ -156,6 +156,26 @@ spec:
           - --
           - /scripts/mongodb-shard-setup.sh
         env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_UID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.uid
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
           - name: PATH
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: KB_SERVICE_CHARACTER_TYPE
@@ -180,8 +200,6 @@ spec:
             value: "5"
           - name: SHARDED
             value: "TRUE"
-          - name: POD_NAME
-            value: $(KB_POD_NAME)
           - name: PBM_MONGODB_URI
             value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
         volumeMounts:
@@ -219,8 +237,6 @@ spec:
             value: "5"
           - name: SHARDED
             value: "TRUE"
-          - name: POD_NAME
-            value: $(KB_POD_NAME)
           - name: PBM_MONGODB_URI
             value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
           - name: PBM_DATA_MOUNT_POINT
@@ -257,6 +273,28 @@ spec:
           type: DirectoryOrCreate
       {{- end }}
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     - name: MONGODB_USER
       value: $(MONGODB_ADMIN_USER)
     - name: MONGODB_PASSWORD
@@ -286,7 +324,7 @@ spec:
       valueFrom:
         credentialVarRef:
           # use config server credential to access to mongos
-          compDef: {{ include "mongodbShard.componentDefName" . }}
+          compDef: {{ include "cfgServer.compDefName" . }}
           name: root
           optional: false
           username: Required
@@ -294,7 +332,7 @@ spec:
       valueFrom:
         credentialVarRef:
           # use config server credential to access to mongos
-          compDef: {{ include "mongodbShard.componentDefName" . }}
+          compDef: {{ include "cfgServer.compDefName" . }}
           name: root
           optional: false
           password: Required

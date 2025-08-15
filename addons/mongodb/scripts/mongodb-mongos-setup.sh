@@ -1,15 +1,9 @@
 #!/bin/bash
 
-{{- $mongodb_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
-MONGODB_ROOT={{ $mongodb_root }}
+MONGOS_PORT=${SERVICE_PORT:-27017}
+MONGODB_ROOT=${DATA_VOLUME:-/data/mongodb}
+
 mkdir -p $MONGODB_ROOT/logs
-# require port
-{{- $mongodb_port_info := getPortByName ( index $.podSpec.containers 0 ) "mongos" }}
-{{- $mongodb_port := 27017 }}
-{{- if $mongodb_port_info }}
-{{- $mongodb_port = $mongodb_port_info.containerPort }}
-{{- end }}
-MONGOS_PORT={{ $mongodb_port }}
 export PATH=$MONGODB_ROOT/tmp/bin:$PATH
 
 . "/scripts/mongodb-common.sh"

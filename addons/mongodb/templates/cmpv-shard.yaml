@@ -1,169 +1,72 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+{{- $imageRegistry := .Values.image.registry | default "docker.io" -}}
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: mongodb-shard
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
-    - compDefs:
-        - {{ include "mongodbShard.componentDefName" . }}
-      releases:
-        - 8.0.8
-        - 7.0.18
-        - 6.0.21
-        - 5.0.29
-        - 4.4.29
-        - 4.2.25
-        - 4.0.28
-    - compDefs:
-        - {{ include "cfgServer.componentDefName" . }}
-      releases:
-        - 8.0.8
-        - 7.0.18
-        - 6.0.21
-        - 5.0.29
-        - 4.4.29
-        - 4.2.25
-        - 4.0.28
+{{- range .Values.versions }}
+  - compDefs:
+    - {{ include "mongodbShard.compDefName" . }}
+    - {{ include "cfgServer.compDefName" . }}
+    releases:
+{{- range .minors }}
+      - {{ index . 0 }}
+{{- end }}
+{{- end }}
   releases:
-    - name: 8.0.8
-      changes:
-      serviceVersion: 8.0.8
-      images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.8
-        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 7.0.18
-      changes:
-      serviceVersion: 7.0.18
-      images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.18
-        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 6.0.21
-      changes:
-      serviceVersion: 6.0.21
-      images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.21
-        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 5.0.29
-      changes:
-      serviceVersion: 5.0.29
-      images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.29-multi
-        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 4.4.29
-      changes:
-      serviceVersion: 4.4.29
-      images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.4.29-multi
-        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 4.2.25
-      changes:
-      serviceVersion: 4.2.25
-      images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.2.25
-        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 4.0.28
-      changes:
-      serviceVersion: 4.0.28
-      images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.0.28
-        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
+{{- range .Values.versions }}
+{{- range .minors }}
+{{- if not (index . 4) }}
+  - name: {{ index . 0 }}
+    changes:
+    serviceVersion: {{ index . 1 }}
+    images:
+      mongodb: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      mongodb-backup-agent: {{ $imageRegistry }}/{{ $.Values.image.percona.backup.repository }}:{{ index . 3 }}
+      init-syncer: {{ $imageRegistry }}/{{ $.Values.image.syncer.repository }}:{{ $.Values.image.syncer.tag }}
+      init-kubectl: {{ $imageRegistry }}/{{ $.Values.image.kubectl.repository }}:{{ $.Values.image.kubectl.tag }}
+      init-pbm-agent: {{ $imageRegistry }}/{{ $.Values.image.percona.backup.repository }}:{{ index . 3 }}
+      exporter: {{ $imageRegistry }}/{{ $.Values.image.exporter.repository }}:{{ $.Values.image.exporter.tag }}
+{{- end }}
+{{- end }}
+{{- end }}
 ---
 
-apiVersion: apps.kubeblocks.io/v1alpha1
+{{- $imageRegistry := .Values.image.registry | default "docker.io" -}}
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: mongos
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
-    - compDefs:
-        - {{ include "mongos.componentDefName" . }}
-      releases:
-        - 8.0.8
-        - 7.0.18
-        - 6.0.21
-        - 5.0.29
-        - 4.4.29
-        - 4.2.25
-        - 4.0.28
+{{- range .Values.versions }}
+  - compDefs:
+    - {{ include "mongos.compDefName" . }}
+    releases:
+{{- range .minors }}
+      - {{ index . 0 }}
+{{- end }}
+{{- end }}
   releases:
-    - name: 8.0.8
-      changes:
-      serviceVersion: 8.0.8
-      images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.8
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 7.0.18
-      changes:
-      serviceVersion: 7.0.18
-      images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.18
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 6.0.21
-      changes:
-      serviceVersion: 6.0.21
-      images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.21
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 5.0.29
-      changes:
-      serviceVersion: 5.0.29
-      images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.29-multi
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 4.4.29
-      changes:
-      serviceVersion: 4.4.29
-      images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.4.29-multi
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 4.2.25
-      changes:
-      serviceVersion: 4.2.25
-      images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.2.25
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 4.0.28
-      changes:
-      serviceVersion: 4.0.28
-      images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.0.28
-        init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
+{{- range .Values.versions }}
+{{- range .minors }}
+{{- if not (index . 4) }}
+  - name: {{ index . 0 }}
+    changes:
+    serviceVersion: {{ index . 1 }}
+    images:
+      mongos: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      init-kubectl: {{ $imageRegistry }}/{{ $.Values.image.kubectl.repository }}:{{ $.Values.image.kubectl.tag }}
+      exporter: {{ $imageRegistry }}/{{ $.Values.image.exporter.repository }}:{{ $.Values.image.exporter.tag }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
-  componentDef: {{ include "mongodbShard.componentDefName" . }}
+  componentDef: {{ include "mongodbShard.compDefName" . }}
   configs:
     - name: mongodb.conf
       fileFormatConfig:
@@ -19,7 +19,7 @@ metadata:
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
-  componentDef: {{ include "cfgServer.componentDefName" . }}
+  componentDef: {{ include "cfgServer.compDefName" . }}
   configs:
     - name: mongodb.conf
       fileFormatConfig:
@@ -33,7 +33,7 @@ metadata:
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
-  componentDef: {{ include "mongos.componentDefName" . }}
+  componentDef: {{ include "mongos.compDefName" . }}
   configs:
     - name: mongos.conf
       fileFormatConfig:

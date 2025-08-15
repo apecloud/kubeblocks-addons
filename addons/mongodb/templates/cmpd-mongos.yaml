@@ -1,9 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "mongos.componentDefName" . }}
+  name: {{ include "mongos.compDefName" . }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
   serviceKind: mongodb
@@ -18,12 +20,10 @@ spec:
   configs:
     - name: mongodb-config
       templateRef: {{ include "mongos.configTplName" . }}
-      constraintRef: {{ include "mongodb.configConstraintName" . }}
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0400
-      keys:
-        - mongos.conf
+      externalManaged: true
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}
     - name: {{ $name }}
@@ -39,6 +39,7 @@ spec:
     containerName: exporter
     scrapePath: /metrics
     scrapePort: exporter
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   runtime:
     securityContext:
       # percona-server-mongodb needs run as root to have privilege to access to keyfile
@@ -135,19 +136,19 @@ spec:
     - name: CFG_SERVER_REPLICA_SET_NAME
       valueFrom:
         componentVarRef:
-          compDef: {{ include "cfgServer.componentDefName" . }}
+          compDef: {{ include "cfgServer.compDefName" . }}
           optional: false
           componentName: Required
     - name: CFG_SERVER_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "cfgServer.componentDefName" . }}
+          compDef: {{ include "cfgServer.compDefName" . }}
           optional: false
           podFQDNs: Required
     - name: CFG_SERVER_INTERNAL_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "cfgServer.componentDefName" . }}
+          compDef: {{ include "cfgServer.compDefName" . }}
           optional: false
           port:
             name: mongodb
@@ -155,7 +156,7 @@ spec:
       valueFrom:
         credentialVarRef:
           # use config server credential to access to mongos
-          compDef: {{ include "cfgServer.componentDefName" . }}
+          compDef: {{ include "cfgServer.compDefName" . }}
           name: root
           optional: false
           username: Required
@@ -163,43 +164,43 @@ spec:
       valueFrom:
         credentialVarRef:
           # use config server credential to access to mongos
-          compDef: {{ include "cfgServer.componentDefName" . }}
+          compDef: {{ include "cfgServer.compDefName" . }}
           name: root
           optional: false
           password: Required
-    - name: MONGODB_ADMIN_USER
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "mongodbShard.componentDefName" . }}
-          name: root
-          optional: false
-          username: Required
-          multipleClusterObjectOption:
-            strategy: individual
-    - name: MONGODB_ADMIN_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "mongodbShard.componentDefName" . }}
-          name: root
-          optional: false
-          password: Required
-          multipleClusterObjectOption:
-            strategy: individual
-    - name: MONGOS_INTERNAL_SVC_NAME
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "mongos.componentDefName" . }}
-          optional: false
-          host: Required
-    - name: MONGOS_INTERNAL_PORT 
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "mongos.componentDefName" . }}
-          optional: false
-          port:
-            name: mongos
-    - name: MONGOS_INTERNAL_HOST
-      value: "$(MONGOS_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+    # - name: MONGODB_ADMIN_USER
+    #   valueFrom:
+    #     credentialVarRef:
+    #       compDef: {{ include "mongodbShard.componentDefName" . }}
+    #       name: root
+    #       optional: false
+    #       username: Required
+    #       multipleClusterObjectOption:
+    #         strategy: individual
+    # - name: MONGODB_ADMIN_PASSWORD
+    #   valueFrom:
+    #     credentialVarRef:
+    #       compDef: {{ include "mongodbShard.componentDefName" . }}
+    #       name: root
+    #       optional: false
+    #       password: Required
+    #       multipleClusterObjectOption:
+    #         strategy: individual
+    # - name: MONGOS_INTERNAL_SVC_NAME
+    #   valueFrom:
+    #     serviceVarRef:
+    #       compDef: {{ include "mongos.componentDefName" . }}
+    #       optional: false
+    #       host: Required
+    # - name: MONGOS_INTERNAL_PORT 
+    #   valueFrom:
+    #     serviceVarRef:
+    #       compDef: {{ include "mongos.componentDefName" . }}
+    #       optional: false
+    #       port:
+    #         name: mongos
+    # - name: MONGOS_INTERNAL_HOST
+    #   value: "$(MONGOS_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
     - name: EXPORTER_SERVICE_PORT  
       value: "9216"
       valueFrom:

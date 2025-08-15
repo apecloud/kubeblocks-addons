@@ -123,7 +123,6 @@ function boot_or_enter_restore() {
     fi
 }
 
-
 generate_endpoints() {
     local fqdns=$1
     local port=$2

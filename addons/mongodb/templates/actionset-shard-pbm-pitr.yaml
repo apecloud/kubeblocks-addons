@@ -29,14 +29,14 @@ spec:
     - name: PBM_IMAGE_TAG
       value: {{ .Values.image.percona.backup.tag }}
     - name: PSM_IMAGE_TAG
-      value: {{ .Values.image.percona.tag }}
+      value: {{ .Values.image.tag }}
     - name: PBM_DISABLE_PITR_WHEN_EXIT
       value: "false"
   backupType: Continuous
   backup:
     preBackup:
     - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:$(PSM_IMAGE_TAG)
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(PSM_IMAGE_TAG)
         runOnTargetPodNode: false
         command:
           - bash
@@ -67,7 +67,7 @@ spec:
   restore:
     postReady:
     - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:$(PSM_IMAGE_TAG)
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(PSM_IMAGE_TAG)
         runOnTargetPodNode: false
         command:
           - bash
