@@ -13,6 +13,8 @@ metadata:
   name: {{ .componentDef }}
   labels:
     {{- include "postgresql.labels" $ | nindent 4 }}
+  annotations:
+    apps.kubeblocks.io/horizontal-scale-backup-policy-template: postgresql-backup-policy-template-hscale
 spec:
   provider: kubeblocks
   description: A PostgreSQL (with Patroni HA) component definition for Kubernetes

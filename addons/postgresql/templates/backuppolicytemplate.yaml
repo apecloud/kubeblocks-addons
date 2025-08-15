@@ -7,6 +7,7 @@ metadata:
     service-kind/postgresql: "true"
     {{- include "postgresql.labels" . | nindent 4 }}
   annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
     dataprotection.kubeblocks.io/reconfigure-ref: |
       {
         "name": "postgresql-configuration",
@@ -171,6 +172,13 @@ spec:
         target:
           role: ""
           strategy: All
+        actionSetName: postgres-config-wal-g
+        snapshotVolumes: false
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: config-replica-wal-g
         actionSetName: postgres-config-wal-g
         snapshotVolumes: false
         targetVolumes:

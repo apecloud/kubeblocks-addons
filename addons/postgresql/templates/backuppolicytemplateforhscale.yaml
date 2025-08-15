@@ -1,0 +1,21 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: postgresql-backup-policy-template-hscale
+  labels:
+    clusterdefinition.kubeblocks.io/name: postgresql
+    service-kind/postgresql: "true"
+    {{- include "postgresql.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: postgresql
+  identifier: hscale
+  backupPolicies:
+    - componentDefs: [postgresql-17, postgresql-16, postgresql-15, postgresql-14, postgresql-12]
+      backupMethods:
+        - name: config-replica-wal-g
+          actionSetName: postgres-config-wal-g
+          snapshotVolumes: false
+          targetVolumes:
+            volumeMounts:
+              - name: data
+                mountPath: {{ .Values.dataMountPath }}
