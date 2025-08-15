@@ -1,0 +1,58 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
+    {{- include "starrocks.apiVersion" . | nindent 4 }}
+  name: {{ include "fe-shared-data.componentDefName" . }}
+  labels:
+    {{- include "starrocks.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A StarRocks FE v3.2.2 component definition for Kubernetes
+  {{- include "fe.commonDef" . | nindent 2 }}
+  configs:
+    - name: fe-cm
+      template: {{ include "fe-shared-data.configTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: fe-cm
+      externalManaged: true
+  vars:
+  {{- if .Values.enableStorageServiceRef }}
+  {{- include "fe.serviceRefVars" . | nindent 2 }}
+  {{- end }}
+  - name: CURRENT_SHARD_COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        componentName: Required
+  - name: FE_DISCOVERY_SVC_NAME
+    valueFrom:
+      serviceVarRef:
+        compDef: {{ include "fe-shared-data.componentDefName" . }}
+        name: fe
+        host: Required
+  - name: STARROCKS_USER
+    valueFrom:
+      credentialVarRef:
+        compDef: {{ include "fe-shared-data.componentDefName" . }}
+        name: root
+        optional: false
+        username: Required
+  - name: STARROCKS_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        compDef: {{ include "fe-shared-data.componentDefName" . }}
+        name: root
+        optional: false
+        password: Required
+  - name: MYSQL_PWD
+    valueFrom:
+      credentialVarRef:
+        compDef: {{ include "fe-shared-data.componentDefName" . }}
+        name: root
+        optional: false
+        password: Required
+  {{- if .Values.enableStorageServiceRef }}
+  {{- include "fe.serviceRefDeclarations" . | nindent 2 }}
+  {{- end }}

@@ -97,6 +97,9 @@ addons-cluster/risingwave/ @RisingWave_Labs @leon-inf @apecloud/kb-reviewers @ap
 addons/rocketmq/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/rocketmq/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
+addons/starrocks/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/starrocks/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+
 addons/starrocks-ce/ @yandongxiao @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/starrocks-ce/ @yandongxiao @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
