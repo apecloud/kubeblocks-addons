@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ShardingDefinition
+metadata:
+  name: {{ include "mongodbShard.compDefName" . }}
+  labels:
+    {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.annotations" . | nindent 4 }}
+spec:
+  template:
+    compDef: {{ include "mongodbShard.compDefName" . }}
+  shardsLimit:
+    minShards: 1
+    maxShards: 128
+  provisionStrategy: Parallel
+  updateStrategy: Parallel

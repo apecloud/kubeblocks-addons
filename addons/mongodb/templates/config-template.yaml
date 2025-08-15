@@ -9,3 +9,29 @@ data:
     {{- .Files.Get "config/mongodb5.0-config.tpl" | nindent 4 }}
   keyfile: |-
     {{- .Files.Get "config/keyfile.tpl" | nindent 4 }}
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mongos.configTplName" . }}
+  labels:
+    {{- include "mongodb.labels" . | nindent 4 }}
+data:
+  mongos.conf: |-
+    {{- .Files.Get "config/mongos-config.tpl" | nindent 4 }}
+  keyfile: |-
+    {{- .Files.Get "config/keyfile.tpl" | nindent 4 }}
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mongodbShard.configTplName" . }}
+  labels:
+    {{- include "mongodb.labels" . | nindent 4 }}
+data:
+  mongodb.conf: |-
+    {{- .Files.Get "config/mongodb-shard-config.tpl" | nindent 4 }}
+  keyfile: |-
+    {{- .Files.Get "config/keyfile.tpl" | nindent 4 }}
