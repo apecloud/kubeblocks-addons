@@ -32,8 +32,6 @@ spec:
         - -c
         - |
           #!/bin/bash
-          {{- include "kblib.logs.format_log_content" $ | nindent 10 }}
-          {{- include "kblib.logs.setup_logging" $ | nindent 10 }}
           {{- .Files.Get "dataprotection/wal-g-config-restore.sh" | nindent 10 }}
 ---
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
