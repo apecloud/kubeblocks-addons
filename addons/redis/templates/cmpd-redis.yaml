@@ -155,6 +155,11 @@ spec:
         credentialVarRef:
           name: default
           password: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
     ## the redis advertised service port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
     - name: REDIS_ADVERTISED_PORT
       valueFrom:
