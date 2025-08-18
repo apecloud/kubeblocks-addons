@@ -29,6 +29,7 @@ Describe "Redis Switchover Script Tests"
     Context "check_environment_exist()"
       It "should fail when no required variables are set"
         unset SENTINEL_POD_FQDN_LIST REDIS_POD_FQDN_LIST REDIS_COMPONENT_NAME KB_SWITCHOVER_ROLE
+        export COMPONENT_REPLICAS="2"
         When call check_environment_exist
         The status should be failure
         The stderr should include "Required environment variable SENTINEL_POD_FQDN_LIST is not set"
@@ -40,6 +41,7 @@ Describe "Redis Switchover Script Tests"
         export REDIS_POD_FQDN_LIST="redis1,redis2"
         export REDIS_COMPONENT_NAME="redis"
         export KB_SWITCHOVER_ROLE="primary"
+        export COMPONENT_REPLICAS="2"
         When call check_environment_exist
         The status should be success
         The stdout should equal ""
@@ -245,6 +247,7 @@ master_host:redis-master"
       export KB_SWITCHOVER_ROLE="primary"
       export SENTINEL_SERVICE_PORT="26379"
       export SENTINEL_PASSWORD="sentinel_pass"
+      export COMPONENT_REPLICAS="2"
       MOCK_RESPONSES=()
       RESPONSE_INDEX=0
     }
@@ -262,6 +265,7 @@ master_host:redis-master"
       unset SENTINEL_PASSWORD
       unset MOCK_RESPONSES
       unset RESPONSE_INDEX
+      unset COMPONENT_REPLICAS
     }
     After 'cleanup'
 
