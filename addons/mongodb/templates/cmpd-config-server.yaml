@@ -12,7 +12,7 @@ spec:
   serviceVersion: "8.0.8"
   configs:
     - name: mongodb-config
-      templateRef: {{ include "mongodbShard.configTplName" . }}
+      template: {{ include "mongodbShard.configTplName" . }}
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0400
@@ -24,7 +24,7 @@ spec:
     {{- end }}
   scripts:
     - name: mongodb-scripts
-      templateRef: {{ include "mongodbShard.cmScriptsName" . }}
+      template: {{ include "mongodbShard.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
@@ -170,7 +170,7 @@ spec:
           - name: MONGODB_GRANT_ANYACTION_PRIVILEGE
             value: "true"
           - name: PBM_MONGODB_REPLICA_SET
-            value: $(KB_CLUSTER_COMP_NAME)
+            value: $(CLUSTER_COMPONENT_NAME)
           - name: PBM_AGENT_SIDECAR
             value: "true"
           - name: PBM_AGENT_SIDECAR_SLEEP
@@ -207,7 +207,7 @@ spec:
           - name: PATH
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: PBM_MONGODB_REPLICA_SET
-            value: $(KB_CLUSTER_COMP_NAME)
+            value: $(CLUSTER_COMPONENT_NAME)
           - name: PBM_AGENT_SIDECAR
             value: "true"
           - name: PBM_AGENT_SIDECAR_SLEEP
@@ -298,14 +298,14 @@ spec:
           password: Required
     - name: KB_SERVICE_PORT  
       value: "27017"
-      valueFrom:
-        hostNetworkVarRef:
-          optional: true
-          container:
-            name: mongodb
-            port:
-              name: mongodb
-              option: Optional
+      # valueFrom:
+      #   hostNetworkVarRef:
+      #     optional: true
+      #     container:
+      #       name: mongodb
+      #       port:
+      #         name: mongodb
+      #         option: Optional
     - name: SYNCER_SERVICE_PORT  
       valueFrom:
         hostNetworkVarRef:
@@ -350,7 +350,7 @@ spec:
           port:
             name: mongos
     - name: MONGOS_INTERNAL_HOST
-      value: "$(MONGOS_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+      value: "$(MONGOS_INTERNAL_SVC_NAME).$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
     - name: MONGODB_SHARD_REPLICA_SET_NAME_LIST
       valueFrom:
         componentVarRef:
@@ -383,14 +383,14 @@ spec:
     #         strategy: individual
     - name: EXPORTER_SERVICE_PORT  
       value: "9216"
-      valueFrom:
-        hostNetworkVarRef:
-          optional: true
-          container:
-            name: exporter
-            port:
-              name: exporter
-              option: Optional
+      # valueFrom:
+      #   hostNetworkVarRef:
+      #     optional: true
+      #     container:
+      #       name: exporter
+      #       port:
+      #         name: exporter
+      #         option: Optional
   hostNetwork: 
     containerPorts:  
       - container: mongodb

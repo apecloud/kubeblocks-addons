@@ -19,7 +19,7 @@ spec:
             targetPort: mongos
   configs:
     - name: mongodb-config
-      templateRef: {{ include "mongos.configTplName" . }}
+      template: {{ include "mongos.configTplName" . }}
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0400
@@ -31,7 +31,7 @@ spec:
     {{- end }}
   scripts:
     - name: mongodb-scripts
-      templateRef: {{ include "mongodbShard.cmScriptsName" . }}
+      template: {{ include "mongodbShard.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
@@ -59,7 +59,7 @@ spec:
             name: data
     containers:
       - name: mongos
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: mongos
@@ -70,6 +70,26 @@ spec:
           - -c
           - /scripts/mongodb-mongos-setup.sh
         env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_UID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.uid
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
           - name: PATH
             value: /kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: SERVICE_PORT
@@ -123,16 +143,38 @@ spec:
       - name: data
         emptyDir: {}
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     - name: KB_SERVICE_PORT  
       value: "27017"
-      valueFrom:
-        hostNetworkVarRef:
-          optional: true
-          container:
-            name: mongos
-            port:
-              name: mongos
-              option: Optional
+      # valueFrom:
+      #   hostNetworkVarRef:
+      #     optional: true
+      #     container:
+      #       name: mongos
+      #       port:
+      #         name: mongos
+      #         option: Optional
     - name: CFG_SERVER_REPLICA_SET_NAME
       valueFrom:
         componentVarRef:
@@ -200,17 +242,17 @@ spec:
     #       port:
     #         name: mongos
     # - name: MONGOS_INTERNAL_HOST
-    #   value: "$(MONGOS_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+    #   value: "$(MONGOS_INTERNAL_SVC_NAME).$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
     - name: EXPORTER_SERVICE_PORT  
       value: "9216"
-      valueFrom:
-        hostNetworkVarRef:
-          optional: true
-          container:
-            name: exporter
-            port:
-              name: exporter
-              option: Optional
+      # valueFrom:
+      #   hostNetworkVarRef:
+      #     optional: true
+      #     container:
+      #       name: exporter
+      #       port:
+      #         name: exporter
+      #         option: Optional
   hostNetwork:
     containerPorts:
       - container: mongos

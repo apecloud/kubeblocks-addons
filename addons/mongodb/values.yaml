@@ -17,7 +17,7 @@ image:
     tag: 1.29
   syncer:
     repository: apecloud/syncer
-    tag: "0.6.2"
+    tag: "2.0-wl-test"
   exporter:
     repository: apecloud/mongodb_exporter
     tag: "0.44.0"
@@ -105,3 +105,5 @@ resourceNamePrefix: ""
 cmpdVersionPrefix: ""
 
 clusterDomain: "cluster.local"
+
+rediectSuffix: ">&2"

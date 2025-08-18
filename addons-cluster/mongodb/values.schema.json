@@ -41,7 +41,7 @@
       "description": "The number of shards, for sharding mode, the default shards is 3.",
       "type": "integer",
       "default": 3,
-      "minimum": 2,
+      "minimum": 1,
       "maximum": 128
     },
     "cpu": {

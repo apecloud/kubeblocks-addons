@@ -13,7 +13,6 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   clusterDef: mongodb
-  {{- include "kblib.affinity" . | indent 2 }}
   {{- if or (eq .Values.mode "replicaset") (eq .Values.mode "standalone") }}
   topology: replicaset
   {{ include "mongodb-cluster.replicasetMode" . | indent 2 }}

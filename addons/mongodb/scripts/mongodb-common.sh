@@ -7,10 +7,10 @@ function wait_restore_completion_by_cluster_cr() {
     local retries=0
 
     while true; do
-        cluster_json=$(kubectl get clusters.apps.kubeblocks.io "${KB_CLUSTER_NAME}" -n "${KB_NAMESPACE}" -o json 2>&1)
+        cluster_json=$(kubectl get clusters.apps.kubeblocks.io "${CLUSTER_NAME}" -n "${CLUSTER_NAMESPACE}" -o json 2>&1)
         kubectl_get_exit_code=$?
         if [ "$kubectl_get_exit_code" -ne 0 ]; then
-            echo "INFO: Cluster ${KB_CLUSTER_NAME} not found, sleep $wait_interval second and retry..."
+            echo "INFO: Cluster ${CLUSTER_NAME} not found, sleep $wait_interval second and retry..."
             sleep $wait_interval
             ((retries++))
             if [[ -n "$max_retries" && "$retries" -ge "$max_retries" ]]; then
@@ -22,7 +22,7 @@ function wait_restore_completion_by_cluster_cr() {
 
         restore_from_backup=$(echo "$cluster_json" | jq -r '.metadata.annotations["kubeblocks.io/restore-from-backup"] // empty')
         if [ -z "$restore_from_backup" ]; then
-            echo "INFO: No restore-from-backup annotation, do not need to restore."
+            # echo "INFO: No restore-from-backup annotation, do not need to restore."
             return 0
         else
             echo "INFO: Waiting for restore completion..."
@@ -53,8 +53,8 @@ function process_restore_signal() {
     local process="$1"
     local target_signal="$2"
     local pbm_backupfile=$MONGODB_ROOT/tmp/mongodb_pbm.backup
-    restore_signal_cm_name="$KB_CLUSTER_NAME-restore-signal" 
-    restore_signal_cm_namespace="$KB_NAMESPACE"
+    restore_signal_cm_name="$CLUSTER_NAME-restore-signal" 
+    restore_signal_cm_namespace="$CLUSTER_NAMESPACE"
     while true; do
         kubectl_get_result=$(kubectl get configmap $restore_signal_cm_name -n $restore_signal_cm_namespace -o json 2>&1)
         kubectl_get_exit_code=$?
@@ -99,10 +99,10 @@ function boot_or_enter_restore() {
     local max_retries=12
     local retry_count=0
     while [ $retry_count -lt $max_retries ]; do
-        cluster_json=$(kubectl get clusters.apps.kubeblocks.io ${KB_CLUSTER_NAME} -n ${KB_NAMESPACE} -o json 2>&1)
+        cluster_json=$(kubectl get clusters.apps.kubeblocks.io ${CLUSTER_NAME} -n ${CLUSTER_NAMESPACE} -o json 2>&1)
         kubectl_get_exit_code=$?
         if [ "$kubectl_get_exit_code" -ne 0 ]; then
-            echo "INFO: Cluster ${KB_CLUSTER_NAME} not found, sleep $wait_interval second and retry... ($((retry_count+1))/$max_retries)"
+            echo "INFO: Cluster ${CLUSTER_NAME} not found, sleep $wait_interval second and retry... ($((retry_count+1))/$max_retries)"
             sleep $wait_interval
             retry_count=$((retry_count+1))
             continue
@@ -110,7 +110,7 @@ function boot_or_enter_restore() {
 
         restore_from_backup=$(echo "$cluster_json" | jq -r '.metadata.annotations["kubeblocks.io/restore-from-backup"] // empty')
         if [ -z "$restore_from_backup" ]; then
-            echo "INFO: No restore-from-backup annotation, do not need to restore."
+            # echo "INFO: No restore-from-backup annotation, do not need to restore."
             exec $process
             exit 0
         else
@@ -118,7 +118,7 @@ function boot_or_enter_restore() {
         fi
     done
     if [ $retry_count -ge $max_retries ]; then
-        echo "ERROR: Cluster ${KB_CLUSTER_NAME} not found after $max_retries retries, exiting."
+        echo "ERROR: Cluster ${CLUSTER_NAME} not found after $max_retries retries, exiting."
         exit 1
     fi
 }

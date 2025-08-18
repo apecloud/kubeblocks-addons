@@ -44,7 +44,7 @@ net:
 
 # replica set options
 replication:
-  replSetName: {{ .KB_CLUSTER_COMP_NAME }}
+  replSetName: {{ .CLUSTER_COMPONENT_NAME }}
   enableMajorityReadConcern: true
 
 # sharding options

@@ -15,23 +15,21 @@ spec:
       default: true
     - name: sharding
       components:
-        - name: mongo-mongos
+        - name: mongos
           compDef: {{ include "mongos.componentDefNamePrefix" . }}
-        - name: mongo-config-server
+        - name: config-server
           compDef: {{ include "cfgServer.componentDefNamePrefix" . }}
       shardings:
-        - name: mongo-shard
+        - name: shard
           shardingDef: {{ include "mongodbShard.componentDefNamePrefix" . }}
       orders:
         provision:
-          - mongo-config-server
-          - mongo-mongos
-          - mongo-shard
+          - mongos,config-server
+          - shard
         terminate:
-          - mongo-mongos
-          - mongo-shard
-          - mongo-config-server
+          - shard
+          - mongos,config-server
         update:
-          - mongo-mongos
-          - mongo-config-server
-          - mongo-shard
+          - mongos
+          - config-server
+          - shard

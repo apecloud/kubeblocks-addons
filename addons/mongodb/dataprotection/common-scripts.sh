@@ -298,15 +298,15 @@ metadata:
   name: $dp_cm_name
   namespace: $dp_cm_namespace
   labels:
-    app.kubernetes.io/instance: $KB_CLUSTER_NAME
+    app.kubernetes.io/instance: $CLUSTER_NAME
     apps.kubeblocks.io/restore-mongodb-shard: $phase
 EOF
 }
 
 function process_restore_start_signal() {
     echo "INFO: Waiting for prepare restore start signal..."
-    dp_cm_name="$KB_CLUSTER_NAME-restore-signal"
-    dp_cm_namespace="$KB_NAMESPACE"
+    dp_cm_name="$CLUSTER_NAME-restore-signal"
+    dp_cm_namespace="$CLUSTER_NAMESPACE"
     while true; do
         set +e
         kubectl_get_result=$(kubectl get configmap $dp_cm_name -n $dp_cm_namespace -o json 2>&1)
@@ -338,8 +338,8 @@ function process_restore_start_signal() {
 function process_restore_end_signal() {
     echo "INFO: Waiting for prepare restore end signal..."
     sleep 5
-    dp_cm_name="$KB_CLUSTER_NAME-restore-signal"
-    dp_cm_namespace="$KB_NAMESPACE"
+    dp_cm_name="$CLUSTER_NAME-restore-signal"
+    dp_cm_namespace="$CLUSTER_NAMESPACE"
     while true; do
         set +e
         kubectl_get_result=$(kubectl get configmap $dp_cm_name -n $dp_cm_namespace -o json 2>&1)

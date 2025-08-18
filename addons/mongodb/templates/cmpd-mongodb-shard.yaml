@@ -12,7 +12,7 @@ spec:
   serviceVersion: "8.0.8"
   configs:
     - name: mongodb-config
-      templateRef: {{ include "mongodbShard.configTplName" . }}
+      template: {{ include "mongodbShard.configTplName" . }}
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0400
@@ -24,7 +24,7 @@ spec:
     {{- end }}
   scripts:
     - name: mongodb-scripts
-      templateRef: {{ include "mongodbShard.cmScriptsName" . }}
+      template: {{ include "mongodbShard.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
@@ -43,7 +43,39 @@ spec:
     - name: secondary
       updatePriority: 1
       participatesInQuorum: true
-  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
+  policyRules:
+  - apiGroups:
+    - ""
+    resources:
+    - configmaps
+    verbs:
+    - create
+    - get
+    - list
+    - patch
+    - update
+    - delete
+  - apiGroups:
+    - ""
+    resources:
+    - pods
+    verbs:
+    - get
+    - list
+  - apiGroups:
+    - ""
+    resources:
+    - events
+    verbs:
+    - create
+  - apiGroups:
+    - "apps.kubeblocks.io"
+    resources:
+    - clusters
+    - components
+    verbs:
+    - get
+    - list
   exporter:
     containerName: exporter
     scrapePath: /metrics
@@ -85,8 +117,10 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/mongodb-shard-manage.sh --post-provision
-      preCondition: ComponentReady
+          - /scripts/mongodb-shard-manage.sh --post-provision {{ .Values.rediectSuffix }}
+        targetPodSelector: Role
+        matchingKey: primary
+      preCondition: RuntimeReady
       retryPolicy:
         maxRetries: 10
     preTerminate:
@@ -95,7 +129,9 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/mongodb-shard-manage.sh --pre-terminate
+          - /scripts/mongodb-shard-manage.sh --pre-terminate {{ .Values.rediectSuffix }}
+        targetPodSelector: Role
+        matchingKey: primary
       retryPolicy:
         maxRetries: 10
   runtime:
@@ -193,7 +229,7 @@ spec:
           - name: PBM_AGENT_MONGODB_PASSWORD
             value: $(MONGODB_ADMIN_PASSWORD)
           - name: PBM_MONGODB_REPLICA_SET
-            value: $(KB_CLUSTER_COMP_NAME)
+            value: $(CLUSTER_COMPONENT_NAME)
           - name: PBM_AGENT_SIDECAR
             value: "true"
           - name: PBM_AGENT_SIDECAR_SLEEP
@@ -230,7 +266,7 @@ spec:
           - name: PBM_AGENT_MONGODB_PASSWORD
             value: $(MONGODB_ADMIN_PASSWORD)
           - name: PBM_MONGODB_REPLICA_SET
-            value: $(KB_CLUSTER_COMP_NAME)
+            value: $(CLUSTER_COMPONENT_NAME)
           - name: PBM_AGENT_SIDECAR
             value: "true"
           - name: PBM_AGENT_SIDECAR_SLEEP
@@ -301,14 +337,14 @@ spec:
       value: $(MONGODB_ADMIN_PASSWORD)
     - name: KB_SERVICE_PORT
       value: "27017"
-      valueFrom:
-        hostNetworkVarRef:
-          optional: true
-          container:
-            name: mongodb
-            port:
-              name: mongodb
-              option: Optional
+      # valueFrom:
+      #   hostNetworkVarRef:
+      #     optional: true
+      #     container:
+      #       name: mongodb
+      #       port:
+      #         name: mongodb
+      #         option: Optional
     - name: SYNCER_SERVICE_PORT  
       valueFrom:
         hostNetworkVarRef:
@@ -339,18 +375,18 @@ spec:
     - name: MONGOS_INTERNAL_SVC_NAME
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mongos.componentDefName" . }}
+          compDef: {{ include "mongos.compDefName" . }}
           optional: false
           host: Required
     - name: MONGOS_INTERNAL_PORT 
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mongos.componentDefName" . }}
+          compDef: {{ include "mongos.compDefName" . }}
           optional: false
           port:
             name: mongos
     - name: MONGOS_INTERNAL_HOST
-      value: "$(MONGOS_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+      value: "$(MONGOS_INTERNAL_SVC_NAME).$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
     - name: MONGODB_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
@@ -361,14 +397,14 @@ spec:
       value: "{{ .Values.clusterDomain }}"
     - name: EXPORTER_SERVICE_PORT  
       value: "9216"
-      valueFrom:
-        hostNetworkVarRef:
-          optional: true
-          container:
-            name: exporter
-            port:
-              name: exporter
-              option: Optional
+      # valueFrom:
+      #   hostNetworkVarRef:
+      #     optional: true
+      #     container:
+      #       name: exporter
+      #       port:
+      #         name: exporter
+      #         option: Optional
   hostNetwork:
     containerPorts:
       - container: mongodb

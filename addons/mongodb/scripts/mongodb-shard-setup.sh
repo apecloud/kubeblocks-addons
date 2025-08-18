@@ -10,7 +10,7 @@ export PATH=$MONGODB_ROOT/tmp/bin:$PATH
 
 . "/scripts/mongodb-common.sh"
 
-process="mongod --bind_ip_all --port $PORT --replSet $KB_CLUSTER_COMP_NAME --config /etc/mongodb/mongodb.conf"
+process="mongod --bind_ip_all --port $PORT --replSet $CLUSTER_COMPONENT_NAME --config /etc/mongodb/mongodb.conf"
 boot_or_enter_restore "$process"
 
 echo "INFO: Startup backup agent for restore."
