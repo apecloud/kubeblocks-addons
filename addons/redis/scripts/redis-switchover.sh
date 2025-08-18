@@ -36,6 +36,10 @@ check_environment_exist() {
     "REDIS_COMPONENT_NAME"
   )
 
+  if [[ ${COMPONENT_REPLICAS} -lt 2 ]]; then
+    exit 0
+  fi
+
   for var in "${required_vars[@]}"; do
     if is_empty "${!var}"; then
       echo "Error: Required environment variable $var is not set." >&2
