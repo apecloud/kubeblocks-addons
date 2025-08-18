@@ -64,7 +64,7 @@ spec:
           serviceDescriptor: {{ .Values.zookeeper.serviceRef.serviceDescriptor }}
           {{- end }}
       {{- end }}
-      {{- if eq "separated" $.Values.mode -}}
+      {{- if eq "separated" $.Values.mode }}
     - name: kafka-controller
       tls: {{ .Values.tlsEnable }}
       {{- if .Values.tlsEnable }}
