@@ -8,7 +8,9 @@ mkdir -p $MONGODB_ROOT/logs
 mkdir -p $MONGODB_ROOT/tmp
 export PATH=$MONGODB_ROOT/tmp/bin:$PATH
 
-. "/scripts/mongodb-common.sh"
+# Allow the test framework to pass in a mock path to override the default /scripts.
+SCRIPTS_BASE_PATH=${1:-/scripts}
+. "$SCRIPTS_BASE_PATH/mongodb-common.sh"
 
 PBM_BACKUPFILE=$MONGODB_ROOT/tmp/mongodb_pbm.backup
 process="mongod --bind_ip_all --port $PORT --replSet $RPL_SET_NAME --config /etc/mongodb/mongodb.conf"
