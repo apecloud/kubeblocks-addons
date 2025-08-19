@@ -293,96 +293,6 @@ To create one ClickHouse server pod with the default configuration and TLS enabl
 
 ```yaml
 # cat examples/clickhouse/cluster-tls.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: udf-account-info
-  namespace: demo
-type: Opaque
-data:
-  password: cGFzc3dvcmQxMjM= # 'password123' in base64
----
-# pre generated tls secret
-apiVersion: v1
-kind: Secret
-metadata:
-  name: clickhouse-cluster-tls
-  namespace: demo
-type: Opaque
-stringData:
-  ca.crt: |
-    -----BEGIN CERTIFICATE-----
-    MIIDDTCCAfWgAwIBAgIUO9i4NfSWZ6WsJV0iRUgnd6TdEBwwDQYJKoZIhvcNAQEL
-    BQAwFTETMBEGA1UEAwwKS3ViZUJsb2NrczAgFw0yNTA4MTkwODM1NTRaGA8yMTI1
-    MDcyNjA4MzU1NFowFTETMBEGA1UEAwwKS3ViZUJsb2NrczCCASIwDQYJKoZIhvcN
-    AQEBBQADggEPADCCAQoCggEBANATB/zvCOxh7uMmAs7ZvaKdVnoDaWieEe8dmBdi
-    i+RXGbBqK0vlXY1VNTBAXblVZAdJJIKqnVXOy9N0A5puRUYSv5vAx8YRLf/wc0n3
-    nx23Uhsf5ltg31BviyEAXdeF0HPqiZ5CEmF4FZreuC6L9+qsJLj3eJEeX3/dLIY/
-    vndTV9xmLJKlLihoIhPv0pTNuAhCQ6IEXLrTDi9yX7qhp68wdZUwWhaVVOrgZDh+
-    wFMG8CGdnAhRlvJywHs04D6nSz18yEBOe3bs0wojhZ5/6oyMHZfQaLYIT2de9Pkq
-    UWZ6MtPWHmUGFDJtbshO112OUdex7qj6cUQbOnDYDmJCIXcCAwEAAaNTMFEwHQYD
-    VR0OBBYEFBIsXVPpBuEpCSZGsi+0dDfum33bMB8GA1UdIwQYMBaAFBIsXVPpBuEp
-    CSZGsi+0dDfum33bMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEB
-    AMmzmkpsUPQqE/aBCXKUN+6Pa+201XM9KmsUPxRdZEHVVZOXIzYFq/m1TPRvjL2T
-    Fk2Foazu3mcnJkWYWZuVkBymCRvF1oWct0mP0SBOljrI37m2GQoZ4KviqhFaCiX6
-    a3/IBBY6jLnt2ITBxRKetyZlGZvAkpuuKvwX0r363wVH0lkfg7ckhXuUGFl1UUL+
-    EzJLG+7BAN8SHs1slopTNZmoBROq0KNHzSrHzchBZwB4XjhHxjbmde0WKf8i9foC
-    mPgPyAQw7GjRYEDwbiVp3sXrl0SCWCeOhsZROYh7FxAqT5hAn11b4YpBeOa0fhLB
-    L674jxJcLVvhS87M6MCnTuY=
-    -----END CERTIFICATE-----
-  tls.crt: |
-    -----BEGIN CERTIFICATE-----
-    MIIDjTCCAnWgAwIBAgIUON/zD6nQWQkXu38Wk/GRxxPDswMwDQYJKoZIhvcNAQEL
-    BQAwFTETMBEGA1UEAwwKS3ViZUJsb2NrczAgFw0yNTA4MTkwODM1NTRaGA8yMTI1
-    MDcyNjA4MzU1NFowFTETMBEGA1UEAwwKY2xpY2tob3VzZTCCASIwDQYJKoZIhvcN
-    AQEBBQADggEPADCCAQoCggEBALNRYLXK15aBYZ52ORhd5YT//q0EZ2cG72sRI8T+
-    KC2Kn0yLDxJhpXw3q8rpC0sBQUfNJBbEuilobjZoEqd31LqaMSMzBV5svzhScDor
-    lkKsIdm1nCavCYyisJTE0va+rS+7Ti+rdDdQBkvoZ02xSM6leNrdyEnDvojAmsqu
-    Y2gI9UEzP/ESSiGi1Jn6VG1xZ3jLxGS0F6OeShZYPGYZ95hHQyG6SP8wmS3ERF5h
-    2OV3bgmKdDTmYP7VKC3pqzB8Q6E310hPB1mXPfev9VNzEsE0hkGF7DGfT+IFfEur
-    VTRiaz/DC0jM2wOzWbJEQqYGzXaYH4smQHvhwetpwGNhymcCAwEAAaOB0jCBzzCB
-    jAYDVR0RBIGEMIGBgglsb2NhbGhvc3SCDyouY2x1c3Rlci5sb2NhbIIfKi5jbGlj
-    a2hvdXNlLWNsdXN0ZXItY2xpY2tob3VzZYIeKi5jbGlja2hvdXNlLWNsdXN0ZXIt
-    Y2gta2VlcGVyggpjbGlja2hvdXNlhwR/AAABhxAAAAAAAAAAAAAAAAAAAAABMB0G
-    A1UdDgQWBBTfVj9MCyWaGYqWgNoEH0oty8EyEzAfBgNVHSMEGDAWgBQSLF1T6Qbh
-    KQkmRrIvtHQ37pt92zANBgkqhkiG9w0BAQsFAAOCAQEAc8gJJWOIm6IXvFcKFCny
-    EbQhDRVaqW44o3DmQBlvK3oqYyeRRoVIaxYkxKM6VPNaapEd46Pa+qcZ0widXQjI
-    VfsgtAtJOW3vmdu375o9gfqy94YAWRR8i5u887OWs9LRWVMZQ7js7J98KVBxMFZ/
-    xd9Fa87pB9VcljS56/KjQ3fnQYp2qZvV3GaeEwPTZfqOzfUxRQqLtO6SUiwAZkgg
-    awEgkRUVlrr6IOQs9rJzC1yPdmvS8n90gPi2cfNVEBznzOyLVPVxgZtXwuGxaPkH
-    ptmkFBDDNwELkuJ6csEcoeae3Wcm/MwXMjIwvNF3JyKOHeIJ43fWKEc1YRNeYOB5
-    NQ==
-    -----END CERTIFICATE-----
-  tls.key: |
-    -----BEGIN PRIVATE KEY-----
-    MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCzUWC1yteWgWGe
-    djkYXeWE//6tBGdnBu9rESPE/igtip9Miw8SYaV8N6vK6QtLAUFHzSQWxLopaG42
-    aBKnd9S6mjEjMwVebL84UnA6K5ZCrCHZtZwmrwmMorCUxNL2vq0vu04vq3Q3UAZL
-    6GdNsUjOpXja3chJw76IwJrKrmNoCPVBMz/xEkohotSZ+lRtcWd4y8RktBejnkoW
-    WDxmGfeYR0Mhukj/MJktxEReYdjld24JinQ05mD+1Sgt6aswfEOhN9dITwdZlz33
-    r/VTcxLBNIZBhewxn0/iBXxLq1U0Yms/wwtIzNsDs1myREKmBs12mB+LJkB74cHr
-    acBjYcpnAgMBAAECggEANWvukGpMXRHRh9h3vQsoOD3d3SS9O4Pk6vRRwDvps1uj
-    hrW8+UBvATlCrHJOQ3utu5rhgAj+3xw2DW5m9E5uaWNLdU2bcVybgUeKGMJogxdu
-    BEKnMR0fjq7fRYr3wLvgs6ItMmV1e48TOSUVNZ+17Z59iVLeex9eUbZzxyM6CUF1
-    3/zWQD+s4clbDgWgAZCJdEB095nPNnXhkdr/jwcHv8SbpVKUpHlEvfuZjI3gK2MJ
-    tJx4xGUyaHU+CVBEp4LYWSs8z6Z6E+M7hEPpfFBZKm/52oYEbdMJjANAGXhB30LL
-    HjYRQcqqAiv+3RCklwEH/+Kt0sjKHLn+oEd/V66SzQKBgQDoOacnXI9+977sK6uX
-    ynbHUWTo3GFvooWItAVVFxnUYH00+lN0ddXzjHPQqwkHBPoi9bePEfQJjK9FpOtz
-    OaX5DtY2McU39ZuU0g96bs4AHHQq/98HTFa6BqN9IP5qGaCeoTtPhafsZkwa1h87
-    iCR8vpRmrE+amj7pgwuCEFLdLQKBgQDFrRYt2KJF7eT42S98FBtA/5AeByR4/sSk
-    rD80TONtAcBLc8E/yi+ro3kkz9OdZM3CPc/Sa9d/dfsvxo4geIt9n0ThzW4aH2Xo
-    BjmnkYMWZXWOiVQy9Vo3PfdMbmZBON2u16swH8r0mJClN0O4Z7OVxdhW2P7nACb7
-    Ek7DcgyKYwKBgQDj90y24C9hlbUPxKLzJGbLrYRg746a9zEdDJO7fyz1Bi+DZUWt
-    qst4BWXf7zaydFlVHl+ujBJDmZ6pwIb+GxZqUv1IQD15fJrZUgityL5i74u+dmYr
-    lO4COegeOthlsXiyoFZH7030TEvjgFUyrKgc6T1nOTn/6/FcbC9M49dklQKBgQCw
-    l68vp89X721VThjYnNG4IFbsLG9N1DNx9RrFq0ak1CKohTGHviUWDYUk+LDQdARI
-    2ZV2IrcyfAC5LoU7xtS+lfEgU7hfh9svC5in9RuJf3wkqNRabct5fFcXpayd6aJJ
-    Fwwsgsp59m2J2zQZYjMRwtxAwbv+O6mXNES+330KhwKBgCqZ6RFkyf/pjueoRGCP
-    qb2WDHvRhkFlHsh/o0scxXiGToiTgi/Yc41Dg6xJMRuPtt+L/sezXmq6H2evX+qg
-    Lv4A0A0slfWLy5WFUqa3JNIzmDEeugaHGGyeJoKXZz5Hrjeq+JEL1FsiMhCYwrl8
-    jE0KUAC77WR5lWODcvXAmD58
-    -----END PRIVATE KEY-----
----
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
@@ -472,6 +382,96 @@ spec:
             ca: ca.crt
             cert: tls.crt
             key: tls.key
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: udf-account-info
+  namespace: demo
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM= # 'password123' in base64
+---
+# pre generated tls secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: clickhouse-cluster-tls
+  namespace: demo
+type: Opaque
+stringData:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIDDTCCAfWgAwIBAgIUO9i4NfSWZ6WsJV0iRUgnd6TdEBwwDQYJKoZIhvcNAQEL
+    BQAwFTETMBEGA1UEAwwKS3ViZUJsb2NrczAgFw0yNTA4MTkwODM1NTRaGA8yMTI1
+    MDcyNjA4MzU1NFowFTETMBEGA1UEAwwKS3ViZUJsb2NrczCCASIwDQYJKoZIhvcN
+    AQEBBQADggEPADCCAQoCggEBANATB/zvCOxh7uMmAs7ZvaKdVnoDaWieEe8dmBdi
+    i+RXGbBqK0vlXY1VNTBAXblVZAdJJIKqnVXOy9N0A5puRUYSv5vAx8YRLf/wc0n3
+    nx23Uhsf5ltg31BviyEAXdeF0HPqiZ5CEmF4FZreuC6L9+qsJLj3eJEeX3/dLIY/
+    vndTV9xmLJKlLihoIhPv0pTNuAhCQ6IEXLrTDi9yX7qhp68wdZUwWhaVVOrgZDh+
+    wFMG8CGdnAhRlvJywHs04D6nSz18yEBOe3bs0wojhZ5/6oyMHZfQaLYIT2de9Pkq
+    UWZ6MtPWHmUGFDJtbshO112OUdex7qj6cUQbOnDYDmJCIXcCAwEAAaNTMFEwHQYD
+    VR0OBBYEFBIsXVPpBuEpCSZGsi+0dDfum33bMB8GA1UdIwQYMBaAFBIsXVPpBuEp
+    CSZGsi+0dDfum33bMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEB
+    AMmzmkpsUPQqE/aBCXKUN+6Pa+201XM9KmsUPxRdZEHVVZOXIzYFq/m1TPRvjL2T
+    Fk2Foazu3mcnJkWYWZuVkBymCRvF1oWct0mP0SBOljrI37m2GQoZ4KviqhFaCiX6
+    a3/IBBY6jLnt2ITBxRKetyZlGZvAkpuuKvwX0r363wVH0lkfg7ckhXuUGFl1UUL+
+    EzJLG+7BAN8SHs1slopTNZmoBROq0KNHzSrHzchBZwB4XjhHxjbmde0WKf8i9foC
+    mPgPyAQw7GjRYEDwbiVp3sXrl0SCWCeOhsZROYh7FxAqT5hAn11b4YpBeOa0fhLB
+    L674jxJcLVvhS87M6MCnTuY=
+    -----END CERTIFICATE-----
+  tls.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIDjTCCAnWgAwIBAgIUON/zD6nQWQkXu38Wk/GRxxPDswMwDQYJKoZIhvcNAQEL
+    BQAwFTETMBEGA1UEAwwKS3ViZUJsb2NrczAgFw0yNTA4MTkwODM1NTRaGA8yMTI1
+    MDcyNjA4MzU1NFowFTETMBEGA1UEAwwKY2xpY2tob3VzZTCCASIwDQYJKoZIhvcN
+    AQEBBQADggEPADCCAQoCggEBALNRYLXK15aBYZ52ORhd5YT//q0EZ2cG72sRI8T+
+    KC2Kn0yLDxJhpXw3q8rpC0sBQUfNJBbEuilobjZoEqd31LqaMSMzBV5svzhScDor
+    lkKsIdm1nCavCYyisJTE0va+rS+7Ti+rdDdQBkvoZ02xSM6leNrdyEnDvojAmsqu
+    Y2gI9UEzP/ESSiGi1Jn6VG1xZ3jLxGS0F6OeShZYPGYZ95hHQyG6SP8wmS3ERF5h
+    2OV3bgmKdDTmYP7VKC3pqzB8Q6E310hPB1mXPfev9VNzEsE0hkGF7DGfT+IFfEur
+    VTRiaz/DC0jM2wOzWbJEQqYGzXaYH4smQHvhwetpwGNhymcCAwEAAaOB0jCBzzCB
+    jAYDVR0RBIGEMIGBgglsb2NhbGhvc3SCDyouY2x1c3Rlci5sb2NhbIIfKi5jbGlj
+    a2hvdXNlLWNsdXN0ZXItY2xpY2tob3VzZYIeKi5jbGlja2hvdXNlLWNsdXN0ZXIt
+    Y2gta2VlcGVyggpjbGlja2hvdXNlhwR/AAABhxAAAAAAAAAAAAAAAAAAAAABMB0G
+    A1UdDgQWBBTfVj9MCyWaGYqWgNoEH0oty8EyEzAfBgNVHSMEGDAWgBQSLF1T6Qbh
+    KQkmRrIvtHQ37pt92zANBgkqhkiG9w0BAQsFAAOCAQEAc8gJJWOIm6IXvFcKFCny
+    EbQhDRVaqW44o3DmQBlvK3oqYyeRRoVIaxYkxKM6VPNaapEd46Pa+qcZ0widXQjI
+    VfsgtAtJOW3vmdu375o9gfqy94YAWRR8i5u887OWs9LRWVMZQ7js7J98KVBxMFZ/
+    xd9Fa87pB9VcljS56/KjQ3fnQYp2qZvV3GaeEwPTZfqOzfUxRQqLtO6SUiwAZkgg
+    awEgkRUVlrr6IOQs9rJzC1yPdmvS8n90gPi2cfNVEBznzOyLVPVxgZtXwuGxaPkH
+    ptmkFBDDNwELkuJ6csEcoeae3Wcm/MwXMjIwvNF3JyKOHeIJ43fWKEc1YRNeYOB5
+    NQ==
+    -----END CERTIFICATE-----
+  tls.key: |
+    -----BEGIN PRIVATE KEY-----
+    MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCzUWC1yteWgWGe
+    djkYXeWE//6tBGdnBu9rESPE/igtip9Miw8SYaV8N6vK6QtLAUFHzSQWxLopaG42
+    aBKnd9S6mjEjMwVebL84UnA6K5ZCrCHZtZwmrwmMorCUxNL2vq0vu04vq3Q3UAZL
+    6GdNsUjOpXja3chJw76IwJrKrmNoCPVBMz/xEkohotSZ+lRtcWd4y8RktBejnkoW
+    WDxmGfeYR0Mhukj/MJktxEReYdjld24JinQ05mD+1Sgt6aswfEOhN9dITwdZlz33
+    r/VTcxLBNIZBhewxn0/iBXxLq1U0Yms/wwtIzNsDs1myREKmBs12mB+LJkB74cHr
+    acBjYcpnAgMBAAECggEANWvukGpMXRHRh9h3vQsoOD3d3SS9O4Pk6vRRwDvps1uj
+    hrW8+UBvATlCrHJOQ3utu5rhgAj+3xw2DW5m9E5uaWNLdU2bcVybgUeKGMJogxdu
+    BEKnMR0fjq7fRYr3wLvgs6ItMmV1e48TOSUVNZ+17Z59iVLeex9eUbZzxyM6CUF1
+    3/zWQD+s4clbDgWgAZCJdEB095nPNnXhkdr/jwcHv8SbpVKUpHlEvfuZjI3gK2MJ
+    tJx4xGUyaHU+CVBEp4LYWSs8z6Z6E+M7hEPpfFBZKm/52oYEbdMJjANAGXhB30LL
+    HjYRQcqqAiv+3RCklwEH/+Kt0sjKHLn+oEd/V66SzQKBgQDoOacnXI9+977sK6uX
+    ynbHUWTo3GFvooWItAVVFxnUYH00+lN0ddXzjHPQqwkHBPoi9bePEfQJjK9FpOtz
+    OaX5DtY2McU39ZuU0g96bs4AHHQq/98HTFa6BqN9IP5qGaCeoTtPhafsZkwa1h87
+    iCR8vpRmrE+amj7pgwuCEFLdLQKBgQDFrRYt2KJF7eT42S98FBtA/5AeByR4/sSk
+    rD80TONtAcBLc8E/yi+ro3kkz9OdZM3CPc/Sa9d/dfsvxo4geIt9n0ThzW4aH2Xo
+    BjmnkYMWZXWOiVQy9Vo3PfdMbmZBON2u16swH8r0mJClN0O4Z7OVxdhW2P7nACb7
+    Ek7DcgyKYwKBgQDj90y24C9hlbUPxKLzJGbLrYRg746a9zEdDJO7fyz1Bi+DZUWt
+    qst4BWXf7zaydFlVHl+ujBJDmZ6pwIb+GxZqUv1IQD15fJrZUgityL5i74u+dmYr
+    lO4COegeOthlsXiyoFZH7030TEvjgFUyrKgc6T1nOTn/6/FcbC9M49dklQKBgQCw
+    l68vp89X721VThjYnNG4IFbsLG9N1DNx9RrFq0ak1CKohTGHviUWDYUk+LDQdARI
+    2ZV2IrcyfAC5LoU7xtS+lfEgU7hfh9svC5in9RuJf3wkqNRabct5fFcXpayd6aJJ
+    Fwwsgsp59m2J2zQZYjMRwtxAwbv+O6mXNES+330KhwKBgCqZ6RFkyf/pjueoRGCP
+    qb2WDHvRhkFlHsh/o0scxXiGToiTgi/Yc41Dg6xJMRuPtt+L/sezXmq6H2evX+qg
+    Lv4A0A0slfWLy5WFUqa3JNIzmDEeugaHGGyeJoKXZz5Hrjeq+JEL1FsiMhCYwrl8
+    jE0KUAC77WR5lWODcvXAmD58
+    -----END PRIVATE KEY-----
 ```
 
 ```bash
