@@ -28,14 +28,6 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
-  # systemAccounts:
-  #   - name: root
-  #     initAccount: true
-  #     passwordGenerationPolicy:
-  #       length: 16
-  #       numDigits: 8
-  #       numSymbols: 0
-  #       letterCase: MixedCases
   roles:
     - name: primary
       updatePriority: 2
@@ -117,7 +109,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/mongodb-shard-manage.sh --post-provision {{ .Values.rediectSuffix }}
+          - /scripts/mongodb-shard-manage.sh --post-provision
         targetPodSelector: Role
         matchingKey: primary
       preCondition: RuntimeReady
@@ -129,7 +121,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/mongodb-shard-manage.sh --pre-terminate {{ .Values.rediectSuffix }}
+          - /scripts/mongodb-shard-manage.sh --pre-terminate
         targetPodSelector: Role
         matchingKey: primary
       retryPolicy:
@@ -337,14 +329,6 @@ spec:
       value: $(MONGODB_ADMIN_PASSWORD)
     - name: KB_SERVICE_PORT
       value: "27017"
-      # valueFrom:
-      #   hostNetworkVarRef:
-      #     optional: true
-      #     container:
-      #       name: mongodb
-      #       port:
-      #         name: mongodb
-      #         option: Optional
     - name: SYNCER_SERVICE_PORT  
       valueFrom:
         hostNetworkVarRef:
@@ -397,14 +381,6 @@ spec:
       value: "{{ .Values.clusterDomain }}"
     - name: EXPORTER_SERVICE_PORT  
       value: "9216"
-      # valueFrom:
-      #   hostNetworkVarRef:
-      #     optional: true
-      #     container:
-      #       name: exporter
-      #       port:
-      #         name: exporter
-      #         option: Optional
   hostNetwork:
     containerPorts:
       - container: mongodb

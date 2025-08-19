@@ -167,14 +167,6 @@ spec:
           componentName: Required
     - name: KB_SERVICE_PORT  
       value: "27017"
-      # valueFrom:
-      #   hostNetworkVarRef:
-      #     optional: true
-      #     container:
-      #       name: mongos
-      #       port:
-      #         name: mongos
-      #         option: Optional
     - name: CFG_SERVER_REPLICA_SET_NAME
       valueFrom:
         componentVarRef:
@@ -210,49 +202,8 @@ spec:
           name: root
           optional: false
           password: Required
-    # - name: MONGODB_ADMIN_USER
-    #   valueFrom:
-    #     credentialVarRef:
-    #       compDef: {{ include "mongodbShard.componentDefName" . }}
-    #       name: root
-    #       optional: false
-    #       username: Required
-    #       multipleClusterObjectOption:
-    #         strategy: individual
-    # - name: MONGODB_ADMIN_PASSWORD
-    #   valueFrom:
-    #     credentialVarRef:
-    #       compDef: {{ include "mongodbShard.componentDefName" . }}
-    #       name: root
-    #       optional: false
-    #       password: Required
-    #       multipleClusterObjectOption:
-    #         strategy: individual
-    # - name: MONGOS_INTERNAL_SVC_NAME
-    #   valueFrom:
-    #     serviceVarRef:
-    #       compDef: {{ include "mongos.componentDefName" . }}
-    #       optional: false
-    #       host: Required
-    # - name: MONGOS_INTERNAL_PORT 
-    #   valueFrom:
-    #     serviceVarRef:
-    #       compDef: {{ include "mongos.componentDefName" . }}
-    #       optional: false
-    #       port:
-    #         name: mongos
-    # - name: MONGOS_INTERNAL_HOST
-    #   value: "$(MONGOS_INTERNAL_SVC_NAME).$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
     - name: EXPORTER_SERVICE_PORT  
       value: "9216"
-      # valueFrom:
-      #   hostNetworkVarRef:
-      #     optional: true
-      #     container:
-      #       name: exporter
-      #       port:
-      #         name: exporter
-      #         option: Optional
   hostNetwork:
     containerPorts:
       - container: mongos

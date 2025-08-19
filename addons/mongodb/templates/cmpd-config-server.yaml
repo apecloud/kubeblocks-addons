@@ -298,14 +298,6 @@ spec:
           password: Required
     - name: KB_SERVICE_PORT  
       value: "27017"
-      # valueFrom:
-      #   hostNetworkVarRef:
-      #     optional: true
-      #     container:
-      #       name: mongodb
-      #       port:
-      #         name: mongodb
-      #         option: Optional
     - name: SYNCER_SERVICE_PORT  
       valueFrom:
         hostNetworkVarRef:
@@ -356,41 +348,15 @@ spec:
         componentVarRef:
           compDef: {{ include "mongodbShard.compDefName" . }}
           optional: false
-          instanceNames: Required
+          componentName: Required
           multipleClusterObjectOption:
             strategy: combined
             combinedOption:
               flattenFormat:
                 delimiter: "."
                 keyValueDelimiter: "@"
-    # - name: MONGODB_ADMIN_USER
-    #   valueFrom:
-    #     credentialVarRef:
-    #       compDef: {{ include "mongodbShard.compDefName" . }}
-    #       name: root
-    #       optional: false
-    #       username: Required
-    #       multipleClusterObjectOption:
-    #         strategy: individual
-    # - name: MONGODB_ADMIN_PASSWORD
-    #   valueFrom:
-    #     credentialVarRef:
-    #       compDef: {{ include "mongodbShard.compDefName" . }}
-    #       name: root
-    #       optional: false
-    #       password: Required
-    #       multipleClusterObjectOption:
-    #         strategy: individual
     - name: EXPORTER_SERVICE_PORT  
       value: "9216"
-      # valueFrom:
-      #   hostNetworkVarRef:
-      #     optional: true
-      #     container:
-      #       name: exporter
-      #       port:
-      #         name: exporter
-      #         option: Optional
   hostNetwork: 
     containerPorts:  
       - container: mongodb

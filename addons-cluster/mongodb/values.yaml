@@ -8,15 +8,15 @@ version: 6.0.21
 
 ## @param mode cluster topology mode, standalone、replicaset or sharding
 ##
-mode: sharding
+mode: standalone
 
 ## @param shards, shard count, only for sharding mode
 ##
-shards: 1
+shards: 3
 
 ## @param replicas, replica count
 ##
-replicas: 2
+replicas: 3
 
 # custom password of default user for redis by passing a secret
 # the secret must contain keys named 'username' and 'password'
@@ -25,7 +25,7 @@ customSecretNamespace: ""
 
 ## @param configServer.replicas, config server replica count, only for sharding mode
 configServer:
-  replicas: 1
+  replicas: 3
   storageClassName:
   cpu: 0.5
   memory: 0.5
@@ -36,7 +36,7 @@ configServer:
 
 ## @param mongos.replicas, mongos replica count, only for sharding mode
 mongos:
-  replicas: 1
+  replicas: 3
   cpu: 0.5
   memory: 0.5
   tolerations: []
@@ -64,7 +64,7 @@ requests:
 
 ## @param storage size, the unit is Gi
 ##
-storage: 5
+storage: 20
 
 hostnetwork: "disabled"
 

@@ -64,39 +64,6 @@ mongodb
 {{- end -}}
 {{- end -}}
 
-# {{/*
-# Define mongodb-shard component defintion name
-# */}}
-# {{- define "mongodbShard.componentDefName" -}}
-# {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-# mongo-shard
-# {{- else -}}
-# {{- printf "%s-mongo-shard" .Values.resourceNamePrefix -}}
-# {{- end -}}
-# {{- end -}}
-
-# {{/*
-# Define mongos component defintion name
-# */}}
-# {{- define "mongos.componentDefName" -}}
-# {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-# mongo-mongos
-# {{- else -}}
-# {{- printf "%s-mongo-mongos" .Values.resourceNamePrefix -}}
-# {{- end -}}
-# {{- end -}}
-
-# {{/*
-# Define cfg-server component defintion name
-# */}}
-# {{- define "cfgServer.componentDefName" -}}
-# {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-# mongo-config-server
-# {{- else -}}
-# {{- printf "%s-mongo-config-server" .Values.resourceNamePrefix -}}
-# {{- end -}}
-# {{- end -}}
-
 {{/*
 Define config constriant name
 */}}

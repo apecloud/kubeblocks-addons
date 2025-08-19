@@ -14,7 +14,6 @@ PBM_BACKUPFILE=$MONGODB_ROOT/tmp/mongodb_pbm.backup
 process="mongod --bind_ip_all --port $PORT --replSet $CLUSTER_COMPONENT_NAME --config /etc/mongodb/mongodb.conf"
 if [ ! -f $PBM_BACKUPFILE ]
 then
-  echo "INFO: Do not need to restore."
   exec $process
   exit 0
 fi

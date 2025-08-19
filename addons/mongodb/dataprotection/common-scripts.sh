@@ -135,7 +135,7 @@ generate_endpoints() {
     local port=$2
 
     if [ -z "$fqdns" ]; then
-        echo "ERROR: No FQDNs provided for config server endpoints." >&2
+        echo "ERROR: No FQDNs provided for endpoints." >&2
         exit 1
     fi
 
@@ -153,32 +153,6 @@ generate_endpoints() {
 }
 
 function export_pbm_env_vars() {
-  # Get the cluster admin credentials from environment variables
-  # CLUSTER_ADMIN_USER=""
-  # CLUSTER_ADMIN_PASSWORD=""
-  # for env_var in $(env | grep -E '^MONGODB_ADMIN_USER'); do
-  #     CLUSTER_ADMIN_USER="${env_var#*=}"
-  #     if [ -z "$CLUSTER_ADMIN_USER" ]; then
-  #         continue
-  #     fi
-  #     break
-  # done
-  # for env_var in $(env | grep -E '^MONGODB_ADMIN_PASSWORD'); do
-  #     CLUSTER_ADMIN_PASSWORD="${env_var#*=}"
-  #     if [ -z "$CLUSTER_ADMIN_PASSWORD" ]; then
-  #         continue
-  #     fi
-  #     break
-  # done
-
-  # if [ -z "$CLUSTER_ADMIN_USER" ] || [ -z "$CLUSTER_ADMIN_PASSWORD" ]; then
-  #     echo "ERROR: MONGODB_ADMIN_USER or MONGODB_ADMIN_PASSWORD is not set." >&2
-  #     exit 1
-  # fi
-
-  # export PBM_AGENT_MONGODB_USERNAME="$CLUSTER_ADMIN_USER"
-  # export PBM_AGENT_MONGODB_PASSWORD="$CLUSTER_ADMIN_PASSWORD"
-
   export PBM_AGENT_MONGODB_USERNAME="$MONGODB_USER"
   export PBM_AGENT_MONGODB_PASSWORD="$MONGODB_PASSWORD"
   

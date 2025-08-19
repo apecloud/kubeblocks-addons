@@ -35,24 +35,9 @@ shardings:
     shards: {{ .Values.shards | default 3 }}
     template:
       name: *sharding_name
-      componentDef: mongo-shard
       serviceVersion: {{ .Values.version }}
       replicas: {{ .Values.replicas | default 3 }}
       disableExporter: {{ $.Values.disableExporter | default "false" }}
-    #   systemAccounts:
-    #     - name: root
-    #       {{- if and .Values.customSecretName .Values.customSecretNamespace }}
-    #       secretRef:
-    #         name: {{ .Values.customSecretName }}
-    #         namespace: {{ .Values.customSecretNamespace }}
-    #       {{- else }}
-    #       passwordConfig:
-    #         length: 16
-    #         numDigits: 8
-    #         numSymbols: 0
-    #         letterCase: MixedCases
-    #         seed: {{ include "kblib.clusterName" . }}
-    #       {{- end }}
       env:
         # syncer uses this env to get sharding name
         - name: SHARDING_NAME
@@ -61,7 +46,6 @@ shardings:
       {{- include "kblib.componentStorages" . | indent 6 }}
 componentSpecs:
   - name: config-server
-    # componentDef: mongo-config-server
     replicas: {{ .Values.configServer.replicas | default 3 }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
     systemAccounts:
@@ -104,7 +88,6 @@ componentSpecs:
             requests:
               storage: {{ print .Values.configServer.storage "Gi" }}
   - name: mongos
-    # componentDef: mongo-mongos
     replicas: {{ .Values.mongos.replicas | default 3 }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
     serviceVersion: {{ .Values.version }}
