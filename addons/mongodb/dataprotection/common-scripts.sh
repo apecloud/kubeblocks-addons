@@ -1,4 +1,6 @@
 #!/bin/bash
+# shellcheck disable=SC2086
+
 function handle_exit() {
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
@@ -212,6 +214,7 @@ EOF
 function print_pbm_logs_by_event() {
   local pbm_event=$1
   # echo "INFO: Printing PBM logs by event: $pbm_event"
+  # shellcheck disable=SC2328
   local pbm_logs=$(pbm logs -e $pbm_event --tail 200 --mongodb-uri "$PBM_MONGODB_URI" > /dev/null)
   local purged_logs=$(echo "$pbm_logs" | awk -v start="$PBM_LOGS_START_TIME" '$1 >= start')
   if [ -z "$purged_logs" ]; then
