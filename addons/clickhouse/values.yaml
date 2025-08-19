@@ -14,8 +14,8 @@ logConfigs: {}
 commonAnnotations: {}
 
 image:
-  registry: docker.io
-  repository: bitnami/clickhouse
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/clickhouse
   pullPolicy: IfNotPresent
 
 clickhouseVersions:
