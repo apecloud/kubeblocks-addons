@@ -12,6 +12,7 @@ spec:
     account: admin
     role: ""
     strategy: Any
+    useParentSelectedPods: true
   backupMethods:
     - name: full
       snapshotVolumes: false

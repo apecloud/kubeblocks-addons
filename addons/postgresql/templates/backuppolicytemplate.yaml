@@ -26,6 +26,7 @@ spec:
     role: primary
     fallbackRole: secondary
     account: postgres
+    useParentSelectedPods: true
   backupMethods:
     - name: pg-basebackup
       snapshotVolumes: false

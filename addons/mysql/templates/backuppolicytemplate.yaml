@@ -12,6 +12,7 @@ spec:
     role: secondary
     fallbackRole: primary
     account: kbadmin
+    useParentSelectedPods: true
   backupMethods:
   - name: xtrabackup
     snapshotVolumes: false
