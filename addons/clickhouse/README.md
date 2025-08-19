@@ -15,21 +15,29 @@ There are two key components in the ClickHouse cluster:
 
 | Topology           | Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
 | ------------------ | ------------------ | ---------------- | ------------- | ------- | ---------- | --------- | ------ | ---------- |
-| standalone/cluster | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | No     | N/A        |
+| standalone/cluster | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | Yes    | N/A        |
 
 #### ClickHouse Keeper
 
 | Topology | Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
 | -------- | ------------------ | ---------------- | ------------- | ------- | ---------- | --------- | ------ | ---------- |
-| cluster  | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | No     | Yes        |
+| cluster  | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | N/A    | Yes        |
+
+### Backup and Restore
+
+| Feature     | Method | Description |
+|-------------|--------|------------|
+| Full Backup | clickhouse-backup | uses `clickhouse-backup` tool to perform full backups of ClickHouse data |
+| Incremental Backup | clickhouse-backup | uses `clickhouse-backup` tool to perform incremental backups based on previous backup |
+
 
 ### Versions
 
-| Major Versions | Description |
-| -------------- | ----------- |
-| 22             | 22.9.4      |
-| 24             | 24.8.3      |
-| 25             | 25.4.4      |
+| Major Versions | Description     |
+| -------------- | --------------- |
+| 22             | 22.3.18, 22.3.20, 22.8.21 |
+| 24             | 24.8.3          |
+| 25             | 25.4.4          |
 
 ## Prerequisites
 
@@ -77,6 +85,11 @@ spec:
   componentSpecs:
     - name: clickhouse
       replicas: 1
+      systemAccounts:
+        - name: admin
+          secretRef:
+            name: udf-account-info
+            namespace: demo
       resources:
         limits:
           cpu: '0.5'
@@ -92,6 +105,15 @@ spec:
             resources:
               requests:
                 storage: 20Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: udf-account-info
+  namespace: demo
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=  # 'password123' in base64
 
 ```
 
@@ -120,7 +142,7 @@ where `clickhouse-cluster-clickhouse-account-admin` is the secret name, it is na
 
 #### Cluster Mode
 
-Create a ClickHouse cluster with ClickHouse servers and ch-keeper:
+Create a ClickHouse cluster with ClickHouse servers and ch-keeper. The default cluster configuration includes sharding with 2 shards, each shard having 2 replicas:
 
 ```yaml
 # cat examples/clickhouse/cluster.yaml
@@ -145,21 +167,21 @@ spec:
   # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
-    - name: clickhouse
-      replicas: 2
-      # Overrides system accounts defined in referenced ComponentDefinition.
+    - name: ch-keeper
+      componentDef: clickhouse-keeper-1
+      replicas: 1
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 1Gi
+        requests:
+          cpu: '0.5'
+          memory: 1Gi
       systemAccounts:
-        - name: admin # name of the system account
+        - name: admin
           secretRef:
             name: udf-account-info
             namespace: demo
-      resources:
-        limits:
-          cpu: '0.5'
-          memory: 1Gi
-        requests:
-          cpu: '0.5'
-          memory: 1Gi
       volumeClaimTemplates:
         - name: data
           spec:
@@ -167,33 +189,34 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: 20Gi
-    - name: ch-keeper
-      replicas: 1
-      # Overrides system accounts defined in referenced ComponentDefinition.
-      systemAccounts:
-        - name: admin # name of the system account
-          passwordConfig: # config rule to generate  password
-            length: 10
-            numDigits: 5
-            numSymbols: 0
-            letterCase: MixedCases
-            seed: clickhouse-cluster
-      resources:
-        limits:
-          cpu: '0.5'
-          memory: 1Gi
-        requests:
-          cpu: '0.5'
-          memory: 1Gi
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
+                storage: 10Gi
+  shardings:
+    - name: clickhouse
+      shards: 2 # with 2 shard
+      template:
+        name: clickhouse  # each shard is a clickhouse component, with 2 replicas
+        componentDef: clickhouse-1
+        replicas: 2
+        systemAccounts:
+          - name: admin # name of the system account
+            secretRef:
+              name: udf-account-info
+              namespace: demo
+        resources:
+          limits:
+            cpu: "1"
+            memory: 2Gi
+          requests:
+            cpu: "1"
+            memory: 2Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
 ---
 apiVersion: v1
 kind: Secret
@@ -209,9 +232,12 @@ data:
 kubectl apply -f examples/clickhouse/cluster.yaml
 ```
 
-This example shows the way to override the default accounts' password.
+This example creates a cluster with:
+- 1 ClickHouse Keeper instance for coordination
+- 2 shards with 2 replicas each (total 4 ClickHouse server instances)
+- Shows how to override the default accounts' password
 
-Option 1. override the rule `passwordCofnig` to generate password
+Option 1. override the rule `passwordConfig` to generate password
 
 ```yaml
 # snippet of cluster.yaml
@@ -267,35 +293,132 @@ To create one ClickHouse server pod with the default configuration and TLS enabl
 
 ```yaml
 # cat examples/clickhouse/cluster-tls.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: udf-account-info
+  namespace: demo
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM= # 'password123' in base64
 ---
-# Source: clickhouse-cluster/templates/cluster.yaml
+# pre generated tls secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: clickhouse-cluster-tls
+  namespace: demo
+type: Opaque
+stringData:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIDDTCCAfWgAwIBAgIUO9i4NfSWZ6WsJV0iRUgnd6TdEBwwDQYJKoZIhvcNAQEL
+    BQAwFTETMBEGA1UEAwwKS3ViZUJsb2NrczAgFw0yNTA4MTkwODM1NTRaGA8yMTI1
+    MDcyNjA4MzU1NFowFTETMBEGA1UEAwwKS3ViZUJsb2NrczCCASIwDQYJKoZIhvcN
+    AQEBBQADggEPADCCAQoCggEBANATB/zvCOxh7uMmAs7ZvaKdVnoDaWieEe8dmBdi
+    i+RXGbBqK0vlXY1VNTBAXblVZAdJJIKqnVXOy9N0A5puRUYSv5vAx8YRLf/wc0n3
+    nx23Uhsf5ltg31BviyEAXdeF0HPqiZ5CEmF4FZreuC6L9+qsJLj3eJEeX3/dLIY/
+    vndTV9xmLJKlLihoIhPv0pTNuAhCQ6IEXLrTDi9yX7qhp68wdZUwWhaVVOrgZDh+
+    wFMG8CGdnAhRlvJywHs04D6nSz18yEBOe3bs0wojhZ5/6oyMHZfQaLYIT2de9Pkq
+    UWZ6MtPWHmUGFDJtbshO112OUdex7qj6cUQbOnDYDmJCIXcCAwEAAaNTMFEwHQYD
+    VR0OBBYEFBIsXVPpBuEpCSZGsi+0dDfum33bMB8GA1UdIwQYMBaAFBIsXVPpBuEp
+    CSZGsi+0dDfum33bMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEB
+    AMmzmkpsUPQqE/aBCXKUN+6Pa+201XM9KmsUPxRdZEHVVZOXIzYFq/m1TPRvjL2T
+    Fk2Foazu3mcnJkWYWZuVkBymCRvF1oWct0mP0SBOljrI37m2GQoZ4KviqhFaCiX6
+    a3/IBBY6jLnt2ITBxRKetyZlGZvAkpuuKvwX0r363wVH0lkfg7ckhXuUGFl1UUL+
+    EzJLG+7BAN8SHs1slopTNZmoBROq0KNHzSrHzchBZwB4XjhHxjbmde0WKf8i9foC
+    mPgPyAQw7GjRYEDwbiVp3sXrl0SCWCeOhsZROYh7FxAqT5hAn11b4YpBeOa0fhLB
+    L674jxJcLVvhS87M6MCnTuY=
+    -----END CERTIFICATE-----
+  tls.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIDjTCCAnWgAwIBAgIUON/zD6nQWQkXu38Wk/GRxxPDswMwDQYJKoZIhvcNAQEL
+    BQAwFTETMBEGA1UEAwwKS3ViZUJsb2NrczAgFw0yNTA4MTkwODM1NTRaGA8yMTI1
+    MDcyNjA4MzU1NFowFTETMBEGA1UEAwwKY2xpY2tob3VzZTCCASIwDQYJKoZIhvcN
+    AQEBBQADggEPADCCAQoCggEBALNRYLXK15aBYZ52ORhd5YT//q0EZ2cG72sRI8T+
+    KC2Kn0yLDxJhpXw3q8rpC0sBQUfNJBbEuilobjZoEqd31LqaMSMzBV5svzhScDor
+    lkKsIdm1nCavCYyisJTE0va+rS+7Ti+rdDdQBkvoZ02xSM6leNrdyEnDvojAmsqu
+    Y2gI9UEzP/ESSiGi1Jn6VG1xZ3jLxGS0F6OeShZYPGYZ95hHQyG6SP8wmS3ERF5h
+    2OV3bgmKdDTmYP7VKC3pqzB8Q6E310hPB1mXPfev9VNzEsE0hkGF7DGfT+IFfEur
+    VTRiaz/DC0jM2wOzWbJEQqYGzXaYH4smQHvhwetpwGNhymcCAwEAAaOB0jCBzzCB
+    jAYDVR0RBIGEMIGBgglsb2NhbGhvc3SCDyouY2x1c3Rlci5sb2NhbIIfKi5jbGlj
+    a2hvdXNlLWNsdXN0ZXItY2xpY2tob3VzZYIeKi5jbGlja2hvdXNlLWNsdXN0ZXIt
+    Y2gta2VlcGVyggpjbGlja2hvdXNlhwR/AAABhxAAAAAAAAAAAAAAAAAAAAABMB0G
+    A1UdDgQWBBTfVj9MCyWaGYqWgNoEH0oty8EyEzAfBgNVHSMEGDAWgBQSLF1T6Qbh
+    KQkmRrIvtHQ37pt92zANBgkqhkiG9w0BAQsFAAOCAQEAc8gJJWOIm6IXvFcKFCny
+    EbQhDRVaqW44o3DmQBlvK3oqYyeRRoVIaxYkxKM6VPNaapEd46Pa+qcZ0widXQjI
+    VfsgtAtJOW3vmdu375o9gfqy94YAWRR8i5u887OWs9LRWVMZQ7js7J98KVBxMFZ/
+    xd9Fa87pB9VcljS56/KjQ3fnQYp2qZvV3GaeEwPTZfqOzfUxRQqLtO6SUiwAZkgg
+    awEgkRUVlrr6IOQs9rJzC1yPdmvS8n90gPi2cfNVEBznzOyLVPVxgZtXwuGxaPkH
+    ptmkFBDDNwELkuJ6csEcoeae3Wcm/MwXMjIwvNF3JyKOHeIJ43fWKEc1YRNeYOB5
+    NQ==
+    -----END CERTIFICATE-----
+  tls.key: |
+    -----BEGIN PRIVATE KEY-----
+    MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCzUWC1yteWgWGe
+    djkYXeWE//6tBGdnBu9rESPE/igtip9Miw8SYaV8N6vK6QtLAUFHzSQWxLopaG42
+    aBKnd9S6mjEjMwVebL84UnA6K5ZCrCHZtZwmrwmMorCUxNL2vq0vu04vq3Q3UAZL
+    6GdNsUjOpXja3chJw76IwJrKrmNoCPVBMz/xEkohotSZ+lRtcWd4y8RktBejnkoW
+    WDxmGfeYR0Mhukj/MJktxEReYdjld24JinQ05mD+1Sgt6aswfEOhN9dITwdZlz33
+    r/VTcxLBNIZBhewxn0/iBXxLq1U0Yms/wwtIzNsDs1myREKmBs12mB+LJkB74cHr
+    acBjYcpnAgMBAAECggEANWvukGpMXRHRh9h3vQsoOD3d3SS9O4Pk6vRRwDvps1uj
+    hrW8+UBvATlCrHJOQ3utu5rhgAj+3xw2DW5m9E5uaWNLdU2bcVybgUeKGMJogxdu
+    BEKnMR0fjq7fRYr3wLvgs6ItMmV1e48TOSUVNZ+17Z59iVLeex9eUbZzxyM6CUF1
+    3/zWQD+s4clbDgWgAZCJdEB095nPNnXhkdr/jwcHv8SbpVKUpHlEvfuZjI3gK2MJ
+    tJx4xGUyaHU+CVBEp4LYWSs8z6Z6E+M7hEPpfFBZKm/52oYEbdMJjANAGXhB30LL
+    HjYRQcqqAiv+3RCklwEH/+Kt0sjKHLn+oEd/V66SzQKBgQDoOacnXI9+977sK6uX
+    ynbHUWTo3GFvooWItAVVFxnUYH00+lN0ddXzjHPQqwkHBPoi9bePEfQJjK9FpOtz
+    OaX5DtY2McU39ZuU0g96bs4AHHQq/98HTFa6BqN9IP5qGaCeoTtPhafsZkwa1h87
+    iCR8vpRmrE+amj7pgwuCEFLdLQKBgQDFrRYt2KJF7eT42S98FBtA/5AeByR4/sSk
+    rD80TONtAcBLc8E/yi+ro3kkz9OdZM3CPc/Sa9d/dfsvxo4geIt9n0ThzW4aH2Xo
+    BjmnkYMWZXWOiVQy9Vo3PfdMbmZBON2u16swH8r0mJClN0O4Z7OVxdhW2P7nACb7
+    Ek7DcgyKYwKBgQDj90y24C9hlbUPxKLzJGbLrYRg746a9zEdDJO7fyz1Bi+DZUWt
+    qst4BWXf7zaydFlVHl+ujBJDmZ6pwIb+GxZqUv1IQD15fJrZUgityL5i74u+dmYr
+    lO4COegeOthlsXiyoFZH7030TEvjgFUyrKgc6T1nOTn/6/FcbC9M49dklQKBgQCw
+    l68vp89X721VThjYnNG4IFbsLG9N1DNx9RrFq0ak1CKohTGHviUWDYUk+LDQdARI
+    2ZV2IrcyfAC5LoU7xtS+lfEgU7hfh9svC5in9RuJf3wkqNRabct5fFcXpayd6aJJ
+    Fwwsgsp59m2J2zQZYjMRwtxAwbv+O6mXNES+330KhwKBgCqZ6RFkyf/pjueoRGCP
+    qb2WDHvRhkFlHsh/o0scxXiGToiTgi/Yc41Dg6xJMRuPtt+L/sezXmq6H2evX+qg
+    Lv4A0A0slfWLy5WFUqa3JNIzmDEeugaHGGyeJoKXZz5Hrjeq+JEL1FsiMhCYwrl8
+    jE0KUAC77WR5lWODcvXAmD58
+    -----END PRIVATE KEY-----
+---
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: cluster-tls
+  name: clickhouse-tls
   namespace: demo
 spec:
-  terminationPolicy: Delete
+  # Specifies the name of the ClusterDef to use when creating a Cluster.
   clusterDef: clickhouse
+  # Specifies the clickhouse cluster topology defined in ClusterDefinition.Spec.topologies.
+  # - `standalone`: single clickhouse instance
+  # - `cluster`: clickhouse with ClickHouse Keeper as coordinator
   topology: cluster
+  # Specifies the behavior when a Cluster is deleted.
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster.
+  # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
+  # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
     - name: ch-keeper
+      componentDef: clickhouse-keeper-1
       replicas: 1
       resources:
         limits:
-          cpu: "1"
-          memory: "2Gi"
+          cpu: '0.5'
+          memory: 1Gi
         requests:
-          cpu: "1"
-          memory: "2Gi"
+          cpu: '0.5'
+          memory: 1Gi
       systemAccounts:
         - name: admin
-          passwordConfig:
-            length: 10
-            numDigits: 5
-            numSymbols: 0
-            letterCase: MixedCases
-            seed: cluster-tls
+          secretRef:
+            name: udf-account-info
+            namespace: demo
       volumeClaimTemplates:
         - name: data
           spec:
@@ -304,37 +427,51 @@ spec:
             resources:
               requests:
                 storage: 10Gi
-    - name: clickhouse
-      replicas: 2
-      systemAccounts:
-        - name: admin
-          passwordConfig:
-            length: 10
-            numDigits: 5
-            numSymbols: 0
-            letterCase: MixedCases
-            seed: cluster-tls
-      resources:
-        limits:
-          cpu: "1"
-          memory: "2Gi"
-        requests:
-          cpu: "1"
-          memory: "2Gi"
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
-      tls: true   # set TLS to true
+      tls: true   # set TLS to true for keeper
       issuer:     # if TLS is True, this filed is required.
-        name: KubeBlocks  # set Issuer to [KubeBlocks, UserProvided].
-        # name: UserProvided  # set Issuer to [KubeBlocks, UserProvided].
-        # secretRef: secret-name # if name=UserProvided, must set the reference to the secret that contains user-provided certificates
-
+        name: UserProvided  # set Issuer to UserProvided, P.S. KubeBlocks Issuer is unable for sharding typology.
+        secretRef:
+          name: clickhouse-cluster-tls
+          namespace: demo
+          ca: ca.crt
+          cert: tls.crt
+          key: tls.key
+  shardings:
+    - name: clickhouse
+      shards: 1
+      template:
+        name: clickhouse
+        componentDef: clickhouse-1
+        replicas: 2
+        systemAccounts:
+          - name: admin
+            secretRef:
+              name: udf-account-info
+              namespace: demo
+        resources:
+          limits:
+            cpu: '1'
+            memory: 2Gi
+          requests:
+            cpu: '1'
+            memory: 2Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
+        tls: true # set TLS to true
+        issuer: # if TLS is True, this filed is required.
+          name: UserProvided  # set Issuer to UserProvided, P.S. KubeBlocks Issuer is unable for sharding typology.
+          secretRef:
+            name: clickhouse-cluster-tls
+            namespace: demo
+            ca: ca.crt
+            cert: tls.crt
+            key: tls.key
 ```
 
 ```bash
@@ -355,84 +492,6 @@ To connect to the ClickHouse server, you can use the following command:
 clickhouse-client --host <clickhouse-endpoint>  --port 9440 --secure  --user admin --password
 ```
 
-#### Cluster with Multiple Shards
-
-> [!WARNING]
-> The sharding mode is an experimental feature at the moment.
-
-Create a ClickHouse cluster with ch-keeper and clickhouse servers with multiple shards:
-
-```yaml
-# cat examples/clickhouse/cluster-sharding.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-metadata:
-  name: clickhouse-sharding
-  namespace: demo
-spec:
-  terminationPolicy: Delete
-  componentSpecs:
-    - name: ch-keeper # create clickhouse keeper
-      componentDef: clickhouse-keeper-24
-      replicas: 1
-      resources:
-        limits:
-          cpu: "1"
-          memory: "2Gi"
-        requests:
-          cpu: "1"
-          memory: "2Gi"
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 10Gi
-  shardings:
-    - name: shard
-      shards: 2 # with 2 shard
-      template:
-        name: clickhouse  # each shard is a clickhouse component, with 2 replicas
-        componentDef: clickhouse-24
-        replicas: 2
-        systemAccounts:
-          - name: admin # name of the system account
-            secretRef:
-              name: udf-shard-account-info
-              namespace: demo
-        resources:
-          limits:
-            cpu: "1"
-            memory: "2Gi"
-          requests:
-            cpu: "1"
-            memory: "2Gi"
-        volumeClaimTemplates:
-          - name: data
-            spec:
-              accessModes:
-                - ReadWriteOnce
-              resources:
-                requests:
-                  storage: 20Gi
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: udf-shard-account-info
-  namespace: demo
-type: Opaque
-data:
-  password: cGFzc3dvcmQxMjM=  # 'password123' in base64
-```
-
-```bash
-kubectl apply -f examples/clickhouse/cluster-sharding.yaml
-```
-
-This example creates a clickhouse cluster with 2 shards, each shard has 2 replicas.
 
 ### Horizontal scaling
 
@@ -915,6 +974,203 @@ spec:
 
 ```bash
 kubectl apply -f examples/clickhouse/start.yaml
+```
+
+### Expose
+
+Expose ClickHouse services to external access. Note that ClickHouse Keeper does not need to be exposed as it's an internal coordination service.
+
+#### Expose with LoadBalancer
+
+Expose ClickHouse using LoadBalancer service type:
+
+```yaml
+# cat examples/clickhouse/expose-enable.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: clickhouse-expose-enable
+  namespace: demo
+spec:
+  # Specifies the type of this operation.
+  type: Expose
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  # Lists Expose objects, each specifying a Component and its services to be exposed.
+  expose:
+    # Specifies the name of the Component.
+  - componentName: clickhouse
+    # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`.
+    services:
+    - name: internet
+      # Determines how the Service is exposed. Defaults to 'ClusterIP'.
+      # Valid options are `ClusterIP`, `NodePort`, and `LoadBalancer`.
+      serviceType: LoadBalancer
+      # Contains cloud provider related parameters if ServiceType is LoadBalancer.
+      # Following is an example for Aliyun ACK, please adjust the following annotations as needed.
+      annotations:
+        service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: internet
+        service.beta.kubernetes.io/alibaba-cloud-loadbalancer-charge-type: ""
+        service.beta.kubernetes.io/alibaba-cloud-loadbalancer-spec: slb.s1.small
+    # Indicates whether the services will be exposed. 'Enable' exposes the services. while 'Disable' removes the exposed Service.
+    switch: Enable
+```
+
+```bash
+kubectl apply -f examples/clickhouse/expose-enable.yaml
+```
+
+This will create a LoadBalancer service for the ClickHouse component. You can then connect using:
+
+```bash
+clickhouse-client --host <loadbalancer-ip> --port 9000 --user admin --password
+```
+
+#### Disable Expose
+
+Remove the exposed service:
+
+```yaml
+# cat examples/clickhouse/expose-disable.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: clickhouse-expose-disable
+  namespace: demo
+spec:
+  # Specifies the type of this operation.
+  type: Expose
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  # Lists Expose objects, each specifying a Component and its services to be exposed.
+  expose:
+    # Specifies the name of the Component.
+  - componentName: clickhouse
+    # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`.
+    services:
+    - name: internet
+      # Determines how the Service is exposed. Defaults to 'ClusterIP'.
+      # Valid options are `ClusterIP`, `NodePort`, and `LoadBalancer`.
+      serviceType: LoadBalancer
+    # Indicates whether the services will be exposed. 'Enable' exposes the services. while 'Disable' removes the exposed Service.
+    switch: Disable
+```
+
+```bash
+kubectl apply -f examples/clickhouse/expose-disable.yaml
+```
+
+#### Cluster with NodePort
+
+Create a ClickHouse cluster with NodePort services:
+
+```yaml
+# cat examples/clickhouse/cluster-with-nodeport.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: clickhouse-cluster-nodeport
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  # Specifies the services to be exposed at the cluster level, allowing the cluster to be accessed from outside.
+  services:
+    # Exposes ClickHouse service using NodePort
+    - name: clickhouse-nodeport
+      # Type of the exposed service. Valid options are 'ClusterIP', 'NodePort', and 'LoadBalancer'.
+      serviceType: NodePort
+      # Sharding associated with this service
+      shardingSelector: clickhouse
+      # Role selector for the component service.
+      # In a ClickHouse cluster, we only expose nodes without specifying roles
+      # since all nodes can handle read/write requests
+  # Components that make up the cluster
+  componentSpecs:
+    # ch-keeper component for distributed mode
+    - name: ch-keeper
+      componentDef: clickhouse-keeper-1
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 1Gi
+        requests:
+          cpu: "0.5"
+          memory: 1Gi
+      systemAccounts:
+        - name: admin
+          secretRef:
+            name: udf-account-info
+            namespace: demo
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+  # ClickHouse sharding configuration
+  shardings:
+    - name: clickhouse
+      shards: 1  # single shard for compatibility
+      template:
+        name: clickhouse
+        componentDef: clickhouse-1
+        replicas: 2
+        # Component-level services override services defined in referenced ComponentDefinition
+        # This example creates a per-pod NodePort service for each ClickHouse instance
+        services:
+          - name: clickhouse-per-pod
+            serviceType: NodePort
+            podService: true
+        resources:
+          limits:
+            cpu: "0.5"
+            memory: 0.5Gi
+          requests:
+            cpu: "0.5"
+            memory: 0.5Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
+        systemAccounts:
+          - name: admin
+            secretRef:
+              name: udf-account-info
+              namespace: demo
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: udf-account-info
+  namespace: demo
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=  # 'password123' in base64
+```
+
+```bash
+kubectl apply -f examples/clickhouse/cluster-with-nodeport.yaml
+```
+
+This example demonstrates two approaches:
+1. Cluster-level NodePort service that load balances across all ClickHouse instances
+2. Per-pod NodePort services for direct access to individual ClickHouse instances
+
+To connect via NodePort:
+
+```bash
+# Get the NodePort
+kubectl get svc -n demo | grep clickhouse
+
+# Connect using node IP and NodePort
+clickhouse-client --host <node-ip> --port <node-port> --user admin --password
 ```
 
 ### Observability
