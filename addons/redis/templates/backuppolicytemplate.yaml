@@ -33,7 +33,7 @@ spec:
       snapshotVolumes: true
       targetVolumes:
         volumes:
-        - {{ .Values.dataMountPath }}
+        - data
     - name: backup-for-rebuild-instance
       actionSetName: redis-for-rebuild-instance
       env:
