@@ -9,7 +9,7 @@ mkdir -p $MONGODB_ROOT/tmp
 export PATH=$MONGODB_ROOT/tmp/bin:$PATH
 
 # Allow the test framework to pass in a mock path to override the default /scripts.
-SCRIPTS_BASE_PATH=${1:-/scripts}
+SCRIPTS_BASE_PATH=${SCRIPTS_BASE_PATH:-/scripts}
 . "$SCRIPTS_BASE_PATH/mongodb-common.sh"
 
 PBM_BACKUPFILE=$MONGODB_ROOT/tmp/mongodb_pbm.backup

@@ -27,6 +27,7 @@ process_restore_signal() {
   echo "Mocked process_restore_signal called with: $2"
 }
 EOF
+    SCRIPTS_BASE_PATH="$MOCK_SCRIPTS_DIR"
   }
   BeforeAll "init"
 
@@ -59,7 +60,7 @@ EOF
     It "should create directories and exec mongod with correct parameters"
       # To make the script testable, we pass the mock script path as an argument.
       # The script under test needs to be modified slightly to accept this. See note below.
-      When run source ../scripts/replicaset-setup.tpl "$MOCK_SCRIPTS_DIR"
+      When run source ../scripts/replicaset-setup.tpl
 
       # Assert that the basic directory structure is created.
       The path "$DATA_VOLUME/db" should be directory
@@ -101,7 +102,7 @@ EOF
     After 'cleanup_restore_mocks'
     
     It "should start pbm-agent, mongod, and call restore signals"
-      When run source ../scripts/replicaset-setup.tpl "$MOCK_SCRIPTS_DIR"
+      When run source ../scripts/replicaset-setup.tpl
       
       # Assert the output from all mock functions to confirm the correct execution flow.
       The output should include "INFO: Startup backup agent for restore."
