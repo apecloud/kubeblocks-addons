@@ -62,4 +62,5 @@ else
 fi
 
 chown -R pgbouncer:pgbouncer /opt/bitnami/pgbouncer/conf/ /opt/bitnami/pgbouncer/logs/ /opt/bitnami/pgbouncer/tmp/
-/opt/bitnami/scripts/pgbouncer/run.sh
+
+su pgbouncer -c "/opt/bitnami/scripts/pgbouncer/run.sh"
