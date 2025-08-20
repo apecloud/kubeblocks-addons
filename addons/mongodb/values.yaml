@@ -17,7 +17,7 @@ image:
     tag: 1.29
   syncer:
     repository: apecloud/syncer
-    tag: "2.0-wl-test"
+    tag: "0.6.4"
   exporter:
     repository: apecloud/mongodb_exporter
     tag: "0.44.0"
