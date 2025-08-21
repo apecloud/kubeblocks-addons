@@ -1,0 +1,87 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: clickhouse-cluster-nodeport
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  # Specifies the services to be exposed at the cluster level, allowing the cluster to be accessed from outside.
+  services:
+    # Exposes ClickHouse service using NodePort
+    - name: clickhouse-nodeport
+      # Type of the exposed service. Valid options are 'ClusterIP', 'NodePort', and 'LoadBalancer'.
+      serviceType: NodePort
+      # Sharding associated with this service
+      shardingSelector: clickhouse
+      # Role selector for the component service.
+      # In a ClickHouse cluster, we only expose nodes without specifying roles
+      # since all nodes can handle read/write requests
+  # Components that make up the cluster
+  componentSpecs:
+    # ch-keeper component for distributed mode
+    - name: ch-keeper
+      componentDef: clickhouse-keeper-1
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 1Gi
+        requests:
+          cpu: "0.5"
+          memory: 1Gi
+      systemAccounts:
+        - name: admin
+          secretRef:
+            name: udf-account-info
+            namespace: demo
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+  # ClickHouse sharding configuration
+  shardings:
+    - name: clickhouse
+      shards: 1  # single shard for compatibility
+      template:
+        name: clickhouse
+        componentDef: clickhouse-1
+        replicas: 2
+        # Component-level services override services defined in referenced ComponentDefinition
+        # This example creates a per-pod NodePort service for each ClickHouse instance
+        services:
+          - name: clickhouse-per-pod
+            serviceType: NodePort
+            podService: true
+        resources:
+          limits:
+            cpu: "0.5"
+            memory: 0.5Gi
+          requests:
+            cpu: "0.5"
+            memory: 0.5Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
+        systemAccounts:
+          - name: admin
+            secretRef:
+              name: udf-account-info
+              namespace: demo
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: udf-account-info
+  namespace: demo
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=  # 'password123' in base64

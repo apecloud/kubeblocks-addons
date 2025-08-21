@@ -15,21 +15,29 @@ There are two key components in the ClickHouse cluster:
 
 | Topology           | Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
 | ------------------ | ------------------ | ---------------- | ------------- | ------- | ---------- | --------- | ------ | ---------- |
-| standalone/cluster | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | No     | N/A        |
+| standalone/cluster | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | Yes    | N/A        |
 
 #### ClickHouse Keeper
 
 | Topology | Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
 | -------- | ------------------ | ---------------- | ------------- | ------- | ---------- | --------- | ------ | ---------- |
-| cluster  | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | No     | Yes        |
+| cluster  | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | N/A    | Yes        |
+
+### Backup and Restore
+
+| Feature     | Method | Description |
+|-------------|--------|------------|
+| Full Backup | clickhouse-backup | uses `clickhouse-backup` tool to perform full backups of ClickHouse data |
+| Incremental Backup | clickhouse-backup | uses `clickhouse-backup` tool to perform incremental backups based on previous backup |
+
 
 ### Versions
 
-| Major Versions | Description |
-| -------------- | ----------- |
-| 22             | 22.9.4      |
-| 24             | 24.8.3      |
-| 25             | 25.4.4      |
+| Major Versions | Description     |
+| -------------- | --------------- |
+| 22             | 22.3.18, 22.3.20, 22.8.21 |
+| 24             | 24.8.3          |
+| 25             | 25.4.4          |
 
 ## Prerequisites
 
@@ -77,15 +85,18 @@ where `clickhouse-cluster-clickhouse-account-admin` is the secret name, it is na
 
 #### Cluster Mode
 
-Create a ClickHouse cluster with ClickHouse servers and ch-keeper:
+Create a ClickHouse cluster with ClickHouse servers and ch-keeper. The default cluster configuration includes sharding with 2 shards, each shard having 2 replicas:
 
 ```bash
 kubectl apply -f examples/clickhouse/cluster.yaml
 ```
 
-This example shows the way to override the default accounts' password.
+This example creates a cluster with:
+- 1 ClickHouse Keeper instance for coordination
+- 2 shards with 2 replicas each (total 4 ClickHouse server instances)
+- Shows how to override the default accounts' password
 
-Option 1. override the rule `passwordCofnig` to generate password
+Option 1. override the rule `passwordConfig` to generate password
 
 ```yaml
 # snippet of cluster.yaml
@@ -157,18 +168,6 @@ To connect to the ClickHouse server, you can use the following command:
 clickhouse-client --host <clickhouse-endpoint>  --port 9440 --secure  --user admin --password
 ```
 
-#### Cluster with Multiple Shards
-
-> [!WARNING]
-> The sharding mode is an experimental feature at the moment.
-
-Create a ClickHouse cluster with ch-keeper and clickhouse servers with multiple shards:
-
-```bash
-kubectl apply -f examples/clickhouse/cluster-sharding.yaml
-```
-
-This example creates a clickhouse cluster with 2 shards, each shard has 2 replicas.
 
 ### Horizontal scaling
 
@@ -393,6 +392,54 @@ Start the stopped cluster
 
 ```bash
 kubectl apply -f examples/clickhouse/start.yaml
+```
+
+### Expose
+
+Expose ClickHouse services to external access. Note that ClickHouse Keeper does not need to be exposed as it's an internal coordination service.
+
+#### [Expose with LoadBalancer](expose-enable.yaml)
+
+Expose ClickHouse using LoadBalancer service type:
+
+```bash
+kubectl apply -f examples/clickhouse/expose-enable.yaml
+```
+
+This will create a LoadBalancer service for the ClickHouse component. You can then connect using:
+
+```bash
+clickhouse-client --host <loadbalancer-ip> --port 9000 --user admin --password
+```
+
+#### [Disable Expose](expose-disable.yaml)
+
+Remove the exposed service:
+
+```bash
+kubectl apply -f examples/clickhouse/expose-disable.yaml
+```
+
+#### [Cluster with NodePort](cluster-with-nodeport.yaml)
+
+Create a ClickHouse cluster with NodePort services:
+
+```bash
+kubectl apply -f examples/clickhouse/cluster-with-nodeport.yaml
+```
+
+This example demonstrates two approaches:
+1. Cluster-level NodePort service that load balances across all ClickHouse instances
+2. Per-pod NodePort services for direct access to individual ClickHouse instances
+
+To connect via NodePort:
+
+```bash
+# Get the NodePort
+kubectl get svc -n demo | grep clickhouse
+
+# Connect using node IP and NodePort
+clickhouse-client --host <node-ip> --port <node-port> --user admin --password
 ```
 
 ### Observability
