@@ -3252,9 +3252,13 @@
       },
       {
         "allValue": null,
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
         "datasource": "${datasource}",
-        "definition": "label_values(etcd_cluster_version,job)",
+        "definition": "label_values({__name__=~\"etcd_.*\"},job)",
         "description": null,
         "error": null,
         "hide": 0,
@@ -3264,7 +3268,7 @@
         "name": "job",
         "options": [],
         "query": {
-          "query": "label_values(etcd_cluster_version,job)",
+          "query": "label_values({__name__=~\"etcd_.*\"},job)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
@@ -3277,8 +3281,12 @@
         "useTags": false
       },
       {
-        "allValue": null,
-        "current": {},
+        "allValue": ".+",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": "${datasource}",
         "definition": "label_values({job=\"$job\"}, instance)",
         "description": null,
