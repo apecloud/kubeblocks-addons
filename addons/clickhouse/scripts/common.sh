@@ -2,6 +2,7 @@
 # Constants for retry logic
 readonly RETRY_ATTEMPTS=6
 readonly SLEEP_INTERVAL=10
+readonly TLS_MOUNT_PATH="/etc/pki/tls"
 
 # Low-level keeper client execution with connection retry
 # Handles connection issues, timeouts, and transient network problems
@@ -87,11 +88,38 @@ function get_config() {
   keeper_run "$host" "get '/keeper/config'"
 }
 
+# Check if TLS is enabled by verifying TLS certificate files exist
+function is_tls_enabled() {
+  [[ -d "$TLS_MOUNT_PATH" ]] || return 1
+  for cert in ca.pem cert.pem key.pem; do
+    [[ -s "$TLS_MOUNT_PATH/$cert" ]] || return 1
+  done
+  return 0
+}
+
 # Get keeper node mode (leader/follower/observer)
 function get_mode() {
   local host="$1"
-  local mode=$(echo srvr | /shared-tools/nc "$host" 9181 | grep Mode)
-  echo "$mode" | awk '{print $2}'
+  local port="${CLICKHOUSE_KEEPER_TCP_PORT:-9181}"
+  
+  # Use TLS port if TLS is enabled
+  if is_tls_enabled; then
+    port="${CLICKHOUSE_KEEPER_TCP_TLS_PORT:-9281}"
+    # For TLS connections, use openssl s_client for 4LW commands
+    local mode
+    mode=$(printf "srvr\n" | timeout 2 openssl s_client \
+      -connect "$host:$port" \
+      -CAfile "$TLS_MOUNT_PATH/ca.pem" \
+      -cert "$TLS_MOUNT_PATH/cert.pem" \
+      -key "$TLS_MOUNT_PATH/key.pem" \
+      -quiet \
+      -ign_eof 2>/dev/null | grep Mode)
+    echo "$mode" | awk '{print $2}'
+  else
+    local mode
+    mode=$(echo srvr | /shared-tools/nc "$host" "$port" | grep Mode)
+    echo "$mode" | awk '{print $2}'
+  fi
 }
 
 # Get keeper node mode by keeper
