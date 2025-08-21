@@ -39,3 +39,11 @@ spec:
     - {{ . }}
     {{- end }}
   {{- end}}
+
+   {{- if hasKey $cc "immutableParameters" }}
+  immutableParameters:
+   {{- $params := get $cc "immutableParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+ {{- end}}
