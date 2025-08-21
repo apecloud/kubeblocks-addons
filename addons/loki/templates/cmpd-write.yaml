@@ -113,3 +113,6 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
+    {{- include "loki.object.serviceRefVars" . | indent 4 }}
+  serviceRefDeclarations:
+    {{- include "loki.object.serviceRef" . | indent 4 }}
