@@ -21,6 +21,30 @@ function get_second_ep() {
   done
 }
 
+function stop_server() {
+   local server_name=$1
+   command="ps -eo pid,args | grep -F '${server_name}' | grep -v 'grep'"
+   pid=`eval $command | awk '{print $1}'`
+   if [ -z ${pid} ]; then
+      echo "Process already exit!"
+      return
+   fi
+    echo "Stop ${server_name}"
+    kill -15 $pid
+    until [ -z `eval $command | awk '{print $1}'` ]; do
+        echo "Wait to stop ${server_name}..."
+        sleep 3
+    done
+    echo "Stop ${server_name} success!"
+}
+
+function stop_servers() {
+   stop_server "taosd"
+   stop_server "taosadapter"
+}
+
+trap "stop_servers" EXIT
+
 # for TZ awareness
 if [ "$TZ" != "" ]; then
     ln -sf /usr/share/zoneinfo/$TZ /etc/localtime
