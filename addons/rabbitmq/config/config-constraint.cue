@@ -119,19 +119,19 @@
 	collect_statistics?: string & "none" | "coarse" | "fine" | *"none"
 	
 	// Statistics collection interval in milliseconds
-	collect_statistics_interval?: int | *5000
+	collect_statistics_interval?: int & >=1 | *5000
 	
 	// Management plugin cache multiplier
-	"management.db_cache_multiplier"?: int | *5
+	"management.db_cache_multiplier"?: int & >=1 | *5
 	
 	// Enable/disable reverse DNS lookups
 	reverse_dns_lookups?: bool | *false
 	
 	// Number of delegate processes for intra-cluster communication
-	delegate_count?: int | *16
+	delegate_count?: int & >=1 | *16
 	
 	// Default socket options. You may want to change these when you troubleshoot network issues.
-	"tcp_listen_options.backlog"?: int | *128
+	"tcp_listen_options.backlog"?: int & >=1 | *128
 	"tcp_listen_options.nodelay"?: bool | *true
 	"tcp_listen_options.linger.on"?: bool | *true
 	"tcp_listen_options.linger.timeout"?: int | *0
@@ -142,16 +142,16 @@
 	cluster_partition_handling?: string & "ignore" | "autoheal" | "pause_minority" | "pause_if_all_down" | *"ignore"
 	
 	// Cluster keepalive interval in milliseconds
-	cluster_keepalive_interval?: int | *10000
+	cluster_keepalive_interval?: int & >=100 | *10000
 	
 	// Size threshold for message embedding in queue index
-	queue_index_embed_msgs_below?: int | *4096
+	queue_index_embed_msgs_below?: int & >=1 | *4096
 	
 	// Mnesia table loading retry timeout
-	mnesia_table_loading_retry_timeout?: int | *30000
+	mnesia_table_loading_retry_timeout?: int & >=1 | *30000
 	
 	// Mnesia table loading retry limit
-	mnesia_table_loading_retry_limit?: int | *10
+	mnesia_table_loading_retry_limit?: int & >=1 | *10
 	
 	// Queue leader location strategy
 	queue_leader_locator?: string & "balanced" | "client-local" | *"client-local"
