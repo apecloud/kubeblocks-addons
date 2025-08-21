@@ -149,6 +149,7 @@ spec:
   #   - name: {{ .Values.defaultAuth.username }}
   #     initAccount: true
   runtime:
+    terminationGracePeriodSeconds: 60
     containers:
       - name: tdengine
         imagePullPolicy: IfNotPresent
