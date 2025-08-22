@@ -41,6 +41,7 @@ on:
           - rabbitmq
           - redis
           - risingwave
+          - rocketmq
           - starrocks-ce
           - tdengine
           - tidb
