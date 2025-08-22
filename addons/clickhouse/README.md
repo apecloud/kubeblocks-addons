@@ -121,7 +121,7 @@ data:
 kubectl apply -f examples/clickhouse/cluster-standalone.yaml
 ```
 
-It will create only one ClickHouse server pod with the default configuration.
+It will create only one ClickHouse server pod with the default configuration. This example includes a predefined secret `udf-account-info` with password `password123`.
 
 To connect to the ClickHouse server, you can use the following command:
 
@@ -130,15 +130,19 @@ clickhouse-client --host <clickhouse-endpoint> --port 9000 --user admin --passwo
 ```
 
 > [!NOTE]
-> You may find the password in the secret `<clusterName>-clickhouse-account-admin`.
+> The password is defined in the secret `udf-account-info` or you can find it in `<clusterName>-clickhouse-account-admin`.
 
 e.g. you can get the password by the following command:
 
 ```bash
-kubectl get secrets clickhouse-cluster-clickhouse-account-admin -n demo -oyaml  | yq .data.password -r | base64 -d
+# For the standalone cluster
+kubectl get secrets clickhouse-standalone-clickhouse-account-admin -n demo -oyaml  | yq .data.password -r | base64 -d
+
+# Or from the predefined secret
+kubectl get secrets udf-account-info -n demo -oyaml  | yq .data.password -r | base64 -d
 ```
 
-where `clickhouse-cluster-clickhouse-account-admin` is the secret name, it is named after pattern `<clusterName>-<componentName>-account-<accountName>`, and `password` is the key of the secret.
+where the secret name follows the pattern `<clusterName>-<componentName>-account-<accountName>`.
 
 #### Cluster Mode
 
@@ -233,9 +237,9 @@ kubectl apply -f examples/clickhouse/cluster.yaml
 ```
 
 This example creates a cluster with:
-- 1 ClickHouse Keeper instance for coordination
-- 2 shards with 2 replicas each (total 4 ClickHouse server instances)
-- Shows how to override the default accounts' password
+- 1 ClickHouse Keeper instance for coordination (`ch-keeper` component using `clickhouse-keeper-1` ComponentDef)
+- 2 shards with 2 replicas each (total 4 ClickHouse server instances using `clickhouse-1` ComponentDef)
+- Shows how to override the default accounts' password using a predefined secret
 
 Option 1. override the rule `passwordConfig` to generate password
 
@@ -266,25 +270,38 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
   componentSpecs:
-    - name: clickhouse
-      replicas: 2
+    - name: ch-keeper
+      replicas: 1
       # Overrides system accounts defined in referenced ComponentDefinition.
       systemAccounts:
         - name: admin # name of the system account
           secretRef:
             name: udf-account-info
             namespace: demo
+  shardings:
+    - name: clickhouse
+      shards: 2
+      template:
+        name: clickhouse
+        replicas: 2
+        systemAccounts:
+          - name: admin
+            secretRef:
+              name: udf-account-info
+              namespace: demo
 ```
 
-Make sure the secret `udf-account-info` exists in the same namespace as the cluster, and has the following data:
+The secret `udf-account-info` is automatically created with the cluster and contains:
 
 ```yaml
 apiVersion: v1
-data:
-  password: <SOME_PASSWORD>  # password: required
+kind: Secret
 metadata:
   name: udf-account-info
+  namespace: demo
 type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=  # 'password123' in base64
 ```
 
 #### Cluster Mode with TLS Enabled
@@ -525,6 +542,48 @@ spec:
 kubectl apply -f examples/clickhouse/scale-out.yaml
 ```
 
+#### Scale-out Sharding
+
+Horizontal scaling out ClickHouse by adding ONE more shard (from 2 shards to 3 shards):
+
+```yaml
+# cat examples/clickhouse/scale-out-sharding.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: ch-scale-out-sharding
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component,
+  # including desired replica changes, configurations for new instances,
+  # modifications for existing instances, and take offline/online the specified instances.
+  horizontalScaling:
+    # Specifies the name of the Component.
+  - componentName: clickhouse
+    # Specifies the desired number of shards for the component.
+    # This parameter is mutually exclusive with other parameters.
+    # This will scale out from 2 shards to 3 shards (as defined in cluster.yaml)
+    shards: 3
+```
+
+```bash
+kubectl apply -f examples/clickhouse/scale-out-sharding.yaml
+```
+
+This operation increases the number of shards in the ClickHouse cluster, which provides better data distribution and query performance for large datasets.
+
+> [!IMPORTANT]
+> **Post Scale-out Processing Required**: After scaling out shards, you need to copy database and table schemas to new shards using the post-processing operation:
+>
+> ```bash
+> kubectl apply -f examples/clickhouse/post-scale-out-shard.yaml
+> ```
+>
+> This operation copies all existing database schemas and table structures from old shards to the new shards.
+
 #### Scale-in
 
 Horizontal scaling in Clickhouse by deleting ONE replica:
@@ -554,6 +613,68 @@ spec:
 ```bash
 kubectl apply -f examples/clickhouse/scale-in.yaml
 ```
+
+#### Scale-in Sharding
+
+Horizontal scaling in ClickHouse by removing ONE shard (from 3 shards back to 2 shards):
+
+```yaml
+# cat examples/clickhouse/scale-in-sharding.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: ch-scale-in-sharding
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component,
+  # including desired replica changes, configurations for new instances,
+  # modifications for existing instances, and take offline/online the specified instances.
+  horizontalScaling:
+    # Specifies the name of the Component.
+  - componentName: clickhouse
+    # Specifies the desired number of shards for the component.
+    # This parameter is mutually exclusive with other parameters.
+    # This will scale in from 3 shards back to 2 shards (original configuration)
+    shards: 2
+```
+
+```bash
+kubectl apply -f examples/clickhouse/scale-in-sharding.yaml
+```
+
+> [!WARNING]
+> Scaling in shards will permanently remove data from the removed shards. Make sure to backup or redistribute data before scaling in.
+
+#### Post Scale-out Shard Processing
+
+Copy database and table schemas to new shards after shard scale-out:
+
+```yaml
+# cat examples/clickhouse/post-scale-out-shard.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: ch-post-scale-out-shard
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: Custom
+  # Custom operation to trigger post-processing after shard scale-out
+  custom:
+    opsDefinitionName: post-scale-out-shard-for-clickhouse
+    components:
+    - componentName: clickhouse
+```
+
+```bash
+kubectl apply -f examples/clickhouse/post-scale-out-shard.yaml
+```
+
+This operation should be run after scaling out shards to ensure new shards have the same database schemas and table structures as existing shards.
 
 #### Keeper-Scale-out
 
@@ -904,6 +1025,120 @@ To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profil
 
 </details>
 
+### Backup and Restore
+
+#### Prerequisites for Backup
+
+Before creating backups, you need to set up a backup repository. First, create a BackupRepo:
+
+```yaml
+# cat examples/clickhouse/backuprepo.yaml
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupRepo
+metadata:
+  name: <test-backuprepo>
+  annotations:
+    # optional, mark this backuprepo as default
+    dataprotection.kubeblocks.io/is-default-repo: 'true'
+spec:
+  # Specifies the name of the `StorageProvider` used by this backup repository.
+  # Currently, KubeBlocks supports configuring various object storage services as backup repositories
+  # - s3 (Amazon Simple Storage Service)
+  # - oss (Alibaba Cloud Object Storage Service)
+  # - cos (Tencent Cloud Object Storage)
+  # - gcs (Google Cloud Storage)
+  # - obs (Huawei Cloud Object Storage)
+  # - minio, and other S3-compatible services.
+  # Note: set the provider name to you own needs
+  storageProviderRef: oss
+  # Specifies the access method of the backup repository.
+  # - Tool
+  # - Mount
+  # If the access mode is Mount, it will mount the PVC through the CSI driver (make sure it is installed and configured properly)
+  # In Tool mode, it will directly stream to the object storage without mounting the PVC.
+  accessMethod: Tool
+  # Stores the non-secret configuration parameters for the `StorageProvider`.
+  config:
+    # Note: set the bucket name to you own needs
+    bucket: <kubeblocks-test>
+    # Note: set the region name to you own needs
+    region: <cn-zhangjiakou>
+  # References to the secret that holds the credentials for the `StorageProvider`.
+  # kubectl create secret generic demo-credential-for-backuprepo --from-literal=accessKeyId=* --from-literal=secretAccessKey=* --namespace=kb-system
+  credential:
+    # name is unique within a namespace to reference a secret resource.
+    # Note: set the secret name to you own needs
+    name: <credential-for-backuprepo>
+    # namespace defines the space within which the secret name must be unique.
+    namespace: kb-system
+  # Specifies reclaim policy of the PV created by this backup repository
+  # Valid Options are [Retain, Delete]
+  # Delete means the volume will be deleted from Kubernetes on release from its claim.
+  # Retain means the volume will be left in its current phase (Released) for manual reclamation by the administrator.
+  pvReclaimPolicy: Retain
+
+```
+
+```bash
+# Edit the backuprepo.yaml file with your storage provider details
+kubectl apply -f examples/clickhouse/backuprepo.yaml
+```
+
+Make sure to update the following fields in `backuprepo.yaml`:
+- `storageProviderRef`: Set to your storage provider (s3, oss, cos, gcs, obs, minio, etc.)
+- `config.bucket`: Your storage bucket name
+- `config.region`: Your storage region
+- `credential.name`: Reference to your storage credentials secret
+
+Create the credentials secret:
+
+```bash
+kubectl create secret generic credential-for-backuprepo \
+  --from-literal=accessKeyId=<your-access-key> \
+  --from-literal=secretAccessKey=<your-secret-key> \
+  --namespace=kb-system
+```
+
+#### Create Backup
+
+Create a backup of your ClickHouse cluster:
+
+```yaml
+# cat examples/clickhouse/backup.yaml
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: clickhouse-cluster-backup
+  namespace: demo
+spec:
+  # Specifies the backup method name that is defined in the backup policy.
+  # - full
+  # - incremental
+  backupMethod: full
+  # Specifies the backup policy to be applied for this backup.
+  backupPolicyName: clickhouse-cluster-clickhouse-backup-policy
+  # Determines whether the backup contents stored in the backup repository should be deleted when the backup custom resource(CR) is deleted. Supported values are `Retain` and `Delete`.
+  # - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
+  # - `Delete` means that the backup content and its physical snapshot on backup repository are deleted.
+  deletionPolicy: Delete
+
+```
+
+```bash
+kubectl apply -f examples/clickhouse/backup.yaml
+```
+
+This will create a full backup using the `clickhouse-backup` tool. The backup supports both:
+- **Full Backup**: Complete backup of all ClickHouse data
+- **Incremental Backup**: Backup only changes since the last backup
+
+To create an incremental backup, modify the `backupMethod` field in `backup.yaml`:
+
+```yaml
+spec:
+  backupMethod: incremental  # Change from 'full' to 'incremental'
+```
+
 ### Restart
 
 Restart the specified components in the cluster
@@ -931,6 +1166,7 @@ spec:
 ```bash
 kubectl apply -f examples/clickhouse/restart.yaml
 ```
+
 
 ### Stop
 
@@ -1240,10 +1476,12 @@ It sets endpoints as follows:
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster -n demo clickhouse-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+# Delete clusters and resources
+kubectl delete -f examples/clickhouse/cluster.yaml
+kubectl delete -f examples/clickhouse/cluster-standalone.yaml
 
-kubectl delete cluster -n demo  clickhouse-cluster
+# Delete backup repository if created
+kubectl delete -f examples/clickhouse/backuprepo.yaml
 
-# delete secret udf-account-info if exists
-# kubectl delete secret udf-account-info
+...
 ```
