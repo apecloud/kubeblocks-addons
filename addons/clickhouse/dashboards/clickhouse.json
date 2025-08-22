@@ -11281,7 +11281,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "APPS / ClickHouse Metrics",
+  "title": "ClickHouse",
   "uid": "clickhouse",
   "version": 1,
   "weekStart": ""
