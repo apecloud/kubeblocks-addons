@@ -11083,51 +11083,61 @@
       {
         "allValue": ".+",
         "current": {
-          "selected": false,
-          "text": "All",
-          "value": "$__all"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
+        "datasource": "${datasource}",
         "definition": "label_values(ClickHouseAsyncMetrics_Uptime,namespace)",
+        "description": null,
+        "error": null,
         "hide": 0,
         "includeAll": true,
-        "label": "namespace",
+        "label": "Namespace",
         "multi": true,
         "name": "namespace",
         "options": [],
         "query": {
           "query": "label_values(ClickHouseAsyncMetrics_Uptime,namespace)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          "refId": "StandardVariableQuery"
         },
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 0,
-        "type": "query"
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       },
       {
         "allValue": ".+",
         "current": {
-          "selected": false,
-          "text": "All",
-          "value": "$__all"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
-        "datasource": {
-          "uid": "$datasource"
-        },
-        "definition": "label_values(ClickHouseAsyncMetrics_Uptime{namespace=\"$namespace\"},app_kubernetes_io_instance)",
+        "datasource": "${datasource}",
+        "definition": "label_values(ClickHouseAsyncMetrics_Uptime{namespace=~\"$namespace\"},app_kubernetes_io_instance)",
+        "description": null,
+        "error": null,
         "hide": 0,
         "includeAll": true,
-        "label": "cluster",
+        "label": "Cluster",
         "multi": true,
         "name": "cluster",
         "options": [],
         "query": {
-          "query": "label_values(ClickHouseAsyncMetrics_Uptime{namespace=\"$namespace\"},app_kubernetes_io_instance)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          "query": "label_values(ClickHouseAsyncMetrics_Uptime{namespace=~\"$namespace\"},app_kubernetes_io_instance)",
+          "refId": "StandardVariableQuery"
         },
         "refresh": 1,
         "regex": "",
@@ -11141,58 +11151,70 @@
       {
         "allValue": ".+",
         "current": {
-          "selected": false,
-          "text": "All",
-          "value": "$__all"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "definition": "label_values(ClickHouseAsyncMetrics_Uptime{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"},apps_kubeblocks_io_component_name)",
+        "datasource": "${datasource}",
+        "definition": "label_values(ClickHouseAsyncMetrics_Uptime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\"},apps_kubeblocks_io_component_name)",
+        "description": null,
+        "error": null,
         "hide": 0,
         "includeAll": true,
-        "label": "component",
+        "label": "Component",
         "multi": true,
         "name": "component",
         "options": [],
         "query": {
-          "query": "label_values(ClickHouseAsyncMetrics_Uptime{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"},apps_kubeblocks_io_component_name)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          "query": "label_values(ClickHouseAsyncMetrics_Uptime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\"},apps_kubeblocks_io_component_name)",
+          "refId": "StandardVariableQuery"
         },
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 0,
-        "type": "query"
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       },
       {
         "allValue": ".+",
         "current": {
-          "selected": false,
-          "text": "All",
-          "value": "$__all"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "definition": "label_values(ClickHouseAsyncMetrics_Uptime{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", apps_kubeblocks_io_component_name=\"$component\"},pod)",
+        "datasource": "${datasource}",
+        "definition": "label_values({namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\"}, pod)",
+        "description": null,
+        "error": null,
         "hide": 0,
         "includeAll": true,
-        "label": "instance",
+        "label": "Instance",
         "multi": true,
         "name": "instance",
         "options": [],
         "query": {
-          "query": "label_values(ClickHouseAsyncMetrics_Uptime{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\", apps_kubeblocks_io_component_name=\"$component\"},pod)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          "query": "label_values({namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\"}, pod)",
+          "refId": "StandardVariableQuery"
         },
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 0,
-        "type": "query"
+        "sort": 5,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       },
       {
         "current": {
