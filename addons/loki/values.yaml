@@ -4,6 +4,7 @@
 images:
   registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   tag: 2.9.4
+  # the image is mirrored from grafana/loki
   repository: apecloud/loki
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.

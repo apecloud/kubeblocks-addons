@@ -174,6 +174,7 @@ app.kubernetes.io/component: gateway
 {{- end }}
 
 {{- define "loki.objectstorage.serviceRef" }}
+{{- if eq .Values.storageType "s3" }}
 - name: loki-object-storage
   namespace: {{ .Release.Namespace }}
   {{- if not .Values.s3.serviceRef.serviceDescriptor }}
@@ -189,6 +190,7 @@ app.kubernetes.io/component: gateway
   {{- else }}
   serviceDescriptor: {{ .Values.s3.serviceRef.serviceDescriptor }}
   {{- end }}
+{{- end }}
 {{- end }}
 
 {{- define "loki-cluster.storageConfig" }}

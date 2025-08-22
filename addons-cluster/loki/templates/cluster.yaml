@@ -7,9 +7,9 @@
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "loki-cluster.storageConfig" . | indent 6 }}
       replicas: {{ .Values.backend.replicas }}
-      {{- with  .Values.backend.resources }}
       serviceRefs:
         {{- include "loki.objectstorage.serviceRef" . | indent 8 }}
+      {{- with  .Values.backend.resources }}
       resources:
         {{- with .limits }}
         limits:
@@ -37,9 +37,9 @@
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.write.replicas }}
       {{- include "loki-cluster.storageConfig" . | indent 6 }}
-      {{- with .Values.write.resources }}
       serviceRefs:
         {{- include "loki.objectstorage.serviceRef" . | indent 8 }}
+      {{- with .Values.write.resources }}
       resources:
         {{- with .limits }}
         limits:
@@ -56,9 +56,9 @@
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.read.replicas | default 1 }}
       {{- include "loki-cluster.storageConfig" . | indent 6 }}
-      {{- with  .Values.read.resources }}
       serviceRefs:
         {{- include "loki.objectstorage.serviceRef" . | indent 8 }}
+      {{- with  .Values.read.resources }}
       resources:
         {{- with .limits }}
         limits:
