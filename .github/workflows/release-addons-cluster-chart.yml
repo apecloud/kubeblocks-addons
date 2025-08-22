@@ -50,6 +50,7 @@ on:
           - rabbitmq-cluster
           - redis-cluster
           - risingwave-cluster
+          - rocketmq-cluster
           - solr-cluster
           - starrocks-ce-cluster
           - tdengine-cluster
