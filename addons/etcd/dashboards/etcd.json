@@ -3793,7 +3793,7 @@
     ]
   },
   "timezone": "browser",
-  "title": "Etcd Cluster Overview",
+  "title": "Etcd",
   "uid": "etcd",
   "version": 1 
 }
