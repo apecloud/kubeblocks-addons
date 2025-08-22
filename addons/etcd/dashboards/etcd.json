@@ -3,7 +3,7 @@
     {
       "name": "DS_PROMETHEUS",
       "label": "Prometheus",
-      "description": "https://etcd.io/docs/v3.5/metrics/",
+      "description": "https://etcd.io/docs/v3.6/metrics/",
       "type": "datasource",
       "pluginId": "prometheus",
       "pluginName": "Prometheus"
@@ -174,7 +174,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "max(etcd_server_has_leader{instance=~\"$instance\"})",
+          "expr": "max(etcd_server_has_leader{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"})",
           "hide": false,
           "instant": true,
           "interval": "",
@@ -262,7 +262,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(etcd_server_id{instance=~\"$instance\"})",
+          "expr": "sum(etcd_server_id{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"})",
           "hide": false,
           "instant": false,
           "interval": "",
@@ -413,7 +413,7 @@
               },
               {
                 "id": "decimals",
-                "value": 2
+                "value": 3
               },
               {
                 "id": "custom.displayMode",
@@ -430,11 +430,11 @@
                     },
                     {
                       "color": "yellow",
-                      "value": 200
+                      "value": 0.1
                     },
                     {
                       "color": "dark-red",
-                      "value": 400
+                      "value": 0.5
                     }
                   ]
                 }
@@ -457,7 +457,7 @@
               },
               {
                 "id": "decimals",
-                "value": 2
+                "value": 3
               },
               {
                 "id": "custom.displayMode",
@@ -474,11 +474,11 @@
                     },
                     {
                       "color": "yellow",
-                      "value": 200
+                      "value": 0.1
                     },
                     {
                       "color": "dark-red",
-                      "value": 400
+                      "value": 0.5
                     }
                   ]
                 }
@@ -646,7 +646,7 @@
       "targets": [
         {
           "exemplar": false,
-          "expr": "(etcd_mvcc_db_total_size_in_bytes{instance=~\"$instance\"} / etcd_server_quota_backend_bytes{instance=~\"$instance\"})*100",
+          "expr": "(etcd_mvcc_db_total_size_in_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} / etcd_server_quota_backend_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"})*100",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -656,7 +656,7 @@
         },
         {
           "exemplar": false,
-          "expr": "process_resident_memory_bytes{instance=~\"$instance\"}",
+          "expr": "process_resident_memory_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -666,7 +666,7 @@
         },
         {
           "exemplar": false,
-          "expr": "sum(etcd_debugging_mvcc_keys_total{instance=~\"$instance\"}) by (instance)",
+          "expr": "sum(etcd_debugging_mvcc_keys_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}) by (app_kubernetes_io_instance, pod)",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -676,7 +676,7 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{instance=~\"$instance\"}[5m])) by (instance, le))",
+          "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])) by (app_kubernetes_io_instance, pod, le))",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -686,7 +686,7 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket{instance=~\"$instance\"}[5m])) by (instance, le))",
+          "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])) by (app_kubernetes_io_instance, pod, le))",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -696,7 +696,7 @@
         },
         {
           "exemplar": true,
-          "expr": "sum(etcd_server_is_leader{instance=~\"$instance\"}) by (instance)",
+          "expr": "sum(etcd_server_is_leader{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}) by (app_kubernetes_io_instance, pod)",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -706,7 +706,7 @@
         },
         {
           "exemplar": false,
-          "expr": "sum(etcd_debugging_mvcc_db_compaction_keys_total{instance=~\"$instance\"}) by (instance)",
+          "expr": "sum(etcd_debugging_mvcc_db_compaction_keys_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}) by (app_kubernetes_io_instance, pod)",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -716,7 +716,7 @@
         },
         {
           "exemplar": true,
-          "expr": "(etcd_mvcc_db_total_size_in_bytes{instance=~\"$instance\"} / etcd_server_quota_backend_bytes{instance=~\"$instance\"})*100",
+          "expr": "(etcd_mvcc_db_total_size_in_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} / etcd_server_quota_backend_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"})*100",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -726,7 +726,7 @@
         },
         {
           "exemplar": true,
-          "expr": "etcd_server_quota_backend_bytes{instance=~\"$instance\"} - etcd_mvcc_db_total_size_in_bytes{instance=~\"$instance\"}",
+          "expr": "etcd_server_quota_backend_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} - etcd_mvcc_db_total_size_in_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -736,7 +736,7 @@
         },
         {
           "exemplar": true,
-          "expr": "etcd_server_quota_backend_bytes{instance=~\"$instance\"}",
+          "expr": "etcd_server_quota_backend_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "hide": false,
           "instant": true,
@@ -760,8 +760,7 @@
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "job": true
+              "__name__": true
             },
             "indexByName": {
               "Time": 0,
@@ -775,9 +774,7 @@
               "Value #H": 13,
               "Value #I": 4,
               "__name__": 7,
-              "etcd_server_quota_backend_bytes{instance=\"poller01.tylephony.com:2379\", job=\"etcd\"}": 5,
-              "instance": 1,
-              "job": 3
+              "pod": 1
             },
             "renameByName": {
               "Urgent Defragmentation": "",
@@ -791,9 +788,7 @@
               "Value #H": "Urgent Defragmentation",
               "Value #I": "DB Capacity",
               "__name__": "",
-              "etcd_server_quota_backend_bytes{instance=\"poller01.tylephony.com:2379\", job=\"etcd\"}": "DB Quota",
-              "instance": "Instance",
-              "job": ""
+              "pod": "Instance"
             }
           }
         }
@@ -877,7 +872,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "max(etcd_server_leader_changes_seen_total{instance=~\"$instance\"})",
+          "expr": "max(etcd_server_leader_changes_seen_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"})",
           "instant": false,
           "interval": "",
           "legendFormat": "Leader Changes",
@@ -965,7 +960,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "max(etcd_server_leader_changes_seen_total{instance=~\"$instance\"})",
+          "expr": "sum(rate(etcd_server_proposals_failed_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m]))",
           "hide": false,
           "instant": false,
           "interval": "",
@@ -1067,11 +1062,11 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "rate(etcd_network_client_grpc_received_bytes_total{instance=~\"$instance\"}[5m])",
+          "expr": "rate(etcd_network_client_grpc_received_bytes_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ instance }}",
+          "legendFormat": "{{ pod }}",
           "metric": "etcd_network_client_grpc_received_bytes_total",
           "refId": "A",
           "step": 120
@@ -1158,11 +1153,11 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "rate(etcd_network_client_grpc_sent_bytes_total{instance=~\"$instance\"}[5m])",
+          "expr": "rate(etcd_network_client_grpc_sent_bytes_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ instance }}",
+          "legendFormat": "{{ pod }}",
           "metric": "etcd_network_client_grpc_sent_bytes_total",
           "refId": "A",
           "step": 120
@@ -1249,11 +1244,11 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(etcd_network_peer_received_bytes_total{instance=~\"$instance\"}[5m])) by (instance)",
+          "expr": "sum(rate(etcd_network_peer_received_bytes_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])) by (app_kubernetes_io_instance, pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ instance }}",
+          "legendFormat": "{{ pod }}",
           "metric": "etcd_network_peer_received_bytes_total",
           "refId": "A",
           "step": 120
@@ -1340,12 +1335,12 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(etcd_network_peer_sent_bytes_total{instance=~\"$instance\"}[5m])) by (instance)",
+          "expr": "sum(rate(etcd_network_peer_sent_bytes_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])) by (app_kubernetes_io_instance, pod)",
           "format": "time_series",
           "hide": false,
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ instance }}",
+          "legendFormat": "{{ pod }}",
           "metric": "etcd_network_peer_sent_bytes_total",
           "refId": "A",
           "step": 120
@@ -1357,13 +1352,203 @@
       "type": "timeseries"
     },
     {
+      "datasource": "${datasource}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 30,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
+      "id": 101,
+      "interval": "$interval",
+      "links": [],
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "pluginVersion": "8.2.5",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "rate(etcd_network_peer_sent_failures_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} or etcd_network_peer_send_failures_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "{{ pod }} Send Failures",
+          "refId": "A",
+          "step": 120
+        },
+        {
+          "exemplar": true,
+          "expr": "rate(etcd_network_peer_received_failures_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} or etcd_network_peer_receive_failures_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "{{ pod }} Receive Failures",
+          "refId": "B",
+          "step": 120
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Network Failures",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "${datasource}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 30,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 15
+      },
+      "id": 102,
+      "interval": "$interval",
+      "links": [],
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "pluginVersion": "8.2.5",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "histogram_quantile(0.99, sum(rate(etcd_network_peer_round_trip_time_seconds_bucket{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])) by (app_kubernetes_io_instance, pod, le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "{{ pod }} RTT 99p",
+          "refId": "A",
+          "step": 120
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Peer Round Trip Time",
+      "type": "timeseries"
+    },
+    {
       "collapsed": false,
       "datasource": null,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 15
+        "y": 22
       },
       "id": 97,
       "panels": [],
@@ -1427,7 +1612,7 @@
         "h": 7,
         "w": 9,
         "x": 0,
-        "y": 16
+        "y": 23
       },
       "id": 58,
       "interval": "$interval",
@@ -1448,11 +1633,11 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "etcd_debugging_mvcc_keys_total{instance=~\"$instance\"}",
+          "expr": "etcd_debugging_mvcc_keys_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{ instance }}",
+          "legendFormat": "{{ pod }}",
           "refId": "A"
         }
       ],
@@ -1518,7 +1703,7 @@
         "h": 7,
         "w": 8,
         "x": 9,
-        "y": 16
+        "y": 23
       },
       "id": 52,
       "interval": "$interval",
@@ -1536,17 +1721,17 @@
       "pluginVersion": "8.2.5",
       "targets": [
         {
-          "expr": "rate(etcd_debugging_mvcc_put_total{instance=~\"$instance\"}[5m])",
+          "expr": "rate(etcd_debugging_mvcc_put_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m]) or rate(etcd_mvcc_put_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{ instance }} puts/s",
+          "legendFormat": "{{ pod }} puts/s",
           "refId": "A"
         },
         {
-          "expr": "rate(etcd_debugging_mvcc_delete_total{instance=~\"$instance\"}[5m])",
+          "expr": "rate(etcd_debugging_mvcc_delete_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m]) or rate(etcd_mvcc_delete_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{ instance }} deletes/s",
+          "legendFormat": "{{ pod }} deletes/s",
           "refId": "B"
         }
       ],
@@ -1612,7 +1797,7 @@
         "h": 7,
         "w": 7,
         "x": 17,
-        "y": 16
+        "y": 23
       },
       "id": 48,
       "interval": "$interval",
@@ -1631,11 +1816,11 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "etcd_debugging_mvcc_db_compaction_keys_total{instance=~\"$instance\"}",
+          "expr": "etcd_debugging_mvcc_db_compaction_keys_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{ instance  }}",
+          "legendFormat": "{{ pod }}",
           "refId": "A"
         }
       ],
@@ -1651,7 +1836,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 30
       },
       "id": 76,
       "panels": [],
@@ -1734,11 +1919,11 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "process_resident_memory_bytes{instance=~\"$instance\"}",
+          "expr": "process_resident_memory_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ instance }}",
+          "legendFormat": "{{ pod }}",
           "metric": "process_resident_memory_bytes",
           "refId": "A",
           "step": 120
@@ -1827,29 +2012,176 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "etcd_mvcc_db_total_size_in_bytes{instance=~\"$instance\"}",
+          "expr": "etcd_mvcc_db_total_size_in_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "hide": false,
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ instance }} Total Size",
+          "legendFormat": "{{ pod }} Total Size",
           "metric": "",
           "refId": "A",
           "step": 120
         },
         {
           "exemplar": true,
-          "expr": "etcd_mvcc_db_total_size_in_use_in_bytes{instance=~\"$instance\"}",
+          "expr": "etcd_mvcc_db_total_size_in_use_in_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{ instance }} In Use",
+          "legendFormat": "{{ pod }} In Use",
           "refId": "B"
         }
       ],
       "timeFrom": null,
       "timeShift": null,
       "title": "DB Total Size",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "${datasource}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 30,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegex",
+              "options": ".*FD Usage %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "dark-green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 70
+                    },
+                    {
+                      "color": "dark-red",
+                      "value": 90
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 31
+      },
+      "id": 103,
+      "interval": "$interval",
+      "links": [],
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "pluginVersion": "8.2.5",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "process_open_fds{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} or process_open_fds{namespace=~\"$namespace\",job=~\".*etcd.*\",pod=~\"$instance\"}",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "{{ pod }} Open FDs",
+          "refId": "A",
+          "step": 120
+        },
+        {
+          "exemplar": true,
+          "expr": "process_max_fds{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} or process_max_fds{namespace=~\"$namespace\",job=~\".*etcd.*\",pod=~\"$instance\"}",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "{{ pod }} Max FDs",
+          "refId": "B",
+          "step": 120
+        },
+        {
+          "exemplar": true,
+          "expr": "((process_open_fds{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} or process_open_fds{namespace=~\"$namespace\",job=~\".*etcd.*\",pod=~\"$instance\"}) / (process_max_fds{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} or process_max_fds{namespace=~\"$namespace\",job=~\".*etcd.*\",pod=~\"$instance\"})) * 100",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "{{ pod }} FD Usage %",
+          "refId": "C",
+          "step": 120
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "File Descriptors",
       "type": "timeseries"
     },
     {
@@ -1910,7 +2242,7 @@
         "h": 10,
         "w": 6,
         "x": 0,
-        "y": 31
+        "y": 38
       },
       "id": 7,
       "interval": "$interval",
@@ -1929,21 +2261,21 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "rate(etcd_disk_wal_fsync_duration_seconds_sum{instance=~\"$instance\"}[1m])",
+          "expr": "rate(etcd_disk_wal_fsync_duration_seconds_sum{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[1m])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ instance }} WAL fsync",
+          "legendFormat": "{{ pod }} WAL fsync",
           "refId": "A",
           "step": 30
         },
         {
           "exemplar": true,
-          "expr": "rate(etcd_disk_backend_commit_duration_seconds_sum{instance=~\"$instance\"}[1m])",
+          "expr": "rate(etcd_disk_backend_commit_duration_seconds_sum{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[1m])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ instance }} backend commit",
+          "legendFormat": "{{ pod }} backend commit",
           "refId": "B",
           "step": 30
         }
@@ -2010,7 +2342,7 @@
         "h": 10,
         "w": 6,
         "x": 6,
-        "y": 31
+        "y": 38
       },
       "id": 3,
       "interval": "$interval",
@@ -2028,22 +2360,22 @@
         }
       },
       "pluginVersion": "8.2.5",
-      "targets": [
+              "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{instance=~\"$instance\"}[5m])) by (instance, le))",
+          "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])) by (app_kubernetes_io_instance, pod, le))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,
-          "legendFormat": "{{ instance }} WAL fsync",
+          "legendFormat": "{{ pod }} WAL fsync",
           "metric": "etcd_disk_wal_fsync_duration_seconds_bucket",
           "refId": "A",
           "step": 120
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket{instance=~\"$instance\"}[5m])) by (instance, le))",
+          "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])) by (app_kubernetes_io_instance, pod, le))",
           "format": "time_series",
           "intervalFactor": 2,
-          "legendFormat": "{{ instance }} DB fsync",
+          "legendFormat": "{{ pod }} DB fsync",
           "metric": "etcd_disk_backend_commit_duration_seconds_bucket",
           "refId": "B",
           "step": 120
@@ -2111,7 +2443,7 @@
         "h": 10,
         "w": 6,
         "x": 12,
-        "y": 31
+        "y": 38
       },
       "id": 60,
       "interval": "$interval",
@@ -2131,17 +2463,17 @@
       "pluginVersion": "8.2.5",
       "targets": [
         {
-          "expr": "etcd_server_heartbeat_send_failures_total{instance=~\"$instance\"}",
+          "expr": "etcd_server_heartbeat_send_failures_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{ instance }} heartbeat  failures",
+          "legendFormat": "{{ pod }} heartbeat  failures",
           "refId": "A"
         },
         {
-          "expr": "etcd_server_health_failures{instance=~\"$instance\"}",
+          "expr": "etcd_server_health_failures{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{ instance }} health failures",
+          "legendFormat": "{{ pod }} health failures",
           "refId": "B"
         }
       ],
@@ -2207,7 +2539,7 @@
         "h": 10,
         "w": 6,
         "x": 18,
-        "y": 31
+        "y": 38
       },
       "id": 62,
       "interval": "$interval",
@@ -2228,20 +2560,20 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "etcd_server_slow_apply_total{instance=~\"$instance\"}",
+          "expr": "etcd_server_slow_apply_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{ instance }} Slow Applies",
+          "legendFormat": "{{ pod }} Slow Applies",
           "refId": "A"
         },
         {
           "exemplar": true,
-          "expr": "etcd_server_slow_read_indexes_total{instance=~\"$instance\"}",
+          "expr": "etcd_server_slow_read_indexes_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{ instance }} Slow Read Indexes",
+          "legendFormat": "{{ pod }} Slow Read Indexes",
           "refId": "B"
         }
       ],
@@ -2307,7 +2639,7 @@
         "h": 6,
         "w": 6,
         "x": 0,
-        "y": 41
+        "y": 48
       },
       "id": 56,
       "interval": "$interval",
@@ -2326,11 +2658,11 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "rate(etcd_disk_backend_defrag_duration_seconds_sum{instance=~\"$instance\"}[1m])",
+          "expr": "rate(etcd_disk_backend_defrag_duration_seconds_sum{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[1m])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{ instance }}",
+          "legendFormat": "{{ pod }}",
           "refId": "A"
         }
       ],
@@ -2397,7 +2729,7 @@
         "h": 6,
         "w": 6,
         "x": 6,
-        "y": 41
+        "y": 48
       },
       "id": 9,
       "interval": "$interval",
@@ -2416,7 +2748,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(etcd_debugging_snap_save_total_duration_seconds_sum{instance=~\"$instance\"}[1m]))",
+          "expr": "sum(rate(etcd_debugging_snap_save_total_duration_seconds_sum{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[1m]))",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -2487,7 +2819,7 @@
         "h": 6,
         "w": 6,
         "x": 12,
-        "y": 41
+        "y": 48
       },
       "id": 40,
       "interval": "$interval",
@@ -2505,7 +2837,7 @@
       "pluginVersion": "8.2.5",
       "targets": [
         {
-          "expr": "sum(rate(etcd_server_proposals_failed_total{instance=~\"$instance\"}[5m]))",
+          "expr": "sum(rate(etcd_server_proposals_failed_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m]))",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Proposal Failure Rate",
@@ -2514,7 +2846,7 @@
           "step": 60
         },
         {
-          "expr": "sum(etcd_server_proposals_pending{instance=~\"$instance\"})",
+          "expr": "sum(etcd_server_proposals_pending{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"})",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Proposal Pending Total",
@@ -2523,7 +2855,7 @@
           "step": 60
         },
         {
-          "expr": "sum(rate(etcd_server_proposals_committed_total{instance=~\"$instance\"}[5m]))",
+          "expr": "sum(rate(etcd_server_proposals_committed_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m]))",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Proposal Commit Rate",
@@ -2532,7 +2864,7 @@
           "step": 60
         },
         {
-          "expr": "sum(rate(etcd_server_proposals_applied_total{instance=~\"$instance\"}[5m]))",
+          "expr": "sum(rate(etcd_server_proposals_applied_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m]))",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Proposal Apply Rate",
@@ -2602,7 +2934,7 @@
         "h": 6,
         "w": 6,
         "x": 18,
-        "y": 41
+        "y": 48
       },
       "id": 41,
       "interval": "$interval",
@@ -2620,7 +2952,7 @@
       "pluginVersion": "8.2.5",
       "targets": [
         {
-          "expr": "sum(grpc_server_started_total{grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\",instance=~\"$instance\"}) - sum(grpc_server_handled_total{grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\",instance=~\"$instance\"})",
+          "expr": "sum(grpc_server_started_total{grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\",namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}) - sum(grpc_server_handled_total{grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\",namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"})",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Watch Streams",
@@ -2629,7 +2961,7 @@
           "step": 60
         },
         {
-          "expr": "sum(grpc_server_started_total{grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\",instance=~\"$instance\"}) - sum(grpc_server_handled_total{grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\",instance=~\"$instance\"})",
+          "expr": "sum(grpc_server_started_total{grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\",namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}) - sum(grpc_server_handled_total{grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\",namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"})",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Lease Streams",
@@ -2700,7 +3032,7 @@
         "h": 6,
         "w": 6,
         "x": 0,
-        "y": 47
+        "y": 54
       },
       "id": 54,
       "interval": "$interval",
@@ -2719,11 +3051,11 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "rate(etcd_debugging_mvcc_db_compaction_keys_total{instance=~\"$instance\"}[5m])",
+          "expr": "rate(etcd_debugging_mvcc_db_compaction_keys_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{ instance }} compact/s",
+          "legendFormat": "{{ pod }} compact/s",
           "refId": "A"
         }
       ],
@@ -2789,7 +3121,7 @@
         "h": 6,
         "w": 6,
         "x": 6,
-        "y": 47
+        "y": 54
       },
       "id": 19,
       "interval": "$interval",
@@ -2808,11 +3140,11 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "changes(etcd_server_leader_changes_seen_total{instance=~\"$instance\"}[1d])",
+          "expr": "changes(etcd_server_leader_changes_seen_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[1d])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{ instance }}",
+          "legendFormat": "{{ pod }}",
           "metric": "etcd_server_leader_changes_seen_total",
           "refId": "A",
           "step": 60
@@ -2881,7 +3213,7 @@
         "h": 6,
         "w": 6,
         "x": 12,
-        "y": 47
+        "y": 54
       },
       "id": 5,
       "interval": "$interval",
@@ -2900,7 +3232,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(etcd_server_proposals_pending{instance=~\"$instance\"})",
+          "expr": "sum(etcd_server_proposals_pending{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"})",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -2972,7 +3304,7 @@
         "h": 6,
         "w": 6,
         "x": 18,
-        "y": 47
+        "y": 54
       },
       "id": 2,
       "interval": "$interval",
@@ -2995,7 +3327,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(etcd_server_proposals_committed_total{instance=~\"$instance\"}[5m]))",
+          "expr": "sum(rate(etcd_server_proposals_committed_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m]))",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -3006,7 +3338,7 @@
         },
         {
           "exemplar": true,
-          "expr": "sum(rate(etcd_server_proposals_applied_total{instance=~\"$instance\"}[5m]))",
+          "expr": "sum(rate(etcd_server_proposals_applied_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m]))",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -3078,7 +3410,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 53
+        "y": 60
       },
       "id": 23,
       "interval": "$interval",
@@ -3096,7 +3428,7 @@
       "pluginVersion": "8.2.5",
       "targets": [
         {
-          "expr": "sum(rate(grpc_server_started_total{grpc_type=\"unary\",instance=~\"$instance\"}[5m]))",
+          "expr": "sum(rate(grpc_server_started_total{grpc_type=\"unary\",namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m]))",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "RPC Rate",
@@ -3105,7 +3437,7 @@
           "step": 60
         },
         {
-          "expr": "sum(rate(grpc_server_handled_total{grpc_type=\"unary\",grpc_code!=\"OK\",instance=~\"$instance\"}[5m]))",
+          "expr": "sum(rate(grpc_server_handled_total{grpc_type=\"unary\",grpc_code!=\"OK\",namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m]))",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "RPC Failed Rate",
@@ -3176,7 +3508,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 53
+        "y": 60
       },
       "id": 8,
       "interval": "$interval",
@@ -3195,7 +3527,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(rate(etcd_network_client_grpc_received_bytes_total{instance=~\"$instance\"}[1m]))",
+          "expr": "sum(rate(etcd_network_client_grpc_received_bytes_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[1m]))",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -3205,7 +3537,7 @@
         },
         {
           "exemplar": true,
-          "expr": "sum(rate(etcd_network_client_grpc_sent_bytes_total{instance=~\"$instance\"}[1m]))",
+          "expr": "sum(rate(etcd_network_client_grpc_sent_bytes_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[1m]))",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -3251,20 +3583,62 @@
         "type": "datasource"
       },
       {
-        "allValue": null,
-        "current": {},
+        "allValue": ".+",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": "${datasource}",
-        "definition": "label_values(etcd_cluster_version,job)",
+        "definition": "label_values(etcd_cluster_version, namespace)",
         "description": null,
         "error": null,
         "hide": 0,
-        "includeAll": false,
-        "label": "Job",
-        "multi": false,
-        "name": "job",
+        "includeAll": true,
+        "label": "Namespace",
+        "multi": true,
+        "name": "namespace",
         "options": [],
         "query": {
-          "query": "label_values(etcd_cluster_version,job)",
+          "query": "label_values(etcd_cluster_version, namespace)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": ".+",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "${datasource}",
+        "definition": "label_values(etcd_cluster_version{namespace=~\"$namespace\"},app_kubernetes_io_instance)",
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": true,
+        "label": "Cluster",
+        "multi": true,
+        "name": "cluster",
+        "options": [],
+        "query": {
+          "query": "label_values(etcd_cluster_version{namespace=~\"$namespace\"},app_kubernetes_io_instance)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
@@ -3277,10 +3651,18 @@
         "useTags": false
       },
       {
-        "allValue": null,
-        "current": {},
+        "allValue": ".+",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": "${datasource}",
-        "definition": "label_values({job=\"$job\"}, instance)",
+        "definition": "label_values({namespace=~\"$namespace\", namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\"}, pod)",
         "description": null,
         "error": null,
         "hide": 0,
@@ -3290,7 +3672,7 @@
         "name": "instance",
         "options": [],
         "query": {
-          "query": "label_values({job=\"$job\"}, instance)",
+          "query": "label_values({namespace=~\"$namespace\", namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\"}, pod)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
@@ -3411,7 +3793,7 @@
     ]
   },
   "timezone": "browser",
-  "title": "Etcd Cluster Overview",
-  "uid": "hzhXdzznZn",
-  "version": 81
+  "title": "Etcd",
+  "uid": "etcd",
+  "version": 1 
 }

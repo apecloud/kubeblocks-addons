@@ -134,6 +134,8 @@ spec:
       value: "9440"
     - name: CLICKHOUSE_METRICS_PORT
       value: "8001"
+    - name: SERVICE_PORT
+      value: "8001"
     - name: CURRENT_SHARD_COMPONENT_SHORT_NAME
       valueFrom:
         componentVarRef:
@@ -170,6 +172,15 @@ spec:
           podFQDNs: Required
           multipleClusterObjectOption:
             strategy: individual
+    - name: ALL_COMBINED_SHARDS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "clickhouse.cmpdRegexpPattern" . }}
+          optional: false
+          podFQDNs: Required
+          multipleClusterObjectOption:
+            requireAllComponentObjects: true
+            strategy: combined
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
