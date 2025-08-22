@@ -38,8 +38,8 @@ common:
       endpoint: {{ $endpoint }}
       access_key_id: ${ACCESS_KEY_ID}
       secret_access_key: ${SECRET_ACCESS_KEY}
-      bucketnames: ${s3_bucket}
-      s3forcepathstyle: ${s3_use_path_style}
+      bucketnames: {{ .s3_bucket }}
+      s3forcepathstyle: {{ .s3_use_path_style }}
     {{- end }}
 
 storage_config:
@@ -51,8 +51,8 @@ storage_config:
     endpoint: {{ $endpoint }}
     access_key_id: ${ACCESS_KEY_ID}
     secret_access_key: ${SECRET_ACCESS_KEY}
-    bucketnames: ${s3_bucket}
-    s3forcepathstyle: ${s3_use_path_style}
+    bucketnames: {{ .s3_bucket }}
+    s3forcepathstyle: {{ .s3_use_path_style }}
   {{- end }}
 
 limits_config:
@@ -84,7 +84,7 @@ ruler:
       directory: ${LOCAL_RULES_DIR}
     {{- else }}
     s3:
-      bucketnames: ${S3_BUCKET}
+      bucketnames: {{ .s3_bucket }}
     {{- end }}
     {{- if eq $storageType "local" }}
     type: local
