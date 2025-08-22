@@ -247,7 +247,7 @@ roles:
 mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
 if [ -f {{ .Values.dataMountPath }}/plugin/audit_log.so ]; then
   cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
-fi 
+fi
 if [ -d /etc/pki/tls ]; then
   mkdir -p {{ .Values.dataMountPath }}/tls/
   cp -L /etc/pki/tls/*.pem {{ .Values.dataMountPath }}/tls/
