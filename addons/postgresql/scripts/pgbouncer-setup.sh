@@ -34,7 +34,7 @@ build_pgbouncer_conf() {
 }
 
 start_pgbouncer() {
-  /opt/bitnami/scripts/pgbouncer/run.sh
+  su pgbouncer -c "/opt/bitnami/scripts/pgbouncer/run.sh"
 }
 
 # This is magic for shellspec ut framework.
