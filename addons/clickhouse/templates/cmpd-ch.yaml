@@ -134,8 +134,6 @@ spec:
       value: "9440"
     - name: CLICKHOUSE_METRICS_PORT
       value: "8001"
-    - name: SERVICE_PORT
-      value: "8001"
     - name: CURRENT_SHARD_COMPONENT_SHORT_NAME
       valueFrom:
         componentVarRef:
