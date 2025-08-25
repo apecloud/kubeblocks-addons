@@ -105,14 +105,8 @@
 	// A fully qualified path to the public RSA key used for authentication.
 	caching_sha2_password_public_key_path?: string
 
-	// The character set for statements that arrive from the client.
-	character_set_client?: string & "big5" | "dec8" | "cp850" | "hp8" | "koi8r" | "latin1" | "latin2" | "swe7" | "ascii" | "ujis" | "sjis" | "hebrew" | "tis620" | "euckr" | "koi8u" | "gb2312" | "greek" | "cp1250" | "gbk" | "latin5" | "armscii8" | "utf8" | "cp866" | "keybcs2" | "macce" | "macroman" | "cp852" | "latin7" | "utf8mb4" | "cp1251" | "cp1256" | "cp1257" | "binary" | "geostd8" | "cp932" | "eucjpms"
-
 	// Don't ignore character set information sent by the client.
 	"character-set-client-handshake"?: string & "OFF" | "ON"
-
-	// The character set used for literals that do not have a character set introducer and for number-to-string conversion.
-	character_set_connection?: string & "big5" | "dec8" | "cp850" | "hp8" | "koi8r" | "latin1" | "latin2" | "swe7" | "ascii" | "ujis" | "sjis" | "hebrew" | "tis620" | "euckr" | "koi8u" | "gb2312" | "greek" | "cp1250" | "gbk" | "latin5" | "armscii8" | "utf8" | "ucs2" | "cp866" | "keybcs2" | "macce" | "macroman" | "cp852" | "latin7" | "utf8mb4" | "cp1251" | "utf16" | "cp1256" | "cp1257" | "utf32" | "binary" | "geostd8" | "cp932" | "eucjpms"
 
 	// The character set used by the default database.
 	character_set_database?: string & "big5" | "dec8" | "cp850" | "hp8" | "koi8r" | "latin1" | "latin2" | "swe7" | "ascii" | "ujis" | "sjis" | "hebrew" | "tis620" | "euckr" | "koi8u" | "gb2312" | "greek" | "cp1250" | "gbk" | "latin5" | "armscii8" | "utf8" | "ucs2" | "cp866" | "keybcs2" | "macce" | "macroman" | "cp852" | "latin7" | "utf8mb4" | "cp1251" | "utf16" | "cp1256" | "cp1257" | "utf32" | "binary" | "geostd8" | "cp932" | "eucjpms"

@@ -217,8 +217,6 @@ dynamicParameters:
   - binlog_transaction_dependency_tracking
   - block_encryption_mode
   - bulk_insert_buffer_size
-  - character_set_client
-  - character_set_connection
   - character_set_database
   - character_set_filesystem
   - character_set_results
