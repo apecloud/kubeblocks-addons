@@ -2,7 +2,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
-  name: mongodb
+  name: mongodb-shard
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
   annotations:
@@ -11,7 +11,8 @@ spec:
   compatibilityRules:
 {{- range .Values.versions }}
   - compDefs:
-    - {{ .componentDef }}
+    - "^mongo-shard-"
+    - "^mongo-config-server-"
     releases:
 {{- range .minors }}
       - {{ index . 0 }}
@@ -26,6 +27,8 @@ spec:
     serviceVersion: {{ index . 1 }}
     images:
       mongodb: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      postProvision: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      preTerminate: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
       mongodb-backup-agent: {{ $imageRegistry }}/{{ $.Values.image.percona.backup.repository }}:{{ index . 3 }}
       init-syncer: {{ $imageRegistry }}/{{ $.Values.image.syncer.repository }}:{{ $.Values.image.syncer.tag }}
       init-kubectl: {{ $imageRegistry }}/{{ $.Values.image.kubectl.repository }}:{{ $.Values.image.kubectl.tag }}
