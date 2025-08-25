@@ -65,12 +65,6 @@
 	// MyISAM uses a special tree-like cache to make bulk inserts faster for INSERT ...
 	bulk_insert_buffer_size?: int & >= 0 & <= 18446744073709551615 | *8388608
 
-	// The character set for statements that arrive from the client.
-	character_set_client?: string | *"utf8"
-
-	// The character set used for literals specified without a character set introducer and for number-to-string conversion.
-	character_set_connection?: string | *"utf8"
-
 	// The character set used by the default database.
 	character_set_database?: string | *"latin1"
 

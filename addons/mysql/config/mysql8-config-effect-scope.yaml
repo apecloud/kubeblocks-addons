@@ -25,13 +25,11 @@ staticParameters:
   - default_time_zone
   - disabled_storage_engines
   - disconnect_on_expired_password
-  - enforce_gtid_consistency
   - explicit_defaults_for_timestamp
   - ft_max_word_len
   - ft_min_word_len
   - ft_query_expansion_limit
   - ft_stopword_file
-  - gtid-mode
   - gtid_owned
   - innodb_adaptive_hash_index_parts
   - innodb_autoinc_lock_mode
@@ -141,7 +139,6 @@ staticParameters:
   - performance_schema_users_size
   - persisted_globals_load
   - pid_file
-  - port
   - protocol_version
   - rds.optimized_writes
   - relay_log
@@ -217,8 +214,6 @@ dynamicParameters:
   - binlog_transaction_dependency_tracking
   - block_encryption_mode
   - bulk_insert_buffer_size
-  - character_set_client
-  - character_set_connection
   - character_set_database
   - character_set_filesystem
   - character_set_results
@@ -253,7 +248,6 @@ dynamicParameters:
   - general_log_file
   - group_concat_max_len
   - gtid_executed_compression_period
-  - gtid_mode
   - gtid_purged
   - histogram_generation_max_mem_size
   - host_cache_size
@@ -554,6 +548,8 @@ immutableParameters:
   - datadir
   - default_authentication_plugin
   - disabled_storage_engines
+  - gtid_mode
+  - enforce_gtid_consistency
   - init_file
   - innodb_data_file_path
   - innodb_data_home_dir
@@ -577,6 +573,7 @@ immutableParameters:
   - lower_case_file_system
   - lower_case_table_names
   - mecab_rc_file
+  - port
   - open_files_limit
   - persisted_globals_load
   - protocol_version

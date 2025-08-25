@@ -25,7 +25,6 @@ staticParameters:
   - default_time_zone
   - disabled_storage_engines
   - disconnect_on_expired_password
-  - enforce_gtid_consistency
   - explicit_defaults_for_timestamp
   - ft_max_word_len
   - ft_min_word_len
@@ -258,7 +257,6 @@ dynamicParameters:
   - general_log_file
   - group_concat_max_len
   - gtid_executed_compression_period
-  - gtid_mode
   - gtid_purged
   - histogram_generation_max_mem_size
   - host_cache_size
@@ -556,6 +554,8 @@ immutableParameters:
   - datadir
   - default_authentication_plugin
   - disabled_storage_engines
+  - gtid_mode
+  - enforce_gtid_consistency
   - init_file
   - innodb_data_file_path
   - innodb_data_home_dir
