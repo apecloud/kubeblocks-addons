@@ -193,14 +193,9 @@ spec:
     roleProbe:
       periodSeconds: 1
       timeoutSeconds: 1
-      exec:
-        container: postgresql
-        command:
-          - /tools/dbctl
-          - --config-path
-          - /tools/config/dbctl/components
-          - postgresql
-          - getrole
+      http:
+        port: "5001"
+        path: "/v1.0/getrole"
     switchover:
       exec:
         container: postgresql
@@ -284,17 +279,6 @@ spec:
             mountPath: /home/postgres/conf
           - name: scripts
             mountPath: /kb-scripts
-      - command:
-          - cp
-          - -r
-          - /bin/dbctl
-          - /config
-          - /tools/
-        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
-        name: init-dbctl
-        volumeMounts:
-          - mountPath: /tools
-            name: tools
     containers:
       - name: postgresql
         imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
@@ -473,6 +457,15 @@ spec:
         volumeMounts:
           - name: postgresql-custom-metrics
             mountPath: /opt/conf
+      - name: dbctl
+        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
+        env:
+          - name: PATRONI_PORT
+            value: "8008"
+        command:
+          - /bin/dbctl
+          - postgresql
+          - service
     volumes:
       - name: dshm
         emptyDir:
