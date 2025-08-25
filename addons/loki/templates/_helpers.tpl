@@ -276,22 +276,36 @@ Define loki write component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define loki write parameter config renderer name
+object storage serviceRef declarations
 */}}
-{{- define "loki.writePCRName" -}}
-loki-write-pcr-{{ .Chart.Version }}
-{{- end -}}
+{{- define "loki.object.serviceRef" }}
+- name: loki-object-storage
+  serviceRefDeclarationSpecs:
+    - serviceKind: minio
+      serviceVersion: "^*"
+  optional: true
+{{- end }}
 
 {{/*
-Define loki backend parameter config renderer name
+object storage serviceRef vars
 */}}
-{{- define "loki.backendPCRName" -}}
-loki-backend-pcr-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define loki read parameter config renderer name
-*/}}
-{{- define "loki.readPCRName" -}}
-loki-read-pcr-{{ .Chart.Version }}
-{{- end -}}
+{{- define "loki.object.serviceRefVars" }}
+- name: S3_ENDPOINT
+  valueFrom:
+    serviceRefVarRef:
+      name: loki-object-storage
+      optional: true
+      endpoint: Required
+- name: ACCESS_KEY_ID
+  valueFrom:
+    serviceRefVarRef:
+      name: loki-object-storage
+      optional: true
+      username: Required
+- name: SECRET_ACCESS_KEY
+  valueFrom:
+    serviceRefVarRef:
+      name: loki-object-storage
+      optional: true
+      password: Required
+{{- end }}

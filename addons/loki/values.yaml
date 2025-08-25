@@ -2,14 +2,14 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 images:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
   tag: 2.9.4
-  repository: apecloud/loki
+  repository: grafana/loki
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   gateway:
     tag: 1.24-alpine
-    repository: apecloud/nginx-unprivileged
+    repository: nginxinc/nginx-unprivileged
     pullPolicy: IfNotPresent
 
 nameOverride: ""

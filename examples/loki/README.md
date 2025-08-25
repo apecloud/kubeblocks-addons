@@ -8,7 +8,7 @@ Loki decouples the data it stores from the software which ingests and queries it
 - **Simple Scalable Mode**: the balanced mode. It separates execution paths into read, write, and backend targets.
 - Microservices mode: runs components of Loki as distinct processes.
 
-KubeBlocks provids the **Simple Scalable Mode** Loki Cluster, and there are tree execution pathes in this mode:
+KubeBlocks provides the **Simple Scalable Mode** Loki Cluster, and there are three execution paths in this mode:
 
 - the write target, stateful, and it contains the following components:
   - Distributor

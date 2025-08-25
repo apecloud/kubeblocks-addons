@@ -102,12 +102,20 @@ gateway:
 
 nameOverride: ""
 fullnameOverride: ""
-minio:
-  enabled: false
+
+## "s3" or "local"
+storageType: "local"
 
 s3:
-  ## "s3", "local" or "oss"
-  storageType: ""
-  secret: ""
-
-
+  serviceRef:
+    namespace:
+    cluster:
+      name:
+      component: minio
+      service: default
+      port: api
+      credential: root
+    serviceDescriptor:
+  bucket:
+  path:
+  usePathStyle: true
