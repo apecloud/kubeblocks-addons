@@ -17,8 +17,7 @@ dynamicParameters:
   - binlog_stmt_cache_size
   - block_encryption_mode
   - bulk_insert_buffer_size
-  - character_set_client
-  - character_set_connection
+  - character_set_database
   - character_set_filesystem
   - character_set_results
   - character_set_server
@@ -276,6 +275,7 @@ immutableParameters:
   - log_slave_updates
   - mecab_rc_file
   - open_files_limit
+  - port
   - plugin_dir
   - protocol_version
   - sha256_password_private_key_path
@@ -352,7 +352,6 @@ staticParameters:
   - ngram_token_size
   - old
   - pid_file
-  - port
   - proxy_user
   - sha256_password_auto_generate_rsa_keys
   - sha256_password_public_key_path
