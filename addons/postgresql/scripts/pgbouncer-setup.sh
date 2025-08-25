@@ -77,7 +77,8 @@ build_pgbouncer_conf() {
   if id "pgbouncer" >/dev/null 2>&1 && getent group pgbouncer >/dev/null 2>&1; then
       echo "pgbouncer user and group are ready"
   else
-      echo "Warning: pgbouncer user or group creation may have issues"
+      echo "Failed to create pgbouncer user or group. Exiting..."
+      exit 1
   fi
 
   chown -R pgbouncer:pgbouncer $pgbouncer_conf_dir $pgbouncer_log_dir $pgbouncer_tmp_dir
