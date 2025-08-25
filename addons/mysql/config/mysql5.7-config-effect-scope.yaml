@@ -276,6 +276,7 @@ immutableParameters:
   - log_slave_updates
   - mecab_rc_file
   - open_files_limit
+  - port
   - plugin_dir
   - protocol_version
   - sha256_password_private_key_path
@@ -347,7 +348,6 @@ staticParameters:
   - ngram_token_size
   - old
   - pid_file
-  - port
   - proxy_user
   - sha256_password_auto_generate_rsa_keys
   - sha256_password_public_key_path
