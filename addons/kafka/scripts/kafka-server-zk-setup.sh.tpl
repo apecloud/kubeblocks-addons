@@ -183,7 +183,7 @@ parse_advertised_svc_if_exist() {
 }
 
 # cfg setting
-headless_domain="${KB_POD_FQDN}${cluster_domain}"
+headless_domain="${KB_POD_FQDN}.${CLUSTER_DOMAIN}"
 parse_advertised_svc_if_exist
 
 # Todo: currently only nodeport and clusterip network modes are supported. LoadBalance is not supported yet and needs future support.

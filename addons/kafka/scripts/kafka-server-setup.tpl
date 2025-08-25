@@ -162,7 +162,7 @@ if [[ "broker,controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] || [[ "broker" = "$KAF
       rm -f "$KAFKA_CFG_METADATA_LOG_DIR/__cluster_metadata-0/quorum-state"
     fi
 
-    headless_domain="${KB_POD_FQDN}${cluster_domain}"
+    headless_domain="${KB_POD_FQDN}.${CLUSTER_DOMAIN}"
     parse_advertised_svc_if_exist
 
     # Todo: currently only nodeport and clusterip network modes are supported. LoadBalance is not supported yet and needs future support.
