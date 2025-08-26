@@ -25,6 +25,8 @@ spec:
   lifecycleActions:
     memberJoin:
       exec:
+        container: rocketmq-namesrv
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         command:
           - bash
           - -c
