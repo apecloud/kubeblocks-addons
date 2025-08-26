@@ -25,6 +25,8 @@ spec:
   lifecycleActions:
     memberJoin:
       exec:
+        container: rocketmq-namesrv
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         command:
           - bash
           - -c
@@ -52,6 +54,11 @@ spec:
       value: "{{ .Values.nameserver.port }}"
     - name: LOG_PATH
       value: {{ .Values.nameserver.logPath }}
+    - name: ALL_NAMESRV_FQDN
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
   services:
     - name: namesrv-internal
       spec:
