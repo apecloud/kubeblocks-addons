@@ -73,7 +73,7 @@ spec:
             path: /ready
             port: http-metrics
             scheme: HTTP
-          initialDelaySeconds: 30
+          initialDelaySeconds: 15
           periodSeconds: 10
           successThreshold: 1
           timeoutSeconds: 1
@@ -116,3 +116,6 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
+    {{- include "loki.object.serviceRefVars" . | indent 4 }}
+  serviceRefDeclarations:
+    {{- include "loki.object.serviceRef" . | indent 4 }}

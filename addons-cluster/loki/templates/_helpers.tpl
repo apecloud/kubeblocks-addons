@@ -173,11 +173,35 @@ gateway common labels
 app.kubernetes.io/component: gateway
 {{- end }}
 
-{{- define "loki-cluster.localstorage" }}
+{{- define "loki.objectstorage.serviceRef" }}
+{{- if eq .Values.storageType "s3" }}
+- name: loki-object-storage
+  namespace: {{ .Release.Namespace }}
+  {{- if not .Values.s3.serviceRef.serviceDescriptor }}
+  clusterServiceSelector:
+    cluster: {{ .Values.s3.serviceRef.cluster.name }}
+    service:
+      component: {{ .Values.s3.serviceRef.cluster.component }}
+      service: {{ .Values.s3.serviceRef.cluster.service }}
+      port: {{ .Values.s3.serviceRef.cluster.port }}
+    credential:
+      component: {{ .Values.s3.serviceRef.cluster.component }}
+      name: {{ .Values.s3.serviceRef.cluster.credential }}
+  {{- else }}
+  serviceDescriptor: {{ .Values.s3.serviceRef.serviceDescriptor }}
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{- define "loki-cluster.storageConfig" }}
 configs:
   - name: loki-config
     variables:
-      storage_type: "local"
+      storage_type: {{ .Values.storageType }}
+      s3_bucket: {{ .Values.s3.bucket }}
+      {{/* path is not supported yet
+      s3_path: {{ .Values.s3.path }} */}}
+      s3_use_path_style: {{ .Values.s3.usePathStyle | quote }}
 {{- end -}}
 
 {{- define "loki-cluster.memberlist" }}
