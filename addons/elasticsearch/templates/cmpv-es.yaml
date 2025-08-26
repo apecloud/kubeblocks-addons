@@ -70,7 +70,7 @@ spec:
     serviceVersion: 8.15.5
     images:
       elasticsearch: {{ include "elasticsearch-8.15.5.image" . }}
-      prepare-plugins: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
+      prepare-plugins: {{ include "elasticsearch-8.15.5.image" . }}
       install-plugins: {{ include "elasticsearch-8.15.5.image" . }}
       exporter: {{ include "elasticsearch-exporter.image" . }}
       memberleave: {{ include "elasticsearch-lfa.image" . }}
