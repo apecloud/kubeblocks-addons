@@ -54,6 +54,11 @@ spec:
       value: "{{ .Values.nameserver.port }}"
     - name: LOG_PATH
       value: {{ .Values.nameserver.logPath }}
+    - name: ALL_NAMESRV_FQDN
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
   services:
     - name: namesrv-internal
       spec:
