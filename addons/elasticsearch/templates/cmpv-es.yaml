@@ -12,6 +12,7 @@ spec:
     - 8.1.3
     - 8.8.2
     - 8.9.1
+    - 8.15.5
   - compDefs:
     - elasticsearch-7
     releases:
@@ -66,4 +67,13 @@ spec:
       prepare-plugins: {{ include "elasticsearch-8.9.1.image" . }}
       install-plugins: {{ include "elasticsearch-8.9.1.image" . }}
       exporter: {{ include "elasticsearch-exporter.image" . }}
+      agent: {{ include "elasticsearch-agent.image" . }}
+  - name: 8.15.5
+    serviceVersion: 8.15.5
+    images:
+      elasticsearch: {{ include "elasticsearch-8.15.5.image" . }}
+      prepare-plugins: {{ include "elasticsearch-8.15.5.image" . }}
+      install-plugins: {{ include "elasticsearch-8.15.5.image" . }}
+      exporter: {{ include "elasticsearch-exporter.image" . }}
+      memberleave: {{ include "elasticsearch-lfa.image" . }}
       agent: {{ include "elasticsearch-agent.image" . }}

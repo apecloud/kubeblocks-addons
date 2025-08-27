@@ -133,6 +133,10 @@ elasticsearch-8-config-tpl
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.9.1
 {{- end }}
 
+{{- define "elasticsearch-8.15.5.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.15.5
+{{- end }}
+
 {{- define "elasticsearch-7.10.1.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.10.1
 {{- end }}
@@ -223,6 +227,10 @@ kibana-config-tpl
 
 {{- define "kibana-8.8.2.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.8.2
+{{- end }}
+
+{{- define "kibana-8.15.5.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.15.5
 {{- end }}
 
 {{- define "kibana-8.9.1.image" -}}
