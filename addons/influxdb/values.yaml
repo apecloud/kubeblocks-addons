@@ -15,3 +15,5 @@ image:
   init:
     repository: bitnami/os-shell
     tag: 11-debian-11-r93
+
+configPath: /opt/bitnami/influxdb/etc
