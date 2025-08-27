@@ -83,22 +83,6 @@ mongodb5.0-config-template
 {{- end -}}
 {{- end -}}
 
-{{- define "mongos.configTplName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mongodb-mongos-config-template
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-mongodb-mongos-config-template
-{{- end -}}
-{{- end -}}
-
-{{- define "mongodbShard.configTplName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mongodb-shard-config-template
-{{- else -}}
-{{- printf "%s-mongodb-shard-config-template" .Values.resourceNamePrefix -}}
-{{- end -}}
-{{- end -}}
-
 {{- define "mongodb.cmScriptsName" }}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
 mongodb-scripts
@@ -115,37 +99,5 @@ Define parameter config renderername
 mongodb-pcr-{{ .Chart.Version }}
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-pcr
-{{- end -}}
-{{- end -}}
-
-{{- define "mongoShard.pcrName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mongo-shard-pcr-{{ .Chart.Version }}
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-pcr
-{{- end -}}
-{{- end -}}
-
-{{- define "cfgServer.pcrName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mongo-config-server-pcr-{{ .Chart.Version }}
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-pcr
-{{- end -}}
-{{- end -}}
-
-{{- define "mongos.pcrName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mongo-mongos-pcr-{{ .Chart.Version }}
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-pcr
-{{- end -}}
-{{- end -}}
-
-{{- define "mongodbShard.cmScriptsName" }}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mongodb-shard-scripts
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-mongodb-shard-scripts
 {{- end -}}
 {{- end -}}

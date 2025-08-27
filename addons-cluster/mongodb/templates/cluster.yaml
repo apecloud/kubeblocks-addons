@@ -6,17 +6,16 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 {{- if eq .Values.hostnetwork "enabled" }}
   annotations:
-    {{- if ne .Values.mode "sharding" }}
     kubeblocks.io/host-network: mongodb
-    {{- end }}
 {{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   clusterDef: mongodb
-  {{- if or (eq .Values.mode "replicaset") (eq .Values.mode "standalone") }}
   topology: replicaset
-  {{ include "mongodb-cluster.replicasetMode" . | indent 2 }}
-  {{- else if eq .Values.mode "sharding" }}
-  topology: sharding
-  {{ include "mongodb-cluster.shardingMode" . | indent 2 }}
-  {{- end }}
+  componentSpecs:
+    - name: mongodb
+      serviceVersion: {{ .Values.version }}
+      {{- include "mongodb-cluster.replicaCount" . | indent 6 }}
+      disableExporter: {{ $.Values.disableExporter | default "false" }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
