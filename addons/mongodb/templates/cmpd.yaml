@@ -103,9 +103,6 @@ spec:
 
             /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
   runtime:
-    securityContext:
-      # percona-server-mongodb needs run as root to have privilege to access to keyfile
-      runAsUser: 0
     initContainers:
       - command:
           - cp
@@ -115,31 +112,6 @@ spec:
           - /tools/
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-syncer
-        volumeMounts:
-          - mountPath: /tools
-            name: tools
-      - command:
-          - sh
-          - -c
-          - |
-            mkdir -p {{ .Values.dataMountPath }}/tmp/bin
-            cp -r /opt/bitnami/kubectl/bin/kubectl {{ .Values.dataMountPath }}/tmp/bin
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        name: init-kubectl
-        volumeMounts:
-          - mountPath: {{ .Values.dataMountPath }}
-            name: data
-      - command:
-          - sh
-          - -c
-          - |
-            cp -r /usr/bin/pbm /tools
-            cp -r /usr/bin/pbm-agent /tools
-            cp -r /usr/bin/pbm-agent-entrypoint /tools
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        name: init-pbm-agent
         volumeMounts:
           - mountPath: /tools
             name: tools
@@ -188,20 +160,6 @@ spec:
             value: $(MONGODB_USER)
           - name: MONGODB_ROOT_PASSWORD
             value: $(MONGODB_PASSWORD)
-          - name: MONGODB_GRANT_ANYACTION_PRIVILEGE
-            value: "true"
-          - name: PBM_AGENT_MONGODB_USERNAME
-            value: $(MONGODB_USER)
-          - name: PBM_AGENT_MONGODB_PASSWORD
-            value: $(MONGODB_PASSWORD)
-          - name: PBM_MONGODB_REPLICA_SET
-            value: $(KB_CLUSTER_COMP_NAME)
-          - name: PBM_AGENT_SIDECAR
-            value: "true"
-          - name: PBM_AGENT_SIDECAR_SLEEP
-            value: "5"
-          - name: PBM_MONGODB_URI
-            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -215,40 +173,6 @@ spec:
             mountPath: /scripts
           - mountPath: /tools
             name: tools
-      - name: mongodb-backup-agent
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        command:
-            - /bin/bash
-            - -c
-            - |
-              while [ -f $PBM_DATA_MOUNT_POINT/tmp/mongodb_pbm.backup ]; do
-                echo "Waiting for restore...";
-                sleep 5;
-              done
-              exec pbm-agent-entrypoint
-        env:
-          - name: PATH
-            value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-          - name: PBM_AGENT_MONGODB_USERNAME
-            value: $(MONGODB_USER)
-          - name: PBM_AGENT_MONGODB_PASSWORD
-            value: $(MONGODB_PASSWORD)
-          - name: PBM_MONGODB_REPLICA_SET
-            value: $(KB_CLUSTER_COMP_NAME)
-          - name: PBM_AGENT_SIDECAR
-            value: "true"
-          - name: PBM_AGENT_SIDECAR_SLEEP
-            value: "5"
-          - name: PBM_MONGODB_URI
-            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
-          - name: PBM_DATA_MOUNT_POINT
-            value: {{ .Values.dataMountPath }}
-        volumeMounts:
-          - mountPath: {{ .Values.dataMountPath }}
-            name: data
-          - name: scripts
-            mountPath: /scripts
       - name: exporter
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
@@ -302,16 +226,6 @@ spec:
           name: root
           optional: false
           password: Required
-    - name: MONGODB_REPLICA_SET_NAME
-      valueFrom:
-        componentVarRef:
-          optional: false
-          componentName: Required
-    - name: MONGODB_POD_FQDN_LIST
-      valueFrom:
-        componentVarRef:
-          optional: false
-          podFQDNs: Required
     - name: KB_SERVICE_PORT
       valueFrom:
         hostNetworkVarRef:
