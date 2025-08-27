@@ -255,8 +255,11 @@ dynamicParameters:
   - audit_log_policy
   - slave_exec_mode
   - slave_net_timeout
+  - sort_buffer_size
+  - join_buffer_size
   - slave_parallel_type
   - slave_parallel_workers
+  - slave_preserve_commit_order
 immutableParameters:
   - auto_generate_certs
   - basedir

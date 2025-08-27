@@ -1095,6 +1095,10 @@
 
 	// Sets the number of slave worker threads for executing replication events (transactions) in parallel. Setting this variable to 0 (the default) disables parallel execution.
 	slave_parallel_workers?: int & >=0 & <=1024
+
+    // Enable parallel execution on the slave of all uncommitted threads already in the prepare phase, without violating consistency.
+    slave_preserve_commit_order?: string & "0" | "1" | "OFF" | "ON"
+
 	// other parameters
 	// reference mysql parameters
 	...
