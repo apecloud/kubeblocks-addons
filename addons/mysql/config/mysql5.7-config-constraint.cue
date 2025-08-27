@@ -82,6 +82,12 @@
 	// MyISAM uses a special tree-like cache to make bulk inserts faster for INSERT ...
 	bulk_insert_buffer_size?: int & >= 0 & <= 18446744073709551615 | *8388608
 
+    // Increase the value of join_buffer_size to get a faster full join when adding indexes is not possible.
+    join_buffer_size?: int & >=128 & <=18446744073709547520
+
+    // Larger value improves perf for ORDER BY or GROUP BY operations.
+    sort_buffer_size?: int & >=32768 & <=18446744073709551615
+
 	// The character set used by the default database.
 	character_set_database?: string | *"latin1"
 
