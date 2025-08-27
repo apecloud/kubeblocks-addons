@@ -75,5 +75,4 @@ spec:
       prepare-plugins: {{ include "elasticsearch-8.15.5.image" . }}
       install-plugins: {{ include "elasticsearch-8.15.5.image" . }}
       exporter: {{ include "elasticsearch-exporter.image" . }}
-      memberleave: {{ include "elasticsearch-lfa.image" . }}
       agent: {{ include "elasticsearch-agent.image" . }}
