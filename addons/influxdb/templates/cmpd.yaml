@@ -94,6 +94,10 @@ spec:
             value: "primary"
           - name: INFLUXDB_ADMIN_ORG
             value: "primary"
+          - name: INFLUXDB_CONF_FILE_FORMAT
+            value: "toml"
+          - name: SERVICE_PORT
+            value: "8086"
         ports:
           - name: http
             containerPort: 8086
@@ -143,3 +147,5 @@ spec:
         volumeMounts:
           - name: data
             mountPath: /bitnami/influxdb
+          - name: influxdb-config
+            mountPath: {{ .Values.configPath }}
