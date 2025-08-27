@@ -17,3 +17,5 @@ data:
 
     DATA_VOLUME={{ .Values.dataMountPath }}
     {{- .Files.Get "scripts/replicaset-setup.tpl" | nindent 4 }}
+  mongodb-common.sh: |-
+    {{- .Files.Get "scripts/mongodb-common.sh" | nindent 4 }}

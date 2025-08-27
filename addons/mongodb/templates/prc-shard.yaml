@@ -1,0 +1,40 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "mongoShard.pcrName" . }}
+  labels:
+    {{- include "mongodb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mongodbShard.compDefName" . }}
+  configs:
+    - name: mongodb.conf
+      fileFormatConfig:
+        format: yaml
+---
+
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "cfgServer.pcrName" . }}
+  labels:
+    {{- include "mongodb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "cfgServer.compDefName" . }}
+  configs:
+    - name: mongodb.conf
+      fileFormatConfig:
+        format: yaml
+---
+
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "mongos.pcrName" . }}
+  labels:
+    {{- include "mongodb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mongos.compDefName" . }}
+  configs:
+    - name: mongos.conf
+      fileFormatConfig:
+        format: yaml
