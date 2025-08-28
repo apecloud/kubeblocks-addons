@@ -26,7 +26,6 @@ function restart_for_pending_restart_flag() {
 
     if grep -q "state" ${pod_info_tmp_path}; then
       pod_info=$(<${pod_info_tmp_path})
-      rm -f ${pod_info_tmp_path}
       state=$(echo $pod_info | jq -r .state)
       if [[ "$state" != "running" && "$state" != "streaming" ]]; then
         continue
