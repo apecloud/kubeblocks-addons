@@ -84,6 +84,10 @@ def main(filename):
             local_config['bootstrap']['dcs'].update(yaml.safe_load(f))
     else:
         print('patroni.yaml not found')
+    synchronous_mode = os.environ.get('SYNCHRONOUS_MODE')
+    if synchronous_mode:
+        local_config['bootstrap']['dcs']['synchronous_mode'] = synchronous_mode
+
     write_file(yaml.dump(local_config, default_flow_style=False), filename, True)
 
 
