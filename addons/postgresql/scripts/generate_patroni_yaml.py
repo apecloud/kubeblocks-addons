@@ -60,6 +60,10 @@ def main(filename):
         with open('/home/postgres/conf/replica_restore.conf', 'r') as f:
             replica_restore_conf = yaml.safe_load(f)
             local_config['postgresql'].update(replica_restore_conf)
+            re_config = postgresql_conf_to_dict("/home/postgres/pgdata/conf/recovery.conf")
+            if 'recovery_conf' not in local_config['postgresql']:
+                local_config['postgresql']['recovery_conf'] = {}
+            local_config['postgresql']['recovery_conf'].update(re_config)
 
     # point in time recovery(PITR)
     if os.path.isfile("/home/postgres/pgdata/conf/recovery.conf"):
