@@ -24,21 +24,30 @@ function restart_for_pending_restart_flag() {
     pod_info_tmp_path="/tmp/pod_info.tmp"
     curl --connect-timeout 3 -s http://localhost:8008 > ${pod_info_tmp_path}
 
-    if grep -q "pending_restart" ${pod_info_tmp_path}; then
-      pod_info=$(<${pod_info_tmp_path})
-      pending_restart=$(echo $pod_info | jq -r .pending_restart)
-      if [[ "$pending_restart" != "true" ]]; then
-        continue
-      fi
-    else
-        continue
-    fi
-
     if grep -q "state" ${pod_info_tmp_path}; then
       pod_info=$(<${pod_info_tmp_path})
       rm -f ${pod_info_tmp_path}
       state=$(echo $pod_info | jq -r .state)
       if [[ "$state" != "running" && "$state" != "streaming" ]]; then
+        continue
+      fi
+      if [ -f /home/postgres/pgdata/pgroot/data/recovery.signal ]; then
+        replica_state=$(echo $pod_info | jq -r .replication_state)
+        echo $pod_info
+        if [[ "$replica_state" == "in archive recovery" ]]; then
+           echo "$(date) ${KB_POD_NAME} is in archive recovery, restart it"
+           curl -XPOST http://localhost:8008/restart
+           rm -rf /home/postgres/pgdata/pgroot/data/recovery.signal
+        fi
+      fi
+    else
+        continue
+    fi
+
+    if grep -q "pending_restart" ${pod_info_tmp_path}; then
+      pod_info=$(<${pod_info_tmp_path})
+      pending_restart=$(echo $pod_info | jq -r .pending_restart)
+      if [[ "$pending_restart" != "true" ]]; then
         continue
       fi
     else
