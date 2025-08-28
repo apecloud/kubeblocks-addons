@@ -35,6 +35,8 @@ spec:
               matchLabels:
                 app.kubernetes.io/component: read
             topologyKey: kubernetes.io/hostname
+    securityContext:
+      fsGroup: 10001
     containers:
       - name: read
         imagePullPolicy: {{ .Values.images.pullPolicy }}
