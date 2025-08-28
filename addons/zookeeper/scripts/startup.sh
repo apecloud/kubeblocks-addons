@@ -48,12 +48,26 @@ function set_jvm_configuration() {
   fi
   MAX_HEAP_SIZE="${max_heap_size_in_mb}M"
 
-  export JVMFLAGS="$JVMFLAGS \
-        -XX:+UseG1GC \
-        -Xlog:gc:/opt/bitnami/zookeeper/logs/gc.log
-        -Xlog:gc* \
-        -XX:NewRatio=2 \
-        -Xms$MAX_HEAP_SIZE -Xmx$MAX_HEAP_SIZE"
+  gc_file="/opt/bitnami/zookeeper/logs/gc.log"
+  java_major=$(java -XshowSettings:properties -version 2>&1 | grep "java.specification.version" | awk '{print $3}')
+  if [ "${java_major}" -ge 9 ];then
+    export JVMFLAGS="$JVMFLAGS \
+          -XX:+UseG1GC \
+          -Xlog:gc:${gc_file}
+          -Xlog:gc* \
+          -XX:NewRatio=2 \
+          -Xms$MAX_HEAP_SIZE -Xmx$MAX_HEAP_SIZE"
+  else
+    export JVMFLAGS="$JVMFLAGS \
+          -XX:+UseG1GC \
+          -Xloggc:${gc_file} \
+          -XX:+PrintGCDetails \
+          -XX:+PrintGCDateStamps \
+          -XX:+PrintGCTimeStamps \
+          -XX:+UseGCLogFileRotation
+          -XX:NewRatio=2 \
+          -Xms$MAX_HEAP_SIZE -Xmx$MAX_HEAP_SIZE"
+  fi
 }
 
 if [ -z "${ZOOKEEPER_IMAGE_VERSION}" ] ||  version_lt "3.6.0" "${ZOOKEEPER_IMAGE_VERSION%%-*}"  ; then
