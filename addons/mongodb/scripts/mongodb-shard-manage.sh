@@ -43,8 +43,16 @@ initialize_or_scale_out_mongodb_shard() {
     wait_for_mongos
 
     # Check if the shard exists
+    MAX_RETRIES=300
+    retry_count=0
     while ! check_shard_exists; do
-        echo "INFO: Shard $MONGODB_REPLICA_SET_NAME does not exist, initializing..."
+        echo "INFO: Shard $MONGODB_REPLICA_SET_NAME does not exist, initializing... (attempt $((retry_count+1))/$MAX_RETRIES)"
+        retry_count=$((retry_count+1))
+        if [ $retry_count -ge $MAX_RETRIES ]; then
+            echo "ERROR: Shard $MONGODB_REPLICA_SET_NAME failed to initialize after $MAX_RETRIES attempts." >&2
+            exit 1
+        fi
+        sleep 2
         pod_endpoints=$(generate_endpoints "$MONGODB_POD_FQDN_LIST" "$KB_SERVICE_PORT")
         echo "INFO: Adding shard $MONGODB_REPLICA_SET_NAME with endpoints: $pod_endpoints"
         $CLUSTER_MONGO "sh.addShard(\"$MONGODB_REPLICA_SET_NAME/$pod_endpoints\")"
