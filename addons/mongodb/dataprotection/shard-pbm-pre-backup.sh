@@ -12,6 +12,7 @@ CLUSTER_MONGO="$CLIENT --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT
 # Wait for the mongos process to be ready
 MAX_RETRIES=300
 retry_count=0
+set +e
 while [ $retry_count -lt $MAX_RETRIES ]; do
     result=$($CLUSTER_MONGO "db.adminCommand({ ping: 1 })" 2>/dev/null)
     if [[ "$result" == *"ok"* ]]; then
@@ -22,6 +23,7 @@ while [ $retry_count -lt $MAX_RETRIES ]; do
     retry_count=$((retry_count+1))
     sleep 2
 done
+set -e
 
 if [ $retry_count -eq $MAX_RETRIES ]; then
     echo "ERROR: Mongos failed to become ready after $MAX_RETRIES attempts." >&2
