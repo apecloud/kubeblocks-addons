@@ -97,19 +97,21 @@ spec:
         fi
         # All the components' password of elastic must be the same, So we find the first environment variable that starts with ELASTIC_USER_PASSWORD
         ELASTIC_AUTH_PASSWORD=""
-        last_value=""
-        set +x
-        for env_var in $(env | grep -E '^ELASTIC_USER_PASSWORD'); do
-          value="${env_var#*=}"
-          if [ -n "$value" ]; then
-            if [ -n "$last_value" ] && [ "$last_value" != "$value" ]; then
-              echo "Error conflicting env $env_var of elastic password values found, all the components' password of elastic must be the same."
-              exit 1
+        if [ "${TLS_ENABLED}" == "true" ]; then
+          last_value=""
+          set +x
+          for env_var in $(env | grep -E '^ELASTIC_USER_PASSWORD'); do
+            value="${env_var#*=}"
+            if [ -n "$value" ]; then
+              if [ -n "$last_value" ] && [ "$last_value" != "$value" ]; then
+                echo "Error conflicting env $env_var of elastic password values found, all the components' password of elastic must be the same."
+                exit 1
+              fi
+              last_value="$value"
             fi
-            last_value="$value"
-          fi
-        done
-        ELASTIC_AUTH_PASSWORD="$last_value"
+          done
+          ELASTIC_AUTH_PASSWORD="$last_value"
+        fi
         for env_var in $(env | grep -E '^ELASTICSEARCH_HOST'); do
           value="${env_var#*=}"
           if [ -n "$value" ]; then
