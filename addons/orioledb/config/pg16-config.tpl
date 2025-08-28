@@ -259,7 +259,7 @@
   wal_compression = 'True'
   wal_init_zero = off
   wal_level = 'replica'
-  wal_log_hints = 'False'
+  wal_log_hints = 'True'
   wal_receiver_status_interval = '1s'
   wal_receiver_timeout = '60000'
   wal_sender_timeout = '60000'
