@@ -2,9 +2,10 @@
 
 set -exo pipefail
 
-TIKV_ADDRESS="${KB_LEAVE_MEMBER_POD_NAME}.${TIKV_HEADLESS_SVC_ADDRESS}"
+TIKV_ADDRESS="${KB_LEAVE_MEMBER_POD_FQDN}:20160"
 echo "$TIKV_ADDRESS"
 output=$(/pd-ctl -u "$PD_ADDRESS" store delete addr "$TIKV_ADDRESS")
+echo "$output"
 # ignore not found nodes to make the script idempotent
 if [[ $output != "Success!" && ! $output =~ not\ found ]]; then
     echo "leave member $TIKV_ADDRESS failed"
