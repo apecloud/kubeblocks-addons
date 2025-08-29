@@ -5,6 +5,7 @@ metadata:
   labels:
     {{- include "qdrant.labels" . | nindent 4 }}
   annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "qdrant.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
