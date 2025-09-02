@@ -735,7 +735,6 @@ spec:
     pitrEnabled: true
 ...
 ```
-
 1. you cannot do wal-g backup for a brand-new cluster, you need to insert some data before backup
 
 1. create a backup
