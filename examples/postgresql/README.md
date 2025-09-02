@@ -420,12 +420,23 @@ WAL-G is an archival restoration tool for PostgreSQL, MySQL/MariaDB, and MS SQL 
 
 To create wal-g backup for the cluster, it is a multi-step process.
 
-1. set `archive_command` to `wal-g wal-push %p`
+1. enable the cluster PITR and set continuous backup method to `wal-g-archive`
 
 ```bash
-kubectl apply -f examples/postgresql/backup-wal-g.yaml
+kubectl edit cluster pg-cluster -n demo
 ```
 
+Set the cluster backup spec to the following:
+
+```yaml
+spec:
+  backup:
+    continuousMethod: wal-g-archive
+    enabled: true
+    method: wal-g
+    pitrEnabled: true
+...
+```
 1. you cannot do wal-g backup for a brand-new cluster, you need to insert some data before backup
 
 1. create a backup
