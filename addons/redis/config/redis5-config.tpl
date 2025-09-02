@@ -1,6 +1,7 @@
 bind 0.0.0.0
 tcp-backlog 511
 timeout 0
+ignore-warnings ARM64-COW-BUG
 tcp-keepalive 300
 daemonize no
 supervised no
