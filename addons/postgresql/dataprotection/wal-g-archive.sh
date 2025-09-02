@@ -29,8 +29,8 @@ function config_wal_g() {
     echo "${walg_dir}/datasafed.conf" > ${walg_env}/WALG_DATASAFED_CONFIG
     echo "${datasafed_base_path}" > ${walg_env}/DATASAFED_BACKEND_BASE_PATH
     echo "true" > ${walg_env}/PG_READY_RENAME
-    echo "${LOG_DIR}/archive_status" > ${walg_env}/WALG_ARCHIVE_STATUS_DIR
     echo "zstd" > ${walg_env}/WALG_COMPRESSION_METHOD
+    echo "${DATA_DIR}" >${walg_env}/PGDATA
     if [ -n "${DATASAFED_ENCRYPTION_ALGORITHM}" ]; then
       echo "${DATASAFED_ENCRYPTION_ALGORITHM}" > ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM
     elif [ -f ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM ]; then
@@ -99,38 +99,48 @@ function save_backup_status() {
 }
 
 function uploadMissingLogs() {
-  # First, read all environment variables from files once outside the loop
   while read -r env_file; do
     env_name=$(basename "$env_file")
     env_value=$(cat "$env_file")
     export "$env_name"="$env_value"
   done < <(find ${VOLUME_DATA_DIR}/wal-g/env -type f)
 
-  # Ensure WAL-G knows where to find and update status files
-  export WALG_ARCHIVE_STATUS_DIR="${LOG_DIR}/archive_status"
-
-  # Set PGDATA environment variable for WAL-G renaming to work
-  export PGDATA="${DATA_DIR}"
-
-  # Create log directory if it doesn't exist
-  mkdir -p "${RESTORE_SCRIPT_DIR}" 2>/dev/null
-
-  # Now iterate through WAL files and push them
+  # Now iterate through ready WAL files and push them
   for ready_file in $(find "${LOG_DIR}/archive_status/" -name "*.ready" -type f | sort); do
     i=$(basename "$ready_file")
     wal_name=${i%.*}
-    DP_log "upload ${wal_name}..."
-
-        # Execute wal-push and capture the result to a log file
-    ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push ${LOG_DIR}/${wal_name} > "${RESTORE_SCRIPT_DIR}/wal-g.log" 2>&1
+    DP_log "upload ${wal_name} ..."
+    
+    # Create a tracking file to avoid infinite retries
+    tracking_file="${LOG_DIR}/archive_status/${wal_name}.uploading"
+    if [ -f "$tracking_file" ]; then
+      file_age=$(($(date +%s) - $(date -r "$tracking_file" +%s)))
+      # If file is older than 5 minutes, we assume the previous attempt failed
+      if [ "$file_age" -lt 300 ]; then
+        DP_log "Skipping ${wal_name} - recent upload attempt in progress"
+        continue
+      fi
+    fi
+    touch "$tracking_file"
+    
+    # Try upload with WAL-G
+    ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push ${LOG_DIR}/${wal_name}
     exit_code=$?
-
-    # Log the result but don't manually rename files - WAL-G handles this automatically
-    if [ $exit_code -eq 0 ] || grep -q "already archived" "${RESTORE_SCRIPT_DIR}/wal-g.log" 2>/dev/null; then
-      DP_log "Successfully uploaded or file already exists for ${wal_name}"
+    
+    # Check if rename succeeded by checking if .ready file still exists
+    if [ "$exit_code" -eq 0 ]; then
+      DP_log "WAL-G upload succeeded for ${wal_name}"
+      # Check if WAL-G renamed the file already
+      if [ -f "${LOG_DIR}/archive_status/${wal_name}.ready" ]; then
+        DP_log "WAL-G didn't rename status file, doing it manually for ${wal_name}"
+        mv "${LOG_DIR}/archive_status/${wal_name}.ready" "${LOG_DIR}/archive_status/${wal_name}.done" || DP_error_log "Failed to manually rename ${wal_name}.ready"
+      fi
     else
       DP_error_log "Failed to upload ${wal_name}, exit code: ${exit_code}"
     fi
+    
+    # Remove tracking file
+    rm -f "$tracking_file"
   done
 }
 
