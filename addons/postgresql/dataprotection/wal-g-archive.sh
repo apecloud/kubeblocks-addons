@@ -99,24 +99,27 @@ function save_backup_status() {
 }
 
 function uploadMissingLogs() {
-  # Use find instead of ls | grep to avoid issues with filenames
+  # First, read all environment variables from files once outside the loop
+  while read -r env_file; do
+    env_name=$(basename "$env_file")
+    env_value=$(cat "$env_file")
+    export "$env_name"="$env_value"
+  done < <(find ${VOLUME_DATA_DIR}/wal-g/env -type f)
+  
+  # Ensure WAL-G knows where to find and update status files
+  export WALG_ARCHIVE_STATUS_DIR="${LOG_DIR}/archive_status"
+  
+  # Set PGDATA environment variable for WAL-G renaming to work
+  export PGDATA="${DATA_DIR}"
+  
+  # Create log directory if it doesn't exist
+  mkdir -p "${RESTORE_SCRIPT_DIR}" 2>/dev/null
+  
+  # Now iterate through WAL files and push them
   for ready_file in $(find "${LOG_DIR}/archive_status/" -name "*.ready" -type f | sort); do
     i=$(basename "$ready_file")
     wal_name=${i%.*}
     DP_log "upload ${wal_name}..."
-
-    # Read environment variables from files directly instead of using envdir
-    while read -r env_file; do
-      env_name=$(basename "$env_file")
-      env_value=$(cat "$env_file")
-      export "$env_name"="$env_value"
-    done < <(find ${VOLUME_DATA_DIR}/wal-g/env -type f)
-    
-    # Ensure WAL-G knows where to find and update status files
-    export WALG_ARCHIVE_STATUS_DIR="${LOG_DIR}/archive_status"
-
-    # Create log directory if it doesn't exist
-    mkdir -p "${RESTORE_SCRIPT_DIR}" 2>/dev/null
     
     # Execute wal-push and capture the result to a log file
     ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push ${LOG_DIR}/${wal_name} > "${RESTORE_SCRIPT_DIR}/wal-g.log" 2>&1
