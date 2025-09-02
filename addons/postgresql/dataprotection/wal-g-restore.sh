@@ -30,12 +30,12 @@ function config_wal_g_for_fetch_wal_log() {
     echo "${walg_dir}/datasafed.conf" > ${walg_env}/WALG_DATASAFED_CONFIG
     echo "${datasafed_base_path}" > ${walg_env}/DATASAFED_BACKEND_BASE_PATH
     echo "zstd" > ${walg_env}/WALG_COMPRESSION_METHOD
-    if [ -n ${DATASAFED_ENCRYPTION_ALGORITHM} ]; then
+    if [ -n "${DATASAFED_ENCRYPTION_ALGORITHM}" ]; then
       echo "${DATASAFED_ENCRYPTION_ALGORITHM}" > ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM
     elif [ -f ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM ]; then
        rm ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM
     fi
-    if [ -n ${DATASAFED_ENCRYPTION_PASS_PHRASE} ]; then
+    if [ -n "${DATASAFED_ENCRYPTION_PASS_PHRASE}" ]; then
        echo "${DATASAFED_ENCRYPTION_PASS_PHRASE}" > ${walg_env}/DATASAFED_ENCRYPTION_PASS_PHRASE
     elif [ -f ${walg_env}/DATASAFED_ENCRYPTION_PASS_PHRASE ]; then
        rm ${walg_env}/DATASAFED_ENCRYPTION_PASS_PHRASE

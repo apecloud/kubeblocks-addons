@@ -98,11 +98,18 @@ function save_backup_status() {
 }
 
 function uploadMissingLogs() {
-  walg_archive_dir=${LOG_DIR}/walg_data/walg_archive_status
   for i in $(ls -tr ${LOG_DIR}/archive_status/ | grep .ready); do
      wal_name=${i%.*}
      DP_log "upload ${wal_name}..."
-     envdir ${VOLUME_DATA_DIR}/wal-g/env ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push ${LOG_DIR}/${wal_name}
+
+     # Read environment variables from files directly instead of using envdir
+     while read -r env_file; do
+       env_name=$(basename "$env_file")
+       env_value=$(cat "$env_file")
+       export "$env_name"="$env_value"
+     done < <(find ${VOLUME_DATA_DIR}/wal-g/env -type f)
+
+     ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push ${LOG_DIR}/${wal_name}
   done
 }
 
@@ -126,7 +133,6 @@ function check_pg_process() {
       exit 1
     fi
 }
-
 
 # trap term signal
 trap "echo 'Terminating...' && exit 0" TERM
