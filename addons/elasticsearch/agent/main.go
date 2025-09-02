@@ -19,6 +19,7 @@ type KeystoreRequest struct {
 var (
 	esUsername = os.Getenv("ELASTIC_USERNAME")
 	esPassword = os.Getenv("ELASTIC_PASSWORD")
+	tlsEnabled = os.Getenv("TLS_ENABLED")
 	agentPort  = os.Getenv("AGENT_PORT")
 )
 
@@ -30,6 +31,10 @@ func init() {
 
 func main() {
 	r := gin.Default()
+
+	if strings.ToLower(tlsEnabled) == "true" && (esUsername == "" || esPassword == "") {
+		log.Fatal("TLS is enabled but ELASTIC_USERNAME or ELASTIC_PASSWORD is not set")
+	}
 
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
@@ -46,8 +51,14 @@ func main() {
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Skip authentication if ES doesn't have authentication enabled
-		if esUsername == "" || esPassword == "" {
+		if strings.ToLower(tlsEnabled) != "true" {
 			c.Next()
+			return
+		}
+
+		if esUsername == "" || esPassword == "" {
+			c.Header("WWW-Authenticate", "Basic realm=Restricted")
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
 
