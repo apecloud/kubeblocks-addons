@@ -88,7 +88,7 @@ if [[ -z ${DP_PARENT_BACKUP_NAME} ]]; then
   exit 1
 fi
 # config wal-g
-config_wal_g "$(dirname $(dirname $DP_BACKUP_BASE_PATH))/wal-g"
+config_wal_g "$(dirname $DP_BACKUP_BASE_PATH)/wal-g"
 
 # 2. parent backup name of the wal-g
 export DATASAFED_BACKEND_BASE_PATH=$(dirname ${DP_BACKUP_BASE_PATH})/${DP_PARENT_BACKUP_NAME}

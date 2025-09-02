@@ -137,7 +137,7 @@ function check_pg_process() {
 # trap term signal
 trap "echo 'Terminating...' && exit 0" TERM
 DP_log "start to collect wal infos"
-config_wal_g "$(dirname $(dirname $DP_BACKUP_BASE_PATH))/wal-g"
+config_wal_g "$(dirname $DP_BACKUP_BASE_PATH)/wal-g"
 while true; do
   # check if pg process is ok
   check_pg_process

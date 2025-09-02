@@ -76,7 +76,7 @@ function writeSentinelInBaseBackupPath() {
 trap handle_exit EXIT
 set -e
 # config wal-g
-config_wal_g "$(dirname $(dirname $DP_BACKUP_BASE_PATH))/wal-g"
+config_wal_g "$(dirname $DP_BACKUP_BASE_PATH)/wal-g"
 if check_archive_mode_enabled; then
     echo "archive command is configured."
 else
