@@ -6,6 +6,7 @@ export WALG_COMPRESSION_METHOD=zstd
 export PGPASSWORD=${DP_DB_PASSWORD}
 export DATASAFED_BACKEND_BASE_PATH=${backup_base_path}
 export KB_BACKUP_WORKDIR=${VOLUME_DATA_DIR}/kb-backup
+export UPLOAD_MISSING_LOGS_RETRY_INTERVAL=180
 GLOBAL_OLD_SIZE=0
 
 PSQL="psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -d postgres"
@@ -17,15 +18,16 @@ elif [ "${TARGET_POD_ROLE}" == "secondary" ]; then
 fi
 
 function config_wal_g() {
+    DP_log "config wal-g environment variables..."
+
+    datasafed_base_path=${1:?missing datasafed_base_path}
     walg_dir=${VOLUME_DATA_DIR}/wal-g
     walg_env=${walg_dir}/env
+
     mkdir -p ${walg_dir}/env
     cp /etc/datasafed/datasafed.conf ${walg_dir}/datasafed.conf
     cp /usr/bin/wal-g ${walg_dir}/wal-g
-    datasafed_base_path=${1:?missing datasafed_base_path}
-    # config wal-g env
-    # config WALG_PG_WAL_SIZE with wal_segment_size which fetched by psql
-    # echo "" > ${walg_env}/WALG_PG_WAL_SIZE
+
     echo "${walg_dir}/datasafed.conf" > ${walg_env}/WALG_DATASAFED_CONFIG
     echo "${datasafed_base_path}" > ${walg_env}/DATASAFED_BACKEND_BASE_PATH
     echo "true" > ${walg_env}/PG_READY_RENAME
@@ -77,6 +79,7 @@ function get_wal_log_end_time() {
 
 # save backup status info to sync file
 function save_backup_status() {
+   DP_log "save backup status info to sync file ${DP_BACKUP_INFO_FILE} ..."
     local TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
     # if no size changes, return
     if [[ -z ${TOTAL_SIZE} || ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == "${GLOBAL_OLD_SIZE}" ]];then
@@ -102,8 +105,9 @@ function save_backup_status() {
 # WAL-G should rename the file to done automatically, but sometimes it
 # doesn't work, so we need to manually rename the file.
 # Uses a tracking file system to prevent continuous retries on problem files.
-# If upload fails, we keep the tracking file and only retry after 5 minutes.
+# If upload fails, we keep the tracking file and only retry after UPLOAD_MISSING_LOGS_RETRY_INTERVAL minutes.
 function uploadMissingLogs() {
+  DP_log "start to upload missing ready WAL files..."
   while read -r env_file; do
     env_name=$(basename "$env_file")
     env_value=$(cat "$env_file")
@@ -120,8 +124,8 @@ function uploadMissingLogs() {
     tracking_file="${LOG_DIR}/archive_status/${wal_name}.uploading"
     if [ -f "$tracking_file" ]; then
       file_age=$(($(date +%s) - $(date -r "$tracking_file" +%s)))
-      # If file is older than 5 minutes, we assume the previous attempt failed
-      if [ "$file_age" -lt 300 ]; then
+      # If file is older than the retry interval, we assume the previous attempt failed
+      if [ "$file_age" -lt ${UPLOAD_MISSING_LOGS_RETRY_INTERVAL} ]; then
         DP_log "Skipping ${wal_name} - recent upload attempt in progress"
         continue
       fi
@@ -132,26 +136,27 @@ function uploadMissingLogs() {
     ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push ${LOG_DIR}/${wal_name}
     exit_code=$?
 
-          # Check if rename succeeded by checking if .ready file still exists
-      if [ "$exit_code" -eq 0 ]; then
-        DP_log "WAL-G upload succeeded for ${wal_name}"
-        # Check if WAL-G renamed the file already
-        if [ -f "${LOG_DIR}/archive_status/${wal_name}.ready" ]; then
-          DP_log "WAL-G didn't rename status file, doing it manually for ${wal_name}"
-          mv "${LOG_DIR}/archive_status/${wal_name}.ready" "${LOG_DIR}/archive_status/${wal_name}.done" || DP_error_log "Failed to manually rename ${wal_name}.ready"
-        fi
-        # Only remove tracking file on success
-        rm -f "$tracking_file"
-      else
-        DP_error_log "Failed to upload ${wal_name}, exit code: ${exit_code}"
-        # Keep the tracking file on failure to prevent immediate retry
-        # Update the timestamp to track when the last retry happened
-        touch "$tracking_file"
+    # Check if rename succeeded by checking if .ready file still exists
+    if [ "$exit_code" -eq 0 ]; then
+      DP_log "WAL-G upload succeeded for ${wal_name}"
+      # Check if WAL-G renamed the file already
+      if [ -f "${LOG_DIR}/archive_status/${wal_name}.ready" ]; then
+        DP_log "WAL-G didn't rename status file, doing it manually for ${wal_name}"
+        mv "${LOG_DIR}/archive_status/${wal_name}.ready" "${LOG_DIR}/archive_status/${wal_name}.done" || DP_error_log "Failed to manually rename ${wal_name}.ready"
       fi
+      # Only remove tracking file on success
+      rm -f "$tracking_file"
+    else
+      DP_error_log "Failed to upload ${wal_name}, exit code: ${exit_code}"
+      # Keep the tracking file on failure to prevent immediate retry
+      # Update the timestamp to track when the last retry happened
+      touch "$tracking_file"
+    fi
   done
 }
 
 function check_pg_process() {
+    DP_log "check pg process is ok ..."
     local is_ok=false
     for ((i=1;i<4;i++));do
       is_secondary=$(${PSQL} -Atc "select pg_is_in_recovery()")
@@ -174,8 +179,8 @@ function check_pg_process() {
 
 # trap term signal
 trap "echo 'Terminating...' && exit 0" TERM
-DP_log "start to collect wal infos"
-config_wal_g "$(dirname $DP_BACKUP_BASE_PATH)/wal-g"
+DP_log "start to archive and update wal infos"
+config_wal_g "$(dirname "${DP_BACKUP_BASE_PATH}")/wal-g"
 while true; do
   # check if pg process is ok
   check_pg_process
@@ -183,5 +188,5 @@ while true; do
   uploadMissingLogs
   # save backup status which will be updated to `backup` CR by the sidecar
   save_backup_status
-  sleep ${LOG_ARCHIVE_SECONDS}
+  sleep "${LOG_ARCHIVE_SECONDS}"
 done
