@@ -420,12 +420,6 @@ WAL-G is an archival restoration tool for PostgreSQL, MySQL/MariaDB, and MS SQL 
 
 To create wal-g backup for the cluster, it is a multi-step process.
 
-1. configure WAL-G on all PostgreSQL pods
-
-```bash
-kubectl apply -f examples/postgresql/config-wal-g.yaml
-```
-
 1. set `archive_command` to `wal-g wal-push %p`
 
 ```bash
@@ -439,9 +433,6 @@ kubectl apply -f examples/postgresql/backup-wal-g.yaml
 ```bash
 kubectl apply -f examples/postgresql/backup-wal-g.yaml
 ```
-
-> [!NOTE]
-> if there is horizontal scaling out new pods after step 2, you need to do config-wal-g again
 
 ### [Restore](restore.yaml)
 

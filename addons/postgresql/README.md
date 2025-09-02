@@ -637,6 +637,7 @@ spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - pg-basebackup
   # - volume-snapshot
+  # - wal-g
   # - archive-wal
   backupMethod: pg-basebackup
   # Specifies the backup policy to be applied for this backup.
@@ -717,34 +718,6 @@ WAL-G is an archival restoration tool for PostgreSQL, MySQL/MariaDB, and MS SQL 
 
 To create wal-g backup for the cluster, it is a multi-step process.
 
-1. configure WAL-G on all PostgreSQL pods
-
-```yaml
-# cat examples/postgresql/config-wal-g.yaml
-apiVersion: dataprotection.kubeblocks.io/v1alpha1
-kind: Backup
-metadata:
-  name: pg-cluster-config-wal-g
-  namespace: demo
-spec:
-  # Specifies the backup method name that is defined in the backup policy.
-  # - pg-basebackup
-  # - volume-snapshot
-  # - config-wal-g and wal-g
-  # - archive-wal
-  backupMethod: config-wal-g
-  # Specifies the backup policy to be applied for this backup.
-  backupPolicyName: pg-cluster-postgresql-backup-policy
-  # Determines whether the backup contents stored in the backup repository should be deleted when the backup custom resource(CR) is deleted. Supported values are `Retain` and `Delete`. - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
-  # - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
-  # - `Delete` means that the backup content and its physical snapshot on backup repository are deleted.
-  deletionPolicy: Delete
-```
-
-```bash
-kubectl apply -f examples/postgresql/config-wal-g.yaml
-```
-
 1. set `archive_command` to `wal-g wal-push %p`
 
 ```yaml
@@ -758,7 +731,7 @@ spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - pg-basebackup
   # - volume-snapshot
-  # - config-wal-g and wal-g
+  # - wal-g
   # - archive-wal
   backupMethod: wal-g
   # Specifies the backup policy to be applied for this backup.
@@ -789,7 +762,7 @@ spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - pg-basebackup
   # - volume-snapshot
-  # - config-wal-g and wal-g
+  # - wal-g
   # - archive-wal
   backupMethod: wal-g
   # Specifies the backup policy to be applied for this backup.
@@ -804,9 +777,6 @@ spec:
 ```bash
 kubectl apply -f examples/postgresql/backup-wal-g.yaml
 ```
-
-> [!NOTE]
-> if there is horizontal scaling out new pods after step 2, you need to do config-wal-g again
 
 ### Restore
 
