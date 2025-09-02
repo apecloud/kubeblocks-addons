@@ -39,25 +39,28 @@ kubectl apply -f examples/kafka/cluster-separated.yaml
 ```
 
 ### [Horizontal scaling](horizontalscale.yaml)
-Horizontal scaling out or in specified components replicas in the cluster
+Horizontal scaling out or in specified components replicas in the cluster.
+This example assumes you are using the separated mode.
 ```bash
 kubectl apply -f examples/kafka/horizontalscale.yaml
 ```
 
 ### [Vertical scaling](verticalscale.yaml)
-Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
+Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster.
+This example assumes you are using the separated mode.
 ```bash
 kubectl apply -f examples/kafka/verticalscale.yaml
 ```
 
 ### [Expand volume](volumeexpand.yaml)
-Increase size of volume storage with the specified components in the cluster
+Increase size of volume storage with the specified components in the cluster.
+This example assumes you are using the separated mode.
 ```bash
 kubectl apply -f examples/kafka/volumeexpand.yaml
 ```
 
 ### [Restart](restart.yaml)
-Restart the specified components in the cluster
+Restart the specified components in the cluster. This example assumes you are using the separated mode.
 ```bash
 kubectl apply -f examples/kafka/restart.yaml
 ```
