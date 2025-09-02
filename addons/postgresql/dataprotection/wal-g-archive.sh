@@ -98,19 +98,24 @@ function save_backup_status() {
     DP_save_backup_status_info "${TOTAL_SIZE}" "${START_TIME}" "${END_TIME}"
 }
 
+# Upload missing ready WAL files and rename the ready file to done.
+# WAL-G should rename the file to done automatically, but sometimes it
+# doesn't work, so we need to manually rename the file.
+# Uses a tracking file system to prevent continuous retries on problem files.
+# If upload fails, we keep the tracking file and only retry after 5 minutes.
 function uploadMissingLogs() {
   while read -r env_file; do
     env_name=$(basename "$env_file")
     env_value=$(cat "$env_file")
     export "$env_name"="$env_value"
-  done < <(find ${VOLUME_DATA_DIR}/wal-g/env -type f)
+  done < <(find "${VOLUME_DATA_DIR}/wal-g/env" -type f)
 
   # Now iterate through ready WAL files and push them
   for ready_file in $(find "${LOG_DIR}/archive_status/" -name "*.ready" -type f | sort); do
     i=$(basename "$ready_file")
     wal_name=${i%.*}
     DP_log "upload ${wal_name} ..."
-    
+
     # Create a tracking file to avoid infinite retries
     tracking_file="${LOG_DIR}/archive_status/${wal_name}.uploading"
     if [ -f "$tracking_file" ]; then
@@ -122,25 +127,27 @@ function uploadMissingLogs() {
       fi
     fi
     touch "$tracking_file"
-    
+
     # Try upload with WAL-G
     ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push ${LOG_DIR}/${wal_name}
     exit_code=$?
-    
-    # Check if rename succeeded by checking if .ready file still exists
-    if [ "$exit_code" -eq 0 ]; then
-      DP_log "WAL-G upload succeeded for ${wal_name}"
-      # Check if WAL-G renamed the file already
-      if [ -f "${LOG_DIR}/archive_status/${wal_name}.ready" ]; then
-        DP_log "WAL-G didn't rename status file, doing it manually for ${wal_name}"
-        mv "${LOG_DIR}/archive_status/${wal_name}.ready" "${LOG_DIR}/archive_status/${wal_name}.done" || DP_error_log "Failed to manually rename ${wal_name}.ready"
+
+          # Check if rename succeeded by checking if .ready file still exists
+      if [ "$exit_code" -eq 0 ]; then
+        DP_log "WAL-G upload succeeded for ${wal_name}"
+        # Check if WAL-G renamed the file already
+        if [ -f "${LOG_DIR}/archive_status/${wal_name}.ready" ]; then
+          DP_log "WAL-G didn't rename status file, doing it manually for ${wal_name}"
+          mv "${LOG_DIR}/archive_status/${wal_name}.ready" "${LOG_DIR}/archive_status/${wal_name}.done" || DP_error_log "Failed to manually rename ${wal_name}.ready"
+        fi
+        # Only remove tracking file on success
+        rm -f "$tracking_file"
+      else
+        DP_error_log "Failed to upload ${wal_name}, exit code: ${exit_code}"
+        # Keep the tracking file on failure to prevent immediate retry
+        # Update the timestamp to track when the last retry happened
+        touch "$tracking_file"
       fi
-    else
-      DP_error_log "Failed to upload ${wal_name}, exit code: ${exit_code}"
-    fi
-    
-    # Remove tracking file
-    rm -f "$tracking_file"
   done
 }
 
