@@ -75,6 +75,7 @@ function writeSentinelInBaseBackupPath() {
 
 trap handle_exit EXIT
 set -e
+
 # config wal-g
 config_wal_g "$(dirname $DP_BACKUP_BASE_PATH)/wal-g"
 if check_archive_mode_enabled; then
@@ -83,6 +84,7 @@ else
     echo "Timeout waiting for archiving to be enabled. Please enable archiving first before proceeding with the operation."
     exit 1
 fi
+
 # 1. do full backup
 writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
 PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=5432 wal-g backup-push ${DATA_DIR} 2>&1 | tee result.txt

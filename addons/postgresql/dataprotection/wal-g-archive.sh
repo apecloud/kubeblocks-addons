@@ -111,7 +111,7 @@ function uploadMissingLogs() {
        env_value=$(cat "$env_file")
        export "$env_name"="$env_value"
      done < <(find ${VOLUME_DATA_DIR}/wal-g/env -type f)
-     
+
      # Ensure WAL-G knows where to find and update status files
      export WALG_ARCHIVE_STATUS_DIR="${LOG_DIR}/archive_status"
 

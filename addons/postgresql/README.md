@@ -637,7 +637,6 @@ spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - pg-basebackup
   # - volume-snapshot
-  # - config-wal-g and wal-g
   # - archive-wal
   backupMethod: pg-basebackup
   # Specifies the backup policy to be applied for this backup.

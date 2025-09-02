@@ -87,6 +87,7 @@ if [[ -z ${DP_PARENT_BACKUP_NAME} ]]; then
   echo "DP_PARENT_BACKUP_NAME is empty"
   exit 1
 fi
+
 # config wal-g
 config_wal_g "$(dirname $DP_BACKUP_BASE_PATH)/wal-g"
 
