@@ -157,6 +157,7 @@ build_redis_sentinel_conf() {
   fi
   set -x
   echo "aclfile /data/users.acl" >> /data/sentinel/redis-sentinel.conf
+  echo "ignore-warnings ARM64-COW-BUG" >> /data/sentinel/redis-sentinel.conf
   echo "build redis sentinel conf succeeded!"
 }
 

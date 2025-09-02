@@ -1,6 +1,7 @@
 bind * -::*
 tcp-backlog 511
 timeout 0
+ignore-warnings ARM64-COW-BUG
 tcp-keepalive 300
 daemonize no
 pidfile /var/run/redis_6379.pid
