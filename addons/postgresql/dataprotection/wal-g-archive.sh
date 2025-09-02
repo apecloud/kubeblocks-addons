@@ -105,31 +105,29 @@ function uploadMissingLogs() {
     env_value=$(cat "$env_file")
     export "$env_name"="$env_value"
   done < <(find ${VOLUME_DATA_DIR}/wal-g/env -type f)
-  
+
   # Ensure WAL-G knows where to find and update status files
   export WALG_ARCHIVE_STATUS_DIR="${LOG_DIR}/archive_status"
-  
+
   # Set PGDATA environment variable for WAL-G renaming to work
   export PGDATA="${DATA_DIR}"
-  
+
   # Create log directory if it doesn't exist
   mkdir -p "${RESTORE_SCRIPT_DIR}" 2>/dev/null
-  
+
   # Now iterate through WAL files and push them
   for ready_file in $(find "${LOG_DIR}/archive_status/" -name "*.ready" -type f | sort); do
     i=$(basename "$ready_file")
     wal_name=${i%.*}
     DP_log "upload ${wal_name}..."
-    
-    # Execute wal-push and capture the result to a log file
+
+        # Execute wal-push and capture the result to a log file
     ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push ${LOG_DIR}/${wal_name} > "${RESTORE_SCRIPT_DIR}/wal-g.log" 2>&1
     exit_code=$?
-    
-    # If the file was uploaded or already existed (indicated by the "already archived" message in the output)
-    # we need to manually rename the .ready file to .done to prevent continuous upload attempts
+
+    # Log the result but don't manually rename files - WAL-G handles this automatically
     if [ $exit_code -eq 0 ] || grep -q "already archived" "${RESTORE_SCRIPT_DIR}/wal-g.log" 2>/dev/null; then
-      DP_log "Successfully uploaded or file already exists, renaming status file for ${wal_name}"
-      mv "${LOG_DIR}/archive_status/${wal_name}.ready" "${LOG_DIR}/archive_status/${wal_name}.done" || DP_error_log "Failed to rename status file for ${wal_name}"
+      DP_log "Successfully uploaded or file already exists for ${wal_name}"
     else
       DP_error_log "Failed to upload ${wal_name}, exit code: ${exit_code}"
     fi
