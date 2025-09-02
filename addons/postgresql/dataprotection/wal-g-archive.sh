@@ -29,6 +29,7 @@ function config_wal_g() {
     echo "${walg_dir}/datasafed.conf" > ${walg_env}/WALG_DATASAFED_CONFIG
     echo "${datasafed_base_path}" > ${walg_env}/DATASAFED_BACKEND_BASE_PATH
     echo "true" > ${walg_env}/PG_READY_RENAME
+    echo "${LOG_DIR}/archive_status" > ${walg_env}/WALG_ARCHIVE_STATUS_DIR
     echo "zstd" > ${walg_env}/WALG_COMPRESSION_METHOD
     if [ -n "${DATASAFED_ENCRYPTION_ALGORITHM}" ]; then
       echo "${DATASAFED_ENCRYPTION_ALGORITHM}" > ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM
@@ -62,9 +63,9 @@ function pull_wal_log() {
 
 function get_wal_log_end_time() {
     wal_file="${1:?missing file name to pull}"
-    mkdir -p ${KB_BACKUP_WORKDIR} && cd ${KB_BACKUP_WORKDIR}
+    mkdir -p "${KB_BACKUP_WORKDIR}" && cd "${KB_BACKUP_WORKDIR}" || return 1
     pull_wal_log ${wal_file}
-    wal_file_name=$(DP_get_file_name_without_ext `basename ${wal_file}`)
+    wal_file_name=$(DP_get_file_name_without_ext "$(basename "${wal_file}")")
     local END_TIME=$(pg_waldump $wal_file_name --rmgr=Transaction 2>/dev/null | grep 'desc: COMMIT' |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
     if [[ ! -z ${END_TIME} ]];then
        END_TIME=$(date -d "${END_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
@@ -78,7 +79,7 @@ function get_wal_log_end_time() {
 function save_backup_status() {
     local TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
     # if no size changes, return
-    if [[ -z ${TOTAL_SIZE} || ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == ${GLOBAL_OLD_SIZE} ]];then
+    if [[ -z ${TOTAL_SIZE} || ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == "${GLOBAL_OLD_SIZE}" ]];then
        return
     fi
     GLOBAL_OLD_SIZE=${TOTAL_SIZE}
@@ -98,7 +99,9 @@ function save_backup_status() {
 }
 
 function uploadMissingLogs() {
-  for i in $(ls -tr ${LOG_DIR}/archive_status/ | grep .ready); do
+  # Use find instead of ls | grep to avoid issues with filenames
+  for i in $(find "${LOG_DIR}/archive_status/" -name "*.ready" -type f | sort); do
+    i=$(basename "$i")
      wal_name=${i%.*}
      DP_log "upload ${wal_name}..."
 
@@ -108,6 +111,9 @@ function uploadMissingLogs() {
        env_value=$(cat "$env_file")
        export "$env_name"="$env_value"
      done < <(find ${VOLUME_DATA_DIR}/wal-g/env -type f)
+     
+     # Ensure WAL-G knows where to find and update status files
+     export WALG_ARCHIVE_STATUS_DIR="${LOG_DIR}/archive_status"
 
      ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push ${LOG_DIR}/${wal_name}
   done
