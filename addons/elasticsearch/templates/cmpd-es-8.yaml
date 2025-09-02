@@ -206,13 +206,13 @@ spec:
             name: local-plugins
           - mountPath: /tmp/plugins
             name: plugins
-      - name: install-keystore-agent
+      - name: install-es-agent
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         command:
           - sh
           - -c
           - |
-            cp /usr/local/bin/agent /mnt/local-bin/keystore-agent
+            cp /usr/local/bin/agent /mnt/local-bin/es-agent
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -357,11 +357,11 @@ spec:
           initialDelaySeconds: 1
           timeoutSeconds: 5
           periodSeconds: 5
-      - name: agent
+      - name: es-agent
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.agent.repository }}:{{ .Values.image.agent.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         command:
-        - /usr/share/elasticsearch/bin/keystore-agent
+        - /usr/share/elasticsearch/bin/es-agent
         ports:
         - name: agent
           containerPort: 8080
