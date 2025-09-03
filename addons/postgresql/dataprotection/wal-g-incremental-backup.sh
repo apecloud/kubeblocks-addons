@@ -116,7 +116,6 @@ ${PSQL} -c "select pg_switch_wal();"
 echo "" | datasafed push - "/basebackups_005/${backupName}_dp_${DP_BACKUP_NAME}"
 writeSentinelInBaseBackupPath "${backupName}" "wal-g-backup-name"
 
-
 # 4. stat startTime,stopTime,totalSize for this backup
 sentinel_file="/basebackups_005/${backupName}_backup_stop_sentinel.json"
 datasafed pull ${sentinel_file} backup_stop_sentinel.json
