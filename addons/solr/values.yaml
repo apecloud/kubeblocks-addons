@@ -5,7 +5,7 @@
 images:
   solr:
     registry: docker.io
-    repository: bitnami/solr
+    repository: apecloud/solr
     pullPolicy: IfNotPresent
     tag: 8.11.2
 
