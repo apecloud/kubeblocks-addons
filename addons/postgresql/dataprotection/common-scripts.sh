@@ -56,7 +56,7 @@ function DP_purge_expired_files() {
   fi
   expiredUnix=$((${currentUnix}-${DP_TTL_SECONDS}))
   files=$(datasafed list -f --recursive --older-than ${expiredUnix} ${root_path} )
-  for file in ${files[@]}
+  for file in ${files}
   do
       datasafed rm ${file}
       echo ${file}
