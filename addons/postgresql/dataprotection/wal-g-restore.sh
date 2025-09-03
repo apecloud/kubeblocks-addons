@@ -30,12 +30,12 @@ function config_wal_g_for_fetch_wal_log() {
     echo "${walg_dir}/datasafed.conf" > ${walg_env}/WALG_DATASAFED_CONFIG
     echo "${datasafed_base_path}" > ${walg_env}/DATASAFED_BACKEND_BASE_PATH
     echo "zstd" > ${walg_env}/WALG_COMPRESSION_METHOD
-    if [ -n ${DATASAFED_ENCRYPTION_ALGORITHM} ]; then
+    if [ -n "${DATASAFED_ENCRYPTION_ALGORITHM}" ]; then
       echo "${DATASAFED_ENCRYPTION_ALGORITHM}" > ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM
     elif [ -f ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM ]; then
        rm ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM
     fi
-    if [ -n ${DATASAFED_ENCRYPTION_PASS_PHRASE} ]; then
+    if [ -n "${DATASAFED_ENCRYPTION_PASS_PHRASE}" ]; then
        echo "${DATASAFED_ENCRYPTION_PASS_PHRASE}" > ${walg_env}/DATASAFED_ENCRYPTION_PASS_PHRASE
     elif [ -f ${walg_env}/DATASAFED_ENCRYPTION_PASS_PHRASE ]; then
        rm ${walg_env}/DATASAFED_ENCRYPTION_PASS_PHRASE
@@ -55,15 +55,14 @@ wal-g backup-fetch ${DATA_DIR} ${backupName}
 if [ ! -z "${DP_RESTORE_TIMESTAMP}" ]; then
    exit 0
 fi
-# 3. config restore script for leader restore
+# 3. config restore script
 touch ${DATA_DIR}/recovery.signal;
 mkdir -p ${RESTORE_SCRIPT_DIR} && chmod 777 -R ${RESTORE_SCRIPT_DIR} && touch ${RESTORE_SCRIPT_DIR}/kb_restore.signal;
 echo "#!/bin/bash" > ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 echo "[[ -d '${DATA_DIR}.old' ]] && [[ ! -d '${DATA_DIR}.failed' ]] && mv -f ${DATA_DIR}.old/* ${DATA_DIR}/ && rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
-echo "[[ -d '${DATA_DIR}.failed' ]] && mkdir -p ${DATA_DIR}/ && mv -f ${DATA_DIR}.failed/* ${DATA_DIR}/ && rm -rf ${DATA_DIR}/recovery.signal && rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
+echo "[[ -d '${DATA_DIR}.failed' ]] && mkdir -p ${DATA_DIR}/ && mv -f ${DATA_DIR}.failed/* ${DATA_DIR}/ && rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal && rm -rf ${DATA_DIR}/recovery.signal;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 echo "sync;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 chmod +x ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
-
 
 # 4. config wal-g to fetch wal logs
 config_wal_g_for_fetch_wal_log "${backupRepoPath}"

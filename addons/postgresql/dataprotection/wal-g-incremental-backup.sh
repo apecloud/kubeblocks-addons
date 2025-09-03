@@ -22,6 +22,32 @@ function handle_exit() {
   fi
 }
 
+function config_wal_g() {
+    walg_dir=${VOLUME_DATA_DIR}/wal-g
+    walg_env=${walg_dir}/env
+    mkdir -p ${walg_dir}/env
+    cp /etc/datasafed/datasafed.conf ${walg_dir}/datasafed.conf
+    cp /usr/bin/wal-g ${walg_dir}/wal-g
+    datasafed_base_path=${1:?missing datasafed_base_path}
+    # config wal-g env
+    # config WALG_PG_WAL_SIZE with wal_segment_size which fetched by psql
+    # echo "" > ${walg_env}/WALG_PG_WAL_SIZE
+    echo "${walg_dir}/datasafed.conf" > ${walg_env}/WALG_DATASAFED_CONFIG
+    echo "${datasafed_base_path}" > ${walg_env}/DATASAFED_BACKEND_BASE_PATH
+    echo "true" > ${walg_env}/PG_READY_RENAME
+    echo "zstd" > ${walg_env}/WALG_COMPRESSION_METHOD
+    if [ -n "${DATASAFED_ENCRYPTION_ALGORITHM}" ]; then
+      echo "${DATASAFED_ENCRYPTION_ALGORITHM}" > ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM
+    elif [ -f ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM ]; then
+       rm ${walg_env}/DATASAFED_ENCRYPTION_ALGORITHM
+    fi
+    if [ -n "${DATASAFED_ENCRYPTION_PASS_PHRASE}" ]; then
+       echo "${DATASAFED_ENCRYPTION_PASS_PHRASE}" > ${walg_env}/DATASAFED_ENCRYPTION_PASS_PHRASE
+    elif [ -f ${walg_env}/DATASAFED_ENCRYPTION_PASS_PHRASE ]; then
+       rm ${walg_env}/DATASAFED_ENCRYPTION_PASS_PHRASE
+    fi
+}
+
 function getWalGSentinelInfo() {
   local sentinelFile=${1}
   local out=$(datasafed list ${sentinelFile})
@@ -62,13 +88,16 @@ if [[ -z ${DP_PARENT_BACKUP_NAME} ]]; then
   exit 1
 fi
 
+# config wal-g
+config_wal_g "$(dirname $DP_BACKUP_BASE_PATH)/wal-g"
+
 # 2. parent backup name of the wal-g
 export DATASAFED_BACKEND_BASE_PATH=$(dirname ${DP_BACKUP_BASE_PATH})/${DP_PARENT_BACKUP_NAME}
 parentWalGBackupName=$(getWalGSentinelInfo "wal-g-backup-name")
 
 # 1. incremental backup
-writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
 set +e
+writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
 PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=5432 wal-g backup-push ${DATA_DIR} --delta-from-name ${parentWalGBackupName} 2>&1 | tee result.txt
 
 # 2. get backup name of the wal-g
@@ -78,6 +107,7 @@ if [[ -z ${backupName} ]] || [[ ${backupName} != "base_"* ]];then
    exit 1
 fi
 
+set +e
 echo "switch wal log"
 PSQL="psql -h ${KB_CLUSTER_COMP_NAME}-${KB_COMP_NAME} -U ${DP_DB_USER} -d postgres"
 ${PSQL} -c "select pg_switch_wal();"
@@ -85,7 +115,6 @@ ${PSQL} -c "select pg_switch_wal();"
 # 3. add sentinel file for this backup CR
 echo "" | datasafed push - "/basebackups_005/${backupName}_dp_${DP_BACKUP_NAME}"
 writeSentinelInBaseBackupPath "${backupName}" "wal-g-backup-name"
-
 
 # 4. stat startTime,stopTime,totalSize for this backup
 sentinel_file="/basebackups_005/${backupName}_backup_stop_sentinel.json"
