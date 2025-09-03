@@ -13,7 +13,7 @@ kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v0.9.
 # If github is not accessible or very slow for you, please use following command instead
 kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v0.9.0/kubeblocks_crds.yaml
 
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
@@ -24,12 +24,12 @@ helm repo update
 # Install KubeBlocks
 helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="0.9.0"
 ```
- 
+
 
 ## Examples
 
-### [Create](cluster.yaml) 
-Create a postgresql cluster with specified cluster definition 
+### [Create](cluster.yaml)
+Create a postgresql cluster with specified cluster definition
 ```bash
 kubectl apply -f examples/postgresql/cluster.yaml
 ```
@@ -110,8 +110,8 @@ BackupRepo is the storage repository for backup data, using the full backup and 
 kubectl create secret generic <storage-provider>-credential-for-backuprepo\
   --from-literal=accessKeyId=<ACCESS KEY> \
   --from-literal=secretAccessKey=<SECRET KEY> \
-  -n kb-system 
-  
+  -n kb-system
+
 kubectl apply -f examples/postgresql/backuprepo.yaml
 ```
 
@@ -123,9 +123,20 @@ kubectl apply -f examples/postgresql/backup.yaml
 Create wal-g backup for the cluster
 ```bash
 # Step 1: you cannot do wal-g backup for a brand-new cluster, you need to insert some data before backup
-# step 2: config-wal-g backup to put the wal-g binary to postgresql pods and configure the archive_command
-# Note: if there is horizontal scaling out new pods after step 2, you need to do config-wal-g again
-kubectl apply -f examples/postgresql/config-wal-g.yaml
+# step 2: edit the cluster to enable the cluster PITR and set continuous backup method to `wal-g-archive`
+NOTE: wal-g backup rely on the wal-g archive to backup the wal files, so you need to enable the wal-g archive first.
+
+kubectl edit cluster pg-cluster -n default
+
+...
+spec:
+  backup:
+    continuousMethod: wal-g-archive
+    enabled: true
+    method: wal-g
+    pitrEnabled: true
+...
+
 # Step 3: do wal-g backup
 kubectl apply -f examples/postgresql/backup-wal-g.yaml
 # Step 4:log in to the cluster, and manually upload wal with following sql statement
