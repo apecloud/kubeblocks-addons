@@ -27,7 +27,7 @@ spec:
       value: primary
   backup:
     backupData:
-      image: {{ include "postgresql.repository" . }}:$(IMAGE_TAG)
+      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: true

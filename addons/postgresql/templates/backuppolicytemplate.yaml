@@ -63,23 +63,6 @@ spec:
       targetVolumes:
         volumes:
           - data
-    - name: config-wal-g
-      target:
-        role: ""
-        strategy: All
-      actionSetName: postgresql-config-wal-g
-      snapshotVolumes: false
-      targetVolumes:
-        volumeMounts:
-          - name: data
-            mountPath: {{ .Values.dataMountPath }}
-    - name: config-replica-wal-g
-      actionSetName: postgresql-config-wal-g
-      snapshotVolumes: false
-      targetVolumes:
-        volumeMounts:
-          - name: data
-            mountPath: {{ .Values.dataMountPath }}
     - name: wal-g
       actionSetName: postgresql-wal-g
       snapshotVolumes: false
