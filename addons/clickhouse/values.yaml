@@ -15,7 +15,7 @@ commonAnnotations: {}
 
 image:
   registry: docker.io
-  repository: bitnami/clickhouse
+  repository: apecloud/clickhouse
   pullPolicy: IfNotPresent
 
 clickhouseVersions:
