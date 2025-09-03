@@ -188,6 +188,7 @@ build_redis_sentinel_conf() {
   fi
   set_xtrace_when_ut_mode_false
   echo "aclfile /data/users.acl">> $redis_sentinel_real_conf
+  echo "ignore-warnings ARM64-COW-BUG" >> $redis_sentinel_real_conf
   echo "build redis sentinel conf succeeded!"
 }
 

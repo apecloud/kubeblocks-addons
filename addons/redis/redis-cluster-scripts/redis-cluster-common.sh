@@ -690,6 +690,7 @@ secondary_member_leave_del_node() {
 
 secondary_member_leave_del_node_with_retry() {
   local available_node="$1"
+  local node_to_del_cluster_id="$2"
   local do_forget_node="$3"
   check_result=$(call_func_with_retry $check_ready_times $retry_delay_second secondary_member_leave_del_node "$available_node" "$node_to_del_cluster_id" "$do_forget_node")
   status=$?

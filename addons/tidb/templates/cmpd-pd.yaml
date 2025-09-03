@@ -92,8 +92,6 @@ spec:
             {{- .Files.Get "scripts/pd_memberleave.sh" | nindent 14 }}
     switchover:
       exec:
-        targetPodSelector: Role
-        matchingKey: leader
         command:
           - bash
           - -c
