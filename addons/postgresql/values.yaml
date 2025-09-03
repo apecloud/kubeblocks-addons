@@ -64,7 +64,7 @@ metrics:
   image:
     # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
-    repository: prometheuscommunity/postgres-exporter
+    repository: apecloud/postgres-exporter
     tag: v0.15.0
     pullPolicy: IfNotPresent
   service:
@@ -126,7 +126,7 @@ pgbouncer:
     # refer: https://hub.docker.com/r/bitnami/pgbouncer
     # if the value of pgbouncer.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
-    repository: bitnami/pgbouncer
+    repository: apecloud/pgbouncer
     tag: 1.19.0
     pullPolicy: IfNotPresent
 
