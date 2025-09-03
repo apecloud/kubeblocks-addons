@@ -5,12 +5,9 @@ source /scripts/common.sh
 
 function retry_add_hosts() {
   sql="ADD HOSTS \"${POD_FQDN}\":9779"
-  for ((i=1; i<=5; i++)); do
-     /usr/local/nebula/console/nebula-console --addr $GRAPHD_SVC_NAME --port $GRAPHD_SVC_PORT --user root --password ${NEBULA_ROOT_PASSWORD} -e "${sql}"
-     if [[ $? -eq 0 ]]; then
-       break
-     fi
-     echo "Retrying to add hosts, attempt $i..."
+  until /usr/local/nebula/console/nebula-console --addr $GRAPHD_SVC_NAME --port $GRAPHD_SVC_PORT --user root --password ${NEBULA_ROOT_PASSWORD} -e "${sql}"; do
+    echo "Retrying to add hosts, attempt..."
+    sleep 2
   done
 }
 
