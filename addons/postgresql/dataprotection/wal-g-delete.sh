@@ -24,7 +24,7 @@ fi
 backupName=$(getWalGSentinelInfo "wal-g-backup-name")
 export DATASAFED_BACKEND_BASE_PATH=${backupRepoPath}
 if [[ -z ${backupName} ]]; then
-   echo "INFO: delete unsuccessfully backup files"
+   echo "INFO: delete unsuccessfully backup files."
    wal-g delete garbage BACKUPS --confirm
    exit 0
 fi
@@ -38,11 +38,11 @@ if [[ ${dpBackupFilesCount} -le 1 ]]; then
 fi
 datasafed rm "/basebackups_005/${backupName}_dp_${DP_BACKUP_NAME}"
 
-
 # 4. delete outdated WAL archive when existing other full backups.
 base_backup_list=$(datasafed list /basebackups_005 -d)
 if [[ ! -z ${base_backup_list} ]]; then
   echo "INFO: delete outdated WAL archive."
   wal-g delete garbage ARCHIVES --confirm
 fi
+
 
