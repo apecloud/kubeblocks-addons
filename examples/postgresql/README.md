@@ -124,7 +124,7 @@ Create wal-g backup for the cluster
 ```bash
 # Step 1: you cannot do wal-g backup for a brand-new cluster, you need to insert some data before backup
 # step 2: edit the cluster to enable the cluster PITR and set continuous backup method to `wal-g-archive`
-NOTE: wal-g backup rely on the wal-g archive to backup the wal files, so you need to enable the wal-g archive first.
+# NOTE: wal-g backup requires the wal-g archive to backup the wal files, so you need to enable the wal-g archive first.
 
 kubectl edit cluster pg-cluster -n default
 
