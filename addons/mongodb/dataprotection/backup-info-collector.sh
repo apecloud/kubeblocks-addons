@@ -1,3 +1,4 @@
+# shellcheck disable=SC2148
 function get_current_time() {
   if [ -n "$(whereis mongosh | awk '{print $2}')" ]; then
     CLIENT="mongosh"
