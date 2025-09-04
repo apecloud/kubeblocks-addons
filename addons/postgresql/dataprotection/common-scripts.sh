@@ -41,7 +41,6 @@ function DP_save_backup_status_info() {
     fi
 }
 
-
 # Clean up expired logfiles.
 # Default interval is 60s
 # Default rootPath is /

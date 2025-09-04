@@ -24,7 +24,7 @@ spec:
       changes: ""
       serviceVersion: {{ .version }}
       images:
-        pg-init-container: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
+        pg-init-container: {{ include "postgresql.walgImage" $ }}
         exporter: {{ include "postgresql.metricsImage" $ }}
         postgresql: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
         pgbouncer: {{ include "postgresql.pgbouncerImage" $ }}
