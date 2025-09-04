@@ -63,15 +63,17 @@ redisVersions:
         imageTag: "7.4.0-v6"
   - major: "8"
     componentDef: "redis-8"
-    serviceVersion: "8.0.3"
+    serviceVersion: "8.2.1"
     clusterComponentDef: "redis-cluster-8"
     sentinelComponentDef: "redis-sentinel-8"
-    defaultImageTag: "8.0.3"
+    defaultImageTag: "8.2.1"
     mirrorVersions:
       - version: "8.0.1"
         imageTag: "8.0.1"
       - version: "8.0.3"
         imageTag: "8.0.3"
+      - version: "8.2.1"
+        imageTag: "8.2.1"
 
 image:
   # refer: https://redis.io/docs/stack/
