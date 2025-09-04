@@ -5,67 +5,66 @@ metadata:
   namespace: demo
 spec:
   terminationPolicy: Delete
-  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  # Note: DO NOT UPDATE THIS FIELD
-  # The value must be `kafaka` to create a Kafka Cluster
   clusterDef: kafka
-  # Specifies the name of the ClusterTopology to be used when creating the
-  # Cluster.
-  # - combined: combined Kafka controller (KRaft) and broker in one Component
-  # - combined_monitor: combined mode with monitor component
-  # - separated: separated KRaft and Broker Components.
-  # - separated_monitor: separated mode with monitor component
-  # Valid options are: [combined,combined_monitor,separated,separated_monitor,kafka2-external-zk]
   topology: kafka2-external-zk
-  services:
-    - name: bootstrap
-      serviceName: bootstrap
-      componentSelector: kafka-broker
-      spec:
-        type: ClusterIP
-        ports:
-          - name: kafka-client
-            targetPort: 9092
-            port: 9092
   componentSpecs:
-    - name: kafka-broker
-      componentDef: kafka27-broker
-      serviceRefs:
-        - name: kafkaZookeeper
-          namespace: demo
-          serviceDescriptor: kafka-cluster-zookeeper-service
-      tls: false
-      replicas: 3
-      env:
-        - name: KB_BROKER_DIRECT_POD_ACCESS
-          value: 'true'
-        - name: KAFKA_HEAP_OPTS
-          value: "-Xmx500m -Xms500m"
-        - name: KB_KAFKA_ZK_SUB_PATH
-          value: "test"   # set sub path to use for sharing zk, default value is $(CLUSTER_NAME), set empty string for root
-      resources:
-        limits:
-          cpu: '0.5'
-          memory: 0.5Gi
-        requests:
-          cpu: '0.5'
-          memory: 0.5Gi
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
-        - name: metadata
-          spec:
-            storageClassName: null
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 5Gi
+  - name: kafka-broker
+    replicas: 3
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: 0.5Gi
+      requests:
+        cpu: "0.5"
+        memory: 0.5Gi
+    serviceRefs:
+    - name: kafkaZookeeper
+      namespace: kubeblocks-cloud-ns
+      # Alternatively, you can reference a kubeblocks cluster
+      serviceDescriptor: kafka-cluster-zookeeper-service
+    services:
+    - name: advertised-listener
+      podService: true
+      serviceType: ClusterIP
+    env:
+    - name: KB_KAFKA_ENABLE_SASL_SCRAM
+      value: "false"
+    - name: KB_KAFKA_BROKER_HEAP
+      value: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
+    - name: KB_KAFKA_CONTROLLER_HEAP
+      value: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
+    - name: KB_BROKER_DIRECT_POD_ACCESS
+      value: "false"
+    # By default, broker will store metadata in zookeeper's /$(CLUSTER_NAME) subpath.
+    # If you want to change it, set a `KB_KAFKA_ZK_SUB_PATH` env.
+    tls: false
+    volumeClaimTemplates:
+    - name: data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+    - name: metadata
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+  - name: kafka-exporter
+    replicas: 1
+    env:
+    - name: KB_KAFKA_ENABLE_SASL_SCRAM
+      value: "false"
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: 1Gi
+      requests:
+        cpu: "0.1"
+        memory: 0.2Gi
 ---
 apiVersion: apps.kubeblocks.io/v1
 kind: ServiceDescriptor
