@@ -6,7 +6,6 @@ postgres_conf_file="/home/postgres/pgdata/conf/postgresql.conf"
 postgres_log_dir="/home/postgres/pgdata/logs/"
 postgres_scripts_log_file="${postgres_log_dir}/scripts.log"
 postgres_walg_dir="/home/postgres/pgdata/wal-g"
-spilo_scripts_dir="/spilo"
 
 build_real_postgres_conf() {
   mkdir -p "$postgres_conf_dir"
@@ -25,18 +24,39 @@ init_postgres_log() {
 prepare_shared_volume() {
   # Create original wal-g directory
   mkdir -p ${postgres_walg_dir}
-  
+
+  source_dir="/spilo-init"
+  target_dir="/spilo"
+
   # Copy wal-g binary if available
-  if [ -f "${spilo_scripts_dir}/bin/wal-g" ]; then
-    echo "Copying wal-g from ${spilo_scripts_dir}/bin to ${postgres_walg_dir}"
-    cp "${spilo_scripts_dir}/bin/wal-g" "${postgres_walg_dir}/wal-g"
+  if [ -f "${source_dir}/bin/wal-g" ]; then
+    echo "Copying wal-g from ${source_dir}/bin to ${postgres_walg_dir}"
+    cp "${source_dir}/bin/wal-g" "${postgres_walg_dir}/wal-g"
   else
-    echo "Warning: wal-g binary not found at ${spilo_scripts_dir}/bin/wal-g"
+    echo "Warning: wal-g binary not found at ${source_dir}/bin/wal-g"
   fi
-  
-  # Log available files in spilo directory for reference
-  echo "Files available in ${spilo_scripts_dir} directory:"
-  ls -la ${spilo_scripts_dir} 2>/dev/null || echo "No files found in ${spilo_scripts_dir}"
+
+  # Copy all files from source_dir to the shared volume (target_dir)
+  if [ -d "${source_dir}" ]; then
+    echo "Copying files from ${source_dir} to shared volume ${target_dir} (excluding bin directory)"
+
+    # Loop through all items in source directory
+    for item in "${source_dir}"/*; do
+      item_name=$(basename "${item}")
+
+      # Skip the bin directory
+      if [ "${item_name}" != "bin" ]; then
+        echo "Copying ${item} to ${target_dir}/"
+        cp -a "${item}" "${target_dir}/" 2>/dev/null || echo "Failed to copy ${item}"
+      fi
+    done
+
+    # List files copied to the shared volume
+    echo "Files available in shared volume ${target_dir}:"
+    ls -la ${target_dir}/ 2>/dev/null || echo "No files found in ${target_dir}"
+  else
+    echo "Warning: Source directory ${source_dir} not found, nothing to copy"
+  fi
 }
 
 # This is magic for shellspec ut framework.
