@@ -10,10 +10,10 @@ image:
   registry: docker.io
   pullPolicy: IfNotPresent
   influxdb:
-    repository: bitnami/influxdb
+    repository: apecloud/influxdb
     tag: 2.7.11-debian-12-r18
   init:
-    repository: bitnami/os-shell
+    repository: apecloud/os-shell
     tag: 11-debian-11-r93
 
 configPath: /opt/bitnami/influxdb/etc
