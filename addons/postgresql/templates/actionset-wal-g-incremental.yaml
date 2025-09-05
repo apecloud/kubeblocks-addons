@@ -20,7 +20,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
+      image: {{ include "postgresql.walgImage" . }}
       runOnTargetPodNode: true
       command:
         - bash
@@ -31,7 +31,7 @@ spec:
         enabled: true
         intervalSeconds: 5
     preDelete:
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
+      image: {{ include "postgresql.walgImage" . }}
       command:
         - bash
         - -c
@@ -39,7 +39,7 @@ spec:
           {{- .Files.Get "dataprotection/wal-g-delete.sh" | nindent 10 }}
   restore:
     prepareData:
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
+      image: {{ include "postgresql.walgImage" . }}
       command:
         - bash
         - -c

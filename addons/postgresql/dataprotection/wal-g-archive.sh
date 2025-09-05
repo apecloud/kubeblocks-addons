@@ -24,9 +24,13 @@ function config_wal_g() {
     walg_dir=${VOLUME_DATA_DIR}/wal-g
     walg_env=${walg_dir}/env
 
+    if [ ! -f "${walg_dir}/wal-g" ]; then
+        DP_log "wal-g binary not found at ${walg_dir}/wal-g, exiting..."
+        exit 1
+    fi
+
     mkdir -p ${walg_dir}/env
     cp /etc/datasafed/datasafed.conf ${walg_dir}/datasafed.conf
-    cp /usr/bin/wal-g ${walg_dir}/wal-g
 
     echo "${walg_dir}/datasafed.conf" > ${walg_env}/WALG_DATASAFED_CONFIG
     echo "${datasafed_base_path}" > ${walg_env}/DATASAFED_BACKEND_BASE_PATH
@@ -76,10 +80,8 @@ function get_wal_log_end_time() {
     rm -rf $wal_file_name
 }
 
-
 # save backup status info to sync file
 function save_backup_status() {
-   DP_log "save backup status info to sync file ${DP_BACKUP_INFO_FILE} ..."
     local TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
     # if no size changes, return
     if [[ -z ${TOTAL_SIZE} || ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == "${GLOBAL_OLD_SIZE}" ]];then
@@ -107,11 +109,12 @@ function save_backup_status() {
 # Uses a tracking file system to prevent continuous retries on problem files.
 # If upload fails, we keep the tracking file and only retry after UPLOAD_MISSING_LOGS_RETRY_INTERVAL minutes.
 function uploadMissingLogs() {
-  DP_log "start to upload missing ready WAL files..."
+  # Build environment variables command prefix without affecting global env
+  env_cmd_prefix="env"
   while read -r env_file; do
     env_name=$(basename "$env_file")
     env_value=$(cat "$env_file")
-    export "$env_name"="$env_value"
+    env_cmd_prefix="$env_cmd_prefix $env_name=\"$env_value\""
   done < <(find "${VOLUME_DATA_DIR}/wal-g/env" -type f)
 
   # Now iterate through ready WAL files and push them
@@ -132,8 +135,8 @@ function uploadMissingLogs() {
     fi
     touch "$tracking_file"
 
-    # Try upload with WAL-G
-    ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push ${LOG_DIR}/${wal_name}
+    # Try upload with WAL-G using the env command to avoid affecting global variables
+    eval ${env_cmd_prefix} ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push ${LOG_DIR}/${wal_name}
     exit_code=$?
 
     # Check if rename succeeded by checking if .ready file still exists
@@ -156,7 +159,6 @@ function uploadMissingLogs() {
 }
 
 function check_pg_process() {
-    DP_log "check pg process is ok ..."
     local is_ok=false
     for ((i=1;i<4;i++));do
       is_secondary=$(${PSQL} -Atc "select pg_is_in_recovery()")
