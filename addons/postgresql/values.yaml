@@ -18,11 +18,15 @@ image:
   repository: apecloud/spilo
   digest: ""
   walg:
+    repository: apecloud/wal-g
     tag: postgres-1.2
   # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
   dbctl:
     repository: apecloud/dbctl
     tag: "0.2.0"
+  init:
+    repository: apecloud/spilo-init
+    tag: "0.1"
 
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'

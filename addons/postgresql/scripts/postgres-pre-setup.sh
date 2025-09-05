@@ -5,6 +5,7 @@ postgres_conf_dir="/home/postgres/pgdata/conf/"
 postgres_conf_file="/home/postgres/pgdata/conf/postgresql.conf"
 postgres_log_dir="/home/postgres/pgdata/logs/"
 postgres_scripts_log_file="${postgres_log_dir}/scripts.log"
+postgres_walg_dir="/home/postgres/pgdata/wal-g"
 
 build_real_postgres_conf() {
   mkdir -p "$postgres_conf_dir"
@@ -20,6 +21,11 @@ init_postgres_log() {
   chmod 666 "$postgres_scripts_log_file"
 }
 
+copy_necessary_binaries() {
+  mkdir -p "$postgres_walg_dir"
+  cp /spilo-init/bin/wal-g ${postgres_walg_dir}/wal-g
+}
+
 # This is magic for shellspec ut framework.
 # Sometime, functions are defined in a single shell script.
 # You will want to test it. but you do not want to run the script.
@@ -30,3 +36,4 @@ ${__SOURCED__:+false} : || return 0
 # main
 build_real_postgres_conf
 init_postgres_log
+copy_necessary_binaries
