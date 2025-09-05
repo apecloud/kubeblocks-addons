@@ -1,0 +1,12 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "mongod.paramsDefName" . }}
+  labels:
+    {{- include "mongodb.labels" . | nindent 4 }}
+spec:
+  fileName: mongodb.conf
+  parametersSchema:
+    topLevelKey: MongodParameter
+    cue: |-
+      {{- .Files.Get "config/mongod-config-constraint.cue" | nindent 6 }}
