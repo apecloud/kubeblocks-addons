@@ -269,9 +269,39 @@ spec:
       fsGroupChangePolicy: OnRootMismatch
     initContainers:
       - name: pg-init-container
-        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
+        imagePullPolicy: {{ include "postgresql.initImage" $ }}
         command:
-          - /kb-scripts/postgres-pre-setup.sh
+          - /bin/bash
+          - -c
+          - |
+            # Run the original pre-setup script
+            /kb-scripts/postgres-pre-setup.sh
+            
+            # Create shared directories
+            mkdir -p /shared/bin /shared/scripts
+            
+            # Copy binaries
+            if [ -d /usr/bin ]; then
+              echo "Copying essential binaries to shared volume..."
+              # Copy specific binaries needed by the main container
+              for bin in pg_waldump pg_controldata pg_resetwal pg_rewind; do
+                if [ -f /usr/bin/$bin ]; then
+                  echo "Copying $bin to shared volume"
+                  cp /usr/bin/$bin /shared/bin/
+                  chmod 755 /shared/bin/$bin
+                fi
+              done
+            fi
+            
+            # Copy scripts
+            if [ -d /scripts ] || [ -d /opt/scripts ]; then
+              echo "Copying scripts to shared volume..."
+              cp -r /scripts/* /shared/scripts/ 2>/dev/null || true
+              cp -r /opt/scripts/* /shared/scripts/ 2>/dev/null || true
+              chmod -R 755 /shared/scripts/
+            fi
+            
+            echo "Init container setup completed."
         volumeMounts:
           - name: data
             mountPath: /home/postgres/pgdata
@@ -279,13 +309,31 @@ spec:
             mountPath: /home/postgres/conf
           - name: scripts
             mountPath: /kb-scripts
+          - name: shared-files
+            mountPath: /shared
     containers:
       - name: postgresql
         imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
         securityContext:
           runAsUser: 0
         command:
-          - /kb-scripts/postgres-setup.sh
+          - /bin/bash
+          - -c
+          - |
+            # Add shared binaries to PATH
+            if [ -d /shared/bin ]; then
+              echo "Adding shared binaries to PATH"
+              export PATH=/shared/bin:$PATH
+              # Verify binaries are accessible
+              for bin in pg_waldump pg_controldata pg_resetwal pg_rewind; do
+                if [ -x /shared/bin/$bin ]; then
+                  echo "Found shared binary: $bin"
+                fi
+              done
+            fi
+            
+            # Execute the main setup script
+            exec /kb-scripts/postgres-setup.sh
         readinessProbe:
           failureThreshold: 3
           initialDelaySeconds: 10
@@ -311,6 +359,8 @@ spec:
             mountPath: /kb-scripts
           - mountPath: /tools
             name: tools
+          - name: shared-files
+            mountPath: /shared
         ports:
           - name: tcp-postgresql
             containerPort: 5432
@@ -473,4 +523,6 @@ spec:
           {{- with $.Values.shmVolume.sizeLimit }}
           sizeLimit: {{ . }}
           {{- end }}
+      - name: shared-files
+        emptyDir: {}
 {{- end -}}
