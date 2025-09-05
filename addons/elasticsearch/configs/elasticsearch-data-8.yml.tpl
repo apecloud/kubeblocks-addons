@@ -15,15 +15,9 @@ cluster:
 # INITIAL_MASTER_NODES_BLOCK_START
 {{- if eq $mode "multi-node" }}
   initial_master_nodes:
-  {{- $parts := splitList ";" .MASTER_CMP_REPLICA_LIST }}
-  {{- range $part := $parts }}
-    {{- if hasPrefix "master:" $part }}
-      {{- $masterPart := trimPrefix "master:" $part }}
-      {{- $masters := splitList "," $masterPart }}
-     {{- range $master := $masters }}
+  {{- $masters := splitList "," .MASTER_CMP_REPLICA_LIST }}
+  {{- range $master := $masters }}
   - {{ $master }}
-      {{- end }}
-    {{- end }}
   {{- end }}
 {{- end }}
 # INITIAL_MASTER_NODES_BLOCK_END
@@ -35,15 +29,9 @@ discovery:
 {{- end }}
 {{- if eq $mode "multi-node" }}
   seed_hosts:
-  {{- $parts := splitList ";" .MASTER_CMP_REPLICA_FQDN }}
-  {{- range $part := $parts }}
-    {{- if hasPrefix "master:" $part }}
-      {{- $masterPart := trimPrefix "master:" $part }}
-      {{- $masters := splitList "," $masterPart }}
-     {{- range $master := $masters }}
+  {{- $masters := splitList "," .MASTER_CMP_REPLICA_FQDN }}
+  {{- range $master := $masters }}
   - {{ $master }}
-      {{- end }}
-    {{- end }}
   {{- end }}
 {{- end }}
 
