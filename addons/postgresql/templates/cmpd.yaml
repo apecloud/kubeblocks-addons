@@ -290,15 +290,27 @@ spec:
           - /bin/bash
           - -c
           - |
-            # Add shared binaries to PATH
-            if [ -d /shared/bin ]; then
-              echo "Adding shared binaries to PATH"
-              export PATH=/shared/bin:$PATH
-              echo "PATH is now: $PATH"
+            # Copy files from shared volume to container local directory
+            if [ -d /shared ]; then
+              echo "Copying files from shared volume to local container directories..."
               
-              # Log available binaries for debugging
-              echo "Available binaries in /shared/bin:"
-              ls -la /shared/bin/
+              # Copy scripts to /scripts directory
+              mkdir -p /scripts
+              find /shared -type f -name "*.sh" -o -name "*.py" -o -name "*.sql" | while read file; do
+                dest_dir="/scripts/$(dirname "$file" | sed 's|^/shared||')"
+                mkdir -p "$dest_dir"
+                echo "Copying $file to $dest_dir/"
+                cp -a "$file" "$dest_dir/"
+              done
+              chmod -R 755 /scripts
+              
+              # Add our scripts directory to PATH
+              export PATH=/scripts:$PATH
+              
+              echo "Available scripts:"
+              find /scripts -type f | sort
+            else
+              echo "Warning: Shared volume not found or not mounted properly"
             fi
             
             # Execute the main setup script
