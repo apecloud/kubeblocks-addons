@@ -40,13 +40,13 @@ prepare_shared_volume() {
   # Copy files from source_dir to the shared volume (target_dir)
   if [ -d "${source_dir}" ]; then
     echo "Copying files from ${source_dir} to shared volume ${target_dir} (excluding bin directory)"
-    
+
     # Special handling for scripts directory - copy its contents directly to /spilo
     if [ -d "${source_dir}/scripts" ]; then
       echo "Copying scripts from ${source_dir}/scripts directly to ${target_dir}"
       cp -a "${source_dir}/scripts"/* "${target_dir}/" 2>/dev/null || echo "Failed to copy scripts"
     fi
-    
+
     # Copy other directories (except bin and scripts) with full structure
     for item in "${source_dir}"/*; do
       item_name=$(basename "${item}")
@@ -54,7 +54,7 @@ prepare_shared_volume() {
         cp -a "${item}" "${target_dir}/" 2>/dev/null || echo "Failed to copy ${item}"
       fi
     done
-    
+
     # List contents of target directory for verification
     echo "Contents of ${target_dir}:"
     ls -la ${target_dir}/ 2>/dev/null || echo "No files found in ${target_dir}"

@@ -238,3 +238,7 @@ Define image
 {{- define "postgresql.walgImage" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.walg.repository }}:{{ .Values.image.walg.tag }}
 {{- end }}
+
+{{- define "postgresql.initImage" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.init.repository }}:{{ .Values.image.init.tag }}
+{{- end }}

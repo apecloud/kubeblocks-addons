@@ -269,7 +269,7 @@ spec:
       fsGroupChangePolicy: OnRootMismatch
     initContainers:
       - name: pg-init-container
-        imagePullPolicy: {{ include "postgresql.initImage" $ }}
+        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
         command:
           - /kb-scripts/postgres-pre-setup.sh
         volumeMounts:
@@ -279,42 +279,15 @@ spec:
             mountPath: /home/postgres/conf
           - name: scripts
             mountPath: /kb-scripts
-          - name: shared-files
-            mountPath: /shared
+          - name: spilo-scripts
+            mountPath: /spilo
     containers:
       - name: postgresql
         imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
         securityContext:
           runAsUser: 0
         command:
-          - /bin/bash
-          - -c
-          - |
-            # Copy files from shared volume to container local directory
-            if [ -d /shared ]; then
-              echo "Copying files from shared volume to local container directories..."
-              
-              # Copy scripts to /scripts directory
-              mkdir -p /scripts
-              find /shared -type f -name "*.sh" -o -name "*.py" -o -name "*.sql" | while read file; do
-                dest_dir="/scripts/$(dirname "$file" | sed 's|^/shared||')"
-                mkdir -p "$dest_dir"
-                echo "Copying $file to $dest_dir/"
-                cp -a "$file" "$dest_dir/"
-              done
-              chmod -R 755 /scripts
-              
-              # Add our scripts directory to PATH
-              export PATH=/scripts:$PATH
-              
-              echo "Available scripts:"
-              find /scripts -type f | sort
-            else
-              echo "Warning: Shared volume not found or not mounted properly"
-            fi
-            
-            # Execute the main setup script
-            exec /kb-scripts/postgres-setup.sh
+          - /kb-scripts/postgres-setup.sh
         readinessProbe:
           failureThreshold: 3
           initialDelaySeconds: 10
@@ -340,8 +313,8 @@ spec:
             mountPath: /kb-scripts
           - mountPath: /tools
             name: tools
-          - name: shared-files
-            mountPath: /shared
+          - name: spilo-scripts
+            mountPath: /scripts
         ports:
           - name: tcp-postgresql
             containerPort: 5432
@@ -504,6 +477,6 @@ spec:
           {{- with $.Values.shmVolume.sizeLimit }}
           sizeLimit: {{ . }}
           {{- end }}
-      - name: shared-files
+      - name: spilo-scripts
         emptyDir: {}
 {{- end -}}

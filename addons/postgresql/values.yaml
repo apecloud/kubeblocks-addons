@@ -24,6 +24,9 @@ image:
   dbctl:
     repository: apecloud/dbctl
     tag: "0.2.0"
+  init:
+    repository: apecloud/spilo-init
+    tag: dev
 
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
