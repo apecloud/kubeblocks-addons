@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/bin/ash
+# shellcheck shell=dash
 
 postgres_template_conf_file="/home/postgres/conf/postgresql.conf"
 postgres_conf_dir="/home/postgres/pgdata/conf/"
@@ -36,23 +37,26 @@ prepare_shared_volume() {
     echo "Warning: wal-g binary not found at ${source_dir}/bin/wal-g"
   fi
 
-  # Copy all files from source_dir to the shared volume (target_dir)
+  # Copy files from source_dir to the shared volume (target_dir)
   if [ -d "${source_dir}" ]; then
     echo "Copying files from ${source_dir} to shared volume ${target_dir} (excluding bin directory)"
-
-    # Loop through all items in source directory
+    
+    # Special handling for scripts directory - copy its contents directly to /spilo
+    if [ -d "${source_dir}/scripts" ]; then
+      echo "Copying scripts from ${source_dir}/scripts directly to ${target_dir}"
+      cp -a "${source_dir}/scripts"/* "${target_dir}/" 2>/dev/null || echo "Failed to copy scripts"
+    fi
+    
+    # Copy other directories (except bin and scripts) with full structure
     for item in "${source_dir}"/*; do
       item_name=$(basename "${item}")
-
-      # Skip the bin directory
-      if [ "${item_name}" != "bin" ]; then
-        echo "Copying ${item} to ${target_dir}/"
+      if [ "${item_name}" != "bin" ] && [ "${item_name}" != "scripts" ]; then
         cp -a "${item}" "${target_dir}/" 2>/dev/null || echo "Failed to copy ${item}"
       fi
     done
-
-    # List files copied to the shared volume
-    echo "Files available in shared volume ${target_dir}:"
+    
+    # List contents of target directory for verification
+    echo "Contents of ${target_dir}:"
     ls -la ${target_dir}/ 2>/dev/null || echo "No files found in ${target_dir}"
   else
     echo "Warning: Source directory ${source_dir} not found, nothing to copy"
