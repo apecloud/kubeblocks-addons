@@ -22,8 +22,8 @@ init_postgres_log() {
 }
 
 copy_necessary_binaries() {
-  mkdir -p postgres_walg_dir
-  cp /usr/bin/wal-g ${postgres_walg_dir}/wal-g
+  mkdir -p "$postgres_walg_dir"
+  cp /spilo-init/bin/wal-g ${postgres_walg_dir}/wal-g
 }
 
 # This is magic for shellspec ut framework.
