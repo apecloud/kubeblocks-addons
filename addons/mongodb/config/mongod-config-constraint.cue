@@ -299,7 +299,7 @@
 	// (Replication and Consistency) Specifies the settings for mirrored reads for the mongod instance.
 	mirrorReads: {
 		samplingRate: float & *0.01
-		maxTimeMS: int & *1000
+		maxTimeMS:    int & *1000
 	}
 
 	// (Replication and Consistency) The number of milliseconds to delay applying batches of oplog operations on secondary nodes.
@@ -432,7 +432,7 @@
 	ShardingTaskExecutorPoolMaxConnecting: int & *2
 
 	// (Sharding) Maximum number of outbound connections each TaskExecutor connection pool can open to any given mongod instance (2^64 - 1).
-	ShardingTaskExecutorPoolMaxSize: int & *18446744073709551615
+	ShardingTaskExecutorPoolMaxSize: uint & *18446744073709551615
 
 	// (Sharding) Optional override for ShardingTaskExecutorPoolMaxSize for connections to a configuration server.
 	ShardingTaskExecutorPoolMaxSizeForConfigServers: int & *-1
@@ -818,7 +818,7 @@
 	"security.kmip.serverName": string
 
 	// Port number for the KMIP server. (Enterprise Only)
-	"security.kmip.port": string | *5696
+	"security.kmip.port": string | *"5696"
 
 	// Path to the .pem file to authenticate MongoDB to the KMIP server. (Enterprise Only)
 	"security.kmip.clientCertificateFile": string
@@ -884,19 +884,19 @@
 	"security.ldap.validateLDAPServerConfig": bool & true | false | *true
 
 	// A container for setting various MongoDB parameters. e.g., setParameter: { enableLocalhostAuthBypass: false }
-	"setParameter": #MongosSetParameterParams
+	"setParameter": #MongodSetParameterParams
 
 	// The directory where the mongod instance stores its data. (mongod only) *Default: /data/db on Linux/macOS, \data\db on Windows.
 	"storage.dbPath": string
 
 	// Maximum time in milliseconds between journal operations. (mongod only)
-	"storage.journal.commitIntervalMs": number & 1-500 | *100
+	"storage.journal.commitIntervalMs": int & >=1 & <=500 | *100
 
 	// If true, MongoDB uses a separate directory for each database. (mongod only)
 	"storage.directoryPerDB": bool & true | false | *false
 
 	// The amount of time in seconds that can pass before MongoDB flushes data to data files. (mongod only)
-	"storage.syncPeriodSecs": number | *60
+	"storage.syncPeriodSecs": int | *60
 
 	// The storage engine for the database. Can be "wiredTiger" or "inMemory". (mongod only)
 	"storage.engine": string & "wiredTiger" | "inMemory" | *"wiredTiger"
@@ -913,11 +913,8 @@
 	// If true, stores indexes and collections in separate subdirectories.
 	"storage.wiredTiger.engineConfig.directoryForIndexes": bool & true | false | *false
 
-	// The maximum size of an overflow file for the WiredTiger cache in GB.
-	"storage.wiredTiger.engineConfig.maxCacheOverflowFileSizeGB": number
-
 	// The compression level for zstd.
-	"storage.wiredTiger.engineConfig.zstdCompressionLevel": int & 1-22 | *6
+	"storage.wiredTiger.engineConfig.zstdCompressionLevel": int & >=1 & <=22 | *6
 
 	// Default compression for collection data. Can be none, snappy, zlib, zstd.
 	"storage.wiredTiger.collectionConfig.blockCompressor": string & "none" | "snappy" | "zlib" | "zstd" | *"snappy"
@@ -982,7 +979,7 @@
 	// Specifies the format used for audit logs. Can be "mongo" or "OCSF". (Enterprise Only)
 	"auditLog.schema": string & "mongo" | "OCSF" | *"mongo"
 
-    ...
+	...
 }
 
 configuration: #MongodParameter & {}
