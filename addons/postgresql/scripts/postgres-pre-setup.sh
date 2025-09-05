@@ -27,24 +27,26 @@ copy_necessary_binaries() {
   if [ -f /spilo/bin/wal-g ]; then
     cp /spilo/bin/wal-g ${postgres_walg_dir}/wal-g
   fi
-  
+
   # Copy files from spilo to shared volume for other containers
   if [ -d "/spilo" ]; then
-    echo "Copying files from /spilo to shared volume..."
+    echo "Copying files from /spilo directory to shared volume (excluding /spilo/bin)..."
     
-    # Ensure bin directory exists in shared volume
-    mkdir -p /shared/bin
+    # Create shared directory if it doesn't exist (should be auto-mounted)
+    mkdir -p /shared
     
-    # Copy binary files
-    if [ -d "/spilo/bin" ]; then
-      echo "Copying binary files from /spilo/bin..."
-      cp -a /spilo/bin/* /shared/bin/ 2>/dev/null || true
-      chmod -R 755 /shared/bin/
-    fi
+    # Copy all directories and files from /spilo except the bin directory
+    for item in /spilo/*; do
+      item_name=$(basename "$item")
+      if [ "$item_name" != "bin" ]; then
+        echo "Copying $item to /shared/"
+        cp -a "$item" /shared/ 2>/dev/null || echo "Failed to copy $item"
+      fi
+    done
     
     # List copied files for verification
-    echo "Files available in shared bin directory:"
-    ls -la /shared/bin/ 2>/dev/null || true
+    echo "Files available in shared directory:"
+    ls -la /shared/ 2>/dev/null || true
   else
     echo "Warning: /spilo directory not found, skipping copy operation"
   fi
