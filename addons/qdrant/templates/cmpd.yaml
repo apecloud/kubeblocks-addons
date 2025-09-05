@@ -41,7 +41,6 @@ spec:
   - name: data
     needSnapshot: true
   - name: log
-    emptyDir: {}
   vars:
     - name: QDRANT_POD_NAME_LIST
       valueFrom:
