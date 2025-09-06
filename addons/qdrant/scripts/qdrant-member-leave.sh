@@ -5,7 +5,7 @@ set -o errtrace
 set -o nounset
 set -o pipefail
 
-leave_peer_uri=http://${KB_LEAVE_MEMBER_POD_IP}:6333
+leave_peer_uri=http://${KB_LEAVE_MEMBER_POD_FQDN}:6333
 cluster_info=`curl -s ${leave_peer_uri}/cluster`
 leave_peer_id=`echo "${cluster_info}"| jq -r .result.peer_id`
 leader_peer_id=`echo "${cluster_info}" | jq -r .result.raft_info.leader`
