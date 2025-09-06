@@ -84,14 +84,14 @@ schedulingPolicy:
           labelSelector:
             matchLabels:
               app.kubernetes.io/instance: {{ include "kblib.clusterName" . }}
-              apps.kubeblocks.io/component-name: mdit
+              apps.kubeblocks.io/component-name: elasticsearch
           topologyKey: kubernetes.io/hostname
         weight: 100
       requiredDuringSchedulingIgnoredDuringExecution:
       - labelSelector:
           matchLabels:
             app.kubernetes.io/instance: {{ include "kblib.clusterName" . }}
-            apps.kubeblocks.io/component-name: mdit
+            apps.kubeblocks.io/component-name: elasticsearch
         topologyKey: kubernetes.io/hostname
 {{- end -}}
 
