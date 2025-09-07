@@ -537,6 +537,13 @@ runtime:
           fieldRef:
             apiVersion: v1
             fieldPath: metadata.name
+      - name: KB_NAMESPACE
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.namespace
+      - name: POD_FQDN
+        value: $(POD_NAME).$(ES_COMPONENT_NAME)-headless.$(KB_NAMESPACE).svc.$(CLUSTER_DOMAIN)
       - name: NODE_NAME
         valueFrom:
           fieldRef:
