@@ -9,12 +9,6 @@ metadata:
     {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
   serviceVersion: 8.8.2
-  configs:
-    - name: es-cm
-      template: {{ include "elasticsearchMaster8.configTplName" . }}
-      namespace: {{ .Release.Namespace }}
-      volumeName: es-cm
-      restartOnFileChange: true
   vars:
     - name: ELASTIC_USER_PASSWORD
       valueFrom:
@@ -58,11 +52,13 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
-    {{/* MASTER_CMP_REPLICA_LIST ='master:podName0,podName1,podName2'*/}}
-    - name: MASTER_CMP_REPLICA_LIST
+    - name: ELASTICSEARCH_ROLES
+      value: master
+    {{/* ALL_CMP_REPLICA_LIST ='master:podName0,podName1,podName2;data:podName0,podName1'*/}}
+    - name: ALL_CMP_REPLICA_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "elasticsearchMaster8.cmpdName" . }}
+          compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
           optional: false
           podNames: Required
           multipleClusterObjectOption:
@@ -71,11 +67,11 @@ spec:
               flattenFormat:
                 delimiter: ";"
                 keyValueDelimiter: ":"
-    {{/* MASTER_CMP_REPLICA_FQDN ='master:podFQDN0,podFQDN1,podFQDN2'*/}}
-    - name: MASTER_CMP_REPLICA_FQDN
+    {{/* ALL_CMP_REPLICA_FQDN ='master:podFQDN0,podFQDN1,podFQDN2;data:podFQDN0,podFQDN1'*/}}
+    - name: ALL_CMP_REPLICA_FQDN
       valueFrom:
         componentVarRef:
-          compDef: {{ include "elasticsearchMaster8.cmpdName" . }}
+          compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
           optional: false
           podFQDNs: Required
           multipleClusterObjectOption:
