@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euxo pipefail
+set -exo pipefail
 source /scripts/common.sh
 
 leader_fqdn="$KB_SWITCHOVER_CURRENT_FQDN"
@@ -14,26 +14,21 @@ if [ $COMPONENT_REPLICAS -lt 2 ]; then
     exit 0
 fi
 
+if [ -z $candidate_fqdn ]; then
+    echo "No candidate specified, exit."
+    exit 0
+fi
+
+if [ "$KB_SWITCHOVER_ROLE" != "leader" ]; then
+    echo "switchover not triggered for primary, nothing to do, exit 0."
+    exit 0
+fi
+
+
 # 1. Get current config
 config=$(get_config "$leader_fqdn")
 
-# 2. Find candidate
-if [[ -z "$candidate_fqdn" ]]; then
-  candidate_fqdn=$(echo "$config" | grep 'participant' | grep -v "$leader_fqdn" | \
-  head -n 1 | cut -d'=' -f2 | cut -d':' -f1)
-else
-  echo "$config" | grep -qE "^server\.[0-9]+=$candidate_fqdn" || {
-    echo "ERROR: Specified candidate '$candidate_fqdn' not found in config."
-    exit 1
-  }
-fi
-
-if [[ -z "$candidate_fqdn" ]]; then
-  echo "ERROR: Could not find a candidate follower."
-  exit 1
-fi
-
-# 3. Change the priority of the candidate to 8, and the others to 1
+# 2. Change the priority of the candidate to 8, and the others to 1
 pre_leader=$(echo "$config" | grep "$leader_fqdn")
 pre_leader=${pre_leader%;*}";1"
 pre_leader_config_name=$(echo "$pre_leader" | cut -d'=' -f1)
@@ -56,17 +51,17 @@ while IFS= read -r line; do
   fi
 done <<< "$config"
 
-# 4. Remove the leader from the config, remove once, because only the leader can remove itself
+# 3. Remove the leader from the config, remove once, because only the leader can remove itself
 keeper_run "$leader_fqdn" "reconfig remove '$pre_leader_config_id'"
 
-# 5. Check if the candidate is the leader
+# 4. Check if the candidate is the leader
 retry_keeper_operation \
   "mode=\$(get_mode_by_keeper '$candidate_fqdn')" \
   "[[ \"\$mode\" == \"leader\" ]]"
 
-# 6. Re-add after pre leader reboot
+# 5. Re-add after pre leader reboot
 retry_keeper_operation \
-  "keeper_run '$candidate_fqdn' 'reconfig add \"$pre_leader\"' >/dev/null 2>&1" \
-  "get_config '$candidate_fqdn' | grep -q '$pre_leader' >/dev/null 2>&1"
+  "keeper_run '$candidate_fqdn' 'reconfig add \"$pre_leader\"'" \
+  "get_config '$candidate_fqdn' | grep -q '$pre_leader'"
 
 echo "Switchover completed successfully"

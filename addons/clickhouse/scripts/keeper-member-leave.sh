@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euxo pipefail
+set -exo pipefail
 source /scripts/common.sh
 
 leaving_member_fqdn="$KB_LEAVE_MEMBER_POD_FQDN"
