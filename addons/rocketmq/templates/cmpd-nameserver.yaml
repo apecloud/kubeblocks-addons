@@ -24,6 +24,7 @@ spec:
       namespace: {{ .Release.Namespace }}
   lifecycleActions:
     memberJoin:
+      timeoutSeconds: 3
       exec:
         container: rocketmq-namesrv
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -33,6 +34,7 @@ spec:
           - |
             /scripts/update-nameserver-addrs.sh
     memberLeave:
+      timeoutSeconds: 3
       exec:
         command:
           - bash
