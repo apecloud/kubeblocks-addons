@@ -5,11 +5,6 @@ source /scripts/common.sh
 leader_fqdn="$KB_SWITCHOVER_CURRENT_FQDN"
 candidate_fqdn="${KB_SWITCHOVER_CANDIDATE_FQDN:-}"
 
-if [ "$KB_SWITCHOVER_ROLE" != "leader" ]; then
-    echo "switchover not triggered for primary, nothing to do, exit 0."
-    exit 0
-fi
-
 if [ $COMPONENT_REPLICAS -lt 2 ]; then
     exit 0
 fi
