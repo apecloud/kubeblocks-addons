@@ -139,8 +139,8 @@ log_duration = 'False'
 log_executor_stats = 'False'
 logging_collector = 'True'
 log_destination = 'csvlog'
-log_directory = 'log'
-log_filename = 'postgresql-%Y-%m-%d.log'
+log_directory = '../pg_log'
+log_filename = 'postgresql-%u.log'
 # log_lock_waits = 'True'
 log_min_duration_statement = '1000'
 log_parser_stats = 'False'
@@ -199,7 +199,7 @@ pgaudit.log_level = 'log'
 pgaudit.log_parameter = 'False'
 pgaudit.log_relation = 'False'
 pgaudit.log_statement_once = 'False'
-pgaudit.log = 'ddl,read,write'
+pgaudit.log = 'ddl'
 # pgaudit.role = ''
 #extension: pglogical
 pglogical.batch_inserts = 'True'
@@ -217,11 +217,14 @@ session_replication_role = 'origin'
 sql_firewall.firewall = 'disable'
 shared_buffers = '{{ printf "%d%s" $shared_buffers $buffer_unit }}'
 shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit'
-{{- if eq (index $ "TLS_ENABLED") "true" }}
+{{- if $.component.tlsConfig }}
+{{- $ca_file := getCAFile }}
+{{- $cert_file := getCertFile }}
+{{- $key_file := getKeyFile }}
 ssl = 'True'
-ssl_ca_file = '/etc/pki/tls/ca.pem'
-ssl_cert_file = '/etc/pki/tls/cert.pem'
-ssl_key_file = '/etc/pki/tls/key.pem'
+ssl_ca_file = '{{ $ca_file }}'
+ssl_cert_file = '{{ $cert_file }}'
+ssl_key_file = '{{ $key_file }}'
 {{- end }}
 ssl_min_protocol_version = 'TLSv1'
 standard_conforming_strings = 'True'
