@@ -29,6 +29,6 @@ spec:
         clickhouse: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
         role-probe: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
         switchover: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
-        member-join: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
-        member-leave: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
+        memberJoin: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
+        memberLeave: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
   {{- end }}
