@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euxo pipefail
+set -exo pipefail
 source /scripts/common.sh
 
 leader_fqdn="$KB_SWITCHOVER_CURRENT_FQDN"

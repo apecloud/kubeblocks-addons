@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euxo pipefail
+set -exo pipefail
 source /scripts/common.sh
 
 new_member_fqdn="$KB_JOIN_MEMBER_POD_FQDN"
