@@ -73,8 +73,24 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 elasticsearch-7-{{ .Chart.Version }}
 {{- end -}}
 
+{{- define "elasticsearchMaster7.cmpdName" -}}
+elasticsearch-master-7-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "elasticsearchData7.cmpdName" -}}
+elasticsearch-data-7-{{ .Chart.Version }}
+{{- end -}}
+
 {{- define "elasticsearch7.cmpdRegexPattern" -}}
 ^elasticsearch-7-
+{{- end -}}
+
+{{- define "elasticsearchMaster7.cmpdRegexPattern" -}}
+^elasticsearch-master-7-
+{{- end -}}
+
+{{- define "elasticsearchData7.cmpdRegexPattern" -}}
+^elasticsearch-data-7-
 {{- end -}}
 
 {{- define "elasticsearch8.cmpdName" -}}
@@ -111,14 +127,6 @@ elasticsearch-7-config-tpl
 
 {{- define "elasticsearch8.configTplName" -}}
 elasticsearch-8-config-tpl
-{{- end -}}
-
-{{- define "elasticsearchMaster8.configTplName" -}}
-elasticsearch-master-8-config-tpl
-{{- end -}}
-
-{{- define "elasticsearchData8.configTplName" -}}
-elasticsearch-data-8-config-tpl
 {{- end -}}
 
 {{- define "elasticsearch-8.1.3.image" -}}

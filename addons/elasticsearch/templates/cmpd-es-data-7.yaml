@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "elasticsearch7.cmpdName" . }}
+  name: {{ include "elasticsearchData7.cmpdName" . }}
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
   annotations:
@@ -13,7 +13,7 @@ spec:
     - name: ELASTIC_USER_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "elasticsearch7.cmpdName" . }}
+          compDef: {{ include "elasticsearchMaster7.cmpdName" . }}
           name: elastic
           optional: false
           password: Required
@@ -22,14 +22,14 @@ spec:
     - name: KIBANA_SYSTEM_USER_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "elasticsearch7.cmpdName" . }}
+          compDef: {{ include "elasticsearchMaster7.cmpdName" . }}
           name: kibana_system
           optional: false
           password: Required
     - name: ELASTICSEARCH_HOST
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "elasticsearch7.cmpdName" . }}
+          compDef: {{ include "elasticsearchData7.cmpdName" . }}
           name: http
           host: Required
     - name: CLUSTER_DOMAIN
@@ -52,6 +52,8 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
+    - name: ELASTICSEARCH_ROLES
+      value: data
     {{/* ALL_CMP_REPLICA_LIST ='master:podName0,podName1,podName2;data:podName0,podName1'*/}}
     - name: ALL_CMP_REPLICA_LIST
       valueFrom:
