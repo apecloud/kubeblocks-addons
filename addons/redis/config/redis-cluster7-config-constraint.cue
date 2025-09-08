@@ -36,15 +36,11 @@
 
 	"cluster-replica-validity-factor": int | *0
 
-	"client-output-buffer-limit-normal-soft-seconds": int | *0
+	"client-output-buffer-limit normal": string | *"0 0 0"
 
-	"client-output-buffer-limit-pubsub-hard-limit": int | *33554432
+	"client-output-buffer-limit replica": string | *"256mb 64mb 60"
 
-	"client-output-buffer-limit-pubsub-soft-limit": int | *8388608
-
-	"client-output-buffer-limit-pubsub-soft-seconds": int | *60
-
-	"client-output-buffer-limit-replica-soft-seconds": int | *60
+	"client-output-buffer-limit pubsub": string | *"32mb 8mb 60"
 
 	"client-query-buffer-limit": int & >=1048576 & <=1073741824 | *1073741824
 
