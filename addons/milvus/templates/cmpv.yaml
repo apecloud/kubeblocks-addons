@@ -42,32 +42,32 @@ spec:
     - name: v2.3.2-standalone
       serviceVersion: v2.3.2
       images:
-        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.operator.repository }}:v0.8.4
+        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.operator.repository }}:v0.9.17
         milvus: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvus.repository }}:v2.3.2
     - name: v2.3.2-mixcoord
       serviceVersion: v2.3.2
       images:
-        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:v0.8.4
+        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:v0.9.17
         mixcoord: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvus.repository }}:v2.3.2
     - name: v2.3.2-proxy
       serviceVersion: v2.3.2
       images:
-        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:v0.8.4
+        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:v0.9.17
         proxy: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvus.repository }}:v2.3.2
     - name: v2.3.2-querynode
       serviceVersion: v2.3.2
       images:
-        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:v0.8.4
+        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:v0.9.17
         querynode: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvus.repository }}:v2.3.2
     - name: v2.3.2-indexnode
       serviceVersion: v2.3.2
       images:
-        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:v0.8.4
+        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:v0.9.17
         indexnode: {{ .Values.images.milvus.registry | default .Values.images.registry }}/{{ .Values.images.milvus.repository }}:v2.3.2
     - name: v2.3.2-datanode
       serviceVersion: v2.3.2
       images:
-        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:v0.8.4
+        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:v0.9.17
         datanode: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvus.repository }}:v2.3.2
 
     - name: v2.5.13-standalone
