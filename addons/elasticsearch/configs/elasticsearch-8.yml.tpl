@@ -1,5 +1,5 @@
 {{- $clusterName := .CLUSTER_NAME }}
-{{- $defaultRoles := "master,data" }}
+{{- $defaultRoles := .ELASTICSEARCH_ROLES }}
 {{- $namespace := .CLUSTER_NAMESPACE }}
 
 {{- $mode := "multi-node" }}

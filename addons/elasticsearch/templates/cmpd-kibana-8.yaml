@@ -34,7 +34,7 @@ spec:
   - name: ELASTIC_USER_PASSWORD
     valueFrom:
       credentialVarRef:
-        compDef: {{ include "elasticsearch8.cmpdName" . }}
+        compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
         name: elastic
         optional: false
         password: Required
@@ -43,7 +43,7 @@ spec:
   - name: KIBANA_SYSTEM_USER_PASSWORD
     valueFrom:
       credentialVarRef:
-        compDef: {{ include "elasticsearch8.cmpdName" . }}
+        compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
         name: kibana_system
         optional: false
         password: Required
@@ -52,7 +52,7 @@ spec:
   - name: ELASTICSEARCH_HOST
     valueFrom:
       serviceVarRef:
-        compDef: {{ include "elasticsearch8.cmpdName" . }}
+        compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
         name: http
         host: Required
         multipleClusterObjectOption:
