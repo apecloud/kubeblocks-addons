@@ -4,6 +4,10 @@ set -exo pipefail
 # shellcheck disable=SC1091
 . "/scripts/common.sh"
 
+if [ $COMPONENT_REPLICAS -lt 2 ]; then
+    exit 0
+fi
+
 switchover_with_candidate() {
   current_pod_name="${KB_SWITCHOVER_CURRENT_FQDN%%.*}"
   candidate_pod_name="${KB_SWITCHOVER_CANDIDATE_FQDN%%.*}"

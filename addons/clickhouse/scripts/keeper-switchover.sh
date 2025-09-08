@@ -10,6 +10,10 @@ if [ "$KB_SWITCHOVER_ROLE" != "leader" ]; then
     exit 0
 fi
 
+if [ $COMPONENT_REPLICAS -lt 2 ]; then
+    exit 0
+fi
+
 # 1. Get current config
 config=$(get_config "$leader_fqdn")
 
