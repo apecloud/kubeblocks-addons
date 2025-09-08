@@ -186,6 +186,11 @@ spec:
       valueFrom:
         tlsVarRef:
           enabled: Optional
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
   updateStrategy: Serial
   podManagementPolicy: Parallel
   volumes:
