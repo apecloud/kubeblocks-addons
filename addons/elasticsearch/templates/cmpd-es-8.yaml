@@ -9,6 +9,12 @@ metadata:
     {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
   serviceVersion: 8.8.2
+  configs:
+    - name: es-cm
+      template: {{ include "elasticsearch8.configTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: es-cm
+      restartOnFileChange: true
   vars:
     - name: ELASTIC_USER_PASSWORD
       valueFrom:
@@ -52,6 +58,8 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
+    - name: ELASTICSEARCH_ROLES
+      value: master,data
     {{/* ALL_CMP_REPLICA_LIST ='master:podName0,podName1,podName2;data:podName0,podName1'*/}}
     - name: ALL_CMP_REPLICA_LIST
       valueFrom:
