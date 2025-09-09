@@ -31,7 +31,7 @@ switchover_without_candidate() {
   current_pod_name="${KB_SWITCHOVER_CURRENT_FQDN%%.*}"
   current_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$current_pod_name" "$KB_SWITCHOVER_CURRENT_FQDN")
 
-  ! is_leader "$current_endpoint:2379" && error_exit "Leader has already changed, no switchover needed"
+  ! is_leader "$current_endpoint:2379" && echo "Leader has already changed, no switchover needed" && exit 0
 
   # get first follower
   leader_id=$(get_member_id "$current_endpoint:2379")

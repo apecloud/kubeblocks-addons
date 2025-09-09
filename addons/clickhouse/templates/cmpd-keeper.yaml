@@ -230,7 +230,7 @@ spec:
           - bash
           - -c
           - |
-            /scripts/keeper-switchover.sh > /tmp/keeper-switchover.log 2>&1
+            /scripts/keeper-switchover.sh >> /bitnami/clickhouse/keeper-switchover.log 2>&1
     memberJoin:
       exec:
         container: clickhouse
@@ -242,6 +242,8 @@ spec:
     memberLeave:
       exec:
         container: clickhouse
+        targetPodSelector: Role
+        matchingKey: leader
         command:
           - bash
           - -c

@@ -6,11 +6,21 @@ new_member_fqdn="$KB_JOIN_MEMBER_POD_FQDN"
 new_member_name="$KB_JOIN_MEMBER_POD_NAME"
 keeper_raft_port=${CLICKHOUSE_KEEPER_RAFT_PORT:-9234}
 
+function check_is_leader() {
+  local mode=$(get_mode 127.0.0.1)
+  if [[ "$mode" == "leader" ]]; then
+    echo "INFO: This member is the leader, no need to join."
+    return 0
+  fi
+}
+
 # 1. Find leader from existing members
 leader_fqdn=$(find_leader "$CH_KEEPER_POD_FQDN_LIST" "$new_member_fqdn")
 if [[ -z "$leader_fqdn" ]]; then
-  echo "ERROR: Could not find cluster leader."
-  exit 1
+  if ! check_is_leader; then
+    echo "ERROR: Could not find cluster leader."
+    exit 1
+  fi
 fi
 
 # 2. Extract ordinal from pod name and calculate server ID
