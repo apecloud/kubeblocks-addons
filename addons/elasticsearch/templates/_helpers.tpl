@@ -255,12 +255,6 @@ description: Elasticsearch is a distributed, restful search engine optimized for
 serviceKind: elasticsearch
 updateStrategy: Parallel
 podManagementPolicy: Parallel
-configs:
-  - name: es-cm
-    template: {{ include "elasticsearch8.configTplName" . }}
-    namespace: {{ .Release.Namespace }}
-    volumeName: es-cm
-    restartOnFileChange: true
 exporter:
   containerName: exporter
   scrapePath: /metrics
