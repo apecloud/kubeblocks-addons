@@ -47,6 +47,7 @@ spec:
       spec:
         ## the type can override in cluster componentSpec services, type can loadBalancer
         type: LoadBalancer
+        externalTrafficPolicy: Cluster
         # allocateLoadBalancerNodePorts: false
         ports:
           - name: redis-advertised
