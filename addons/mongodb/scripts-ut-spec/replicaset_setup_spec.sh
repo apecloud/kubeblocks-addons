@@ -81,6 +81,7 @@ EOF
       
       # Mock the temporary mongod instance for restore
       mongod() {
+        # shellcheck disable=SC2145
         echo "Mocked mongod (for restore) started with: $@"
         # The script needs a PID file to kill the process
         echo "12345" > "$MONGODB_ROOT/tmp/mongodb.pid"
