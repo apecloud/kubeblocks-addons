@@ -15,9 +15,9 @@ SCRIPTS_BASE_PATH=${SCRIPTS_BASE_PATH:-/scripts}
 # Restore from datafile
 BACKUPFILE=$MONGODB_ROOT/db/mongodb.backup
 PORT_FOR_RESTORE=27027
-CLIENT=`mongosh --version >/dev/null&&echo mongosh||echo mongo`
 if [ -f $BACKUPFILE ]
 then
+  CLIENT=`mongosh --version >/dev/null&&echo mongosh||echo mongo`
   mongod --bind_ip_all --port $PORT_FOR_RESTORE --dbpath $MONGODB_ROOT/db --directoryperdb --logpath $MONGODB_ROOT/logs/mongodb.log  --logappend --pidfilepath $MONGODB_ROOT/tmp/mongodb.pid&
   until $CLIENT --quiet --port $PORT_FOR_RESTORE --eval "print('restore process is ready')"; do sleep 1; done
   PID=`cat $MONGODB_ROOT/tmp/mongodb.pid`
