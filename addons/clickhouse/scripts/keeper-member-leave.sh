@@ -4,15 +4,9 @@ source /scripts/common.sh
 
 leaving_member_fqdn="$KB_LEAVE_MEMBER_POD_FQDN"
 leaving_member_name="$KB_LEAVE_MEMBER_POD_NAME"
+leader_fqdn=127.0.0.1
 
-# 1. Find leader from remaining members (exclude the leaving member)
-leader_fqdn=$(find_leader "$CH_KEEPER_POD_FQDN_LIST" "$leaving_member_fqdn")
-if [[ -z "$leader_fqdn" ]]; then
-  echo "ERROR: Could not find cluster leader."
-  exit 1
-fi
-
-# 2. Extract ordinal from pod name and calculate server ID
+# 1. Extract ordinal from pod name and calculate server ID
 pod_ordinal=$(extract_ordinal_from_pod_name "$leaving_member_name")
 server_id=$((pod_ordinal + 1))
 echo "INFO: Pod ordinal: $pod_ordinal, Server ID: $server_id"
