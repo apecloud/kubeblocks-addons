@@ -18,6 +18,8 @@ spec:
     - 8.15.5
   - compDefs:
     - {{ include "elasticsearch7.cmpdRegexPattern" . }}
+    - {{ include "elasticsearchMaster7.cmpdRegexPattern" . }}
+    - {{ include "elasticsearchData7.cmpdRegexPattern" . }}
     releases:
     - 7.7.1
     - 7.8.1
