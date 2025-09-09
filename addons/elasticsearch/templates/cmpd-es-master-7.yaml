@@ -9,6 +9,12 @@ metadata:
     {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
   serviceVersion: 7.10.1
+  configs:
+    - name: es-cm
+      template: {{ include "elasticsearch7.configTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: es-cm
+      restartOnFileChange: true
   vars:
     - name: ELASTIC_USER_PASSWORD
       valueFrom:
