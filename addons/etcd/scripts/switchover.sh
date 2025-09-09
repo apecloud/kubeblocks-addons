@@ -41,6 +41,7 @@ switchover_without_candidate() {
   candidate_id_hex=$(printf "%x" "$candidate_id")
 
   exec_etcdctl "$current_endpoint:2379" move-leader "$candidate_id_hex"
+  # if no candidate specified, skip the verification of new leader
   # is_leader "$current_endpoint:2379" && error_exit "Switchover failed - current node is still leader after move-leader command"
   log "Switchover completed successfully - current node is no longer leader"
 }
