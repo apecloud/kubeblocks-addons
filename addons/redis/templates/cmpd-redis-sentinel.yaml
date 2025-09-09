@@ -40,6 +40,7 @@ spec:
       serviceName: sentinel-lb-advertised
       spec:
         type: LoadBalancer
+        externalTrafficPolicy: Cluster
         # allocateLoadBalancerNodePorts: false
         ports:
           - name: sentinel-advertised
