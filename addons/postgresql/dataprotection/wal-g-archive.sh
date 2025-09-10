@@ -103,6 +103,40 @@ function save_backup_status() {
     DP_save_backup_status_info "${TOTAL_SIZE}" "${START_TIME}" "${END_TIME}"
 }
 
+# Upload historical .history files that are marked as .done but not yet uploaded to remote
+# These are timeline history files (e.g., 00000002.history) that are critical for PITR recovery
+function uploadDoneHistoryWALs() {
+  DP_log "Checking for historical .history files with .done status to upload..."
+
+  # Build environment variables command prefix without affecting global env
+  env_cmd_prefix="env"
+  while read -r env_file; do
+    env_name=$(basename "$env_file")
+    env_value=$(cat "$env_file")
+    env_cmd_prefix="$env_cmd_prefix $env_name=\"$env_value\""
+  done < <(find "${VOLUME_DATA_DIR}/wal-g/env" -type f)
+
+  # Find all .done status files for .history files in archive_status directory
+  for done_file in $(find "${LOG_DIR}/archive_status/" -name "*.history.done" -type f | sort); do
+    history_name=$(basename "$done_file" .done)
+    history_path="${LOG_DIR}/${history_name}"
+
+    # Check if the actual .history file still exists
+    if [ -f "$history_path" ]; then
+      # Try upload with WAL-G
+      eval ${env_cmd_prefix} ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push "${history_path}"
+      exit_code=$?
+      if [ "$exit_code" -eq 0 ]; then
+        echo "Successfully uploaded file: ${history_name}"
+      else
+        echo "Failed to upload file: ${history_name}, exit code: ${exit_code}"
+      fi
+    fi
+  done
+
+  DP_log "Completed uploading historical .history files"
+}
+
 # Upload missing ready WAL files and rename the ready file to done.
 # WAL-G should rename the file to done automatically, but sometimes it
 # doesn't work, so we need to manually rename the file.
@@ -183,6 +217,10 @@ function check_pg_process() {
 trap "echo 'Terminating...' && exit 0" TERM
 DP_log "start to archive and update wal infos"
 config_wal_g "$(dirname "${DP_BACKUP_BASE_PATH}")/wal-g"
+
+# Upload historical .history files on first run
+uploadDoneHistoryWALs
+
 while true; do
   # check if pg process is ok
   check_pg_process
