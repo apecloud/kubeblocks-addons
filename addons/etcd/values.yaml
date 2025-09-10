@@ -42,8 +42,8 @@ image:
 
 # used to inject static bash and other brinaries to distroless etcd image
 # Dockerfile place in ./bash-busybox
-bashBusyboxImage:
-  # if the value of bashBusyboxImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+images:
+  # used to inject static bash and other binaries to distroless etcd image
   registry: docker.io
   repository: apecloud/bash-busybox
   pullPolicy: IfNotPresent
