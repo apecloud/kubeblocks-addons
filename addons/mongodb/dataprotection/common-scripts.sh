@@ -235,6 +235,7 @@ EOF
 function print_pbm_logs_by_event() {
   local pbm_event=$1
   # echo "INFO: Printing PBM logs by event: $pbm_event"
+  # shellcheck disable=SC2328
   local pbm_logs=$(pbm logs -e $pbm_event --tail 200 --mongodb-uri "$PBM_MONGODB_URI" > /dev/null)
   local purged_logs=$(echo "$pbm_logs" | awk -v start="$PBM_LOGS_START_TIME" '$1 >= start')
   if [ -z "$purged_logs" ]; then
@@ -277,8 +278,11 @@ function export_logs_start_time_env() {
 
 function sync_pbm_config_from_storage() {
   echo "INFO: Syncing PBM config from storage..."
+
+  wait_for_other_operations
+
   pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI"
-  print_pbm_logs_by_event "resync"
+  # print_pbm_logs_by_event "resync"
   
   # resync wait flag might don't work
   wait_for_other_operations

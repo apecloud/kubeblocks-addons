@@ -21,6 +21,28 @@ chmod 600 $MONGODB_ROOT/keyfile
 
 . "/scripts/mongodb-common.sh"
 
+# Restore from datafile
+BACKUPFILE=$MONGODB_ROOT/db/mongodb.backup
+PORT_FOR_RESTORE=27027
+if [ -f $BACKUPFILE ]
+then
+  CLIENT=`mongosh --version >/dev/null&&echo mongosh||echo mongo`
+  mongod --bind_ip_all --port $PORT_FOR_RESTORE --dbpath $MONGODB_ROOT/db --directoryperdb --logpath $MONGODB_ROOT/logs/mongodb.log  --logappend --pidfilepath $MONGODB_ROOT/tmp/mongodb.pid&
+  until $CLIENT --quiet --port $PORT_FOR_RESTORE --eval "print('restore process is ready')"; do sleep 1; done
+  PID=`cat $MONGODB_ROOT/tmp/mongodb.pid`
+
+  $CLIENT --quiet --port $PORT_FOR_RESTORE local --eval "db.system.replset.deleteOne({})"
+  $CLIENT --quiet --port $PORT_FOR_RESTORE local --eval "db.system.replset.find()"
+  $CLIENT --quiet --port $PORT_FOR_RESTORE admin --eval 'db.dropUser("root", {w: "majority", wtimeout: 4000})' || true
+  # used for pbm
+  $CLIENT --quiet --port $PORT_FOR_RESTORE admin --eval 'db.dropRole("anyAction", {w: "majority", wtimeout: 4000})' || true
+  kill $PID
+  wait $PID
+  echo "INFO: restore set-up configuration successfully."
+  rm $BACKUPFILE
+fi
+
+# Restore from pbm
 PBM_BACKUPFILE=$MONGODB_ROOT/tmp/mongodb_pbm.backup
 CLIENT=`mongosh --version 1>/dev/null&&echo mongosh||echo mongo`
 process="mongod --bind_ip_all --port $PORT --replSet $KB_CLUSTER_COMP_NAME --config /etc/mongodb/mongodb.conf"
