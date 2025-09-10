@@ -193,8 +193,6 @@ spec:
             value: "no"
           - name: CLUSTER_FORMED_FILE
             value: /usr/share/elasticsearch/data/cluster-formed
-          - name: ES_JAVA_OPTS
-            value: "-Des.http.cname_in_publish_address=true"
         ports:
           - containerPort: 9200
             name: http

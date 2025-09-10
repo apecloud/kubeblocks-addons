@@ -21,6 +21,14 @@
     {{- end }}
 {{- end }}
 {{- $masterComponents := $allRoles.master }}
+{{- $totalMasterNodes := 0 }}
+{{- range $i, $name := $masterComponents }}
+{{- range $j, $spec := $.cluster.spec.componentSpecs }}
+{{- if eq $spec.name $name }}
+{{- $totalMasterNodes = add $totalMasterNodes ($spec.replicas | int) }}
+{{- end }}
+{{- end }}
+{{- end }}
 
 cluster:
   name: {{ $clusterName }}
@@ -31,7 +39,7 @@ cluster:
 discovery:
   zen:
 {{- if eq $mode "multi-node" }}
-    minimum_master_nodes: {{ len $masterComponents }}
+    minimum_master_nodes: {{ div (add $totalMasterNodes 1) 2 }}
     ping:
       unicast:
         hosts:
