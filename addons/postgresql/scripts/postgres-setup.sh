@@ -105,6 +105,10 @@ regenerate_spilo_configuration_and_start_postgres() {
   # SPILO_CONFIGURATION is defined by spilo image
   SPILO_CONFIGURATION=$(cat $tmp_patroni_yaml)
   export SPILO_CONFIGURATION
+
+  SCOPE="${CLUSTER_NAME}-${POSTGRES_COMPONENT_NAME}-patroni${CLUSTER_UID: -8}"
+  export SCOPE
+
   exec /launch.sh init
 }
 
