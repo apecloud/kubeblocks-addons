@@ -85,6 +85,10 @@ spec:
       valueFrom:
         clusterVarRef:
             clusterName: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
@@ -321,8 +325,6 @@ spec:
             value: "true"
           - name: KUBERNETES_USE_CONFIGMAPS
             value: "true"
-          - name: SCOPE
-            value: $(POSTGRES_COMPONENT_NAME)
           - name: KUBERNETES_SCOPE_LABEL
             value: "workloads.kubeblocks.io/instance"
           - name: KUBERNETES_ROLE_LABEL
