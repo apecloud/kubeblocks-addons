@@ -127,9 +127,9 @@ function uploadDoneHistoryWALs() {
       eval ${env_cmd_prefix} ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push "${history_path}"
       exit_code=$?
       if [ "$exit_code" -eq 0 ]; then
-        echo "Successfully uploaded file: ${history_name}"
+        DP_log "Successfully uploaded file: ${history_name}"
       else
-        echo "Failed to upload file: ${history_name}, exit code: ${exit_code}"
+        DP_error_log "Failed to upload file: ${history_name}, exit code: ${exit_code}"
       fi
     fi
   done
