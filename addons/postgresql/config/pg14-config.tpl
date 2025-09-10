@@ -37,7 +37,7 @@
 listen_addresses = '*'
 port = '5432'
 archive_command = '/bin/true'
-archive_mode = 'on'
+archive_mode = 'off'
 auto_explain.log_analyze = 'False'
 auto_explain.log_buffers = 'False'
 auto_explain.log_format = 'text'
