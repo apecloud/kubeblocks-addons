@@ -28,39 +28,26 @@ cluster:
     allocation:
       awareness:
         attributes: k8s_node_name
-# INITIAL_MASTER_NODES_BLOCK_START
+discovery:
+  zen:
 {{- if eq $mode "multi-node" }}
-  initial_master_nodes:
+    minimum_master_nodes: {{ len $masterComponents }}
+    ping:
+      unicast:
+        hosts:
 {{- range $i, $name := $masterComponents }}
 {{- range $j, $spec := $.cluster.spec.componentSpecs }}
 {{- if eq $spec.name $name }}
 {{- $replicas := $spec.replicas | int }}
 {{- range $idx, $e := until $replicas }}
-  - {{ printf "%s-%s-%d" $clusterName $name $idx }}
+        - {{ printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $name $idx $clusterName $name $namespace $.clusterDomain }}
 {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
-# INITIAL_MASTER_NODES_BLOCK_END
-
-discovery:
-# the default of discovery.type is multi-node, but can't set it to multi-node explicitly in 6.x version
 {{- if eq $mode "single-node" }}
   type: {{ $mode }}
-{{- end }}
-{{- if eq $mode "multi-node" }}
-  seed_hosts:
-{{- range $i, $name := $masterComponents }}
-{{- range $j, $spec := $.cluster.spec.componentSpecs }}
-{{- if eq $spec.name $name }}
-{{- $replicas := $spec.replicas | int }}
-{{- range $idx, $e := until $replicas }}
-  - {{ printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $name $idx $clusterName $name $namespace $.clusterDomain }}
-{{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
 {{- end }}
 
 http:
