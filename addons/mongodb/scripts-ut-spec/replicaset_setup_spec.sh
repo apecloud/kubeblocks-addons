@@ -39,7 +39,7 @@ EOF
   }
   AfterAll 'cleanup'
 
-  # Test Case 1: Normal startup (without backup file).
+  # Test Case 1: Normal startup (without any backup file).
   Describe "start replicaset without backup file"
     
     # In this scenario, we need to mock the 'exec' command.
@@ -58,24 +58,93 @@ EOF
     After 'cleanup_mocks'
 
     It "should create directories and exec mongod with correct parameters"
-      # To make the script testable, we pass the mock script path as an argument.
-      # The script under test needs to be modified slightly to accept this. See note below.
       When run source ../scripts/replicaset-setup.tpl
 
-      # Assert that the basic directory structure is created.
       The path "$DATA_VOLUME/db" should be directory
       The path "$DATA_VOLUME/logs" should be directory
       The path "$DATA_VOLUME/tmp" should be directory
 
-      # Assert that 'exec' was called with the correct parameters by checking the log file.
       The file "$DATA_VOLUME/exec_cmd.log" should be file
       The contents of file "$DATA_VOLUME/exec_cmd.log" should equal "mongod --bind_ip_all --port 27017 --replSet cluster-mongodb --config /etc/mongodb/mongodb.conf"
       The status should be success
     End
   End
 
-  # Test Case 2: Restore from backup (backup file exists).
-  Describe "start replicaset with a backup file for restore"
+  # Test Case 2: Restore from legacy datafile (mongodb.backup exists).
+  Describe "start replicaset with a legacy backup file for restore"
+    BACKUPFILE="$MONGODB_ROOT/db/mongodb.backup"
+    
+    # Mock mongod, mongosh, kill, wait, and exec for this specific test case.
+    setup_datafile_mocks() {
+      mkdir -p "$MONGODB_ROOT/db"
+      touch "$BACKUPFILE"
+      
+      # Mock the temporary mongod instance for restore
+      mongod() {
+        # shellcheck disable=SC2145
+        echo "Mocked mongod (for restore) started with: $@"
+        # The script needs a PID file to kill the process
+        echo "12345" > "$MONGODB_ROOT/tmp/mongodb.pid"
+      }
+      
+      # Mock the client. It needs to fail the readiness check once, then succeed.
+      mongosh() {
+        # Check if it's the readiness check from the 'until' loop
+        if [[ "$*" == *"--eval print('restore process is ready')"* ]]; then
+          local counter_file="$DATA_VOLUME/until_counter"
+          if [ ! -f "$counter_file" ]; then
+            touch "$counter_file"
+            return 1 # Fail the first time to test the loop
+          else
+            echo "restore process is ready" # Succeed the second time
+            return 0
+          fi
+        else
+          # For all other calls (like dropUser), just log the command
+          echo "Mocked mongosh called with: $*"
+        fi
+      }
+      # Alias mongo to mongosh for robustness in test environment
+      mongo() { mongosh "$@"; }
+      
+      # Mock system commands
+      kill() { echo "Mocked kill called with PID: $1"; }
+      wait() { echo "Mocked wait called for PID: $1"; }
+
+      # The script will eventually call exec, so we mock it too.
+      exec() { echo "$@" > "$DATA_VOLUME/exec_cmd.log"; }
+    }
+    Before 'setup_datafile_mocks'
+
+    cleanup_datafile_mocks() {
+      rm -f "$BACKUPFILE"
+      rm -f "$DATA_VOLUME/until_counter"
+      unset -f mongod mongosh mongo kill wait exec
+    }
+    After 'cleanup_datafile_mocks'
+    
+    It "should run restore process and then proceed to normal startup"
+      When run source ../scripts/replicaset-setup.tpl
+      
+      # Assert the restore-specific actions
+      The output should include "Mocked mongod (for restore) started with: --bind_ip_all --port 27027"
+      The output should include "Mocked mongosh called with: --quiet --port 27027 local --eval db.system.replset.deleteOne({})"
+      The output should include "Mocked mongosh called with: --quiet --port 27027 admin --eval db.dropUser(\"root\""
+      The output should include "Mocked mongosh called with: --quiet --port 27027 admin --eval db.dropRole(\"anyAction\""
+      The output should include "Mocked kill called with PID: 12345"
+      The output should include "Mocked wait called for PID: 12345"
+      The output should include "INFO: restore set-up configuration successfully."
+      The path "$BACKUPFILE" should not be file
+
+      # Assert that after the restore, it proceeds to the normal exec startup
+      The file "$DATA_VOLUME/exec_cmd.log" should be file
+      The contents of file "$DATA_VOLUME/exec_cmd.log" should equal "mongod --bind_ip_all --port 27017 --replSet cluster-mongodb --config /etc/mongodb/mongodb.conf"
+      The status should be success
+    End
+  End
+
+  # Test Case 3: Restore from PBM backup (mongodb_pbm.backup exists).
+  Describe "start replicaset with a PBM backup file for restore"
     PBM_BACKUPFILE="$MONGODB_ROOT/tmp/mongodb_pbm.backup"
     
     # In this scenario, create the backup file and mock pbm-agent and mongod.
