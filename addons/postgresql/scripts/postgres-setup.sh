@@ -2,8 +2,13 @@
 
 tmp_patroni_yaml="tmp_patroni.yaml"
 
+# Log cleanup configuration
+LOG_CLEANUP_ENABLED="${LOG_CLEANUP_ENABLED:-true}"
+LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-7}"
+LOG_CLEANUP_INTERVAL="${LOG_CLEANUP_INTERVAL:-86400}"  # 24 hours in seconds
+
 function wait_pod_restarted() {
-  for i in $(seq 1 10); do
+  for _ in $(seq 1 10); do
     pending_restart=$(curl --connect-timeout 3 -s http://localhost:8008/cluster | jq -r ".members[] | select(.name == \"${CURRENT_POD_NAME}\") | .pending_restart")
     if [[ "${pending_restart}" != "true" ]]; then
       break
@@ -64,6 +69,7 @@ function restart_for_pending_restart_flag() {
     # Re-check pending_restart to avoid duplicate restarts
     sleep 5
     pending_restart=$(curl --connect-timeout 3 -s http://localhost:8008 | jq -r .pending_restart)
+    leader_pod=""  # Initialize leader_pod variable
     if [[ "${pending_restart}" == "true" && (-z $leader_pending_restart_pod || "${leader_pod}" == "${CURRENT_POD_NAME}") ]]; then
       # if leader pod is not pending_restart or current pod is leader pod, restart it
       echo "$(date) ${CURRENT_POD_NAME} is pending restart, restart it"
@@ -96,7 +102,7 @@ init_etcd_dcs_config_if_needed() {
 }
 
 regenerate_spilo_configuration_and_start_postgres() {
-  restart_for_pending_restart_flag 2>&1 >> /home/postgres/.kb_set_up.log &
+  { restart_for_pending_restart_flag >> /home/postgres/.kb_set_up.log; } 2>&1 &
   echo "$(date) restart_for_pending_restart_flag PID=$!" >> /home/postgres/.kb_set_up.log
   if [ -f "${RESTORE_DATA_DIR}"/kb_restore.signal ]; then
       chown -R postgres "${RESTORE_DATA_DIR}"
@@ -115,7 +121,30 @@ regenerate_spilo_configuration_and_start_postgres() {
 # end here. The script path is assigned to the __SOURCED__ variable.
 ${__SOURCED__:+false} : || return 0
 
+# Log cleanup background process
+start_log_cleanup_daemon() {
+    if [[ "$LOG_CLEANUP_ENABLED" == "true" ]]; then
+        echo "Starting log cleanup daemon (retention: ${LOG_RETENTION_DAYS} days, interval: ${LOG_CLEANUP_INTERVAL}s)"
+
+        # Use the unified log cleanup script if available
+        if [[ -x "/kb-scripts/pg_log_cleanup.sh" ]]; then
+            export LOG_RETENTION_DAYS
+            export LOG_CLEANUP_INTERVAL
+            export PG_LOG_DIR="/home/postgres/pgdata/log"
+
+            /kb-scripts/pg_log_cleanup.sh start "$LOG_CLEANUP_INTERVAL" &
+            echo "Log cleanup daemon started using unified script"
+        else
+            echo "Warning: pg_log_cleanup.sh not found, log cleanup disabled"
+        fi
+    fi
+}
+
 # main
 load_common_library
 init_etcd_dcs_config_if_needed
+
+# Start log cleanup daemon in background
+start_log_cleanup_daemon
+
 regenerate_spilo_configuration_and_start_postgres

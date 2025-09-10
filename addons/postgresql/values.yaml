@@ -56,6 +56,16 @@ shmVolume:
   ##
   sizeLimit: ""
 
+## @section PostgreSQL Log Cleanup Configuration
+## Configuration for automatic PostgreSQL log cleanup
+logCleanup:
+  ## @param logCleanup.enabled Enable automatic log cleanup
+  ##
+  enabled: true
+  ## @param logCleanup.retentionDays Number of days to retain log files
+  ##
+  retentionDays: 7
+
 ## @section Metrics Parameters
 metrics:
   ## @param metrics.image.registry PostgreSQL Prometheus Exporter image registry
