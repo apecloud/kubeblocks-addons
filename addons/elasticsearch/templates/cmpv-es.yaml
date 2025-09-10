@@ -24,7 +24,23 @@ spec:
     - 7.7.1
     - 7.8.1
     - 7.10.1
+  - compDefs:
+    - {{ include "elasticsearch6.cmpdRegexPattern" . }}
+    - {{ include "elasticsearchMaster6.cmpdRegexPattern" . }}
+    - {{ include "elasticsearchData6.cmpdRegexPattern" . }}
+    releases:
+    - 6.8.23
   releases:
+  - name: 6.8.23
+    serviceVersion: 6.8.23
+    images:
+      elasticsearch: {{ include "elasticsearch-6.8.23.image" . }}
+      prepare-plugins: {{ include "elasticsearch-6.8.23.image" . }}
+      install-plugins: {{ include "elasticsearch-6.8.23.image" . }}
+      exporter: {{ include "elasticsearch-exporter.image" . }}
+      memberleave: {{ include "elasticsearch-lfa.image" . }}
+      install-es-agent: {{ include "elasticsearch-agent.image" . }}
+      es-agent: {{ include "elasticsearch-6.8.23.image" . }}
   - name: 7.7.1
     serviceVersion: 7.7.1
     images:
