@@ -277,8 +277,11 @@ function export_logs_start_time_env() {
 
 function sync_pbm_config_from_storage() {
   echo "INFO: Syncing PBM config from storage..."
+
+  wait_for_other_operations
+
   pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI"
-  print_pbm_logs_by_event "resync"
+  # print_pbm_logs_by_event "resync"
   
   # resync wait flag might don't work
   wait_for_other_operations

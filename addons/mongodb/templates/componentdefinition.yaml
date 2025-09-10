@@ -154,6 +154,8 @@ spec:
             value: $(MONGODB_USER)
           - name: MONGODB_ROOT_PASSWORD
             value: $(MONGODB_PASSWORD)
+          - name: MONGODB_GRANT_ANYACTION_PRIVILEGE
+            value: "true"
           - name: PBM_AGENT_MONGODB_USERNAME
             value: $(MONGODB_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
@@ -200,8 +202,6 @@ spec:
             value: $(MONGODB_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
             value: $(MONGODB_PASSWORD)
-          - name: MONGODB_GRANT_ANYACTION_PRIVILEGE
-            value: "true"
           - name: PBM_MONGODB_REPLICA_SET
             value: $(KB_CLUSTER_COMP_NAME)
           - name: PBM_AGENT_SIDECAR
