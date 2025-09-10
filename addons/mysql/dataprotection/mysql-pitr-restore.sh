@@ -12,7 +12,7 @@ export WALG_MYSQL_CHECK_GTIDS=true
 export MYSQL_PWD=${MYSQL_ADMIN_PASSWORD}
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 export WALG_MYSQL_BINLOG_DST=${PITR_DIR}
-export WALG_MYSQL_BINLOG_REPLAY_COMMAND="mysqlbinlog --stop-datetime=\"\$WALG_MYSQL_BINLOG_END_TS\" \"\$WALG_MYSQL_CURRENT_BINLOG\" | grep -v 'INSERT INTO kubeblocks.kb_health_check' | mysql -u ${MYSQL_ADMIN_USER} -h ${DP_DB_HOST}"
+export WALG_MYSQL_BINLOG_REPLAY_COMMAND="mysqlbinlog --base64-output=DECODE-ROWS --stop-datetime=\"\$WALG_MYSQL_BINLOG_END_TS\" \"\$WALG_MYSQL_CURRENT_BINLOG\" | grep -v 'INSERT INTO kubeblocks.kb_health_check' | mysql -u ${MYSQL_ADMIN_USER} -h ${DP_DB_HOST}"
 
 # If pitr logs dir exists, it may be created by previous failed restore.
 if [ -d "$WALG_MYSQL_BINLOG_DST" ]; then
