@@ -14,8 +14,8 @@ metadata:
           "wal-g-archive": [{"key": "archive_command","value": "'envdir {{ .Values.dataMountPath }}/wal-g/env {{ .Values.dataMountPath }}/wal-g/wal-g wal-push %p'"}]
         },
         "disable": {
-          "archive-wal": [{ "key": "archive_command","value": "'/bin/true'"}],
-          "wal-g-archive": [{ "key": "archive_command","value": "'/bin/true'"}]
+          "archive-wal": [{"key": "archive_command","value": "'/bin/true'"}],
+          "wal-g-archive": [{"key": "archive_command","value": "'/bin/true'"}]
         }
       }
 spec:
