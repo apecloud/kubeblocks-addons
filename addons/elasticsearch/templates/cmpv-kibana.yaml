@@ -26,7 +26,15 @@ spec:
     - 7.7.1
     - 7.8.1
     - 7.10.1
+  - compDefs:
+    - kibana-6
+    releases:
+    - 6.8.23
   releases:
+  - name: 6.8.23
+    serviceVersion: 6.8.23
+    images:
+      kibana: {{ include "kibana-6.8.23.image" . }}
   - name: 7.7.1
     serviceVersion: 7.7.1
     images:

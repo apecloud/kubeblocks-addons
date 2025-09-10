@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: elasticsearch-8
+  name: elasticsearch-6
   annotations:
     apps.kubeblocks.io/skip-immutable-check: "true"
   labels:
@@ -10,7 +10,7 @@ spec:
   provider: kubeblocks
   description: Elasticsearch is a distributed, RESTful search engine optimized for speed and relevance on production-scale workloads.
   serviceKind: elasticsearch
-  serviceVersion: 8.8.2
+  serviceVersion: 6.8.23
   updateStrategy: Parallel
   podManagementPolicy: Parallel
   exporter:
@@ -19,7 +19,7 @@ spec:
     scrapePort: {{ .Values.exporter.service.port | quote}}
   configs:
     - name: es-cm
-      templateRef: {{ include "elasticsearch.name" . }}-config-8
+      templateRef: {{ include "elasticsearch.name" . }}-config-6
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
   scripts:
@@ -68,7 +68,7 @@ spec:
     - name: ELASTIC_USER_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: elasticsearch-8
+          compDef: elasticsearch-6
           name: elastic
           optional: false
           password: Required
@@ -77,14 +77,14 @@ spec:
     - name: KIBANA_SYSTEM_USER_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: elasticsearch-8
+          compDef: elasticsearch-6
           name: kibana_system
           optional: false
           password: Required
     - name: ELASTICSEARCH_HOST
       valueFrom:
         serviceVarRef:
-          compDef: elasticsearch-8
+          compDef: elasticsearch-6
           name: http
           host: Required
   lifecycleActions:
@@ -164,8 +164,10 @@ spec:
             fi
             if [ -f /bin/tini ]; then
               /bin/tini -- /usr/local/bin/docker-entrypoint.sh
-            else
+            elif [ -f /tini ]; then
               /tini -- /usr/local/bin/docker-entrypoint.sh
+            else
+              /usr/local/bin/docker-entrypoint.sh
             fi
 
         env:
