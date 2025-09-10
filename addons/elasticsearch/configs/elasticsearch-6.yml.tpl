@@ -71,7 +71,9 @@ node:
 # https://www.elastic.co/guide/en/elasticsearch/reference/6.8/modules-node.html
   {{- $myRoles := index $extraEnv (printf "%s-roles" $.component.name) | default $defaultRoles | splitList "," }}
   {{- range $i, $e := $myRoles }}
+    {{- if ne $e "transform" }}
   {{ $e }}: true
+    {{- end }}
   {{- end }}
 {{- end }}
 

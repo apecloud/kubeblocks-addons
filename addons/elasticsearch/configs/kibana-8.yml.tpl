@@ -48,10 +48,8 @@ server.ssl.key: ${KB_TLS_CERT_PATH}/${KB_TLS_KEY_FILE}
 # the username and password that the Kibana server uses to perform maintenance on the Kibana
 # index at startup. Your Kibana users still need to authenticate with Elasticsearch, which
 # is proxied through the Kibana server.
-{{- if $.component.tlsConfig }}
 elasticsearch.username: "kibana_system"
 elasticsearch.password: "${KIBANA_SYSTEM_USER_PASSWORD}"
-{{- end }}
 
 # Kibana can also authenticate to Elasticsearch via "service account tokens".
 # Service account tokens are Bearer style tokens that replace the traditional username/password based configuration.
@@ -187,3 +185,5 @@ elasticsearch.ssl.verificationMode: certificate
 # Maximum number of documents loaded by each shard to generate autocomplete suggestions.
 # This value must be a whole number greater than zero. Defaults to 100_000
 #unifiedSearch.autocomplete.valueSuggestions.terminateAfter: 100000
+
+telemetry.optIn: false

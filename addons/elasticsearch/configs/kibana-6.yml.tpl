@@ -185,5 +185,3 @@ elasticsearch.ssl.verificationMode: certificate
 # Maximum number of documents loaded by each shard to generate autocomplete suggestions.
 # This value must be a whole number greater than zero. Defaults to 100_000
 #unifiedSearch.autocomplete.valueSuggestions.terminateAfter: 100000
-
-telemetry.optIn: false
