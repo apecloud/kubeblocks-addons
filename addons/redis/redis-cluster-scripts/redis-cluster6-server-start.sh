@@ -427,7 +427,8 @@ scale_redis_cluster_replica() {
   # add the current node as a replica of the primary node
   primary_node_cluster_id=$(get_cluster_id "$primary_node_endpoint" "$primary_node_port")
   if [ -z "$primary_node_cluster_id" ]; then
-    echo "Failed to get the cluster id of the primary node $primary_node_endpoint_with_port"
+    echo "Failed to get the cluster id of the primary node $primary_node_endpoint_with_port, sleep 30s for waiting next pod to start"
+    sleep 30
     shutdown_redis_server
     exit 1
   fi
