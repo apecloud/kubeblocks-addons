@@ -257,8 +257,11 @@ function export_logs_start_time_env() {
 
 function sync_pbm_config_from_storage() {
   echo "INFO: Syncing PBM config from storage..."
+
+  wait_for_other_operations
+
   pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI"
-  print_pbm_logs_by_event "resync"
+  # print_pbm_logs_by_event "resync"
   
   # resync wait flag might don't work
   wait_for_other_operations
@@ -277,6 +280,13 @@ metadata:
   labels:
     app.kubernetes.io/instance: $CLUSTER_NAME
     apps.kubeblocks.io/restore-mongodb-shard: $phase
+  ownerReferences:
+    - apiVersion: apps.kubeblocks.io/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Cluster
+      name: $CLUSTER_NAME
+      uid: $CLUSTER_UID
 EOF
 }
 
