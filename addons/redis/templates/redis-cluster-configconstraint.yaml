@@ -35,7 +35,7 @@ spec:
   parametersSchema:
     topLevelKey: RedisParameter
     cue: |-
-      {{- $.Files.Get (printf "config/redis-cluster%s-config-constraint.cue" .major) | nindent 6 }}
+      {{- $.Files.Get (printf "config/redis-cluster%s-config-constraint.cue" $version) | nindent 6 }}
 
   ## require db instance restart
   {{- if hasKey $cc "staticParameters" }}
