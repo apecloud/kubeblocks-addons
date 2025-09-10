@@ -364,7 +364,8 @@ scale_redis_cluster_replica() {
   primary_node_cluster_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port")
   status=$?
   if is_empty "$primary_node_cluster_id" || [ $status -ne 0 ]; then
-    echo "Failed to get the cluster id of the primary node $primary_node_endpoint_with_port" >&2
+    echo "Failed to get the cluster id of the primary node $primary_node_endpoint_with_port, sleep 30s for waiting next pod to start" >&2
+    sleep 30
     shutdown_redis_server "$service_port"
     exit 1
   fi
