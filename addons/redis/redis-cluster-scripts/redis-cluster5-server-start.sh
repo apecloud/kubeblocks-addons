@@ -267,9 +267,43 @@ get_current_comp_nodes_for_scale_out_replica() {
   fi
 
   current_comp_primary_node=()
+  current_comp_primary_fail_node=()
   current_comp_other_nodes=()
   other_comp_primary_nodes=()
+  other_comp_primary_fail_nodes=()
   other_comp_other_nodes=()
+
+  set_current_comp_nodes() {
+    local node_role="$1"
+    local node_announce_ip="$2"
+    local node_announce_ip_port="$3"
+    local node_bus_port="$4"
+    if [[ "$node_role" =~ "master" ]]; then
+      if [[ "$node_role" =~ "fail" ]]; then
+         current_comp_primary_fail_node+=("$node_announce_ip#$node_announce_ip_port@$node_bus_port")
+      else
+         current_comp_primary_node+=("$node_announce_ip#$node_announce_ip_port@$node_bus_port")
+      fi
+    else
+      current_comp_other_nodes+=("$node_announce_ip#$node_announce_ip_port@$node_bus_port")
+    fi
+  }
+
+  set_other_comp_nodes() {
+    local node_role="$1"
+    local node_announce_ip="$2"
+    local node_announce_ip_port="$3"
+    local node_bus_port="$4"
+    if [[ "$node_role" =~ "master" ]]; then
+      if [[ "$node_role" =~ "fail" ]]; then
+         other_comp_primary_fail_nodes+=("$node_announce_ip#$node_announce_ip_port@$node_bus_port")
+      else
+         other_comp_primary_nodes+=("$node_announce_ip#$node_announce_ip_port@$node_bus_port")
+      fi
+    else
+      other_comp_other_nodes+=("$node_announce_ip#$node_announce_ip_port@$node_bus_port")
+    fi
+  }
 
   # if the cluster_nodes_info contains only one line, it means that the cluster not be initialized
   shard_count=$(echo "${REDIS_CLUSTER_ALL_SHARDS}" | tr ',' '\n' | wc -l)
@@ -313,9 +347,9 @@ get_current_comp_nodes_for_scale_out_replica() {
 
     if $belong_current_comp; then
       if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
-        current_comp_primary_node+=("$node_announce_ip#$node_announce_ip_port@$node_bus_port")
+        set_current_comp_nodes "$node_role" "$node_announce_ip" "$node_announce_ip_port" "$node_bus_port"
       else
-        current_comp_other_nodes+=("$node_announce_ip#$node_announce_ip_port@$node_bus_port")
+        set_other_comp_nodes "$node_role" "$node_announce_ip" "$node_announce_ip_port" "$node_bus_port"
       fi
     else
       if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
@@ -327,8 +361,10 @@ get_current_comp_nodes_for_scale_out_replica() {
   done <<< "$cluster_nodes_info"
 
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"
+  echo "current_comp_primary_fail_node: ${current_comp_primary_fail_node[*]}"
   echo "current_comp_other_nodes: ${current_comp_other_nodes[*]}"
   echo "other_comp_primary_nodes: ${other_comp_primary_nodes[*]}"
+  echo "other_comp_primary_fail_nodes: ${other_comp_primary_fail_nodes[*]}"
   echo "other_comp_other_nodes: ${other_comp_other_nodes[*]}"
 }
 
@@ -403,8 +439,12 @@ scale_redis_cluster_replica() {
       shutdown_redis_server
       exit 1
     fi
-    echo "current_comp_primary_node is empty, skip scale out replica"
-    exit 0
+    if [ ${#current_comp_primary_fail_node[@]} -eq 0 ]; then
+      echo "current_comp_primary_node is empty, skip scale out replica"
+      exit 0
+    fi
+    # if current_comp_primary_node is empty, use current_comp_primary_fail_node instead
+    current_comp_primary_node=("${current_comp_primary_fail_node[@]}")
   fi
 
   # primary_node_info value format: cluster_announce_ip#endpoint:port@bus_port
