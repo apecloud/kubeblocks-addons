@@ -24,7 +24,7 @@ else
   LOOPBACK=127.0.0.1
 fi
 
-if [ -n "${KB_TLS_CERT_FILE:-}" ]; then
+if [ "${TLS_ENABLED}" == "true" ]; then
   READINESS_PROBE_PROTOCOL=https
 else
   READINESS_PROBE_PROTOCOL=http
