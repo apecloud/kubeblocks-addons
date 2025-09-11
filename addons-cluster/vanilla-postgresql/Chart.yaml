@@ -1,7 +1,7 @@
 apiVersion: v2
 name: vanilla-postgresql-cluster
 type: application
-version: 1.0.1-beta.0
+version: 1.0.1
 description: A Vanilla PostgreSQL cluster Helm chart for Kubernetes
 
 dependencies:

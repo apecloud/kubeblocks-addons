@@ -4,7 +4,7 @@ description: Neo4j is a highly scalable, robust native graph database.
 
 type: application
 
-version: 1.0.1-beta.0
+version: 1.0.1
 
 appVersion: "5.26.5"
 

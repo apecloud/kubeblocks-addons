@@ -5,7 +5,7 @@ description: Apache Kafka is a distributed streaming platform designed to build 
 
 type: application
 
-version: 1.0.1-beta.0
+version: 1.0.1
 
 appVersion: 3.3.2
 
