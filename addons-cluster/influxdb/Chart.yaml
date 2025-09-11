@@ -2,7 +2,7 @@ apiVersion: v2
 name: influxdb-cluster
 type: application
 
-version: 1.0.1-beta.0
+version: 1.0.1
 
 appVersion: 2.7.11
 

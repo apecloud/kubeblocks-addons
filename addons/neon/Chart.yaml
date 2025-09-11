@@ -4,7 +4,7 @@ description: Neon is a serverless open-source alternative to AWS Aurora Postgres
 
 type: application
 
-version: 1.0.1-beta.0
+version: 1.0.1
 
 appVersion: "pg14-1.0.0"
 

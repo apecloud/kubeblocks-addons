@@ -4,7 +4,7 @@ description: OrioleDB is a new storage engine for PostgreSQL, bringing a modern 
 
 type: application
 
-version: 1.0.1-beta.0
+version: 1.0.1
 
 # This is the version number of the Orioledb being deployed
 appVersion: "16.4.0"

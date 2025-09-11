@@ -6,7 +6,7 @@ type: application
 
 description: YashanDB is an independent-developed next generation analytic database
 
-version: 1.0.1-beta.0
+version: 1.0.1
 
 # This is the version number of the yashandb being deployed.
 appVersion: "23.1.1-100"
