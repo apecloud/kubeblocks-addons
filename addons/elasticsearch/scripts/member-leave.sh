@@ -116,18 +116,10 @@ clear_shard_exclusion() {
   local node_name=$1
 
   log "Clearing shard allocation exclusion for node: $node_name"
-  # Try to clear the entire allocation exclude settings
+  # Clear all possible exclusion fields to ensure complete cleanup
   local response=$(curl ${common_options} -s -X PUT "${endpoint}/_cluster/settings" \
     -H 'Content-Type: application/json' \
-    -d "{\"persistent\": {\"cluster.routing.allocation.exclude\": {}}}")
-
-  if [ $? != 0 ]; then
-    log "WARNING: Failed to clear shard allocation exclusion (method 1), trying alternative method"
-    # Fallback: clear specific fields
-    response=$(curl ${common_options} -s -X PUT "${endpoint}/_cluster/settings" \
-      -H 'Content-Type: application/json' \
-      -d "{\"persistent\": {\"cluster.routing.allocation.exclude._name\": null, \"cluster.routing.allocation.exclude._ip\": null, \"cluster.routing.allocation.exclude._host\": null}}")
-  fi
+    -d "{\"persistent\": {\"cluster.routing.allocation.exclude._name\": null, \"cluster.routing.allocation.exclude._ip\": null, \"cluster.routing.allocation.exclude._host\": null}}")
 
   if [ $? != 0 ]; then
     log "WARNING: Failed to clear shard allocation exclusion"
