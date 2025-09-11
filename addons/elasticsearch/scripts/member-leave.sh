@@ -97,19 +97,11 @@ check_node_shards() {
 # Set shard allocation exclusion for the node
 set_shard_exclusion() {
   local node_name=$1
-  local exclusion_field=""
-
-  # Determine the correct exclusion field based on version
-  if [ "$major_version" -ge 7 ]; then
-    exclusion_field="_name"
-  else
-    exclusion_field="_host"
-  fi
 
   log "Setting shard allocation exclusion for node: $node_name"
   local response=$(curl ${common_options} -s -X PUT "${endpoint}/_cluster/settings" \
     -H 'Content-Type: application/json' \
-    -d "{\"persistent\": {\"cluster.routing.allocation.exclude.${exclusion_field}\": \"${node_name}\"}}")
+    -d "{\"persistent\": {\"cluster.routing.allocation.exclude._name\": \"${node_name}\"}}")
 
   if [ $? != 0 ]; then
     error_exit "Failed to set shard allocation exclusion"
@@ -122,19 +114,20 @@ set_shard_exclusion() {
 # Clear shard allocation exclusion
 clear_shard_exclusion() {
   local node_name=$1
-  local exclusion_field=""
-
-  # Determine the correct exclusion field based on version
-  if [ "$major_version" -ge 7 ]; then
-    exclusion_field="_name"
-  else
-    exclusion_field="_host"
-  fi
 
   log "Clearing shard allocation exclusion for node: $node_name"
+  # Try to clear the entire allocation exclude settings
   local response=$(curl ${common_options} -s -X PUT "${endpoint}/_cluster/settings" \
     -H 'Content-Type: application/json' \
-    -d "{\"persistent\": {\"cluster.routing.allocation.exclude.${exclusion_field}\": null}}")
+    -d "{\"persistent\": {\"cluster.routing.allocation.exclude\": {}}}")
+
+  if [ $? != 0 ]; then
+    log "WARNING: Failed to clear shard allocation exclusion (method 1), trying alternative method"
+    # Fallback: clear specific fields
+    response=$(curl ${common_options} -s -X PUT "${endpoint}/_cluster/settings" \
+      -H 'Content-Type: application/json' \
+      -d "{\"persistent\": {\"cluster.routing.allocation.exclude._name\": null, \"cluster.routing.allocation.exclude._ip\": null, \"cluster.routing.allocation.exclude._host\": null}}")
+  fi
 
   if [ $? != 0 ]; then
     log "WARNING: Failed to clear shard allocation exclusion"
@@ -274,6 +267,10 @@ safe_scale_down() {
   log "Node $node_name can now be safely removed from the cluster"
   log "=== Safe scale-down process completed successfully ==="
 
+  # Clear the shard exclusion settings since the node is safely removed
+  log "Clearing shard allocation exclusion settings..."
+  clear_shard_exclusion "$node_name" || log "Warning: Failed to clear shard exclusion after successful completion"
+
   local total_time=$(( $(date +%s) - start_time ))
   log "Total time taken: ${total_time} seconds"
 }
@@ -310,18 +307,29 @@ main() {
 # Cleanup function
 cleanup() {
   local exit_code=$?
+  log "Cleanup function called with exit code: $exit_code"
   if [ $exit_code -ne 0 ]; then
     log "Script exited with error code $exit_code, attempting cleanup..."
     # Try to clear shard exclusions on failure
     if [ -n "${KB_LEAVE_MEMBER_POD_NAME:-}" ]; then
-      clear_shard_exclusion "$KB_LEAVE_MEMBER_POD_NAME" || true
+      clear_shard_exclusion "$KB_LEAVE_MEMBER_POD_NAME" || log "Failed to clear shard exclusions during cleanup"
+    fi
+  else
+    # Even on successful exit, ensure we clear the exclusion settings
+    log "Script completed successfully, clearing shard exclusions..."
+    if [ -n "${KB_LEAVE_MEMBER_POD_NAME:-}" ]; then
+      clear_shard_exclusion "$KB_LEAVE_MEMBER_POD_NAME" || log "Failed to clear shard exclusions after success"
     fi
   fi
+  log "Cleanup completed"
   exit $exit_code
 }
 
 # Set trap for cleanup
 trap cleanup EXIT
+
+# Also trap common signals that might cause script termination
+trap cleanup INT TERM
 
 # Run main function
 main
