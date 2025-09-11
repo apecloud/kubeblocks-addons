@@ -67,7 +67,7 @@ spec:
         enabled: Optional
   configs:
   - name: kibana-cm
-    template: {{ include "kibana.configTplName" . }}
+    template: {{ include "kibana8.configTplName" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: kibana-cm
     restartOnFileChange: true
