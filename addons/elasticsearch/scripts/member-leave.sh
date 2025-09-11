@@ -26,17 +26,33 @@ if [ $? != 0 ]; then
   exit 1
 fi
 version=${version%.*}
-if awk "BEGIN {exit !($version < 7.8)}"; then
-  url=${endpoint}/_cluster/voting_config_exclusions/$KB_LEAVE_MEMBER_POD_NAME
+# Check if voting_config_exclusions API is supported (available from ES 7.0+)
+if awk "BEGIN {exit !($version >= 7.0)}"; then
+  if awk "BEGIN {exit !($version < 7.8)}"; then
+    url=${endpoint}/_cluster/voting_config_exclusions/$KB_LEAVE_MEMBER_POD_NAME
+  else
+    url=${endpoint}/_cluster/voting_config_exclusions?node_names=$KB_LEAVE_MEMBER_POD_NAME
+  fi
+  curl ${common_options} -v -X POST $url
+  if [ $? != 0 ]; then
+    echo "failed to add node $KB_LEAVE_MEMBER_POD_NAME to voting config exclusion list"
+    echo "may be the voting config exclusion list is full, try to remove it first"
+    curl ${common_options} -X DELETE "${endpoint}/_cluster/voting_config_exclusions?pretty&wait_for_removal=false"
+    exit 1
+  else
+    echo "successfully added node $KB_LEAVE_MEMBER_POD_NAME to voting config exclusion list"
+  fi
 else
-  url=${endpoint}/_cluster/voting_config_exclusions?node_names=$KB_LEAVE_MEMBER_POD_NAME
-fi
-curl ${common_options} -v -X POST $url
-if [ $? != 0 ]; then
-  echo "failed to add node $KB_LEAVE_MEMBER_POD_NAME to voting config exclusion list"
-  echo "may be the voting config exclusion list is full, try to remove it first"
-  curl ${common_options} -X DELETE "${endpoint}/_cluster/voting_config_exclusions?pretty&wait_for_removal=false"
-  exit 1
-else
-  echo "successfully added node $KB_LEAVE_MEMBER_POD_NAME to voting config exclusion list"
+  echo "ES version $version does not support voting_config_exclusions API, skipping node exclusion"
+
+  # For ES 6.x, check if this is a master node and warn about minimum_master_nodes
+  if [[ "$KB_LEAVE_MEMBER_POD_NAME" == *-master-* ]]; then
+    echo "WARNING: Removing master node $KB_LEAVE_MEMBER_POD_NAME from ES $version cluster"
+    echo "Please ensure the remaining master nodes count >= minimum_master_nodes setting"
+    echo "Check cluster health after removal to avoid split-brain scenarios"
+  else
+    echo "Removing data node $KB_LEAVE_MEMBER_POD_NAME, data will be automatically migrated"
+  fi
+
+  echo "Node $KB_LEAVE_MEMBER_POD_NAME will be removed from cluster naturally"
 fi

@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "kibana7.cmpdName" . }}
+  name: {{ include "kibana6.cmpdName" . }}
   annotations:
     apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "elasticsearch.annotations" . | nindent 4 }}
@@ -11,7 +11,7 @@ spec:
   provider: kubeblocks
   description: Kibana is a browser-based analytics and search dashboard for Elasticsearch.
   serviceKind: kibana
-  serviceVersion: 7.10.1
+  serviceVersion: 6.8.23
   updateStrategy: Parallel
   services:
   - name: http
@@ -67,7 +67,7 @@ spec:
         enabled: Optional
   configs:
   - name: kibana-cm
-    template: {{ include "kibana7.configTplName" . }}
+    template: {{ include "kibana6.configTplName" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: kibana-cm
     restartOnFileChange: true

@@ -69,6 +69,30 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 ^elasticsearch-
 {{- end -}}
 
+{{- define "elasticsearch6.cmpdName" -}}
+elasticsearch-6-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "elasticsearchMaster6.cmpdName" -}}
+elasticsearch-master-6-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "elasticsearchData6.cmpdName" -}}
+elasticsearch-data-6-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "elasticsearch6.cmpdRegexPattern" -}}
+^elasticsearch-6-
+{{- end -}}
+
+{{- define "elasticsearchMaster6.cmpdRegexPattern" -}}
+^elasticsearch-master-6-
+{{- end -}}
+
+{{- define "elasticsearchData6.cmpdRegexPattern" -}}
+^elasticsearch-data-6-
+{{- end -}}
+
 {{- define "elasticsearch7.cmpdName" -}}
 elasticsearch-7-{{ .Chart.Version }}
 {{- end -}}
@@ -121,6 +145,10 @@ elasticsearch-data-8-{{ .Chart.Version }}
 elasticsearch-scripts-tpl
 {{- end -}}
 
+{{- define "elasticsearch6.configTplName" -}}
+elasticsearch-6-config-tpl
+{{- end -}}
+
 {{- define "elasticsearch7.configTplName" -}}
 elasticsearch-7-config-tpl
 {{- end -}}
@@ -139,6 +167,10 @@ elasticsearch-8-config-tpl
 
 {{- define "elasticsearch-8.15.5.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.15.5
+{{- end }}
+
+{{- define "elasticsearch-6.8.23.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.8.23
 {{- end }}
 
 {{- define "elasticsearch-7.10.1.image" -}}
@@ -161,61 +193,53 @@ elasticsearch-8-config-tpl
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
 {{- end }}
 
-{{/*
-Define elasticsearch v7.X parameter config renderer name
-*/}}
 {{- define "elasticsearch7.pcrName" -}}
 elasticsearch7-pcr
 {{- end }}
 
-{{/*
-Define elasticsearch v8.X parameter config renderer name
-*/}}
 {{- define "elasticsearch8.pcrName" -}}
 elasticsearch8-pcr
 {{- end }}
 
-{{/*
-Define kibana v8.X component definition name
-*/}}
-{{- define "kibana8.cmpdName" -}}
-kibana-8-{{ .Chart.Version }}
+{{- define "kibana6.cmpdName" -}}
+kibana-6-{{ .Chart.Version }}
 {{- end -}}
 
-{{/*
-Define kibana v8.X component definition regex pattern
-*/}}
-{{- define "kibana8.cmpdRegexPattern" -}}
-^kibana-8-
+{{- define "kibana6.cmpdRegexPattern" -}}
+^kibana-6-
 {{- end -}}
 
-{{/*
-Define kibana component definition regex pattern
-*/}}
-{{- define "kibana.cmpdRegexPattern" -}}
-^kibana-
-{{- end -}}
-
-{{/*
-Define kibana v7.X component definition name
-*/}}
 {{- define "kibana7.cmpdName" -}}
 kibana-7-{{ .Chart.Version }}
 {{- end -}}
 
-{{/*
-Define kibana v7.X component definition regex pattern
-*/}}
 {{- define "kibana7.cmpdRegexPattern" -}}
 ^kibana-7-
 {{- end -}}
 
-{{/*
-Define kibana config tpl name
-*/}}
-{{- define "kibana.configTplName" -}}
-kibana-config-tpl
+{{- define "kibana8.cmpdName" -}}
+kibana-8-{{ .Chart.Version }}
 {{- end -}}
+
+{{- define "kibana8.cmpdRegexPattern" -}}
+^kibana-8-
+{{- end -}}
+
+{{- define "kibana6.configTplName" -}}
+kibana-6-config-tpl
+{{- end -}}
+
+{{- define "kibana7.configTplName" -}}
+kibana-7-config-tpl
+{{- end -}}
+
+{{- define "kibana8.configTplName" -}}
+kibana-8-config-tpl
+{{- end -}}
+
+{{- define "kibana-6.8.23.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:6.8.23
+{{- end }}
 
 {{- define "kibana-7.7.1.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:7.7.1
@@ -400,8 +424,10 @@ runtime:
           fi
           if [ -f /bin/tini ]; then
             /bin/tini -- /usr/local/bin/docker-entrypoint.sh
-          else
+          elif [ -f /tini ]; then
             /tini -- /usr/local/bin/docker-entrypoint.sh
+          else
+            /usr/local/bin/docker-entrypoint.sh
           fi
 
       env:
