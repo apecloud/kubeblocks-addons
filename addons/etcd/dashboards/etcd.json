@@ -1,14 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_PROMETHEUS",
-      "label": "Prometheus",
-      "description": "https://etcd.io/docs/v3.6/metrics/",
-      "type": "datasource",
-      "pluginId": "prometheus",
-      "pluginName": "Prometheus"
-    }
-  ],
   "__requires": [
     {
       "type": "grafana",
@@ -275,8 +265,9 @@
       "type": "stat"
     },
     {
-      "cacheTimeout": null,
-      "datasource": "${datasource}",
+      "datasource": {
+        "uid": "${datasource}"
+      },
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -285,7 +276,10 @@
           },
           "custom": {
             "align": "center",
-            "displayMode": "auto"
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
           },
           "decimals": 2,
           "displayName": "",
@@ -321,8 +315,11 @@
                 "value": 2
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
               },
               {
                 "id": "thresholds",
@@ -369,8 +366,10 @@
                 "value": 2
               },
               {
-                "id": "custom.displayMode",
-                "value": "auto"
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
               },
               {
                 "id": "custom.width",
@@ -416,8 +415,11 @@
                 "value": 3
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
               },
               {
                 "id": "thresholds",
@@ -460,8 +462,11 @@
                 "value": 3
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
               },
               {
                 "id": "thresholds",
@@ -516,8 +521,11 @@
                 ]
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
               },
               {
                 "id": "custom.width",
@@ -546,6 +554,10 @@
               {
                 "id": "custom.align",
                 "value": "auto"
+              },
+              {
+                "id": "custom.width",
+                "value": 251
               }
             ]
           },
@@ -585,8 +597,11 @@
                 ]
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
               },
               {
                 "id": "custom.width",
@@ -625,6 +640,114 @@
                 "value": 110
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "app_kubernetes_io_managed_by"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 249
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "apps_kubeblocks_io_component_name"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 230
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "app_kubernetes_io_instance"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 276
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "app_kubernetes_io_component"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 268
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "apecloud_instance"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 222
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "apecloud_environment"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 250
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "etcd_server_quota_backend_bytes{apecloud_environment=\"kb10\", apecloud_instance=\"onion74\", apecloud_organization=\"loomt\", app_kubernetes_io_component=\"etcd-3-1.1.0-alpha.0\", app_kubernetes_io_instance=\"onion-78478cc47b\", app_kubernetes_io_managed_by=\"kubeblocks\", apps_kubeblocks_io_component_name=\"etcd\", instance=\"10.13.25.90:2379\", job=\"prometheus_simple/10.13.25.90:2379\", kubeblocks_component_name=\"etcd\", kubeblocks_componentdefinition=\"etcd-3-1.1.0-alpha.0\", kubeblocks_instance=\"onion-78478cc47b\", kubeblocks_role=\"follower\", namespace=\"kubeblocks-cloud-ns\", node=\"cn-zhangjiakou.10.13.25.17\", pod=\"onion-78478cc47b-etcd-0\", replicas=\"3\", server_address=\"10.13.25.90\", server_port=\"2379\", service_instance_id=\"10.13.25.90:2379\", service_name=\"prometheus_simple/10.13.25.90:2379\", url_scheme=\"http\"}"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 787
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "etcd_server_quota_backend"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 221
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kubeblocks_instance"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 217
+              }
+            ]
           }
         ]
       },
@@ -635,16 +758,27 @@
         "y": 1
       },
       "id": 74,
-      "interval": null,
       "links": [],
       "maxDataPoints": 100,
       "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
         "showHeader": true,
         "sortBy": []
       },
-      "pluginVersion": "8.2.5",
+      "pluginVersion": "10.1.1",
       "targets": [
         {
+          "datasource": {
+            "uid": "${datasource}"
+          },
           "exemplar": false,
           "expr": "(etcd_mvcc_db_total_size_in_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} / etcd_server_quota_backend_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"})*100",
           "format": "table",
@@ -655,6 +789,9 @@
           "refId": "B"
         },
         {
+          "datasource": {
+            "uid": "${datasource}"
+          },
           "exemplar": false,
           "expr": "process_resident_memory_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "table",
@@ -665,6 +802,9 @@
           "refId": "A"
         },
         {
+          "datasource": {
+            "uid": "${datasource}"
+          },
           "exemplar": false,
           "expr": "sum(etcd_debugging_mvcc_keys_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}) by (app_kubernetes_io_instance, pod)",
           "format": "table",
@@ -675,6 +815,9 @@
           "refId": "C"
         },
         {
+          "datasource": {
+            "uid": "${datasource}"
+          },
           "exemplar": true,
           "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])) by (app_kubernetes_io_instance, pod, le))",
           "format": "table",
@@ -685,6 +828,9 @@
           "refId": "D"
         },
         {
+          "datasource": {
+            "uid": "${datasource}"
+          },
           "exemplar": true,
           "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])) by (app_kubernetes_io_instance, pod, le))",
           "format": "table",
@@ -695,6 +841,9 @@
           "refId": "E"
         },
         {
+          "datasource": {
+            "uid": "${datasource}"
+          },
           "exemplar": true,
           "expr": "sum(etcd_server_is_leader{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}) by (app_kubernetes_io_instance, pod)",
           "format": "table",
@@ -705,6 +854,9 @@
           "refId": "F"
         },
         {
+          "datasource": {
+            "uid": "${datasource}"
+          },
           "exemplar": false,
           "expr": "sum(etcd_debugging_mvcc_db_compaction_keys_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}) by (app_kubernetes_io_instance, pod)",
           "format": "table",
@@ -715,6 +867,9 @@
           "refId": "G"
         },
         {
+          "datasource": {
+            "uid": "${datasource}"
+          },
           "exemplar": true,
           "expr": "(etcd_mvcc_db_total_size_in_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} / etcd_server_quota_backend_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"})*100",
           "format": "table",
@@ -725,6 +880,9 @@
           "refId": "H"
         },
         {
+          "datasource": {
+            "uid": "${datasource}"
+          },
           "exemplar": true,
           "expr": "etcd_server_quota_backend_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} - etcd_mvcc_db_total_size_in_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "table",
@@ -735,6 +893,9 @@
           "refId": "I"
         },
         {
+          "datasource": {
+            "uid": "${datasource}"
+          },
           "exemplar": true,
           "expr": "etcd_server_quota_backend_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
@@ -745,8 +906,6 @@
           "refId": "J"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Status",
       "transformations": [
         {
@@ -760,27 +919,60 @@
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true
+              "__name__": true,
+              "apecloud_instance": true,
+              "apps_kubeblocks_io_component_name": true,
+              "etcd_server_quota_backend_bytes{apecloud_environment=\"kb10\", apecloud_instance=\"lilac39\", apecloud_organization=\"kltest\", app_kubernetes_io_component=\"etcd-3-1.0.1-beta.0\", app_kubernetes_io_instance=\"lilac-7f77ff6d9\", app_kubernetes_io_managed_by=\"kubeblocks\", apps_kubeblocks_io_component_name=\"etcd\", instance=\"10.13.25.123:2379\", job=\"prometheus_simple/10.13.25.123:2379\", kubeblocks_component_name=\"etcd\", kubeblocks_componentdefinition=\"etcd-3-1.0.1-beta.0\", kubeblocks_instance=\"lilac-7f77ff6d9\", kubeblocks_role=\"leader\", namespace=\"kubeblocks-cloud-ns\", node=\"cn-zhangjiakou.10.13.25.20\", pod=\"lilac-7f77ff6d9-etcd-0\", replicas=\"1\", server_address=\"10.13.25.123\", server_port=\"2379\", service_instance_id=\"10.13.25.123:2379\", service_name=\"prometheus_simple/10.13.25.123:2379\", url_scheme=\"http\"}": true,
+              "etcd_server_quota_backend_bytes{apecloud_environment=\"kb10\", apecloud_instance=\"onion74\", apecloud_organization=\"loomt\", app_kubernetes_io_component=\"etcd-3-1.1.0-alpha.0\", app_kubernetes_io_instance=\"onion-78478cc47b\", app_kubernetes_io_managed_by=\"kubeblocks\", apps_kubeblocks_io_component_name=\"etcd\", instance=\"10.13.25.90:2379\", job=\"prometheus_simple/10.13.25.90:2379\", kubeblocks_component_name=\"etcd\", kubeblocks_componentdefinition=\"etcd-3-1.1.0-alpha.0\", kubeblocks_instance=\"onion-78478cc47b\", kubeblocks_role=\"follower\", namespace=\"kubeblocks-cloud-ns\", node=\"cn-zhangjiakou.10.13.25.17\", pod=\"onion-78478cc47b-etcd-0\", replicas=\"3\", server_address=\"10.13.25.90\", server_port=\"2379\", service_instance_id=\"10.13.25.90:2379\", service_name=\"prometheus_simple/10.13.25.90:2379\", url_scheme=\"http\"}": false,
+              "job": true,
+              "kubeblocks_instance": true,
+              "kubeblocks_role": true,
+              "replicas": false,
+              "server_address": true,
+              "server_port": true,
+              "service_instance_id": true,
+              "service_name": true,
+              "url_scheme": true
             },
             "indexByName": {
-              "Time": 0,
+              "Time": 1,
               "Value #A": 8,
               "Value #B": 6,
               "Value #C": 9,
-              "Value #D": 10,
-              "Value #E": 11,
-              "Value #F": 2,
-              "Value #G": 12,
-              "Value #H": 13,
-              "Value #I": 4,
+              "Value #F": 3,
+              "Value #G": 10,
+              "Value #H": 11,
+              "Value #I": 5,
               "__name__": 7,
-              "pod": 1
+              "apecloud_environment": 13,
+              "apecloud_instance": 14,
+              "apecloud_organization": 15,
+              "app_kubernetes_io_component": 16,
+              "app_kubernetes_io_instance": 0,
+              "app_kubernetes_io_managed_by": 17,
+              "apps_kubeblocks_io_component_name": 18,
+              "etcd_server_quota_backend_bytes{apecloud_environment=\"kb10\", apecloud_instance=\"onion74\", apecloud_organization=\"loomt\", app_kubernetes_io_component=\"etcd-3-1.1.0-alpha.0\", app_kubernetes_io_instance=\"onion-78478cc47b\", app_kubernetes_io_managed_by=\"kubeblocks\", apps_kubeblocks_io_component_name=\"etcd\", instance=\"10.13.25.90:2379\", job=\"prometheus_simple/10.13.25.90:2379\", kubeblocks_component_name=\"etcd\", kubeblocks_componentdefinition=\"etcd-3-1.1.0-alpha.0\", kubeblocks_instance=\"onion-78478cc47b\", kubeblocks_role=\"follower\", namespace=\"kubeblocks-cloud-ns\", node=\"cn-zhangjiakou.10.13.25.17\", pod=\"onion-78478cc47b-etcd-0\", replicas=\"3\", server_address=\"10.13.25.90\", server_port=\"2379\", service_instance_id=\"10.13.25.90:2379\", service_name=\"prometheus_simple/10.13.25.90:2379\", url_scheme=\"http\"}": 12,
+              "instance": 19,
+              "job": 20,
+              "kubeblocks_component_name": 21,
+              "kubeblocks_componentdefinition": 22,
+              "kubeblocks_instance": 23,
+              "kubeblocks_role": 24,
+              "namespace": 25,
+              "node": 26,
+              "pod": 2,
+              "replicas": 4,
+              "server_address": 27,
+              "server_port": 28,
+              "service_instance_id": 29,
+              "service_name": 30,
+              "url_scheme": 31
             },
             "renameByName": {
               "Urgent Defragmentation": "",
               "Value #A": "Mem Used",
               "Value #B": "DB Used Space",
-              "Value #C": "# Keys",
+              "Value #C": "Keys",
               "Value #D": "WAL Sync 99p",
               "Value #E": "DB Sync 99p",
               "Value #F": "Is Leader?",
@@ -788,100 +980,16 @@
               "Value #H": "Urgent Defragmentation",
               "Value #I": "DB Capacity",
               "__name__": "",
+              "app_kubernetes_io_instance": "Cluster",
+              "etcd_server_quota_backend_bytes{apecloud_environment=\"kb10\", apecloud_instance=\"onion74\", apecloud_organization=\"loomt\", app_kubernetes_io_component=\"etcd-3-1.1.0-alpha.0\", app_kubernetes_io_instance=\"onion-78478cc47b\", app_kubernetes_io_managed_by=\"kubeblocks\", apps_kubeblocks_io_component_name=\"etcd\", instance=\"10.13.25.90:2379\", job=\"prometheus_simple/10.13.25.90:2379\", kubeblocks_component_name=\"etcd\", kubeblocks_componentdefinition=\"etcd-3-1.1.0-alpha.0\", kubeblocks_instance=\"onion-78478cc47b\", kubeblocks_role=\"follower\", namespace=\"kubeblocks-cloud-ns\", node=\"cn-zhangjiakou.10.13.25.17\", pod=\"onion-78478cc47b-etcd-0\", replicas=\"3\", server_address=\"10.13.25.90\", server_port=\"2379\", service_instance_id=\"10.13.25.90:2379\", service_name=\"prometheus_simple/10.13.25.90:2379\", url_scheme=\"http\"}": "Server Quota",
+              "kubeblocks_component_name": "Component Name",
+              "kubeblocks_componentdefinition": "ComponentDefinition",
               "pod": "Instance"
             }
           }
         }
       ],
       "type": "table"
-    },
-    {
-      "datasource": "${datasource}",
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "light-blue",
-            "mode": "fixed"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "transparent",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Has Leader"
-            },
-            "properties": [
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "options": {
-                      "0": {
-                        "color": "yellow",
-                        "index": 1,
-                        "text": "No"
-                      },
-                      "1": {
-                        "color": "dark-green",
-                        "index": 0,
-                        "text": "Yes"
-                      }
-                    },
-                    "type": "value"
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 0,
-        "y": 4
-      },
-      "id": 91,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "text": {},
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.2.5",
-      "targets": [
-        {
-          "exemplar": true,
-          "expr": "max(etcd_server_leader_changes_seen_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"})",
-          "instant": false,
-          "interval": "",
-          "legendFormat": "Leader Changes",
-          "refId": "A"
-        }
-      ],
-      "title": "Leader Changes",
-      "transformations": [],
-      "type": "stat"
     },
     {
       "datasource": "${datasource}",
@@ -2360,7 +2468,7 @@
         }
       },
       "pluginVersion": "8.2.5",
-              "targets": [
+      "targets": [
         {
           "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[5m])) by (app_kubernetes_io_instance, pod, le))",
           "format": "time_series",
@@ -3662,7 +3770,7 @@
           ]
         },
         "datasource": "${datasource}",
-        "definition": "label_values({namespace=~\"$namespace\", namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\"}, pod)",
+        "definition": "label_values(etcd_cluster_version{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\"}, pod)",
         "description": null,
         "error": null,
         "hide": 0,
@@ -3672,7 +3780,7 @@
         "name": "instance",
         "options": [],
         "query": {
-          "query": "label_values({namespace=~\"$namespace\", namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\"}, pod)",
+          "query": "label_values(etcd_cluster_version{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\"}, pod)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
@@ -3795,5 +3903,5 @@
   "timezone": "browser",
   "title": "Etcd",
   "uid": "etcd",
-  "version": 1 
+  "version": 1
 }
