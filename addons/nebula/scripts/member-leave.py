@@ -213,11 +213,11 @@ def remove_storage_host(graphd_host, graphd_port, user, password, pod_fqdn,host_
         member_leave[pod_fqdn] = json.dumps(host_member_leave_info)
         # 3. 删除host
         if can_remove_host:
+            del member_leave[pod_fqdn]
+            update_configmap(cli, member_leave)
             if not remove_host(nebula_client, host_to_remove):
                 return False
             # 4. 平衡leader
-            del member_leave[pod_fqdn]
-            update_configmap(cli, member_leave)
             balance_leader(nebula_client)
             return True
         logging.info(member_leave)
