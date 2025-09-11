@@ -660,6 +660,8 @@ Login to the Grafana dashboard and import the dashboard.
 
 There is a pre-configured dashboard for PostgreSQL under the `APPS / PostgreSQL` folder in the Grafana dashboard. And more dashboards can be found in the Grafana dashboard store[^5].
 
+And you can import the patroni dashboard from [Grafana PostgreSQL Patroni](https://grafana.com/grafana/dashboards/18870-postgresql-patroni/).
+
 > [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
