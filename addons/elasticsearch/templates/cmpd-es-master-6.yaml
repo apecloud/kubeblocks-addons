@@ -25,6 +25,8 @@ spec:
           password: Required
     - name: ELASTIC_PASSWORD
       value: $(ELASTIC_USER_PASSWORD)
+    - name: ES_JAVA_OPTS
+      value: "-Des.http.cname_in_publish_address=true"
     - name: KIBANA_SYSTEM_USER_PASSWORD
       valueFrom:
         credentialVarRef:

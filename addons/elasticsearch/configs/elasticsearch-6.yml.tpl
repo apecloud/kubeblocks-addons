@@ -22,11 +22,21 @@ cluster:
 discovery:
 {{- if eq $mode "multi-node" }}
   zen:
-    minimum_master_nodes: 1
+    {{- $masterCount := 0 }}
+    {{- $parts := splitList ";" .ALL_CMP_REPLICA_FQDN }}
+    {{- range $part := $parts }}
+      {{- if hasPrefix "master:" $part }}
+        {{- $masterPart := trimPrefix "master:" $part }}
+        {{- $masters := splitList "," $masterPart }}
+        {{- $masterCount = len $masters }}
+      {{- end }}
+    {{- end }}
+    # Calculate minimum_master_nodes as quorum: (master_count / 2) + 1
+    # This ensures cluster stability and prevents data loss
+    minimum_master_nodes: {{ add (div $masterCount 2) 1 }}
     ping:
       unicast:
         hosts:
-  {{- $parts := splitList ";" .ALL_CMP_REPLICA_FQDN }}
   {{- range $part := $parts }}
     {{- if hasPrefix "master:" $part }}
       {{- $masterPart := trimPrefix "master:" $part }}
@@ -66,7 +76,9 @@ node:
   {{- $myRoles := $roles | splitList "," }}
   {{- if semverCompare "<7.9" $esVersion }}
   {{- range $i, $e := $myRoles }}
+    {{- if ne $e "transform" }}
   {{ $e }}: true
+    {{- end }}
   {{- end }}
   {{- else }}
   roles:
