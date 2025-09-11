@@ -92,7 +92,11 @@ init_etcd_dcs_config_if_needed() {
     else
       export ETCD_HOSTS=$PATRONI_DCS_ETCD_SERVICE_ENDPOINT
     fi
+    SCOPE="${CLUSTER_NAME}-${POSTGRES_COMPONENT_NAME}-patroni${CLUSTER_UID: -8}"
+  else
+    SCOPE=${POSTGRES_COMPONENT_NAME}
   fi
+  export SCOPE
 }
 
 regenerate_spilo_configuration_and_start_postgres() {
@@ -105,10 +109,6 @@ regenerate_spilo_configuration_and_start_postgres() {
   # SPILO_CONFIGURATION is defined by spilo image
   SPILO_CONFIGURATION=$(cat $tmp_patroni_yaml)
   export SPILO_CONFIGURATION
-
-  SCOPE="${CLUSTER_NAME}-${POSTGRES_COMPONENT_NAME}-patroni${CLUSTER_UID: -8}"
-  export SCOPE
-
   exec /launch.sh init
 }
 
