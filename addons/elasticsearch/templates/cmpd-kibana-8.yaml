@@ -46,7 +46,7 @@ spec:
         host: Required
   configs:
   - name: kibana-cm
-    templateRef: {{ include "elasticsearch.name" . }}-kibana-config
+    templateRef: {{ include "elasticsearch.name" . }}-kibana-config-8
     namespace: {{ .Release.Namespace }}
     volumeName: kibana-cm
   runtime:

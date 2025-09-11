@@ -19,7 +19,19 @@ spec:
     - 7.7.1
     - 7.8.1
     - 7.10.1
+  - compDefs:
+    - elasticsearch-6
+    releases:
+    - 6.8.23
   releases:
+  - name: 6.8.23
+    serviceVersion: 6.8.23
+    images:
+      elasticsearch: {{ include "elasticsearch-6.8.23.image" . }}
+      prepare-plugins: {{ include "elasticsearch-6.8.23.image" . }}
+      install-plugins: {{ include "elasticsearch-6.8.23.image" . }}
+      exporter: {{ include "elasticsearch-exporter.image" . }}
+      agent: {{ include "elasticsearch-agent.image" . }}
   - name: 7.7.1
     serviceVersion: 7.7.1
     images:
