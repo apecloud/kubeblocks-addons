@@ -33,8 +33,10 @@ retry_delay_second=2
 
 # variables for scale out replica
 current_comp_primary_node=()
+current_comp_primary_fail_node=()
 current_comp_other_nodes=()
 other_comp_primary_nodes=()
+other_comp_primary_fail_nodes=()
 other_comp_other_nodes=()
 
 
@@ -111,14 +113,14 @@ check_and_meet_node() {
 check_and_meet_other_primary_nodes() {
   local current_primary_endpoint="$1"
   local current_primary_port="$2"
-
-  if [ ${#other_comp_primary_nodes[@]} -eq 0 ]; then
-    echo "other_comp_primary_nodes is empty, skip check_and_meet_other_primary_nodes"
+  local meet_other_comp_primary_nodes=("${other_comp_primary_nodes[@]}" "${other_comp_primary_fail_nodes[@]}")
+  if [ ${#meet_other_comp_primary_nodes[@]} -eq 0 ]; then
+    echo "meet_other_comp_primary_nodes is empty, skip check_and_meet_other_primary_nodes"
     return
   fi
 
   # node_info value format: cluster_announce_ip#pod_fqdn#endpoint:port@bus_port
-  for node_info in "${other_comp_primary_nodes[@]}"; do
+  for node_info in "${meet_other_comp_primary_nodes[@]}"; do
     node_endpoint_with_port=$(echo "$node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $3}')
     node_endpoint=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $1}')
     node_port=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $2}')
@@ -230,14 +232,22 @@ get_current_comp_nodes_for_scale_out_replica() {
     local node_role="$3"
 
     if contains "$node_fqdn" "$CURRENT_SHARD_COMPONENT_NAME"; then
-      if contains "$node_role" "master" && ! contains "$node_role" "fail"; then
-        current_comp_primary_node+=("$node_entry")
+      if contains "$node_role" "master" && ! ; then
+        if contains "$node_role" "fail"; then
+          current_comp_primary_fail_node+=("$node_entry")
+        else
+          current_comp_primary_node+=("$node_entry")
+        fi
       else
         current_comp_other_nodes+=("$node_entry")
       fi
     else
-      if contains "$node_role" "master" && ! contains "$node_role" "fail"; then
-        other_comp_primary_nodes+=("$node_entry")
+      if contains "$node_role" "master"; then
+        if contains "$node_role" "fail"; then
+          other_comp_primary_fail_nodes+=("$node_entry")
+        else
+          other_comp_primary_nodes+=("$node_entry")
+        fi
       else
         other_comp_other_nodes+=("$node_entry")
       fi
@@ -260,8 +270,10 @@ get_current_comp_nodes_for_scale_out_replica() {
   done <<< "$cluster_nodes_info"
 
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"
+  echo "current_comp_primary_fail_node: ${current_comp_primary_fail_node[*]}"
   echo "current_comp_other_nodes: ${current_comp_other_nodes[*]}"
   echo "other_comp_primary_nodes: ${other_comp_primary_nodes[*]}"
+  echo "other_comp_primary_fail_nodes: ${other_comp_primary_fail_nodes[*]}"
   echo "other_comp_other_nodes: ${other_comp_other_nodes[*]}"
 }
 
@@ -333,8 +345,12 @@ scale_redis_cluster_replica() {
       shutdown_redis_server "$service_port"
       exit 1
     fi
-    echo "current_comp_primary_node is empty, skip scale out replica"
-    exit 0
+    if [ ${#current_comp_primary_fail_node[@]} -eq 0 ]; then
+      echo "current_comp_primary_node is empty, skip scale out replica"
+      exit 0
+    fi
+    # if current_comp_primary_node is empty, use current_comp_primary_fail_node instead
+    current_comp_primary_node=("${current_comp_primary_fail_node[@]}")
   fi
 
   # primary_node_info value format: cluster_announce_ip#pod_fqdn#endpoint:port@bus_port
