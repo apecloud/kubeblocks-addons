@@ -157,7 +157,9 @@ spec:
           - sh
           - -c
           - |
-            cp ${KB_TLS_CERT_PATH}/* /usr/share/elasticsearch/config/
+            if [ ! -z "${KB_TLS_CERT_PATH}" ]; then
+              cp ${KB_TLS_CERT_PATH}/* /usr/share/elasticsearch/config/
+            fi
             # remove initial master nodes block if cluster has been formed
             if [ -f "${CLUSTER_FORMED_FILE}" ]; then
               sed -i '/# INITIAL_MASTER_NODES_BLOCK_START/,/# INITIAL_MASTER_NODES_BLOCK_END/d' config/elasticsearch.yml
