@@ -437,7 +437,7 @@ scale_redis_cluster_replica() {
       exit 0
     fi
     # if current_comp_primary_node is empty, use current_comp_primary_fail_node instead
-    current_comp_primary_node=("${current_comp_primary_fail_node[@]}"
+    current_comp_primary_node=("${current_comp_primary_fail_node[@]}")
   fi
 
   # primary_node_info value format: cluster_announce_ip#endpoint:port@bus_port

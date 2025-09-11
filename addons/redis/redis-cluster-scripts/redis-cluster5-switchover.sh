@@ -126,6 +126,10 @@ do_switchover() {
 
   # check candidate pod is ready and has the role of secondary
   role=$(check_redis_role "$candidate_pod_fqdn" $service_port)
+  if [ "$role" = "primary" ]; then
+    echo "Info: Candidate pod $candidate_pod is already a primary"
+    exit 0
+  fi
   if [ "$role" != "secondary" ]; then
     echo "Error: Candidate pod $candidate_pod is not a secondary"
     exit 1
@@ -151,15 +155,17 @@ do_switchover() {
     echo "Error: Could not determine current shard primary host and port"
     exit 1
   fi
-  primaries=$(get_all_shards_master "$current_shard_primary_host" $current_shard_primary_port)
-  for primary in $primaries; do
-    primary_host=$(echo "$primary" | cut -d':' -f1)
-    primary_port=$(echo "$primary" | cut -d':' -f2)
-    if ! is_node_in_cluster "$primary_host" $primary_port "$candidate_pod_ip"; then
-      echo "Error: Candidate $candidate_pod is not known by shard $primary"
-      exit 1
-    fi
-  done
+  if [ -z "${REDIS_ADVERTISED_LB_HOST}" ]; then
+    primaries=$(get_all_shards_master "$current_shard_primary_host" $current_shard_primary_port)
+    for primary in $primaries; do
+      primary_host=$(echo "$primary" | cut -d':' -f1)
+      primary_port=$(echo "$primary" | cut -d':' -f2)
+      if ! is_node_in_cluster "$primary_host" $primary_port "$candidate_pod_ip"; then
+        echo "Error: Candidate $candidate_pod is not known by shard $primary"
+        exit 1
+      fi
+    done
+  fi
 
   # do switchover
   echo "Starting switchover to $candidate_pod"

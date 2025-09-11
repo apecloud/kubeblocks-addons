@@ -125,6 +125,10 @@ do_switchover() {
 
   # check candidate pod is ready and has the role of secondary
   role=$(check_redis_role "$candidate_pod_fqdn" $service_port)
+  if [ "$role" = "primary" ]; then
+    echo "Info: Candidate pod $candidate_pod is already a primary"
+    exit 0
+  fi
   if [ "$role" != "secondary" ]; then
     echo "Error: Candidate pod $candidate_pod is not a secondary"
     exit 1
