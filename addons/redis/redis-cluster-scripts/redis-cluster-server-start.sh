@@ -232,7 +232,7 @@ get_current_comp_nodes_for_scale_out_replica() {
     local node_role="$3"
 
     if contains "$node_fqdn" "$CURRENT_SHARD_COMPONENT_NAME"; then
-      if contains "$node_role" "master" && ! ; then
+      if contains "$node_role" "master"; then
         if contains "$node_role" "fail"; then
           current_comp_primary_fail_node+=("$node_entry")
         else
