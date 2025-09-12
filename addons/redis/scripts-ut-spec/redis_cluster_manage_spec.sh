@@ -1148,6 +1148,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         return 0
       }
 
+      check_current_shard_other_nodes_are_joined() {
+        return 0
+      }
+
       setup() {
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
         export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
