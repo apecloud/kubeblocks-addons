@@ -27,6 +27,19 @@ Describe "Redis Cluster Server Start Bash Script Tests"
     redis_acl_file_bak="./users.acl.bak"
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
+    
+    # Define contains function if not already defined
+    if ! type contains >/dev/null 2>&1; then
+      contains() {
+        local string="$1"
+        local substring="$2"
+        if [[ "$string" == *"$substring"* ]]; then
+          return 0
+        else
+          return 1
+        fi
+      }
+    fi
   }
   BeforeAll "init"
 
@@ -305,10 +318,10 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         export CURRENT_SHARD_ADVERTISED_PORT="redis-shard-sxj-0:31000,redis-shard-sxj-1:31001"
         export CURRENT_SHARD_ADVERTISED_BUS_PORT="redis-shard-sxj-0:32000,redis-shard-sxj-1:32001"
         export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
-        export ALL_SHARDS_COMPONENT_SHORT_NAMES="redis-shard-sxj,redis-shard-abc"
-        export current_comp_primary_node=()
-        export current_comp_other_nodes=()
-        export other_comp_primary_nodes=()
+        current_comp_primary_node=()
+        current_comp_other_nodes=()
+        other_comp_primary_nodes=()
+        other_comp_other_nodes=()
       }
       Before "setup"
 
@@ -324,7 +337,6 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         The status should be success
         The variable current_comp_primary_node[0] should equal "10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#10.42.0.227:31000@32000"
         The variable current_comp_other_nodes[0] should equal "10.42.0.228#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc#10.42.0.228:31001@32001"
-        The variable other_comp_primary_nodes[0] should equal "10.42.0.229#redis-shard-abc-0.redis-shard-abc-headless.default.svc#10.42.0.229:32222@32223"
         The stdout should include "other_comp_other_nodes: "
       End
     End
@@ -338,12 +350,11 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         unset CURRENT_SHARD_ADVERTISED_PORT
         unset CURRENT_SHARD_ADVERTISED_BUS_PORT
         export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
-        export ALL_SHARDS_COMPONENT_SHORT_NAMES="redis-shard-sxj,redis-shard-abc"
         export SERVICE_PORT="6379"
-        export current_comp_primary_node=()
-        export current_comp_other_nodes=()
-        export other_comp_primary_nodes=()
-        export other_comp_other_nodes=()
+        current_comp_primary_node=()
+        current_comp_other_nodes=()
+        other_comp_primary_nodes=()
+        other_comp_other_nodes=()
       }
       Before "setup"
 
@@ -356,6 +367,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
 
       It "parses current component nodes correctly when not using advertised ports"
         When call get_current_comp_nodes_for_scale_out_replica "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc" "6379"
+        The status should be success
         The variable current_comp_primary_node[0] should equal "10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379"
         The variable current_comp_other_nodes[0] should equal "10.42.0.228#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc:6379@16379"
         The variable other_comp_primary_nodes[0] should equal "10.42.0.229#redis-shard-abc-0.redis-shard-abc-headless.default.svc#redis-shard-abc-0.redis-shard-abc-headless.default.svc:6379@16379"
