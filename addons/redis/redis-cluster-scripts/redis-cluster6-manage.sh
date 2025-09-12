@@ -782,6 +782,20 @@ verify_secondary_in_all_primaries() {
   return 0
 }
 
+check_current_shard_other_nodes_are_joined() {
+  local current_primary_host="$1"
+  local service_port="$2"
+  cluster_nodes_info=$(get_cluster_nodes_info "$current_primary_host" "$service_port")
+  for secondary_pod_name in "${!scale_out_shard_default_other_nodes[@]}"; do
+    scale_out_shard_secondary_node="${scale_out_shard_default_other_nodes[$secondary_pod_name]}"
+    if ! contains "$cluster_nodes_info" "$scale_out_shard_secondary_node"; then
+      echo "Secondary node $secondary_pod_name not found in primary $current_primary_host, need to joined" >&2
+      return 1
+    fi
+  done
+  return 0
+}
+
 scale_out_redis_cluster_shard() {
   if is_empty "$CURRENT_SHARD_COMPONENT_SHORT_NAME" || is_empty "$KB_CLUSTER_POD_NAME_LIST" || is_empty "$KB_CLUSTER_POD_HOST_IP_LIST" || is_empty "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" || is_empty "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST"; then
     echo "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, KB_CLUSTER_POD_NAME_LIST, KB_CLUSTER_POD_HOST_IP_LIST, KB_CLUSTER_COMPONENT_POD_NAME_LIST and KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set when scale out redis cluster shard" >&2
@@ -805,9 +819,13 @@ scale_out_redis_cluster_shard() {
   primary_node_fqdn=$(echo "$primary_node_with_port" | awk -F ':' '{print $1}')
   primary_node_port=$(echo "$primary_node_with_port" | awk -F ':' '{print $2}')
   mapping_primary_cluster_id=$(get_cluster_id "$primary_node_fqdn" "$primary_node_port")
+  current_primary_joined=false
   if check_slots_covered "$primary_node_with_port" "$SERVICE_PORT"; then
-    echo "The current component shard is already scaled out, no need to scale out again."
-    return 0
+    if check_current_shard_other_nodes_are_joined "$primary_node_fqdn" "$primary_node_port"; then
+      echo "The current component shard is already scaled out, no need to scale out again."
+      return 0
+    fi
+    current_primary_joined=true
   fi
 
   # find the exist available node which is not in the current component
@@ -818,16 +836,18 @@ scale_out_redis_cluster_shard() {
   fi
 
   # add the primary node for the current shard
-  local scale_out_shard_default_primary
-  for primary_pod_name in "${!scale_out_shard_default_primary_node[@]}"; do
-    scale_out_shard_default_primary="${scale_out_shard_default_primary_node[$primary_pod_name]}"
-    if scale_out_shard_primary_join_cluster "$scale_out_shard_default_primary" "$available_node"; then
-      echo "Redis cluster scale out shard primary node $primary_pod_name successfully"
-    else
-      echo "Failed to scale out shard primary node $primary_pod_name" >&2
-      return 1
-    fi
-  done
+  if [ "$current_primary_joined" = "false" ]; then
+    local scale_out_shard_default_primary
+    for primary_pod_name in "${!scale_out_shard_default_primary_node[@]}"; do
+      scale_out_shard_default_primary="${scale_out_shard_default_primary_node[$primary_pod_name]}"
+      if scale_out_shard_primary_join_cluster "$scale_out_shard_default_primary" "$available_node"; then
+        echo "Redis cluster scale out shard primary node $primary_pod_name successfully"
+      else
+        echo "Failed to scale out shard primary node $primary_pod_name" >&2
+        return 1
+      fi
+    done
+  fi
 
   # waiting for all nodes sync the information
   sleep_when_ut_mode_false 5
