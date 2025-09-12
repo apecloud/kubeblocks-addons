@@ -854,11 +854,6 @@ scale_out_redis_cluster_shard() {
   # waiting for all nodes sync the information
   sleep_when_ut_mode_false 5
 
-  #if [ "$current_primary_joined" = "true" ]; then
-  #  echo "The current component shard is already scaled out, no need to scale out again"
-  #  return 0
-  #fi
-
   # add the secondary nodes to replicate the primary node
   local scale_out_shard_secondary_node
   for secondary_pod_name in "${!scale_out_shard_default_other_nodes[@]}"; do
