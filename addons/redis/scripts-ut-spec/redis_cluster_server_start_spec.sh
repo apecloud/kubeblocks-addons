@@ -27,19 +27,6 @@ Describe "Redis Cluster Server Start Bash Script Tests"
     redis_acl_file_bak="./users.acl.bak"
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
-    
-    # Define contains function if not already defined
-    if ! type contains >/dev/null 2>&1; then
-      contains() {
-        local string="$1"
-        local substring="$2"
-        if [[ "$string" == *"$substring"* ]]; then
-          return 0
-        else
-          return 1
-        fi
-      }
-    fi
   }
   BeforeAll "init"
 
