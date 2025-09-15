@@ -25,6 +25,13 @@ Define postgresql ComponentSpec with ComponentDefinition.
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "postgresql-cluster.serviceRef" . | indent 6 }}
+      env:
+        - name: PG_MODE
+          {{- if .Values.remoteSetting.isStandby }}
+          value: "standby"
+          {{- else }}
+          value: "{{ .Values.mode }}"
+          {{- end }}
 {{- end }}
 
 {{- define "postgresql-cluster.serviceRef" }}
