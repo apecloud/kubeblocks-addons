@@ -12,10 +12,10 @@ spec:
           valueFrom:
             envRef:
               envName: PG_MODE
-        - name: KB_PODIP
+        - name: POD_IP
           valueFrom:
             envRef:
-              envName: KB_PODIP
+              envName: POD_IP
   parametersSchema:
     openAPIV3Schema:
       properties:
