@@ -1,74 +1,23 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: elasticsearch-7
+  name: {{ include "elasticsearch7.cmpdName" . }}
   annotations:
     apps.kubeblocks.io/skip-immutable-check: "true"
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
-  provider: kubeblocks
-  description: Elasticsearch is a distributed, RESTful search engine optimized for speed and relevance on production-scale workloads.
-  serviceKind: elasticsearch
   serviceVersion: 7.10.1
-  updateStrategy: Parallel
-  podManagementPolicy: Parallel
-  exporter:
-    containerName: exporter
-    scrapePath: /metrics
-    scrapePort: {{ .Values.exporter.service.port | quote}}
   configs:
     - name: es-cm
-      templateRef: {{ include "elasticsearch.name" . }}-config-7
+      templateRef: {{ include "elasticsearch7.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
-  scripts:
-    - name: scripts
-      templateRef: {{ include "elasticsearch.name" . }}-scripts
-      namespace: {{ .Release.Namespace }}
-      volumeName: scripts
-      defaultMode: 0555
-  services:
-    - name: http
-      serviceName: http
-      spec:
-        ipFamilyPolicy: PreferDualStack
-        ipFamilies:
-          - IPv4
-        ports:
-          - name: http
-            port: 9200
-            targetPort: http
-    - name: agent
-      serviceName: agent
-      spec:
-        ipFamilyPolicy: PreferDualStack
-        ipFamilies:
-        - IPv4
-        ports:
-        - name: agent
-          port: 8080
-          targetPort: agent
-  systemAccounts:
-  - name: elastic
-    initAccount: true
-    passwordGenerationPolicy:
-      length: 10
-      numDigits: 5
-      numSymbols: 0
-      letterCase: MixedCases
-  - name: kibana_system
-    initAccount: true
-    passwordGenerationPolicy:
-      length: 10
-      numDigits: 5
-      numSymbols: 0
-      letterCase: MixedCases
   vars:
     - name: ELASTIC_USER_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: elasticsearch-7
+          compDef: 
           name: elastic
           optional: false
           password: Required
@@ -77,285 +26,16 @@ spec:
     - name: KIBANA_SYSTEM_USER_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: elasticsearch-7
+          compDef: {{ include "elasticsearch7.cmpdName" . }}
           name: kibana_system
           optional: false
           password: Required
     - name: ELASTICSEARCH_HOST
       valueFrom:
         serviceVarRef:
-          compDef: elasticsearch-7
+          compDef: {{ include "elasticsearch7.cmpdName" . }}
           name: http
           host: Required
-  lifecycleActions:
-    memberLeave:
-      customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
-        exec:
-          command:
-          - /bin/sh
-          - -c
-          - /mnt/remote-scripts/member-leave.sh
-        targetPodSelector: Any
-        container: elasticsearch
-  runtime:
-    initContainers:
-      - name: prepare-plugins
-        imagePullPolicy: IfNotPresent
-        command:
-          - sh
-          - -c
-          - |
-            if [ -d /plugins ]; then
-              echo "install plugins: $(ls /plugins)"
-              cp -r /plugins/* /tmp/plugins/
-            else
-              echo "there is no plugins"
-            fi
-        securityContext:
-          runAsUser: 0
-          privileged: true
-        volumeMounts:
-          - mountPath: /tmp/plugins
-            name: plugins
-      - name: install-plugins
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
-        command:
-          - sh
-          - -c
-          - |
-            set -x
-            sh /mnt/remote-scripts/install-plugins.sh
-            sh /mnt/remote-scripts/prepare-fs.sh
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          privileged: false
-          runAsNonRoot: true
-          runAsUser: 1000
-        volumeMounts:
-          - mountPath: /mnt/remote-config
-            name: es-cm
-            readOnly: true
-          - mountPath: /mnt/remote-scripts
-            name: scripts
-            readOnly: true
-          - mountPath: /mnt/local-bin
-            name: local-bin
-          - mountPath: /mnt/local-config
-            name: local-config
-          - mountPath: /mnt/local-plugins
-            name: local-plugins
-          - mountPath: /tmp/plugins
-            name: plugins
-    containers:
-      - name: elasticsearch
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
-        command:
-          - sh
-          - -c
-          - |
-            if [ ! -z "${KB_TLS_CERT_PATH}" ]; then
-              cp ${KB_TLS_CERT_PATH}/* /usr/share/elasticsearch/config/
-            fi
-            # remove initial master nodes block if cluster has been formed
-            if [ -f "${CLUSTER_FORMED_FILE}" ]; then
-              sed -i '/# INITIAL_MASTER_NODES_BLOCK_START/,/# INITIAL_MASTER_NODES_BLOCK_END/d' config/elasticsearch.yml
-            fi
-            if [ -f /bin/tini ]; then
-              /bin/tini -- /usr/local/bin/docker-entrypoint.sh
-            else
-              /tini -- /usr/local/bin/docker-entrypoint.sh
-            fi
-
-        env:
-          - name: POD_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.podIP
-          - name: POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-          - name: NODE_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: spec.nodeName
-          - name: NAMESPACE
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.namespace
-          - name: NSS_SDB_USE_CACHE
-            value: "no"
-          - name: CLUSTER_FORMED_FILE
-            value: /usr/share/elasticsearch/data/cluster-formed
-        ports:
-          - containerPort: 9200
-            name: http
-            protocol: TCP
-          - containerPort: 9300
-            name: transport
-            protocol: TCP
-        readinessProbe:
-          exec:
-            command:
-              - bash
-              - -c
-              - /mnt/remote-scripts/readiness-probe-script.sh
-          failureThreshold: 3
-          initialDelaySeconds: 30
-          periodSeconds: 5
-          successThreshold: 1
-          timeoutSeconds: 5
-        lifecycle:
-          postStart:
-            exec:
-              command:
-              - bash
-              - -c
-              - |
-                /mnt/remote-scripts/post-start-hook.sh > /tmp/post-start-hook.log 2>&1
-          preStop:
-            exec:
-              command:
-                - bash
-                - -c
-                - |
-                  /mnt/remote-scripts/pre-stop-hook.sh > /tmp/pre-stop-hook.log 2>&1
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          privileged: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 1000
-        volumeMounts:
-          - mountPath: /usr/share/elasticsearch/bin
-            name: local-bin
-          - mountPath: /usr/share/elasticsearch/config
-            name: local-config
-          - mountPath: /usr/share/elasticsearch/plugins
-            name: local-plugins
-          - mountPath: /usr/share/elasticsearch/data
-            name: data
-          - mountPath: /usr/share/elasticsearch/logs
-            name: log
-          - mountPath: /mnt/remote-config
-            name: es-cm
-            readOnly: true
-          - mountPath: /mnt/remote-scripts
-            name: scripts
-            readOnly: true
-          - mountPath: /tmp
-            name: tmp-volume
-      - name: exporter
-        command:
-          - /bin/elasticsearch_exporter
-          - "--es.uri=http://localhost:9200"
-          - "--es.ssl-skip-verify"
-        ports:
-          - name: metrics
-            containerPort: {{.Values.exporter.service.port}}
-        env:
-          - name: SERVICE_PORT
-            value: {{.Values.exporter.service.port | quote }}
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: metrics
-          initialDelaySeconds: 5
-          timeoutSeconds: 5
-          periodSeconds: 5
-        readinessProbe:
-          httpGet:
-            path: /healthz
-            port: metrics
-          initialDelaySeconds: 1
-          timeoutSeconds: 5
-          periodSeconds: 5
-      - name: agent
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.agent.repository }}:{{ .Values.image.agent.tag }}
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
-        ports:
-        - name: agent
-          containerPort: 8080
-          protocol: TCP
-        env:
-        - name: POD_IP
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: status.podIP
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.name
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: spec.nodeName
-        - name: ELASTIC_USERNAME
-          value: "elastic"
-        - name: ELASTIC_PASSWORD
-          value: "$(ELASTIC_USER_PASSWORD)"
-        - name: ELASTICSEARCH_HOST
-          value: "localhost"
-        - name: ELASTICSEARCH_PORT
-          value: "9200"
-        - name: AGENT_PORT
-          value: "8080"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: agent
-          initialDelaySeconds: 10
-          timeoutSeconds: 5
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: agent
-          initialDelaySeconds: 5
-          timeoutSeconds: 5
-          periodSeconds: 5
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          privileged: false
-          readOnlyRootFilesystem: false
-          runAsNonRoot: true
-          runAsUser: 1000
-        volumeMounts:
-        - mountPath: /usr/share/elasticsearch/bin
-          name: local-bin
-        - mountPath: /usr/share/elasticsearch/config
-          name: local-config
-        - mountPath: /usr/share/elasticsearch/data
-          name: data
-    securityContext:
-      fsGroup: 1000
-    volumes:
-      - emptyDir: { }
-        name: log
-      - emptyDir: { }
-        name: tmp-volume
-      - emptyDir: { }
-        name: local-bin
-      - emptyDir: { }
-        name: local-config
-      - emptyDir: { }
-        name: local-plugins
-      - emptyDir: { }
-        name: plugins
+    - name: ELASTICSEARCH_ROLES
+      value: master,data
+  {{ include "elasticsearch.common" . | nindent 2 }}

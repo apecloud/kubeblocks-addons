@@ -316,7 +316,7 @@ exporter:
   scrapePort: {{ .Values.exporter.service.port | quote}}
 scripts:
   - name: scripts
-    templateRef: {{ include "elasticsearch.name" . }}-scripts
+    templateRef: {{ include "elasticsearch.scriptsTplName" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555
