@@ -69,35 +69,7 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 Define elasticsearch component definition regex pattern
 */}}
 {{- define "elasticsearch.cmpdRegexPattern" -}}
-^elasticsearch-
-{{- end -}}
-
-{{/*
-Define elasticsearch v7.X component definition name
-*/}}
-{{- define "elasticsearch7.cmpdName" -}}
-elasticsearch-7
-{{- end -}}
-
-{{/*
-Define elasticsearch v7.X component definition regex pattern
-*/}}
-{{- define "elasticsearch7.cmpdRegexPattern" -}}
-^elasticsearch-7-
-{{- end -}}
-
-{{/*
-Define elasticsearch v8.X component definition name
-*/}}
-{{- define "elasticsearch8.cmpdName" -}}
-elasticsearch-8
-{{- end -}}
-
-{{/*
-Define elasticsearch v8.X component definition regex pattern
-*/}}
-{{- define "elasticsearch8.cmpdRegexPattern" -}}
-^elasticsearch-8-
+^elasticsearch
 {{- end -}}
 
 {{- define "elasticsearch.scriptsTplName" -}}
@@ -117,15 +89,15 @@ elasticsearch-data-6
 {{- end -}}
 
 {{- define "elasticsearch6.cmpdRegexPattern" -}}
-^elasticsearch-6-
+^elasticsearch-6
 {{- end -}}
 
 {{- define "elasticsearchMaster6.cmpdRegexPattern" -}}
-^elasticsearch-master-6-
+^elasticsearch-master-6
 {{- end -}}
 
 {{- define "elasticsearchData6.cmpdRegexPattern" -}}
-^elasticsearch-data-6-
+^elasticsearch-data-6
 {{- end -}}
 
 {{- define "elasticsearch6.configTplName" -}}
@@ -145,15 +117,15 @@ elasticsearch-data-7
 {{- end -}}
 
 {{- define "elasticsearch7.cmpdRegexPattern" -}}
-^elasticsearch-7-
+^elasticsearch-7
 {{- end -}}
 
 {{- define "elasticsearchMaster7.cmpdRegexPattern" -}}
-^elasticsearch-master-7-
+^elasticsearch-master-7
 {{- end -}}
 
 {{- define "elasticsearchData7.cmpdRegexPattern" -}}
-^elasticsearch-data-7-
+^elasticsearch-data-7
 {{- end -}}
 
 {{- define "elasticsearch7.configTplName" -}}
@@ -173,15 +145,15 @@ elasticsearch-data-8
 {{- end -}}
 
 {{- define "elasticsearch8.cmpdRegexPattern" -}}
-^elasticsearch-8-
+^elasticsearch-8
 {{- end -}}
 
 {{- define "elasticsearchMaster8.cmpdRegexPattern" -}}
-^elasticsearch-master-8-
+^elasticsearch-master-8
 {{- end -}}
 
 {{- define "elasticsearchData8.cmpdRegexPattern" -}}
-^elasticsearch-data-8-
+^elasticsearch-data-8
 {{- end -}}
 
 {{- define "elasticsearch8.configTplName" -}}
@@ -224,16 +196,12 @@ elasticsearch-8-config-tpl
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag | default "latest" }}
 {{- end }}
 
-{{- define "kibana.cmpdRegexPattern" -}}
-^kibana-
-{{- end }}
-
 {{- define "kibana6.cmpdName" -}}
 kibana-6
 {{- end -}}
 
 {{- define "kibana6.cmpdRegexPattern" -}}
-^kibana-6-
+^kibana-6
 {{- end -}}
 
 {{- define "kibana7.cmpdName" -}}
@@ -241,7 +209,7 @@ kibana-7
 {{- end -}}
 
 {{- define "kibana7.cmpdRegexPattern" -}}
-^kibana-7-
+^kibana-7
 {{- end -}}
 
 {{- define "kibana8.cmpdName" -}}
@@ -249,7 +217,7 @@ kibana-8
 {{- end -}}
 
 {{- define "kibana8.cmpdRegexPattern" -}}
-^kibana-8-
+^kibana-8
 {{- end -}}
 
 {{- define "kibana.configTplName" -}}
