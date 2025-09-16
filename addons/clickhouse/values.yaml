@@ -44,7 +44,7 @@ busyboxImage:
   tag: 1.37.0-musl
 
 backupImage:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: ""
   repository: apecloud/clickhouse-backup-full
   pullPolicy: IfNotPresent
   tag: 2.6.14

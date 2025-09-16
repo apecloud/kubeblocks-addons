@@ -10,7 +10,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image:  {{ .Values.backupImage.registry | default "docker.io" }}/{{ .Values.backupImage.repository }}:{{ .Values.backupImage.tag }}
+      image: {{ include "clickhouse.backupImage.repository" . }}
       runOnTargetPodNode: true
       command:
         - bash
@@ -24,7 +24,7 @@ spec:
   restore:
     postReady:
     - job:
-        image:  {{ .Values.backupImage.registry | default "docker.io" }}/{{ .Values.backupImage.repository }}:{{ .Values.backupImage.tag }}
+        image: {{ include "clickhouse.backupImage.repository" . }}
         runOnTargetPodNode: true
         command:
           - bash
