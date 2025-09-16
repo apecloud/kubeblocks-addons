@@ -199,6 +199,16 @@ Define busybox image
 {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository}}:{{ .Values.busyboxImage.tag }}
 {{- end }}
 
+{{/*
+Define clickhouse image repository
+*/}}
+{{- define "clickhouse.backupImage.repository" -}}
+{{ .Values.backupImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.backupImage.repository }}:{{ .Values.backupImage.tag }}
+{{- end }}
+
+{{/*
+Define clickhouse image repository
+*/}}
 {{- define "clickhouse.repository" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
 {{- end }}
