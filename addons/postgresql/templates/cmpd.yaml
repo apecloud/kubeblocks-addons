@@ -20,6 +20,11 @@ spec:
         - serviceKind: etcd
           serviceVersion: "^*"
       optional: true
+    - name: remote-instances
+      serviceRefDeclarationSpecs:
+        - serviceKind: postgresql
+          serviceVersion: "{{ .major }}\\.\\d+\\.\\d+"
+      optional: true
   services:
     - name: postgresql
       serviceName: postgresql
@@ -137,6 +142,30 @@ spec:
           name: postgres
           optional: false
           password: Required
+    - name: STANDBY_HOST
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          host: Required
+    - name: STANDBY_PORT
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          port: Required
+    - name: KB_PGUSER_STANDBY
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          username: Optional
+    - name: KB_PGPASSWORD_STANDBY
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          password: Optional
     ## the postgres pod name list for each pod, the value format is "pod1,pod2,..."
     - name: POSTGRES_POD_NAME_LIST
       valueFrom:
