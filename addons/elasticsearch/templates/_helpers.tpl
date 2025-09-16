@@ -335,6 +335,7 @@ lifecycleActions:
         - /mnt/remote-scripts/member-leave.sh
       targetPodSelector: Any
       container: elasticsearch
+      timeoutSeconds: 300
 runtime:
   initContainers:
     - name: prepare-plugins
@@ -403,8 +404,10 @@ runtime:
           fi
           if [ -f /bin/tini ]; then
             /bin/tini -- /usr/local/bin/docker-entrypoint.sh
-          else
+          elif [ -f /tini ]; then
             /tini -- /usr/local/bin/docker-entrypoint.sh
+          else
+            /usr/local/bin/docker-entrypoint.sh
           fi
 
       env:
