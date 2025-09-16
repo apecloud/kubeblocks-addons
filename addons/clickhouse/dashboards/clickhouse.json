@@ -70,7 +70,10 @@
             "mode": "thresholds"
           },
           "custom": {
-            "displayMode": "auto",
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
             "filterable": false,
             "inspect": false
           },
@@ -101,6 +104,78 @@
                 "value": "s"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kubeblocks_sharding_name 3"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 199
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kubeblocks_sharding_name 2"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 176
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "apps_kubeblocks_io_component_name"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 339
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kubeblocks_component_name"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 284
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "app_kubernetes_io_instance"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 226
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pod"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 260
+              }
+            ]
           }
         ]
       },
@@ -112,7 +187,9 @@
       },
       "id": 14,
       "options": {
+        "cellHeight": "sm",
         "footer": {
+          "countRows": false,
           "fields": "",
           "reducer": [
             "sum"
@@ -120,15 +197,17 @@
           "show": false
         },
         "frameIndex": 1,
-        "showHeader": true
+        "showHeader": true,
+        "sortBy": []
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "10.1.1",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "editorMode": "code",
           "exemplar": false,
           "expr": "ClickHouseMetrics_VersionInteger{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
           "format": "table",
@@ -142,6 +221,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "editorMode": "code",
           "exemplar": false,
           "expr": "ClickHouseMetrics_Revision{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
           "format": "table",
@@ -156,6 +236,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "editorMode": "code",
           "exemplar": false,
           "expr": "ClickHouseAsyncMetrics_NumberOfTables{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
           "format": "table",
@@ -170,6 +251,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "editorMode": "code",
           "exemplar": false,
           "expr": "ClickHouseAsyncMetrics_Uptime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
           "format": "table",
@@ -184,6 +266,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "editorMode": "code",
           "exemplar": false,
           "expr": "ClickHouseAsyncMetrics_NumberOfDatabases{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
           "format": "table",
@@ -199,73 +282,145 @@
         {
           "id": "seriesToColumns",
           "options": {
-            "byField": "instance"
+            "byField": "instance",
+            "mode": "outer"
           }
         },
         {
           "id": "organize",
           "options": {
             "excludeByName": {
+              "/apecloud_environment [2-5]/": true,
+              "/apecloud_instance [2-5]/": true,
+              "/apecloud_organization [2-5]/": true,
+              "/kubeblocks_sharding_name [2-5]/": true,
               "Time 1": true,
               "Time 2": true,
               "Time 3": true,
               "Time 4": true,
               "Time 5": true,
+              "Value #C": false,
+              "Value #D": false,
+              "Value #E": false,
               "__name__ 1": true,
               "__name__ 2": true,
               "__name__ 3": true,
               "__name__ 4": true,
               "__name__ 5": true,
+              "apecloud_environment 1": false,
+              "apecloud_environment 2": true,
+              "apecloud_environment 4": true,
+              "apecloud_environment 5": true,
+              "apecloud_instance 2": true,
+              "apecloud_instance 4": true,
+              "apecloud_instance 5": true,
+              "apecloud_organization 2": true,
+              "apecloud_organization 4": true,
+              "apecloud_organization 5": true,
+              "app_kubernetes_io_component": true,
+              "app_kubernetes_io_component 1": false,
+              "app_kubernetes_io_component 2": true,
+              "app_kubernetes_io_component 4": true,
+              "app_kubernetes_io_component 5": true,
+              "app_kubernetes_io_instance 2": true,
+              "app_kubernetes_io_instance 3": true,
+              "app_kubernetes_io_instance 4": true,
+              "app_kubernetes_io_instance 5": true,
+              "app_kubernetes_io_managed_by": true,
+              "app_kubernetes_io_managed_by 1": false,
+              "app_kubernetes_io_managed_by 2": true,
+              "app_kubernetes_io_managed_by 4": true,
+              "app_kubernetes_io_managed_by 5": true,
+              "app_kubernetes_io_name": true,
+              "app_kubernetes_io_version": true,
+              "apps_kubeblocks_io_component_name 1": true,
+              "apps_kubeblocks_io_component_name 2": true,
+              "apps_kubeblocks_io_component_name 3": true,
+              "apps_kubeblocks_io_component_name 4": true,
+              "apps_kubeblocks_io_component_name 5": true,
+              "http_scheme": true,
               "job 1": true,
               "job 2": true,
               "job 3": true,
               "job 4": true,
               "job 5": true,
-              "pod 2": true,
-              "pod 3": true,
-              "pod 4": true,
-              "pod 5": true, "app_kubernetes_io_instance 2": true,
-              "kubeblocks_component_name 2": true,
-              "apps_kubeblocks_io_component_name 2": true,
-              "app_kubernetes_io_instance 3": true,
-              "kubeblocks_component_name 3": true,
-              "apps_kubeblocks_io_component_name 3": true,
-              "app_kubernetes_io_instance 4": true,
-              "kubeblocks_component_name 4": true,
-              "apps_kubeblocks_io_component_name 4": true,
-              "app_kubernetes_io_instance 5": true,
-              "kubeblocks_component_name 5": true,
-              "apps_kubeblocks_io_component_name 5": true,
-              "app_kubernetes_io_component": true,
-              "app_kubernetes_io_managed_by": true,
-              "app_kubernetes_io_name": true,
-              "app_kubernetes_io_version": true,
-              "http_scheme": true,
               "kubeblocks_clusterdefinition": true,
+              "kubeblocks_component_name 2": true,
+              "kubeblocks_component_name 3": true,
+              "kubeblocks_component_name 4": true,
+              "kubeblocks_component_name 5": true,
               "kubeblocks_componentdefinition": true,
+              "kubeblocks_componentdefinition 1": false,
+              "kubeblocks_componentdefinition 2": true,
+              "kubeblocks_componentdefinition 3": true,
+              "kubeblocks_componentdefinition 4": true,
+              "kubeblocks_componentdefinition 5": true,
               "kubeblocks_instance": true,
+              "kubeblocks_instance 2": true,
+              "kubeblocks_instance 3": true,
+              "kubeblocks_instance 4": true,
+              "kubeblocks_instance 5": true,
               "kubeblocks_role": true,
+              "kubeblocks_role 2": true,
+              "kubeblocks_role 3": true,
+              "kubeblocks_role 4": true,
+              "kubeblocks_role 5": true,
+              "kubeblocks_sharding_name 2": true,
+              "kubeblocks_sharding_name 3": true,
+              "kubeblocks_sharding_name 4": true,
+              "kubeblocks_sharding_name 5": true,
               "namespace": true,
+              "namespace 2": true,
+              "namespace 3": true,
+              "namespace 4": true,
+              "namespace 5": true,
               "net_host_name": true,
               "net_host_port": true,
               "node": true,
+              "node 2": true,
+              "node 3": true,
+              "node 4": true,
+              "node 5": true,
+              "pod 1": false,
+              "pod 2": true,
+              "pod 3": true,
+              "pod 4": true,
+              "pod 5": true,
               "replicas": true,
+              "replicas 3": true,
+              "replicas 4": true,
+              "replicas 5": true,
               "server_address": true,
+              "server_address 3": true,
+              "server_address 4": true,
+              "server_address 5": true,
               "server_port": true,
+              "server_port 3": true,
+              "server_port 4": true,
+              "server_port 5": true,
               "service_instance_id": true,
+              "service_instance_id 3": true,
+              "service_instance_id 4": true,
+              "service_instance_id 5": true,
               "service_name": true,
-              "url_scheme": true
+              "service_name 3": true,
+              "service_name 4": true,
+              "service_name 5": true,
+              "url_scheme": true,
+              "url_scheme 3": true,
+              "url_scheme 4": true,
+              "url_scheme 5": true
             },
             "indexByName": {
-              "namespace": 0,
               "cluster": 1,
               "component": 2,
+              "databases": 8,
               "instance": 3,
-              "version": 4,
+              "namespace": 0,
               "revision": 5,
               "tables": 6,
               "uptime": 7,
-              "databases": 8
+              "version": 4
             },
             "renameByName": {
               "Value #A": "version",
@@ -11194,7 +11349,7 @@
           ]
         },
         "datasource": "${datasource}",
-        "definition": "label_values({namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\"}, pod)",
+        "definition": "label_values(ClickHouseAsyncMetrics_Uptime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\"}, pod)",
         "description": null,
         "error": null,
         "hide": 0,
@@ -11204,7 +11359,7 @@
         "name": "instance",
         "options": [],
         "query": {
-          "query": "label_values({namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\"}, pod)",
+          "query": "label_values(ClickHouseAsyncMetrics_Uptime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\"}, pod)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
