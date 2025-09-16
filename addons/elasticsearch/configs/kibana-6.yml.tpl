@@ -48,8 +48,10 @@ server.ssl.key: ${KB_TLS_CERT_PATH}/${KB_TLS_KEY_FILE}
 # the username and password that the Kibana server uses to perform maintenance on the Kibana
 # index at startup. Your Kibana users still need to authenticate with Elasticsearch, which
 # is proxied through the Kibana server.
+{{- if $.component.tlsConfig }}
 elasticsearch.username: "kibana_system"
 elasticsearch.password: "${KIBANA_SYSTEM_USER_PASSWORD}"
+{{- end }}
 
 # Kibana can also authenticate to Elasticsearch via "service account tokens".
 # Service account tokens are Bearer style tokens that replace the traditional username/password based configuration.
