@@ -1,5 +1,5 @@
 {{- $clusterName := $.cluster.metadata.name }}
-{{- $defaultRoles := "master,data" }}
+{{- $defaultRoles := "${ELASTICSEARCH_ROLES}" }}
 {{- $namespace := $.cluster.metadata.namespace }}
 {{- $extraEnv := index $.cluster.metadata.annotations "kubeblocks.io/extra-env" | default "{}" | fromJson }}
 {{- $mode := index $extraEnv "mode" | default "multi-node" }}

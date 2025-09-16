@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "elasticsearch.name" . }}-config-6
+  name: {{ include "elasticsearch6.configTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "elasticsearch.labels" . | nindent 4 }}
@@ -15,7 +15,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "elasticsearch.name" . }}-config-7
+  name: {{ include "elasticsearch7.configTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "elasticsearch.labels" . | nindent 4 }}
@@ -29,7 +29,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "elasticsearch.name" . }}-config-8
+  name: {{ include "elasticsearch8.configTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "elasticsearch.labels" . | nindent 4 }}
@@ -43,7 +43,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "elasticsearch.name" . }}-kibana-config-6
+  name: {{ include "kibana6.configTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "elasticsearch.labels" . | nindent 4 }}
@@ -55,7 +55,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "elasticsearch.name" . }}-kibana-config-7
+  name: {{ include "kibana7.configTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "elasticsearch.labels" . | nindent 4 }}
@@ -67,7 +67,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "elasticsearch.name" . }}-kibana-config-8
+  name: {{ include "kibana8.configTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "elasticsearch.labels" . | nindent 4 }}

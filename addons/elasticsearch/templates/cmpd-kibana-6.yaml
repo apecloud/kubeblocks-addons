@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: kibana-6
+  name: {{ include "kibana6.cmpdName" . }}
   annotations:
     apps.kubeblocks.io/skip-immutable-check: "true"
   labels:
@@ -27,26 +27,32 @@ spec:
   - name: ELASTIC_USER_PASSWORD
     valueFrom:
       credentialVarRef:
-        compDef: elasticsearch-6
+        compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
         name: elastic
         optional: false
         password: Required
+        multipleClusterObjectOption:
+          strategy: individual
   - name: KIBANA_SYSTEM_USER_PASSWORD
     valueFrom:
       credentialVarRef:
-        compDef: elasticsearch-6
+        compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
         name: kibana_system
         optional: false
         password: Required
+        multipleClusterObjectOption:
+          strategy: individual
   - name: ELASTICSEARCH_HOST
     valueFrom:
       serviceVarRef:
-        compDef: elasticsearch-6
+        compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
         name: http
         host: Required
+        multipleClusterObjectOption:
+          strategy: individual
   configs:
   - name: kibana-cm
-    templateRef: {{ include "elasticsearch.name" . }}-kibana-config-6
+    templateRef: {{ include "kibana6.configTplName" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: kibana-cm
   runtime:
@@ -73,8 +79,36 @@ spec:
         else
           READINESS_PROBE_PROTOCOL=http
         fi
+        # All the components' password of elastic must be the same, So we find the first environment variable that starts with ELASTIC_USER_PASSWORD
+        ELASTIC_AUTH_PASSWORD=""
+        if [ "${TLS_ENABLED}" == "true" ]; then
+          last_value=""
+          set +x
+          for env_var in $(env | grep -E '^ELASTIC_USER_PASSWORD'); do
+            value="${env_var#*=}"
+            if [ -n "$value" ]; then
+              if [ -n "$last_value" ] && [ "$last_value" != "$value" ]; then
+                echo "Error conflicting env $env_var of elastic password values found, all the components' password of elastic must be the same."
+                exit 1
+              fi
+              last_value="$value"
+            fi
+          done
+          ELASTIC_AUTH_PASSWORD="$last_value"
+        fi
+        for env_var in $(env | grep -E '^ELASTICSEARCH_HOST'); do
+          value="${env_var#*=}"
+          if [ -n "$value" ]; then
+            ELASTICSEARCH_HOST="$value"
+            break
+          fi
+        done
+        if [ -z "$ELASTICSEARCH_HOST" ]; then
+          echo "Invalid ELASTICSEARCH_HOST"
+          exit 1
+        fi
         endpoint="${READINESS_PROBE_PROTOCOL}://${ELASTICSEARCH_HOST}.${KB_NAMESPACE}.svc.${CLUSTER_DOMAIN}:9200"
-        common_options="-s -u elastic:${ELASTIC_USER_PASSWORD} --fail --connect-timeout 3 -k"
+        common_options="-s -u elastic:${ELASTIC_AUTH_PASSWORD} --fail --connect-timeout 3 -k"
         while true; do
           if [ -n "${KB_TLS_CERT_FILE}" ]; then
             out=$(curl ${common_options} -X GET "${endpoint}/kubeblocks_ca_crt/_doc/1?pretty")

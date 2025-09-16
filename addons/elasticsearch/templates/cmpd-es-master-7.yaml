@@ -1,23 +1,23 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "elasticsearch8.cmpdName" . }}
+  name: {{ include "elasticsearchMaster7.cmpdName" . }}
   annotations:
     apps.kubeblocks.io/skip-immutable-check: "true"
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
-  serviceVersion: 8.8.2
+  serviceVersion: 7.10.1
   configs:
     - name: es-cm
-      templateRef: {{ include "elasticsearch8.configTplName" . }}
+      templateRef: {{ include "elasticsearch7.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
   vars:
     - name: ELASTIC_USER_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: 
+          compDef: {{ include "elasticsearchMaster7.cmpdName" . }}
           name: elastic
           optional: false
           password: Required
@@ -26,16 +26,16 @@ spec:
     - name: KIBANA_SYSTEM_USER_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "elasticsearch8.cmpdName" . }}
+          compDef: {{ include "elasticsearchMaster7.cmpdName" . }}
           name: kibana_system
           optional: false
           password: Required
     - name: ELASTICSEARCH_HOST
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "elasticsearch8.cmpdName" . }}
+          compDef: {{ include "elasticsearchMaster7.cmpdName" . }}
           name: http
           host: Required
     - name: ELASTICSEARCH_ROLES
-      value: master,data
+      value: master
   {{ include "elasticsearch.common" . | nindent 2 }}
