@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: hdfs-datanode
+  name: {{ include "dataNodeComponentDef" . }}
   labels:
     {{- include "hadoop-hdfs.labels" . | nindent 4 }}
   annotations:
@@ -9,14 +9,16 @@ metadata:
 spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}
+  serviceVersion: {{ .Chart.AppVersion }}
   serviceKind: hdfs-datanode
+  podManagementPolicy: Parallel
   runtime:
     hostNetwork: true
     hostPID: true
     dnsPolicy: ClusterFirstWithHostNet
     initContainers:
       - name: hadoop-common
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         command:
           - /bin/bash
         args:
@@ -36,7 +38,7 @@ spec:
             subPath: data0
     containers:
       - name: hdfs-datanode
-        imagePullPolicy: {{ default "IfNotPresent" .Values.dataNode.image.pullPolicy }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         env:
           - name: DEBUG_MODEL
             value: "false"
@@ -97,19 +99,25 @@ spec:
   configs:
     - name: config
       namespace: {{ .Release.Namespace }}
-      templateRef: datanode-config-template
-      constraintRef: datanode-config-constraints
+      template: datanode-config-template
       volumeName: datanode-config
       defaultMode: 0755
-      keys:
-        - hdfs-site.xml
+      externalManaged: true
   scripts:
     - name: {{ include "hadoop-hdfs.name" . }}-scripts
-      templateRef: {{ include "hadoop-hdfs.name" . }}-scripts
+      template: {{ include "hadoop-hdfs.name" . }}-scripts
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
   vars:
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain | default "cluster.local" }}
+    - name: NAMENODE_COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+          compDef: hdfs-namenode
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:

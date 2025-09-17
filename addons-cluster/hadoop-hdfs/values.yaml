@@ -7,10 +7,14 @@ fullnameOverride: ""
 # Replicas for each component
 replicas:
   core: 1
-  journalnode: 3
+  journalnode: 1
   namenode: 2
   datanode: 1
   zookeeper: 1
+
+serviceVersion: 3.3.4
+
+zookeeperServiceVersion: 3.9.2
 
 # Resource requirements for each component
 resources:

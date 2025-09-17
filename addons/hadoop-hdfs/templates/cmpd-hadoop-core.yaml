@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: hadoop-core
+  name: {{ include "coreComponentDef" . }}
   labels:
     {{- include "hadoop-hdfs.labels" . | nindent 4 }}
   annotations:
@@ -10,15 +10,18 @@ spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}
   serviceKind: hadoop-core
+  serviceVersion: {{ .Chart.AppVersion }}
+  podManagementPolicy: Parallel
   serviceRefDeclarations:
     - name: hadoopZookeeper
+      optional: true
       serviceRefDeclarationSpecs:
         - serviceKind: zookeeper
           serviceVersion: "^*"
   runtime:
     containers:
       - name: hadoop-core
-        imagePullPolicy: {{ default "IfNotPresent" .Values.core.image.pullPolicy }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         env:
           - name: DEBUG_MODEL
             value: "false"
@@ -32,12 +35,20 @@ spec:
       runAsUser: 10000
     updateStrategy: BestEffortParallel
   vars:
+    - name: ZOOKEEPER_COMP_ENDPOINTS
+      valueFrom:
+        componentVarRef:
+          compDef: zookeeper
+          optional: true
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .ZOOKEEPER_COMP_ENDPOINTS }}{{ range $idx, $host := $hosts }}{{ $host }}:2181{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
     - name: ZOOKEEPER_ENDPOINTS
       valueFrom:
         serviceRefVarRef:
           name: hadoopZookeeper
-          optional: false
+          optional: true
           endpoint: Required
+      expression: {{ `{{if ne (index . "ZOOKEEPER_ENDPOINTS") ""}}{{.ZOOKEEPER_ENDPOINTS}}{{else}}{{.ZOOKEEPER_COMP_ENDPOINTS}}{{end}}` | toYaml }}
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
@@ -59,9 +70,7 @@ spec:
   configs:
     - name: config
       namespace: {{ .Release.Namespace }}
-      templateRef: hadoop-core-config-template
-      constraintRef: hadoop-core-config-constraints
+      template: hadoop-core-config-template
       volumeName: hadoop-core-config
       defaultMode: 0755
-      keys:
-        - core-site.xml
+      externalManaged: true

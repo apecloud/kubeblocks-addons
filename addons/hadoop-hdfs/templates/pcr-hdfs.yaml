@@ -1,0 +1,75 @@
+
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ printf "hdfs-datanode-pcr-%s"  $.Chart.Version }}
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+spec:
+  componentDef:  {{ include "dataNodeComponentDef" . }}
+  parametersDefs:
+    - hdfs-datanode-pd
+
+  configs:
+    - name: hdfs-site.xml
+      fileFormatConfig:
+        format: xml
+
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ printf "hdfs-namenode-pcr-%s" $.Chart.Version }}
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+spec:
+  componentDef:  {{ include "nameNodeComponentDef" . }}
+  parametersDefs:
+    - hdfs-namenode-pd
+
+  configs:
+    - name: hdfs-site.xml
+      fileFormatConfig:
+        format: xml
+
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ printf "hdfs-journalnode-pcr-%s" $.Chart.Version }}
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+spec:
+  componentDef:  {{ include "journalNodeComponentDef" . }}
+  parametersDefs:
+    - hdfs-journalnode-pd
+  configs:
+    - name: hdfs-site.xml
+      fileFormatConfig:
+        format: xml
+
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ printf "hdfs-core-pcr-%s" $.Chart.Version }}
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+spec:
+  componentDef:  {{ include "coreComponentDef" . }}
+  parametersDefs:
+    - hdfs-core-pd
+
+  configs:
+    - name: core-site.xml
+      fileFormatConfig:
+        format: xml

@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: hdfs-namenode
+  name: {{ include "nameNodeComponentDef" . }}
   labels:
     {{- include "hadoop-hdfs.labels" . | nindent 4 }}
   annotations:
@@ -10,6 +10,8 @@ spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}
   serviceKind: hdfs-namenode
+  serviceVersion: {{ .Chart.AppVersion }}
+  podManagementPolicy: Parallel
   services:
     - name: default
       spec:
@@ -20,13 +22,14 @@ spec:
             port: 9870
   serviceRefDeclarations:
     - name: hadoopZookeeper
+      optional: true
       serviceRefDeclarationSpecs:
         - serviceKind: zookeeper
           serviceVersion: "^*"
   runtime:
     initContainers:
       - name: hadoop-common
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         securityContext:
           runAsUser: 0
         command:
@@ -46,7 +49,7 @@ spec:
             mountPath: /hadoop
     containers:
       - name: hdfs-namenode
-        imagePullPolicy: {{ default "IfNotPresent" .Values.nameNode.image.pullPolicy }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         ports:
           - containerPort: 8020
             name: fs
@@ -148,6 +151,11 @@ spec:
         componentVarRef:
           optional: false
           shortName: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
     - name: CLUSTER_COMPONENT_NAME
       valueFrom:
         componentVarRef:
@@ -156,13 +164,13 @@ spec:
   configs:
     - name: config
       namespace: {{ .Release.Namespace }}
-      templateRef: namenode-config-template
-      # constraintRef: namenode-config-constraints
+      template: namenode-config-template
       volumeName: namenode-config
       defaultMode: 0755
+      externalManaged: true
   scripts:
     - name: {{ include "hadoop-hdfs.name" . }}-scripts
-      templateRef: {{ include "hadoop-hdfs.name" . }}-scripts
+      template: {{ include "hadoop-hdfs.name" . }}-scripts
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755

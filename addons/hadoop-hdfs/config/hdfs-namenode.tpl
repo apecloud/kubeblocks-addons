@@ -23,20 +23,20 @@
     <property>
         <name>dfs.ha.namenodes.{{ .CLUSTER_NAME }}</name>
         {{- $nns := "" }}
-        {{- range $i := .COMPONENT_REPLICAS }}
+        {{- range $i := until (int .COMPONENT_REPLICAS) }}
            {{- $val := printf "nn%d" $i }}
            {{- if eq $nns "" }}{{ $nns = $val }}{{ else }}{{ $nns = print $nns "," $val }}{{ end }}
         {{- end }}
         <value>{{ $nns }}</value>
     </property>
-  {{- range $i := .COMPONENT_REPLICAS }}
+  {{- range $i := until (int .COMPONENT_REPLICAS) }}
     <property>
-        <name>dfs.namenode.rpc-address.{{ .CLUSTER_NAME }}.nn{{ $i }}</name>
-        <value>{{ .CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ .CLUSTER_COMPONENT_NAME }}-headless.{{ .CLUSTER_NAMESPACE }}.svc.{{ .CLUSTER_DOMAIN }}:8020</value>
+        <name>dfs.namenode.rpc-address.{{ $.CLUSTER_NAME }}.nn{{ $i }}</name>
+        <value>{{ $.CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:8020</value>
     </property>
     <property>
-        <name>dfs.namenode.http-address.{{ .CLUSTER_NAME }}.nn0</name>
-        <value>{{ .CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ .CLUSTER_COMPONENT_NAME }}-headless.{{ .CLUSTER_NAMESPACE }}.svc.{{ .CLUSTER_DOMAIN }}:9870</value>
+        <name>dfs.namenode.http-address.{{ $.CLUSTER_NAME }}.nn{{ $i }}</name>
+        <value>{{ $.CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:9870</value>
     </property>
   {{- end }}
     <property>

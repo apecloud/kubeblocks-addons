@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: hdfs-journalnode
+  name: {{ include "journalNodeComponentDef" . }}
   labels:
     {{- include "hadoop-hdfs.labels" . | nindent 4 }}
   annotations:
@@ -10,6 +10,8 @@ spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}
   serviceKind: hdfs-journalnode
+  serviceVersion: {{ .Chart.AppVersion }}
+  podManagementPolicy: Parallel
   services:
     - name: default
       spec:
@@ -21,7 +23,7 @@ spec:
   runtime:
     initContainers:
       - name: hadoop-common
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         command:
           - /bin/bash
         args:
@@ -41,7 +43,7 @@ spec:
             subPath: journal
     containers:
       - name: hdfs-journalnode
-        imagePullPolicy: {{ default "IfNotPresent" .Values.journalNode.image.pullPolicy }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         ports:
           - containerPort: 8485
             name: jn
@@ -134,13 +136,13 @@ spec:
   configs:
     - name: config
       namespace: {{ .Release.Namespace }}
-      templateRef: journalnode-config-template
-      # constraintRef: journalnode-config-constraints
+      template: journalnode-config-template
       volumeName: journalnode-config
       defaultMode: 0755
+      externalManaged: true
   scripts:
     - name: {{ include "hadoop-hdfs.name" . }}-scripts
-      templateRef: {{ include "hadoop-hdfs.name" . }}-scripts
+      template: {{ include "hadoop-hdfs.name" . }}-scripts
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755

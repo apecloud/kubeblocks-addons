@@ -68,6 +68,7 @@ Common annotations
 {{- define "hadoop-hdfs.annotations" -}}
 {{ include "kblib.helm.resourcePolicy" . }}
 {{ include "hadoop-hdfs.apiVersion" . }}
+apps.kubeblocks.io/skip-immutable-check: "true"
 {{- end }}
 
 {{/*
@@ -75,4 +76,20 @@ API version annotation
 */}}
 {{- define "hadoop-hdfs.apiVersion" -}}
 kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{- define "dataNodeComponentDef" -}}
+hdfs-datanode-{{ .Chart.Version }}
+{{- end }}
+
+{{- define "nameNodeComponentDef" -}}
+hdfs-namenode-{{ .Chart.Version }}
+{{- end }}
+
+{{- define "journalNodeComponentDef" -}}
+hdfs-journalnode-{{ .Chart.Version }}
+{{- end }}
+
+{{- define "coreComponentDef" -}}
+hdfs-core-{{ .Chart.Version }}
 {{- end }}

@@ -1,0 +1,52 @@
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: hdfs-core-pd
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+spec:
+  fileName: core-site.xml
+  parametersSchema:
+    topLevelKey: HadoopCoreParameter
+    cue: |-
+      {{- $.Files.Get "config/config-core-constraint.cue" | nindent 6 }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: hdfs-datanode-pd
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+spec:
+  fileName: hdfs-site.xml
+  parametersSchema:
+    topLevelKey: DataNodeParameter
+    cue: |-
+      {{- $.Files.Get "config/config-datanode-constraint.cue" | nindent 6 }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: hdfs-journalnode-pd
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+spec:
+  fileName: hdfs-site.xml
+  parametersSchema:
+    topLevelKey: JournalNodeParameter
+    cue: |-
+      {{- $.Files.Get "config/config-journalnode-constraint.cue" | nindent 6 }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: hdfs-namenode-pd
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+spec:
+  fileName: hdfs-site.xml
+  parametersSchema:
+    topLevelKey: NameNodeParameter
+    cue: |-
+      {{- $.Files.Get "config/config-namenode-constraint.cue" | nindent 6 }}

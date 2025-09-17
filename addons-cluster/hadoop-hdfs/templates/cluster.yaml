@@ -12,17 +12,19 @@ spec:
     {{- if eq .Values.topology "ha-cluster"  }}
     - name: zookeeper
       componentDef: zookeeper
+      serviceVersion: {{ .Values.zookeeperServiceVersion }}
       replicas: {{ .Values.replicas.zookeeper }}
       resources:
         requests:
-          cpu: { { .Values.resources.zookeeper.requests.cpu | quote } }
-          memory: { { .Values.resources.zookeeper.requests.memory } }
+          cpu: {{ .Values.resources.zookeeper.requests.cpu | quote }}
+          memory: {{ .Values.resources.zookeeper.requests.memory }}
         limits:
-          cpu: { { .Values.resources.zookeeper.limits.cpu | quote } }
-          memory: { { .Values.resources.zookeeper.limits.memory } }
+          cpu: {{ .Values.resources.zookeeper.limits.cpu | quote }}
+          memory: {{ .Values.resources.zookeeper.limits.memory }}
     {{- end }}
     - name: hadoop-core
-      componentDef: hadoop-core
+      componentDef: hdfs-core
+      serviceVersion: {{ .Values.serviceVersion }}
       {{- if eq .Values.topology "ha-ref-zk-cluster"  }}
       serviceRefs:
         - name: hadoopZookeeper
@@ -44,6 +46,7 @@ spec:
           memory: {{ .Values.resources.core.limits.memory }}
     - name: journalnode
       componentDef: hdfs-journalnode
+      serviceVersion: {{ .Values.serviceVersion }}
       replicas: {{ .Values.replicas.journalnode }}
       resources:
         requests:
@@ -66,6 +69,8 @@ spec:
                 storage: {{ .Values.storage.journalnode }}
     - name: namenode
       componentDef: hdfs-namenode
+      serviceVersion: {{ .Values.serviceVersion }}
+      {{- if eq .Values.topology "ha-ref-zk-cluster"  }}
       serviceRefs:
         - name: hadoopZookeeper
           namespace: {{ .Values.serviceRefs.hadoopZookeeper.namespace }}
@@ -75,6 +80,7 @@ spec:
               component: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.component }}
               service: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.service }}
               port: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.port }}
+      {{- end }}
       replicas: {{ .Values.replicas.namenode }}
       resources:
         requests:
@@ -98,6 +104,7 @@ spec:
     - name: datanode
       componentDef: hdfs-datanode
       replicas: {{ .Values.replicas.datanode }}
+      serviceVersion: {{ .Values.serviceVersion }}
       resources:
         requests:
           cpu: {{ .Values.resources.datanode.requests.cpu | quote }}

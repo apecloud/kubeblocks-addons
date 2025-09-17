@@ -1,0 +1,46 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: hadoop-hdfs
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - datanode-3.3.4
+      compDefs:
+        - hdfs-datanode
+    - releases:
+        - namenode-3.3.4
+      compDefs:
+        - hdfs-namenode
+    - releases:
+        - journalnode-3.3.4
+      compDefs:
+        - hdfs-journalnode
+    - releases:
+        - core-3.3.4
+      compDefs:
+        - hdfs-core
+  releases:
+    - name: datanode-3.3.4
+      serviceVersion: 3.3.4
+      images:
+        hdfs-datanode: {{ .Values.images.registry }}/{{ .Values.images.dataNode.repository }}:{{ .Values.images.dataNode.tag }}
+        hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.dataNode.repository }}:{{ .Values.images.dataNode.tag }}
+    - name: core-3.3.4
+      serviceVersion: 3.3.4
+      images:
+        hadoop-core: {{ .Values.images.registry }}/{{ .Values.images.core.repository }}:{{ .Values.images.core.tag }}
+    - name: namenode-3.3.4
+      serviceVersion: 3.3.4
+      images:
+        hdfs-namenode: {{ .Values.images.registry }}/{{ .Values.images.nameNode.repository }}:{{ .Values.images.nameNode.tag }}
+        hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.nameNode.repository }}:{{ .Values.images.nameNode.tag }}
+    - name: journalnode-3.3.4
+      serviceVersion: 3.3.4
+      images:
+        hdfs-journalnode: {{ .Values.images.registry }}/{{ .Values.images.journalNode.repository }}:{{ .Values.images.journalNode.tag }}
+        hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.journalNode.repository }}:{{ .Values.images.journalNode.tag }}

@@ -14,7 +14,7 @@ spec:
         - name: zookeeper
           compDef: zookeeper
         - name: hadoop-core
-          compDef: hadoop-core
+          compDef: hdfs-core
         - name: journalnode
           compDef: hdfs-journalnode
         - name: namenode
@@ -35,10 +35,9 @@ spec:
           - hadoop-core
           - zookeeper
     - name: ha-ref-zk-cluster
-      default: true
       components:
         - name: hadoop-core
-          compDef: hadoop-core
+          compDef: hdfs-core
         - name: journalnode
           compDef: hdfs-journalnode
         - name: namenode
