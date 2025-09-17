@@ -6,6 +6,9 @@ version: 3.6.1
 ## Cluster Configuration
 replicas: 3
 
+## podAntiAffinityEnabled if true, the etcd will add podAntiAffinity
+podAntiAffinityEnabled: true
+
 ## Peer Service Configuration, used for advertisement to other etcd members, LoadBalancer is recommended, will support NodePort in the future; otherwise will use headless ClusterIP to advertise
 peerService:
   type:
