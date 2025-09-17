@@ -279,6 +279,7 @@ description: Elasticsearch is a distributed, restful search engine optimized for
 serviceKind: elasticsearch
 updateStrategy: Parallel
 podManagementPolicy: Parallel
+podUpgradePolicy: ReCreate
 exporter:
   containerName: exporter
   scrapePath: /metrics
