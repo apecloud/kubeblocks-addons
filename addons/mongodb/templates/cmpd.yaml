@@ -86,14 +86,14 @@ spec:
         command:
           - /bin/sh
           - -c
-          - /scripts/mongodb-member-leave.sh
+          - /scripts/mongodb-member-leave.sh > /tmp/member-leave.log 2>&1
     switchover:
       exec:
         container: mongodb
         command:
           - /bin/sh
           - -c
-          - /scripts/mongodb-switchover.sh
+          - /scripts/mongodb-switchover.sh > /tmp/switchover.log 2>&1
   runtime:
     securityContext:
       # percona-server-mongodb needs run as root to have privilege to access to keyfile

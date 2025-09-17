@@ -87,21 +87,21 @@ spec:
         command:
           - /bin/sh
           - -c
-          - /scripts/mongodb-member-leave.sh
+          - /scripts/mongodb-member-leave.sh > /tmp/member-leave.log 2>&1
     switchover:
       exec:
         container: mongodb
         command:
           - /bin/sh
           - -c
-          - /scripts/mongodb-switchover.sh
+          - /scripts/mongodb-switchover.sh > /tmp/switchover.log 2>&1
     postProvision:
       exec:
         container: mongodb
         command:
           - /bin/bash
           - -c
-          - /scripts/mongodb-shard-manage.sh --post-provision
+          - /scripts/mongodb-shard-manage.sh --post-provision > /tmp/post-provision.log 2>&1
         targetPodSelector: Role
         matchingKey: primary
       preCondition: RuntimeReady
@@ -113,7 +113,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/mongodb-shard-manage.sh --pre-terminate
+          - /scripts/mongodb-shard-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
         targetPodSelector: Role
         matchingKey: primary
       retryPolicy:

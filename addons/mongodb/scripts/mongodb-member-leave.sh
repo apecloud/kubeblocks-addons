@@ -1,8 +1,8 @@
 #!/bin/bash
 
 retry_count=0
-while [[ "$(/tools/syncerctl getrole)" != "secondary" ]]; do
-    echo "current member is not secondary, waiting for switchover done."
+while [[ "$(timeout 5s /tools/syncerctl getrole)" == "primary" ]]; do
+    echo "current member role is primary, waiting for switchover done."
     sleep 1
     ((retry_count++))
     if [ $retry_count -gt 60 ]; then
