@@ -1,0 +1,130 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: hdfs-datanode
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceKind: hdfs-datanode
+  runtime:
+    hostNetwork: true
+    hostPID: true
+    dnsPolicy: ClusterFirstWithHostNet
+    initContainers:
+      - name: hadoop-common
+        imagePullPolicy: IfNotPresent
+        command:
+          - /bin/bash
+        args:
+          - -ec
+          - |
+            cp -r /opt/software/hadoop-3.3.4/* /opt/kubeemr/hadoop/hadoop-3.3.4
+            mkdir -p /hadoop/dfs/data0
+            chown -R 10000:1000 /opt/kubeemr/hadoop/hadoop-3.3.4
+            chown -R 10000:1000 /hadoop/dfs/data0
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
+          - name: hdfs-data-0
+            mountPath: /hadoop/dfs/data0
+            subPath: data0
+    containers:
+      - name: hdfs-datanode
+        imagePullPolicy: {{ default "IfNotPresent" .Values.dataNode.image.pullPolicy }}
+        env:
+          - name: DEBUG_MODEL
+            value: "false"
+        livenessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - /kubeblocks/scripts/check-data-status.sh
+        readinessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - /kubeblocks/scripts/check-data-status.sh
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
+          - name: hadoop-core-config
+            mountPath: /hadoop/conf/core-site.xml
+            subPath: core-site.xml
+          - name: datanode-config
+            mountPath: /hadoop/conf/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - mountPath: /hadoop/conf/log4j.properties
+            name: datanode-config
+            subPath: log4j.properties
+          - name: hdfs-data-0
+            mountPath: /hadoop/dfs/data0
+            subPath: data0
+          - name: scripts
+            mountPath: /kubeblocks/scripts
+        securityContext:
+          runAsUser: 10000
+          runAsGroup: 1000
+          runAsNonRoot: true
+          privileged: false
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ "ALL" ]
+          seccompProfile:
+            type: "RuntimeDefault"
+    securityContext:
+      fsGroupChangePolicy: Always
+      fsGroup: 1000
+    updateStrategy: BestEffortParallel
+    volumes:
+      - name: hadoop-common
+        emptyDir: {}
+  configs:
+    - name: config
+      namespace: {{ .Release.Namespace }}
+      templateRef: datanode-config-template
+      constraintRef: datanode-config-constraints
+      volumeName: datanode-config
+      defaultMode: 0755
+      keys:
+        - hdfs-site.xml
+  scripts:
+    - name: {{ include "hadoop-hdfs.name" . }}-scripts
+      templateRef: {{ include "hadoop-hdfs.name" . }}-scripts
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required

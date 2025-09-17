@@ -1,0 +1,24 @@
+# Default values for hbase.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+hmaster:
+  image:
+    registry: docker.io
+    repository: apecloud/hbase-hmaster
+    tag: "v2.5.6-1.0.0"
+    pullPolicy: IfNotPresent
+
+hregionserver:
+  image:
+    registry: docker.io
+    repository: apecloud/hbase-hregionserver
+    tag: "v2.5.6-1.0.0"
+    pullPolicy: IfNotPresent
+
+init:
+  image:
+    registry: docker.io
+    repository: apecloud/hbase-hregionserver
+    tag: "v2.5.6-1.0.0"
+    pullPolicy: IfNotPresent

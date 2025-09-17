@@ -1,0 +1,19 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: hbase-hmaster
+  labels:
+    {{- include "hbase.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hbase.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - hbase-hmaster-2.5
+      releases:
+        - 2.5.6
+  releases:
+    - name: 2.5.6
+      serviceVersion: 2.5.6
+      images:
+        hbase-hmaster: "{{ .Values.hmaster.image.repository }}:{{ .Values.hmaster.image.tag }}"
