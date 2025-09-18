@@ -19,6 +19,8 @@
 	// 说明: Hadoop tmp 数据目录。
 	"hadoop.tmp.dir": string | *"/tmp/hadoop"
 
+    "fs.default.name": string | *"hdfs://{{ .CLUSTER_NAME }}"
+
 	//  说明:默认的文件系统名。
 	"fs.defaultFS": string | *"hdfs://{{ .CLUSTER_NAME }}"
 

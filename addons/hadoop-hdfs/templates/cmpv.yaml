@@ -39,6 +39,7 @@ spec:
       images:
         hdfs-namenode: {{ .Values.images.registry }}/{{ .Values.images.nameNode.repository }}:{{ .Values.images.nameNode.tag }}
         hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.nameNode.repository }}:{{ .Values.images.nameNode.tag }}
+        roleProbe: {{ .Values.images.registry }}/{{ .Values.images.nameNode.repository }}:{{ .Values.images.nameNode.tag }}
     - name: journalnode-3.3.4
       serviceVersion: 3.3.4
       images:

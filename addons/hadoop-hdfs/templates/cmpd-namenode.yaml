@@ -174,31 +174,19 @@ spec:
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
-
-
-{{/*  roles:*/}}
-{{/*    - name: active*/}}
-{{/*      serviceable: true*/}}
-{{/*      writable: true*/}}
-{{/*    - name: standby*/}}
-{{/*      serviceable: true*/}}
-{{/*      writable: false*/}}
-{{/*  lifecycleActions:*/}}
-{{/*    roleProbe:*/}}
-{{/*      builtinHandler: custom*/}}
-{{/*      container: hdfs-namenode*/}}
-{{/*      customHandler:*/}}
-{{/*        exec:*/}}
-{{/*          command:*/}}
-{{/*            - /bin/bash*/}}
-{{/*            - -c*/}}
-{{/*            - |*/}}
-{{/*              STAT=$(curl -s "http://$KB_POD_IP:9870/jmx?qry=Hadoop:service=NameNode,name=NameNodeStatus" | grep -o '"State" : "[^"]*"' | awk -F'"' '{print $4}')*/}}
-
-{{/*              if [[ "$STAT" == "active" ]]; then*/}}
-{{/*                echo -n "active"*/}}
-{{/*              elif [[ "$STAT" == "standby" ]]; then*/}}
-{{/*                echo -n "standby"*/}}
-{{/*              else*/}}
-{{/*                echo -n "unknown"*/}}
-{{/*              fi*/}}
+  roles:
+    - name: active
+      updatePriority: 2
+      participatesInQuorum: false
+    - name: standby
+      updatePriority: 1
+      participatesInQuorum: false
+  lifecycleActions:
+    roleProbe:
+      exec:
+        container: hdfs-namenode
+        command:
+          - bash
+          - -c
+          - |
+            /kubeblocks/scripts/name_role.sh

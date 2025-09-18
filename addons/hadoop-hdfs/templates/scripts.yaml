@@ -11,3 +11,5 @@ data:
     {{- .Files.Get "scripts/check-name-status.sh" | nindent 4 }}
   check-data-status.sh: |-
     {{- .Files.Get "scripts/check-data-status.sh" | nindent 4 }}
+  name_role.sh: |-
+    {{- .Files.Get "scripts/name_role.sh" | nindent 4 }}

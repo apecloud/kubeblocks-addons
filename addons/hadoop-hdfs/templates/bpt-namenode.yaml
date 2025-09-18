@@ -1,0 +1,18 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: hadoop-hdfs-namenode
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+spec:
+  serviceKind: HadoopHDFS
+  compDefs:
+   - hdfs-namenode
+  backupMethods:
+    - name: rebuild
+      snapshotVolumes: false
+      actionSetName: hadfs-namenode-rebuild
+      targetVolumes:
+        volumeMounts:
+        - name: metadata-dir
+          mountPath: /hadoop
