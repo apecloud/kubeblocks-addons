@@ -13,6 +13,21 @@
     </property>
 
     <property>
+        <name>dfs.datanode.address</name>
+        <value>0.0.0.0:9866</value>
+    </property>
+
+    <property>
+        <name>dfs.datanode.http.address</name>
+        <value>0.0.0.0:9864</value>
+    </property>
+
+    <property>
+        <name>dfs.datanode.ipc.address</name>
+        <value>0.0.0.0:9867</value>
+    </property>
+
+    <property>
         <name>dfs.ha.namenodes.{{ .CLUSTER_NAME }}</name>
         {{- $nns := "" }}
         {{- range $i := until (int .NAMENODE_COMPONENT_REPLICAS) }}

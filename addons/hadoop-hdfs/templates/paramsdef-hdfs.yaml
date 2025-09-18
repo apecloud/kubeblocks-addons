@@ -24,6 +24,12 @@ spec:
     topLevelKey: DataNodeParameter
     cue: |-
       {{- $.Files.Get "config/config-datanode-constraint.cue" | nindent 6 }}
+  immutableParameters:
+    - dfs.datanode.data.dir
+    - dfs.datanode.http.address
+    - dfs.datanode.ipc.address
+    - dfs.datanode.address
+    - dfs.nameservices
 ---
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
@@ -37,6 +43,11 @@ spec:
     topLevelKey: JournalNodeParameter
     cue: |-
       {{- $.Files.Get "config/config-journalnode-constraint.cue" | nindent 6 }}
+  immutableParameters:
+    - dfs.journalnode.edits.dir
+    - dfs.nameservices
+    - dfs.journalnode.rpc-addres
+    - dfs.journalnode.http-address
 ---
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
@@ -50,3 +61,8 @@ spec:
     topLevelKey: NameNodeParameter
     cue: |-
       {{- $.Files.Get "config/config-namenode-constraint.cue" | nindent 6 }}
+  immutableParameters:
+    - dfs.namenode.name.dir
+    - dfs.nameservices
+    - dfs.namenode.rpc-address
+    - dfs.namenode.http-address

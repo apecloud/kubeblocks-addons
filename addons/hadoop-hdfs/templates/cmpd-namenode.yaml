@@ -52,7 +52,7 @@ spec:
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         ports:
           - containerPort: 8020
-            name: fs
+            name: rpc
           - containerPort: 9870
             name: http
         env:

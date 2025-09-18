@@ -42,6 +42,13 @@ spec:
         env:
           - name: DEBUG_MODEL
             value: "false"
+        ports:
+          - containerPort: 9866
+            name: data
+          - containerPort: 9864
+            name: http
+          - containerPort: 9867
+            name: ipc
         livenessProbe:
           failureThreshold: 6
           initialDelaySeconds: 30

@@ -124,4 +124,13 @@
         <name>ipc.ping.interval</name>
         <value>30000</value>  <!-- 30秒 -->
     </property>
+
+    <property>
+        <name>dfs.namenode.http-bind-host</name>
+        <value>0.0.0.0</value>
+    </property>
+    <property>
+        <name>dfs.namenode.rpc-bind-host</name>
+        <value>0.0.0.0</value>
+    </property>
 </configuration>

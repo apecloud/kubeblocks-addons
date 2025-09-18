@@ -18,6 +18,6 @@ _URL_PATH="jmx?qry=Hadoop:service=JournalNode,name=JournalNodeInfo"
 _CLUSTER_ID=""
 for _PORT in $_PORTS; do
   _CLUSTER_ID+=$(curl -s http://localhost:${_PORT}/$_URL_PATH |  \
-      grep ClusterId) || true
+      grep ClusterId)
 done
 echo $_CLUSTER_ID | grep -q -v null
