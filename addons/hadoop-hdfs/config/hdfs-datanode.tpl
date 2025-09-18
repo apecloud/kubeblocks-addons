@@ -39,11 +39,11 @@
   {{- range $i := until (int .NAMENODE_COMPONENT_REPLICAS) }}
     <property>
         <name>dfs.namenode.rpc-address.{{ $.CLUSTER_NAME }}.nn{{ $i }}</name>
-        <value>{{ $.CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:8020</value>
+        <value>{{ $.NAMENODE_CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.NAMENODE_CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:8020</value>
     </property>
     <property>
         <name>dfs.namenode.http-address.{{ $.CLUSTER_NAME }}.nn{{ $i }}</name>
-        <value>{{ $.CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:9870</value>
+        <value>{{ $.NAMENODE_CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.NAMENODE_CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:9870</value>
     </property>
   {{- end }}
 </configuration>
