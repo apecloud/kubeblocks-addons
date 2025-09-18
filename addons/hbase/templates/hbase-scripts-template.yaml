@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: hbase-scripts-template
-  labels:
-    {{- include "hbase.labels" . | nindent 4 }}
-data:
-  hbase-config-setup.sh: |-
-    {{- .Files.Get "scripts/hbase-config-setup.tpl" | nindent 4 }}
