@@ -1,0 +1,210 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: falkordb-master-account-ops
+spec:
+  podInfoExtractors:
+    - name: master-connection
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: CLUSTER_NAME
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAME
+        - name: CLUSTER_NAMESPACE
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAMESPACE
+        - name: REDIS_POD_FQDN_LIST
+          valueFrom:
+            envRef:
+              envName: REDIS_POD_FQDN_LIST
+        - name: SERVICE_PORT
+          valueFrom:
+            envRef:
+              envName: SERVICE_PORT
+        - name: REDIS_DEFAULT_USER
+          valueFrom:
+            envRef:
+              envName: REDIS_DEFAULT_USER
+        - name: REDIS_DEFAULT_PASSWORD
+          valueFrom:
+            envRef:
+              envName: REDIS_DEFAULT_PASSWORD
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        ACL_COMMAND:
+          description: |
+            ACL_COMMAND is the complete FalkorDB command for account operations, such as:
+            'ACL SETUSER alice-sen on ~* &* +@all #<hash-password>' or 'ACL DELUSER alice-sen',
+            It is recommended to use hashed passwords (#<hash-password>) instead of plaintext passwords when setting user credentials
+          type: string
+        REPLICAS:
+          description: |
+            REPLICAS is the number of replicas of the FalkorDB cluster.
+          type: integer
+  actions:
+    - name: master-account-ops
+      parameters: ["ACL_COMMAND","REPLICAS"] 
+      workload:
+        type: Pod
+        podInfoExtractorName: master-connection 
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: falkordb-account-ops
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/falkordb-account.sh" | nindent 18 }}
+---
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: falkordb-sent-account-ops
+spec:
+  podInfoExtractors:
+    - name: sentinel-connection
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: CLUSTER_NAME
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAME
+        - name: CLUSTER_NAMESPACE
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAMESPACE
+        - name: REDIS_POD_FQDN_LIST
+          valueFrom:
+            envRef:
+              envName: SENTINEL_POD_FQDN_LIST
+        - name: SERVICE_PORT
+          valueFrom:
+            envRef:
+              envName: SENTINEL_SERVICE_PORT
+        - name: REDIS_DEFAULT_USER
+          valueFrom:
+            envRef:
+              envName: SENTINEL_USER
+        - name: REDIS_DEFAULT_PASSWORD
+          valueFrom:
+            envRef:
+              envName: SENTINEL_PASSWORD
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        ACL_COMMAND:
+          description: |
+            ACL_COMMAND is the complete FalkorDB command for account operations, such as:
+            'ACL SETUSER alice-sen on ~* &* +@all #<hash-password>' or 'ACL DELUSER alice-sen',
+            It is recommended to use hashed passwords (#<hash-password>) instead of plaintext passwords when setting user credentials
+          type: string
+        REPLICAS:
+          description: |
+            REPLICAS is the number of replicas of the FalkorDB cluster.
+          type: integer
+  actions:
+    - name: sentinel-account-ops
+      parameters: ["ACL_COMMAND","REPLICAS"] 
+      workload:
+        type: Pod
+        podInfoExtractorName: sentinel-connection 
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: falkordb-account-ops
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/falkordb-account.sh" | nindent 18 }}
+---
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: falkordb-shard-account-ops
+spec:
+  podInfoExtractors:
+    - name: shard-connection
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: CLUSTER_NAME
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAME
+        - name: CLUSTER_NAMESPACE
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAMESPACE
+        - name: CLUSTER_NAMESPACE
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAMESPACE
+        - name: CURRENT_POD_NAME
+          valueFrom:
+            envRef:
+              envName: CURRENT_POD_NAME
+        - name: CURRENT_SHARD_COMPONENT_NAME
+          valueFrom:
+            envRef:
+              envName: CURRENT_SHARD_COMPONENT_NAME
+        - name: SERVICE_PORT
+          valueFrom:
+            envRef:
+              envName: SERVICE_PORT
+        - name: REDIS_DEFAULT_USER
+          valueFrom:
+            envRef:
+              envName: REDIS_DEFAULT_USER
+        - name: REDIS_DEFAULT_PASSWORD
+          valueFrom:
+            envRef:
+              envName: REDIS_DEFAULT_PASSWORD
+        - name: CLUSTER_DOMAIN
+          valueFrom:
+            envRef:
+              envName: CLUSTER_DOMAIN
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        ACL_COMMAND:
+          description: |
+            ACL_COMMAND is the complete FalkorDB command for account operations, such as:
+            'ACL SETUSER alice-sen on ~* &* +@all #<hash-password>' or 'ACL DELUSER alice-sen',
+            It is recommended to use hashed passwords (#<hash-password>) instead of plaintext passwords when setting user credentials
+          type: string
+        SHARD_MODE:
+          description: |
+            SHARD_MODE indicates the mode of FalkorDB cluster. When the cluster type is cluster, it must be set to "TRUE".
+          type: string
+        REPLICAS:
+          description: |
+            REPLICAS is the number of replicas of the FalkorDB cluster.
+          type: integer
+  actions:
+    - name: shard-account-ops
+      parameters: ["ACL_COMMAND","SHARD_MODE","REPLICAS"] 
+      workload:
+        type: Pod
+        podInfoExtractorName: shard-connection 
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: falkordb-account-ops
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/falkordb-account.sh" | nindent 18 }}

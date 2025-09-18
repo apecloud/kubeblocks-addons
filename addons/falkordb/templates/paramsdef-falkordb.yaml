@@ -1,0 +1,50 @@
+# reuse falkordb7-config-effect-scope.
+{{- range .Values.falkordbVersions }}
+{{- $version := .major }}
+{{- if eq .major "8" }}
+  {{ $version = "7" }}
+{{- end }}
+{{- $falkordbImage := printf "%s/%s:%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository .defaultImageTag }}
+{{- if or (eq .major "8") (eq .major "5") }}
+{{- $falkordbImage = printf "%s/%s:%s" ( $.Values.ceImage.registry | default ( $.Values.image.registry | default "docker.io" ) )  $.Values.ceImage.repository .defaultImageTag }}
+{{- end }}
+{{- $pd := $.Files.Get "config/falkordb-config-effect-scope.yaml" | fromYaml }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ printf "falkordb%s-config-pd" .major }}
+  labels:
+    {{- include "falkordb.labels" $ | nindent 4 }}
+spec:
+  reloadAction:
+    shellTrigger:
+      sync: true
+      command:
+        - "reload-parameter.sh"
+      scriptConfig:
+        scriptConfigMapRef: falkordb-reload-tools-script
+        namespace: {{ $.Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            asContainerImage: true
+            image: {{ $falkordbImage }}
+
+  fileName: redis.conf
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    topLevelKey: FalkorDBParameter
+    cue: |-
+      {{- $.Files.Get (printf "config/falkordb%s-config-constraint.cue" .major) | nindent 6 }}
+
+  ## require db instance restart
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- $params := get $pd "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+{{- end}}
