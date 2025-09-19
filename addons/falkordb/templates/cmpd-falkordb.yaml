@@ -1,0 +1,466 @@
+{{- range .Values.falkordbVersions }}
+{{- $falkordbStartScripts := "falkordb-start.sh" }}
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ printf "%s-%s" .componentDef $.Chart.Version }}
+  labels:
+    {{- include "falkordb.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "falkordb.annotations" $ | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A falkordb v{{ .major }}.0 component definition for Kubernetes
+  serviceKind: falkordb
+  serviceVersion: {{ .serviceVersion }}
+  podManagementPolicy: OrderedReady
+  minReadySeconds: 10
+  services:
+    - name: falkordb
+      serviceName: falkordb
+      spec:
+        ports:
+          - name: falkordb
+            port: 6379
+            targetPort: falkordb
+      roleSelector: primary
+    - name: falkordb-advertised
+      serviceName: falkordb-advertised
+      spec:
+        ## the type can override in cluster componentSpec services, type can be NodePort, LoadBalancer(not support yet)
+        type: NodePort
+        ports:
+          - name: falkordb-advertised
+            port: 6379
+            targetPort: falkordb
+      podService: true
+      disableAutoProvision: true
+    - name: falkordb-lb-advertised
+      serviceName: falkordb-lb-advertised
+      spec:
+        ## the type can override in cluster componentSpec services, type can loadBalancer
+        type: LoadBalancer
+        # allocateLoadBalancerNodePorts: false
+        externalTrafficPolicy: Cluster
+        ports:
+          - name: falkordb-advertised
+            port: 6379
+            targetPort: falkordb
+      podService: true
+      disableAutoProvision: true
+  updateStrategy: BestEffortParallel
+  volumes:
+    - name: data
+      needSnapshot: true
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+  logConfigs:
+    {{- range $name,$pattern := $.Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  exporter:
+    containerName: metrics
+    scrapePath: /metrics
+    scrapePort: http-metrics
+  configs:
+    - name: falkordb-replication-config
+      template: {{ printf "falkordb%s-config-template-%s" .major $.Chart.Version }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: falkordb-config
+      externalManaged: true
+    - name: falkordb-metrics-config
+      template: {{ include "falkordb.metricsConfiguration" $ }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: falkordb-metrics-config
+      defaultMode: 0444
+  scripts:
+    - name: falkordb-scripts
+      template: {{ include "falkordb.scriptsTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  {{- include "kblib.syncer.policyRules" $ | nindent 2 }}
+  systemAccounts:
+    - name: default
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+  hostNetwork:
+    containerPorts:
+      - container: falkordb
+        ports:
+          - falkordb
+  {{- if $.Values.enableMetrics }}
+      - container: metrics
+        ports:
+          - http-metrics
+          - server-metrics
+  {{- end }}
+  vars:
+    ## the name of current cluster instance
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    ## the default username of falkordb connection
+    - name: REDIS_DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          name: default
+          username: Required
+    ## the default password of falkordb connection
+    - name: REDIS_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: default
+          password: Required
+    ## the username of falkordb primary-secondary replication
+    - name: REDIS_REPL_USER
+      value: "kbreplicator"
+    ## the password of falkordb primary-secondary replication shared the same password with default password
+    - name: REDIS_REPL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: default
+          password: Required
+    ## the username of falkordb for falkordb sentinel connection
+    - name: REDIS_SENTINEL_USER
+      value: "kbreplicator-sentinel"
+    ## the password of falkordb for falkordb sentinel connection shared the same password with default password
+    - name: REDIS_SENTINEL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: default
+          password: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+    ## the falkordb advertised service port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: REDIS_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          name: falkordb-advertised
+          optional: true
+          port:
+            name: falkordb-advertised
+            option: Required
+    - name: REDIS_LB_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          name: falkordb-lb-advertised
+          optional: true
+          port:
+            name: falkordb-advertised
+            option: Required
+    ## the falkordb advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
+    - name: REDIS_LB_ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          name: falkordb-lb-advertised
+          optional: true
+          loadBalancer: Required
+          host: Required
+    ## the falkordb pod name list for each pod, the value format is "pod1,pod2,..."
+    - name: REDIS_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    ## the falkordb pod fqdn list for each pod, the value format is "pod1FQDN,pod2FQDN,..."
+    - name: REDIS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    ## the component name of falkordb, it's the fullname of falkordb component
+    - name: REDIS_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    ## the falkordb server host network port when using host network mode, the port will be allocated automatically by KubeBlocks
+    - name: REDIS_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: falkordb
+            port:
+              name: falkordb
+              option: Required
+    - name: SERVICE_PORT
+      value: "6379"
+      expression: {{ `{{if ne (index . "REDIS_HOST_NETWORK_PORT") ""}}{{.REDIS_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
+    ## the env of falkordb server port for dbctl to connect to falkordb server
+    - name: DBCTL_REDIS_SERVICE_PORT
+      value: $(SERVICE_PORT)
+  {{- if $.Values.enableMetrics }}
+    ## the falkordb server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 9121
+    - name: REDIS_METRICS_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: metrics
+            port:
+              name: http-metrics
+              option: Required
+    - name: REDIS_METRICS_HTTP_PORT
+      value: "9121"
+      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}{{.REDIS_METRICS_HTTP_PORT}}{{end}}` | toYaml }}
+    ## the falkordb server metrics container host network server port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 8888
+    - name: REDIS_METRICS_HOST_NETWORK_SERVER_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: metrics
+            port:
+              name: server-metrics
+              option: Required
+    - name: REDIS_METRICS_SERVER_PORT
+      value: "8888"
+      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
+  {{- end }}
+    ## the component name of falkordb sentinel when falkordb sentinel is enabled, it's the fullname of falkordb-sent component
+    - name: SENTINEL_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          optional: true
+          componentName: Required
+    ## the username of falkordb sentinel for falkordb connection, it is optional
+    - name: SENTINEL_USER
+      valueFrom:
+        credentialVarRef:
+          ## reference the falkordb-sent component definition name
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          name: default
+          optional: true
+          username: Required
+    - name: SENTINEL_HEADLESS_SERVICE_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ .sentinelComponentDef }}
+          name: headless
+          optional: true
+          host: Optional
+    ## the password of falkordb sentinel for falkordb connection, it is optional
+    - name: SENTINEL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the falkordb-sent component definition name
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          name: default
+          optional: true
+          password: Required
+    - name: SENTINEL_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          optional: true
+          podNames: Required
+    - name: SENTINEL_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          optional: true
+          podFQDNs: Required
+    ## the falkordb sentinel server port, if falkordb sentinel is in host network mode, the port will be allocated automatically by KubeBlocks, if not, the default port is 26379
+    - name: SENTINEL_SERVICE_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          optional: true
+          container:
+            name: falkordb-sent
+            port:
+              name: falkordb-sent
+              option: Required
+      expression: {{ `{{if ne (index . "SENTINEL_SERVICE_PORT") ""}}{{.SENTINEL_SERVICE_PORT}}{{else}}26379{{end}}` | toYaml }}
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memory: Required
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: 1
+      timeoutSeconds: 1
+      exec:
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: KB_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+          - name: KB_POD_FQDN
+            value: "$(CURRENT_POD_NAME).$(REDIS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
+          - name: KB_CLUSTER_COMP_NAME
+            value: $(REDIS_COMPONENT_NAME)
+        container: falkordb
+        command:
+          - /tools/dbctl
+          - --config-path
+          - /tools/config/dbctl/components
+          - redis
+          - getrole
+    postProvision:
+      exec:
+        container: falkordb
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/falkordb-register-to-sentinel.sh > /tmp/post-provision.log 2>&1
+        targetPodSelector: Role
+        matchingKey: primary
+        ## all lifecycle actions share the same env
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+      preCondition: RuntimeReady
+    accountProvision:
+      exec:
+        container: falkordb
+        command:
+          - sh
+          - -c
+        args:
+          - "falkordb-cli -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && falkordb-cli -a $REDIS_DEFAULT_PASSWORD acl save "
+    switchover:
+      exec:
+        container: falkordb
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/falkordb-switchover.sh > /tmp/switchover.log 2>&1
+  runtime:
+    initContainers:
+      - name: init-dbctl
+        command:
+          - cp
+          - -r
+          - /bin/dbctl
+          - /config
+          - /tools/
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.dbctlImage.pullPolicy }}
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+    containers:
+      - name: falkordb
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
+        command: [ "/scripts/{{ $falkordbStartScripts }}" ]
+        ports:
+          - name: falkordb
+            containerPort: 6379
+        volumeMounts:
+          - name: data
+            mountPath: {{ $.Values.dataMountPath }}
+          - name: falkordb-config
+            mountPath: /etc/conf
+          - name: scripts
+            mountPath: /scripts
+          - name: falkordb-conf
+            mountPath: /etc/redis
+          - mountPath: /tools
+            name: tools
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+          - name: POD_FQDN
+            value: "$(CURRENT_POD_NAME).$(REDIS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+              - sh
+              - -c
+              - /scripts/falkordb-ping.sh
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - /scripts/falkordb-pre-stop.sh
+  {{- if $.Values.enableMetrics }}
+      - name: metrics
+        imagePullPolicy: {{ $.Values.metrics.image.pullPolicy | quote }}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        env:
+          - name: ENDPOINT
+            value: "localhost:$(SERVICE_PORT)"
+          - name: METRICS_HTTP_PORT
+            value: $(REDIS_METRICS_HTTP_PORT)
+          - name: METRICS_SERVER_PORT
+            value: $(REDIS_METRICS_SERVER_PORT)
+          - name: REDIS_USER
+            value: $(REDIS_DEFAULT_USER)
+          - name: REDIS_PASSWORD
+            value: $(REDIS_DEFAULT_PASSWORD)
+        command:
+          - "/bin/agamotto"
+          - "--config=/opt/conf/metrics-config.yaml"
+        ports:
+          - name: http-metrics
+            containerPort: {{ $.Values.metrics.service.port }}
+          - name: server-metrics
+            containerPort: {{ $.Values.metrics.service.serverPort }}
+        volumeMounts:
+          - name: falkordb-metrics-config
+            mountPath: /opt/conf
+  {{- end }}
+{{- end }}

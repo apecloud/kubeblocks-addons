@@ -1,0 +1,37 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: falkordb
+  labels:
+    {{- include "falkordb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "falkordb.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+  {{- range .Values.falkordbVersions }}
+  - compDefs:
+      - {{ .componentDef }}
+    releases:
+  {{- range .mirrorVersions }}
+    - {{ .version }}
+  {{- end }}
+  {{- end }}
+  releases:
+  {{- range .Values.falkordbVersions }}
+  {{- $falkordbRepository := printf "%s/%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository }}
+  {{- if or (eq .major "8") (eq .major "5") }}
+    {{- $falkordbRepository = printf "%s/%s" ( $.Values.ceImage.registry | default ( $.Values.image.registry | default "docker.io" ) )  $.Values.ceImage.repository }}
+  {{- end }}
+  {{- range .mirrorVersions }}
+  - name: {{ .version }}
+    changes:
+    serviceVersion: {{ .version }}
+    images:
+      falkordb: {{ $falkordbRepository }}:{{ .imageTag }}
+      metrics: {{ include "metrics.repository" $ }}:0.1.2-beta.1
+      init-dbctl: {{ $.Values.dbctlImage.registry | default ( $.Values.image.registry | default "docker.io" ) }}/{{ $.Values.dbctlImage.repository }}:{{ $.Values.dbctlImage.tag }}
+      postProvision: {{ $falkordbRepository }}:{{ .imageTag }}
+      accountProvision: {{ $falkordbRepository }}:{{ .imageTag }}
+      switchover: {{ $falkordbRepository }}:{{ .imageTag }}
+  {{- end }}
+  {{- end }}

@@ -1,0 +1,592 @@
+{{- range .Values.falkordbVersions }}
+{{- $falkordbClusterStartScripts := "falkordb-cluster-server-start.sh" }}
+{{- $falkordbClusterManageScripts := "falkordb-cluster-manage.sh" }}
+{{- $falkordbClusterSwitchoverScripts := "falkordb-cluster-switchover.sh" }}
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ printf "%s-%s" .clusterComponentDef $.Chart.Version }}
+  labels:
+    {{- include "falkordb.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "falkordb.annotations" $ | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: An official v{{ .major }}.0 FalkorDB Cluster(distributed implementation of FalkorDB) component definition for Kubernetes
+  serviceKind: falkordb-cluster
+  serviceVersion: {{ .serviceVersion }}
+  minReadySeconds: 10
+  services:
+    - name: falkordb-advertised
+      serviceName: falkordb-advertised
+      spec:
+        ## the type can override in cluster componentSpec services
+        type: NodePort
+        ports:
+        - name: falkordb-advertised
+          port: 6379
+          targetPort: cluster
+        - name: advertised-bus
+          port: 16379
+          targetPort: cluster-bus
+      podService: true
+      disableAutoProvision: true
+    - name: falkordb-lb-advertised
+      serviceName: falkordb-lb-advertised
+      spec:
+        ## the type can override in cluster componentSpec services, type can loadBalancer
+        type: LoadBalancer
+        # allocateLoadBalancerNodePorts: false
+        externalTrafficPolicy: Cluster
+        ports:
+          - name: falkordb-advertised
+            port: 6379
+            targetPort: cluster
+          - name: advertised-bus
+            port: 16379
+            targetPort: cluster-bus
+      podService: true
+      disableAutoProvision: true
+  updateStrategy: BestEffortParallel
+  podManagementPolicy: OrderedReady
+  volumes:
+    - name: data
+      needSnapshot: true
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+  logConfigs:
+    {{- range $name,$pattern := $.Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  exporter:
+    containerName: metrics
+    scrapePath: /metrics
+    scrapePort: http-metrics
+  configs:
+    - name: falkordb-cluster-config
+      template: {{ printf "falkordb-cluster%s-config-template-%s" .major $.Chart.Version }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: falkordb-cluster-config
+      externalManaged: true
+    - name: falkordb-metrics-config
+      template: {{ include "falkordb.metricsConfiguration" $ }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: falkordb-metrics-config
+      defaultMode: 0444
+  scripts:
+    - name: falkordb-cluster-scripts
+      template: {{ include "falkordbCluster.scriptsTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  {{- include "kblib.syncer.policyRules" $ | nindent 2 }}
+  systemAccounts:
+    - name: default
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+        seed: 5wM4uhmKV1Ohy087
+  hostNetwork:
+    containerPorts:
+      - container: falkordb-cluster
+        ports:
+          - cluster
+          - cluster-bus
+  {{- if $.Values.enableMetrics }}
+      - container: metrics
+        ports:
+          - http-metrics
+          - server-metrics
+  {{- end }}
+  vars:
+    ## the name of current cluster instance
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    ## the namespace of current cluster instance
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+    ## the cluster domain without . prefix
+    - name: CLUSTER_DOMAIN
+      value: {{ $.Values.clusterDomain }}
+    ## the default username of falkordb connection
+    - name: REDIS_DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          name: default
+          username: Required
+    ## the default password of falkordb connection
+    - name: REDIS_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: default
+          password: Required
+    ## the username of falkordb primary-secondary replication
+    - name: REDIS_REPL_USER
+      value: "kbreplicator"
+    ## the password of falkordb primary-secondary replication shared the same password with default password
+    - name: REDIS_REPL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: default
+          password: Required
+    ## the pod name list for current shard pod, the value format is "pod1,pod2"
+    - name: CURRENT_SHARD_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    ## the pod fqdn list for current shard pod, the value format is "pod1FQDN,pod2FQDN"
+    - name: CURRENT_SHARD_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    ## the component name of current shard
+    - name: CURRENT_SHARD_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    ## the component short name of current shard
+    - name: CURRENT_SHARD_COMPONENT_SHORT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    ## the falkordb cluster advertised service port list for each pod of current shard, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: CURRENT_SHARD_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          name: falkordb-advertised
+          optional: true
+          port:
+            name: falkordb-advertised
+            option: Required
+    ## the falkordb cluster advertised service bus port list for each pod of current shard, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: CURRENT_SHARD_ADVERTISED_BUS_PORT
+      valueFrom:
+        serviceVarRef:
+          name: falkordb-advertised
+          optional: true
+          port:
+            name: advertised-bus
+            option: Required
+    - name: CURRENT_SHARD_LB_ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          name: falkordb-lb-advertised
+          optional: true
+          loadBalancer: Required
+          host: Required
+    - name: CURRENT_SHARD_LB_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          name: falkordb-lb-advertised
+          optional: true
+          port:
+            name: falkordb-advertised
+            option: Required
+    ## the falkordb cluster advertised service bus port list for each pod of current shard, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: CURRENT_SHARD_LB_ADVERTISED_BUS_PORT
+      valueFrom:
+        serviceVarRef:
+          name: falkordb-lb-advertised
+          optional: true
+          port:
+            name: advertised-bus
+            option: Required
+    ## the component short names of all shard
+    ## the value format is like "shard-98x:shard-98x,shard-cq7:shard-cq7,shard-hy7:shard-hy7"
+    - name: ALL_SHARDS_COMPONENT_SHORT_NAMES
+      valueFrom:
+        componentVarRef:
+          compDef: {{ printf "%s-%s" .clusterComponentDef $.Chart.Version }}
+          optional: false
+          shortName: Required
+          multipleClusterObjectOption:
+            strategy: combined
+    ## the pod name list for all shard pod, it will generate a set of variables with the shard name suffix like:
+    ## - ALL_SHARDS_POD_NAME_LIST_SHARD_98X="falkordb-shard-98x-0,falkordb-shard-98x-1"
+    ## - ALL_SHARDS_POD_NAME_LIST_SHARD_CQ7="falkordb-shard-cq7-0,falkordb-shard-cq7-1"
+    ## - ALL_SHARDS_POD_NAME_LIST_SHARD_HY7="falkordb-shard-hy7-0,falkordb-shard-hy7-1"
+    - name: ALL_SHARDS_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ printf "%s-%s" .clusterComponentDef $.Chart.Version }}
+          optional: false
+          podNames: Required
+          multipleClusterObjectOption:
+            strategy: individual
+    ## the pod fqdn list for all shard pod, it will generate a set of variables with the shard name suffix like:
+    ## - ALL_SHARDS_POD_FQDN_LIST_SHARD_98X="falkordb-shard-98x-0.falkordb-shard-98x-headless.default.cluster.local,falkordb-shard-98x-1.falkordb-shard-98x-headless.default.cluster.local"
+    ## - ALL_SHARDS_POD_FQDN_LIST_SHARD_CQ7="falkordb-shard-cq7-0.falkordb-shard-cq7-headless.default.cluster.local,falkordb-shard-cq7-1.falkordb-shard-cq7-headless.default.cluster.local"
+    ## - ALL_SHARDS_POD_FQDN_LIST_SHARD_HY7="falkordb-shard-hy7-0.falkordb-shard-hy7-headless.default.cluster.local,falkordb-shard-hy7-1.falkordb-shard-hy7-headless.default.cluster.local"
+    - name: ALL_SHARDS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ printf "%s-%s" .clusterComponentDef $.Chart.Version }}
+          optional: false
+          podFQDNs: Required
+          multipleClusterObjectOption:
+            strategy: individual
+    ## the falkordb cluster advertised service port list for each pod of all shard pods
+    ## the value format is like "shard-98x@falkordb-shard-98x-falkordb-advertised-0:32024,falkordb-shard-98x-falkordb-advertised-1:31318.shard-cq7@falkordb-shard-cq7-falkordb-advertised-0:31828,falkordb-shard-cq7-falkordb-advertised-1:32000"
+    - name: ALL_SHARDS_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ printf "%s-%s" .clusterComponentDef $.Chart.Version }}
+          name: falkordb-advertised
+          optional: true
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: "."
+                keyValueDelimiter: "@"
+          port:
+            name: falkordb-advertised
+            option: Required
+  ## the falkordb cluster advertised service port list for each pod of all shard pods
+  ## the value format is like "shard-98x@falkordb-shard-98x-falkordb-advertised-0:32024,falkordb-shard-98x-falkordb-advertised-1:31318.shard-cq7@falkordb-shard-cq7-falkordb-advertised-0:31828,falkordb-shard-cq7-falkordb-advertised-1:32000"
+    - name: ALL_SHARDS_LB_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ printf "%s-%s" .clusterComponentDef $.Chart.Version }}
+          name: falkordb-lb-advertised
+          optional: true
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: "."
+                keyValueDelimiter: "@"
+          port:
+            name: falkordb-advertised
+            option: Required
+  ## the falkordb cluster advertised service bus port list for each pod of all shard pods
+  ## the value format is like "shard-98x@falkordb-shard-98x-falkordb-advertised-0:30654,falkordb-shard-98x-falkordb-advertised-1:30971.shard-cq7@falkordb-shard-cq7-falkordb-advertised-0:32555,falkordb-shard-cq7-falkordb-advertised-1:32368"
+    - name: ALL_SHARDS_LB_ADVERTISED_BUS_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ printf "%s-%s" .clusterComponentDef $.Chart.Version }}
+          name: falkordb-lb-advertised
+          optional: true
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: "."
+                keyValueDelimiter: "@"
+          port:
+            name: advertised-bus
+            option: Required
+    - name: ALL_SHARDS_LB_ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ printf "%s-%s" .clusterComponentDef $.Chart.Version }}
+          name: falkordb-lb-advertised
+          optional: true
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: ","
+                keyValueDelimiter: "@"
+          host: Required
+          loadBalancer: Required
+    ## the falkordb cluster server host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 6379
+    - name: REDIS_CLUSTER_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: falkordb-cluster
+            port:
+              name: cluster
+              option: Required
+    - name: SERVICE_PORT
+      value: "6379"
+      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
+    ## the env of falkordb server port for dbctl to connect to falkordb cluster server
+    - name: DBCTL_REDIS_SERVICE_PORT
+      value: $(SERVICE_PORT)
+    ## the falkordb cluster server host network bus port when using host network mode, the port will be allocated automatically by KubeBlocks
+    - name: REDIS_CLUSTER_HOST_NETWORK_BUS_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: falkordb-cluster
+            port:
+              name: cluster-bus
+              option: Required
+    - name: CLUSTER_BUS_PORT
+      value: "16379"
+      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_BUS_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}}{{else}}{{.CLUSTER_BUS_PORT}}{{end}}` | toYaml }}
+  {{- if $.Values.enableMetrics }}
+    ## the falkordb server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks
+    - name: REDIS_METRICS_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: metrics
+            port:
+              name: http-metrics
+              option: Required
+    - name: REDIS_METRICS_HTTP_PORT
+      value: "9121"
+      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}{{.REDIS_METRICS_HTTP_PORT}}{{end}}` | toYaml }}
+    ## the falkordb server metrics container host network server port when using host network mode, the port will be allocated automatically by KubeBlocks
+    - name: REDIS_METRICS_HOST_NETWORK_SERVER_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: metrics
+            port:
+              name: server-metrics
+              option: Required
+    - name: REDIS_METRICS_SERVER_PORT
+      value: "8888"
+      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
+    ## the falkordb cluster host network port list for all shard pods, the all pods in same shard has the same host network port allocated automatically by KubeBlocks.
+    ## the value format is like "shard-chg:1057,shard-khh:1056,shard-mpg:1053"
+    - name: REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          compDef: {{ printf "%s-%s" .clusterComponentDef $.Chart.Version }}
+          optional: true
+          container:
+            name: falkordb-cluster
+            port:
+              name: cluster
+              option: Required
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: ","
+                keyValueDelimiter: ":"
+  {{- end }}
+    ## the falkordb cluster host network bus port list for all shard pods, the all pods in same shard has the same host network bus port allocated automatically by KubeBlocks.
+    ## the value format is like "shard-chg:1060,shard-khh:1059,shard-mpg:1054"
+    - name: REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_BUS_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          compDef: {{ printf "%s-%s" .clusterComponentDef $.Chart.Version }}
+          optional: true
+          container:
+            name: falkordb-cluster
+            port:
+              name: cluster-bus
+              option: Required
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: ","
+                keyValueDelimiter: ":"
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memory: Required
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: 1
+      timeoutSeconds: 1
+      exec:
+        container: falkordb-cluster
+        env:
+        - name: CURRENT_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: KB_HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: KB_POD_FQDN
+          value: "$(CURRENT_POD_NAME).$(CURRENT_SHARD_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
+        - name: KB_CLUSTER_COMP_NAME
+          value: $(CURRENT_SHARD_COMPONENT_NAME)
+        - name: REDIS_LB_ADVERTISED_HOST
+          value: $(CURRENT_SHARD_LB_ADVERTISED_HOST)
+        command:
+          - /tools/dbctl
+          - --config-path
+          - /tools/config/dbctl/components
+          - redis
+          - getrole
+    postProvision:
+      exec:
+        container: falkordb-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/{{ $falkordbClusterManageScripts }} --post-provision  > /tmp/post-provision.log 2>&1
+        ## all lifecycle actions share the same env
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+      preCondition: RuntimeReady
+      retryPolicy:
+        maxRetries: 10
+    preTerminate:
+      exec:
+        container: falkordb-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/{{ $falkordbClusterManageScripts }} --pre-terminate > /tmp/pre-terminate.log 2>&1
+      retryPolicy:
+        maxRetries: 10
+    memberLeave:
+      exec:
+        container: falkordb-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/falkordb-cluster-replica-member-leave.sh > /tmp/member-leave.log 2>&1
+      retryPolicy:
+        maxRetries: 10
+    switchover:
+      exec:
+        container: falkordb-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/{{ $falkordbClusterSwitchoverScripts }}  > /tmp/switchover.log 2>&1
+  runtime:
+    initContainers:
+      - name: init-dbctl
+        command:
+          - cp
+          - -r
+          - /bin/dbctl
+          - /config
+          - /tools/
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.dbctlImage.pullPolicy }}
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+    containers:
+      - name: falkordb-cluster
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
+        ports:
+          - name: cluster
+            containerPort: 6379
+          - name: cluster-bus
+            containerPort: 16379
+        volumeMounts:
+          - name: data
+            mountPath: {{ $.Values.dataMountPath }}
+          - name: falkordb-cluster-config
+            mountPath: /etc/conf
+          - name: scripts
+            mountPath: /scripts
+          - name: falkordb-conf
+            mountPath: /etc/redis
+          - mountPath: /tools
+            name: tools
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+          - name: POD_FQDN
+            value: "$(CURRENT_POD_NAME).$(CURRENT_SHARD_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
+        command: [ "/scripts/{{ $falkordbClusterStartScripts }}" ]
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+              - sh
+              - -c
+              - /scripts/falkordb-ping.sh
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - /scripts/falkordb-cluster-replica-pre-stop.sh
+  {{- if $.Values.enableMetrics }}
+      - name: metrics
+        imagePullPolicy: {{ $.Values.metrics.image.pullPolicy | quote }}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        env:
+          - name: ENDPOINT
+            value: "localhost:$(SERVICE_PORT)"
+          - name: METRICS_HTTP_PORT
+            value: $(REDIS_METRICS_HTTP_PORT)
+          - name: METRICS_SERVER_PORT
+            value: $(REDIS_METRICS_SERVER_PORT)
+          - name: REDIS_USER
+            value: $(REDIS_DEFAULT_USER)
+          - name: REDIS_PASSWORD
+            value: $(REDIS_DEFAULT_PASSWORD)
+        command:
+          - "/bin/agamotto"
+          - "--config=/opt/conf/metrics-config.yaml"
+        ports:
+          - name: http-metrics
+            containerPort: {{ $.Values.metrics.service.port }}
+          - name: server-metrics
+            containerPort: {{ $.Values.metrics.service.serverPort }}
+        volumeMounts:
+          - name: falkordb-metrics-config
+            mountPath: /opt/conf
+  {{- end }}
+{{- end }}

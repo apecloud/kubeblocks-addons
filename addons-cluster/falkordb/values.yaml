@@ -1,0 +1,96 @@
+# Default values for redis-cluster.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## @param version redis cluster version
+##
+version: 4.12.5
+
+## @param mode redis cluster topology mode, standalone, replication and cluster
+## standalone: single redis instance
+## replication: primary-secondary replication with redis sentinel, refer: https://redis.io/docs/management/sentinel
+## replication-twemproxy: primary-secondary replication with sentinel and twemproxy, it is just a demo for how to use twemproxy with redis, not recommended for production
+## cluster: official redis cluster, refer: https://redis.io/docs/reference/cluster-spec.
+mode: replication
+
+## @param replicas specify replicas of replication
+## if mode is standalone, replicas should be 1
+## if mode is replication and replicas is 2, it means 1 primary and 1 secondary
+## if mode is cluster and replicas is 2, it means every shard has 1 primary and 1 secondary, the count of shards is specified by redisCluster.shardCount
+replicas: 2
+
+## @param cpu
+##
+cpu: 0.5
+
+## @param memory, the unit is Gi
+##
+memory: 0.5
+
+## @param requests.cpu if not set, use cpu
+## @param requests.memory, if not set, use memory
+##
+requests:
+#  cpu:
+#  memory:
+
+## @param storage size, the unit is Gi
+##
+storage: 20
+
+# custom password of default user for redis by passing a secret
+# the secret must contain keys named 'username' and 'password'
+customSecretName: ""
+customSecretNamespace: ""
+
+## @param nodePortEnabled if true, the redis will use nodePort as the announce IP
+## This option is mutually exclusive with hostNetworkEnabled. When both hostNetworkEnabled, nodePortEnabled are false, the default announce IP will be a headless service.
+nodePortEnabled: false
+
+## @param hostNetworkEnabled if true, the redis will use hostNetwork
+## This option is mutually exclusive with nodePortEnabled, When both hostNetworkEnabled, nodePortEnabled are false, the default announce IP will be a headless service.
+hostNetworkEnabled: false
+
+## If the K8s environment supports immutable pod IPs (usually requiring additional CNI plugins or other methods),
+## you can set fixedPodIPEnabled to true. When fixedPodIPEnabled is true, the Redis will use the pod IP as the announce IP to meet network requirements in certain scenarios.
+## This option is mutually exclusive with nodePortEnabled, hostNetworkEnabled and loadBalancerEnabled. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled, loadBalancerEnabled are false, the default announce IP will be a headless service.
+fixedPodIPEnabled: false
+
+## @param loadBalancerEnabled if true, the redis announce IP will use loadBalancer ip/hostname
+## This option is mutually exclusive with fixedPodIPEnabled, nodePortEnabled and hostNetworkEnabled. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled, loadBalancerEnabled are false, the default announce IP will be a headless service.
+loadBalancerEnabled: false
+
+## @param podAntiAffinityEnabled if true, the redis will add podAntiAffinity
+podAntiAffinityEnabled: false
+
+## @param sentinel.cpu
+## @param sentinel.memory
+## @param sentinel.storage
+##
+sentinel:
+  enabled: true
+  cpu: 0.5
+  memory: 0.5
+  storage: 20
+  replicas: 3
+  customMasterName: ""
+  # custom password of default user for redis sentinel by passing a secret
+  # the secret must contain keys named 'username' and 'password'
+  customSecretName: ""
+  customSecretNamespace: ""
+  storageClassName: ""
+
+## if mode is cluster, specify the redis cluster parameters
+## @param redisCluster.shardCount specify the number of shards in the cluster, the minimum value is 3
+redisCluster:
+  shardCount: 3
+  # custom password of default user for redis cluster by passing a secret
+  # the secret must contain keys named 'username' and 'password'
+  customSecretName: ""
+  customSecretNamespace: ""
+
+extra:
+  disableExporter: true
+
+prometheus:
+  enabled: false

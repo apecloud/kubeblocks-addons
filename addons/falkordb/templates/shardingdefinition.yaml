@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ShardingDefinition
+metadata:
+  name: falkordb-cluster
+  labels:
+    {{- include "falkordb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "falkordb.apiVersion" . | nindent 4 }}
+spec:
+  template:
+    compDef: {{ include "falkordbCluster.cmpdRegexpPattern" . }}
+  shardsLimit:
+    minShards: 3
+    maxShards: 64
+  provisionStrategy: Parallel
+  updateStrategy: Parallel
