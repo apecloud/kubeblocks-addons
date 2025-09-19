@@ -388,6 +388,24 @@ runtime:
           name: local-plugins
         - mountPath: /tmp/plugins
           name: plugins
+    - name: install-es-agent
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - sh
+        - -c
+        - |
+          cp /usr/local/bin/agent /mnt/local-bin/es-agent
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        privileged: false
+        runAsNonRoot: true
+        runAsUser: 1000
+      volumeMounts:
+        - mountPath: /mnt/local-bin
+          name: local-bin
   containers:
     - name: elasticsearch
       imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -521,9 +539,11 @@ runtime:
         initialDelaySeconds: 1
         timeoutSeconds: 5
         periodSeconds: 5
-    - name: agent
+    - name: es-agent
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.agent.repository }}:{{ .Values.image.agent.tag }}
       imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+      - /usr/share/elasticsearch/bin/es-agent
       ports:
       - name: agent
         containerPort: 8080
