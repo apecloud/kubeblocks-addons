@@ -20,9 +20,9 @@
     {{- end }}
     {{- end }}
 {{- end }}
-{{- $masterComponents := "mdit" }}
+{{- $masterComponents := list }}
 {{- if eq $mode "multi-node" }}
-{{- $masterComponents := $allRoles.master }}
+{{- $masterComponents = $allRoles.master }}
 {{- end }}
 {{- $totalMasterNodes := 0 }}
 {{- range $i, $name := $masterComponents }}
