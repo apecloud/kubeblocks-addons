@@ -20,7 +20,10 @@
     {{- end }}
     {{- end }}
 {{- end }}
+{{- $masterComponents := "mdit" }}
+{{- if eq $mode "multi-node" }}
 {{- $masterComponents := $allRoles.master }}
+{{- end }}
 {{- $totalMasterNodes := 0 }}
 {{- range $i, $name := $masterComponents }}
 {{- range $j, $spec := $.cluster.spec.componentSpecs }}
