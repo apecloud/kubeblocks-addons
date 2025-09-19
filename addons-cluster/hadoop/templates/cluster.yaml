@@ -6,7 +6,7 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   terminationPolicy: Delete
-  clusterDef: hadoop-hdfs
+  clusterDef: hadoop
   topology: {{ .Values.topology }}
   componentSpecs:
     {{- if eq .Values.topology "ha-cluster"  }}
@@ -23,7 +23,7 @@ spec:
           memory: {{ .Values.resources.zookeeper.limits.memory }}
     {{- end }}
     - name: hadoop-core
-      componentDef: hdfs-core
+      componentDef: hadoop-hdfs-core
       serviceVersion: {{ .Values.serviceVersion }}
       {{- if eq .Values.topology "ha-ref-zk-cluster"  }}
       serviceRefs:
@@ -45,7 +45,7 @@ spec:
           cpu: {{ .Values.resources.core.limits.cpu | quote }}
           memory: {{ .Values.resources.core.limits.memory }}
     - name: journalnode
-      componentDef: hdfs-journalnode
+      componentDef: hadoop-hdfs-journalnode
       serviceVersion: {{ .Values.serviceVersion }}
       replicas: {{ .Values.replicas.journalnode }}
       resources:
@@ -68,7 +68,7 @@ spec:
               requests:
                 storage: {{ .Values.storage.journalnode }}
     - name: namenode
-      componentDef: hdfs-namenode
+      componentDef: hadoop-hdfs-namenode
       serviceVersion: {{ .Values.serviceVersion }}
       {{- if eq .Values.topology "ha-ref-zk-cluster"  }}
       serviceRefs:
@@ -102,7 +102,7 @@ spec:
               requests:
                 storage: {{ .Values.storage.namenode }}
     - name: datanode
-      componentDef: hdfs-datanode
+      componentDef: hadoop-hdfs-datanode
       replicas: {{ .Values.replicas.datanode }}
       serviceVersion: {{ .Values.serviceVersion }}
       resources:

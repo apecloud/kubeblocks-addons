@@ -3,7 +3,7 @@ kind: BackupPolicyTemplate
 metadata:
   name: hadoop-hdfs-namenode
   labels:
-    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+    {{- include "hadoop.labels" . | nindent 4 }}
 spec:
   serviceKind: HadoopHDFS
   compDefs:

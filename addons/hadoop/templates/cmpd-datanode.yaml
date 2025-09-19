@@ -3,9 +3,9 @@ kind: ComponentDefinition
 metadata:
   name: {{ include "dataNodeComponentDef" . }}
   labels:
-    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+    {{- include "hadoop.labels" . | nindent 4 }}
   annotations:
-    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+    {{- include "hadoop.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}
@@ -111,8 +111,8 @@ spec:
       defaultMode: 0755
       externalManaged: true
   scripts:
-    - name: {{ include "hadoop-hdfs.name" . }}-scripts
-      template: {{ include "hadoop-hdfs.name" . }}-scripts
+    - name: {{ include "hadoop.name" . }}-scripts
+      template: {{ include "hadoop.name" . }}-scripts
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
@@ -124,7 +124,7 @@ spec:
         componentVarRef:
           optional: false
           replicas: Required
-          compDef: hdfs-namenode
+          compDef: hadoop-hdfs-namenode
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
@@ -141,6 +141,6 @@ spec:
     - name: NAMENODE_CLUSTER_COMPONENT_NAME
       valueFrom:
         componentVarRef:
-          compDef: hdfs-namenode
+          compDef: hadoop-hdfs-namenode
           optional: false
           componentName: Required

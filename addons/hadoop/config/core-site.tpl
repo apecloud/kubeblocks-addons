@@ -3,10 +3,6 @@
 
 <configuration>
       <property>
-          <name>fs.default.name</name>
-          <value>hdfs://{{ .CLUSTER_NAME }}</value>
-      </property>
-      <property>
           <name>fs.defaultFS</name>
           <value>hdfs://{{ .CLUSTER_NAME }}</value>
       </property>

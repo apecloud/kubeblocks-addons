@@ -153,4 +153,6 @@
 
 	// 【说明】DataNode向NameNode发送心跳的时间间隔，单位为秒。【默认值】10【取值范围】3~180
 	"dfs.heartbeat.interval": int & >=3 & <=180 | *10
+
+	...
 }

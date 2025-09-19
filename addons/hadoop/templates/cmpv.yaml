@@ -1,29 +1,29 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
-  name: hadoop-hdfs
+  name: hadoop
   labels:
-    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+    {{- include "hadoop.labels" . | nindent 4 }}
   annotations:
-    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+    {{- include "hadoop.annotations" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:
         - datanode-3.3.4
       compDefs:
-        - hdfs-datanode
+        - hadoop-hdfs-datanode
     - releases:
         - namenode-3.3.4
       compDefs:
-        - hdfs-namenode
+        - hadoop-hdfs-namenode
     - releases:
         - journalnode-3.3.4
       compDefs:
-        - hdfs-journalnode
+        - hadoop-hdfs-journalnode
     - releases:
         - core-3.3.4
       compDefs:
-        - hdfs-core
+        - hadoop-hdfs-core
   releases:
     - name: datanode-3.3.4
       serviceVersion: 3.3.4

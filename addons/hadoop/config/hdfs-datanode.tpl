@@ -28,6 +28,11 @@
     </property>
 
     <property>
+        <name>dfs.client.failover.proxy.provider.hadoop</name>
+        <value>org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider</value>
+    </property>
+
+    <property>
         <name>dfs.ha.namenodes.{{ .CLUSTER_NAME }}</name>
         {{- $nns := "" }}
         {{- range $i := until (int .NAMENODE_COMPONENT_REPLICAS) }}

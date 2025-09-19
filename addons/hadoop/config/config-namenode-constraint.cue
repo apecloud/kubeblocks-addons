@@ -249,4 +249,6 @@
 
 	// 是否使用DFSNetworkTopology选择副本放置的DataNode。默认值true，取值范围true或false
 	"dfs.use.dfs.network.topology": bool | *true
+
+	...
 }

@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "hadoop-hdfs.name" -}}
+{{- define "hadoop.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "hadoop-hdfs.fullname" -}}
+{{- define "hadoop.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "hadoop-hdfs.chart" -}}
+{{- define "hadoop.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "hadoop-hdfs.labels" -}}
-helm.sh/chart: {{ include "hadoop-hdfs.chart" . }}
-{{ include "hadoop-hdfs.selectorLabels" . }}
+{{- define "hadoop.labels" -}}
+helm.sh/chart: {{ include "hadoop.chart" . }}
+{{ include "hadoop.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +45,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "hadoop-hdfs.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "hadoop-hdfs.name" . }}
+{{- define "hadoop.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "hadoop.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "hadoop-hdfs.serviceAccountName" -}}
+{{- define "hadoop.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "hadoop-hdfs.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "hadoop.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
@@ -65,31 +65,41 @@ Create the name of the service account to use
 {{/*
 Common annotations
 */}}
-{{- define "hadoop-hdfs.annotations" -}}
+{{- define "hadoop.annotations" -}}
 {{ include "kblib.helm.resourcePolicy" . }}
-{{ include "hadoop-hdfs.apiVersion" . }}
+{{ include "hadoop.apiVersion" . }}
 apps.kubeblocks.io/skip-immutable-check: "true"
 {{- end }}
 
 {{/*
 API version annotation
 */}}
-{{- define "hadoop-hdfs.apiVersion" -}}
+{{- define "hadoop.apiVersion" -}}
 kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{- define "dataNodeComponentDef" -}}
-hdfs-datanode-{{ .Chart.Version }}
+hadoop-hdfs-datanode-{{ .Chart.Version }}
 {{- end }}
 
 {{- define "nameNodeComponentDef" -}}
-hdfs-namenode-{{ .Chart.Version }}
+hadoop-hdfs-namenode-{{ .Chart.Version }}
 {{- end }}
 
 {{- define "journalNodeComponentDef" -}}
-hdfs-journalnode-{{ .Chart.Version }}
+hadoop-hdfs-journalnode-{{ .Chart.Version }}
 {{- end }}
 
 {{- define "coreComponentDef" -}}
-hdfs-core-{{ .Chart.Version }}
+hadoop-hdfs-core-{{ .Chart.Version }}
+{{- end }}
+
+
+{{- define "yarnResourceManagerComponentDef" -}}
+hadoop-yarn-resourcemanager-{{ .Chart.Version }}
+{{- end }}
+
+
+{{- define "yarnNodeManagerComponentDef" -}}
+hadoop-yarn-nodemanager-{{ .Chart.Version }}
 {{- end }}

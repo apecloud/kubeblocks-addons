@@ -3,9 +3,9 @@ kind: ComponentDefinition
 metadata:
   name: {{ include "coreComponentDef" . }}
   labels:
-    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+    {{- include "hadoop.labels" . | nindent 4 }}
   annotations:
-    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+    {{- include "hadoop.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}

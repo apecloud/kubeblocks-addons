@@ -31,3 +31,4 @@ spec:
         meta_dir=/hadoop/dfs/metadata/current
         mkdir -p ${meta_dir}
         touch ${meta_dir}/.hdfs-k8s-zkfc-formatted
+        chown -R hadoop:hadoop ${meta_dir}

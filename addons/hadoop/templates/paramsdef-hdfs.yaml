@@ -2,9 +2,9 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: hdfs-core-pd
+  name: hadoop-hdfs-core-pd
   labels:
-    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+    {{- include "hadoop.labels" . | nindent 4 }}
 spec:
   fileName: core-site.xml
   parametersSchema:
@@ -15,9 +15,9 @@ spec:
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: hdfs-datanode-pd
+  name: hadoop-hdfs-datanode-pd
   labels:
-    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+    {{- include "hadoop.labels" . | nindent 4 }}
 spec:
   fileName: hdfs-site.xml
   parametersSchema:
@@ -34,9 +34,9 @@ spec:
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: hdfs-journalnode-pd
+  name: hadoop-hdfs-journalnode-pd
   labels:
-    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+    {{- include "hadoop.labels" . | nindent 4 }}
 spec:
   fileName: hdfs-site.xml
   parametersSchema:
@@ -52,9 +52,9 @@ spec:
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: hdfs-namenode-pd
+  name: hadoop-hdfs-namenode-pd
   labels:
-    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+    {{- include "hadoop.labels" . | nindent 4 }}
 spec:
   fileName: hdfs-site.xml
   parametersSchema:
