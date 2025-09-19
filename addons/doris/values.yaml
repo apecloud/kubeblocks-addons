@@ -1,0 +1,24 @@
+# Default values for Doris.
+# This is a YAML-formatted file.
+
+nameOverride: ""
+
+fullnameOverride: ""
+
+timezone: Asia/Shanghai
+
+image:
+  registry: docker.io
+  pullPolicy: IfNotPresent
+  fe:
+    repository: apecloud/doris-fe
+  be:
+    repository: apecloud/doris-be
+
+AVX2: false
+
+fe:
+  config:
+
+be:
+  config:

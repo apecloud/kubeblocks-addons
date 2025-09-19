@@ -1,0 +1,145 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "be.componentDefName" . }}
+  labels:
+    {{- include "doris.labels" . | nindent 4 }}
+  annotations:
+    {{- include "doris.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A Doris BE component definition for Kubernetes
+  serviceKind: doris-be
+  updateStrategy: BestEffortParallel
+  services:
+  - name: be
+    serviceName: be
+    spec:
+      ipFamilyPolicy: PreferDualStack
+      ipFamilies:
+        - IPv4
+      ports:
+      - name: be
+        port: 9060
+        targetPort: be
+      - name: webserver
+        port: 8040
+        targetPort: webserver
+      - name: heartbeat
+        port: 9050
+        targetPort: heartbeat
+      - name: brpc
+        port: 8060
+        targetPort: brpc
+  configs:
+  - name: be-cm
+    template: {{ include "be.configurationTemplate" . }}
+    namespace: {{ .Release.Namespace }}
+    volumeName: be-cm
+    restartOnFileChange: true
+  volumes:
+  - name: data
+    needSnapshot: true
+  scripts:
+  - name: scripts
+    template: {{ include "be.scriptsTemplate" . }}
+    namespace: {{ .Release.Namespace }}
+    volumeName: scripts
+    defaultMode: 0555
+  vars:
+  - name: FE_DISCOVERY_SERVICE_NAME
+    valueFrom:
+      serviceVarRef:
+        compDef: {{ include "fe.componentDefName" . }}
+        name: fe
+        host: Required
+  - name: MYSQL_PWD
+    valueFrom:
+      credentialVarRef:
+        compDef: {{ include "fe.componentDefName" . }}
+        name: root
+        optional: false
+        password: Required
+  runtime:
+    containers:
+    - name: be
+      imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+      command:
+      - bash
+      - -c
+      - |
+        /opt/apache-doris/scripts/entry_point.sh
+      env:
+      - name: HOST_TYPE
+        value: FQDN
+      - name: POD_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.name
+      - name: POD_IP
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: status.podIP
+      - name: HOST_IP
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: status.hostIP
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.namespace
+      - name: COMPONENT_NAME
+        value: be
+      - name: FE_QUERY_PORT
+        value: "9030"
+      - name: CONFIGMAP_MOUNT_PATH
+        value: /etc/doris/be/conf
+      - name: SERVICE_PORT
+        value: "8040"
+      lifecycle:
+        preStop:
+          exec:
+            command:
+            - /opt/apache-doris/scripts/be_prestop.sh
+      ports:
+      - containerPort: 9060
+        name: be
+        protocol: TCP
+      - containerPort: 8040
+        name: webserver
+        protocol: TCP
+      - containerPort: 9050
+        name: heartbeat
+        protocol: TCP
+      - containerPort: 8060
+        name: brpc
+        protocol: TCP
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+{{/*      {{- if .Values.be.probe }}*/}}
+{{/*      livenessProbe:*/}}
+{{/*        failureThreshold: 3*/}}
+{{/*        {{- toYaml .Values.be.probe | nindent 8 }}*/}}
+{{/*      readinessProbe:*/}}
+{{/*        failureThreshold: 3*/}}
+{{/*        {{- toYaml .Values.be.probe | nindent 8 }}*/}}
+{{/*      startupProbe:*/}}
+{{/*        failureThreshold: 60*/}}
+{{/*        {{- toYaml .Values.be.probe | nindent 8 }}*/}}
+{{/*      {{- end }}*/}}
+      volumeMounts:
+      - mountPath: /opt/apache-doris/be/conf/be.conf
+        name: be-cm
+        subPath: be.conf
+      - mountPath: /opt/apache-doris/be/storage
+        name: data
+      - mountPath: /opt/apache-doris/be/log
+        name: log
+    volumes:
+    - name: log
+      emptyDir: {}
