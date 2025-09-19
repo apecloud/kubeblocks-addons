@@ -1,0 +1,24 @@
+# Default values for hadoop-hdfs.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+images:
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  pullPolicy: IfNotPresent
+  core:
+    repository: apecloud/hdfs-journalnode
+    tag: "v3.3.4-1.0.0"
+
+  journalNode:
+    repository: apecloud/hdfs-journalnode
+    tag: "v3.3.4-1.0.0"
+
+  nameNode:
+    repository: apecloud/hdfs-namenode
+    tag: "v3.3.4-1.0.0"
+
+  dataNode:
+    repository: apecloud/hdfs-datanode
+    tag: "v3.3.4-1.0.0"
+
+clusterDomain: cluster.local
