@@ -1,0 +1,29 @@
+version: 2.1.6
+
+fe:
+  replicas: 3
+  resources:
+    limits:
+        cpu: 4
+        memory: 4Gi
+    requests:
+        cpu: 4
+        memory: 4Gi
+  storageClassName:
+  storage: 10
+
+be:
+  replicas: 3
+  resources:
+    limits:
+      cpu: 4
+      memory: 8Gi
+    requests:
+      cpu: 4
+      memory: 8Gi
+  storageClassName:
+  storage: 50
+
+nameOverride: ""
+
+fullnameOverride: ""

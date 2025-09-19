@@ -1,0 +1,66 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  clusterDef: doris
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  topology: integrated
+  componentSpecs:
+    - name: fe
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      serviceVersion: {{ include "doris.version" . }}
+      replicas: {{ .Values.fe.replicas | default 1 }}
+      {{- with .Values.fe.resources }}
+      resources:
+        {{- with .limits }}
+        limits:
+          cpu: {{ .cpu | quote }}
+          memory: {{ print .memory "Gi" | quote }}
+        {{- end }}
+        {{- with .requests }}
+        requests:
+          cpu: {{ .cpu | quote }}
+          memory: {{ print .memory "Gi" | quote }}
+        {{- end }}
+      {{- end }}
+      volumeClaimTemplates:
+        - name: metadata
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ print .Values.fe.storage "Gi" }}
+            {{- if .Values.fe.storageClassName }}
+            storageClassName: {{ .Values.fe.storageClassName | quote }}
+            {{- end }}
+    - name: be
+      serviceVersion: {{ include "doris.version" . }}
+      replicas: {{ .Values.be.replicas | default 1 }}
+      {{- with .Values.be.resources }}
+      resources:
+        {{- with .limits }}
+        limits:
+          cpu: {{ .cpu | quote }}
+          memory: {{ print .memory "Gi" | quote }}
+        {{- end }}
+        {{- with .requests }}
+        requests:
+          cpu: {{ .cpu | quote }}
+          memory: {{ print .memory "Gi" | quote }}
+        {{- end }}
+      {{- end }}
+      volumeClaimTemplates:
+      - name: data
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ print .Values.be.storage "Gi" }}
+            {{- if .Values.be.storageClassName }}
+            storageClassName: {{ .Values.be.storageClassName | quote }}
+            {{- end }}
