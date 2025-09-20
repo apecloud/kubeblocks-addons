@@ -1,3 +1,4 @@
+{{- $imageRegistry := .Values.image.registry | default "docker.io" -}}
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
@@ -8,96 +9,34 @@ metadata:
     {{- include "elasticsearch.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
+{{- range .Values.esVersions }}
   - compDefs:
-    - {{ include "elasticsearch8.cmpdRegexPattern" . }}
-    - {{ include "elasticsearchMaster8.cmpdRegexPattern" . }}
-    - {{ include "elasticsearchData8.cmpdRegexPattern" . }}
+    - {{ .componentDef }}
+    - {{ .masterComponentDef }}
+    - {{ .dataComponentDef }}
     releases:
-    - 8.1.3
-    - 8.8.2
-    - 8.15.5
-  - compDefs:
-    - {{ include "elasticsearch7.cmpdRegexPattern" . }}
-    - {{ include "elasticsearchMaster7.cmpdRegexPattern" . }}
-    - {{ include "elasticsearchData7.cmpdRegexPattern" . }}
-    releases:
-    - 7.7.1
-    - 7.8.1
-    - 7.10.1
-  - compDefs:
-    - {{ include "elasticsearch6.cmpdRegexPattern" . }}
-    - {{ include "elasticsearchMaster6.cmpdRegexPattern" . }}
-    - {{ include "elasticsearchData6.cmpdRegexPattern" . }}
-    releases:
-    - 6.8.23
+{{- range .minors }}
+      - {{ index . 0 }}
+{{- end }}
+{{- end }}
   releases:
-  - name: 6.8.23
-    serviceVersion: 6.8.23
+{{- range .Values.esVersions }}
+{{- range .minors }}
+{{- if not (index . 3) }}
+  - name: {{ index . 0 }}
+    serviceVersion: {{ index . 1 }}
     images:
-      elasticsearch: {{ include "elasticsearch-6.8.23.image" . }}
-      prepare-plugins: {{ include "elasticsearch-6.8.23.image" . }}
-      install-plugins: {{ include "elasticsearch-6.8.23.image" . }}
-      exporter: {{ include "elasticsearch-exporter.image" . }}
-      memberleave: {{ include "elasticsearch-lfa.image" . }}
-      install-es-agent: {{ include "elasticsearch-agent.image" . }}
-      es-agent: {{ include "elasticsearch-6.8.23.image" . }}
-  - name: 7.7.1
-    serviceVersion: 7.7.1
-    images:
-      elasticsearch: {{ include "elasticsearch-7.7.1.image" . }}
-      prepare-plugins: {{ include "elasticsearch-7.7.1.image" . }}
-      install-plugins: {{ include "elasticsearch-7.7.1.image" . }}
-      exporter: {{ include "elasticsearch-exporter.image" . }}
-      memberleave: {{ include "elasticsearch-lfa.image" . }}
-      install-es-agent: {{ include "elasticsearch-agent.image" . }}
-      es-agent: {{ include "elasticsearch-7.7.1.image" . }}
-  - name: 7.8.1
-    serviceVersion: 7.8.1
-    images:
-      elasticsearch: {{ include "elasticsearch-7.8.1.image" . }}
-      prepare-plugins: {{ include "elasticsearch-7.8.1.image" . }}
-      install-plugins: {{ include "elasticsearch-7.8.1.image" . }}
-      exporter: {{ include "elasticsearch-exporter.image" . }}
-      memberleave: {{ include "elasticsearch-lfa.image" . }}
-      install-es-agent: {{ include "elasticsearch-agent.image" . }}
-      es-agent: {{ include "elasticsearch-7.8.1.image" . }}
-  - name: 7.10.1
-    serviceVersion: 7.10.1
-    images:
-      elasticsearch: {{ include "elasticsearch-7.10.1.image" . }}
-      prepare-plugins: {{ include "elasticsearch-7.10.1.image" . }}
-      install-plugins: {{ include "elasticsearch-7.10.1.image" . }}
-      exporter: {{ include "elasticsearch-exporter.image" . }}
-      memberleave: {{ include "elasticsearch-lfa.image" . }}
-      install-es-agent: {{ include "elasticsearch-agent.image" . }}
-      es-agent: {{ include "elasticsearch-7.10.1.image" . }}
-  - name: 8.1.3
-    serviceVersion: 8.1.3
-    images:
-      elasticsearch: {{ include "elasticsearch-8.1.3.image" . }}
-      prepare-plugins: {{ include "elasticsearch-8.1.3.image" . }}
-      install-plugins: {{ include "elasticsearch-8.1.3.image" . }}
-      exporter: {{ include "elasticsearch-exporter.image" . }}
-      memberleave: {{ include "elasticsearch-lfa.image" . }}
-      install-es-agent: {{ include "elasticsearch-agent.image" . }}
-      es-agent: {{ include "elasticsearch-8.1.3.image" . }}
-  - name: 8.8.2
-    serviceVersion: 8.8.2
-    images:
-      elasticsearch: {{ include "elasticsearch-8.8.2.image" . }}
-      prepare-plugins: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
-      install-plugins: {{ include "elasticsearch-8.8.2.image" . }}
-      exporter: {{ include "elasticsearch-exporter.image" . }}
-      memberleave: {{ include "elasticsearch-lfa.image" . }}
-      install-es-agent: {{ include "elasticsearch-agent.image" . }}
-      es-agent: {{ include "elasticsearch-8.8.2.image" . }}
-  - name: 8.15.5
-    serviceVersion: 8.15.5
-    images:
-      elasticsearch: {{ include "elasticsearch-8.15.5.image" . }}
-      prepare-plugins: {{ include "elasticsearch-8.15.5.image" . }}
-      install-plugins: {{ include "elasticsearch-8.15.5.image" . }}
-      exporter: {{ include "elasticsearch-exporter.image" . }}
-      memberleave: {{ include "elasticsearch-lfa.image" . }}
-      install-es-agent: {{ include "elasticsearch-agent.image" . }}
-      es-agent: {{ include "elasticsearch-8.15.5.image" . }}
+      elasticsearch: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+{{- if eq $.Values.image.plugin.tag (index . 2) }}
+      prepare-plugins: {{ $imageRegistry }}/{{ $.Values.image.plugin.repository }}:{{ $.Values.image.plugin.tag }}
+{{- else }}
+      prepare-plugins: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+{{- end }}
+      install-plugins: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      exporter: {{ $imageRegistry }}/{{ $.Values.image.exporter.repository }}:{{ $.Values.image.exporter.tag }}
+      memberleave: {{ $imageRegistry }}/{{ $.Values.image.tools.repository }}:{{ $.Values.image.tools.tag }}
+      install-es-agent: {{ $imageRegistry }}/{{ $.Values.image.agent.repository }}:{{ $.Values.image.agent.tag }}
+      es-agent: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+{{- end }}
+{{- end }}
+{{- end }}
