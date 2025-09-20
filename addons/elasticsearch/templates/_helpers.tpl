@@ -160,42 +160,6 @@ elasticsearch-data-8
 elasticsearch-8-config-tpl
 {{- end -}}
 
-{{- define "elasticsearch-8.1.3.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.1.3
-{{- end }}
-
-{{- define "elasticsearch-8.8.2.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.8.2
-{{- end }}
-
-{{- define "elasticsearch-8.9.1.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.9.1
-{{- end }}
-
-{{- define "elasticsearch-8.15.5.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.15.5
-{{- end }}
-
-{{- define "elasticsearch-7.10.1.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.10.1
-{{- end }}
-
-{{- define "elasticsearch-7.7.1.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.7.1
-{{- end }}
-
-{{- define "elasticsearch-7.8.1.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.8.1
-{{- end }}
-
-{{- define "elasticsearch-6.8.23.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.8.23
-{{- end }}
-
-{{- define "elasticsearch-exporter.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag | default "latest" }}
-{{- end }}
-
 {{- define "kibana6.cmpdName" -}}
 kibana-6
 {{- end -}}
@@ -235,42 +199,6 @@ kibana-7-config-tpl
 {{- define "kibana8.configTplName" -}}
 kibana-8-config-tpl
 {{- end -}}
-
-{{- define "kibana-6.8.23.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:6.8.23
-{{- end }}
-
-{{- define "kibana-7.7.1.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:7.7.1
-{{- end }}
-
-{{- define "kibana-7.8.1.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:7.8.1
-{{- end }}
-
-{{- define "kibana-7.10.1.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:7.10.1
-{{- end }}
-
-{{- define "kibana-8.1.3.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.1.3
-{{- end }}
-
-{{- define "kibana-8.8.2.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.8.2
-{{- end }}
-
-{{- define "kibana-8.15.5.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.15.5
-{{- end }}
-
-{{- define "kibana-8.9.1.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.9.1
-{{- end }}
-
-{{- define "elasticsearch-agent.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.agent.repository }}:0.1.0
-{{- end }}
 
 {{- define "elasticsearch.common" }}
 provider: kubeblocks
