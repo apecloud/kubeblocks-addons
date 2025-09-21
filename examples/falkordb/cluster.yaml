@@ -57,7 +57,7 @@ spec:
               requests:
                 # Set the storage size as needed
                 storage: 20Gi
-    - name: falkordb-sentinel
+    - name: falkordb-sent
       serviceVersion: "7.2.4"
       replicas: 3
       resources:
