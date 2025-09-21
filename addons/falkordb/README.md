@@ -1,6 +1,6 @@
 # FalkorDB
 
-FalkorDB is an open source (BSD licensed), in-memory data structure store, used as a database, cache and message broker. This example shows how it can be managed in Kubernetes with KubeBlocks.
+FalkorDB is an open source (SSPL licensed) graph database database. This example shows how it can be managed in Kubernetes with KubeBlocks.
 
 ## Features In KubeBlocks
 
