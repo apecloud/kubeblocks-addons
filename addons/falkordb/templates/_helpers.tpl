@@ -56,9 +56,9 @@ Define falkordb component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define falkordb 7.X component definition regular expression name prefix
+Define falkordb 4.X component definition regular expression name prefix
 */}}
-{{- define "falkordb7.cmpdRegexpPattern" -}}
+{{- define "falkordb4.cmpdRegexpPattern" -}}
 ^falkordb-7.*
 {{- end -}}
 
@@ -70,7 +70,7 @@ Define falkordb sentienl component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define falkordb sentienl 7.X component definition regular expression name prefix
+Define falkordb sentienl 4.X component definition regular expression name prefix
 */}}
 {{- define "falkordbSentinel7.cmpdRegexpPattern" -}}
 ^falkordb-sent-7.*
@@ -112,12 +112,8 @@ Define falkordb metrics config name
 falkordb-metrics-config
 {{- end -}}
 
-{{- define "falkordb7.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
-{{- end }}
-
-{{- define "falkordb8.image" -}}
-{{ .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ceImage.repository }}:{{ .Values.image.tag.major8.minor80 }}
+{{- define "falkordb4.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major4.minor12 }}
 {{- end }}
 
 {{- define "busybox.image" -}}

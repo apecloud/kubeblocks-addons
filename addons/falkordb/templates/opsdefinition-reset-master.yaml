@@ -37,7 +37,7 @@ spec:
         podSpec:
           containers:
             - name: reset-master
-              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major4.minor12 }}
               imagePullPolicy: IfNotPresent
               command:
                 - bash

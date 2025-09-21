@@ -16,7 +16,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "falkordb7.image" . }}
+      image: {{ include "falkordb4.image" . }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -28,7 +28,7 @@ spec:
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "falkordb7.image" . }}
+      image: {{ include "falkordb4.image" . }}
       command:
       - bash
       - -c
@@ -42,7 +42,7 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
-        image: {{ include "falkordb7.image" . }}
+        image: {{ include "falkordb4.image" . }}
         onError: Fail
         runOnTargetPodNode: true
 ---
@@ -66,7 +66,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "falkordb7.image" . }}
+      image: {{ include "falkordb4.image" . }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -78,7 +78,7 @@ spec:
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "falkordb7.image" . }}
+      image: {{ include "falkordb4.image" . }}
       command:
       - bash
       - -c
@@ -115,7 +115,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "falkordb7.image" . }}
+      image: {{ include "falkordb4.image" . }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -129,7 +129,7 @@ spec:
         {{- .Files.Get "dataprotection/pitr-backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "falkordb7.image" . }}
+      image: {{ include "falkordb4.image" . }}
       command:
       - bash
       - -c
@@ -145,7 +145,7 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
-        image: {{ include "falkordb7.image" . }}
+        image: {{ include "falkordb4.image" . }}
         onError: Fail
         runOnTargetPodNode: true
     baseBackupRequired: false

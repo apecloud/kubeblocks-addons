@@ -30,24 +30,14 @@ image:
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag:
-    major7:
-      minor72: v4.12.5
-    major8:
-      minor80: v4.12.5
+    major4:
+      minor12: v4.12.5
 
   apeDts:
     registry: ""
     repository: apecloud/ape-dts
     tag: 2.0.24
     reshardTag: redis.reshard.2.0.9
-
-ceImage:
-  registry:
-  repository: falkordb
-  pullPolicy: IfNotPresent
-  tag:
-    major8:
-      minor80: 8.0.1
 
 apeDtsImage:
   registry: ""

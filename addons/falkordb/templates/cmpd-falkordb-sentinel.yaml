@@ -165,7 +165,7 @@ spec:
 {{/*    - name: REDIS_SENTINEL_PASSWORD*/}}
 {{/*      valueFrom:*/}}
 {{/*        credentialVarRef:*/}}
-{{/*          compDef: {{ include "falkordb7.cmpdName" . }}*/}}
+{{/*          compDef: {{ include "falkordb4.cmpdName" . }}*/}}
 {{/*          name: default*/}}
 {{/*          optional: true*/}}
 {{/*          password: Required*/}}
