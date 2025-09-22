@@ -59,6 +59,8 @@ data:
     {{- .Files.Get "config/log4j.properties" | nindent 4 }}
   capacity-scheduler.xml: |-
     {{- .Files.Get "config/yarn-capacity-scheduler.xml" | nindent 4 }}
+  mapred-site.xml: |-
+    {{- .Files.Get "config/mapred-site.xml" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -71,3 +73,5 @@ data:
     {{- .Files.Get "config/yarn-nodemanager.xml" | nindent 4 }}
   log4j.properties: |-
     {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+  mapred-site.xml: |-
+    {{- .Files.Get "config/mapred-site.xml" | nindent 4 }}

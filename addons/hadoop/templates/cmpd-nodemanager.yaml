@@ -89,6 +89,9 @@ spec:
           - name: nodemanager-config
             mountPath: /hadoop/conf/yarn-site.xml
             subPath: yarn-site.xml
+          - name: nodemanager-config
+            mountPath: /hadoop/conf/mapred-site.xml
+            subPath: mapred-site.xml
           - mountPath: /hadoop/conf/log4j.properties
             name: nodemanager-config
             subPath: log4j.properties

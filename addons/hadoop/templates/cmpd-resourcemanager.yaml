@@ -88,6 +88,9 @@ spec:
           - mountPath: /hadoop/conf/yarn-site.xml
             name: resourcemanager-config
             subPath: yarn-site.xml
+          - mountPath: /hadoop/conf/mapred-site.xml
+            name: resourcemanager-config
+            subPath: mapred-site.xml
           - mountPath: /hadoop/conf/capacity-scheduler.xml
             name: resourcemanager-config
             subPath: capacity-scheduler.xml
