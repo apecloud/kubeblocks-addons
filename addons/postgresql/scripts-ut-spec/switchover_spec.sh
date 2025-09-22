@@ -25,16 +25,15 @@ Describe "PostgreSQL Switchover Script Tests"
   AfterAll 'cleanup'
 
   Describe "switchover()"
-    Context "when CURRENT_POD_NAME or POSTGRES_PRIMARY_POD_NAME is not set"
+    Context "when CURRENT_POD_NAME is not set"
       setup() {
         unset CURRENT_POD_NAME
-        unset POSTGRES_PRIMARY_POD_NAME
       }
       Before 'setup'
 
       It "exits with an error"
         When run switchover
-        The output should include "CURRENT_POD_NAME or POSTGRES_PRIMARY_POD_NAME is not set. Exiting..."
+        The output should include "CURRENT_POD_NAME is not set. Exiting..."
         The status should be failure
       End
     End
