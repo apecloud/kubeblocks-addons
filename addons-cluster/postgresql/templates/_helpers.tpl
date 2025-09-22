@@ -32,6 +32,15 @@ Define postgresql ComponentSpec with ComponentDefinition.
           {{- else }}
           value: "{{ .Values.mode }}"
           {{- end }}
+      {{- if and .Values.systemAccountSecret (not (empty .Values.systemAccountSecret)) }}
+      systemAccounts:
+        {{- range $accountName, $secretRef := .Values.systemAccountSecret }}
+        - name: {{ $accountName }}
+          secretRef:
+            name: {{ $secretRef.name }}
+            namespace: {{ $secretRef.namespace }}
+        {{- end }}
+      {{- end }}
 {{- end }}
 
 {{- define "postgresql-cluster.serviceRef" }}
