@@ -65,20 +65,18 @@ spec:
           periodSeconds: 10
           successThreshold: 1
           timeoutSeconds: 5
-          exec:
-            command:
-              - /bin/bash
-              - /kubeblocks/scripts/check-nodemanager-status.sh
+          httpGet:
+            path: /ws/v1/node
+            port: 8042
         readinessProbe:
           failureThreshold: 6
           initialDelaySeconds: 5
           periodSeconds: 10
           successThreshold: 1
           timeoutSeconds: 5
-          exec:
-            command:
-              - /bin/bash
-              - /kubeblocks/scripts/check-nodemanager-status.sh
+          httpGet:
+            path: /ws/v1/node
+            port: 8042
         volumeMounts:
           - name: hadoop-common
             mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
@@ -122,7 +120,7 @@ spec:
       template: hadoop-nodemanager-config-template
       volumeName: nodemanager-config
       defaultMode: 0755
-      # externalManaged: true
+      externalManaged: true
   scripts:
     - name: {{ include "hadoop.name" . }}-scripts
       template: {{ include "hadoop.name" . }}-scripts

@@ -20,7 +20,7 @@
   {{- range $i := until (int .COMPONENT_REPLICAS) }}
     <property>
         <name>yarn.resourcemanager.hostname.rm{{ $i }}</name>
-        <value>{{ $.CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}</value>
+        <value>0.0.0.0</value>
     </property>
     <property>
         <name>yarn.resourcemanager.address.rm{{ $i }}</name>

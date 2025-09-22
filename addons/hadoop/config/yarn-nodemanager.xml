@@ -1,5 +1,17 @@
 <?xml version="1.0"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+{{- $phy_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
+{{- $v_mem_mb := mul (div $phy_memory 1073741824) 800 | int }}
+{{- if lt $v_mem_mb 1500 }}
+  {{- $v_mem_mb = 1000 }}
+{{- end }}
+{{- $phy_cpu_value :=  getContainerCPU ( index $.podSpec.containers 0 ) }}
+{{- $phy_cpu := $phy_cpu_value | int  }}
+{{- if lt $phy_cpu 2 }}
+  {{- $phy_cpu = 1 }}
+{{- else }}
+  {{- $phy_cpu = sub $phy_cpu 1 }}
+{{- end }}
 
 <configuration>
     <property>
@@ -38,6 +50,16 @@
     <property>
         <name>yarn.nodemanager.recovery.enabled</name>
         <value>true</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.resource.memory-mb</name>
+        <value>{{ $v_mem_mb }}</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.resource.cpu-vcores</name>
+        <value>{{ $phy_cpu }}</value>
     </property>
 
     <property>

@@ -73,3 +73,21 @@ spec:
     - name: core-site.xml
       fileFormatConfig:
         format: xml
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ printf "hadoop-yarn-nodemanager-pcr-%s" $.Chart.Version }}
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.annotations" . | nindent 4 }}
+spec:
+  componentDef:  {{ include "yarnNodeManagerComponentDef" . }}
+  parametersDefs:
+    - hadoop-yarn-nodemanager-pd
+
+  configs:
+    - name: yarn-site.xml
+      fileFormatConfig:
+        format: xml

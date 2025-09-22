@@ -17,9 +17,5 @@ data:
     {{- .Files.Get "scripts/start-resourcemanager.sh" | nindent 4 }}
   start-nodemanager.sh: |-
     {{- .Files.Get "scripts/start-nodemanager.sh" | nindent 4 }}
-  check-resourcemanager-status.sh: |-
-    {{- .Files.Get "scripts/check-resourcemanager-status.sh" | nindent 4 }}
-  check-nodemanager-status.sh: |-
-    {{- .Files.Get "scripts/check-nodemanager-status.sh" | nindent 4 }}
   common-env.sh: |-
     {{- .Files.Get "scripts/common-env.sh" | nindent 4 }}

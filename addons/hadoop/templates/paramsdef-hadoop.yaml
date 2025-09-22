@@ -66,3 +66,16 @@ spec:
     - dfs.nameservices
     - dfs.namenode.rpc-address
     - dfs.namenode.http-address
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: hadoop-yarn-nodemanager-pd
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+spec:
+  fileName: yarn-site.xml
+  parametersSchema:
+    topLevelKey: NodeManagerParameter
+    cue: |-
+      {{- $.Files.Get "config/config-nodemanager-constraint.cue" | nindent 6 }}
