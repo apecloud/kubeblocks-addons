@@ -409,7 +409,7 @@
 	innodb_flush_log_at_trx_commit?: int & >=0 & <=2
 
 	// Determines Innodb flush method
-	innodb_flush_method?: string & "O_DIRECT"
+	innodb_flush_method?: string & "O_DIRECT" | "O_DSYNC" | "littlesync" | "fsync" | "nosync" | "O_DIRECT_NO_FSYNC"
 
 	// Specifies whether flushing a page from the InnoDB buffer pool also flushes other dirty pages in the same extent.
 	innodb_flush_neighbors?: int & >=0 & <=2
@@ -831,7 +831,7 @@
 	max_points_in_geometry?: int & >=3 & <=3145728
 
 	// Used if the potential for denial-of-service attacks based on running the server out of memory by preparing huge numbers of statements.
-	max_prepared_stmt_count?: int & >=0 & <=1048576
+	max_prepared_stmt_count?: int & >=0 & <=4194304
 
 	max_relay_log_size: int & >=0 & <=1073741824 | *0
 
@@ -1355,7 +1355,7 @@
 	sql_log_off: string & "OFF" | "ON" | *"OFF"
 
 	// Current SQL Server Mode.
-	sql_mode?: string & "ALLOW_INVALID_DATES" | "ANSI_QUOTES" | "ERROR_FOR_DIVISION_BY_ZERO" | "HIGH_NOT_PRECEDENCE" | "IGNORE_SPACE" | "NO_AUTO_VALUE_ON_ZERO" | "NO_BACKSLASH_ESCAPES" | "NO_DIR_IN_CREATE" | "NO_ENGINE_SUBSTITUTION" | "NO_UNSIGNED_SUBTRACTION" | "NO_ZERO_DATE" | "NO_ZERO_IN_DATE" | "ONLY_FULL_GROUP_BY" | "PAD_CHAR_TO_FULL_LENGTH" | "PIPES_AS_CONCAT" | "REAL_AS_FLOAT" | "STRICT_ALL_TABLES" | "STRICT_TRANS_TABLES" | "ANSI" | "TRADITIONAL"
+	sql_mode?: string
 
 	sql_notes: string & "OFF" | "ON" | *"ON"
 
