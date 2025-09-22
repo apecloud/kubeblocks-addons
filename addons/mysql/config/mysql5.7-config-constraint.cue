@@ -345,7 +345,7 @@
 	innodb_flush_log_at_trx_commit?: string | *"1"
 
 	// fsyncO_DSYNClittlesyncnosyncO_DIRECTO_DIRECT_NO_FSYNCasync_unbufferednormalunbufferedDefines the method used to flush data to InnoDB data files and log files, which can affect I/O throughput.If innodb_flush_method is set to NULL on a Unix-like system, the fsync option is used by default.
-	innodb_flush_method?: string | *"NULL"
+	innodb_flush_method?: string & "O_DIRECT" | "O_DSYNC" | "littlesync" | "fsync" | "nosync" | "O_DIRECT_NO_FSYNC"
 
 	// 012Specifies whether flushing a page from the InnoDBbuffer pool also flushes other dirty pages in the same extent.A setting of 0 disables innodb_flush_neighbors.
 	innodb_flush_neighbors?: string | *"1"

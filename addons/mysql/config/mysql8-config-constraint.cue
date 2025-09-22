@@ -409,7 +409,7 @@
 	innodb_flush_log_at_trx_commit?: int & >=0 & <=2
 
 	// Determines Innodb flush method
-	innodb_flush_method?: string & "O_DIRECT"
+	innodb_flush_method?: string & "O_DIRECT" | "O_DSYNC" | "littlesync" | "fsync" | "nosync" | "O_DIRECT_NO_FSYNC"
 
 	// Specifies whether flushing a page from the InnoDB buffer pool also flushes other dirty pages in the same extent.
 	innodb_flush_neighbors?: int & >=0 & <=2
