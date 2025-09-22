@@ -39,7 +39,7 @@ spec:
             {{- end }}
     - name: be
       serviceVersion: {{ include "doris.version" . }}
-      replicas: {{ .Values.be.replicas | default 1 }}
+      replicas: {{ .Values.be.replicas | default 3 }}
       {{- with .Values.be.resources }}
       resources:
         {{- with .limits }}

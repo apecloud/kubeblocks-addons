@@ -67,13 +67,13 @@ is_sourced() {
     [ "${FUNCNAME[1]}" = 'source' ]
 }
 
-# Initialize environment variables
-init_environment() {
-    declare -g database_exists
-    if [ -d "${DORIS_HOME}/fe/doris-meta/image" ]; then
-        database_exists='true'
-    fi
-}
+# # Initialize environment variables
+# init_environment() {
+#     declare -g database_exists
+#     if [ -d "${DORIS_HOME}/fe/doris-meta/image" ]; then
+#         database_exists='true'
+#     fi
+# }
 
 # Verify IP address format
 validate_ip_address() {
@@ -96,93 +96,93 @@ validate_port() {
     return 1
 }
 
-# Verify the necessary environment variables
-validate_environment() {
-    declare -g run_mode
+# # Verify the necessary environment variables
+# validate_environment() {
+#     declare -g run_mode
     
-    # RECOVERY Mode Verification
-    if [ -n "$RECOVERY" ]; then
-        if [[ $RECOVERY =~ ^([tT][rR][uU][eE]|1)$ ]]; then
-            run_mode="RECOVERY"
-            log_info "Running in Recovery mode"
-            return
-        fi
-    fi
+#     # RECOVERY Mode Verification
+#     if [ -n "$RECOVERY" ]; then
+#         if [[ $RECOVERY =~ ^([tT][rR][uU][eE]|1)$ ]]; then
+#             run_mode="RECOVERY"
+#             log_info "Running in Recovery mode"
+#             return
+#         fi
+#     fi
 
-    # K8S mode verification
-    if [ -n "$BUILD_TYPE" ]; then
-        if [[ $BUILD_TYPE =~ ^([kK]8[sS])$ ]]; then
-            run_mode="K8S"
-            log_info "Running in K8S mode"
-            return
-        fi
-        log_error "Invalid BUILD_TYPE. Expected: k8s"
-    fi
+#     # K8S mode verification
+#     if [ -n "$BUILD_TYPE" ]; then
+#         if [[ $BUILD_TYPE =~ ^([kK]8[sS])$ ]]; then
+#             run_mode="K8S"
+#             log_info "Running in K8S mode"
+#             return
+#         fi
+#         log_error "Invalid BUILD_TYPE. Expected: k8s"
+#     fi
 
-    # Election Mode Verification
-    if [[ -n "$FE_SERVERS" && -n "$FE_ID" ]]; then
-        validate_election_mode
-        return
-    fi
+#     # Election Mode Verification
+#     if [[ -n "$FE_SERVERS" && -n "$FE_ID" ]]; then
+#         validate_election_mode
+#         return
+#     fi
 
-    # Specifying a schema for validation
-    if [[ -n "$FE_MASTER_IP" && -n "$FE_MASTER_PORT" && 
-          -n "$FE_CURRENT_IP" && -n "$FE_CURRENT_PORT" ]]; then
-        validate_assign_mode
-        return
-    fi
+#     # Specifying a schema for validation
+#     if [[ -n "$FE_MASTER_IP" && -n "$FE_MASTER_PORT" && 
+#           -n "$FE_CURRENT_IP" && -n "$FE_CURRENT_PORT" ]]; then
+#         validate_assign_mode
+#         return
+#     fi
 
-    log_error "Missing required parameters. Please check documentation."
-}
+#     log_error "Missing required parameters. Please check documentation."
+# }
 
 # Verify election mode configuration
-validate_election_mode() {
-    run_mode="ELECTION"
+# validate_election_mode() {
+#     run_mode="ELECTION"
     
-    # Verify FE_SERVERS format
-    local fe_servers_regex="^.+:[1-2]{0,1}[0-9]{0,1}[0-9]{1}(\.[1-2]{0,1}[0-9]{0,1}[0-9]{1}){3}:[1-6]{0,1}[0-9]{1,4}(,.+:[1-2]{0,1}[0-9]{0,1}[0-9]{1}(\.[1-2]{0,1}[0-9]{0,1}[0-9]{1}){3}:[1-6]{0,1}[0-9]{1,4})*$"
-    if ! [[ $FE_SERVERS =~ $fe_servers_regex ]]; then
-        log_error "Invalid FE_SERVERS format. Expected: name:ip:port[,name:ip:port]..."
-    fi
+#     # Verify FE_SERVERS format
+#     local fe_servers_regex="^.+:[1-2]{0,1}[0-9]{0,1}[0-9]{1}(\.[1-2]{0,1}[0-9]{0,1}[0-9]{1}){3}:[1-6]{0,1}[0-9]{1,4}(,.+:[1-2]{0,1}[0-9]{0,1}[0-9]{1}(\.[1-2]{0,1}[0-9]{0,1}[0-9]{1}){3}:[1-6]{0,1}[0-9]{1,4})*$"
+#     if ! [[ $FE_SERVERS =~ $fe_servers_regex ]]; then
+#         log_error "Invalid FE_SERVERS format. Expected: name:ip:port[,name:ip:port]..."
+#     fi
 
-    # Verify FE_ID
-    if ! [[ $FE_ID =~ ^[1-9]{1}$ ]]; then
-        log_error "Invalid FE_ID. Must be a single digit between 1-9"
-    fi
+#     # Verify FE_ID
+#     if ! [[ $FE_ID =~ ^[1-9]{1}$ ]]; then
+#         log_error "Invalid FE_ID. Must be a single digit between 1-9"
+#     fi
     
-    log_info "Running in Election mode"
-}
+#     log_info "Running in Election mode"
+# }
 
-# Verify the specified mode configuration
-validate_assign_mode() {
-    run_mode="ASSIGN"
+# # Verify the specified mode configuration
+# validate_assign_mode() {
+#     run_mode="ASSIGN"
     
-    # Verify IP Address
-    if ! validate_ip_address "$FE_MASTER_IP"; then
-        log_error "Invalid FE_MASTER_IP format"
-    fi
-    if ! validate_ip_address "$FE_CURRENT_IP"; then
-        log_error "Invalid FE_CURRENT_IP format"
-    fi
+#     # Verify IP Address
+#     if ! validate_ip_address "$FE_MASTER_IP"; then
+#         log_error "Invalid FE_MASTER_IP format"
+#     fi
+#     if ! validate_ip_address "$FE_CURRENT_IP"; then
+#         log_error "Invalid FE_CURRENT_IP format"
+#     fi
 
-    # Verify port
-    if ! validate_port "$FE_MASTER_PORT"; then
-        log_error "Invalid FE_MASTER_PORT"
-    fi
-    if ! validate_port "$FE_CURRENT_PORT"; then
-        log_error "Invalid FE_CURRENT_PORT"
-    fi
+#     # Verify port
+#     if ! validate_port "$FE_MASTER_PORT"; then
+#         log_error "Invalid FE_MASTER_PORT"
+#     fi
+#     if ! validate_port "$FE_CURRENT_PORT"; then
+#         log_error "Invalid FE_CURRENT_PORT"
+#     fi
     
-    log_info "Running in Assign mode"
-}
+#     log_info "Running in Assign mode"
+# }
 
-# Parse a colon-delimited string
-parse_colon_separated() {
-    local input="$1"
-    local -n arr=$2  # 使用nameref来存储结果
-    local IFS=':'
-    read -r -a arr <<< "$input"
-}
+# # Parse a colon-delimited string
+# parse_colon_separated() {
+#     local input="$1"
+#     local -n arr=$2  # 使用nameref来存储结果
+#     local IFS=':'
+#     read -r -a arr <<< "$input"
+# }
 
 # Parsing a comma-delimited string
 parse_comma_separated() {
@@ -194,41 +194,36 @@ parse_comma_separated() {
 
 # Configuring the election mode
 setup_election_mode() {
-    local fe_server_array
-    parse_comma_separated "$FE_SERVERS" fe_server_array
+    local pod_name_array
+    local fqdn_array
     
-    # Parsing master node information
-    local master_info
-    parse_colon_separated "${fe_server_array[0]}" master_info
-    master_fe_ip="${master_info[1]}"
-    master_fe_port="${master_info[2]}"
+
+    parse_comma_separated "$POD_NAME_LIST" pod_name_array
+    parse_comma_separated "$POD_FQDN_LIST" fqdn_array
+
+    local fe_edit_log_port="${FE_EDIT_LOG_PORT:-9010}"
+
+    master_fe_ip="${fe_server_array[0]}"
+    master_fe_port="${fe_edit_log_port}"
     
-    # Parse the current node information
     local found=false
-    local node_info
-    for node in "${fe_server_array[@]}"; do
-        parse_colon_separated "$node" node_info
-        if [ "${node_info[0]}" = "fe${FE_ID}" ]; then
-            current_fe_ip="${node_info[1]}"
-            current_fe_port="${node_info[2]}"
+    local pod_name="${HOSTNAME}"
+    for i in "${!pod_name_array[@]}"; do
+        if [[ "${pod_name_array[i]}" == "${pod_name}" ]]; then
+            current_fe_ip="${fqdn_array[i]}"
+            current_fe_port="${fe_edit_log_port}"
             found=true
             break
         fi
     done
 
     if [ "$found" = "false" ]; then
-        log_error "Could not find configuration for fe${FE_ID} in FE_SERVERS"
+        log_error "Could not find configuration for pod '${pod_name}' in POD_FQDN_LIST"
     fi
-    
-    is_master_fe=$([[ "$FE_ID" == "1" ]] && echo "true" || echo "false")
+
+    is_master_fe=$([[ "$pod_name" == "${pod_name_array[0]}" ]] && echo "true" || echo "false")
 }
 
-# Set up a preferred network
-setup_priority_networks() {
-    local ip_parts
-    parse_colon_separated "$1" ip_parts
-    priority_networks="${ip_parts[0]}.${ip_parts[1]}.${ip_parts[2]}.0/24"
-}
 
 # Configure the specified mode
 setup_assign_mode() {
@@ -255,26 +250,17 @@ setup_recovery_mode() {
 # Configuring FE Nodes
 setup_fe_node() {
     declare -g master_fe_ip master_fe_port current_fe_ip current_fe_port
-    declare -g priority_networks is_master_fe
+    declare -g is_master_fe
+    run_mode="${run_mode:-ELECTION}"
 
     case $run_mode in
         "ELECTION")
             setup_election_mode
             ;;
-        "ASSIGN")
-            setup_assign_mode
-            ;;
         "RECOVERY")
             setup_recovery_mode
             ;;
     esac
-
-    # Set priority network (if not in recovery mode)
-    if [ "$run_mode" != "RECOVERY" ]; then
-        local ip_parts
-        IFS='.' read -r -a ip_parts <<< "$current_fe_ip"
-        priority_networks="${ip_parts[0]}.${ip_parts[1]}.${ip_parts[2]}.0/24"
-    fi
     
     # Print key configuration information
     log_info "==== FE Node Configuration ===="
@@ -288,10 +274,9 @@ setup_fe_node() {
         log_info "Master FE Port: ${master_fe_port}"
         log_info "Current FE IP: ${current_fe_ip}"
         log_info "Current FE Port: ${current_fe_port}"
-        log_info "Priority Networks: ${priority_networks}"
         if [ "$run_mode" = "ELECTION" ]; then
-            log_info "FE ID: ${FE_ID}"
-            log_info "FE Servers: ${FE_SERVERS}"
+            log_info "FE HOST: ${HOSTNAME}"
+            log_info "FE Servers: ${POD_FQDN_LIST}"
         fi
     fi
     log_info "=========================="
@@ -386,18 +371,14 @@ cleanup() {
 
 # Main Function
 main() {
-    validate_environment
+    # validate_environment
     trap cleanup SIGTERM SIGINT
     
-    if [ "$run_mode" = "K8S" ]; then
-        ${DORIS_HOME}/fe/bin/start_fe.sh --console &
-        wait $!
-    elif [ "$run_mode" = "RECOVERY" ]; then
+   if [ "$run_mode" = "RECOVERY" ]; then
         setup_fe_node
         start_fe &
         wait $!
     else
-        init_environment
         setup_fe_node
         
         # Check the metadata directory
@@ -409,11 +390,7 @@ main() {
         fi
         
         # The metadata directory does not exist and needs to be initialized and registered.
-        log_info "Initializing meta directory"
-        if [ -z "$database_exists" ]; then
-            echo "priority_networks = ${priority_networks}" >> "$FE_CONFIG_FILE"
-        fi
-        
+        log_info "Initializing meta directory"        
         register_fe
         start_fe &
         wait $!

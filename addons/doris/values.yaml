@@ -18,7 +18,10 @@ image:
 AVX2: false
 
 fe:
-  config:
-
+  config: |
+    JAVA_OPTS="-Xmx8192m -XX:+UseMembar -XX:SurvivorRatio=8 -XX:MaxTenuringThreshold=7 -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSClassUnloadingEnabled -XX:-CMSParallelRemarkEnabled -XX:CMSInitiatingOccupancyFraction=80 -XX:SoftRefLRUPolicyMSPerMB=0 -Xloggc:/opt/apache-doris/fe/log/fe.gc.log.$DATE"
+    lower_case_table_names=1
+    enable_fqdn_mode=true
 be:
-  config:
+  config: |
+    JAVA_OPTS="-Xmx2048m"

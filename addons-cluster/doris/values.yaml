@@ -5,24 +5,24 @@ fe:
   resources:
     limits:
         cpu: 4
-        memory: 4Gi
+        memory: 4
     requests:
         cpu: 4
-        memory: 4Gi
+        memory: 4
   storageClassName:
-  storage: 10
+  storage: 20
 
 be:
   replicas: 3
   resources:
     limits:
       cpu: 4
-      memory: 8Gi
+      memory: 8
     requests:
       cpu: 4
-      memory: 8Gi
+      memory: 8
   storageClassName:
-  storage: 50
+  storage: 20
 
 nameOverride: ""
 

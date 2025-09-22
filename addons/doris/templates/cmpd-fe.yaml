@@ -12,6 +12,13 @@ spec:
   # The FE can only perform leader election when the majority of members are active.
   updateStrategy: Parallel
   serviceKind: doris-fe
+{{/*  roles:*/}}
+{{/*    - name: master*/}}
+{{/*      updatePriority: 2*/}}
+{{/*      participatesInQuorum: false*/}}
+{{/*    - name: follower*/}}
+{{/*      updatePriority: 1*/}}
+{{/*      participatesInQuorum: false*/}}
   services:
   - name: fe
     serviceName: fe
@@ -56,33 +63,44 @@ spec:
       volumeName: fe-cm
       restartOnFileChange: true
   vars:
-  - name: FE_DISCOVERY_SERVICE_NAME
-    valueFrom:
-      serviceVarRef:
-        compDef: {{ include "fe.componentDefName" . }}
-        name: fe
-        host: Required
-  - name: DORIS_USER
-    valueFrom:
-      credentialVarRef:
-        compDef: {{ include "fe.componentDefName" . }}
-        name: root
-        optional: false
-        username: Required
-  - name: DORIS_PASSWORD
-    valueFrom:
-      credentialVarRef:
-        compDef: {{ include "fe.componentDefName" . }}
-        name: root
-        optional: false
-        password: Required
-  - name: MYSQL_PWD
-    valueFrom:
-      credentialVarRef:
-        compDef: {{ include "fe.componentDefName" . }}
-        name: root
-        optional: false
-        password: Required
+    - name: POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    ## the sentinel pod fqdn list
+    - name: POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: FE_DISCOVERY_SERVICE_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "fe.componentDefName" . }}
+          name: fe
+          host: Required
+    - name: DORIS_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "fe.componentDefName" . }}
+          name: root
+          optional: false
+          username: Required
+    - name: DORIS_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "fe.componentDefName" . }}
+          name: root
+          optional: false
+          password: Required
+    - name: MYSQL_PWD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "fe.componentDefName" . }}
+          name: root
+          optional: false
+          password: Required
   runtime:
     containers:
     - name: fe
@@ -134,8 +152,14 @@ spec:
         value: fe
       - name: CONFIGMAP_MOUNT_PATH
         value: /etc/doris/fe/conf
-      - name: SERVICE_PORT
+      - name: HTTP_PORT
         value: "8030"
+      - name: FE_QUERY_PORT
+        value: "9030"
+      - name: FE_EDIT_LOG_PORT
+        value: "9010"
+      - name: JAVA_HOME
+        value: /usr/lib/jvm/java
       securityContext:
         allowPrivilegeEscalation: false
         readOnlyRootFilesystem: false
@@ -150,18 +174,18 @@ spec:
 {{/*        failureThreshold: 60*/}}
 {{/*        {{- toYaml .Values.fe.probe | nindent 8 }}*/}}
 {{/*      {{- end }}*/}}
-      lifecycle:
-        postStart:
-          exec:
-            command: ["/bin/sh", "-c", "/scripts/fe-post-start.sh"]
-        preStop:
-          exec:
-            command:
-            - /opt/apache-doris/scripts/fe_prestop.sh
+{{/*      lifecycle:*/}}
+{{/*        postStart:*/}}
+{{/*          exec:*/}}
+{{/*            command: ["/bin/sh", "-c", "/scripts/fe-post-start.sh"]*/}}
+{{/*        preStop:*/}}
+{{/*          exec:*/}}
+{{/*            command:*/}}
+{{/*            - /opt/apache-doris/scripts/fe_prestop.sh*/}}
       volumeMounts:
       - mountPath: /opt/apache-doris/fe/doris-meta
         name: metadata
       - mountPath: /opt/apache-doris/fe/conf
         name: fe-cm
-      - mountPath: /scripts
+      - mountPath: /opt/apache-doris/scripts
         name: scripts
