@@ -4,7 +4,7 @@
 process_standby_config() {
     local is_standby
     is_standby=$(echo "${PG_MODE:-}" | tr '[:upper:]' '[:lower:]' | grep -q "standby" && echo "true" || echo "false")
-    local patroniurl="http://${POD_IP:-localhost}:8008"
+    local patroniurl="http://${CURRENT_POD_IP:-localhost}:8008"
     # Get current config
     local result
     local retry_count=0

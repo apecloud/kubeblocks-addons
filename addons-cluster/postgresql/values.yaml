@@ -60,3 +60,17 @@ remoteSetting:
     name: ""
     userKey: ""
     passwordKey: ""
+
+
+## @param account secrets Map of account configurations
+## Each key is the system account name which was defined in the componentdefinition.systemAccounts,
+##   and value contains secret reference information
+## Example:
+##   systemAccountSecret:
+##     postgres:
+##       name: postgres-account
+##       namespace: default
+##     kbadmin:
+##       name: kbadmin-account
+##       namespace: prod
+systemAccountSecret: {}
