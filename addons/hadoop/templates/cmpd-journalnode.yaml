@@ -136,7 +136,7 @@ spec:
   configs:
     - name: config
       namespace: {{ .Release.Namespace }}
-      template: journalnode-config-template
+      template: hadoop-journalnode-config-template
       volumeName: journalnode-config
       defaultMode: 0755
       externalManaged: true

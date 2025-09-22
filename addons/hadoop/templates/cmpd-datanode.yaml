@@ -13,9 +13,9 @@ spec:
   serviceKind: hdfs-datanode
   podManagementPolicy: Parallel
   runtime:
-    hostNetwork: true
-    hostPID: true
-    dnsPolicy: ClusterFirstWithHostNet
+    #hostNetwork: true
+    #hostPID: true
+    #dnsPolicy: ClusterFirstWithHostNet
     initContainers:
       - name: hadoop-common
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
@@ -25,16 +25,16 @@ spec:
           - -ec
           - |
             cp -r /opt/software/hadoop-3.3.4/* /opt/kubeemr/hadoop/hadoop-3.3.4
-            mkdir -p /hadoop/dfs/data0
+            mkdir -p /hadoop
             chown -R 10000:1000 /opt/kubeemr/hadoop/hadoop-3.3.4
-            chown -R 10000:1000 /hadoop/dfs/data0
+            chown -R 10000:1000 /hadoop
         securityContext:
           runAsUser: 0
         volumeMounts:
           - name: hadoop-common
             mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
           - name: hdfs-data-0
-            mountPath: /hadoop/dfs/data0
+            mountPath: /hadoop
             subPath: data0
     containers:
       - name: hdfs-datanode
@@ -82,7 +82,7 @@ spec:
             name: datanode-config
             subPath: log4j.properties
           - name: hdfs-data-0
-            mountPath: /hadoop/dfs/data0
+            mountPath: /hadoop
             subPath: data0
           - name: scripts
             mountPath: /kubeblocks/scripts
@@ -106,7 +106,7 @@ spec:
   configs:
     - name: config
       namespace: {{ .Release.Namespace }}
-      template: datanode-config-template
+      template: hadoop-datanode-config-template
       volumeName: datanode-config
       defaultMode: 0755
       externalManaged: true

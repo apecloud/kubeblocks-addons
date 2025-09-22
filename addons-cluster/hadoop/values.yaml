@@ -11,6 +11,8 @@ replicas:
   namenode: 2
   datanode: 1
   zookeeper: 1
+  resourcemanager: 2
+  nodemanager: 1
 
 serviceVersion: 3.3.4
 
@@ -27,28 +29,42 @@ resources:
       memory: 2Gi
   journalnode:
     requests:
-      cpu: "0.5"
+      cpu: "0.1"
       memory: 0.5Gi
     limits:
       cpu: "0.5"
       memory: 2Gi
   namenode:
     requests:
-      cpu: "0.5"
+      cpu: "0.1"
       memory: 0.5Gi
     limits:
       cpu: "0.5"
       memory: 2Gi
   datanode:
     requests:
+      cpu: "0.1"
+      memory: 0.5Gi
+    limits:
       cpu: "0.5"
+      memory: 2Gi
+  nodemanager:
+    requests:
+      cpu: "0.1"
+      memory: 0.5Gi
+    limits:
+      cpu: "0.5"
+      memory: 2Gi
+  resourcemanager:
+    requests:
+      cpu: "0.1"
       memory: 0.5Gi
     limits:
       cpu: "0.5"
       memory: 2Gi
   zookeeper:
     requests:
-      cpu: "0.5"
+      cpu: "0.1"
       memory: 0.5Gi
     limits:
       cpu: "0.5"
@@ -59,6 +75,8 @@ storage:
   journalnode: 10Gi
   namenode: 10Gi
   datanode: 30Gi
+  nodemanager: 20Gi
+  resourcemanager: 20Gi
 
 # Service references for external dependencies
 serviceRefs:

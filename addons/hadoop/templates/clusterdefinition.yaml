@@ -8,8 +8,7 @@ metadata:
     {{- include "hadoop.apiVersion" . | nindent 4 }}
 spec:
   topologies:
-    - name: ha-cluster
-      default: true
+    - name: hdfs-cluster
       components:
         - name: zookeeper
           compDef: zookeeper
@@ -34,6 +33,40 @@ spec:
           - journalnode
           - hadoop-core
           - zookeeper
+    - name: ha-cluster
+      default: true
+      components:
+        - name: zookeeper
+          compDef: zookeeper
+        - name: hadoop-core
+          compDef: hadoop-hdfs-core
+        - name: journalnode
+          compDef: hadoop-hdfs-journalnode
+        - name: namenode
+          compDef: hadoop-hdfs-namenode
+        - name: datanode
+          compDef: hadoop-hdfs-datanode
+        - name: resourcemanager
+          compDef: hadoop-yarn-resourcemanager
+        - name: nodemanager
+          compDef: hadoop-yarn-nodemanager
+      orders:
+        provision:
+          - zookeeper
+          - hadoop-core
+          - journalnode
+          - namenode
+          - datanode
+          - resourcemanager
+          - nodemanager
+        terminate:
+          - nodemanager
+          - resourcemanager
+          - datanode
+          - namenode
+          - journalnode
+          - hadoop-core
+          - zookeeper
     - name: ha-ref-zk-cluster
       components:
         - name: hadoop-core
@@ -44,13 +77,21 @@ spec:
           compDef: hadoop-hdfs-namenode
         - name: datanode
           compDef: hadoop-hdfs-datanode
+        - name: resourcemanager
+          compDef: hadoop-yarn-resourcemanager
+        - name: nodemanager
+          compDef: hadoop-yarn-nodemanager
       orders:
         provision:
           - hadoop-core
           - journalnode
           - namenode
           - datanode
+          - resourcemanager
+          - nodemanager
         terminate:
+          - nodemanager
+          - resourcemanager
           - datanode
           - namenode
           - journalnode
