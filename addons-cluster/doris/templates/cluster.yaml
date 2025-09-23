@@ -7,7 +7,7 @@ metadata:
 spec:
   clusterDef: doris
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  topology: integrated
+  topology: aggregated
   componentSpecs:
     - name: fe
       {{- include "kblib.componentMonitor" . | indent 6 }}
@@ -39,7 +39,7 @@ spec:
             {{- end }}
     - name: be
       serviceVersion: {{ include "doris.version" . }}
-      replicas: {{ .Values.be.replicas | default 3 }}
+      replicas: {{ .Values.be.replicas | default 1 }}
       {{- with .Values.be.resources }}
       resources:
         {{- with .limits }}

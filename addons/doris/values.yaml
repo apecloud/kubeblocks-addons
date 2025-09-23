@@ -25,3 +25,7 @@ fe:
 be:
   config: |
     JAVA_OPTS="-Xmx2048m"
+
+
+# cluster domain without . prefix
+clusterDomain: "cluster.local"

@@ -5,23 +5,19 @@ metadata:
   labels:
     {{ include "doris.labels" . | nindent 4 }}
   annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "doris.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A Doris FE component definition for Kubernetes
   # The FE can only perform leader election when the majority of members are active.
   updateStrategy: Parallel
+  podManagementPolicy: Parallel
   serviceKind: doris-fe
-{{/*  roles:*/}}
-{{/*    - name: master*/}}
-{{/*      updatePriority: 2*/}}
-{{/*      participatesInQuorum: false*/}}
-{{/*    - name: follower*/}}
-{{/*      updatePriority: 1*/}}
-{{/*      participatesInQuorum: false*/}}
   services:
-  - name: fe
-    serviceName: fe
+  - name: master
+    serviceName: master
+    roleSelector: master
     spec:
       ipFamilies:
       - IPv4
@@ -63,12 +59,21 @@ spec:
       volumeName: fe-cm
       restartOnFileChange: true
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: COMPONENT_NAME
+      value: fe
     - name: POD_NAME_LIST
       valueFrom:
         componentVarRef:
           optional: false
           podNames: Required
-    ## the sentinel pod fqdn list
     - name: POD_FQDN_LIST
       valueFrom:
         componentVarRef:
@@ -78,8 +83,12 @@ spec:
       valueFrom:
         serviceVarRef:
           compDef: {{ include "fe.componentDefName" . }}
-          name: fe
+          name: master
           host: Required
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
+    - name: FE_QUERY_PORT
+      value: "9030"
     - name: DORIS_USER
       valueFrom:
         credentialVarRef:
@@ -88,13 +97,6 @@ spec:
           optional: false
           username: Required
     - name: DORIS_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "fe.componentDefName" . }}
-          name: root
-          optional: false
-          password: Required
-    - name: MYSQL_PWD
       valueFrom:
         credentialVarRef:
           compDef: {{ include "fe.componentDefName" . }}
@@ -148,14 +150,10 @@ spec:
           fieldRef:
             apiVersion: v1
             fieldPath: metadata.namespace
-      - name: COMPONENT_NAME
-        value: fe
       - name: CONFIGMAP_MOUNT_PATH
         value: /etc/doris/fe/conf
       - name: HTTP_PORT
         value: "8030"
-      - name: FE_QUERY_PORT
-        value: "9030"
       - name: FE_EDIT_LOG_PORT
         value: "9010"
       - name: JAVA_HOME
@@ -163,29 +161,27 @@ spec:
       securityContext:
         allowPrivilegeEscalation: false
         readOnlyRootFilesystem: false
-{{/*      {{- if .Values.fe.probe }}*/}}
-{{/*      livenessProbe:*/}}
-{{/*        failureThreshold: 3*/}}
-{{/*        {{- toYaml .Values.fe.probe | nindent 8 }}*/}}
-{{/*      readinessProbe:*/}}
-{{/*        failureThreshold: 3*/}}
-{{/*        {{- toYaml .Values.fe.probe | nindent 8 }}*/}}
-{{/*      startupProbe:*/}}
-{{/*        failureThreshold: 60*/}}
-{{/*        {{- toYaml .Values.fe.probe | nindent 8 }}*/}}
-{{/*      {{- end }}*/}}
-{{/*      lifecycle:*/}}
-{{/*        postStart:*/}}
-{{/*          exec:*/}}
-{{/*            command: ["/bin/sh", "-c", "/scripts/fe-post-start.sh"]*/}}
-{{/*        preStop:*/}}
-{{/*          exec:*/}}
-{{/*            command:*/}}
-{{/*            - /opt/apache-doris/scripts/fe_prestop.sh*/}}
       volumeMounts:
       - mountPath: /opt/apache-doris/fe/doris-meta
         name: metadata
-      - mountPath: /opt/apache-doris/fe/conf
+      - mountPath: /etc/config
         name: fe-cm
       - mountPath: /opt/apache-doris/scripts
         name: scripts
+  lifecycleActions:
+    roleProbe:
+      initialDelaySeconds: 60
+      periodSeconds: 15
+      exec:
+        container: fe
+        command:
+          - bash
+          - -c
+          - /opt/apache-doris/scripts/fe_role_probe.sh
+  roles:
+    - name: master
+      updatePriority: 2
+      participatesInQuorum: false
+    - name: follower
+      updatePriority: 1
+      participatesInQuorum: false

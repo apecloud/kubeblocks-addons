@@ -17,3 +17,4 @@ spec:
     serviceVersion: 2.1.6
     images:
       be: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.be.repository }}:2.1.6
+      sysctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.be.repository }}:2.1.6

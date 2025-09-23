@@ -23,7 +23,7 @@ shopt -s nullglob
 readonly DORIS_HOME="/opt/apache-doris"
 readonly MAX_RETRY_TIMES=60
 readonly RETRY_INTERVAL=1
-readonly MYSQL_PORT=9030
+readonly FE_QUERY_PORT=9030
 readonly BE_CONFIG_FILE="${DORIS_HOME}/be/conf/be.conf"
 
 # Log Function
@@ -68,33 +68,33 @@ init_environment() {
 
 # Check if the BE node is registered
 check_be_registered() {
-    # First, ensure that the FE node is available
-    local retry_count=0
-    while [ $retry_count -lt $MAX_RETRY_TIMES ]; do
-        if mysql -uroot -P"${MYSQL_PORT}" -h"${MASTER_FE_IP}" \
-            -N -e "SHOW FRONTENDS" 2>/dev/null | grep -w "${MASTER_FE_IP}" &>/dev/null; then
-            log_info "Master FE is ready"
-            break
-        fi
+    # # First, ensure that the FE node is available
+    # local retry_count=0
+    # while [ $retry_count -lt $MAX_RETRY_TIMES ]; do
+    #     if mysql -uroot -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}" \
+    #         -N -e "SHOW FRONTENDS" 2>/dev/null | grep -w "${FE_SERVICE_ADDR}" &>/dev/null; then
+    #         log_info "Master FE is ready"
+    #         break
+    #     fi
         
-        retry_count=$((retry_count + 1))
-        if [ $((retry_count % 20)) -eq 1 ]; then
-            log_info "Waiting for master FE to be ready... ($retry_count/$MAX_RETRY_TIMES)"
-        fi
-        sleep "$RETRY_INTERVAL"
-    done
+    #     retry_count=$((retry_count + 1))
+    #     if [ $((retry_count % 20)) -eq 1 ]; then
+    #         log_info "Waiting for master FE to be ready... ($retry_count/$MAX_RETRY_TIMES)"
+    #     fi
+    #     sleep "$RETRY_INTERVAL"
+    # done
 
-    if [ $retry_count -eq $MAX_RETRY_TIMES ]; then
-        log_error "Master FE is not ready after ${MAX_RETRY_TIMES} attempts"
-    fi
+    # if [ $retry_count -eq $MAX_RETRY_TIMES ]; then
+    #     log_error "Master FE is not ready after ${MAX_RETRY_TIMES} attempts"
+    # fi
 
     # Check if BE is registered
     local query_result
-    query_result=$(mysql -uroot -P"${MYSQL_PORT}" -h"${MASTER_FE_IP}" \
-        -N -e "SHOW BACKENDS" 2>/dev/null | grep -w "${CURRENT_BE_IP}" | grep -w "${CURRENT_BE_PORT}" )
+    query_result=$(mysql -uroot -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}" \
+        -N -e "SHOW BACKENDS" 2>/dev/null | grep -w "${CURRENT_BE_FQDN}" | grep -w "${CURRENT_BE_PORT}" )
     
     if [ -n "$query_result" ]; then
-        log_info "BE node ${CURRENT_BE_IP}:${CURRENT_BE_PORT} is already registered"
+        log_info "BE node ${CURRENT_BE_FQDN}:${CURRENT_BE_PORT} is already registered"
         return 0
     fi
     
@@ -111,14 +111,14 @@ register_be() {
     # Try to register BE node
     local retry_count=0
     while [ $retry_count -lt $MAX_RETRY_TIMES ]; do
-        if mysql -uroot -P"${MYSQL_PORT}" -h"${MASTER_FE_IP}" \
-            -e "ALTER SYSTEM ADD BACKEND '${CURRENT_BE_IP}:${CURRENT_BE_PORT}'" 2>/dev/null; then
+        if mysql -uroot -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}" \
+            -e "ALTER SYSTEM ADD BACKEND '${CURRENT_BE_FQDN}:${CURRENT_BE_PORT}'" 2>/dev/null; then
             
             # Wait for the BE node to become registered
             local check_count=0
             while [ $check_count -lt 30 ]; do
-                if mysql -uroot -P"${MYSQL_PORT}" -h"${MASTER_FE_IP}" \
-                    -N -e "SHOW BACKENDS" 2>/dev/null | grep -w "${CURRENT_BE_IP}" | grep -w "${CURRENT_BE_PORT}" &>/dev/null; then
+                if mysql -uroot -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}" \
+                    -N -e "SHOW BACKENDS" 2>/dev/null | grep -w "${CURRENT_BE_FQDN}" | grep -w "${CURRENT_BE_PORT}" &>/dev/null; then
                     log_info "Successfully registered BE node"
                     return 0
                 else
@@ -152,10 +152,9 @@ setup_node_role() {
 # Print BE configuration information
 show_be_config() {
     log_info "==== BE Node Configuration ===="
-    log_info "Master FE IP: ${MASTER_FE_IP}"
-    log_info "Current BE IP: ${CURRENT_BE_IP}"
+    log_info "Master FE Service: ${FE_SERVICE_ADDR}"
+    log_info "Current BE FQDN: ${CURRENT_BE_FQDN}"
     log_info "Current BE Port: ${CURRENT_BE_PORT}"
-    log_info "Priority Networks: ${PRIORITY_NETWORKS}"
     log_info "Node Role: ${NODE_ROLE:-mixed}"
     log_info "=========================="
 }
@@ -174,7 +173,6 @@ main() {
     # Check the storage directory
     if [ -z "$database_exists" ]; then
         log_info "Initializing BE configuration"
-        echo "priority_networks = ${PRIORITY_NETWORKS}" >> "$BE_CONFIG_FILE"
         setup_node_role
         show_be_config
         register_be

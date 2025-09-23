@@ -26,6 +26,8 @@ readonly RETRY_INTERVAL=1
 readonly MYSQL_PORT=9030
 readonly FE_CONFIG_FILE="${DORIS_HOME}/fe/conf/fe.conf"
 
+cp /etc/config/fe.conf ${FE_CONFIG_FILE}
+
 # Log Function
 log_message() {
     local level="$1"
@@ -75,114 +77,6 @@ is_sourced() {
 #     fi
 # }
 
-# Verify IP address format
-validate_ip_address() {
-    local ip="$1"
-    local ipv4_regex="^[1-2]?[0-9]?[0-9](\.[1-2]?[0-9]?[0-9]){3}$"
-    local ipv6_regex="^([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)$"
-    
-    if [[ $ip =~ $ipv4_regex ]] || [[ $ip =~ $ipv6_regex ]]; then
-        return 0
-    fi
-    return 1
-}
-
-# Verify port number
-validate_port() {
-    local port="$1"
-    if [[ $port =~ ^[1-6]?[0-9]{1,4}$ ]] && [ "$port" -le 65535 ]; then
-        return 0
-    fi
-    return 1
-}
-
-# # Verify the necessary environment variables
-# validate_environment() {
-#     declare -g run_mode
-    
-#     # RECOVERY Mode Verification
-#     if [ -n "$RECOVERY" ]; then
-#         if [[ $RECOVERY =~ ^([tT][rR][uU][eE]|1)$ ]]; then
-#             run_mode="RECOVERY"
-#             log_info "Running in Recovery mode"
-#             return
-#         fi
-#     fi
-
-#     # K8S mode verification
-#     if [ -n "$BUILD_TYPE" ]; then
-#         if [[ $BUILD_TYPE =~ ^([kK]8[sS])$ ]]; then
-#             run_mode="K8S"
-#             log_info "Running in K8S mode"
-#             return
-#         fi
-#         log_error "Invalid BUILD_TYPE. Expected: k8s"
-#     fi
-
-#     # Election Mode Verification
-#     if [[ -n "$FE_SERVERS" && -n "$FE_ID" ]]; then
-#         validate_election_mode
-#         return
-#     fi
-
-#     # Specifying a schema for validation
-#     if [[ -n "$FE_MASTER_IP" && -n "$FE_MASTER_PORT" && 
-#           -n "$FE_CURRENT_IP" && -n "$FE_CURRENT_PORT" ]]; then
-#         validate_assign_mode
-#         return
-#     fi
-
-#     log_error "Missing required parameters. Please check documentation."
-# }
-
-# Verify election mode configuration
-# validate_election_mode() {
-#     run_mode="ELECTION"
-    
-#     # Verify FE_SERVERS format
-#     local fe_servers_regex="^.+:[1-2]{0,1}[0-9]{0,1}[0-9]{1}(\.[1-2]{0,1}[0-9]{0,1}[0-9]{1}){3}:[1-6]{0,1}[0-9]{1,4}(,.+:[1-2]{0,1}[0-9]{0,1}[0-9]{1}(\.[1-2]{0,1}[0-9]{0,1}[0-9]{1}){3}:[1-6]{0,1}[0-9]{1,4})*$"
-#     if ! [[ $FE_SERVERS =~ $fe_servers_regex ]]; then
-#         log_error "Invalid FE_SERVERS format. Expected: name:ip:port[,name:ip:port]..."
-#     fi
-
-#     # Verify FE_ID
-#     if ! [[ $FE_ID =~ ^[1-9]{1}$ ]]; then
-#         log_error "Invalid FE_ID. Must be a single digit between 1-9"
-#     fi
-    
-#     log_info "Running in Election mode"
-# }
-
-# # Verify the specified mode configuration
-# validate_assign_mode() {
-#     run_mode="ASSIGN"
-    
-#     # Verify IP Address
-#     if ! validate_ip_address "$FE_MASTER_IP"; then
-#         log_error "Invalid FE_MASTER_IP format"
-#     fi
-#     if ! validate_ip_address "$FE_CURRENT_IP"; then
-#         log_error "Invalid FE_CURRENT_IP format"
-#     fi
-
-#     # Verify port
-#     if ! validate_port "$FE_MASTER_PORT"; then
-#         log_error "Invalid FE_MASTER_PORT"
-#     fi
-#     if ! validate_port "$FE_CURRENT_PORT"; then
-#         log_error "Invalid FE_CURRENT_PORT"
-#     fi
-    
-#     log_info "Running in Assign mode"
-# }
-
-# # Parse a colon-delimited string
-# parse_colon_separated() {
-#     local input="$1"
-#     local -n arr=$2  # 使用nameref来存储结果
-#     local IFS=':'
-#     read -r -a arr <<< "$input"
-# }
 
 # Parsing a comma-delimited string
 parse_comma_separated() {
@@ -203,7 +97,7 @@ setup_election_mode() {
 
     local fe_edit_log_port="${FE_EDIT_LOG_PORT:-9010}"
 
-    master_fe_ip="${fe_server_array[0]}"
+    master_fe_ip="${fqdn_array[0]}"
     master_fe_port="${fe_edit_log_port}"
     
     local found=false
@@ -251,7 +145,6 @@ setup_recovery_mode() {
 setup_fe_node() {
     declare -g master_fe_ip master_fe_port current_fe_ip current_fe_port
     declare -g is_master_fe
-    run_mode="${run_mode:-ELECTION}"
 
     case $run_mode in
         "ELECTION")
@@ -373,6 +266,7 @@ cleanup() {
 main() {
     # validate_environment
     trap cleanup SIGTERM SIGINT
+    run_mode="${run_mode:-ELECTION}"
     
    if [ "$run_mode" = "RECOVERY" ]; then
         setup_fe_node

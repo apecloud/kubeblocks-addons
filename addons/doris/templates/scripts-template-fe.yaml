@@ -19,3 +19,5 @@ data:
     {{- .Files.Get "scripts/fe/fe_entry_point.sh" | nindent 4 }}
   init_fe.sh: |-
     {{- .Files.Get "scripts/fe/init_fe.sh" | nindent 4 }}
+  fe_role_probe.sh: |-
+    {{- .Files.Get "scripts/fe/fe_role_probe.sh" | nindent 4 }}

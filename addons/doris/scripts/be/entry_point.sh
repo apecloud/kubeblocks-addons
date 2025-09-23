@@ -57,107 +57,22 @@ is_sourced() {
     [ "${FUNCNAME[1]}" = 'source' ]
 }
 
-# Verify IP address format
-validate_ip_address() {
-    local ip="$1"
-    local ipv4_regex="^[1-2]?[0-9]?[0-9](\.[1-2]?[0-9]?[0-9]){3}$"
-    local ipv6_regex="^([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)$"
-    
-    if [[ $ip =~ $ipv4_regex ]] || [[ $ip =~ $ipv6_regex ]]; then
-        return 0
-    fi
-    return 1
-}
-
-# Verify port number
-validate_port() {
-    local port="$1"
-    if [[ $port =~ ^[1-6]?[0-9]{1,4}$ ]] && [ "$port" -le 65535 ]; then
-        return 0
-    fi
-    return 1
-}
-
-# Verify the necessary environment variables
-validate_environment() {
-    declare -g run_mode
-
-    # Election Mode Verification
-    if [[ -n "$FE_SERVERS" && -n "$BE_ADDR" ]]; then
-        validate_election_mode
-        return
-    fi
-
-    # Specifying a schema for validation
-    if [[ -n "$FE_MASTER_IP" && -n "$BE_IP" && -n "$BE_PORT" ]]; then
-        validate_assign_mode
-        return
-    fi
-
-    log_error "Missing required parameters. Please check documentation."
-}
-
-# Verify election mode configuration
-validate_election_mode() {
-    run_mode="ELECTION"
-    
-    # Verify FE_SERVERS format
-    local fe_servers_regex="^.+:[1-2]{0,1}[0-9]{0,1}[0-9]{1}(\.[1-2]{0,1}[0-9]{0,1}[0-9]{1}){3}:[1-6]{0,1}[0-9]{1,4}(,.+:[1-2]{0,1}[0-9]{0,1}[0-9]{1}(\.[1-2]{0,1}[0-9]{0,1}[0-9]{1}){3}:[1-6]{0,1}[0-9]{1,4})*$"
-    if ! [[ $FE_SERVERS =~ $fe_servers_regex ]]; then
-        log_error "Invalid FE_SERVERS format. Expected: name:ip:port[,name:ip:port]..."
-    fi
-
-    # Verify BE_ADDR format
-    if ! validate_ip_address "$(echo "$BE_ADDR" | cut -d: -f1)" || \
-       ! validate_port "$(echo "$BE_ADDR" | cut -d: -f2)"; then
-        log_error "Invalid BE_ADDR format. Expected: ip:port"
-    fi
-    
-    log_info "Running in Election mode"
-}
-
-# Verify the specified mode configuration
-validate_assign_mode() {
-    run_mode="ASSIGN"
-    
-    # Verify IP Address
-    if ! validate_ip_address "$FE_MASTER_IP"; then
-        log_error "Invalid FE_MASTER_IP format"
-    fi
-    if ! validate_ip_address "$BE_IP"; then
-        log_error "Invalid BE_IP format"
-    fi
-
-    # Verify port
-    if ! validate_port "$BE_PORT"; then
-        log_error "Invalid BE_PORT"
-    fi
-    
-    log_info "Running in Assign mode"
-}
-
 # Parsing configuration parameters
 parse_config() {
-    declare -g MASTER_FE_IP CURRENT_BE_IP CURRENT_BE_PORT PRIORITY_NETWORKS
-
-    if [ "$run_mode" = "ELECTION" ]; then
-        # Analyze the main FE node information
-        MASTER_FE_IP=$(echo "$FE_SERVERS" | cut -d, -f1 | cut -d: -f2)
-        
-        # Parsing BE node information
-        CURRENT_BE_IP=$(echo "$BE_ADDR" | cut -d: -f1)
-        CURRENT_BE_PORT=$(echo "$BE_ADDR" | cut -d: -f2)
-    else
-        MASTER_FE_IP="$FE_MASTER_IP"
-        CURRENT_BE_IP="$BE_IP"
-        CURRENT_BE_PORT="$BE_PORT"
+    declare -g FE_SERVICE_ADDR CURRENT_BE_FQDN CURRENT_BE_PORT #PRIORITY_NETWORKS
+    
+    # test-fe-fe
+    FE_SERVICE_ADDR="$FE_DISCOVERY_SERVICE_NAME".${CLUSTER_NAMESPACE}.svc.${CLUSTER_DOMAIN}
+    if [ -z "$FE_SERVICE_ADDR" ]; then
+        log_error "FE_DISCOVERY_SERVICE_NAME is empty"
     fi
 
-    # Set up a preferred network
-    PRIORITY_NETWORKS=$(echo "$CURRENT_BE_IP" | awk -F. '{print $1"."$2"."$3".0/24"}')
+    BE_HEADLESS_SERVICE="${CLUSTER_NAME}-${COMPONENT_NAME}-headless"
+    CURRENT_BE_FQDN="${POD_NAME}.${BE_HEADLESS_SERVICE}.${CLUSTER_NAMESPACE}.svc.${CLUSTER_DOMAIN}"
+    CURRENT_BE_PORT="${HEARTBEAT_PORT:-9050}"
 
     # Exporting environment variables
-    export MASTER_FE_IP CURRENT_BE_IP CURRENT_BE_PORT PRIORITY_NETWORKS
+    export FE_SERVICE_ADDR CURRENT_BE_FQDN CURRENT_BE_PORT #PRIORITY_NETWORKS
 }
 
 # Check BE status
@@ -166,15 +81,15 @@ check_be_status() {
     while [ $retry_count -lt $MAX_RETRY_TIMES ]; do
         if [ "$1" = "true" ]; then
             # Check FE status
-            if mysql -uroot -P"${MYSQL_PORT}" -h"${MASTER_FE_IP}" \
-                -N -e "SHOW FRONTENDS" 2>/dev/null | grep -w "${MASTER_FE_IP}" &>/dev/null; then
+            if mysql -uroot -P"${MYSQL_PORT}" -h"${FE_SERVICE_ADDR}" \
+                -N -e "SHOW FRONTENDS" 2>/dev/null | grep -w "${FE_SERVICE_ADDR}" &>/dev/null; then
                 log_info "Master FE is ready"
                 return 0
             fi
         else
             # Check BE status
-            if mysql -uroot -P"${MYSQL_PORT}" -h"${MASTER_FE_IP}" \
-                -N -e "SHOW BACKENDS" 2>/dev/null | grep -w "${CURRENT_BE_IP}" | grep -w "${CURRENT_BE_PORT}" | grep -w "true" &>/dev/null; then
+            if mysql -uroot -P"${MYSQL_PORT}" -h"${FE_SERVICE_ADDR}" \
+                -N -e "SHOW BACKENDS" 2>/dev/null | grep -w "${CURRENT_BE_FQDN}" | grep -w "${CURRENT_BE_PORT}" | grep -w "true" &>/dev/null; then
                 log_info "BE node is ready"
                 return 0
             fi
@@ -210,11 +125,11 @@ process_init_files() {
                 ;;
             *.sql)    
                 log_info "Executing SQL file $f"
-                mysql -uroot -P"${MYSQL_PORT}" -h"${MASTER_FE_IP}" < "$f"
+                mysql -uroot -P"${MYSQL_PORT}" -h"${FE_SERVICE_ADDR}" < "$f"
                 ;;
             *.sql.gz)  
                 log_info "Executing compressed SQL file $f"
-                gunzip -c "$f" | mysql -uroot -P"${MYSQL_PORT}" -h"${MASTER_FE_IP}"
+                gunzip -c "$f" | mysql -uroot -P"${MYSQL_PORT}" -h"${FE_SERVICE_ADDR}"
                 ;;
             *)         
                 log_warn "Ignoring $f"
@@ -225,13 +140,13 @@ process_init_files() {
 
 # Main Function
 main() {
-    validate_environment
+    # validate_environment
     parse_config
 
     # Start BE Node
     {
         set +e
-        bash init_be.sh 2>/dev/null
+        bash /opt/apache-doris/scripts/init_be.sh 2>/dev/null
     } &
 
     # Waiting for BE node to be ready
