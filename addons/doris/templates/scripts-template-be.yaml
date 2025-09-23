@@ -5,14 +5,6 @@ metadata:
   labels:
     {{- include "doris.labels" . | nindent 4 }}
 data:
-  be_disaggregated_entrypoint.sh: |-
-    {{- .Files.Get "scripts/be/be_disaggregated_entrypoint.sh" | nindent 4 }}
-  be_disaggregated_prestop.sh: |-
-    {{- .Files.Get "scripts/be/be_disaggregated_prestop.sh" | nindent 4 }}
-  be_disaggregated_probe.sh: |-
-    {{- .Files.Get "scripts/be/be_disaggregated_probe.sh" | nindent 4 }}
-  be_entrypoint.sh: |-
-    {{- .Files.Get "scripts/be/be_entrypoint.sh" | nindent 4 }}
   be_prestop.sh: |-
     {{- .Files.Get "scripts/be/be_prestop.sh" | nindent 4 }}
   entry_point.sh: |-

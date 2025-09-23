@@ -13,7 +13,7 @@ fe:
   storage: 20
 
 be:
-  replicas: 1
+  replicas: 3
   resources:
     limits:
       cpu: 2
