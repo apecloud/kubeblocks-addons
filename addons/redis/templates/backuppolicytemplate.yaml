@@ -4,6 +4,18 @@ metadata:
   name: redis-backup-policy-template
   labels:
     {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/reconfigure-ref: |
+      {
+        "name": "redis-replication-config",
+        "key": "redis.conf",
+        "enable": {
+          "aof": [{"key": "aof-disable-auto-gc","value": "yes"},{"key": "aof-timestamp-enabled","value": "yes"}]
+        },
+        "disable": {
+          "aof": [{"key": "aof-disable-auto-gc","value": "no"},{"key": "aof-timestamp-enabled","value": "no"}]
+        }
+      }
 spec:
   serviceKind: Redis
   compDefs:
