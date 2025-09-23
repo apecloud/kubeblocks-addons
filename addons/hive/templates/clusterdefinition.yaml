@@ -1,0 +1,33 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: hive
+  labels:
+    {{- include "hive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hive.apiVersion" . | nindent 4 }}
+spec:
+  topologies:
+    - name: hive-cluster
+      default: true
+      components:
+        - name: metastore
+          compDef: hive-metastore
+        - name: mysql
+          compDef: mysql-\d+.*
+      orders:
+        provision:
+          - mysql
+          - metastore
+        terminate:
+          - metastore
+          - mysql
+    - name: external-mysql-hive-cluster
+      components:
+      - name: metastore
+        compDef: hive-metastore
+      orders:
+        provision:
+        - metastore
+        terminate:
+        - metastore

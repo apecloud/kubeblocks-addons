@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hive-metastore-config-template
+  labels:
+    {{- include "hive.labels" . | nindent 4 }}
+data:
+  hive-site.xml: |-
+    {{- .Files.Get "config/hive-metastore.xml" | nindent 4 }}
