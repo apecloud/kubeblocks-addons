@@ -52,6 +52,17 @@
           memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ print .Values.write.storage "Gi" }}
+            {{- if .Values.write.storageClassName }}
+            storageClassName: {{ .Values.write.storageClassName | quote }}
+            {{- end }}
     - name: read
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.read.replicas | default 1 }}

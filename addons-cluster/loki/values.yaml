@@ -26,6 +26,8 @@ read:
       memory: 1
 
 write:
+  storageClassName: ""
+  storage: 20
   replicas: 1
   httpMetricsPort: 3100
   grpcPort: 9095
