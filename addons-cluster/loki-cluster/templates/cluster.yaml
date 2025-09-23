@@ -27,6 +27,7 @@
     - name: write
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.write.replicas }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
       {{- with .Values.write.resources }}
       resources:
         {{- with .limits }}
