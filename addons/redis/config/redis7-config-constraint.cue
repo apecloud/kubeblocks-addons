@@ -17,6 +17,8 @@
 
 #RedisParameter: {
 
+    "aof-disable-auto-gc"?: string & "yes" | "no"
+
 	"acllog-max-len": int & >=1 & <=10000 | *128
 
 	"acl-pubsub-default"?: string & "resetchannels" | "allchannels"
