@@ -12,10 +12,10 @@ spec:
           valueFrom:
             envRef:
               envName: PG_MODE
-        - name: POD_IP
+        - name: CURRENT_POD_IP
           valueFrom:
             envRef:
-              envName: POD_IP
+              envName: CURRENT_POD_IP
   parametersSchema:
     openAPIV3Schema:
       properties:
@@ -37,7 +37,7 @@ spec:
         podSpec:
           containers:
             - name: update-config
-              image: {{ include "postgresql.initImage" $ }}
+              image: {{ include "postgresql.imageByVersion" (dict "major" "16" "minor" "16.9.0" "root" $) }}
               imagePullPolicy: IfNotPresent
               command:
                 - bash

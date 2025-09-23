@@ -345,7 +345,7 @@
 	innodb_flush_log_at_trx_commit?: string | *"1"
 
 	// fsyncO_DSYNClittlesyncnosyncO_DIRECTO_DIRECT_NO_FSYNCasync_unbufferednormalunbufferedDefines the method used to flush data to InnoDB data files and log files, which can affect I/O throughput.If innodb_flush_method is set to NULL on a Unix-like system, the fsync option is used by default.
-	innodb_flush_method?: string | *"NULL"
+	innodb_flush_method?: string & "O_DIRECT" | "O_DSYNC" | "littlesync" | "fsync" | "nosync" | "O_DIRECT_NO_FSYNC"
 
 	// 012Specifies whether flushing a page from the InnoDBbuffer pool also flushes other dirty pages in the same extent.A setting of 0 disables innodb_flush_neighbors.
 	innodb_flush_neighbors?: string | *"1"
@@ -975,7 +975,7 @@
 	sql_log_off?: string & "OFF" | "ON" | *"OFF"
 
 	// ALLOW_INVALID_DATESANSI_QUOTESERROR_FOR_DIVISION_BY_ZEROHIGH_NOT_PRECEDENCEIGNORE_SPACENO_AUTO_CREATE_USERNO_AUTO_VALUE_ON_ZERONO_BACKSLASH_ESCAPESNO_DIR_IN_CREATENO_ENGINE_SUBSTITUTIONNO_FIELD_OPTIONSNO_KEY_OPTIONSNO_TABLE_OPTIONSNO_UNSIGNED_SUBTRACTIONNO_ZERO_DATENO_ZERO_IN_DATEONLY_FULL_GROUP_BYPAD_CHAR_TO_FULL_LENGTHPIPES_AS_CONCATREAL_AS_FLOATSTRICT_ALL_TABLESSTRICT_TRANS_TABLESThe current server SQL mode, which can be set dynamically.
-	sql_mode?: string & "ALLOW_INVALID_DATES" | "ANSI_QUOTES" | "ERROR_FOR_DIVISION_BY_ZERO" | "HIGH_NOT_PRECEDENCE" | "IGNORE_SPACE" | "NO_AUTO_CREATE_USER" | "NO_AUTO_VALUE_ON_ZERO" | "NO_BACKSLASH_ESCAPES" | "NO_DIR_IN_CREATE" | "NO_ENGINE_SUBSTITUTION" | "NO_FIELD_OPTIONS" | "NO_KEY_OPTIONS" | "NO_TABLE_OPTIONS" | "NO_UNSIGNED_SUBTRACTION" | "NO_ZERO_DATE" | "NO_ZERO_IN_DATE" | "ONLY_FULL_GROUP_BY" | "PAD_CHAR_TO_FULL_LENGTH" | "PIPES_AS_CONCAT" | "REAL_AS_FLOAT" | "STRICT_ALL_TABLES" | "STRICT_TRANS_TABLES" | *"ONLY_FULL_GROUP_BY STRICT_TRANS_TABLES NO_ZERO_IN_DATE NO_ZERO_DATE ERROR_FOR_DIVISION_BY_ZERO NO_AUTO_CREATE_USER NO_ENGINE_SUBSTITUTION"
+	sql_mode?: string
 
 	// If enabled (the default), diagnostics of Note level increment warning_count and the server records them.
 	sql_notes?: string & "OFF" | "ON" | *"ON"
