@@ -16,16 +16,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
-check_first_fe_status()
+check_fe_status()
 {
     local start_time=$(date +%s)
     local expire_timeout=120
-    local helper=$1
+    # local helper=$1
     while true; do
-        output=$(timeout 15 mysql --connect-timeout 2 -h $helper -P $FE_QUERY_PORT -u root --skip-column-names --batch -e "SHOW FRONTENDS;")
-    if [[ "x$output" != "x" ]]; then
-        return 0
-    fi
+        output=$(timeout 15 mysql --connect-timeout 2 -h "127.0.0.1" -P "${FE_QUERY_PORT}" -u "${DORIS_USER}" -p"${DORIS_PASSWORD}" --skip-column-names --batch -e "SHOW FRONTENDS;")
+        if [[ "x$output" != "x" ]]; then
+            return 0
+        fi
 
     let "expire=start_time+expire_timeout"
     local now=$(date +%s)
@@ -38,5 +38,5 @@ check_first_fe_status()
     done
 }
 
-check_first_fe_status $1
+check_fe_status
 

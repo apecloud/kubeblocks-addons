@@ -68,29 +68,9 @@ init_environment() {
 
 # Check if the BE node is registered
 check_be_registered() {
-    # # First, ensure that the FE node is available
-    # local retry_count=0
-    # while [ $retry_count -lt $MAX_RETRY_TIMES ]; do
-    #     if mysql -uroot -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}" \
-    #         -N -e "SHOW FRONTENDS" 2>/dev/null | grep -w "${FE_SERVICE_ADDR}" &>/dev/null; then
-    #         log_info "Master FE is ready"
-    #         break
-    #     fi
-        
-    #     retry_count=$((retry_count + 1))
-    #     if [ $((retry_count % 20)) -eq 1 ]; then
-    #         log_info "Waiting for master FE to be ready... ($retry_count/$MAX_RETRY_TIMES)"
-    #     fi
-    #     sleep "$RETRY_INTERVAL"
-    # done
-
-    # if [ $retry_count -eq $MAX_RETRY_TIMES ]; then
-    #     log_error "Master FE is not ready after ${MAX_RETRY_TIMES} attempts"
-    # fi
-
     # Check if BE is registered
     local query_result
-    query_result=$(mysql -uroot -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}" \
+    query_result=$(mysql -u"${DORIS_USER}" -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}"  \
         -N -e "SHOW BACKENDS" 2>/dev/null | grep -w "${CURRENT_BE_FQDN}" | grep -w "${CURRENT_BE_PORT}" )
     
     if [ -n "$query_result" ]; then
@@ -111,13 +91,13 @@ register_be() {
     # Try to register BE node
     local retry_count=0
     while [ $retry_count -lt $MAX_RETRY_TIMES ]; do
-        if mysql -uroot -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}" \
+        if mysql -u"${DORIS_USER}" -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}" \
             -e "ALTER SYSTEM ADD BACKEND '${CURRENT_BE_FQDN}:${CURRENT_BE_PORT}'" 2>/dev/null; then
             
             # Wait for the BE node to become registered
             local check_count=0
             while [ $check_count -lt 30 ]; do
-                if mysql -uroot -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}" \
+                if mysql -u"${DORIS_USER}" -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}" \
                     -N -e "SHOW BACKENDS" 2>/dev/null | grep -w "${CURRENT_BE_FQDN}" | grep -w "${CURRENT_BE_PORT}" &>/dev/null; then
                     log_info "Successfully registered BE node"
                     return 0

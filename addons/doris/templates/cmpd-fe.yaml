@@ -12,12 +12,10 @@ spec:
   description: A Doris FE component definition for Kubernetes
   # The FE can only perform leader election when the majority of members are active.
   updateStrategy: Parallel
-  podManagementPolicy: Parallel
   serviceKind: doris-fe
   services:
-  - name: master
-    serviceName: master
-    roleSelector: master
+  - name: fe
+    serviceName: fe
     spec:
       ipFamilies:
       - IPv4
@@ -83,7 +81,7 @@ spec:
       valueFrom:
         serviceVarRef:
           compDef: {{ include "fe.componentDefName" . }}
-          name: master
+          name: fe
           host: Required
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
@@ -168,20 +166,43 @@ spec:
         name: fe-cm
       - mountPath: /opt/apache-doris/scripts
         name: scripts
-  lifecycleActions:
-    roleProbe:
-      initialDelaySeconds: 60
-      periodSeconds: 15
-      exec:
-        container: fe
-        command:
-          - bash
-          - -c
-          - /opt/apache-doris/scripts/fe_role_probe.sh
-  roles:
-    - name: master
-      updatePriority: 2
-      participatesInQuorum: false
-    - name: follower
-      updatePriority: 1
-      participatesInQuorum: false
+      # lifecycle:
+      #   postStart:
+      #     exec:
+      #       command:
+      #       - /opt/apache-doris/scripts/fe_post_start.sh
+      livenessProbe:
+        httpGet:
+          path: /api/health
+          port: 8030
+        periodSeconds: 5
+        successThreshold: 1
+        timeoutSeconds: 1
+        failureThreshold: 5
+        initialDelaySeconds: 45
+      readinessProbe:
+        httpGet:
+          path: /api/health
+          port: 8030
+        periodSeconds: 5
+        successThreshold: 1
+        timeoutSeconds: 1
+        failureThreshold: 5
+        initialDelaySeconds: 45
+  # lifecycleActions:
+  #   roleProbe:
+  #     initialDelaySeconds: 30
+  #     periodSeconds: 15
+  #     exec:
+  #       container: fe
+  #       command:
+  #         - bash
+  #         - -c
+  #         - /opt/apache-doris/scripts/fe_role_probe.sh
+  # roles:
+  #   - name: follower
+  #     updatePriority: 2
+  #     participatesInQuorum: false
+  #   - name: observer
+  #     updatePriority: 1
+  #     participatesInQuorum: false

@@ -74,7 +74,7 @@ spec:
       valueFrom:
         serviceVarRef:
           compDef: {{ include "fe.componentDefName" . }}
-          name: master
+          name: fe
           host: Required
     - name: FE_QUERY_PORT
       value: "9030"
@@ -164,17 +164,15 @@ spec:
       securityContext:
         allowPrivilegeEscalation: false
         readOnlyRootFilesystem: false
-{{/*      {{- if .Values.be.probe }}*/}}
-{{/*      livenessProbe:*/}}
-{{/*        failureThreshold: 3*/}}
-{{/*        {{- toYaml .Values.be.probe | nindent 8 }}*/}}
-{{/*      readinessProbe:*/}}
-{{/*        failureThreshold: 3*/}}
-{{/*        {{- toYaml .Values.be.probe | nindent 8 }}*/}}
-{{/*      startupProbe:*/}}
-{{/*        failureThreshold: 60*/}}
-{{/*        {{- toYaml .Values.be.probe | nindent 8 }}*/}}
-{{/*      {{- end }}*/}}
+      livenessProbe:
+        httpGet:
+          path: /api/health
+          port: 8040
+        periodSeconds: 5
+        failureThreshold: 3
+        successThreshold: 1
+        timeoutSeconds: 1
+        initialDelaySeconds: 30
       volumeMounts:
       - mountPath: /opt/apache-doris/be/conf/be.conf
         name: be-cm

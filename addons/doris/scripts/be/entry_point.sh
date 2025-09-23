@@ -23,7 +23,6 @@ shopt -s nullglob
 readonly DORIS_HOME="/opt/apache-doris"
 readonly MAX_RETRY_TIMES=60
 readonly RETRY_INTERVAL=1
-readonly MYSQL_PORT=9030
 
 # Log Function
 log_message() {
@@ -81,14 +80,14 @@ check_be_status() {
     while [ $retry_count -lt $MAX_RETRY_TIMES ]; do
         if [ "$1" = "true" ]; then
             # Check FE status
-            if mysql -uroot -P"${MYSQL_PORT}" -h"${FE_SERVICE_ADDR}" \
+            if mysql -u"${DORIS_USER}" -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}" \
                 -N -e "SHOW FRONTENDS" 2>/dev/null | grep -w "${FE_SERVICE_ADDR}" &>/dev/null; then
                 log_info "Master FE is ready"
                 return 0
             fi
         else
             # Check BE status
-            if mysql -uroot -P"${MYSQL_PORT}" -h"${FE_SERVICE_ADDR}" \
+            if mysql -u"${DORIS_USER}" -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}" \
                 -N -e "SHOW BACKENDS" 2>/dev/null | grep -w "${CURRENT_BE_FQDN}" | grep -w "${CURRENT_BE_PORT}" | grep -w "true" &>/dev/null; then
                 log_info "BE node is ready"
                 return 0
@@ -125,11 +124,11 @@ process_init_files() {
                 ;;
             *.sql)    
                 log_info "Executing SQL file $f"
-                mysql -uroot -P"${MYSQL_PORT}" -h"${FE_SERVICE_ADDR}" < "$f"
+                mysql -u"${DORIS_USER}" -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}" < "$f"
                 ;;
             *.sql.gz)  
                 log_info "Executing compressed SQL file $f"
-                gunzip -c "$f" | mysql -uroot -P"${MYSQL_PORT}" -h"${FE_SERVICE_ADDR}"
+                gunzip -c "$f" | mysql -u"${DORIS_USER}" -P"${FE_QUERY_PORT}" -h"${FE_SERVICE_ADDR}"
                 ;;
             *)         
                 log_warn "Ignoring $f"

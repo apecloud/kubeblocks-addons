@@ -5,14 +5,6 @@ metadata:
   labels:
     {{- include "doris.labels" . | nindent 4 }}
 data:
-  fe_disaggregated_entrypoint.sh: |-
-    {{- .Files.Get "scripts/fe/fe_disaggregated_entrypoint.sh" | nindent 4 }}
-  fe_disaggregated_prestop.sh: |-
-    {{- .Files.Get "scripts/fe/fe_disaggregated_prestop.sh" | nindent 4 }}
-  fe_disaggregated_probe.sh: |-
-    {{- .Files.Get "scripts/fe/fe_disaggregated_probe.sh" | nindent 4 }}
-  fe_entrypoint.sh: |-
-    {{- .Files.Get "scripts/fe/fe_entrypoint.sh" | nindent 4 }}
   fe_prestop.sh: |-
     {{- .Files.Get "scripts/fe/fe_prestop.sh" | nindent 4 }}
   fe_entry_point.sh: |-
@@ -21,3 +13,7 @@ data:
     {{- .Files.Get "scripts/fe/init_fe.sh" | nindent 4 }}
   fe_role_probe.sh: |-
     {{- .Files.Get "scripts/fe/fe_role_probe.sh" | nindent 4 }}
+  fe_post_start.sh: |-
+    {{- .Files.Get "scripts/fe/fe_post_start.sh" | nindent 4 }}
+  fe_check_status.sh: |-
+    {{- .Files.Get "scripts/fe/fe_check_status.sh" | nindent 4 }}
