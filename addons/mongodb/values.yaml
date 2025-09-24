@@ -24,8 +24,8 @@ image:
     repository: apecloud/mongodb_exporter
     tag: "0.44.0"
   walg:
-    repository: apecloud/wal-g
-    tag: mongo-5.0.1
+    repository: apecloud/wal-g-mongo
+    tag: 3.0.0
 
 clusterVersionOverride: ""
 nameOverride: ""
@@ -39,7 +39,7 @@ roleProbe:
 ## Authentication parameters
 ##
 auth:
-  ## @param auth.password Password for the "mongodb" admin user, leave empty 
+  ## @param auth.password Password for the "mongodb" admin user, leave empty
   ## for random generated password.
   ##
   password:

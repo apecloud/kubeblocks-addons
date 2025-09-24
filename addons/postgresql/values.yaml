@@ -13,8 +13,8 @@ image:
   repository: apecloud/spilo
   digest: ""
   walg:
-    repository: apecloud/wal-g
-    tag: postgres-1.2
+    repository: apecloud/wal-g-pg
+    tag: 3.0.0
   init:
     repository: apecloud/spilo-init
     tag: "0.1"
