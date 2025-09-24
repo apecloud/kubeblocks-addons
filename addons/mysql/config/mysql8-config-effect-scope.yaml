@@ -77,7 +77,6 @@ staticParameters:
   - log_bin_use_v1_row_events
   - log_error
   - log_slave_updates
-  - log_replica_updates
   - master-info-repository
   - max_digest_length
   - mecab_rc_file
@@ -147,7 +146,6 @@ staticParameters:
   - relay_log_basename
   - relay_log_index
   - relay_log_info_file
-  - relay_log_info_repository
   - relay_log_space_limit
   - report_host
   - report_password
@@ -187,6 +185,13 @@ staticParameters:
   - version_compile_machine
   - version_compile_os
   - version_compile_zlib
+  - log_replica_updates
+  - relay_log_recovery
+  - audit_log_handler
+  - audit_log_file
+  - audit_log_buffer_size
+  - audit_log_policy
+  - audit_log_strategy
 
 dynamicParameters:
   - activate_all_roles_on_login
@@ -450,7 +455,6 @@ dynamicParameters:
   - regexp_stack_limit
   - regexp_time_limit
   - relay_log_purge
-  - relay_log_recovery
   - replicate-do-db
   - replicate-do-table
   - replicate-ignore-db
@@ -478,9 +482,11 @@ dynamicParameters:
   - slave_checkpoint_period
   - slave_compressed_protocol
   - slave_exec_mode
+  - replica_exec_mode
   - slave_net_timeout
   - slave_parallel_type
   - slave_parallel_workers
+  - replica_parallel_workers
   - slave_pending_jobs_size_max
   - slave_preserve_commit_order
   - slave_rows_search_algorithms
@@ -533,6 +539,10 @@ dynamicParameters:
   - windowing_use_high_precision
   - innodb_redo_log_capacity
   - audit_log_policy
+  - relay_log_info_repository
+  - audit_log_exclude_accounts
+  - audit_log_rotations
+  - audit_log_rotate_on_size
 
 immutableParameters:
   - allow-suspicious-udfs
@@ -569,12 +579,12 @@ immutableParameters:
   - log-bin
   - log_bin_basename
   - log_bin_index
+  - log_slave_updates
   - lower_case_file_system
   - lower_case_table_names
   - mecab_rc_file
   - port
   - open_files_limit
-  - persisted_globals_load
   - protocol_version
   - plugin_dir
   - server_id
