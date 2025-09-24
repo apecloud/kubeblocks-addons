@@ -1127,28 +1127,28 @@
 	relay_log_info_repository?: string & "FILE" | "TABLE"
 
 	// Specifies the audit log plugin to use.
-	loose_audit_log_handler?: string & "FILE" | "SYSLOG" | *"FILE"
+	audit_log_handler?: string & "FILE" | "SYSLOG" | *"FILE"
 
 	// The file name of the audit log.
-	loose_audit_log_file?: string
+	audit_log_file?: string
 
 	// The size at which the audit log file is rotated.
-	loose_audit_log_buffer_size?: string
+	audit_log_buffer_size?: string
 
 	// This variable is used to specify which events should be logged.
-	loose_audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
+	audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
 
 	// The strategy used to write audit log records.
-	loose_audit_log_strategy?: string & "ASYNCHRONOUS" | "PERFORMANCE" | "SEMISYNCHRONOUS" | "SYNCHRONOUS" | *"ASYNCHRONOUS"
+	audit_log_strategy?: string & "ASYNCHRONOUS" | "PERFORMANCE" | "SEMISYNCHRONOUS" | "SYNCHRONOUS" | *"ASYNCHRONOUS"
 
 	// The size at which the audit log file is rotated.
-	loose_audit_log_rotate_on_size?: int | *0
+	audit_log_rotate_on_size?: int | *0
 
 	// The number of rotated audit log files to keep.
-	loose_audit_log_rotations?: int | *0
+	audit_log_rotations?: int | *0
 
 	// A comma-separated list of accounts that are not subject to audit logging.
-	loose_audit_log_exclude_accounts?: string
+	audit_log_exclude_accounts?: string
 
 	// other parameters
 	// reference mysql parameters
