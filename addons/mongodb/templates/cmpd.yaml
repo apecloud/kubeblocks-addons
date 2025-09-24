@@ -251,6 +251,14 @@ spec:
             mountPath: /scripts
       - name: exporter
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /mongodb_exporter
+        args:
+          - --compatible-mode
+          - --discovering-mode
+          - --mongodb.direct-connect
+          - --mongodb.global-conn-pool
+          - --collect-all
         ports:
           - name: exporter
             protocol: TCP
