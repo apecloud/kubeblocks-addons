@@ -259,6 +259,13 @@ dynamicParameters:
   - slave_parallel_type
   - slave_parallel_workers
   - slave_preserve_commit_order
+  - performance_schema_digests_size
+  - performance_schema_events_stages_history_long_size
+  - performance_schema_events_transactions_history_long_size
+  - relay_log_info_repository
+  - audit_log_exclude_accounts
+  - audit_log_rotations
+  - audit_log_rotate_on_size
 immutableParameters:
   - auto_generate_certs
   - basedir
@@ -275,7 +282,6 @@ immutableParameters:
   - innodb_temp_data_file_path
   - log_bin
   - log_bin_index
-  - log_slave_updates
   - mecab_rc_file
   - open_files_limit
   - port
@@ -291,6 +297,12 @@ immutableParameters:
   - lower_case_file_system
   - lower_case_table_names
 staticParameters:
+  - relay_log
+  - relay_log_index
+  - relay_log_recovery
+  - performance_schema
+  - log_slave_updates
+  - default_time_zone
   - back_log
   - bind_address
   - character_set_system
@@ -374,4 +386,8 @@ staticParameters:
   - thread_stack
   - version_comment
   - version_compile_os
-  - default_time_zone
+  - audit_log_handler
+  - audit_log_file
+  - audit_log_buffer_size
+  - audit_log_policy
+  - audit_log_strategy
