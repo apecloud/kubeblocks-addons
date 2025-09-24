@@ -23,7 +23,7 @@ image:
     tag: 1.0.3
   walgImage:
     repository: apecloud/wal-g-mysql
-    tag: 2.0.1-1-ubuntu
+    tag: 3.0.0-ubuntu
 
 ## MySQL Cluster parameters
 cluster:

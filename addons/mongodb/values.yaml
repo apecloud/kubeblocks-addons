@@ -22,8 +22,8 @@ image:
     repository: apecloud/mongodb_exporter
     tag: "0.44.0"
   walgImage:
-    repository: apecloud/wal-g
-    tag: mongo-5.0.1
+    repository: apecloud/wal-g-mongo
+    tag: 3.0.0
 
 ## @param supported versions with detailed information
 versions:
@@ -61,12 +61,6 @@ versions:
       - ["4.2.25", "4.2.25", "4.2.25", "2.5.0-multi", true]
       - ["4.2.24", "4.2.24", "4.2.24", "2.5.0-multi", true]
       - ["4.0.28", "4.0.28", "4.0.28", "2.5.0-multi", true]
-
-# refer: https://github.com/apecloud/wal-g/blob/kb-dev/docker/wal-g/Dockerfile-mongo
-# this image is built from Dockerfile of apecloud/wal-g forked from wal-g/wal-g.
-walg:
-  repository: apecloud/wal-g
-  tag: mongo-latest
 
 nameOverride: ""
 fullnameOverride: ""
