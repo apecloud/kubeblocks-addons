@@ -740,7 +740,9 @@
 	log_queries_not_using_indexes?: string & "OFF" | "ON"
 
 	// Allow for chain replication - ingression
-	log_slave_updates: string & "OFF" | "ON" | *"ON"
+	log_slave_updates: string
+
+	log_replica_updates: string
 
 	// Include slow administrative statements in the statements written to the slow query log.
 	log_slow_admin_statements?: string & "OFF" | "ON"
@@ -1302,6 +1304,8 @@
 	// slave_exec_mode controls how a replication thread resolves conflicts and errors during replication.
 	slave_exec_mode?: string & "IDEMPOTENT" | "STRICT"
 
+	replica_exec_mode?: string & "IDEMPOTENT" | "STRICT"
+
 	slave_load_tmpdir?: string
 
 	// The number of seconds to wait for more data from a master/slave connection before aborting the read.
@@ -1312,6 +1316,8 @@
 
 	// Sets the number of slave worker threads for executing replication events (transactions) in parallel. Setting this variable to 0 (the default) disables parallel execution.
 	slave_parallel_workers?: int & >=0 & <=1024
+
+	replica_parallel_workers?: int & >=0 & <=1024
 
 	// For multithreaded slaves, this option sets the maximum amount of memory (in bytes) available to slave worker queues holding events not yet applied.
 	slave_pending_jobs_size_max?: int & >=1024 & <=18446744073709547520
@@ -1512,6 +1518,30 @@
 
 	// This variable is used to specify which events should be logged.
 	audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
+
+	// Specifies the audit log plugin to use.
+	audit_log_handler?: string & "FILE" | "SYSLOG" | *"FILE"
+
+	// The file name of the audit log.
+	audit_log_file?: string
+
+	// The size at which the audit log file is rotated.
+	audit_log_buffer_size?: string
+
+	// This variable is used to specify which events should be logged.
+	audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
+
+	// The strategy used to write audit log records.
+	audit_log_strategy?: string & "ASYNCHRONOUS" | "PERFORMANCE" | "SEMISYNCHRONOUS" | "SYNCHRONOUS" | *"ASYNCHRONOUS"
+
+	// The size at which the audit log file is rotated.
+	audit_log_rotate_on_size?: int | *0
+
+	// The number of rotated audit log files to keep.
+	audit_log_rotations?: int | *0
+
+	// A comma-separated list of accounts that are not subject to audit logging.
+	audit_log_exclude_accounts?: string
 
 	// other parameters
 	// reference mysql parameters

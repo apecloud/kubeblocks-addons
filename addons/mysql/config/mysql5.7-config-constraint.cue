@@ -678,7 +678,7 @@
 	log_queries_not_using_indexes?: string & "OFF" | "ON" | *"OFF"
 
 	// Whether updates received by a replica server from a source server should be logged to the replica's own binary log.Normally, a replica does not log to its own binary log any updates that are received from a source server.
-	log_slave_updates?: string & "OFF" | "ON" | *"OFF"
+	log_slave_updates?: string
 
 	// Include slow administrative statements in the statements written to the slow query log.
 	log_slow_admin_statements?: string & "OFF" | "ON" | *"OFF"
@@ -1099,8 +1099,56 @@
 	// Sets the number of slave worker threads for executing replication events (transactions) in parallel. Setting this variable to 0 (the default) disables parallel execution.
 	slave_parallel_workers?: int & >=0 & <=1024
 
-    // Enable parallel execution on the slave of all uncommitted threads already in the prepare phase, without violating consistency.
-    slave_preserve_commit_order?: string & "0" | "1" | "OFF" | "ON"
+  // Enable parallel execution on the slave of all uncommitted threads already in the prepare phase, without violating consistency.
+  slave_preserve_commit_order?: string & "0" | "1" | "OFF" | "ON"
+
+	// The number of seconds the slave SQL thread waits for activity on the replication queue before checking for more events.
+  performance_schema_digests_size?: int & >=-1 & <=1048576
+
+	// The size of the memory allocated to hold the statement digest text for the Performance Schema.
+  performance_schema_events_stages_history_long_size?: int & >=-1 & <=1048576
+
+  // The size of the memory allocated to hold the transaction event history for the Performance Schema.
+  performance_schema_events_transactions_history_long_size?: int & >=-1 & <=1048576
+
+  // The size of the memory allocated to hold the statement event history for the Performance Schema.
+  log_statements_unsafe_for_binlog: string & "OFF" | "ON" | *"OFF"
+
+  // Enables automatic relay log recovery immediately following server startup.
+	relay_log_recovery: string & "OFF" | "ON" | *"ON"
+
+	// The base name and path for the relay log files
+	relay_log?: string
+
+	// The name for the relay log index file, which contains the names of the relay log files.
+	relay_log_index?: string
+
+	// This option causes the server to log its relay log info to a file or a table.
+	relay_log_info_repository?: string & "FILE" | "TABLE"
+
+	// Specifies the audit log plugin to use.
+	audit_log_handler?: string & "FILE" | "SYSLOG" | *"FILE"
+
+	// The file name of the audit log.
+	audit_log_file?: string
+
+	// The size at which the audit log file is rotated.
+	audit_log_buffer_size?: string
+
+	// This variable is used to specify which events should be logged.
+	audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
+
+	// The strategy used to write audit log records.
+	audit_log_strategy?: string & "ASYNCHRONOUS" | "PERFORMANCE" | "SEMISYNCHRONOUS" | "SYNCHRONOUS" | *"ASYNCHRONOUS"
+
+	// The size at which the audit log file is rotated.
+	audit_log_rotate_on_size?: int | *0
+
+	// The number of rotated audit log files to keep.
+	audit_log_rotations?: int | *0
+
+	// A comma-separated list of accounts that are not subject to audit logging.
+	audit_log_exclude_accounts?: string
 
 	// other parameters
 	// reference mysql parameters
