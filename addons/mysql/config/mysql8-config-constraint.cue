@@ -1526,7 +1526,7 @@
 	loose_audit_log_file?: string
 
 	// The size at which the audit log file is rotated.
-	loose_audit_log_buffer_size?: int & >=4096 & <=18446744073709547520
+	loose_audit_log_buffer_size?: string
 
 	// This variable is used to specify which events should be logged.
 	loose_audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
