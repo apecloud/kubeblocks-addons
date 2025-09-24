@@ -94,6 +94,8 @@ spec:
             subPath: mapred-site.xml
           - name: hive-metastore-scripts
             mountPath: /kubeblocks/scripts
+          - name: home-volume
+            mountPath: /home
         securityContext:
           runAsUser: 10000
           runAsGroup: 1000

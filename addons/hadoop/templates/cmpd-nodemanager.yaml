@@ -29,8 +29,10 @@ spec:
           - |
             cp -r /opt/software/hadoop-3.3.4/* /opt/kubeemr/hadoop/hadoop-3.3.4
             mkdir -p /hadoop/yarn/nodemanager
+            mkdir -p /home/hadoop
             chown -R 10000:1000 /opt/kubeemr/hadoop/hadoop-3.3.4
             chown -R 10000:1000 /hadoop/yarn/nodemanager
+            chown -R 10000:1000 /home/hadoop
         securityContext:
           runAsUser: 0
         volumeMounts:
@@ -39,6 +41,8 @@ spec:
           - name: yarn-nodemanager
             mountPath: /hadoop
             subPath: nodemanager
+          - name: home
+            mountPath: /home
     containers:
       - name: yarn-nodemanager
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
@@ -100,6 +104,8 @@ spec:
             subPath: nodemanager
           - name: scripts
             mountPath: /kubeblocks/scripts
+          - name: home
+            mountPath: /home
         securityContext:
           runAsUser: 10000
           runAsGroup: 1000
@@ -143,6 +149,10 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
+    - name: SERVICE_VERSION
+      valueFrom:
+        componentVarRef:
+          serviceVersion: Required
     - name: CLUSTER_NAMESPACE
       valueFrom:
         clusterVarRef:

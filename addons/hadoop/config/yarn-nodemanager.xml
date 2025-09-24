@@ -45,6 +45,18 @@
         <name>yarn.resourcemanager.address.rm{{ $i }}</name>
         <value>{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:8032</value>
     </property>
+    <property>
+        <name>yarn.resourcemanager.webapp.address.rm{{ $i }}</name>
+        <value>{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:8088</value>
+    </property>
+    <property>
+        <name>yarn.resourcemanager.scheduler.address.rm{{ $i }}</name>
+        <value>{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:8030</value>
+    </property>
+    <property>
+        <name>yarn.resourcemanager.scheduler.resource-tracker.rm{{ $i }}</name>
+        <value>{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:8031</value>
+    </property>
   {{- end }}
 
     <property>
@@ -65,6 +77,17 @@
     <property>
         <name>yarn.log-aggregation-enable</name>
         <value>true</value>
+    </property>
+
+    <!-- 聚合后日志落在 HDFS 的目录 -->
+    <property>
+        <name>yarn.nodemanager.remote-app-log-dir</name>
+        <value>/tmp/logs</value>
+    </property>
+
+    <property>
+        <name>yarn.log-aggregation.retain-seconds</name>
+        <value>604800</value>
     </property>
 
     <property>
@@ -95,6 +118,21 @@
     <property>
         <name>yarn.nodemanager.aux-services.mapreduce_shuffle.class</name>
         <value>org.apache.hadoop.mapred.ShuffleHandler</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.env-whitelist</name>
+        <value>JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_HOME,PATH,LANG,TZ,HADOOP_MAPRED_HOME</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.local-dirs</name>
+        <value>/hadoop/tmp/nm-local-dir</value>
+    </property>
+
+    <property>
+        <name>hadoop.tmp.dir</name>
+        <value>/hadoop/tmp</value>
     </property>
 
 </configuration>

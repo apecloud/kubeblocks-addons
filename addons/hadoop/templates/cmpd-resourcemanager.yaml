@@ -144,6 +144,10 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: SERVICE_VERSION
+      valueFrom:
+        componentVarRef:
+          serviceVersion: Required
     - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
