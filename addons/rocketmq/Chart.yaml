@@ -1,6 +1,6 @@
 apiVersion: v2
 name: rocketmq
-description: RocketMQ is a distributed messaging and streaming platform originally developed by Alibaba, 
+description: RocketMQ is a distributed messaging and streaming platform originally developed by Alibaba,
   featuring high throughput, low latency, and strong reliability for processing millions of messages per second.
 
 type: application
