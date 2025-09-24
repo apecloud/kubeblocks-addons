@@ -5,6 +5,23 @@ set -o errtrace
 set -o nounset
 set -o pipefail
 
+load_common_library() {
+  # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
+  common_library_file="/qdrant/scripts/common.sh"
+  # shellcheck disable=SC1090
+  source "${common_library_file}"
+}
+
+load_common_library
+current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$QDRANT_POD_FQDN_LIST" "$CURRENT_POD_NAME")
+
+curl http://${current_pod_fqdn}:6333/cluster | grep $KB_LEAVE_MEMBER_POD_NAME
+# if the member is not in the cluster, exit directly
+if [ $? -ne 0 ]; then
+  echo "member ${KB_LEAVE_MEMBER_POD_NAME} is not in the cluster"
+  exit 0
+fi
+
 leave_peer_uri=http://${KB_LEAVE_MEMBER_POD_FQDN}:6333
 cluster_info=`curl -s ${leave_peer_uri}/cluster`
 leave_peer_id=`echo "${cluster_info}"| jq -r .result.peer_id`
