@@ -21,3 +21,6 @@ addons-cluster/**/charts
 
 # generated temp directory
 temp
+
+# local debugging helm values
+values-override*.yaml
