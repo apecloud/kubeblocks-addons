@@ -740,9 +740,9 @@
 	log_queries_not_using_indexes?: string & "OFF" | "ON"
 
 	// Allow for chain replication - ingression
-	log_slave_updates: string & "OFF" | "ON" | *"ON"
+	log_slave_updates: string
 
-	log_replica_updates: string & "OFF" | "ON" | *"ON"
+	log_replica_updates: string
 
 	// Include slow administrative statements in the statements written to the slow query log.
 	log_slow_admin_statements?: string & "OFF" | "ON"

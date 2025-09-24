@@ -678,7 +678,7 @@
 	log_queries_not_using_indexes?: string & "OFF" | "ON" | *"OFF"
 
 	// Whether updates received by a replica server from a source server should be logged to the replica's own binary log.Normally, a replica does not log to its own binary log any updates that are received from a source server.
-	log_slave_updates?: string & "OFF" | "ON" | *"OFF"
+	log_slave_updates?: string
 
 	// Include slow administrative statements in the statements written to the slow query log.
 	log_slow_admin_statements?: string & "OFF" | "ON" | *"OFF"
