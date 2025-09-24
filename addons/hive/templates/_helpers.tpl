@@ -82,3 +82,8 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- define "hive.metastoreCompDef" -}}
 hive-metastore-{{ .Chart.Version }}
 {{- end }}
+
+
+{{- define "hive.server2CompDef" -}}
+hive-server2-{{ .Chart.Version }}
+{{- end }}

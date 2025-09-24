@@ -6,7 +6,7 @@ fullnameOverride: ""
 
 # Replicas for each component
 replicas:
-  metastore: 1
+  metastore: 2
   mysql: 2
 
 # enum values: hive-cluster, external-mysql-hive-cluster

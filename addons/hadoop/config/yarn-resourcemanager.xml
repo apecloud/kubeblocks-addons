@@ -58,4 +58,25 @@
         <value>{{- .ZOOKEEPER_ENDPOINTS }}</value>
     </property>
 
+    <property>
+        <name>yarn.scheduler.maximum-allocation-mb</name>
+        <value>131072</value>  <!-- 32 GB -->
+    </property>
+
+    <property>
+        <name>yarn.scheduler.maximum-allocation-vcores</name>
+        <value>128</value>
+    </property>
+
+    <!-- Minimum allocation unit for every container request at the RM -->
+    <property>
+        <name>yarn.scheduler.minimum-allocation-mb</name>
+        <value>512</value>
+    </property>
+
+    <property>
+        <name>yarn.scheduler.minimum-allocation-vcores</name>
+        <value>1</value>
+    </property>
+
 </configuration>

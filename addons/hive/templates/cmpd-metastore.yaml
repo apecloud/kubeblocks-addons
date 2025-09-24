@@ -10,6 +10,7 @@ spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}
   serviceKind: hive-metastore
+  podManagementPolicy: Parallel
   services:
     - name: default
       spec:
@@ -45,7 +46,7 @@ spec:
           - name: hadoop-common
             mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
           - name: metadata
-            mountPath: /hive/metadata
+            mountPath: /hive
             subPath: metadata
           - name: home-volume
             mountPath: /home
@@ -72,10 +73,10 @@ spec:
           - name: hadoop-common
             mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
           - name: metadata
-            mountPath: /hive/metadata
+            mountPath: /hive
             subPath: metadata
           - name: hive-metastore-config
-            mountPath: /hive/conf/hive-site.xml
+            mountPath: /hive/base-conf/hive-site.xml
             subPath: hive-site.xml
           - name: hadoop-core-config
             mountPath: /hadoop/conf/core-site.xml
@@ -151,6 +152,12 @@ spec:
           compDef: mysql
           password: Required
           optional: true
+    - name: METASTORE_ENDPOINTS
+      valueFrom:
+        componentVarRef:
+          optional: true
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .METASTORE_ENDPOINTS }}{{ range $idx, $host := $hosts }}thrift://{{ $host }}:9083{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
     - name: METADB_MYSQL_PASSWORD
       valueFrom:
         serviceRefVarRef:

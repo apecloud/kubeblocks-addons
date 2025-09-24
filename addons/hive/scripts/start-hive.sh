@@ -17,12 +17,23 @@ set -o pipefail
 
 print_welcome_page
 
+cp /hive/base-conf/hive-site.xml $HIVE_CONF_DIR/hive-site.xml
+MYSQL_PASSWORD=$COMPONENT_MYSQL_PASSWORD
+if [ -z $COMPONENT_MYSQL_PASSWORD ]; then
+   MYSQL_PASSWORD=${METADB_MYSQL_PASSWORD}
+fi
+sed -i "/<\/configuration>/i \
+    <property>\
+        <name>javax.jdo.option.ConnectionPassword</name>\
+        <value>${MYSQL_PASSWORD}</value>\
+    </property>" $HIVE_CONF_DIR/hive-site.xml
+
 if [[ $DEBUG_MODEL == true ]]; then
   info ************** env-start **************
   env
   info ************** env-end **************
   info ************** conf-start **************
-  cat $HIVE_CONF_DIR/hive-site.xml
+  cat /hive/base-conf/hive-site.xml
   info ************** conf-start **************
 fi
 

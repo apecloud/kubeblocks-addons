@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
 {{- $phy_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
-{{- $v_mem_mb := mul (div $phy_memory 1073741824) 800 | int }}
+{{- $v_mem_mb := mul (div $phy_memory 1073741824) 900 | int }}
 {{- if lt $v_mem_mb 1500 }}
   {{- $v_mem_mb = 1000 }}
 {{- end }}
