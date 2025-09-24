@@ -18,8 +18,8 @@ image:
   repository: apecloud/spilo
   digest: ""
   walg:
-    repository: apecloud/wal-g
-    tag: postgres-1.2
+    repository: apecloud/wal-g-pg
+    tag: 3.0.0
   # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
   dbctl:
     repository: apecloud/dbctl
