@@ -145,3 +145,11 @@ spec:
           name: root
           optional: false
           password: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
