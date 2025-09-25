@@ -23,7 +23,7 @@ spec:
       ports:
       - name: http
         port: 8030
-        targetPort: http-port
+        targetPort: http
       - name: mysql
         port: 9030
         targetPort: mysql
@@ -42,6 +42,7 @@ spec:
   volumes:
   - name: metadata
     needSnapshot: true
+  - name: log
   systemAccounts:
   - name: root
     initAccount: true
@@ -83,6 +84,8 @@ spec:
           compDef: {{ include "fe.componentDefName" . }}
           name: fe
           host: Required
+    - name: FE_DISCOVERY_ADDR
+      value: $(FE_DISCOVERY_SERVICE_NAME).$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
     - name: FE_QUERY_PORT
@@ -162,33 +165,45 @@ spec:
       volumeMounts:
       - mountPath: /opt/apache-doris/fe/doris-meta
         name: metadata
+      - mountPath: /opt/apache-doris/fe/log
+        name: log
       - mountPath: /etc/config
         name: fe-cm
       - mountPath: /opt/apache-doris/scripts
         name: scripts
-      # lifecycle:
-      #   postStart:
-      #     exec:
-      #       command:
-      #       - /opt/apache-doris/scripts/fe_post_start.sh
+      lifecycle:
+        postStart:
+          exec:
+            command:
+            - bash
+            - -c
+            - |
+              /opt/apache-doris/scripts/fe_post_start.sh > /tmp/post-start-hook.log 2>&1 &
+        preStop:
+          exec:
+            command:
+            - bash
+            - -c
+            - |
+              /opt/apache-doris/scripts/fe_prestop.sh > /tmp/pre-stop-hook.log 2>&1 &
       livenessProbe:
         httpGet:
           path: /api/health
           port: 8030
         periodSeconds: 5
+        failureThreshold: 10
         successThreshold: 1
         timeoutSeconds: 1
-        failureThreshold: 5
-        initialDelaySeconds: 45
+        initialDelaySeconds: 15
       readinessProbe:
         httpGet:
           path: /api/health
           port: 8030
         periodSeconds: 5
+        failureThreshold: 10
         successThreshold: 1
         timeoutSeconds: 1
-        failureThreshold: 5
-        initialDelaySeconds: 45
+        initialDelaySeconds: 15
   # lifecycleActions:
   #   roleProbe:
   #     initialDelaySeconds: 30

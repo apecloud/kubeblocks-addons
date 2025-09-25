@@ -186,7 +186,7 @@ start_fe() {
 # Check whether the FE node is registered
 check_fe_registered() {
     local query_result
-    query_result=$(mysql -uroot -P"${FE_QUERY_PORT}" -h"${master_fe_ip}"  \
+    query_result=$(mysql -uroot -P"${FE_QUERY_PORT}" -h"${master_fe_ip}" -p"${DORIS_PASSWORD}" \
         -N -e "SHOW FRONTENDS" 2>/dev/null | grep -w "${current_fe_ip}" | grep -w "${current_fe_port}" || true)
         
     if [ -n "$query_result" ]; then
@@ -220,7 +220,7 @@ register_fe() {
 
     local retry_count=0
     while [ $retry_count -lt $MAX_RETRY_TIMES ]; do
-        if mysql -uroot -P"${FE_QUERY_PORT}" -h"${master_fe_ip}" \
+        if mysql -uroot -P"${FE_QUERY_PORT}" -h"${master_fe_ip}" -p"${DORIS_PASSWORD}" \
             -e "ALTER SYSTEM ADD FOLLOWER '${current_fe_ip}:${current_fe_port}'" 2>/dev/null; then
             log_info "Successfully registered FE node"
             return
