@@ -22,7 +22,7 @@ spec:
         podSpec:
           containers:
             - name: balancer
-              image: {{ .Values.images.registry }}/{{ .Values.images.nameNode.repository }}:{{ .Values.images.nameNode.tag }}
+              image: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
               imagePullPolicy: IfNotPresent
               securityContext:
                 runAsUser: 10000

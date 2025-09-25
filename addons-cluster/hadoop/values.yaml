@@ -46,14 +46,14 @@ resources:
       memory: 0.5Gi
     limits:
       cpu: "0.5"
-      memory: 2Gi
+      memory: 8Gi
   resourcemanager:
     requests:
       cpu: "0.1"
       memory: 0.5Gi
     limits:
       cpu: "0.5"
-      memory: 2Gi
+      memory: 4Gi
   zookeeper:
     requests:
       cpu: "0.1"

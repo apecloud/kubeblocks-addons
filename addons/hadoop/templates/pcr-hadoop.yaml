@@ -50,26 +50,11 @@ spec:
   componentDef:  {{ include "journalNodeComponentDef" . }}
   parametersDefs:
     - hadoop-hdfs-journalnode-pd
+    - hadoop-hdfs-core-pd
   configs:
     - name: hdfs-site.xml
       fileFormatConfig:
         format: xml
-
----
-apiVersion: parameters.kubeblocks.io/v1alpha1
-kind: ParamConfigRenderer
-metadata:
-  name: {{ printf "hadoop-hdfs-core-pcr-%s" $.Chart.Version }}
-  labels:
-    {{- include "hadoop.labels" . | nindent 4 }}
-  annotations:
-    {{- include "hadoop.annotations" . | nindent 4 }}
-spec:
-  componentDef:  {{ include "journalNodeComponentDef" . }}
-  parametersDefs:
-    - hadoop-hdfs-core-pd
-
-  configs:
     - name: core-site.xml
       fileFormatConfig:
         format: xml

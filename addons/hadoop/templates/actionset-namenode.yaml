@@ -10,7 +10,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ .Values.images.registry }}/{{ .Values.images.nameNode.repository }}:{{ .Values.images.nameNode.tag }}
+      image: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
       runOnTargetPodNode: false
       command:
       - bash
@@ -22,7 +22,7 @@ spec:
         intervalSeconds: 5
   restore:
     prepareData:
-      image: {{ .Values.images.registry }}/{{ .Values.images.nameNode.repository }}:{{ .Values.images.nameNode.tag }}
+      image: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
       command:
       - sh
       - -c

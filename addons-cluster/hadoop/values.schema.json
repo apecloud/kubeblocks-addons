@@ -5,23 +5,21 @@
     "replicas": {
       "type": "object",
       "properties": {
-        "core": { "type": "integer", "default": 1, "minimum": 1, "maximum": 5 },
         "journalnode": { "type": "integer", "default": 3, "minimum": 1, "maximum": 5 },
         "namenode": { "type": "integer", "default": 2, "minimum": 1, "maximum": 5 },
         "datanode": { "type": "integer", "default": 1, "minimum": 1, "maximum": 5 }
       },
-      "required": ["core", "journalnode", "namenode", "datanode"],
+      "required": ["journalnode", "namenode", "datanode"],
       "description": "Number of replicas for each component."
     },
     "resources": {
       "type": "object",
       "properties": {
-        "core": { "$ref": "#/definitions/resourceSchema" },
         "journalnode": { "$ref": "#/definitions/resourceSchema" },
         "namenode": { "$ref": "#/definitions/resourceSchema" },
         "datanode": { "$ref": "#/definitions/resourceSchema" }
       },
-      "required": ["core", "journalnode", "namenode", "datanode"],
+      "required": ["journalnode", "namenode", "datanode"],
       "description": "Resource requests and limits for each component."
     },
     "storage": {
