@@ -108,6 +108,25 @@ mongodb-scripts
 {{- end -}}
 
 {{/*
+Define parametersDefinition name
+*/}}
+{{- define "mongod.paramsDefName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+mongod-paramsdef-{{ .Chart.Version }}
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-mongod-paramsdef
+{{- end -}}
+{{- end -}}
+
+{{- define "mongos.paramsDefName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+mongos-paramsdef-{{ .Chart.Version }}
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-mongos-paramsdef
+{{- end -}}
+{{- end -}}
+
+{{/*
 Define parameter config renderername
 */}}
 {{- define "mongodb.pcrName" -}}
@@ -122,7 +141,7 @@ mongodb-pcr-{{ .Chart.Version }}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
 mongo-shard-pcr-{{ .Chart.Version }}
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-pcr
+{{- .Values.resourceNamePrefix -}}-shard-pcr
 {{- end -}}
 {{- end -}}
 
@@ -130,7 +149,7 @@ mongo-shard-pcr-{{ .Chart.Version }}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
 mongo-config-server-pcr-{{ .Chart.Version }}
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-pcr
+{{- .Values.resourceNamePrefix -}}-cfg-pcr
 {{- end -}}
 {{- end -}}
 
@@ -138,7 +157,7 @@ mongo-config-server-pcr-{{ .Chart.Version }}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
 mongo-mongos-pcr-{{ .Chart.Version }}
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-pcr
+{{- .Values.resourceNamePrefix -}}-mongos-pcr
 {{- end -}}
 {{- end -}}
 
