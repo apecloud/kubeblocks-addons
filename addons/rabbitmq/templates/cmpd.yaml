@@ -159,15 +159,11 @@ spec:
             name: rabbitmq-config
             subPath: enabled_plugins
   vars:
-    - name: CLUSTER_NAME
+    - name: KB_CLUSTER_NAME
       valueFrom:
         clusterVarRef:
           clusterName: Required
-    - name: CLUSTER_NAMESPACE
-      valueFrom:
-        clusterVarRef:
-          namespace: Required
-    - name: CLUSTER_UID
+    - name: KB_CLUSTER_UID
       valueFrom:
         clusterVarRef:
           clusterUID: Required

@@ -1,1 +1,1 @@
-{{ printf "%s" .CLUSTER_UID | b64enc }}
+{{ printf "%s" .KB_CLUSTER_UID | b64enc }}
