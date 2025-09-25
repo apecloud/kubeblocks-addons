@@ -17,7 +17,7 @@ generate_common_library $common_library_file
 Describe 'register_to_sentinel.sh'
 
   # load the scripts to be tested and dependencies
-  Include ../scripts/redis-register-to-sentinel.sh
+  Include ../scripts/falkordb-register-to-sentinel.sh
   Include $common_library_file
 
   init() {

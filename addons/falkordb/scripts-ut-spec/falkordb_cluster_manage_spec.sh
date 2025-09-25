@@ -742,7 +742,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       End
     End
 
-    Context "when failed to create redis cluster when initializing"
+    Context "when failed to create falkordb cluster when initializing"
       gen_initialize_redis_cluster_primary_node() {
         declare -gA initialize_redis_cluster_primary_nodes
         initialize_redis_cluster_primary_nodes["falkordb-shard-98x-0"]="10.42.0.1:6379"
@@ -770,10 +770,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
       After "un_setup"
 
-      It "exits with error when failed to create redis cluster when initializing"
+      It "exits with error when failed to create falkordb cluster when initializing"
         When run initialize_redis_cluster
         The status should be failure
-        The stderr should include "Failed to create redis cluster when initializing"
+        The stderr should include "Failed to create falkordb cluster when initializing"
       End
     End
 
@@ -814,7 +814,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       It "exits with error when failed to check slots covered"
         When run initialize_redis_cluster
         The status should be failure
-        The stderr should include "Failed to create redis cluster when checking slots covered"
+        The stderr should include "Failed to create falkordb cluster when checking slots covered"
         The stdout should include "FalkorDB cluster initialized primary nodes successfully, cluster nodes: 10.42.0.1:6379 10.42.0.5:6379 10.42.0.3:6379"
       End
     End

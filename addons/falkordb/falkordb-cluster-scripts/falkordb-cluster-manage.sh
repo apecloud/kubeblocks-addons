@@ -698,7 +698,7 @@ initialize_redis_cluster() {
   if create_redis_cluster "$primary_nodes"; then
     echo "FalkorDB cluster initialized primary nodes successfully, cluster nodes: $primary_nodes"
   else
-    echo "Failed to create redis cluster when initializing" >&2
+    echo "Failed to create falkordb cluster when initializing" >&2
     return 1
   fi
 
@@ -707,7 +707,7 @@ initialize_redis_cluster() {
   if check_slots_covered "$first_primary_node" "$SERVICE_PORT"; then
     echo "FalkorDB cluster check primary nodes slots covered successfully."
   else
-    echo "Failed to create redis cluster when checking slots covered" >&2
+    echo "Failed to create falkordb cluster when checking slots covered" >&2
     return 1
   fi
 

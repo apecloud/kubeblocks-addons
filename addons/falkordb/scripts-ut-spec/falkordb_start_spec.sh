@@ -8,7 +8,7 @@ should_skip_when_shell_type_and_version_invalid() {
     # should not skip
     return 1
   fi
-  echo "redis_start_spec.sh skip case because dependency bash version 4 or higher is not installed."
+  echo "falkordb_start_spec.sh skip case because dependency bash version 4 or higher is not installed."
   return 0
 }
 
@@ -21,11 +21,11 @@ generate_common_library $common_library_file
 
 Describe "FalkorDB Start Bash Script Tests"
   # load the scripts to be tested and dependencies
-  Include ../scripts/redis-start.sh
+  Include ../scripts/falkordb-start.sh
   Include $common_library_file
 
   init() {
-    # override name of redis related file defined in redis-start.sh because default conf /etc/redis/redis.conf does not exist
+    # override name of redis related file defined in falkordb-start.sh because default conf /etc/redis/redis.conf does not exist
     redis_real_conf="./redis.conf"
     redis_acl_file="./users.acl"
     redis_acl_file_bak="./users.acl.bak"
