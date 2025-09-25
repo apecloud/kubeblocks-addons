@@ -12,8 +12,6 @@ spec:
       components:
         - name: zookeeper
           compDef: zookeeper
-        - name: hadoop-core
-          compDef: hadoop-hdfs-core
         - name: journalnode
           compDef: hadoop-hdfs-journalnode
         - name: namenode
@@ -23,7 +21,6 @@ spec:
       orders:
         provision:
           - zookeeper
-          - hadoop-core
           - journalnode
           - namenode
           - datanode
@@ -31,15 +28,12 @@ spec:
           - datanode
           - namenode
           - journalnode
-          - hadoop-core
           - zookeeper
     - name: ha-cluster
       default: true
       components:
         - name: zookeeper
           compDef: zookeeper
-        - name: hadoop-core
-          compDef: hadoop-hdfs-core
         - name: journalnode
           compDef: hadoop-hdfs-journalnode
         - name: namenode
@@ -53,7 +47,6 @@ spec:
       orders:
         provision:
           - zookeeper
-          - hadoop-core
           - journalnode
           - namenode
           - datanode
@@ -65,12 +58,9 @@ spec:
           - datanode
           - namenode
           - journalnode
-          - hadoop-core
           - zookeeper
     - name: ha-ref-zk-cluster
       components:
-        - name: hadoop-core
-          compDef: hadoop-hdfs-core
         - name: journalnode
           compDef: hadoop-hdfs-journalnode
         - name: namenode
@@ -83,7 +73,6 @@ spec:
           compDef: hadoop-yarn-nodemanager
       orders:
         provision:
-          - hadoop-core
           - journalnode
           - namenode
           - datanode
@@ -95,4 +84,3 @@ spec:
           - datanode
           - namenode
           - journalnode
-          - hadoop-core

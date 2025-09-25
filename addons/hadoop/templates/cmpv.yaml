@@ -9,58 +9,50 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - datanode-3.3.4
+        - datanode-3.3.6
       compDefs:
         - hadoop-hdfs-datanode
     - releases:
-        - namenode-3.3.4
+        - namenode-3.3.6
       compDefs:
         - hadoop-hdfs-namenode
     - releases:
-        - journalnode-3.3.4
+        - journalnode-3.3.6
       compDefs:
         - hadoop-hdfs-journalnode
     - releases:
-        - core-3.3.4
-      compDefs:
-        - hadoop-hdfs-core
-    - releases:
-        - nodemanager-3.3.4
+        - nodemanager-3.3.6
       compDefs:
         - hadoop-yarn-nodemanager
     - releases:
-        - resourcemanager-3.3.4
+        - resourcemanager-3.3.6
       compDefs:
         - hadoop-yarn-resourcemanager
   releases:
-    - name: datanode-3.3.4
-      serviceVersion: 3.3.4
+    - name: datanode-3.3.6
+      serviceVersion: 3.3.6
       images:
-        hdfs-datanode: {{ .Values.images.registry }}/{{ .Values.images.dataNode.repository }}:{{ .Values.images.dataNode.tag }}
-        hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.dataNode.repository }}:{{ .Values.images.dataNode.tag }}
-    - name: core-3.3.4
-      serviceVersion: 3.3.4
+        hdfs-datanode: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
+        hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
+    - name: namenode-3.3.6
+      serviceVersion: 3.3.6
       images:
-        hadoop-core: {{ .Values.images.registry }}/{{ .Values.images.core.repository }}:{{ .Values.images.core.tag }}
-    - name: namenode-3.3.4
-      serviceVersion: 3.3.4
+        hdfs-namenode: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
+        hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
+        roleProbe: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
+    - name: journalnode-3.3.6
+      serviceVersion: 3.3.6
       images:
-        hdfs-namenode: {{ .Values.images.registry }}/{{ .Values.images.nameNode.repository }}:{{ .Values.images.nameNode.tag }}
-        hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.nameNode.repository }}:{{ .Values.images.nameNode.tag }}
-        roleProbe: {{ .Values.images.registry }}/{{ .Values.images.nameNode.repository }}:{{ .Values.images.nameNode.tag }}
-    - name: journalnode-3.3.4
-      serviceVersion: 3.3.4
+        hdfs-journalnode: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
+        hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
+    - name: nodemanager-3.3.6
+      serviceVersion: 3.3.6
       images:
-        hdfs-journalnode: {{ .Values.images.registry }}/{{ .Values.images.journalNode.repository }}:{{ .Values.images.journalNode.tag }}
-        hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.journalNode.repository }}:{{ .Values.images.journalNode.tag }}
-    - name: nodemanager-3.3.4
-      serviceVersion: 3.3.4
+        yarn-nodemanager: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
+        hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
+    - name: resourcemanager-3.3.6
+      serviceVersion: 3.3.6
       images:
-        yarn-nodemanager: {{ .Values.images.registry }}/{{ .Values.images.dataNode.repository }}:{{ .Values.images.dataNode.tag }}
-        hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.dataNode.repository }}:{{ .Values.images.dataNode.tag }}
-    - name: resourcemanager-3.3.4
-      serviceVersion: 3.3.4
-      images:
-        yarn-resourcemanager: {{ .Values.images.registry }}/{{ .Values.images.dataNode.repository }}:{{ .Values.images.dataNode.tag }}
-        hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.dataNode.repository }}:{{ .Values.images.dataNode.tag }}
-        roleProbe: {{ .Values.images.registry }}/{{ .Values.images.nameNode.repository }}:{{ .Values.images.dataNode.tag }}
+        yarn-resourcemanager: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
+        hadoop-common: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
+        roleProbe: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}

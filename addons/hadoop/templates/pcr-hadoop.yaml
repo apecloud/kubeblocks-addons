@@ -65,7 +65,7 @@ metadata:
   annotations:
     {{- include "hadoop.annotations" . | nindent 4 }}
 spec:
-  componentDef:  {{ include "coreComponentDef" . }}
+  componentDef:  {{ include "journalNodeComponentDef" . }}
   parametersDefs:
     - hadoop-hdfs-core-pd
 

@@ -17,5 +17,11 @@ data:
     {{- .Files.Get "scripts/start-resourcemanager.sh" | nindent 4 }}
   start-nodemanager.sh: |-
     {{- .Files.Get "scripts/start-nodemanager.sh" | nindent 4 }}
-  common-env.sh: |-
-    {{- .Files.Get "scripts/common-env.sh" | nindent 4 }}
+  common.sh: |-
+    {{- .Files.Get "scripts/common.sh" | nindent 4 }}
+  start-namenode.sh: |-
+    {{- .Files.Get "scripts/start-namenode.sh" | nindent 4 }}
+  start-journalnode.sh: |-
+    {{- .Files.Get "scripts/start-journalnode.sh" | nindent 4 }}
+  start-datanode.sh: |-
+    {{- .Files.Get "scripts/start-datanode.sh" | nindent 4 }}

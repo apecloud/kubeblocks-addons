@@ -19,30 +19,6 @@ spec:
         - serviceKind: zookeeper
           serviceVersion: "^*"
   runtime:
-    initContainers:
-      - name: hadoop-common
-        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
-        command:
-          - /bin/bash
-        args:
-          - -ec
-          - |
-            cp -r /opt/software/hadoop-3.3.4/* /opt/kubeemr/hadoop/hadoop-3.3.4
-            mkdir -p /hadoop/yarn/nodemanager
-            mkdir -p /home/hadoop
-            chown -R 10000:1000 /opt/kubeemr/hadoop/hadoop-3.3.4
-            chown -R 10000:1000 /hadoop/yarn/nodemanager
-            chown -R 10000:1000 /home/hadoop
-        securityContext:
-          runAsUser: 0
-        volumeMounts:
-          - name: hadoop-common
-            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
-          - name: yarn-nodemanager
-            mountPath: /hadoop
-            subPath: nodemanager
-          - name: home
-            mountPath: /home
     containers:
       - name: yarn-nodemanager
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
@@ -82,8 +58,6 @@ spec:
             path: /ws/v1/node
             port: 8042
         volumeMounts:
-          - name: hadoop-common
-            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
           - name: hadoop-core-config
             mountPath: /hadoop/conf/core-site.xml
             subPath: core-site.xml
@@ -104,8 +78,6 @@ spec:
             subPath: nodemanager
           - name: scripts
             mountPath: /kubeblocks/scripts
-          - name: home
-            mountPath: /home
         securityContext:
           runAsUser: 10000
           runAsGroup: 1000
@@ -137,6 +109,8 @@ spec:
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
   vars:
+    - name: HOME
+      value: /home/hadoop
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain | default "cluster.local" }}
     - name: RESOURCEMANAGER_COMPONENT_REPLICAS

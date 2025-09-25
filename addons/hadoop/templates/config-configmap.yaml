@@ -7,8 +7,6 @@ metadata:
 data:
   core-site.xml: |-
     {{- .Files.Get "config/core-site.xml" | nindent 4 }}
-  log4j.properties: |-
-    {{- .Files.Get "config/log4j.properties" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap

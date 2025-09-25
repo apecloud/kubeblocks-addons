@@ -6,7 +6,6 @@ fullnameOverride: ""
 
 # Replicas for each component
 replicas:
-  core: 1
   journalnode: 1
   namenode: 2
   datanode: 1
@@ -14,19 +13,12 @@ replicas:
   resourcemanager: 2
   nodemanager: 1
 
-serviceVersion: 3.3.4
+serviceVersion: 3.3.6
 
 zookeeperServiceVersion: 3.9.2
 
 # Resource requirements for each component
 resources:
-  core:
-    requests:
-      cpu: "0.5"
-      memory: 0.5Gi
-    limits:
-      cpu: "0.5"
-      memory: 2Gi
   journalnode:
     requests:
       cpu: "0.1"

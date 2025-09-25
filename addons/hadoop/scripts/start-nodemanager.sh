@@ -6,8 +6,9 @@ set -o pipefail
 # Load libraries
 . /opt/scripts/libs/liblog.sh
 . /opt/scripts/libs/lib.sh
-. /kubeblocks/scripts/common-env.sh
+. /kubeblocks/scripts/common.sh
 mkdir -p /hadoop/tmp
+mkdir -p /hadoop/yarn/nodemanager
 
 info "** Starting Node Manager **"
 # sleep 10000

@@ -20,27 +20,13 @@ spec:
             port: 8485
           - name: http
             port: 8480
+  serviceRefDeclarations:
+    - name: hadoopZookeeper
+      optional: true
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: "^*"
   runtime:
-    initContainers:
-      - name: hadoop-common
-        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
-        command:
-          - /bin/bash
-        args:
-          - -ec
-          - |
-            cp -r /opt/software/hadoop-3.3.4/* /opt/kubeemr/hadoop/hadoop-3.3.4
-            mkdir -p /hadoop/dfs/journal
-            chown -R 10000:1000 /hadoop/dfs/journal
-            chown -R 10000:1000 /opt/kubeemr/hadoop/hadoop-3.3.4
-        securityContext:
-          runAsUser: 0
-        volumeMounts:
-          - name: hadoop-common
-            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
-          - name: edits-dir
-            mountPath: /hadoop/dfs/journal
-            subPath: journal
     containers:
       - name: hdfs-journalnode
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
@@ -55,6 +41,11 @@ spec:
           # need zookeeper endpoints
           - name: WAIT_ZK_TO_READY
             value: "false"
+        command:
+         - bash
+         - -c
+         - |
+           /kubeblocks/scripts/start-journalnode.sh
         livenessProbe:
           failureThreshold: 6
           initialDelaySeconds: 30
@@ -76,12 +67,10 @@ spec:
               - /bin/bash
               - /kubeblocks/scripts/check-journal-status.sh
         volumeMounts:
-          - name: hadoop-common
-            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
           - name: edits-dir
-            mountPath: /hadoop/dfs/journal
+            mountPath: /hadoop
             subPath: journal
-          - name: hadoop-core-config
+          - name: core-config
             mountPath: /hadoop/conf/core-site.xml
             subPath: core-site.xml
           - name: journalnode-config
@@ -110,6 +99,8 @@ spec:
       - name: hadoop-common
         emptyDir: {}
   vars:
+    - name: HOME
+      value: /home/hadoop
     - name: JOURNALNODE_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
@@ -133,11 +124,31 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: ZOOKEEPER_COMP_ENDPOINTS
+      valueFrom:
+        componentVarRef:
+          compDef: zookeeper
+          optional: true
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .ZOOKEEPER_COMP_ENDPOINTS }}{{ range $idx, $host := $hosts }}{{ $host }}:2181{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
+    - name: ZOOKEEPER_ENDPOINTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hadoopZookeeper
+          optional: true
+          endpoint: Required
+      expression: {{ `{{if ne (index . "ZOOKEEPER_ENDPOINTS") ""}}{{.ZOOKEEPER_ENDPOINTS}}{{else}}{{.ZOOKEEPER_COMP_ENDPOINTS}}{{end}}` | toYaml }}
   configs:
     - name: config
       namespace: {{ .Release.Namespace }}
       template: hadoop-journalnode-config-template
       volumeName: journalnode-config
+      defaultMode: 0755
+      externalManaged: true
+    - name: core-config
+      namespace: {{ .Release.Namespace }}
+      template: hadoop-core-config-template
+      volumeName: core-config
       defaultMode: 0755
       externalManaged: true
   scripts:
