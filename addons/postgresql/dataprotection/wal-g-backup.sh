@@ -27,7 +27,12 @@ function config_wal_g() {
     walg_env=${walg_dir}/env
     mkdir -p ${walg_dir}/env
     cp /etc/datasafed/datasafed.conf ${walg_dir}/datasafed.conf
-    cp /usr/bin/wal-g ${walg_dir}/wal-g
+
+    if [ ! -f "${walg_dir}/wal-g" ]; then
+        DP_log "wal-g binary not found at ${walg_dir}/wal-g, exiting..."
+        exit 1
+    fi
+
     datasafed_base_path=${1:?missing datasafed_base_path}
     # config wal-g env
     # config WALG_PG_WAL_SIZE with wal_segment_size which fetched by psql
