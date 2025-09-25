@@ -17,7 +17,7 @@ image:
     tag: 3.0.0
   init:
     repository: apecloud/spilo-init
-    tag: "0.1"
+    tag: "0.2"
 
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
