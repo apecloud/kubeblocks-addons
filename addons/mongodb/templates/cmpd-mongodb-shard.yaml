@@ -87,29 +87,21 @@ spec:
         command:
           - /bin/sh
           - -c
-          - |
-            /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
+          - /scripts/mongodb-member-leave.sh > /tmp/member-leave.log 2>&1
     switchover:
       exec:
         container: mongodb
         command:
           - /bin/sh
           - -c
-          - |
-
-            if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
-                echo "switchover not triggered for primary, nothing to do, exit 0."
-                exit 0
-            fi
-
-            /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
+          - /scripts/mongodb-switchover.sh > /tmp/switchover.log 2>&1
     postProvision:
       exec:
         container: mongodb
         command:
           - /bin/bash
           - -c
-          - /scripts/mongodb-shard-manage.sh --post-provision
+          - /scripts/mongodb-shard-manage.sh --post-provision > /tmp/post-provision.log 2>&1
         targetPodSelector: Role
         matchingKey: primary
       preCondition: RuntimeReady
@@ -121,7 +113,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/mongodb-shard-manage.sh --pre-terminate
+          - /scripts/mongodb-shard-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
         targetPodSelector: Role
         matchingKey: primary
       retryPolicy:
