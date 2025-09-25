@@ -13,9 +13,20 @@ set -o pipefail
 . /opt/scripts/libs/lib.sh
 
 # Load JournalNode environment variables
-. /opt/scripts/hive/3.1.3/metastore/env.sh
+. /opt/scripts/hive/env.sh
 
 print_welcome_page
+mkdir -p /hive/metadata
+mkdir -p /hive/conf
+
+cat > ${HOME}/.bashrc <<EOF
+export HIVE_HOME_DIR=/opt/hive
+export HIVE_CONF_DIR=/hive/conf
+export HIVE_DATA_DIR=/hive/metadata
+export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin:$HIVE_HOME/bin:$HIVE_HOME/sbin
+export HADOOP_CONF_DIR=/hadoop/conf
+export HADOOP_LOG_DIR=/hadoop/logs
+EOF
 
 cp /hive/base-conf/hive-site.xml $HIVE_CONF_DIR/hive-site.xml
 MYSQL_PASSWORD=$COMPONENT_MYSQL_PASSWORD
@@ -38,7 +49,7 @@ if [[ $DEBUG_MODEL == true ]]; then
 fi
 
 info "** Starting HMS setup **"
-/opt/scripts/hive/3.1.3/metastore/post-start.sh
+/opt/scripts/hive/post-start.sh
 info "** HMS setup finished! **"
 
 START_COMMAND=("${HIVE_HOME_DIR}/bin/hive" "--service" "metastore")

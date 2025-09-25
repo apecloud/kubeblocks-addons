@@ -1,9 +1,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: hive-metastore-scripts
+  name: hive-scripts
   labels:
     {{- include "hive.labels" . | nindent 4 }}
 data:
   start-hive.sh: |-
     {{- .Files.Get "scripts/start-hive.sh" | nindent 4 }}
+  start-hiveserver2.sh: |-
+    {{- .Files.Get "scripts/start-hiveserver2.sh" | nindent 4 }}

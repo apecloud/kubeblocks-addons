@@ -9,12 +9,19 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - v3.1.3
+        - metastaore-3.1.3
       compDefs:
         - hive-metastore
+    - releases:
+        - server2-3.1.3
+      compDefs:
+        - hive-server2
   releases:
-    - name: v3.1.3
-      serviceVersion: v3.1.3
+    - name: metastaore-3.1.3
+      serviceVersion: 3.1.3
       images:
-        hadoop-common: "{{ .Values.metastore.image.repository }}/apecloud/hadoop-common:v3.3.4"
-        hive-metastore: "{{ .Values.metastore.image.repository }}:{{ .Values.metastore.image.tag }}"
+        hive-metastore: "{{ .Values.hive.image.repository }}:{{ .Values.hive.image.tag }}"
+    - name: server2-3.1.3
+      serviceVersion: 3.1.3
+      images:
+        hive-server2: "{{ .Values.hive.image.repository }}:{{ .Values.hive.image.tag }}"

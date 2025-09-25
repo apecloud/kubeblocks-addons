@@ -16,14 +16,14 @@
     </property>
     <property>
         <name>yarn.app.mapreduce.am.env</name>
-        <value>HADOOP_MAPRED_HOME=/opt/hadoop-{{ .SERVICE_VERSION }}</value>
+        <value>HADOOP_MAPRED_HOME=/opt/hadoop</value>
     </property>
     <property>
         <name>mapreduce.map.env</name>
-        <value>HADOOP_MAPRED_HOME=/opt/hadoop-{{ .SERVICE_VERSION }}</value>
+        <value>HADOOP_MAPRED_HOME=/opt/hadoop</value>
     </property>
     <property>
         <name>mapreduce.reduce.env</name>
-        <value>HADOOP_MAPRED_HOME=/opt/hadoop-{{ .SERVICE_VERSION }}</value>
+        <value>HADOOP_MAPRED_HOME=/opt/hadoop</value>
     </property>
 </configuration>

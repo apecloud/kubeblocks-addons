@@ -15,19 +15,23 @@ spec:
           compDef: hive-metastore
         - name: mysql
           compDef: mysql-\d+.*
+        - name: server2
+          compDef: hive-server2
       orders:
         provision:
           - mysql
-          - metastore
+          - metastore,server2
         terminate:
-          - metastore
+          - metastore,server2
           - mysql
     - name: external-mysql-hive-cluster
       components:
       - name: metastore
         compDef: hive-metastore
+      - name: server2
+        compDef: hive-server2
       orders:
         provision:
-        - metastore
+        - metastore,server2
         terminate:
-        - metastore
+        - metastore,server2

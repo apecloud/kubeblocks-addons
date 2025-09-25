@@ -24,40 +24,13 @@ spec:
         - serviceKind: mysql
           serviceVersion: "^*"
   runtime:
-    initContainers:
-      - name: hadoop-common
-        imagePullPolicy: IfNotPresent
-        command:
-          - /bin/bash
-        args:
-          - -ec
-          - |
-            cp -r /opt/software/hadoop-3.3.4/* /opt/kubeemr/hadoop/hadoop-3.3.4
-            mkdir -p /hive/metadata
-            mkdir -p /hive/conf
-            mkdir -p /home/hadoop
-            chown -R 10000:1000 /home/hadoop
-            chown -R 10000:1000 /hive/metadata
-            chown -R 10000:1000 /hive/conf
-            chown -R 10000:1000 /opt/kubeemr/hadoop/hadoop-3.3.4
-        securityContext:
-          runAsUser: 0
-        volumeMounts:
-          - name: hadoop-common
-            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
-          - name: metadata
-            mountPath: /hive
-            subPath: metadata
-          - name: home-volume
-            mountPath: /home
     containers:
       - name: hive-metastore
-        imagePullPolicy: {{ default "IfNotPresent" .Values.metastore.image.pullPolicy }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.hive.image.pullPolicy }}
         command:
           - /bin/bash
           - -c
           - |
-            # sleep 100
             /kubeblocks/scripts/start-hive.sh
         ports:
           - containerPort: 9083
@@ -70,8 +43,6 @@ spec:
               fieldRef:
                 fieldPath: metadata.name
         volumeMounts:
-          - name: hadoop-common
-            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
           - name: metadata
             mountPath: /hive
             subPath: metadata
@@ -93,10 +64,8 @@ spec:
           - name: hadoop-yarn-config
             mountPath: /hadoop/conf/mapred-site.xml
             subPath: mapred-site.xml
-          - name: hive-metastore-scripts
+          - name: hive-scripts
             mountPath: /kubeblocks/scripts
-          - name: home-volume
-            mountPath: /home
         securityContext:
           runAsUser: 10000
           runAsGroup: 1000
@@ -111,10 +80,9 @@ spec:
       fsGroupChangePolicy: Always
       fsGroup: 1000
     updateStrategy: BestEffortParallel
-    volumes:
-      - name: hadoop-common
-        emptyDir: {}
   vars:
+    - name: HOME
+      value: /home/hadoop
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain | default "cluster.local" }}
     - name: CLUSTER_NAMESPACE
@@ -174,6 +142,6 @@ spec:
   scripts:
     - name: scripts
       namespace: {{ .Release.Namespace }}
-      template: hive-metastore-scripts
-      volumeName: hive-metastore-scripts
+      template: hive-scripts
+      volumeName: hive-scripts
       defaultMode: 0755

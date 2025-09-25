@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<configuration>
+    <property>
+        <name>hive.server2.thrift.bind.host</name>
+        <value>0.0.0.0</value>
+    </property>
+    <property>
+        <name>hive.server2.thrift.port</name>
+        <value>10000</value>
+    </property>
+    <property>
+        <name>hive.metastore.uris</name>
+        <value>{{ .METASTORE_ENDPOINTS }}</value>
+    </property>
+</configuration>

@@ -32,7 +32,7 @@ spec:
     {{- end }}
     - name: metastore
       componentDef: hive-metastore
-      serviceVersion: {{ .Values.serviceVersion.metastore }}
+      serviceVersion: {{ .Values.serviceVersion.hive }}
       {{- if .Values.serviceRefs.enable }}
       serviceRefs:
         - name: hive-mysql-metadb
@@ -58,7 +58,7 @@ spec:
       volumes:
         - name: hadoop-core-config
           configMap:
-            name: {{ .Values.hadoopCluster }}-hadoop-core-config
+            name: {{ .Values.hadoopCluster }}-journalnode-core-config
         - name: hadoop-hdfs-config
           configMap:
             name: {{ .Values.hadoopCluster }}-namenode-config
@@ -73,3 +73,14 @@ spec:
             resources:
               requests:
                 storage: {{ .Values.storage.metastore }}
+    - name: server2
+      componentDef: hive-server2
+      serviceVersion: {{ .Values.serviceVersion.hive }}
+      replicas: {{ .Values.replicas.metastore }}
+      resources:
+        requests:
+          cpu: {{ .Values.resources.server2.requests.cpu | quote }}
+          memory: {{ .Values.resources.server2.requests.memory }}
+        limits:
+          cpu: {{ .Values.resources.server2.limits.cpu | quote }}
+          memory: {{ .Values.resources.server2.limits.memory }}
