@@ -23,7 +23,7 @@ KubeBlocks add-ons.
 | elasticsearch | elasticsearch-6.8.23<br>elasticsearch-7.10.1<br>elasticsearch-7.7.1<br>elasticsearch-7.8.1<br>elasticsearch-8.1.3<br>elasticsearch-8.15.5<br>elasticsearch-8.8.2<br>kibana-6.8.23<br>kibana-7.10.1<br>kibana-7.7.1<br>kibana-7.8.1<br>kibana-8.1.3<br>kibana-8.15.5<br>kibana-8.8.2<br>kibana-8.9.1 | Elasticsearch is a distributed, RESTful search engine optimized for speed and relevance on production-scale workloads. | iziang vipshop |
 | etcd | etcd-3.5.15<br>etcd-3.5.6<br>etcd-3.6.1 | Etcd is a strongly consistent, distributed key-value store that provides a reliable way to store data that needs to be accessed by a distributed system or cluster of machines. | ApeCloud |
 | greptimedb | greptimedb-0.3.2 | An open-source, cloud-native, distributed time-series database with PromQL/SQL/Python supported. | GreptimeTeam sh2 |
-| hadoop |  | A Helm chart for Kubernetes |  |
+| hadoop | hadoop-3.3.6 | A Helm chart for Kubernetes |  |
 | hive | hive-v3.1.3 | A Helm chart for Kubernetes |  |
 | influxdb | influxdb-2.7.11 | InfluxDB(TM) is an open source time-series database. It is a core component of the TICK (Telegraf, InfluxDB(TM), Chronograf, Kapacitor) stack. |  |
 | kafka | kafka-broker-2.7.0<br>kafka-broker-2.8.2<br>kafka-broker-3.3.2<br>kafka-combine-3.3.2<br>kafka-controller-3.3.2<br>kafka-exporter-1.6.0 | Apache Kafka is a distributed streaming platform designed to build real-time pipelines and can be used as a message broker or as a replacement for a log aggregation solution for big data applications. | caiq1nyu vipshop |
