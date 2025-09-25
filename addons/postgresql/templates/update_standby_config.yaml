@@ -37,7 +37,7 @@ spec:
         podSpec:
           containers:
             - name: update-config
-              image: {{ include "postgresql.imageByVersion" (dict "major" "16" "minor" "16.9.0" "root" $) }}
+              image: {{ include "postgresql.initImage" . }}
               imagePullPolicy: IfNotPresent
               command:
                 - bash
