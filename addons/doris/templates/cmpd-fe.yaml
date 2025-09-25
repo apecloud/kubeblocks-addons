@@ -204,20 +204,32 @@ spec:
         successThreshold: 1
         timeoutSeconds: 1
         initialDelaySeconds: 15
-  # lifecycleActions:
-  #   roleProbe:
-  #     initialDelaySeconds: 30
-  #     periodSeconds: 15
-  #     exec:
-  #       container: fe
-  #       command:
-  #         - bash
-  #         - -c
-  #         - /opt/apache-doris/scripts/fe_role_probe.sh
-  # roles:
-  #   - name: follower
-  #     updatePriority: 2
-  #     participatesInQuorum: false
-  #   - name: observer
-  #     updatePriority: 1
-  #     participatesInQuorum: false
+  lifecycleActions:
+    roleProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      exec:
+        container: fe
+        command:
+          - bash
+          - -c
+          - /opt/apache-doris/scripts/fe_role_probe.sh
+    memberLeave:
+      exec:
+        command:
+        - /bin/bash
+        - -c
+        - |
+          {{- .Files.Get "scripts/fe_member_leave.sh" | nindent 10 }}
+        targetPodSelector: Any
+        container: fe
+  roles:
+    - name: master
+      updatePriority: 3
+      participatesInQuorum: true
+    - name: follower
+      updatePriority: 2
+      participatesInQuorum: true
+    - name: observer
+      updatePriority: 1
+      participatesInQuorum: false
