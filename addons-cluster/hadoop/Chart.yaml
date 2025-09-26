@@ -1,0 +1,25 @@
+apiVersion: v2
+name: hadoop-cluster
+description: A Hadoop cluster Helm chart for KubeBlocks.
+
+type: application
+
+version: 0.9.1
+
+appVersion: 3.3.4
+
+dependencies:
+  - name: kblib
+    version: 0.1.2
+    repository: file://../kblib
+    alias: extra
+
+home: https://hadoop.apache.org/
+icon: https://hadoop.apache.org/hadoop-logo.jpg
+keywords:
+  - bigdata
+  - mapreduce
+
+maintainers:
+  - name: ApeCloud
+    url: https://kubeblocks.io/

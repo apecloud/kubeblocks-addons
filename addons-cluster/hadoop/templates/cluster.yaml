@@ -1,0 +1,174 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ include "kblib.clusterName" . }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: Delete
+  clusterDef: hadoop
+  topology: {{ .Values.topology }}
+  componentSpecs:
+    {{- if eq .Values.topology "ha-cluster"  }}
+    - name: zookeeper
+      componentDef: zookeeper
+      serviceVersion: {{ .Values.zookeeperServiceVersion }}
+      replicas: {{ .Values.replicas.zookeeper }}
+      resources:
+        requests:
+          cpu: {{ .Values.resources.zookeeper.requests.cpu | quote }}
+          memory: {{ .Values.resources.zookeeper.requests.memory }}
+        limits:
+          cpu: {{ .Values.resources.zookeeper.limits.cpu | quote }}
+          memory: {{ .Values.resources.zookeeper.limits.memory }}
+    {{- end }}
+    - name: journalnode
+      componentDef: hadoop-hdfs-journalnode
+      serviceVersion: {{ .Values.serviceVersion }}
+      replicas: {{ .Values.replicas.journalnode }}
+      {{- if eq .Values.topology "ha-ref-zk-cluster" }}
+      serviceRefs:
+        - name: hadoopZookeeper
+          namespace: {{ .Values.serviceRefs.hadoopZookeeper.namespace }}
+          clusterServiceSelector:
+            cluster: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.cluster }}
+            service:
+              component: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.component }}
+              service: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.service }}
+              port: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.port }}
+      {{- end }}
+      resources:
+        requests:
+          cpu: {{ .Values.resources.journalnode.requests.cpu | quote }}
+          memory: {{ .Values.resources.journalnode.requests.memory }}
+        limits:
+          cpu: {{ .Values.resources.journalnode.limits.cpu | quote  }}
+          memory: {{ .Values.resources.journalnode.limits.memory }}
+      volumeClaimTemplates:
+        - name: edits-dir
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ .Values.storage.journalnode }}
+    - name: namenode
+      componentDef: hadoop-hdfs-namenode
+      serviceVersion: {{ .Values.serviceVersion }}
+      {{- if eq .Values.topology "ha-ref-zk-cluster"  }}
+      serviceRefs:
+        - name: hadoopZookeeper
+          namespace: {{ .Values.serviceRefs.hadoopZookeeper.namespace }}
+          clusterServiceSelector:
+            cluster: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.cluster }}
+            service:
+              component: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.component }}
+              service: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.service }}
+              port: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.port }}
+      {{- end }}
+      replicas: {{ .Values.replicas.namenode }}
+      resources:
+        requests:
+          cpu: {{ .Values.resources.namenode.requests.cpu | quote }}
+          memory: {{ .Values.resources.namenode.requests.memory }}
+        limits:
+          cpu: {{ .Values.resources.namenode.limits.cpu | quote }}
+          memory: {{ .Values.resources.namenode.limits.memory }}
+      volumes:
+        - name: hadoop-core-config
+          configMap:
+            name: {{ include "kblib.clusterName" . }}-journalnode-core-config
+      volumeClaimTemplates:
+        - name: metadata-dir
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ .Values.storage.namenode }}
+    - name: datanode
+      componentDef: hadoop-hdfs-datanode
+      replicas: {{ .Values.replicas.datanode }}
+      serviceVersion: {{ .Values.serviceVersion }}
+      resources:
+        requests:
+          cpu: {{ .Values.resources.datanode.requests.cpu | quote }}
+          memory: {{ .Values.resources.datanode.requests.memory }}
+        limits:
+          cpu: {{ .Values.resources.datanode.limits.cpu | quote }}
+          memory: {{ .Values.resources.datanode.limits.memory }}
+      volumes:
+        - name: hadoop-core-config
+          configMap:
+            name: {{ include "kblib.clusterName" . }}-journalnode-core-config
+      volumeClaimTemplates:
+      - name: data
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ .Values.storage.datanode }}
+    - name: resourcemanager
+      componentDef: hadoop-yarn-resourcemanager
+      replicas: {{ .Values.replicas.resourcemanager }}
+      serviceVersion: {{ .Values.serviceVersion }}
+      {{- if eq .Values.topology "ha-ref-zk-cluster" }}
+      serviceRefs:
+        - name: hadoopZookeeper
+          namespace: {{ .Values.serviceRefs.hadoopZookeeper.namespace }}
+          clusterServiceSelector:
+            cluster: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.cluster }}
+            service:
+              component: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.component }}
+              service: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.service }}
+              port: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.port }}
+      {{- end }}
+      resources:
+        requests:
+          cpu: {{ .Values.resources.resourcemanager.requests.cpu | quote }}
+          memory: {{ .Values.resources.resourcemanager.requests.memory }}
+        limits:
+          cpu: {{ .Values.resources.resourcemanager.limits.cpu | quote }}
+          memory: {{ .Values.resources.resourcemanager.limits.memory }}
+      volumes:
+        - name: hadoop-core-config
+          configMap:
+            name: {{ include "kblib.clusterName" . }}-journalnode-core-config
+        - name: hadoop-namenode-config
+          configMap:
+            name: {{ include "kblib.clusterName" . }}-namenode-config
+      volumeClaimTemplates:
+        - name: resourcemanager
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ .Values.storage.resourcemanager }}
+    - name: nodemanager
+      componentDef: hadoop-yarn-nodemanager
+      replicas: {{ .Values.replicas.nodemanager }}
+      serviceVersion: {{ .Values.serviceVersion }}
+      resources:
+        requests:
+          cpu: {{ .Values.resources.nodemanager.requests.cpu | quote }}
+          memory: {{ .Values.resources.nodemanager.requests.memory }}
+        limits:
+          cpu: {{ .Values.resources.nodemanager.limits.cpu | quote }}
+          memory: {{ .Values.resources.nodemanager.limits.memory }}
+      volumes:
+        - name: hadoop-core-config
+          configMap:
+            name: {{ include "kblib.clusterName" . }}-journalnode-core-config
+        - name: hadoop-namenode-config
+          configMap:
+            name: {{ include "kblib.clusterName" . }}-namenode-config
+      volumeClaimTemplates:
+          - name: nodemanager
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: {{ .Values.storage.nodemanager }}
