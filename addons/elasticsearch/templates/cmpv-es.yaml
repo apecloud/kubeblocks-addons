@@ -27,11 +27,7 @@ spec:
     serviceVersion: {{ index . 1 }}
     images:
       elasticsearch: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
-{{- if eq $.Values.image.plugin.tag (index . 2) }}
       prepare-plugins: {{ $imageRegistry }}/{{ $.Values.image.plugin.repository }}:{{ $.Values.image.plugin.tag }}
-{{- else }}
-      prepare-plugins: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
-{{- end }}
       install-plugins: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
       exporter: {{ $imageRegistry }}/{{ $.Values.image.exporter.repository }}:{{ $.Values.image.exporter.tag }}
       memberleave: {{ $imageRegistry }}/{{ $.Values.image.tools.repository }}:{{ $.Values.image.tools.tag }}

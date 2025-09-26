@@ -24,7 +24,7 @@ image:
   # refer: addons/elasticsearch/plugins/Dockerfile
   plugin:
     repository: apecloud/elasticsearch-plugins
-    tag: "8.8.2"
+    tag: "0.1.0"
   tools:
     repository: apecloud/curl-jq
     tag: 0.1.0
