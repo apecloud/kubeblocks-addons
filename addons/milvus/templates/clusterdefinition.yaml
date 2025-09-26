@@ -28,7 +28,7 @@ spec:
         builtIn: false
         exporterConfig:
           scrapePath: /metrics
-          scrapePort: 9187
+          scrapePort: 9091
       configSpecs:
         - name: config
           templateRef: milvus-config-template-{{ .Chart.Version }}
