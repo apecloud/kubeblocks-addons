@@ -47,10 +47,10 @@ spec:
             mountPath: /hive
             subPath: metadata
           - name: hive-metastore-config
-            mountPath: /hive/base-conf/hive-site.xml
+            mountPath: /hive/conf/hive-site.xml
             subPath: hive-site.xml
           - name: hive-metastore-config
-            mountPath: /hive/base-conf/hive-log4j2.properties
+            mountPath: /hive/conf/hive-log4j2.properties
             subPath: hive-log4j2.properties
           - name: hadoop-core-config
             mountPath: /hadoop/conf/core-site.xml

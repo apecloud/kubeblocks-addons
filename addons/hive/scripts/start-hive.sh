@@ -28,24 +28,25 @@ export HADOOP_CONF_DIR=/hadoop/conf
 export HADOOP_LOG_DIR=/hadoop/logs
 EOF
 
-cp /hive/base-conf/hive-site.xml $HIVE_CONF_DIR/hive-site.xml
-cp /hive/base-conf/hive-log4j2.properties $HIVE_CONF_DIR/hive-log4j2.properties
+
 MYSQL_PASSWORD=$COMPONENT_MYSQL_PASSWORD
 if [ -z $COMPONENT_MYSQL_PASSWORD ]; then
    MYSQL_PASSWORD=${METADB_MYSQL_PASSWORD}
 fi
-sed -i "/<\/configuration>/i \
-    <property>\
-        <name>javax.jdo.option.ConnectionPassword</name>\
-        <value>${MYSQL_PASSWORD}</value>\
-    </property>" $HIVE_CONF_DIR/hive-site.xml
+
+if [ -f /hive/metadata/hive.jceks ]; then
+  info "hive.jceks already exists, skip creating"
+else
+  info "creating hive.jceks"
+  hadoop credential create javax.jdo.option.ConnectionPassword -provider jceks://file/hive/metadata/hive.jceks -value $MYSQL_PASSWORD
+fi
 
 if [[ $DEBUG_MODEL == true ]]; then
   info ************** env-start **************
   env
   info ************** env-end **************
   info ************** conf-start **************
-  cat /hive/base-conf/hive-site.xml
+  cat /hive/hive-site.xml
   info ************** conf-start **************
 fi
 

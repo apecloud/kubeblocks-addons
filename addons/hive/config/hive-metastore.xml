@@ -5,6 +5,7 @@
         <name>hive.metastore.uris</name>
         <value>{{ .METASTORE_ENDPOINTS }}</value>
     </property>
+
     <property>
         <name>javax.jdo.option.ConnectionURL</name>
         <value>jdbc:mysql://{{- .METADB_MYSQL_ENDPOINTS }}:3306/hive_metadata?allowPublicKeyRetrieval=true&amp;createDatabaseIfNotExist=true&amp;useSSL=false</value>
@@ -16,6 +17,11 @@
     <property>
         <name>javax.jdo.option.ConnectionUserName</name>
         <value>{{ .METADB_MYSQL_USERNAME }}</value>
+    </property>
+
+    <property>
+        <name>hadoop.security.credential.provider.path</name>
+        <value>jceks://file/hive/metadata/hive.jceks</value>
     </property>
     <property>
         <name>hive.metastore.warehouse.dir</name>
