@@ -4,25 +4,31 @@ fe:
   replicas: 3
   resources:
     limits:
-        cpu: 4
-        memory: 4
+      cpu: 1
+      memory: 2
     requests:
-        cpu: 4
-        memory: 4
-  storageClassName:
-  storage: 20
+      cpu: 1
+      memory: 2
+  persistence:
+    storageClassName: ""
+    storages:
+      metadata: 10
+      log: 10
 
 be:
   replicas: 3
   resources:
     limits:
-      cpu: 2
-      memory: 4
+      cpu: 1
+      memory: 2
     requests:
-      cpu: 2
-      memory: 4
-  storageClassName:
-  storage: 20
+      cpu: 1
+      memory: 2
+  persistence:
+    storageClassName: ""
+    storages:
+      data: 20
+      log: 10
 
 nameOverride: ""
 

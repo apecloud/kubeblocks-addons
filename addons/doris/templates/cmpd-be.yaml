@@ -41,6 +41,7 @@ spec:
   volumes:
   - name: data
     needSnapshot: true
+  - name: log
   scripts:
   - name: scripts
     template: {{ include "be.scriptsTemplate" . }}
@@ -76,6 +77,8 @@ spec:
           compDef: {{ include "fe.componentDefName" . }}
           name: fe
           host: Required
+    - name: FE_DISCOVERY_ADDR
+      value: $(FE_DISCOVERY_SERVICE_NAME).$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}
     - name: FE_QUERY_PORT
       value: "9030"
     - name: DORIS_USER
@@ -92,6 +95,13 @@ spec:
           name: root
           optional: false
           password: Required
+    - name: MYSQL_PWD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "fe.componentDefName" . }}
+          name: root
+          optional: false
+          password: Required  
   runtime:
     # securityContext:
     #   sysctls:
@@ -169,10 +179,19 @@ spec:
           path: /api/health
           port: 8040
         periodSeconds: 5
-        failureThreshold: 3
+        failureThreshold: 10
         successThreshold: 1
         timeoutSeconds: 1
-        initialDelaySeconds: 30
+        initialDelaySeconds: 15
+      readinessProbe:
+        httpGet:
+          path: /api/health
+          port: 8040
+        periodSeconds: 5
+        failureThreshold: 10
+        successThreshold: 1
+        timeoutSeconds: 1
+        initialDelaySeconds: 15
       volumeMounts:
       - mountPath: /opt/apache-doris/be/conf/be.conf
         name: be-cm
@@ -183,6 +202,3 @@ spec:
         name: log
       - mountPath: /opt/apache-doris/scripts
         name: scripts
-    volumes:
-    - name: log
-      emptyDir: {}

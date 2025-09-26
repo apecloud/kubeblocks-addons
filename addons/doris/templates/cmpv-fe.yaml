@@ -18,3 +18,4 @@ spec:
     images:
       fe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:2.1.6
       roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:2.1.6
+      memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:2.1.6

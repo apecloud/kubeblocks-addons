@@ -35,7 +35,7 @@ log_message() {
         message="$(cat)"
     fi
     local timestamp="$(date -Iseconds)"
-    printf '%s [%s] [Entrypoint]: %s\n' "${timestamp}" "${level}" "${message}"
+    printf '%s [%s] [INIT_BE]: %s\n' "${timestamp}" "${level}" "${message}"
 }
 
 log_info() {

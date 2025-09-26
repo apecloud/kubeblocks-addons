@@ -24,7 +24,7 @@ readonly DORIS_HOME="/opt/apache-doris"
 readonly MAX_RETRY_TIMES=60
 readonly RETRY_INTERVAL=1
 readonly FE_CONFIG_FILE="${DORIS_HOME}/fe/conf/fe.conf"
-
+readonly FOLLOWER_NUMBER=3
 cp /etc/config/fe.conf ${FE_CONFIG_FILE}
 
 # Log Function
@@ -94,6 +94,10 @@ setup_election_mode() {
     local found=false
     local pod_name="${HOSTNAME}"
     for i in "${!pod_name_array[@]}"; do
+        if [[ $i -ge ${FOLLOWER_NUMBER:-3} ]]; then
+            is_observer_fe="true"
+        fi
+
         if [[ "${pod_name_array[i]}" == "${pod_name}" ]]; then
             current_fe_ip="${fqdn_array[i]}"
             current_fe_port="${fe_edit_log_port}"
@@ -154,6 +158,7 @@ setup_fe_node() {
         log_info "Meta Directory: ${DORIS_HOME}/fe/doris-meta"
     else
         log_info "Is Master: ${is_master_fe}"
+        log_info "Is Observer: ${is_observer_fe}"
         log_info "Master FE IP: ${master_fe_ip}"
         log_info "Master FE Port: ${master_fe_port}"
         log_info "Current FE IP: ${current_fe_ip}"
@@ -162,6 +167,7 @@ setup_fe_node() {
             log_info "FE HOST: ${HOSTNAME}"
             log_info "FE Servers: ${POD_FQDN_LIST}"
         fi
+
     fi
     log_info "=========================="
 }
@@ -186,7 +192,7 @@ start_fe() {
 # Check whether the FE node is registered
 check_fe_registered() {
     local query_result
-    query_result=$(mysql -uroot -P"${FE_QUERY_PORT}" -h"${master_fe_ip}"  \
+    query_result=$(mysql -uroot -P"${FE_QUERY_PORT}" -h"${master_fe_ip}" -p"${DORIS_PASSWORD}" \
         -N -e "SHOW FRONTENDS" 2>/dev/null | grep -w "${current_fe_ip}" | grep -w "${current_fe_port}" || true)
         
     if [ -n "$query_result" ]; then
@@ -212,7 +218,7 @@ register_fe() {
         log_info "Master FE node does not need registration"
         return
     fi
-
+    local fe_role=${1:-"FOLLOWER"}
     # First check if the node is registered
     if check_fe_registered; then
         return
@@ -220,8 +226,8 @@ register_fe() {
 
     local retry_count=0
     while [ $retry_count -lt $MAX_RETRY_TIMES ]; do
-        if mysql -uroot -P"${FE_QUERY_PORT}" -h"${master_fe_ip}" \
-            -e "ALTER SYSTEM ADD FOLLOWER '${current_fe_ip}:${current_fe_port}'" 2>/dev/null; then
+        if mysql -uroot -P"${FE_QUERY_PORT}" -h"${master_fe_ip}" -p"${DORIS_PASSWORD}" \
+            -e "ALTER SYSTEM ADD ${fe_role} '${current_fe_ip}:${current_fe_port}'" 2>/dev/null; then
             log_info "Successfully registered FE node"
             return
         fi
@@ -264,8 +270,13 @@ main() {
         fi
         
         # The metadata directory does not exist and needs to be initialized and registered.
-        log_info "Initializing meta directory"        
-        register_fe
+        log_info "Initializing meta directory"     
+        if [ "$is_observer_fe" = "true" ]; then
+            log_info "Register FE Node as OBSERVER.."
+            register_fe "OBSERVER"
+        else
+            register_fe "FOLLOWER"
+        fi
         start_fe &
         wait $!
     fi
