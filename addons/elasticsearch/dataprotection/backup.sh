@@ -117,7 +117,7 @@ base_path=${base_path#*/}
 
 function wait_for_snapshot_completion() {
     while true; do
-        state=$(curl -s -X GET "${ES_ENDPOINT}/_snapshot/${REPOSITORY}/${DP_BACKUP_NAME}?sort=name&pretty" | grep -w state | awk '{print $NF}' | tr -d ',"')
+        state=$(curl -s -X GET "${ES_ENDPOINT}/_snapshot/${REPOSITORY}/${DP_BACKUP_NAME}?pretty" | grep -w state | awk '{print $NF}' | tr -d ',"')
         if [ "$state" == "SUCCESS" ]; then
             echo "INFO: backup success"
             break

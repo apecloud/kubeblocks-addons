@@ -10,10 +10,10 @@ if [ ! -d $src_plugins_dir ]; then
   exit 0
 fi
 
-# Get Elasticsearch version to find the correct plugin directory
-ES_VERSION=$(cat /usr/share/elasticsearch/config/elasticsearch.yml 2>/dev/null | grep -o 'serviceVersion:[[:space:]]*[0-9]*\.[0-9]*\.[0-9]*' | awk '{print $2}' || echo "8.8.2")
-ES_MAJOR_VERSION=$(echo $ES_VERSION | cut -d'.' -f1)
-ES_FULL_VERSION=$ES_VERSION
+if [ -z "$ELASTICSEARCH_VERSION" ]; then
+  echo "ELASTICSEARCH_VERSION is not set"
+  exit 1
+fi
 
 function native_install_plugin() {
   plugin=$1
@@ -42,20 +42,20 @@ function copy_install_plugin() {
 }
 
 # Install version-specific plugins - simply install all plugins that exist for this version
-echo "Installing plugins for Elasticsearch version $ES_FULL_VERSION"
+echo "Installing plugins for Elasticsearch version $ELASTICSEARCH_VERSION"
 
 # Check if version-specific plugin directory exists
-if [ -d "$src_plugins_dir/$ES_FULL_VERSION" ]; then
-    echo "Found plugin directory for version $ES_FULL_VERSION"
+if [ -d "$src_plugins_dir/$ELASTICSEARCH_VERSION" ]; then
+    echo "Found plugin directory for version $ELASTICSEARCH_VERSION"
 
     # Install all plugin subdirectories that exist
-    for plugin_dir in "$src_plugins_dir/$ES_FULL_VERSION"/*/; do
+    for plugin_dir in "$src_plugins_dir/$ELASTICSEARCH_VERSION"/*/; do
         if [ -d "$plugin_dir" ]; then
             plugin_name=$(basename "$plugin_dir")
-            echo "Installing $plugin_name plugin for version $ES_FULL_VERSION"
+            echo "Installing $plugin_name plugin for version $ELASTICSEARCH_VERSION"
             copy_install_plugin "$plugin_dir"
         fi
     done
 else
-    echo "No plugin directory found for version $ES_FULL_VERSION"
+    echo "No plugin directory found for version $ELASTICSEARCH_VERSION"
 fi
