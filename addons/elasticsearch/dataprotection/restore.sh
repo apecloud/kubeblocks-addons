@@ -93,7 +93,38 @@ done
 echo "INFO: All nodes keystore configured for restore, reloading secure settings"
 curl -X POST "${ES_ENDPOINT}/_nodes/reload_secure_settings"
 
-cat > /tmp/repository.json<< EOF
+# Check Elasticsearch version for S3 repository configuration
+es_version=$(curl -s ${BASIC_AUTH} -X GET "${ES_ENDPOINT}" | grep -o '"version"[^}]*' | grep -o '"number"[^"]*"[0-9]*\.[0-9]*' | grep -o '[0-9]*\.[0-9]*')
+es_major_version=$(echo $es_version | cut -d. -f1)
+
+# For Elasticsearch 6.x, since it doesn't support path_style_access, we use a workaround:
+# ES 6.x automatically prepends bucket name to endpoint domain, so we split the endpoint
+# at the first dot and use the first part as fake bucket, second part as endpoint,
+# then put the real bucket in base_path
+if [ "$es_major_version" = "6" ]; then
+    # Extract hostname from endpoint URL (remove http:// prefix)
+    s3_hostname=$(echo "$s3_endpoint" | sed 's|http://||')
+    # Split hostname at first dot
+    fake_bucket=$(echo "$s3_hostname" | cut -d. -f1)
+    real_endpoint=$(echo "$s3_hostname" | cut -d. -f2-)
+    # Combine real bucket with existing base_path
+    real_base_path="${s3_bucket}/${base_path}"
+
+    cat > /tmp/repository.json<< EOF
+{
+  "type": "s3",
+  "settings": {
+    "protocol": "http",
+    "endpoint": "${real_endpoint}",
+    "bucket": "${fake_bucket}",
+    "base_path": "${real_base_path}",
+    "client": "default",
+    "readonly": true
+  }
+}
+EOF
+else
+    cat > /tmp/repository.json<< EOF
 {
   "type": "s3",
   "settings": {
@@ -107,6 +138,7 @@ cat > /tmp/repository.json<< EOF
   }
 }
 EOF
+fi
 
 curl -f -s -X PUT "${ES_ENDPOINT}/_snapshot/${REPOSITORY}?pretty" -H 'Content-Type: application/json' -d "@/tmp/repository.json"
 
