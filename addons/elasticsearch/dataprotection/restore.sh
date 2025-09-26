@@ -102,22 +102,33 @@ es_major_version=$(echo $es_version | cut -d. -f1)
 # at the first dot and use the first part as fake bucket, second part as endpoint,
 # then put the real bucket in base_path
 if [ "$es_major_version" = "6" ]; then
+    # For ES 6.x, we need to construct the endpoint so that when ES prepends the bucket,
+    # it forms the correct URL. Since ES 6.x doesn't support path_style_access,
+    # we need to make it use the correct endpoint format.
+    #
+    # Original: http://idc1-84577f69d7-minio.kb-system.svc.cluster.local:9000
+    # We want: http://idc1-84577f69d7-minio.kb-system.svc.cluster.local:9000
+    #
+    # So we set:
+    # - endpoint: kb-system.svc.cluster.local:9000
+    # - bucket: idc1-84577f69d7-minio
+    # - base_path: kb-backup/...
+
     # Extract hostname from endpoint URL (remove http:// prefix)
     s3_hostname=$(echo "$s3_endpoint" | sed 's|http://||')
-    # Split hostname at first dot
+    # Split hostname at first dot to get the part that should be prepended
     fake_bucket=$(echo "$s3_hostname" | cut -d. -f1)
-    real_endpoint=$(echo "$s3_hostname" | cut -d. -f2-)
+    fake_endpoint=$(echo "$s3_hostname" | cut -d. -f2-)
     # Combine real bucket with existing base_path
-    real_base_path="${s3_bucket}/${base_path}"
+    fake_base_path="${s3_bucket}/${base_path}"
 
     cat > /tmp/repository.json<< EOF
 {
   "type": "s3",
   "settings": {
-    "protocol": "http",
-    "endpoint": "${real_endpoint}",
+    "endpoint": "${fake_endpoint}",
     "bucket": "${fake_bucket}",
-    "base_path": "${real_base_path}",
+    "base_path": "${fake_base_path}",
     "client": "default",
     "readonly": true
   }
