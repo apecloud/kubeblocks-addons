@@ -1,0 +1,35 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: falkordb
+  labels:
+    {{- include "falkordb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "falkordb.apiVersion" . | nindent 4 }}
+spec:
+  topologies:
+    - name: standalone
+      components:
+        - name: falkordb
+          compDef: {{ include "falkordb.cmpdRegexpPattern" . }}
+      default: true
+    - name: replication
+      components:
+        - name: falkordb
+          compDef:  {{ include "falkordb.cmpdRegexpPattern" . }}
+        - name: falkordb-sent
+          compDef:  {{ include "falkordbSentinel.cmpdRegexpPattern" . }}
+      orders:
+        provision:
+          - falkordb-sent
+          - falkordb
+        terminate:
+          - falkordb-sent
+          - falkordb
+        update:
+          - falkordb-sent
+          - falkordb
+    - name: cluster
+      shardings:
+        - name: shard
+          shardingDef: falkordb-cluster

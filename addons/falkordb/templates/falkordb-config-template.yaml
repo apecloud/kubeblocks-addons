@@ -1,0 +1,14 @@
+{{- range .Values.falkordbVersions }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "falkordb%s-config-template-%s" .major $.Chart.Version }}
+  labels:
+    {{- include "falkordb.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "falkordb.annotations" $ | nindent 4 }}
+data:
+  redis.conf: |-
+    {{- $.Files.Get (printf "config/falkordb%s-config.tpl" .major) | nindent 4 }}
+{{- end }}
