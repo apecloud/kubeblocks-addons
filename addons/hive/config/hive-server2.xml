@@ -13,4 +13,9 @@
         <name>hive.metastore.uris</name>
         <value>{{ .METASTORE_ENDPOINTS }}</value>
     </property>
+    <!-- use hive server2 thread user (hadoop) doAs the submit user -->
+    <property>
+        <name>hive.server2.enable.doAs</name>
+        <value>false</value>
+    </property>
 </configuration>

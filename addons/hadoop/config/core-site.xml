@@ -14,8 +14,13 @@
         <name>hadoop.http.authentication.simple.anonymous.allowed</name>
         <value>true</value>
     </property>
+    <!-- TODO: use Kerberos? -->
     <property>
-        <name>hadoop.http.authentication.simple.anonymous.user</name>
-        <value>hadoop</value>   <!-- 用 hadoop 代替 dr.who -->
+        <name>hadoop.proxyuser.hadoop.hosts</name>
+        <value>*</value>
+    </property>
+    <property>
+        <name>hadoop.proxyuser.hadoop.groups</name>
+        <value>*</value>
     </property>
 </configuration>

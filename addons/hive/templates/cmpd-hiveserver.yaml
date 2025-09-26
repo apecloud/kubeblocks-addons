@@ -39,6 +39,24 @@ spec:
           - name: hive-server2-config
             mountPath: /hive/conf/hive-site.xml
             subPath: hive-site.xml
+          - name: hive-server2-config
+            mountPath: /hive/conf/hive-log4j2.properties
+            subPath: hive-log4j2.properties
+          - name: hadoop-core-config
+            mountPath: /hadoop/conf/core-site.xml
+            subPath: core-site.xml
+          - name: hadoop-hdfs-config
+            mountPath: /hadoop/conf/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: hadoop-yarn-config
+            mountPath: /hadoop/conf/yarn-site.xml
+            subPath: yarn-site.xml
+          - name: hadoop-yarn-config
+            mountPath: /hadoop/conf/log4j.properties
+            subPath: log4j.properties
+          - name: hadoop-yarn-config
+            mountPath: /hadoop/conf/mapred-site.xml
+            subPath: mapred-site.xml
           - name: hive-scripts
             mountPath: /kubeblocks/scripts
         securityContext:

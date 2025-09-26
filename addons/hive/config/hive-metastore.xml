@@ -17,17 +17,6 @@
         <name>javax.jdo.option.ConnectionUserName</name>
         <value>{{ .METADB_MYSQL_USERNAME }}</value>
     </property>
-    {{- if hasKey . "METADB_MYSQL_PASSWORD" }}
-    <property>
-        <name>javax.jdo.option.ConnectionPassword</name>
-        <value>{{ .METADB_MYSQL_PASSWORD }}</value>
-    </property>
-    {{- else }}
-    <property>
-        <name>javax.jdo.option.ConnectionPassword</name>
-        <value>b2hK995XlO9D695m</value>
-    </property>
-    {{- end }}
     <property>
         <name>hive.metastore.warehouse.dir</name>
         <value>/warehouse/hive/{{ .CLUSTER_NAME }}</value>

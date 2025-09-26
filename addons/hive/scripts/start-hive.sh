@@ -29,6 +29,7 @@ export HADOOP_LOG_DIR=/hadoop/logs
 EOF
 
 cp /hive/base-conf/hive-site.xml $HIVE_CONF_DIR/hive-site.xml
+cp /hive/base-conf/hive-log4j2.properties $HIVE_CONF_DIR/hive-log4j2.properties
 MYSQL_PASSWORD=$COMPONENT_MYSQL_PASSWORD
 if [ -z $COMPONENT_MYSQL_PASSWORD ]; then
    MYSQL_PASSWORD=${METADB_MYSQL_PASSWORD}
