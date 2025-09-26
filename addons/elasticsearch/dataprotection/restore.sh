@@ -93,52 +93,16 @@ done
 echo "INFO: All nodes keystore configured for restore, reloading secure settings"
 curl -X POST "${ES_ENDPOINT}/_nodes/reload_secure_settings"
 
-# Check Elasticsearch version for S3 repository configuration
-es_version=$(curl -s ${BASIC_AUTH} -X GET "${ES_ENDPOINT}" | grep -o '"version"[^}]*' | grep -o '"number"[^"]*"[0-9]*\.[0-9]*' | grep -o '[0-9]*\.[0-9]*')
-es_major_version=$(echo $es_version | cut -d. -f1)
-
-# For Elasticsearch 6.x, use hostname only (without http:// prefix) to avoid virtual-hosted style URL construction
-if [ "$es_major_version" = "6" ]; then
-    # Extract hostname from endpoint URL (remove http:// and port)
-    s3_hostname=$(echo "$s3_endpoint" | sed 's|http://||' | sed 's|:[0-9]*$||')
-    s3_port=$(echo "$s3_endpoint" | grep -o ':[0-9]*$' | sed 's|:||')
-    if [ -z "$s3_port" ]; then
-        s3_port="9000"
-    fi
-else
-    s3_hostname="$s3_endpoint"
-fi
-
 cat > /tmp/repository.json<< EOF
 {
   "type": "s3",
   "settings": {
     "protocol": "http",
-    "endpoint": "${s3_hostname}",
-EOF
-
-if [ "$es_major_version" = "6" ]; then
-cat >> /tmp/repository.json<< EOF
-    "port": ${s3_port},
-EOF
-fi
-
-cat >> /tmp/repository.json<< EOF
+    "endpoint": "${s3_endpoint}",
     "bucket": "${s3_bucket}",
     "base_path": "${base_path}",
     "client": "default",
     "path_style_access": true,
-EOF
-
-# Add version-specific settings for Elasticsearch 6.x
-if [ "$es_major_version" = "6" ]; then
-cat >> /tmp/repository.json<< EOF
-    "disable_chunked_encoding": true,
-    "max_retries": 3,
-EOF
-fi
-
-cat >> /tmp/repository.json<< EOF
     "readonly": true
   }
 }
