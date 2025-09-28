@@ -56,7 +56,7 @@ spec:
             mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
             chown -R mysql:root {{ .Values.dataMountPath }}
             {{- if ne (.Values.architecture | default "") "arm64" }}
-            export LD_PRELOAD=/tools/lib/libjemalloc.so.2
+            export LD_PRELOAD=/tools/lib/libjemalloc.so.2 
             {{- end }}
             REPORT_HOST=${KB_CLUSTER_COMP_NAME}-mysql-${KB_POD_NAME##*-}
             SERVICE_ID=$((${KB_POD_NAME##*-} + 1))
