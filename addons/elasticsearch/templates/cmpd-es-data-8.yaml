@@ -17,6 +17,11 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
   vars:
+    - name: ELASTICSEARCH_VERSION
+      valueFrom:
+        componentVarRef:
+          optional: false
+          serviceVersion: Required
     - name: ELASTIC_USER_PASSWORD
       valueFrom:
         credentialVarRef:

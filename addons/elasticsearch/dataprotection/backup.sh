@@ -94,6 +94,18 @@ done
 echo "INFO: All nodes keystore configured, reloading secure settings"
 curl -X POST "${ES_ENDPOINT}/_nodes/reload_secure_settings"
 
+# Wait for secure settings to be reloaded and plugins to be loaded
+echo "INFO: Waiting for nodes to be ready after reloading secure settings..."
+sleep 10
+
+# Verify that S3 repository plugin is available
+echo "INFO: Checking if S3 repository plugin is available..."
+if curl -s -f "${ES_ENDPOINT}/_snapshot" | grep -q 's3'; then
+    echo "INFO: S3 repository plugin is available"
+else
+    echo "WARNING: S3 repository plugin may not be available, attempting to create repository anyway"
+fi
+
 # DP_BACKUP_BASE_PATH is the path to the backup directory
 # if the target policy is All, the path pattern is: /${namespace}/${clusterName}-${clusterUID}/${componentDef}/${backupName}/${podName}
 # if the target policy is Any, the path pattern is: /${namespace}/${clusterName}-${clusterUID}/${componentDef}/${backupName}
@@ -105,7 +117,7 @@ base_path=${base_path#*/}
 
 function wait_for_snapshot_completion() {
     while true; do
-        state=$(curl -s -X GET "${ES_ENDPOINT}/_snapshot/${REPOSITORY}/${DP_BACKUP_NAME}?sort=name&pretty" | grep -w state | awk '{print $NF}' | tr -d ',"')
+        state=$(curl -s -X GET "${ES_ENDPOINT}/_snapshot/${REPOSITORY}/${DP_BACKUP_NAME}?pretty" | grep -w state | awk '{print $NF}' | tr -d ',"')
         if [ "$state" == "SUCCESS" ]; then
             echo "INFO: backup success"
             break
