@@ -85,8 +85,7 @@ spec:
         env:
           - name: PATH
             value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-          - name: LD_PRELOAD
-            value: /tools/lib/libjemalloc.so.2
+          {{- include "mysql.spec.runtime.ldPreloadEnv" . | nindent 10 }}
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mysql
           - name: MYSQL_INITDB_SKIP_TZINFO
