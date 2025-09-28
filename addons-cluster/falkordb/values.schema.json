@@ -73,19 +73,19 @@
       "description":"Whether NodePort service is enabled, default is true"
     },
     "customSecretName": {
-      "title": "the secret name for Redis default user's password",
+      "title": "the secret name for FalkorDB default user's password",
       "description": "the secret must contain keys named 'username' and 'password'",
       "type": "string",
       "default": ""
     },
     "customSecretNamespace": {
-      "title": "the secret namespace for Redis default user's password",
+      "title": "the secret namespace for FalkorDB default user's password",
       "description": "the secret must contain keys named 'username' and 'password'",
       "type": "string",
       "default": ""
     },
     "sentinel": {
-      "title": "The redis sentinel",
+      "title": "The sentinel",
       "type": "object",
       "properties": {
         "customMasterName": {
@@ -95,13 +95,13 @@
           "default": ""
         },
         "customSecretName": {
-          "title": "the secret name for Redis Sentinel default user's password",
+          "title": "the secret name for Sentinel default user's password",
           "description": "the secret must contain keys named 'username' and 'password'",
           "type": "string",
           "default": ""
         },
         "customSecretNamespace": {
-          "title": "the secret namespace for Redis Sentinel default user's password",
+          "title": "the secret namespace for Sentinel default user's password",
           "description": "the secret must contain keys named 'username' and 'password'",
           "type": "string",
           "default": ""
@@ -152,12 +152,12 @@
         }
       }
     },
-    "redisCluster":{
-      "title": "The official redis cluster mode",
+    "falkordbCluster":{
+      "title": "The official FalkorDB cluster mode",
       "type": "object",
       "properties": {
         "shardCount": {
-          "description": "The number of shards in the redis cluster",
+          "description": "The number of shards in the FalkorDB cluster",
           "title": "shardCount",
           "type": "number",
           "default": 3,
@@ -165,13 +165,13 @@
           "maximum": 2048
         },
         "customSecretName": {
-          "title": "the secret name for Redis Cluster default user's password",
+          "title": "the secret name for FalkorDB Cluster default user's password",
           "description": "the secret must contain keys named 'username' and 'password'",
           "type": "string",
           "default": ""
         },
         "customSecretNamespace": {
-          "title": "the secret namespace for Redis Cluster default user's password",
+          "title": "the secret namespace for FalkorDB Cluster default user's password",
           "description": "the secret must contain keys named 'username' and 'password'",
           "type": "string",
           "default": ""

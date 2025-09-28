@@ -13,9 +13,6 @@
   {{- if eq .Values.mode "replication" }}
     {{- include "falkordb-cluster.componentSpec" . | indent 2 }}
     {{- include "falkordb-cluster.sentinelComponentSpec" . | indent 2 }}
-  {{- else if eq .Values.mode "replication-twemproxy" }}
-    {{- include "falkordb-cluster.componentSpec" . | indent 2 }}
-    {{- include "falkordb-cluster.sentinelComponentSpec" . | indent 2 }}
   {{- else }}
     {{- include "falkordb-cluster.componentSpec" . | indent 2 }}
   {{- end }}
