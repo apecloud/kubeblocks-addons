@@ -18,4 +18,21 @@
         <name>hive.server2.enable.doAs</name>
         <value>false</value>
     </property>
+    <property>
+        <name>hive.server2.active.passive.ha.enable</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>hive.server2.authentication</name>
+        <value>CUSTOM</value>
+    </property>
+
+    <property>
+        <name>hive.server2.custom.authentication.class</name>
+        <value>com.github.ixre.hive.SimpleServer2AuthImpl</value>
+    </property>
+    <property>
+        <name>hive.server2.custom.authentication.file</name>
+        <value>/hive/metadata/hive-server2-users.conf</value>
+    </property>
 </configuration>

@@ -27,7 +27,9 @@ export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin:$HIVE_HOME/bin:$HIVE_HOME/s
 export HADOOP_CONF_DIR=/hadoop/conf
 export HADOOP_LOG_DIR=/hadoop/logs
 EOF
-
+# TODO: 支持添加用户名密码，从secret里拿
+password_md5=$(echo -n "$ADMIN_PASSWORD" | md5sum | awk '{print $1}')
+echo "${ADMIN_USER},${password_md5}" > /hive/metadata/hive-server2-users.conf
 
 START_COMMAND=("${HIVE_HOME_DIR}/bin/hive" "--service" "hiveserver2")
 

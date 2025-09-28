@@ -16,6 +16,14 @@ spec:
         ports:
           - name: thrift
             port: 10000
+  systemAccounts:
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
   runtime:
     containers:
       - name: hive-server2
@@ -36,6 +44,9 @@ spec:
               fieldRef:
                 fieldPath: metadata.name
         volumeMounts:
+          - name: metadata
+            mountPath: /hive
+            subPath: metadata
           - name: hive-server2-config
             mountPath: /hive/conf/hive-site.xml
             subPath: hive-site.xml
@@ -82,6 +93,18 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          username: Required
+    - name: ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
