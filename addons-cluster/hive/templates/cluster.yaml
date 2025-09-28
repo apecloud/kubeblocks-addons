@@ -77,6 +77,14 @@ spec:
       componentDef: hive-server2
       serviceVersion: {{ .Values.serviceVersion.hive }}
       replicas: {{ .Values.replicas.metastore }}
+      {{- if eq .Values.mode "HA" }}
+      serviceRefs:
+        - name: hadoopZookeeper
+          clusterServiceSelector:
+            cluster: {{ .Values.hadoopCluster }}
+            podFQDNs:
+              component: zookeeper
+      {{- end }
       volumes:
         - name: hadoop-core-config
           configMap:

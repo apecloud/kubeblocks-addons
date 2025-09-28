@@ -72,3 +72,5 @@ serviceAccount:
 # Advanced configurations
 terminationPolicy: Delete
 clusterDef: hive
+# HA (with zookeeper), NORMAL
+mode: HA

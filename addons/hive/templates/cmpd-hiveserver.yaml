@@ -24,6 +24,11 @@ spec:
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
+  serviceRefDeclarations:
+    - name: hadoopZookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: "^*"
   runtime:
     containers:
       - name: hive-server2
@@ -93,6 +98,13 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: ZOOKEEPER_ENDPOINTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hadoopZookeeper
+          optional: true
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .ZOOKEEPER_ENDPOINTS }}{{ range $idx, $host := $hosts }}{{ $host }}:2181{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
     - name: ADMIN_USER
       valueFrom:
         credentialVarRef:

@@ -9,29 +9,25 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - metastaore-3.1.3
-        - metastaore-4.0.1
+      {{- range .Values.versions }}
+        - metastaore-{{ .version }}
+      {{- end }}
       compDefs:
         - hive-metastore
     - releases:
-        - server2-3.1.3
-        - server2-4.0.1
+      {{- range .Values.versions }}
+        - server2-{{ .version }}
+      {{- end }}
       compDefs:
         - hive-server2
   releases:
-    - name: metastaore-3.1.3
-      serviceVersion: 3.1.3
+  {{- range .Values.versions }}
+    - name: metastaore-{{ .version }}
+      serviceVersion: {{ .version }}
       images:
-        hive-metastore: "{{ .Values.hive.image.repository }}:{{ .Values.hive.image.tag }}"
-    - name: server2-3.1.3
-      serviceVersion: 3.1.3
+        hive-metastore: "{{ $.Values.hive.image.repository }}:{{ .version }}"
+    - name: server2-{{ .version }}
+      serviceVersion: {{ .version }}
       images:
-        hive-server2: "{{ .Values.hive.image.repository }}:{{ .Values.hive.image.tag }}"
-    - name: metastaore-4.0.1
-      serviceVersion: 4.0.1
-      images:
-        hive-metastore: "{{ .Values.hive.image.repository }}:4.0.1"
-    - name: server2-4.0.1
-      serviceVersion: 4.0.1
-      images:
-        hive-server2: "{{ .Values.hive.image.repository }}:4.0.1"
+        hive-server2: "{{ $.Values.hive.image.repository }}:{{ .version }}"
+  {{- end }}
