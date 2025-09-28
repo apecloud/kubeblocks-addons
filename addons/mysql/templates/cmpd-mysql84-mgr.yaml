@@ -71,8 +71,10 @@ spec:
         env:
           - name: PATH
             value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          {{- if ne (.Values.architecture | default "") "arm64" }}
           - name: LD_PRELOAD
             value: /tools/lib/libjemalloc.so.2
+          {{- end }}
           - name: KB_ENGINE_TYPE
             value: mysql
           - name: KB_WORKLOAD_TYPE
