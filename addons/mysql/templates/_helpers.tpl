@@ -244,10 +244,17 @@ roles:
 {{- end }}
 
 {{- define "mysql.spec.runtime.entrypoint" -}}
+# Auto-detect architecture and disable jemalloc on ARM64
+ARCH=$(uname -m)
+if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+  echo "Detected ARM64 architecture ($ARCH), disabling jemalloc"
+  unset LD_PRELOAD
+fi
+
 mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
 if [ -f {{ .Values.dataMountPath }}/plugin/audit_log.so ]; then
   cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
-fi 
+fi
 if [ -d /etc/pki/tls ]; then
   mkdir -p {{ .Values.dataMountPath }}/tls/
   cp -L /etc/pki/tls/*.pem {{ .Values.dataMountPath }}/tls/
@@ -299,4 +306,12 @@ volumeMounts:
 init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
 init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
 mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+{{- end -}}
+
+{{/*
+Generate LD_PRELOAD environment variable - always set, but will be cleared at runtime for ARM64
+*/}}
+{{- define "mysql.spec.runtime.ldPreloadEnv" -}}
+- name: LD_PRELOAD
+  value: /tools/lib/libjemalloc.so.2
 {{- end -}}
