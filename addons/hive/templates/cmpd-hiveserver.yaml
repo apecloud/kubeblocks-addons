@@ -16,6 +16,20 @@ spec:
         ports:
           - name: thrift
             port: 10000
+            targetPort: thrift
+    - name: lb-advertised
+      serviceName: lb-advertised
+      spec:
+        ## the type can override in cluster componentSpec services, type can loadBalancer
+        type: LoadBalancer
+        # allocateLoadBalancerNodePorts: false
+        externalTrafficPolicy: Cluster
+        ports:
+          - name: thrift
+            port: 10000
+            targetPort: thrift
+      podService: true
+      disableAutoProvision: true
   systemAccounts:
     - name: admin
       initAccount: true
@@ -53,10 +67,10 @@ spec:
             mountPath: /hive
             subPath: metadata
           - name: hive-server2-config
-            mountPath: /hive/conf/hive-site.xml
+            mountPath: /hive/base-conf/hive-site.xml
             subPath: hive-site.xml
           - name: hive-server2-config
-            mountPath: /hive/conf/hive-log4j2.properties
+            mountPath: /hive/base-conf/hive-log4j2.properties
             subPath: hive-log4j2.properties
           - name: hadoop-core-config
             mountPath: /hadoop/conf/core-site.xml
@@ -98,6 +112,18 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: LB_ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          name: lb-advertised
+          optional: true
+          loadBalancer: Required
+          host: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: true
+          componentName: Required
     - name: ZOOKEEPER_ENDPOINTS
       valueFrom:
         serviceRefVarRef:

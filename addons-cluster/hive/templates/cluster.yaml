@@ -77,6 +77,13 @@ spec:
       componentDef: hive-server2
       serviceVersion: {{ .Values.serviceVersion.hive }}
       replicas: {{ .Values.replicas.metastore }}
+      {{- if .Values.loadBalancerEnabled }}
+      services:
+      - name: lb-advertised
+        serviceType: LoadBalancer
+        podService: true
+        {{- include "kblib.loadBalancerAnnotations" . | indent 8 }}
+      {{- end }}
       {{- if eq .Values.mode "HA" }}
       serviceRefs:
         - name: hadoopZookeeper
@@ -84,7 +91,7 @@ spec:
             cluster: {{ .Values.hadoopCluster }}
             podFQDNs:
               component: zookeeper
-      {{- end }
+      {{- end }}
       volumes:
         - name: hadoop-core-config
           configMap:

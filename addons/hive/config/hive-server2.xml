@@ -2,10 +2,6 @@
 
 <configuration>
     <property>
-        <name>hive.server2.thrift.bind.host</name>
-        <value>0.0.0.0</value>
-    </property>
-    <property>
         <name>hive.server2.thrift.port</name>
         <value>10000</value>
     </property>
