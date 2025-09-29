@@ -67,7 +67,9 @@ spec:
           - |
             cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
             chown -R mysql:root {{ .Values.dataMountPath }}
+            {{- if ne (.Values.architecture | default "") "arm64" }}
             export LD_PRELOAD=/tools/lib/libjemalloc.so.2 
+            {{- end }}
             SERVICE_ID=$((${KB_POD_NAME##*-} + 1))
             docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
                --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
