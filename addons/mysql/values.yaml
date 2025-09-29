@@ -99,6 +99,9 @@ metrics:
 
 dataMountPath: /var/lib/mysql
 
+## @param architecture CPU architecture. Leave empty to enable jemalloc by default, set to "arm64" to disable jemalloc
+architecture: ""
+
 ## @param orche
 orchestrator:
   metaBackends:
