@@ -9,12 +9,15 @@ metadata:
     {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
   serviceVersion: 6.8.23
+<<<<<<< HEAD
   configs:
     - name: es-cm
       template: {{ include "elasticsearch6.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
       restartOnFileChange: true
+=======
+>>>>>>> 2c65def3 (chore: update es6 cmpd name)
   vars:
     - name: ELASTICSEARCH_VERSION
       valueFrom:
