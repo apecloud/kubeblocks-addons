@@ -244,17 +244,10 @@ roles:
 {{- end }}
 
 {{- define "mysql.spec.runtime.entrypoint" -}}
-# Auto-detect architecture and disable jemalloc on ARM64
-ARCH=$(uname -m)
-if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-  echo "Detected ARM64 architecture ($ARCH), disabling jemalloc"
-  unset LD_PRELOAD
-fi
-
 mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
 if [ -f {{ .Values.dataMountPath }}/plugin/audit_log.so ]; then
   cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
-fi
+fi 
 if [ -d /etc/pki/tls ]; then
   mkdir -p {{ .Values.dataMountPath }}/tls/
   cp -L /etc/pki/tls/*.pem {{ .Values.dataMountPath }}/tls/
@@ -312,6 +305,8 @@ mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.regi
 Generate LD_PRELOAD environment variable - always set, but will be cleared at runtime for ARM64
 */}}
 {{- define "mysql.spec.runtime.ldPreloadEnv" -}}
+{{- if ne (.Values.architecture | default "") "arm64" }}
 - name: LD_PRELOAD
   value: /tools/lib/libjemalloc.so.2
+{{- end }}
 {{- end -}}
