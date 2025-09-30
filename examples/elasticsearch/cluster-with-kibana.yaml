@@ -56,3 +56,15 @@ spec:
             resources:
               requests:
                 storage: 20Gi
+    - name: kibana
+      componentDef: kibana-8
+      serviceVersion: 8.8.2
+      replicas: 1
+      disableExporter: false
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
