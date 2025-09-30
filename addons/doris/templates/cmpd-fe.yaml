@@ -51,6 +51,13 @@ spec:
       numDigits: 5
       numSymbols: 0
       letterCase: MixedCases
+  - name: admin
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 5
+      numSymbols: 0
+      letterCase: MixedCases
   configs:
     - name: fe-cm
       template: {{ include "fe.configurationTemplate" . }}
@@ -102,6 +109,13 @@ spec:
         credentialVarRef:
           compDef: {{ include "fe.componentDefName" . }}
           name: root
+          optional: false
+          password: Required
+    - name: DORIS_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "fe.componentDefName" . }}
+          name: admin
           optional: false
           password: Required
   runtime:
