@@ -29,4 +29,3 @@ storage: 20
 extra:
   podAntiAffinity: Required
   terminationPolicy: Delete
-  rbacEnabled: true

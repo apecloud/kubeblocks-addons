@@ -39,5 +39,4 @@ tls:
 extra:
   podAntiAffinity: Required
   terminationPolicy: Delete
-  rbacEnabled: true
   disableExporter: false

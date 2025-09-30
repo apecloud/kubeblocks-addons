@@ -78,6 +78,3 @@ nebula:
     logStorage: "500Mi"
     ## @param nebula.metad.dataStorage
     dataStorage: "1Gi"
-
-extra:
-  rbacEnabled: true
