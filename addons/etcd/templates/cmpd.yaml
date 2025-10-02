@@ -124,12 +124,14 @@ spec:
       needSnapshot: true
   services:
     - name: client
+      serviceName: client
       spec:
         ports:
           - name: client
             port: 2379
             targetPort: client
     - name: peer
+      serviceName:
       spec:
         ports:
           - name: peer
