@@ -237,6 +237,13 @@ spec:
         requests:
           cpu: "0.5"
           memory: "0.5Gi"
+      configs:
+        - name: config
+          variables:
+            mq_type: pulsar
+            minio_bucket: milvus
+            minio_root_path: files
+            minio_use_path_style: "true"
       # Defines a list of ServiceRef for a Component
       serviceRefs:
         - name: milvus-meta-storage # Specifies the identifier of the service reference declaration, defined in `componentDefinition.spec.serviceRefDeclarations[*].name`
@@ -263,11 +270,10 @@ spec:
             service:
               component: minio
               service: headless
-              port: http
+              port: api
             credential:            # Specifies the SystemAccount to authenticate and establish a connection with the referenced Cluster.
               component: minio     # for component 'minio'
-              name: admin          # the name of the credential (SystemAccount) to reference, using account 'admin' in this case
-      disableExporter: true
+              name: root          # the name of the credential (SystemAccount) to reference, using account 'root' in this case
     - name: mixcoord
       replicas: 1
       resources:
@@ -286,7 +292,6 @@ spec:
               component: etcd
               service: headless
               port: client
-
         - name: milvus-log-storage
           namespace: demo
           clusterServiceSelector:
@@ -295,7 +300,6 @@ spec:
               component: broker
               service: headless
               port: pulsar
-
         - name: milvus-object-storage
           namespace: demo
           clusterServiceSelector:
@@ -303,15 +307,19 @@ spec:
             service:
               component: minio
               service: headless
-              port: http
+              port: api
             credential:
               component: minio
-              name: admin
-
-      disableExporter: true
+              name: root
+      configs:
+        - name: config
+          variables:
+            mq_type: pulsar
+            minio_bucket: milvus
+            minio_root_path: files
+            minio_use_path_style: "true"
     - name: datanode
       replicas: 1
-      disableExporter: true
       resources:
         limits:
           cpu: "0.5"
@@ -328,7 +336,6 @@ spec:
               component: etcd
               service: headless
               port: client
-
         - name: milvus-log-storage
           namespace: demo
           clusterServiceSelector:
@@ -337,7 +344,6 @@ spec:
               component: broker
               service: headless
               port: pulsar
-
         - name: milvus-object-storage
           namespace: demo
           clusterServiceSelector:
@@ -345,14 +351,20 @@ spec:
             service:
               component: minio
               service: headless
-              port: http
+              port: api
             credential:
               component: minio
-              name: admin
+              name: root
 
+      configs:
+        - name: config
+          variables:
+            mq_type: pulsar
+            minio_bucket: milvus
+            minio_root_path: files
+            minio_use_path_style: "true"
     - name: indexnode
       replicas: 1
-      disableExporter: true
       resources:
         limits:
           cpu: "0.5"
@@ -369,7 +381,6 @@ spec:
               component: etcd
               service: headless
               port: client
-
         - name: milvus-log-storage
           namespace: demo
           clusterServiceSelector:
@@ -378,7 +389,6 @@ spec:
               component: broker
               service: headless
               port: pulsar
-
         - name: milvus-object-storage
           namespace: demo
           clusterServiceSelector:
@@ -386,13 +396,19 @@ spec:
             service:
               component: minio
               service: headless
-              port: http
+              port: api
             credential:
               component: minio
-              name: admin
+              name: root
+      configs:
+        - name: config
+          variables:
+            mq_type: pulsar
+            minio_bucket: milvus
+            minio_root_path: files
+            minio_use_path_style: "true"
     - name: querynode
       replicas: 1
-      disableExporter: true
       resources:
         limits:
           cpu: "0.5"
@@ -409,7 +425,6 @@ spec:
               component: etcd
               service: headless
               port: client
-
         - name: milvus-log-storage
           namespace: demo
           clusterServiceSelector:
@@ -418,7 +433,6 @@ spec:
               component: broker
               service: headless
               port: pulsar
-
         - name: milvus-object-storage
           namespace: demo
           clusterServiceSelector:
@@ -426,11 +440,17 @@ spec:
             service:
               component: minio
               service: headless
-              port: http
+              port: api
             credential:
               component: minio
-              name: admin
-
+              name: root
+      configs:
+        - name: config
+          variables:
+            mq_type: pulsar
+            minio_bucket: milvus
+            minio_root_path: files
+            minio_use_path_style: "true"
 ```
 
 ```bash
