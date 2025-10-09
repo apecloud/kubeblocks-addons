@@ -40,13 +40,6 @@ influxdb
 {{- end -}}
 
 {{/*
-Define influxdb component definition regex pattern
-*/}}
-{{- define "influxdb.cmpdRegexpPattern" -}}
-^influxdb
-{{- end -}}
-
-{{/*
 Define influxdb configuration template name
 */}}
 {{- define "influxdb.configurationTemplate" -}}
