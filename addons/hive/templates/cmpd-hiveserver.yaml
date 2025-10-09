@@ -1,0 +1,169 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "hive.server2CompDef" . }}
+  labels:
+    {{- include "hive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hive.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceKind: hive-server2
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: thrift
+            port: 10000
+            targetPort: thrift
+    - name: lb-advertised
+      serviceName: lb-advertised
+      spec:
+        ## the type can override in cluster componentSpec services, type can loadBalancer
+        type: LoadBalancer
+        # allocateLoadBalancerNodePorts: false
+        externalTrafficPolicy: Cluster
+        ports:
+          - name: thrift
+            port: 10000
+            targetPort: thrift
+      podService: true
+      disableAutoProvision: true
+  systemAccounts:
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+  serviceRefDeclarations:
+    - name: hadoopZookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: "^*"
+  runtime:
+    containers:
+      - name: hive-server2
+        imagePullPolicy: {{ default "IfNotPresent" .Values.hive.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - -c
+          - |
+            /kubeblocks/scripts/start-hiveserver2.sh
+        ports:
+          - containerPort: 10000
+            name: thrift
+        env:
+          - name: DEBUG_MODEL
+            value: "false"
+          - name: CURRENT_POD
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        volumeMounts:
+          - name: metadata
+            mountPath: /hive
+            subPath: metadata
+          - name: hive-server2-config
+            mountPath: /hive/base-conf/hive-site.xml
+            subPath: hive-site.xml
+          - name: hive-server2-config
+            mountPath: /hive/base-conf/hive-log4j2.properties
+            subPath: hive-log4j2.properties
+          - name: hadoop-core-config
+            mountPath: /hadoop/conf/core-site.xml
+            subPath: core-site.xml
+          - name: hadoop-hdfs-config
+            mountPath: /hadoop/conf/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: hadoop-yarn-config
+            mountPath: /hadoop/conf/yarn-site.xml
+            subPath: yarn-site.xml
+          - name: hadoop-yarn-config
+            mountPath: /hadoop/conf/log4j.properties
+            subPath: log4j.properties
+          - name: hadoop-yarn-config
+            mountPath: /hadoop/conf/mapred-site.xml
+            subPath: mapred-site.xml
+          - name: hive-scripts
+            mountPath: /kubeblocks/scripts
+        securityContext:
+          runAsUser: 10000
+          runAsGroup: 1000
+          runAsNonRoot: true
+          privileged: false
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ "ALL" ]
+          seccompProfile:
+            type: "RuntimeDefault"
+    securityContext:
+      fsGroupChangePolicy: Always
+      fsGroup: 1000
+    updateStrategy: BestEffortParallel
+  vars:
+    - name: HOME
+      value: /home/hadoop
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain | default "cluster.local" }}
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: LB_ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          name: lb-advertised
+          optional: true
+          loadBalancer: Required
+          host: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: true
+          componentName: Required
+    - name: ZOOKEEPER_ENDPOINTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hadoopZookeeper
+          optional: true
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .ZOOKEEPER_ENDPOINTS }}{{ range $idx, $host := $hosts }}{{ $host }}:2181{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
+    - name: ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          username: Required
+    - name: ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: METASTORE_ENDPOINTS
+      valueFrom:
+        componentVarRef:
+          compDef: hive-metastore
+          optional: true
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .METASTORE_ENDPOINTS }}{{ range $idx, $host := $hosts }}thrift://{{ $host }}:9083{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
+  configs:
+    - name: config
+      namespace: {{ .Release.Namespace }}
+      template: hive-server2-config-template
+      volumeName: hive-server2-config
+      defaultMode: 0755
+      # externalManaged: true
+  scripts:
+    - name: scripts
+      namespace: {{ .Release.Namespace }}
+      template: hive-scripts
+      volumeName: hive-scripts
+      defaultMode: 0755

@@ -1,0 +1,177 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "nameNodeComponentDef" . }}
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceKind: hdfs-namenode
+  serviceVersion: {{ .Chart.AppVersion }}
+  podManagementPolicy: OrderedReady
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: fs
+            port: 8020
+          - name: http
+            port: 9870
+  serviceRefDeclarations:
+    - name: hadoopZookeeper
+      optional: true
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: "^*"
+  runtime:
+    containers:
+      - name: hdfs-namenode
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        ports:
+          - containerPort: 8020
+            name: rpc
+          - containerPort: 9870
+            name: http
+        env:
+          - name: DEBUG_MODEL
+            value: "false"
+          - name: CURRENT_POD
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        command:
+         - bash
+         - -c
+         - |
+           /kubeblocks/scripts/start-namenode.sh
+        livenessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - /kubeblocks/scripts/check-name-status.sh
+        readinessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - /kubeblocks/scripts/check-name-status.sh
+        volumeMounts:
+          - name: metadata-dir
+            mountPath: /hadoop
+          - name: hadoop-core-config
+            mountPath: /hadoop/conf/core-site.xml
+            subPath: core-site.xml
+          - name: namenode-config
+            mountPath: /hadoop/conf/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: namenode-config
+            mountPath: /hadoop/conf/log4j.properties
+            subPath: log4j.properties
+          - name: scripts
+            mountPath: /kubeblocks/scripts
+        securityContext:
+          runAsUser: 10000
+          runAsGroup: 1000
+          runAsNonRoot: true
+          privileged: false
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ "ALL" ]
+          seccompProfile:
+            type: "RuntimeDefault"
+    securityContext:
+      fsGroupChangePolicy: Always
+      fsGroup: 1000
+    updateStrategy: BestEffortParallel
+    volumes:
+      - name: hadoop-common
+        emptyDir: {}
+  vars:
+    - name: HOME
+      value: /home/hadoop
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain | default "cluster.local" }}
+    - name: JOURNALNODE_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: hadoop-hdfs-journalnode
+          optional: false
+          podFQDNs: Required
+    - name: ZOOKEEPER_COMP_ENDPOINTS
+      valueFrom:
+        componentVarRef:
+          compDef: zookeeper
+          optional: true
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .ZOOKEEPER_COMP_ENDPOINTS }}{{ range $idx, $host := $hosts }}{{ $host }}:2181{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
+    - name: ZOOKEEPER_ENDPOINTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hadoopZookeeper
+          optional: true
+          endpoint: Required
+      expression: {{ `{{if ne (index . "ZOOKEEPER_ENDPOINTS") ""}}{{.ZOOKEEPER_ENDPOINTS}}{{else}}{{.ZOOKEEPER_COMP_ENDPOINTS}}{{end}}` | toYaml }}
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+  configs:
+    - name: config
+      namespace: {{ .Release.Namespace }}
+      template: hadoop-namenode-config-template
+      volumeName: namenode-config
+      defaultMode: 0755
+      externalManaged: true
+  scripts:
+    - name: {{ include "hadoop.name" . }}-scripts
+      template: {{ include "hadoop.name" . }}-scripts
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755
+  roles:
+    - name: active
+      updatePriority: 2
+      participatesInQuorum: false
+    - name: standby
+      updatePriority: 1
+      participatesInQuorum: false
+  lifecycleActions:
+    roleProbe:
+      exec:
+        container: hdfs-namenode
+        command:
+          - bash
+          - -c
+          - |
+            /kubeblocks/scripts/role-check.sh 9870
