@@ -172,6 +172,11 @@ spec:
   componentSpecs:
     - name: kafka-broker
       replicas: 1
+      serviceVersion: 3.3.2
+      services:
+        - name: advertised-listener
+          serviceType: ClusterIP
+          podService: true
       resources:
         limits:
           cpu: "0.5"
@@ -180,12 +185,16 @@ spec:
           cpu: "0.5"
           memory: "0.5Gi"
       env:
-        - name: KB_KAFKA_BROKER_HEAP
+        - name: KB_KAFKA_BROKER_HEAP # use this ENV to set BROKER HEAP
           value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
-        - name: KB_KAFKA_CONTROLLER_HEAP
+        - name: KB_KAFKA_CONTROLLER_HEAP # use this ENV to set CONTOLLER_HEAP
           value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          # Whether to enable direct Pod IP address access mode.
+          # - If set to 'true', Kafka clients will connect to Brokers using the Pod IP address directly.
+          # - If set to 'false', Kafka clients will connect to Brokers using the Headless Service's FQDN
+          # and service `advertised-listener` must be set with "podService: true".
         - name: KB_BROKER_DIRECT_POD_ACCESS
-          value: "true"
+          value: "false"
       volumeClaimTemplates:
         - name: data
           spec:
@@ -204,6 +213,7 @@ spec:
               requests:
                 storage: 1Gi
     - name: kafka-controller
+      serviceVersion: 3.3.2
       replicas: 1
       resources:
         limits:
@@ -222,6 +232,7 @@ spec:
               requests:
                 storage: 1Gi
     - name: kafka-exporter
+      serviceVersion: 1.6.0
       replicas: 1
       resources:
         limits:
@@ -662,6 +673,11 @@ spec:
   componentSpecs:
     - name: kafka-broker
       replicas: 1
+      serviceVersion: 3.3.2
+      services:
+        - name: advertised-listener
+          serviceType: ClusterIP
+          podService: true
       resources:
         limits:
           cpu: "0.5"
@@ -670,12 +686,16 @@ spec:
           cpu: "0.5"
           memory: "0.5Gi"
       env:
-        - name: KB_KAFKA_BROKER_HEAP
+        - name: KB_KAFKA_BROKER_HEAP # use this ENV to set BROKER HEAP
           value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
-        - name: KB_KAFKA_CONTROLLER_HEAP
+        - name: KB_KAFKA_CONTROLLER_HEAP # use this ENV to set CONTOLLER_HEAP
           value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          # Whether to enable direct Pod IP address access mode.
+          # - If set to 'true', Kafka clients will connect to Brokers using the Pod IP address directly.
+          # - If set to 'false', Kafka clients will connect to Brokers using the Headless Service's FQDN
+          # and service `advertised-listener` must be set with "podService: true".
         - name: KB_BROKER_DIRECT_POD_ACCESS
-          value: "true"
+          value: "false"
       volumeClaimTemplates:
         - name: data
           spec:
@@ -694,6 +714,7 @@ spec:
               requests:
                 storage: 1Gi
     - name: kafka-controller
+      serviceVersion: 3.3.2
       replicas: 1
       resources:
         limits:
@@ -712,6 +733,7 @@ spec:
               requests:
                 storage: 1Gi
     - name: kafka-exporter
+      serviceVersion: 1.6.0
       replicas: 1
       resources:
         limits:
