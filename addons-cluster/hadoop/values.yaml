@@ -81,14 +81,10 @@ serviceRefs:
         service: headless
         port: client
 
-# Service account configuration
-serviceAccount:
-  name: kb-hadoop-cluster
-  create: true
 
 # Advanced configurations
 terminationPolicy: Delete
-clusterDef: hadoop-hdfs
+
 # enum values: ha-cluster, ha-ref-zk-cluster
 # default: ha-cluster, will create a zk instance for hadoop
 # ha-ref-zk-cluster: need specify the serviceRefs of the already existed zk cluster

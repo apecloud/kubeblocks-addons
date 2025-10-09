@@ -65,24 +65,10 @@
       "required": ["hiveMysqlMetadb"],
       "description": "Service references for external dependencies."
     },
-    "serviceAccount": {
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "default": "kb-hive-cluster" },
-        "create": { "type": "boolean", "default": true }
-      },
-      "required": ["name", "create"],
-      "description": "Configuration for the service account."
-    },
     "terminationPolicy": {
       "type": "string",
       "default": "Delete",
       "description": "Policy for terminating the release."
-    },
-    "clusterDef": {
-      "type": "string",
-      "default": "hive",
-      "description": "Reference to the cluster definition."
     },
     "topology": {
       "type": "string",
@@ -90,7 +76,7 @@
       "description": "Cluster topology configuration."
     }
   },
-  "required": ["replicas", "resources", "storage", "serviceRefs", "serviceAccount", "terminationPolicy", "clusterDef", "topology"],
+  "required": ["replicas", "resources", "storage", "serviceRefs", "terminationPolicy", "topology"],
   "definitions": {
     "resourceSchema": {
       "type": "object",

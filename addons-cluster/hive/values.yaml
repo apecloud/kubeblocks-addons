@@ -64,14 +64,9 @@ serviceRefs:
         component: mysql
         name: root
 
-# Service account configuration
-serviceAccount:
-  name: kb-hive-cluster
-  create: true
-
 # Advanced configurations
 terminationPolicy: Delete
-clusterDef: hive
+
 # ZOOKEEPER-HA, NORMAL
 mode: ZOOKEEPER-HA
 
