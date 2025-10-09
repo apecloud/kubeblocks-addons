@@ -74,7 +74,7 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.30,8.0.31,8.0.32,8.0.33,8.0.34,8.0.35,8.0.36,8.0.37,8.0.38,8.0.39]
+      # Valid options are: [8.0.30~8.0.39]
       serviceVersion: 8.0.35
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
