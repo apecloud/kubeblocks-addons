@@ -16,3 +16,6 @@ spec:
       fileFormatConfig:
         format: properties
       templateName: supabase-postgresql-configuration
+      reRenderResourceTypes:
+        - vscale
+        - tls

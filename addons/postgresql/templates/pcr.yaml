@@ -20,6 +20,7 @@ spec:
         format: properties
       reRenderResourceTypes:
         - vscale
+        - tls
     - name: pgbouncer.ini
       fileFormatConfig:
         format: ini
