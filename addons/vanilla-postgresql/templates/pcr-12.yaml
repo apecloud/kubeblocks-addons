@@ -16,3 +16,6 @@ spec:
       fileFormatConfig:
         format: properties
       templateName: vanilla-postgresql-configuration
+      reRenderResourceTypes:
+        - vscale
+        - tls

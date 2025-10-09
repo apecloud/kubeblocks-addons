@@ -19,3 +19,4 @@ spec:
           sectionName: mysqld
       reRenderResourceTypes:
         - vscale
+        - tls
