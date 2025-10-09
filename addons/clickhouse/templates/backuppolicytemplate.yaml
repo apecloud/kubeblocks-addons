@@ -33,3 +33,7 @@ spec:
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
+    - backupMethod: incremental
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
