@@ -3,10 +3,6 @@ kind: Cluster
 metadata:
   name: es-multinode
   namespace: demo
-  labels:
-    helm.sh/chart: elasticsearch-cluster-1.1.0-alpha.0
-    app.kubernetes.io/version: "8.8.2"
-    app.kubernetes.io/instance: myes
 spec:
   terminationPolicy: Delete
   componentSpecs:
