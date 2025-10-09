@@ -353,6 +353,7 @@ dynamicParameters:
   - innodb_tmpdir
   - innodb_undo_log_encrypt
   - innodb_undo_log_truncate
+  - innodb_use_fdatasync
   - interactive_timeout
   - internal_tmp_mem_storage_engine
   - join_buffer_size
