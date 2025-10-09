@@ -1,0 +1,33 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: hive
+  labels:
+    {{- include "hive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hive.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+      {{- range .Values.versions }}
+        - metastaore-{{ .version }}
+      {{- end }}
+      compDefs:
+        - hive-metastore
+    - releases:
+      {{- range .Values.versions }}
+        - server2-{{ .version }}
+      {{- end }}
+      compDefs:
+        - hive-server2
+  releases:
+  {{- range .Values.versions }}
+    - name: metastaore-{{ .version }}
+      serviceVersion: {{ .version }}
+      images:
+        hive-metastore: "{{ $.Values.hive.image.repository }}:{{ .version }}"
+    - name: server2-{{ .version }}
+      serviceVersion: {{ .version }}
+      images:
+        hive-server2: "{{ $.Values.hive.image.repository }}:{{ .version }}"
+  {{- end }}

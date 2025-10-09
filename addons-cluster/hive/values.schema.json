@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "replicas": {
+      "type": "object",
+      "properties": {
+        "metastore": { "type": "integer", "default": 1, "minimum": 1, "maximum": 5 }
+      },
+      "required": ["metastore"],
+      "description": "Number of replicas for each component."
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "metastore": { "$ref": "#/definitions/resourceSchema" }
+      },
+      "required": ["metastore"],
+      "description": "Resource requests and limits for each component."
+    },
+    "storage": {
+      "type": "object",
+      "properties": {
+        "metastore": { "type": "string", "default": "5Gi" }
+      },
+      "required": ["metastore"],
+      "description": "Storage requirements for each component."
+    },
+    "serviceRefs": {
+      "type": "object",
+      "properties": {
+        "hiveMysqlMetadb": {
+          "type": "object",
+          "properties": {
+            "namespace": { "type": "string", "default": "default" },
+            "clusterServiceSelector": {
+              "type": "object",
+              "properties": {
+                "cluster": { "type": "string", "default": "mysql-meta" },
+                "service": {
+                  "type": "object",
+                  "properties": {
+                    "component": { "type": "string", "default": "mysql" },
+                    "service": { "type": "string", "default": "headless" },
+                    "port": { "type": "string", "default": "client" }
+                  },
+                  "required": ["component", "service", "port"]
+                },
+                "credential": {
+                  "type": "object",
+                  "properties": {
+                    "component": { "type": "string", "default": "mysql" },
+                    "name": { "type": "string", "default": "root" }
+                  },
+                  "required": ["component", "name"]
+                }
+              },
+              "required": ["cluster", "service", "credential"]
+            }
+          },
+          "required": ["namespace", "clusterServiceSelector"],
+          "description": "References to external services."
+        }
+      },
+      "required": ["hiveMysqlMetadb"],
+      "description": "Service references for external dependencies."
+    },
+    "terminationPolicy": {
+      "type": "string",
+      "default": "Delete",
+      "description": "Policy for terminating the release."
+    },
+    "topology": {
+      "type": "string",
+      "default": "hive-cluster",
+      "description": "Cluster topology configuration."
+    }
+  },
+  "required": ["replicas", "resources", "storage", "serviceRefs", "terminationPolicy", "topology"],
+  "definitions": {
+    "resourceSchema": {
+      "type": "object",
+      "properties": {
+        "requests": {
+          "type": "object",
+          "properties": {
+            "cpu": { "type": "string", "default": "0.1" },
+            "memory": { "type": "string", "default": "0.5Gi" }
+          },
+          "required": ["cpu", "memory"],
+          "description": "Resource requests for the component."
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "cpu": { "type": "string", "default": "1" },
+            "memory": { "type": "string", "default": "2Gi" }
+          },
+          "required": ["cpu", "memory"],
+          "description": "Resource limits for the component."
+        }
+      },
+      "required": ["requests", "limits"],
+      "description": "Resource configuration for a component."
+    }
+  },
+  "description": "Schema for Hive Helm chart values."
+}
