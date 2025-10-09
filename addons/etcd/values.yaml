@@ -33,19 +33,18 @@ image:
   registry: quay.io
   repository: coreos/etcd
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag:
-    major3:
-      minor56: v3.5.6
-      minor515: v3.5.15
-      minor61: v3.6.1
 
-# used to inject static bash and other brinaries to distroless etcd image
-# Dockerfile place in ./bash-busybox
-images:
-  # used to inject static bash and other binaries to distroless etcd image
-  registry: docker.io
+bashBusyboxImage:
+  registry: ""
   repository: apecloud/bash-busybox
   pullPolicy: IfNotPresent
-  # use static compile version
   tag: 1.37.0-musl
+
+# etcd version configurations
+etcdVersions:
+  - version: 3.5.6
+    imageTag: v3.5.6
+  - version: 3.5.15
+    imageTag: v3.5.15
+  - version: 3.6.1
+    imageTag: v3.6.1
