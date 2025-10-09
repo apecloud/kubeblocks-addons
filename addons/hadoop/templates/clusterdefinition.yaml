@@ -1,0 +1,86 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: hadoop
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.apiVersion" . | nindent 4 }}
+spec:
+  topologies:
+    - name: hdfs-cluster
+      components:
+        - name: zookeeper
+          compDef: zookeeper
+        - name: journalnode
+          compDef: hadoop-hdfs-journalnode
+        - name: namenode
+          compDef: hadoop-hdfs-namenode
+        - name: datanode
+          compDef: hadoop-hdfs-datanode
+      orders:
+        provision:
+          - zookeeper
+          - journalnode
+          - namenode
+          - datanode
+        terminate:
+          - datanode
+          - namenode
+          - journalnode
+          - zookeeper
+    - name: ha-cluster
+      default: true
+      components:
+        - name: zookeeper
+          compDef: zookeeper
+        - name: journalnode
+          compDef: hadoop-hdfs-journalnode
+        - name: namenode
+          compDef: hadoop-hdfs-namenode
+        - name: datanode
+          compDef: hadoop-hdfs-datanode
+        - name: resourcemanager
+          compDef: hadoop-yarn-resourcemanager
+        - name: nodemanager
+          compDef: hadoop-yarn-nodemanager
+      orders:
+        provision:
+          - zookeeper
+          - journalnode
+          - namenode
+          - datanode
+          - resourcemanager
+          - nodemanager
+        terminate:
+          - nodemanager
+          - resourcemanager
+          - datanode
+          - namenode
+          - journalnode
+          - zookeeper
+    - name: ha-ref-zk-cluster
+      components:
+        - name: journalnode
+          compDef: hadoop-hdfs-journalnode
+        - name: namenode
+          compDef: hadoop-hdfs-namenode
+        - name: datanode
+          compDef: hadoop-hdfs-datanode
+        - name: resourcemanager
+          compDef: hadoop-yarn-resourcemanager
+        - name: nodemanager
+          compDef: hadoop-yarn-nodemanager
+      orders:
+        provision:
+          - journalnode
+          - namenode
+          - datanode
+          - resourcemanager
+          - nodemanager
+        terminate:
+          - nodemanager
+          - resourcemanager
+          - datanode
+          - namenode
+          - journalnode

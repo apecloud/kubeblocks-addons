@@ -1,0 +1,34 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: hdfs-namenode-rebuild
+  labels:
+    clusterdefinition.kubeblocks.io/name: hadoop-hdfs
+spec:
+  backupType: Full
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
+      runOnTargetPodNode: false
+      command:
+      - bash
+      - -c
+      - |
+        echo "{}" > ${DP_BACKUP_INFO_FILE}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    prepareData:
+      image: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:{{ .Values.images.hadoop.tag }}
+      command:
+      - sh
+      - -c
+      - |
+        # TODO: maybe need check hadoop user?
+        meta_dir=/hadoop/dfs/metadata/current
+        mkdir -p ${meta_dir}
+        touch ${meta_dir}/.hdfs-k8s-zkfc-formatted
+        chown -R hadoop:hadoop ${meta_dir}
