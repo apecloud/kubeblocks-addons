@@ -672,6 +672,9 @@
 	// Controls whether or not MySQL uses Linux native asynchronous IO.
 	innodb_use_native_aio?: string & "0" | "1" | "OFF" | "ON"
 
+	// On platforms that support fdatasync() system calls, having innodb_use_fdatasync enabled permits using fdatasync() instead of fsync() system calls for operating system flushes.
+	innodb_use_fdatasync?: string & "0" | "1" | "OFF" | "ON"
+
 	// The number of I/O threads for write operations in InnoDB.
 	innodb_write_io_threads?: int & >=1 & <=64
 
