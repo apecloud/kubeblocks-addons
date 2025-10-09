@@ -1,3 +1,4 @@
+#!/bin/bash
 port=$1
 content=$(curl -s http://localhost:$port/isActive)
 if [[ "$content" == *"I am Active!"* ]]; then
