@@ -12,10 +12,12 @@ spec:
       value: {{ .Values.restoreDir }}
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
+    - name: IMAGE_TAG
+      value: v3.6.1
   backupType: Full
   backup:
     backupData:
-      image: {{ include "etcd3.image" . }}
+      image: {{ include "etcd.repository" . }}:$(IMAGE_TAG)
       runOnTargetPodNode: true
       syncProgress:
         enabled: false
@@ -28,7 +30,7 @@ spec:
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "bashBusyboxImage.image" . }}
+      image: {{ include "bashBusybox.image" . }}
       runOnTargetPodNode: true
       command:
       - /bin/bash

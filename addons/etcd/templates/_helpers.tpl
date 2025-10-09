@@ -144,22 +144,8 @@ Define etcd image repository
 {{- end }}
 
 {{/*
-Define latest etcd image
-*/}}
-{{- define "etcd3.image" -}}
-{{ include "etcd.repository" . }}:{{ .Values.image.tag.major3.minor61 }}
-{{- end }}
-
-{{/*
-Define bash-busybox image repository
-*/}}
-{{- define "bashBusyboxImage.repository" -}}
-{{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}
-{{- end }}
-
-{{/*
 Define bash-busybox image
 */}}
-{{- define "bashBusyboxImage.image" -}}
-{{ include "bashBusyboxImage.repository" . }}:{{ .Values.images.tag }}
+{{- define "bashBusybox.image" -}}
+{{ .Values.bashBusyboxImage.registry | default "docker.io" }}/{{ .Values.bashBusyboxImage.repository }}:{{ .Values.bashBusyboxImage.tag }}
 {{- end }}

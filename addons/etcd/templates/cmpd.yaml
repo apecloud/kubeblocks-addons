@@ -13,7 +13,7 @@ spec:
   runtime:
     initContainers:
       - name: inject-bash
-        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.bashBusyboxImage.pullPolicy "IfNotPresent"}}
         volumeMounts:
           - name: scripts
             mountPath: /scripts
@@ -123,7 +123,16 @@ spec:
     - name: data
       needSnapshot: true
   services:
+    - name: client
+      serviceName: client
+      spec:
+        ports:
+          - name: client
+            port: 2379
+            targetPort: client
+      disableAutoProvision: true
     - name: peer
+      serviceName:
       spec:
         ports:
           - name: peer
