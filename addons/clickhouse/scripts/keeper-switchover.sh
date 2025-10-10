@@ -45,11 +45,12 @@ done <<< "$config"
 # 4. remove the leader from the config, only remove one time, because only the leader can remove itself
 keeper_run "$leader_fqdn" "reconfig remove '$pre_leader_config_id'"
 
-retry_keeper_operation \
-  "mode=\$(get_mode_by_keeper '$candidate_fqdn')" \
-  "[[ \"\$mode\" == \"leader\" ]]"
-
-# 6. Re-add after pre leader reboot
+# 5. Re-add after pre leader reboot
 retry_keeper_operation \
   "keeper_run '$candidate_fqdn' 'reconfig add \"$pre_leader\"'" \
   "echo \"\$(get_config '$candidate_fqdn')\" | grep -q \"$pre_leader\""
+
+# 6. Check if the candidate is the leader
+retry_keeper_operation \
+  "mode=\$(get_mode_by_keeper '$candidate_fqdn')" \
+  "[[ \"\$mode\" == \"leader\" ]]"
