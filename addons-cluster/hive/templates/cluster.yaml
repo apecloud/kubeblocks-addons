@@ -58,13 +58,13 @@ spec:
       volumes:
         - name: hadoop-core-config
           configMap:
-            name: {{ .Values.hadoopCluster }}-journalnode-core-config
+            name: {{ .Values.hadoopCluster.name }}-journalnode-core-config
         - name: hadoop-hdfs-config
           configMap:
-            name: {{ .Values.hadoopCluster }}-namenode-config
+            name: {{ .Values.hadoopCluster.name }}-namenode-config
         - name: hadoop-yarn-config
           configMap:
-            name: {{ .Values.hadoopCluster }}-resourcemanager-config
+            name: {{ .Values.hadoopCluster.name }}-resourcemanager-config
       volumeClaimTemplates:
         - name: metadata
           spec:
@@ -88,20 +88,20 @@ spec:
       serviceRefs:
         - name: hadoopZookeeper
           clusterServiceSelector:
-            cluster: {{ .Values.hadoopCluster }}
+            cluster: {{ .Values.hadoopCluster.name }}
             podFQDNs:
               component: zookeeper
       {{- end }}
       volumes:
         - name: hadoop-core-config
           configMap:
-            name: {{ .Values.hadoopCluster }}-journalnode-core-config
+            name: {{ .Values.hadoopCluster.name }}-journalnode-core-config
         - name: hadoop-hdfs-config
           configMap:
-            name: {{ .Values.hadoopCluster }}-namenode-config
+            name: {{ .Values.hadoopCluster.name }}-namenode-config
         - name: hadoop-yarn-config
           configMap:
-            name: {{ .Values.hadoopCluster }}-resourcemanager-config
+            name: {{ .Values.hadoopCluster.name }}-resourcemanager-config
       resources:
         requests:
           cpu: {{ .Values.resources.server2.requests.cpu | quote }}
