@@ -110,7 +110,8 @@ function find_leader() {
     for member_addr in "${members[@]}"; do
       local member_fqdn="${member_addr%:*}"
       [[ -n "$exclude_member" && "$member_fqdn" == *"$exclude_member"* ]] && continue
-      if [[ "$(get_mode "$member_fqdn")" == "leader" ]]; then
+      mode=$(get_mode "$member_fqdn")
+      if [[ "$mode" == "leader" || "$mode" == "standalone" ]]; then
         echo "$member_fqdn"
         return 0
       fi
