@@ -1,19 +1,19 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: hdfs-namenode-rebuild
+  name: hive-metastore-rebuild
   labels:
-    clusterdefinition.kubeblocks.io/name: hadoop-hdfs
+    clusterdefinition.kubeblocks.io/name: hive
 spec:
   backupType: Full
   env:
     - name: IMAGE_TAG
-      value: "{{ .Values.images.hadoop.tag }}"
+      value: "{{ .Values.hive.image.tag }}"
   backup:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:$(IMAGE_TAG)
+      image: {{ $.Values.hive.image.registry }}/{{ $.Values.hive.image.repository }}:$(IMAGE_TAG)
       runOnTargetPodNode: false
       command:
       - bash
@@ -25,13 +25,13 @@ spec:
         intervalSeconds: 5
   restore:
     prepareData:
-      image: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:$(IMAGE_TAG)
+      image: {{ $.Values.hive.image.registry }}/{{ $.Values.hive.image.repository }}:$(IMAGE_TAG)
       command:
       - sh
       - -c
       - |
         # TODO: maybe need check hadoop user?
-        meta_dir=/hadoop/dfs/metadata/current
+        meta_dir=/hive/metadata/hive_metastore_initialized
         mkdir -p ${meta_dir}
         touch ${meta_dir}/.hdfs-k8s-zkfc-formatted
         chown -R hadoop:hadoop ${meta_dir}

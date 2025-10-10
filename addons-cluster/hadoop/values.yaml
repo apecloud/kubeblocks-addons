@@ -69,6 +69,7 @@ storage:
   datanode: 30Gi
   nodemanager: 20Gi
   resourcemanager: 20Gi
+  zookeeper: 20Gi
 
 # Service references for external dependencies
 serviceRefs:
