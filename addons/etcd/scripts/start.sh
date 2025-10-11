@@ -54,6 +54,13 @@ update_etcd_conf() {
 }
 
 restore() {
+  if [ -d "$data_dir" ]; then
+    if [ -n "$(find "$data_dir" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+      log "Existing data directory $data_dir detected, skipping snapshot restore when restart etcd"
+      return 0
+    fi
+  fi
+
   local files=("$BACKUP_DIR"/*)
   if [ ${#files[@]} -eq 0 ] || [ ! -f "${files[0]}" ]; then
     error_exit "No backup file found in $BACKUP_DIR or directory is empty."
