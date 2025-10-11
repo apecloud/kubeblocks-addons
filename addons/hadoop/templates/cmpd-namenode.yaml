@@ -11,7 +11,7 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: hdfs-namenode
   serviceVersion: {{ .Chart.AppVersion }}
-  podManagementPolicy: OrderedReady
+  podManagementPolicy: Parallel
   services:
     - name: default
       spec:
