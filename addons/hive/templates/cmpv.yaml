@@ -25,9 +25,9 @@ spec:
     - name: metastaore-{{ .version }}
       serviceVersion: {{ .version }}
       images:
-        hive-metastore: "{{ $.Values.hive.image.repository }}:{{ .version }}"
+        hive-metastore: "{{ $.Values.hive.image.registry }}/{{ $.Values.hive.image.repository }}:{{ .version }}"
     - name: server2-{{ .version }}
       serviceVersion: {{ .version }}
       images:
-        hive-server2: "{{ $.Values.hive.image.repository }}:{{ .version }}"
+        hive-server2: "{{ $.Values.hive.image.registry }}/{{ $.Values.hive.image.repository }}:{{ .version }}"
   {{- end }}

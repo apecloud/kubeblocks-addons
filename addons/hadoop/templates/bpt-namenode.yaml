@@ -16,3 +16,13 @@ spec:
         volumeMounts:
         - name: metadata-dir
           mountPath: /hadoop
+      env:
+        - name: IMAGE_TAG
+          valueFrom:
+            versionMapping:
+              - serviceVersions:
+                  - "3.3.1"
+                mappedValue: "3.3.1"
+              - serviceVersions:
+                  - "3.3.6"
+                mappedValue: "3.3.6"
