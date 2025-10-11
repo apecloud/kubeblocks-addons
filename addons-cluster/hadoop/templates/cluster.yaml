@@ -21,6 +21,21 @@ spec:
         limits:
           cpu: {{ .Values.resources.zookeeper.limits.cpu | quote }}
           memory: {{ .Values.resources.zookeeper.limits.memory }}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ .Values.storage.zookeeper }}
+        - name: snapshot-log
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ .Values.storage.zookeeper }}
     {{- end }}
     - name: journalnode
       componentDef: hadoop-hdfs-journalnode

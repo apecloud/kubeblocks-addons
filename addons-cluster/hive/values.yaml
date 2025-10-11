@@ -47,7 +47,11 @@ storage:
   mysql: 50Gi
 
 # Specify the hadoop cluster name for service references
-hadoopCluster: hadoop
+hadoopCluster:
+  name: hadoop
+  namespace: default
+  serviceDescriptor: hadoop
+
 
 # Service references for external dependencies
 serviceRefs:
