@@ -84,7 +84,7 @@ spec:
         podService: true
         {{- include "kblib.loadBalancerAnnotations" . | indent 8 }}
       {{- end }}
-      {{- if eq .Values.mode "ZOOKEEPER-HA" }}
+      {{- if eq .Values.clusterMode "ZOOKEEPER-HA" }}
       serviceRefs:
         - name: hadoopZookeeper
           clusterServiceSelector:
