@@ -6,7 +6,7 @@ metadata:
     {{- include "mongodb.labels" . | nindent 4 }}
 data:
   mongodb.conf: |-
-    {{- .Files.Get "config/mongodb5.0-config.tpl" | nindent 4 }}
+    {{- .Files.Get "config/mongodb8.0-config.tpl" | nindent 4 }}
   keyfile: |-
     {{- .Files.Get "config/keyfile.tpl" | nindent 4 }}
 ---

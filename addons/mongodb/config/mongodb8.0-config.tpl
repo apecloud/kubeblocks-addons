@@ -67,7 +67,7 @@ systemLog:
   destination: file
 
   # The path of the log file to which mongod should send all diagnostic logging information.
-  path: {{ $mongodb_root }}/log/mongod.log
+  path: {{ $mongodb_root }}/logs/mongodb.log
 
   # When true, mongod appends new entries to the end of the existing log file when the instance restarts.
   logAppend: false
@@ -302,9 +302,9 @@ replication:
 #----------------------------------------------------------------------
 # 8. Sharding
 #----------------------------------------------------------------------
-sharding:
-  # If true, a shard archives documents from chunks that it migrates to other shards.
-  archiveMovedChunks: false
+# sharding:
+#   # If true, a shard archives documents from chunks that it migrates to other shards.
+#   archiveMovedChunks: false
 
 #----------------------------------------------------------------------
 # 9. Audit Log - (Enterprise Only)
@@ -321,25 +321,27 @@ sharding:
 setParameter:
   # --- Authentication Parameters ---
   allowRolesFromX509Certificates: true
-  authFailedDelayMs: 0
-  awsSTSRetryCount: 2
+  # authFailedDelayMs is enterprise only
+  # authFailedDelayMs: 0
+  # awsSTSRetryCount: 2
   enableLocalhostAuthBypass: true
   KeysRotationIntervalSec: 7776000
-  ldapConnectionPoolHostRefreshIntervalMillis: 60000
-  ldapConnectionPoolIdleHostTimeoutSecs: 300
-  ldapConnectionPoolMaximumConnectionsInProgressPerHost: 2
-  ldapConnectionPoolMaximumConnectionsPerHost: 2147483647
-  ldapConnectionPoolMinimumConnectionsPerHost: 1
-  ldapConnectionPoolUseLatencyForHostPriority: true
-  ldapForceMultiThreadMode: false
-  ldapRetryCount: 0
-  ldapShouldRefreshUserCacheEntries: true
-  ldapUserCacheInvalidationInterval: 30
-  ldapUserCacheRefreshInterval: 30
-  ldapUserCacheStalenessInterval: 90
+  # ldap is enterprise only
+  # ldapConnectionPoolHostRefreshIntervalMillis: 60000
+  # ldapConnectionPoolIdleHostTimeoutSecs: 300
+  # ldapConnectionPoolMaximumConnectionsInProgressPerHost: 2
+  # ldapConnectionPoolMaximumConnectionsPerHost: 2147483647
+  # ldapConnectionPoolMinimumConnectionsPerHost: 1
+  # ldapConnectionPoolUseLatencyForHostPriority: true
+  # ldapForceMultiThreadMode: false
+  # ldapRetryCount: 0
+  # ldapShouldRefreshUserCacheEntries: true
+  # ldapUserCacheInvalidationInterval: 30
+  # ldapUserCacheRefreshInterval: 30
+  # ldapUserCacheStalenessInterval: 90
   maxValidateMemoryUsageMB: 200
   ocspEnabled: true
-  pessimisticConnectivityCheckForAcceptedConnections: false
+  # pessimisticConnectivityCheckForAcceptedConnections: false
   scramIterationCount: 10000
   scramSHA256IterationCount: 15000
   tlsOCSPVerifyTimeoutSecs: 5
@@ -347,8 +349,10 @@ setParameter:
   tlsWithholdClientCertificate: false
   tlsX509ExpirationWarningThresholdDays: 30
   auditAuthorizationSuccess: false
-  auditConfigPollingFrequencySecs: 300
-  auditEncryptKeyWithKMIPGet: false
+  # for a sharded cluster
+  # auditConfigPollingFrequencySecs: 300
+  # enterprise only
+  # auditEncryptKeyWithKMIPGet: false
 
   # --- General Parameters ---
   allowDiskUseByDefault: true
@@ -364,9 +368,10 @@ setParameter:
   slowConnectionThresholdMillis: 100
   tcmallocEnableBackgroundThread: true
   tcmallocReleaseRate: 0.0
-  tcpFastOpenClient: true
-  tcpFastOpenQueueSize: 1024
-  tcpFastOpenServer: true
+  # depends on kernel parameters
+  # tcpFastOpenClient: true
+  # tcpFastOpenQueueSize: 1024
+  # tcpFastOpenServer: true
   ttlMonitorEnabled: true
   watchdogPeriodSeconds: -1
   planCacheSize: "5%"
@@ -403,9 +408,7 @@ setParameter:
   maxAcceptableLogicalClockDriftSecs: 31536000
   maxNumSyncSourceChangesPerHour: 3
   maxSessions: 1000000
-  mirrorReads:
-    samplingRate: 0.01
-    maxTimeMS: 1000
+  mirrorReads: "{ samplingRate: 0.01, maxTimeMS: 1000 }"
   oplogBatchDelayMillis: 0
   oplogFetcherUsesExhaust: true
   oplogInitialFindMaxSeconds: 60
@@ -426,9 +429,9 @@ setParameter:
   autoMergerIntervalSecs: 3600
   autoMergerThrottlingMS: 15000
   balancerMigrationsThrottlingMs: 1000
-  catalogCacheCollectionMaxEntries: 10000
-  catalogCacheDatabaseMaxEntries: 10000
-  catalogCacheIndexMaxEntries: 10000
+  # catalogCacheCollectionMaxEntries: 10000
+  # catalogCacheDatabaseMaxEntries: 10000
+  # catalogCacheIndexMaxEntries: 10000
   chunkDefragmentationThrottlingMS: 0
   disableResumableRangeDeleter: false
   enableFinerGrainedCatalogCacheRefresh: true
@@ -451,7 +454,8 @@ setParameter:
   shardedIndexConsistencyCheckIntervalMS: 600000
   ShardingTaskExecutorPoolHostTimeoutMS: 300000
   ShardingTaskExecutorPoolMaxConnecting: 2
-  ShardingTaskExecutorPoolMaxSize: 18446744073709551615
+  # overflow for percona-server-for-mongodb
+  # ShardingTaskExecutorPoolMaxSize: 18446744073709551615
   ShardingTaskExecutorPoolMaxSizeForConfigServers: -1
   ShardingTaskExecutorPoolMinSize: 1
   ShardingTaskExecutorPoolMinSizeForConfigServers: -1
@@ -464,14 +468,15 @@ setParameter:
   # --- Storage Parameters ---
   honorSystemUmask: false
   minSnapshotHistoryWindowInSeconds: 300
-  syncdelay: 60
+  # conflict with storage.syncPeriodSecs
+  # syncdelay: 60
   temporarilyUnavailableBackoffBaseMs: 1000
   temporarilyUnavailableMaxRetries: 10
-  upsertMaxRetryAttemptsOnDuplicateKeyError: 100
+  # upsertMaxRetryAttemptsOnDuplicateKeyError: 100
   wiredTigerFileHandleCloseIdleTime: 600
 
   # --- Transaction Parameters ---
-  AbortExpiredTransactionsSessionCheckoutTimeout: 100
+  # AbortExpiredTransactionsSessionCheckoutTimeout: 100
   coordinateCommitReturnImmediatelyAfterPersistingDecision: false
   internalSessionsReapThreshold: 1000
   maxTransactionLockRequestTimeoutMillis: 5
