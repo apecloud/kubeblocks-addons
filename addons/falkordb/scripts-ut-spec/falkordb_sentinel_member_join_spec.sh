@@ -16,7 +16,7 @@ generate_common_library $common_library_file
 
 Describe "FalkorDB Sentinel Member Join Script Tests"
 
-  Include ../scripts/redis-sentinel-member-join.sh
+  Include ../scripts/falkordb-sent-member-join.sh
   Include $common_library_file
 
   init() {

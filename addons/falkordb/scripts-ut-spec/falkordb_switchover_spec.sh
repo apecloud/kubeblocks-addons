@@ -12,7 +12,7 @@ common_library_file="./common.sh"
 generate_common_library $common_library_file
 
 Describe "FalkorDB Switchover Script Tests"
-  Include ../scripts/redis-switchover.sh
+  Include ../scripts/falkordb-switchover.sh
   Include $common_library_file
 
   init() {

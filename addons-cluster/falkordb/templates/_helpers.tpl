@@ -89,7 +89,7 @@ Define falkordb ComponentSpec with ComponentDefinition.
     {{- include "kblib.loadBalancerAnnotations" . | indent 4 }}
   {{- end }}
   env:
-  {{- if .Values.sentinel.customMasterName }}
+  {{- if and .Values.sentinel (hasKey .Values.sentinel "customMasterName") .Values.sentinel.customMasterName }}
   - name: CUSTOM_SENTINEL_MASTER_NAME
     value: {{ .Values.sentinel.customMasterName }}
   {{- end }}
@@ -179,6 +179,7 @@ replication mode: 2
 replicas: 1
 {{- else if eq .Values.mode "replication" }}
 replicas: {{ max .Values.replicas 2 }}
+{{- end }}
 {{- end }}
 
 {{/*

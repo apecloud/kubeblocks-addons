@@ -14,7 +14,7 @@ generate_common_library $common_library_file
 
 Describe "FalkorDB Start Sentinel Bash Script Tests"
   # load the scripts to be tested and dependencies
-  Include ../scripts/redis-sentinel-start-v2.sh
+  Include ../scripts/falkordb-sent-start-v2.sh
   Include $common_library_file
 
   init() {

@@ -16,7 +16,7 @@ generate_common_library $common_library_file
 
 Describe "FalkorDB Sentinel Member Leave Script Tests"
 
-  Include ../scripts/redis-sentinel-member-leave.sh
+  Include ../scripts/falkordb-sent-member-leave.sh
   Include $common_library_file
 
   setup() {

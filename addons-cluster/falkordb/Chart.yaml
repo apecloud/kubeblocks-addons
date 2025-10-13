@@ -30,4 +30,4 @@ maintainers:
 
 sources:
   - https://github.com/apecloud/kubeblocks/
-  - https://github.com/apecloud/kubeblocks/tree/main/deploy/redis
+  - https://github.com/apecloud/kubeblocks/tree/main/deploy/falkordb

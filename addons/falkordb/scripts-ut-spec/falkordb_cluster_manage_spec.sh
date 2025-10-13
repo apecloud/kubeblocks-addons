@@ -815,7 +815,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
         When run initialize_redis_cluster
         The status should be failure
         The stderr should include "Failed to create falkordb cluster when checking slots covered"
-        The stdout should include "FalkorDB cluster initialized primary nodes successfully, cluster nodes: 10.42.0.1:6379 10.42.0.5:6379 10.42.0.3:6379"
+        The stdout should include "FalkorDB cluster initialized primary nodes successfully, cluster nodes: 10.42.0.5:6379 10.42.0.3:6379 10.42.0.1:6379"
       End
     End
 
@@ -910,7 +910,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
         When run initialize_redis_cluster
         The status should be failure
         The stderr should include "Failed to find the mapping primary node for secondary node: falkordb-shard-98x-1"
-        The stdout should include "FalkorDB cluster initialized primary nodes successfully, cluster nodes: 10.42.0.1:6379 10.42.0.5:6379 10.42.0.3:6379"
+        The stdout should include "FalkorDB cluster initialized primary nodes successfully, cluster nodes: 10.42.0.5:6379 10.42.0.3:6379 10.42.0.1:6379"
         The stdout should include "FalkorDB cluster check primary nodes slots covered successfully"
       End
     End
