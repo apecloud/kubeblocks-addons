@@ -76,3 +76,5 @@ clusterMode: ZOOKEEPER-HA
 
 # LoadBalancer 模式，高可用zookeeper需要开启，否则只能k8s集群内访问. 或者可以走普通模式
 loadBalancerEnabled: false
+
+hostNetWorkEnabled: false

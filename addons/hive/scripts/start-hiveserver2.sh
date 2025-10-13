@@ -41,6 +41,9 @@ if [[ -n "${LB_ADVERTISED_HOST}" ]]; then
       fi
    done
    info "LB_ADVERTISED_HOST is set, bind hots to ${bind_host}"
+elif [[ -n "${THRIFT_HOST_NETWORK_PORT}" ]]; then
+    bind_host=`hostname`
+    echo "${HOST_IP} ${bind_host}" >> /etc/hosts
 fi
 
 sed -i "/<\/configuration>/i \
@@ -58,7 +61,7 @@ START_COMMAND=("${HIVE_HOME_DIR}/bin/hive" "--service" "hiveserver2")
 
 info "** Starting HiveServer2 **"
 if am_i_root; then
-    exec_as_user "$HIVE_DAEMON_USER" "${START_COMMAND[@]}"
+    exec_as_user "hadoop" "${START_COMMAND[@]}"
 else
     exec "${START_COMMAND[@]}"
 fi
