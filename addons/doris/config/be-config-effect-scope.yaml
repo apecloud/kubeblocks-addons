@@ -14,10 +14,8 @@ staticParameters:
   - priority_networks
   - enable_https
   - storage_root_path
-  - heartbeat_service_thread_count # int32 The number of threads that execute the heartbeat service on BE. the default is 1, it is not recommended to modify. 1
-  - ignore_broken_disk #bool When BE starts, check storage_root_path All paths under configuration. false
-  - mem_limit
-  - cluster_id
+  - heartbeat_service_thread_count 
+  - ignore_broken_disk
   - es_scroll_keepalive
   - brpc_max_body_size
   - brpc_socket_max_unwritten_bytes
