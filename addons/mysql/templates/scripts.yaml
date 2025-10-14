@@ -58,3 +58,15 @@ data:
     {{- .Files.Get "scripts/proxysql-entry.sh" | nindent 4 }}
   configure-proxysql.sh: |-
     {{- .Files.Get "scripts/configure-proxysql.sh" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-orc-actions-scripts
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+data:
+  switchover.sh: |-
+    {{- .Files.Get "scripts/orc-switchover.sh" | nindent 4 }}
+  member-leave.sh: |-
+    {{- .Files.Get "scripts/orc-member-leave.sh" | nindent 4 }}

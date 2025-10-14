@@ -29,6 +29,11 @@ scripts:
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555
+  - name: mysql-orc-actions-scripts
+    template: mysql-orc-actions-scripts
+    namespace: {{ .Release.Namespace }}
+    volumeName: orc-scripts
+    defaultMode: 0555
 volumes:
   - name: data
     needSnapshot: true
@@ -46,6 +51,14 @@ systemAccounts:
     passwordGenerationPolicy:
       length: 16
       numDigits: 8
+      numSymbols: 0
+      letterCase: MixedCases
+  - name: repl
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION SLAVE, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME} WITH GRANT OPTION;
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 5
       numSymbols: 0
       letterCase: MixedCases
 tls:
@@ -94,6 +107,16 @@ vars:
     valueFrom:
       credentialVarRef:
         name: root
+        password: Required
+  - name: MYSQL_REPLICATION_USER
+    valueFrom:
+      credentialVarRef:
+        name: repl
+        username: Required
+  - name: MYSQL_REPLICATION_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        name: repl
         password: Required
   - name: ORC_ENDPOINTS
     valueFrom:
@@ -148,7 +171,7 @@ accountProvision:
         set -ex
         ALL_DB='*.*'
         eval statement=\"${KB_ACCOUNT_STATEMENT}\"
-        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement};FLUSH PRIVILEGES;"
     targetPodSelector: Role
     matchingKey: primary
 roleProbe:
@@ -190,56 +213,16 @@ memberLeave:
       - /bin/bash
       - -c
       - |
-        set +e
-        timeout=30
-        master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME})
-        self_service_name=$(echo "${KB_LEAVE_MEMBER_POD_NAME}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
-        if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
-          /kubeblocks/orchestrator-client -c force-master-failover -i ${CLUSTER_NAME}
-          local start_time=$(date +%s)
-          local current_time
-          while true; do
-            current_time=$(date +%s)
-            if [ $((current_time - start_time)) -gt $timeout ]; then
-              break
-            fi
-            master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME})
-            if [ "${self_service_name%%:*}" != "${master_from_orc%%:*}" ]; then
-              break
-            fi
-            sleep 1
-          done
-        fi
-        /kubeblocks/orchestrator-client -c reset-replica -i ${self_service_name}
-        /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
-        res=$(/kubeblocks/orchestrator-client -c which-cluster-alias -i ${self_service_name})
-        start_time=$(date +%s)
-        while [ "$res" == "" ]; do
-          current_time=$(date +%s)
-          if [ $((current_time - start_time)) -gt $timeout ]; then
-            break
-          fi
-          sleep 1
-          res=$(/kubeblocks/orchestrator-client -c instance -i ${self_service_name})
-        done
-        /kubeblocks/orchestrator-client -c forget -i ${self_service_name}| true
+        /orc-scripts/member-leave.sh >> /tmp/member-leave.log 2>&1
+
 switchover:
   exec:
     command:
       - /bin/sh
       - -c
       - |
+        /orc-scripts/switchover.sh  >> /tmp/switchover.log 2>&1
 
-        if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
-            echo "switchover not triggered for primary, nothing to do, exit 0."
-            exit 0
-        fi
-
-        response=$(curl -s -o /dev/null -w "%{http_code}" http://${ORC_ENDPOINTS}/api/graceful-master-takeover-auto/${KB_SWITCHOVER_CURRENT_NAME})
-        if [ ! $response -eq 200 ]; then
-          echo "switchover failed, please check the candidate"
-          exit 1
-        fi
 {{- end }}
 
 
@@ -287,6 +270,8 @@ volumeMounts:
     name: mysql-config
   - name: scripts
     mountPath: /scripts
+  - name: orc-scripts
+    mountPath: /orc-scripts
   - mountPath: /kubeblocks-tools
     name: kubeblocks
 ports:

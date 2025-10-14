@@ -34,7 +34,7 @@ create_mysql_user() {
 
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
 CREATE USER IF NOT EXISTS '$topology_user'@'%' IDENTIFIED BY '$topology_password';
-GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$topology_user'@'%';
+GRANT SUPER, PROCESS, REPLICATION SLAVE, REPLICATION CLIENT, RELOAD ON *.* TO '$topology_user'@'%';
 GRANT SELECT ON mysql.slave_master_info TO '$topology_user'@'%';
 GRANT DROP ON _pseudo_gtid_.* to '$topology_user'@'%';
 GRANT ALL ON kb_orc_meta_cluster.* TO '$topology_user'@'%';
@@ -141,7 +141,7 @@ setup_master_slave() {
   # there may be a case where the old instance is still registered in orchestrator
   # if orchestrator-client -c instance -i ${POD_NAME} ; then
   #   return 0
-  # fi  
+  # fi
 
   # If the master_pod_name is empty, then this pod is the first one in the cluster, init cluster info database and create user.
   if [[ $master_from_orc == "" && $self_last_digit -eq 0 ]]; then
@@ -220,9 +220,6 @@ change_master() {
   master_host=$1
   master_port=3306
 
-  username=$mysql_username
-  password=$mysql_password
-
   if [[ "${MYSQL_MAJOR}" == "5.7" ]]; then
     mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
 SET GLOBAL READ_ONLY=1;
@@ -234,8 +231,8 @@ MASTER_CONNECT_RETRY=1,
 MASTER_RETRY_COUNT=86400,
 MASTER_HOST='$master_host',
 MASTER_PORT=$master_port,
-MASTER_USER='$MYSQL_ROOT_USER',
-MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
+MASTER_USER='$MYSQL_REPLICATION_USER',
+MASTER_PASSWORD='$MYSQL_REPLICATION_PASSWORD';
 START SLAVE;
 EOF
   else
@@ -244,14 +241,14 @@ SET GLOBAL READ_ONLY=1;
 SET GLOBAL SUPER_READ_ONLY=1;
 STOP SLAVE;
 CHANGE MASTER TO
-MASTER_AUTO_POSITION=1,
-GET_MASTER_PUBLIC_KEY=1,
+SOURCE_AUTO_POSITION=1,
+SOURCE_SSL=1,
 MASTER_CONNECT_RETRY=1,
 MASTER_RETRY_COUNT=86400,
 MASTER_HOST='$master_host',
 MASTER_PORT=$master_port,
-MASTER_USER='$MYSQL_ROOT_USER',
-MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
+MASTER_USER='$MYSQL_REPLICATION_USER',
+MASTER_PASSWORD='$MYSQL_REPLICATION_PASSWORD';
 START SLAVE;
 EOF
   fi
