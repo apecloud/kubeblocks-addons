@@ -20,9 +20,11 @@ spec:
       orders:
         provision:
           - mysql
-          - metastore,server2
+          - metastore
+          - server2
         terminate:
-          - metastore,server2
+          - server2
+          - metastore
           - mysql
     - name: external-mysql-hive-cluster
       components:
@@ -32,6 +34,8 @@ spec:
         compDef: hive-server2
       orders:
         provision:
-        - metastore,server2
+        - metastore
+        - server2
         terminate:
-        - metastore,server2
+        - server2
+        - metastore

@@ -4,6 +4,10 @@ metadata:
   namespace: {{ .Release.Namespace }}
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  {{- if .Values.hostNetworkEnabled }}
+  annotations:
+    kubeblocks.io/host-network: "server2"
+  {{- end }}
 spec:
   terminationPolicy: Delete
   clusterDef: hive
