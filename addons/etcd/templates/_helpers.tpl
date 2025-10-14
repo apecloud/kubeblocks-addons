@@ -75,15 +75,8 @@ Define etcd image
 {{- end }}
 
 {{/*
-Define bash-busybox image repository
-*/}}
-{{- define "bashBusyboxImage.repository" -}}
-{{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}
-{{- end }}
-
-{{/*
 Define bash-busybox image
 */}}
 {{- define "bashBusyboxImage.image" -}}
-{{ include "bashBusyboxImage.repository" . }}:{{ .Values.images.tag }}
+{{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.bashBusybox.repository }}:{{ .Values.images.bashBusybox.tag }}
 {{- end }}

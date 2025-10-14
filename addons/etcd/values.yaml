@@ -43,10 +43,10 @@ image:
       minor61: v3.6.1
 
 # used to inject static bash and other binaries to distroless etcd image
-# using 'images' as prefix for compatibility with cloud deployment
+# using 'images' as prefix for compatibility with different registry
 images:
   registry: docker.io
-  repository: apecloud/bash-busybox
   pullPolicy: IfNotPresent
-  # use static compile version
-  tag: 1.37.0-musl
+  bashBusybox:
+    repository: apecloud/bash-busybox
+    tag: 1.37.0-musl
