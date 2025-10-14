@@ -30,7 +30,7 @@ EOF
 cp /hive/base-conf/hive-site.xml $HIVE_CONF_DIR/hive-site.xml
 cp /hive/base-conf/hive-log4j2.properties $HIVE_CONF_DIR/hive-log4j2.properties
 
-bind_host="0.0.0.0"
+bind_host=`hostname`
 if [[ -n "${LB_ADVERTISED_HOST}" ]]; then
    for lb_composed_name in $(echo "$LB_ADVERTISED_HOST" | tr ',' '\n' ); do
      svc_name=${lb_composed_name%:*}
@@ -42,8 +42,7 @@ if [[ -n "${LB_ADVERTISED_HOST}" ]]; then
    done
    info "LB_ADVERTISED_HOST is set, bind hots to ${bind_host}"
 elif [[ -n "${THRIFT_HOST_NETWORK_PORT}" ]]; then
-    bind_host=`hostname`
-    echo "${HOST_IP} ${bind_host}" >> /etc/hosts
+    echo "${HOST_IP} `hostname`" >> /etc/hosts
 fi
 
 sed -i "/<\/configuration>/i \
