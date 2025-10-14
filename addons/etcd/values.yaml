@@ -43,7 +43,7 @@ image:
       minor61: v3.6.1
 
 # used to inject static bash and other binaries to distroless etcd image
-# using 'images' as prefix for compatibility with cloud deployment
+# using 'images' as prefix for compatibility with different registry
 images:
   registry: docker.io
   pullPolicy: IfNotPresent
