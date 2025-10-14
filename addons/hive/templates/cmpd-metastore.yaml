@@ -10,7 +10,7 @@ spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}
   serviceKind: hive-metastore
-  podManagementPolicy: Parallel
+  podManagementPolicy: OrderedReady
   services:
     - name: default
       spec:

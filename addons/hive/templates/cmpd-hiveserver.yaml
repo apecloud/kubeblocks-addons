@@ -10,6 +10,7 @@ spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}
   serviceKind: hive-server2
+  podManagementPolicy: Parallel
   services:
     - name: default
       spec:
@@ -17,6 +18,12 @@ spec:
           - name: thrift
             port: 10000
             targetPort: thrift
+          - name: http
+            port: 10001
+            targetPort: http
+          - name: web
+            port: 10002
+            targetPort: web
     - name: lb-advertised
       serviceName: lb-advertised
       spec:
@@ -28,6 +35,9 @@ spec:
           - name: thrift
             port: 10000
             targetPort: thrift
+          - name: web
+            port: 10002
+            targetPort: web
       podService: true
       disableAutoProvision: true
   systemAccounts:
@@ -43,6 +53,13 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: zookeeper
           serviceVersion: "^*"
+  hostNetwork:
+    containerPorts:
+      - container: hive-server2
+        ports:
+          - thrift
+          - http
+          - web
   runtime:
     containers:
       - name: hive-server2
@@ -55,6 +72,10 @@ spec:
         ports:
           - containerPort: 10000
             name: thrift
+          - containerPort: 10001
+            name: http
+          - containerPort: 10002
+            name: web
         env:
           - name: DEBUG_MODEL
             value: "false"
@@ -62,6 +83,10 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
+          - name: HOST_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
         volumeMounts:
           - name: metadata
             mountPath: /hive
@@ -89,16 +114,16 @@ spec:
             subPath: mapred-site.xml
           - name: hive-scripts
             mountPath: /kubeblocks/scripts
-        securityContext:
-          runAsUser: 10000
-          runAsGroup: 1000
-          runAsNonRoot: true
-          privileged: false
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: [ "ALL" ]
-          seccompProfile:
-            type: "RuntimeDefault"
+        #securityContext:
+        #  runAsUser: 10000
+        #  runAsGroup: 1000
+        #  runAsNonRoot: true
+        #  privileged: false
+        #  allowPrivilegeEscalation: false
+        # capabilities:
+        #    drop: [ "ALL" ]
+        # seccompProfile:
+        #    type: "RuntimeDefault"
     securityContext:
       fsGroupChangePolicy: Always
       fsGroup: 1000
@@ -124,6 +149,42 @@ spec:
         componentVarRef:
           optional: true
           componentName: Required
+    - name: THRIFT_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: hive-server2
+            port:
+              name: thrift
+              option: Required
+    - name: THRIFT_PORT
+      value: "10000"
+      expression: {{ `{{if ne (index . "THRIFT_HOST_NETWORK_PORT") ""}}{{.THRIFT_HOST_NETWORK_PORT}}{{else}}{{.THRIFT_PORT}}{{end}}` | toYaml }}
+    - name: HTTP_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: hive-server2
+            port:
+              name: http
+              option: Required
+    - name: HTTP_PORT
+      value: "10001"
+      expression: {{ `{{if ne (index . "HTTP_HOST_NETWORK_PORT") ""}}{{.HTTP_HOST_NETWORK_PORT}}{{else}}{{.HTTP_PORT}}{{end}}` | toYaml }}
+    - name: WEB_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: hive-server2
+            port:
+              name: web
+              option: Required
+    - name: WEB_PORT
+      value: "10002"
+      expression: {{ `{{if ne (index . "WEB_HOST_NETWORK_PORT") ""}}{{.WEB_HOST_NETWORK_PORT}}{{else}}{{.WEB_PORT}}{{end}}` | toYaml }}
     - name: ZOOKEEPER_ENDPOINTS
       valueFrom:
         serviceRefVarRef:

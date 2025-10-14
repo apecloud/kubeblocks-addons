@@ -3,7 +3,15 @@
 <configuration>
     <property>
         <name>hive.server2.thrift.port</name>
-        <value>10000</value>
+        <value>{{ .THRIFT_PORT }}</value>
+    </property>
+    <property>
+        <name>hive.server2.thrift.http.port</name>
+        <value>{{ .HTTP_PORT }}</value>
+    </property>
+    <property>
+        <name>hive.server2.webui.port</name>
+        <value>{{ .WEB_PORT }}</value>
     </property>
     <property>
         <name>hive.metastore.uris</name>

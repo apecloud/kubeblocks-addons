@@ -30,7 +30,7 @@ EOF
 cp /hive/base-conf/hive-site.xml $HIVE_CONF_DIR/hive-site.xml
 cp /hive/base-conf/hive-log4j2.properties $HIVE_CONF_DIR/hive-log4j2.properties
 
-bind_host="0.0.0.0"
+bind_host=`hostname`
 if [[ -n "${LB_ADVERTISED_HOST}" ]]; then
    for lb_composed_name in $(echo "$LB_ADVERTISED_HOST" | tr ',' '\n' ); do
      svc_name=${lb_composed_name%:*}
@@ -41,6 +41,8 @@ if [[ -n "${LB_ADVERTISED_HOST}" ]]; then
       fi
    done
    info "LB_ADVERTISED_HOST is set, bind hots to ${bind_host}"
+elif [[ -n "${THRIFT_HOST_NETWORK_PORT}" ]]; then
+    echo "${HOST_IP} `hostname`" >> /etc/hosts
 fi
 
 sed -i "/<\/configuration>/i \
@@ -58,7 +60,7 @@ START_COMMAND=("${HIVE_HOME_DIR}/bin/hive" "--service" "hiveserver2")
 
 info "** Starting HiveServer2 **"
 if am_i_root; then
-    exec_as_user "$HIVE_DAEMON_USER" "${START_COMMAND[@]}"
+    exec_as_user "hadoop" "${START_COMMAND[@]}"
 else
     exec "${START_COMMAND[@]}"
 fi
