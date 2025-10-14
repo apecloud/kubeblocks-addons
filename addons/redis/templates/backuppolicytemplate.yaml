@@ -39,6 +39,21 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+      env:
+        - name: IMAGE
+          valueFrom:
+            versionMapping:
+              - serviceVersions:
+                  - "7.4.5"
+                mappedValue: "{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.4.0-v6"
+              - serviceVersions:
+                  - "8.0.1"
+                  - "8.0.2"
+                  - "8.0.3"
+                mappedValue: "{{ .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ceImage.repository }}:8.0.3"
+              - serviceVersions:
+                  - "8.2.1"
+                mappedValue: "{{ .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ceImage.repository }}:8.2.1"
     - name: volume-snapshot
       snapshotVolumes: true
       targetVolumes:
