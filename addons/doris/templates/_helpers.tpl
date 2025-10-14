@@ -137,3 +137,31 @@ Define doris be component scripts configMap template name
 {{- define "be.scriptsTemplate" -}}
 doris-be-scripts-template
 {{- end -}}
+
+{{/*
+Define doris fe parameters config render name
+*/}}
+{{- define "fe.pcrName" -}}
+doris-fe-pcr
+{{- end -}}
+
+{{/*
+Define doris be parameters config render name
+*/}}
+{{- define "be.pcrName" -}}
+doris-be-pcr
+{{- end -}}
+
+{{/*
+Define doris fe parameters definition name
+*/}}
+{{- define "fe.paramsDefName" -}}
+doris-fe-pd
+{{- end -}}
+
+{{/*
+Define doris be parameters definition name
+*/}}
+{{- define "be.paramsDefName" -}}
+doris-be-pd
+{{- end -}}

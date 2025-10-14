@@ -17,4 +17,5 @@ metadata:
   labels:
     {{- include "doris.labels" . | nindent 4 }}
 data:
-{{ include "doris.be.config" . | indent 2 }}
+  be.conf: |-
+    {{- .Files.Get "config/be-config.tpl" | nindent 4 }}
