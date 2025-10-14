@@ -34,11 +34,14 @@ image:
   repository: coreos/etcd
   pullPolicy: IfNotPresent
 
-bashBusyboxImage:
-  registry: ""
-  repository: apecloud/bash-busybox
+# used to inject static bash and other binaries to distroless etcd image
+# using 'images' as prefix for compatibility with different registry 
+images:
+  registry: docker.io
   pullPolicy: IfNotPresent
-  tag: 1.37.0-musl
+  bashBusybox:
+    repository: apecloud/bash-busybox
+    tag: 1.37.0-musl
 
 # etcd version configurations
 etcdVersions:
