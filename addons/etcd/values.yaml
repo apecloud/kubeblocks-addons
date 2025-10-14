@@ -46,7 +46,7 @@ image:
 # using 'images' as prefix for compatibility with cloud deployment
 images:
   registry: docker.io
-  repository: apecloud/bash-busybox
   pullPolicy: IfNotPresent
-  # use static compile version
-  tag: 1.37.0-musl
+  bashBusybox:
+    repository: apecloud/bash-busybox
+    tag: 1.37.0-musl
