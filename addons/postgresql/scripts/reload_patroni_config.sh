@@ -1,14 +1,16 @@
 #!/bin/bash
 # Script to reload Patroni configuration for PostgreSQL
+set -e
 
 process_standby_config() {
     local is_standby
     is_standby=$(echo "${PG_MODE:-}" | tr '[:upper:]' '[:lower:]' | grep -q "standby" && echo "true" || echo "false")
     local patroniurl="http://${CURRENT_POD_IP:-localhost}:8008"
+    echo "patroniurl: $patroniurl"
     # Get current config
     local result
     local retry_count=0
-    local max_retries=3
+    local max_retries=5
 
     while [ $retry_count -lt $max_retries ]; do
         result=$(curl -s ${patroniurl}/config)
