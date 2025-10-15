@@ -343,7 +343,7 @@
 	brpc_num_threads: int | *256
 
 	// Declare a selection strategy for those servers with many IPs. Note that at most one ip should match this list. This is a semicolon-separated list in CIDR notation, such as 10.10.10.0/24. If there is no IP matching this rule, one will be randomly selected
-	priority_networks:: string | *""
+	priority_networks: string | *""
 
 	// Whether https is supported. If so, configure ssl_certificate_path and ssl_private_key_path in be.conf.
 	enable_https: bool | *false

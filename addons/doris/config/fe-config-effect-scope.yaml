@@ -74,12 +74,12 @@ staticParameters:
   - enable_sts_vpc
   - enable_token_check
   - es_state_sync_interval_second
-  - experimental_enable_all_http_auth
-  - experimental_enable_feature_binlog
-  - experimental_enable_fqdn_mode
-  - experimental_enable_https
-  - experimental_enable_ssl
-  - experimental_max_binlog_messsage_size
+  - enable_all_http_auth
+  - enable_feature_binlog
+  - enable_fqdn_mode
+  - enable_https
+  - enable_ssl
+  - max_binlog_messsage_size
   - external_cache_expire_time_minutes_after_access
   - finish_job_max_saved_second
   - finished_job_cleanup_threshold_time_hour
@@ -325,13 +325,13 @@ dynamicParameters:
   - enable_query_queue
   - enable_round_robin_create_tablet
   - enable_urgent_balance_no_low_backend
-  - experimental_enable_cpu_hard_limit
-  - experimental_enable_mtmv
-  - experimental_enable_nereids_load
-  - experimental_enable_single_replica_load
-  - experimental_enable_workload_group
-  - experimental_min_tablets_for_dup_table_shuffle
-  - experimental_sql_cache_manage_num
+  - enable_cpu_hard_limit
+  - enable_mtmv
+  - enable_nereids_load
+  - enable_single_replica_load
+  - enable_workload_group
+  - min_tablets_for_dup_table_shuffle
+  - sql_cache_manage_num
   - expire_sql_cache_in_fe_second
   - expr_children_limit
   - expr_depth_limit
