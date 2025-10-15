@@ -87,12 +87,12 @@ spec:
       template: {{ include "clickhouse.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
-      externalManaged: true
+      restartOnFileChange: false
     - name: clickhouse-user-tpl
       template: {{ include "clickhouse.userTplName" . }}
       volumeName: user-config
       namespace: {{ .Release.Namespace }}
-      externalManaged: true
+      restartOnFileChange: false
     - name: clickhouse-client-tpl
       template: {{ include "clickhouse.clientTplName" . }}
       volumeName: client-config
