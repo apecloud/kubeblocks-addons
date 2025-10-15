@@ -6,7 +6,7 @@ process_standby_config() {
     local is_standby
     is_standby=$(echo "${PG_MODE:-}" | tr '[:upper:]' '[:lower:]' | grep -q "standby" && echo "true" || echo "false")
     local patroniurl="http://${CURRENT_POD_IP:-localhost}:8008"
-    echo "patroniurl: $patroniurl"
+    echo "patroniurl: $patroniurl, isStandby: $is_standby"
     # Get current config
     local result
     local retry_count=0
@@ -28,10 +28,7 @@ process_standby_config() {
         fi
     done
 
-    # Extract standby_cluster info
-    local current_host current_port
-    current_host=$(echo "$result" | jq -r '.standby_cluster.host // empty')
-    current_port=$(echo "$result" | jq -r '.standby_cluster.port // empty')
+    echo "Origin patroni config: $result"
 
     if [[ "$is_standby" == "true" ]]; then
         local primary_endpoint="${primaryEndpoint:-}"
@@ -46,24 +43,18 @@ process_standby_config() {
             echo "Set STANDBY_HOST=$env_host, STANDBY_PORT=$env_port from primary_endpoint"
         elif [[ -n "$primary_endpoint" ]]; then
             echo "Invalid primary_endpoint format: $primary_endpoint, expected host:port"
+            return 1
         fi
 
         # Check if we need to patch the config
-        if [[ -n "$env_host" && -n "$env_port" && ("$current_host" != "$env_host" || "$current_port" != "$env_port") ]]; then
-            local patch_config
-            patch_config=$(jq -n \
-                --arg host "$env_host" \
-                --arg port "$env_port" \
-                '{"standby_cluster":{"create_replica_methods":["basebackup_fast_xlog"],"host":$host,"port":$port}}')
-
-            echo "current_host: $current_host, current_port: $current_port, env_host: $env_host, env_port: $env_port, need_patch: true"
+        if [[ -n "$env_host" && -n "$env_port" ]]; then
+            local patch_config="{\"standby_cluster\":{\"create_replica_methods\":[\"basebackup_fast_xlog\"],\"host\":\"$env_host\",\"port\":$env_port}}"
             echo "patch_config: $patch_config"
-
             curl -X PATCH -d "$patch_config" ${patroniurl}/config
         else
-            echo "current_host: $current_host, current_port: $current_port, env_host: $env_host, env_port: $env_port, need_patch: false"
+            echo "env_host: $env_host, env_port: $env_port, need_patch: false"
         fi
-    elif [[ -n "$current_host" || -n "$current_port" ]]; then
+    else
         # Clear standby config if it exists and we're not in remote backup mode
         echo "Clear standby config"
         curl -X PATCH -d '{"standby_cluster":null}' ${patroniurl}/config
