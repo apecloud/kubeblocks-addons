@@ -92,7 +92,8 @@ spec:
       template: hadoop-datanode-config-template
       volumeName: datanode-config
       defaultMode: 0755
-      externalManaged: true
+      externalManaged: false
+      restartOnFileChange: true
   scripts:
     - name: {{ include "hadoop.name" . }}-scripts
       template: {{ include "hadoop.name" . }}-scripts

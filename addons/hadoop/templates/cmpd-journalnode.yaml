@@ -144,13 +144,15 @@ spec:
       template: hadoop-journalnode-config-template
       volumeName: journalnode-config
       defaultMode: 0755
-      externalManaged: true
+      externalManaged: false
+      restartOnFileChange: true
     - name: core-config
       namespace: {{ .Release.Namespace }}
       template: hadoop-core-config-template
       volumeName: core-config
       defaultMode: 0755
-      externalManaged: true
+      externalManaged: false
+      restartOnFileChange: true
   scripts:
     - name: {{ include "hadoop.name" . }}-scripts
       template: {{ include "hadoop.name" . }}-scripts
