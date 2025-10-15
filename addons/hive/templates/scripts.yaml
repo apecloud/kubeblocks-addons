@@ -9,3 +9,5 @@ data:
     {{- .Files.Get "scripts/start-hive.sh" | nindent 4 }}
   start-hiveserver2.sh: |-
     {{- .Files.Get "scripts/start-hiveserver2.sh" | nindent 4 }}
+  probe-server2.py: |-
+    {{- .Files.Get "scripts/probe-server2.py" | nindent 4 }}

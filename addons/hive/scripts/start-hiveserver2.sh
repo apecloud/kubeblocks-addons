@@ -27,6 +27,7 @@ export HADOOP_CONF_DIR=/hadoop/conf
 export HADOOP_LOG_DIR=/hadoop/logs
 EOF
 
+chmod 777 -R /hive/conf
 cp /hive/base-conf/hive-site.xml $HIVE_CONF_DIR/hive-site.xml
 cp /hive/base-conf/hive-log4j2.properties $HIVE_CONF_DIR/hive-log4j2.properties
 
