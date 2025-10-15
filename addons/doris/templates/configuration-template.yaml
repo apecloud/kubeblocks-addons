@@ -6,7 +6,8 @@ metadata:
   labels:
     {{- include "doris.labels" . | nindent 4 }}
 data:
-{{ include "doris.fe.config" . | indent 2 }}
+  fe.conf: |-
+    {{- .Files.Get "config/fe-config.tpl" | nindent 4 }}
 
 ---
 apiVersion: v1

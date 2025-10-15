@@ -65,20 +65,6 @@ API version annotation
 kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
-{{- define "doris.fe.config" -}}
-fe.conf: |
-{{- if .Values.fe.config }}
-{{ .Values.fe.config | indent 2 }}
-{{- end }}
-{{- end }}
-
-{{- define "doris.be.config" -}}
-be.conf: |
-{{- if .Values.be.config }}
-{{ .Values.be.config | indent 2 }}
-{{- end }}
-{{- end }}
-
 {{- define "fe.componentDefName" -}}
 doris-fe-{{ .Chart.Version }}
 {{- end -}}

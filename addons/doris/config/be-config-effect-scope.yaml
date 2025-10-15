@@ -8,8 +8,6 @@ staticParameters:
   - memory_mode
   - mem_limit
   - soft_mem_limit_frac
-  - custom_config_dir
-  - jdbc_drivers_dir
   - brpc_num_threads
   - priority_networks
   - enable_https
@@ -87,7 +85,6 @@ staticParameters:
   - alter_tablet_worker_count
   - alter_index_worker_count
   - ignore_load_tablet_failure
-  - sys_log_dir
   - sys_log_roll_num
   - sys_log_verbose_level
   - sys_log_verbose_modules
@@ -220,4 +217,7 @@ immutableParameters:
   - heartbeat_service_port
   - arrow_flight_sql_port
   - arrow_flight_sql_proxy_port
+  - custom_config_dir
+  - jdbc_drivers_dir
+  - sys_log_dir
 
