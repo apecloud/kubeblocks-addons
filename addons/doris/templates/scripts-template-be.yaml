@@ -11,3 +11,10 @@ data:
     {{- .Files.Get "scripts/be/entry_point.sh" | nindent 4 }}
   init_be.sh: |-
     {{- .Files.Get "scripts/be/init_be.sh" | nindent 4 }}
+  be-update-dynamic-config.sh: |
+    #!/bin/sh
+    set -ex
+    key="${1:?missing parameterkey}"
+    value="${2:?missing parametervalue}"
+    echo "key: $key, value: $value"
+    curl -XPOST http://localhost:8040/api/update_config?$key=$value

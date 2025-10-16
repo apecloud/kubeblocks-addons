@@ -65,20 +65,6 @@ API version annotation
 kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
-{{- define "doris.fe.config" -}}
-fe.conf: |
-{{- if .Values.fe.config }}
-{{ .Values.fe.config | indent 2 }}
-{{- end }}
-{{- end }}
-
-{{- define "doris.be.config" -}}
-be.conf: |
-{{- if .Values.be.config }}
-{{ .Values.be.config | indent 2 }}
-{{- end }}
-{{- end }}
-
 {{- define "fe.componentDefName" -}}
 doris-fe-{{ .Chart.Version }}
 {{- end -}}
@@ -136,4 +122,32 @@ Define doris be component scripts configMap template name
 */}}
 {{- define "be.scriptsTemplate" -}}
 doris-be-scripts-template
+{{- end -}}
+
+{{/*
+Define doris fe parameters config render name
+*/}}
+{{- define "fe.pcrName" -}}
+doris-fe-pcr
+{{- end -}}
+
+{{/*
+Define doris be parameters config render name
+*/}}
+{{- define "be.pcrName" -}}
+doris-be-pcr
+{{- end -}}
+
+{{/*
+Define doris fe parameters definition name
+*/}}
+{{- define "fe.paramsDefName" -}}
+doris-fe-pd
+{{- end -}}
+
+{{/*
+Define doris be parameters definition name
+*/}}
+{{- define "be.paramsDefName" -}}
+doris-be-pd
 {{- end -}}
