@@ -46,10 +46,9 @@ def check_hive_health(
         ), database=database)
 
         cursor = conn.cursor()
-        cursor.execute("SELECT 1")
+        cursor.execute("show databases")
         result = cursor.fetchone()
-
-        if result and result[0] == 1:
+        if result and len(result) > 0:
             print("HiveServer2 is healthy.")
             return True
         else:
