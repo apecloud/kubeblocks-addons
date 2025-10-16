@@ -74,7 +74,7 @@
 	cache_result_max_row_count: int | *3000
 
 	// The high water of disk capacity used percent. This is used for calculating load score of a backend.
-	capacity_used_percent_high_water: foloat | *0.75
+	capacity_used_percent_high_water: float | *0.75
 
 	// After dropping database(table/partition), you can recover it by using RECOVER stmt. And this specifies the maximal data retention time. After time, the data will be deleted permanently.
 	catalog_trash_expire_second: int | *86400
@@ -294,7 +294,6 @@
 	
 	// Whether to enable the Nereids optimizer. If enabled, the load statement of the new optimizer can be used to import data. If this function fails, the old load statement will be degraded.
 	enable_nereids_load: bool | *false
-	
 
 	// Whether to enable the single replica load. If enabled, the load statement of the new optimizer can be used to import data. If this function fails, the old load statement will be degraded.
 	enable_single_replica_load: bool | *false
@@ -351,7 +350,7 @@
 	hive_metastore_client_timeout_second: int | *10
 
 	// Sample size for hive row count estimation.
-	hive_stats_partition_sample_size: int | 30
+	hive_stats_partition_sample_size: int | *30
 
 	// Maximum number of events to poll in each RPC.
 	hms_events_batch_size_per_rpc: int | *500
@@ -568,8 +567,7 @@
 
 	// Valid only if use PartitionRebalancer.
 	partition_rebalance_max_moves_num_per_selection: int | *10
-	
-	
+
 	// Valid only if use PartitionRebalancer. If this changed, cached moves will be cleared.
 	partition_rebalance_move_expire_after_access: int | *600
 
@@ -676,7 +674,7 @@
 	split_assigner_virtual_node_number: int | *256
 
 	// If capacity of disk reach the 'storage_flood_stage_usage_percent' and 'storage_flood_stage_left_capacity_bytes' the following operation will be rejected: 1. load job 2. restore job
-	storage_flood_stage_left_capacity_bytes: int | 1073741824
+	storage_flood_stage_left_capacity_bytes: int | *1073741824
 	
 	// If capacity of disk reach the 'storage_flood_stage_usage_percent' and 'storage_flood_stage_left_capacity_bytes' the following operation will be rejected: 1. load job 2. restore job
 	storage_flood_stage_usage_percent: int | *95
@@ -794,7 +792,7 @@
 	sys_log_dir: string | *"/opt/apache-doris/fe/log"
 
 	// The level of FE log
-	sys_log_level: string & "INFO" | "WARN" | "ERROR" | "FATAL" | *"INFO"
+	sys_log_level: string & ("INFO" | "WARN" | "ERROR" | "FATAL") | *"INFO"
 	
 	// The path of the FE audit log file, used to store fe.audit.log
 	audit_log_dir: string | *"/opt/apache-doris/fe/log"
@@ -854,7 +852,7 @@
 	audit_log_modules: [...string] | *["slow_query", "query", "load", "stream_load"]
 	
 	// The split cycle of the FE audit log file
-	audit_log_roll_interval: string & "DAY" | "HOUR" | *"DAY"
+	audit_log_roll_interval: string & ("DAY" | "HOUR") | *"DAY"
 	
 	// The maximum number of FE audit log files. After exceeding this number, the oldest log file will be deleted
 	audit_log_roll_num: int | *90
@@ -866,7 +864,7 @@
 	auth_token: string | *""
 	
 	// Specifies the authentication type
-	authentication_type: string & "ldap" | *"default"
+	authentication_type: string & ("ldap" | "default") | *"default"
 
 	// The maximum number of simultaneously running analyze tasks.
 	auto_analyze_simultaneously_running_task_num: int | *1
@@ -881,7 +879,7 @@
 	backup_plugin_path: string | *"/tools/trans_file_tool/trans_files.sh"
 	
 	// BDBJE file logging level
-	bdbje_file_logging_level: string & (*"INFO" | "OFF" | "SEVERE" | "WARNING" | "CONFIG" | "FINE" | "FINER" | "FINEST" | "ALL")
+	bdbje_file_logging_level: string & ("INFO" | "OFF" | "SEVERE" | "WARNING" | "CONFIG" | "FINE" | "FINER" | "FINEST" | "ALL") | *"INFO"
 	
 	// Amount of free disk space required by BDBJE. If the free disk space is less than this value, BDBJE will not be able to write.
 	bdbje_free_disk_bytes: int | *1073741824
@@ -913,7 +911,6 @@
 	// Whether to check table lock leaky
 	check_table_lock_leaky: bool | *false
 
-	
 	// the timeout threshold of checking wal_queue on be(ms)
 	check_wal_queue_timeout_threshold: int | *180000
 
@@ -931,7 +928,6 @@
 		
 	// The unique ID of the cloud cluster.
 	cloud_unique_id: string | *""
-
 
 	// Cluster id used for internal authentication. Usually a random integer generated when master FE start at first time. You can also specify one.
 	cluster_id: int | *-1
@@ -951,7 +947,6 @@
 	// The interval time to schedule the default schema change task(millisecond)
 	default_schema_change_scheduler_interval_millisecond: int | *500
 
-	
 	// When create a table(or partition), you can specify its storage medium(HDD or SSD).
 	// If not specified, the default medium specified by this configuration will be used.
 	default_storage_medium: string | *"HDD"
@@ -976,7 +971,6 @@
 
 	// The storage type of the metadata log. BDB: Logs are stored in BDBJE. LOCAL: logs are stored in a local file (for testing only)
 	edit_log_type: string | *"bdb"
-
 
 	// If set to true, FE will be started in BDBJE debug mode
 	enable_bdbje_debug_mode: bool | *false
@@ -1422,7 +1416,6 @@
 	sync_checker_interval_second: int | *5
 	// The maximum survival time of the FE log file. After exceeding this time, the log file will be deleted. Supported formats include: 7d, 10h, 60m, 120s
 	sys_log_delete_age: string | *"7d"
-	sys_log_dir
 
 	// enable compression for FE log file
 	sys_log_enable_compress: bool | *false
@@ -1431,7 +1424,8 @@
 	sys_log_mode: string & ("NORMAL" | "ASYNC" | "BRIEF") | *"NORMAL"
 	
 	// The split cycle of the FE log file
-	sys_log_roll_interval: string & "DAY" | "HOUR" | *"DAY"
+	sys_log_roll_interval: string & ("DAY" | "HOUR") | *"DAY"
+
 	// The maximum number of FE log files. After exceeding this number, the oldest log file will be deleted
 	sys_log_roll_num: int | *10
 
@@ -1471,7 +1465,6 @@
 	// The temporary directory for storing temporary files
 	tmp_dir: string | *"/opt/apache-doris/fe/temp_dir"
 
-	
 	// The period in hours for token generation
 	token_generate_period_hour: int | *12
 

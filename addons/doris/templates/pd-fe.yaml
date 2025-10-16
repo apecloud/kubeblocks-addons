@@ -5,6 +5,8 @@ metadata:
   name: {{ include "fe.paramsDefName" . }}
   labels:
     {{- include "doris.labels" . | nindent 4 }}
+  annotations:
+    {{- include "doris.annotations" . | nindent 4 }}
 spec:
   reloadAction:
     shellTrigger:

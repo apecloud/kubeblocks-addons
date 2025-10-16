@@ -4,6 +4,8 @@ metadata:
   name: {{ include "fe.pcrName" . }}
   labels:
     {{- include "doris.labels" . | nindent 4 }}
+  annotations:
+    {{- include "doris.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "fe.componentDefName" . }}
   parametersDefs:
@@ -12,3 +14,6 @@ spec:
     - name: fe.conf
       fileFormatConfig:
         format: props-plus
+      reRenderResourceTypes:
+        - vscale
+        - tls
