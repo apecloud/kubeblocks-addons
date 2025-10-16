@@ -78,7 +78,6 @@ staticParameters:
   - enable_feature_binlog
   - enable_fqdn_mode
   - enable_https
-  - enable_ssl
   - max_binlog_messsage_size
   - external_cache_expire_time_minutes_after_access
   - finish_job_max_saved_second
@@ -169,10 +168,6 @@ staticParameters:
   - mysql_load_thread_pool
   - mysql_nio_backlog_num
   - mysql_service_io_threads_num
-  - mysql_ssl_default_ca_certificate
-  - mysql_ssl_default_ca_certificate_password
-  - mysql_ssl_default_server_certificate
-  - mysql_ssl_default_server_certificate_password
   - nereids_trace_log_dir
   - partition_info_update_interval_secs
   - period_analyze_simultaneously_running_task_num
@@ -500,6 +495,11 @@ immutableParameters:
   - edit_log_port
   - http_port
   - https_port
+  - enable_ssl
+  - mysql_ssl_default_ca_certificate
+  - mysql_ssl_default_ca_certificate_password
+  - mysql_ssl_default_server_certificate
+  - mysql_ssl_default_server_certificate_password
 
 
   
