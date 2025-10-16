@@ -181,7 +181,7 @@ spec:
           multipleClusterObjectOption:
             requireAllComponentObjects: true
             strategy: combined
-    - name: CLUSTER_NAME
+    - name: KB_CLUSTER_NAME
       valueFrom:
         clusterVarRef:
           clusterName: Required
