@@ -64,6 +64,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: fe-cm
       restartOnFileChange: true
+      externalManaged: true
   vars:
     - name: CLUSTER_NAME
       valueFrom:
