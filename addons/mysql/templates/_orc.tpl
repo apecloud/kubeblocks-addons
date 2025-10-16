@@ -47,18 +47,10 @@ systemAccounts:
       letterCase: MixedCases
   - name: proxysql
     statement:
-      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
+      create: CREATE USER IF NOT EXISTS ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy:
       length: 16
       numDigits: 8
-      numSymbols: 0
-      letterCase: MixedCases
-  - name: repl
-    statement:
-      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION SLAVE, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME} WITH GRANT OPTION;
-    passwordGenerationPolicy:
-      length: 10
-      numDigits: 5
       numSymbols: 0
       letterCase: MixedCases
 tls:
@@ -108,16 +100,6 @@ vars:
       credentialVarRef:
         name: root
         password: Required
-  - name: MYSQL_REPLICATION_USER
-    valueFrom:
-      credentialVarRef:
-        name: repl
-        username: Required
-  - name: MYSQL_REPLICATION_PASSWORD
-    valueFrom:
-      credentialVarRef:
-        name: repl
-        password: Required
   - name: ORC_ENDPOINTS
     valueFrom:
       serviceRefVarRef:
@@ -147,20 +129,17 @@ exporter:
 
 
 {{- define "mysql-orc.spec.lifecycle.common" }}
-postProvision:
-  exec:
-    container: mysql
-    command:
-      - bash
-      - -c
-      - "/scripts/mysql-orchestrator-register.sh"
-  preCondition: RuntimeReady
 preTerminate:
   exec:
     command:
       - bash
       - -c
-      - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${CLUSTER_NAME}.${CLUSTER_NAMESPACE} || true
+      - |
+        /orc-scripts/preterminate.sh 2>> /tmp/preterminate.log
+        if [ $? -ne 0 ]; then
+          echo "ERROR: Failed to preterminate"
+          exit 1
+        fi
 accountProvision:
   exec:
     container: mysql
@@ -171,7 +150,7 @@ accountProvision:
         set -ex
         ALL_DB='*.*'
         eval statement=\"${KB_ACCOUNT_STATEMENT}\"
-        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement};FLUSH PRIVILEGES;"
+        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement};"
     targetPodSelector: Role
     matchingKey: primary
 roleProbe:
@@ -185,27 +164,25 @@ roleProbe:
       - /bin/bash
       - -c
       - |
-        topology_info=$(/kubeblocks/orchestrator-client -c topology -i ${CLUSTER_NAME}) || true
-        if [[ $topology_info == "" ]]; then
-          echo -n "secondary"
+        master_info=$(/kubeblocks/orchestrator-client -c which-cluster-master -i "${KB_AGENT_POD_NAME}") || true
+        if [[ -z "$master_info" ]]; then
+          echo -n ""
           exit 0
         fi
-
-        first_line=$(echo "$topology_info" | head -n 1)
-        cleaned_line=$(echo "$first_line" | tr -d '[]')
-        IFS=',' read -ra status_array <<< "$cleaned_line"
-        status="${status_array[1]}"
-        if  [ "$status" != "ok" ]; then
-          exit 0
-        fi
-
-        address_port=$(echo "$first_line" | awk '{print $1}')
-        master_from_orc="${address_port%:*}"
-        self_service_name=$(echo "${KB_AGENT_POD_NAME}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
-        if [ "$master_from_orc" == "${self_service_name}" ]; then
+        master_from_orc="${master_info%%:*}"
+        if [ "$master_from_orc" == "${KB_AGENT_POD_NAME}" ]; then
           echo -n "primary"
         else
-          echo -n "secondary"
+          # get list of replicas
+          replicas=$(/kubeblocks/orchestrator-client -c which-cluster-instances -i "${master_from_orc}")
+          # for each replica, check if it is a secondary
+          for replica in $replicas; do
+            if [ "${replica%%:*}" == "${KB_AGENT_POD_NAME}" ]; then
+              echo -n "secondary"
+            else
+              echo -n ""
+            fi
+          done
         fi
 memberLeave:
   exec:
@@ -213,15 +190,22 @@ memberLeave:
       - /bin/bash
       - -c
       - |
-        /orc-scripts/member-leave.sh >> /tmp/member-leave.log 2>&1
-
+        /orc-scripts/member-leave.sh 2>> /tmp/member-leave.log
+        if [ $? -ne 0 ]; then
+          echo "ERROR: Failed to member leave"
+          exit 1
+        fi
 switchover:
   exec:
     command:
       - /bin/sh
       - -c
       - |
-        /orc-scripts/switchover.sh  >> /tmp/switchover.log 2>&1
+        /orc-scripts/switchover.sh 2>> /tmp/switchover.log
+        if [ $? -ne 0 ]; then
+          echo "ERROR: Failed to switchover"
+          exit 1
+        fi
 
 {{- end }}
 
@@ -243,14 +227,12 @@ switchover:
 
 {{- define "mysql-orc.spec.runtime.mysql" -}}
 imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-lifecycle:
-  postStart:
-    exec:
-      command: [ "/bin/sh", "-c", "/scripts/init-mysql-instance-for-orc.sh" ]
 command:
   - bash
   - -c
   - |
+    source /scripts/init-mysql-instance-for-orc.sh
+
     cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
     if [ -d /etc/pki/tls ]; then
       mkdir -p {{ .Values.dataMountPath }}/tls/
@@ -262,7 +244,19 @@ command:
     if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
       export skip_slave_start="ON"
     fi
-    /scripts/mysql-entrypoint.sh
+    # Start MySQL in the background using the original entrypoint script.
+    /scripts/mysql-entrypoint.sh &
+    MYSQL_PID=$!
+
+    wait_for_connectivity
+    setup_master_slave
+    echo "init mysql instance for orc completed"
+
+    echo "Mysql wrapper script finished. Keeping mysqld running in foreground."
+    # The default entrypoint will now be the main process,
+    # or if it exited, we wait for the background mysqld.
+    wait "${MYSQL_PID}"
+
 volumeMounts:
   - mountPath: {{ .Values.dataMountPath }}
     name: data
