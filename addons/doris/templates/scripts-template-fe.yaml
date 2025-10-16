@@ -17,3 +17,11 @@ data:
     {{- .Files.Get "scripts/fe/fe_post_start.sh" | nindent 4 }}
   fe_check_status.sh: |-
     {{- .Files.Get "scripts/fe/fe_check_status.sh" | nindent 4 }}
+  fe-update-dynamic-config: |-
+    #!/bin/sh
+    set -ex
+    key="${1:?missing parameterkey}"
+    value="${2:?missing parametervalue}"
+    echo "key: $key, value: $value"
+    sql="ADMIN SET FRONTEND CONFIG (\"$key\" = \"$value\")"
+    mysql -h 127.0.0.1 -P 9030 -e "$sql"

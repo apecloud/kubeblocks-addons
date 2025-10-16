@@ -38,6 +38,7 @@ spec:
     namespace: {{ .Release.Namespace }}
     volumeName: be-cm
     restartOnFileChange: true
+    externalManaged: true
   volumes:
   - name: data
     needSnapshot: true
