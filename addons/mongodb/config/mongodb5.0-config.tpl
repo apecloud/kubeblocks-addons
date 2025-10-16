@@ -54,3 +54,8 @@ setParameter:
 security:
   authorization: enabled
   keyFile: /etc/mongodb/keyfile
+
+auditLog:
+  destination: file
+  format: JSON
+  path:  {{ $mongodb_root }}/logs/audit.json
