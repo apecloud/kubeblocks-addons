@@ -101,7 +101,8 @@ spec:
       template: hadoop-nodemanager-config-template
       volumeName: nodemanager-config
       defaultMode: 0755
-      externalManaged: true
+      externalManaged: false
+      restartOnFileChange: true
   scripts:
     - name: {{ include "hadoop.name" . }}-scripts
       template: {{ include "hadoop.name" . }}-scripts

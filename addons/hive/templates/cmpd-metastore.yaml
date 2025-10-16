@@ -141,7 +141,8 @@ spec:
       template: hive-metastore-config-template
       volumeName: hive-metastore-config
       defaultMode: 0755
-      # externalManaged: true
+      externalManaged: false
+      restartOnFileChange: true
   scripts:
     - name: scripts
       namespace: {{ .Release.Namespace }}

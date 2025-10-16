@@ -233,7 +233,8 @@ spec:
       template: hive-server2-config-template
       volumeName: hive-server2-config
       defaultMode: 0755
-      # externalManaged: true
+      externalManaged: false
+      restartOnFileChange: true
   scripts:
     - name: scripts
       namespace: {{ .Release.Namespace }}
