@@ -76,7 +76,7 @@
 	// The high water of disk capacity used percent. This is used for calculating load score of a backend.
 	capacity_used_percent_high_water: foloat | *0.75
 
-  // After dropping database(table/partition), you can recover it by using RECOVER stmt. And this specifies the maximal data retention time. After time, the data will be deleted permanently.
+	// After dropping database(table/partition), you can recover it by using RECOVER stmt. And this specifies the maximal data retention time. After time, the data will be deleted permanently.
 	catalog_trash_expire_second: int | *86400
 
 	// The tryLock timeout configuration of catalog locr. Normally it does not need to change, unless you need to test something.
@@ -781,243 +781,723 @@
 	workload_sched_policy_interval_ms: int | *1000
 
 	// STATIC parameters
-	custom_config_dir
-  arrow_flight_sql_port
-  meta_dir
-  audit_log_dir
-  query_port
-  rpc_port
-  edit_log_port
-  http_port
-  https_port
-  access_control_allowed_origin_domain
-  access_controller_type
-  allow_replica_on_same_host
-  analyze_record_limit
-  arrow_flight_token_alive_time
-  arrow_flight_token_cache_size
-  async_loading_load_task_pool_size
-  async_pending_load_task_pool_size
-  async_task_consumer_thread_num
-  async_task_queen_size
-  audit_log_delete_age
-  audit_log_enable_compress
-  audit_log_modules
-  audit_log_roll_interval
-  audit_log_roll_num
-  audit_sys_accumulated_file_size
-  auth_token
-  authentication_type
-  auto_analyze_simultaneously_running_task_num
-  backend_proxy_num
-  backend_rpc_timeout_ms
-  backup_plugin_path
-  bdbje_file_logging_level
-  bdbje_free_disk_bytes
-  bdbje_heartbeat_timeout_second
-  bdbje_lock_timeout_second
-  bdbje_replica_ack_timeout_second
-  bdbje_reserved_disk_bytes
-  broker_timeout_ms
-  catalog_trash_ignore_min_erase_latency
-  cbo_concurrency_statistics_task_num
-  check_java_version
-  check_table_lock_leaky
-  check_wal_queue_timeout_threshold
-  cloud_cluster_check_interval_second
-  cloud_meta_service_rpc_failed_retry_times
-  cloud_sql_server_cluster_id
-  cloud_sql_server_cluster_name
-  cloud_unique_id
-  cluster_id
-  cpu_resource_limit_per_analyze_task
-  db_used_data_quota_update_interval_secs
-  deadlock_detection_interval_minute
-  default_get_version_from_ms_timeout_second
-  default_schema_change_scheduler_interval_millisecond
-  default_storage_medium
-  disable_mini_load
-  dpp_bytes_per_reduce
-  dpp_config_str
-  dpp_default_cluster
-  dpp_default_config_str
-  dpp_hadoop_client_path
-  edit_log_type
-  enable_bdbje_debug_mode
-  enable_cloud_snapshot_version
-  enable_concurrent_update
-  enable_convert_light_weight_schema_change
-  enable_deadlock_detection
-  enable_debug_points
-  enable_delete_existing_files
-  enable_deploy_manager
-  enable_file_logger
-  enable_get_log_file_api
-  enable_hms_events_incremental_sync
-  enable_http_server_v2
-  enable_java_udf
-  enable_job_schedule_second_for_test
-  enable_metric_calculator
-  enable_multi_tags
-  enable_outfile_to_local
-  enable_proxy_protocol
-  enable_storage_policy
-  enable_sts_vpc
-  enable_token_check
-  es_state_sync_interval_second
-  enable_all_http_auth
-  enable_feature_binlog
-  enable_fqdn_mode
-  enable_https
-  enable_ssl
-  max_binlog_messsage_size
-  external_cache_expire_time_minutes_after_access
-  finish_job_max_saved_second
-  finished_job_cleanup_threshold_time_hour
-  forbid_running_alter_job
-  force_sqlserver_jdbc_encrypt_false
-  group_commit_data_bytes_default_value
-  group_commit_interval_ms_default_value
-  grpc_keep_alive_second
-  grpc_max_message_size_bytes
-  grpc_threadmgr_threads_nums
-  heartbeat_interval_second
-  heartbeat_mgr_blocking_queue_size
-  heartbeat_mgr_threads_num
-  hms_events_polling_interval_ms
-  http_api_extra_base_path
-  http_load_submitter_max_worker_threads
-  http_sql_submitter_max_worker_threads
-  ignore_bdbje_log_checksum_read
-  ignore_unknown_metadata_module
-  info_sys_accumulated_file_size
-  initial_root_password
-  jdbc_driver_secure_path
-  jdbc_drivers_dir
-  jdbc_mysql_unsupported_pushdown_functions
-  jetty_server_acceptors
-  jetty_server_max_http_header_size
-  jetty_server_max_http_post_size
-  jetty_server_selectors
-  jetty_server_workers
-  jetty_threadPool_maxThreads
-  jetty_threadPool_minThreads
-  job_dispatch_timer_job_queue_size
-  job_dispatch_timer_job_thread_num
-  job_insert_task_consumer_thread_num
-  job_mtmv_task_consumer_thread_num
-  key_store_alias
-  key_store_password
-  key_store_path
-  key_store_type
-  label_clean_interval_second
-  label_regex_length
-  ldap_admin_name
-  ldap_authentication_enabled
-  ldap_group_basedn
-  ldap_host
-  ldap_pool_max_active
-  ldap_pool_max_idle
-  ldap_pool_max_total
-  ldap_pool_max_wait
-  ldap_pool_min_idle
-  ldap_pool_test_on_borrow
-  ldap_pool_test_on_return
-  ldap_pool_test_while_idle
-  ldap_pool_when_exhausted
-  ldap_port
-  ldap_user_basedn
-  ldap_user_filter
-  load_checker_interval_second
-  locale
-  lock_reporting_threshold_ms
-  log_roll_size_mb
-  log_rollover_strategy
-  lower_case_table_names
-  master_sync_policy
-  max_agent_task_threads_num
-  max_bdbje_clock_delta_ms
-  max_be_exec_version
-  max_external_cache_loader_thread_pool_size
-  max_external_file_cache_num
-  max_external_schema_cache_num
-  max_external_table_cache_num
-  max_external_table_row_count_cache_num
-  max_hive_list_partition_num
-  max_hive_partition_cache_num
-  max_hive_partition_table_cache_num
-  max_meta_object_cache_num
-  max_mysql_service_task_threads_num
-  max_persistence_task_count
-  max_remote_file_system_cache_num
-  max_sync_task_threads_num
-  meta_delay_toleration_second
-  meta_publish_timeout_ms
-  meta_service_endpoint
-  min_be_exec_version
-  mysql_load_in_memory_record
-  mysql_load_server_secure_path
-  mysql_load_thread_pool
-  mysql_nio_backlog_num
-  mysql_service_io_threads_num
-  mysql_ssl_default_ca_certificate
-  mysql_ssl_default_ca_certificate_password
-  mysql_ssl_default_server_certificate
-  mysql_ssl_default_server_certificate_password
-  nereids_trace_log_dir
-  partition_info_update_interval_secs
-  period_analyze_simultaneously_running_task_num
-  plugin_dir
-  point_query_timeout_ms
-  priority_networks
-  proxy_auth_enable
-  proxy_auth_magic_prefix
-  publish_version_interval_ms
-  qe_max_connection
-  ranger_cache_size
-  replica_ack_policy
-  replica_sync_policy
-  skip_localhost_auth_check
-  small_file_dir
-  spark_dpp_version
-  spark_launcher_log_dir
-  spark_load_checker_interval_second
-  spark_resource_path
-  ssl_force_client_auth
-  ssl_trust_store_type
-  statistics_simultaneously_running_task_num
-  statistics_sql_mem_limit_in_bytes
-  statistics_sql_parallel_exec_instance_num
-  stats_cache_size
-  sync_checker_interval_second
-  sys_log_delete_age
-  sys_log_dir
-  sys_log_enable_compress
-  sys_log_level
-  sys_log_mode
-  sys_log_roll_interval
-  sys_log_roll_num
-  sys_log_verbose_modules
-  tablet_checker_interval_ms
-  tablet_rebalancer_type
-  tablet_schedule_interval_ms
-  tablet_stat_update_interval_second
-  thrift_backlog_num
-  thrift_client_timeout_ms
-  thrift_max_frame_size
-  thrift_max_message_size
-  thrift_server_max_worker_threads
-  thrift_server_type
-  tmp_dir
-  token_generate_period_hour
-  token_queue_size
-  transaction_clean_interval_second
-  txn_rollback_limit
-  use_new_tablet_scheduler
-  warn_sys_accumulated_file_size
-  with_k8s_certs
-  yarn_client_path
-  yarn_config_dir
+	// The path of the user-defined configuration file, used to store fe_custom.conf. The configuration in this file will override the configuration in fe.conf
+	custom_config_dir: string | *"/opt/apache-doris/fe/conf"
+
+	// The port of FE Arrow-Flight-SQL server
+	arrow_flight_sql_port: int | *-1
+
+	// The directory to save Doris meta data
+	meta_dir: string | *"/opt/apache-doris/fe/doris-meta"
+
+	// The path of the FE log file, used to store fe.log. This parameter is deprecated. Use the LOG_DIR environment variable instead.
+	sys_log_dir: string | *"/opt/apache-doris/fe/log"
+
+	// The level of FE log
+	sys_log_level: string & "INFO" | "WARN" | "ERROR" | "FATAL" | *"INFO"
+	
+	// The path of the FE audit log file, used to store fe.audit.log
+	audit_log_dir: string | *"/opt/apache-doris/fe/log"
+	
+	// The port of FE MySQL server
+	query_port: int | *9030
+
+	// The port of FE thrift server
+	rpc_port: int | *9020
+
+	// The port of BDBJE
+	edit_log_port: int | *9010
+
+	// Fe http port, currently all FE's http port must be same
+	http_port: int | *8030
+
+	// Fe https port, currently all FE's https port must be same
+	https_port: int | *8050
+
+	// Set the specific domain name that allows cross-domain access. By default, any domain name is allowed cross-domain access
+	access_control_allowed_origin_domain: string | *"*"
+		
+	// Specify the default authentication class of internal catalog
+	access_controller_type: string | *"default"
+
+	// For some test case, we may need to create a table with multi replicas. DO NOT use it for production env.
+	allow_replica_on_same_host: bool | *false
+
+	// Determine the persist number of automatic triggered analyze job execution status
+	analyze_record_limit: int | *20000
+	
+	// The alive time of the user token in Arrow Flight Server, expire after write, unit minutes, the default value is 4320, which is 3 days
+	arrow_flight_token_alive_time: int | *4320
+
+	// The maximum number of user tokens cached in Arrow Flight Server, which are eliminated according to LRU rules after exceeding the limit, the default value is 512, the mandatory limit is less than qe_max_connection/2 to avoid `Reach limit of connections`, because arrow flight sql is a stateless protocol, the connection is usually not actively disconnected, bearer token is evict from the cache will unregister ConnectContext.
+	arrow_flight_token_cache_size: int | *512
+	
+	// The loading load task executor pool size. This pool size limits the max running loading load tasks. Currently, it only limits the loading load task of broker load.
+	async_loading_load_task_pool_size: int | *10
+	
+	// The pending load task executor pool size. This pool size limits the max running pending load tasks. Currently, it only limits the pending load task of broker load and spark load. It should be less than `max_running_txn_num_per_db`
+	async_pending_load_task_pool_size: int | *10
+
+	// The number of threads used to consume async tasks. @See TaskDisruptor if we have a lot of async tasks, we need more threads to consume them. Sure, it's depends on the cpu cores.
+	async_task_consumer_thread_num: int | *64
+	
+	// The number of async tasks that can be queued. @See TaskDisruptor if consumer is slow, the queue will be full, and the producer will be blocked.
+	async_task_queen_size: int | *1024
+
+	// The maximum survival time of the FE audit log file. After exceeding this time, the log file will be deleted. Supported formats include: 7d, 10h, 60m, 120s
+	audit_log_delete_age: string | *"30d"
+
+	// enable compression for FE audit log file
+	audit_log_enable_compress: bool | *false
+
+	// The type of FE audit log file
+	audit_log_modules: [...string] | *["slow_query", "query", "load", "stream_load"]
+	
+	// The split cycle of the FE audit log file
+	audit_log_roll_interval: string & "DAY" | "HOUR" | *"DAY"
+	
+	// The maximum number of FE audit log files. After exceeding this number, the oldest log file will be deleted
+	audit_log_roll_num: int | *90
+
+	// No description found in fe_config.java
+	audit_sys_accumulated_file_size: int | *4
+	
+	// Cluster token used for internal authentication.
+	auth_token: string | *""
+	
+	// Specifies the authentication type
+	authentication_type: string & "ldap" | *"default"
+
+	// The maximum number of simultaneously running analyze tasks.
+	auto_analyze_simultaneously_running_task_num: int | *1
+	
+	// BackendServiceProxy pool size for pooling GRPC channels.
+	backend_proxy_num: int | *48
+
+	// Timeout for backend RPC requests, unit milliseconds
+	backend_rpc_timeout_ms: int | *60000
+
+	// Plugins' path for BACKUP and RESTORE operations. Currently deprecated.
+	backup_plugin_path: string | *"/tools/trans_file_tool/trans_files.sh"
+	
+	// BDBJE file logging level
+	bdbje_file_logging_level: string & (*"INFO" | "OFF" | "SEVERE" | "WARNING" | "CONFIG" | "FINE" | "FINER" | "FINEST" | "ALL")
+	
+	// Amount of free disk space required by BDBJE. If the free disk space is less than this value, BDBJE will not be able to write.
+	bdbje_free_disk_bytes: int | *1073741824
+		
+	// The heartbeat timeout for bdbje. The default is 30 seconds, which is same as default value in bdbje. If the network is experiencing transient problems, of some unexpected long java GC annoying you, you can try to increase this value to decrease the chances of false timeouts
+	bdbje_heartbeat_timeout_second: int | *30
+	
+	// The lock timeout of bdbje operation, in seconds. If there are many LockTimeoutException in FE WARN log, you can try to increase this value
+	bdbje_lock_timeout_second: int | *5
+	
+	// The replica ack timeout of bdbje between master and follower, in seconds. If there are many ReplicaWriteException in FE WARN log, you can try to increase this value
+	bdbje_replica_ack_timeout_second: int | *10
+	
+	// The desired upper limit on the number of bytes of reserved space to retain in a replicated JE Environment. This parameter is ignored in a non-replicated JE Environment.
+	bdbje_reserved_disk_bytes: int | *1073741824
+	
+	// The timeout of RPC between FE and Broker, in milliseconds
+	broker_timeout_ms: int | *10000
+		
+	// Whether to ignore the minimum erase latency when erasing catalog trash.
+	catalog_trash_ignore_min_erase_latency: bool | *false
+		
+	// The number of threads used to consume CBO concurrency statistics tasks.
+	cbo_concurrency_statistics_task_num: int | *10
+
+	// If set to true, Doris will check if the compiled and running versions of Java are compatible
+	check_java_version: bool | *true
+	
+	// Whether to check table lock leaky
+	check_table_lock_leaky: bool | *false
+
+	
+	// the timeout threshold of checking wal_queue on be(ms)
+	check_wal_queue_timeout_threshold: int | *180000
+
+	// The interval time to check cloud cluster status(second)
+	cloud_cluster_check_interval_second: int | *10
+
+	// The maximum number of times to retry a failed RPC call to the cloud meta service.
+	cloud_meta_service_rpc_failed_retry_times: int | *200
+
+	// The cluster ID of the SQL Server cluster in the cloud.
+	cloud_sql_server_cluster_id: string | *"RESERVED_CLUSTER_ID_FOR_SQL_SERVER"
+
+	// The cluster name of the SQL Server cluster in the cloud.
+	cloud_sql_server_cluster_name: string | *"RESERVED_CLUSTER_NAME_FOR_SQL_SERVER"
+		
+	// The unique ID of the cloud cluster.
+	cloud_unique_id: string | *""
+
+
+	// Cluster id used for internal authentication. Usually a random integer generated when master FE start at first time. You can also specify one.
+	cluster_id: int | *-1
+
+	// The CPU resource limit per analyze task.
+	cpu_resource_limit_per_analyze_task: int | *1
+
+	// The interval time to update the used data quota of the cloud cluster(second)
+	db_used_data_quota_update_interval_secs: int | *300
+	
+	// Deadlock detection interval time, unit minute
+	deadlock_detection_interval_minute: int | *5
+
+	// The default timeout for getting the version from the cloud meta service(second)
+	default_get_version_from_ms_timeout_second: int | *3
+
+	// The interval time to schedule the default schema change task(millisecond)
+	default_schema_change_scheduler_interval_millisecond: int | *500
+
+	
+	// When create a table(or partition), you can specify its storage medium(HDD or SSD).
+	// If not specified, the default medium specified by this configuration will be used.
+	default_storage_medium: string | *"HDD"
+	
+	// Whether to disable mini load, disabled by default
+	disable_mini_load: bool | *true
+
+	// The number of bytes to reduce in each DPP job.
+	dpp_bytes_per_reduce: int | *104857600
+
+	// The configuration string for DPP jobs.
+	dpp_config_str: string | *"{palo-dpp : {hadoop_palo_path : '/dir',hadoop_configs : 'fs.default.name=hdfs://host:port;mapred.job.tracker=host:port;hadoop.job.ugi=user,password'}}"
+
+	// The default cluster name for DPP jobs.
+	dpp_default_cluster: string | *"palo-dpp"
+
+	// The default configuration string for DPP jobs.
+	dpp_default_config_str: string | *"{hadoop_configs : 'mapred.job.priority=NORMAL;mapred.job.map.capacity=50;mapred.job.reduce.capacity=50;mapred.hce.replace.streaming=false;abaci.long.stored.job=true;dce.shuffle.enable=false;dfs.client.authserver.force_stop=true;dfs.client.auth.method=0'}"
+		
+	// The path to the Hadoop client binary.
+	dpp_hadoop_client_path: string | *"/lib/hadoop-client/hadoop/bin/hadoop"
+
+	// The storage type of the metadata log. BDB: Logs are stored in BDBJE. LOCAL: logs are stored in a local file (for testing only)
+	edit_log_type: string | *"bdb"
+
+
+	// If set to true, FE will be started in BDBJE debug mode
+	enable_bdbje_debug_mode: bool | *false
+
+	// Whether to enable cloud snapshot version.
+	enable_cloud_snapshot_version: bool | *true
+
+	// Whether to enable concurrent update.
+	enable_concurrent_update: bool | *false
+
+	// Temporary config filed, will make all olap tables enable light schema change
+	enable_convert_light_weight_schema_change: bool | *false
+	
+	// Whether to enable deadlock detection
+	enable_deadlock_detection: bool | *false
+	
+	// is enable debug points, use in test.
+	enable_debug_points: bool | *false
+		
+	// Whether to delete existing files when creating a table.
+	enable_delete_existing_files: bool | *false
+
+	// Whether to enable deploy manager.
+	enable_deploy_manager: string | *"disable"
+	
+	// Whether to use file to record log. When starting FE with --console, all logs will be written to both standard output and file. Close this option will no longer use file to record log.
+	enable_file_logger: bool | *true
+
+	// Whether to enable the function of getting log files through http interface
+	enable_get_log_file_api: bool | *false
+
+	// If set to true, doris will automatically synchronize hms metadata to the cache in fe.
+	enable_hms_events_incremental_sync: bool | *false
+		
+	// Whether to enable http server v2.
+	enable_http_server_v2: bool | *true
+
+	// Used to enable java_udf, default is true. if this configuration is false, creation and use of java_udf is disabled.
+	enable_java_udf: bool | *true
+	
+	// If set to true, we will allow the interval unit to be set to second, when creating a recurring job.
+	enable_job_schedule_second_for_test: bool | *false
+	
+	// If set to true, metric collector will be run as a daemon timer to collect metrics at fix interval
+	enable_metric_calculator: bool | *true
+	
+	// Controls whether multiple tags are enabled for the system
+	enable_multi_tags: bool | *false
+	
+	// Whether to allow the outfile function to export the results to the local disk.
+	enable_outfile_to_local: bool | *false
+	
+	// Whether to enable proxy protocol
+	enable_proxy_protocol: bool | *false
+	
+	// Storage policy feature control
+	enable_storage_policy: bool | *true
+	
+	// Controls STS VPC access
+	enable_sts_vpc: bool | *true
+	
+	// Controls token validation
+	enable_token_check: bool | *true
+	
+	// Elasticsearch state sync interval in seconds
+	es_state_sync_interval_second: int | *10
+	
+	// Whether to enable HTTP authentication for all endpoints
+	enable_all_http_auth: bool | *false
+	
+	// Whether to enable binlog feature
+	enable_feature_binlog: bool | *false
+	
+	// Whether to use FQDN mode for node identification
+	enable_fqdn_mode: bool | *false
+	
+	// Whether to enable HTTPS for web UI and API endpoints
+	enable_https: bool | *false
+	
+	// If set to true, doris will establish an encrypted channel based on the SSL protocol with mysql.
+	enable_ssl: bool | *false
+
+	// Set the maximum byte length of binlog message
+	max_binlog_messsage_size: int | *1073741824 // 1GB
+
+	// External cache expiration time in minutes after access
+	external_cache_expire_time_minutes_after_access: int | *10
+
+	// Maximum seconds to save finished jobs
+	finish_job_max_saved_second: int | *259200 // 3 days
+
+	// Threshold time in hours for cleaning up finished jobs
+	finished_job_cleanup_threshold_time_hour: int | *24
+
+	// Whether to forbid running ALTER jobs
+	forbid_running_alter_job: bool | *false
+
+	// Force SQLServer Jdbc Catalog encrypt to false
+	force_sqlserver_jdbc_encrypt_false: bool | *false
+
+	// Default value for group commit data bytes
+	group_commit_data_bytes_default_value: int | *134217728 // 128MB
+
+	// Default value for group commit interval in milliseconds
+	group_commit_interval_ms_default_value: int | *10000 // 10 seconds
+
+	// Seconds to keep gRPC connection alive
+	grpc_keep_alive_second: int | *10
+
+	// Maximum gRPC message size in bytes
+	grpc_max_message_size_bytes: int | *2147483647 // 2GB
+
+	// Number of threads in gRPC thread manager
+	grpc_threadmgr_threads_nums: int | *4096
+
+	// Heartbeat interval in seconds
+	heartbeat_interval_second: int | *10
+
+	// Queue size to store heartbeat task in heartbeat_mgr
+	heartbeat_mgr_blocking_queue_size: int | *1024
+
+	// Number of threads to handle heartbeat events
+	heartbeat_mgr_threads_num: int | *8
+
+	// Polling interval for HMS events in milliseconds
+	hms_events_polling_interval_ms: int | *10000
+
+	// Extra base path for HTTP API
+	http_api_extra_base_path: string | *""
+
+	// Maximum number of worker threads for HTTP load submitter
+	http_load_submitter_max_worker_threads: int | *2
+
+	// Maximum number of worker threads for HTTP SQL submitter
+	http_sql_submitter_max_worker_threads: int | *2
+
+	// Whether to ignore BDBJE log checksum read
+	ignore_bdbje_log_checksum_read: bool | *false
+
+	// Whether to ignore unknown metadata module
+	ignore_unknown_metadata_module: bool | *false
+
+	// Accumulated file size for info system
+	info_sys_accumulated_file_size: int | *4
+
+	// Initial password for root user
+	initial_root_password: string | *""
+
+	// Safe path for JDBC driver, default is "*" to allow all
+	jdbc_driver_secure_path: string | *"*"
+
+	// The path to save jdbc drivers
+	jdbc_drivers_dir: string | *"/opt/apache-doris/fe/jdbc_drivers"
+
+	// MySQL Jdbc Catalog mysql does not support pushdown functions
+	jdbc_mysql_unsupported_pushdown_functions: [...string] | *["date_trunc", "money_format", "negative"]
+
+	// Number of acceptors for Jetty server
+	jetty_server_acceptors: int | *2
+
+	// Maximum HTTP header size for Jetty server
+	jetty_server_max_http_header_size: int | *1048576
+
+	// Maximum HTTP post size for Jetty server
+	jetty_server_max_http_post_size: int | *104857600 // 100MB
+
+	// Number of selectors for Jetty server
+	jetty_server_selectors: int | *4
+
+	// Number of workers for Jetty server
+	jetty_server_workers: int | *0
+
+	// Maximum threads in Jetty thread pool
+	jetty_threadPool_maxThreads: int | *400
+
+	// Minimum threads in Jetty thread pool
+	jetty_threadPool_minThreads: int | *20
+
+	// Queue size for job dispatch timer
+	job_dispatch_timer_job_queue_size: int | *1024
+
+	// Number of threads for job dispatch timer
+	job_dispatch_timer_job_thread_num: int | *2
+
+	// Number of threads for insert task consumer
+	job_insert_task_consumer_thread_num: int | *10
+
+	// Number of threads for MTMV task consumer
+	job_mtmv_task_consumer_thread_num: int | *10
+	
+	// The alias of the key store certificate
+	key_store_alias: string | *"doris_ssl_certificate"
+	
+	// The password of the key store
+	key_store_password: string | *""
+	
+	// The path of the key store
+	key_store_path: string | *"/opt/apache-doris/fe/conf/ssl/doris_ssl_certificate.keystore"
+	
+	// The type of the key store
+	key_store_type: string | *"JKS"
+	
+	// The interval for cleaning labels in seconds
+	label_clean_interval_second: int | *3600
+	
+	// The maximum length of label regex
+	label_regex_length: int | *128
+	
+	// The admin name for LDAP authentication
+	ldap_admin_name: string | *"cn=admin,dc=domain,dc=com"
+	
+	// Whether to enable LDAP authentication
+	ldap_authentication_enabled: bool | *false
+	
+	// The base DN for LDAP group search
+	ldap_group_basedn: string | *"ou=group,dc=domain,dc=com"
+	
+	// The LDAP server host
+	ldap_host: string | *"127.0.0.1"
+	
+	// The maximum number of active connections in the LDAP connection pool
+	ldap_pool_max_active: int | *8
+	
+	// The maximum number of idle connections in the LDAP connection pool
+	ldap_pool_max_idle: int | *8
+	
+	// The maximum total number of connections in the LDAP connection pool
+	ldap_pool_max_total: int | *-1
+	
+	// The maximum wait time in milliseconds for obtaining a connection from the LDAP pool
+	ldap_pool_max_wait: int | *-1
+	
+	// The minimum number of idle connections in the LDAP connection pool
+	ldap_pool_min_idle: int | *0
+	
+	// Whether to test connections when borrowing from the LDAP pool
+	ldap_pool_test_on_borrow: bool | *false
+	
+	// Whether to test connections when returning to the LDAP pool
+	ldap_pool_test_on_return: bool | *false
+	
+	// Whether to test idle connections in the LDAP pool
+	ldap_pool_test_while_idle: bool | *false
+	
+	// The behavior when the LDAP connection pool is exhausted
+	ldap_pool_when_exhausted: int | *1
+
+	// The LDAP server port
+	ldap_port: int | *389
+	
+	// The base DN for LDAP user search
+	ldap_user_basedn: string | *"ou=people,dc=domain,dc=com"
+
+	// The filter for LDAP user search
+	ldap_user_filter: string | *"(&(uid={login}))"
+
+	// The interval in seconds for checking load jobs
+	load_checker_interval_second: int | *5
+
+	// The runtime locale when executing commands
+	locale: string | *"zh_CN.UTF-8"
+
+	// The threshold in milliseconds for reporting lock acquisition time
+	lock_reporting_threshold_ms: int | *500
+
+	// The maximum size of log files in MB before rolling
+	log_roll_size_mb: int | *1024
+
+	// The strategy for log file rollover
+	log_rollover_strategy: string | *"age"
+
+	// Whether table names are stored in lowercase (0: case sensitive, 1: lowercase, 2: case insensitive)
+	lower_case_table_names: int | *0
+
+	// The synchronization policy for master operations (SYNC, NO_SYNC, WRITE_NO_SYNC)
+	master_sync_policy: string | *"SYNC"
+
+	// The maximum number of agent task threads
+	max_agent_task_threads_num: int | *4096
+
+	// The maximum allowed clock delta in milliseconds for BDB JE
+	max_bdbje_clock_delta_ms: int | *5000
+	
+	// Maximum version number of BE execution
+	max_be_exec_version: int | *5
+
+	// Maximum size of thread pool for external cache loader
+	max_external_cache_loader_thread_pool_size: int | *64
+
+	// Maximum number of external file cache entries
+	max_external_file_cache_num: int | *10000
+
+	// Maximum number of external schema cache entries
+	max_external_schema_cache_num: int | *10000
+
+	// Maximum number of external table cache entries
+	max_external_table_cache_num: int | *1000
+
+	// Maximum number of external table row count cache entries
+	max_external_table_row_count_cache_num: int | *100000
+
+	// Maximum number of Hive list partitions (-1 means no limit)
+	max_hive_list_partition_num: int | *-1
+
+	// Maximum number of Hive partition cache entries
+	max_hive_partition_cache_num: int | *10000
+	
+	// Maximum number of Hive partition table cache entries
+	max_hive_partition_table_cache_num: int | *1000
+
+	// Maximum number of meta object cache entries
+	max_meta_object_cache_num: int | *1000
+
+	// Maximum number of MySQL service task threads
+	max_mysql_service_task_threads_num: int | *4096
+
+	// Maximum number of persistence tasks
+	max_persistence_task_count: int | *100
+
+	// Maximum number of remote file system cache entries
+	max_remote_file_system_cache_num: int | *100
+
+	// Maximum number of synchronization task threads
+	max_sync_task_threads_num: int | *10
+
+	// Toleration time in seconds for meta delay (default: 300 seconds = 5 minutes)
+	meta_delay_toleration_second: int | *300
+
+	// Timeout in milliseconds for meta publish operations
+	meta_publish_timeout_ms: int | *1000
+
+	// MetaService endpoint in format "ip:port", e.g., "192.0.0.10:8866"
+	meta_service_endpoint: string | *""
+
+	// Minimum version number of BE execution
+	min_be_exec_version: int | *0
+
+	// Number of in-memory records for MySQL load
+	mysql_load_in_memory_record: int | *20
+
+	// Secure path for MySQL load server
+	mysql_load_server_secure_path: string | *""
+
+	// Thread pool size for MySQL load
+	mysql_load_thread_pool: int | *4
+
+	// Backlog number for MySQL NIO
+	mysql_nio_backlog_num: int | *1024
+
+	
+	// Number of IO threads for MySQL service
+	mysql_service_io_threads_num: int | *4
+
+	// Path to the default CA certificate for MySQL SSL
+	mysql_ssl_default_ca_certificate: string | *"/opt/apache-doris/fe/mysql_ssl_default_certificate/ca_certificate.p12"
+
+	// Password for the default CA certificate
+	mysql_ssl_default_ca_certificate_password: string | *"doris"
+
+	// Path to the default server certificate for MySQL SSL
+	mysql_ssl_default_server_certificate: string | *"/opt/apache-doris/fe/mysql_ssl_default_certificate/server_certificate.p12"
+
+	// Password for the default server certificate
+	mysql_ssl_default_server_certificate_password: string | *"doris"
+
+	// Directory for storing Nereids trace logs
+	nereids_trace_log_dir: string | *"/opt/apache-doris/fe/log/nereids_trace"
+
+	// Interval in seconds for updating partition information
+	partition_info_update_interval_secs: int | *60
+
+	// Number of simultaneously running tasks for period analyze
+	period_analyze_simultaneously_running_task_num: int | *1
+
+	// Directory for Doris plugins
+	plugin_dir: string | *"/opt/apache-doris/fe/plugins"
+
+	// Timeout in milliseconds for point queries
+	point_query_timeout_ms: int | *10000
+
+	// Comma-separated list of CIDR network segments for priority networks
+	priority_networks: string | *""
+
+	// Enable proxy authentication
+	proxy_auth_enable: bool | *false
+
+	// Magic prefix for proxy authentication
+	proxy_auth_magic_prefix: string | *"x@8"
+
+	// Interval in milliseconds for publishing versions
+	publish_version_interval_ms: int | *10
+
+	
+	// The maximum number of connections allowed for query engine
+	qe_max_connection: int | *1024
+
+	// The size of the Ranger cache
+	ranger_cache_size: int | *10000
+
+	// The policy for replica acknowledgment: ALL, NONE, SIMPLE_MAJORITY
+	replica_ack_policy: string | *"SIMPLE_MAJORITY"
+
+	// The policy for replica synchronization: SYNC, NO_SYNC, WRITE_NO_SYNC
+	replica_sync_policy: string | *"SYNC"
+
+	// Whether to skip authentication check for localhost connections
+	skip_localhost_auth_check: bool | *true
+
+	// The directory for storing small files
+	small_file_dir: string | *"/opt/apache-doris/fe/small_files"
+
+	// The version of Spark DPP (Data Processing Pipeline)
+	spark_dpp_version: string | *"1.2-SNAPSHOT"
+
+	// The directory for Spark launcher logs
+	spark_launcher_log_dir: string | *"/opt/apache-doris/fe/log/spark_launcher_log"
+
+	// The interval in seconds for checking Spark load tasks
+	spark_load_checker_interval_second: int | *60
+
+	// The path for Spark resources
+	spark_resource_path: string | *""
+
+	// Whether to force client authentication for SSL connections
+	ssl_force_client_auth: bool | *false
+
+	// The type of SSL trust store
+	ssl_trust_store_type: string | *"PKCS12"
+
+	// The number of statistics tasks that can run simultaneously
+	statistics_simultaneously_running_task_num: int | *3
+
+	// The memory limit in bytes for statistics SQL queries
+	statistics_sql_mem_limit_in_bytes: int | *2147483648
+
+	// The number of parallel execution instances for statistics SQL queries
+	statistics_sql_parallel_exec_instance_num: int | *1
+
+	// The size of the statistics cache
+	stats_cache_size: int | *500000
+
+	// The interval in seconds for synchronization checking
+	sync_checker_interval_second: int | *5
+	// The maximum survival time of the FE log file. After exceeding this time, the log file will be deleted. Supported formats include: 7d, 10h, 60m, 120s
+	sys_log_delete_age: string | *"7d"
+	sys_log_dir
+
+	// enable compression for FE log file
+	sys_log_enable_compress: bool | *false
+		
+	// The output mode of FE log. 
+	sys_log_mode: string & ("NORMAL" | "ASYNC" | "BRIEF") | *"NORMAL"
+	
+	// The split cycle of the FE log file
+	sys_log_roll_interval: string & "DAY" | "HOUR" | *"DAY"
+	// The maximum number of FE log files. After exceeding this number, the oldest log file will be deleted
+	sys_log_roll_num: int | *10
+
+	// Verbose module. The VERBOSE level log is implemented by the DEBUG level of log4j. If set to `org.apache.doris.catalog`, the DEBUG log of the class under this package will be printed.
+	sys_log_verbose_modules: [...string] | *[]
+
+	// The interval in milliseconds for tablet checking
+	tablet_checker_interval_ms: int | *20000
+
+	// The type of tablet rebalancer, default is "BeLoad"
+	tablet_rebalancer_type: string | *"BeLoad"
+
+	// The interval in milliseconds for tablet scheduling
+	tablet_schedule_interval_ms: int | *1000
+
+	// The interval in seconds for updating tablet statistics
+	tablet_stat_update_interval_second: int | *60
+
+	// The number of backlog connections for Thrift server
+	thrift_backlog_num: int | *1024
+
+	// The timeout in milliseconds for Thrift client
+	thrift_client_timeout_ms: int | *0
+
+	// The maximum frame size for Thrift communication
+	thrift_max_frame_size: int | *16384000
+
+	// The maximum message size for Thrift communication
+	thrift_max_message_size: int | *104857600
+
+	// The maximum number of worker threads for Thrift server
+	thrift_server_max_worker_threads: int | *4096
+
+	// The type of Thrift server, options: THREADED, THREAD_POOL
+	thrift_server_type: string | *"THREAD_POOL"
+
+	// The temporary directory for storing temporary files
+	tmp_dir: string | *"/opt/apache-doris/fe/temp_dir"
+
+	
+	// The period in hours for token generation
+	token_generate_period_hour: int | *12
+
+	// The size of the token queue, one token will keep alive for {token_queue_size * token_generate_period_hour} hours
+	token_queue_size: int | *6
+
+	// The interval in seconds for cleaning transactions
+	transaction_clean_interval_second: int | *30
+
+	// The limit for transaction rollback operations
+	txn_rollback_limit: int | *100
+
+	// Whether to use the new tablet scheduler
+	use_new_tablet_scheduler: bool | *true
+
+	// The warning threshold for system accumulated file size in GB
+	warn_sys_accumulated_file_size: int | *2
+
+	// Whether to use Kubernetes certificates
+	with_k8s_certs: bool | *false
+
+	// The path to the YARN client
+	yarn_client_path: string | *"/opt/apache-doris/fe/lib/yarn-client/hadoop/bin/yarn"
+
+	// The directory for YARN configuration files
+	yarn_config_dir: string | *"/opt/apache-doris/fe/lib/yarn-config"
 
 }
 
