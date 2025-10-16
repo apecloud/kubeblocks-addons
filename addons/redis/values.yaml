@@ -47,7 +47,7 @@ redisVersions:
     serviceVersion: "7.2.11"
     clusterComponentDef: "redis-cluster-7"
     sentinelComponentDef: "redis-sentinel-7"
-    defaultImageTag: "7.2.0-v18"
+    defaultImageTag: "7.2.0-v19"
     mirrorVersions:
       - version: "7.0.6"
         imageTag: "7.0.6-RC4"
@@ -70,7 +70,7 @@ redisVersions:
     serviceVersion: "8.2.2"
     clusterComponentDef: "redis-cluster-8"
     sentinelComponentDef: "redis-sentinel-8"
-    defaultImageTag: "8.2.1"
+    defaultImageTag: "8.2.2"
     mirrorVersions:
       - version: "8.0.1"
         imageTag: "8.0.1"
