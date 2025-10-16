@@ -324,6 +324,21 @@
 
 	// STATIC parameters
 
+	// The port number of the Thrift server on the BE, which is used to receive requests from the FE.
+	be_port: int | *9060
+
+	// The port of brpc on the BE, which is used for communication between the BEs.
+	brpc_port: int | *8060
+
+	// The service port of the HTTP server on the BE.
+	webserver_port: int | *8040
+
+	// The heartbeat service port (Thrift) on the BE, which is used to receive heartbeats from the FE.
+	heartbeat_service_port: int | *9050
+
+	// The port of the Arrow Flight SQL server on the FE, which is used for communication between the Arrow Flight Client and the BE
+	arrow_flight_sql_port: int | *-1
+
 	// memory mode, performance or compact
 	memory_mode: string & "performance" | "compact" | *"moderate"
 
