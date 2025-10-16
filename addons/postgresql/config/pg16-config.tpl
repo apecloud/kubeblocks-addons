@@ -149,7 +149,7 @@ log_executor_stats = 'False'
 logging_collector = 'True'
 log_destination = 'csvlog'
 log_directory = 'log'
-log_filename = 'postgresql-%Y-%m-%d.log'
+log_filename = 'postgresql-%u.log'
 {{ end -}}
 {{ end -}}
 {{ end }}
