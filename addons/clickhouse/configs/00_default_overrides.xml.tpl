@@ -16,7 +16,7 @@
   <macros>
     <shard from_env="CURRENT_SHARD_COMPONENT_SHORT_NAME"/>
     <replica from_env="CURRENT_POD_NAME"/>
-    <layer>{{ .CLUSTER_NAME }}</layer>
+    <layer>{{ .KB_CLUSTER_NAME }}</layer>
   </macros>
   <default_replica_path>/clickhouse/tables/{layer}/{shard}/{database}/{table}</default_replica_path>
   <default_replica_name>{replica}</default_replica_name>
