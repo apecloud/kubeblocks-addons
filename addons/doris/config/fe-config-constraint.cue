@@ -1492,6 +1492,7 @@
 	// The directory for YARN configuration files
 	yarn_config_dir: string | *"/opt/apache-doris/fe/lib/yarn-config"
 
+	JAVA_OPTS: string | *""
 }
 
 configuration: #FEParameter & {

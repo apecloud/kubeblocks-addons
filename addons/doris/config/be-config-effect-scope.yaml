@@ -220,4 +220,3 @@ immutableParameters:
   - custom_config_dir
   - jdbc_drivers_dir
   - sys_log_dir
-

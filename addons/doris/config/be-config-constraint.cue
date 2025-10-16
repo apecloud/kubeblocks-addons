@@ -599,6 +599,7 @@
 	// The WAL directory of group commit.
 	group_commit_wal_path: string | *""
 
+	JAVA_OPTS: string | *""
 }
 
 configuration: #BEParameter & {
