@@ -1492,6 +1492,7 @@
 	// The directory for YARN configuration files
 	yarn_config_dir: string | *"/opt/apache-doris/fe/lib/yarn-config"
 
+	// The JAVA_OPTS startup configuration for the FE node. The default value of -Xmx is 80% of the container available memory.
 	JAVA_OPTS: string | *""
 }
 
