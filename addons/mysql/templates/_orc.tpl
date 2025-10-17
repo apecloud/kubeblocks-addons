@@ -29,6 +29,11 @@ scripts:
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555
+  - name: mysql-orc-actions-scripts
+    template: mysql-orc-actions-scripts
+    namespace: {{ .Release.Namespace }}
+    volumeName: orc-scripts
+    defaultMode: 0555
 volumes:
   - name: data
     needSnapshot: true
@@ -42,7 +47,7 @@ systemAccounts:
       letterCase: MixedCases
   - name: proxysql
     statement:
-      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
+      create: CREATE USER IF NOT EXISTS ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy:
       length: 16
       numDigits: 8
@@ -124,20 +129,17 @@ exporter:
 
 
 {{- define "mysql-orc.spec.lifecycle.common" }}
-postProvision:
-  exec:
-    container: mysql
-    command:
-      - bash
-      - -c
-      - "/scripts/mysql-orchestrator-register.sh"
-  preCondition: RuntimeReady
 preTerminate:
   exec:
     command:
       - bash
       - -c
-      - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${CLUSTER_NAME}.${CLUSTER_NAMESPACE} || true
+      - |
+        /orc-scripts/preterminate.sh 2>> /tmp/preterminate.log
+        if [ $? -ne 0 ]; then
+          echo "ERROR: Failed to preterminate"
+          exit 1
+        fi
 accountProvision:
   exec:
     container: mysql
@@ -148,7 +150,7 @@ accountProvision:
         set -ex
         ALL_DB='*.*'
         eval statement=\"${KB_ACCOUNT_STATEMENT}\"
-        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement};"
     targetPodSelector: Role
     matchingKey: primary
 roleProbe:
@@ -162,27 +164,25 @@ roleProbe:
       - /bin/bash
       - -c
       - |
-        topology_info=$(/kubeblocks/orchestrator-client -c topology -i ${CLUSTER_NAME}) || true
-        if [[ $topology_info == "" ]]; then
-          echo -n "secondary"
+        master_info=$(/kubeblocks/orchestrator-client -c which-cluster-master -i "${KB_AGENT_POD_NAME}") || true
+        if [[ -z "$master_info" ]]; then
+          echo -n ""
           exit 0
         fi
-
-        first_line=$(echo "$topology_info" | head -n 1)
-        cleaned_line=$(echo "$first_line" | tr -d '[]')
-        IFS=',' read -ra status_array <<< "$cleaned_line"
-        status="${status_array[1]}"
-        if  [ "$status" != "ok" ]; then
-          exit 0
-        fi
-
-        address_port=$(echo "$first_line" | awk '{print $1}')
-        master_from_orc="${address_port%:*}"
-        self_service_name=$(echo "${KB_AGENT_POD_NAME}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
-        if [ "$master_from_orc" == "${self_service_name}" ]; then
+        master_from_orc="${master_info%%:*}"
+        if [ "$master_from_orc" == "${KB_AGENT_POD_NAME}" ]; then
           echo -n "primary"
         else
-          echo -n "secondary"
+          # get list of replicas
+          replicas=$(/kubeblocks/orchestrator-client -c which-cluster-instances -i "${master_from_orc}")
+          # for each replica, check if it is a secondary
+          for replica in $replicas; do
+            if [ "${replica%%:*}" == "${KB_AGENT_POD_NAME}" ]; then
+              echo -n "secondary"
+            else
+              echo -n ""
+            fi
+          done
         fi
 memberLeave:
   exec:
@@ -190,56 +190,23 @@ memberLeave:
       - /bin/bash
       - -c
       - |
-        set +e
-        timeout=30
-        master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME})
-        self_service_name=$(echo "${KB_LEAVE_MEMBER_POD_NAME}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
-        if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
-          /kubeblocks/orchestrator-client -c force-master-failover -i ${CLUSTER_NAME}
-          local start_time=$(date +%s)
-          local current_time
-          while true; do
-            current_time=$(date +%s)
-            if [ $((current_time - start_time)) -gt $timeout ]; then
-              break
-            fi
-            master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME})
-            if [ "${self_service_name%%:*}" != "${master_from_orc%%:*}" ]; then
-              break
-            fi
-            sleep 1
-          done
+        /orc-scripts/member-leave.sh 2>> /tmp/member-leave.log
+        if [ $? -ne 0 ]; then
+          echo "ERROR: Failed to member leave"
+          exit 1
         fi
-        /kubeblocks/orchestrator-client -c reset-replica -i ${self_service_name}
-        /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
-        res=$(/kubeblocks/orchestrator-client -c which-cluster-alias -i ${self_service_name})
-        start_time=$(date +%s)
-        while [ "$res" == "" ]; do
-          current_time=$(date +%s)
-          if [ $((current_time - start_time)) -gt $timeout ]; then
-            break
-          fi
-          sleep 1
-          res=$(/kubeblocks/orchestrator-client -c instance -i ${self_service_name})
-        done
-        /kubeblocks/orchestrator-client -c forget -i ${self_service_name}| true
 switchover:
   exec:
     command:
       - /bin/sh
       - -c
       - |
-
-        if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
-            echo "switchover not triggered for primary, nothing to do, exit 0."
-            exit 0
-        fi
-
-        response=$(curl -s -o /dev/null -w "%{http_code}" http://${ORC_ENDPOINTS}/api/graceful-master-takeover-auto/${KB_SWITCHOVER_CURRENT_NAME})
-        if [ ! $response -eq 200 ]; then
-          echo "switchover failed, please check the candidate"
+        /orc-scripts/switchover.sh 2>> /tmp/switchover.log
+        if [ $? -ne 0 ]; then
+          echo "ERROR: Failed to switchover"
           exit 1
         fi
+
 {{- end }}
 
 
@@ -260,14 +227,12 @@ switchover:
 
 {{- define "mysql-orc.spec.runtime.mysql" -}}
 imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-lifecycle:
-  postStart:
-    exec:
-      command: [ "/bin/sh", "-c", "/scripts/init-mysql-instance-for-orc.sh" ]
 command:
   - bash
   - -c
   - |
+    source /scripts/init-mysql-instance-for-orc.sh
+
     cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
     if [ -d /etc/pki/tls ]; then
       mkdir -p {{ .Values.dataMountPath }}/tls/
@@ -279,7 +244,19 @@ command:
     if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
       export skip_slave_start="ON"
     fi
-    /scripts/mysql-entrypoint.sh
+    # Start MySQL in the background using the original entrypoint script.
+    /scripts/mysql-entrypoint.sh &
+    MYSQL_PID=$!
+
+    wait_for_connectivity
+    setup_master_slave
+    echo "init mysql instance for orc completed"
+
+    echo "Mysql wrapper script finished. Keeping mysqld running in foreground."
+    # The default entrypoint will now be the main process,
+    # or if it exited, we wait for the background mysqld.
+    wait "${MYSQL_PID}"
+
 volumeMounts:
   - mountPath: {{ .Values.dataMountPath }}
     name: data
@@ -287,6 +264,8 @@ volumeMounts:
     name: mysql-config
   - name: scripts
     mountPath: /scripts
+  - name: orc-scripts
+    mountPath: /orc-scripts
   - mountPath: /kubeblocks-tools
     name: kubeblocks
 ports:
