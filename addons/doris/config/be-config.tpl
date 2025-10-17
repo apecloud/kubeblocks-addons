@@ -131,7 +131,6 @@ enable_file_logger=1
 enable_flush_file_cache_async=1
 enable_fuzzy_mode=0
 enable_https=0
-enable_index_apply_preds_except_leafnode_of_andnode=1
 enable_inverted_index_cache_check_timestamp=1
 enable_java_support=1
 enable_je_purge_dirty_pages=1

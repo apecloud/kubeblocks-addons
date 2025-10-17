@@ -402,9 +402,142 @@
 
 	// Whether to debug inverted index compaction
 	debug_inverted_index_compaction: bool | *false
+		
+	// The interval time for the agent to prune stale bitmaps in aggregation cache.
+	delete_bitmap_agg_cache_stale_sweep_time_sec: int | *1800
+
+	// Whether to disable memory garbage collection.
+	disable_memory_gc: bool | *false
+
+	// Whether to disable segment cache
+	disable_segment_cache: bool | *false
+
+	// Whether to disable row cache feature in storage
+	disable_storage_row_cache: bool | *true
+
+	// the timeout of a work thread to wait the blocking priority queue to get a task
+	doris_blocking_priority_queue_wait_timeout_ms: int | *500
+
+	// The path to the cgroup cpu directory
+	doris_cgroup_cpu_path: string | *""
+
+	// max bytes number for single scan block, used in segmentv2
+	doris_scan_block_max_mb: int | *67108864
+
+	// size of scanner queue between scanner thread and compute thread
+	doris_scanner_queue_size: int | *1024
+
+	// the threshold of double resize
+	double_resize_threshold: int | *23
+
+	// DWARF location info mode
+	dwarf_location_info_mode: string | *"FAST"
+
+	// Whether to enable write background when using brpc stream
+	enable_brpc_stream_write_background: bool | *true
+
+	// Whether to enable column type check
+	enable_column_type_check: bool | *true
+
+	// whether check compaction checksum
+	enable_compaction_checksum: bool | *false
+
+	// whether enable compaction priority scheduling
+	enable_compaction_priority_scheduling: bool | *true
+
+	// Default 300s, if its value <= 0, then log is disabled
+	enable_debug_log_timeout_secs: int | *0
+
+	// Whether to apply delete pred in cumu compaction
+	enable_delete_when_cumu_compaction: bool | *false
+
+	// Whether to purge dirty pages in jemalloc
+	enable_je_purge_dirty_pages: bool | *true
+
+	// Whether to enable memory orphan check
+	enable_memory_orphan_check: bool | *true
+
+	// Whether to enable merge-on-write correctness check
+	enable_merge_on_write_correctness_check: bool | *true
+
+	// Whether to enable missing rows correctness check
+	enable_missing_rows_correctness_check: bool | *false
+
+	// If set to false, the parquet reader will not use page index to filter data. This is only for debug purpose, in case sometimes the page index filter wrong data.
+	enable_parquet_page_index: bool | *false
+
+	// Whether to enable pipeline task leakage detect
+	enable_pipeline_task_leakage_detect: bool | *false
+
+	// Whether to enable query like bloom filter
+	enable_query_like_bloom_filter: bool | *true
+
+
+
 
 
 	// STATIC parameters
+
+	// Whether to enable low cardinality optimize
+	enable_low_cardinality_optimize: bool | *true
+
+
+	// Whether to enable low cardinality cache code
+	enable_low_cardinality_cache_code: bool | *true
+	
+	// Whether to enable jvm monitor
+	enable_jvm_monitor: bool | *false
+	
+	// Whether to check timestamp of inverted index cache
+	enable_inverted_index_cache_check_timestamp: bool | *true
+
+	// Whether to enable fuzzy mode
+	enable_fuzzy_mode: bool | *false
+
+	// This config controls whether the s3 file writer would flush cache asynchronously
+	enable_flush_file_cache_async: bool | *true
+
+	// Whether to enable file logger
+	enable_file_logger: bool | *true
+
+	// Whether to enable file cache query limit feature
+	enable_file_cache_query_limit: bool | *false
+
+	// Whether to enable file cache feature
+	enable_file_cache: bool | *false
+
+	// Whether to enable binlog feature
+	enable_feature_binlog: bool | *false
+
+	// Whether to enable debug points
+	enable_debug_points: bool | *false
+
+	// Whether to enable base compaction idle scheduler
+	enable_base_compaction_idle_sched: bool | *true
+
+	// Whether to check authorization
+	enable_all_http_auth: bool | *false
+
+	// Download binlog rate limit, unit is KB/s, 0 means no limit
+	download_binlog_rate_limit_kbs: int | *0
+
+	// min thread pool size for scanner thread pool
+	doris_scanner_min_thread_pool_thread_num: int | *8
+
+	// number of s3 scanner thread pool size
+	doris_remote_scanner_thread_pool_thread_num: int | *48
+		
+	// number of s3 scanner thread pool queue size
+	doris_remote_scanner_thread_pool_queue_size: int | *102400
+
+	// Whether to enable scanner thread pool per disk, if true, each disk will have a separate thread pool for scanner
+	doris_enable_scanner_thread_pool_per_disk: bool | *true
+
+	// Whether to disable pk page cache feature in storage
+	disable_pk_storage_page_cache: bool | *false
+
+	// The default delete bitmap cache is set to 100MB. We will take the larger of 0.5% of the total memory and 100MB as the delete bitmap cache size.
+	delete_bitmap_dynamic_agg_cache_limit: string | *"0.5%"
 
 	// Global bitmap cache capacity for aggregation cache, size in bytes
 	delete_bitmap_agg_cache_capacity: int | *104857600
