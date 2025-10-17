@@ -472,11 +472,390 @@
 	// Whether to enable query like bloom filter
 	enable_query_like_bloom_filter: bool | *true
 
-
+	
+	enable_rowid_conversion_correctness_check: bool | *false
+	enable_shrink_memory: bool | *false
+	enable_use_cgroup_memory_info: bool | *true
+	enable_vertical_segment_writer: bool | *true
+	enable_workload_group_memory_gc: bool | *true
+	estimated_mem_per_column_reader: int | *1024
+	exchange_sink_ignore_eovercrowded: bool | *true
+	exchg_buffer_queue_capacity_factor: int | *64
+	fetch_remote_schema_rpc_timeout_ms: int | *60000
+	fetch_rpc_timeout_seconds: int | *30
+	file_cache_max_evict_num_per_round: int | *5000
+	file_cache_max_file_reader_cache_size: int | *1000000
+	file_cache_wait_sec_after_fail: int | *0
+	finished_migration_tasks_size: int | *10000
+	garbage_sweep_batch_size: int | *100
+	generate_cooldown_task_interval_sec: int | *20
+	get_stack_trace_tool: string | *"libunwind"
+	group_commit_queue_mem_limit: int | *67108864
+	hash_table_double_grow_degree: int | *31
+	high_disk_avail_level_diff_usages: float | *0.15
+	hive_sink_max_file_size: int | *1073741824
+	iceberg_sink_max_file_size: int | *1073741824
+	ignore_not_found_file_in_external_table: bool | *true
+	ignore_rowset_stale_unconsistent_delete: bool | *false
+	ignore_schema_change_check: bool | *false
+	in_memory_file_size: int | *1048576
+	index_cache_entry_stay_time_after_lookup_s: int | *1800
+	index_page_cache_stale_sweep_time_sec: int | *600
+	inverted_index_cache_stale_sweep_time_sec: int | *600
+	inverted_index_compaction_enable: bool | *false
+	inverted_index_max_buffered_docs: int | *-1
+	inverted_index_ram_buffer_size: float | *512
+	inverted_index_ram_dir_enable: bool | *true
+	jdbc_connection_pool_cache_clear_time_sec: int | *28800
+	je_dirty_pages_mem_limit_percent: string | *"5%"
+	jeprofile_dir: string | *"${DORIS_HOME}/log"
+	kerberos_ccache_path: string | *""
+	kerberos_krb5_conf_path: string | *"/etc/krb5.conf"
+	local_exchange_buffer_mem_limit: int | *134217728
+	lookup_connection_cache_bytes_limit: int | *4294967296
+	low_priority_compaction_score_threshold: int | *200
+	low_priority_compaction_task_num_per_disk: int | *2
+	max_amplified_read_ratio: float | *0.8
+	max_fill_rate: int | *2
+	max_fragment_start_wait_time_seconds: int | *30
+	max_s3_client_retry: int | *10
+	max_tablet_io_errors: int | *-1
+	memory_gc_sleep_time_ms: int | *500
+	memory_limitation_per_thread_for_storage_migration_bytes: int | *100000000
+	memory_maintenance_sleep_time_ms: int | *100
+	memtable_flush_running_count_limit: int | *2
+	memtable_hard_limit_active_percent: int | *50
+	memtable_insert_memory_ratio: float | *1.4
+	memtable_soft_limit_active_percent: int | *50
+	merged_hdfs_min_io_size: int | *8192
+	merged_oss_min_io_size: int | *1048576
+	migration_remaining_size_threshold_mb: int | *10
+	migration_task_timeout_secs: int | *300
+	min_bytes_in_scanner_queue: int | *67108864
+	mmap_threshold: int | *134217728
+	mow_publish_max_discontinuous_version_num: int | *20
+	multi_get_max_threads: int | *10
+	nodechannel_pending_queue_max_bytes: int | *67108864
+	orc_natural_read_size_mb: int | *8
+	parquet_column_max_buffer_mb: int | *8
+	parquet_header_max_size_mb: int | *1
+	parquet_rowgroup_max_buffer_mb: int | *128
+	pipeline_status_report_interval: int | *10
+	pipeline_task_leakage_detect_period_secs: int | *60
+	pk_index_page_cache_stale_sweep_time_sec: int | *600
+	point_query_row_cache_stale_sweep_time_sec: int | *300
+	pre_serialize_keys_limit_bytes: int | *16777216
+	process_full_gc_size: string | *"10%"
+	process_minor_gc_size: string | *"5%"
+	public_access_ip: string | *""
+	query_statistics_reserve_timeout_ms: int | *30000
+	remove_unused_remote_files_interval_sec: int | *21600
+	report_query_statistics_interval_ms: int | *3000
+	report_random_wait: bool | *true
+	rf_predicate_check_row_num: int | *204800
+	s3_read_base_wait_time_ms: int | *100
+	s3_read_max_wait_time_ms: int | *800
+	s3_write_buffer_size: int | *5242880
+	s3_writer_buffer_allocation_timeout: int | *300
+	scan_thread_nice_value: int | *0
+	schema_cache_capacity: int | *1024
+	schema_cache_sweep_time_sec: int | *100
+	segment_compression_threshold_kb: int | *256
+	skip_loading_stale_rowset_meta: bool | *false
+	spill_gc_interval_ms: int | *2000
+	spill_gc_work_time_ms: int | *2000
+	stacktrace_in_alloc_large_memory_bytes: int | *2147483648
+	storage_refresh_storage_policy_task_interval_seconds: int | *5
+	stream_load_record_batch_size: int | *50
+	table_sink_non_partition_write_scaling_data_processed_threshold: int | *
+	table_sink_partition_write_max_partition_nums_per_writer: int | *128
+	table_sink_partition_write_min_data_processed_rebalance_threshold: int | *
+	table_sink_partition_write_min_partition_data_processed_rebalance_threshold: int | *
+	tablet_lookup_cache_stale_sweep_time_sec: int | *30
+	tablet_meta_serialize_size_limit: int | *1610612736
+	tablet_path_check_batch_size: int | *1000
+	tablet_rowset_stale_sweep_threshold_size: int | *100
+	tablet_schema_cache_capacity: int | *102400
+	tablet_schema_cache_recycle_interval: int | *3600
+	tablet_version_graph_orphan_vertex_ratio: float | *0.1
+	thread_wait_gc_max_milliseconds: int | *1000
+	thrift_client_open_num_tries: int | *1
+	variant_enable_flatten_nested: bool | *false
+	variant_max_merged_tablet_schema_size: int | *2048
+	variant_ratio_of_defaults_as_sparse_column: float | *1
+	variant_threshold_rows_to_estimate_sparse_column: int | *2048
+	variant_throw_exeception_on_invalid_json: bool | *false
+	wg_weighted_memory_ratio_refresh_interval_ms: int | *50
+	workload_group_scan_task_wait_timeout_ms: int | *10000
+	write_buffer_size_for_agg: int | *419430400
 
 
 
 	// STATIC parameters
+	// Whether to enable set in bitmap value
+	enable_set_in_bitmap_value: bool | *false
+
+	// Whether to enable skip tablet compaction
+	enable_skip_tablet_compaction: bool | *true
+
+	// Whether to enable snapshot action
+	enable_snapshot_action: bool | *false
+
+	// Whether to enable time lut
+	enable_time_lut: bool | *true
+
+	// Whether to enable workload group for scan
+	enable_workload_group_for_scan: bool | *false
+
+	// Whether to enable write index searcher cache
+	enable_write_index_searcher_cache: bool | *true
+
+	// Whether to exit on exception
+	exit_on_exception: bool | *false
+
+	// The expiration time of FE cache in seconds
+	fe_expire_duration_seconds: int | *60
+
+	// The maximum size of file segment in file cache
+	file_cache_max_file_segment_size: int | *4194304
+
+	// The minimum size of file segment in file cache
+	file_cache_min_file_segment_size: int | *1048576
+		
+	// The path to the file cache directory
+	file_cache_path: string | *""
+
+	// The protocol for function service
+	function_service_protocol: string | *"h2:grpc"
+
+	// The interval time for the agent to generate tablet meta checkpoint tasks
+	generate_tablet_meta_checkpoint_tasks_interval_secs: int | *600
+
+	// The number of threads for group commit insert
+	group_commit_insert_threads: int | *10
+
+	// The maximum number of rows for max filter ratio in group commit
+	group_commit_memory_rows_for_max_filter_ratio: int | *10000
+
+	// The number of threads for group commit relay wal
+	group_commit_relay_wal_threads: int | *10
+
+	// The maximum retry interval time for group commit replay wal in seconds
+	group_commit_replay_wal_retry_interval_max_seconds: int | *1800
+
+	// The retry interval time for group commit replay wal in seconds
+	group_commit_replay_wal_retry_interval_seconds: int | *5
+
+	// The maximum number of retry times for group commit replay wal
+	group_commit_replay_wal_retry_num: int | *10
+
+	// Whether to wait for group commit replay wal finish
+	group_commit_wait_replay_wal_finish: bool | *false
+
+	// The maximum disk limit for group commit wal
+	group_commit_wal_max_disk_limit: string | *"10%"
+
+	// Whether to hide webserver config page
+	hide_webserver_config_page: bool | *false
+
+	// Whether to ignore always true predicate for segment
+	ignore_always_true_predicate_for_segment: bool | *true
+
+	// The number of rowsets to ignore invalid partition id
+	ignore_invalid_partition_id_rowset_num: int | *0
+
+	// The number of threads for ingest binlog work pool
+	ingest_binlog_work_pool_size: int | *-1
+
+	// The path to the inverted index dictionary directory
+	inverted_index_dict_path: string | *"${DORIS_HOME}/dict"
+
+	// The percentage of file descriptor limit for inverted index
+	inverted_index_fd_number_limit_percent: int | *40
+
+	// The limit of query cache memory size for inverted index
+	inverted_index_query_cache_limit: string | *"10%"
+
+	// The number of shards for inverted index query cache
+	inverted_index_query_cache_shards: int | *256
+
+	// The size of read buffer for inverted index
+	inverted_index_read_buffer_size: int | *4096
+
+	// The limit of searcher cache memory size for inverted index
+	inverted_index_searcher_cache_limit: string | *"10%"
+
+	// Whether to enable kafka debug
+	kafka_debug: string | *"disable"
+
+	// The percentage of memory limit for load process safe memory permit
+	load_process_safe_mem_permit_percent: int | *5
+
+	// The maximum retry interval time for load stream eagain wait in seconds
+	load_stream_eagain_wait_seconds: int | *600
+
+	// The maximum number of tasks for load stream flush token
+	load_stream_flush_token_max_tasks: int | *15
+
+	// The maximum buffer size for load stream
+	load_stream_max_buf_size: int | *20971520
+
+	// The maximum wait time for load stream flush token in milliseconds
+	load_stream_max_wait_flush_token_time_ms: int | *600000
+
+	// The number of messages in each batch for load stream
+	load_stream_messages_in_batch: int | *128
+
+
+	// The maximum depth of bkd tree
+	max_depth_in_bkd_tree: int | *32
+
+	// The maximum depth of expression tree
+	max_depth_of_expr_tree: int | *600
+
+	// The maximum number of external file meta cache
+	max_external_file_meta_cache_num: int | *1000
+
+	// The maximum number of hdfs file handle cache
+	max_hdfs_file_handle_cache_num: int | *1000
+
+	// The maximum time for hdfs file handle cache in seconds
+	max_hdfs_file_handle_cache_time_sec: int | *3600
+
+	// The maximum number of meta checkpoint threads
+	max_meta_checkpoint_threads: int | *-1
+
+	// The maximum number of tablet migration threads
+	max_tablet_migration_threads: int | *1
+
+	// The reserved memory bytes for memtable limiter
+	memtable_limiter_reserved_memory_bytes: int | *838860800
+
+	// The timeout time for migration lock in milliseconds
+	migration_lock_timeout_ms: int | *1000
+
+	// The minimum number of file descriptors
+	min_file_descriptor_number: int | *60000
+
+	// The minimum row group size for parquet reader
+	min_row_group_size: int | *134217728
+
+	// The minimum number of tablet migration threads
+	min_tablet_migration_threads: int | *1
+
+	// The number of broadcast buffers
+	num_broadcast_buffer: int | *32
+
+	// Number of cores Doris will used, this will effect only when it's greater than 0. Otherwise, Doris will use all cores returned from "/proc/cpuinfo".
+	num_cores: int | *0
+
+	// Control the number of disks on the machine.  If 0, this comes from the system settings.
+	num_disks: int | *0
+
+	// The timeout time for open load stream in milliseconds
+	open_load_stream_timeout_ms: int | *60000
+
+	// The maximum buffer size for parquet reader
+	parquet_reader_max_buffer_size: int | *50
+
+	// The size of partition disk index lru cache
+	partition_disk_index_lru_size: int | *10000
+
+	// The threshold for topn partition
+	partition_topn_partition_threshold: int | *1024
+
+	// The number of pipeline executor threads
+	pipeline_executor_size: int | *0
+
+	// The limit of page cache memory size for primary key storage
+	pk_storage_page_cache_limit: string | *"10%"
+
+	// The size of primary key data page
+	primary_key_data_page_size: int | *32768
+
+	// The timeout time for publish version task in seconds
+	publish_version_task_timeout_s: int | *8
+
+	// The elasticity size of query cache memory size in MB
+	query_cache_elasticity_size_mb: int | *128
+
+	// The maximum number of partitions for query cache
+	query_cache_max_partition_count: int | *1024
+
+	// The maximum size of query cache memory size in MB
+	query_cache_max_size_mb: int | *256
+
+	// The maximum number of rowsets in each batch for remote split source
+	remote_split_source_batch_size: int | *10240
+
+	// The maximum number of write buffers for rocksdb
+	rocksdb_max_write_buffer_number: int | *5
+
+	// The load balancer for rpc
+	rpc_load_balancer: string | *"rr"
+
+	// The number of threads for s3 transfer executor pool
+	s3_transfer_executor_pool_size: int | *2
+
+	// The percentage of file descriptor limit for segment cache
+	segment_cache_fd_percentage: int | *40
+
+	// The percentage of memory limit for segment cache
+	segment_cache_memory_percentage: int | *2
+
+	// Whether to share delta writers
+	share_delta_writers: bool | *true
+
+	// The queue size for spill io thread pool
+	spill_io_thread_pool_queue_size: int | *102400
+
+	// The number of threads for spill io thread pool
+	spill_io_thread_pool_thread_num: int | *-1
+
+	// The limit of storage size for spill io thread pool
+	spill_storage_limit: string | *"20%"
+
+	// The root path for spill storage
+	spill_storage_root_path: string | *""
+
+	// The path for ssl certificate
+	ssl_certificate_path: string | *""
+
+	// The path for ssl private key
+	ssl_private_key_path: string | *""
+
+	// The timeout time for stream load record expire in seconds
+	stream_load_record_expire_time_secs: int | *28800
+
+	// The buffer size for stream tvf
+	stream_tvf_buffer_size: int | *1048576
+
+	// The roll mode for system log, TIME-DAY, TIME-HOUR, SIZE-MB-nnn
+	sys_log_roll_mode: string | *"SIZE-MB-1024"
+
+	// The verbose flags for system log
+	sys_log_verbose_flags_v: int | *-1
+
+	// The interval time for tablet path check in seconds
+	tablet_path_check_interval_seconds: int | *-1
+
+	// The maximum number of publish transaction threads
+	tablet_publish_txn_max_thread: int | *32
+
+	// Whether to enable stale sweep by size for tablet rowset
+	tablet_rowset_stale_sweep_by_size: bool | *false
+
+	// The path for temporary files
+	tmp_file_dir: string | *"tmp"
+
+	// Whether to wait for internal group commit finish
+	wait_internal_group_commit_finish: bool | *false
+
+	// The number of flush thread per store
+	wg_flush_thread_num_per_store: int | *6
+
+	// Whether to enable set in bitmap value
+	enable_set_in_bitmap_value: bool | *false
 
 	// Whether to enable low cardinality optimize
 	enable_low_cardinality_optimize: bool | *true
