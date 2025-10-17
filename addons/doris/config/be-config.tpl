@@ -8,13 +8,9 @@ JAVA_OPTS="-Xmx2048m -Xloggc:/opt/apache-doris/log/be.gc.log.${CUR_DATE} -Dsun.j
 JAVA_OPTS="-Xmx4096m -Xloggc:/opt/apache-doris/log/be.gc.log.${CUR_DATE} -Dsun.java.command=DorisBE -XX:-CriticalJNINatives"
 {{- end}}
 
-LZ4_HC_compression_level=9
 agent_task_trace_threshold_sec=2
-allow_invalid_decimalv2_literal=0
-allow_zero_date=0
 alter_index_worker_count=3
 alter_tablet_worker_count=3
-arrow_flight_result_sink_buffer_size_rows=32768
 arrow_flight_sql_port=-1
 async_file_cache_init_file_num_interval=1000
 async_file_cache_init_sleep_interval_ms=20
@@ -27,7 +23,6 @@ base_compaction_max_compaction_score=20
 base_compaction_min_data_ratio=0.3
 base_compaction_min_rowset_num=5
 base_compaction_trace_threshold=60
-be_node_role=mix
 be_port=9060
 be_service_threads=64
 big_column_size_buffer=65535
@@ -54,7 +49,6 @@ clean_stream_load_record_interval_secs=1800
 clear_file_cache=0
 clear_transaction_task_worker_count=1
 clone_worker_count=3
-cluster_id=-1
 cold_data_compaction_interval_sec=1800
 cold_data_compaction_thread_num=2
 column_dictionary_key_ratio_threshold=0

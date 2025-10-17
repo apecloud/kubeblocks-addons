@@ -94,12 +94,50 @@ staticParameters:
   - enable_system_metrics
   - enable_java_support
   - group_commit_wal_path
+  - async_file_cache_init_file_num_interval
+  - bitmap_serialize_version
+  - broken_storage_path
+  - brpc_heavy_work_pool_max_queue_size
+  - brpc_heavy_work_pool_threads
+  - brpc_idle_timeout_sec
+  - brpc_light_work_pool_max_queue_size
+  - brpc_light_work_pool_threads
+  - calc_delete_bitmap_max_thread
+  - clear_file_cache
+  - cooldown_thread_num
+  - delete_bitmap_agg_cache_capacity
+  - cold_data_compaction_thread_num
 #
 
 
 
 dynamicParameters:
+  - crash_in_alloc_large_memory_bytes
+  - data_page_cache_stale_sweep_time_sec
+  - debug_inverted_index_compaction
+  - cumulative_compaction_max_deltas_factor
+  - compaction_batch_size
+  - compaction_keep_invisible_version_max_count
+  - compaction_keep_invisible_version_min_count
+  - compaction_keep_invisible_version_timeout_sec
+  - common_obj_lru_cache_stale_sweep_time_sec
+  - compaction_memory_bytes_limit
+  - compaction_promotion_version_count
+  - confirm_unused_remote_files_interval_sec
+  - column_dictionary_key_ratio_threshold
+  - column_dictionary_key_size_threshold
+  - cold_data_compaction_interval_sec
+  - clean_stream_load_record_interval_secs
+  - check_segment_when_build_rowset_meta
+  - buffered_reader_read_timeout_ms
+  - cache_periodic_prune_stale_sweep_sec
+  - cache_prune_interval_sec
   - trash_file_expire_time_sec
+  - auto_inc_fetch_thread_num
+  - auto_inc_low_water_level_mark_size_ratio
+  - auto_inc_prefetch_size_ratio
+  - base_compaction_dup_key_max_file_size_mbytes
+  - base_compaction_max_compaction_score
   - es_http_timeout_ms
   - external_table_connect_timeout_sec
   - status_report_interval
@@ -207,6 +245,8 @@ dynamicParameters:
   - brpc_streaming_client_batch_bytes
   - grace_shutdown_wait_seconds
   - ca_cert_file_paths
+  - agent_task_trace_threshold_sec
+  - async_file_cache_init_sleep_interval_ms
 
 #
 

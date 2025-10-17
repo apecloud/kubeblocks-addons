@@ -1,5 +1,9 @@
 #BEParameter: {
 	// DYNAMIC parameters
+
+	// Threshold to logging agent task trace, in seconds.
+	agent_task_trace_threshold_sec: int | *2
+
 	// The interval for cleaning the recycle bin is 24 hours. When the disk space is insufficient, the file retention period under trash may not comply with this parameter
 	trash_file_expire_time_sec: int | *86400
 
@@ -319,10 +323,118 @@
 	// In cloud native deployment scenario, BE will be add to cluster and remove from cluster very frequently. User's query will fail if there is a fragment is running on the shuting down BE. Users could use stop_be.sh --grace, then BE will wait all running queries to stop to avoiding running query failure, but if the waiting time exceed the limit, then be will exit directly. During this period, FE will not send any queries to BE and waiting for all running queries to stop.
 	grace_shutdown_wait_seconds: int | *120
 
+	// number of threads that fetch auto-inc ranges from FE
+	auto_inc_fetch_thread_num: int | *3
+
+	// the ratio of _low_level_water_level_mark/_batch_size in AutoIncIDBuffer
+	auto_inc_low_water_level_mark_size_ratio: int | *3
+
 	ca_cert_file_paths: string | *"/etc/pki/tls/certs/ca-bundle.crt;/etc/ssl/certs/ca-certificates.crt;/etc/ssl/ca-bundle.pem"
+
+	// the ratio of _prefetch_size/_batch_size in AutoIncIDBuffer
+	auto_inc_prefetch_size_ratio: int | *10
+
+	// The maximum size of a single file in a compaction that contains duplicate keys, in MB.
+	base_compaction_dup_key_max_file_size_mbytes: int | *1024
+
+	// The maximum score of a compaction that contains duplicate keys.
+	base_compaction_max_compaction_score: int | *20
+
+	// The path to store broken storage files.
+	broken_storage_path: string | *""
+
+	// The timeout time for buffered reader to read data, unit is ms.
+	buffered_reader_read_timeout_ms: int | *600000
+
+	// The interval time for the agent to prune stale tablets.
+	cache_periodic_prune_stale_sweep_sec: int | *300
+
+	// The interval time for the agent to prune stale tablets.
+	cache_prune_interval_sec: int | *300
+
+	// Whether to check segment when build rowset meta
+	check_segment_when_build_rowset_meta: bool | *false
+
+	// The time interval to clean expired stream load records
+	trash_file_expire_time_sec: int | *1800
+
+	// The interval time for the agent to compact cold data
+	cold_data_compaction_interval_sec: int | *1800
+
+	// The threshold of the ratio of the number of unique keys to the total number of keys in a column dictionary. If the ratio is less than this value, the column dictionary will not be compressed.
+	column_dictionary_key_ratio_threshold: int | *0
+
+	// The threshold of the size of a column dictionary. If the size of a column dictionary is less than this value, the column dictionary will not be compressed.
+	column_dictionary_key_size_threshold: int | *0
+
+	// The interval time for the agent to prune stale objects in common object LRU cache.
+	common_obj_lru_cache_stale_sweep_time_sec: int | *900
+
+	// The batch size for compaction
+	compaction_batch_size: int | *-1
+
+	// The maximum number of invisible versions to keep in a compaction.
+	compaction_keep_invisible_version_max_count: int | *500
+
+	// The minimum number of invisible versions to keep in a compaction.
+	compaction_keep_invisible_version_min_count: int | *50
+
+	// The timeout time for compaction to keep invisible versions, unit is sec.
+	compaction_keep_invisible_version_timeout_sec: int | *1800
+
+	// The maximum memory bytes limit for compaction.
+	compaction_memory_bytes_limit: int | *1073741824
+
+	// When output rowset of cumulative compaction total version count (end_version - start_version) exceed this config count, the rowset will be moved to base compaction. This config will work for unique key merge-on-write table only, to reduce version count related cost on delete bitmap more effectively.
+	compaction_promotion_version_count: int | *1000
+
+	// The interval time for the agent to confirm unused remote files.
+	confirm_unused_remote_files_interval_sec: int | *60
+
+	// The threshold of the memory bytes to crash when allocating large memory.
+	crash_in_alloc_large_memory_bytes: int | *-1
+
+	// The factor of the maximum number of deltas to compact in a cumulative compaction.
+	cumulative_compaction_max_deltas_factor: int | *10
+
+	// The interval time for the agent to prune stale data pages in data page cache.
+	data_page_cache_stale_sweep_time_sec: int | *300
+
+	// Whether to debug inverted index compaction
+	debug_inverted_index_compaction: bool | *false
 
 
 	// STATIC parameters
+
+	// Global bitmap cache capacity for aggregation cache, size in bytes
+	delete_bitmap_agg_cache_capacity: int | *104857600
+
+	// The number of threads to compact cold data
+	cooldown_thread_num: int | *5
+
+	// The number of threads to compact cold data
+	cold_data_compaction_thread_num: int | *2
+
+	// Whether to clear file cache when tablet is deleted
+	clear_file_cache: bool | *false
+
+	// the count of thread to calc delete bitmap
+	calc_delete_bitmap_max_thread: int | *32
+
+	// The number of threads in the light work pool.
+	brpc_light_work_pool_threads: int | *-1
+
+	// The maximum number of requests that can be queued in the light work pool.
+	brpc_light_work_pool_max_queue_size: int | *-1
+
+	// the time of brpc server keep idle connection, setting this value too small may cause rpc between backends to fail, the default value is set to -1, which means never close idle connection.
+	brpc_idle_timeout_sec: int | *-1
+
+	// The number of threads in the heavy work pool.
+	brpc_heavy_work_pool_threads: int | *-1
+
+	// The maximum number of requests that can be queued in the heavy work pool.
+	brpc_heavy_work_pool_max_queue_size: int | *-1
 
 	// The port number of the Thrift server on the BE, which is used to receive requests from the FE.
 	be_port: int | *9060
@@ -616,6 +728,15 @@
 
 	// The JAVA_OPTS startup configuration for the BE node
 	JAVA_OPTS: string | *""
+
+	// thread will sleep async_file_cache_init_sleep_interval_ms per scan async_file_cache_init_file_num_interval file num to limit IO
+	async_file_cache_init_file_num_interval: int | *1000
+
+	// thread will sleep async_file_cache_init_sleep_interval_ms per scan async_file_cache_init_file_num_interval file num to limit IO
+	async_file_cache_init_sleep_interval_ms: int | *20
+
+	// The version of bitmap serialize.
+	bitmap_serialize_version: int | *1
 }
 
 configuration: #BEParameter & {

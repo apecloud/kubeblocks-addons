@@ -302,7 +302,7 @@
 	enable_workload_group: bool | *true
 	
 	// Shuffle won't be enabled for DUPLICATE KEY tables if its tablet num is lower than this number
-	min_tablets_for_dup_table_shuff: int | *64
+	min_tablets_for_dup_table_shuffle: int | *64
 
 	// This config is used to control the number of sql cache managed by NereidsSqlCacheManager. Default set to 100.
 	sql_cache_manage_num: int | *100
@@ -737,7 +737,7 @@
 	urgent_balance_pick_large_disk_usage_percentage: int & >0 & <100 | * 80
 
 	// The threshold of tablet number that will be considered as urgent balance.
-	urgent_balance_pick_large_tablet_num_threshold: int | *1000
+	urgent_balance_pick_large_tablet_num_threshold: float | *1000.0
 
 	// When run urgent disk balance, shuffle the top large tablets with this percentage.
 	urgent_balance_shuffle_large_tablet_percentage: int & >0 & <100 | * 1
@@ -849,7 +849,7 @@
 	audit_log_enable_compress: bool | *false
 
 	// The type of FE audit log file
-	audit_log_modules: [...string] | *["slow_query", "query", "load", "stream_load"]
+	audit_log_modules: string | *'["slow_query", "query", "load", "stream_load"]'
 	
 	// The split cycle of the FE audit log file
 	audit_log_roll_interval: string & ("DAY" | "HOUR") | *"DAY"
@@ -1126,7 +1126,7 @@
 	jdbc_drivers_dir: string | *"/opt/apache-doris/fe/jdbc_drivers"
 
 	// MySQL Jdbc Catalog mysql does not support pushdown functions
-	jdbc_mysql_unsupported_pushdown_functions: [...string] | *["date_trunc", "money_format", "negative"]
+	jdbc_mysql_unsupported_pushdown_functions: string | *'["date_trunc", "money_format", "negative"]'
 
 	// Number of acceptors for Jetty server
 	jetty_server_acceptors: int | *2
@@ -1430,7 +1430,7 @@
 	sys_log_roll_num: int | *10
 
 	// Verbose module. The VERBOSE level log is implemented by the DEBUG level of log4j. If set to `org.apache.doris.catalog`, the DEBUG log of the class under this package will be printed.
-	sys_log_verbose_modules: [...string] | *[]
+	sys_log_verbose_modules: string | *'[]'
 
 	// The interval in milliseconds for tablet checking
 	tablet_checker_interval_ms: int | *20000
