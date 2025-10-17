@@ -67,7 +67,7 @@ spec:
           - name: nodemanager-config
             mountPath: /hadoop/conf/yarn-site.xml
             subPath: yarn-site.xml
-          - name: nodemanager-config
+          - name: mapred-site-config
             mountPath: /hadoop/conf/mapred-site.xml
             subPath: mapred-site.xml
           - mountPath: /hadoop/conf/log4j.properties
@@ -101,7 +101,7 @@ spec:
       template: hadoop-nodemanager-config-template
       volumeName: nodemanager-config
       defaultMode: 0755
-      externalManaged: false
+      # externalManaged: true
       restartOnFileChange: true
   scripts:
     - name: {{ include "hadoop.name" . }}-scripts
@@ -143,3 +143,11 @@ spec:
           compDef: hadoop-yarn-resourcemanager
           optional: false
           componentName: Required
+    - name: PHY_CPU
+      valueFrom:
+        resourceVarRef:
+          cpuLimit: Required
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required

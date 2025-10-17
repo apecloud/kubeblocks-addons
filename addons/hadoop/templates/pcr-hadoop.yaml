@@ -71,8 +71,38 @@ spec:
   componentDef:  {{ include "yarnNodeManagerComponentDef" . }}
   parametersDefs:
     - hadoop-yarn-nodemanager-pd
+    - hadoop-mapred-site-pd
 
   configs:
     - name: yarn-site.xml
+      fileFormatConfig:
+        format: xml
+    - name: mapred-site.xml
+      fileFormatConfig:
+        format: xml
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ printf "hadoop-yarn-resourcemanager-pcr-%s" $.Chart.Version }}
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.annotations" . | nindent 4 }}
+spec:
+  componentDef:  {{ include "yarnResourceManagerComponentDef" . }}
+  parametersDefs:
+    - hadoop-yarn-resourcemanager-pd
+    - hadoop-mapred-site-pd
+    - hadoop-yarn-capacity-scheduler-pd
+
+  configs:
+    - name: yarn-site.xml
+      fileFormatConfig:
+        format: xml
+    - name: mapred-site.xml
+      fileFormatConfig:
+        format: xml
+    - name: capacity-scheduler.xml
       fileFormatConfig:
         format: xml

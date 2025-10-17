@@ -152,7 +152,7 @@ spec:
       template: hadoop-namenode-config-template
       volumeName: namenode-config
       defaultMode: 0755
-      externalManaged: false
+      # externalManaged: true
       restartOnFileChange: true
   scripts:
     - name: {{ include "hadoop.name" . }}-scripts
