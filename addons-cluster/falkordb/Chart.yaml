@@ -11,7 +11,7 @@ dependencies:
     repository: file://../kblib
     alias: extra
 
-appVersion: "7.2.7"
+appVersion: "4.12.5"
 
 keywords:
   - falkordb

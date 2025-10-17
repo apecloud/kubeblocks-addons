@@ -4,7 +4,7 @@ metadata:
   name: falkordb-replication-restore
   namespace: demo
   annotations:
-    kubeblocks.io/restore-from-backup: '{"falkordb":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"falkordb-replication-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"falkordb":{"name":"falkordb-backup-datafile","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: falkordb
@@ -31,6 +31,7 @@ spec:
               requests:
                 storage: 20Gi
     - name: falkordb-sent
+      serviceVersion: "4.12.5"
       replicas: 3
       resources:
         limits:
