@@ -79,3 +79,42 @@ spec:
     topLevelKey: NodeManagerParameter
     cue: |-
       {{- $.Files.Get "config/config-nodemanager-constraint.cue" | nindent 6 }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: hadoop-yarn-resourcemanager-pd
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+spec:
+  fileName: yarn-site.xml
+  parametersSchema:
+    topLevelKey: ResourceManagerParameter
+    cue: |-
+      {{- $.Files.Get "config/config-resourcemanager-constraint.cue" | nindent 6 }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: hadoop-yarn-capacity-scheduler-pd
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+spec:
+  fileName: capacity-scheduler.xml
+  parametersSchema:
+    topLevelKey: CapacitySchedulerParameter
+    cue: |-
+      {{- $.Files.Get "config/config-capacity-scheduler-constraint.cue" | nindent 6 }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: hadoop-mapred-site-pd
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+spec:
+  fileName: mapred-site.xml
+  parametersSchema:
+    topLevelKey: MapredSiteParameter
+    cue: |-
+      {{- $.Files.Get "config/config-mapred-site-constraint.cue" | nindent 6 }}

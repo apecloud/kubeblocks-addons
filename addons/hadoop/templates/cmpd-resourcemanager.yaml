@@ -67,10 +67,10 @@ spec:
             name: resourcemanager-config
             subPath: yarn-site.xml
           - mountPath: /hadoop/conf/mapred-site.xml
-            name: resourcemanager-config
+            name: mapred-site-config
             subPath: mapred-site.xml
           - mountPath: /hadoop/conf/capacity-scheduler.xml
-            name: resourcemanager-config
+            name: capacity-scheduler-config
             subPath: capacity-scheduler.xml
           - name: hadoop-resourcemanager
             mountPath: /hadoop
@@ -100,7 +100,21 @@ spec:
       template: hadoop-resourcemanager-conf-tpl
       volumeName: resourcemanager-config
       defaultMode: 0755
-      externalManaged: false
+      # externalManaged: true
+      restartOnFileChange: true
+    - name: mapred-site-config
+      namespace: {{ .Release.Namespace }}
+      template: hadoop-mapred-site-template
+      volumeName: mapred-site-config
+      defaultMode: 0755
+      # externalManaged: true
+      restartOnFileChange: true
+    - name: capacity-scheduler-config
+      namespace: {{ .Release.Namespace }}
+      template: hadoop-capacity-scheduler-template
+      volumeName: capacity-scheduler-config
+      defaultMode: 0755
+      # externalManaged: true
       restartOnFileChange: true
   scripts:
     - name: {{ include "hadoop.name" . }}-scripts

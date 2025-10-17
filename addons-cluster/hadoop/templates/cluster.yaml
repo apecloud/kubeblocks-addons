@@ -179,6 +179,9 @@ spec:
         - name: hadoop-namenode-config
           configMap:
             name: {{ include "kblib.clusterName" . }}-namenode-config
+        - name: mapred-site-config
+          configMap:
+            name: {{ include "kblib.clusterName" . }}-resourcemanager-mapred-site-config
       volumeClaimTemplates:
           - name: nodemanager
             spec:
