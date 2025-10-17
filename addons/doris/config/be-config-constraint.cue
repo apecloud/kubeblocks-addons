@@ -614,6 +614,7 @@
 	// The WAL directory of group commit.
 	group_commit_wal_path: string | *""
 
+	// The JAVA_OPTS startup configuration for the BE node
 	JAVA_OPTS: string | *""
 }
 
