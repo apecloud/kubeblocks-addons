@@ -58,7 +58,7 @@ spec:
                 # Set the storage size as needed
                 storage: 20Gi
     - name: falkordb-sent
-      serviceVersion: "7.2.4"
+      serviceVersion: "4.12.5"
       replicas: 3
       resources:
         limits:
