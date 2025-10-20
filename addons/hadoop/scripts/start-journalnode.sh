@@ -31,6 +31,10 @@ if [[ $WAIT_ZK_TO_READY == true ]]; then
 fi
 echo "Wait zookeeper started successfully."
 
+if [[ "$ENABLE_JMX_EXPORTER" == true ]]; then
+  export HDFS_JOURNALNODE_OPTS="-javaagent:/hadoop/jmx_prometheus_javaagent.jar=${JMX_EXPORTER_PORT}:/hadoop/conf/jmx-exporter.yaml"
+fi
+
 START_COMMAND=("${HADOOP_HOME}/bin/hdfs" "journalnode" "$@")
 
 info "** Starting JournalNode **"

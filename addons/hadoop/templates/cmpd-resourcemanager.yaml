@@ -13,6 +13,12 @@ spec:
   serviceKind: yarn-resourcemanager
   podManagementPolicy: Parallel
   runtime:
+    initContainers:
+      - name: init-jmx-exporter
+        volumeMounts:
+          - name: hadoop-resourcemanager
+            mountPath: /hadoop
+        {{- include "hadoop.initJmxExporterContainer" . | nindent 8 }}
     containers:
       - name: yarn-resourcemanager
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
@@ -74,9 +80,11 @@ spec:
             subPath: capacity-scheduler.xml
           - name: hadoop-resourcemanager
             mountPath: /hadoop
-            subPath: resourcemanager
           - name: scripts
             mountPath: /kubeblocks/scripts
+          - name: resourcemanager-config
+            mountPath: /hadoop/conf/jmx-exporter.yaml
+            subPath: jmx-exporter.yaml
         securityContext:
           runAsUser: 10000
           runAsGroup: 1000
@@ -123,6 +131,10 @@ spec:
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
   vars:
+    - name: ENABLE_JMX_EXPORTER
+      value: {{ .Values.enableJmxExporter | quote }}
+    - name: JMX_EXPORTER_PORT
+      value: "{{ .Values.jmxExporterPort }}"
     - name: HOME
       value: /home/hadoop
     - name: CLUSTER_DOMAIN

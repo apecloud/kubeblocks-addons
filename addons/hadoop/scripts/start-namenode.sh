@@ -57,6 +57,10 @@ info "** Starting NameNode setup **"
 namenode_initialize
 info "** NameNode setup finished! **"
 
+if [[ "$ENABLE_JMX_EXPORTER" == true ]]; then
+  export HDFS_NAMENODE_OPTS="-javaagent:/hadoop/jmx_prometheus_javaagent.jar=${JMX_EXPORTER_PORT}:/hadoop/conf/jmx-exporter.yaml"
+fi
+
 START_COMMAND=("${HADOOP_HOME}/bin/hdfs" "namenode" "$@")
 
 info "** Starting NameNode **"

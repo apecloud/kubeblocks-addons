@@ -77,9 +77,6 @@ spec:
     - name: yarn-site.xml
       fileFormatConfig:
         format: xml
-    - name: mapred-site.xml
-      fileFormatConfig:
-        format: xml
 ---
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParamConfigRenderer
