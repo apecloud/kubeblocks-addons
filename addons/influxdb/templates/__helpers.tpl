@@ -50,8 +50,28 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{/*
 Define influxdb component definition name
 */}}
-{{- define "influxdb.cmpdName" -}}
+{{- define "influxdb.standalone.cmpdName" -}}
 influxdb-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "influxdb.standalone.cmpdRegexpPattern" -}}
+^influxdb-\d+
+{{- end -}}
+
+{{- define "influxdb.meta.cmpdName" -}}
+influxdb-meta-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "influxdb.meta.cmpdRegexpPattern" -}}
+^influxdb-meta-
+{{- end -}}
+
+{{- define "influxdb.data.cmpdName" -}}
+influxdb-meta-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "influxdb.data.cmpdRegexpPattern" -}}
+^influxdb-data-
 {{- end -}}
 
 {{/*

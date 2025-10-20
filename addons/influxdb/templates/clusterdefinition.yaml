@@ -1,0 +1,32 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: {{ include "influxdb.cmpdName" . }}
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "influxdb.annotations" . | nindent 4 }}
+spec:
+  topologies:
+    - name: standalone
+      default: true
+      components:
+        - name: influxdb
+          compDef: {{ include "influxdb.standalone.cmpdRegexpPattern" . }}
+    - name: cluster
+      # TODO
+      components:
+        - name: kafka-combine
+          compDef: {{ include "kafka-combine.cmpdRegexpPattern" . }}
+        - name: kafka-exporter
+          compDef: {{ include "kafka-exporter.cmpdRegexpPattern" . }}
+      orders:
+        provision:
+          - kafka-combine
+          - kafka-exporter
+        terminate:
+          - kafka-exporter
+          - kafka-combine
+        update:
+          - kafka-combine
+          - kafka-exporter
