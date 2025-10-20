@@ -26,6 +26,11 @@ spec:
           memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
+      volumes:
+        - name: certificates
+          secret:
+            secretName: {{ include "kblib.clusterName" . }}-certificates
+            optional: true
       volumeClaimTemplates:
     {{- range $key, $value := .Values.fe.persistence.storages }}
         - name: {{ $key }}
