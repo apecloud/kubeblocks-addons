@@ -1,6 +1,6 @@
 # FalkorDB
 
-FalkorDB is an open source (SSPL licensed) graph database database. This example shows how it can be managed in Kubernetes with KubeBlocks.
+FalkorDB is an open source (SSPL licensed) in-memory graph database based on Redis. This example shows how it can be managed in Kubernetes with KubeBlocks.
 
 ## Features In KubeBlocks
 
@@ -8,9 +8,9 @@ FalkorDB is an open source (SSPL licensed) graph database database. This example
 
 |   Topology       | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| replication     | Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | No      |
+| replication     | Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
 | standalone      | Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | N/A      |
-| sharding      | Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | No      |
+| sharding      | Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
 
 ### Backup and Restore
 
@@ -23,8 +23,7 @@ FalkorDB is an open source (SSPL licensed) graph database database. This example
 
 | Major Versions | Description |
 |---------------|-------------|
-| 7.0           | 7.0.6 |
-| 7.2           | 7.2.4 |
+| 4.0           | 4.12.5 |
 
 ## Prerequisites
 
@@ -43,9 +42,9 @@ FalkorDB is an open source (SSPL licensed) graph database database. This example
 
 ### Create
 
-Create a FalkorDB replication cluster with two components, one for FalkorDB, and one for FalkorDB Sentinel[^1].
+Create a FalkorDB replication cluster with two components, one for FalkorDB, and one for Sentinel[^1].
 
-For optimal reliability, you should run at least three FalkorDB Sentinel replicas. Having three or more Sentinels ensures a quorum can be reached during failover decisions, maintaining the high availability of your FalkorDB deployment.
+For optimal reliability, you should run at least three Sentinel replicas. Having three or more Sentinels ensures a quorum can be reached during failover decisions, maintaining the high availability of your FalkorDB deployment.
 
 ```yaml
 # cat examples/falkordb/cluster.yaml
@@ -75,8 +74,8 @@ spec:
     - name: falkordb
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [7.0.6,7.2.4]
-      serviceVersion: "7.2.4"
+      # Valid options are: [4.12.5]
+      serviceVersion: "4.12.5"
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -109,7 +108,7 @@ spec:
                 # Set the storage size as needed
                 storage: 20Gi
     - name: falkordb-sent
-      serviceVersion: "7.2.4"
+      serviceVersion: "4.12.5"
       replicas: 3
       resources:
         limits:
@@ -159,11 +158,11 @@ To check the role of each FalkorDB pod, you can use the following command:
 kubectl get po -n demo -l app.kubernetes.io/instance=falkordb-replication,apps.kubeblocks.io/component-name=falkordb -L kubeblocks.io/role
 ```
 
-#### Why FalkorDB Sentinel starts first?
+#### Why the Sentinel starts first?
 
-FalkorDB Sentinel is a high availability solution for FalkorDB. It provides monitoring, notifications, and automatic failover for FalkorDB instances.
+The Sentinel (based on the Redis Sentinel) is a high availability solution for FalkorDB (Redis). It provides monitoring, notifications, and automatic failover for FalkorDB instances.
 
-Each FalkorDB replica, from the FalkorDB component, upon startup, will connect to the FalkorDB Sentinel instances to get the current leader and follower information. It needs to determine:
+Each FalkorDB replica, from the FalkorDB component, upon startup, will connect to the Sentinel instances to get the current leader and follower information. It needs to determine:
 
 - Whether it should act as the primary (master) node.
 - If not, which node is the current primary to replicate from.
@@ -171,7 +170,7 @@ Each FalkorDB replica, from the FalkorDB component, upon startup, will connect t
 In more detail, each FalkorDB replica will:
 
 1. Check for Existing Primary Node
-    - Queries FalkorDB Sentinel to find out if a primary node is already elected.
+    - Queries the Sentinel to find out if a primary node is already elected.
     - Retrieve the primary's address and port.
 1. Initialize as Primary if Necessary
     - If no primary is found (e.g., during initial cluster setup), it configures the current FalkorDB instance to become the primary.
@@ -181,7 +180,7 @@ In more detail, each FalkorDB replica will:
     - Updates the FalkorDB configuration with the `replicaof` directive pointing to the primary's address and port.
     - Initiates replication to synchronize data from the primary.
 
-KubeBlocks ensures that FalkorDB Sentinel starts first to provide the necessary information for the FalkorDB replicas to initialize correctly. Such dependency is well-expressed in the KubeBlocks CRD `ClusterDefinition` ensuring the correct startup order.
+KubeBlocks ensures that the Sentinel starts first to provide the necessary information for the FalkorDB replicas to initialize correctly. Such dependency is well-expressed in the KubeBlocks CRD `ClusterDefinition` ensuring the correct startup order.
 
 More details on how components for the `replication` topology are started, upgraded can be found in:
 
@@ -271,7 +270,7 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: falkordb
-      serviceVersion: "7.2.4"
+      serviceVersion: "4.12.5"
       replicas: 2 # decrease `replicas` for scaling in, and increase for scaling out
       disableExporter: false
 ```
@@ -324,7 +323,7 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: falkordb
-      serviceVersion: "7.2.4"
+      serviceVersion: "4.12.5"
       replicas: 2 # decrease `replicas` for scaling in, and increase for scaling out
       resources:
         requests:
@@ -393,7 +392,7 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: falkordb
-      serviceVersion: "7.2.4"
+      serviceVersion: "4.12.5"
       replicas: 2
       volumeClaimTemplates:
         - name: data
@@ -467,7 +466,7 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: falkordb
-      serviceVersion: "7.2.4"
+      serviceVersion: "4.12.5"
       stop: true  # set stop `true` to stop the component
       replicas: 2
       ...
@@ -510,7 +509,7 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: falkordb
-      serviceVersion: "7.2.4"
+      serviceVersion: "4.12.5"
       stop: false  # set to `false` (or remove this field) to start the component
       replicas: 2
     - name: falkordb-sent
@@ -569,7 +568,7 @@ This example will change the `maxclients` to `10001` for the FalkorDB component.
 To verify the reconfiguration, you can connect to the FalkorDB pod and check the configuration with the following command:
 
 ```bash
-reids> config get maxclients
+falkordb> config get maxclients
 ```
 
 And the output should be:
@@ -644,7 +643,7 @@ Information, such as `path`, `timeRange` about the backup will be recorded into 
 FalkorDB Append Only Files(AOFs) record every write operation received by the server, in the order they were processed, which allows FalkorDB to reconstruct the dataset by replaying these commands.
 KubeBlocks supports continuous backup for the FalkorDB component by archiving Append-Only Files (AOF). It will process incremental AOF files, update base AOF file, purge expired files and save backup status (records metadata about the backup process, such as total size and timestamps, to the `Backup` resource).
 
-To create a continuous backup for the reids component, you should follow the steps below:
+To create a continuous backup for the falkordb component, you should follow the steps below:
 
 1. set variable `aof-timestamp-enabled` to `yes`
 
@@ -739,7 +738,7 @@ spec:
     repoName: kb-oss
   componentSpecs:
     - name: falkordb
-      serviceVersion: "7.2.4"
+      serviceVersion: "4.12.5"
       ...
 ```
 
@@ -763,14 +762,14 @@ metadata:
   name: falkordb-replication-restore
   namespace: demo
   annotations:
-    kubeblocks.io/restore-from-backup: '{"falkordb":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"falkordb-replication-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"falkordb":{"name":"falkordb-backup-datafile","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: falkordb
   topology: replication
   componentSpecs:
     - name: falkordb
-      serviceVersion: "7.2.4"
+      serviceVersion: "4.12.5"
       disableExporter: false
       replicas: 2
       resources:
@@ -790,6 +789,7 @@ spec:
               requests:
                 storage: 20Gi
     - name: falkordb-sent
+      serviceVersion: "4.12.5"
       replicas: 3
       resources:
         limits:
@@ -931,7 +931,7 @@ spec:
       type: LoadBalancer
   componentSpecs:
     - name: falkordb
-      serviceVersion: "7.2.4"
+      serviceVersion: "4.12.5"
       ...
 ```
 
@@ -976,7 +976,7 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: falkordb
-      serviceVersion: "7.2.4"
+      serviceVersion: "4.12.5"
       disableExporter: false # set to `false` to enable exporter
 ```
 
@@ -1008,8 +1008,8 @@ spec:
     - name: falkordb
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [7.0.6,7.2.4]
-      serviceVersion: "7.2.4"
+      # Valid options are: [4.12.5]
+      serviceVersion: "4.12.5"
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -1042,7 +1042,7 @@ spec:
                 # Set the storage size as needed
                 storage: 20Gi
     - name: falkordb-sent
-      serviceVersion: "7.2.4"
+      serviceVersion: "4.12.5"
       replicas: 3
       resources:
         limits:
@@ -1116,9 +1116,9 @@ kubectl get cmpd <falkordb-cmpd-name> -oyaml | yq '.spec.exporter'
 And the expected output is like:
 
 ```text
-containerName: metrics  # which contaiiner for the exporter
+containerName: metrics  # which container for the exporter
 scrapePath: /metrics    # scrape path
-scrapePort: http-metrics # scrapte port
+scrapePort: http-metrics # scrape port
 ```
 
 ##### Step 2. Create PodMonitor
@@ -1203,7 +1203,7 @@ To access falkordb replication from the outside of K8s cluster, you should creat
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: replication-with-node-port
+  name: falkordb-with-node-port
   namespace: demo
 spec:
   terminationPolicy: Delete
@@ -1221,7 +1221,7 @@ spec:
         - name: falkordb-advertised
           serviceType: NodePort
           podService: true
-      serviceVersion: 7.2.7
+      serviceVersion: 4.12.5
       resources:
         limits:
           cpu: "0.5"
@@ -1247,7 +1247,7 @@ spec:
         - name: sentinel-advertised
           serviceType: NodePort
           podService: true
-      serviceVersion: 7.2.7
+      serviceVersion: 4.12.5
       resources:
         limits:
           cpu: "0.5"
@@ -1290,7 +1290,7 @@ spec:
       podService: true
 # irrelevant lines commited
 ```
-Service `falkordb-advertised` and `falkordb-sent` are defined in `ComponentDefinition` name `falkordb-7` and `falkordb-sent-7`.  They are used to to parse the advertised endpoints of the FalkorDB pods and Sentinel Pods.
+Service `falkordb-advertised` and `falkordb-sent` are defined in `ComponentDefinition` name `falkordb-4` and `falkordb-sent-4`.  They are used to to parse the advertised endpoints of the FalkorDB pods and Sentinel Pods.
 
 #### Create FalkorDB with Multiple Shards
 
@@ -1315,7 +1315,7 @@ spec:
     # The template for generating Components for shards, where each shard consists of one Component. This field is of type ClusterComponentSpec, which encapsulates all the required details and definitions for creating and managing the Components. KubeBlocks uses this template to generate a set of identical Components or shards. All the generated Components will have the same specifications and definitions as specified in the `template` field. This allows for the creation of multiple Components with consistent configurations, enabling sharding and distribution of workloads across Components.
     template:
       name: falkordb
-      componentDef: falkordb-cluster-7
+      componentDef: falkordb-cluster-4
       disableExporter: true
       replicas: 2
       resources:
@@ -1326,8 +1326,8 @@ spec:
           cpu: '1'
           memory: 1.1Gi
       # Specifies the version of the Component service. This field is used to determine the version of the service that is created for the Component. \
-      # The serviceVersion is used to determine the version of the FalkorDB Sharding Cluster kernel. If the serviceVersion is not specified, the default value is the ServiceVersion defined in ComponentDefinition.
-      serviceVersion: 7.2.4
+      # The serviceVersion is used to determine the version of the falkordb Sharding Cluster kernel. If the serviceVersion is not specified, the default value is the ServiceVersion defined in ComponentDefinition.
+      serviceVersion: 4.12.5
       # Component-level services override services defined in referenced ComponentDefinition and expose
       # endpoints that can be accessed by clients
       # This example explicitly override the svc `falkordb-advertised` to use the NodePort
@@ -1365,9 +1365,9 @@ spec:
     shards: 3  # set the desired number of shards.
     template:
       name: falkordb
-      componentDef: falkordb-cluster-7
+      componentDef: falkordb-cluster-4
       replicas: 2 # set the desired number of replicas for each shard.
-      serviceVersion: 7.2.4
+      serviceVersion: 4.12.5
       # Component-level services override services defined in
       # referenced ComponentDefinition and expose
       # endpoints that can be accessed by clients
@@ -1399,13 +1399,13 @@ spec:
     shards: 3 # increase or decrease the number of shards.
     template:
       name: falkordb
-      componentDef: falkordb-cluster-7
+      componentDef: falkordb-cluster-4
       replicas: 2 # set the desired number of replicas for each shard.
-      serviceVersion: 7.2.4
+      serviceVersion: 4.12.5
       stop: false # set to `true` to stop all components
 ```
 
 ## Reference
 
-[^1]: FalkorDB Sentinel: <https://falkordb.io/docs/latest/operate/oss_and_stack/management/sentinel/>
+[^1]: Sentinel: <https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/>
 [^5]: Grafana Dashboard Store: <https://grafana.com/grafana/dashboards/>
