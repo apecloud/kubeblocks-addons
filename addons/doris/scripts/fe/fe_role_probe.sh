@@ -17,13 +17,14 @@ fe_role_probe()
     probe_output=$(mysql -h "${FE_DISCOVERY_ADDR}" -P "${FE_QUERY_PORT}" -u "${DORIS_USER}" -p"${DORIS_PASSWORD}" -e "SHOW FRONTENDS" 2>/dev/null || true)
     is_master_value=$(echo "${probe_output}" | grep -w "${SELF_FE_FQDN}" | awk '{print $9}' || true)
     role_value=$(echo "${probe_output}" | grep -w "${SELF_FE_FQDN}" | awk '{print $8}' || true)
-    if [[ "x${role_value}" != "xFOLLOWER" ]]; then
-        echo "${role_value}"
-        return 0
-    fi
-
+   
     if [[ "x${is_master_value}" == "x" ]]; then
         return 1
+    fi
+
+     if [[ "x${role_value}" != "xFOLLOWER" ]]; then
+        echo "${role_value}"
+        return 0
     fi
 
     if [[ "x${is_master_value}" == "xtrue" ]]; then
