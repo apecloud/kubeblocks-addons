@@ -1,6 +1,6 @@
 apiVersion: v2
 name: falkordb
-description: "FalkorDB is an in-memory graph database that persists on disk. The data model is key-value, but many different kind of values are supported: Strings, Lists, Sets, Sorted Sets, Hashes, Streams, HyperLogLogs, Bitmaps."
+description: "FalkorDB is an in-memory graph database based on Redis."
 
 type: application
 
@@ -29,7 +29,7 @@ keywords:
 maintainers:
   - name: ApeCloud
     url: https://github.com/apecloud/kubeblocks/
-  - name: David Zimberknopf
+  - name: dudizimber
     url: https://github.com/FalkorDB/kubeblocks-addons/
 
 
