@@ -11,7 +11,6 @@ staticParameters:
   - async_task_queen_size
   - audit_log_delete_age
   - audit_log_enable_compress
-  - audit_log_modules
   - audit_log_roll_interval
   - audit_log_roll_num
   - audit_sys_accumulated_file_size

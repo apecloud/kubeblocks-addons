@@ -847,9 +847,6 @@
 
 	// enable compression for FE audit log file
 	audit_log_enable_compress: bool | *false
-
-	// The type of FE audit log file
-	audit_log_modules: string | *'["slow_query", "query", "load", "stream_load"]'
 	
 	// The split cycle of the FE audit log file
 	audit_log_roll_interval: string & ("DAY" | "HOUR") | *"DAY"

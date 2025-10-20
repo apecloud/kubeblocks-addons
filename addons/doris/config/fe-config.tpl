@@ -31,7 +31,6 @@ audit_event_log_queue_size=250000
 audit_log_delete_age=30d
 audit_log_dir=/opt/apache-doris/fe/log
 audit_log_enable_compress=false
-audit_log_modules=["slow_query", "query", "load", "stream_load"]
 audit_log_roll_interval=DAY
 audit_log_roll_num=90
 audit_sys_accumulated_file_size=4
