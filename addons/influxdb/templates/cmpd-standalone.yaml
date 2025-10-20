@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "influxdb.cmpdName" . }}
+  name: {{ include "influxdb.standalone.cmpdName" . }}
   labels:
     {{- include "influxdb.labels" . | nindent 4 }}
   annotations:

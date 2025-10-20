@@ -1,0 +1,12 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "influxdb.data.cmpdName" . }}
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "influxdb.annotations" . | nindent 4 }}
+spec:
+  provider: Apecloud
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
