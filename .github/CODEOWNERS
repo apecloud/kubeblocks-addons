@@ -22,8 +22,8 @@ addons-cluster/elasticsearch/ @iziang @vipshop @leon-inf @apecloud/kb-reviewers 
 addons/etcd/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/etcd/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/falkordb/ @David_Zimberknopf @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/falkordb/ @David_Zimberknopf @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/falkordb/ @dudizimber @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/falkordb/ @dudizimber @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/greptimedb/ @GreptimeTeam @sh2 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/greptimedb/ @GreptimeTeam @sh2 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
