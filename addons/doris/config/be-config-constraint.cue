@@ -1,5 +1,9 @@
 #BEParameter: {
 	// DYNAMIC parameters
+
+	// Threshold to logging agent task trace, in seconds.
+	agent_task_trace_threshold_sec: int | *2
+
 	// The interval for cleaning the recycle bin is 24 hours. When the disk space is insufficient, the file retention period under trash may not comply with this parameter
 	trash_file_expire_time_sec: int | *86400
 
@@ -319,10 +323,859 @@
 	// In cloud native deployment scenario, BE will be add to cluster and remove from cluster very frequently. User's query will fail if there is a fragment is running on the shuting down BE. Users could use stop_be.sh --grace, then BE will wait all running queries to stop to avoiding running query failure, but if the waiting time exceed the limit, then be will exit directly. During this period, FE will not send any queries to BE and waiting for all running queries to stop.
 	grace_shutdown_wait_seconds: int | *120
 
+	// number of threads that fetch auto-inc ranges from FE
+	auto_inc_fetch_thread_num: int | *3
+
+	// the ratio of _low_level_water_level_mark/_batch_size in AutoIncIDBuffer
+	auto_inc_low_water_level_mark_size_ratio: int | *3
+
 	ca_cert_file_paths: string | *"/etc/pki/tls/certs/ca-bundle.crt;/etc/ssl/certs/ca-certificates.crt;/etc/ssl/ca-bundle.pem"
 
+	// the ratio of _prefetch_size/_batch_size in AutoIncIDBuffer
+	auto_inc_prefetch_size_ratio: int | *10
+
+	// The maximum size of a single file in a compaction that contains duplicate keys, in MB.
+	base_compaction_dup_key_max_file_size_mbytes: int | *1024
+
+	// The maximum score of a compaction that contains duplicate keys.
+	base_compaction_max_compaction_score: int | *20
+
+	// The path to store broken storage files.
+	broken_storage_path: string | *""
+
+	// The timeout time for buffered reader to read data, unit is ms.
+	buffered_reader_read_timeout_ms: int | *600000
+
+	// The interval time for the agent to prune stale tablets.
+	cache_periodic_prune_stale_sweep_sec: int | *300
+
+	// The interval time for the agent to prune stale tablets.
+	cache_prune_interval_sec: int | *300
+
+	// Whether to check segment when build rowset meta
+	check_segment_when_build_rowset_meta: bool | *false
+
+	// The time interval to clean expired stream load records
+	trash_file_expire_time_sec: int | *1800
+
+	// The interval time for the agent to compact cold data
+	cold_data_compaction_interval_sec: int | *1800
+
+	// The threshold of the ratio of the number of unique keys to the total number of keys in a column dictionary. If the ratio is less than this value, the column dictionary will not be compressed.
+	column_dictionary_key_ratio_threshold: int | *0
+
+	// The threshold of the size of a column dictionary. If the size of a column dictionary is less than this value, the column dictionary will not be compressed.
+	column_dictionary_key_size_threshold: int | *0
+
+	// The interval time for the agent to prune stale objects in common object LRU cache.
+	common_obj_lru_cache_stale_sweep_time_sec: int | *900
+
+	// The batch size for compaction
+	compaction_batch_size: int | *-1
+
+	// The maximum number of invisible versions to keep in a compaction.
+	compaction_keep_invisible_version_max_count: int | *500
+
+	// The minimum number of invisible versions to keep in a compaction.
+	compaction_keep_invisible_version_min_count: int | *50
+
+	// The timeout time for compaction to keep invisible versions, unit is sec.
+	compaction_keep_invisible_version_timeout_sec: int | *1800
+
+	// The maximum memory bytes limit for compaction.
+	compaction_memory_bytes_limit: int | *1073741824
+
+	// When output rowset of cumulative compaction total version count (end_version - start_version) exceed this config count, the rowset will be moved to base compaction. This config will work for unique key merge-on-write table only, to reduce version count related cost on delete bitmap more effectively.
+	compaction_promotion_version_count: int | *1000
+
+	// The interval time for the agent to confirm unused remote files.
+	confirm_unused_remote_files_interval_sec: int | *60
+
+	// The threshold of the memory bytes to crash when allocating large memory.
+	crash_in_alloc_large_memory_bytes: int | *-1
+
+	// The factor of the maximum number of deltas to compact in a cumulative compaction.
+	cumulative_compaction_max_deltas_factor: int | *10
+
+	// The interval time for the agent to prune stale data pages in data page cache.
+	data_page_cache_stale_sweep_time_sec: int | *300
+
+	// Whether to debug inverted index compaction
+	debug_inverted_index_compaction: bool | *false
+		
+	// The interval time for the agent to prune stale bitmaps in aggregation cache.
+	delete_bitmap_agg_cache_stale_sweep_time_sec: int | *1800
+
+	// Whether to disable memory garbage collection.
+	disable_memory_gc: bool | *false
+
+	// Whether to disable segment cache
+	disable_segment_cache: bool | *false
+
+	// Whether to disable row cache feature in storage
+	disable_storage_row_cache: bool | *true
+
+	// the timeout of a work thread to wait the blocking priority queue to get a task
+	doris_blocking_priority_queue_wait_timeout_ms: int | *500
+
+	// The path to the cgroup cpu directory
+	doris_cgroup_cpu_path: string | *""
+
+	// max bytes number for single scan block, used in segmentv2
+	doris_scan_block_max_mb: int | *67108864
+
+	// size of scanner queue between scanner thread and compute thread
+	doris_scanner_queue_size: int | *1024
+
+	// the threshold of double resize
+	double_resize_threshold: int | *23
+
+	// DWARF location info mode
+	dwarf_location_info_mode: string | *"FAST"
+
+	// Whether to enable write background when using brpc stream
+	enable_brpc_stream_write_background: bool | *true
+
+	// Whether to enable column type check
+	enable_column_type_check: bool | *true
+
+	// whether check compaction checksum
+	enable_compaction_checksum: bool | *false
+
+	// whether enable compaction priority scheduling
+	enable_compaction_priority_scheduling: bool | *true
+
+	// Default 300s, if its value <= 0, then log is disabled
+	enable_debug_log_timeout_secs: int | *0
+
+	// Whether to apply delete pred in cumu compaction
+	enable_delete_when_cumu_compaction: bool | *false
+
+	// Whether to purge dirty pages in jemalloc
+	enable_je_purge_dirty_pages: bool | *true
+
+	// Whether to enable memory orphan check
+	enable_memory_orphan_check: bool | *true
+
+	// Whether to enable merge-on-write correctness check
+	enable_merge_on_write_correctness_check: bool | *true
+
+	// Whether to enable missing rows correctness check
+	enable_missing_rows_correctness_check: bool | *false
+
+	// If set to false, the parquet reader will not use page index to filter data. This is only for debug purpose, in case sometimes the page index filter wrong data.
+	enable_parquet_page_index: bool | *false
+
+	// Whether to enable pipeline task leakage detect
+	enable_pipeline_task_leakage_detect: bool | *false
+
+	// Whether to enable query like bloom filter
+	enable_query_like_bloom_filter: bool | *true
+
+	// Whether to enable rowid conversion correctness check
+	enable_rowid_conversion_correctness_check: bool | *false
+	
+	// Whether to enable shrink memory
+	enable_shrink_memory: bool | *false
+		
+	// Whether to enable use cgroup memory info
+	enable_use_cgroup_memory_info: bool | *true
+		
+	// Whether to enable vertical segment writer
+	enable_vertical_segment_writer: bool | *true
+		
+	// Whether to enable workload group memory gc
+	enable_workload_group_memory_gc: bool | *true
+		
+	// The estimated memory bytes per column reader
+	estimated_mem_per_column_reader: int | *1024
+	
+	// Whether to ignore eovercrowded error in exchange sink
+	exchange_sink_ignore_eovercrowded: bool | *true
+		
+	// The capacity factor of exchange buffer queue
+	exchg_buffer_queue_capacity_factor: int | *64
+		
+	// The timeout time for fetch remote schema rpc, unit is ms.
+	fetch_remote_schema_rpc_timeout_ms: int | *60000
+		
+	// The timeout time for fetch rpc, unit is seconds.
+	fetch_rpc_timeout_seconds: int | *30
+		
+	// The maximum number of evicted files per round in file cache.
+	file_cache_max_evict_num_per_round: int | *5000
+		
+	// The maximum size of file reader cache in file cache.
+	file_cache_max_file_reader_cache_size: int | *1000000
+	
+	// The wait time in seconds after file cache fail.
+	file_cache_wait_sec_after_fail: int | *0
+		
+	// The size of finished migration tasks queue.
+	finished_migration_tasks_size: int | *10000
+		
+	// The batch size for garbage sweep in file cache.
+	garbage_sweep_batch_size: int | *100
+		
+	// The interval time for the agent to generate cooldown task in seconds.
+	generate_cooldown_task_interval_sec: int | *20
+		
+	// The tool to get stack trace.
+	get_stack_trace_tool: string | *"libunwind"
+		
+	// The memory limit for group commit queue in bytes.
+	group_commit_queue_mem_limit: int | *67108864
+		
+	// The double grow degree of hash table.
+	hash_table_double_grow_degree: int | *31
+		
+	// The threshold of high disk available level diff usages. Consider two high usage disk at the same available level if they do not exceed this diff.
+	high_disk_avail_level_diff_usages: float | *0.15
+	
+	// The maximum file size for hive sink in bytes.
+	hive_sink_max_file_size: int | *1073741824
+	
+	// The maximum file size for iceberg sink in bytes.
+	iceberg_sink_max_file_size: int | *1073741824
+		
+	// Whether to ignore not found file in external table.
+	ignore_not_found_file_in_external_table: bool | *true
+		
+	// Whether to ignore rowset stale unconsistent delete.
+	ignore_rowset_stale_unconsistent_delete: bool | *false
+		
+	// Whether to ignore schema change check.
+	ignore_schema_change_check: bool | *false
+	
+	// Threshold of reading a small file into memory
+	in_memory_file_size: int | *1048576
+		
+	// The time to keep an index cache entry after lookup in seconds.
+	index_cache_entry_stay_time_after_lookup_s: int | *1800
+		
+	// The interval time for the agent to sweep index page cache in seconds.
+	index_page_cache_stale_sweep_time_sec: int | *600
+		
+	// The interval time for the agent to sweep inverted index page cache in seconds.
+	inverted_index_cache_stale_sweep_time_sec: int | *600
+		
+	// Whether to enable inverted index compaction.
+	inverted_index_compaction_enable: bool | *false
+		
+	// The maximum number of buffered documents in inverted index compaction.
+	inverted_index_max_buffered_docs: int | *-1
+
+	// The size of RAM buffer for inverted index.
+	inverted_index_ram_buffer_size: float | *512
+
+   // Whether to enable inverted index RAM directory.
+	inverted_index_ram_dir_enable: bool | *true
+
+	// The timeout time for jdbc connection pool cache clear in seconds.
+	jdbc_connection_pool_cache_clear_time_sec: int | *28800
+
+	// The memory limit percent for jdbc connection pool cache.
+	je_dirty_pages_mem_limit_percent: string | *"5%"
+
+	// The directory for jeprofile.
+	jeprofile_dir: string | *"/opt/apache-doris/be/log"
+
+	// The path for kerberos ccache.
+	kerberos_ccache_path: string | *""
+
+	// The path for kerberos krb5.conf.
+	kerberos_krb5_conf_path: string | *"/etc/krb5.conf"
+
+	// The memory limit for local exchange buffer in bytes.
+	local_exchange_buffer_mem_limit: int | *134217728
+
+	// The maximum size of lookup connection cache in bytes.
+	lookup_connection_cache_bytes_limit: int | *4294967296
+		
+	// The threshold score for low priority compaction.
+	low_priority_compaction_score_threshold: int | *200
+		
+	// The maximum number of low priority compaction tasks per disk.
+	low_priority_compaction_task_num_per_disk: int | *2
+		
+	// The maximum ratio of amplified read to total read.
+	max_amplified_read_ratio: float | *0.8
+		
+	// The maximum fill rate of disk.
+	max_fill_rate: int | *2
+		
+	// The maximum wait time in seconds for fragment start.
+	max_fragment_start_wait_time_seconds: int | *30
+		
+	// The maximum number of retries for S3 client.
+	max_s3_client_retry: int | *10
+
+	// The maximum number of tablet IO errors.
+	max_tablet_io_errors: int | *-1
+		
+	// The sleep time in milliseconds for memory garbage collection.
+	memory_gc_sleep_time_ms: int | *500
+		
+	// The memory limitation per thread for storage migration in bytes.
+	memory_limitation_per_thread_for_storage_migration_bytes: int | *100000000
+
+	// The sleep time in milliseconds for memory maintenance.
+	memory_maintenance_sleep_time_ms: int | *100
+		
+	// The maximum number of flush running tasks per BE.
+	memtable_flush_running_count_limit: int | *2
+
+	// The hard limit percent of active memory for memtable flush.
+	memtable_hard_limit_active_percent: int | *50
+
+	// The insert memory ratio for memtable flush.
+	memtable_insert_memory_ratio: float | *1.4
+
+	// The soft limit percent of active memory for memtable flush.
+	memtable_soft_limit_active_percent: int | *50
+
+	// The minimum IO size for merged HDFS write in bytes.
+	merged_hdfs_min_io_size: int | *8192
+
+	// The minimum IO size for merged OSS write in bytes.
+	merged_oss_min_io_size: int | *1048576
+		
+	// The threshold of remaining size for migration in MB.
+	migration_remaining_size_threshold_mb: int | *10
+		
+	// The timeout time for migration task in seconds. If the task runs longer than this time, the task will be terminated, in seconds. Timeout = max(migration_task_timeout_secs,  tablet size / 1MB/s)
+	migration_task_timeout_secs: int | *300
+
+	// The minimum bytes in scanner queue.
+	min_bytes_in_scanner_queue: int | *67108864
+
+	// The threshold of mmap size in bytes.
+	mmap_threshold: int | *134217728
+
+	// The maximum number of discontinuous versions for MOW publish.
+	mow_publish_max_discontinuous_version_num: int | *20
+		
+	// The maximum number of threads for multi-get.
+	multi_get_max_threads: int | *10
+		
+	// The maximum size of node channel pending queue in bytes.
+	nodechannel_pending_queue_max_bytes: int | *67108864
+		
+	// The natural read size for ORC in MB.
+	orc_natural_read_size_mb: int | *8
+		
+	// The maximum buffer size for Parquet column in MB.
+	parquet_column_max_buffer_mb: int | *8
+		
+	// The maximum size of Parquet header in MB.
+	parquet_header_max_size_mb: int | *1
+		
+	// The maximum buffer size for Parquet row group in MB.
+	parquet_rowgroup_max_buffer_mb: int | *128
+		
+	// The interval time for pipeline status report in seconds.
+	pipeline_status_report_interval: int | *10
+	
+	// The interval time for pipeline task leakage detect in seconds.
+	pipeline_task_leakage_detect_period_secs: int | *60
+		
+	// The interval time for the agent to sweep primary key index page cache in seconds.
+	pk_index_page_cache_stale_sweep_time_sec: int | *600
+		
+	// The interval time for the agent to sweep point query row cache in seconds.
+	point_query_row_cache_stale_sweep_time_sec: int | *300
+		
+	// The maximum size of pre-serialize keys in bytes.
+	pre_serialize_keys_limit_bytes: int | *16777216
+		
+	// The full GC size percent.
+	process_full_gc_size: string | *"10%"
+	
+	// The minor GC size percent.
+	process_minor_gc_size: string | *"5%"
+		
+	// The public access IP.
+	public_access_ip: string | *""
+		
+	// The timeout time for query statistics reserve in milliseconds.
+	query_statistics_reserve_timeout_ms: int | *30000
+		
+	// The interval time for the agent to remove unused remote files in seconds.
+	remove_unused_remote_files_interval_sec: int | *21600
+	
+	// The interval time for query statistics report in milliseconds.
+	report_query_statistics_interval_ms: int | *3000
+		
+	// Whether to report random wait time.
+	report_random_wait: bool | *true
+		
+	// The maximum number of rows to check for RF predicate.
+	rf_predicate_check_row_num: int | *204800
+	
+	// The base wait time in milliseconds for S3 client.
+	s3_read_base_wait_time_ms: int | *100
+	
+	// The maximum wait time in milliseconds for S3 client.
+	s3_read_max_wait_time_ms: int | *800
+		
+	// The buffer size in bytes for S3 client.
+	s3_write_buffer_size: int | *5242880
+		
+	// The timeout time in milliseconds for S3 client buffer allocation.
+	s3_writer_buffer_allocation_timeout: int | *300
+		
+	// The nice value for scan thread.
+	scan_thread_nice_value: int | *0
+		
+	// The capacity of schema cache.
+	schema_cache_capacity: int | *1024
+		
+	// The interval time for schema cache sweep in seconds.
+	schema_cache_sweep_time_sec: int | *100
+	
+	// The threshold of compressed size in KB for segment compression.
+	segment_compression_threshold_kb: int | *256
+		
+	// Whether to skip loading stale rowset meta.
+	skip_loading_stale_rowset_meta: bool | *false
+		
+	// The interval time for spill GC in milliseconds.
+	spill_gc_interval_ms: int | *2000
+		
+	// The work time in milliseconds for spill GC.
+	spill_gc_work_time_ms: int | *2000
+		
+	// The threshold of stack trace size in bytes for allocating large memory.
+	stacktrace_in_alloc_large_memory_bytes: int | *2147483648
+		
+	// The interval time for storage refresh storage policy task in seconds.
+	storage_refresh_storage_policy_task_interval_seconds: int | *5
+		
+	// The batch size for stream load record.
+	stream_load_record_batch_size: int | *50
+		
+	// The threshold of data processed in bytes for non-partition write scaling.
+	table_sink_non_partition_write_scaling_data_processed_threshold: int | *26214400
+		
+	// The maximum number of partitions per writer for partition write.
+	table_sink_partition_write_max_partition_nums_per_writer: int | *128
+		
+	// The threshold of data processed in bytes for non-partition write rebalance.
+	table_sink_partition_write_min_data_processed_rebalance_threshold: int | *26214400
+	
+	// The threshold of data processed in bytes for partition write rebalance.
+	table_sink_partition_write_min_partition_data_processed_rebalance_threshold: int | *15728640
+		
+	// The interval time for tablet lookup cache sweep in seconds.
+	tablet_lookup_cache_stale_sweep_time_sec: int | *30
+		
+	// The maximum size of serialized tablet meta in bytes.
+	tablet_meta_serialize_size_limit: int | *1610612736
+		
+	// The batch size for tablet path check.
+	tablet_path_check_batch_size: int | *1000
+		
+	// The threshold of data processed in bytes for tablet rowset stale sweep.
+	tablet_rowset_stale_sweep_threshold_size: int | *100
+		
+	// The capacity of tablet schema cache.
+	tablet_schema_cache_capacity: int | *102400
+		
+	// The interval time for tablet schema cache recycle in seconds.
+	tablet_schema_cache_recycle_interval: int | *3600
+		
+	// The ratio of orphan vertex for tablet version graph.
+	tablet_version_graph_orphan_vertex_ratio: float | *0.1
+		
+	// The maximum wait time in milliseconds for thread wait GC.
+	thread_wait_gc_max_milliseconds: int | *1000
+		
+	// The number of retries for thrift client open.
+	thrift_client_open_num_tries: int | *1
+		
+	// Whether to enable flatten nested variant column.
+	variant_enable_flatten_nested: bool | *false
+		
+	// The maximum size of merged tablet schema in bytes.
+	variant_max_merged_tablet_schema_size: int | *2048
+	
+	// The ratio of default values for sparse column.
+	variant_ratio_of_defaults_as_sparse_column: float | *1
+		
+	// The threshold of rows to estimate sparse column.
+	variant_threshold_rows_to_estimate_sparse_column: int | *2048
+		
+	// Whether to throw exception on invalid JSON.
+	variant_throw_exeception_on_invalid_json: bool | *false
+	
+	// The interval time for weighted memory ratio refresh in milliseconds.
+	wg_weighted_memory_ratio_refresh_interval_ms: int | *50
+	
+	// The timeout time for workload group scan task wait in milliseconds.
+	workload_group_scan_task_wait_timeout_ms: int | *10000
+	
+	// The write buffer size in bytes for aggregation.
+	write_buffer_size_for_agg: int | *419430400
+
+	// The interval time for cleaning stream load record in seconds.
+	clean_stream_load_record_interval_secs: int | *1800
 
 	// STATIC parameters
+	// Whether to enable set in bitmap value
+	enable_set_in_bitmap_value: bool | *false
+
+	// Whether to enable skip tablet compaction
+	enable_skip_tablet_compaction: bool | *true
+
+	// Whether to enable snapshot action
+	enable_snapshot_action: bool | *false
+
+	// Whether to enable time lut
+	enable_time_lut: bool | *true
+
+	// Whether to enable workload group for scan
+	enable_workload_group_for_scan: bool | *false
+
+	// Whether to enable write index searcher cache
+	enable_write_index_searcher_cache: bool | *true
+
+	// Whether to exit on exception
+	exit_on_exception: bool | *false
+
+	// The expiration time of FE cache in seconds
+	fe_expire_duration_seconds: int | *60
+
+	// The maximum size of file segment in file cache
+	file_cache_max_file_segment_size: int | *4194304
+
+	// The minimum size of file segment in file cache
+	file_cache_min_file_segment_size: int | *1048576
+		
+	// The path to the file cache directory
+	file_cache_path: string | *""
+
+	// The protocol for function service
+	function_service_protocol: string | *"h2:grpc"
+
+	// The interval time for the agent to generate tablet meta checkpoint tasks
+	generate_tablet_meta_checkpoint_tasks_interval_secs: int | *600
+
+	// The number of threads for group commit insert
+	group_commit_insert_threads: int | *10
+
+	// The maximum number of rows for max filter ratio in group commit
+	group_commit_memory_rows_for_max_filter_ratio: int | *10000
+
+	// The number of threads for group commit relay wal
+	group_commit_relay_wal_threads: int | *10
+
+	// The maximum retry interval time for group commit replay wal in seconds
+	group_commit_replay_wal_retry_interval_max_seconds: int | *1800
+
+	// The retry interval time for group commit replay wal in seconds
+	group_commit_replay_wal_retry_interval_seconds: int | *5
+
+	// The maximum number of retry times for group commit replay wal
+	group_commit_replay_wal_retry_num: int | *10
+
+	// Whether to wait for group commit replay wal finish
+	group_commit_wait_replay_wal_finish: bool | *false
+
+	// The maximum disk limit for group commit wal
+	group_commit_wal_max_disk_limit: string | *"10%"
+
+	// Whether to hide webserver config page
+	hide_webserver_config_page: bool | *false
+
+	// Whether to ignore always true predicate for segment
+	ignore_always_true_predicate_for_segment: bool | *true
+
+	// The number of rowsets to ignore invalid partition id
+	ignore_invalid_partition_id_rowset_num: int | *0
+
+	// The number of threads for ingest binlog work pool
+	ingest_binlog_work_pool_size: int | *-1
+
+	// The path to the inverted index dictionary directory
+	inverted_index_dict_path: string | *"/opt/apache-doris/be/dict"
+
+	// The percentage of file descriptor limit for inverted index
+	inverted_index_fd_number_limit_percent: int | *40
+
+	// The limit of query cache memory size for inverted index
+	inverted_index_query_cache_limit: string | *"10%"
+
+	// The number of shards for inverted index query cache
+	inverted_index_query_cache_shards: int | *256
+
+	// The size of read buffer for inverted index
+	inverted_index_read_buffer_size: int | *4096
+
+	// The limit of searcher cache memory size for inverted index
+	inverted_index_searcher_cache_limit: string | *"10%"
+
+	// Whether to enable kafka debug
+	kafka_debug: string | *"disable"
+
+	// The percentage of memory limit for load process safe memory permit
+	load_process_safe_mem_permit_percent: int | *5
+
+	// The maximum retry interval time for load stream eagain wait in seconds
+	load_stream_eagain_wait_seconds: int | *600
+
+	// The maximum number of tasks for load stream flush token
+	load_stream_flush_token_max_tasks: int | *15
+
+	// The maximum buffer size for load stream
+	load_stream_max_buf_size: int | *20971520
+
+	// The maximum wait time for load stream flush token in milliseconds
+	load_stream_max_wait_flush_token_time_ms: int | *600000
+
+	// The number of messages in each batch for load stream
+	load_stream_messages_in_batch: int | *128
+
+
+	// The maximum depth of bkd tree
+	max_depth_in_bkd_tree: int | *32
+
+	// The maximum depth of expression tree
+	max_depth_of_expr_tree: int | *600
+
+	// The maximum number of external file meta cache
+	max_external_file_meta_cache_num: int | *1000
+
+	// The maximum number of hdfs file handle cache
+	max_hdfs_file_handle_cache_num: int | *1000
+
+	// The maximum time for hdfs file handle cache in seconds
+	max_hdfs_file_handle_cache_time_sec: int | *3600
+
+	// The maximum number of meta checkpoint threads
+	max_meta_checkpoint_threads: int | *-1
+
+	// The maximum number of tablet migration threads
+	max_tablet_migration_threads: int | *1
+
+	// The reserved memory bytes for memtable limiter
+	memtable_limiter_reserved_memory_bytes: int | *838860800
+
+	// The timeout time for migration lock in milliseconds
+	migration_lock_timeout_ms: int | *1000
+
+	// The minimum number of file descriptors
+	min_file_descriptor_number: int | *60000
+
+	// The minimum row group size for parquet reader
+	min_row_group_size: int | *134217728
+
+	// The minimum number of tablet migration threads
+	min_tablet_migration_threads: int | *1
+
+	// The number of broadcast buffers
+	num_broadcast_buffer: int | *32
+
+	// Number of cores Doris will used, this will effect only when it's greater than 0. Otherwise, Doris will use all cores returned from "/proc/cpuinfo".
+	num_cores: int | *0
+
+	// Control the number of disks on the machine.  If 0, this comes from the system settings.
+	num_disks: int | *0
+
+	// The timeout time for open load stream in milliseconds
+	open_load_stream_timeout_ms: int | *60000
+
+	// The maximum buffer size for parquet reader
+	parquet_reader_max_buffer_size: int | *50
+
+	// The size of partition disk index lru cache
+	partition_disk_index_lru_size: int | *10000
+
+	// The threshold for topn partition
+	partition_topn_partition_threshold: int | *1024
+
+	// The number of pipeline executor threads
+	pipeline_executor_size: int | *0
+
+	// The limit of page cache memory size for primary key storage
+	pk_storage_page_cache_limit: string | *"10%"
+
+	// The size of primary key data page
+	primary_key_data_page_size: int | *32768
+
+	// The timeout time for publish version task in seconds
+	publish_version_task_timeout_s: int | *8
+
+	// The elasticity size of query cache memory size in MB
+	query_cache_elasticity_size_mb: int | *128
+
+	// The maximum number of partitions for query cache
+	query_cache_max_partition_count: int | *1024
+
+	// The maximum size of query cache memory size in MB
+	query_cache_max_size_mb: int | *256
+
+	// The maximum number of rowsets in each batch for remote split source
+	remote_split_source_batch_size: int | *10240
+
+	// The maximum number of write buffers for rocksdb
+	rocksdb_max_write_buffer_number: int | *5
+
+	// The load balancer for rpc
+	rpc_load_balancer: string | *"rr"
+
+	// The number of threads for s3 transfer executor pool
+	s3_transfer_executor_pool_size: int | *2
+
+	// The percentage of file descriptor limit for segment cache
+	segment_cache_fd_percentage: int | *40
+
+	// The percentage of memory limit for segment cache
+	segment_cache_memory_percentage: int | *2
+
+	// Whether to share delta writers
+	share_delta_writers: bool | *true
+
+	// The queue size for spill io thread pool
+	spill_io_thread_pool_queue_size: int | *102400
+
+	// The number of threads for spill io thread pool
+	spill_io_thread_pool_thread_num: int | *-1
+
+	// The limit of storage size for spill io thread pool
+	spill_storage_limit: string | *"20%"
+
+	// The root path for spill storage
+	spill_storage_root_path: string | *""
+
+	// The path for ssl certificate
+	ssl_certificate_path: string | *""
+
+	// The path for ssl private key
+	ssl_private_key_path: string | *""
+
+	// The timeout time for stream load record expire in seconds
+	stream_load_record_expire_time_secs: int | *28800
+
+	// The buffer size for stream tvf
+	stream_tvf_buffer_size: int | *1048576
+
+	// The roll mode for system log, TIME-DAY, TIME-HOUR, SIZE-MB-nnn
+	sys_log_roll_mode: string | *"SIZE-MB-1024"
+
+	// The verbose flags for system log
+	sys_log_verbose_flags_v: int | *-1
+
+	// The interval time for tablet path check in seconds
+	tablet_path_check_interval_seconds: int | *-1
+
+	// The maximum number of publish transaction threads
+	tablet_publish_txn_max_thread: int | *32
+
+	// Whether to enable stale sweep by size for tablet rowset
+	tablet_rowset_stale_sweep_by_size: bool | *false
+
+	// The path for temporary files
+	tmp_file_dir: string | *"tmp"
+
+	// Whether to wait for internal group commit finish
+	wait_internal_group_commit_finish: bool | *false
+
+	// The number of flush thread per store
+	wg_flush_thread_num_per_store: int | *6
+
+	// Whether to enable set in bitmap value
+	enable_set_in_bitmap_value: bool | *false
+
+	// Whether to enable low cardinality optimize
+	enable_low_cardinality_optimize: bool | *true
+
+
+	// Whether to enable low cardinality cache code
+	enable_low_cardinality_cache_code: bool | *true
+	
+	// Whether to enable jvm monitor
+	enable_jvm_monitor: bool | *false
+	
+	// Whether to check timestamp of inverted index cache
+	enable_inverted_index_cache_check_timestamp: bool | *true
+
+	// Whether to enable fuzzy mode
+	enable_fuzzy_mode: bool | *false
+
+	// This config controls whether the s3 file writer would flush cache asynchronously
+	enable_flush_file_cache_async: bool | *true
+
+	// Whether to enable file logger
+	enable_file_logger: bool | *true
+
+	// Whether to enable file cache query limit feature
+	enable_file_cache_query_limit: bool | *false
+
+	// Whether to enable file cache feature
+	enable_file_cache: bool | *false
+
+	// Whether to enable binlog feature
+	enable_feature_binlog: bool | *false
+
+	// Whether to enable debug points
+	enable_debug_points: bool | *false
+
+	// Whether to enable base compaction idle scheduler
+	enable_base_compaction_idle_sched: bool | *true
+
+	// Whether to check authorization
+	enable_all_http_auth: bool | *false
+
+	// Download binlog rate limit, unit is KB/s, 0 means no limit
+	download_binlog_rate_limit_kbs: int | *0
+
+	// min thread pool size for scanner thread pool
+	doris_scanner_min_thread_pool_thread_num: int | *8
+
+	// number of s3 scanner thread pool size
+	doris_remote_scanner_thread_pool_thread_num: int | *48
+		
+	// number of s3 scanner thread pool queue size
+	doris_remote_scanner_thread_pool_queue_size: int | *102400
+
+	// Whether to enable scanner thread pool per disk, if true, each disk will have a separate thread pool for scanner
+	doris_enable_scanner_thread_pool_per_disk: bool | *true
+
+	// Whether to disable pk page cache feature in storage
+	disable_pk_storage_page_cache: bool | *false
+
+	// The default delete bitmap cache is set to 100MB. We will take the larger of 0.5% of the total memory and 100MB as the delete bitmap cache size.
+	delete_bitmap_dynamic_agg_cache_limit: string | *"0.5%"
+
+	// Global bitmap cache capacity for aggregation cache, size in bytes
+	delete_bitmap_agg_cache_capacity: int | *104857600
+
+	// The number of threads to compact cold data
+	cooldown_thread_num: int | *5
+
+	// The number of threads to compact cold data
+	cold_data_compaction_thread_num: int | *2
+
+	// Whether to clear file cache when tablet is deleted
+	clear_file_cache: bool | *false
+
+	// the count of thread to calc delete bitmap
+	calc_delete_bitmap_max_thread: int | *32
+
+	// The number of threads in the light work pool.
+	brpc_light_work_pool_threads: int | *-1
+
+	// The maximum number of requests that can be queued in the light work pool.
+	brpc_light_work_pool_max_queue_size: int | *-1
+
+	// the time of brpc server keep idle connection, setting this value too small may cause rpc between backends to fail, the default value is set to -1, which means never close idle connection.
+	brpc_idle_timeout_sec: int | *-1
+
+	// The number of threads in the heavy work pool.
+	brpc_heavy_work_pool_threads: int | *-1
+
+	// The maximum number of requests that can be queued in the heavy work pool.
+	brpc_heavy_work_pool_max_queue_size: int | *-1
 
 	// The port number of the Thrift server on the BE, which is used to receive requests from the FE.
 	be_port: int | *9060
@@ -614,7 +1467,17 @@
 	// The WAL directory of group commit.
 	group_commit_wal_path: string | *""
 
+	// The JAVA_OPTS startup configuration for the BE node
 	JAVA_OPTS: string | *""
+
+	// thread will sleep async_file_cache_init_sleep_interval_ms per scan async_file_cache_init_file_num_interval file num to limit IO
+	async_file_cache_init_file_num_interval: int | *1000
+
+	// thread will sleep async_file_cache_init_sleep_interval_ms per scan async_file_cache_init_file_num_interval file num to limit IO
+	async_file_cache_init_sleep_interval_ms: int | *20
+
+	// The version of bitmap serialize.
+	bitmap_serialize_version: int | *1
 }
 
 configuration: #BEParameter & {
