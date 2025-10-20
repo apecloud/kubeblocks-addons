@@ -36,6 +36,7 @@ net:
 replication:
   replSetName: replicaset
   enableMajorityReadConcern: true
+  localPingThresholdMs: 200
 
 # sharding options
 #sharding:
