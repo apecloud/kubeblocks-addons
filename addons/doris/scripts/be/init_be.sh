@@ -25,7 +25,7 @@ readonly MAX_RETRY_TIMES=60
 readonly RETRY_INTERVAL=1
 readonly FE_QUERY_PORT=9030
 readonly BE_CONFIG_FILE="${DORIS_HOME}/be/conf/be.conf"
-
+export DATE="$(date +%Y%m%d-%H%M%S)"
 # Log Function
 log_message() {
     local level="$1"
