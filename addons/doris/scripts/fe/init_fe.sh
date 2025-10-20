@@ -25,6 +25,7 @@ readonly MAX_RETRY_TIMES=60
 readonly RETRY_INTERVAL=1
 readonly FE_CONFIG_FILE="${DORIS_HOME}/fe/conf/fe.conf"
 readonly FOLLOWER_NUMBER=3
+export DATE="$(date +%Y%m%d-%H%M%S)"
 cp /etc/config/fe.conf ${FE_CONFIG_FILE}
 
 # Log Function

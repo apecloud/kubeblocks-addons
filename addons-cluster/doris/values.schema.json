@@ -16,7 +16,7 @@
           "description": "The number of replicas for FE.",
           "type": "integer",
           "default": 3,
-          "minimum": 3
+          "minimum": 1
         },
         "resources": {
           "type": "object",
