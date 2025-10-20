@@ -46,7 +46,6 @@ net:
 replication:
   replSetName: {{ .CLUSTER_COMPONENT_NAME }}
   enableMajorityReadConcern: true
-  localPingThresholdMs: 200
 
 # sharding options
 sharding:

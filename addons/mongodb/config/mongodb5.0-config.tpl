@@ -34,9 +34,8 @@ net:
 
 # replica set options
 replication:
-  replSetName: replicaset
+  replSetName: {{ .CLUSTER_COMPONENT_NAME }}
   enableMajorityReadConcern: true
-  localPingThresholdMs: 200
 
 # sharding options
 #sharding:
