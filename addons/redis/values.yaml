@@ -160,4 +160,4 @@ logConfigs:
 # cluster domain without . prefix
 clusterDomain: "cluster.local"
 
-enableMetrics: false
+enableMetrics: true
