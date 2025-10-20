@@ -4,14 +4,18 @@
 
 JAVA_OPTS="-Xmx{{ $heap_size }} -XX:+UseMembar -XX:SurvivorRatio=8 -XX:MaxTenuringThreshold=7 -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSClassUnloadingEnabled -XX:-CMSParallelRemarkEnabled -XX:CMSInitiatingOccupancyFraction=80 -XX:SoftRefLRUPolicyMSPerMB=0 -Xloggc:/opt/apache-doris/fe/log/fe.gc.log.$DATE"
 
-{{- if eq (index $ "TLS_ENABLED") "true" }}
+
 # tls
+{{- if eq (index $ "TLS_ENABLED") "true" }}
 enable_ssl=true
+{{ else }}
+enable_ssl=false
+{{- end }}
 mysql_ssl_default_ca_certificate=/opt/apache-doris/fe/mysql_ssl_default_certificate/ca_certificate.p12
 mysql_ssl_default_ca_certificate_password=doris
 mysql_ssl_default_server_certificate=/opt/apache-doris/fe/mysql_ssl_default_certificate/server_certificate.p12
 mysql_ssl_default_server_certificate_password=doris
-{{- end }}
+
 
 abort_txn_after_lost_heartbeat_time_second=300
 access_control_allowed_origin_domain=*

@@ -119,6 +119,10 @@ spec:
           name: admin
           optional: false
           password: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
   runtime:
     containers:
     - name: fe
@@ -186,6 +190,10 @@ spec:
         name: fe-cm
       - mountPath: /opt/apache-doris/scripts
         name: scripts
+      # volume certificates is defined in cluster.yaml and referenced here
+      # as the
+      - mountPath: /certificates
+        name: certificates
       lifecycle:
         postStart:
           exec:
@@ -248,3 +256,9 @@ spec:
     - name: observer
       updatePriority: 1
       participatesInQuorum: false
+  tls:
+    volumeName: tls
+    mountPath: /etc/pki/tls
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem
