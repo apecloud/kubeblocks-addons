@@ -2131,7 +2131,7 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byRegex",
+              "id": "byRegexp",
               "options": ".*FD Usage %"
             },
             "properties": [
@@ -2190,7 +2190,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "process_open_fds{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} or process_open_fds{namespace=~\"$namespace\",job=~\".*etcd.*\",pod=~\"$instance\"}",
+          "expr": "process_open_fds{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -2200,7 +2200,7 @@
         },
         {
           "exemplar": true,
-          "expr": "process_max_fds{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} or process_max_fds{namespace=~\"$namespace\",job=~\".*etcd.*\",pod=~\"$instance\"}",
+          "expr": "process_max_fds{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -2210,7 +2210,7 @@
         },
         {
           "exemplar": true,
-          "expr": "((process_open_fds{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} or process_open_fds{namespace=~\"$namespace\",job=~\".*etcd.*\",pod=~\"$instance\"}) / (process_max_fds{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} or process_max_fds{namespace=~\"$namespace\",job=~\".*etcd.*\",pod=~\"$instance\"})) * 100",
+          "expr": "(process_open_fds{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"} / process_max_fds{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}) * 100",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,

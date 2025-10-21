@@ -21,17 +21,20 @@ fi
 
 # use etcdctl create snapshot
 mkdir -p "$BACKUP_DIR"
+cd "$BACKUP_DIR"
 ENDPOINT=${DP_DB_HOST}.${KB_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
-exec_etcdctl "${ENDPOINT}" snapshot save "${BACKUP_DIR}/${DP_BACKUP_NAME}"
-check_backup_file "${BACKUP_DIR}/${DP_BACKUP_NAME}" || error_exit "Backup file is invalid"
+exec_etcdctl "${ENDPOINT}" snapshot save "${DP_BACKUP_NAME}"
+
+# check the backup file, make sure it is not empty
+check_backup_file "${DP_BACKUP_NAME}"
 
 # use datasafed to get backup size
 # if we do not write into $DP_BACKUP_INFO_FILE, the backup job will stuck
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
-cd "$BACKUP_DIR"
 tar -cvf - "${DP_BACKUP_NAME}" | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst"
+rm -rf "${BACKUP_DIR}"
 
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}" && sync
