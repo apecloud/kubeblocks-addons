@@ -58,7 +58,7 @@ password_md5=$(echo -n "$ADMIN_PASSWORD" | md5sum | awk '{print $1}')
 echo "${ADMIN_USER},${password_md5}" > /hive/metadata/hive-server2-users.conf
 
 if [[ "$ENABLE_JMX_EXPORTER" == true ]]; then
-   export HIVE_SERVER2_HADOOP_OPTS="-javaagent:/hive/jmx_prometheus_javaagent.jar=${JMX_EXPORTER_PORT}:/hive/base-conf/jmx-exporter.yaml"
+   export HADOOP_CLIENT_OPTS="-javaagent:/hive/jmx_prometheus_javaagent.jar=${JMX_EXPORTER_PORT}:/hive/base-conf/jmx-exporter.yaml"
 fi
 
 START_COMMAND=("${HIVE_HOME_DIR}/bin/hive" "--service" "hiveserver2")
