@@ -96,7 +96,6 @@ update_etcd_conf() {
   trusted-ca-file: $TLS_MOUNT_PATH/ca.pem\\
   auto-tls: false" "$default_conf"
     fi
-    
     if [ "$peer_protocol" = "https" ]; then
       sed -i.bak "/^peer-transport-security:$/a\\
   cert-file: $TLS_MOUNT_PATH/cert.pem\\
@@ -116,30 +115,31 @@ update_etcd_conf() {
 }
 
 restore() {
-  data_dir=$(parse_config_value "data-dir" "$default_conf")
   name=$(parse_config_value "name" "$default_conf")
   advertise_urls=$(parse_config_value "initial-advertise-peer-urls" "$default_conf")
   cluster=$(parse_config_value "initial-cluster" "$default_conf")
   cluster_token=$(parse_config_value "initial-cluster-token" "$default_conf")
-  if [ -d "$data_dir" ]; then
-    if [ -n "$(find "$data_dir" -mindepth 1 -print -quit 2>/dev/null)" ]; then
-      log "Existing data directory $data_dir detected, skipping snapshot restore when restart etcd"
+
+  if [ -d "$DATA_DIR" ]; then
+    if [ -n "$(find "$DATA_DIR" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+      log "Existing data directory $DATA_DIR detected, skipping snapshot restore when restart etcd"
       return 0
     fi
   fi
 
-  files=("$RESTORE_DIR"/*)
-  [ ${#files[@]} -eq 0 ] || [ ! -e "${files[0]}" ] && error_exit "No backup file found in $RESTORE_DIR or directory is empty."
+  files=("$BACKUP_DIR"/*)
+  [ ${#files[@]} -eq 0 ] || [ ! -e "${files[0]}" ] && error_exit "No backup file found in $BACKUP_DIR or directory is empty."
+
   backup_file="${files[0]}"
   check_backup_file "$backup_file"
 
   etcdutl snapshot restore "$backup_file" \
-    --data-dir="$data_dir" \
+    --data-dir="$DATA_DIR" \
     --name="$name" \
     --initial-advertise-peer-urls="$advertise_urls" \
     --initial-cluster="$cluster" \
     --initial-cluster-token="$cluster_token"
-  rm -rf "$RESTORE_DIR"
+  rm -rf "$BACKUP_DIR"
 }
 
 main() {
@@ -148,7 +148,7 @@ main() {
   log "Updated etcd.conf:"
   cat "$default_conf"
 
-  [ -d "$RESTORE_DIR" ] && restore
+  [ -d "$BACKUP_DIR" ] && restore
 
   log "Starting etcd with updated configuration..."
   exec etcd --config-file "$default_conf"
