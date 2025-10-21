@@ -26,8 +26,10 @@ spec:
       serviceVersion: {{ .version }}
       images:
         hive-metastore: "{{ $.Values.hive.image.registry }}/{{ $.Values.hive.image.repository }}:{{ .version }}"
+        init-jmx-exporter: "{{ $.Values.jmxExporter.image.registry }}/{{ $.Values.jmxExporter.image.repository }}:{{ $.Values.jmxExporter.image.tag }}"
     - name: server2-{{ .version }}
       serviceVersion: {{ .version }}
       images:
         hive-server2: "{{ $.Values.hive.image.registry }}/{{ $.Values.hive.image.repository }}:{{ .version }}"
+        init-jmx-exporter: "{{ $.Values.jmxExporter.image.registry }}/{{ $.Values.jmxExporter.image.repository }}:{{ $.Values.jmxExporter.image.tag }}"
   {{- end }}

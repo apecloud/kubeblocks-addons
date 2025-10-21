@@ -27,6 +27,12 @@ spec:
         - serviceKind: zookeeper
           serviceVersion: "^*"
   runtime:
+    initContainers:
+      - name: init-jmx-exporter
+        volumeMounts:
+          - name: metadata-dir
+            mountPath: /hadoop
+        {{- include "hadoop.initJmxExporterContainer" . | nindent 8 }}
     containers:
       - name: hdfs-namenode
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
@@ -35,6 +41,8 @@ spec:
             name: rpc
           - containerPort: 9870
             name: http
+          - containerPort: {{ .Values.jmxExporterPort }}
+            name: jmx-exporter
         env:
           - name: DEBUG_MODEL
             value: "false"
@@ -81,6 +89,9 @@ spec:
             subPath: log4j.properties
           - name: scripts
             mountPath: /kubeblocks/scripts
+          - name: namenode-config
+            mountPath: /hadoop/conf/jmx-exporter.yaml
+            subPath: jmx-exporter.yaml
         securityContext:
           runAsUser: 10000
           runAsGroup: 1000
@@ -99,6 +110,10 @@ spec:
       - name: hadoop-common
         emptyDir: {}
   vars:
+    - name: ENABLE_JMX_EXPORTER
+      value: {{ .Values.enableJmxExporter | quote }}
+    - name: JMX_EXPORTER_PORT
+      value: "{{ .Values.jmxExporterPort }}"
     - name: HOME
       value: /home/hadoop
     - name: CLUSTER_DOMAIN

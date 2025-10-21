@@ -69,6 +69,9 @@ spec:
         - name: hadoop-yarn-config
           configMap:
             name: {{ .Values.hadoopCluster.name }}-resourcemanager-config
+        - name: mapred-site-config
+          configMap:
+            name: {{ .Values.hadoopCluster.name }}-resourcemanager-mapred-site-config
       volumeClaimTemplates:
         - name: metadata
           spec:
@@ -106,6 +109,9 @@ spec:
         - name: hadoop-yarn-config
           configMap:
             name: {{ .Values.hadoopCluster.name }}-resourcemanager-config
+        - name: mapred-site-config
+          configMap:
+            name: {{ .Values.hadoopCluster.name }}-resourcemanager-mapred-site-config
       resources:
         requests:
           cpu: {{ .Values.resources.server2.requests.cpu | quote }}

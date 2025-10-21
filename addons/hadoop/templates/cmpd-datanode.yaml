@@ -16,6 +16,12 @@ spec:
     #hostNetwork: true
     #hostPID: true
     #dnsPolicy: ClusterFirstWithHostNet
+    initContainers:
+      - name: init-jmx-exporter
+        volumeMounts:
+          - name: data
+            mountPath: /hadoop
+        {{- include "hadoop.initJmxExporterContainer" . | nindent 8 }}
     containers:
       - name: hdfs-datanode
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
@@ -34,6 +40,8 @@ spec:
             name: http
           - containerPort: 9867
             name: ipc
+          - containerPort: {{ .Values.jmxExporterPort }}
+            name: jmx-exporter
         livenessProbe:
           failureThreshold: 6
           initialDelaySeconds: 30
@@ -66,9 +74,11 @@ spec:
             subPath: log4j.properties
           - name: data
             mountPath: /hadoop
-            subPath: data
           - name: scripts
             mountPath: /kubeblocks/scripts
+          - name: datanode-config
+            mountPath: /hadoop/conf/jmx-exporter.yaml
+            subPath: jmx-exporter.yaml
         securityContext:
           runAsUser: 10000
           runAsGroup: 1000
@@ -101,6 +111,10 @@ spec:
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
   vars:
+    - name: ENABLE_JMX_EXPORTER
+      value: {{ .Values.enableJmxExporter | quote }}
+    - name: JMX_EXPORTER_PORT
+      value: "{{ .Values.jmxExporterPort }}"
     - name: HOME
       value: /home/hadoop
     - name: CLUSTER_DOMAIN

@@ -12,5 +12,7 @@ mkdir -p /hadoop/tmp
 mkdir -p /hadoop/yarn/nodemanager
 
 info "** Starting Node Manager **"
-# sleep 10000
+if [[ "$ENABLE_JMX_EXPORTER" == true ]]; then
+  export YARN_NODEMANAGER_OPTS="-javaagent:/hadoop/jmx_prometheus_javaagent.jar=${JMX_EXPORTER_PORT}:/hadoop/conf/jmx-exporter.yaml"
+fi
 exec ${HADOOP_HOME}/bin/yarn --config ${HADOOP_CONF_DIR} nodemanager
