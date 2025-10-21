@@ -249,12 +249,49 @@ cleanup() {
     ${DORIS_HOME}/fe/bin/stop_fe.sh
 }
 
+# Config FE TLS
+config_fe_tls() {
+    if [ -n "$TLS_ENABLED" ] && [ "$TLS_ENABLED" = "true" ]; then
+        log_info "Configuring FE TLS"
+        # Copy TLS certificates to the FE configuration directory
+        if [ ! -d "/opt/apache-doris/fe/mysql_ssl_default_certificate" ]; then
+            mkdir -p /opt/apache-doris/fe/mysql_ssl_default_certificate
+            log_info "Created directory: /opt/apache-doris/fe/mysql_ssl_default_certificate"
+        fi
+
+        cp /certificates/*  /opt/apache-doris/fe/mysql_ssl_default_certificate/
+
+
+        sed -i '/mysql_ssl_default_ca_certificate=/d' $FE_CONF_FILE
+        echo "mysql_ssl_default_ca_certificate=/opt/apache-doris/fe/mysql_ssl_default_certificate/caCert.p12" >> $FE_CONF_FILE
+        
+        
+        CA_PASSWORD=$(cat /opt/apache-doris/fe/mysql_ssl_default_certificate/caPassword || echo "doris") 
+        sed -i '/mysql_ssl_default_ca_certificate_password=/d' $FE_CONF_FILE
+        echo "mysql_ssl_default_ca_certificate_password=${CA_PASSWORD}" >> $FE_CONF_FILE
+        
+        sed -i '/mysql_ssl_default_server_certificate=/d' $FE_CONF_FILE
+        echo "mysql_ssl_default_server_certificate=/opt/apache-doris/fe/mysql_ssl_default_certificate/cert.p12" >> $FE_CONF_FILE
+        
+        sed -i '/mysql_ssl_default_server_certificate_password=/d' $FE_CONF_FILE
+        CERT_PASSWORD=$(cat /opt/apache-doris/fe/mysql_ssl_default_certificate/certPassword || echo "doris")
+        echo "mysql_ssl_default_server_certificate_password=${CERT_PASSWORD}" >> $FE_CONF_FILE
+        
+        log_info "SSL certificate parameters have been set in fe.conf"
+    fi
+}
+
+
+
 # Main Function
 main() {
     # validate_environment
     trap cleanup SIGTERM SIGINT
     run_mode="${run_mode:-ELECTION}"
-    
+
+    # Config FE TLS
+    config_fe_tls
+
    if [ "$run_mode" = "RECOVERY" ]; then
         setup_fe_node
         start_fe &
