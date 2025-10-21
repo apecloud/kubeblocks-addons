@@ -61,15 +61,12 @@ restore() {
     fi
   fi
 
-  local files=("$BACKUP_DIR"/*)
-  if [ ${#files[@]} -eq 0 ] || [ ! -f "${files[0]}" ]; then
-    error_exit "No backup file found in $BACKUP_DIR or directory is empty."
-  fi
+  files=("$BACKUP_DIR"/*)
+  [ ${#files[@]} -eq 0 ] || [ ! -e "${files[0]}" ] && error_exit "No backup file found in $BACKUP_DIR or directory is empty."
 
   local backup_file="${files[0]}"
   check_backup_file "$backup_file"
 
-  local name advertise_urls cluster cluster_token
   name=$(parse_config_value "name" "$default_conf")
   advertise_urls=$(parse_config_value "initial-advertise-peer-urls" "$default_conf")
   cluster=$(parse_config_value "initial-cluster" "$default_conf")
