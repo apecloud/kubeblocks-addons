@@ -19,6 +19,8 @@ data:
     {{- .Files.Get "config/hdfs-journalnode.xml" | nindent 4 }}
   log4j.properties: |-
     {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+  jmx-exporter.yaml: |-
+    {{- .Files.Get "config/jmx-exporter.yaml" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -31,6 +33,8 @@ data:
     {{- .Files.Get "config/hdfs-namenode.xml" | nindent 4 }}
   log4j.properties: |-
     {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+  jmx-exporter.yaml: |-
+    {{- .Files.Get "config/jmx-exporter.yaml" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -43,6 +47,8 @@ data:
     {{- .Files.Get "config/hdfs-datanode.xml" | nindent 4 }}
   log4j.properties: |-
     {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+  jmx-exporter.yaml: |-
+    {{- .Files.Get "config/jmx-exporter.yaml" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -55,6 +61,8 @@ data:
     {{- .Files.Get "config/yarn-resourcemanager.xml" | nindent 4 }}
   log4j.properties: |-
     {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+  jmx-exporter.yaml: |-
+    {{- .Files.Get "config/jmx-exporter.yaml" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -67,6 +75,8 @@ data:
     {{- .Files.Get "config/yarn-nodemanager.xml" | nindent 4 }}
   log4j.properties: |-
     {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+  jmx-exporter.yaml: |-
+    {{- .Files.Get "config/jmx-exporter.yaml" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -87,3 +97,4 @@ metadata:
 data:
   capacity-scheduler.xml: |-
     {{- .Files.Get "config/yarn-capacity-scheduler.xml" | nindent 4 }}
+  

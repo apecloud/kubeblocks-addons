@@ -87,3 +87,18 @@ hive-metastore-{{ .Chart.Version }}
 {{- define "hive.server2CompDef" -}}
 hive-server2-{{ .Chart.Version }}
 {{- end }}
+
+{{- define "hive.initJmxExporterContainer" -}}
+imagePullPolicy: {{ default "IfNotPresent" .Values.hive.image.pullPolicy }}
+command:
+- /bin/bash
+- -c
+- |
+  cp /opt/bitnami/jmx-exporter/jmx_prometheus_javaagent.jar /hive/jmx_prometheus_javaagent.jar
+  groupadd -g 1000 hadoop
+  useradd -u 10000 -g 1000 -m -s /bin/bash hadoop
+  chown -R 10000:1000 /hive/jmx_prometheus_javaagent.jar
+securityContext:
+  runAsUser: 0
+  runAsGroup: 0
+{{- end }}

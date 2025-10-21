@@ -103,3 +103,18 @@ hadoop-yarn-resourcemanager-{{ .Chart.Version }}
 {{- define "yarnNodeManagerComponentDef" -}}
 hadoop-yarn-nodemanager-{{ .Chart.Version }}
 {{- end }}
+
+{{- define "hadoop.initJmxExporterContainer" -}}
+imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+command:
+- /bin/bash
+- -c
+- |
+  cp /opt/bitnami/jmx-exporter/jmx_prometheus_javaagent.jar /hadoop/jmx_prometheus_javaagent.jar
+  groupadd -g 1000 hadoop
+  useradd -u 10000 -g 1000 -m -s /bin/bash hadoop
+  chown -R 10000:1000 /hadoop/jmx_prometheus_javaagent.jar
+securityContext:
+  runAsUser: 0
+  runAsGroup: 0
+{{- end }}

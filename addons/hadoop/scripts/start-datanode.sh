@@ -23,6 +23,10 @@ if [[ $DEBUG_MODEL == true ]]; then
   info ************** env-end **************
 fi
 
+if [[ "$ENABLE_JMX_EXPORTER" == true ]]; then
+  export HDFS_DATANODE_OPTS="-javaagent:/hadoop/jmx_prometheus_javaagent.jar=${JMX_EXPORTER_PORT}:/hadoop/conf/jmx-exporter.yaml"
+fi
+
 START_COMMAND=("${HADOOP_HOME}/bin/hdfs" "datanode" "$@")
 
 info "** Starting DataNode **"

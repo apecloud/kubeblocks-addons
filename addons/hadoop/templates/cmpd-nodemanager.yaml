@@ -19,6 +19,12 @@ spec:
         - serviceKind: zookeeper
           serviceVersion: "^*"
   runtime:
+    initContainers:
+      - name: init-jmx-exporter
+        volumeMounts:
+          - name: nodemanager
+            mountPath: /hadoop
+        {{- include "hadoop.initJmxExporterContainer" . | nindent 8 }}
     containers:
       - name: yarn-nodemanager
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
@@ -39,6 +45,8 @@ spec:
             name: http
           - containerPort: 45454
             name: rpc
+          - containerPort: {{ .Values.jmxExporterPort }}
+            name: jmx-exporter
         livenessProbe:
           failureThreshold: 6
           initialDelaySeconds: 30
@@ -75,9 +83,11 @@ spec:
             subPath: log4j.properties
           - name: nodemanager
             mountPath: /hadoop
-            subPath: nodemanager
           - name: scripts
             mountPath: /kubeblocks/scripts
+          - name: hadoop-namenode-config
+            mountPath: /hadoop/conf/jmx-exporter.yaml
+            subPath: jmx-exporter.yaml
         securityContext:
           runAsUser: 10000
           runAsGroup: 1000
@@ -110,6 +120,10 @@ spec:
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
   vars:
+    - name: ENABLE_JMX_EXPORTER
+      value: {{ .Values.enableJmxExporter | quote }}
+    - name: JMX_EXPORTER_PORT
+      value: "{{ .Values.jmxExporterPort }}"
     - name: HOME
       value: /home/hadoop
     - name: CLUSTER_DOMAIN
