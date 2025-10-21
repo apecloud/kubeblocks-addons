@@ -115,11 +115,6 @@ update_etcd_conf() {
 }
 
 restore() {
-  name=$(parse_config_value "name" "$default_conf")
-  advertise_urls=$(parse_config_value "initial-advertise-peer-urls" "$default_conf")
-  cluster=$(parse_config_value "initial-cluster" "$default_conf")
-  cluster_token=$(parse_config_value "initial-cluster-token" "$default_conf")
-
   if [ -d "$DATA_DIR" ]; then
     if [ -n "$(find "$DATA_DIR" -mindepth 1 -print -quit 2>/dev/null)" ]; then
       log "Existing data directory $DATA_DIR detected, skipping snapshot restore when restart etcd"
@@ -133,6 +128,10 @@ restore() {
   backup_file="${files[0]}"
   check_backup_file "$backup_file"
 
+  name=$(parse_config_value "name" "$default_conf")
+  advertise_urls=$(parse_config_value "initial-advertise-peer-urls" "$default_conf")
+  cluster=$(parse_config_value "initial-cluster" "$default_conf")
+  cluster_token=$(parse_config_value "initial-cluster-token" "$default_conf")
   etcdutl snapshot restore "$backup_file" \
     --data-dir="$DATA_DIR" \
     --name="$name" \
