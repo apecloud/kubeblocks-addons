@@ -61,6 +61,12 @@ spec:
           - http
           - web
   runtime:
+    initContainers:
+      - name: init-jmx-exporter
+        volumeMounts:
+          - name: metadata
+            mountPath: /hive
+        {{- include "hive.initJmxExporterContainer" . | nindent 8 }}
     containers:
       - name: hive-server2
         imagePullPolicy: {{ default "IfNotPresent" .Values.hive.image.pullPolicy }}
@@ -76,6 +82,8 @@ spec:
             name: http
           - containerPort: 10002
             name: web
+          - containerPort: {{ .Values.jmxExporterPort }}
+            name: jmx-exporter
         env:
           - name: DEBUG_MODEL
             value: "false"
@@ -102,7 +110,6 @@ spec:
         volumeMounts:
           - name: metadata
             mountPath: /hive
-            subPath: metadata
           - name: hive-server2-config
             mountPath: /hive/base-conf/hive-site.xml
             subPath: hive-site.xml
@@ -121,11 +128,14 @@ spec:
           - name: hadoop-yarn-config
             mountPath: /hadoop/conf/log4j.properties
             subPath: log4j.properties
-          - name: hadoop-yarn-config
+          - name: mapred-site-config
             mountPath: /hadoop/conf/mapred-site.xml
             subPath: mapred-site.xml
           - name: hive-scripts
             mountPath: /kubeblocks/scripts
+          - name: hive-server2-config
+            mountPath: /hive/base-conf/jmx-exporter.yaml
+            subPath: jmx-exporter.yaml
         #securityContext:
         #  runAsUser: 10000
         #  runAsGroup: 1000
@@ -141,6 +151,10 @@ spec:
       fsGroup: 1000
     updateStrategy: BestEffortParallel
   vars:
+    - name: ENABLE_JMX_EXPORTER
+      value: {{ .Values.enableJmxExporter | quote }}
+    - name: JMX_EXPORTER_PORT
+      value: "{{ .Values.jmxExporterPort }}"
     - name: HOME
       value: /home/hadoop
     - name: CLUSTER_DOMAIN

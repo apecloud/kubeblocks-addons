@@ -41,6 +41,8 @@ spec:
             name: jn
           - containerPort: 8480
             name: http
+          - containerPort: {{ .Values.jmxExporterPort }}
+            name: jmx-exporter
         env:
           - name: DEBUG_MODEL
             value: "false"

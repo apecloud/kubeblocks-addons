@@ -45,6 +45,8 @@ spec:
             name: http
           - containerPort: 45454
             name: rpc
+          - containerPort: {{ .Values.jmxExporterPort }}
+            name: jmx-exporter
         livenessProbe:
           failureThreshold: 6
           initialDelaySeconds: 30

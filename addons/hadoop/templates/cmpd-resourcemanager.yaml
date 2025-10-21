@@ -41,6 +41,8 @@ spec:
             name: address
           - containerPort: 8033
             name: admin
+          - containerPort: {{ .Values.jmxExporterPort }}
+            name: jmx-exporter
         livenessProbe:
           failureThreshold: 6
           initialDelaySeconds: 30

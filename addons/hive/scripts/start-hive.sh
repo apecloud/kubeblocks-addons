@@ -54,6 +54,10 @@ info "** Starting HMS setup **"
 /opt/scripts/hive/post-start.sh
 info "** HMS setup finished! **"
 
+if [[ "$ENABLE_JMX_EXPORTER" == true ]]; then
+   export HIVE_METASTORE_HADOOP_OPTS="-javaagent:/hive/jmx_prometheus_javaagent.jar=${JMX_EXPORTER_PORT}:/hive/base-conf/jmx-exporter.yaml"
+fi
+
 START_COMMAND=("${HIVE_HOME_DIR}/bin/hive" "--service" "metastore")
 
 info "** Starting HiveMetaStore **"
