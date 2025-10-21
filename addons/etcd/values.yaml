@@ -5,7 +5,7 @@ clusterDomain: ".cluster.local"
 
 # volume backup
 dataMountDir: /var/run/etcd
-restoreDir: /var/run/etcd/restore
+backupDir: /var/run/etcd/backup
 dataDir: /var/run/etcd/default.etcd
 
 # bin dir, used to inject static bash and other binaries to distroless etcd image

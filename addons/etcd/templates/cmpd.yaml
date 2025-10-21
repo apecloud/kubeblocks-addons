@@ -65,8 +65,8 @@ spec:
       value: {{ .Chart.AppVersion }}
     - name: DATA_DIR
       value: {{ .Values.dataDir }}
-    - name: RESTORE_DIR
-      value: {{ .Values.restoreDir }}
+    - name: BACKUP_DIR
+      value: {{ .Values.backupDir }}
     - name: BIN_DIR
       value: {{ .Values.binDir }}
     - name: CLUSTER_NAME
