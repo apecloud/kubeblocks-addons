@@ -16,5 +16,9 @@ image:
   init:
     repository: apecloud/os-shell
     tag: 11-debian-11-r93
+  influxdbData:
+    repository: apecloud/influxdb
+  influxdbMeta:
+    repository: apecloud/influxdb
 
 configPath: /opt/bitnami/influxdb/etc

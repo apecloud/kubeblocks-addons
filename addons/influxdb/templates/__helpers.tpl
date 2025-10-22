@@ -88,3 +88,7 @@ influxdb-pcr
 {{- define "influxdb.pdName" -}}
 influxdb-pd
 {{- end -}}
+
+{{- define "influxdb.cmScriptsName" -}}
+influxdb-scripts-{{ .Chart.Version }}
+{{- end -}}
