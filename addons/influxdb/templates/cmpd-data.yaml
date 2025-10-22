@@ -10,3 +10,61 @@ spec:
   provider: Apecloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  vars:
+    - name: POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+  services:
+    - name: influxdb
+      spec:
+        ports:
+          - name: api
+            port: 8086
+            targetPort: http
+  vars:
+    - name: INFLUXDB_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          username: Required
+    - name: INFLUXDB_ADMIN_USER_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+  systemAccounts:
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 3
+        numSymbols: 4
+        letterCase: MixedCases
+  runtime:
+    containers:
+      - name: influxdb-data
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: INFLUXDB_HTTP_AUTH_ENABLED
+            value: "true"
+        ports:
+          - name: http
+            containerPort: 8086
+            protocol: TCP
+          - name: internal
+            containerPort: 8088
+            protocol: TCP
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/influxdb
+  lifecycleActions:
+    postProvision:
+      preCondition: RuntimeReady
+      container: influxdb-data
+      exec:
+        command:
+          - /scripts/data_postprovision.sh

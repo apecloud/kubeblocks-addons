@@ -10,3 +10,56 @@ spec:
   provider: Apecloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  vars:
+    - name: POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+  runtime:
+    initContainers:
+      - name: copy-tools
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+          - |
+            cp /usr/bin/influxd-ctl /tools
+        volumeMounts:
+          - name: tools
+            mountPath: /tools
+    containers:
+      - name: influxdb-meta
+        imagePullPolicy: IfNotPresent
+        ports:
+          - name: http
+            containerPort: 8091
+            protocol: TCP
+          - name: internal
+            containerPort: 8089
+            protocol: TCP
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/influxdb
+    volumes:
+      - name: tools
+        emptyDir: {}
+  roles:
+    - name: leader
+      updatePriority: 2
+      participatesInQuorum: true
+    - name: follower
+      updatePriority: 1
+      participatesInQuorum: true
+  lifecycleActions:
+    roleProbe:
+      exec:
+        container: influxdb-meta
+        command:
+          - /scripts/meta_roleprobe.sh
+    postProvision:
+      preCondition: RuntimeReady
+      container: influxdb-meta
+      exec:
+        command:
+          - /scripts/meta_postprovision.sh
