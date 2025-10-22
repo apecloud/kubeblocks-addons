@@ -13,9 +13,6 @@ spec:
   serviceKind: hdfs-datanode
   podManagementPolicy: Parallel
   runtime:
-    #hostNetwork: true
-    #hostPID: true
-    #dnsPolicy: ClusterFirstWithHostNet
     initContainers:
       - name: init-jmx-exporter
         volumeMounts:
@@ -33,6 +30,10 @@ spec:
         env:
           - name: DEBUG_MODEL
             value: "false"
+          - name: HOST_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
         ports:
           - containerPort: 9866
             name: data
@@ -80,15 +81,15 @@ spec:
             mountPath: /hadoop/conf/jmx-exporter.yaml
             subPath: jmx-exporter.yaml
         securityContext:
-          runAsUser: 10000
-          runAsGroup: 1000
-          runAsNonRoot: true
-          privileged: false
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: [ "ALL" ]
-          seccompProfile:
-            type: "RuntimeDefault"
+          runAsUser: 0
+          runAsGroup: 0
+          runAsNonRoot: false
+        #  privileged: false
+        #  allowPrivilegeEscalation: false
+        #  capabilities:
+        #    drop: [ "ALL" ]
+        #  seccompProfile:
+        #    type: "RuntimeDefault"
     securityContext:
       fsGroupChangePolicy: Always
       fsGroup: 1000
@@ -110,11 +111,65 @@ spec:
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
+  hostNetwork:
+    containerPorts:
+      - container: hdfs-datanode
+        ports:
+          - data
+          - http
+          - ipc
+          - jmx-exporter
   vars:
+    - name: DATANODE_DATA_HOST_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: hdfs-datanode
+            port:
+              name: data
+              option: Required
+    - name: DATANODE_DATA_PORT
+      value: "9866"
+      expression: {{ `{{if ne (index . "DATANODE_DATA_HOST_PORT") ""}}{{.DATANODE_DATA_HOST_PORT}}{{else}}{{.DATANODE_DATA_PORT}}{{end}}` | toYaml }}
+    - name: DATANODE_HTTP_HOST_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: hdfs-datanode
+            port:
+              name: http
+              option: Required
+    - name: DATANODE_HTTP_PORT
+      value: "9864"
+      expression: {{ `{{if ne (index . "DATANODE_HTTP_HOST_PORT") ""}}{{.DATANODE_HTTP_HOST_PORT}}{{else}}{{.DATANODE_HTTP_PORT}}{{end}}` | toYaml }}
+    - name: DATANODE_IPC_HOST_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: hdfs-datanode
+            port:
+              name: ipc
+              option: Required
+    - name: DATANODE_IPC_PORT
+      value: "9867"
+      expression: {{ `{{if ne (index . "DATANODE_IPC_HOST_PORT") ""}}{{.DATANODE_IPC_HOST_PORT}}{{else}}{{.DATANODE_IPC_PORT}}{{end}}` | toYaml }}
+    - name: DATANODE_JMX_HOST_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: hdfs-datanode
+            port:
+              name: jmx-exporter
+              option: Required
     - name: ENABLE_JMX_EXPORTER
       value: {{ .Values.enableJmxExporter | quote }}
     - name: JMX_EXPORTER_PORT
       value: "{{ .Values.jmxExporterPort }}"
+      expression: {{ `{{if ne (index . "DATANODE_JMX_HOST_PORT") ""}}{{.DATANODE_JMX_HOST_PORT}}{{else}}{{.JMX_EXPORTER_PORT}}{{end}}` | toYaml }}
     - name: HOME
       value: /home/hadoop
     - name: CLUSTER_DOMAIN
