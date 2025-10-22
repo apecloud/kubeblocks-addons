@@ -16,7 +16,7 @@ spec:
     initContainers:
       - name: init-jmx-exporter
         volumeMounts:
-          - name: hadoop-resourcemanager
+          - name: resourcemanager
             mountPath: /hadoop
         {{- include "hadoop.initJmxExporterContainer" . | nindent 8 }}
     containers:
@@ -80,7 +80,7 @@ spec:
           - mountPath: /hadoop/conf/capacity-scheduler.xml
             name: capacity-scheduler-config
             subPath: capacity-scheduler.xml
-          - name: hadoop-resourcemanager
+          - name: resourcemanager
             mountPath: /hadoop
           - name: scripts
             mountPath: /kubeblocks/scripts

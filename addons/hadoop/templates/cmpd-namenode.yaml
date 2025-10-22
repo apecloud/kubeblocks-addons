@@ -14,6 +14,7 @@ spec:
   podManagementPolicy: Parallel
   services:
     - name: default
+      roleSelector: active
       spec:
         ports:
           - name: fs
