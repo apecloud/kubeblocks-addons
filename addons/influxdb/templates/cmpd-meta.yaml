@@ -41,9 +41,19 @@ spec:
         volumeMounts:
           - name: data
             mountPath: /var/lib/influxdb
+          - name: scripts
+            mountPath: /scripts
+          - name: tools
+            mountPath: /tools
     volumes:
       - name: tools
         emptyDir: {}
+  scripts:
+    - name: scripts
+      template: {{ include "influxdb.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0777
   roles:
     - name: leader
       updatePriority: 2

@@ -5,6 +5,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
+  clusterDef: influxdb
+  topology: {{ .Values.mode }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
   {{- if eq "standalone" .Values.mode }}
