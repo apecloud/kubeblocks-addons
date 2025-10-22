@@ -275,7 +275,7 @@ main() {
     run_mode="${run_mode:-ELECTION}"
 
     # Config FE TLS
-    # config_fe_tls
+    config_fe_tls
 
    if [ "$run_mode" = "RECOVERY" ]; then
         setup_fe_node
