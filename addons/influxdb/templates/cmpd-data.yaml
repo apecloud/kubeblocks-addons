@@ -61,6 +61,14 @@ spec:
         volumeMounts:
           - name: data
             mountPath: /var/lib/influxdb
+          - name: scripts
+            mountPath: /scripts
+  scripts:
+    - name: scripts
+      template: {{ include "influxdb.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0777
   lifecycleActions:
     postProvision:
       preCondition: RuntimeReady
