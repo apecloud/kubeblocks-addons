@@ -252,35 +252,20 @@ cleanup() {
 # Config FE TLS
 config_fe_tls() {
     if [ -n "$TLS_ENABLED" ] && [ "$TLS_ENABLED" = "true" ]; then
-        log_info "Configuring FE TLS"
-        # Copy TLS certificates to the FE configuration directory
-        if [ ! -d "/opt/apache-doris/fe/mysql_ssl_default_certificate" ]; then
-            mkdir -p /opt/apache-doris/fe/mysql_ssl_default_certificate
-            log_info "Created directory: /opt/apache-doris/fe/mysql_ssl_default_certificate"
+        openssl pkcs12 -inkey /certificates/ca-key.pem -in /etc/pki/tls/ca.pem -export -out /opt/apache-doris/fe/mysql_ssl_default_certificate/ca_certificate.p12 -passout pass:"doris"
+        if [ $? -ne 0 ]; then
+            log_error "Failed to create CA certificate.p12"
+        else
+            log_info "Successfully created CA certificate.p12"
         fi
-
-        cp /certificates/*  /opt/apache-doris/fe/mysql_ssl_default_certificate/
-
-
-        sed -i '/mysql_ssl_default_ca_certificate=/d' $FE_CONF_FILE
-        echo "mysql_ssl_default_ca_certificate=/opt/apache-doris/fe/mysql_ssl_default_certificate/caCert.p12" >> $FE_CONF_FILE
-        
-        
-        CA_PASSWORD=$(cat /opt/apache-doris/fe/mysql_ssl_default_certificate/caPassword || echo "doris") 
-        sed -i '/mysql_ssl_default_ca_certificate_password=/d' $FE_CONF_FILE
-        echo "mysql_ssl_default_ca_certificate_password=${CA_PASSWORD}" >> $FE_CONF_FILE
-        
-        sed -i '/mysql_ssl_default_server_certificate=/d' $FE_CONF_FILE
-        echo "mysql_ssl_default_server_certificate=/opt/apache-doris/fe/mysql_ssl_default_certificate/cert.p12" >> $FE_CONF_FILE
-        
-        sed -i '/mysql_ssl_default_server_certificate_password=/d' $FE_CONF_FILE
-        CERT_PASSWORD=$(cat /opt/apache-doris/fe/mysql_ssl_default_certificate/certPassword || echo "doris")
-        echo "mysql_ssl_default_server_certificate_password=${CERT_PASSWORD}" >> $FE_CONF_FILE
-        
-        log_info "SSL certificate parameters have been set in fe.conf"
+        openssl pkcs12 -inkey /etc/pki/tls/key.pem -in /etc/pki/tls/cert.pem -export -out /opt/apache-doris/fe/mysql_ssl_default_certificate/server_certificate.p12 -passout pass:"doris"
+        if [ $? -ne 0 ]; then
+            log_error "Failed to create server certificate.p12"
+        else
+            log_info "Successfully created server certificate.p12"
+        fi
     fi
 }
-
 
 
 # Main Function
@@ -290,7 +275,7 @@ main() {
     run_mode="${run_mode:-ELECTION}"
 
     # Config FE TLS
-    config_fe_tls
+    # config_fe_tls
 
    if [ "$run_mode" = "RECOVERY" ]; then
         setup_fe_node
