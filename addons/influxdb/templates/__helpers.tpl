@@ -67,7 +67,7 @@ influxdb-meta-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "influxdb.data.cmpdName" -}}
-influxdb-meta-{{ .Chart.Version }}
+influxdb-data-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "influxdb.data.cmpdRegexpPattern" -}}

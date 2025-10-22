@@ -59,7 +59,7 @@ spec:
           - /scripts/meta_roleprobe.sh
     postProvision:
       preCondition: RuntimeReady
-      container: influxdb-meta
       exec:
+        container: influxdb-meta
         command:
           - /scripts/meta_postprovision.sh

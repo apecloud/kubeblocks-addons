@@ -4,14 +4,16 @@
 
 
 ## @param influxdb mode
+## supported modes are: standalone, cluster
 mode: standalone
 ## @param version influxdb cluster version
 ##
 version: "2.7.11"
 
-## @param replicas specify cluster replicas
-##
-replicas: 1
+## only valid for cluster mode
+metaReplicas: 3
+## only valid for cluster mode
+dataReplicas: 2
 
 ## @param cpu
 ##
