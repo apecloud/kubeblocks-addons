@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 images:
-  registry: docker.io
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   pullPolicy: IfNotPresent
 
   hadoop:
