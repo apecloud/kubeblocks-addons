@@ -249,12 +249,34 @@ cleanup() {
     ${DORIS_HOME}/fe/bin/stop_fe.sh
 }
 
+# Config FE TLS
+config_fe_tls() {
+    if [ -n "$TLS_ENABLED" ] && [ "$TLS_ENABLED" = "true" ]; then
+        openssl pkcs12 -inkey /certificates/ca-key.pem -in /etc/pki/tls/ca.pem -export -out /opt/apache-doris/fe/mysql_ssl_default_certificate/ca_certificate.p12 -passout pass:"doris"
+        if [ $? -ne 0 ]; then
+            log_error "Failed to create CA certificate.p12"
+        else
+            log_info "Successfully created CA certificate.p12"
+        fi
+        openssl pkcs12 -inkey /etc/pki/tls/key.pem -in /etc/pki/tls/cert.pem -export -out /opt/apache-doris/fe/mysql_ssl_default_certificate/server_certificate.p12 -passout pass:"doris"
+        if [ $? -ne 0 ]; then
+            log_error "Failed to create server certificate.p12"
+        else
+            log_info "Successfully created server certificate.p12"
+        fi
+    fi
+}
+
+
 # Main Function
 main() {
     # validate_environment
     trap cleanup SIGTERM SIGINT
     run_mode="${run_mode:-ELECTION}"
-    
+
+    # Config FE TLS
+    config_fe_tls
+
    if [ "$run_mode" = "RECOVERY" ]; then
         setup_fe_node
         start_fe &

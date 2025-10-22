@@ -8,13 +8,14 @@ JAVA_OPTS="-Xmx{{ $heap_size }} -XX:+UseMembar -XX:SurvivorRatio=8 -XX:MaxTenuri
 # tls
 {{- if eq (index $ "TLS_ENABLED") "true" }}
 enable_ssl=true
-{{ else }}
-enable_ssl=false
-{{- end }}
 mysql_ssl_default_ca_certificate=/opt/apache-doris/fe/mysql_ssl_default_certificate/ca_certificate.p12
 mysql_ssl_default_ca_certificate_password=doris
 mysql_ssl_default_server_certificate=/opt/apache-doris/fe/mysql_ssl_default_certificate/server_certificate.p12
 mysql_ssl_default_server_certificate_password=doris
+{{ else }}
+enable_ssl=false
+{{- end }}
+
 
 
 abort_txn_after_lost_heartbeat_time_second=300
