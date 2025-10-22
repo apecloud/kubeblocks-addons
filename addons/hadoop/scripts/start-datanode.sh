@@ -3,7 +3,6 @@
 # shellcheck disable=SC1091
 
 set -o errexit
-set -o nounset
 set -o pipefail
 # set -o xtrace # Uncomment this line for debugging purposes
 
@@ -25,6 +24,10 @@ fi
 
 if [[ "$ENABLE_JMX_EXPORTER" == true ]]; then
   export HDFS_DATANODE_OPTS="-javaagent:/hadoop/jmx_prometheus_javaagent.jar=${JMX_EXPORTER_PORT}:/hadoop/conf/jmx-exporter.yaml"
+fi
+
+if [[ -n "${DATANODE_DATA_HOST_PORT}" ]]; then
+  echo "${HOST_IP} `hostname`" >> /etc/hosts
 fi
 
 START_COMMAND=("${HADOOP_HOME}/bin/hdfs" "datanode" "$@")
