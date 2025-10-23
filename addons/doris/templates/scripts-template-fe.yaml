@@ -17,6 +17,8 @@ data:
     {{- .Files.Get "scripts/fe/fe_post_start.sh" | nindent 4 }}
   fe_check_status.sh: |-
     {{- .Files.Get "scripts/fe/fe_check_status.sh" | nindent 4 }}
+  fe_member_leave.sh: |-
+    {{- .Files.Get "scripts/fe/fe_member_leave.sh" | nindent 4 }}
   fe-update-dynamic-config: |-
     #!/bin/sh
     set -ex
