@@ -17,8 +17,14 @@ image:
     repository: apecloud/os-shell
     tag: 11-debian-11-r93
   influxdbData:
+    # mirrored from chengshiwen/influxdb
     repository: apecloud/influxdb
   influxdbMeta:
+    # mirrored from chengshiwen/influxdb
     repository: apecloud/influxdb
+  tools:
+    repository: apecloud/curl-jq
 
 configPath: /opt/bitnami/influxdb/etc
+
+clusterDomain: ".cluster.local"
