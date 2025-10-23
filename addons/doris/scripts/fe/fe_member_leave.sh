@@ -81,4 +81,4 @@ if [[ ${leader_host} == ${KB_LEAVE_MEMBER_POD_NAME}* ]]; then
     wait_for_leader_switched
 fi
 
-mysql -h "${leader_host}" -P 9030 -e "alter system drop ${role} '${leave_member_host}:${leave_member_port}';"
+mysql -h "${leader_host}" -u"${DORIS_USER}" -p"${DORIS_PASSWORD}" -P 9030 -e "alter system drop ${role} '${leave_member_host}:${leave_member_port}';"

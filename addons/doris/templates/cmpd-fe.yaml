@@ -243,9 +243,10 @@ spec:
         - /bin/bash
         - -c
         - |
-          {{- .Files.Get "scripts/fe_member_leave.sh" | nindent 10 }}
-        targetPodSelector: Any
+          /opt/apache-doris/scripts/fe_member_leave.sh > /tmp/member-leave.log 2>&1
+        targetPodSelector: Role
         container: fe
+        matchingKey: master
   roles:
     - name: master
       updatePriority: 3
