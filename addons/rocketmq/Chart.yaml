@@ -5,7 +5,7 @@ description: RocketMQ is a distributed messaging and streaming platform original
 
 type: application
 
-version: 1.0.1
+version: 1.0.2
 dependencies:
   - name: kblib
     version: 0.1.0
