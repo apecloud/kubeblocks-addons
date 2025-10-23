@@ -41,6 +41,8 @@ spec:
       serviceVersion: "1.8.10"
       images:
         influxdb-data: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbData.repository }}:1.8.10-c1.1.2-data
+        copy-tools: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:0.1.0
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbData.repository }}:1.8.10-c1.1.2-meta
 
 ---
 
@@ -63,3 +65,6 @@ spec:
       serviceVersion: "1.8.10"
       images:
         influxdb-meta: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbMeta.repository }}:1.8.10-c1.1.2-meta
+        copy-tools: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:0.1.0
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbMeta.repository }}:1.8.10-c1.1.2-meta
+        roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbMeta.repository }}:1.8.10-c1.1.2-meta

@@ -10,12 +10,23 @@ spec:
   provider: Apecloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  services:
+    - name: meta
+      spec:
+        ports:
+          - name: http
+            port: 8091
+            targetPort: http
   vars:
     - name: POD_FQDN_LIST
       valueFrom:
         componentVarRef:
           optional: false
           podFQDNs: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
   runtime:
     initContainers:
       - name: copy-tools
@@ -24,13 +35,26 @@ spec:
           - sh
           - -c
           - |
-            cp /usr/bin/influxd-ctl /tools
+            cp /bin/jq /tools/
         volumeMounts:
           - name: tools
             mountPath: /tools
     containers:
       - name: influxdb-meta
         imagePullPolicy: IfNotPresent
+        command:
+          - /scripts/run.sh
+          - /entrypoint.sh
+          - influxd-meta
+        env:
+          # for debug
+          # - name: INFLUXDB_META_CLUSTER_TRACING
+          #   value: "true"
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         ports:
           - name: http
             containerPort: 8091
