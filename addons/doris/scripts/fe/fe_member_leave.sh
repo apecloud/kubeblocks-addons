@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
-set -x
+set +x
 set -o errexit
 
 leader_host=""
 leave_member_host=""
 leave_member_port=""
+leave_role=""
 helper_endpoints=""
 candidate_names=""
 
@@ -37,8 +38,12 @@ function wait_for_leader_switched() {
     done
 }
 
-# execute a mysql command and iterate the output line by line
+info "KB_LEAVE_MEMBER_POD_NAME: ${KB_LEAVE_MEMBER_POD_NAME}"
 output=$(show_frontends)
+info "frontends:"
+info "${output}"
+
+# execute a mysql command and iterate the output line by line
 while IFS= read -r line; do
     name=$(echo "$line" | awk '{print $1}')
     ip=$(echo "$line" | awk '{print $2}')
@@ -50,6 +55,7 @@ while IFS= read -r line; do
         is_leaving=True
         leave_member_host=${ip}
         leave_member_port=${edit_log_port}
+        leave_role=${role}
     fi
     if [ "${is_master}" == "true" ]; then
         leader_host=${ip}
@@ -66,6 +72,7 @@ while IFS= read -r line; do
 done <<< "$output"
 
 info "leave member: ${leave_member_host}:${leave_member_port}"
+info "leave role: ${leave_role}"
 info "leader: ${leader_host}"
 info "helper hosts: ${helper_endpoints}"
 info "candidate hosts: ${candidate_names}"
@@ -81,4 +88,4 @@ if [[ ${leader_host} == ${KB_LEAVE_MEMBER_POD_NAME}* ]]; then
     wait_for_leader_switched
 fi
 
-mysql -h "${leader_host}" -u"${DORIS_USER}" -p"${DORIS_PASSWORD}" -P 9030 -e "alter system drop ${role} '${leave_member_host}:${leave_member_port}';"
+mysql -h "${leader_host}" -u"${DORIS_USER}" -p"${DORIS_PASSWORD}" -P 9030 -e "alter system drop ${leave_role} '${leave_member_host}:${leave_member_port}';"
