@@ -9,11 +9,11 @@ spec:
   topology: replication
   componentSpecs:
     - name: postgresql
-      serviceVersion: "14.7.2"
+      serviceVersion: "16.4.0"
       env:
       - name: DCS_ENABLE_KUBERNETES_API  # unset this env if you use zookeeper or etcd, default to empty
       - name: ETCD3_HOST
-        value: 'myetcd-etcd-headless.default.svc.cluster.local:2379' # where is your etcd?
+        value: 'etcd-cluster-etcd-headless.demo.svc.cluster.local:2379' # where is your etcd?
       # - name: ZOOKEEPER_HOSTS
       #   value: 'myzk-zookeeper-0.myzk-zookeeper-headless.default.svc.cluster.local:2181' # where is your zookeeper?
       replicas: 2

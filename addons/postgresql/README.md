@@ -1178,6 +1178,9 @@ spec:
     - path: /metrics
       port: http-metrics
       scheme: http
+    - path: /metrics
+      port: patroni
+      scheme: http
   namespaceSelector:
     matchNames:
       - demo
@@ -1196,6 +1199,8 @@ kubectl apply -f examples/postgresql/pod-monitor.yaml
 Login to the Grafana dashboard and import the dashboard.
 
 There is a pre-configured dashboard for PostgreSQL under the `APPS / PostgreSQL` folder in the Grafana dashboard. And more dashboards can be found in the Grafana dashboard store[^5].
+
+And you can import the patroni dashboard from [Grafana PostgreSQL Patroni](https://grafana.com/grafana/dashboards/18870-postgresql-patroni/).
 
 > [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
@@ -1227,11 +1232,11 @@ spec:
   topology: replication
   componentSpecs:
     - name: postgresql
-      serviceVersion: "14.7.2"
+      serviceVersion: "16.4.0"
       env:
       - name: DCS_ENABLE_KUBERNETES_API  # unset this env if you use zookeeper or etcd, default to empty
       - name: ETCD3_HOST
-        value: 'myetcd-etcd-headless.default.svc.cluster.local:2379' # where is your etcd?
+        value: 'etcd-cluster-etcd-headless.demo.svc.cluster.local:2379' # where is your etcd?
       # - name: ZOOKEEPER_HOSTS
       #   value: 'myzk-zookeeper-0.myzk-zookeeper-headless.default.svc.cluster.local:2181' # where is your zookeeper?
       replicas: 2
