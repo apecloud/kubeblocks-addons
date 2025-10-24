@@ -1,0 +1,99 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "influxdb.meta.cmpdName" . }}
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "influxdb.annotations" . | nindent 4 }}
+spec:
+  provider: Apecloud
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  services:
+    - name: meta
+      spec:
+        ports:
+          - name: http
+            port: 8091
+            targetPort: http
+  vars:
+    - name: POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+  runtime:
+    initContainers:
+      - name: copy-tools
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+          - |
+            cp /bin/jq /tools/
+        volumeMounts:
+          - name: tools
+            mountPath: /tools
+    containers:
+      - name: influxdb-meta
+        imagePullPolicy: IfNotPresent
+        command:
+          - /scripts/run.sh
+          - /entrypoint.sh
+          - influxd-meta
+        env:
+          # for debug
+          # - name: INFLUXDB_META_CLUSTER_TRACING
+          #   value: "true"
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+        ports:
+          - name: http
+            containerPort: 8091
+            protocol: TCP
+          - name: internal
+            containerPort: 8089
+            protocol: TCP
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/influxdb
+          - name: scripts
+            mountPath: /scripts
+          - name: tools
+            mountPath: /tools
+    volumes:
+      - name: tools
+        emptyDir: {}
+  scripts:
+    - name: scripts
+      template: {{ include "influxdb.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0777
+  roles:
+    - name: leader
+      updatePriority: 2
+      participatesInQuorum: true
+    - name: follower
+      updatePriority: 1
+      participatesInQuorum: true
+  lifecycleActions:
+    roleProbe:
+      exec:
+        container: influxdb-meta
+        command:
+          - /scripts/meta_roleprobe.sh
+    postProvision:
+      preCondition: RuntimeReady
+      exec:
+        container: influxdb-meta
+        command:
+          - /scripts/meta_postprovision.sh

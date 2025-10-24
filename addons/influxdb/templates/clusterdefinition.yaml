@@ -1,0 +1,25 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: influxdb
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "influxdb.annotations" . | nindent 4 }}
+spec:
+  topologies:
+    - name: standalone
+      default: true
+      components:
+        - name: influxdb
+          compDef: {{ include "influxdb.standalone.cmpdRegexpPattern" . }}
+    - name: cluster
+      components:
+        - name: influxdb-meta
+          compDef: {{ include "influxdb.meta.cmpdRegexpPattern" . }}
+        - name: influxdb-data
+          compDef: {{ include "influxdb.data.cmpdRegexpPattern" . }}
+      orders:
+        provision:
+          - influxdb-meta
+          - influxdb-data

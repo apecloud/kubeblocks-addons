@@ -8,7 +8,8 @@
       "type": "string",
       "default": "standalone",
       "enum": [
-        "standalone"
+        "standalone",
+        "cluster"
       ]
     },
     "version": {
