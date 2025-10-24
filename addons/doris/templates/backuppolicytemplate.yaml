@@ -1,0 +1,35 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: doris-backup-policy-template
+  labels:
+    {{- include "doris.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+spec:
+  serviceKind: doris
+  compDefs:
+    - ^doris-fe.*
+  target:
+    role: "master"
+    account: root
+    containerPort:
+      containerName: fe
+      portName: mysql
+  backupMethods:
+    - name: full
+      actionSetName: doris-full-backup
+      targetVolumes:
+        volumes:
+          - meta-data
+          - log
+        volumeMounts:
+          - name: meta-data
+            mountPath: /opt/apache-doris/fe/doris-meta
+          - name: log
+            mountPath: /opt/apache-doris/fe/log
+  schedules:
+    - backupMethod: full
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 8d

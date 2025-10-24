@@ -21,12 +21,12 @@ spec:
       - IPv4
       ipFamilyPolicy: PreferDualStack
       ports:
-      - name: http
-        port: 8030
-        targetPort: http
       - name: mysql
         port: 9030
         targetPort: mysql
+      - name: http
+        port: 8030
+        targetPort: http
       - name: rpc
         port: 9020
         targetPort: rpc
@@ -238,6 +238,9 @@ spec:
           - -c
           - /opt/apache-doris/scripts/fe_role_probe.sh
     memberLeave:
+      retryPolicy:
+        maxRetries: 3
+        retryInterval: 5
       exec:
         command:
         - /bin/bash
