@@ -3321,7 +3321,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "Hadoop_DataNode_NumBlocksCached{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",name=\"FSDatasetState\"}",
+              "expr": "rate(Hadoop_DataNode_NumBlocksCached{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",name=\"FSDatasetState\"}[2m])",
               "format": "time_series",
               "interval": "",
               "legendFormat": "{{pod}}-{{total}}",
@@ -3334,7 +3334,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "Hadoop_DataNode_NumBlocksFailedToCache{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",name=\"FSDatasetState\"}",
+              "expr": "rate(Hadoop_DataNode_NumBlocksFailedToCache{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",name=\"FSDatasetState\"}[2m])",
               "hide": false,
               "instant": false,
               "legendFormat": "{{pod}}-failed-cache",
@@ -3347,7 +3347,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "Hadoop_DataNode_NumBlocksFailedToUnCache{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",name=\"FSDatasetState\"}",
+              "expr": "rate(Hadoop_DataNode_NumBlocksFailedToUnCache{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",name=\"FSDatasetState\"}[2m])",
               "hide": false,
               "instant": false,
               "legendFormat": "{{pod}}-failed-uncache",
@@ -3582,7 +3582,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "Hadoop_DataNode_TotalWriteTime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "rate(Hadoop_DataNode_TotalWriteTime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[2m])",
           "interval": "",
           "legendFormat": "{{pod}}-write",
           "range": true,
@@ -3594,7 +3594,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "Hadoop_DataNode_TotalReadTime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "rate(Hadoop_DataNode_TotalReadTime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[2m])",
           "hide": false,
           "interval": "",
           "legendFormat": "{{pod}}-read",
@@ -4642,7 +4642,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "Hadoop_DataNode_FsyncNanosNumOps{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "rate(Hadoop_DataNode_FsyncNanosNumOps{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[2m])",
           "interval": "",
           "legendFormat": "{{pod}}",
           "range": true,
@@ -4846,7 +4846,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "Hadoop_DataNode_FlushNanosNumOps{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "rate(Hadoop_DataNode_FlushNanosNumOps{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[2m])",
           "interval": "",
           "legendFormat": "{{pod}}",
           "range": true,
@@ -5050,7 +5050,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "Hadoop_DataNode_RamDiskBlocksWrite{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "rate(Hadoop_DataNode_RamDiskBlocksWrite{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[2m])",
           "interval": "",
           "legendFormat": "{{pod}}-blocks-write",
           "range": true,
@@ -5062,7 +5062,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "Hadoop_DataNode_RamDiskBlocksEvicted{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "rate(Hadoop_DataNode_RamDiskBlocksEvicted{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[2m])",
           "hide": false,
           "interval": "",
           "legendFormat": "{{pod}}-blocks-evicted",
@@ -5075,7 +5075,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "Hadoop_DataNode_RamDiskBlocksReadHits{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "rate(Hadoop_DataNode_RamDiskBlocksReadHits{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[2m])",
           "hide": false,
           "interval": "",
           "legendFormat": "{{pod}}-blocks-read-hits",
@@ -5088,7 +5088,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "Hadoop_DataNode_RamDiskBlocksWriteFallback{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "rate(Hadoop_DataNode_RamDiskBlocksWriteFallback{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[2m])",
           "hide": false,
           "interval": "",
           "legendFormat": "{{pod}}-blocks-write-fallback",
@@ -5101,7 +5101,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "Hadoop_DataNode_RamDiskBlocksLazyPersisted{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "rate(Hadoop_DataNode_RamDiskBlocksLazyPersisted{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[2m])",
           "hide": false,
           "interval": "",
           "legendFormat": "{{pod}}-blocks-lazy-persisted",
@@ -5204,7 +5204,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "Hadoop_DataNode_RamDiskBytesLazyPersisted{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "rate(Hadoop_DataNode_RamDiskBytesLazyPersisted{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[2m])",
           "interval": "",
           "legendFormat": "{{pod}}-lazy-persisted",
           "range": true,
@@ -5216,7 +5216,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "Hadoop_DataNode_RamDiskBytesWrite{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "rate(Hadoop_DataNode_RamDiskBytesWrite{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[2m])",
           "hide": false,
           "interval": "",
           "legendFormat": "{{pod}}-blocks-write",
@@ -5421,7 +5421,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "Hadoop_DataNode_FsyncCount{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "rate(Hadoop_DataNode_FsyncCount{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[2m])",
           "interval": "",
           "legendFormat": "{{pod}}",
           "range": true,
@@ -5625,7 +5625,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "Hadoop_DataNode_GcTotalExtraSleepTime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "rate(Hadoop_DataNode_GcTotalExtraSleepTime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[2m])",
           "interval": "",
           "legendFormat": "{{pod}}",
           "range": true,
