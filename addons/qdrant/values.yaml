@@ -17,7 +17,7 @@ image:
   pullPolicy: IfNotPresent
   tag: "v1.8.4"
   tools:
-    repository: apecloud/curl-jq
+    repository: apecloud/qdrant-tools
     tag: 0.1.0
 
 ## @param supported versions with detailed information
