@@ -113,18 +113,8 @@ spec:
           periodSeconds: 45
           successThreshold: 1
           timeoutSeconds: 30
-          exec:
-            command:
-              - bash
-              - -c
-              - |
-                . /opt/bitnami/scripts/libinfluxdb.sh
-
-                influxdb_env
-                export INFLUX_USERNAME="$INFLUXDB_ADMIN_USER"
-                export INFLUX_PASSWORD="$INFLUXDB_ADMIN_USER_PASSWORD"
-
-                timeout 29s influx ping --host http://$POD_IP:8086
+          tcpSocket:
+            port: http
         readinessProbe:
           failureThreshold: 6
           initialDelaySeconds: 60
@@ -138,7 +128,6 @@ spec:
               - |
                 . /opt/bitnami/scripts/libinfluxdb.sh
 
-                influxdb_env
                 export INFLUX_USERNAME="$INFLUXDB_ADMIN_USER"
                 export INFLUX_PASSWORD="$INFLUXDB_ADMIN_USER_PASSWORD"
 
