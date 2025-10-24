@@ -250,6 +250,7 @@ wait_backup_complete() {
         
         if $all_finished; then
             DP_log "All backup tasks are finished"
+            return
         fi
         
         DP_log "Wait $wait_interval seconds to check backup status again..."
@@ -269,7 +270,7 @@ main() {
     prepare_s3_repository
     do_backup_and_wait
     end_time=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-    DP_save_backup_status_info "0" "$start_time" "$end_time" "UTC" ""
+    DP_save_backup_status_info "0" "$start_time" "$end_time" "" ""
 }
 
 main
