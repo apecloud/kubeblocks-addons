@@ -159,3 +159,40 @@ falkordb-account.sh: |-
 {{- define "apeDts.reshard.image" -}}
 {{ .Values.image.apeDts.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.apeDts.repository}}:{{ .Values.image.apeDts.reshardTag }}
 {{- end }}}
+
+{{- define "kblib.syncer.policyRules" -}}
+policyRules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - get
+- apiGroups:
+  - "apps.kubeblocks.io"
+  resources:
+  - clusters
+  verbs:
+  - get
+  - list
+{{- end -}}
+
