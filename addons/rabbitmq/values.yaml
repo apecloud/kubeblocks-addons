@@ -12,12 +12,12 @@ image:
 ## @param supported versions with detailed information
 versions:
   - major: "4"
-    componentDef: "^rabbitmq-"
+    componentDef: "^rabbitmq.*"
     minors:
       # [version, serviceVersion, tag, deprecated]
       - ["4.0.9", "4.0.9", "4.0.9-management", false]
   - major: "3"
-    componentDef: "^rabbitmq-"
+    componentDef: "^rabbitmq.*"
     minors:
       - ["3.13.7", "3.13.7", "3.13.7-management", false]
       - ["3.13.2", "3.13.2", "3.13.2-management", false]
