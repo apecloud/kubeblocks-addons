@@ -131,6 +131,7 @@ spec:
       - bash
       - -c
       - |
+        # sleep 10000
         /opt/apache-doris/scripts/init_fe.sh
       ports:
       - containerPort: 8030

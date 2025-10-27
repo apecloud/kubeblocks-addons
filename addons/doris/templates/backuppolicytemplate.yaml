@@ -20,11 +20,8 @@ spec:
     - name: full
       actionSetName: doris-full-backup
       targetVolumes:
-        volumes:
-          - meta-data
-          - log
         volumeMounts:
-          - name: meta-data
+          - name: metadata
             mountPath: /opt/apache-doris/fe/doris-meta
           - name: log
             mountPath: /opt/apache-doris/fe/log
