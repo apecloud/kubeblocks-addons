@@ -227,7 +227,7 @@ spec:
             - bash
             - -c
             - |
-              /scripts/keeper-switchover.sh
+              /scripts/keeper-switchover.sh > /tmp/keeper-switchover.log 2>&1
       withoutCandidate:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag.major24 }}
         exec:
@@ -235,7 +235,7 @@ spec:
             - bash
             - -c
             - |
-              /scripts/keeper-switchover.sh
+              /scripts/keeper-switchover.sh > /tmp/keeper-switchover.log 2>&1
     memberJoin:
       builtinHandler: custom
       customHandler:

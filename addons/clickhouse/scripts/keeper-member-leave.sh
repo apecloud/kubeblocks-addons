@@ -4,8 +4,8 @@ source /scripts/common.sh
 
 leaving_member_fqdn="$KB_POD_FQDN"
 
-# 1. Find leader from remaining members (exclude the leaving member)
-leader_fqdn=$(find_leader "$KB_MEMBER_ADDRESSES" "$leaving_member_fqdn")
+# 1. Find leader from remaining members
+leader_fqdn=$(find_leader "$KB_MEMBER_ADDRESSES")
 if [[ -z "$leader_fqdn" ]]; then
   echo "ERROR: Could not find cluster leader."
   exit 1

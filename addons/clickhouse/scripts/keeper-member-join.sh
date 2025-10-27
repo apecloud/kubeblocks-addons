@@ -6,7 +6,7 @@ new_member_fqdn="$KB_POD_FQDN"
 keeper_raft_port=${CLICKHOUSE_KEEPER_RAFT_PORT:-9234}
 
 # 1. Find leader from existing members
-leader_fqdn=$(find_leader "$KB_MEMBER_ADDRESSES" "$new_member_fqdn")
+leader_fqdn=$(find_leader "$KB_MEMBER_ADDRESSES")
 if [[ -z "$leader_fqdn" ]]; then
   echo "ERROR: Could not find cluster leader."
   exit 1
