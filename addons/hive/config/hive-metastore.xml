@@ -53,4 +53,8 @@
         <name>hive.cli.print.current.db</name>
         <value>true</value>
     </property>
+    <property>
+        <name>hive.metastore.metrics.enabled</name>
+        <value>true</value>
+    </property>
 </configuration>
