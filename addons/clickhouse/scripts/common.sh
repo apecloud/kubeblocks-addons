@@ -114,13 +114,11 @@ function get_mode_by_keeper() {
 # Find leader node from member addresses
 function find_leader() {
   local member_addresses="$1"
-  local exclude_member="${2:-}"
   [[ -z "$member_addresses" ]] && return 1
 
   while IFS=',' read -ra members; do
     for member_addr in "${members[@]}"; do
       local member_fqdn="${member_addr%:*}"
-      [[ -n "$exclude_member" && "$member_fqdn" == *"$exclude_member"* ]] && continue
       mode=$(get_mode "$member_fqdn")
       if [[ "$mode" == "leader" || "$mode" == "standalone" ]]; then
         echo "$member_fqdn"
