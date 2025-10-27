@@ -1,0 +1,15 @@
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: loki-config-configconstraint
+  labels: 
+    {{- include "loki.labels" . | nindent 4 }}
+spec:
+  fileFormatConfig:
+    format: yaml
+  parametersSchema:
+    # top level loki configuration type
+    topLevelKey: LokiParameter
+
+    cue: |-
+      {{- .Files.Get "configs/loki-config-constraint.cue" | nindent 6 }}

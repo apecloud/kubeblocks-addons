@@ -98,6 +98,7 @@ spec:
   configs:
     - name: loki-config
       templateRef: loki-tpl
+      constraintRef: loki-config-configconstraint
       volumeName: config
       namespace: {{ .Release.Namespace }}
     - name: loki-runtime-config

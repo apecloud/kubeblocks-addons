@@ -55,8 +55,11 @@ limits_config:
   max_cache_freshness_per_query: 10m
   reject_old_samples: true
   reject_old_samples_max_age: 168h
-  retention_period: 48h
-  split_queries_by_interval: 2h
+  retention_period: 168h
+  split_queries_by_interval: 
+
+querier:
+  max_concurrent: 50
 
 {{/* runtime_config: */}}
 {{/* file: {{ getVolumePathByName ( index $.podSpec.containers 0 ) "runtime-config" }}/runtime-config.yaml */}}
