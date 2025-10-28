@@ -22,6 +22,10 @@
         <name>hive.server2.enable.doAs</name>
         <value>false</value>
     </property>
+    <property>
+        <name>hive.server2.metrics.enabled</name>
+        <value>true</value>
+    </property>
    <!-- enable it when using tez
     <property>
         <name>hive.server2.active.passive.ha.enable</name>
