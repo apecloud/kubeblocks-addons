@@ -28,6 +28,7 @@ spec:
         - bash
         - -c
         - |
+          {{- .Files.Get "dataprotection/common.sh" | nindent 10 }} 
           {{- .Files.Get "dataprotection/backup.sh" | nindent 10 }}
       syncProgress:
         enabled: true
@@ -49,4 +50,5 @@ spec:
           - bash
           - -c
           - |
+            {{- .Files.Get "dataprotection/common.sh" | nindent 12 }} 
             {{- .Files.Get "dataprotection/restore.sh" | nindent 12 }}
