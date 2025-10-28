@@ -25,7 +25,9 @@ readonly MAX_RETRY_TIMES=60
 readonly RETRY_INTERVAL=1
 readonly FE_CONFIG_FILE="${DORIS_HOME}/fe/conf/fe.conf"
 readonly FOLLOWER_NUMBER=3
+readonly BACKUP_DIR="${DORIS_HOME}/fe/doris-meta/ape/backup"
 export DATE="$(date +%Y%m%d-%H%M%S)"
+
 cp /etc/config/fe.conf ${FE_CONFIG_FILE}
 
 # Log Function
@@ -273,6 +275,12 @@ main() {
     # validate_environment
     trap cleanup SIGTERM SIGINT
     run_mode="${run_mode:-ELECTION}"
+
+    # if [ -f "${BACKUP_DIR}/.restore" ]; then
+    #     log_info "Found .restore file, run_mode set to RECOVERY"
+    #     run_mode="RECOVERY"
+    #     rm "${BACKUP_DIR}/.restore"
+    # fi
 
     # Config FE TLS
     config_fe_tls

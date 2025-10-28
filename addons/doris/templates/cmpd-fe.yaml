@@ -11,7 +11,7 @@ spec:
   provider: kubeblocks
   description: A Doris FE component definition for Kubernetes
   # The FE can only perform leader election when the majority of members are active.
-  updateStrategy: Parallel
+  updateStrategy: BestEffortParallel
   serviceKind: doris-fe
   services:
   - name: fe
@@ -21,12 +21,12 @@ spec:
       - IPv4
       ipFamilyPolicy: PreferDualStack
       ports:
-      - name: http
-        port: 8030
-        targetPort: http
       - name: mysql
         port: 9030
         targetPort: mysql
+      - name: http
+        port: 8030
+        targetPort: http
       - name: rpc
         port: 9020
         targetPort: rpc
@@ -131,6 +131,7 @@ spec:
       - bash
       - -c
       - |
+        # sleep 10000
         /opt/apache-doris/scripts/init_fe.sh
       ports:
       - containerPort: 8030
@@ -238,6 +239,9 @@ spec:
           - -c
           - /opt/apache-doris/scripts/fe_role_probe.sh
     memberLeave:
+      retryPolicy:
+        maxRetries: 3
+        retryInterval: 5
       exec:
         command:
         - /bin/bash
