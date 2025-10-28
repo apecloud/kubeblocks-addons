@@ -41,7 +41,7 @@ spec:
         - bash
         - -c
         - |
-          {{- .Files.Get "dataprotection/common-restore.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/download-meta.sh" | nindent 10 }}
     postReady:
     - job:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:2.1.6
