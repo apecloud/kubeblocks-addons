@@ -7,17 +7,6 @@ spec:
   env:
     - name: BACKUP_DIR
       value: /opt/apache-doris/fe/doris-meta/ape/backup
-  parametersSchema:
-    openAPIV3Schema:
-      properties:
-        STORAGEP_ROVIDER:
-          description: |
-            STORAGEP_ROVIDER is the s3 storage provider for the Doris cluster backup.
-          type: string
-        REPLICAS:
-          description: |
-            REPLICAS is the number of replicas of the FalkorDB cluster.
-          type: integer
   backup:
     preBackup: []
     postBackup: []
