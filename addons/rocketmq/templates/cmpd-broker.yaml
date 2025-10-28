@@ -91,6 +91,10 @@ spec:
       value: "{{ .Values.broker.port }}"
     - name: DLEDGER_PORT
       value: "{{ .Values.broker.dledgerPort }}"
+    - name: ROCKETMQ_AGENT
+      value: "{{ .Values.broker.agentPort }}"
+    - name: DATA_DIR
+      value: {{ .Values.broker.dataMountPath }}
     - name: MY_CLUSTER_NAME
       valueFrom:
         clusterVarRef:
@@ -163,8 +167,6 @@ spec:
           - mountPath: /home/rocketmq/rocketmq-4.9.6/conf
             name: conf
         env:
-          - name: DATA_DIR
-            value: {{ .Values.broker.dataMountPath }}
           - name: JMX_PORT
             value: "{{ .Values.broker.jxmPort }}"
           - name: MY_POD_NAME
@@ -200,6 +202,17 @@ spec:
         volumeMounts:
           - name: jmx-config
             mountPath: /etc/jmx-rocketmq
+      # agent is a light http server to get topic and subscriptionGroup info
+      - name: agent
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        command:
+          - /bin/rocketmq_agent
+        volumeMounts:
+          - mountPath: {{ .Values.broker.dataMountPath }}
+            name: data
+        ports:
+          - name: agent
+            containerPort: {{ .Values.broker.agentPort }}
   systemAccounts:
     - name: rocketmq-admin
       initAccount: true
