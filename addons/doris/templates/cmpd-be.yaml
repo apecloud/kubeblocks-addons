@@ -11,7 +11,7 @@ spec:
   provider: kubeblocks
   description: A Doris BE component definition for Kubernetes
   serviceKind: doris-be
-  updateStrategy: BestEffortParallel
+  updateStrategy: Parallel
   services:
   - name: be
     serviceName: be

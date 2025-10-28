@@ -180,7 +180,6 @@ staticParameters:
   - ranger_cache_size
   - replica_ack_policy
   - replica_sync_policy
-  - skip_localhost_auth_check
   - small_file_dir
   - spark_dpp_version
   - spark_launcher_log_dir
@@ -499,6 +498,7 @@ immutableParameters:
   - mysql_ssl_default_ca_certificate_password
   - mysql_ssl_default_server_certificate
   - mysql_ssl_default_server_certificate_password
+  - skip_localhost_auth_check
   - JAVA_OPTS
 
 
