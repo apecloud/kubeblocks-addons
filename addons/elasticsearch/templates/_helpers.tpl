@@ -69,6 +69,14 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 ^elasticsearch-
 {{- end -}}
 
+{{- define "elasticsearchMaster.cmpdRegexPattern" -}}
+^elasticsearch-master-
+{{- end -}}
+
+{{- define "elasticsearchData.cmpdRegexPattern" -}}
+^elasticsearch-data-
+{{- end -}}
+
 {{- define "elasticsearch6.cmpdName" -}}
 elasticsearch-6-{{ .Chart.Version }}
 {{- end -}}
