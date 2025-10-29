@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: hdfs-namenode-rebuild
+  name: hdfs-namenode-backup
   labels:
     clusterdefinition.kubeblocks.io/name: hadoop-hdfs
 spec:
@@ -14,12 +14,12 @@ spec:
     postBackup: []
     backupData:
       image: {{ .Values.images.registry }}/{{ .Values.images.hadoop.repository }}:$(IMAGE_TAG)
-      runOnTargetPodNode: false
+      runOnTargetPodNode: true
       command:
       - bash
       - -c
       - |
-        echo "{}" > ${DP_BACKUP_INFO_FILE}
+        {{- .Files.Get "dataprotection/backup-namenode.sh" | nindent 8 }}
       syncProgress:
         enabled: true
         intervalSeconds: 5
@@ -31,7 +31,3 @@ spec:
       - -c
       - |
         # TODO: maybe need check hadoop user?
-        meta_dir=/hadoop/dfs/metadata/current
-        mkdir -p ${meta_dir}
-        touch ${meta_dir}/.hdfs-k8s-zkfc-formatted
-        chown -R hadoop:hadoop ${meta_dir}

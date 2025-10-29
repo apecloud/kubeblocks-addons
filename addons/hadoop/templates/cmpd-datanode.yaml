@@ -19,6 +19,16 @@ spec:
           - name: data
             mountPath: /hadoop
         {{- include "hadoop.initJmxExporterContainer" . | nindent 8 }}
+      - name: init-kubectl
+        command:
+          - sh
+          - -c
+          - |
+            cp -r /opt/bitnami/kubectl/bin/kubectl /hadoop/kubectl
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        volumeMounts:
+          - name: data
+            mountPath: /hadoop
     containers:
       - name: hdfs-datanode
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
@@ -199,3 +209,13 @@ spec:
           compDef: hadoop-hdfs-namenode
           optional: false
           componentName: Required
+  policyRules:
+    - apiGroups:
+        - ""
+      resources:
+        - configmaps
+      verbs:
+        - get
+        - list
+        - patch
+        - update

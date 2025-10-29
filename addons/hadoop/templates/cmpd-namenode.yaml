@@ -85,6 +85,8 @@ spec:
           - name: namenode-config
             mountPath: /hadoop/conf/hdfs-site.xml
             subPath: hdfs-site.xml
+          - name: hosts-config
+            mountPath: /hadoop/conf-host
           - name: namenode-config
             mountPath: /hadoop/conf/log4j.properties
             subPath: log4j.properties

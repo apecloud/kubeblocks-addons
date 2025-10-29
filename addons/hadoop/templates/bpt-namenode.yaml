@@ -7,15 +7,24 @@ metadata:
 spec:
   serviceKind: HadoopHDFS
   compDefs:
-   - hdfs-namenode
+   - hadoop-hdfs-namenode
+  target:
+    role: standby
+    fallbackRole: active
   backupMethods:
-    - name: rebuild
+    - name: full-namenode
       snapshotVolumes: false
-      actionSetName: hadfs-namenode-rebuild
+      actionSetName: hdfs-namenode-backup
       targetVolumes:
         volumeMounts:
         - name: metadata-dir
           mountPath: /hadoop
+        - name: hadoop-core-config
+          mountPath: /hadoop/conf/core-site.xml
+          subPath: core-site.xml
+        - name: namenode-config
+          mountPath: /hadoop/conf/hdfs-site.xml
+          subPath: hdfs-site.xml
       env:
         - name: IMAGE_TAG
           valueFrom:
