@@ -13,7 +13,7 @@ spec:
   serviceVersion: {{ .Chart.AppVersion }}
   configs:
     - name: influxdb-config
-      template: {{ include "influxdb.configurationTemplate" . }}
+      template: {{ include "influxdb.standalone.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: influxdb-config
       defaultMode: 0555

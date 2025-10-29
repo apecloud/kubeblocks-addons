@@ -50,10 +50,16 @@ spec:
     - name: admin
       initAccount: true
       passwordGenerationPolicy:
-        length: 10
+        length: 12
         numDigits: 3
-        numSymbols: 4
+        numSymbols: 3
         letterCase: MixedCases
+  configs:
+    - name: config-data
+      template: {{ include "influxdb.data.configurationTemplate" . }}
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
   runtime:
     initContainers:
       - name: copy-tools
@@ -81,6 +87,8 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          - name: NODE_TYPE
+            value: data
         ports:
           - name: http
             containerPort: 8086
@@ -95,6 +103,10 @@ spec:
             mountPath: /scripts
           - name: tools
             mountPath: /tools
+          # note: this volume will overwrite the default config in docker image
+          # (https://github.com/chengshiwen/influxdb-cluster/blob/master/docker/data/influxdb.conf)
+          - name: config
+            mountPath: /etc/influxdb
     volumes:
       - name: tools
         emptyDir: {}

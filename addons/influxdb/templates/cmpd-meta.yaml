@@ -27,6 +27,12 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
+  configs:
+    - name: config-meta
+      template: {{ include "influxdb.meta.configurationTemplate" . }}
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
   runtime:
     initContainers:
       - name: copy-tools
@@ -55,6 +61,8 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          - name: NODE_TYPE
+            value: meta
         ports:
           - name: http
             containerPort: 8091
@@ -69,6 +77,10 @@ spec:
             mountPath: /scripts
           - name: tools
             mountPath: /tools
+          # note: this volume will overwrite the default config in docker image
+          # (https://github.com/chengshiwen/influxdb-cluster/blob/master/docker/meta/influxdb-meta.conf)
+          - name: config
+            mountPath: /etc/influxdb
     volumes:
       - name: tools
         emptyDir: {}

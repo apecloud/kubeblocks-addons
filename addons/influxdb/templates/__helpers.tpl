@@ -77,8 +77,16 @@ influxdb-data-{{ .Chart.Version }}
 {{/*
 Define influxdb configuration template name
 */}}
-{{- define "influxdb.configurationTemplate" -}}
+{{- define "influxdb.standalone.configurationTemplate" -}}
 influxdb-configuration
+{{- end -}}
+
+{{- define "influxdb.meta.configurationTemplate" -}}
+influxdb-meta-configuration-tpl
+{{- end -}}
+
+{{- define "influxdb.data.configurationTemplate" -}}
+influxdb-data-configuration-tpl
 {{- end -}}
 
 {{- define "influxdb.prcName" -}}
