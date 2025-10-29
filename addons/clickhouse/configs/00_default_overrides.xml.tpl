@@ -1,6 +1,6 @@
 {{- $cluster_name := getEnvByName ( getContainerByName $.podSpec.containers "clickhouse" ) "INIT_CLUSTER_NAME" | default "default" }}
 <clickhouse>
-  <listen_host>0.0.0.0</listen_host>
+  <listen_host replace="replace">::</listen_host>
   {{- if $.component.tlsConfig }}
   <https_port replace="replace" from_env="CLICKHOUSE_HTTPS_PORT"/>
   <tcp_port_secure replace="replace" from_env="CLICKHOUSE_TCP_SECURE_PORT"/>
