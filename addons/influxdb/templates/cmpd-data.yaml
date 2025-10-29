@@ -96,6 +96,14 @@ spec:
           - name: internal
             containerPort: 8088
             protocol: TCP
+        startupProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 10
+          httpGet:
+            port: 8086
+            path: "/ping"
         volumeMounts:
           - name: data
             mountPath: /var/lib/influxdb
