@@ -308,6 +308,7 @@ get_current_comp_nodes_for_scale_out_replica() {
   other_comp_primary_nodes=()
   other_comp_primary_fail_nodes=()
   other_comp_other_nodes=()
+  network_mode="default"
 
   set_current_comp_nodes() {
     local node_role="$1"
@@ -358,6 +359,7 @@ get_current_comp_nodes_for_scale_out_replica() {
   declare -A host_network_ports
   local using_host_network=false
   if [ -n "$REDIS_CLUSTER_ADVERTISED_PORT" ]; then
+    network_mode="advertised"
     using_advertised_ports=true
     IFS=',' read -ra ADDR <<< "$REDIS_CLUSTER_ADVERTISED_PORT"
     for i in "${ADDR[@]}"; do
@@ -366,6 +368,7 @@ get_current_comp_nodes_for_scale_out_replica() {
     done
   elif [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
     using_host_network=true
+    network_mode="hostNetwork"
     IFS=',' read -ra port_mappings <<< "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"
     for mapping in "${port_mappings[@]}"; do
       shard_name=$(echo "$mapping" | cut -d':' -f1)
@@ -510,15 +513,19 @@ scale_redis_cluster_replica() {
   primary_node_port=$(echo "$primary_node_endpoint_with_port" | awk -F ':' '{print $2}')
   primary_node_fqdn=$(echo "$primary_node_info" | awk -F '#' '{print $2}')
   primary_node_bus_port=$(echo "$primary_node_info" | awk -F '@' '{print $2}')
+  primary_node_endpoint_for_meet="$primary_node_endpoint"
+  if [ "$network_mode" == "default" ]; then
+    primary_node_endpoint_for_meet="$primary_node_fqdn"
+  fi
   # if the current pod is not a rebuild-instance and is already in the cluster, skip scale out replica
   if ! is_rebuild_instance && is_node_in_cluster "$primary_node_endpoint" "$primary_node_port" "$current_pod_name"; then
     current_pod_with_svc="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME"
     if [[ $primary_node_fqdn == *"$current_pod_with_svc"* ]]; then
       echo "Current pod $current_pod_name is primary node, check and correct other primary nodes..."
-      check_and_meet_other_primary_nodes "$primary_node_endpoint" "$primary_node_port"
+      check_and_meet_other_primary_nodes "$primary_node_endpoint_for_meet" "$primary_node_port"
     else
       echo "Current pod $current_pod_name is a secondary node, check and meet current primary node..."
-      check_and_meet_current_primary_node "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port"
+      check_and_meet_current_primary_node "$primary_node_endpoint_for_meet" "$primary_node_port" "$primary_node_bus_port"
     fi
     echo "Node $current_pod_name is already in the cluster, skipping scale out replica..."
     exit 0
