@@ -219,3 +219,13 @@ spec:
         - list
         - patch
         - update
+  lifecycleActions:
+    memberLeave:
+      exec:
+        command:
+          - /bin/bash
+          - -c
+          - |
+            /kubeblocks/scripts/datanode-memberleave.sh
+        targetPodSelector: Any
+        container: hdfs-datanode

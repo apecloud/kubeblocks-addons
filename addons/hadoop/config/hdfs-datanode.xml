@@ -28,7 +28,7 @@
     </property>
 
     <property>
-        <name>dfs.client.failover.proxy.provider.hadoop</name>
+        <name>dfs.client.failover.proxy.provider.{{ .CLUSTER_NAME }}</name>
         <value>org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider</value>
     </property>
 
