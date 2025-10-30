@@ -38,6 +38,7 @@ current_comp_other_nodes=()
 other_comp_primary_nodes=()
 other_comp_primary_fail_nodes=()
 other_comp_other_nodes=()
+network_mode="default"
 
 
 init_environment(){
@@ -158,7 +159,7 @@ get_current_comp_nodes_for_scale_out_replica() {
   fi
 
   # determine network mode
-  local network_mode="default"
+  network_mode="default"
   if ! is_empty "$CURRENT_SHARD_ADVERTISED_PORT"; then
     network_mode="advertised_svc"
   elif ! is_empty "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"; then
@@ -360,9 +361,13 @@ scale_redis_cluster_replica() {
   primary_node_port=$(echo "$primary_node_endpoint_with_port" | awk -F ':' '{print $2}')
   primary_node_fqdn=$(echo "$primary_node_info" | awk -F '#' '{print $2}')
   primary_node_bus_port=$(echo "$primary_node_info" | awk -F '@' '{print $2}')
+  primary_node_endpoint_for_meet="$primary_node_endpoint"
+  if [ "$network_mode" == "default" ]; then
+     primary_node_endpoint_for_meet="$primary_node_fqdn"
+  fi
   if contains "$primary_node_fqdn" "$CURRENT_POD_NAME"; then
      echo "Current pod $CURRENT_POD_NAME is primary node, check and correct other primary nodes..."
-     check_and_meet_other_primary_nodes "$primary_node_endpoint" "$primary_node_port"
+     check_and_meet_other_primary_nodes "$primary_node_endpoint_for_meet" "$primary_node_port"
      echo "Node $CURRENT_POD_NAME is already in the cluster, skipping scale out replica..."
      exit 0
   fi
@@ -370,7 +375,7 @@ scale_redis_cluster_replica() {
   if ! is_rebuild_instance && check_node_in_cluster_with_retry "$primary_node_endpoint" "$primary_node_port" "$CURRENT_POD_NAME"; then
     # if current pod is primary node, check the others primary info, if the others primary node info is expired, send cluster meet command again
     echo "Current pod $CURRENT_POD_NAME is a secondary node, check and meet current primary node..."
-    check_and_meet_current_primary_node "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port"
+    check_and_meet_current_primary_node "$primary_node_endpoint_for_meet" "$primary_node_port" "$primary_node_bus_port"
     echo "Node $CURRENT_POD_NAME is already in the cluster, skipping scale out replica..."
     exit 0
   fi
