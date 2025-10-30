@@ -1,6 +1,6 @@
 #!/bin/bash
-readonly RETRY_ATTEMPTS=6
-readonly SLEEP_INTERVAL=10
+readonly RETRY_ATTEMPTS=3
+readonly SLEEP_INTERVAL=5
 readonly TLS_MOUNT_PATH="/etc/pki/tls"
 
 # Low-level keeper client execution with connection retry
@@ -100,7 +100,7 @@ function get_mode() {
     echo "$mode" | awk '{print $2}'
   else
     local mode
-    mode=$(echo srvr | /shared-tools/nc "$host" "$port" | grep Mode)
+    mode=$(echo srvr | /shared-tools/nc -w 1 "$host" "$port" | grep Mode)
     echo "$mode" | awk '{print $2}'
   fi
 }
