@@ -47,6 +47,7 @@ spec:
         hadoop-common: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
         init-jmx-exporter: {{ $.Values.images.registry }}/{{ $.Values.images.jmxExporter.repository }}:{{ $.Values.images.jmxExporter.tag }}
         init-kubectl: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.kubectl.repository }}:{{ $.Values.images.kubectl.tag }}
+        memberLeave: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
     - name: namenode-{{ .version }}
       serviceVersion: {{ .version }}
       images:

@@ -3,13 +3,13 @@
 
 HOSTNAME=$(hostname)
 if [ -z "$DATANODE_DATA_HOST_PORT" ]; then
-   HOSTNAME="${HOSTNAME}.${CLUSTER_NAME}-${COMPONENT_NAME}-headless.${CLUSTER_NAMESPACE}.svc.${CLUSTER_DOMAIN}"
+   HOSTNAME="${KB_LEAVE_MEMBER_POD_FQDN}"
 fi
 # 1. get excludeHosts from cm
 configMapName=${CLUSTER_NAME}-namenode-hosts
 excludeHosts=$(/hadoop/kubectl get cm "${configMapName}" -n ${CLUSTER_NAMESPACE} -o jsonpath='{.data.hosts\.exclude}')
 if [ $? -ne 0 ]; then
-    echo "Failed to get exclude hosts config map: ${excludeHosts}"
+    echo "Failed to get exclude hosts config map: ${excludeHosts}" >&2
     exit 1
 fi
 echo "Current excludeHosts: $excludeHosts, HOSTNAME: $HOSTNAME"
@@ -21,7 +21,7 @@ else
   if [ -z "$excludeHosts" ]; then
       excludeHosts="${HOSTNAME}"
   else
-      excludeHosts="${excludeHosts}\n${HOSTNAME}"
+      excludeHosts="${HOSTNAME}\n${excludeHosts}"
   fi
   /hadoop/kubectl patch configmap "$configMapName" -n "$CLUSTER_NAMESPACE" --type strategic -p "{\"data\":{\"hosts.exclude\":\"$excludeHosts\"}}"
   sleep 15
@@ -29,7 +29,7 @@ fi
 
 get_decommission_status(){
   sub_cmd=$1
-  run_as_user "hadoop" hdfs dfsadmin -report -live | awk -v host="$HOSTNAME" '
+  hdfs dfsadmin -report -live | awk -v host="$HOSTNAME" '
   $1 == "Hostname:" && $2 == host {
       hostname_match = 1
   }
@@ -49,7 +49,7 @@ export HADOOP_CONF_DIR=/hadoop/conf
 export PATH=$PATH:$HADOOP_HOME/bin
 export PATH=$PATH:$HADOOP_HOME/sbin
 
-run_as_user "hadoop" hdfs dfsadmin -refreshNodes
+hdfs dfsadmin -refreshNodes
 decommissionStatus=$(get_decommission_status)
 if [[ -z "$decommissionStatus" || "$decommissionStatus" = "Decommissioned" ]]; then
    # 3. remove this host from excludeHosts when datanode is decommissioned
@@ -57,7 +57,7 @@ if [[ -z "$decommissionStatus" || "$decommissionStatus" = "Decommissioned" ]]; t
    excludeHosts=$(echo -e "$excludeHosts" | sed "/^${HOSTNAME}$/d" | sed '/^$/d')
    /hadoop/kubectl patch configmap "$configMapName" -n "$CLUSTER_NAMESPACE" --type strategic -p "{\"data\":{\"hosts.exclude\":\"$excludeHosts\"}}"
 else
-  echo "Datanode ${HOSTNAME} is not decommissioned. Current status: ${decommissionStatus}, retry again"
+  echo "Datanode ${HOSTNAME} is not decommissioned. Current status: ${decommissionStatus}, retry again" >&2
   exit 1
 fi
 

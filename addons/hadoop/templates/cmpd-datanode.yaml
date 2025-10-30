@@ -223,7 +223,7 @@ spec:
     memberLeave:
       exec:
         command:
-          - /bin/bash
+          - bash
           - -c
           - |
             /kubeblocks/scripts/datanode-memberleave.sh

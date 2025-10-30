@@ -30,6 +30,8 @@ if [[ -n "${DATANODE_DATA_HOST_PORT}" ]]; then
   echo "${HOST_IP} `hostname`" >> /etc/hosts
 fi
 
+run_as_user "hadoop" hdfs dfsadmin -refreshNodes
+
 START_COMMAND=("${HADOOP_HOME}/bin/hdfs" "datanode" "$@")
 
 info "** Starting DataNode **"
