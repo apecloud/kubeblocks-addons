@@ -1,5 +1,5 @@
 <clickhouse>
-  <listen_host>0.0.0.0</listen_host>
+  <listen_host replace="replace">::</listen_host>
   {{- if eq (index $ "TLS_ENABLED") "true" }}
   <https_port replace="replace" from_env="CLICKHOUSE_HTTPS_PORT"/>
   <tcp_port_secure replace="replace" from_env="CLICKHOUSE_TCP_SECURE_PORT"/>
@@ -30,6 +30,7 @@
       <log_storage_path>/bitnami/clickhouse/coordination/log</log_storage_path>
       <snapshot_storage_path>/bitnami/clickhouse/coordination/snapshots</snapshot_storage_path>
       <enable_reconfiguration>true</enable_reconfiguration>
+      <enable_ipv6>true</enable_ipv6>
       <coordination_settings>
           <operation_timeout_ms>10000</operation_timeout_ms>
           <session_timeout_ms>30000</session_timeout_ms>

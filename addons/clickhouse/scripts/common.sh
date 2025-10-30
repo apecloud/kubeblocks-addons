@@ -1,6 +1,6 @@
 #!/bin/bash
-readonly RETRY_ATTEMPTS=6
-readonly SLEEP_INTERVAL=10
+readonly RETRY_ATTEMPTS=3
+readonly SLEEP_INTERVAL=5
 readonly TLS_MOUNT_PATH="/etc/pki/tls"
 
 # Low-level keeper client execution with connection retry
@@ -100,7 +100,7 @@ function get_mode() {
     echo "$mode" | awk '{print $2}'
   else
     local mode
-    mode=$(echo srvr | /shared-tools/nc "$host" "$port" | grep Mode)
+    mode=$(echo srvr | /shared-tools/nc -w 1 "$host" "$port" | grep Mode)
     echo "$mode" | awk '{print $2}'
   fi
 }
@@ -114,13 +114,11 @@ function get_mode_by_keeper() {
 # Find leader node from member addresses
 function find_leader() {
   local member_addresses="$1"
-  local exclude_member="${2:-}"
   [[ -z "$member_addresses" ]] && return 1
 
   while IFS=',' read -ra members; do
     for member_addr in "${members[@]}"; do
       local member_fqdn="${member_addr%:*}"
-      [[ -n "$exclude_member" && "$member_fqdn" == *"$exclude_member"* ]] && continue
       mode=$(get_mode "$member_fqdn")
       if [[ "$mode" == "leader" || "$mode" == "standalone" ]]; then
         echo "$member_fqdn"

@@ -15,7 +15,7 @@ function check_is_leader() {
 }
 
 # 1. Find leader from existing members
-leader_fqdn=$(find_leader "$CH_KEEPER_POD_FQDN_LIST" "$new_member_fqdn")
+leader_fqdn=$(find_leader "$CH_KEEPER_POD_FQDN_LIST")
 if [[ -z "$leader_fqdn" ]]; then
   if ! check_is_leader; then
     echo "ERROR: Could not find cluster leader."
