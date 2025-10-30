@@ -1,9 +1,22 @@
 #!/usr/bin/env bash
 . /opt/scripts/libs/libos.sh
+export HADOOP_LOG_DIR=/hadoop/logs
+export HADOOP_CONF_DIR=/hadoop/conf
+export PATH=$PATH:$HADOOP_HOME/bin
+export PATH=$PATH:$HADOOP_HOME/sbin
+
+get_hostname(){
+  local host_info=$1
+  hdfs dfsadmin -report -live | grep -A 5 "$host_info" | grep "^Hostname:" | awk '{print $2}'
+}
 
 HOSTNAME=$(hostname)
 if [ -z "$DATANODE_DATA_HOST_PORT" ]; then
    HOSTNAME="${KB_LEAVE_MEMBER_POD_FQDN}"
+else
+  HOST_IP=$(/hadoop/kubectl/kubectl get pod "${KB_LEAVE_MEMBER_POD_NAME}" -n "${CLUSTER_NAMESPACE}" -o jsonpath='{.status.hostIP}')
+  HOST_INFO="${HOST_IP}:${DATANODE_DATA_HOST_PORT}"
+  HOSTNAME=$(get_hostname "$HOST_INFO")
 fi
 # 1. get excludeHosts from cm
 configMapName=${CLUSTER_NAME}-namenode-hosts
@@ -43,11 +56,6 @@ get_decommission_status(){
   }
   '
 }
-
-export HADOOP_LOG_DIR=/hadoop/logs
-export HADOOP_CONF_DIR=/hadoop/conf
-export PATH=$PATH:$HADOOP_HOME/bin
-export PATH=$PATH:$HADOOP_HOME/sbin
 
 hdfs dfsadmin -refreshNodes
 decommissionStatus=$(get_decommission_status)

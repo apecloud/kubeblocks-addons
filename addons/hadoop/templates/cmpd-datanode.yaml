@@ -219,6 +219,13 @@ spec:
         - list
         - patch
         - update
+    - apiGroups:
+        - ""
+      resources:
+        - pods
+      verbs:
+        - get
+        - list
   lifecycleActions:
     memberLeave:
       exec:
