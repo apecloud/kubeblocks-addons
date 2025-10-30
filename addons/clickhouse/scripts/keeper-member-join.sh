@@ -2,11 +2,11 @@
 set -euxo pipefail
 source /scripts/common.sh
 
-new_member_fqdn="$KB_POD_FQDN"
+new_member_fqdn="${KB_POD_FQDN}.cluster.local"
 keeper_raft_port=${CLICKHOUSE_KEEPER_RAFT_PORT:-9234}
 
 # 1. Find leader from existing members
-leader_fqdn=$(find_leader "$KB_MEMBER_ADDRESSES" "$new_member_fqdn")
+leader_fqdn=$(find_leader "$KB_MEMBER_ADDRESSES")
 if [[ -z "$leader_fqdn" ]]; then
   echo "ERROR: Could not find cluster leader."
   exit 1
@@ -18,7 +18,7 @@ server_id=$((pod_ordinal + 1))
 echo "INFO: Pod ordinal: $pod_ordinal, Server ID: $server_id"
 
 # 3. Check if member already exists
-config=$(get_config "$(normalize_fqdn "$leader_fqdn")")
+config=$(get_config "$leader_fqdn")
 if echo "$config" | grep -q "$new_member_fqdn"; then
   echo "INFO: Member $new_member_fqdn already exists in configuration"
   exit 0

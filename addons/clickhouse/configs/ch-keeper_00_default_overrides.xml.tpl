@@ -1,5 +1,5 @@
 <clickhouse>
-  <listen_host>0.0.0.0</listen_host>
+  <listen_host replace="replace">::</listen_host>
   {{- if $.component.tlsConfig }}
   <https_port replace="replace" from_env="CLICKHOUSE_HTTPS_PORT"/>
   <tcp_port_secure replace="replace" from_env="CLICKHOUSE_TCP_SECURE_PORT"/>
@@ -21,6 +21,7 @@
   </logger>
   <keeper_server>
       <enable_reconfiguration>true</enable_reconfiguration>
+      <enable_ipv6>true</enable_ipv6>
       {{- if $.component.tlsConfig }}
       <tcp_port_secure replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_TLS_PORT"/>
       <secure>1</secure>

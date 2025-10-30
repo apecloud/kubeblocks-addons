@@ -1,7 +1,7 @@
 #!/bin/bash
 # Constants for retry logic
-readonly RETRY_ATTEMPTS=6
-readonly SLEEP_INTERVAL=10
+readonly RETRY_ATTEMPTS=3
+readonly SLEEP_INTERVAL=5
 
 # Low-level keeper client execution with connection retry
 # Handles connection issues, timeouts, and transient network problems
@@ -73,13 +73,6 @@ function retry_keeper_operation() {
   done
 }
 
-# Normalize FQDN to consistent short format
-function normalize_fqdn() {
-  local fqdn="$1"
-  [[ -z "$fqdn" ]] && return 1
-  echo "${fqdn%.cluster.local}"
-}
-
 # Get keeper cluster configuration
 function get_config() {
   local host="$1"
@@ -90,7 +83,7 @@ function get_config() {
 # Get keeper node mode (leader/follower/observer)
 function get_mode() {
   local host="$1"
-  local mode=$(echo srvr | /shared-tools/nc "$host" 9181 | grep Mode)
+  local mode=$(echo srvr | /shared-tools/nc -w 1 "$host" 9181 | grep Mode)
   echo "$mode" | awk '{print $2}'
 }
 
@@ -103,13 +96,11 @@ function get_mode_by_keeper() {
 # Find leader node from member addresses
 function find_leader() {
   local member_addresses="$1"
-  local exclude_member="${2:-}"
   [[ -z "$member_addresses" ]] && return 1
 
   while IFS=',' read -ra members; do
     for member_addr in "${members[@]}"; do
       local member_fqdn="${member_addr%:*}"
-      [[ -n "$exclude_member" && "$member_fqdn" == *"$exclude_member"* ]] && continue
       mode=$(get_mode "$member_fqdn")
       if [[ "$mode" == "leader" || "$mode" == "standalone" ]]; then
         echo "$member_fqdn"

@@ -48,7 +48,12 @@ keeper_run "$leader_fqdn" "reconfig remove '$pre_leader_config_id'"
 # 5. ensure candidate become leader
 retry_keeper_operation \
   "mode=\$(get_mode_by_keeper '$candidate_fqdn')" \
-  "[[ \"\$mode\" == \"leader\" ]]"
+  "[[ \"\$mode\" == \"leader\" || \"\$mode\" == \"standalone\" ]]"
+
+if [[ "$READD" == "false" ]]; then
+  echo "INFO: Skipping re-adding pre-leader"
+  exit 0
+fi
 
 # 6. re-add after pre leader reboot
 retry_keeper_operation \
