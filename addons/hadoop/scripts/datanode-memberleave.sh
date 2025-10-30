@@ -17,6 +17,10 @@ else
   HOST_IP=$(/hadoop/kubectl/kubectl get pod "${KB_LEAVE_MEMBER_POD_NAME}" -n "${CLUSTER_NAMESPACE}" -o jsonpath='{.status.hostIP}')
   HOST_INFO="${HOST_IP}:${DATANODE_DATA_HOST_PORT}"
   HOSTNAME=$(get_hostname "$HOST_INFO")
+  if [ -z "$HOSTNAME" ]; then
+    echo "No hostname found for host info: ${HOST_INFO}, exit 0"
+    exit 0
+  fi
 fi
 # 1. get excludeHosts from cm
 configMapName=${CLUSTER_NAME}-namenode-hosts
