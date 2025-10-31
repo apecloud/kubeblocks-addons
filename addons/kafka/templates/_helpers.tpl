@@ -220,3 +220,12 @@ Define kafka tools scripts tpl name
 {{- define "kafka.toolsScriptsTplName" -}}
 kafka-tools-scripts-tpl
 {{- end -}}
+
+{{- define "kafka.tls.cmpdConfig" -}}
+tls:
+  volumeName: tls 
+  mountPath: /etc/pki/tls
+  caFile: ca.crt
+  certFile: tls.crt
+  keyFile: tls.key
+{{- end -}}
