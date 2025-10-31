@@ -248,8 +248,12 @@ check_and_meet_other_primary_nodes() {
     node_endpoint=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $1}')
     node_port=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $2}')
     node_bus_port=$(echo "$node_info" | awk -F '@' '{print $2}')
-
-    check_and_meet_node "$current_primary_endpoint" "$current_primary_port" "$node_endpoint" "$node_port" "$node_bus_port"
+    node_fqdn=$(echo "$node_info" | awk -F '#' '{print $2}')
+    node_endpoint_for_meet="$node_endpoint"
+    if [ "$network_mode" == "default" ]; then
+      node_endpoint_for_meet="$node_fqdn"
+    fi
+    check_and_meet_node "$current_primary_endpoint" "$current_primary_port" "$node_endpoint_for_meet" "$node_port" "$node_bus_port"
     wait_random_second 10 1
   done
 }
