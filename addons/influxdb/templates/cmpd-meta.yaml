@@ -1,0 +1,119 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "influxdb.meta.cmpdName" . }}
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "influxdb.annotations" . | nindent 4 }}
+spec:
+  provider: Apecloud
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  services:
+    - name: meta
+      spec:
+        ports:
+          - name: http
+            port: 8091
+            targetPort: http
+  vars:
+    - name: POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+  configs:
+    - name: config-meta
+      template: {{ include "influxdb.meta.configurationTemplate" . }}
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
+  runtime:
+    initContainers:
+      - name: copy-tools
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+          - |
+            cp /bin/jq /tools/
+        volumeMounts:
+          - name: tools
+            mountPath: /tools
+    containers:
+      - name: influxdb-meta
+        imagePullPolicy: IfNotPresent
+        command:
+          - /scripts/run.sh
+          - /entrypoint.sh
+          - influxd-meta
+        env:
+          # for debug
+          # - name: INFLUXDB_META_CLUSTER_TRACING
+          #   value: "true"
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: NODE_TYPE
+            value: meta
+        ports:
+          - name: http
+            containerPort: 8091
+            protocol: TCP
+          - name: internal
+            containerPort: 8089
+            protocol: TCP
+        startupProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 10
+          httpGet:
+            port: 8091
+            path: "/ping"
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/influxdb
+          - name: scripts
+            mountPath: /scripts
+          - name: tools
+            mountPath: /tools
+          # note: this volume will overwrite the default config in docker image
+          # (https://github.com/chengshiwen/influxdb-cluster/blob/master/docker/meta/influxdb-meta.conf)
+          - name: config
+            mountPath: /etc/influxdb
+    volumes:
+      - name: tools
+        emptyDir: {}
+  scripts:
+    - name: scripts
+      template: {{ include "influxdb.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0777
+  roles:
+    - name: leader
+      updatePriority: 2
+      participatesInQuorum: true
+    - name: follower
+      updatePriority: 1
+      participatesInQuorum: true
+  lifecycleActions:
+    roleProbe:
+      exec:
+        container: influxdb-meta
+        command:
+          - /scripts/meta_roleprobe.sh
+    postProvision:
+      preCondition: RuntimeReady
+      exec:
+        container: influxdb-meta
+        command:
+          - /scripts/meta_postprovision.sh
