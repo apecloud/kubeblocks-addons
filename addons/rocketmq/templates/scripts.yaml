@@ -11,6 +11,8 @@ data:
     {{- .Files.Get "scripts/get-role.sh" | nindent 4 }}
   util.sh: |-
     {{- .Files.Get "scripts/util.sh" | nindent 4 }}
+  remove-broker.sh: |-
+    {{- .Files.Get "scripts/remove-broker.sh" | nindent 4 }}
 
 ---
 apiVersion: v1
