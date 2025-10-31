@@ -11,12 +11,16 @@ images:
   pullPolicy: IfNotPresent
   # these images are originally from bitnami repos. bitnami repos will soon be archived so we use apecloud's repos.
   kafka:
+    # unless otherwise noted, kakfa images are mirrored from bitnamilegacy/kafka
     repository: apecloud/kafka
     tag:
       v3_3_2: 3.3.2-debian-11-r54
       v2_7_0: 2.7.0-debian-10-r124
       # 2.8.2 is built from https://github.com/apecloud/containers/tree/main/apecloud/kafka-2.8.2
       v2_8_2: 2.8.2-r1
+      v3_7_1: 3.7.1-debian-12-r11
+      v3_8_1: 3.8.1-debian-12-r2
+      v3_9_0: 3.9.0-debian-12-r13
   kafkaExporter:
     repository: apecloud/kafka-exporter
     tag: 1.6.0-debian-11-r67
