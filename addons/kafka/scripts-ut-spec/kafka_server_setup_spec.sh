@@ -66,10 +66,10 @@ Describe "Kafka Server Setup Script Tests"
   }
 
   Describe "set_tls_configuration_if_needed()"
-    It "skips TLS configuration if TLS_ENABLED or TLS_CERT_PATH is not set"
+    It "skips TLS configuration if tls is not enabled"
       un_setup
       When run set_tls_configuration_if_needed
-      The output should include "TLS_ENABLED or TLS_CERT_PATH is not set, skipping TLS configuration"
+      The output should include "tls is not enabled, skipping TLS configuration"
       The status should be success
     End
 
@@ -95,7 +95,7 @@ Describe "Kafka Server Setup Script Tests"
       When run set_tls_configuration_if_needed
       The output should include "[tls]KAFKA_TLS_TRUSTSTORE_FILE=$mock_tls_cert_path/kafka.truststore.pem"
       # hack openssl command error
-      The stderr should be present
+      The stderr should equal "Could not find private key of key from ./certs/tls.key"
       The status should be success
     End
 

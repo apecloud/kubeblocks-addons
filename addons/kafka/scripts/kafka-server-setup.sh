@@ -44,7 +44,9 @@ set_tls_configuration_if_needed() {
   #echo "KAFKA_CFG_SECURITY_INTER_BROKER_PROTOCOL=SSL"
 
   mkdir -p "$kafka_config_certs_path"
-  TLS_CERT_PATH="/etc/pki/tls"
+  if [[ -z "$TLS_CERT_PATH" ]]; then
+    TLS_CERT_PATH="/etc/pki/tls"
+  fi
   PEM_CA="$TLS_CERT_PATH/ca.crt"
   PEM_CERT="$TLS_CERT_PATH/tls.crt"
   PEM_KEY="$TLS_CERT_PATH/tls.key"
