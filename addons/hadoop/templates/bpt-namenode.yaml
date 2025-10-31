@@ -35,3 +35,8 @@ spec:
               - serviceVersions:
                   - "3.3.6"
                 mappedValue: "3.3.6"
+  schedules:
+    - backupMethod: full-namenode
+      enabled: false
+      cronExpression: "0 18 * * 0"
+      retentionPeriod: 7d
