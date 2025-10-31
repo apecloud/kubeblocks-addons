@@ -65,16 +65,16 @@ Describe "Kafka Server Setup Script Tests"
     unset KAFKA_CFG_METADATA_LOG_DIR
   }
 
+  BeforeEach "un_setup"
+
   Describe "set_tls_configuration_if_needed()"
     It "skips TLS configuration if tls is not enabled"
-      un_setup
       When run set_tls_configuration_if_needed
       The output should include "tls is not enabled, skipping TLS configuration"
       The status should be success
     End
 
     It "returns error if TLS_CERT_PATH is set but PEM files are missing"
-      un_setup
       TLS_ENABLED="true"
       TLS_CERT_PATH="$mock_tls_cert_path"
       When run set_tls_configuration_if_needed
@@ -84,7 +84,8 @@ Describe "Kafka Server Setup Script Tests"
     End
 
     It "successfully sets TLS configuration when all required variables are set"
-      un_setup
+      openssl() { :; }
+
       TLS_ENABLED="true"
       TLS_CERT_PATH="$mock_tls_cert_path"
       # Create mock PEM files for testing
@@ -94,13 +95,11 @@ Describe "Kafka Server Setup Script Tests"
       touch $mock_tls_cert_path/tls.key
       When run set_tls_configuration_if_needed
       The output should include "[tls]KAFKA_TLS_TRUSTSTORE_FILE=$mock_tls_cert_path/kafka.truststore.pem"
-      # hack openssl command error
-      The stderr should equal "Could not find private key of key from ./certs/tls.key"
+      The stderr should be blank
       The status should be success
     End
 
     It "fails if TLS_CERT_PATH is set but ca.crt is missing"
-      un_setup
       rm -f $mock_tls_cert_path/ca.crt
       TLS_ENABLED="true"
       TLS_CERT_PATH="$mock_tls_cert_path"
@@ -116,14 +115,12 @@ Describe "Kafka Server Setup Script Tests"
 
   Describe "convert_server_properties_to_env_var()"
     It "skips conversion if the server properties file does not exist"
-      un_setup
       SERVER_PROP_FILE="non_existent_file.properties"
       When run convert_server_properties_to_env_var
       The status should be success
     End
 
     It "successfully converts properties to environment variables"
-      un_setup
       SERVER_PROP_FILE="$kafka_config_path/server.properties"
       echo -e "broker.id=0\nlisteners=PLAINTEXT://:9092\n" > "$SERVER_PROP_FILE"
       When run convert_server_properties_to_env_var
@@ -133,7 +130,6 @@ Describe "Kafka Server Setup Script Tests"
     End
 
     It "handles properties with no value gracefully"
-      un_setup
       SERVER_PROP_FILE="$kafka_config_path/server.properties"
       echo -e "broker.id=0\nlisteners=\n" > "$SERVER_PROP_FILE"
       When run convert_server_properties_to_env_var
@@ -142,7 +138,6 @@ Describe "Kafka Server Setup Script Tests"
     End
 
     It "ignores commented lines"
-      un_setup
       SERVER_PROP_FILE="$kafka_config_path/server.properties"
       echo -e "# This is a comment\nbroker.id=0\n# listeners=PLAINTEXT://:9092\n" > "$SERVER_PROP_FILE"
       When run convert_server_properties_to_env_var
@@ -154,7 +149,6 @@ Describe "Kafka Server Setup Script Tests"
 
   Describe "override_sasl_configuration()"
     It "sets SASL configuration when KB_KAFKA_ENABLE_SASL is true"
-      un_setup
       KB_KAFKA_ENABLE_SASL="true"
       KB_KAFKA_SASL_CONFIG_PATH="$kafka_config_path/kafka_jaas.conf"
       touch "$KB_KAFKA_SASL_CONFIG_PATH"
@@ -164,7 +158,6 @@ Describe "Kafka Server Setup Script Tests"
     End
 
     It "does not set SASL configuration when KB_KAFKA_ENABLE_SASL is false"
-      un_setup
       KB_KAFKA_ENABLE_SASL="false"
       When run override_sasl_configuration
       The output should not include "KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
@@ -174,7 +167,6 @@ Describe "Kafka Server Setup Script Tests"
 
   Describe "generate_kraft_cluster_id()"
     It "sets KAFKA_KRAFT_CLUSTER_ID if provided"
-      un_setup
       KAFKA_KRAFT_CLUSTER_ID="my-cluster-id"
       When run generate_kraft_cluster_id
       The output should include "KAFKA_KRAFT_CLUSTER_ID=my-cluster-id"
@@ -182,7 +174,6 @@ Describe "Kafka Server Setup Script Tests"
     End
 
     It "truncates KAFKA_KRAFT_CLUSTER_ID to 22 characters if too long"
-      un_setup
       KAFKA_KRAFT_CLUSTER_ID="this-is-a-very-long-cluster-id-that-exceeds-length"
       When run generate_kraft_cluster_id
       The output should include "export KAFKA_KRAFT_CLUSTER_ID=this-is-a-very-long-cl"
@@ -190,7 +181,6 @@ Describe "Kafka Server Setup Script Tests"
     End
 
     It "does not set KAFKA_KRAFT_CLUSTER_ID if not provided"
-      un_setup
       When run generate_kraft_cluster_id
       The output should not include "KAFKA_KRAFT_CLUSTER_ID"
       The status should be success
@@ -199,7 +189,6 @@ Describe "Kafka Server Setup Script Tests"
 
   Describe "set_cfg_metadata()"
     It "removes quorum-state file when broker restarts"
-      un_setup
       KAFKA_CFG_PROCESS_ROLES="broker"
       KAFKA_CFG_METADATA_LOG_DIR="$kafka_cfg_dir/log"
       mkdir -p "$KAFKA_CFG_METADATA_LOG_DIR/__cluster_metadata-0"
@@ -211,7 +200,6 @@ Describe "Kafka Server Setup Script Tests"
     End
 
     It "sets advertised.listeners for broker role"
-      un_setup
       KAFKA_CFG_PROCESS_ROLES="broker"
       MY_POD_NAME="kafka-broker-0"
       KB_HOST_IP="192.168.0.1"
@@ -225,7 +213,6 @@ Describe "Kafka Server Setup Script Tests"
     End
 
     It "handles errors when advertised service not found"
-      un_setup
       KAFKA_CFG_PROCESS_ROLES="broker"
       MY_POD_NAME="kafka-broker-0"
       POD_FQDN_LIST="kafka-broker-0.kafka.svc.cluster.local"
@@ -238,7 +225,6 @@ Describe "Kafka Server Setup Script Tests"
     End
 
     It "handles errors when advertised service is found"
-      un_setup
       KAFKA_CFG_PROCESS_ROLES="broker"
       MY_POD_NAME="kafka-broker-0"
       MY_POD_HOST_IP="127.0.0.2"
