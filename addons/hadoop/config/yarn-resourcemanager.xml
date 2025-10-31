@@ -79,4 +79,14 @@
         <value>1</value>
     </property>
 
+    <!-- Remove untracked nodes without include path -->
+    <property>
+        <name>yarn.resourcemanager.enable-node-untracked-without-include-path</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.node-removal-untracked.timeout-ms</name>
+        <value>60000</value>
+    </property>
 </configuration>

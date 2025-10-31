@@ -30,8 +30,7 @@ spec:
       - sh
       - -c
       - |
-        # TODO: maybe need check hadoop user?
-        meta_dir=/hive/metadata/hive_metastore_initialized
+        meta_dir=/hive/metadata
         mkdir -p ${meta_dir}
-        touch ${meta_dir}/.hdfs-k8s-zkfc-formatted
+        touch ${meta_dir}/hive_metastore_initialized
         chown -R hadoop:hadoop ${meta_dir}

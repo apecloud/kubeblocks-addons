@@ -1,30 +1,21 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
-  name: hadoop-hdfs-namenode
+  name: hadoop-hdfs-journalnode
   labels:
     {{- include "hadoop.labels" . | nindent 4 }}
 spec:
   serviceKind: HadoopHDFS
   compDefs:
-   - hadoop-hdfs-namenode
-  target:
-    role: standby
-    fallbackRole: active
+   - hadoop-hdfs-journalnode
   backupMethods:
-    - name: full-namenode
+    - name: full-journalnode
       snapshotVolumes: false
-      actionSetName: hdfs-namenode-backup
+      actionSetName: hdfs-journalnode-backup
       targetVolumes:
         volumeMounts:
-        - name: metadata-dir
+        - name: edits-dir
           mountPath: /hadoop
-        - name: hadoop-core-config
-          mountPath: /hadoop/conf/core-site.xml
-          subPath: core-site.xml
-        - name: namenode-config
-          mountPath: /hadoop/conf/hdfs-site.xml
-          subPath: hdfs-site.xml
       env:
         - name: IMAGE_TAG
           valueFrom:

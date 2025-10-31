@@ -133,4 +133,9 @@
         <name>dfs.namenode.rpc-bind-host</name>
         <value>0.0.0.0</value>
     </property>
+
+    <property>
+        <name>dfs.hosts.exclude</name>
+        <value>/hadoop/conf-host/hosts.exclude</value>
+    </property>
 </configuration>
