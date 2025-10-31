@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: hdfs-namenode-backup
+  name: hdfs-journalnode-backup
   labels:
     clusterdefinition.kubeblocks.io/name: hadoop-hdfs
 spec:
@@ -19,7 +19,7 @@ spec:
       - bash
       - -c
       - |
-        {{- .Files.Get "dataprotection/backup-namenode.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/backup-journalnode.sh" | nindent 8 }}
       syncProgress:
         enabled: true
         intervalSeconds: 5
@@ -30,5 +30,4 @@ spec:
       - sh
       - -c
       - |
-        {{- .Files.Get "dataprotection/restore-namenode.sh" | nindent 8 }}
-        
+        {{- .Files.Get "dataprotection/restore-journalnode.sh" | nindent 8 }}
