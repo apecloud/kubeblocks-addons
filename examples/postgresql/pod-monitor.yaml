@@ -20,6 +20,9 @@ spec:
     - path: /metrics
       port: http-metrics
       scheme: http
+    - path: /metrics
+      port: patroni
+      scheme: http
   namespaceSelector:
     matchNames:
       - demo
