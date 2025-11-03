@@ -214,23 +214,23 @@ spec:
           path: /api/health
           port: 8030
         periodSeconds: 5
-        failureThreshold: 10
+        failureThreshold: 60
         successThreshold: 1
-        timeoutSeconds: 1
+        timeoutSeconds: 5
         initialDelaySeconds: 15
       readinessProbe:
         httpGet:
           path: /api/health
           port: 8030
         periodSeconds: 5
-        failureThreshold: 10
+        failureThreshold: 60
         successThreshold: 1
-        timeoutSeconds: 1
+        timeoutSeconds: 5
         initialDelaySeconds: 15
   lifecycleActions:
     roleProbe:
-      initialDelaySeconds: 30
-      periodSeconds: 15
+      initialDelaySeconds: 15
+      periodSeconds: 5
       exec:
         container: fe
         command:
