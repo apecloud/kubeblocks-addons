@@ -97,7 +97,7 @@ kibanaVersions:
 # data:
 #   mapping: zone1:node1,node2;zone2:node3,node4,node5
 zoneAware:
-  enabled: true
+  enabled: false
   configMap: elasticsearch-zone-aware-mapping
 
 exporter:
