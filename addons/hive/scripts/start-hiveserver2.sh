@@ -53,14 +53,12 @@ sed -i "/<\/configuration>/i \
     </property>" $HIVE_CONF_DIR/hive-site.xml
 
 password_md5=$(echo -n "$ADMIN_PASSWORD" | md5sum | awk '{print $1}')
-echo "${ADMIN_USER},${password_md5}" > /hive/metadata/hive-server2-users.conf
-while IFS=':' read -r user password; do
-  if [[ -z "$user" || -z "$password" ]]; then
-      continue
-  fi
-  password_md5=$(echo -n "$password" | md5sum | awk '{print $1}')
-  echo "${user},${password_md5}" >> /hive/metadata/hive-server2-users.conf
-done < /hive/accounts-mount/accounts
+cp /hive/accounts-mount/accounts /hive/metadata/hive-server2-users.conf
+if [ -z "$(cat /hive/metadata/hive-server2-users.conf)" ]; then
+    echo "${ADMIN_USER},${password_md5}" >> /hive/metadata/hive-server2-users.conf
+else
+    echo -e "\n${ADMIN_USER},${password_md5}" >> /hive/metadata/hive-server2-users.conf
+fi
 
 
 if [[ "$ENABLE_JMX_EXPORTER" == true ]]; then

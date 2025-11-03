@@ -401,7 +401,7 @@
           "targets": [
             {
               "editorMode": "code",
-              "expr": "label_join(jvm_runtime_info{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}, \"jdk\", \", \", \"vendor\", \"runtime\", \"version\")",
+              "expr": "label_join({__name__=~\"jvm_runtime_info|jvm_runtime\", namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", pod=~\"$instance\"},\"jdk\", \", \", \"vendor\", \"runtime\", \"version\")",
               "format": "table",
               "instant": true,
               "intervalFactor": 1,

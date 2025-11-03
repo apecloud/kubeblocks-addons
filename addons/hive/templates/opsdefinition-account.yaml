@@ -12,7 +12,15 @@ spec:
           mountPath: /hive/accounts-mount
         - name: metadata
           mountPath: /hive
-
+      env:
+        - name: ADMIN_USER
+          valueFrom:
+            envRef:
+              envName: ADMIN_USER
+        - name: ADMIN_PASSWORD
+          valueFrom:
+            envRef:
+              envName: ADMIN_PASSWORD
   actions:
     - name: apply-account
       workload:
@@ -28,13 +36,11 @@ spec:
                 - bash
                 - -c
                 - |
+                  cp /hive/accounts-mount/accounts /hive/metadata/hive-server2-users.conf.tmp
                   password_md5=$(echo -n "$ADMIN_PASSWORD" | md5sum | awk '{print $1}')
-                  echo "${ADMIN_USER},${password_md5}" > /hive/metadata/hive-server2-users.conf.tmp
-                  while IFS=':' read -r user password; do
-                    if [[ -z "$user" || -z "$password" ]]; then
-                        continue
-                    fi
-                    password_md5=$(echo -n "$password" | md5sum | awk '{print $1}')
-                    echo "${user},${password_md5}" >> /hive/metadata/hive-server2-users.conf.tmp
-                  done < /hive/accounts-mount/accounts
-                  cp /hive/metadata/hive-server2-users.conf.tmp /hive/metadata/hive-server2-users.conf
+                  if [ -z "$(cat /hive/metadata/hive-server2-users.conf)" ]; then
+                    echo "${ADMIN_USER},${password_md5}" >> /hive/metadata/hive-server2-users.conf.tmp
+                  else
+                    echo -e "\n${ADMIN_USER},${password_md5}" >> /hive/metadata/hive-server2-users.conf.tmp
+                  fi
+                  mv /hive/metadata/hive-server2-users.conf.tmp /hive/metadata/hive-server2-users.conf

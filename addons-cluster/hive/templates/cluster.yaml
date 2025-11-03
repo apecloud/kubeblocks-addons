@@ -122,3 +122,11 @@ spec:
         limits:
           cpu: {{ .Values.resources.server2.limits.cpu | quote }}
           memory: {{ .Values.resources.server2.limits.memory }}
+      volumeClaimTemplates:
+        - name: metadata
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ .Values.storage.server2 }}
