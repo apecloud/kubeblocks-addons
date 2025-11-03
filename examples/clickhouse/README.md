@@ -399,6 +399,7 @@ clickhouse-client --user $CLICKHOUSE_ADMIN_USER --password $CLICKHOUSE_ADMIN_PAS
 <details>
 <summary>Explanation of the configuration</summary>
 The `user.xml` file is an xml file that contains the configuration of the ClickHouse server.
+
 ```xml
 <clickhouse>
   <profiles>
@@ -444,7 +445,8 @@ Create a ClickHouse cluster with config templates:
 kubectl apply -f examples/clickhouse/cluster-with-config-templates.yaml
 ```
 
-This example will create a ClickHouse cluster with user customized config templates, which is defined in the ConfigMap named `custom-user-configuration-tpl` in the namespace `demo`.
+This example will create a ClickHouse cluster with user customized config templates, which is defined in the ConfigMap named `custom-user-configuration-tpl` in the namespace `demo`, through the `configs` API showing below:
+
 ```yaml
 configs:
   - name: clickhouse-user-tpl # refers to the config name defined in `componentDefinition.spec.configs[].name'
@@ -465,71 +467,84 @@ and check the configuration:
 > select name,value from system.settings where name like 'max_threads%'; # check the `max_threads` configuration, which is `8` by default.
 ```
 
-There are two ways to change the configuration:
+There are two ways to update the configuration:
+
 #### Option 1. Update through Variables
 
 - Step 1. Define a variable in the Config Template:
 
-For example, in the ConfigMap `custom-user-configuration-tpl`, we defined a variable `udf_max_threads`  and how it will be used in the `user.xml` file:
-```yaml
-data:
-  user.xml: |
-    {{- $var_max_threads := "8" }}      # default value is `8`
-    {{- if index . "udf_max_threads" }} # if the variable is defined, use the value of the variable
-    {{- $var_max_threads = $.udf_max_threads }} # use the value of the variable
-    {{- end }}
+    For example, in the ConfigMap `custom-user-configuration-tpl`, we defined a variable `udf_max_threads`  and how it will be used in the `user.xml` file:
 
-    <clickhouse>
-      <profiles>
-        <default>
-          <max_threads>{{ $var_max_threads }}</max_threads>
-    # ... other configurations omitted for brevity ...
-```
+    ```yaml
+    data:
+      user.xml: |
+        {{- $var_max_threads := "8" }}      # default value is `8`
+        {{- if index . "udf_max_threads" }} # if the variable is defined, use the value of the variable
+        {{- $var_max_threads = $.udf_max_threads }} # use the value of the variable
+        {{- end }}
+
+        <clickhouse>
+          <profiles>
+            <default>
+              <max_threads>{{ $var_max_threads }}</max_threads>
+        # ... other configurations omitted for brevity ...
+    ```
 
 - Step 2. Specify the variable and its value in the `cluster-with-config-templates.yaml` CR:
 
+    ```yaml
+    configs:
+    - name: clickhouse-user-tpl
+      configMap:
+        name: custom-user-configuration-tpl
+      variables:
+        udf_max_threads: "16" # set variable `udf_max_threads` to 16.
+    ```
 
-```yaml
-configs:
-- name: clickhouse-user-tpl
-  configMap:
-    name: custom-user-configuration-tpl
-  variables:
-    udf_max_threads: "16" # set variable `udf_max_threads` to 16.
-```
+    Login to the ClickHouse server and check the configuration:
+    ```bash
+    clickhouse-client --user $CLICKHOUSE_ADMIN_USER --password $CLICKHOUSE_ADMIN_PASSWORD
+    > set profile='default';
+    > select name,value from system.settings where name like 'max_threads%';
+    ```
 
-Login to the ClickHouse server and check the configuration:
-```bash
-clickhouse-client --user $CLICKHOUSE_ADMIN_USER --password $CLICKHOUSE_ADMIN_PASSWORD
-> set profile='default';
-> select name,value from system.settings where name like 'max_threads%';
-```
+    You will see the `max_threads` configuration is `16`.
 
-You will see the `max_threads` configuration is `16`.
-
-#### Option 2. Update through ConfigMap directly
+#### Option 2. Update through config template
 
 - Step 1. Update Config Template
 
-For example, in the ConfigMap `custom-user-configuration-tpl`, you can update the `user.xml` file directly:
-```yaml
-data:
-  user.xml: |
-    <clickhouse>
-      <profiles>
-        <default>
-          <max_threads>16</max_threads>
-    # ... other configurations omitted for brevity ...
-```
+    For example, in the ConfigMap `custom-user-configuration-tpl`, you can update the `user.xml` file directly:
+
+    ```yaml
+    data:
+      user.xml: |
+        <clickhouse>
+          <profiles>
+            <default>
+              <max_threads>16</max_threads>  # change from 8 to 16.
+        # ... other configurations omitted for brevity ...
+    ```
 
 - Step 2. Annotate Component to trigger a reconcile
 
-Updates in ConfigMap will not trigger a reconcile of the cluster, you need to annotate the component to trigger a reconcile.
+    Updates in ConfigMap will not trigger a reconcile of the cluster, you need to annotate the component to trigger a reconcile.
 
-For example, if the component name is `clickhouse-cluster-clickhouse`, you can run the following command:
-```bash
-kubectl annotate component clickhouse-cluster-clickhouse kubeblocks.io/config=max_threads -n demo
-```
+    For example, if the component name is `clickhouse-cluster-clickhouse`, you can run the following command:
+    ```bash
+    kubectl annotate component clickhouse-cluster-clickhouse kubeblocks.io/config=max_threads -n demo
+    ```
+
+#### Comparison between Option 1 and Option 2
+
+| Aspect | Option 1 (Variables) | Option 2 (Config Template) |
+|--------|---------------------|----------------------------|
+| **Configuration Method** | Through variables in cluster CR | Direct modification of config template |
+| **Reconcile Trigger** | Automatic when CR is updated | Manual annotation required |
+| **Complexity** | Lower - declarative approach | Higher - requires understanding of template structure |
+| **Use Case** | When only a couple of configurations need to be updated | Best for batch updates of configurations |
+
+You can choose the appropriate method based on your needs and operational preferences.
 
 ### Backup and Restore
 
