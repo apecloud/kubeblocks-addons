@@ -1,0 +1,40 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: hive-server2-apply-account
+spec:
+  podInfoExtractors:
+    - name: apply-account
+      podSelector:
+        multiPodSelectionPolicy: All
+      volumeMounts:
+        - name: accounts
+          mountPath: /hive/accounts-mount
+        - name: metadata
+          mountPath: /hive
+
+  actions:
+    - name: apply-account
+      workload:
+        type: Pod
+        podInfoExtractorName: apply-account
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: redis-account-ops
+              image: "{{ $.Values.hive.image.registry }}/{{ $.Values.hive.image.repository }}:{{ $.Values.hive.image.tag }}"
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  password_md5=$(echo -n "$ADMIN_PASSWORD" | md5sum | awk '{print $1}')
+                  echo "${ADMIN_USER},${password_md5}" > /hive/metadata/hive-server2-users.conf.tmp
+                  while IFS=':' read -r user password; do
+                    if [[ -z "$user" || -z "$password" ]]; then
+                        continue
+                    fi
+                    password_md5=$(echo -n "$password" | md5sum | awk '{print $1}')
+                    echo "${user},${password_md5}" >> /hive/metadata/hive-server2-users.conf.tmp
+                  done < /hive/accounts-mount/accounts
+                  cp /hive/metadata/hive-server2-users.conf.tmp /hive/metadata/hive-server2-users.conf

@@ -112,6 +112,9 @@ spec:
         - name: mapred-site-config
           configMap:
             name: {{ .Values.hadoopCluster.name }}-resourcemanager-mapred-site-config
+        - name: accounts
+          secret:
+            secretName: {{ include "kblib.clusterName" . }}-server2--accounts
       resources:
         requests:
           cpu: {{ .Values.resources.server2.requests.cpu | quote }}
