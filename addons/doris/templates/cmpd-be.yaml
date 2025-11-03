@@ -180,18 +180,18 @@ spec:
           path: /api/health
           port: 8040
         periodSeconds: 5
-        failureThreshold: 10
+        failureThreshold: 60
         successThreshold: 1
-        timeoutSeconds: 1
+        timeoutSeconds: 5
         initialDelaySeconds: 15
       readinessProbe:
         httpGet:
           path: /api/health
           port: 8040
         periodSeconds: 5
-        failureThreshold: 10
+        failureThreshold: 60
         successThreshold: 1
-        timeoutSeconds: 1
+        timeoutSeconds: 5
         initialDelaySeconds: 15
       volumeMounts:
       - mountPath: /opt/apache-doris/be/conf/be.conf
