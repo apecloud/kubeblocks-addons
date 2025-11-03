@@ -9,6 +9,9 @@ metadata:
     {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
   serviceVersion: 7.10.1
+  replicasLimit:
+    minReplicas: 2
+    maxReplicas: 16384
   configs:
     - name: es-cm
       template: {{ include "elasticsearch7.configTplName" . }}
