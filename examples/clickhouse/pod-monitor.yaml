@@ -26,4 +26,3 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/instance: clickhouse-cluster # set cluster name
-      apps.kubeblocks.io/component-name: clickhouse
