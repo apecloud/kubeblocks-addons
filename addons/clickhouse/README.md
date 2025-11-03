@@ -939,6 +939,11 @@ kubectl apply -f examples/clickhouse/volumeexpand.yaml
 
 ### Reconfigure
 
+> [!NOTE]
+> This reconfigure section is applicable for ClickHouse Addons v1.0.1.
+> Those who are using ClickHouse Addons v1.0.2 and above, please refer to [Using Config Templates](../addons/clickhouse/README.md#using-config-templates) for more details.
+
+
 Reconfigure parameters with the specified components in the cluster
 
 ```yaml
@@ -992,6 +997,7 @@ clickhouse-client --user $CLICKHOUSE_ADMIN_USER --password $CLICKHOUSE_ADMIN_PAS
 <details>
 <summary>Explanation of the configuration</summary>
 The `user.xml` file is an xml file that contains the configuration of the ClickHouse server.
+
 ```xml
 <clickhouse>
   <profiles>
@@ -1024,6 +1030,243 @@ spec:
 To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profiles.web.max_bytes_to_read` w.r.t the `user.xml` file.
 
 </details>
+
+
+### Using Config Templates
+
+> [!NOTE]
+> This section is applicable for ClickHouse Addons v1.0.2 and above.
+
+Create a ClickHouse cluster with config templates:
+
+```yaml
+# cat examples/clickhouse/cluster-with-config-templates.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: clickhouse-cluster-with-tpl
+  namespace: demo
+spec:
+  clusterDef: clickhouse
+  topology: cluster
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: ch-keeper
+      componentDef: clickhouse-keeper-1
+      replicas: 1
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 1Gi
+        requests:
+          cpu: '0.5'
+          memory: 1Gi
+      systemAccounts:
+        - name: admin
+          secretRef:
+            name: udf-account-info
+            namespace: demo
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+  shardings:
+    - name: clickhouse
+      shards: 2 # with 2 shard
+      template:
+        name: clickhouse  # each shard is a clickhouse component, with 2 replicas
+        componentDef: clickhouse-1
+        replicas: 2
+        configs:
+        - name: clickhouse-user-tpl # refers to the name defined in `componentDefinition.spec.configs[].name'
+          configMap:
+            name: custom-user-configuration-tpl # refers to the configmap with your customized configuration info.
+          variables:
+            max_threads: "16"
+        systemAccounts:
+          - name: admin
+            secretRef:
+              name: udf-account-info
+              namespace: demo
+        resources:
+          limits:
+            cpu: "1"
+            memory: 2Gi
+          requests:
+            cpu: "1"
+            memory: 2Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: udf-account-info
+  namespace: demo  # optional
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=  # 'password123' in base64
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-user-configuration-tpl
+  namespace: demo
+data:
+  user.xml: |
+    {{- $var_max_threads := "8" }}
+    {{- if index . "udf_max_threads" }}
+    {{- $var_max_threads = $.udf_max_threads }}
+    {{- end }}
+
+    <clickhouse>
+      <!-- Settings profiles -->
+      <profiles>
+        <!-- Admin user settings -->
+        <default>
+          <!-- The maximum number of threads when running a single query, which is used for admin user -->
+          <max_threads>{{ $var_max_threads }}</max_threads>
+          <log_queries>1</log_queries>
+          <log_queries_min_query_duration_ms>2000</log_queries_min_query_duration_ms>
+        </default>
+      </profiles>
+
+      <!-- Users and roles -->
+      <users>
+        <!-- Admin user with full access -->
+        <admin replace="replace">
+          <password from_env="CLICKHOUSE_ADMIN_PASSWORD"/>
+          <access_management>1</access_management>
+          <named_collection_control>1</named_collection_control>
+          <show_named_collections>1</show_named_collections>
+          <show_named_collections_secrets>1</show_named_collections_secrets>
+
+          <networks replace="replace">
+            <ip>::/0</ip>
+          </networks>
+
+          <profile>default</profile>
+          <quota>default</quota>
+        </admin>
+      </users>
+    </clickhouse>
+
+```
+
+```bash
+kubectl apply -f examples/clickhouse/cluster-with-config-templates.yaml
+```
+
+This example will create a ClickHouse cluster with user customized config templates, which is defined in the ConfigMap named `custom-user-configuration-tpl` in the namespace `demo`, through the `configs` API showing below:
+
+```yaml
+configs:
+  - name: clickhouse-user-tpl # refers to the config name defined in `componentDefinition.spec.configs[].name'
+    configMap:
+      name: custom-user-configuration-tpl # refers to your configmap with customized configuration.
+```
+
+To verify the configuration, you can connect to the ClickHouse server and run the following command:
+
+```bash
+clickhouse-client --user $CLICKHOUSE_ADMIN_USER --password $CLICKHOUSE_ADMIN_PASSWORD
+```
+
+and check the configuration:
+
+```bash
+> set profile='default'; # set the profile to `default`
+> select name,value from system.settings where name like 'max_threads%'; # check the `max_threads` configuration, which is `8` by default.
+```
+
+There are two ways to update the configuration:
+
+#### Option 1. Update through Variables
+
+- Step 1. Define a variable in the Config Template:
+
+    For example, in the ConfigMap `custom-user-configuration-tpl`, we defined a variable `udf_max_threads`  and how it will be used in the `user.xml` file:
+
+    ```yaml
+    data:
+      user.xml: |
+        {{- $var_max_threads := "8" }}      # default value is `8`
+        {{- if index . "udf_max_threads" }} # if the variable is defined, use the value of the variable
+        {{- $var_max_threads = $.udf_max_threads }} # use the value of the variable
+        {{- end }}
+
+        <clickhouse>
+          <profiles>
+            <default>
+              <max_threads>{{ $var_max_threads }}</max_threads>
+        # ... other configurations omitted for brevity ...
+    ```
+
+- Step 2. Specify the variable and its value in the `cluster-with-config-templates.yaml` CR:
+
+    ```yaml
+    configs:
+    - name: clickhouse-user-tpl
+      configMap:
+        name: custom-user-configuration-tpl
+      variables:
+        udf_max_threads: "16" # set variable `udf_max_threads` to 16.
+    ```
+
+    Login to the ClickHouse server and check the configuration:
+    ```bash
+    clickhouse-client --user $CLICKHOUSE_ADMIN_USER --password $CLICKHOUSE_ADMIN_PASSWORD
+    > set profile='default';
+    > select name,value from system.settings where name like 'max_threads%';
+    ```
+
+    You will see the `max_threads` configuration is `16`.
+
+#### Option 2. Update through config template
+
+- Step 1. Update Config Template
+
+    For example, in the ConfigMap `custom-user-configuration-tpl`, you can update the `user.xml` file directly:
+
+    ```yaml
+    data:
+      user.xml: |
+        <clickhouse>
+          <profiles>
+            <default>
+              <max_threads>16</max_threads>  # change from 8 to 16.
+        # ... other configurations omitted for brevity ...
+    ```
+
+- Step 2. Annotate Component to trigger a reconcile
+
+    Updates in ConfigMap will not trigger a reconcile of the cluster, you need to annotate the component to trigger a reconcile.
+
+    For example, if the component name is `clickhouse-cluster-clickhouse`, you can run the following command:
+    ```bash
+    kubectl annotate component clickhouse-cluster-clickhouse kubeblocks.io/config=max_threads -n demo
+    ```
+
+#### Comparison between Option 1 and Option 2
+
+| Aspect | Option 1 (Variables) | Option 2 (Config Template) |
+|--------|---------------------|----------------------------|
+| **Configuration Method** | Through variables in cluster CR | Direct modification of config template |
+| **Reconcile Trigger** | Automatic when CR is updated | Manual annotation required |
+| **Complexity** | Lower - declarative approach | Higher - requires understanding of template structure |
+| **Use Case** | When only a couple of configurations need to be updated | Best for batch updates of configurations |
+
+You can choose the appropriate method based on your needs and operational preferences.
 
 ### Backup and Restore
 
@@ -1452,7 +1695,6 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/instance: clickhouse-cluster # set cluster name
-      apps.kubeblocks.io/component-name: clickhouse
 ```
 
 ```bash
@@ -1479,9 +1721,5 @@ If you want to delete the cluster and all its resource, you can modify the termi
 # Delete clusters and resources
 kubectl delete -f examples/clickhouse/cluster.yaml
 kubectl delete -f examples/clickhouse/cluster-standalone.yaml
-
-# Delete backup repository if created
-kubectl delete -f examples/clickhouse/backuprepo.yaml
-
 ...
 ```
