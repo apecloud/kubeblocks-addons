@@ -1,0 +1,119 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: clickhouse-cluster-with-tpl
+  namespace: demo
+spec:
+  clusterDef: clickhouse
+  topology: cluster
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: ch-keeper
+      componentDef: clickhouse-keeper-1
+      replicas: 1
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 1Gi
+        requests:
+          cpu: '0.5'
+          memory: 1Gi
+      systemAccounts:
+        - name: admin
+          secretRef:
+            name: udf-account-info
+            namespace: demo
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+  shardings:
+    - name: clickhouse
+      shards: 2 # with 2 shard
+      template:
+        name: clickhouse  # each shard is a clickhouse component, with 2 replicas
+        componentDef: clickhouse-1
+        replicas: 2
+        configs:
+        - name: clickhouse-user-tpl # refers to the name defined in `componentDefinition.spec.configs[].name'
+          configMap:
+            name: custom-user-configuration-tpl # refers to the configmap with your customized configuration info.
+          variables:
+            max_threads: "16"
+        systemAccounts:
+          - name: admin
+            secretRef:
+              name: udf-account-info
+              namespace: demo
+        resources:
+          limits:
+            cpu: "1"
+            memory: 2Gi
+          requests:
+            cpu: "1"
+            memory: 2Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: udf-account-info
+  namespace: demo  # optional
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=  # 'password123' in base64
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-user-configuration-tpl
+  namespace: demo
+data:
+  user.xml: |
+    {{- $var_max_threads := "8" }}
+    {{- if index . "udf_max_threads" }}
+    {{- $var_max_threads = $.udf_max_threads }}
+    {{- end }}
+
+    <clickhouse>
+      <!-- Settings profiles -->
+      <profiles>
+        <!-- Admin user settings -->
+        <default>
+          <!-- The maximum number of threads when running a single query, which is used for admin user -->
+          <max_threads>{{ $var_max_threads }}</max_threads>
+          <log_queries>1</log_queries>
+          <log_queries_min_query_duration_ms>2000</log_queries_min_query_duration_ms>
+        </default>
+      </profiles>
+
+      <!-- Users and roles -->
+      <users>
+        <!-- Admin user with full access -->
+        <admin replace="replace">
+          <password from_env="CLICKHOUSE_ADMIN_PASSWORD"/>
+          <access_management>1</access_management>
+          <named_collection_control>1</named_collection_control>
+          <show_named_collections>1</show_named_collections>
+          <show_named_collections_secrets>1</show_named_collections_secrets>
+
+          <networks replace="replace">
+            <ip>::/0</ip>
+          </networks>
+
+          <profile>default</profile>
+          <quota>default</quota>
+        </admin>
+      </users>
+    </clickhouse>

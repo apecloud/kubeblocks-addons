@@ -368,6 +368,11 @@ kubectl apply -f examples/clickhouse/volumeexpand.yaml
 
 ### [Reconfigure](configure.yaml)
 
+> [!NOTE]
+> This reconfigure section is applicable for ClickHouse Addons v1.0.1.
+> Those who are using ClickHouse Addons v1.0.2 and above, please refer to [Using Config Templates](../addons/clickhouse/README.md#using-config-templates) for more details.
+
+
 Reconfigure parameters with the specified components in the cluster
 
 ```bash
@@ -426,6 +431,105 @@ spec:
 To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profiles.web.max_bytes_to_read` w.r.t the `user.xml` file.
 
 </details>
+
+
+### Using Config Templates
+
+> [!NOTE]
+> This section is applicable for ClickHouse Addons v1.0.2 and above.
+
+Create a ClickHouse cluster with config templates:
+
+```bash
+kubectl apply -f examples/clickhouse/cluster-with-config-templates.yaml
+```
+
+This example will create a ClickHouse cluster with user customized config templates, which is defined in the ConfigMap named `custom-user-configuration-tpl` in the namespace `demo`.
+```yaml
+configs:
+  - name: clickhouse-user-tpl # refers to the config name defined in `componentDefinition.spec.configs[].name'
+    configMap:
+      name: custom-user-configuration-tpl # refers to your configmap with customized configuration.
+```
+
+To verify the configuration, you can connect to the ClickHouse server and run the following command:
+
+```bash
+clickhouse-client --user $CLICKHOUSE_ADMIN_USER --password $CLICKHOUSE_ADMIN_PASSWORD
+```
+
+and check the configuration:
+
+```bash
+> set profile='default'; # set the profile to `default`
+> select name,value from system.settings where name like 'max_threads%'; # check the `max_threads` configuration, which is `8` by default.
+```
+
+There are two ways to change the configuration:
+#### Option 1. Update through Variables
+
+- Step 1. Define a variable in the Config Template:
+
+For example, in the ConfigMap `custom-user-configuration-tpl`, we defined a variable `udf_max_threads`  and how it will be used in the `user.xml` file:
+```yaml
+data:
+  user.xml: |
+    {{- $var_max_threads := "8" }}      # default value is `8`
+    {{- if index . "udf_max_threads" }} # if the variable is defined, use the value of the variable
+    {{- $var_max_threads = $.udf_max_threads }} # use the value of the variable
+    {{- end }}
+
+    <clickhouse>
+      <profiles>
+        <default>
+          <max_threads>{{ $var_max_threads }}</max_threads>
+    # ... other configurations omitted for brevity ...
+```
+
+- Step 2. Specify the variable and its value in the `cluster-with-config-templates.yaml` CR:
+
+
+```yaml
+configs:
+- name: clickhouse-user-tpl
+  configMap:
+    name: custom-user-configuration-tpl
+  variables:
+    udf_max_threads: "16" # set variable `udf_max_threads` to 16.
+```
+
+Login to the ClickHouse server and check the configuration:
+```bash
+clickhouse-client --user $CLICKHOUSE_ADMIN_USER --password $CLICKHOUSE_ADMIN_PASSWORD
+> set profile='default';
+> select name,value from system.settings where name like 'max_threads%';
+```
+
+You will see the `max_threads` configuration is `16`.
+
+#### Option 2. Update through ConfigMap directly
+
+- Step 1. Update Config Template
+
+For example, in the ConfigMap `custom-user-configuration-tpl`, you can update the `user.xml` file directly:
+```yaml
+data:
+  user.xml: |
+    <clickhouse>
+      <profiles>
+        <default>
+          <max_threads>16</max_threads>
+    # ... other configurations omitted for brevity ...
+```
+
+- Step 2. Annotate Component to trigger a reconcile
+
+Updates in ConfigMap will not trigger a reconcile of the cluster, you need to annotate the component to trigger a reconcile.
+
+For example, if the component name is `clickhouse-cluster-clickhouse`, you can run the following command:
+```bash
+kubectl annotate component clickhouse-cluster-clickhouse kubeblocks.io/config=max_threads -n demo
+```
 
 ### Backup and Restore
 
@@ -582,9 +686,5 @@ If you want to delete the cluster and all its resource, you can modify the termi
 # Delete clusters and resources
 kubectl delete -f examples/clickhouse/cluster.yaml
 kubectl delete -f examples/clickhouse/cluster-standalone.yaml
-
-# Delete backup repository if created
-kubectl delete -f examples/clickhouse/backuprepo.yaml
-
 ...
 ```
