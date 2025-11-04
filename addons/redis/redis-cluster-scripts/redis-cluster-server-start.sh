@@ -522,7 +522,7 @@ scale_redis_cluster_replica() {
     primary_node_endpoint_for_meet="$primary_node_fqdn"
   fi
   # if the current pod is not a rebuild-instance and is already in the cluster, skip scale out replica
-  if ! is_rebuild_instance && is_node_in_cluster "$primary_node_endpoint" "$primary_node_port" "$current_pod_name"; then
+  if ! is_rebuild_instance && is_node_in_cluster "$primary_node_endpoint_for_meet" "$primary_node_port" "$current_pod_name"; then
     current_pod_with_svc="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME"
     if [[ $primary_node_fqdn == *"$current_pod_with_svc"* ]]; then
       echo "Current pod $current_pod_name is primary node, check and correct other primary nodes..."
@@ -536,7 +536,7 @@ scale_redis_cluster_replica() {
   fi
 
   # add the current node as a replica of the primary node
-  primary_node_cluster_id=$(get_cluster_id "$primary_node_endpoint" "$primary_node_port")
+  primary_node_cluster_id=$(get_cluster_id "$primary_node_endpoint_for_meet" "$primary_node_port")
   if [ -z "$primary_node_cluster_id" ]; then
     echo "Failed to get the cluster id of the primary node $primary_node_endpoint_with_port, sleep 30s for waiting next pod to start"
     sleep 30
@@ -546,7 +546,7 @@ scale_redis_cluster_replica() {
 
   if is_rebuild_instance; then
     echo "Current instance is a rebuild-instance, forget node id in the cluster firstly."
-    node_id=$(get_cluster_id "$primary_node_endpoint" "$primary_node_port" "$current_pod_fqdn")
+    node_id=$(get_cluster_id "$primary_node_endpoint_for_meet" "$primary_node_port" "$current_pod_fqdn")
     if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
       redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
     else
@@ -625,7 +625,7 @@ scale_redis_cluster_replica() {
 
     # meet current component primary node if not met yet
     if ! $current_primary_met; then
-      if scale_out_replica_send_meet "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port" "$current_pod_name"; then
+      if scale_out_replica_send_meet "$primary_node_endpoint_for_meet" "$primary_node_port" "$primary_node_bus_port" "$current_pod_name"; then
         echo "Successfully meet the primary node $primary_node_endpoint_with_port in scale_redis_cluster_replica"
         current_primary_met=true
       else
@@ -641,8 +641,12 @@ scale_redis_cluster_replica() {
         node_endpoint=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $1}')
         node_port=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $2}')
         node_bus_port=$(echo "$node_info" | awk -F '@' '{print $2}')
-
-        if scale_out_replica_send_meet "$node_endpoint" "$node_port" "$node_bus_port" "$current_pod_name"; then
+        node_fqdn=$(echo "$node_info" | awk -F '#' '{print $2}')
+        node_endpoint_for_meet="$node_endpoint"
+        if [ "$network_mode" == "default" ]; then
+          node_endpoint_for_meet="$node_fqdn"
+        fi
+        if scale_out_replica_send_meet "$node_endpoint_for_meet" "$node_port" "$node_bus_port" "$current_pod_name"; then
           echo "Successfully meet the primary node $node_endpoint_with_port in scale_redis_cluster_replica"
           other_primary_met["$node_info"]=true
         else
