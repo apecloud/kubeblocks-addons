@@ -38,7 +38,8 @@ else
   if [ -z "$excludeHosts" ]; then
       excludeHosts="${HOSTNAME}"
   else
-      excludeHosts="${HOSTNAME}\n${excludeHosts}"
+      excludeHosts="${HOSTNAME}
+${excludeHosts}"
   fi
   echo "
 data:
