@@ -38,10 +38,6 @@ shardings:
       serviceVersion: {{ .Values.version }}
       replicas: {{ .Values.replicas | default 3 }}
       disableExporter: {{ $.Values.disableExporter | default "false" }}
-      env:
-        # syncer uses this env to get sharding name
-        - name: SHARDING_NAME
-          value: *sharding_name
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
 componentSpecs:
@@ -63,9 +59,6 @@ componentSpecs:
         seed: {{ include "kblib.clusterName" . }}
       {{- end }}
     serviceVersion: {{ .Values.version }}
-    env:
-      - name: MONGODB_BALANCER_ENABLED
-        value: "{{ .Values.balancer.enabled }}"
     {{- with .Values.configServer.tolerations }}
     tolerations: {{ .| toYaml | nindent 6 }}
     {{- end }}
@@ -91,9 +84,6 @@ componentSpecs:
     replicas: {{ .Values.mongos.replicas | default 3 }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
     serviceVersion: {{ .Values.version }}
-    env:
-      - name: MONGODB_BALANCER_ENABLED
-        value: "{{ .Values.balancer.enabled }}"
     {{- with .Values.mongos.tolerations }}
     tolerations: {{ .| toYaml | nindent 6 }}
     {{- end }}
