@@ -9,7 +9,8 @@ on:
 
 jobs:
   pr-label-check:
-    uses: apecloud/apecloud-cd/.github/workflows/pull-request-label-check.yml@v0.1.88
+    uses: apecloud/apecloud-cd/.github/workflows/pull-request-label-check.yml@v0.1.99
     with:
       CHECK_LABEL: "pick"
+      EXTRA_LABEL: "chart-release"
     secrets: inherit
