@@ -34,6 +34,7 @@ spec:
                 CLIENT="mongo"
             fi
             CLUSTER_MONGO="$CLIENT --port $SERVICE_PORT -u $MONGODB_ROOT_USER -p $MONGODB_ROOT_PASSWORD --quiet --eval"
+
             # Wait for the mongos process to be ready
             MAX_RETRIES=300
             retry_count=0
@@ -51,6 +52,7 @@ spec:
                 echo "ERROR: Mongos failed to become ready after $MAX_RETRIES attempts." >&2
                 exit 1
             fi
+
             if [ "$(enableBalancer)" = "true" ]; then
                 $CLUSTER_MONGO "sh.startBalancer()"
                 echo "INFO: Balancer is enabled."
