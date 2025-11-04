@@ -63,10 +63,6 @@ shardingSpecs:
             letterCase: MixedCases
             seed: {{ include "kblib.clusterName" . }}
           {{- end }}
-      env:
-        # syncer uses this env to get sharding name
-        - name: KB_SHARDING_NAME
-          value: *sharding_name
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
@@ -78,9 +74,6 @@ componentSpecs:
     systemAccounts: *adminAccounts
     serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-    env:
-      - name: MONGODB_BALANCER_ENABLED
-        value: "{{ .Values.balancer.enabled }}"
     {{- with .Values.configServer.tolerations }}
     tolerations: {{ .| toYaml | nindent 6 }}
     {{- end }}
@@ -108,9 +101,6 @@ componentSpecs:
     disableExporter: {{ $.Values.disableExporter | default "false" }}
     serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ printf "kb-%s" (include "kblib.clusterName" .) }}
-    env:
-      - name: MONGODB_BALANCER_ENABLED
-        value: "{{ .Values.balancer.enabled }}"
     {{- with .Values.mongos.tolerations }}
     tolerations: {{ .| toYaml | nindent 6 }}
     {{- end }}
