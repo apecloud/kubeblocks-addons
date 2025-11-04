@@ -14,7 +14,7 @@ HOSTNAME=$(hostname)
 if [ -z "$DATANODE_DATA_HOST_PORT" ]; then
    HOSTNAME="${KB_LEAVE_MEMBER_POD_FQDN}"
 else
-  HOST_IP=$(/hadoop/kubectl/kubectl get pod "${KB_LEAVE_MEMBER_POD_NAME}" -n "${CLUSTER_NAMESPACE}" -o jsonpath='{.status.hostIP}')
+  HOST_IP=$(/hadoop/kubectl get pod "${KB_LEAVE_MEMBER_POD_NAME}" -n "${CLUSTER_NAMESPACE}" -o jsonpath='{.status.hostIP}')
   HOST_INFO="${HOST_IP}:${DATANODE_DATA_HOST_PORT}"
   HOSTNAME=$(get_hostname "$HOST_INFO")
   if [ -z "$HOSTNAME" ]; then
@@ -40,12 +40,17 @@ else
   else
       excludeHosts="${HOSTNAME}\n${excludeHosts}"
   fi
-  /hadoop/kubectl patch configmap "$configMapName" -n "$CLUSTER_NAMESPACE" --type strategic -p "{\"data\":{\"hosts.exclude\":\"$excludeHosts\"}}"
+  echo "
+data:
+  hosts.exclude: |-
+$(echo "$excludeHosts" | sed 's/^/    /')
+" > /tmp/excludeHosts.yaml
+  /hadoop/kubectl patch configmap $configMapName --type strategic --patch-file /tmp/excludeHosts.yaml
+  rm /tmp/excludeHosts.yaml
   sleep 15
 fi
 
 get_decommission_status(){
-  sub_cmd=$1
   hdfs dfsadmin -report -live | awk -v host="$HOSTNAME" '
   $1 == "Hostname:" && $2 == host {
       hostname_match = 1
@@ -64,10 +69,7 @@ get_decommission_status(){
 hdfs dfsadmin -refreshNodes
 decommissionStatus=$(get_decommission_status)
 if [[ -z "$decommissionStatus" || "$decommissionStatus" = "Decommissioned" ]]; then
-   # 3. remove this host from excludeHosts when datanode is decommissioned
    echo "DecommissionStatus: $decommissionStatus"
-   excludeHosts=$(echo -e "$excludeHosts" | sed "/^${HOSTNAME}$/d" | sed '/^$/d')
-   /hadoop/kubectl patch configmap "$configMapName" -n "$CLUSTER_NAMESPACE" --type strategic -p "{\"data\":{\"hosts.exclude\":\"$excludeHosts\"}}"
 else
   echo "Datanode ${HOSTNAME} is not decommissioned. Current status: ${decommissionStatus}, retry again" >&2
   exit 1
