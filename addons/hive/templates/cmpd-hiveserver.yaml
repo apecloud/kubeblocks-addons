@@ -136,6 +136,8 @@ spec:
           - name: hive-server2-config
             mountPath: /hive/base-conf/jmx-exporter.yaml
             subPath: jmx-exporter.yaml
+          - name: accounts
+            mountPath: /hive/accounts-mount
         #securityContext:
         #  runAsUser: 10000
         #  runAsGroup: 1000

@@ -45,6 +45,7 @@ resources:
 storage:
   metastore: 5Gi
   mysql: 50Gi
+  server2: 5Gi
 
 # Specify the hadoop cluster name for service references
 hadoopCluster:
