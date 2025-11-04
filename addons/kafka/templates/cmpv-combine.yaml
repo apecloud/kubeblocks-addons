@@ -11,29 +11,14 @@ spec:
     - compDefs:
         - {{ include "kafka-combine.cmpdRegexpPattern" . }}
       releases:
-        - 3.3.2-debian-11-r54
-        - 3.7.1-debian-12-r11
-        - 3.8.1-debian-12-r2
-        - 3.9.0-debian-12-r13
+      {{- range .Values.images.kafka.versions.v3 }}
+        - {{ .tag }}
+      {{- end }}
   releases:
-    - name: 3.9.0-debian-12-r13
-      serviceVersion: 3.9.0
+  {{- range .Values.images.kafka.versions.v3 }}
+    - name: {{ .tag }}
+      serviceVersion: {{ .version }}
       images:
-        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag.v3_9_0 }}
-        jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
-    - name: 3.8.1-debian-12-r2
-      serviceVersion: 3.8.1
-      images:
-        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag.v3_8_1 }}
-        jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
-    - name: 3.7.1-debian-12-r11
-      serviceVersion: 3.7.1
-      images:
-        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag.v3_7_1 }}
-        jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
-    - name: 3.3.2-debian-11-r54
-      changes:
-      serviceVersion: 3.3.2
-      images:
-        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag.v3_3_2 }}
-        jmx-exporter:  {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+        kafka: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.kafka.repository }}:{{ .tag }}
+        jmx-exporter: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.jmxExporter.repository }}:{{ $.Values.images.jmxExporter.tag }}
+  {{- end }}
