@@ -27,3 +27,5 @@ data:
     {{- .Files.Get "scripts/start-datanode.sh" | nindent 4 }}
   datanode-memberleave.sh: |-
     {{- .Files.Get "scripts/datanode-memberleave.sh" | nindent 4 }}
+  datanode-memberjoin.sh: |-
+    {{- .Files.Get "scripts/datanode-memberjoin.sh" | nindent 4 }}

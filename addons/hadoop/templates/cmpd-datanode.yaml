@@ -236,3 +236,12 @@ spec:
             /kubeblocks/scripts/datanode-memberleave.sh
         targetPodSelector: Any
         container: hdfs-datanode
+    memberJoin:
+      exec:
+        command:
+          - bash
+          - -c
+          - |
+            /kubeblocks/scripts/datanode-memberjoin.sh
+        targetPodSelector: Any
+        container: hdfs-datanode
