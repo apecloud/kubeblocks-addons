@@ -461,6 +461,7 @@ scale_redis_cluster_replica() {
         node_endpoint=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $1}')
         node_port=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $2}')
         node_bus_port=$(echo "$node_info" | awk -F '@' '{print $2}')
+        node_fqdn=$(echo "$node_info" | awk -F '#' '{print $2}')
         node_endpoint_for_meet="$node_endpoint"
         if [ "$network_mode" == "default" ]; then
           node_endpoint_for_meet="$node_fqdn"
