@@ -12,3 +12,5 @@ spec:
     - name: zoo.cfg
       fileFormatConfig:
         format: props-plus
+      reRenderResourceTypes:
+        - hscale
