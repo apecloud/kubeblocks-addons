@@ -126,7 +126,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "up{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "up{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "instant": true,
           "intervalFactor": 1,
@@ -265,7 +265,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "java_lang_OperatingSystem_AvailableProcessors{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "java_lang_OperatingSystem_AvailableProcessors{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "instant": true,
           "intervalFactor": 1,
@@ -502,7 +502,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "java_lang_OperatingSystem_SystemCpuLoad{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "java_lang_OperatingSystem_SystemCpuLoad{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-system",
@@ -511,7 +511,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "java_lang_OperatingSystem_ProcessCpuLoad{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "java_lang_OperatingSystem_ProcessCpuLoad{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-process",
@@ -612,7 +612,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "java_lang_OperatingSystem_OpenFileDescriptorCount{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "java_lang_OperatingSystem_OpenFileDescriptorCount{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -711,7 +711,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "java_lang_OperatingSystem_TotalPhysicalMemorySize{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "java_lang_OperatingSystem_TotalPhysicalMemorySize{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-total",
@@ -720,7 +720,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "java_lang_OperatingSystem_CommittedVirtualMemorySize{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "java_lang_OperatingSystem_CommittedVirtualMemorySize{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-committed-vm",
@@ -729,7 +729,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "java_lang_OperatingSystem_FreePhysicalMemorySize{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "java_lang_OperatingSystem_FreePhysicalMemorySize{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-free",
@@ -827,7 +827,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "process_virtual_memory_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "process_virtual_memory_bytes{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-virtual-mem",
@@ -836,7 +836,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "process_resident_memory_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "process_resident_memory_bytes{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-resident-mem",
@@ -934,7 +934,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "java_lang_Memory_HeapMemoryUsage_max{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "java_lang_Memory_HeapMemoryUsage_max{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-max",
@@ -943,7 +943,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "java_lang_Memory_HeapMemoryUsage_used{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "java_lang_Memory_HeapMemoryUsage_used{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-used",
@@ -1041,7 +1041,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "java_lang_Memory_NonHeapMemoryUsage_max{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "java_lang_Memory_NonHeapMemoryUsage_max{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-max",
@@ -1050,7 +1050,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "java_lang_Memory_NonHeapMemoryUsage_used{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "java_lang_Memory_NonHeapMemoryUsage_used{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-used",
@@ -1148,7 +1148,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "jvm_memory_committed_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "jvm_memory_committed_bytes{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-{{area}}",
@@ -1246,7 +1246,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "jvm_memory_pool_max_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Code Cache\"}",
+          "expr": "jvm_memory_pool_max_bytes{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Code Cache\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-max",
@@ -1259,7 +1259,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_used_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Code Cache\"}",
+          "expr": "jvm_memory_pool_used_bytes{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Code Cache\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1273,7 +1273,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_committed_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Code Cache\"}",
+          "expr": "jvm_memory_pool_committed_bytes{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Code Cache\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1287,7 +1287,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_init_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Code Cache\"}",
+          "expr": "jvm_memory_pool_init_bytes{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Code Cache\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1386,7 +1386,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "jvm_memory_pool_max_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Compressed Class Space\"}",
+          "expr": "jvm_memory_pool_max_bytes{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Compressed Class Space\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-max",
@@ -1399,7 +1399,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_used_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Compressed Class Space\"}",
+          "expr": "jvm_memory_pool_used_bytes{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Compressed Class Space\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1413,7 +1413,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_committed_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Compressed Class Space\"}",
+          "expr": "jvm_memory_pool_committed_bytes{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Compressed Class Space\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1427,7 +1427,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_init_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Compressed Class Space\"}",
+          "expr": "jvm_memory_pool_init_bytes{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Compressed Class Space\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1526,7 +1526,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "jvm_memory_pool_max_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Eden Space|PS Eden Space\"}",
+          "expr": "jvm_memory_pool_max_bytes{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Eden Space|PS Eden Space\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-max",
@@ -1539,7 +1539,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_used_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Eden Space|PS Eden Space\"}",
+          "expr": "jvm_memory_pool_used_bytes{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Eden Space|PS Eden Space\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1553,7 +1553,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_committed_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Eden Space|PS Eden Space\"}",
+          "expr": "jvm_memory_pool_committed_bytes{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Eden Space|PS Eden Space\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1567,7 +1567,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_init_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Eden Space|PS Eden Space\"}",
+          "expr": "jvm_memory_pool_init_bytes{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Eden Space|PS Eden Space\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1666,7 +1666,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "jvm_memory_pool_max_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Metaspace\"}",
+          "expr": "jvm_memory_pool_max_bytes{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Metaspace\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-max",
@@ -1679,7 +1679,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_used_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Metaspace\"}",
+          "expr": "jvm_memory_pool_used_bytes{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Metaspace\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1707,7 +1707,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_init_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Metaspace\"}",
+          "expr": "jvm_memory_pool_init_bytes{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=\"Metaspace\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1806,7 +1806,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "jvm_memory_pool_max_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Survivor Space|PS Survivor Space\"}",
+          "expr": "jvm_memory_pool_max_bytes{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Survivor Space|PS Survivor Space\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-max",
@@ -1819,7 +1819,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_used_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Survivor Space|PS Survivor Space\"}",
+          "expr": "jvm_memory_pool_used_bytes{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Survivor Space|PS Survivor Space\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1833,7 +1833,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_committed_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Survivor Space|PS Survivor Space\"}",
+          "expr": "jvm_memory_pool_committed_bytes{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Survivor Space|PS Survivor Space\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1847,7 +1847,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_init_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Survivor Space|PS Survivor Space\"}",
+          "expr": "jvm_memory_pool_init_bytes{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Survivor Space|PS Survivor Space\"}",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1949,7 +1949,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "jvm_memory_pool_max_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Tenured Gen|PS Old Gen\"}",
+          "expr": "jvm_memory_pool_max_bytes{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Tenured Gen|PS Old Gen\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1961,7 +1961,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "jvm_memory_pool_used_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Tenured Gen|PS Old Gen\"}",
+          "expr": "jvm_memory_pool_used_bytes{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Tenured Gen|PS Old Gen\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1973,7 +1973,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "jvm_memory_pool_committed_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Tenured Gen|PS Old Gen\"}",
+          "expr": "jvm_memory_pool_committed_bytes{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Tenured Gen|PS Old Gen\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1989,7 +1989,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_pool_committed_bytes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Tenured Gen|PS Old Gen\"}",
+          "expr": "jvm_memory_pool_committed_bytes{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",pool=~\"Tenured Gen|PS Old Gen\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "{{pod}}-init",
@@ -2087,7 +2087,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "increase(jvm_gc_collection_seconds_sum{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[$__interval])",
+          "expr": "increase(jvm_gc_collection_seconds_sum{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[$__interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 1,
@@ -2189,7 +2189,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "increase(jvm_gc_collection_seconds_count{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[$__interval])",
+          "expr": "increase(jvm_gc_collection_seconds_count{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}[$__interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 1,
@@ -2291,7 +2291,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "jvm_classes_loaded_total{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "jvm_classes_loaded_total{namespace=~\"$namespace\", apps_kubeblocks_io_component_name=\"namenode\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 5,
@@ -2433,7 +2433,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "jvm_threads_current{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "jvm_threads_current{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 5,
           "legendFormat": "{{pod}}-current threads",
@@ -2444,7 +2444,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "jvm_threads_daemon{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "jvm_threads_daemon{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 5,
           "legendFormat": "{{pod}}-daemon threads",
@@ -2455,7 +2455,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "jvm_threads_deadlocked{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "expr": "jvm_threads_deadlocked{namespace=~\"$namespace\",apps_kubeblocks_io_component_name=\"namenode\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{pod}}-deadlocked threads",
