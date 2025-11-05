@@ -30,8 +30,8 @@ spec:
         podSpec:
           containers:
             - name: redis-account-ops
-              image: "{{ $.Values.hive.image.registry }}/{{ $.Values.hive.image.repository }}:{{ $.Values.hive.image.tag }}"
-              imagePullPolicy: IfNotPresent
+              image: "{{ $.Values.images.registry }}/{{ $.Values.images.hive.repository }}:{{ $.Values.images.hive.tag }}"
+              imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
               command:
                 - bash
                 - -c

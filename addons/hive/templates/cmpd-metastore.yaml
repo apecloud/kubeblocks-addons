@@ -32,7 +32,7 @@ spec:
         {{- include "hive.initJmxExporterContainer" . | nindent 8 }}
     containers:
       - name: hive-metastore
-        imagePullPolicy: {{ default "IfNotPresent" .Values.hive.image.pullPolicy }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         command:
           - /bin/bash
           - -c

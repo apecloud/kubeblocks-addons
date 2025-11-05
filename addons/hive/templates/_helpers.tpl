@@ -89,7 +89,7 @@ hive-server2-{{ .Chart.Version }}
 {{- end }}
 
 {{- define "hive.initJmxExporterContainer" -}}
-imagePullPolicy: {{ default "IfNotPresent" .Values.hive.image.pullPolicy }}
+imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
 command:
 - /bin/bash
 - -c
