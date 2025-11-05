@@ -12,6 +12,17 @@ spec:
   serviceVersion: {{ .Chart.AppVersion }}
   serviceKind: yarn-resourcemanager
   podManagementPolicy: Parallel
+  services:
+  - name: resourcemanager
+    serviceName: resourcemanager
+    spec:
+      ipFamilies:
+      - IPv4
+      ipFamilyPolicy: PreferDualStack
+      ports:
+      - name: http
+        port: 8088
+        targetPort: http
   runtime:
     initContainers:
       - name: init-jmx-exporter
