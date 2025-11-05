@@ -8,12 +8,12 @@ spec:
   backupType: Full
   env:
     - name: IMAGE_TAG
-      value: "{{ .Values.hive.image.tag }}"
+      value: "{{ .Values.images.hive.tag }}"
   backup:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ $.Values.hive.image.registry }}/{{ $.Values.hive.image.repository }}:$(IMAGE_TAG)
+      image: {{ $.Values.images.registry }}/{{ $.Values.images.hive.repository }}:$(IMAGE_TAG)
       runOnTargetPodNode: false
       command:
       - bash
@@ -25,7 +25,7 @@ spec:
         intervalSeconds: 5
   restore:
     prepareData:
-      image: {{ $.Values.hive.image.registry }}/{{ $.Values.hive.image.repository }}:$(IMAGE_TAG)
+      image: {{ $.Values.images.registry }}/{{ $.Values.images.hive.repository }}:$(IMAGE_TAG)
       command:
       - sh
       - -c
