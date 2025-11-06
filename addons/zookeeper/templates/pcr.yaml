@@ -8,9 +8,14 @@ spec:
   componentDef: {{ include "zookeeper.cmpdName" . }}
   parametersDefs:
     - {{ include "zookeeper.paramsDefName" . }}
+    - zookeeper-dynamic-pd
   configs:
     - name: zoo.cfg
       fileFormatConfig:
         format: props-plus
+    - name: zoo.cfg.dynamic
+      fileFormatConfig:
+        format: props-plus
       reRenderResourceTypes:
         - hscale
+    

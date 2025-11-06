@@ -43,3 +43,23 @@ spec:
 
     cue: |-
       {{- .Files.Get "config/zookeeper-params_schema.cue" | nindent 6 }}
+
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: zookeeper-dynamic-pd
+  labels:
+    {{- include "zookeeper.labels" . | nindent 4 }}
+spec:
+  reloadAction:
+    autoTrigger:
+      processName: zookeeper
+
+  fileName: zoo.cfg.dynamic
+  dynamicParameters:
+    - server.1
+    - server.2
+    - server.3
+    - server.4
+    - server.5

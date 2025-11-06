@@ -56,6 +56,8 @@ spec:
       value: {{ .Values.zookeeper.dataDir }}
     - name: ZOOKEEPER_DATA_LOG_DIR
       value: {{ .Values.zookeeper.dataLogDir }}
+    - name: ZOOKEEPER_DYNAMIC_CONFIG_FILE
+      value: {{ .Values.zookeeper.dynamicConfigDir }}/zoo.cfg.dynamic
     - name: ZOOBINDIR
       value: "/opt/bitnami/zookeeper/bin"
     ## this var is used in the ZkServer.sh of bitnami image version 3.4
@@ -85,6 +87,11 @@ spec:
       template: {{ include "zookeeper.logConfigTplName" . }}
       volumeName: config-log
       restartOnFileChange: true
+    - name: zookeeper-dynamic-config
+      namespace: {{ .Release.Namespace }}
+      template: {{ include "zookeeper.dynamicConfigTplName" . }}
+      volumeName: dynamic-config
+      externalManaged: true
   lifecycleActions:
     roleProbe:
       exec:
@@ -195,3 +202,5 @@ spec:
             subPath: log4j.properties
           - name: scripts
             mountPath: /kubeblocks/scripts
+          - name: dynamic-config
+            mountPath: {{ .Values.zookeeper.dynamicConfigDir }}
