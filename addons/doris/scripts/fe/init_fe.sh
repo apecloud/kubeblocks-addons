@@ -22,7 +22,7 @@ shopt -s nullglob
 # Constant Definition
 readonly DORIS_HOME="/opt/apache-doris"
 readonly MAX_RETRY_TIMES=60
-readonly RETRY_INTERVAL=1
+readonly RETRY_INTERVAL=3
 readonly FE_CONFIG_FILE="${DORIS_HOME}/fe/conf/fe.conf"
 readonly FOLLOWER_NUMBER=3
 readonly BACKUP_DIR="${DORIS_HOME}/fe/doris-meta/ape/backup"

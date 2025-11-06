@@ -12,6 +12,7 @@ spec:
   description: A Doris FE component definition for Kubernetes
   # The FE can only perform leader election when the majority of members are active.
   updateStrategy: BestEffortParallel
+  podManagementPolicy: Parallel
   serviceKind: doris-fe
   services:
   - name: fe
