@@ -40,6 +40,8 @@ spec:
         ports:
           - containerPort: 8020
             name: rpc
+          - containerPort: 8019
+            name: zkfc
           - containerPort: 9870
             name: http
           - containerPort: {{ .Values.jmxExporterPort }}
@@ -159,6 +161,11 @@ spec:
         componentVarRef:
           optional: false
           replicas: Required
+    - name: POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
     - name: CLUSTER_COMPONENT_NAME
       valueFrom:
         componentVarRef:
@@ -187,6 +194,9 @@ spec:
       participatesInQuorum: false
   lifecycleActions:
     roleProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 3
+      timeoutSeconds: 5
       exec:
         container: hdfs-namenode
         command:
@@ -194,3 +204,11 @@ spec:
           - -c
           - |
             /kubeblocks/scripts/role-check.sh 9870
+    switchover:
+      exec:
+        container: hdfs-namenode
+        command:
+          - bash
+          - -c
+          - |
+            /kubeblocks/scripts/switchover_namenode.sh

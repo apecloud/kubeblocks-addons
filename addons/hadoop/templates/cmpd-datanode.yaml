@@ -209,6 +209,12 @@ spec:
           compDef: hadoop-hdfs-namenode
           optional: false
           componentName: Required
+    - name: NAMENODE_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: hadoop-hdfs-namenode
+          optional: false
+          podNames: Required
   policyRules:
     - apiGroups:
         - ""

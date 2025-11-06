@@ -157,6 +157,12 @@ spec:
           compDef: hadoop-yarn-resourcemanager
           optional: false
           componentName: Required
+    - name: RESOURCEMANAGER_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: hadoop-yarn-resourcemanager
+          optional: false
+          podNames: Required
     - name: PHY_CPU
       valueFrom:
         resourceVarRef:
