@@ -150,8 +150,8 @@ build_redis_sentinel_conf() {
     exit 1
   fi
 
-  if [ -f $redis_sentinel_extra_conf ]; then
-    echo "include $redis_sentinel_extra_conf" >> $redis_sentinel_real_conf
+  if [ -f "$redis_sentinel_extra_conf" ]; then
+    echo "include $redis_sentinel_extra_conf" >> "$redis_sentinel_real_conf"
   fi
 
   # build announce ip and port according to whether the announce addr is enabled
