@@ -15,7 +15,9 @@ spec:
     - "^mongo-config-server-"
     releases:
 {{- range .minors }}
-      - {{ index . 0 }}
+{{- if not (index . 4) }}
+    - {{ index . 0 }}
+{{- end }}
 {{- end }}
 {{- end }}
   releases:
