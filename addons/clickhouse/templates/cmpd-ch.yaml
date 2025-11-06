@@ -29,12 +29,15 @@ spec:
           runAsUser: 0
           privileged: true
         readinessProbe:
-          httpGet:
-            path: /ping
-            port: 8123
           initialDelaySeconds: 5
           periodSeconds: 2
           timeoutSeconds: 3
+          exec:
+            command:
+              - bash
+              - -c
+              - |
+                /scripts/clickhouse-ping.sh
         ports:
           - name: tcp
             containerPort: 9000
