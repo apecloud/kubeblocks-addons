@@ -31,12 +31,15 @@ spec:
           privileged: true
           runAsUser: 0
         readinessProbe:
-          httpGet:
-            path: /ping
-            port: 8123
           initialDelaySeconds: 5
           periodSeconds: 2
           timeoutSeconds: 3
+          exec:
+            command:
+              - bash
+              - -c
+              - |
+                /scripts/clickhouse-ping.sh
         ports:
           - name: http-metrics
             containerPort: 8001
