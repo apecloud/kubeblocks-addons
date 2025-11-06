@@ -53,6 +53,11 @@ on:
           - zookeeper
           - hadoop
           - hive
+      custom_chart_dir:
+        description: 'release specify custom chart dir when chart_dir is empty'
+        required: false
+        default: ''
+        type: string
       chart_version:
         description: 'release specify chart version or empty to release default'
         required: false
@@ -61,34 +66,34 @@ on:
 env:
   GH_TOKEN: ${{ github.token }}
 
-run-name: Release Chart ${{ inputs.chart_dir }} ${{ inputs.chart_version }}
+run-name: Release Chart ${{ inputs.chart_dir || inputs.custom_chart_dir }} ${{ inputs.chart_version }}
 
 jobs:
   release-chart:
-    if: ${{ inputs.chart_dir != '' }}
+    if: ${{ inputs.chart_dir != '' || inputs.custom_chart_dir != '' }}
     uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.96
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons-cluster"
-      SPECIFY_CHART: "${{ inputs.chart_dir }}"
+      SPECIFY_CHART: "${{ inputs.chart_dir || inputs.custom_chart_dir }}"
       APECD_REF: "v0.1.96"
       PROJECT_ID: "150246"
     secrets: inherit
 
   release-chart-all:
-    if: ${{ inputs.chart_dir == '' }}
+    if: ${{ inputs.chart_dir == '' && inputs.custom_chart_dir == '' }}
     uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.96
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons-cluster"
-      SPECIFY_CHART: "${{ inputs.chart_dir }}"
+      SPECIFY_CHART: ""
       APECD_REF: "v0.1.96"
       ENABLE_JIHU: false
       PROJECT_ID: "150246"
     secrets: inherit
 
   get-addons-chart-dir:
-    if: ${{ inputs.chart_dir == '' }}
+    if: ${{ inputs.chart_dir == '' && inputs.custom_chart_dir == '' }}
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.get_addons_chart_dir.outputs.matrix }}
@@ -112,7 +117,7 @@ jobs:
 
   release-addons-chart-jihu:
     needs: [ get-addons-chart-dir ]
-    if: ${{ inputs.chart_dir == '' }}
+    if: ${{ inputs.chart_dir == '' && inputs.custom_chart_dir == '' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.get-addons-chart-dir.outputs.matrix) }}
