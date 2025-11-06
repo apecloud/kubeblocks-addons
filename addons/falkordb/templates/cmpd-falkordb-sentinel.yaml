@@ -54,6 +54,11 @@ spec:
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
+  configs:
+    - name: falkordb-sentinel-extra-config
+      namespace: {{ $.Release.Namespace }}
+      volumeName: falkordb-sentinel-extra-config
+      externalManaged: true
   scripts:
     - name: falkordb-scripts
       template: {{ include "falkordb.scriptsTemplate" $ }}
@@ -217,6 +222,8 @@ spec:
           mountPath: /data
         - name: scripts
           mountPath: /scripts
+        - name: falkordb-sentinel-extra-config
+          mountPath: /etc/conf/extra
       env:
         - name: CURRENT_POD_NAME
           valueFrom:

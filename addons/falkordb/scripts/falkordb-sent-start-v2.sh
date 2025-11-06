@@ -30,6 +30,7 @@ load_common_library() {
 
 redis_sentinel_conf_dir="/data/sentinel"
 redis_sentinel_real_conf="/data/sentinel/redis-sentinel.conf"
+redis_sentinel_extra_conf="/etc/conf/redis-sentinel-extra.conf"
 redis_sentinel_real_conf_bak="/data/sentinel/redis-sentinel.conf.bak"
 
 extract_lb_host_by_svc_name() {
@@ -147,6 +148,10 @@ build_redis_sentinel_conf() {
   if ! env_exist SENTINEL_POD_FQDN_LIST; then
     echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
     exit 1
+  fi
+
+  if [ -f $redis_sentinel_extra_conf ]; then
+    echo "include $redis_sentinel_extra_conf" >> $redis_sentinel_real_conf
   fi
 
   # build announce ip and port according to whether the announce addr is enabled

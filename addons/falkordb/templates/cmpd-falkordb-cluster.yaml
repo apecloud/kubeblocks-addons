@@ -75,6 +75,10 @@ spec:
       namespace: {{ $.Release.Namespace }}
       volumeName: falkordb-cluster-config
       externalManaged: true
+    - name: falkordb-cluster-extra-config
+      namespace: {{ $.Release.Namespace }}
+      volumeName: falkordb-cluster-extra-config
+      externalManaged: true
     - name: falkordb-metrics-config
       template: {{ include "falkordb.metricsConfiguration" $ }}
       namespace: {{ $.Release.Namespace }}
@@ -517,6 +521,8 @@ spec:
             mountPath: {{ $.Values.dataMountPath }}
           - name: falkordb-cluster-config
             mountPath: /etc/conf
+          - name: falkordb-cluster-extra-config
+            mountPath: /etc/conf/extra
           - name: scripts
             mountPath: /scripts
           - name: falkordb-conf
