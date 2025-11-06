@@ -54,11 +54,6 @@ spec:
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
-  configs:
-    - name: falkordb-sentinel-extra-config
-      namespace: {{ $.Release.Namespace }}
-      volumeName: falkordb-sentinel-extra-config
-      externalManaged: true
   scripts:
     - name: falkordb-scripts
       template: {{ include "falkordb.scriptsTemplate" $ }}

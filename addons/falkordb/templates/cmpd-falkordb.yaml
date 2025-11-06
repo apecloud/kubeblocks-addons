@@ -75,10 +75,6 @@ spec:
       namespace: {{ $.Release.Namespace }}
       volumeName: falkordb-config
       externalManaged: true
-    - name: falkordb-replication-config-extra
-      namespace: {{ $.Release.Namespace }}
-      volumeName: falkordb-config-extra
-      externalManaged: true
     - name: falkordb-metrics-config
       template: {{ include "falkordb.metricsConfiguration" $ }}
       namespace: {{ $.Release.Namespace }}
