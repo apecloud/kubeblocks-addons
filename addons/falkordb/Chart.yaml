@@ -6,7 +6,7 @@ type: application
 
 version: 1.0.1
 
-appVersion: "7.2.7"
+appVersion: "4.12.5"
 
 # Add a dependency to the kubeblocks definition library chart
 dependencies:
