@@ -40,6 +40,8 @@ spec:
         ports:
           - containerPort: 8020
             name: rpc
+          - containerPort: 8019
+            name: zkfc
           - containerPort: 9870
             name: http
           - containerPort: {{ .Values.jmxExporterPort }}
