@@ -27,7 +27,8 @@ if [[ "$ENABLE_JMX_EXPORTER" == true ]]; then
 fi
 
 if [[ -n "${DATANODE_DATA_HOST_PORT}" ]]; then
-  echo "${HOST_IP} `hostname`" >> /etc/hosts
+  hosts_info=$({ echo "$HOST_IP `hostname`"; cat /etc/hosts; })
+  echo "$hosts_info" > /etc/hosts
 fi
 
 run_as_user "hadoop" hdfs dfsadmin -refreshNodes
