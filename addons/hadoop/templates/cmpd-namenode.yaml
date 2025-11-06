@@ -159,6 +159,11 @@ spec:
         componentVarRef:
           optional: false
           replicas: Required
+    - name: POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
     - name: CLUSTER_COMPONENT_NAME
       valueFrom:
         componentVarRef:
@@ -194,3 +199,11 @@ spec:
           - -c
           - |
             /kubeblocks/scripts/role-check.sh 9870
+    switchover:
+      exec:
+        container: hdfs-namenode
+        command:
+          - bash
+          - -c
+          - |
+            /kubeblocks/scripts/switchover_namenode.sh

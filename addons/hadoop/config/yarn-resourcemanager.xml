@@ -10,17 +10,18 @@
     <property>
         <name>yarn.resourcemanager.ha.rm-ids</name>
         {{- $rms := "" }}
-        {{- range $i := until (int .COMPONENT_REPLICAS) }}
-           {{- $val := printf "rm%d" $i }}
+        {{- range $pod_name := splitList "," .POD_NAME_LIST }}
+           {{- $val := printf "rm%s" (splitList "-" $pod_name | last) }}
            {{- if eq $rms "" }}{{ $rms = $val }}{{ else }}{{ $rms = print $rms "," $val }}{{ end }}
         {{- end }}
         <value>{{ $rms }}</value>
     </property>
 
-  {{- range $i := until (int .COMPONENT_REPLICAS) }}
+    {{- range $pod_name := splitList "," .POD_NAME_LIST }}
+    {{- $i := splitList "-" $pod_name | last }}
     <property>
         <name>yarn.resourcemanager.hostname.rm{{ $i }}</name>
-        <value>{{ $.CLUSTER_COMPONENT_NAME }}-{{ $i }}</value>
+        <value>{{ $.CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}</value>
     </property>
     <property>
         <name>yarn.resourcemanager.address.rm{{ $i }}</name>
@@ -51,6 +52,16 @@
     <property>
         <name>yarn.resourcemanager.store.class</name>
         <value>org.apache.hadoop.yarn.server.resourcemanager.recovery.ZKRMStateStore</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.ha.automatic-failover.enabled</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.ha.automatic-failover.embedded</name>
+        <value>true</value>
     </property>
 
     <property>

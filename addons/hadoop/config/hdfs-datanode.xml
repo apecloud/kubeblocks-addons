@@ -35,13 +35,14 @@
     <property>
         <name>dfs.ha.namenodes.{{ .CLUSTER_NAME }}</name>
         {{- $nns := "" }}
-        {{- range $i := until (int .NAMENODE_COMPONENT_REPLICAS) }}
-           {{- $val := printf "nn%d" $i }}
-           {{- if eq $nns "" }}{{ $nns = $val }}{{ else }}{{ $nns = print $nns "," $val }}{{ end }}
+        {{- range $pod_name := splitList "," .NAMENODE_POD_NAME_LIST }}
+        {{- $val := printf "nn%s" (splitList "-" $pod_name | last) }}
+        {{- if eq $nns "" }}{{ $nns = $val }}{{ else }}{{ $nns = print $nns "," $val }}{{ end }}
         {{- end }}
         <value>{{ $nns }}</value>
     </property>
-  {{- range $i := until (int .NAMENODE_COMPONENT_REPLICAS) }}
+    {{- range $pod_name := splitList "," .NAMENODE_POD_NAME_LIST }}
+    {{- $i := splitList "-" $pod_name | last }}
     <property>
         <name>dfs.namenode.rpc-address.{{ $.CLUSTER_NAME }}.nn{{ $i }}</name>
         <value>{{ $.NAMENODE_CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.NAMENODE_CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:8020</value>

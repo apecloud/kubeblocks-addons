@@ -55,6 +55,7 @@ spec:
         hdfs-namenode: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
         hadoop-common: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
         roleProbe: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        switchover: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
         init-jmx-exporter: {{ $.Values.images.registry }}/{{ $.Values.images.jmxExporter.repository }}:{{ $.Values.images.jmxExporter.tag }}
     - name: journalnode-{{ .version }}
       serviceVersion: {{ .version }}

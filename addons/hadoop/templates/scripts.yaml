@@ -29,3 +29,5 @@ data:
     {{- .Files.Get "scripts/datanode-memberleave.sh" | nindent 4 }}
   datanode-memberjoin.sh: |-
     {{- .Files.Get "scripts/datanode-memberjoin.sh" | nindent 4 }}
+  switchover_namenode.sh: |-
+    {{- .Files.Get "scripts/switchover_namenode.sh" | nindent 4 }}

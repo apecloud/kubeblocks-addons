@@ -29,14 +29,15 @@
     <property>
         <name>yarn.resourcemanager.ha.rm-ids</name>
         {{- $rms := "" }}
-        {{- range $i := until (int .RESOURCEMANAGER_COMPONENT_REPLICAS) }}
-           {{- $val := printf "rm%d" $i }}
+        {{- range $pod_name := splitList "," .RESOURCEMANAGER_POD_NAME_LIST }}
+           {{- $val := printf "rm%s" (splitList "-" $pod_name | last) }}
            {{- if eq $rms "" }}{{ $rms = $val }}{{ else }}{{ $rms = print $rms "," $val }}{{ end }}
         {{- end }}
         <value>{{ $rms }}</value>
     </property>
 
-  {{- range $i := until (int .RESOURCEMANAGER_COMPONENT_REPLICAS) }}
+    {{- range $pod_name := splitList "," .RESOURCEMANAGER_POD_NAME_LIST }}
+    {{- $i := splitList "-" $pod_name | last }}
     <property>
         <name>yarn.resourcemanager.hostname.rm{{ $i }}</name>
         <value>{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}</value>

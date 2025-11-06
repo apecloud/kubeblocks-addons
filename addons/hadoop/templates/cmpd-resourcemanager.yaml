@@ -179,6 +179,11 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
     - name: ZOOKEEPER_COMP_ENDPOINTS
       valueFrom:
         componentVarRef:
