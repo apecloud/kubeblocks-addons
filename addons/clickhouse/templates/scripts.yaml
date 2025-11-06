@@ -21,3 +21,5 @@ data:
     {{- .Files.Get "scripts/member-join.sh" | nindent 4 }}
   keeper-switchover.sh: |
     {{- .Files.Get "scripts/keeper-switchover.sh" | nindent 4 }}
+  clickhouse-ping.sh: |
+    {{- .Files.Get "scripts/clickhouse-ping.sh" | nindent 4 }}
