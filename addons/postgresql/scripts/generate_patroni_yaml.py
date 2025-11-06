@@ -57,10 +57,11 @@ def main(filename):
             postgresql['pg_hba'] = lines
     if restore_dir and os.path.isfile(
             os.path.join(restore_dir, 'kb_restore.signal')):
-        if 'bootstrap' not in local_config:
-            local_config['bootstrap'] = {}
-        with open('/home/postgres/conf/kb_restore.conf', 'r') as f:
-            local_config['bootstrap'].update(yaml.safe_load(f))
+        if 'postgresql' not in local_config:
+            local_config['postgresql'] = {}
+        with open('/home/postgres/conf/replica_restore.conf', 'r') as f:
+            replica_restore_conf = yaml.safe_load(f)
+            local_config['postgresql'].update(replica_restore_conf)
 
     # point in time recovery(PITR)
     if os.path.isfile("/home/postgres/pgdata/conf/recovery.conf"):
@@ -79,6 +80,10 @@ def main(filename):
             local_config['bootstrap']['dcs'].update(yaml.safe_load(f))
     else:
         print('patroni.yaml not found')
+    synchronous_mode = os.environ.get('SYNCHRONOUS_MODE')
+    if synchronous_mode:
+        local_config['bootstrap']['dcs']['synchronous_mode'] = synchronous_mode
+
     write_file(yaml.dump(local_config, default_flow_style=False), filename, True)
 
 

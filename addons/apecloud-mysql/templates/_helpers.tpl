@@ -36,7 +36,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "apecloud-mysql.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "apecloud-mysql.apiVersion" . }}
 {{- end }}
 
@@ -94,7 +94,7 @@ logConfigs:
   {{- end }}
 scripts:
   - name: apecloud-mysql-scripts
-    templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
+    template: {{ include "apecloud-mysql.cmScriptsName" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555  # for read and execute, mysql container switched user account.
@@ -107,23 +107,28 @@ systemAccounts:
       numSymbols: 0
       letterCase: MixedCases
   - name: kbadmin
-    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT ALL PRIVILEGES ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT ALL PRIVILEGES ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: &defaultPasswordGenerationPolicy
       length: 16
       numDigits: 8
       numSymbols: 0
       letterCase: MixedCases
   - name: kbdataprotection
-    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbprobe
-    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbmonitoring
-    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbreplicator
-    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION SLAVE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME} WITH GRANT OPTION;
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION SLAVE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME} WITH GRANT OPTION;
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
 tls:
   volumeName: tls
@@ -133,17 +138,14 @@ tls:
   keyFile: key.pem
 roles:
   - name: leader
-    serviceable: true
-    writable: true
-    votable: true
+    updatePriority: 3
+    participatesInQuorum: true
   - name: follower
-    serviceable: true
-    writable: false
-    votable: true
+    updatePriority: 2
+    participatesInQuorum: true
   - name: learner
-    serviceable: false
-    writable: false
-    votable: false
+    updatePriority: 1
+    participatesInQuorum: false
 lifecycleActions:
   roleProbe:
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
@@ -151,31 +153,31 @@ lifecycleActions:
     exec:
       container: mysql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        - wesql
+        - /tools/syncerctl
         - getrole
   memberLeave:
     exec:
       container: mysql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        -  wesql
-        - leavemember
+        - /bin/sh
+        - -c
+        - |
+          /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
   switchover:
     exec:
       command:
         - /bin/sh
         - -c
         - |
-          /tools/syncerctl switchover --primary "$KB_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
+          if [ "$KB_SWITCHOVER_ROLE" != "leader" ]; then
+              echo "switchover not triggered for primary, nothing to do, exit 0."
+              exit 0
+          fi
+
+          /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
   accountProvision:
     exec:
       container: mysql
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
       command:
         - bash
         - -c
@@ -185,10 +187,9 @@ lifecycleActions:
           eval statement=\"${KB_ACCOUNT_STATEMENT}\"
           mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
       targetPodSelector: Role
-      matchingKey: leader 
+      matchingKey: leader
   dataDump:
     exec:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
       command:
         - bash
         - -c
@@ -205,7 +206,6 @@ lifecycleActions:
       container: mysql
   dataLoad:
     exec:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
       command:
         - bash
         - -c
@@ -276,29 +276,38 @@ vars:
         compDef: {{ .Values.etcd.etcdCmpdName }}
         name: headless
         optional: true
-        port: 
+        port:
           name: client
           option: Optional
-  - name: MY_POD_LIST
+  - name: COMPONENT_POD_LIST
     valueFrom:
       componentVarRef:
         optional: false
         podNames: Required
-  - name: MY_COMP_NAME
+  - name: COMPONENT_NAME
     valueFrom:
       componentVarRef:
         optional: false
         shortName: Required
-  - name: MY_COMP_REPLICAS
+  - name: COMPONENT_REPLICAS
     valueFrom:
       componentVarRef:
         optional: false
         replicas: Required
-  - name: MY_CLUSTER_NAME
+  - name: CLUSTER_COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        componentName: Required
+  - name: CLUSTER_NAME
     valueFrom:
       clusterVarRef:
         clusterName: Required
-  - name: MY_CLUSTER_UID
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      clusterVarRef:
+        namespace: Required
+  - name: CLUSTER_UID
     valueFrom:
       clusterVarRef:
         clusterUID: Required
@@ -347,22 +356,27 @@ env:
   - name: KB_MYSQL_CONF_FILE
     value: "/opt/mysql/my.cnf"
   - name: KB_MYSQL_CLUSTER_UID
-    value: $(KB_CLUSTER_UID)
+    value: $(CLUSTER_UID)
   - name: KB_MYSQL_N
-    value: $(KB_COMP_REPLICAS)
+    value: $(COMPONENT_REPLICAS)
   - name: CLUSTER_DOMAIN
     value: {{ .Values.clusterDomain }}
-  - name: MY_POD_NAME
+  - name: POD_NAMESPACE
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.namespace
+  - name: POD_NAME
     valueFrom:
       fieldRef:
         apiVersion: v1
         fieldPath: metadata.name
-  - name: MY_POD_UID
+  - name: POD_UID
     valueFrom:
       fieldRef:
         apiVersion: v1
         fieldPath: metadata.uid
-  - name: MY_POD_IP
+  - name: POD_IP
     valueFrom:
       fieldRef:
         apiVersion: v1
@@ -406,11 +420,31 @@ env:
     value: "15100"
   - name: VTTABLET_GRPC_PORT
   - name: VTCTLD_HOST
-    value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+    value: "$(CLUSTER_NAME)-wescale-ctrl-headless"
   - name: VTCTLD_WEB_PORT
     value: "15000"
   - name: SERVICE_PORT
     value: "$(VTTABLET_PORT)"
+  - name: POD_NAMESPACE
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.namespace
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.name
+  - name: POD_UID
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.uid
+  - name: POD_IP
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: status.podIP
 command: ["/scripts/vttablet.sh"]
 volumeMounts:
   - name: scripts
@@ -431,7 +465,6 @@ env:
     value: $(MYSQL_ROOT_PASSWORD)
   - name: EXPORTER_WEB_PORT
     value: "{{ .Values.metrics.service.port }}"
-image: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
 imagePullPolicy: IfNotPresent
 ports:
   - name: http-metrics

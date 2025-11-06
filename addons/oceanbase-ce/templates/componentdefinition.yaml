@@ -12,6 +12,7 @@ spec:
   serviceKind: oceanbase-ce
   description:  {{ .Chart.Description }}
   updateStrategy: BestEffortParallel
+  podManagementPolicy: Parallel
   {{- include "oceanbase-ce.spec.vars" . | nindent 2 }}
   {{- include "oceanbase-ce.spec.configs" . | nindent 2 }}
   exporter:

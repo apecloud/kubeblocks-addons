@@ -1,0 +1,36 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: hive-metastore-rebuild
+  labels:
+    clusterdefinition.kubeblocks.io/name: hive
+spec:
+  backupType: Full
+  env:
+    - name: IMAGE_TAG
+      value: "{{ .Values.images.hive.tag }}"
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ $.Values.images.registry }}/{{ $.Values.images.hive.repository }}:$(IMAGE_TAG)
+      runOnTargetPodNode: false
+      command:
+      - bash
+      - -c
+      - |
+        echo "{}" > ${DP_BACKUP_INFO_FILE}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    prepareData:
+      image: {{ $.Values.images.registry }}/{{ $.Values.images.hive.repository }}:$(IMAGE_TAG)
+      command:
+      - sh
+      - -c
+      - |
+        meta_dir=/hive/metadata
+        mkdir -p ${meta_dir}
+        touch ${meta_dir}/hive_metastore_initialized
+        chown -R hadoop:hadoop ${meta_dir}

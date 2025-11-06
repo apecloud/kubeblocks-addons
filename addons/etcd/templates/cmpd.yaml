@@ -10,23 +10,27 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
   runtime:
     initContainers:
       - name: inject-bash
-        imagePullPolicy: {{default .Values.bashBusyboxImage.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         volumeMounts:
           - name: scripts
             mountPath: /scripts
           - name: bin
-            mountPath: /share/bin
+            mountPath: /shared/bin
+          - name: data
+            mountPath: {{ .Values.dataMountDir }}
         command:
           - /bin/bash
           - -c
-          - scripts/inject-bash.sh
+          - |
+            mkdir -p {{ .Values.binDir }}
+            /scripts/inject-bash.sh {{ .Values.binDir }}
     containers:
       - name: etcd
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        workingDir: {{ .Values.dataMountDir }}
         ports:
           - containerPort: 2379
             name: client
@@ -34,7 +38,7 @@ spec:
             name: peer
         volumeMounts:
           - name: data
-            mountPath: {{ .Values.dataMountPath }}
+            mountPath: {{ .Values.dataMountDir }}
           - name: config
             mountPath: /etc/etcd
           - name: scripts
@@ -45,7 +49,7 @@ spec:
           - /bin/bash
           - -c
           - |
-            export PATH=$PATH:/bin
+            export PATH="/bin:$PATH"
             /scripts/start.sh
         env:
           - name: CURRENT_POD_NAME
@@ -61,6 +65,10 @@ spec:
       value: {{ .Chart.AppVersion }}
     - name: DATA_DIR
       value: {{ .Values.dataDir }}
+    - name: BACKUP_DIR
+      value: {{ .Values.backupDir }}
+    - name: BIN_DIR
+      value: {{ .Values.binDir }}
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
@@ -71,8 +79,10 @@ spec:
       value: "{{ .Values.tls.client }}"
     - name: PEER_TLS
       value: "{{ .Values.tls.peer }}"
-    - name: TMP_CONFIG_PATH
-      value: {{ .Values.tmpConfigPath }}
+    - name: CONFIG_TEMPLATE_PATH
+      value: {{ .Values.configTemplatePath }}
+    - name: CONFIG_FILE_PATH
+      value: {{ .Values.configFilePath }}
     - name: PEER_FQDNS
       valueFrom:
         componentVarRef:
@@ -104,11 +114,25 @@ spec:
       valueFrom:
         tlsVarRef:
           enabled: Optional
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
   volumes:
     - name: data
       needSnapshot: true
   services:
+    - name: client
+      serviceName: client
+      spec:
+        ports:
+          - name: client
+            port: 2379
+            targetPort: client
+      disableAutoProvision: true
     - name: peer
+      serviceName:
       spec:
         ports:
           - name: peer
@@ -122,63 +146,68 @@ spec:
     caFile: ca.pem
     certFile: cert.pem
     keyFile: key.pem
-  # reference: https://etcd.io/docs/v3.5/op-guide/runtime-configuration/ single member changes is better
+  # reference: https://etcd.io/docs/v3.6/op-guide/runtime-configuration/ single member changes is better
   updateStrategy: Serial
   roles:
     - name: leader
-      serviceable: true
-      writable: true
-      votable: true
+      updatePriority: 2
+      participatesInQuorum: true
     - name: follower
-      serviceable: true
-      writable: false
-      votable: true
+      updatePriority: 1
+      participatesInQuorum: true
   lifecycleActions:
     roleProbe:
       exec:
-        image: {{ include "etcd356.image" . }}
         container: etcd
         command:
           - /bin/bash
           - -c
           - /scripts/roleprobe.sh
+      initialDelaySeconds: 10
+      periodSeconds: 5
     memberJoin:
       exec:
-        image: {{ include "etcd356.image" . }}
-        container: etcd
         command:
           - /bin/bash
           - -c
-          - /scripts/member-join.sh
+          - /scripts/member-join.sh > /tmp/member-join.log 2>&1
     memberLeave:
       exec:
-        image: {{ include "etcd356.image" . }}
-        container: etcd
         command:
           - /bin/bash
           - -c
-          - /scripts/member-leave.sh
+          - /scripts/member-leave.sh > /tmp/member-leave.log 2>&1
     switchover:
       exec:
-        image: {{ include "etcd356.image" . }}
-        container: etcd
         command:
           - /bin/bash
           - -c
-          - /scripts/switchover.sh
+          - /scripts/switchover.sh > /tmp/switchover.log 2>&1
+    dataDump:
+      exec:
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/data-dump.sh > /tmp/data-dump.log 2>&1
+        targetPodSelector: Role
+        matchingKey: leader
+    # send by kbagent-worker as init container, send data dump request to leader, and load data to this pod
+    dataLoad:
+      exec:
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/data-load.sh > /tmp/data-load.log 2>&1
   configs:
-    - name: etcd-configuration-tpl
-      templateRef: {{ include "etcd3.configurationTemplate" .}}
-      constraintRef: {{ include "etcd3.configConstraint" .}}
+    - name: config
+      template: {{ include "etcd3.configTemplate" .}}
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
-      reRenderResourceTypes:
-        - hscale
-        - vscale
+      restartOnFileChange: true
   scripts:
-    - name: etcd-scripts
-      templateRef: {{ include "etcd3.scriptsTemplate" .}}
+    - name: script
+      template: {{ include "etcd3.scriptTemplate" .}}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

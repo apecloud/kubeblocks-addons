@@ -4,7 +4,7 @@ description: A Pulsar Cluster Helm chart for KubeBlocks.
 
 type: application
 
-version: 1.0.0-alpha.0
+version: 1.1.0-alpha.0
 
 # appVersion specifies the version of the Pulsar database to be created.
 # The current default value is the highest version of the Pulsar supported in KubeBlocks.

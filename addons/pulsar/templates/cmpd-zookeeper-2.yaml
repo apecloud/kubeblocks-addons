@@ -12,19 +12,24 @@ spec:
   serviceKind: pulsar
   serviceVersion: {{ .Values.defaultServiceVersion.zookeeper.major2 }}
   updateStrategy: BestEffortParallel
+  services:
+    - name: zookeeper
+      serviceName: zookeeper
+      spec:
+        type: ClusterIP
+        ports:
+          - name: client
+            port: 2181
+            targetPort: 2181
   configs:
-    - name: zookeeper-env
-      templateRef: {{ include "pulsar.zookeeperEnvTplName" . }}
+    - name: zookeeper-config
+      template: {{ include "pulsar2.zookeeperTplName" . }}
       namespace: {{ .Release.Namespace }}
-      volumeName: zookeeper-config-env
-      constraintRef: {{ include "pulsar.envConstraintName" . }}
-      keys:
-        - conf
-      injectEnvTo:
-        - zookeeper
+      volumeName: zookeeper-config
+      externalManaged: true
   scripts:
     - name: pulsar-scripts
-      templateRef: {{ include "pulsar.scriptsTplName" . }}
+      template: {{ include "pulsar.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -45,7 +50,6 @@ spec:
       runAsUser: 10000
     containers:
       - name: zookeeper
-        image: {{ include "pulsar2.zookeeperImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-zookeeper.sh
@@ -104,5 +108,5 @@ spec:
             name: data-log
           - name: scripts
             mountPath: /kb-scripts
-          - name: zookeeper-config-env
-            mountPath: /opt/pulsar/none
+          - name: zookeeper-config
+            mountPath: /opt/pulsar/conf

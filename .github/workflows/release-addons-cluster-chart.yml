@@ -15,8 +15,11 @@ on:
           - clickhouse
           - elasticsearch
           - etcd
+          - falkordb
           - greptimedb
+          - influxdb
           - kafka
+          - llm
           - loki
           - mariadb
           - milvus
@@ -25,6 +28,7 @@ on:
           - mongodb
           - mysql
           - nebula
+          - neo4j
           - neon
           - oceanbase-ce
           - vanilla-postgresql
@@ -38,13 +42,17 @@ on:
           - rabbitmq
           - redis
           - risingwave
+          - rocketmq
           - starrocks-ce
           - tdengine
           - tidb
           - victoria-metrics
           - weaviate
+          - xinference
           - yashandb
           - zookeeper
+          - hadoop
+          - hive
       chart_version:
         description: 'release specify chart version or empty to release default'
         required: false
@@ -58,23 +66,23 @@ run-name: Release Chart ${{ inputs.chart_dir }} ${{ inputs.chart_version }}
 jobs:
   release-chart:
     if: ${{ inputs.chart_dir != '' }}
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.68
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.96
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons-cluster"
       SPECIFY_CHART: "${{ inputs.chart_dir }}"
-      APECD_REF: "v0.1.68"
+      APECD_REF: "v0.1.96"
       PROJECT_ID: "150246"
     secrets: inherit
 
   release-chart-all:
     if: ${{ inputs.chart_dir == '' }}
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.68
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.96
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons-cluster"
       SPECIFY_CHART: "${{ inputs.chart_dir }}"
-      APECD_REF: "v0.1.68"
+      APECD_REF: "v0.1.96"
       ENABLE_JIHU: false
       PROJECT_ID: "150246"
     secrets: inherit
@@ -108,11 +116,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.get-addons-chart-dir.outputs.matrix) }}
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts-jihu.yml@v0.1.68
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts-jihu.yml@v0.1.96
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons-cluster"
       SPECIFY_CHART: "${{ matrix.addon-name }}"
-      APECD_REF: "v0.1.68"
+      APECD_REF: "v0.1.96"
       PROJECT_ID: "150246"
     secrets: inherit

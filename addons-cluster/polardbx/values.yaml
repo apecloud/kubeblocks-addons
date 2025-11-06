@@ -1,5 +1,5 @@
 ## cluster settings for polardbx cluster
-nameOverride: pxc
+clusterName: pxc
 
 gms:
   ## @param gms.replicas data replicas of gms instance
@@ -11,11 +11,11 @@ gms:
   ## more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
   resources:
     requests:
-      cpu: "1"
-      memory: "1Gi"
+      cpu: 1
+      memory: 1
     limits:
-      cpu: "1"
-      memory: "1Gi"
+      cpu: 1
+      memory: 1
 
 
   ## Enable persistence using Persistent Volume Claims
@@ -38,7 +38,7 @@ gms:
       storageClassName:
       ## @param shard[*].persistence.size Size of data volume
       ##
-      size: 20Gi
+      size: 20
 
 dn:
   -
@@ -50,11 +50,11 @@ dn:
     ## more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
     resources:
       requests:
-        cpu: "1"
-        memory: "1Gi"
+        cpu: 1
+        memory: 1
       limits:
-        cpu: "1"
-        memory: "1Gi"
+        cpu: 1
+        memory: 1
 
     ## Enable persistence using Persistent Volume Claims
     ## ref: https://kubernetes.io/docs/user-guide/persistent-volumes/
@@ -76,7 +76,7 @@ dn:
         storageClassName:
         ## @param shard[*].persistence.size Size of data volume
         ##
-        size: 20Gi
+        size: 20
 
 cn:
   ## @param cn.replicas number of polardb-x cn nodes
@@ -86,11 +86,11 @@ cn:
   ## more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
   resources:
     requests:
-      cpu: "1"
-      memory: "1Gi"
+      cpu: 1
+      memory: 1
     limits:
-      cpu: "1"
-      memory: "1Gi"
+      cpu: 1
+      memory: 1
 
 cdc:
   ## @param cdc.replicas number of polardb-x cdc nodes
@@ -100,8 +100,8 @@ cdc:
   ## more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
   resources:
     requests:
-      cpu: "1"
-      memory: "1Gi"
+      cpu: 1
+      memory: 1
     limits:
-      cpu: "1"
-      memory: "1Gi"
+      cpu: 1
+      memory: 1

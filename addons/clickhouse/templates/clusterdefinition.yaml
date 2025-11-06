@@ -9,15 +9,16 @@ metadata:
 spec:
   topologies:
     - name: standalone
-      components:
+      shardings:
         - name: clickhouse
-          compDef: {{ include "clickhouse24.cmpdRegexpPattern" . }}
+          shardingDef: clickhouse
     - name: cluster
       components:
-        - name: clickhouse
-          compDef: {{ include "clickhouse24.cmpdRegexpPattern" .}}
         - name: ch-keeper
-          compDef: {{ include "clickhouse-keeper24.cmpdRegexpPattern" .}}
+          compDef: {{ include "clickhouse-keeper.cmpdRegexpPattern" .}}
+      shardings:
+        - name: clickhouse
+          shardingDef: clickhouse
       orders:
         provision:
           - ch-keeper

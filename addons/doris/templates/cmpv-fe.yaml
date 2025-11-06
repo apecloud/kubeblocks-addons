@@ -1,0 +1,21 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: {{ include "fe.componentVersionName" . }}
+  labels:
+    {{- include "doris.labels" . | nindent 4 }}
+  annotations:
+    {{- include "doris.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+  - compDefs:
+    - {{ include "fe.cmpdRegexPattern" . }}
+    releases:
+    - 2.1.6
+  releases:
+  - name: 2.1.6
+    serviceVersion: 2.1.6
+    images:
+      fe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:2.1.6
+      roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:2.1.6
+      memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:2.1.6

@@ -2,17 +2,16 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: clickhouse-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the ClusterDef to use when creating a Cluster.
   clusterDef: clickhouse
-  # Specifies the clickhouse cluster topology defined in ClusterDefinition.Spec.topologies, support standalone, cluster
+  # Specifies the clickhouse cluster topology defined in ClusterDefinition.Spec.topologies.
   # - `standalone`: single clickhouse instance
   # - `cluster`: clickhouse with ClickHouse Keeper as coordinator
   topology: cluster
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
-  # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
   # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
   # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
   terminationPolicy: Delete
@@ -20,45 +19,9 @@ spec:
   # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
-    - name: clickhouse
-      componentDef: clickhouse-24
-      serviceAccountName: kb-clickhouse-cluster
-      replicas: 2
-      systemAccounts:
-        - name: admin
-          passwordConfig:
-            length: 10
-            numDigits: 5
-            numSymbols: 0
-            letterCase: MixedCases
-            seed: clickhouse-cluster
-      resources:
-        limits:
-          cpu: '0.5'
-          memory: 1Gi
-        requests:
-          cpu: '0.5'
-          memory: 1Gi
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
     - name: ch-keeper
-      componentDef: clickhouse-keeper-24
-      serviceAccountName: kb-clickhouse-cluster
+      componentDef: clickhouse-keeper-1
       replicas: 1
-      systemAccounts:
-        - name: admin
-          passwordConfig:
-            length: 10
-            numDigits: 5
-            numSymbols: 0
-            letterCase: MixedCases
-            seed: clickhouse-cluster
       resources:
         limits:
           cpu: '0.5'
@@ -66,6 +29,11 @@ spec:
         requests:
           cpu: '0.5'
           memory: 1Gi
+      systemAccounts:
+        - name: admin
+          secretRef:
+            name: udf-account-info
+            namespace: demo
       volumeClaimTemplates:
         - name: data
           spec:
@@ -73,4 +41,40 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: 20Gi
+                storage: 10Gi
+  shardings:
+    - name: clickhouse
+      shards: 2 # with 2 shard
+      template:
+        name: clickhouse  # each shard is a clickhouse component, with 2 replicas
+        componentDef: clickhouse-1
+        replicas: 2
+        systemAccounts:
+          - name: admin # name of the system account
+            secretRef:
+              name: udf-account-info
+              namespace: demo
+        resources:
+          limits:
+            cpu: "1"
+            memory: 2Gi
+          requests:
+            cpu: "1"
+            memory: 2Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: udf-account-info
+  namespace: demo  # optional
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=  # 'password123' in base64

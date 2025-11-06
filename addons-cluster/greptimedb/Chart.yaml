@@ -4,6 +4,6 @@ description: A greptimedb cluster Helm chart for KubeBlocks.
 
 type: application
 
-version: 1.0.0-alpha.0
+version: 1.1.0-alpha.0
 
 appVersion: "0.3.2"

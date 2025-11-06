@@ -17,12 +17,12 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
             {{- end }}
             {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       volumeClaimTemplates:
@@ -33,7 +33,7 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.safekeeper.dataStorage }}
+                storage: {{ print .Values.safekeeper.dataStorage "Gi" }}
     - name: neon-broker
       replicas: 1
       {{- with  .Values.storagebroker.resources }}
@@ -41,12 +41,12 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
             {{- end }}
             {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
     - name: neon-safekeeper
@@ -56,12 +56,12 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
             {{- end }}
             {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       volumeClaimTemplates:
@@ -72,7 +72,7 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.safekeeper.dataStorage }}
+                storage: {{ print .Values.safekeeper.dataStorage "Gi" }}
     - name: neon-pageserver
       replicas: {{ .Values.pageserver.replicas }}
       {{- with  .Values.safekeeper.resources }}
@@ -80,12 +80,12 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
             {{- end }}
             {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       volumeClaimTemplates:
@@ -96,4 +96,4 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.pageserver.dataStorage }}
+                storage: {{ print .Values.pageserver.dataStorage "Gi" }}

@@ -1,0 +1,16 @@
+{{- if eq .Values.mode "multi-node" }}
+{{- $count := 0 }}
+{{- range $cmpName, $roles := .Values.roles }}
+  {{- range $idx, $role := splitList "," $roles }}
+    {{- if eq $role "master" -}}
+      {{ $count = add $count 1 }}
+       {{- if ne $cmpName "master" -}}
+        {{- fail "the component containing master role must be named as `master`" -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- if ne $count 1 }}
+{{- println "there must be one and only one master node" -}}
+{{- end }}
+{{- end }}

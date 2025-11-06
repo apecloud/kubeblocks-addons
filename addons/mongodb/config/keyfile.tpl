@@ -1,1 +1,1 @@
-{{ randAscii 64 | b64enc }}
+{{ printf "%s" .CLUSTER_UID | b64enc }}

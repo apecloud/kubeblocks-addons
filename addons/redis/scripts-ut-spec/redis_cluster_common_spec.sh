@@ -102,15 +102,15 @@ Describe "Redis Cluster Common Bash Script Tests"
     End
   End
 
-  Describe "parse_advertised_port()"
+  Describe "parse_advertised_svc_and_port()"
     It "parses advertised port from pod name and advertised ports"
-      When call parse_advertised_port "redis-shard-98x-0" "redis-shard-98x-advertised-0:6379,redis-shard-98x-advertised-1:6380"
+      When call parse_advertised_svc_and_port "redis-shard-98x-0" "redis-shard-98x-advertised-0:6379,redis-shard-98x-advertised-1:6380"
       The status should be success
       The output should eq "6379"
     End
 
     It "returns 1 when advertised port not found"
-      When call parse_advertised_port "redis-shard-98x-2" "redis-shard-98x-advertised-0:6379,redis-shard-98x-advertised-1:6380"
+      When call parse_advertised_svc_and_port "redis-shard-98x-2" "redis-shard-98x-advertised-0:6379,redis-shard-98x-advertised-1:6380"
       The status should be failure
     End
   End
@@ -247,23 +247,23 @@ Describe "Redis Cluster Common Bash Script Tests"
       End
     End
 
-    Context "returns 1 when cluster_node_list or cluster_node_service_port is empty"
+    Context "returns 1 when cluster_node_list or cluster_pod_name_list is empty"
       setup() {
         export KB_CLUSTER_POD_IP_LIST=""
-        export SERVICE_PORT=""
+        export KB_CLUSTER_POD_NAME_LIST=""
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_POD_IP_LIST
-        unset SERVICE_PORT
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 
-      It "returns 1 when cluster_node_list or cluster_node_service_port is empty"
-        When run check_cluster_initialized "$KB_CLUSTER_POD_IP_LIST" "$SERVICE_PORT"
+      It "returns 1 when cluster_node_list or cluster_pod_name_list is empty"
+        When run check_cluster_initialized "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST"
         The status should be failure
-        The stderr should include "Error: Required environment variable cluster_node_list or cluster_node_service_port  is not set."
+        The stderr should include "Error: Required environment variable cluster_pod_ip_list or cluster_pod_name_list is not set."
       End
     End
   End
@@ -488,28 +488,38 @@ Describe "Redis Cluster Common Bash Script Tests"
 
   Describe "build_acl_save_command()"
     Context "when REDIS_DEFAULT_PASSWORD is not set"
+      setup() {
+        export SERVICE_PORT="1000"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset SERVICE_PORT
+      }
       It "builds acl save command without password"
-        When call build_acl_save_command
-        The output should eq "redis-cli -h 127.0.0.1 -p 6379 acl save"
-        The stderr should include "acl save command: redis-cli -h 127.0.0.1 -p 6379 acl save"
+        When call build_acl_save_command $SERVICE_PORT
+        The output should eq "redis-cli -h localhost -p 1000 acl save"
+        The stderr should include "acl save command: redis-cli -h localhost -p 1000 acl save"
       End
     End
 
     Context "when REDIS_DEFAULT_PASSWORD is set"
       setup() {
         export REDIS_DEFAULT_PASSWORD="password"
+        export SERVICE_PORT="1000"
       }
       Before "setup"
 
       un_setup() {
         unset REDIS_DEFAULT_PASSWORD
+        unset SERVICE_PORT
       }
       After "un_setup"
 
       It "builds acl save command with password"
-        When call build_acl_save_command
-        The output should eq "redis-cli -h 127.0.0.1 -p 6379 -a password acl save"
-        The stderr should include "acl save command: redis-cli -h 127.0.0.1 -p 6379 -a ******** acl save"
+        When call build_acl_save_command $SERVICE_PORT
+        The output should eq "redis-cli -h localhost -p 1000 -a password acl save"
+        The stderr should include "acl save command: redis-cli -h localhost -p 1000 -a ******** acl save"
       End
     End
   End

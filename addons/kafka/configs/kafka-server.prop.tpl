@@ -120,7 +120,8 @@ delete.records.purgatory.purge.interval.requests=1
 auto.leader.rebalance.enable=true
 leader.imbalance.per.broker.percentage=10
 leader.imbalance.check.interval.seconds=300
-security.inter.broker.protocol=PLAINTEXT
+# 'inter.broker.listener.name' and 'security.inter.broker.protocol' are mutually exclusive
+# security.inter.broker.protocol=PLAINTEXT
 # replica.selector.class=
 controlled.shutdown.max.retries=3
 controlled.shutdown.retry.backoff.ms=5000

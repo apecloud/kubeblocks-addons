@@ -30,14 +30,29 @@ Create chart name and version as used by the chart label.
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+
+{{/*
+Dynamic component definition name for clickhouse
+*/}}
+{{- define "clickhouse-cluster.cmpdName" -}}
+clickhouse-1
+{{- end }}
+
+{{/*
+Dynamic component definition name for clickhouse-keeper
+*/}}
+{{- define "clickhouse-cluster.keeperCmpdName" -}}
+clickhouse-keeper-1
+{{- end }}
+
 {{/*
 Common labels
 */}}
 {{- define "clickhouse-cluster.labels" -}}
 helm.sh/chart: {{ include "clickhouse-cluster.chart" . }}
 {{ include "clickhouse-cluster.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- if .Values.version }}
+app.kubernetes.io/version: {{ .Values.version | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
@@ -53,13 +68,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "clustername" -}}
 {{ .Release.Name }}
 {{- end}}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "clickhouse-cluster.serviceAccountName" -}}
-{{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
-{{- end }}
 
 {{/*
 TLS file
@@ -84,10 +92,13 @@ Define clickhouse componentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-component" -}}
 - name: clickhouse
-  componentDef: clickhouse-24
-  replicas: {{ $.Values.replicaCount | default 2 }}
+  componentDef: {{ include "clickhouse-cluster.cmpdName" . }}
+  replicas: {{ $.Values.replicas | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
-  serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
+  serviceVersion: {{ $.Values.version }}
+  services:
+  - name: default
+    serviceType: {{ .Values.service.type | default "NodePort" }}
   systemAccounts:
     - name: admin
       passwordConfig:
@@ -109,12 +120,16 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-keeper-component" -}}
 - name: ch-keeper
-  componentDef: clickhouse-keeper-24
-  replicas: {{ .Values.keeper.replicaCount }}
+  componentDef: {{ include "clickhouse-cluster.keeperCmpdName" . }}
+  replicas: {{ .Values.keeper.replicas }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
+  serviceVersion: {{ $.Values.version }}
   {{- with .Values.keeper.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}
+  services:
+  - name: default
+    serviceType: {{ .Values.service.type | default "NodePort" }}
   resources:
     limits:
       cpu: {{ .Values.keeper.cpu | quote }}
@@ -148,14 +163,20 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
 Define clickhouse shardingComponentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-sharding-component" -}}
-- name: shard
-  shards: {{ .Values.shardCount }}
+- name: clickhouse
+  shards: {{ .Values.shards }}
   template:
     name: clickhouse
-    componentDef: clickhouse-24
-    replicas: {{ $.Values.replicaCount | default 2 }}
+    componentDef: {{ include "clickhouse-cluster.cmpdName" . }}
+    env:
+    - name: "INIT_CLUSTER_NAME"
+      value: "{{ .Values.clickhouse.initClusterName }}"
+    replicas: {{ $.Values.replicas | default 2 }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
-    serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
+    serviceVersion: {{ $.Values.version }}
+    services:
+    - name: default
+      serviceType: {{ .Values.service.type | default "NodePort" }}
     systemAccounts:
     - name: admin
       passwordConfig:
@@ -176,14 +197,24 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
 Define clickhouse componentSpec with compatible ComponentDefinition API
 */}}
 {{- define "clickhouse-nosharding-component" -}}
-{{- range $i := until (.Values.shardCount | int) }}
-- name: shard-{{ $i }}
-  componentDef: clickhouse-24
-  replicas: {{ $.Values.replicaCount | default 2 }}
+{{- range $i := until (.Values.shards | int) }}
+{{- $name := printf "clickhouse-%d" $i }}
+{{- if eq $i 0 }}
+{{- $name = "clickhouse" }}
+{{- end}}
+- name: {{ $name }}
+  env:
+  - name: "INIT_CLUSTER_NAME"
+    value: "{{ .Values.clickhouse.initClusterName }}"
+  componentDef: {{ include "clickhouse-cluster.cmpdName" . }}
+  replicas: {{ $.Values.replicas | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
-  serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
+  serviceVersion: {{ $.Values.version }}
   {{- with $.Values.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
+  services:
+  - name: default
+    serviceType: {{ .Values.service.type | default "NodePort" }}
   {{- end }}
   {{- include "kblib.componentResources" $ | indent 2 }}
   {{- include "kblib.componentStorages" $ | indent 2 }}

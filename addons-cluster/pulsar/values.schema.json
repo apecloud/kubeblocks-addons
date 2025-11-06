@@ -6,11 +6,7 @@
             "title": "Version",
             "description": "Service version",
             "type": "string",
-            "default": "3.0.2",
-            "enum": [
-                "2.11.2",
-                "3.0.2"
-            ]
+            "default": "3.0.2"
         },
         "mode": {
             "title": "Mode",
@@ -30,8 +26,11 @@
                     "description": "The number of bookies replicas.",
                     "type": "integer",
                     "default": 1,
-                    "minimum": 1,
-                    "maximum": 5
+                    "enum": [
+                        1,
+                        3,
+                        5
+                    ]
                 },
                 "mode": {
                     "type": "string",
@@ -48,9 +47,23 @@
                         "limits": {
                             "type": "object",
                             "properties": {
+                                "cpu": {
+                                    "title": "CPU limit",
+                                    "description": "CPU limit",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
                                 "memory": {
-                                    "type": "string",
-                                    "default": "512Mi"
+                                    "title": "Memory limit(Gi)",
+                                    "description": "Memory limit, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
                                 }
                             }
                         },
@@ -58,12 +71,22 @@
                             "type": "object",
                             "properties": {
                                 "cpu": {
-                                    "type": "string",
-                                    "default": "200m"
+                                    "title": "CPU request",
+                                    "description": "CPU request",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
                                 },
                                 "memory": {
-                                    "type": "string",
-                                    "default": "512Mi"
+                                    "title": "Memory request(Gi)",
+                                    "description": "Memory request, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
                                 }
                             }
                         }
@@ -76,15 +99,41 @@
                         "data": {
                             "type": "object",
                             "properties": {
-                                "storageClassName": { "type": ["string", "null"], "default": null },
-                                "size": { "type": "string", "default": "8Gi" }
+                                "storageClassName": {
+                                    "title": "Storage Class Name",
+                                    "description": "Storage class name of the data volume",
+                                    "type": ["string", "null"],
+                                    "default": null
+                                },
+                                "size": {
+                                    "title": "Size of data volume(Gi)",
+                                    "description": "Size of data volume, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 8
+                                }
                             }
                         },
                         "log": {
                             "type": "object",
                             "properties": {
-                                "storageClassName": { "type": ["string", "null"], "default": null },
-                                "size": { "type": "string", "default": "8Gi" }
+                                "storageClassName": {
+                                    "title": "Storage Class Name",
+                                    "description": "Storage class name of the data volume",
+                                    "type": ["string", "null"],
+                                    "default": null
+                                },
+                                "size": {
+                                    "title": "Size of log volume(Gi)",
+                                    "description": "Size of log volume, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 8
+                                }
                             }
                         }
                     }
@@ -102,14 +151,47 @@
                         "limits": {
                             "type": "object",
                             "properties": {
-                                "memory": { "type": "string", "default": "512Mi" }
+                                "cpu": {
+                                    "title": "CPU limit",
+                                    "description": "CPU limit",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory limit(Gi)",
+                                    "description": "Memory limit, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
                             }
                         },
                         "requests": {
                             "type": "object",
                             "properties": {
-                                "cpu": { "type": "string", "default": "200m" },
-                                "memory": { "type": "string", "default": "512Mi" }
+                                "cpu": {
+                                    "title": "CPU request",
+                                    "description": "CPU request",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory request(Gi)",
+                                    "description": "Memory request, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
                             }
                         }
                     }
@@ -133,14 +215,47 @@
                         "limits": {
                             "type": "object",
                             "properties": {
-                                "memory": { "type": "string", "default": "512Mi" }
+                                "cpu": {
+                                    "title": "CPU limit",
+                                    "description": "CPU limit",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory limit(Gi)",
+                                    "description": "Memory limit, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
                             }
                         },
                         "requests": {
                             "type": "object",
                             "properties": {
-                                "cpu": { "type": "string", "default": "200m" },
-                                "memory": { "type": "string", "default": "512Mi" }
+                                "cpu": {
+                                    "title": "CPU request",
+                                    "description": "CPU request",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory request(Gi)",
+                                    "description": "Memory request, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
                             }
                         }
                     }
@@ -160,9 +275,23 @@
                         "limits": {
                             "type": "object",
                             "properties": {
+                                "cpu": {
+                                    "title": "CPU limit",
+                                    "description": "CPU limit",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
                                 "memory": {
-                                    "type": "string",
-                                    "default": "512Mi"
+                                    "title": "Memory limit(Gi)",
+                                    "description": "Memory limit, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
                                 }
                             }
                         },
@@ -170,12 +299,22 @@
                             "type": "object",
                             "properties": {
                                 "cpu": {
-                                    "type": "string",
-                                    "default": "100m"
+                                    "title": "CPU request",
+                                    "description": "CPU request",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 0.1
                                 },
                                 "memory": {
-                                    "type": "string",
-                                    "default": "512Mi"
+                                    "title": "Memory request(Gi)",
+                                    "description": "Memory request, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
                                 }
                             }
                         }
@@ -192,15 +331,19 @@
                             "type": "object",
                             "properties": {
                                 "storageClassName": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ],
+                                    "title": "Storage Class Name",
+                                    "description": "Storage class name of the data volume",
+                                    "type": ["string", "null"],
                                     "default": null
                                 },
                                 "size": {
-                                    "type": "string",
-                                    "default": "8Gi"
+                                    "title": "Size of data volume(Gi)",
+                                    "description": "Size of data volume, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 8
                                 }
                             }
                         },
@@ -208,15 +351,19 @@
                             "type": "object",
                             "properties": {
                                 "storageClassName": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ],
+                                    "title": "Storage Class Name",
+                                    "description": "Storage class name of the data volume",
+                                    "type": ["string", "null"],
                                     "default": null
                                 },
                                 "size": {
-                                    "type": "string",
-                                    "default": "8Gi"
+                                    "title": "Size of log volume(Gi)",
+                                    "description": "Size of log volume, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 8
                                 }
                             }
                         }
@@ -247,14 +394,47 @@
                         "limits": {
                             "type": "object",
                             "properties": {
-                                "memory": { "type": "string", "default": "512Mi" }
+                                "cpu": {
+                                    "title": "CPU limit",
+                                    "description": "CPU limit",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory limit(Gi)",
+                                    "description": "Memory limit, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
                             }
                         },
                         "requests": {
                             "type": "object",
                             "properties": {
-                                "cpu": { "type": "string", "default": "200m" },
-                                "memory": { "type": "string", "default": "512Mi" }
+                                "cpu": {
+                                    "title": "CPU request",
+                                    "description": "CPU request",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory request(Gi)",
+                                    "description": "Memory request, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
                             }
                         }
                     }

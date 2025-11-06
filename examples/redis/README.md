@@ -28,32 +28,16 @@ Redis is an open source (BSD licensed), in-memory data structure store, used as 
 
 ## Prerequisites
 
-This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- Redis Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
-Also, this example requires KubeBlocks installed and running. Here is the steps to install KubeBlocks, please replace "`$kb_version`" with the version you want to use.
-
-```bash
-# Add Helm repo
-helm repo add kubeblocks https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
-
-# Update helm repo
-helm repo update
-
-# Get the versions of KubeBlocks and select the one you want to use
-helm search repo kubeblocks/kubeblocks --versions
-# If you want to obtain the development versions of KubeBlocks, Please add the '--devel' parameter as the following command
-helm search repo kubeblocks/kubeblocks --versions --devel
-
-# Create dependent CRDs
-kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v$kb_version/kubeblocks_crds.yaml
-# If github is not accessible or very slow for you, please use following command instead
-kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v$kb_version/kubeblocks_crds.yaml
-
-# Install KubeBlocks
-helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
-```
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -70,8 +54,8 @@ kubectl apply -f examples/redis/cluster.yaml
 A cluster named `redis-replication` will be created with 1 primary pod, 1 secondary pod, and 3 sentinel pods.
 
 ```bash
-kubectl get cluster redis-replication # get cluster info
-kubectl get pod -l app.kubernetes.io/instance=redis-replication # get all pods of the cluster
+kubectl get -n demo cluster redis-replication # get cluster info
+kubectl get pod -n demo -l app.kubernetes.io/instance=redis-replication # get all pods of the cluster
 ```
 
 > [!NOTE]
@@ -81,7 +65,7 @@ To check the role of each Redis pod, you can use the following command:
 
 ```bash
 # replace `redis-replication` with your cluster name
-kubectl get po -l app.kubernetes.io/instance=redis-replication,apps.kubeblocks.io/component-name=redis -L kubeblocks.io/role
+kubectl get po -n demo -l app.kubernetes.io/instance=redis-replication,apps.kubeblocks.io/component-name=redis -L kubeblocks.io/role
 ```
 
 #### Why Redis Sentinel starts first?
@@ -129,7 +113,7 @@ After applying the operation, you will see a new pod created and the cluster sta
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops redis-scale-out
+kubectl describe -n demo ops redis-scale-out
 ```
 
 #### [Scale-in](scale-in.yaml)
@@ -145,11 +129,9 @@ kubectl apply -f examples/redis/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: redis-replication
-  namespace: default
 spec:
   componentSpecs:
     - name: redis
@@ -176,11 +158,9 @@ You will observe that the `follower` pods are recreated first, followed by the `
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: redis-replication
-  namespace: default
 spec:
   componentSpecs:
     - name: redis
@@ -225,11 +205,9 @@ Once you've done the change, check the `status.conditions` field of the PVC to s
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: redis-replication
-  namespace: default
 spec:
   componentSpecs:
     - name: redis
@@ -269,11 +247,9 @@ kubectl apply -f examples/redis/stop.yaml
 Alternatively, you may stop the cluster by setting all `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: redis-replication
-  namespace: default
 spec:
   componentSpecs:
     - name: redis
@@ -300,11 +276,9 @@ kubectl apply -f examples/redis/start.yaml
 Alternatively, you may start the cluster by setting all `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: redis-replication
-  namespace: default
 spec:
   componentSpecs:
     - name: redis
@@ -349,45 +323,17 @@ And the output should be:
 2) "10001"     # where 10001 is the new value set in the reconfiguration
 ```
 
-### [BackupRepo](backuprepo.yaml)
+### [Backup](backup.yaml)
 
-BackupRepo is the storage repository for backup data. Before creating a BackupRepo, you need to create a secret to save the access key of the backup repository
-
-```bash
-# Create a secret to save the access key
-kubectl create secret generic <credential-for-backuprepo>\
-  --from-literal=accessKeyId=<ACCESS KEY> \
-  --from-literal=secretAccessKey=<SECRET KEY> \
-  -n kb-system
-```
-
-Update `examples/redis/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
-
-```bash
-kubectl apply -f examples/redis/backuprepo.yaml
-```
-
-After creating the BackupRepo, you should check the status of the BackupRepo, to make sure it is `Ready`.
-
-```bash
-kubectl get backuprepo
-```
-
-And the expected output is like:
-
-```bash
-NAME     STATUS   STORAGEPROVIDER   ACCESSMETHOD   DEFAULT   AGE
-kb-oss   Ready    oss               Tool           true      Xd
-```
-
-### Backup
+> [!IMPORTANT]
+> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `redis-replication-redis-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `redis-replication-redis-backup-schedule` in this case.
 
 To the the list of backup policies and schedules, you can use the following command:
 
 ```bash
-kubectl get backuppolicy redis-replication-redis-backup-policy -oyaml | yq '.spec.backupMethods[].name'
+kubectl get backuppolicy -n demo redis-replication-redis-backup-policy -oyaml | yq '.spec.backupMethods[].name'
 ```
 
 And the output should be like:
@@ -410,7 +356,7 @@ It will trigger a backup operation for the Redis component using `redis-cli BGSA
 After the operation, you will see a `Backup` is created
 
 ```bash
-kubectl get backup -l app.kubernetes.io/instance=redis-replication
+kubectl get backup -n demo -l app.kubernetes.io/instance=redis-replication
 ```
 
 Information, such as `path`, `timeRange` about the backup will be recorded into the `Backup` resource.
@@ -442,7 +388,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupSchedule
 metadata:
   name: redis-replication-redis-backup-policy
-  namespace: default
+  namespace: demo
 spec:
   backupPolicyName: redis-replication-redis-backup-policy
   schedules:
@@ -473,11 +419,9 @@ spec:
 Alternatively, you may update `spec.backup` field to the desired backup method.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: redis-replication
-  namespace: default
 spec:
   # Specifies the backup configuration of the Cluster.
   backup:
@@ -503,7 +447,7 @@ To restore a new cluster from a Backup:
 1. Get the list of accounts and their passwords from the backup:
 
 ```bash
-kubectl get backup acmysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
+kubectl get backup -n demo acmysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
 1. Update `examples/redis/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
@@ -533,11 +477,9 @@ kubectl apply -f examples/redis/expose-disable.yaml
 Alternatively, you may expose service by updating `spec.services`
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: redis-replication
-  namespace: default
 spec:
   # append service to the list
   services:
@@ -602,15 +544,13 @@ Or you can follow the steps in [How to install the Prometheus Operator](../docs/
 
 Create a new cluster with following command:
 
-> [!Note]
+> [!NOTE]
 > Make sure `spec.componentSpecs.disableExporter` is set to `false` when creating cluster.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: redis-replication
-  namespace: default
 spec:
   componentSpecs:
     - name: redis
@@ -682,7 +622,7 @@ Login to the Grafana dashboard and import the dashboard.
 
 There is a pre-configured dashboard for PostgreSQL under the `Redis` folder in the Grafana dashboard. And more dashboards can be found in the Grafana dashboard store[^5].
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 Sometimes the default dashboard may not work as expected, you may need to adjust the dashboard to match the labels the metrics are scraped with, in particular, the `job` label. In our case, the `job` variable should be set to `monitoring/redis-replication-pod-monitor` in the dashboard.
@@ -692,14 +632,51 @@ Sometimes the default dashboard may not work as expected, you may need to adjust
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster:
 
 ```bash
-kubectl patch cluster redis-replication -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo redis-replication -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster redis-replication
+kubectl delete cluster -n demo redis-replication
 ```
 
 ### More Examples to Create a Redis
 
 Redis has various deployment topology, such as standalone, replication, sharding, etc. Here are some examples to create different Redis clusters.
+
+#### Create Redis Replication with NodePort
+
+Redis and Sentinel's advertise port is mainly used for correct node discovery and communication in distributed deployment environments. The advertise port is the port that a Redis or Sentinel node announces to other nodes or clients as its externally accessible service port. This is especially important in containerized, NAT, or port-mapped environments where the actual listening port inside the container may differ from the port exposed to the outside world.
+
+- For Redis, the `cluster-announce-port` configuration allows the node to advertise a different port than the one it listens on. This ensures that other nodes or clients can connect to the correct external port.
+- For Sentinel, the `sentinel announce-port` configuration serves a similar purpose, allowing Sentinel nodes to announce the correct external port for inter-node communication and monitoring.
+
+This mechanism solves the problem where the internal and external ports are inconsistent, ensuring reliable communication and failover in Redis and Sentinel clusters.
+
+To access redis replication from the outside of K8s cluster, you should create a redis replication cluster (with an official Redis Sentinel HA) with `NodePort` service type to advertise addresses.
+
+```bash
+kubectl apply -f examples/redis/cluster-with-nodeport.yaml
+```
+
+This example shows how to create a redis replication cluster and override the service type of the `redis-advertised` service to `NodePort`.
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+  - name: redis
+    services:
+    - name: redis-advertised  # override service named `redis-advertised` defined in ComponentDefinition
+      serviceType: NodePort
+      podService: true
+# irrelevant lines commited
+  - name: redis-sentinel
+    services:
+    - name: sentinel-advertised  # override service named `sentinel-advertised` defined in ComponentDefinition
+      serviceType: NodePort
+      podService: true
+# irrelevant lines commited
+```
+Service `redis-advertised` and `redis-sentinel` are defined in `ComponentDefinition` name `redis-7` and `redis-sentinel-7`.  They are used to to parse the advertised endpoints of the Redis pods and Sentinel Pods.
+
 
 #### Create Redis with Proxy
 
@@ -712,11 +689,9 @@ kubectl apply -f examples/redis/cluster-twemproxy.yaml
 A cluster named `redis-twemproxy` will be created with three components, one for Redis (2 replicas), one for Sentinel (3 replicas), and one for twemproxy (3 replicas).
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: redis-sharding
-  namespace: default
 spec:
   terminationPolicy: Delete
   clusterDef: redis
@@ -740,11 +715,9 @@ kubectl apply -f examples/redis/cluster-sharding.yaml
 You may change the number of shards and replicas in the yaml file.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: redis-sharding
-  namespace: default
 spec:
   shardings:
   - name: shard
@@ -769,18 +742,16 @@ spec:
 
 In this example we demonstrate how to create a Redis cluster with multiple shards, and how to override the service type of the `redis-advertised` service to `NodePort`.
 
-The service `redis-advertised` is defined in `ComponentDefinition` and will used to parse the advertised endpoints of the Redis pods.
+The service `redis-advertised` is defined in `ComponentDefinition` and will be used to parse the advertised endpoints of the Redis pods.
 
 By default, the service type is `NodePort`. If you want to expose the service to the outside of the cluster, you can override the service type to `NodePort` or `LoadBalancer` depending on your need.
 
 Similarly to add or remove shards, you can update the `shardings` field in the `Cluster` resource.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: redis-sharding
-  namespace: default
 spec:
   shardings:
   - name: shard
@@ -795,5 +766,5 @@ spec:
 
 ## Reference
 
-[^1]: Redis Sentinel: https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/
-[^5]: Grafana Dashboard Store: https://grafana.com/grafana/dashboards/
+[^1]: Redis Sentinel: <https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/>
+[^5]: Grafana Dashboard Store: <https://grafana.com/grafana/dashboards/>

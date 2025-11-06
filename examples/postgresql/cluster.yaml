@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: pg-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -25,27 +25,12 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,14.7.2,14.8.0,15.7.0,16.4.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,14.7.2,14.8.0,14.18.0,15.7.0,15.13.0,16.4.0,16.9.0,17.5.0]
       serviceVersion: "14.7.2"
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
       disableExporter: false
-      # Specifies Labels to override or add for underlying Pods, PVCs, Account & TLS
-      # Secrets, Services Owned by Component.
-      labels:
-        # PostgreSQL's CMPD specifies `KUBERNETES_SCOPE_LABEL=apps.kubeblocks.postgres.patroni/scope` through ENVs
-        # The KUBERNETES_SCOPE_LABEL is used to define the label key that Patroni will use to tag Kubernetes resources.
-        # This helps Patroni identify which resources belong to the specified scope (or cluster) used to define the label key
-        # that Patroni will use to tag Kubernetes resources.
-        # This helps Patroni identify which resources belong to the specified scope (or cluster).
-        #
-        # Note: DO NOT REMOVE THIS LABEL
-        # update the value w.r.t your cluster name
-        # the value must follow the format <cluster.metadata.name>-postgresql
-        # which is pg-cluster-postgresql in this examples
-        # replace `pg-cluster` with your cluster name
-        apps.kubeblocks.postgres.patroni/scope: pg-cluster-postgresql
       # Update `replicas` to your need.
       replicas: 2
       # Specifies the resources required by the Component.

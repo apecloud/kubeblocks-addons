@@ -9,7 +9,7 @@ export LORRY_HTTP_PORT=$SYNCER_HTTP_PORT
 set_config_variables vttablet
 
 cell=${CELL:-'zone1'}
-uid="${MY_POD_NAME##*-}"
+uid="${POD_NAME##*-}"
 mysql_root=${MYSQL_ROOT_USER:-'root'}
 mysql_root_passwd=${MYSQL_ROOT_PASSWORD:-'123456'}
 mysql_port=${MYSQL_PORT:-'3306'}
@@ -19,7 +19,7 @@ vtctld_host=${VTCTLD_HOST:-'127.0.0.1'}
 vtctld_web_port=${VTCTLD_WEB_PORT:-'15000'}
 printf -v alias '%s-%010d' $cell $uid
 printf -v tablet_dir 'vt_%010d' $uid
-tablet_hostname=$(eval echo \$KB_"$uid"_HOSTNAME)
+tablet_hostname="$POD_NAME.$CLUSTER_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.cluster.local"
 printf -v tablet_logfile 'vttablet_%010d_querylog.txt' $uid
 
 tablet_type=replica
@@ -44,7 +44,7 @@ fi
 
 echo $endpoints
 
-topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoints} --topo_global_root /vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME}/global"
+topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoints} --topo_global_root /vitess/${CLUSTER_NAMESPACE}/${CLUSTER_NAME}/global"
 
 VTDATAROOT=$VTDATAROOT/vttablet
 su vitess <<EOF

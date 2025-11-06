@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: polardbx-cdc-{{ .Chart.Version }}
+  name: {{ include "polardbx-cdc.cmpdName" . }}
   labels:
     {{- include "polardbx.labels" . | nindent 4 }}
   annotations:
@@ -11,94 +11,31 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Chart.AppVersion }}
-  runtime:
-    initContainers:
-      - name: wait-cn-ready
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.mysql.repository }}:{{ .Values.images.mysql.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.images.mysql.pullPolicy }}
-        command:
-          - bin/sh
-          - -c
-          - |
-            until mysql -h$CN_SVC_NAME -P$CN_SVC_PORT -u$polarx_username -p$polarx_password -e 'select 1'; do
-              sleep 1;
-              echo "cn is not ready"
-            done
-        env:
-          - name: polarx_username
-            value: $(SERVICE_USER)
-          - name: polarx_password
-            value: $(SERVICE_PASSWORD)
-    containers:
-      - name: engine
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.cdc.repository}}:{{.Values.images.polardbx.cdc.tag}}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
-        env:
-          - name: switchCloud
-            value: aliyun
-          - name: cluster_id
-            value: "$(KB_CLUSTER_NAME)"
-          - name: ins_id
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-          - name: daemonPort
-            value: "3300"
-          - name: common_ports
-            value: '{"cdc1_port":"3009","cdc3_port":"3011","cdc2_port":"3010","cdc6_port":"3014","cdc5_port":"3013","cdc4_port":"3012"}'
-          - name: metaDb_url
-            value: "jdbc:mysql://$(GMS_SVC_NAME):$(GMS_SVC_PORT)/polardbx_meta_db?useSSL=false"
-          - name: polarx_url
-            value: "jdbc:mysql://$(CN_SVC_NAME):$(CN_SVC_PORT)/__cdc__?useSSL=false"
-          - name: metaDb_username
-            value: $(SERVICE_USER)
-          - name: metaDb_password
-            value: $(SERVICE_PASSWORD)
-          - name: polarx_username
-            value: $(SERVICE_USER)
-          - name: polarx_password
-            value: $(SERVICE_PASSWORD)
-          - name: metaDbNonEncPasswd
-            value: $(SERVICE_PASSWORD)
-          - name: dnPasswordKey
-            value: "$(metaDbNonEncPasswd)$(metaDbNonEncPasswd)"
-          - name: cpu_cores
-            valueFrom:
-              resourceFieldRef:
-                containerName: engine
-                resource: limits.cpu
-          - name: mem_size
-            valueFrom:
-              resourceFieldRef:
-                containerName: engine
-                resource: limits.memory
-                divisor: "1M"
-          - name: disk_size
-            value: "10240"
-          - name: disk_quota
-            value: "10240"
-        volumeMounts:
-          - name: binlog
-            mountPath: /home/admin/binlog
-          - name: log
-            mountPath: /home/admin/logs
-      - name: exporter
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.exporter.repository}}:{{.Values.images.polardbx.exporter.tag}}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
-        args:
-          - -web.listen-addr=:9104
-          - -web.metrics-path=/metrics
-          - -target.port=3007
-          - -target.type=CDC
-        env:
-          - name: GOMAXPROCS
-            value: "1"
+  services:
+    - name: default
+      spec:
         ports:
-          - containerPort: 9104
-            name: metrics
-            protocol: TCP
+          - name: mysql
+            port: 3306
+            targetPort: 3306
+          - name: metrics
+            port: 9104
+            targetPort: 9104
+  scripts:
+    - name: polardbx-scripts
+      template: {{ include "polardbx.scriptsTemplate" . }}
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0555
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
     - name: SERVICE_USER
       value: polardbx_root
     - name: SERVICE_PASSWORD
@@ -136,19 +73,87 @@ spec:
           port:
             name: mysql
             option: Required
-  service:
-    - name: default
-      spec:
+  runtime:
+    initContainers:
+      - name: wait-cn-ready
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.mysql.pullPolicy }}
+        command:
+          - bin/sh
+          - -c
+          - |
+            until mysql -h$CN_SVC_NAME -P$CN_SVC_PORT -u$polarx_username -p$polarx_password -e 'select 1'; do
+              sleep 1;
+              echo "cn is not ready"
+            done
+        env:
+          - name: polarx_username
+            value: $(SERVICE_USER)
+          - name: polarx_password
+            value: $(SERVICE_PASSWORD)
+    containers:
+      - name: engine
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
+        env:
+          - name: switchCloud
+            value: aliyun
+          - name: cluster_id
+            value: "$(CLUSTER_NAME)"
+          - name: ins_id
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: daemonPort
+            value: "3300"
+          - name: common_ports
+            value: '{"cdc1_port":"3009","cdc3_port":"3011","cdc2_port":"3010","cdc6_port":"3014","cdc5_port":"3013","cdc4_port":"3012"}'
+          - name: metaDb_url
+            value: "jdbc:mysql://$(GMS_SVC_NAME):$(GMS_SVC_PORT)/polardbx_meta_db?useSSL=false"
+          - name: polarx_url
+            value: "jdbc:mysql://$(CN_SVC_NAME):$(CN_SVC_PORT)/__cdc__?useSSL=false"
+          - name: metaDb_username
+            value: $(SERVICE_USER)
+          - name: metaDb_password
+            value: $(SERVICE_PASSWORD)
+          - name: polarx_username
+            value: $(SERVICE_USER)
+          - name: polarx_password
+            value: $(SERVICE_PASSWORD)
+          - name: metaDbNonEncPasswd
+            value: $(SERVICE_PASSWORD)
+          - name: dnPasswordKey
+            value: "$(metaDbNonEncPasswd)"
+          - name: cpu_cores
+            valueFrom:
+              resourceFieldRef:
+                containerName: engine
+                resource: limits.cpu
+          - name: mem_size
+            valueFrom:
+              resourceFieldRef:
+                containerName: engine
+                resource: limits.memory
+                divisor: "1M"
+          - name: disk_size
+            value: "10240"
+          - name: disk_quota
+            value: "10240"
+        volumeMounts:
+          - name: binlog
+            mountPath: /home/admin/binlog
+          - name: log
+            mountPath: /home/admin/logs
+      - name: exporter
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
+        args:
+          - -web.listen-addr=:9104
+          - -web.metrics-path=/metrics
+          - -target.port=3007
+          - -target.type=CDC
+        env:
+          - name: GOMAXPROCS
+            value: "1"
         ports:
-          - name: mysql
-            port: 3306
-            targetPort: 3306
-          - name: metrics
-            port: 9104
-            targetPort: 9104
-  scripts:
-    - name: polardbx-scripts
-      templateRef: polardbx-scripts
-      volumeName: scripts
-      namespace: {{ .Release.Namespace }}
-      defaultMode: 0555
+          - containerPort: 9104
+            name: metrics
+            protocol: TCP

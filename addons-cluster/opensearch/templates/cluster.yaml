@@ -9,16 +9,16 @@ spec:
   componentSpecs:
     - name: opensearch
       ## TODO: use regex pattern when cluster validation supported
-      componentDef: opensearch-{{ .Chart.Version }}
+      componentDef: opensearch-core
       replicas: {{ .Values.replicaCount | default 3 }}
       {{- with  .Values.resources }}
       resources:
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
       {{- if .Values.persistence.enabled }}
       volumeClaimTemplates:
@@ -29,17 +29,17 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.persistence.data.size }}
+                storage: {{ print .Values.persistence.data.size "Gi" }}
       {{- end }}
     - name: dashboard
-      componentDef: opensearch-dashboard-{{ .Chart.Version }}
+      componentDef: opensearch-dashboard
       replicas: {{ .Values.dashboard.replicaCount | default 1 }}
       {{- with  .Values.dashboard.resources }}
       resources:
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}

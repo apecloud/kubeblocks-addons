@@ -35,6 +35,42 @@ sleep_random_second_when_ut_mode_false() {
   fi
 }
 
+# usage: parse_host_ip_from_built_in_envs <pod_name>
+# $KB_CLUSTER_COMPONENT_POD_NAME_LIST and $KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are built-in envs in KubeBlocks postProvision lifecycle action.
+# TODO: the built-in envs will be removed in the future.
+parse_host_ip_from_built_in_envs() {
+  local given_pod_name="$1"
+  local all_pod_name_list="$2"
+  local all_pod_host_ip_list="$3"
+
+  if is_empty "$all_pod_name_list" || is_empty "$all_pod_host_ip_list"; then
+    echo "Error: Required environment variables all_pod_name_list or all_pod_host_ip_list are not set." >&2
+    return 1
+  fi
+
+  pod_name_list=($(split "$all_pod_name_list" ","))
+  pod_ip_list=($(split "$all_pod_host_ip_list" ","))
+  while [ -n "${pod_name_list[0]}" ]; do
+    pod_name="${pod_name_list[0]}"
+    host_ip="${pod_ip_list[0]}"
+    if equals "$pod_name" "$given_pod_name"; then
+      echo "$host_ip"
+      return 0
+    fi
+
+    if equals "${pod_name_list[-1]}" "$pod_name"; then
+      pod_name_list=()
+      pod_ip_list=()
+    else
+      pod_name_list=("${pod_name_list[@]:1}")
+      pod_ip_list=("${pod_ip_list[@]:1}")
+    fi
+  done
+
+  echo "parse_host_ip_from_built_in_envs the given pod name $given_pod_name not found." >&2
+  return 1
+}
+
 ## the component names of all shard
 ## the value format of ALL_SHARDS_COMPONENT_SHORT_NAMES is like "shard-98x:shard-98x,shard-cq7:shard-cq7,shard-hy7:shard-hy7"
 ## return the component names of all shards with the format "shard-98x,shard-cq7,shard-hy7"
@@ -115,11 +151,13 @@ shutdown_redis_server() {
 
 check_redis_server_ready() {
   unset_xtrace_when_ut_mode_false
+  local host="$1"
+  local port="$2"
   local max_retry=10
   local retry_interval=5
-  check_ready_cmd="redis-cli -h 127.0.0.1 -p $service_port ping"
+  check_ready_cmd="redis-cli -h $host -p $port ping"
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    check_ready_cmd="redis-cli -h 127.0.0.1 -p $service_port -a $REDIS_DEFAULT_PASSWORD ping"
+    check_ready_cmd="redis-cli -h $host -p $port -a $REDIS_DEFAULT_PASSWORD ping"
   fi
   set_xtrace_when_ut_mode_false
   output=$($check_ready_cmd)
@@ -130,9 +168,10 @@ check_redis_server_ready() {
   fi
 }
 
-parse_advertised_port() {
+parse_advertised_svc_and_port() {
   local pod_name="$1"
   local advertised_ports="$2"
+  local svc_and_port="$3"
   local pod_name_ordinal
   local found=false
 
@@ -146,7 +185,11 @@ parse_advertised_port() {
 
     svc_name_ordinal=$(extract_obj_ordinal "$svc_name")
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
-      echo "$port"
+      if [[ "${svc_and_port}" == "true" ]]; then
+         echo "$svc_name:$port"
+      else
+         echo "$port"
+      fi
       found=true
       return 0
     fi
@@ -155,6 +198,24 @@ parse_advertised_port() {
   if [[ "$found" == false ]]; then
     return 1
   fi
+}
+
+get_pod_service_port_by_network_mode() {
+  local target_pod_name="$1"
+  local service_port=${SERVICE_PORT:-6379}
+  # if redis cluster is using host network, the service port should be the host network port
+  if ! is_empty "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"; then
+    IFS=',' read -ra port_mappings <<< "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"
+    for mapping in "${port_mappings[@]}"; do
+      shard_name=$(echo "$mapping" | cut -d':' -f1)
+      mapping_port=$(echo "$mapping" | cut -d':' -f2)
+      if echo "${target_pod_name}" | grep -q "$shard_name"; then
+        service_port=$mapping_port
+        break
+      fi
+    done
+  fi
+  echo "$service_port"
 }
 
 send_cluster_meet() {
@@ -175,7 +236,7 @@ send_cluster_meet() {
   echo "check and correct other primary nodes meet command: $logging_mask_meet_command"
   if ! $meet_command
   then
-      echo "Failed to meet the node $announce_ip:$announce_port in check_and_correct_other_primary_nodes" >&2
+      echo "Failed to meet the node $announce_ip:$announce_port in check_and_meet_other_primary_nodes" >&2
       return 1
   else
     echo "Meet the node $announce_ip:$announce_port successfully with new announce ip $announce_ip..." >&2
@@ -225,13 +286,18 @@ get_cluster_nodes_info() {
 get_cluster_id() {
   local cluster_node="$1"
   local cluster_node_port="$2"
+  local pod_fqdn="$3"
   cluster_nodes_info=$(get_cluster_nodes_info "$cluster_node" "$cluster_node_port")
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to get cluster nodes info in get_cluster_id" >&2
     return 1
   fi
-  cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
+  if [ -n "${pod_fqdn}" ]; then
+    cluster_id=$(echo "$cluster_nodes_info" | grep "${pod_fqdn}" | awk '{print $1}')
+  else
+    cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
+  fi
   echo "$cluster_id"
   return 0
 }
@@ -277,9 +343,23 @@ send_cluster_meet_with_retry() {
   send_cluster_meet_result=$(call_func_with_retry $retry_times $retry_delay_second send_cluster_meet "$primary_endpoint" "$primary_port" "$announce_ip" "$announce_port" "$announce_bus_port")
   status=$?
   if [ $status -ne 0 ]; then
-    echo "Failed to meet the node $announce_ip:$announce_port in check_and_correct_other_primary_nodes after retry" >&2
+    echo "Failed to meet the node $announce_ip:$announce_port in check_and_meet_other_primary_nodes after retry" >&2
     return 1
   fi
+  return 0
+}
+
+get_cluster_info_with_retry() {
+  local cluster_node="$1"
+  local cluster_node_port="$2"
+  # call the get_cluster_info function with call_func_with_retry function and get the output
+  cluster_info=$(call_func_with_retry $retry_times $retry_delay_second get_cluster_info "$cluster_node" "$cluster_node_port")
+  status=$?
+  if [ $status -ne 0 ]; then
+    echo "Failed to get the cluster info of the cluster node $cluster_node:$cluster_node_port after retry" >&2
+    return 1
+  fi
+  echo "$cluster_info"
   return 0
 }
 
@@ -300,8 +380,9 @@ get_cluster_nodes_info_with_retry() {
 get_cluster_id_with_retry() {
   local cluster_node="$1"
   local cluster_node_port="$2"
+  local pod_fqdn="$3"
   # call the execute_get_cluster_id_command function with call_func_with_retry function and get the output
-  cluster_id=$(call_func_with_retry $retry_times $retry_delay_second get_cluster_id "$cluster_node" "$cluster_node_port")
+  cluster_id=$(call_func_with_retry $retry_times $retry_delay_second get_cluster_id "$cluster_node" "$cluster_node_port" "${pod_fqdn}")
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to get the cluster id of the cluster node $cluster_node:$cluster_node_port after retry" >&2
@@ -340,8 +421,10 @@ check_node_in_cluster_with_retry() {
 }
 
 check_redis_server_ready_with_retry() {
+  local host="$1"
+  local port="$2"
   # call the execute_check_redis_server_ready_command function with call_func_with_retry function and get the output
-  check_result=$(call_func_with_retry $check_ready_times $retry_delay_second check_redis_server_ready)
+  check_result=$(call_func_with_retry $check_ready_times $retry_delay_second check_redis_server_ready "$host" "$port")
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to check the redis server ready after retry" >&2
@@ -371,16 +454,24 @@ check_slots_covered() {
 
 # check if the cluster has been initialized
 check_cluster_initialized() {
-  local cluster_node_list="$1"
-  # all cluster node share the same service port
-  local cluster_node_service_port="$2"
-  if is_empty "$cluster_node_list" || is_empty "$cluster_node_service_port"; then
-    echo "Error: Required environment variable cluster_node_list or cluster_node_service_port  is not set." >&2
+  local cluster_pod_ip_list="$1"
+  local cluster_pod_name_list="$2"
+  if is_empty "$cluster_pod_ip_list" || is_empty "$cluster_pod_name_list"; then
+    echo "Error: Required environment variable cluster_pod_ip_list or cluster_pod_name_list is not set." >&2
     return 1
   fi
 
-  for pod_ip in $(echo "$cluster_node_list" | tr ',' ' '); do
-    cluster_info=$(get_cluster_info "$pod_ip" "$cluster_node_service_port")
+  local pod_ip
+  local service_port
+  for pod_name in $(echo "$cluster_pod_name_list" | tr ',' ' '); do
+    pod_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$cluster_pod_name_list" "$cluster_pod_ip_list")
+    if is_empty "$pod_ip"; then
+      echo "Failed to get the host ip of the pod $pod_name in check_cluster_initialized"
+      continue
+    fi
+
+    service_port=$(get_pod_service_port_by_network_mode "${pod_name}")
+    cluster_info=$(get_cluster_info_with_retry "$pod_ip" "$service_port")
     status=$?
     if [ $status -ne 0 ]; then
       echo "Failed to get cluster info in check_cluster_initialized" >&2
@@ -480,12 +571,19 @@ build_rebalance_to_zero_command() {
 build_del_node_command() {
   local available_node="$1"
   local node_to_del_cluster_id="$2"
+  local do_forget_node="$3"
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
     del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT"
+    if [[ "$do_forget_node" == "true" ]]; then
+      del_node_command="redis-cli -p $SERVICE_PORT --cluster call $available_node cluster forget $node_to_del_cluster_id"
+    fi
     logging_mask_del_node_command="$del_node_command"
   else
     del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
+    if [[ "$do_forget_node" == "true" ]]; then
+      del_node_command="redis-cli -p $SERVICE_PORT --cluster call $available_node cluster forget $node_to_del_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+    fi
     logging_mask_del_node_command="${del_node_command/$REDIS_DEFAULT_PASSWORD/********}"
   fi
   echo "del node command: $logging_mask_del_node_command" >&2
@@ -494,12 +592,13 @@ build_del_node_command() {
 }
 
 build_acl_save_command() {
+  local service_port="$1"
   unset_xtrace_when_ut_mode_false
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    acl_save_command="redis-cli -h 127.0.0.1 -p 6379 -a $REDIS_DEFAULT_PASSWORD acl save"
+    acl_save_command="redis-cli -h localhost -p $service_port -a $REDIS_DEFAULT_PASSWORD acl save"
     logging_mask_acl_save_command="${acl_save_command/$REDIS_DEFAULT_PASSWORD/********}"
   else
-    acl_save_command="redis-cli -h 127.0.0.1 -p 6379 acl save"
+    acl_save_command="redis-cli -h localhost -p $service_port acl save"
     logging_mask_acl_save_command="$acl_save_command"
   fi
   echo "acl save command: $logging_mask_acl_save_command" >&2
@@ -580,7 +679,8 @@ scale_in_shard_del_node() {
 secondary_member_leave_del_node() {
   local available_node="$1"
   local node_to_del_cluster_id="$2"
-  del_node_command=$(build_del_node_command "$available_node" "$node_to_del_cluster_id")
+  local do_forget_node="$3"
+  del_node_command=$(build_del_node_command "$available_node" "$node_to_del_cluster_id" "$do_forget_node")
   if ! $del_node_command; then
     echo "Failed to delete the node $available_node from the cluster when secondary_member_leave_del_node" >&2
     return 1
@@ -591,7 +691,8 @@ secondary_member_leave_del_node() {
 secondary_member_leave_del_node_with_retry() {
   local available_node="$1"
   local node_to_del_cluster_id="$2"
-  check_result=$(call_func_with_retry $check_ready_times $retry_delay_second secondary_member_leave_del_node "$available_node" "$node_to_del_cluster_id")
+  local do_forget_node="$3"
+  check_result=$(call_func_with_retry $check_ready_times $retry_delay_second secondary_member_leave_del_node "$available_node" "$node_to_del_cluster_id" "$do_forget_node")
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to remove replica when member leave after retry" >&2
@@ -601,7 +702,8 @@ secondary_member_leave_del_node_with_retry() {
 }
 
 execute_acl_save() {
-  acl_save_command=$(build_acl_save_command)
+  local service_port="$1"
+  acl_save_command=$(build_acl_save_command "$service_port")
   if ! $acl_save_command; then
     echo "Failed to execute acl save command" >&2
     return 1
@@ -610,11 +712,32 @@ execute_acl_save() {
 }
 
 execute_acl_save_with_retry() {
-  check_result=$(call_func_with_retry $check_ready_times $retry_delay_second execute_acl_save)
+  local service_port="$1"
+  check_result=$(call_func_with_retry $check_ready_times $retry_delay_second execute_acl_save $service_port)
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to execute acl save command after retry" >&2
     return 1
   fi
   return 0
+}
+
+check_redis_role() {
+  local host=$1
+  local port=$2
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    role_info=$(redis-cli -h $host -p $port info replication)
+  else
+    role_info=$(redis-cli -h $host -p $port -a "$REDIS_DEFAULT_PASSWORD" info replication)
+  fi
+  set_xtrace_when_ut_mode_false
+
+  if echo "$role_info" | grep -q "^role:master"; then
+    echo "primary"
+  elif echo "$role_info" | grep -q "^role:slave"; then
+    echo "secondary"
+  else
+    echo "unknown"
+  fi
 }

@@ -2,7 +2,6 @@
 
 MySQL is a widely used, open-source relational database management system (RDBMS)
 
-
 ## Features In KubeBlocks
 
 ### Lifecycle Management
@@ -21,68 +20,22 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 
 | Major Versions | Description |
 |---------------|--------------|
-| 5.7 | 5.7.44     |
-| 8.0 | 8.0.30,8.0.31,8.0.32,8.0.33,8.0.34,8.0.35,8.0.36,8.0.37,8.0.38,8.0.39 |
-| 8.4 | 8.4.0,8.4.1,8.4.2|
+| 5.7 | 5.7.44  |
+| 8.0 | \[8.0.30 ~ 8.0.39\] |
+| 8.4 | 8.4.0 ~ 8.4.2|
 
 ## Prerequisites
 
-This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- MySQL Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
-Also, this example requires KubeBlocks installed and running. Here is the steps to install KubeBlocks, please replace "`$kb_version`" with the version you want to use.
-
-```bash
-# Add Helm repo
-helm repo add kubeblocks https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
-
-# Update helm repo
-helm repo update
-
-# Get the versions of KubeBlocks and select the one you want to use
-helm search repo kubeblocks/kubeblocks --versions
-# If you want to obtain the development versions of KubeBlocks, Please add the '--devel' parameter as the following command
-helm search repo kubeblocks/kubeblocks --versions --devel
-
-# Create dependent CRDs
-kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v$kb_version/kubeblocks_crds.yaml
-# If github is not accessible or very slow for you, please use following command instead
-kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v$kb_version/kubeblocks_crds.yaml
-
-# Install KubeBlocks
-helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
-```
-
-### Enable MySQL Add-on
-
-If MySQL Addon is not enabled, you can enable it by following the steps below.
-
-#### Using Helm
-
-```bash
-# Add Helm repo
-helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
-# Update helm repo
-helm repo update
-# Search versions of the Addon
-helm search repo kubeblocks/mysql --versions
-# Install the version you want (replace $version with the one you need)
-helm upgrade -i mysql kubeblocks-addons/mysql --version $version -n kb-system
-```
-
-#### Using kbcli
-
-```bash
-# Search Addon
-kbcli addon search mysql
-# Install Addon with the version you want, replace $version with the one you need
-kbcli addon install mysql --version $version
-# To upgrade the addon, you can use the following command
-kbcli addon upgrade mysql --version $version
-```
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -99,11 +52,9 @@ kubectl apply -f examples/mysql/cluster.yaml
 If you want to create a cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mysql-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mysql
@@ -111,7 +62,7 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.30,8.0.31,8.0.32,8.0.33,8.0.34,8.0.35,8.0.36,8.0.37,8.0.38,8.0.39]
+      # Valid options are: [8.0.30 to 8.0.39]
       serviceVersion: 8.0.35
 ```
 
@@ -136,7 +87,7 @@ After applying the operation, you will see a new pod created and the MySQL clust
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops mysql-scale-out
+kubectl describe -n demo ops mysql-scale-out
 ```
 
 #### [Scale-in](scale-in.yaml)
@@ -152,11 +103,9 @@ kubectl apply -f examples/mysql/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mysql-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mysql
@@ -181,11 +130,9 @@ You will observe that the `secondary` pods are recreated first, followed by the 
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mysql-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mysql
@@ -223,7 +170,7 @@ kubectl apply -f examples/mysql/volumeexpand.yaml
 After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
 ```bash
-kubectl get pvc -l app.kubernetes.io/instance=mysql-cluster -n default
+kubectl get pvc -l app.kubernetes.io/instance=mysql-cluster -n demo
 ```
 
 #### Volume expansion using Cluster API
@@ -231,11 +178,9 @@ kubectl get pvc -l app.kubernetes.io/instance=mysql-cluster -n default
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mysql-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mysql
@@ -271,11 +216,9 @@ kubectl apply -f examples/mysql/stop.yaml
 Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mysql-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mysql
@@ -296,11 +239,9 @@ kubectl apply -f examples/mysql/start.yaml
 Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mysql-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mysql
@@ -339,38 +280,10 @@ This example will change the `binlog_expire_logs_seconds` to `691200`. To verify
 SHOW VARIABLES LIKE 'binlog_expire_logs_seconds';
 ```
 
-### [BackupRepo](backuprepo.yaml)
-
-BackupRepo is the storage repository for backup data. Before creating a BackupRepo, you need to create a secret to save the access key of the backup repository
-
-```bash
-# Create a secret to save the access key
-kubectl create secret generic <credential-for-backuprepo>\
-  --from-literal=accessKeyId=<ACCESS KEY> \
-  --from-literal=secretAccessKey=<SECRET KEY> \
-  -n kb-system
-```
-
-Update `examples/mysql/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
-
-```bash
-kubectl apply -f examples/mysql/backuprepo.yaml
-```
-
-After creating the BackupRepo, you should check the status of the BackupRepo, to make sure it is `Ready`.
-
-```bash
-kubectl get backuprepo
-```
-
-And the expected output is like:
-
-```bash
-NAME     STATUS   STORAGEPROVIDER   ACCESSMETHOD   DEFAULT   AGE
-kb-oss   Ready    oss               Tool           true      Xd
-```
-
 ### [Backup](backup.yaml)
+
+> [!IMPORTANT]
+> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `mysql-cluster-mysql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `mysql-cluster-mysql-backup-schedule` in this case.
 
@@ -387,7 +300,7 @@ To restore a new cluster from a Backup:
 1. Get the list of accounts and their passwords from the backup:
 
 ```bash
-kubectl get backup mysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
+kubectl get backup -n demo mysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
 1. Update `examples/mysql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
@@ -417,11 +330,9 @@ kubectl apply -f examples/mysql/expose-disable.yaml
 Alternatively, you may expose service by updating `spec.services`
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mysql-cluster
-  namespace: default
 spec:
   # append service to the list
   services:
@@ -473,6 +384,16 @@ networking.gke.io/load-balancer-type: "Internal" # for internal access
 cloud.google.com/l4-rbs: "enabled" # for internet
 ```
 
+#### Rebuild Instance
+
+There are cases where you may need to rebuild an instance in the cluster, for examples, a pod is unhealthy and cannot be recovered, or replication lag is too high for primary-standby cluster.
+
+You can use the following yaml file to rebuild the instance. Please set `backupName` and `targetNodeName` before applying the example.
+
+```bash
+kubectl apply -f examples/mysql/rebuild-instance.yaml
+```
+
 ### Observability
 
 #### Installing the Prometheus Operator
@@ -487,7 +408,7 @@ Or you can follow the steps in [How to install the Prometheus Operator](../docs/
 You can retrieve the `scrapePath` and `scrapePort` from pod's exporter container.
 
 ```bash
-kubectl get po mysql-cluster-mysql-0 -oyaml | yq '.spec.containers[] | select(.name=="mysql-exporter") | .ports '
+kubectl get po -n demo mysql-cluster-mysql-0 -oyaml | yq '.spec.containers[] | select(.name=="mysql-exporter") | .ports '
 ```
 
 And the expected output is like:
@@ -510,7 +431,7 @@ kubectl apply -f examples/mysql/pod-monitor.yaml
 
 Login to the Grafana dashboard and import the dashboard.
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -518,9 +439,9 @@ Login to the Grafana dashboard and import the dashboard.
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster mysql-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo mysql-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster mysql-cluster
+kubectl delete cluster -n demo mysql-cluster
 ```
 
 ### Manage MySQL Cluster using Orchestrator
@@ -530,11 +451,6 @@ KubeBlocks provides you an alternative to  create a MySQL cluster that uses the 
 - Step 1. Install Orchestrator Addon
 
 Before creating the cluster with Orchestrator, make sure you have installed the Orchestrator addon.
-
-```bash
-
-```
-
 
 - Step 2. Create Orchestrator Cluster
 
@@ -550,14 +466,14 @@ kubectl apply -f examples/mysql/orchestrator.yaml
 kubectl apply -f examples/mysql/cluster-orc.yaml
 ```
 
-#### Switchover(switchover-orc.yaml)
+#### Switchover(switchover.yaml)
 
 You can switchover a specified instance as the new primary or leader of the cluster
 
 ```bash
-kubectl apply -f examples/mysql/switchover-orc.yaml
+kubectl apply -f examples/mysql/switchover.yaml
 ```
 
 ## References
 
-[^1] Orchestrator, https://github.com/openark/orchestrator
+[^1] Orchestrator, <https://github.com/openark/orchestrator>

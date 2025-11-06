@@ -1,0 +1,17 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "tdengine.parameterConfigRenderer" . }}
+  labels:
+    {{- include "tdengine.labels" . | nindent 4 }}
+  annotations:
+    {{- include "tdengine.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "tdengine.cmpdName" . }}
+  parametersDefs:
+    - {{ include "tdengine.parameterDefinitionName" . }}
+
+  configs:
+    - name: taos.cfg
+      fileFormatConfig:
+        format: redis

@@ -2,103 +2,118 @@
 
 Weaviate is an open-source vector database. It allows you to store data objects and vector embeddings from your favorite ML-models, and scale seamlessly into billions of data objects.
 
+In Weaviate, metadata replication and data replication are separate. For the metadata, Weaviate uses the **Raft consensus** algorithm. For data replication, Weaviate uses a **leaderless** design with eventual consistency[^1].
+
+## Features In KubeBlocks
+
+### Lifecycle Management
+
+| Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
+|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
+| No                     | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | N/A      |
+
+### Versions
+
+| Versions |
+|----------|
+| 1.19.6 |
+
 ## Prerequisites
 
-This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- Weaviate Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
-Also, this example requires kubeblocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
-```bash
-# Add Helm repo 
-helm repo add kubeblocks https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
-
-# Update helm repo
-helm repo update
-
-# Get the versions of KubeBlocks and select the one you want to use
-helm search repo kubeblocks/kubeblocks --versions
-# If you want to obtain the development versions of KubeBlocks, Please add the '--devel' parameter as the following command
-helm search repo kubeblocks/kubeblocks --versions --devel
-
-# Create dependent CRDs
-kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v$kb_version/kubeblocks_crds.yaml
-# If github is not accessible or very slow for you, please use following command instead
-kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v$kb_version/kubeblocks_crds.yaml
-
-# Install KubeBlocks
-helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
-```
-Enable weaviate
-```bash
-# Add Helm repo 
-helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
-# Update helm repo
-helm repo update
-
-# Enable weaviate 
-helm upgrade -i kb-addon-weaviate kubeblocks-addons/weaviate -n kb-system  --version $kb_version
-``` 
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
-### [Create](cluster.yaml) 
-Create a weaviate cluster with specified cluster definition 
+### [Create](cluster.yaml)
+
+Create a weaviate cluster with three replicas:
+
 ```bash
 kubectl apply -f examples/weaviate/cluster.yaml
 ```
-Starting from kubeblocks 0.9.0, we introduced a more flexible cluster creation method based on components, allowing customization of cluster topology, functionalities and scale according to specific requirements.
-```bash
-kubectl apply -f examples/weaviate/cluster-cmpd.yaml
-```
-### [Horizontal scaling](horizontalscale.yaml)
-Horizontal scaling out or in specified components replicas in the cluster
-```bash
-kubectl apply -f examples/weaviate/horizontalscale.yaml
-```
 
 ### [Vertical scaling](verticalscale.yaml)
+
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
+
 ```bash
 kubectl apply -f examples/weaviate/verticalscale.yaml
 ```
 
 ### [Expand volume](volumeexpand.yaml)
-Increase size of volume storage with the specified components in the cluster
+
+Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects  without requiring any downtime at all if possible.
+
+> [!NOTE]
+> Make sure the storage class you use supports volume expansion.
+
+Check the storage class with following command:
+
 ```bash
-kubectl apply -f examples/weaviate/volumeexpand.yaml
+kubectl get storageclass
+```
+
+If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volume expansion.
+
+To increase size of volume storage with the specified components in the cluster
+
+```bash
+kubectl apply -f examples/postgresql/volumeexpand.yaml
 ```
 
 ### [Restart](restart.yaml)
+
 Restart the specified components in the cluster
+
 ```bash
 kubectl apply -f examples/weaviate/restart.yaml
 ```
 
 ### [Stop](stop.yaml)
+
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
+
 ```bash
 kubectl apply -f examples/weaviate/stop.yaml
 ```
 
 ### [Start](start.yaml)
+
 Start the stopped cluster
+
 ```bash
 kubectl apply -f examples/weaviate/start.yaml
 ```
 
 ### [Configure](configure.yaml)
-Configure parameters with the specified components in the cluster
+
+Configure parameters with the specified components in the cluster:
+
 ```bash
 kubectl apply -f examples/weaviate/configure.yaml
 ```
 
-### Delete
-If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
-```bash
-kubectl patch cluster weaviate-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+It sets `QUERY_DEFAULTS_LIMIT` to 150, and all pods will be restarted to apply the new configuration.
 
-kubectl delete cluster weaviate-cluster
+### Delete
+
+If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+
+```bash
+kubectl patch cluster -n demo weaviate-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+
+kubectl delete cluster -n demo weaviate-cluster
 ```
+
+## References
+
+[^1]: Weaviate Cluster Architecture, <https://weaviate.io/developers/weaviate/concepts/replication-architecture/cluster-architecture#metadata-replication-raft>

@@ -15,12 +15,19 @@
       "default": "combined",
       "enum": [
         "combined",
-        "separated"
+        "separated",
+        "withZookeeper-10"
       ]
     },
     "saslEnable": {
       "title": "SaslEnable",
       "description": "Enable authentication using SASL/PLAIN for Kafka.",
+      "type": "boolean",
+      "default": false
+    },
+    "saslScramEnable": {
+      "title": "SaslScramEnable",
+      "description": "Enable authentication using SASL/SCRAM for Kafka.",
       "type": "boolean",
       "default": false
     },
@@ -131,7 +138,7 @@
         "replicas": {
           "title": "Monitor Replicas",
           "description": "Number of replicas for the monitor component.",
-          "type": "integer",
+          "type": [ "number", "string" ],
           "default": 1,
           "minimum": 1
         },
@@ -141,11 +148,11 @@
           "type": "object",
           "properties": {
             "cpu": {
-              "type": "number",
+              "type": [ "number", "string" ],
               "default": 0.1
             },
             "memory": {
-              "type": "number",
+              "type": [ "number", "string" ],
               "default": 0.2
             }
           }
@@ -156,11 +163,11 @@
           "type": "object",
           "properties": {
             "cpu": {
-              "type": "number",
+              "type": [ "number", "string" ],
               "default": 0.5
             },
             "memory": {
-              "type": "number",
+              "type": [ "number", "string" ],
               "default": 1
             }
           }
@@ -183,7 +190,13 @@
       "type": "boolean",
       "default": false,
       "title": "nodePortEnabled",
-      "description":"Whether NodePort service is enabled, default is false"
+      "description":"Whether to enable NodePort mode in Kafka's `advertised.listeners`"
+    },
+    "fixedPodIPEnabled": {
+      "type": "boolean",
+      "default": false,
+      "title": "fixedPodIPEnabled",
+      "description":"Whether to enable fixed Pod IP mode in Kafka's `advertised.listeners`"
     }
   }
 }

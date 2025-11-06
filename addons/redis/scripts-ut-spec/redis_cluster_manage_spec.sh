@@ -38,6 +38,8 @@ Describe "Redis Cluster Manage Bash Script Tests"
       export KB_CLUSTER_COMPONENT_UNDELETED_LIST="component1,component3"
       export KB_CLUSTER_POD_IP_LIST="10.0.0.1,10.0.0.2,10.0.0.3,10.0.0.4"
       export KB_CLUSTER_POD_NAME_LIST="component1-0,component2-0,component3-0,component3-1"
+      export CLUSTER_NAMESPACE="kb-system"
+      export CLUSTER_DOMAIN="cluster.local"
       export SERVICE_PORT="6379"
 
       When call init_other_components_and_pods_info "component1" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_LIST" "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"
@@ -47,7 +49,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       The output should include "other_undeleted_components: component3"
       The output should include "other_undeleted_component_pod_ips: 10.0.0.3 10.0.0.4"
       The output should include "other_undeleted_component_pod_names: component3-0 component3-1"
-      The output should include "other_undeleted_component_nodes: component3-0.component3-headless:6379 component3-1.component3-headless:6379"
+      The output should include "other_undeleted_component_nodes: component3-0.component3-headless.kb-system.svc.cluster.local:6379 component3-1.component3-headless.kb-system.svc.cluster.local:6379"
     End
   End
 
@@ -134,6 +136,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
 
       setup() {
         export CURRENT_SHARD_ADVERTISED_PORT="redis-shard-sxj-0:31000,redis-shard-sxj-1:31001"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
         export current_comp_primary_node=()
         export current_comp_other_nodes=()
       }
@@ -141,6 +144,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
 
       un_setup() {
         unset CURRENT_SHARD_ADVERTISED_PORT
+        unset CURRENT_SHARD_COMPONENT_NAME
         unset cluster_nodes_info
       }
       After "un_setup"
@@ -161,7 +165,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       }
       setup() {
         unset CURRENT_SHARD_ADVERTISED_PORT
-        export KB_CLUSTER_COMP_NAME="redis-shard-sxj"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
         export SERVICE_PORT="6379"
         export current_comp_primary_node=()
         export current_comp_other_nodes=()
@@ -169,7 +173,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_COMP_NAME
+        unset CURRENT_SHARD_COMPONENT_NAME
         unset SERVICE_PORT
         unset cluster_nodes_info
       }
@@ -341,7 +345,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       It "exits with error when failed to get host ip of pod"
         When run init_current_comp_default_nodes_for_scale_out
         The status should be failure
-        The stderr should include "Failed to get the host ip of the pod redis-shard-sxj-0"
+        The stderr should include "Failed to get host ip of pod redis-shard-sxj-0"
       End
     End
 
@@ -428,7 +432,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       It "exits with error when failed to get pod fqdn"
         When run init_current_comp_default_nodes_for_scale_out
         The status should be failure
-        The stderr should include "Error: Failed to get current pod: redis-shard-sxj-0 fqdn from current shard pod fqdn list: redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc.cluster.local. Exiting."
+        The stderr should include "Error: Failed to get pod redis-shard-sxj-0 fqdn from list: redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc.cluster.local"
       End
     End
   End
@@ -616,7 +620,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
       It "exits with error when failed to get host ip of pod"
         When run gen_initialize_redis_cluster_node "true"
         The status should be failure
-        The stderr should include "Failed to get the host ip of the pod redis-shard-98x-0"
+        The stderr should include "Failed to get host IP for pod: redis-shard-98x-0"
       End
     End
 
@@ -640,13 +644,13 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
       It "returns error when failed to get all shard pod fqdns"
         When call gen_initialize_redis_cluster_node "true"
         The status should be failure
-        The error should include "Failed to get all shard pod fqdns from vars env ALL_SHARDS_POD_FQDN_LIST"
+        The error should include "Failed to get all shard pod FQDNs"
       End
     End
 
     Context "when failed to get target pod fqdn"
       get_all_shards_pod_fqdns() {
-        echo "redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local,redis-shard-7hy-0.namespace.svc.cluster.local,redis-shard-7hy-1.namespace.svc.cluster.local,redis-shard-jwl-0.namespace.svc.cluster.local,redis-shard-jwl-1.namespace.svc.cluster.local"
+        echo "redis-shard-98x-1.namespace.svc.cluster.local,redis-shard-98x-2.namespace.svc.cluster.local,redis-shard-7hy-0.namespace.svc.cluster.local,redis-shard-7hy-1.namespace.svc.cluster.local,redis-shard-jwl-0.namespace.svc.cluster.local,redis-shard-jwl-1.namespace.svc.cluster.local"
       }
 
       get_target_pod_fqdn_from_pod_fqdn_vars() {
@@ -668,7 +672,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
       It "returns error when failed to get target pod fqdn"
         When call gen_initialize_redis_cluster_node "true"
         The status should be failure
-        The stderr should include "Error: Failed to get current pod: redis-shard-98x-0 fqdn from all shard pod fqdn list"
+        The stderr should include "Failed to get pod redis-shard-98x-0 fqdn from list: redis-shard-98x-1.namespace.svc.cluster.local,redis-shard-98x-2.namespace.svc.cluster.local,redis-shard-7hy-0.namespace.svc.cluster.local,redis-shard-7hy-1.namespace.svc.cluster.local,redis-shard-jwl-0.namespace.svc.cluster.local,redis-shard-jwl-1.namespace.svc.cluster.local"
       End
     End
   End
@@ -746,6 +750,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
       }
 
+      check_initialize_nodes_ready() {
+        return 0
+      }
+
       create_redis_cluster() {
         return 1
       }
@@ -775,6 +783,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      check_initialize_nodes_ready() {
+        return 0
       }
 
       create_redis_cluster() {
@@ -813,6 +825,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      check_initialize_nodes_ready() {
+        return 0
       }
 
       create_redis_cluster() {
@@ -854,6 +870,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      check_initialize_nodes_ready() {
+        return 0
       }
 
       create_redis_cluster() {
@@ -901,6 +921,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      check_initialize_nodes_ready() {
+        return 0
       }
 
       create_redis_cluster() {
@@ -951,6 +975,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+      
+      check_initialize_nodes_ready() {
+        return 0
       }
 
       create_redis_cluster() {
@@ -1117,6 +1145,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
       }
 
       check_slots_covered() {
+        return 0
+      }
+
+      check_current_shard_other_nodes_are_joined() {
         return 0
       }
 
@@ -1374,7 +1406,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x,redis-shard-7hy"
         export KB_CLUSTER_COMPONENT_DELETING_LIST=""
         export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x,redis-shard-7hy"
-        export KB_CLUSTER_COMP_NAME="redis-shard-98x"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
         export SERVICE_PORT="6379"
       }
       Before "setup"
@@ -1389,7 +1421,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         unset KB_CLUSTER_COMPONENT_LIST
         unset KB_CLUSTER_COMPONENT_DELETING_LIST
         unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
-        unset KB_CLUSTER_COMP_NAME
+        unset CURRENT_SHARD_COMPONENT_NAME
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -1473,6 +1505,8 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl"
         export KB_CLUSTER_COMPONENT_DELETING_LIST=""
         export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl"
+        export CLUSTER_NAMESPACE="kb-system"
+        export CLUSTER_DOMAIN="cluster.local"
         export SERVICE_PORT="6379"
       }
       Before "setup"
@@ -1495,7 +1529,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         When call scale_in_redis_cluster_shard
         The status should be failure
         The error should include "The number of shards in the cluster is less than 3 after scaling in, please check."
-        The stdout should include "other_undeleted_component_nodes: redis-shard-7hy-0.redis-shard-7hy-headless:6379 redis-shard-7hy-1.redis-shard-7hy-headless:6379 redis-shard-jwl-0.redis-shard-jwl-headless:6379"
+        The stdout should include "other_undeleted_component_nodes: redis-shard-7hy-0.redis-shard-7hy-headless.kb-system.svc.cluster.local:6379 redis-shard-7hy-1.redis-shard-7hy-headless.kb-system.svc.cluster.local:6379 redis-shard-jwl-0.redis-shard-jwl-headless.kb-system.svc.cluster.local:6379"
       End
     End
 
@@ -1590,6 +1624,8 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl,redis-shard-kpl"
         export KB_CLUSTER_COMPONENT_DELETING_LIST=""
         export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl,redis-shard-kpl"
+        export CLUSTER_NAMESPACE="kb-system"
+        export CLUSTER_DOMAIN="cluster.local"
         export SERVICE_PORT="6379"
       }
       Before "setup"
@@ -1612,7 +1648,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         When call scale_in_redis_cluster_shard
         The status should be failure
         The error should include "Failed to rebalance the cluster for the current component when scaling in"
-        The stdout should include "other_undeleted_component_nodes: redis-shard-7hy-0.redis-shard-7hy-headless:6379 redis-shard-7hy-1.redis-shard-7hy-headless:6379 redis-shard-jwl-0.redis-shard-jwl-headless:6379 redis-shard-jwl-1.redis-shard-jwl-headless:6379 redis-shard-kpl-0.redis-shard-kpl-headless:6379 redis-shard-kpl-1.redis-shard-kpl-headless:637"
+        The stdout should include "other_undeleted_component_nodes: redis-shard-7hy-0.redis-shard-7hy-headless.kb-system.svc.cluster.local:6379 redis-shard-7hy-1.redis-shard-7hy-headless.kb-system.svc.cluster.local:6379 redis-shard-jwl-0.redis-shard-jwl-headless.kb-system.svc.cluster.local:6379 redis-shard-jwl-1.redis-shard-jwl-headless.kb-system.svc.cluster.local:6379 redis-shard-kpl-0.redis-shard-kpl-headless.kb-system.svc.cluster.local:6379 redis-shard-kpl-1.redis-shard-kpl-headless.kb-system.svc.cluster.local:6379"
       End
     End
 
@@ -1681,20 +1717,20 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
     Context "when required environment variables are not set"
       setup() {
         export KB_CLUSTER_POD_IP_LIST=""
-        export SERVICE_PORT=""
+        export KB_CLUSTER_POD_NAME_LIST=""
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_POD_IP_LIST
-        unset SERVICE_PORT
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 
       It "exits with status 1 when required environment variables are not set"
         When run initialize_or_scale_out_redis_cluster
         The status should be failure
-        The stderr should include "Error: Required environment variable KB_CLUSTER_POD_IP_LIST and SERVICE_PORT is not set."
+        The stderr should include "Error: Required environment variable KB_CLUSTER_POD_IP_LIST and KB_CLUSTER_POD_NAME_LIST and SERVICE_PORT is not set."
       End
     End
 
@@ -1709,13 +1745,13 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
 
       setup() {
         export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
-        export SERVICE_PORT="6379"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_POD_IP_LIST
-        unset SERVICE_PORT
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 
@@ -1738,13 +1774,13 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
 
       setup() {
         export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
-        export SERVICE_PORT="6379"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_POD_IP_LIST
-        unset SERVICE_PORT
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 
@@ -1767,13 +1803,13 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
 
       setup() {
         export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
-        export SERVICE_PORT="6379"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_POD_IP_LIST
-        unset SERVICE_PORT
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 
@@ -1796,13 +1832,13 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
 
       setup() {
         export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
-        export SERVICE_PORT="6379"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_POD_IP_LIST
-        unset SERVICE_PORT
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 

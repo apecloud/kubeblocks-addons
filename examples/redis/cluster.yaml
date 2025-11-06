@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -58,6 +58,7 @@ spec:
                 # Set the storage size as needed
                 storage: 20Gi
     - name: redis-sentinel
+      serviceVersion: "7.2.4"
       replicas: 3
       resources:
         limits:

@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "etcd.annotations" -}}
-helm.sh/resource-policy: keep
+{{- /*{{ include "kblib.helm.resourcePolicy" . }}*/ -}}
 {{ include "etcd.apiVersion" . }}
 {{- end }}
 
@@ -84,24 +84,32 @@ Define etcd component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define etcd 3.X component configuration template name
+Define etcd 3.X component config template name
 */}}
-{{- define "etcd3.configurationTemplate" -}}
+{{- define "etcd3.configTemplate" -}}
 etcd3-config-template-{{ .Chart.Version }}
 {{- end }}
 
 {{/*
-Define etcd 3.X component config constriant name
+Define etcd 3.X component parameters definition name
 */}}
-{{- define "etcd3.configConstraint" -}}
-etcd3-config-constraints
+{{- define "etcd3.paramsDefinition" -}}
+etcd3-pd
 {{- end }}
+
+{{/*
+Define etcd 3.X component parameter config renderer name
+*/}}
+{{- define "etcd3.pcrName" -}}
+etcd3-pcr
+{{- end }}
+
 
 {{/*
 Define etcd 3.X component script template name
 */}}
-{{- define "etcd3.scriptsTemplate" -}}
-etcd3-scripts-template-{{.Chart.Version}}
+{{- define "etcd3.scriptTemplate" -}}
+etcd3-script-template-{{.Chart.Version}}
 {{- end }}
 
 {{/*
@@ -122,6 +130,13 @@ etcdctl-br
 {{- end -}}
 
 {{/*
+Define etcd backup policy template name
+*/}}
+{{- define "etcd.backupPolicyTemplateName" -}}
+etcd-backup-policy-template
+{{- end -}}
+
+{{/*
 Define etcd image repository
 */}}
 {{- define "etcd.repository" -}}
@@ -129,29 +144,8 @@ Define etcd image repository
 {{- end }}
 
 {{/*
-Define latest etcd image
-*/}}
-{{- define "etcd3.image" -}}
-{{ include "etcd.repository" . }}:{{ .Values.image.tag.major3.minor515 }}
-{{- end }}
-
-{{/*
-Define latest etcd image build with busybox brinaries
-*/}}
-{{- define "etcd356.image" -}}
-{{ include "etcd.repository" . }}:{{ .Values.image.tag.major3.minor56 }}
-{{- end }}
-
-{{/*
-Define bash-busybox image repository
-*/}}
-{{- define "bashBusyboxImage.repository" -}}
-{{ .Values.bashBusyboxImage.registry | default "docker.io" }}/{{ .Values.bashBusyboxImage.repository }}
-{{- end }}
-
-{{/*
 Define bash-busybox image
 */}}
-{{- define "bashBusyboxImage.image" -}}
-{{ include "bashBusyboxImage.repository" . }}:{{ .Values.bashBusyboxImage.tag }}
+{{- define "bashBusybox.image" -}}
+{{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.bashBusybox.repository }}:{{ .Values.images.bashBusybox.tag }}
 {{- end }}

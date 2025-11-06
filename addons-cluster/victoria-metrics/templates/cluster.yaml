@@ -1,10 +1,9 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: {{ include "clustername" . }}
+  name: {{ include "kblib.clusterName" . }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "victoria-metrics-cluster.labels" . | nindent 4 }}
 spec:
   clusterDef: victoria-metrics
   terminationPolicy: {{ .Values.terminationPolicy }}
@@ -12,41 +11,97 @@ spec:
   componentSpecs:
     - name: vmstorage
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      replicas: {{ .Values.replicas }}
-      {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentStorages" . | indent 6 }}
+      replicas: {{ .Values.vmstorage.replicas }}
+      {{- with .Values.vmstorage.resources }}
+      resources:
+        {{- with .limits }}
+        limits:
+          cpu: {{ .cpu | quote }}
+          memory: {{ print .memory "Gi" | quote }}
+        {{- end }}
+        {{- with .requests }}
+        requests:
+          cpu: {{ .cpu | quote }}
+          memory: {{ print .memory "Gi" | quote }}
+        {{- end }}
+      {{- end }}
+      volumeClaimTemplates:
+        - name: data # ref clusterDefinition components.containers.volumeMounts.name
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ print .Values.vmstorage.storage "Gi" }}
+            {{- if .Values.vmstorage.storageClassName }}
+            storageClassName: {{ .Values.vmstorage.storageClassName | quote }}
+            {{- end }}
       env:
         - name: RETENTION_PERIOD
           value: "{{ .Values.retentionPeriod }}"
+        {{- with .Values.vmstorage.env }}
+        {{- range $key, $value := . }}
+        {{- if $value }}
+        - name: "VM_{{ $key }}"
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
     - name: vmselect
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      replicas: {{ .Values.vmselect.replicas }}
+      replicas: {{ .Values.vmselect.replicas | default 1 }}
+      instanceUpdateStrategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: {{ .Values.vmselect.maxUnavailable | default 1 }}
       {{- with .Values.vmselect.resources }}
       resources:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
+      env:
+        {{- with .Values.vmselect.env }}
+        {{- range $key, $value := . }}
+        {{- if $value }}
+        - name: "VM_{{ $key }}"
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
     - name: vminsert
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.vminsert.replicas | default 1 }}
-      {{- with  .Values.vminsert.resources }}
+      instanceUpdateStrategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: {{ .Values.vminsert.maxUnavailable | default 0 }}
+      {{- with .Values.vminsert.resources }}
       resources:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
+      env:
+        {{- with .Values.vminsert.env }}
+        {{- range $key, $value := . }}
+        {{- if $value }}
+        - name: "VM_{{ $key }}"
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+        {{- end }}

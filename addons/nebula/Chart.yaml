@@ -2,9 +2,9 @@ apiVersion: v2
 name: nebula
 description: NebulaGraph is a popular open-source graph database that can handle large volumes of data with milliseconds of latency, scale up quickly, and have the ability to perform fast graph analytics.
 
-version: 1.0.0-alpha.0
+version: 1.1.0-alpha.0
 
-appVersion: "v3.5.0"
+appVersion: "v3.8.0"
 
 home: https://nebula-graph.io
 
@@ -27,3 +27,9 @@ annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
   addon.kubeblocks.io/model: "graph"
   addon.kubeblocks.io/provider: "community"
+
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra

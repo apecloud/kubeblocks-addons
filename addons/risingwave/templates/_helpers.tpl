@@ -54,7 +54,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Common risingwave annotations
 */}}
 {{- define "risingwave.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "risingwave.apiVersion" . }}
 {{- end }}
 
@@ -143,27 +143,14 @@ risingwave-configuration-tpl
 {{- end -}}
 
 {{/*
-Define risingwave compute env config template name
-*/}}
-{{- define "risingwave-compute.envConfigTplName" -}}
-risingwave-compute-envs-tpl
-{{- end -}}
-
-{{/*
-Define risingwave connector env config template name
-*/}}
-{{- define "risingwave-connector.envConfigTplName" -}}
-risingwave-connector-envs-tpl
-{{- end -}}
-
-{{/*
 Default config template.
 */}}
 {{- define "risingwave.conftpl.default" }}
 - name: risingwave-configuration
-  templateRef: {{ include "risingwave.configTplName" . }}
+  template: {{ include "risingwave.configTplName" . }}
   namespace: {{ .Release.Namespace }}
   volumeName: risingwave-configuration
+  restartOnFileChange: true
 {{- end }}
 
 {{/*

@@ -3,8 +3,11 @@
 # Declare variables to be passed into your templates.
 
 nameOverride: ""
-
 fullnameOverride: ""
+
+## @param commonLabels Labels to add to all deployed objects
+##
+commonLabels: {}
 
 ## @param application images
 ##
@@ -14,8 +17,27 @@ image:
   pullPolicy: IfNotPresent
   tag: "v1.8.4"
   tools:
-    repository: apecloud/curl-jq
+    repository: apecloud/qdrant-tools
     tag: 0.1.0
 
-## @param data volume mount path
+## @param supported versions with detailed information
+versions:
+  - major: "1"
+    componentDef: "^qdrant-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["1.5.0", "1.5.0", "v1.5.0", false]
+      - ["1.7.3", "1.7.3", "v1.7.3", false]
+      - ["1.8.1", "1.8.1", "v1.8.1", false]
+      - ["1.8.4", "1.8.4", "v1.8.4", false]
+      - ["1.10.0", "1.10.0", "v1.10.0", false]
+      - ["1.13.4", "1.13.4", "v1.13.4", false]
+      - ["1.15.4", "1.15.4", "v1.15.4", false]
+
+## @param debugEnabled enables containers' debug logging
+##
+debugEnabled: true
+
 dataMountPath: /qdrant/storage
+
+clusterDomain: "cluster.local"

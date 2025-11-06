@@ -2,32 +2,86 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+nameOverride: ""
+
+fullnameOverride: ""
+
 ## @param compDefinitionVersion for each ComponentDefinition resources name created by this chart, that can avoid name conflict
 ## If specified, the component definition will use it as prefix.
 cmpdVersionPrefix:
-  redis:
-    major7:
-      minorAll: "redis-7"
-  redisSentinel:
-    major7:
-      minorAll: "redis-sentinel-7"
-  redisCluster:
-    major7:
-      minorAll: "redis-cluster-7"
   redisTwemproxy:
     major05:
       minorAll: "redis-twemproxy-0.5"
 
 ## @param componentServiceVersion define default serviceVersion of each Component
 defaultServiceVersion:
-  redis:
-    major7: "7.2.4"
-  redisSentinel:
-    major7: "7.2.4"
-  redisCluster:
-    major7: "7.2.4"
   redisTwemproxy:
     major: "0.5.0"
+
+## Redis versions configuration
+## Array of major versions, each containing minor versions with specific image tags
+## @param serviceVersion define default serviceVersion of each Component
+redisVersions:
+  - major: "5"
+    componentDef: "redis-5"
+    clusterComponentDef: "redis-cluster-5"
+    serviceVersion: "5.0.12"
+    sentinelComponentDef: "redis-sentinel-5"
+    defaultImageTag: "5.0.12"
+    mirrorVersions:
+      - version: "5.0.12"
+        imageTag: "5.0.12"
+  - major: "6"
+    componentDef: "redis-6"
+    serviceVersion: "6.2.17"
+    clusterComponentDef: "redis-cluster-6"
+    sentinelComponentDef: "redis-sentinel-6"
+    defaultImageTag: "6.2.6-v18"
+    mirrorVersions:
+      - version: "6.2.14"
+        imageTag: "6.2.6-v10"
+      - version: "6.2.17"
+        imageTag: "6.2.6-v18"
+  - major: "7"
+    componentDef: "redis-7"
+    serviceVersion: "7.2.11"
+    clusterComponentDef: "redis-cluster-7"
+    sentinelComponentDef: "redis-sentinel-7"
+    defaultImageTag: "7.2.0-v19"
+    mirrorVersions:
+      - version: "7.0.6"
+        imageTag: "7.0.6-RC4"
+      - version: "7.2.4"
+        imageTag: "7.2.0-v10"
+      - version: "7.2.7"
+        imageTag: "7.2.0-v14"
+      - version: "7.4.2"
+        imageTag: "7.4.0-v3"
+      - version: "7.2.10"
+        imageTag: "7.2.0-v18"
+      - version: "7.2.11"
+        imageTag: "7.2.0-v19"
+      - version: "7.4.5"
+        imageTag: "7.4.0-v6"
+      - version: "7.4.6"
+        imageTag: "7.4.0-v7"
+  - major: "8"
+    componentDef: "redis-8"
+    serviceVersion: "8.2.2"
+    clusterComponentDef: "redis-cluster-8"
+    sentinelComponentDef: "redis-sentinel-8"
+    defaultImageTag: "8.2.2"
+    mirrorVersions:
+      - version: "8.0.1"
+        imageTag: "8.0.1"
+      - version: "8.0.3"
+        imageTag: "8.0.3"
+      - version: "8.0.4"
+        imageTag: "8.0.4"
+      - version: "8.2.1"
+        imageTag: "8.2.1"
+      - version: "8.2.2"
+        imageTag: "8.2.2"
 
 image:
   # refer: https://redis.io/docs/stack/
@@ -41,18 +95,34 @@ image:
   tag:
     major7:
       minor70: 7.0.6-RC4
-      minor72: 7.2.0-v10
+      minor72: 7.2.0-v18
+    major8:
+      minor80: 8.0.1
+
+  apeDts:
+    registry: ""
+    repository: apecloud/ape-dts
+    tag: 2.0.24
+    reshardTag: redis.reshard.2.0.9
+
+ceImage:
+  registry:
+  repository: redis
+  pullPolicy: IfNotPresent
+  tag:
+    major8:
+      minor80: 8.0.1
 
 apeDtsImage:
   registry: ""
   repository: apecloud/ape-dts
-  tag: 0.1.17
+  tag: 2.0.24
 
 dbctlImage:
-  registry: docker.io
+  registry:
   repository: apecloud/dbctl
   pullPolicy: IfNotPresent
-  tag: 0.1.5
+  tag: 0.1.8
 
 redisTwemproxyImage:
   # if the value of redisTwemproxyImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
@@ -70,16 +140,6 @@ busyboxImage:
   # Overrides the image tag whose default is the chart appVersion.
   tag: 1.36
 
-nameOverride: ""
-
-fullnameOverride: ""
-
-# defined the data volume mount path of redis server
-dataMountPath: /data
-
-logConfigs:
-  running: /data/running.log
-
 metrics:
   image:
     # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
@@ -89,3 +149,15 @@ metrics:
     pullPolicy: IfNotPresent
   service:
     port: 9121
+    serverPort: 8888
+
+# defined the data volume mount path of redis server
+dataMountPath: /data
+
+logConfigs:
+  running: /data/running.log
+
+# cluster domain without . prefix
+clusterDomain: "cluster.local"
+
+enableMetrics: true

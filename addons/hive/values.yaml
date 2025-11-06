@@ -1,0 +1,24 @@
+# Default values for hive.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+images:
+  registry: docker.io
+  pullPolicy: IfNotPresent
+  hive:
+    repository: apecloud/hive
+    tag: "3.1.3"
+  jmxExporter:
+    repository: apecloud/jmx-exporter
+    tag: "1.4.0"
+
+versions:
+  - version: "3.1.3"
+  - version: "3.1.2"
+  - version: "4.0.1"
+
+
+clusterDomain: cluster.local
+
+enableJmxExporter: true
+jmxExporterPort: 9200

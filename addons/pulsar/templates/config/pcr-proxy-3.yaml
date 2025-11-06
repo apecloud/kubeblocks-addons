@@ -1,0 +1,22 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "pulsar3.proxyPCRName" . }}
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pulsar.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "pulsar3.proxyCmpdName" . }}
+  parametersDefs:
+    - {{ include "pulsar3.proxyConfigConstraintName" . }}
+
+  configs:
+    - name: proxy.conf
+      fileFormatConfig:
+        format: props-plus
+    - name: pulsar.env
+      fileFormatConfig:
+        format: dotenv
+      reRenderResourceTypes:
+        - vscale

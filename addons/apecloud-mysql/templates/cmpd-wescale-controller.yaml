@@ -19,19 +19,18 @@ spec:
       optional: true
   scripts:
     - name: apecloud-mysql-scripts
-      templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
+      template: {{ include "apecloud-mysql.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
   lifecycleActions:
     preTerminate:
       exec:
-        image: {{ .Values.wesqlscale.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+        container: vtctld
         command: ["/scripts/etcd-clean.sh"]
   runtime:
     containers:
       - name: vtctld
-        image: {{ .Values.wesqlscale.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
         ports:
           - containerPort: 15000
@@ -42,7 +41,7 @@ spec:
           - name: CELL
             value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
           - name: VTCTLD_SERVER
-            value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+            value: "$(CLUSTER_NAME)-wescale-ctrl-headless"
           - name: VTCTLD_WEB_PORT
             value: "15000"
           - name: VTCTLD_GRPC_PORT
@@ -56,6 +55,18 @@ spec:
           - name: data
             mountPath: /vtdataroot
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: MYSQL_ROOT_USER
       valueFrom:
         credentialVarRef:
@@ -88,6 +99,16 @@ spec:
           compDef: {{ .Values.etcd.etcdCmpdName }}
           name: headless
           optional: true
-          port: 
+          port:
             name: client
             option: Optional
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required

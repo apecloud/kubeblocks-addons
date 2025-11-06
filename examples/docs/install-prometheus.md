@@ -57,7 +57,7 @@ and you can access the Grafana dashboard by opening "http://localhost:3000" in y
 To login, you may retrieve the credential from the secret:
 
 ```bash
-kubectl get secrets prometheus-grafana -n monitoring -oyaml
+kubectl get secrets prometheus-grafana -n monitoring -ojsonpath='{.data}'
 ```
 
 ## Step 4: (Optional) Config PodMonitor and ServiceMonitor Selector
@@ -69,7 +69,6 @@ To update the configuration on `PodMonitor` and `ServiceMonitor`, you may update
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: Prometheus
-metadata:
 spec:
   podMonitorNamespaceSelector: {} # Namespaces to match for PodMonitors discovery
   #  PodMonitors to be selected for target discovery. An empty label selector
@@ -84,3 +83,7 @@ spec:
     matchLabels:
       release: prometheus # make sure your ServiceMonitor CR labels matches the selector
 ```
+
+When creating a new `PodMonitor` or `ServiceMonitor`, make sure labels and namespace are set correctly matching the settings (`podMonitorNamespaceSelector` and `podMonitorSelector`,`serviceMonitorNamespaceSelector` and `serviceMonitorSelector`) in the `Prometheus` CR.
+
+When creating a new `PrometheusRule`, make sure labels and namespace are set correctly matching the settings (`ruleNamespaceSelector` and `ruleSelector`) in the `Prometheus` CR.

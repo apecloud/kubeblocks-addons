@@ -1,0 +1,18 @@
+releases:
+  - version: "1.0.1"
+    released_at: "2025-09-11"
+    status: "stable"
+    notes: "Release 1.0.1 for apecloud-mysql"
+    git_branch: "release-1.0"
+    git_tag: "1.0.1"
+    commit_sha: ""
+    breaking_changes: []
+  - version: "1.0.0"
+    released_at: "2025-05-28"
+    status: "stable"
+    git_branch: "release-1.0"
+    git_tag: "1.0.0"
+  - version: "0.9.0"
+    status: "stable"
+    git_branch: "release-0.9"
+    git_tag: "0.9.0"

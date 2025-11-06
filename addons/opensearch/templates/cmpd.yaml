@@ -26,7 +26,6 @@ spec:
   runtime:
     initContainers:
       - name: fsgroup-volume
-        image: {{ include "fsgroup-volume.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command: [ 'sh', '-c' ]
         args:
@@ -37,7 +36,6 @@ spec:
           - name: data
             mountPath: /usr/share/opensearch/data
       - name: sysctl
-        image: {{ include "sysctl.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - sh
@@ -54,7 +52,6 @@ spec:
           privileged: true
     containers:
       - name: opensearch
-        image: {{ include "opensearch.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         readinessProbe:
           tcpSocket:
@@ -100,7 +97,6 @@ spec:
             subPath: opensearch.yaml
             name: opensearch-config
       - name: os-master-graceful-handler
-        image: {{ include "os-master-graceful-handler.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - "sh"
@@ -123,12 +119,13 @@ spec:
             targetPort: transport
   configs:
     - name: opensearch-config-template
-      templateRef: opensearch-config-template
+      template: opensearch-config-template
       volumeName: opensearch-config
       namespace: {{.Release.Namespace}}
+      restartOnFileChange: true
   scripts:
     - name: opensearch-scripts
-      templateRef: {{ include "opensearch.scriptsTemplate" . }}
+      template: {{ include "opensearch.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

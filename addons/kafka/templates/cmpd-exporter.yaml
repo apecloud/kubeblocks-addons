@@ -4,14 +4,8 @@ metadata:
   name: {{ include "kafka-exporter.componentDefName" . }}
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
   annotations:
     {{- include "kafka.annotations" . | nindent 4 }}
-    {{- if .Values.commonAnnotations }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-    {{- end }}
 spec:
   provider: kubeblocks
   description: |-
@@ -26,7 +20,8 @@ spec:
     - name: BROKER_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
+          # supports both 2.x and 3.x
+          compDef: "^kafka\\d*-broker-"
           optional: true
           podFQDNs: Required
     ## when server mode is kafka-combine
@@ -36,22 +31,38 @@ spec:
           compDef: {{ include "kafka-combine.cmpdRegexpPattern" . }}
           optional: true
           podFQDNs: Required
+    - name: KAFKA_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: "^kafka\\d*-broker-"
+          name: admin
+          optional: true
+          username: Required
+    - name: KAFKA_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: "^kafka\\d*-broker-"
+          name: admin
+          optional: true
+          password: Required
   scripts:
   - name: kafka-scripts-tpl
-    templateRef: {{ include "kafka.serverScriptsTplName" . }}
+    template: {{ include "kafka.serverScriptsTplName" . }}
     volumeName: scripts
     namespace: {{ .Release.Namespace }}
     defaultMode: 0755
   runtime:
+    {{- if .Values.securityContext }}
     securityContext:
-      fsGroup: 1001
+      {{- toYaml .Values.securityContext | nindent 6 }}
+    {{- end }}
     containers:
     - name: kafka-exporter
-      image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafkaExporter.repository }}:{{ .Values.images.kafkaExporter.tag }}
       imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+      {{- if .Values.exporter.securityContext }}
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1001
+        {{- toYaml .Values.exporter.securityContext | nindent 8 }}
+      {{- end }}
       env:
         - name: SERVICE_PORT
           value: "9308"

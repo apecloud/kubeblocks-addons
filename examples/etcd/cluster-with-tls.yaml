@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: etcd-cluster-tls
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -17,8 +17,10 @@ spec:
       # Layer Security (TLS)
       # for secure communication.
       # Valid options are: [true,false]
-      tls: true
-      serviceVersion: 3.5.15
+      tls: true   # set TLS to true
+      issuer:     # if TLS is True, this filed is required.
+        name: KubeBlocks  # set Issuer to [KubeBlocks, UserProvided].
+      serviceVersion: 3.6.1
       replicas: 3
       resources:
         limits:

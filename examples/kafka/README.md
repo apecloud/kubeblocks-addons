@@ -27,6 +27,7 @@ Apache Kafka is a distributed streaming platform designed to build real-time pip
 | Versions |
 |----------|
 | 3.3.2 |
+| 2.8.2 |
 
 ## Prerequisites
 
@@ -35,6 +36,11 @@ Apache Kafka is a distributed streaming platform designed to build real-time pip
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Kafka Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -51,6 +57,14 @@ Create a Kafka cluster with separated controller and broker components:
 ```bash
 kubectl apply -f examples/kafka/cluster-separated.yaml
 ```
+
+We also maintain an 2.x version, which will rely on an external zookeeper cluster to work. Refer to `cluster-2x-ext-zk-svc-descriptor.yaml` to get an reference config.
+
+#### With authentication enabled
+We currently support SASL/SCRAM auth for 2.x version. If you want to enable it, set `KB_KAFKA_ENABLE_SASL_SCRAM` to `true`
+for both broker and exporter components.
+
+When the cluster creation is done, refer to a secret named `$(CLUSTER_NAME)$-kafka-broker-account-admin` to get the username/password.
 
 ### Horizontal scaling
 
@@ -69,7 +83,7 @@ kubectl apply -f examples/kafka/scale-out.yaml
 After applying the operation, you will see a new pod created. You can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops kafka-combined-scale-out
+kubectl describe -n demo ops kafka-combined-scale-out
 ```
 
 #### [Scale-in](scale-in.yaml)
@@ -85,11 +99,9 @@ kubectl apply -f examples/kafka/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -109,11 +121,9 @@ kubectl apply -f examples/kafka/verticalscale.yaml
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -151,7 +161,7 @@ kubectl apply -f examples/kafka/volumeexpand.yaml
 After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
 ```bash
-kubectl get pvc -l app.kubernetes.io/instance=kafka-combined-cluster -n default
+kubectl get pvc -l app.kubernetes.io/instance=kafka-combined-cluster -n demo
 ```
 
 #### Volume expansion using Cluster API
@@ -159,11 +169,9 @@ kubectl get pvc -l app.kubernetes.io/instance=kafka-combined-cluster -n default
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -207,11 +215,9 @@ kubectl apply -f examples/kafka/stop.yaml
 Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -232,11 +238,9 @@ kubectl apply -f examples/kafka/start.yaml
 Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -266,10 +270,63 @@ cat  /opt/bitnami/kafka/config/kraft/server.properties | grep 'log.flush.interva
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster kafka-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo kafka-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster kafka-cluster
+kubectl delete cluster -n demo kafka-cluster
 ```
+
+### Observability
+
+#### Installing the Prometheus Operator
+
+You may skip this step if you have already installed the Prometheus Operator.
+Or you can follow the steps in [How to install the Prometheus Operator](../docs/install-prometheus.md) to install the Prometheus Operator.
+
+#### Create Cluster
+
+Create a Kafka cluster with separated controller and broker components for instance:
+
+```bash
+kubectl apply -f examples/kafka/cluster-separated.yaml
+```
+
+#### Create PodMonitor
+
+##### Step 1. Create PodMonitor
+
+Apply the `PodMonitor` file to monitor the cluster.
+Please set the labels correctly in the `PodMonitor` file to match the target pods.
+
+```yaml
+# cat pod monitor file
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: kafka-separated-cluster  # cluster name, set it to your cluster name
+      apps.kubeblocks.io/component-name: kafka-controller  # component name
+```
+
+- Pod Monitor Kafka JVM:
+
+```bash
+kubectl apply -f examples/kafka/jvm-pod-monitor.yaml
+```
+
+- Pod Monitor for Kafka Exporter:
+
+```bash
+kubectl apply -f examples/kafka/exporter-pod-monitor.yaml
+```
+
+##### Step 2. Accessing the Grafana Dashboard
+
+Login to the Grafana dashboard and import the dashboard.
+
+KubeBlocks provides a Grafana dashboard for monitoring the Kafka cluster. You can find it at [Kafka Dashboard](https://github.com/apecloud/kubeblocks-addons/tree/main/addons/kafka).
+
+> [!NOTE]
+>
+> - Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
+> - set `job` to `kubeblocks` on Grafana dashboard to view the metrics.
 
 ### FAQ
 
@@ -280,7 +337,7 @@ kubectl delete cluster kafka-cluster
 To connect to the Kafka cluster, you can use the following command to get the service for connection:
 
 ```bash
-kubectl get svc -l app.kubernetes.io/instance=kafka-combined-cluster -n default
+kubectl get svc -l app.kubernetes.io/instance=kafka-combined-cluster -n demo
 ```
 
 And the excepted output is like below:
@@ -298,11 +355,9 @@ Currently only `nodeport` and `clusterIp` network modes are supported for Kafka
 To access the Kafka cluster using the `nodeport` service, you can create Kafka cluster with the following configuration,  refer to [Kafka Network Modes Example](./cluster-combined-nodeport.yaml) for more details.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine

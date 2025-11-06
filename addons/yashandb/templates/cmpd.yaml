@@ -21,12 +21,13 @@ spec:
             targetPort: yashandb
   configs:
     - name: yashandb-configs
-      templateRef: {{ include "yashandb.configTplName" . }}
+      template: {{ include "yashandb.configTplName" . }}
       volumeName: yashandb-configs
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
   scripts:
     - name: yashandb-scripts
-      templateRef: {{ include "yashandb.scriptsTplName" . }}
+      template: {{ include "yashandb.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: yashandb-scripts
   logConfigs:
@@ -39,7 +40,6 @@ spec:
     # dnsPolicy: ClusterFirstWithHostNet
     initContainers:
       - name: volume-permissions
-        image: {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository }}:{{ .Values.busyboxImage.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.busyboxImage.pullPolicy }}
         command:
           - /bin/sh
@@ -53,7 +53,6 @@ spec:
             name: data
     containers:
       - name: yashandb-container
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
@@ -78,3 +77,8 @@ spec:
           - name: YASDB_MOUNT_HOME
             value: /home/yashan/mydb
         workingDir: /home/yashan/
+  vars:
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required

@@ -1,0 +1,32 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: tidb-actionset-pitr
+  labels:
+    {{- include "tidb.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/unify-full-and-continuous-restore: "true"
+spec:
+  backupType: Continuous
+  backup:
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.br.repository }}:$(IMAGE_TAG)
+      syncProgress:
+        enabled: false
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/common.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/backup-pitr.sh" | nindent 8 }}
+  restore:
+    postReady:
+    - job:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.br.repository }}:$(IMAGE_TAG)
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/common.sh" | nindent 12 }}
+          {{- .Files.Get "dataprotection/restore-pitr.sh" | nindent 12 }}

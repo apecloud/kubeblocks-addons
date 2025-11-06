@@ -12,26 +12,18 @@ spec:
   serviceKind: proxysql
   serviceVersion: 2.4.4
   updateStrategy: BestEffortParallel
-
   configs:
     - name: proxy-config
-      templateRef: proxysql-config
+      template: proxysql-config
       namespace: {{ .Release.Namespace }}
       volumeName: proxy-config
-      reRenderResourceTypes:
-        - hscale
-      {{/*
-      injectEnvTo:
-        - proxysql
-        - proxy
-        */}}
+      restartOnFileChange: true
   scripts:
     - name: proxysql-scripts
-      templateRef: proxysql-scripts
+      template: proxysql-scripts
       namespace: {{ .Release.Namespace }}
       volumeName: proxysql-scripts
       defaultMode: 0555
-
   services:
     - name: proxy-server
       serviceName: proxy-server
@@ -51,52 +43,105 @@ spec:
           - name: db
             port: 6033
             targetPort: db
+
+  systemAccounts:
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+    - name: cluster
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
   vars:
+    - name: PROXYSQL_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          password: Required
+    - name: PROXYSQL_CLUSTER_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: cluster
+          password: Required
+    - name: PROXYSQL_MONITOR_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "mysql.componentDefCommonRegex" . }}
+          name: proxysql
+          optional: false
+          password: Required
+
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: PROXYSQL_FQDNS
+      valueFrom:
+        componentVarRef:
+          name: default
+          optional: false
+          podFQDNs: Required
+
     - name: BACKEND_SERVER
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefRegex" . }}
-          name: mysql-server
+          compDef: {{ include "mysql.componentDefCommonRegex" . }}
+          name: default
           host: Required
           optional: false
-
     - name: MYSQL_ROOT_USER
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefRegex" . }}
+          compDef: {{ include "mysql.componentDefCommonRegex" . }}
           name: root
           username: Required
-
     - name: MYSQL_ROOT_PASSWORD
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefRegex" . }}
+          compDef: {{ include "mysql.componentDefCommonRegex" . }}
           name: root
           password: Required
-
     - name: MYSQL_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefRegex" . }}
-          name: mysql-server
+          compDef: {{ include "mysql.componentDefCommonRegex" . }}
+          name: default
           optional: false
           port:
             name: mysql
             option: Required
+    - name: MYSQL_FQDNS
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "mysql.componentDefCommonRegex" . }}
+          name: default
+          optional: false
+          podFQDNs: Required
 
   runtime:
     volumes:
     containers:
       - name: proxysql
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/proxysql:2.4.4
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         args:
           - /scripts/proxysql/proxysql-entry.sh
           - --reload
         volumeMounts:
-          - mountPath: /etc/custom-config
+          - mountPath: /config/custom-config
             name: proxy-config
           - mountPath: /scripts/proxysql
             name: proxysql-scripts

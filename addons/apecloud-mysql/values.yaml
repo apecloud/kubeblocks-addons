@@ -10,10 +10,10 @@ image:
   tag: 8.0.30-5.beta3.20240330.g94d1caf.15
   syncer:
     repository: apecloud/syncer
-    tag: 0.3.8
-  dbctl:
-    repository: apecloud/dbctl
-    tag: "0.1.5"
+    tag: 0.4.1
+  walgImage:
+    repository: apecloud/wal-g
+    tag: mysql-8.0
 
 ## MySQL Cluster parameters
 cluster:
@@ -81,7 +81,7 @@ metrics:
   ## if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
   image:
     registry: ""
-    repository: bitnami/mysqld-exporter
+    repository: apecloud/mysqld-exporter
     tag: 0.15.1
     pullPolicy: IfNotPresent
 

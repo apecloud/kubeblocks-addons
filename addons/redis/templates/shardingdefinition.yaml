@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ShardingDefinition
+metadata:
+  name: redis-cluster
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    {{- include "redis.apiVersion" . | nindent 4 }}
+spec:
+  template:
+    compDef: {{ include "redisCluster.cmpdRegexpPattern" . }}
+  shardsLimit:
+    minShards: 3
+    maxShards: 64
+  provisionStrategy: Parallel
+  updateStrategy: Parallel

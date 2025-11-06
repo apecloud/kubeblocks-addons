@@ -55,35 +55,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end}}
 
 {{/*
-Create the name of the service account to use
-*/}}
-{{- define "kafka-cluster.serviceAccountName" -}}
-{{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
-{{- end }}
-
-{{/*
-Define kafka broker component name
-*/}}
-{{- define "kafka-cluster.brokerComponent" -}}
-{{- if eq .Values.mode "combined" }}
-{{- printf "kafka-combine" -}}
-{{ else }}
-{{- printf "kafka-broker" -}}
-{{- end }}
-{{- end }}
-
-{{/*
-Define kafka cluster annotation keys for nodeport feature gate.
-*/}}
-{{- define "kafka-cluster.brokerAddrFeatureGate" -}}
-kubeblocks.io/enabled-pod-ordinal-svc: broker
-{{- if .Values.nodePortEnabled }}
-kubeblocks.io/enabled-node-port-svc: broker
-kubeblocks.io/disabled-cluster-ip-svc: broker
-{{- end }}
-{{- end }}
-
-{{/*
 Define kafka-exporter resources
 */}}
 {{- define "kafka-exporter.resources" }}
@@ -108,11 +79,67 @@ resources:
   {{- else -}}
     combined
   {{- end -}}
-{{- else -}}
+{{- else if eq "separated" .Values.mode -}}
   {{- if .Values.monitorEnable -}}
     separated_monitor
   {{- else -}}
     separated
   {{- end -}}
+{{- else -}}
+kafka2-external-zk
 {{- end -}}
 {{- end -}}
+
+{{- define "kafka-cluster.brokerCommonEnv" -}}
+- name: KB_KAFKA_ENABLE_SASL
+  value: "{{ .Values.saslEnable }}"
+- name: KB_KAFKA_ENABLE_SASL_SCRAM
+  value: "{{ .Values.saslScramEnable }}"
+- name: KB_KAFKA_BROKER_HEAP
+  value: "{{ .Values.brokerHeap }}"
+- name: KB_KAFKA_CONTROLLER_HEAP
+  value: "{{ .Values.controllerHeap }}"
+- name: KB_BROKER_DIRECT_POD_ACCESS
+  {{- if .Values.fixedPodIPEnabled }}
+  value: "true"
+  {{- else }}
+  value: "false"
+  {{- end }}
+{{- end -}}
+
+{{- define "kafka-cluster.brokerVCT" -}}
+{{- if .Values.storageEnable }}
+volumeClaimTemplates:
+  - name: data
+    spec:
+      storageClassName: {{ .Values.storageClassName }}
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ print .Values.storage "Gi" }}
+  - name: metadata
+    spec:
+      storageClassName: {{ .Values.metaStorageClassName }}
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ print .Values.metaStorage "Gi" }}
+{{- end }}
+{{- end -}}
+
+{{- define "kafka-cluster.controllerVCT" -}}
+{{- if .Values.storageEnable }}
+volumeClaimTemplates:
+  - name: metadata
+    spec:
+      storageClassName: {{ .Values.metaStorageClassName }}
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ print .Values.metaStorage "Gi" }}
+{{- end }}
+{{- end -}}
+

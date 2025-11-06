@@ -15,16 +15,9 @@
       "default": "Delete",
       "enum": [
         "DoNotTerminate",
-        "Halt",
         "Delete",
         "WipeOut"
       ]
-    },
-    "rbacEnabled": {
-      "title": "RBAC Enabled",
-      "description": "Specify whether rbac resources will be created by client, otherwise KubeBlocks server will try to create rbac resources.",
-      "type": "boolean",
-      "default": false
     }
   }
 }

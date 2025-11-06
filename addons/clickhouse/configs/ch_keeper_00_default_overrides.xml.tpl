@@ -1,7 +1,5 @@
-{{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
 <clickhouse>
-  <listen_host>0.0.0.0</listen_host>
+  <listen_host replace="replace">::</listen_host>
   {{- if eq (index $ "TLS_ENABLED") "true" }}
   <https_port replace="replace" from_env="CLICKHOUSE_HTTPS_PORT"/>
   <tcp_port_secure replace="replace" from_env="CLICKHOUSE_TCP_SECURE_PORT"/>
@@ -14,6 +12,13 @@
   <tcp_port replace="replace" from_env="CLICKHOUSE_TCP_PORT"/>
   <interserver_http_port replace="replace" from_env="CLICKHOUSE_INTERSERVER_HTTP_PORT"/>
   {{- end }}
+  <logger>
+      <level>information</level>
+      <log>/bitnami/clickhouse/log/keeper-server.log</log>
+      <errorlog>/bitnami/clickhouse/log/keeper-server.err.log</errorlog>
+      <size>100M</size>
+      <count>3</count>
+  </logger>
   <keeper_server>
       {{- if eq (index $ "TLS_ENABLED") "true" }}
       <tcp_port_secure replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_TLS_PORT"/>
@@ -22,8 +27,10 @@
       <tcp_port replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_PORT"/>
       {{- end }}
       <server_id from_env="CH_KEEPER_ID"/>
-      <log_storage_path>/var/lib/clickhouse/coordination/log</log_storage_path>
-      <snapshot_storage_path>/var/lib/clickhouse/coordination/snapshots</snapshot_storage_path>
+      <log_storage_path>/bitnami/clickhouse/coordination/log</log_storage_path>
+      <snapshot_storage_path>/bitnami/clickhouse/coordination/snapshots</snapshot_storage_path>
+      <enable_reconfiguration>true</enable_reconfiguration>
+      <enable_ipv6>true</enable_ipv6>
       <coordination_settings>
           <operation_timeout_ms>10000</operation_timeout_ms>
           <session_timeout_ms>30000</session_timeout_ms>
@@ -35,7 +42,7 @@
       {{- end }}
       {{- range $id, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
         <server>
-          <id>{{ $id }}</id>
+          <id>{{ add $id 1 }}</id>
           <hostname>{{ $host }}</hostname>
           {{- if eq (index $ "TLS_ENABLED") "true" }}
           <port replace="replace" from_env="CLICKHOUSE_KEEPER_RAFT_TLS_PORT"/>
@@ -56,9 +63,9 @@
   </prometheus>
   <!-- tls configuration -->
   {{- if eq (index $ "TLS_ENABLED") "true" -}}
-  {{- $CA_FILE := /etc/pki/tls/ca.pem -}}
-  {{- $CERT_FILE := /etc/pki/tls/cert.pem -}}
-  {{- $KEY_FILE := /etc/pki/tls/key.pem -}}
+  {{- $CA_FILE := "/etc/pki/tls/ca.pem" -}}
+  {{- $CERT_FILE := "/etc/pki/tls/cert.pem" -}}
+  {{- $KEY_FILE := "/etc/pki/tls/key.pem" -}}
   <protocols>
     <prometheus_protocol>
       <type>prometheus</type>

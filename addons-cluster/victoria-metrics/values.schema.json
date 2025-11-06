@@ -22,7 +22,6 @@
       "enum": [
         "Delete",
         "DoNotTerminate",
-        "Halt",
         "WipeOut"
       ]
     },
@@ -254,19 +253,25 @@
               }
             }
           }
+        },
+        "storageClassName": {
+          "title": "Storage Class Name",
+          "description": "Storage class name for persistent volumes.",
+          "type": "string",
+          "default": ""
+        },
+        "storage": {
+          "title": "Storage(Gi)",
+          "description": "Storage size, the unit is Gi.",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 10,
+          "minimum": 1,
+          "maximum": 10000
         }
       }
-    },
-    "storage": {
-      "title": "Storage(Gi)",
-      "description": "Storage size, the unit is Gi.",
-      "type": [
-        "number",
-        "string"
-      ],
-      "default": 10,
-      "minimum": 1,
-      "maximum": 10000
     }
   }
 }

@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common mogdb annotations
 */}}
 {{- define "mogdb.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "mogdb.apiVersion" . }}
 {{- end }}
 
@@ -94,10 +94,17 @@ mogdb-configuration-tpl
 {{- end -}}
 
 {{/*
-Define mogdb config constraint name
+Define mogdb parameters definition name
 */}}
-{{- define "mogdb.constraintTplName" -}}
-mogdb-cc
+{{- define "mogdb.pdName" -}}
+mogdb-pd
+{{- end -}}
+
+{{/*
+Define mogdb parameter config rendered name
+*/}}
+{{- define "mogdb.pcrName" -}}
+mogdb-pcr
 {{- end -}}
 
 {{/*

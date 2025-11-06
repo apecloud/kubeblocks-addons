@@ -2,11 +2,21 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
+    "mode": {
+      "title": "Mode",
+      "description": "Cluster topology mode.",
+      "type": "string",
+      "default": "standalone",
+      "enum": [
+        "standalone",
+        "cluster"
+      ]
+    },
     "version": {
       "title": "Version",
       "description": "Cluster version.",
       "type": "string",
-      "default": "2.7.4"
+      "default": "2.7.11"
     },
     "replicas": {
       "title": "Replicas",

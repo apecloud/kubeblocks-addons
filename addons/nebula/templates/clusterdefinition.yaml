@@ -11,8 +11,6 @@ spec:
     - name: default
       default: true
       components:
-        - name: console
-          compDef: {{ include "nebula-console.cmpdRegexpPattern" . }}
         - name: graphd
           compDef: {{ include "nebula-graphd.cmpdRegexpPattern" . }}
         - name: metad
@@ -23,4 +21,4 @@ spec:
         provision:
           - metad
           - graphd
-          - console,storaged
+          - storaged

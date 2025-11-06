@@ -10,17 +10,16 @@ spec:
   {{- include "apecloud-mysql.spec.common" . | nindent 2 }}
   configs:
     - name: mysql-consensusset-config
-      templateRef: {{ include "apecloud-mysql.configTplName" . }}
-      constraintRef: {{ include "apecloud-mysql.configConstraintName" . }}
+      template: {{ include "apecloud-mysql.configTplName" . }}
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
-      reRenderResourceTypes:
-        - vscale
+      externalManaged: true
     - name: vttablet-config
-      templateRef: {{ include "apecloud-mysql.configTplVttabletName" . }}
-      constraintRef: {{ include "apecloud-mysql.configConstraintVttabletName" . }}
+      template: {{ include "apecloud-mysql.configTplVttabletName" . }}
       volumeName: mysql-scale-config
       namespace: {{ .Release.Namespace }}
+      externalManaged: true
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   runtime:
     initContainers:
     - command:
@@ -39,28 +38,15 @@ spec:
       - /bin/syncer
       - /bin/syncerctl
       - /tools/
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
       imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       name: init-syncer
-      volumeMounts:
-        - mountPath: /tools
-          name: tools
-    - command:
-      - cp
-      - -r
-      - /bin/dbctl
-      - /config
-      - /tools/
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
-      imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-      name: init-dbctl
       volumeMounts:
         - mountPath: /tools
           name: tools
     containers:
       - name: mysql
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        command: 
+        command:
           - syncer
           - --port
           - "3601"

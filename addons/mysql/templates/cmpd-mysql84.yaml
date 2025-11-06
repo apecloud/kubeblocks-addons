@@ -9,15 +9,13 @@ metadata:
 spec:
   {{- include "mysql.spec.common" . | nindent 2 }}
   serviceVersion: 8.4.2
-
   configs:
     - name: mysql-replication-config
-      templateRef: mysql-8.0-config-template
-      constraintRef: mysql-8.0-config-constraints
+      template: mysql-8.0-config-template
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
-      reRenderResourceTypes:
-        - vscale
+      externalManaged: true
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   runtime:
     initContainers:
       - command:
@@ -25,7 +23,6 @@ spec:
           - -r
           - /xtrabackup
           - /tools/xtrabackup
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.4
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-xtrabackup
         volumeMounts:
@@ -36,7 +33,6 @@ spec:
           - -r
           - /jemalloc/lib/
           - /tools/lib
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-jemalloc
         volumeMounts:
@@ -45,7 +41,6 @@ spec:
       {{- include "mysql.spec.runtime.common" . | nindent 6 }}
     containers:
       - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.2
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
           - syncer
@@ -55,19 +50,12 @@ spec:
           - bash
           - -c
           - |
-            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
-            chown -R mysql:root {{ .Values.dataMountPath }}
-            skip_slave_start="OFF"
-            export LD_PRELOAD=/tools/lib/libjemalloc.so.2 
-            if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
-              skip_slave_start="ON"
-            fi
-            SERVICE_ID=$((${SYNCER_POD_NAME##*-} + 1))
+            {{- include "mysql.spec.runtime.entrypoint" . | nindent 12 }}
             docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
                --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
                --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
-               --log-bin=/var/lib/mysql/binlog/${SYNCER_POD_NAME}-bin \
-               --skip-slave-start=$skip_slave_start
+               --log-bin=/var/lib/mysql/binlog/${POD_NAME}-bin \
+               --skip-slave-start=ON
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -85,6 +73,7 @@ spec:
         env:
           - name: PATH
             value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          {{- include "mysql.spec.runtime.ldPreloadEnv" . | nindent 10 }}
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mysql
           - name: MYSQL_INITDB_SKIP_TZINFO
@@ -93,17 +82,22 @@ spec:
             value: {{ .Values.auth.rootHost | default "%" | quote }}
           - name: SERVICE_PORT
             value: "3306"
-          - name: SYNCER_POD_NAME
+          - name: POD_NAME
             valueFrom:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
-          - name: SYNCER_POD_UID
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_UID
             valueFrom:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.uid
-          - name: SYNCER_POD_IP
+          - name: POD_IP
             valueFrom:
               fieldRef:
                 apiVersion: v1

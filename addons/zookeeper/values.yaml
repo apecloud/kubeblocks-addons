@@ -6,15 +6,26 @@ nameOverride: ""
 
 fullnameOverride: ""
 
+## @param supported versions with detailed information
+versions:
+  - major: "3"
+    componentDef: "^zookeeper-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["3.9.2", "3.9.2", "3.9.2", false]
+      - ["3.8.4", "3.8.4", "3.8.4", false]
+      - ["3.7.2", "3.7.2", "3.7.2", false]
+      - ["3.6.4", "3.6.4", "3.6.4", false]
+      - ["3.4.14", "3.4.14", "3.4.14", false]
+
 images:
   registry: docker.io
-  repository: bitnami/zookeeper
+  repository: apecloud/zookeeper
   pullPolicy: IfNotPresent
   tag: 3.7.2
 
 # refer: addons/zookeeper/zoocreeper/Dockerfile
 zoocreeperImage:
-  registry: ""
   repository: apecloud/zoocreeper
   tag: 1.0.1
 

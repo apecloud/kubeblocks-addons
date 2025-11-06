@@ -24,8 +24,7 @@
             "type": [
                 "integer"
             ],
-            "minimum": 1,
-            "maximum": 6
+            "minimum": 1
         },
         "cpu": {
             "title": "CPU",
@@ -35,9 +34,7 @@
                 "string"
             ],
             "default": 8,
-            "minimum": 3,
-            "maximum": 128,
-            "multipleOf": 0.5
+            "minimum": 3
         },
         "memory": {
             "title": "Memory(Gi)",
@@ -47,8 +44,7 @@
                 "string"
             ],
             "default": 16,
-            "minimum": 4,
-            "maximum": 1024
+            "minimum": 4
         },
         "hostnetwork": {
             "title": "Host Network",
@@ -114,5 +110,46 @@
     "required": [
         "zoneCount",
         "replicas"
+    ],
+    "allOf": [
+        {
+            "description": "if zoneCount is 1, replicas must be at least 1",
+            "if": {
+                "properties": {
+                    "zoneCount": { "const": 1 }
+                }
+            },
+            "then": {
+                "properties": {
+                    "replicas": { "minimum": 1 }
+                }
+            }
+        },
+        {
+            "description": "if zoneCount is 2, replicas must be at least 2",
+            "if": {
+                "properties": {
+                    "zoneCount": { "const": 2 }
+                }
+            },
+            "then": {
+                "properties": {
+                    "replicas": { "minimum": 2 }
+                }
+            }
+        },
+        {
+            "description": "if zoneCount is 3, replicas must be at least 3",
+            "if": {
+                "properties": {
+                    "zoneCount": { "const": 3 }
+                }
+            },
+            "then": {
+                "properties": {
+                    "replicas": { "minimum": 3 }
+                }
+            }
+        }
     ]
 }

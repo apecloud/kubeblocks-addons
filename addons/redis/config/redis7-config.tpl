@@ -1,6 +1,7 @@
 bind * -::*
 tcp-backlog 511
 timeout 0
+ignore-warnings ARM64-COW-BUG
 tcp-keepalive 300
 daemonize no
 pidfile /var/run/redis_6379.pid
@@ -75,8 +76,9 @@ aclfile /etc/redis/users.acl
 io-threads 4
 io-threads-do-reads yes
 
+maxmemory-policy volatile-lru
 # maxmemory <bytes>
-{{- $request_memory := getContainerRequestMemory ( index $.podSpec.containers 0 ) }}
+{{- $request_memory := default 0 $.PHY_MEMORY | int }}
 {{- if gt $request_memory 0 }}
-maxmemory {{ $request_memory }}
+maxmemory {{ mulf $request_memory 0.8 | int }}
 {{- end -}}

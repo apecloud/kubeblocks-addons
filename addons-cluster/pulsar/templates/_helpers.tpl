@@ -55,14 +55,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end}}
 
 {{/*
-Create the name of the service account to use
-*/}}
-{{- define "pulsar-cluster.serviceAccountName" -}}
-{{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
-{{- end }}
-
-
-{{/*
 Pulsar broker FQDN
 */}}
 {{- define "pulsar-cluster.brokerFQDN" -}}
@@ -101,7 +93,7 @@ serviceRefs:
     {{- end}}
   {{- end}}
   {{- if .Values.serviceReference.zookeeper.serviceDescriptor }}
-    serviceDescriptor: {{.Values.serviceReference.zookeeper.serviceDescriptor}}
+  serviceDescriptor: {{.Values.serviceReference.zookeeper.serviceDescriptor}}
   {{- end }}
   {{- end }}
 {{- end}}

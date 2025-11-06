@@ -1,9 +1,27 @@
 {{/*
-Define "etcd-cluster.componentService" to override component peer service
+etcd schedulingPolicy
+*/}}
+{{- define "etcd-cluster.schedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
+              app.kubernetes.io/managed-by: "kubeblocks"
+              apps.kubeblocks.io/component-name: "etcd"
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+{{- end -}}
+
+{{/*
+Define "etcd-cluster.componentPeerService" to override component peer service
 Primarily used for LoadBalancer service to enable multi-cluster communication
 */}}
 {{- define "etcd-cluster.componentPeerService" -}}
-{{- if .Values.peerService.enabled }}
+{{- if .Values.peerService.type }}
 services:
   - name: peer
     serviceType: {{ .Values.peerService.type }}
@@ -19,10 +37,10 @@ Define "etcd-cluster.clientService" to configure client service for etcd.
 */}}
 
 {{- define "etcd-cluster.clientService" -}}
-{{- if .Values.clientService.name }}
+{{- if .Values.clientService.type }}
 services:
-  - name: {{ .Values.clientService.name }}
-    serviceName: {{ .Values.clientService.name }}
+  - name: client
+    serviceName: etcd-client
     {{- if and (eq .Values.clientService.type "LoadBalancer") (not (empty .Values.clientService.annotations)) }}
     annotations: {{ .Values.clientService.annotations | toYaml | nindent 8 }}
     {{- end }}
@@ -31,7 +49,7 @@ services:
       ports:
         - port: {{ .Values.clientService.port }}
           targetPort: 2379
-          {{- if.Values.clientService.nodePort }}
+          {{- if .Values.clientService.nodePort }}
           nodePort: {{ .Values.clientService.nodePort }}
           {{- end }}
     componentSelector: etcd

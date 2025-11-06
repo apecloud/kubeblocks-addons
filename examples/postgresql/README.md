@@ -22,39 +22,24 @@ PostgreSQL (Postgres) is an open source object-relational database known for rel
 
 | Major Versions | Description |
 |---------------|-------------|
-| 12            | 12.14.0,12.14.1,12.15.0|
-| 14            | 14.7.2,14.8.0|
-| 15            | 15.7.0|
-| 16            | 16.4.0|
+| 12            | 12.14.0,12.14.1,12.15.0,12.22.0|
+| 14            | 14.7.2,14.8.0,14.18.0|
+| 15            | 15.7.0,15.13.0|
+| 16            | 16.4.0,16.9.0|
+| 17            | 17.5.0|
 
 ## Prerequisites
 
-This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- PostgreSQL Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
-Also, this example requires KubeBlocks installed and running. Here is the steps to install KubeBlocks, please replace "`$kb_version`" with the version you want to use.
-
-```bash
-# Add Helm repo
-helm repo add kubeblocks https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
-
-# Update helm repo
-helm repo update
-
-# Get the versions of KubeBlocks and select the one you want to use
-helm search repo kubeblocks/kubeblocks --versions
-# If you want to obtain the development versions of KubeBlocks, Please add the '--devel' parameter as the following command
-helm search repo kubeblocks/kubeblocks --versions --devel
-
-# Create dependent CRDs
-kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v$kb_version/kubeblocks_crds.yaml
-# If github is not accessible or very slow for you, please use following command instead
-kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v$kb_version/kubeblocks_crds.yaml
-
-# Install KubeBlocks
-helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
-```
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -69,26 +54,24 @@ kubectl apply -f examples/postgresql/cluster.yaml
 And you will see the PostgreSQL cluster status goes `Running` after a while:
 
 ```bash
-kubectl get cluster pg-cluster
+kubectl get cluster -n demo pg-cluster
 ```
 
 and two pods are `Running` with roles `primary` and `secondary` separately. To check the roles of the pods, you can use following command:
 
 ```bash
 # replace `pg-cluster` with your cluster name
-kubectl get po -l  app.kubernetes.io/instance=pg-cluster -L kubeblocks.io/role -n default
+kubectl get po -l  app.kubernetes.io/instance=pg-cluster -L kubeblocks.io/role -n demo
 # or login to the pod and use `patronictl` to check the roles:
-kubectl exec -it pg-cluster-postgresql-0 -n default -- patronictl list
+kubectl exec -it pg-cluster-postgresql-0 -n demo -- patronictl list
 ```
 
 If you want to create a PostgreSQL cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pg-cluster
-  namespace: default
 spec:
   terminationPolicy: Delete
   clusterDef: postgresql
@@ -97,7 +80,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,14.7.2,14.8.0,15.7.0,16.4.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,14.7.2,14.8.0,14.18.0,15.7.0,15.13.0,16.4.0,16.9.0,17.5.0]
       serviceVersion: "14.7.2"
 ```
 
@@ -110,8 +93,8 @@ kubectl get cmpv postgresql
 And the expected output is like:
 
 ```bash
-NAME         VERSIONS                                              STATUS      AGE
-postgresql   12.14.0,12.14.1,12.15.0,14.7.2,14.8.0,15.7.0,16.4.0   Available   Xd
+NAME         VERSIONS                                                                                    STATUS      AGE
+postgresql   17.5.0,16.9.0,16.4.0,15.13.0,15.7.0,14.18.0,14.8.0,14.7.2,12.22.0,12.15.0,12.14.1,12.14.0   Available   Xd
 ```
 
 ### Horizontal scaling
@@ -129,7 +112,7 @@ After applying the operation, you will see a new pod created and the PostgreSQL 
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops pg-scale-out
+kubectl describe -n demo ops pg-scale-out
 ```
 
 #### [Scale-in](scale-in.yaml)
@@ -145,17 +128,13 @@ kubectl apply -f examples/postgresql/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pg-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: postgresql
       serviceVersion: "14.7.2"
-      labels:
-        apps.kubeblocks.postgres.patroni/scope: pg-cluster-postgresql
       replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
 ```
 
@@ -177,11 +156,9 @@ You will observe that the `secondary` pod is recreated first, followed by the `p
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pg-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: postgresql
@@ -219,7 +196,7 @@ kubectl apply -f examples/postgresql/volumeexpand.yaml
 After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
 ```bash
-kubectl get pvc -l app.kubernetes.io/instance=pg-cluster -n default
+kubectl get pvc -l app.kubernetes.io/instance=pg-cluster -n demo
 ```
 
 #### Volume expansion using Cluster API
@@ -227,11 +204,9 @@ kubectl get pvc -l app.kubernetes.io/instance=pg-cluster -n default
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pg-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: postgresql
@@ -267,11 +242,9 @@ kubectl apply -f examples/postgresql/stop.yaml
 Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pg-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: postgresql
@@ -292,11 +265,9 @@ kubectl apply -f examples/postgresql/start.yaml
 Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pg-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: postgresql
@@ -317,13 +288,14 @@ kubectl apply -f examples/postgresql/switchover.yaml
 ```
 
 <details>
+<summary>Details</summary>
 
 By applying this yaml file, KubeBlocks will perform a switchover operation defined in PostgreSQL's component definition, and you can checkout the details in `componentdefinition.spec.lifecycleActions.switchover`.
 
 You may get the switchover operation details with following command:
 
 ```bash
-kubectl get cluster pg-cluster -ojson | jq '.spec.componentSpecs[0].componentDef' | xargs kubectl get cmpd -ojson | jq '.spec.lifecycleActions.switchover'
+kubectl get cluster -n demo pg-cluster -ojson | jq '.spec.componentSpecs[0].componentDef' | xargs kubectl get cmpd -ojson | jq '.spec.lifecycleActions.switchover'
 ```
 
 </details>
@@ -360,44 +332,16 @@ This example will change the `max_connections` to `200`.
 kbcli cluster explain-config pg-cluster # kbcli is a command line tool to interact with KubeBlocks
 ```
 
-### [BackupRepo](backuprepo.yaml)
+### [Backup](backup.yaml)
 
-BackupRepo is the storage repository for backup data. Before creating a BackupRepo, you need to create a secret to save the access key of the backup repository
-
-```bash
-# Create a secret to save the access key
-kubectl create secret generic <credential-for-backuprepo>\
-  --from-literal=accessKeyId=<ACCESS KEY> \
-  --from-literal=secretAccessKey=<SECRET KEY> \
-  -n kb-system
-```
-
-Update `examples/postgresql/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
-
-```bash
-kubectl apply -f examples/postgresql/backuprepo.yaml
-```
-
-After creating the BackupRepo, you should check the status of the BackupRepo, to make sure it is `Ready`.
-
-```bash
-kubectl get backuprepo
-```
-
-And the expected output is like:
-
-```bash
-NAME     STATUS   STORAGEPROVIDER   ACCESSMETHOD   DEFAULT   AGE
-kb-oss   Ready    oss               Tool           true      Xd
-```
-
-### Backup
+> [!IMPORTANT]
+> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 KubeBlocks supports multiple backup methods for PostgreSQL cluster, such as `pg-basebackup`, `volume-snapshot`, `wal-g`, etc.
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `pg-cluster-postgresql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `pg-cluster-postgresql-backup-schedule` in this case.
 
-We will elaborate on the `pg-basebackup` and `wal-g` backup methods in the following sections to demonstrate how to create full backup and continuouse backup for the cluster.
+We will elaborate on the `pg-basebackup` and `wal-g` backup methods in the following sections to demonstrate how to create full backup and continuous backup for the cluster.
 
 #### pg_basebackup
 
@@ -414,7 +358,7 @@ kubectl apply -f examples/postgresql/backup-pg-basebasekup.yaml
 After the operation, you will see a `Backup` is created
 
 ```bash
-kubectl get backup -l app.kubernetes.io/instance=pg-cluster
+kubectl get backup -n demo -l app.kubernetes.io/instance=pg-cluster
 ```
 
 and the status of the backup goes from `Running` to `Completed` after a while. And the backup data will be pushed to your specified `BackupRepo`.
@@ -423,16 +367,16 @@ Information, such as `path`, `timeRange` about the backup will be recorded into 
 
 Alternatively, you can update the `BackupSchedule` to enable the method `pg-basebackup` to schedule base backup periodically, will be elaborated in the following section.
 
-#### Continuouse Backup
+#### Continuous Backup
 
-To enable continuouse backup, you need to update `BackupSchedule` and enable the method `archive-wal`.
+To enable continuous backup, you need to update `BackupSchedule` and enable the method `archive-wal`.
 
 ```yaml
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupSchedule
 metadata:
   name: pg-cluster-postgresql-backup-schedule
-  namespace: default
+  namespace: demo
 spec:
   backupPolicyName: pg-cluster-postgresql-backup-policy
   schedules:
@@ -454,10 +398,10 @@ spec:
     retentionPeriod: 8d # set the retention period to your need
 ```
 
-Once the `BackupSchedule` is updated, the continuouse backup starts to work, and you can check the status of the backup with following command:
+Once the `BackupSchedule` is updated, the continuous backup starts to work, and you can check the status of the backup with following command:
 
 ```bash
-kubectl get backup -l app.kubernetes.io/instance=pg-cluster
+kubectl get backup -n demo -l app.kubernetes.io/instance=pg-cluster
 ```
 
 And you will find one `Backup` named with suffix 'pg-cluster-postgresql-archive-wal' is created with the method `archive-wal`.
@@ -465,7 +409,7 @@ And you will find one `Backup` named with suffix 'pg-cluster-postgresql-archive-
 It will run continuously until you disable the method `archive-wal` in the `BackupSchedule`. And the valid time range of the backup will be recorded in the `Backup` resource:
 
 ```bash
-kubectl get backup -l app.kubernetes.io/instance=pg-cluster -l dataprotection.kubeblocks.io/backup-type=Continuous  -oyaml | yq '.items[].status.timeRange'
+kubectl get backup -n demo -l app.kubernetes.io/instance=pg-cluster -l dataprotection.kubeblocks.io/backup-type=Continuous  -oyaml | yq '.items[].status.timeRange'
 ```
 
 #### wal-g
@@ -476,18 +420,23 @@ WAL-G is an archival restoration tool for PostgreSQL, MySQL/MariaDB, and MS SQL 
 
 To create wal-g backup for the cluster, it is a multi-step process.
 
-1. configure WAL-G on all PostgreSQL pods
+1. enable the cluster PITR and set continuous backup method to `wal-g-archive`
 
 ```bash
-kubectl apply -f examples/postgresql/config-wal-g.yaml
+kubectl edit cluster pg-cluster -n demo
 ```
 
-1. set `archive_command` to `wal-g wal-push %p`
+Set the cluster backup spec to the following:
 
-```bash
-kubectl apply -f examples/postgresql/backup-wal-g.yaml
+```yaml
+spec:
+  backup:
+    continuousMethod: wal-g-archive
+    enabled: true
+    method: wal-g
+    pitrEnabled: true
+...
 ```
-
 1. you cannot do wal-g backup for a brand-new cluster, you need to insert some data before backup
 
 1. create a backup
@@ -496,9 +445,6 @@ kubectl apply -f examples/postgresql/backup-wal-g.yaml
 kubectl apply -f examples/postgresql/backup-wal-g.yaml
 ```
 
-> [!Note]
-> if there is horizontal scaling out new pods after step 2, you need to do config-wal-g again
-
 ### [Restore](restore.yaml)
 
 To restore a new cluster from a Backup:
@@ -506,7 +452,7 @@ To restore a new cluster from a Backup:
 1. Get the list of accounts and their passwords from the backup:
 
 ```bash
-kubectl get backup pg-cluster-pg-basebackup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
+kubectl get backup -n demo pg-cluster-pg-basebackup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
 1. Update `examples/postgresql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
@@ -536,11 +482,9 @@ kubectl apply -f examples/postgresql/expose-disable.yaml
 Alternatively, you may expose service by updating `spec.services`
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pg-cluster
-  namespace: default
 spec:
   # append service to the list
   services:
@@ -568,7 +512,7 @@ spec:
       type: LoadBalancer
 ```
 
-If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using. Here list annotations for some cloud providers:
+If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using[^3]. Here list annotations for some cloud providers:
 
 ```yaml
 # alibaba cloud
@@ -602,7 +546,7 @@ In this example, the cluster will be upgraded to version `14.8.0`.
 
 Alternatively, you may modify the `spec.componentSpecs.serviceVersion` field to the desired version to upgrade the cluster.
 
-> [!Warning]
+> [!WARNING]
 > Do remember to to check the compatibility of versions before upgrading the cluster.
 
 ```bash
@@ -640,11 +584,9 @@ In this example, it shows you can upgrade from version `12.14.0` to `12.14.1` or
 But cannot upgrade from `12.14.0` to `14.8.0`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pg-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: postgresql
@@ -666,15 +608,13 @@ Or you can follow the steps in [How to install the Prometheus Operator](../docs/
 
 Create a new cluster with following command:
 
-> [!Note]
+> [!NOTE]
 > Make sure `spec.componentSpecs.disableExporter` is set to `false` when creating cluster.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pg-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: postgresql
@@ -695,7 +635,7 @@ When the cluster is running, each POD should have a sidecar container, named `ex
 You can retrieve the `scrapePath` and `scrapePort` from pod's exporter container.
 
 ```bash
-kubectl get po pg-cluster-postgresql-0 -oyaml | yq '.spec.containers[] | select(.name=="exporter") | .ports '
+kubectl get po -n demo pg-cluster-postgresql-0 -oyaml | yq '.spec.containers[] | select(.name=="exporter") | .ports '
 ```
 
 And the expected output is like:
@@ -720,7 +660,9 @@ Login to the Grafana dashboard and import the dashboard.
 
 There is a pre-configured dashboard for PostgreSQL under the `APPS / PostgreSQL` folder in the Grafana dashboard. And more dashboards can be found in the Grafana dashboard store[^5].
 
-> [!Note]
+And you can import the patroni dashboard from [Grafana PostgreSQL Patroni](https://grafana.com/grafana/dashboards/18870-postgresql-patroni/).
+
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -728,15 +670,32 @@ There is a pre-configured dashboard for PostgreSQL under the `APPS / PostgreSQL`
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster pg-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo pg-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster pg-cluster
+kubectl delete cluster -n demo pg-cluster
 ```
+
+## Appendix
+
+### How to Create PostgreSQL Cluster with ETCD or Zookeeper as DCS
+
+```bash
+kubectl apply -f examples/postgresql/cluster-with-etcd.yaml
+```
+
+This example will create a PostgreSQL cluster with ETCD as DCS. It will set two envs:
+
+- `DCS_ENABLE_KUBERNETES_API` to empty, unset this env if you use zookeeper or etcd, default to empty
+- `ETCD3_HOST` to the ETCD cluster's headless service address, or use `ETCD3_HOSTS` to set ETCD hosts and ports.
+
+Similar for Zookeeper, you can set `ZOOKEEPER_HOSTS` to the Zookeeper's address.
+
+More environment variables can be found in [Spilo's ENVIRONMENT](https://github.com/zalando/spilo/blob/master/ENVIRONMENT.rst).
 
 ## Reference
 
-[^1]: pg_basebackup, https://www.postgresql.org/docs/current/app-pgbasebackup.html
-[^2]: wal-g https://github.com/wal-g/wal-g
-[^3]: Internal load balancer: https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer
-[^4]: Volume Expansion: https://kubernetes.io/blog/2022/05/05/volume-expansion-ga/
-[^5]: Grafana Dashboard Store: https://grafana.com/grafana/dashboards/
+[^1]: pg_basebackup, <https://www.postgresql.org/docs/current/app-pgbasebackup.html>
+[^2]: wal-g <https://github.com/wal-g/wal-g>
+[^3]: Internal load balancer: <https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer>
+[^4]: Volume Expansion: <https://kubernetes.io/blog/2022/05/05/volume-expansion-ga/>
+[^5]: Grafana Dashboard Store: <https://grafana.com/grafana/dashboards/>

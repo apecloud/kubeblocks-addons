@@ -1,106 +1,61 @@
 #!/usr/bin/env bash
 
-# shellcheck disable=SC2034
-ut_mode="false"
-test || __() {
-  # when running in non-unit test mode, set the options "set -ex".
-  set -ex;
-}
+set -o errexit
 
-init_vars() {
-  SRC_PLUGINS_DIR="/tmp/plugins"
-  DST_PLUGINS_DIR="/usr/share/elasticsearch/plugins"
-  ES_PLUGIN_CMD="/usr/share/elasticsearch/bin/elasticsearch-plugin"
+src_plugins_dir=/tmp/plugins
+dst_plugins_dir=/usr/share/elasticsearch/plugins
 
-  export SRC_PLUGINS_DIR
-  export DST_PLUGINS_DIR
-  export ES_PLUGIN_CMD
-}
+if [ ! -d $src_plugins_dir ]; then
+  echo "no plugins to install"
+  exit 0
+fi
 
-check_src_dir() {
-  if [[ ! -d "$SRC_PLUGINS_DIR" ]]; then
-    echo "no plugins to install"
-    exit 0
-  fi
-}
+if [ -z "$ELASTICSEARCH_VERSION" ]; then
+  echo "ELASTICSEARCH_VERSION is not set"
+  exit 1
+fi
 
-is_archive_file() {
-  local plugin="$1"
-  [[ "$plugin" =~ \.(zip|gz|tar\.gz)$ ]]
-}
-
-native_install_plugin() {
-  local plugin_path="$1"
-  local plugin_name
-  plugin_name=$(basename "$plugin_path")
-  local output
-
-  if output=$("$ES_PLUGIN_CMD" install -b "$plugin_path" 2>&1); then
-    echo "successfully installed plugin $plugin_name"
-    return 0
-  fi
-
-  if echo "$output" | grep -q 'already exists'; then
-    echo "plugin $plugin_name already exists"
-    return 0
-  fi
-
-  echo "failed to install plugin $plugin_name"
-  echo "$output"
-  return 1
-}
-
-copy_install_plugin() {
-  local plugin_path="$1"
-  local plugin_name
-  plugin_name=$(basename "$plugin_path")
-  local dst_path="$DST_PLUGINS_DIR/$plugin_name"
-
-  if [[ -d "$dst_path" ]]; then
-    echo "plugin $plugin_name already exists"
-    return 0
-  fi
-
-  cp -r "$plugin_path" "$DST_PLUGINS_DIR"
-  echo "successfully installed plugin $plugin_name"
-}
-
-install_plugin() {
-  local plugin_path="$1"
-  local plugin_name
-  plugin_name=$(basename "$plugin_path")
-
-  echo "installing plugin $plugin_name"
-
-  if is_archive_file "$plugin_name"; then
-    native_install_plugin "$plugin_path"
+function native_install_plugin() {
+  plugin=$1
+  msg=`/usr/share/elasticsearch/bin/elasticsearch-plugin install -b $plugin`
+  if [ $? == 0 ]; then
+    echo "successfully installed plugin $plugin"
   else
-    copy_install_plugin "$plugin_path"
+    echo $msg | grep 'already exists'
+    if [ $? == 0 ]; then
+      echo "plugin $plugin already exists"
+    else
+      echo "failed to install plugin $plugin"
+      exit 1
+    fi
   fi
 }
 
-install_all_plugins() {
-  # Save find results to a temporary file
-  find "$SRC_PLUGINS_DIR" -maxdepth 1 -mindepth 1 > /tmp/plugins.txt
-
-  while IFS= read -r plugin; do
-    if [ -e "$plugin" ]; then
-      install_plugin "$plugin"
-    fi
-  done < /tmp/plugins.txt
-
-  # Clean up
-  rm -f /tmp/plugins.txt
+function copy_install_plugin() {
+   plugin=$1
+   if [ -d $dst_plugins_dir/$plugin ]; then
+        echo "plugin $plugin already exists"
+        return
+   fi
+   cp -r $plugin $dst_plugins_dir
+   echo "successfully installed plugin $plugin"
 }
 
-# This is magic for shellspec ut framework.
-# Sometime, functions are defined in a single shell script.
-# You will want to test it. but you do not want to run the script.
-# When included from shellspec, __SOURCED__ variable defined and script
-# end here. The script path is assigned to the __SOURCED__ variable.
-${__SOURCED__:+false} : || return 0
+# Install version-specific plugins - simply install all plugins that exist for this version
+echo "Installing plugins for Elasticsearch version $ELASTICSEARCH_VERSION"
 
-# main
-init_vars
-check_src_dir
-install_all_plugins
+# Check if version-specific plugin directory exists
+if [ -d "$src_plugins_dir/$ELASTICSEARCH_VERSION" ]; then
+    echo "Found plugin directory for version $ELASTICSEARCH_VERSION"
+
+    # Install all plugin subdirectories that exist
+    for plugin_dir in "$src_plugins_dir/$ELASTICSEARCH_VERSION"/*/; do
+        if [ -d "$plugin_dir" ]; then
+            plugin_name=$(basename "$plugin_dir")
+            echo "Installing $plugin_name plugin for version $ELASTICSEARCH_VERSION"
+            copy_install_plugin "$plugin_dir"
+        fi
+    done
+else
+    echo "No plugin directory found for version $ELASTICSEARCH_VERSION"
+fi

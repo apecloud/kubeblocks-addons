@@ -19,27 +19,46 @@ spec:
       optional: true
   updateStrategy: BestEffortParallel
   configs:
-    - name: bookies-recovery-env
-      templateRef:  {{ include "pulsar.bookiesRecoveryEnvTplName" . }}
+    - name: bkrecovery-config
+      template:  {{ include "pulsar2.bkRecoveryTplName" . }}
       namespace: {{ .Release.Namespace }}
-      constraintRef: {{ include "pulsar.envConstraintName" . }}
-      keys:
-        - conf
-      injectEnvTo:
-        - bookies-recovery
-        - check-bookies
-      volumeName: recovery-config-env
-      reRenderResourceTypes:
-        - vscale
+      volumeName: bkrecovery-config
+      externalManaged: true
   scripts:
     - name: pulsar-scripts
-      templateRef: {{ include "pulsar.scriptsTplName" . }}
+      template: {{ include "pulsar.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
   exporter:
     scrapePath: /metrics
     scrapePort: http
+  vars:
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: ZOOKEEPER_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "pulsar2.zookeeperCmpdName" . }}
+          name: zookeeper
+          optional: true
+          port:
+            name: client
+            option: Required
+    - name: ZOOKEEPER_SERVERS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "pulsar2.zookeeperCmpdName" . }}
+          name: zookeeper
+          host: Required
+          optional: true
+      expression: {{ `{{ .ZOOKEEPER_SERVERS }}.{{ .CLUSTER_NAMESPACE }}.svc:{{ .ZOOKEEPER_PORT }}` | toYaml }}
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required
   runtime:
     securityContext:
       runAsNonRoot: true
@@ -48,7 +67,6 @@ spec:
       runAsGroup: 0
     initContainers:
       - name: check-bookies
-        image: {{ include "pulsar2.bookiesImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/check-bookies.sh
@@ -77,7 +95,6 @@ spec:
               - ALL
           privileged: false
           runAsGroup: 0
-        image: {{ include "pulsar2.bookiesImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-bookies-recovery.sh
@@ -106,5 +123,5 @@ spec:
         volumeMounts:
           - name: scripts
             mountPath: /kb-scripts
-          - name: recovery-config-env
-            mountPath: /opt/pulsar/none
+          - name: bkrecovery-config
+            mountPath: /opt/pulsar/conf

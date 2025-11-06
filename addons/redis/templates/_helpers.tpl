@@ -6,24 +6,6 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
-*/}}
-{{- define "redis.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "redis.chart" -}}
@@ -46,8 +28,9 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Common annotations
 */}}
 {{- define "redis.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "redis.apiVersion" . }}
+apps.kubeblocks.io/skip-immutable-check: "true"
 {{- end }}
 
 {{/*
@@ -122,39 +105,6 @@ Define redis twemproxy 0.5.X component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define redis 7.X component definition name
-*/}}
-{{- define "redis7.cmpdName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.redis.major7.minorAll ) 0 -}}
-redis-7-{{ .Chart.Version }}
-{{- else -}}
-{{- printf "%s" .Values.cmpdVersionPrefix.redis.major7.minorAll -}}-{{ .Chart.Version }}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define redis sentinel 7.X component definition name
-*/}}
-{{- define "redisSentinel7.cmpdName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.redisSentinel.major7.minorAll ) 0 -}}
-redis-sentinel-7-{{ .Chart.Version }}
-{{- else -}}
-{{- printf "%s" .Values.cmpdVersionPrefix.redisSentinel.major7.minorAll -}}-{{ .Chart.Version }}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define redis-cluster 7.X component definition name
-*/}}
-{{- define "redisCluster7.cmpdName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.redisCluster.major7.minorAll ) 0 -}}
-redis-cluster-7-{{ .Chart.Version }}
-{{- else -}}
-{{- printf "%s" .Values.cmpdVersionPrefix.redisCluster.major7.minorAll -}}-{{ .Chart.Version }}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Define redis-twemproxy 0.5.X component definition name
 */}}
 {{- define "redisTwemproxy05.cmpdName" -}}
@@ -166,45 +116,17 @@ redis-twemproxy-0.5-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define redis 7.X component configuration template name
+Define redis component script template name
 */}}
-{{- define "redis7.configurationTemplate" -}}
-redis7-config-template-{{ .Chart.Version }}
+{{- define "redis.scriptsTemplate" -}}
+redis-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define redis cluster component 7.X configuration template name
+Define redis cluster component script template name
 */}}
-{{- define "redisCluster7.configurationTemplate" -}}
-redis-cluster7-config-template-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define redis 7.X component script template name
-*/}}
-{{- define "redis7.scriptsTemplate" -}}
-redis7-scripts-template-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define redis cluster 7.X component script template name
-*/}}
-{{- define "redisCluster7.scriptsTemplate" -}}
-redis-cluster7-scripts-template-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define redis 7.X component config constraint name
-*/}}
-{{- define "redis7.configConstraint" -}}
-redis7-config-cc
-{{- end -}}
-
-{{/*
-Define redis cluster 7.X component config constraint name
-*/}}
-{{- define "redisCluster7.configConstraint" -}}
-redis-cluster7-cc
+{{- define "redisCluster.scriptsTemplate" -}}
+redis-cluster-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -214,23 +136,12 @@ Define redis metrics config name
 redis-metrics-config
 {{- end -}}
 
-{{/*
-Define image
-*/}}
-{{- define "redis.repository" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
-{{- end }}
-
 {{- define "redis7.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
 {{- end }}
 
-{{- define "redisSentinel.repository" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
-{{- end }}
-
-{{- define "redisSentinel7.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+{{- define "redis8.image" -}}
+{{ .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ceImage.repository }}:{{ .Values.image.tag.major8.minor80 }}
 {{- end }}
 
 {{- define "redisTwemproxy.repository" -}}
@@ -275,4 +186,12 @@ Generate scripts configmap
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
+{{- if $.Files.Get "scripts/redis-account.sh" }}
+redis-account.sh: |-
+{{- $.Files.Get "scripts/redis-account.sh" | nindent 2 }}
 {{- end }}
+{{- end }}
+
+{{- define "apeDts.reshard.image" -}}
+{{ .Values.image.apeDts.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.apeDts.repository}}:{{ .Values.image.apeDts.reshardTag }}
+{{- end }}}

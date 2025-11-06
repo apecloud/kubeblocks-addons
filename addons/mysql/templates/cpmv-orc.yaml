@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: mysql-orc
@@ -30,6 +30,8 @@ spec:
       serviceVersion: 5.7.44
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:5.7.44
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
@@ -38,6 +40,8 @@ spec:
       serviceVersion: 8.0.30
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
@@ -46,6 +50,8 @@ spec:
       serviceVersion: 8.0.31
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.31
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.31
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.31
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
@@ -54,6 +60,8 @@ spec:
       serviceVersion: 8.0.32
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.32
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.32
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.32
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
@@ -62,6 +70,8 @@ spec:
       serviceVersion: 8.0.33
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
@@ -70,6 +80,8 @@ spec:
       serviceVersion: 8.0.34
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.34
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.34
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.34
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
@@ -78,6 +90,8 @@ spec:
       serviceVersion: 8.0.35
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.35
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.35
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.35
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
@@ -86,6 +100,8 @@ spec:
       serviceVersion: 8.0.36
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.36
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.36
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.36
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
@@ -94,6 +110,8 @@ spec:
       serviceVersion: 8.0.37
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.37
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.37
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.37
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
@@ -102,6 +120,8 @@ spec:
       serviceVersion: 8.0.38
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.38
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.38
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.38
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
@@ -110,6 +130,8 @@ spec:
       serviceVersion: 8.0.39
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.39
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.39
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.39
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}

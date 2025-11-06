@@ -61,7 +61,7 @@ helm.sh/chart: {{ include "nebula.chart" . }}
 Common annotations
 */}}
 {{- define "nebula.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "nebula.apiVersion" . }}
 {{- end }}
 
@@ -115,20 +115,6 @@ nebula-graphd-config-template
 {{- end -}}
 
 {{/*
-Define nebula console component definition name
-*/}}
-{{- define "nebula-console.cmpdName" -}}
-nebula-console-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define nebula console component definition regex pattern
-*/}}
-{{- define "nebula-console.cmpdRegexpPattern" -}}
-^nebula-console-
-{{- end -}}
-
-{{/*
 Define nebula storaged component definition name
 */}}
 {{- define "nebula-storaged.cmpdName" -}}
@@ -152,6 +138,108 @@ nebula-storaged-config-template
 {{/*
 Define nebula storaged scripts template name
 */}}
-{{- define "nebula-storaged.scriptsTemplateName" -}}
-nebula-storaged-scripts-template
+{{- define "nebula.scriptsTemplateName" -}}
+nebula-scripts-template
+{{- end -}}
+
+
+{{/*
+Define logrotate container
+*/}}
+{{- define "nebula.graphdAgentContainer" -}}
+- name: agent
+  image: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
+  imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+  command:
+  - /bin/sh
+  - -ecx
+  - sh /scripts/logrotate.sh; cron -f -l 2
+  env:
+  - name: LOGROTATE_ROTATE
+    value: "6"
+  - name: LOGROTATE_SIZE
+    value: 500M
+  volumeMounts:
+  - mountPath: /usr/local/nebula/logs
+    name: logs
+  - mountPath: /scripts
+    name: scripts
+{{- end -}}
+
+{{/*
+Define agent container
+*/}}
+{{- define "nebula.agentContainer" -}}
+- name: agent
+  image: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
+  imagePullPolicy: {{ default $.Values.images.pullPolicy "IfNotPresent"}}
+  command:
+  - /bin/bash
+  - -ecx
+  - sh /scripts/start-agent.sh
+  env:
+  - name: LOGROTATE_ROTATE
+    value: "6"
+  - name: LOGROTATE_SIZE
+    value: 500M
+  - name: RATE_LIMIT
+    value: "524288000"
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.name
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.namespace
+  - name: POD_FQDN
+    value: $(POD_NAME).$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+  volumeMounts:
+  - mountPath: /usr/local/nebula/data
+    name: data
+  - mountPath: /usr/local/nebula/logs
+    name: logs
+  - mountPath: /usr/local/nebula/etc
+    name: nebula-metad
+  - mountPath: /scripts
+    name: scripts
+  ports:
+  - containerPort: 8888
+    name: agent
+    protocol: TCP
+  - containerPort: 8999
+    name: restore-agent
+    protocol: TCP
+{{- end -}}
+
+{{- define "nebula.exporterContainer" -}}
+- name: exporter
+  image: {{ $.Values.images.nebula.exporter.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.exporter.repository }}:v3.8.0
+  imagePullPolicy: {{ default $.Values.images.pullPolicy "IfNotPresent"}}
+  command:
+  - /bin/sh
+  - -ecx
+  - /scripts/start-exporter.sh
+  env:
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.name
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.namespace
+  - name: POD_FQDN
+    value: $(POD_NAME).$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+  ports:
+  - containerPort: 9100
+    name: metrics
+    protocol: TCP
+  volumeMounts:
+  - mountPath: /scripts
+    name: scripts
 {{- end -}}

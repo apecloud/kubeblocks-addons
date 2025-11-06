@@ -1,0 +1,13 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "tidb.tidb.paramName" . }}
+  labels:
+    {{- include "tidb.labels" . | nindent 4 }}
+spec:
+  fileName: tidb.toml
+
+  parametersSchema:
+    topLevelKey: TIDBParameter
+    cue: |-
+      {{- .Files.Get "config/tidb-config-constraint.cue" | nindent 6 }}

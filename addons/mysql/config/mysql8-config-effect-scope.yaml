@@ -25,15 +25,12 @@ staticParameters:
   - default_time_zone
   - disabled_storage_engines
   - disconnect_on_expired_password
-  - enforce_gtid_consistency
   - explicit_defaults_for_timestamp
   - ft_max_word_len
   - ft_min_word_len
   - ft_query_expansion_limit
   - ft_stopword_file
-  - gtid-mode
   - gtid_owned
-  - init_file
   - innodb_adaptive_hash_index_parts
   - innodb_autoinc_lock_mode
   - innodb_buffer_pool_chunk_size
@@ -75,15 +72,11 @@ staticParameters:
   - innodb_use_native_aio
   - innodb_write_io_threads
   - large_pages
-  - log_bin
-  - log-bin
   - log_bin_basename
   - log_bin_index
   - log_bin_use_v1_row_events
   - log_error
   - log_slave_updates
-  - lower_case_file_system
-  - lower_case_table_names
   - master-info-repository
   - max_digest_length
   - mecab_rc_file
@@ -146,8 +139,6 @@ staticParameters:
   - performance_schema_users_size
   - persisted_globals_load
   - pid_file
-  - plugin_dir
-  - port
   - protocol_version
   - rds.optimized_writes
   - relay_log
@@ -155,7 +146,6 @@ staticParameters:
   - relay_log_basename
   - relay_log_index
   - relay_log_info_file
-  - relay_log_info_repository
   - relay_log_space_limit
   - report_host
   - report_password
@@ -172,7 +162,6 @@ staticParameters:
   - skip_show_database
   - skip-slave-start
   - slave_load_tmpdir
-  - slave_parallel_type
   - slave_type_conversions
   - socket
   - ssl_ca
@@ -196,6 +185,13 @@ staticParameters:
   - version_compile_machine
   - version_compile_os
   - version_compile_zlib
+  - log_replica_updates
+  - relay_log_recovery
+  - audit_log_handler
+  - audit_log_file
+  - audit_log_buffer_size
+  - audit_log_policy
+  - audit_log_strategy
 
 dynamicParameters:
   - activate_all_roles_on_login
@@ -224,8 +220,6 @@ dynamicParameters:
   - binlog_transaction_dependency_tracking
   - block_encryption_mode
   - bulk_insert_buffer_size
-  - character_set_client
-  - character_set_connection
   - character_set_database
   - character_set_filesystem
   - character_set_results
@@ -260,7 +254,6 @@ dynamicParameters:
   - general_log_file
   - group_concat_max_len
   - gtid_executed_compression_period
-  - gtid_mode
   - gtid_purged
   - histogram_generation_max_mem_size
   - host_cache_size
@@ -360,6 +353,7 @@ dynamicParameters:
   - innodb_tmpdir
   - innodb_undo_log_encrypt
   - innodb_undo_log_truncate
+  - innodb_use_fdatasync
   - interactive_timeout
   - internal_tmp_mem_storage_engine
   - join_buffer_size
@@ -463,7 +457,6 @@ dynamicParameters:
   - regexp_stack_limit
   - regexp_time_limit
   - relay_log_purge
-  - relay_log_recovery
   - replicate-do-db
   - replicate-do-table
   - replicate-ignore-db
@@ -491,8 +484,11 @@ dynamicParameters:
   - slave_checkpoint_period
   - slave_compressed_protocol
   - slave_exec_mode
+  - replica_exec_mode
   - slave_net_timeout
+  - slave_parallel_type
   - slave_parallel_workers
+  - replica_parallel_workers
   - slave_pending_jobs_size_max
   - slave_preserve_commit_order
   - slave_rows_search_algorithms
@@ -543,6 +539,12 @@ dynamicParameters:
   - validate_password_special_char_count
   - wait_timeout
   - windowing_use_high_precision
+  - innodb_redo_log_capacity
+  - audit_log_policy
+  - relay_log_info_repository
+  - audit_log_exclude_accounts
+  - audit_log_rotations
+  - audit_log_rotate_on_size
 
 immutableParameters:
   - allow-suspicious-udfs
@@ -557,11 +559,9 @@ immutableParameters:
   - core-file
   - datadir
   - default_authentication_plugin
-  - default_time_zone
   - disabled_storage_engines
   - gtid_mode
-  - gtid_owned
-  - gtid_purged
+  - enforce_gtid_consistency
   - init_file
   - innodb_data_file_path
   - innodb_data_home_dir
@@ -583,44 +583,19 @@ immutableParameters:
   - log_bin_index
   - log_slave_updates
   - lower_case_file_system
+  - lower_case_table_names
   - mecab_rc_file
-  - mysqlx_bind_address
-  - mysqlx_port
-  - mysqlx_port_open_timeout
-  - mysqlx_socket
-  - mysqlx_ssl_ca
-  - mysqlx_ssl_capath
-  - mysqlx_ssl_cert
-  - mysqlx_ssl_crl
-  - mysqlx_ssl_crlpath
-  - mysqlx_ssl_key
-  - open_files_limit
-  - persisted_globals_load
-  - pid_file
-  - plugin_dir
   - port
+  - open_files_limit
   - protocol_version
-  - relay_log
-  - relay-log
-  - relay_log_basename
-  - relay_log_index
-  - relay_log_info_file
-  - relay_log_space_limit
-  - report_host
-  - report_password
-  - report_port
-  - report_user
-  - secure_file_priv
+  - plugin_dir
   - server_id
   - sha256_password_auto_generate_rsa_keys
   - sha256_password_private_key_path
   - sha256_password_public_key_path
   - skip_external_locking
-  - skip-slave-start
   - slave_load_tmpdir
-  - socket
   - ssl_key
-  - system_time_zone
   - thread_handling
   - tmpdir
   - validate_password_dictionary_file

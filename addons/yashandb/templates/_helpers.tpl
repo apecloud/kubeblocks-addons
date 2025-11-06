@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common yashandb annotations
 */}}
 {{- define "yashandb.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "yashandb.apiVersion" . }}
 {{- end }}
 

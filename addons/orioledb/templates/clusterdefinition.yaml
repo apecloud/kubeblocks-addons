@@ -1,0 +1,15 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: orioledb
+  labels:
+    {{- include "orioledb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orioledb.apiVersion" . | nindent 4 }}
+spec:
+  topologies:
+    - name: orioledb
+      components:
+        - name: orioledb
+          compDef: {{ include "orioledb.cmpdRegexpPattern" . }}
+      default: true

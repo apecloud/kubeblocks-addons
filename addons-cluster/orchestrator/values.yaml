@@ -26,16 +26,8 @@ requests:
 ##
 storage: 20
 
-## @param mode to deploy orchestrator, choose from {shareend, raft}.
+## @param mode to deploy orchestrator, choose from {shared-backend, raft}.
 mode: raft
-
-## @param secret the username and password for orchestrator
-secret:
-  TOPOLOGY_PASSWORD: orchestrator
-  # TOPOLOGY_USER: orchestrator
-  # META_USER: orchestrator
-  META_PASSWORD: orchestrator
-  META_DATABASE: orchestrator
 
 ## @param serviceReference the reference of orchestrator meta service
 serviceReference:

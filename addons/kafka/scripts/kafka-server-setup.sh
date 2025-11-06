@@ -20,10 +20,8 @@ load_common_library() {
 }
 
 set_tls_configuration_if_needed() {
-  ## check env TLS_ENABLED and TLS_CERT_PATH env variables
-  ## TODO: how to pass TLS_ENABLED and TLS_CERT_PATH to kafka-server-setup.sh？ currently, it is not supported.
-  if [[ -z "$TLS_ENABLED" ]] || [[ -z "$TLS_CERT_PATH" ]]; then
-    echo "TLS_ENABLED or TLS_CERT_PATH is not set, skipping TLS configuration"
+  if [[ -z "$TLS_ENABLED" ]] || [[ "$TLS_ENABLED" != "true" ]]; then
+    echo "tls is not enabled, skipping TLS configuration"
     return 0
   fi
 
@@ -38,7 +36,7 @@ set_tls_configuration_if_needed() {
   echo "[tls]KAFKA_TLS_CLIENT_AUTH=$KAFKA_TLS_CLIENT_AUTH"
 
   # override TLS protocol
-  export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,CLIENT:SSL
+  export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP="CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,CLIENT:SSL"
   echo "KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
   # Todo: enable encrypted transmission inside the service
   #export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:SSL,INTERNAL:SSL,CLIENT:SSL
@@ -46,6 +44,9 @@ set_tls_configuration_if_needed() {
   #echo "KAFKA_CFG_SECURITY_INTER_BROKER_PROTOCOL=SSL"
 
   mkdir -p "$kafka_config_certs_path"
+  if [[ -z "$TLS_CERT_PATH" ]]; then
+    TLS_CERT_PATH="/etc/pki/tls"
+  fi
   PEM_CA="$TLS_CERT_PATH/ca.crt"
   PEM_CERT="$TLS_CERT_PATH/tls.crt"
   PEM_KEY="$TLS_CERT_PATH/tls.key"
@@ -97,9 +98,9 @@ convert_server_properties_to_env_var() {
       fi
       env_suffix=${kv[0]^^}
       env_suffix=${env_suffix//./_}
-      env_suffix=`eval echo "${env_suffix}"`
-      env_value=`eval echo "${kv[1]}"`
-      export KAFKA_CFG_${env_suffix}="${env_value}"
+      env_suffix=$(eval echo "${env_suffix}")
+      env_value=$(eval echo "${kv[1]}")
+      export KAFKA_CFG_${env_suffix}""="${env_value}"
       echo "[cfg]export KAFKA_CFG_${env_suffix}=${env_value}"
     done <$SERVER_PROP_FILE
     unset IFS
@@ -150,6 +151,11 @@ extract_ordinal_from_object_name() {
 
 parse_advertised_svc_if_exist() {
   local pod_name="${MY_POD_NAME}"
+
+  if [ "${KB_BROKER_DIRECT_POD_ACCESS}" == "true" ]; then
+    echo "KB_BROKER_DIRECT_POD_ACCESS is true, skip parse advertised svc from BROKER_ADVERTISED_PORT: $BROKER_ADVERTISED_PORT."
+    return 0
+  fi
 
   if [[ -z "${BROKER_ADVERTISED_PORT}" ]]; then
     echo "Environment variable BROKER_ADVERTISED_PORT not found. Ignoring."
@@ -212,7 +218,7 @@ set_cfg_metadata() {
       export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${nodeport_domain}"
       echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
     elif [ "${KB_BROKER_DIRECT_POD_ACCESS}" == "true" ]; then
-      export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${KB_POD_IP}:9092"
+      export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${MY_POD_IP}:9092"
       echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
     else
       # default, use headless service url as client connection
@@ -275,6 +281,24 @@ set_cfg_metadata() {
   fi
 }
 
+set_log_config() {
+  # log to file, ref: https://github.com/bitnami/containers/issues/11360#issuecomment-1315860087
+  # reload4j manual: https://reload4j.qos.ch/manual.html
+  LOG_DIR="$KAFKA_VOLUME_DIR/logs"
+  mkdir -p $LOG_DIR
+  sed -i "s/^log4j.rootLogger=\(.*\)$/log4j.rootLogger=\1, R/" /opt/bitnami/kafka/config/log4j.properties
+  cat << EOF >> /opt/bitnami/kafka/config/log4j.properties
+log4j.appender.R=org.apache.log4j.RollingFileAppender
+log4j.appender.R.File=$LOG_DIR/kafka.log
+log4j.appender.R.MaxFileSize=100MB
+# Keep one backup file
+log4j.appender.R.MaxBackupIndex=1
+log4j.appender.R.layout=org.apache.log4j.PatternLayout
+log4j.appender.R.layout.ConversionPattern=[%d] %p %m (%c)%n
+EOF
+  echo "[cfg]log to $LOG_DIR log4j configuration added."
+}
+
 start_server() {
   load_common_library
   set_tls_configuration_if_needed
@@ -283,6 +307,7 @@ start_server() {
   generate_kraft_cluster_id
   set_jvm_configuration
   set_cfg_metadata
+  set_log_config
 
   exec /entrypoint.sh /run.sh
 }

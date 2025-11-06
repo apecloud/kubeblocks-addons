@@ -1,5 +1,9 @@
 # The number of milliseconds of each tick
 tickTime=2000
+# Minimum and maximum session timeouts in milliseconds that the server will allow the client to negotiate.
+# Defaults to 2 * tickTime and 20 * tickTime respectively.
+minSessionTimeout=4000
+maxSessionTimeout=40000
 # The number of ticks that the initial
 # synchronization phase can take
 initLimit=10
@@ -24,10 +28,10 @@ maxClientCnxns=500
 # http://zookeeper.apache.org/doc/current/zookeeperAdmin.html#sc_maintenance
 #
 # The number of snapshots to retain in dataDir
-#autopurge.snapRetainCount=3
+autopurge.snapRetainCount=5
 # Purge task interval in hours
 # Set to "0" to disable auto purge feature
-#autopurge.purgeInterval=1
+autopurge.purgeInterval=12
 
 ## Metrics Providers
 #
@@ -39,7 +43,7 @@ maxClientCnxns=500
 {{- end }}
 
 # whitelist
-4lw.commands.whitelist=srvr, mntr, ruok, conf
+4lw.commands.whitelist=srvr, mntr, ruok, conf, stat, sync
 
 # cluster server list
 {{- printf "\n" }}

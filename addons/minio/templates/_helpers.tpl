@@ -55,7 +55,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common minio annotations
 */}}
 {{- define "minio.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "minio.apiVersion" . }}
 {{- end }}
 
@@ -81,15 +81,15 @@ Define minio component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define minio scripts template name
+Define minio script template name
 */}}
-{{- define "minio.scriptsTplName" -}}
-minio-scripts
+{{- define "minio.scriptTplName" -}}
+minio-script-template
 {{- end -}}
 
 {{/*
 Define minio config template name
 */}}
 {{- define "minio.configTplName" -}}
-minio-configuration
+minio-config-template
 {{- end -}}

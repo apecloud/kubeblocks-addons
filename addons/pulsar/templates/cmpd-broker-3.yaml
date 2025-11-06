@@ -46,6 +46,27 @@ spec:
           compDef: {{ include "pulsar3.brokerCmpdRegexPattern" . }}
           optional: false
           componentName: Required
+    - name: ZOOKEEPER_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "pulsar3.zookeeperCmpdName" . }}
+          name: zookeeper
+          optional: true
+          port:
+            name: client
+            option: Required
+    - name: ZOOKEEPER_SERVERS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "pulsar3.zookeeperCmpdName" . }}
+          name: zookeeper
+          host: Required
+          optional: true
+      expression: {{ `{{ .ZOOKEEPER_SERVERS }}.{{ .CLUSTER_NAMESPACE }}.svc:{{ .ZOOKEEPER_PORT }}` | toYaml }}
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required
   services:
     - name: advertised-listener
       serviceName: advertised-listener
@@ -68,27 +89,14 @@ spec:
       optional: true
   updateStrategy: BestEffortParallel
   configs:
-    - name: broker-env
-      templateRef: {{ include "pulsar.brokerEnvTplName" . }}
-      namespace: {{ .Release.Namespace }}
-      constraintRef: {{ include "pulsar.envConstraintName" . }}
-      keys:
-        - conf
-      injectEnvTo:
-        - init-broker-cluster
-        - broker
-        - init-pulsar-client-config
-      volumeName: broker-env
-      reRenderResourceTypes:
-        - vscale
     - name: broker-config
-      templateRef: {{ include "pulsar3.brokerConfigTplName" . }}
+      template: {{ include "pulsar3.brokerConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
-      constraintRef: {{ include "pulsar3.brokerConfigConstraintName" . }}
       volumeName: pulsar-config
+      externalManaged: true
   scripts:
     - name: pulsar-scripts
-      templateRef: {{ include "pulsar.scriptsTplName" . }}
+      template: {{ include "pulsar.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -103,7 +111,6 @@ spec:
       runAsGroup: 0
     initContainers:
       - name: init-broker-cluster
-        image: {{ include "pulsar3.brokerImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init-broker.sh
@@ -133,8 +140,9 @@ spec:
         volumeMounts:
           - name: scripts
             mountPath: /kb-scripts
+          - name: pulsar-config
+            mountPath: /opt/pulsar/conf
       - name: init-sysctl
-        image: {{ include "pulsar3.brokerImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init-broker-sysctl.sh
@@ -167,7 +175,6 @@ spec:
               - ALL
           privileged: false
           runAsGroup: 0
-        image: {{ include "pulsar3.brokerImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-broker.sh
@@ -256,5 +263,5 @@ spec:
             mountPath: /kb-scripts
           - name: pulsar-config
             mountPath: /opt/pulsar/conf
-          - name: broker-env
-            mountPath: /opt/pulsar/none
+{{/*          - name: broker-env*/}}
+{{/*            mountPath: /opt/pulsar/none*/}}

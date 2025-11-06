@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "pulsar.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "pulsar.apiVersion" . }}
 {{- end }}
 
@@ -246,8 +246,29 @@ pulsar-tools-script
 {{/*
 Define pulsar bookies recovery env tpl name
 */}}
-{{- define "pulsar.bookiesRecoveryEnvTplName" -}}
-pulsar-bookies-recovery-env-tpl
+{{- define "pulsar2.bkRecoveryTplName" -}}
+pulsar2-bkrecovery-conf-tpl
+{{- end -}}
+
+{{/*
+Define pulsar bookies recovery env tpl name
+*/}}
+{{- define "pulsar3.bkRecoveryTplName" -}}
+pulsar3-bkrecovery-conf-tpl
+{{- end -}}
+
+{{/*
+Define pulsar zookeeper env tpl name
+*/}}
+{{- define "pulsar2.zookeeperTplName" -}}
+pulsar2-zookeeper-conf-tpl
+{{- end -}}
+
+{{/*
+Define pulsar zookeeper env tpl name
+*/}}
+{{- define "pulsar3.zookeeperTplName" -}}
+pulsar3-zookeeper-conf-tpl
 {{- end -}}
 
 {{/*
@@ -429,5 +450,75 @@ Define pulsar v2.X zookeeper image
 Define pulsar tools image
 */}}
 {{- define "pulsar.toolsImage" -}}
-{{- printf "%s/%s:%s" ( .Values.image.registry | default "docker.io" ) (  .Values.image.repository ) ( .Values.images.pulsarTools.tag ) -}}
+{{- printf "%s/%s:%s" ( .Values.image.registry | default "docker.io" ) (  .Values.images.pulsarTools.repository ) ( .Values.images.pulsarTools.tag ) -}}
+{{- end -}}
+
+{{/*
+Define pulsar v2.X bookies parameter config render name
+*/}}
+{{- define "pulsar2.bookiesPCRName" -}}
+pulsar2-bookies-pcr
+{{- end -}}
+
+{{/*
+Define pulsar v3.X bookies parameter config render name
+*/}}
+{{- define "pulsar3.bookiesPCRName" -}}
+pulsar3-bookies-pcr
+{{- end -}}
+
+{{/*
+Define pulsar v2.X bookies parameter config render name
+*/}}
+{{- define "pulsar2.bkrecoveryPCRName" -}}
+pulsar2-bkrecovery-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define pulsar v3.X bookies parameter config render name
+*/}}
+{{- define "pulsar3.bkrecoveryPCRName" -}}
+pulsar3-bkrecovery-pc-{{ .Chart.Version }}r
+{{- end -}}
+
+{{/*
+Define pulsar v2.X bookies parameter config render name
+*/}}
+{{- define "pulsar2.proxyPCRName" -}}
+pulsar2-proxy-pc-{{ .Chart.Version }}r
+{{- end -}}
+
+{{/*
+Define pulsar v3.X bookies parameter config render name
+*/}}
+{{- define "pulsar3.proxyPCRName" -}}
+pulsar3-proxy-pc-{{ .Chart.Version }}r
+{{- end -}}
+
+{{/*
+Define pulsar v2.X bookies parameter config render name
+*/}}
+{{- define "pulsar2.brokerPCRName" -}}
+pulsar2-broker-pc-{{ .Chart.Version }}r
+{{- end -}}
+
+{{/*
+Define pulsar v3.X bookies parameter config render name
+*/}}
+{{- define "pulsar3.brokerPCRName" -}}
+pulsar3-broker-pc-{{ .Chart.Version }}r
+{{- end -}}
+
+{{/*
+Define pulsar v2.X bookies parameter config render name
+*/}}
+{{- define "pulsar2.zookeeperPCRName" -}}
+pulsar2-zookeeper-pc-{{ .Chart.Version }}r
+{{- end -}}
+
+{{/*
+Define pulsar v3.X bookies parameter config render name
+*/}}
+{{- define "pulsar3.zookeeperPCRName" -}}
+pulsar3-zookeeper-pc-{{ .Chart.Version }}r
 {{- end -}}

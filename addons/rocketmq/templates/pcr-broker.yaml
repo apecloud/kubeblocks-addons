@@ -1,0 +1,17 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "rocketmq-broker4.prcName" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rocketmq.annotations" . | nindent 4}}
+spec:
+  componentDef: {{ include "rocketmq.compDefRocketMQBroker4" . }}
+  parametersDefs:
+    - {{ include "rocketmq-broker4.pdName" . }}
+
+  configs:
+    - name: broker.conf
+      fileFormatConfig:
+        format: props-plus

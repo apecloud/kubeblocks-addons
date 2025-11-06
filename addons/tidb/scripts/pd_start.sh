@@ -16,13 +16,18 @@ set_join_args() {
     elif [[ ! -d $DATA_DIR/member/wal ]]; then
         echo "first started pod"
         replicas=$(echo "${PD_POD_FQDN_LIST}" | tr ',' '\n')
-        # FIXME: Relying on leader status to determine whether to join or initialize a cluster 
-        # is unreliable. Consider a scenario with 3 pods: 2 start normally, while the 3rd pod 
-        # pulls image slowly and is still initializing. During this time, the PD cluster 
-        # achieves quorum and begins to work, thus KB's role probe succeeds. 
-        # When the third pod eventually starts, it mistakenly attempts to join the 
-        # cluster, leading to a failure.
         if [[ -n $PD_LEADER_POD_NAME ]]; then
+            echo "query member list from leader"
+            leader_fqdn=$(echo "$replicas" | grep "$PD_LEADER_POD_NAME")
+            members=$(/pd-ctl --pd "http://$leader_fqdn:2379" member | jq -r '.members[] | .name')
+            if echo "$members" | grep -q "$CURRENT_POD_NAME"; then
+                echo "current pod already in cluster, delete member first"
+                res=$(/pd-ctl --pd "http://$leader_fqdn:2379" member delete name "$CURRENT_POD_NAME")
+                if [[ $res != "Success!" ]]; then
+                    exit 1
+                fi
+            fi
+
             echo "joining an existing cluster"
             join=""
 
@@ -49,6 +54,14 @@ set_join_args() {
 }
 
 get_current_pod_fqdn() {
+    if [[ -z $CURRENT_POD_NAME ]]; then
+        echo "CURRENT_POD_NAME not set"
+        exit 1
+    fi
+    if [[ -z $PD_POD_FQDN_LIST ]]; then
+        echo "PD_POD_FQDN_LIST not set"
+        exit 1
+    fi
     replicas=$(echo "${PD_POD_FQDN_LIST}" | tr ',' '\n')
     echo "$replicas" | grep "$CURRENT_POD_NAME"
 }

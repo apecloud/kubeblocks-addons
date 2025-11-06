@@ -11,14 +11,17 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: nebula
   serviceVersion: {{ .Chart.AppVersion }}
+  podManagementPolicy: Parallel
+  minReadySeconds: 10
   configs:
     - name: nebula-storaged-config
-      templateRef: {{ include "nebula-storaged.configTemplateName" . }}
+      template: {{ include "nebula-storaged.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-storaged
+      externalManaged: true
   scripts:
-    - name: nebula-storaged-scripts
-      templateRef: {{ include "nebula-storaged.scriptsTemplateName" . }}
+    - name: nebula-scripts
+      template: {{ include "nebula.scriptsTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -29,11 +32,29 @@ spec:
   vars:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
+    - name: HTTP_PORT
+      value: "19779"
+    - name: IS_STORAGED
+      value: "true"
+    - name: DEFAULT_TIMEZONE
+      value: "UTC+00:00:00"
+    - name: COMPONENT_TYPE
+      value: storaged
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
     - name: CLUSTER_NAMESPACE
       valueFrom:
         clusterVarRef:
           namespace: Required
-    - name: STORAGED_COMPONENT_NAME
+    - name: NEBULA_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: nebula-graphd
+          name: root
+          password: Required
+    - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
           optional: false
@@ -43,6 +64,17 @@ spec:
         componentVarRef:
           optional: false
           replicas: Required
+    - name: GRAPHD_POD_FQDNS
+      valueFrom:
+        componentVarRef:
+          compDef: nebula-graphd
+          optional: false
+          podFQDNs: Required
+    - name: STORAGED_POD_FQDNS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
     - name: NEBULA_METAD_SVC
       valueFrom:
         componentVarRef:
@@ -69,24 +101,60 @@ spec:
   lifecycleActions:
     memberLeave:
       exec:
+        image: {{ $.Values.images.registry | default "docker.io"  }}/{{ $.Values.images.nebula.tool }}
         command:
           - /bin/sh
           - -c
-          - /scripts/member-leave.sh
+          - |
+            python /scripts/member-leave.py > /usr/local/nebula/logs/member-leave.log 2>&1
         targetPodSelector: Any
-        container: console
+        container: storaged
+  policyRules:
+    - apiGroups:
+        - ""
+      resources:
+        - configmaps
+      verbs:
+        - create
+        - get
+        - list
+        - patch
+        - update
   runtime:
+    volumes:
+      - name: nebula-console
+        emptyDir: {}
     securityContext:
       fsGroup: 1001
+    initContainers:
+      - name: init-console
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp /usr/local/bin/nebula-console /usr/local/nebula/console/nebula-console
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        volumeMounts:
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
+      - name: init-agent
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp /usr/local/bin/agent /usr/local/nebula/console/agent
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        volumeMounts:
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
     containers:
       - name: storaged
         command:
           - /bin/bash
           - -c
           - |
-            trap : TERM INT
-            exec /usr/local/nebula/bin/nebula-storaged --flagfile=/usr/local/nebula/etc/nebula-storaged.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
-        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
+            /scripts/start-storaged.sh
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         ports:
           - containerPort: 9779
             name: thrift
@@ -107,7 +175,7 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.name
           - name: POD_FQDN
-            value: $(POD_NAME).$(STORAGED_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+            value: $(POD_NAME).$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
         readinessProbe:
           failureThreshold: 3
           httpGet:
@@ -119,28 +187,15 @@ spec:
           successThreshold: 1
           timeoutSeconds: 5
         volumeMounts:
-          - mountPath: /usr/local/nebula/etc
+          - mountPath: /usr/local/nebula/config
             name: nebula-storaged
           - mountPath: /usr/local/nebula/data
             name: data
           - mountPath: /usr/local/nebula/logs
             name: logs
-      - name: console
-        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
-        command: [ "/bin/sh" ]
-        args: [ "-c", "trap : TERM INT; sleep infinity & wait" ]
-        env:
-          - name: POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-          - name: POD_FQDN
-            value: $(POD_NAME).$(STORAGED_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
-        lifecycle:
-          postStart:
-            exec:
-              command: [ "/bin/sh", "-c", "/scripts/post-start.sh" ]
-        volumeMounts:
           - name: scripts
             mountPath: /scripts
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
+      {{- include "nebula.agentContainer" . | nindent 6 }}
+      {{- include "nebula.exporterContainer" . | nindent 6 }}

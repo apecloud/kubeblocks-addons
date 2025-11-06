@@ -20,6 +20,14 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+    - name: xtrabackup-inc
+      compatibleMethod: xtrabackup
+      snapshotVolumes: false
+      actionSetName: {{ include "apecloud-mysql.xtrabackupIncActionSetName" . }}
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
     - name: volume-snapshot
       snapshotVolumes: true
       actionSetName: {{ include "apecloud-mysql.vsActionSetName" . }}
@@ -29,12 +37,30 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+    - name: archive-binlog
+      target:
+        role: leader
+        account: root
+      snapshotVolumes: false
+      actionSetName: apecloud-mysql-pitr
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
   schedules:
     - backupMethod: xtrabackup
       enabled: false
       cronExpression: "0 18 * * *"
+      retentionPeriod: 8d
+    - backupMethod: xtrabackup-inc
+      enabled: false
+      cronExpression: "0 19 * * *"
       retentionPeriod: 7d
     - backupMethod: volume-snapshot
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
+    - backupMethod: archive-binlog
+      enabled: false
+      cronExpression: "*/30 * * * *"
+      retentionPeriod: 8d

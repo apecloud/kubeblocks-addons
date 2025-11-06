@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common weaviate annotations
 */}}
 {{- define "weaviate.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "weaviate.apiVersion" . }}
 {{- end }}
 
@@ -96,8 +96,15 @@ weaviate-env-config-template
 {{/*
 Define weaviate env config constraint name
 */}}
-{{- define "weaviate.envConfigConstraintTplName" -}}
-weaviate-env-constraints
+{{- define "weaviate.pdName" -}}
+weaviate-env-pd
+{{- end -}}
+
+{{/*
+Define weaviate env config constraint name
+*/}}
+{{- define "weaviate.pcrName" -}}
+weaviate-pcr
 {{- end -}}
 
 {{/*

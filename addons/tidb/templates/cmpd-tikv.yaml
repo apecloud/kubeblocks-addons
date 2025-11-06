@@ -1,0 +1,101 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "tidb.tikv7.compDefName" . }}
+  annotations:
+    {{- include "tidb.annotations" . | nindent 4}}
+  labels:
+    {{- include "tidb.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: a distributed transactional key-value database
+  updateStrategy: BestEffortParallel
+  vars:
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: DOMAIN
+      value: "$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain }}"
+    - name: TIKV_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: PD_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "tidb.pd7.compDefName" . }}
+          host: Required
+    - name: PD_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "tidb.pd7.compDefName" . }}
+          port:
+            name: client
+    - name: PD_ADDRESS
+      value: "$(PD_HOST).$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain }}:$(PD_PORT)"
+  runtime:
+    containers:
+      - name: tikv
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: SERVICE_PORT
+            value: "20180"
+        ports:
+          - containerPort: 20160
+            name: peer
+          - containerPort: 20180
+            name: status
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/tikv
+          - name: config
+            mountPath: /etc/tikv
+        command:
+          - bin/sh
+          - -c
+          - |
+            echo "start tikv..."
+            exec /tikv-server --pd=http://${PD_ADDRESS} \
+            --data-dir=/var/lib/tikv \
+            --addr=0.0.0.0:20160 \
+            --advertise-addr=${CURRENT_POD_NAME}.${TIKV_COMPONENT_NAME}-headless.${DOMAIN}:20160 \
+            --status-addr=0.0.0.0:20180 \
+            --config=/etc/tikv/tikv.toml
+  volumes:
+    - name: data
+      needSnapshot: true
+  configs:
+    - name: tikv-configuration
+      template: {{ include "tidb.tikv.configTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: config
+      externalManaged: true
+  lifecycleActions:
+    memberLeave:
+      exec:
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/tikv_member_leave.sh" | nindent 14 }}
+  exporter:
+    containerName: tikv
+    scrapePort: "20180"
+  services:
+    - name: tikv
+      spec:
+        ports:
+          - name: peer
+            port: 20160
+            targetPort: peer
+          - name: status
+            port: 20180
+            targetPort: status
+

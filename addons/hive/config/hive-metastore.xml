@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<configuration>
+    <property>
+        <name>hive.metastore.uris</name>
+        <value>{{ .METASTORE_ENDPOINTS }}</value>
+    </property>
+
+    <property>
+        <name>javax.jdo.option.ConnectionURL</name>
+        <value>jdbc:mysql://{{- .METADB_MYSQL_ENDPOINTS }}:3306/hive_metadata?allowPublicKeyRetrieval=true&amp;createDatabaseIfNotExist=true&amp;useSSL=false</value>
+    </property>
+    <property>
+        <name>javax.jdo.option.ConnectionDriverName</name>
+        <value>com.mysql.cj.jdbc.Driver</value>
+    </property>
+    <property>
+        <name>javax.jdo.option.ConnectionUserName</name>
+        <value>{{ .METADB_MYSQL_USERNAME }}</value>
+    </property>
+
+    <property>
+        <name>hadoop.security.credential.provider.path</name>
+        <value>jceks://file/hive/metadata/hive.jceks</value>
+    </property>
+    <property>
+        <name>hive.metastore.warehouse.dir</name>
+        <value>/warehouse/hive/{{ .CLUSTER_NAME }}</value>
+    </property>
+    <!-- Enable this to use Hive with Spark
+    <property>
+        <name>spark.sql.warehouse.dir</name>
+        <value>/warehouse/spark/{{ .CLUSTER_NAME }}</value>
+    </property>
+    -->
+    <property>
+        <name>hive.metastore.schema.verification</name>
+        <value>false</value>
+    </property>
+    <property>
+        <name>hive.metastore.event.db.notification.api.auth</name>
+        <value>false</value>
+    </property>
+    <property>
+        <name>hive.cli.print.header</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>datanucleus.schema.autoCreateTables</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>hive.cli.print.current.db</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>hive.metastore.metrics.enabled</name>
+        <value>true</value>
+    </property>
+</configuration>

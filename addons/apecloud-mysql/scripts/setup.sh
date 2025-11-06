@@ -4,19 +4,19 @@ if [ -z "${__SOURCED__:+x}" ]; then
 set -ex
 fi
 
-# MY_CLUSTER_NAME=clustername
-# MY_COMP_NAME=componentname
+# CLUSTER_NAME=clustername
+# COMPONENT_NAME=componentname
 # compose headless service name from cluster and component name
 # return: clustername-componentname-headless
 get_service_name() {
-    cluster_name=${MY_CLUSTER_NAME:?missing cluster name}
-    component_name=${MY_COMP_NAME:?missing component name}
+    cluster_name=${CLUSTER_NAME:?missing cluster name}
+    component_name=${COMPONENT_NAME:?missing component name}
     echo "${cluster_name}-${component_name}-headless"
 }
 
 get_cluster_members() {
     local cluster_members=""
-    IFS=',' read -ra PODS <<< "$MY_POD_LIST"
+    IFS=',' read -ra PODS <<< "$COMPONENT_POD_LIST"
     for pod in "${PODS[@]}"; do
         hostname=${pod}.$(get_service_name)
         cluster_members="${cluster_members};${hostname}:${MYSQL_CONSENSUS_PORT:-13306}"
@@ -28,7 +28,7 @@ get_pod_index() {
     local pod_name="${1:?missing pod name}"
     local pod_index=0
 
-    IFS=',' read -ra PODS <<< "$MY_POD_LIST"
+    IFS=',' read -ra PODS <<< "$COMPONENT_POD_LIST"
     for pod in "${PODS[@]}"; do
         if [ "$pod" = "$pod_name" ]; then
             break
@@ -40,7 +40,7 @@ get_pod_index() {
 }
 
 generate_cluster_info() {
-    local pod_name="${MY_POD_NAME:?missing pod name}"
+    local pod_name="${POD_NAME:?missing pod name}"
     local cluster_members=""
     local service_name=$(get_service_name)
 
@@ -50,12 +50,12 @@ generate_cluster_info() {
     export KB_MYSQL_CONF_FILE=${KB_MYSQL_CONF_FILE:-/opt/mysql/my.cnf}
 
     if [ -z "$KB_MYSQL_N" ]; then
-        export KB_MYSQL_N=${MY_COMP_REPLICAS:?missing pod numbers}
+        export KB_MYSQL_N=${COMPONENT_REPLICAS:?missing pod numbers}
     fi
     echo "KB_MYSQL_N=${KB_MYSQL_N}"
 
     if [ -z "$KB_MYSQL_CLUSTER_UID" ]; then
-        export KB_MYSQL_CLUSTER_UID=${MY_CLUSTER_UID:?missing cluster uid}
+        export KB_MYSQL_CLUSTER_UID=${CLUSTER_UID:?missing cluster uid}
     fi
     echo "KB_MYSQL_CLUSTER_UID=${KB_MYSQL_CLUSTER_UID}"
 

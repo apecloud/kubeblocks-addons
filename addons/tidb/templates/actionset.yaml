@@ -8,7 +8,7 @@ spec:
   backupType: Full
   backup:
     backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.br.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.br.repository }}:$(IMAGE_TAG)
       syncProgress:
         enabled: false
         intervalSeconds: 5
@@ -16,13 +16,15 @@ spec:
       - bash
       - -c
       - |
+        {{- .Files.Get "dataprotection/common.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     postReady:
     - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.br.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.br.repository }}:$(IMAGE_TAG)
         command:
         - bash
         - -c
         - |
+          {{- .Files.Get "dataprotection/common.sh" | nindent 12 }}
           {{- .Files.Get "dataprotection/restore.sh" | nindent 12 }}

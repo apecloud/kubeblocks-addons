@@ -79,6 +79,7 @@ port={{ $mysql_port }}
 mysqlx-port=33060
 mysqlx=0
 
+tmpdir={{ $data_root }}/temp
 datadir={{ $data_root }}/data
 plugin_dir=/usr/lib64/mysql/plugin/
 
@@ -162,7 +163,7 @@ relay_log_index=relay-bin.index
 loose_audit_log_handler=FILE # FILE, SYSLOG
 loose_audit_log_file={{ $data_root }}/auditlog/audit.log
 loose_audit_log_buffer_size=1Mb
-loose_audit_log_policy=QUERIES # ALL, LOGINS, QUERIES, NONE
+loose_audit_log_policy=ALL # ALL, LOGINS, QUERIES, NONE
 loose_audit_log_strategy=ASYNCHRONOUS
 loose_audit_log_rotate_on_size=10485760
 loose_audit_log_rotations=5
@@ -177,7 +178,7 @@ loose_audit_log_rotations=5
 ## | localhost | mysql.sys        |
 ## | localhost | root             |
 ## +-----------+------------------+
-loose_audit_log_exclude_accounts=root@%,root@localhost
+loose_audit_log_exclude_accounts=kbadmin@%
 
 # semi sync, it works
 # loose_rpl-semi-sync-source-enabled = 1
@@ -198,10 +199,14 @@ default_tmp_storage_engine=innodb
 collation_server = utf8mb4_unicode_520_ci
 character_set_server = utf8mb4
 
-[mysql]
-default-character-set=utf8mb4
+{{- if eq (index $ "TLS_ENABLED") "true" }}
+# tls
+# require_secure_transport=ON
+ssl_ca={{ $data_root }}/tls/ca.pem
+ssl_cert={{ $data_root }}/tls/cert.pem
+ssl_key={{ $data_root }}/tls/key.pem
+{{- end }}
 
 [client]
 port={{ $mysql_port }}
 socket=/var/run/mysqld/mysqld.sock
-default-character-set=utf8mb4

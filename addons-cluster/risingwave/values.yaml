@@ -2,15 +2,9 @@ nameOverride: ""
 
 fullnameOverride: ""
 
-## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
+## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Delete, WipeOut.
 ##
 terminationPolicy: Delete
-
-serviceAccount:
-  ## @param serviceAccount.name is the name of the service account to use.
-  ## Used by all RisingWave component pods.
-  ##
-  name: ""
 
 ## RisingWave Configuration
 ##
@@ -27,11 +21,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   frontend:
@@ -46,11 +40,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   compute:
@@ -65,11 +59,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   compactor:
@@ -84,11 +78,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   connector:
@@ -103,11 +97,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   metaStore:

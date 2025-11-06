@@ -1,0 +1,34 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: clickhouse-incremental-backup
+  labels:
+    clusterdefinition.kubeblocks.io/name: clickhouse
+spec:
+  backupType: Incremental
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ include "clickhouse.backupImage.repository" . }}
+      runOnTargetPodNode: true
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/common.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/incremental-backup.sh" | nindent 10 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    postReady:
+    - job:
+        image: {{ include "clickhouse.backupImage.repository" . }}
+        runOnTargetPodNode: true
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "dataprotection/common.sh" | nindent 12 }}
+            {{- .Files.Get "dataprotection/incremental-restore.sh" | nindent 12 }}

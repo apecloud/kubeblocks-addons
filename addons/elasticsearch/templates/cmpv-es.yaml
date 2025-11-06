@@ -1,0 +1,38 @@
+{{- $imageRegistry := .Values.image.registry | default "docker.io" -}}
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: elasticsearch
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+  annotations:
+    {{- include "elasticsearch.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+{{- range .Values.esVersions }}
+  - compDefs:
+    - {{ .componentDef }}
+    - {{ .masterComponentDef }}
+    - {{ .dataComponentDef }}
+    releases:
+{{- range .minors }}
+      - {{ index . 0 }}
+{{- end }}
+{{- end }}
+  releases:
+{{- range .Values.esVersions }}
+{{- range .minors }}
+{{- if not (index . 3) }}
+  - name: {{ index . 0 }}
+    serviceVersion: {{ index . 1 }}
+    images:
+      elasticsearch: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      prepare-plugins: {{ $imageRegistry }}/{{ $.Values.image.plugin.repository }}:{{ $.Values.image.plugin.tag }}
+      install-plugins: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      exporter: {{ $imageRegistry }}/{{ $.Values.image.exporter.repository }}:{{ $.Values.image.exporter.tag }}
+      memberleave: {{ $imageRegistry }}/{{ $.Values.image.tools.repository }}:{{ $.Values.image.tools.tag }}
+      install-es-agent: {{ $imageRegistry }}/{{ $.Values.image.agent.repository }}:{{ $.Values.image.agent.tag }}
+      es-agent: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+{{- end }}
+{{- end }}
+{{- end }}

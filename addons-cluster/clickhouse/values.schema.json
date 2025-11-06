@@ -4,6 +4,12 @@
   "title": "ClickHouse Cluster Configuration",
   "description": "Configuration schema for the ClickHouse Helm chart.",
   "properties": {
+    "version": {
+      "title": "ClickHouse Cluster Version",
+      "description": "Engine Version of the ClickHouse cluster.",
+      "type": "string",
+      "default": "24.8.3"
+    },
     "mode": {
       "title": "Cluster Topology Mode",
       "description": "Define the ClickHouse cluster topology mode.",
@@ -14,7 +20,7 @@
         "cluster"
       ]
     },
-    "shardCount": {
+    "shards": {
       "title": "Shard Count",
       "description": "Number of shards in the ClickHouse cluster.",
       "type": "integer",
@@ -23,18 +29,11 @@
     },
     "sharding": {
       "title": "Sharding Configuration",
-      "description": "Settings related to sharding within the ClickHouse cluster.",
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "title": "Sharding Enabled",
-          "description": "Enable or disable sharding.",
-          "type": "boolean",
-          "default": false
-        }
-      }
+      "description": "Enable or disable sharding within the ClickHouse cluster.",
+      "type": "boolean",
+      "default": true
     },
-    "replicaCount": {
+    "replicas": {
       "title": "Replica Count",
       "description": "Number of replicas per shard.",
       "type": "integer",
@@ -55,9 +54,9 @@
     "memory": {
       "title": "Memory(Gi)",
       "description": "The amount of memory requested for each ClickHouse instance, unit is Gi.",
-      "anyOf": [
-        { "type": "number" },
-        { "type": "string" }
+      "type": [
+        "number",
+        "string"
       ],
       "default": 2,
       "minimum": 0.5,
@@ -72,9 +71,9 @@
     "storage": {
       "title": "Storage(Gi)",
       "description": "Size of the persistent storage volume in Gi.",
-      "anyOf": [
-        { "type": "number" },
-        { "type": "string" }
+      "type": [
+        "number",
+        "string"
       ],
       "default": 20,
       "minimum": 1,
@@ -85,12 +84,16 @@
       "description": "Settings for the ClickHouse Keeper (coordinator).",
       "type": "object",
       "properties": {
-        "replicaCount": {
+        "replicas": {
           "title": "Keeper Replica Count",
           "description": "Number of ClickHouse Keeper replicas.",
           "type": "integer",
           "default": 1,
-          "minimum": 1
+          "enum": [
+            1,
+            3,
+            5
+          ]
         },
         "storageClassName": {
           "title": "Keeper Storage Class Name",
@@ -101,9 +104,9 @@
         "cpu": {
           "title": "Keeper CPU Request",
           "description": "The amount of CPU requested for each ClickHouse Keeper instance, can be a number or string with units.",
-          "anyOf": [
-            { "type": "number" },
-            { "type": "string" }
+          "type": [
+            "number",
+            "string"
           ],
           "default": 1,
           "minimum": 0.1,
@@ -112,9 +115,9 @@
         "memory": {
           "title": "Keeper Memory(Gi)",
           "description": "The amount of memory requested for each ClickHouse Keeper instance, unit is Gi.",
-          "anyOf": [
-            { "type": "number" },
-            { "type": "string" }
+          "type": [
+            "number",
+            "string"
           ],
           "default": 2,
           "minimum": 0.5,
@@ -123,9 +126,9 @@
         "storage": {
           "title": "Keeper Storage(Gi)",
           "description": "Size of the keeper's persistent storage volume in Gi.",
-          "anyOf": [
-            { "type": "number" },
-            { "type": "string" }
+          "type": [
+            "number",
+            "string"
           ],
           "default": 10,
           "minimum": 1,
@@ -150,19 +153,6 @@
           "type": "string",
           "default": "ClusterIP",
           "enum": ["ExternalName", "ClusterIP", "NodePort", "LoadBalancer"]
-        }
-      }
-    },
-    "serviceAccount": {
-      "title": "Service Account",
-      "description": "Configuration for the Kubernetes Service Account used by the ClickHouse components.",
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Service Account Name",
-          "description": "Name of the service account to create or use.",
-          "type": "string",
-          "default": ""
         }
       }
     },

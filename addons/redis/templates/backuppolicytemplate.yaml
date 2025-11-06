@@ -4,6 +4,18 @@ metadata:
   name: redis-backup-policy-template
   labels:
     {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/reconfigure-ref: |
+      {
+        "name": "redis-replication-config",
+        "key": "redis.conf",
+        "enable": {
+          "aof": [{"key": "aof-disable-auto-gc","value": "yes"},{"key": "aof-timestamp-enabled","value": "yes"}]
+        },
+        "disable": {
+          "aof": [{"key": "aof-disable-auto-gc","value": "no"},{"key": "aof-timestamp-enabled","value": "no"}]
+        }
+      }
 spec:
   serviceKind: Redis
   compDefs:
@@ -27,11 +39,35 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+      env:
+        - name: IMAGE
+          valueFrom:
+            versionMapping:
+              - serviceVersions:
+                  - "7.4.5"
+                mappedValue: "{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.4.0-v6"
+              - serviceVersions:
+                  - "8.0.1"
+                  - "8.0.2"
+                  - "8.0.3"
+                mappedValue: "{{ .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ceImage.repository }}:8.0.3"
+              - serviceVersions:
+                  - "8.2.1"
+                mappedValue: "{{ .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ceImage.repository }}:8.2.1"
     - name: volume-snapshot
       snapshotVolumes: true
       targetVolumes:
         volumes:
           - data
+    - name: backup-for-rebuild-instance
+      actionSetName: redis-for-rebuild-instance
+      env:
+        - name: REBUILD_CLUSTER_INSTANCE
+          value: "true"
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
   schedules:
     - backupMethod: datafile
       enabled: false

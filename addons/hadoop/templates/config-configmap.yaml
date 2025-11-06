@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hadoop-core-config-template
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+data:
+  core-site.xml: |-
+    {{- .Files.Get "config/core-site.xml" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hadoop-journalnode-config-template
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+data:
+  hdfs-site.xml: |-
+    {{- .Files.Get "config/hdfs-journalnode.xml" | nindent 4 }}
+  log4j.properties: |-
+    {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+  jmx-exporter.yaml: |-
+    {{- .Files.Get "config/jmx-exporter.yaml" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hadoop-namenode-config-template
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+data:
+  hdfs-site.xml: |-
+    {{- .Files.Get "config/hdfs-namenode.xml" | nindent 4 }}
+  log4j.properties: |-
+    {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+  jmx-exporter.yaml: |-
+    {{- .Files.Get "config/jmx-exporter.yaml" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hadoop-datanode-config-template
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+data:
+  hdfs-site.xml: |-
+    {{- .Files.Get "config/hdfs-datanode.xml" | nindent 4 }}
+  log4j.properties: |-
+    {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+  jmx-exporter.yaml: |-
+    {{- .Files.Get "config/jmx-exporter.yaml" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hadoop-resourcemanager-conf-tpl
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+data:
+  yarn-site.xml: |-
+    {{- .Files.Get "config/yarn-resourcemanager.xml" | nindent 4 }}
+  log4j.properties: |-
+    {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+  jmx-exporter.yaml: |-
+    {{- .Files.Get "config/jmx-exporter.yaml" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hadoop-nodemanager-config-template
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+data:
+  yarn-site.xml: |-
+    {{- .Files.Get "config/yarn-nodemanager.xml" | nindent 4 }}
+  log4j.properties: |-
+    {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+  jmx-exporter.yaml: |-
+    {{- .Files.Get "config/jmx-exporter.yaml" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hadoop-mapred-site-template
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+data:
+  mapred-site.xml: |-
+    {{- .Files.Get "config/mapred-site.xml" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hadoop-capacity-scheduler-template
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+data:
+  capacity-scheduler.xml: |-
+    {{- .Files.Get "config/yarn-capacity-scheduler.xml" | nindent 4 }}
+  

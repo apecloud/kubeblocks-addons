@@ -54,6 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "starrocks.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "starrocks.apiVersion" . }}
 {{- end }}
 
@@ -62,17 +63,6 @@ API version annotation
 */}}
 {{- define "starrocks.apiVersion" -}}
 kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
-{{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "starrocks.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "starrocks.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
 {{- end }}
 
 {{- define "starrocks.fe.config" -}}
@@ -90,9 +80,53 @@ be.conf: |
 {{- end }}
 
 {{- define "fe.componentDefName" -}}
-{{ include "starrocks.name" . }}-fe
+starrocks-ce-fe-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "be.componentDefName" -}}
-{{ include "starrocks.name" . }}-be
+starrocks-ce-be-{{ .Chart.Version }}
+{{- end -}}
+
+
+{{- define "fe.componentVersionName" -}}
+starrocks-ce-fe
+{{- end -}}
+
+{{- define "be.componentVersionName" -}}
+starrocks-ce-be
+{{- end -}}
+
+{{/*
+Define fe component definition regex pattern
+*/}}
+{{- define "fe.cmpdRegexPattern" -}}
+^starrocks-ce-fe-
+{{- end -}}
+
+{{/*
+Define be component definition regex pattern
+*/}}
+{{- define "be.cmpdRegexPattern" -}}
+^starrocks-ce-be-
+{{- end -}}
+
+{{/*
+Define fe component configuration template name
+*/}}
+{{- define "fe.configurationTemplate" -}}
+starrocks-ce-fe-configuration-template
+{{- end -}}
+
+{{/*
+Define be component configuration template name
+*/}}
+{{- define "be.configurationTemplate" -}}
+starrocks-ce-be-configuration-template
+{{- end -}}
+
+{{/*
+Define starrocks scripts configMap template name
+*/}}
+{{- define "starrocks.scriptsTemplate" -}}
+starrocks-ce-scripts-template
 {{- end -}}

@@ -3,11 +3,11 @@ apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
   name: redis-replication-pod-monitor
-  namespace: monitoring # Note: this is namespace for prometheus operator
+  namespace: demo
   labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
     release: prometheus
 spec:
-  jobLabel: kubeblocks-service
+  jobLabel: app.kubernetes.io/managed-by
   # defines the labels which are transferred from the
   # associated Kubernetes `Pod` object onto the ingested metrics
   # set the lables w.r.t you own needs
@@ -22,7 +22,7 @@ spec:
       scheme: http
   namespaceSelector:
     matchNames:
-      - default
+      - demo
   selector:
     matchLabels:
       app.kubernetes.io/instance: redis-replication

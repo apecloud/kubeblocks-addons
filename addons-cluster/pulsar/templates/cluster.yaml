@@ -7,15 +7,10 @@ metadata:
   {{- if .Values.commonAnnotations }}
   annotations:
     {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-    {{- if eq .Values.version "3.0.2" }}
-    ## Todo: use cluster api to control the rendering logic of service in component definition
-    {{- include "pulsar-cluster.brokerAddrFeatureGate" . | nindent 4 }}
-    "kubeblocks.io/extra-env": '{"KB_PULSAR_BROKER_NODEPORT": "{{ $.Values.nodePortEnabled }}"}'
-    {{- end }}
   {{- end }}
 spec:
   terminationPolicy: {{ $.Values.terminationPolicy }}
-  {{- $topologyEnable :=  eq .Values.mode "" | default false }}
+  {{- $topologyEnable :=  ne .Values.mode "" | default false }}
   {{- if $topologyEnable}}
   clusterDef: pulsar
   topology: {{ .Values.mode }}
@@ -117,6 +112,11 @@ spec:
       componentDef: pulsar-broker
       serviceVersion: {{ .Values.version }}
       {{- end }}
+      {{- if eq .Values.version "3.0.2" }}
+      env:
+        - name: KB_PULSAR_BROKER_NODEPORT
+          value: "{{ $.Values.nodePortEnabled }}"
+      {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       {{- if .Values.nodePortEnabled }}
       services:
@@ -173,7 +173,7 @@ spec:
             {{- end }}
             resources:
               requests:
-                storage: {{ .Values.bookies.persistence.data.size }}
+                storage: {{ print .Values.bookies.persistence.data.size "Gi" | quote }}
         - name: journal
           spec:
             accessModes:
@@ -183,7 +183,7 @@ spec:
             {{- end }}
             resources:
               requests:
-                storage: {{ .Values.bookies.persistence.log.size }}
+                storage: {{ print .Values.bookies.persistence.log.size "Gi" | quote }}
       {{- end }}
     {{- if not .Values.serviceReference.enabled }}
     - name: zookeeper
@@ -197,12 +197,12 @@ spec:
         {{- if .limits }}
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         {{- end }}
         {{- if .requests }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       {{- if .Values.zookeeper.persistence.enabled }}
@@ -216,6 +216,6 @@ spec:
             {{- end }}
             resources:
               requests:
-                storage: {{ .Values.zookeeper.persistence.data.size }}
+                storage: {{ print .Values.zookeeper.persistence.data.size "Gi" | quote }}
       {{- end }}
   {{- end }}

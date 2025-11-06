@@ -1,14 +1,3 @@
-{{- $log_root := getVolumePathByName ( index $.podSpec.containers 0 ) "log" }}
-{{- $rabbitmq_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
-{{- $rabbitmq_port_info := getPortByName ( index $.podSpec.containers 0 ) "amqp" }}
-{{- $phy_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
-
-# require port
-{{- $rabbitmq_port := 5672 }}
-{{- if $rabbitmq_port_info }}
-{{- $rabbitmq_port = $rabbitmq_port_info.containerPort }}
-{{- end }}
-
 # rabbitmq.conf
 
 ## DEFAULT SETTINGS ARE NOT MEANT TO BE TAKEN STRAIGHT INTO PRODUCTION
@@ -35,7 +24,7 @@ log.file.rotation.size = 10485760
 log.file.rotation.count = 5
 
 # archived log files will be compressed
-log.file.rotation.compress = true
+# log.file.rotation.compress = true
 
 
 queue_master_locator                       = min-masters
@@ -48,4 +37,5 @@ cluster_formation.k8s.address_type         = hostname
 cluster_formation.k8s.service_name         = {{ .KB_CLUSTER_NAME }}-rabbitmq-headless
 cluster_name                               = {{ .KB_CLUSTER_NAME }}
 
+{{- $rabbitmq_port := 5672 }}
 listeners.tcp.1 = :::{{ $rabbitmq_port }}

@@ -1,10 +1,10 @@
 apiVersion: v2
-name: influxdb
+name: influxdb-cluster
 type: application
 
-version: 1.0.0-alpha.0
+version: 1.1.0-alpha.0
 
-appVersion: 2.7.4
+appVersion: 2.7.11
 
 description: InfluxDB(TM) is an open source time-series database. It is a core component of the TICK (Telegraf, InfluxDB(TM), Chronograf, Kapacitor) stack.
 

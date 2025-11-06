@@ -2,6 +2,7 @@
 
 # shellcheck disable=SC2034
 # shellcheck disable=SC1090
+# shellcheck disable=SC2153
 
 # This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
 # Normally test without [expression] returns false. It means that __() { :; }
@@ -19,8 +20,8 @@ test || __() {
   set -ex;
 }
 
-service_port=6379
-cluster_bus_port=16379
+service_port=${SERVICE_PORT:-6379}
+cluster_bus_port=${CLUSTER_BUS_PORT:-16379}
 
 load_redis_cluster_common_utils() {
   # the common.sh and redis-cluster-common.sh scripts are defined in the redis cluster scripts template configmap
@@ -35,11 +36,7 @@ load_redis_cluster_common_utils() {
 # TODO: remove it from preStop hook and it should be implemented in memberLeave lifecycleAction in KubeBlocks
 remove_replica_from_shard_if_need() {
   # initialize the current pod info
-  current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$CURRENT_POD_NAME")
-  if is_empty "$current_pod_fqdn"; then
-    echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting." >&2
-    exit 1
-  fi
+  current_pod_fqdn="$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN"
 
   # get the cluster nodes info
   cluster_nodes_info=$(get_cluster_nodes_info_with_retry "$current_pod_fqdn" "$service_port")
@@ -61,8 +58,13 @@ remove_replica_from_shard_if_need() {
   if contains "$current_node_role" "slave"; then
     echo "Current node $CURRENT_POD_NAME is a slave, removing it from the cluster..."
     current_node_cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
-    current_node_ip_and_port=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $2}' | cut -d'@' -f1)
-    if secondary_member_leave_del_node_with_retry "$current_node_ip_and_port" "$current_node_cluster_id"; then
+    current_node_ip_and_port="127.0.0.1:$service_port"
+    do_forget_node=false
+    if contains "$current_node_role" "fail"; then
+      do_forget_node=true
+    fi
+    echo "Current node id: $current_node_cluster_id"
+    if secondary_member_leave_del_node_with_retry "$current_node_ip_and_port" "$current_node_cluster_id" "$do_forget_node"; then
       echo "Successfully removed replica from shard."
     else
       echo "Failed to remove replica from shard." >&2
@@ -99,7 +101,7 @@ ${__SOURCED__:+false} : || return 0
 
 # main
 load_redis_cluster_common_utils
-if execute_acl_save_with_retry; then
+if execute_acl_save_with_retry $service_port; then
   echo "acl save command executed successfully."
 else
   echo "failed to execute acl save command." >&2

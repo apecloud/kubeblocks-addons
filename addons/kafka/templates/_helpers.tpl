@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "kafka.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "kafka.apiVersion" . }}
 {{- end }}
 
@@ -122,11 +122,47 @@ Define kafka-broker component definition regex pattern
 {{- end -}}
 
 {{/*
-Define kafka config constraint name
+Define kafka-broker component definition name
 */}}
-{{- define "kafka.configConstraintName" -}}
-kafka-config-constraints
+{{- define "kafka2-broker.componentDefName" -}}
+kafka27-broker-{{ .Chart.Version }}
 {{- end -}}
+
+{{/*
+Define kafka-broker component definition regex pattern
+*/}}
+{{- define "kafka2-broker.cmpdRegexpPattern" -}}
+^kafka27-broker-
+{{- end -}}
+
+{{/*
+Define kafka parameter config renderer name
+*/}}
+{{- define "kafka.brokerPCRName" -}}
+kafka-broker-pcr
+{{- end -}}
+
+{{/*
+Define kafka parameter config renderer name
+*/}}
+{{- define "kafka.combinePCRName" -}}
+kafka-combine-pcr
+{{- end -}}
+
+{{/*
+Define kafka parameter config renderer name
+*/}}
+{{- define "kafka.controllerPCRName" -}}
+kafka-controller-pcr
+{{- end -}}
+
+{{/*
+Define kafka parameter config renderer name
+*/}}
+{{- define "kafka2.brokerPCRName" -}}
+kafka2-broker-pcr
+{{- end -}}
+
 
 {{/*
 Define kafka configuration tpl name
@@ -136,10 +172,25 @@ kafka-configuration-tpl
 {{- end -}}
 
 {{/*
+Define kafka2 configuration tpl name
+*/}}
+{{- define "kafka2.configurationTplName" -}}
+kafka27-configuration-tpl-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
 Define kafka jmx configuration tpl name
 */}}
 {{- define "kafka.jmxConfigurationTplName" -}}
 kafka-jmx-configuration-tpl
+{{- end -}}
+
+{{- define "kafka.paramsDefName" -}}
+kafka-pd
+{{- end -}}
+
+{{- define "kafka2.paramsDefName" -}}
+kafka2-pd
 {{- end -}}
 
 {{/*
@@ -150,22 +201,31 @@ kafka-server-scripts-tpl
 {{- end -}}
 
 {{/*
+Define kafka 2.x server scripts tpl name
+*/}}
+{{- define "kafka2.serverScriptsTplName" -}}
+kafka2-server-scripts-tpl
+{{- end -}}
+
+{{/*
+Define kafka 2.x broker env configmap tpl name
+*/}}
+{{- define "kafka2.brokerEnvTplName" -}}
+kafka2-broker-env-tpl
+{{- end -}}
+
+{{/*
 Define kafka tools scripts tpl name
 */}}
 {{- define "kafka.toolsScriptsTplName" -}}
 kafka-tools-scripts-tpl
 {{- end -}}
 
-{{/*
-Define kafka default client system account secret name
-*/}}
-{{- define "kafka.defaultClientSystemAccountSecretName" -}}
-kafka-client-secret
-{{- end -}}
-
-{{/*
-Define kafka default superuser system account secret name
-*/}}
-{{- define "kafka.defaultSuperUserSystemAccountSecretName" -}}
-kafka-superusers-secret
+{{- define "kafka.tls.cmpdConfig" -}}
+tls:
+  volumeName: tls 
+  mountPath: /etc/pki/tls
+  caFile: ca.crt
+  certFile: tls.crt
+  keyFile: tls.key
 {{- end -}}

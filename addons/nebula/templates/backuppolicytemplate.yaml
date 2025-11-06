@@ -1,0 +1,23 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: nebula-backup-policy-template
+  labels:
+    {{- include "nebula.labels" . | nindent 4 }}
+spec:
+  serviceKind: Nebula
+  compDefs:
+    - ^nebula-graphd.*$
+  backupMethods:
+    - name: br
+      snapshotVolumes: false
+      actionSetName: nebula-br
+      targetVolumes:
+        volumeMounts:
+          - name: logs
+            mountPath: /usr/local/nebula/logs
+  schedules:
+    - backupMethod: br
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d

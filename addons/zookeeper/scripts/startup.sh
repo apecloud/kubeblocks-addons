@@ -31,8 +31,50 @@ compare_version() {
   esac
 }
 
+set_jvm_configuration() {
+  system_memory_in_mb=$((MY_MEMORY_LIMIT/1024/1024))
+  # set max heap size based on the following
+  # max(min(1/2 ram, 1024MB), min(1/4 ram, 8GB))
+  half_system_memory_in_mb=$((system_memory_in_mb / 2))
+  quarter_system_memory_in_mb=$((half_system_memory_in_mb / 2))
+  if [ "$half_system_memory_in_mb" -gt "1024" ]; then
+      half_system_memory_in_mb="1024"
+  fi
+  if [ "$quarter_system_memory_in_mb" -gt "8192" ]; then
+      quarter_system_memory_in_mb="8192"
+  fi
+  if [ "$half_system_memory_in_mb" -gt "$quarter_system_memory_in_mb" ]; then
+      max_heap_size_in_mb="$half_system_memory_in_mb"
+  else
+      max_heap_size_in_mb="$quarter_system_memory_in_mb"
+  fi
+  MAX_HEAP_SIZE="${max_heap_size_in_mb}M"
+
+  gc_file="/opt/bitnami/zookeeper/logs/gc.log"
+  java_major=$(java -XshowSettings:properties -version 2>&1 | grep "java.specification.version" | awk '{print $3}')
+  if [ "${java_major}" -ge 9 ];then
+    export JVMFLAGS="$JVMFLAGS \
+          -XX:+UseG1GC \
+          -Xlog:gc:${gc_file}
+          -Xlog:gc* \
+          -XX:NewRatio=2 \
+          -Xms$MAX_HEAP_SIZE -Xmx$MAX_HEAP_SIZE"
+  else
+    export JVMFLAGS="$JVMFLAGS \
+          -XX:+UseG1GC \
+          -Xloggc:${gc_file} \
+          -XX:+PrintGCDetails \
+          -XX:+PrintGCDateStamps \
+          -XX:+PrintGCTimeStamps \
+          -XX:+UseGCLogFileRotation
+          -XX:NewRatio=2 \
+          -Xms$MAX_HEAP_SIZE -Xmx$MAX_HEAP_SIZE"
+  fi
+}
+
 start() {
   set_zookeeper_server_id
+  set_jvm_configuration
   exec "/entrypoint.sh" "/run.sh"
 }
 

@@ -11,6 +11,10 @@ spec:
   description: Minio is a High Performance Object Storage.
   serviceKind: minio
   serviceVersion: {{ .Values.defaultServiceVersion.minio }}
+  minReadySeconds: 10
+  replicasLimit:
+    minReplicas: 2
+    maxReplicas: 32
   systemAccounts:
     - name: root
       initAccount: true
@@ -29,16 +33,17 @@ spec:
           port: 9001
           targetPort: console
   configs:
-    - name: minio-configuration
-      templateRef: {{ include "minio.configTplName" . }}
+    - name: config
+      template: {{ include "minio.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: minio-config
       defaultMode: 0777
+      restartOnFileChange: true
   scripts:
-    - name: minio-scripts
-      templateRef: {{ include "minio.scriptsTplName" . }}
+    - name: script
+      template: {{ include "minio.scriptTplName" . }}
       namespace: {{ .Release.Namespace }}
-      volumeName: scripts
+      volumeName: minio-script
       defaultMode: 0555
   volumes:
     - name: data
@@ -72,6 +77,16 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: minio
+          optional: false
+          shortName: Required
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain | quote }}
     - name: CERTS_PATH
@@ -82,40 +97,51 @@ spec:
       value: {{ .Values.minioConsolePort | quote}}
     - name: HTTP_PROTOCOL
       value: {{ .Values.tls.enabled | ternary "https" "http" | quote }}
-
+    - name: SERVICE_PORT
+      value: "9000"
   roles:
     - name: readwrite
-      serviceable: true
-      votable: false
-      writable: true
-
+      updatePriority: 1
+      participatesInQuorum: false
+    - name: notready  # a special role to hack the update strategy of its
+      updatePriority: 1
+      participatesInQuorum: false
+  policyRules:
+    - apiGroups:
+        - ""
+      resources:
+        - configmaps
+      verbs:
+        - create
+        - get
+        - patch
   lifecycleActions:
     roleProbe:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         command:
           - /bin/sh
           - -c
           - |
             if mc config host add minio http://127.0.0.1:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD &>/dev/null; then
               echo -n "readwrite"
+            else
+              echo -n "notready"
             fi
-
   runtime:
     initContainers:
-    - name: init
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/kubeblocks-tools:0.8.2
-      imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-      command:
-      - /bin/sh
-      - -ce
-      - /scripts/initialize-patch-configmap.sh
-      volumeMounts:
-        - name: scripts
-          mountPath: /scripts
+      - name: init
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /bin/sh
+          - -ce
+          - /scripts/replicas-history-config.sh
+        volumeMounts:
+          - name: minio-script
+            mountPath: /scripts
+          - name: minio-replicas-config
+            mountPath: /minio-config
     containers:
       - name: minio
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /bin/bash
@@ -124,7 +150,7 @@ spec:
         ports:
           - name: api
             protocol: TCP
-            containerPort: {{ .Values.minioAPIPort }} 
+            containerPort: {{ .Values.minioAPIPort }}
           - name: console
             protocol: TCP
             containerPort: {{ .Values.minioConsolePort }}
@@ -135,10 +161,17 @@ spec:
             value: $(MINIO_ROOT_PASSWORD)
           - name: MINIO_BROWSER_LOGIN_ANIMATION
             value: "off"
+          - name: MINIO_PROMETHEUS_AUTH_TYPE
+            value: "public"
+          - name: SERVICE_PORT
+            value: "9000"
         volumeMounts:
           - name: data
             mountPath: /data
-          - name: scripts
+          - name: minio-script
             mountPath: /scripts
-          - name: minio-config
+          - name: minio-replicas-config
             mountPath: /minio-config
+    volumes:
+      - name: minio-replicas-config
+        emptyDir: {}

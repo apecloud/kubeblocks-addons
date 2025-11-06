@@ -1,0 +1,19 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "apecloud-mysql.wescalePCRName" . }}
+  labels:
+    {{- include "apecloud-mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-mysql.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "apecloud-mysql.cmpdNameWescale" . }}
+  parametersDefs:
+    - {{ include "apecloud-mysql.wescaleParamsDefName" . }}
+
+  configs:
+    - name: vtgate.cnf
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: vtgate

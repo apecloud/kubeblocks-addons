@@ -7,8 +7,43 @@ metadata:
 spec:
   serviceKind: Tidb
   compDefs:
-    - {{ include "tidb.pd7.cmpdRegexpPattern" . }}
+    - {{ include "tidb.tidb7.cmpdRegexpPattern" . }}
   backupMethods:
     - name: br
       snapshotVolumes: false
       actionSetName: tidb-br
+      env:
+        - name: IMAGE_TAG
+          valueFrom:
+            versionMapping:
+              - serviceVersions:
+                  - "6"
+                  - "7"
+                mappedValue: "v7.5.2"
+              - serviceVersions:
+                  - "8"
+                mappedValue: "v8.4.0"
+    - name: br-log
+      snapshotVolumes: false
+      actionSetName: tidb-actionset-pitr
+      env:
+        - name: IMAGE_TAG
+          valueFrom:
+            versionMapping:
+              - serviceVersions:
+                  - "6"
+                  - "7"
+                mappedValue: "v7.5.2"
+              - serviceVersions:
+                  - "8"
+                mappedValue: "v8.4.0"
+  schedules:
+    - backupMethod: br
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: br-log
+      enabled: false
+      cronExpression: "*/5 * * * *"
+      retentionPeriod: 7d
+

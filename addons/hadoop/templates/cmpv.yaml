@@ -1,0 +1,78 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: hadoop
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+      {{- range $.Values.versions }}
+        - datanode-{{ .version }}
+      {{- end }}
+      compDefs:
+        - hadoop-hdfs-datanode
+    - releases:
+      {{- range $.Values.versions }}
+        - namenode-{{ .version }}
+      {{- end }}
+      compDefs:
+        - hadoop-hdfs-namenode
+    - releases:
+      {{- range $.Values.versions }}
+        - journalnode-{{ .version }}
+      {{- end }}
+      compDefs:
+        - hadoop-hdfs-journalnode
+    - releases:
+      {{- range $.Values.versions }}
+        - nodemanager-{{ .version }}
+      {{- end }}
+      compDefs:
+        - hadoop-yarn-nodemanager
+    - releases:
+      {{- range $.Values.versions }}
+        - resourcemanager-{{ .version }}
+      {{- end }}
+      compDefs:
+        - hadoop-yarn-resourcemanager
+  releases:
+  {{- range $.Values.versions }}
+    - name: datanode-{{ .version }}
+      serviceVersion: {{ .version }}
+      images:
+        hdfs-datanode: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        hadoop-common: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        init-jmx-exporter: {{ $.Values.images.registry }}/{{ $.Values.images.jmxExporter.repository }}:{{ $.Values.images.jmxExporter.tag }}
+        init-kubectl: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.kubectl.repository }}:{{ $.Values.images.kubectl.tag }}
+        memberLeave: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        memberJoin: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+    - name: namenode-{{ .version }}
+      serviceVersion: {{ .version }}
+      images:
+        hdfs-namenode: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        hadoop-common: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        roleProbe: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        init-jmx-exporter: {{ $.Values.images.registry }}/{{ $.Values.images.jmxExporter.repository }}:{{ $.Values.images.jmxExporter.tag }}
+    - name: journalnode-{{ .version }}
+      serviceVersion: {{ .version }}
+      images:
+        hdfs-journalnode: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        hadoop-common: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        init-jmx-exporter: {{ $.Values.images.registry }}/{{ $.Values.images.jmxExporter.repository }}:{{ $.Values.images.jmxExporter.tag }}
+    - name: nodemanager-{{ .version }}
+      serviceVersion: {{ .version }}
+      images:
+        yarn-nodemanager: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        hadoop-common: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        init-jmx-exporter: {{ $.Values.images.registry }}/{{ $.Values.images.jmxExporter.repository }}:{{ $.Values.images.jmxExporter.tag }}
+    - name: resourcemanager-{{ .version }}
+      serviceVersion: {{ .version }}
+      images:
+        yarn-resourcemanager: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        hadoop-common: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        roleProbe: {{ $.Values.images.registry }}/{{ $.Values.images.hadoop.repository }}:{{ .version }}
+        init-jmx-exporter: {{ $.Values.images.registry }}/{{ $.Values.images.jmxExporter.repository }}:{{ $.Values.images.jmxExporter.tag }}
+    {{- end }}

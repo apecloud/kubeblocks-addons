@@ -18,3 +18,15 @@ metadata:
 data:
   my.cnf: |-
     {{- .Files.Get "config/mysql8.0-config.tpl" | nindent 4 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-8.0-mgr-config-template
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+data:
+  my.cnf: |-
+    {{- .Files.Get "config/mysql8.0-config.tpl" | nindent 4 }}
+    {{- .Files.Get "config/mysql-group-replication.tpl" | nindent 4 }}

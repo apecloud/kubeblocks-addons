@@ -9,15 +9,26 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - 24.8.3
+      {{- range .Values.clickhouseVersions }}
+      - {{ .version }}
+      {{- end }}
       compDefs:
-        - {{ include "clickhouse24.cmpdRegexpPattern" . }}
+        - {{ include "clickhouse.cmpdRegexpPattern" . }}
     - releases:
-        - 24.8.3
+      {{- range .Values.clickhouseVersions }}
+        - {{ .version }}
+      {{- end }}
       compDefs:
-        - {{ include "clickhouse-keeper24.cmpdRegexpPattern" . }}
+        - {{ include "clickhouse-keeper.cmpdRegexpPattern" . }}
   releases:
-    - name: 24.8.3
-      serviceVersion: 24.8.3
+  {{- range .Values.clickhouseVersions }}
+    - name: {{ .version }}
+      serviceVersion: {{ .version }}
       images:
-        clickhouse: {{ include "clickhouse.repository" . }}:24.8.3-debian-12-r1
+        copy-tools: {{ include "busybox.image" $ }}
+        clickhouse: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
+        role-probe: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
+        switchover: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
+        memberJoin: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
+        memberLeave: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
+  {{- end }}

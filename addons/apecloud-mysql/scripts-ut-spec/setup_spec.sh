@@ -13,12 +13,12 @@ Describe "ApeCloud MySQL Startup Script Tests"
 
   init() {
     START_SUCCESS_FILE=./success
-    MY_POD_NAME="cluster-mongodb-0"
-    MY_POD_LIST=wesql1-mysql-0,wesql1-mysql-1,wesql1-mysql-2
-    MY_COMP_REPLICAS=3
-    MY_COMP_NAME=mysql
-    MY_CLUSTER_NAME=wesql1
-    MY_CLUSTER_UID=c3636ff1-bb54-47a4-ac4e-111ba9b41295
+    POD_NAME="cluster-mongodb-0"
+    COMPONENT_POD_LIST=wesql1-mysql-0,wesql1-mysql-1,wesql1-mysql-2
+    COMPONENT_REPLICAS=3
+    COMPONENT_NAME=mysql
+    CLUSTER_NAME=wesql1
+    CLUSTER_UID=c3636ff1-bb54-47a4-ac4e-111ba9b41295
     KB_SERVICE_CHARACTER_TYPE=wesql
     KB_MYSQL_VOLUME_DIR=.
   }
@@ -89,8 +89,8 @@ End
 Describe "get_service_name function"
   Include ../scripts/setup.sh
   setup() {
-    MY_COMP_NAME=mysql
-    MY_CLUSTER_NAME=wesql1
+    COMPONENT_NAME=mysql
+    CLUSTER_NAME=wesql1
   }
   Before "setup"
   It "returns the correct service name"
@@ -102,9 +102,9 @@ End
 Describe "get_cluster_members function"
   Include ../scripts/setup.sh
   setup() {
-    MY_POD_LIST="pod1,pod2,pod3"
-    MY_COMP_NAME=mysql
-    MY_CLUSTER_NAME=wesql1
+    COMPONENT_POD_LIST="pod1,pod2,pod3"
+    COMPONENT_NAME=mysql
+    CLUSTER_NAME=wesql1
     MYSQL_CONSENSUS_PORT=13306
   }
   Before "setup"
@@ -117,7 +117,7 @@ End
 Describe "get_pod_index function"
   Include ../scripts/setup.sh
   setup() {
-    MY_POD_LIST="pod1,pod2,pod3"
+    COMPONENT_POD_LIST="pod1,pod2,pod3"
   }
   Before "setup"
   It "returns the correct pod index"
@@ -129,12 +129,12 @@ End
 Describe "generate_cluster_info function"
   Include ../scripts/setup.sh
   setup() {
-    MY_POD_NAME="pod1"
-    MY_POD_LIST="pod1,pod2,pod3"
-    MY_COMP_NAME=mysql
-    MY_CLUSTER_NAME=wesql1
-    MY_COMP_REPLICAS=3
-    MY_CLUSTER_UID="test-uid"
+    POD_NAME="pod1"
+    COMPONENT_POD_LIST="pod1,pod2,pod3"
+    COMPONENT_NAME=mysql
+    CLUSTER_NAME=wesql1
+    COMPONENT_REPLICAS=3
+    CLUSTER_UID="test-uid"
   }
   Before "setup"
   It "sets the correct environment variables"

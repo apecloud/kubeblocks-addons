@@ -7,7 +7,9 @@
 ######### 0. Client only configurations #############
 
 # The interval for CLI to send heartbeat to mnode
-# shellActivityTimer        3
+shellActivityTimer   3
+
+numOfRpcSessions 30000
 
 
 ############### 1. Cluster End point ############################
@@ -31,10 +33,10 @@
 # maxShellConns             5000
 
 # The directory for writing log files, if you are using Windows platform please change to Windows path
-# logDir                    /var/log/taos
+logDir                    /var/log/taos
 
 # All data files are stored in this directory, if you are using Windows platform please change to Windows path
-# dataDir                   /var/lib/taos
+dataDir                   /var/lib/taos
 
 # temporary file's directory, if you are using Windows platform please change to Windows path
 # tempDir                   /tmp/
@@ -66,7 +68,7 @@
 #  -1 (no compression)
 #   0 (all message compressed),
 # > 0 (rpc message body which larger than this value will be compressed)
-# compressMsgSize           -1
+compressMsgSize           -1
 
 # query retrieved column data compression option:
 #  -1 (no compression)
@@ -183,3 +185,5 @@ monitorFqdn               localhost
 
 # generate core file when service crash
 # enableCoreFile            1
+
+forceReadConfig    1

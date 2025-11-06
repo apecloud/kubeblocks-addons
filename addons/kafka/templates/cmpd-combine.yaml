@@ -4,14 +4,8 @@ metadata:
   name: {{ include "kafka-combine.componentDefName" . }}
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
   annotations:
     {{- include "kafka.annotations" . | nindent 4 }}
-    {{- if .Values.commonAnnotations }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-    {{- end }}
 spec:
   provider: kubeblocks
   description: |-
@@ -30,17 +24,14 @@ spec:
           - name: broker
             port: 9092
             targetPort: kafka-client
+  {{- include "kafka.tls.cmpdConfig" . | nindent 2 }}
   vars:
     - name: CLUSTER_UID
       valueFrom:
         clusterVarRef:
           clusterUID: Required
     - name: SUPER_USER
-      valueFrom:
-        credentialVarRef:
-          name: admin
-          username: Required
-          optional: false
+      value: admin
     - name: POD_FQDN_LIST
       valueFrom:
         componentVarRef:
@@ -56,6 +47,11 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
     ## Todo: currently only nodeport and clusterIp network modes are supported. LoadBalance is not supported yet and needs future support.
     - name: BROKER_ADVERTISED_PORT
       valueFrom:
@@ -66,49 +62,45 @@ spec:
           port:
             name: broker
             option: Optional
-  systemAccounts:
-    - name: client
-      secretRef:
-        name: {{ include "kafka.defaultClientSystemAccountSecretName" . }}
-        namespace: {{ .Release.Namespace }}
-    - name: admin
-      secretRef:
-        name: {{ include "kafka.defaultSuperUserSystemAccountSecretName" . }}
-        namespace: {{ .Release.Namespace }}
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
   configs:
     - name: kafka-configuration-tpl
-      constraintRef: {{ include "kafka.configConstraintName" . }}
-      templateRef: {{ include "kafka.configurationTplName" . }}
+      template: {{ include "kafka.configurationTplName" . }}
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
+      externalManaged: true
     - name: kafka-jmx-configuration-tpl
-      templateRef: {{ include "kafka.jmxConfigurationTplName" . }}
+      template: {{ include "kafka.jmxConfigurationTplName" . }}
       volumeName: jmx-config
       namespace: {{ .Release.Namespace }}
   scripts:
     - name: kafka-scripts-tpl
-      templateRef: {{ include "kafka.serverScriptsTplName" . }}
+      template: {{ include "kafka.serverScriptsTplName" . }}
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
     - name: kafka-tools-scripts-tpl
-      templateRef: {{ include "kafka.toolsScriptsTplName" . }}
+      template: {{ include "kafka.toolsScriptsTplName" . }}
       volumeName: tools
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
   runtime:
+    {{- if .Values.securityContext }}
     securityContext:
-      fsGroup: 1001
+      {{- toYaml .Values.securityContext | nindent 6 }}
+    {{- end }}
     containers:
       - name: kafka
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        {{- if .Values.container.securityContext }}
         securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          runAsUser: 1001
+          {{- toYaml .Values.container.securityContext | nindent 10 }}
+        {{- end }}
         command:
           - /scripts/kafka-server-setup.sh
         env:
@@ -168,6 +160,9 @@ spec:
           # value: "false"
           - name: KB_KAFKA_SASL_CONFIG_PATH  # specify the SASL jaas users
             value: /tools/server-jaas.properties
+          {{- with .Values.extraEnvs.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
         ports:
           - name: kafka-client
             containerPort: 9092
@@ -211,12 +206,15 @@ spec:
           - name: tools
             mountPath: /tools/server-jaas.properties
             subPath: server-jaas.properties
+          {{- with .Values.extraVolumeMounts.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
       - name: jmx-exporter
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        {{- if .Values.exporter.securityContext }}
         securityContext:
-          runAsNonRoot: true
-          runAsUser: 1001
+          {{- toYaml .Values.exporter.securityContext | nindent 10 }}
+        {{- end }}
         command:
           - java
         args:
@@ -224,14 +222,17 @@ spec:
           - -XshowSettings:vm
           - -jar
           - jmx_prometheus_httpserver.jar
-          - "5556"
+          - {{ .Values.jmxExporter.port | quote }}
           - /etc/jmx-kafka/jmx-kafka-prometheus.yml
         ports:
           - name: metrics
-            containerPort: 5556
+            containerPort: {{ .Values.jmxExporter.port }}
         env:
           - name: SERVICE_PORT
-            value: "5556"
+            value: {{ .Values.jmxExporter.port | quote }}
+          {{- with .Values.extraEnvs.jmxExporter }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
         volumeMounts:
           - name: jmx-config
             mountPath: /etc/jmx-kafka

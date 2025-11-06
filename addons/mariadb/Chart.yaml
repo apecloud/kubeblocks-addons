@@ -5,7 +5,7 @@ description: MariaDB is a high performance open source relational database manag
 type: application
 
 # This is the version number of the helm chart.
-version: 1.0.0-alpha.0
+version: 1.1.0-alpha.0
 
 # This is the version number of the MARIADB being deployed,
 appVersion: "10.6.15"
@@ -22,6 +22,12 @@ sources:
 - https://github.com/apecloud/kubeblocks/
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
   addon.kubeblocks.io/model: "RDBMS"
   addon.kubeblocks.io/provider: "community"
+
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra

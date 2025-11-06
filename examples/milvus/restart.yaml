@@ -1,8 +1,8 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: milvus-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: milvus-cluster
@@ -18,4 +18,4 @@ spec:
     # - distributed: datanode
     # - distributed: indexnode
     # - distributed: querynode
-  - componentName: milvus
+  - componentName: mixcoord

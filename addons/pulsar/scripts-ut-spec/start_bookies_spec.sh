@@ -90,7 +90,7 @@ Describe "Pulsar Start Bookies Bash Script Tests"
       zkURL="zookeeper.example.com"
 
       When run handle_empty_directories
-      The stderr should include "Error: BOOKKEEPER_POD_FQDN_LIST or CURRENT_POD_NAME or zkServers is empty. Exiting."
+      The stderr should include "Error: BOOKKEEPER_POD_FQDN_LIST or CURRENT_POD_NAME or ZOOKEEPER_SERVERS is empty. Exiting."
       The stdout should include "journalRes and ledgerRes directory is empty, check whether the remote cookies is empty either"
       The status should be failure
     End
@@ -98,7 +98,7 @@ Describe "Pulsar Start Bookies Bash Script Tests"
     It "removes redundant bookieID if necessary"
       BOOKKEEPER_POD_FQDN_LIST="pod1,pod2"
       CURRENT_POD_NAME="pod1"
-      zkServers="pod1.svc.cluster.local"
+      ZOOKEEPER_SERVERS="pod1.svc.cluster.local"
 
       get_target_pod_fqdn_from_pod_fqdn_vars() {
         echo "pod1.example.com"

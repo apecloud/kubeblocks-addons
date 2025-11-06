@@ -2,9 +2,17 @@
 
 set -exo pipefail
 
-/pd-ctl -u "$PD_ADDRESS" store delete addr "$KB_LEAVE_MEMBER_POD_FQDN:20160"
+TIKV_ADDRESS="${KB_LEAVE_MEMBER_POD_FQDN}:20160"
+echo "$TIKV_ADDRESS"
+output=$(/pd-ctl -u "$PD_ADDRESS" store delete addr "$TIKV_ADDRESS")
+echo "$output"
+# ignore not found nodes to make the script idempotent
+if [[ $output != "Success!" && ! $output =~ not\ found ]]; then
+    echo "leave member $TIKV_ADDRESS failed"
+    exit 1
+fi
 
-until [ $(/pd-ctl -u "$PD_ADDRESS" store | jq "any(.stores[]; select(.store.address == \"$KB_LEAVE_MEMBER_POD_FQDN:20160\"))") == "false" ]
+until [[ $(/pd-ctl -u "$PD_ADDRESS" store | jq "any(.stores[]; select(.store.address == \"$TIKV_ADDRESS\"))") == "false" ]]
 do
     echo "waiting for tikv node to become tombstone"
     sleep 10

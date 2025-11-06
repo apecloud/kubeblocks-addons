@@ -1,3 +1,4 @@
+{{- $imageRegistry := .Values.images.registry | default "docker.io" -}}
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
@@ -8,37 +9,23 @@ metadata:
     {{- include "zookeeper.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
-    - releases:
-        - 3.4.14
-        - 3.6.4
-        - 3.7.2
-        - 3.8.4
-        - 3.9.2
-      compDefs:
-        - {{ include "zookeeper.cmpdRegexpPattern" . }}
+{{- range .Values.versions }}
+  - compDefs:
+    - {{ .componentDef }}
+    releases:
+{{- range .minors }}
+      - {{ index . 0 }}
+{{- end }}
+{{- end }}
   releases:
-    - name: 3.4.14
-      serviceVersion: 3.4.14
-      images:
-        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.4.14
-        roleprobe: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.4.14
-    - name: 3.6.4
-      serviceVersion: 3.6.4
-      images:
-        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.6.4
-        roleprobe: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.6.4
-    - name: 3.7.2
-      serviceVersion: 3.7.2
-      images:
-        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.7.2
-        roleprobe: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.7.2
-    - name: 3.8.4
-      serviceVersion: 3.8.4
-      images:
-        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.8.4
-        roleprobe: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.8.4
-    - name: 3.9.2
-      serviceVersion: 3.9.2
-      images:
-        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.9.2
-        roleprobe: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.9.2
+{{- range .Values.versions }}
+{{- range .minors }}
+{{- if not (index . 3) }}
+  - name: {{ index . 0 }}
+    serviceVersion: {{ index . 1 }}
+    images:
+      zookeeper: {{ $imageRegistry }}/{{ $.Values.images.repository }}:{{ index . 2 }}
+      roleprobe: {{ $imageRegistry }}/{{ $.Values.images.repository }}:{{ index . 2 }}
+{{- end }}
+{{- end }}
+{{- end }}

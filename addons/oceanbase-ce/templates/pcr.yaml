@@ -1,0 +1,23 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "oceanbase-ce.pcrName" . }}
+  labels:
+    {{- include "oceanbase-ce.labels" . | nindent 4 }}
+  annotations:
+    {{- include "oceanbase-ce.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "oceanbase-ce.compDefName" . }}
+  parametersDefs:
+    - {{ include "oceanbase-ce.pdParamName" . }}
+    - {{ include "oceanbase-ce.pdVarName" . }}
+
+  configs:
+    - name: oceanbase.sysvars
+      fileFormatConfig:
+        format: properties
+    - name: oceanbase.conf
+      fileFormatConfig:
+        format: properties
+      reRenderResourceTypes:
+        - vscale

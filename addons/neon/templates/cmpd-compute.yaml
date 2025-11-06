@@ -30,17 +30,18 @@ spec:
         letterCase: MixedCases
   scripts:
     - name: neon-scripts
-      templateRef: {{ include "neon.scriptsTemplateName" . }}
+      template: {{ include "neon.scriptsTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
   configs:
     - name: neon-config
-      templateRef: {{ include "neon.configTemplateName" . }}
+      template: {{ include "neon.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: neon-config
       defaultMode: 0444
-  vars: 
+      restartOnFileChange: true
+  vars:
     - name: NEON_COMPUTE_PGPORT
       valueFrom:
         serviceVarRef:
@@ -111,10 +112,9 @@ spec:
           - name: PGDATA
             value: /data
           - name: PGUSER
-            value: $(NEON_COMPUTE_PGUSER) 
+            value: $(NEON_COMPUTE_PGUSER)
           - name: PGPASSWORD
             value: $(NEON_COMPUTE_PGPASSWORD)
-        image: {{ include "neon-compute.image" . }}
         ports:
           - containerPort: 55432
             name: postgresql

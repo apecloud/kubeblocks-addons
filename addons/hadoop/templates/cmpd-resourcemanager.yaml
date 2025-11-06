@@ -1,0 +1,211 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "yarnResourceManagerComponentDef" . }}
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  serviceKind: yarn-resourcemanager
+  podManagementPolicy: Parallel
+  services:
+  - name: resourcemanager
+    serviceName: resourcemanager
+    spec:
+      ipFamilies:
+      - IPv4
+      ipFamilyPolicy: PreferDualStack
+      ports:
+      - name: http
+        port: 8088
+        targetPort: http
+  runtime:
+    initContainers:
+      - name: init-jmx-exporter
+        volumeMounts:
+          - name: resourcemanager
+            mountPath: /hadoop
+        {{- include "hadoop.initJmxExporterContainer" . | nindent 8 }}
+    containers:
+      - name: yarn-resourcemanager
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        command:
+          - /bin/bash
+          - -c
+          - |
+            /kubeblocks/scripts/start-resourcemanager.sh
+        env:
+          - name: DEBUG_MODEL
+            value: "false"
+        ports:
+          - containerPort: 8030
+            name: scheduler
+          - containerPort: 8088
+            name: http
+          - containerPort: 8031
+            name: tracker
+          - containerPort: 8032
+            name: address
+          - containerPort: 8033
+            name: admin
+          - containerPort: {{ .Values.jmxExporterPort }}
+            name: jmx-exporter
+        livenessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          httpGet:
+            path: /ws/v1/cluster
+            port: 8088
+        readinessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          httpGet:
+            path: /ws/v1/cluster
+            port: 8088
+        volumeMounts:
+          - name: hadoop-core-config
+            mountPath: /hadoop/conf/core-site.xml
+            subPath: core-site.xml
+          - name: hadoop-namenode-config
+            mountPath: /hadoop/conf/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - mountPath: /hadoop/conf/log4j.properties
+            name: resourcemanager-config
+            subPath: log4j.properties
+          - mountPath: /hadoop/conf/yarn-site.xml
+            name: resourcemanager-config
+            subPath: yarn-site.xml
+          - mountPath: /hadoop/conf/mapred-site.xml
+            name: mapred-site-config
+            subPath: mapred-site.xml
+          - mountPath: /hadoop/conf/capacity-scheduler.xml
+            name: capacity-scheduler-config
+            subPath: capacity-scheduler.xml
+          - name: resourcemanager
+            mountPath: /hadoop
+          - name: scripts
+            mountPath: /kubeblocks/scripts
+          - name: resourcemanager-config
+            mountPath: /hadoop/conf/jmx-exporter.yaml
+            subPath: jmx-exporter.yaml
+        securityContext:
+          runAsUser: 10000
+          runAsGroup: 1000
+          runAsNonRoot: true
+          privileged: false
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ "ALL" ]
+          seccompProfile:
+            type: "RuntimeDefault"
+    securityContext:
+      fsGroupChangePolicy: Always
+      fsGroup: 1000
+    updateStrategy: BestEffortParallel
+    volumes:
+      - name: hadoop-common
+        emptyDir: {}
+  configs:
+    - name: config
+      namespace: {{ .Release.Namespace }}
+      template: hadoop-resourcemanager-conf-tpl
+      volumeName: resourcemanager-config
+      defaultMode: 0755
+      # externalManaged: true
+      restartOnFileChange: true
+    - name: mapred-site-config
+      namespace: {{ .Release.Namespace }}
+      template: hadoop-mapred-site-template
+      volumeName: mapred-site-config
+      defaultMode: 0755
+      # externalManaged: true
+      restartOnFileChange: true
+    - name: capacity-scheduler-config
+      namespace: {{ .Release.Namespace }}
+      template: hadoop-capacity-scheduler-template
+      volumeName: capacity-scheduler-config
+      defaultMode: 0755
+      # externalManaged: true
+      restartOnFileChange: true
+  scripts:
+    - name: {{ include "hadoop.name" . }}-scripts
+      template: {{ include "hadoop.name" . }}-scripts
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755
+  vars:
+    - name: ENABLE_JMX_EXPORTER
+      value: {{ .Values.enableJmxExporter | quote }}
+    - name: JMX_EXPORTER_PORT
+      value: "{{ .Values.jmxExporterPort }}"
+    - name: HOME
+      value: /home/hadoop
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain | default "cluster.local" }}
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: SERVICE_VERSION
+      valueFrom:
+        componentVarRef:
+          serviceVersion: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: ZOOKEEPER_COMP_ENDPOINTS
+      valueFrom:
+        componentVarRef:
+          compDef: zookeeper
+          optional: true
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .ZOOKEEPER_COMP_ENDPOINTS }}{{ range $idx, $host := $hosts }}{{ $host }}:2181{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
+    - name: ZOOKEEPER_ENDPOINTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hadoopZookeeper
+          optional: true
+          endpoint: Required
+      expression: {{ `{{if ne (index . "ZOOKEEPER_ENDPOINTS") ""}}{{.ZOOKEEPER_ENDPOINTS}}{{else}}{{.ZOOKEEPER_COMP_ENDPOINTS}}{{end}}` | toYaml }}
+  roles:
+    - name: active
+      updatePriority: 2
+      participatesInQuorum: false
+    - name: standby
+      updatePriority: 1
+      participatesInQuorum: false
+  lifecycleActions:
+    roleProbe:
+      exec:
+        container: yarn-resourcemanager
+        command:
+          - bash
+          - -c
+          - |
+            /kubeblocks/scripts/role-check.sh 8088

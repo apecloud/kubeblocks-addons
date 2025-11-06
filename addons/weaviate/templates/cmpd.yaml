@@ -21,21 +21,23 @@ spec:
           - name: weaviate
             port: 8080
             targetPort: tcp-weaviate
-  updateStrategy: Serial
+  updateStrategy: Parallel
+  podManagementPolicy: Parallel
   volumes:
     - name: data
       needSnapshot: true
   configs:
     - name: weaviate-config-template
-      templateRef: {{ include "weaviate.configTplName" . }}
+      template: {{ include "weaviate.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: weaviate-config
+      restartOnFileChange: true
     - name: weaviate-env-template
-      templateRef: {{ include "weaviate.envConfigTplName" . }}
+      template: {{ include "weaviate.envConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
-      constraintRef: {{ include "weaviate.envConfigConstraintTplName" . }}
       volumeName: weaviate-env
       defaultMode: 0444
+      restartOnFileChange: true
   vars:
     - name: WEAVIATE_COMPONENT_NAME
       valueFrom:
@@ -58,7 +60,6 @@ spec:
     enableServiceLinks: true
     containers:
     - name: weaviate
-      image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag | default "latest" }}
       imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
       command:
       - /bin/sh

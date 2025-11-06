@@ -23,26 +23,24 @@ spec:
             name: metrics
   configs:
     {{- include "risingwave.conftpl.default" . | indent  4 }}
-    - name: risingwave-connector-envs
-      templateRef: {{ include "risingwave-connector.envConfigTplName" . }}
-      namespace: {{ .Release.Namespace }}
-      volumeName: risingwave-connector-envs
-      asEnvFrom:
-        - connector
   runtime:
     containers:
       - name: connector
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         {{- include "risingwave.securityContext" . | indent  8 }}
-        command:
-          - /risingwave/bin/connector-node/start-service.sh
+        command: ["/bin/sh", "-c"]
         args:
-          - -p
-          - "50051"
+          - |
+            export JAVA_OPTS="-Xmx${RW_TOTAL_MEMORY_BYTES} -Xms${RW_TOTAL_MEMORY_BYTES}";
+            exec /risingwave/bin/connector-node/start-service.sh -p "50051"
         env:
           - name: RW_CONNECTOR_NODE_PROMETHEUS_PORT
             value: "50052"
+          - name: RW_TOTAL_MEMORY_BYTES
+            valueFrom:
+              resourceFieldRef:
+                containerName: connector
+                resource: limits.memory
         ports:
           - containerPort: 50051
             name: svc

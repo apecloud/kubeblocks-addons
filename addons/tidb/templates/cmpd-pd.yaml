@@ -1,0 +1,112 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "tidb.pd7.compDefName" . }}
+  annotations:
+    {{- include "tidb.annotations" . | nindent 4}}
+  labels:
+    {{- include "tidb.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: tidb's metadata server
+  updateStrategy: BestEffortParallel
+  vars:
+    - name: PD_LEADER_POD_NAME
+      valueFrom:
+        componentVarRef:
+          optional: true
+          podNamesForRole:
+            role: leader
+            option: Optional
+    - name: PD_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+  runtime:
+    containers:
+      - name: pd
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: SERVICE_PORT
+            value: "2379"
+        ports:
+          - containerPort: 2379
+            name: client
+          - containerPort: 2380
+            name: peer
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/pd
+          - name: scripts
+            mountPath: /scripts
+          - name: config
+            mountPath: /etc/pd
+        command: [ "/scripts/pd_start.sh" ]
+  volumes:
+    - name: data
+      needSnapshot: true
+  scripts:
+    - name: tidb-scripts
+      template: {{ include "tidb.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  configs:
+    - name: pd-configuration
+      template: {{ include "tidb.pd.configTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: config
+      externalManaged: true
+  roles:
+    - name: leader
+      updatePriority: 2
+      participatesInQuorum: true
+    - name: follower
+      updatePriority: 1
+      participatesInQuorum: true
+  lifecycleActions:
+    roleProbe:
+      exec:
+        command:
+          - bash
+          - -c
+          - |
+            LEADER_NAME=$(/pd-ctl member | jq -r '.leader.name')
+            if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
+                echo -n "leader"
+            else
+                echo -n "follower"
+            fi
+    memberLeave:
+      exec:
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/pd_memberleave.sh" | nindent 14 }}
+    switchover:
+      exec:
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/pd_switchover.sh" | nindent 14 }}
+  exporter:
+    containerName: pd
+    scrapePort: "2379"
+  services:
+    - name: pd
+      spec:
+        ports:
+          - name: client
+            port: 2379
+            targetPort: client
+          - name: peer
+            port: 2380
+            targetPort: peer

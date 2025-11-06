@@ -1,113 +1,160 @@
 #!/bin/bash
+set -exo pipefail
 
-default_template_conf="/etc/etcd/etcd.conf"
-real_conf="$TMP_CONFIG_PATH"
+default_template_conf="$CONFIG_TEMPLATE_PATH"
+default_conf="$CONFIG_FILE_PATH"
 
-load_common_library() {
-  # the kb-common.sh and common.sh scripts are defined in the scripts-template configmap
-  # and are mounted to the same path which defined in the cmpd.spec.scripts
-  kblib_common_library_file="/scripts/kb-common.sh"
-  etcd_common_library_file="/scripts/common.sh"
-  # shellcheck source=/scripts/kb-common.sh
-  . "${kblib_common_library_file}"
-  # shellcheck source=/scripts/common.sh
-  . "${etcd_common_library_file}"
+# shellcheck disable=SC1091
+. "/scripts/common.sh"
+
+parse_config_value() {
+  local key="$1"
+  local config_file="$2"
+  grep "^$key:" "$config_file" | cut -d: -f2- | xargs
 }
 
-log() {
-  echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
-}
+setup_protocols_and_cluster() {
+  peer_protocol="http"
+  client_protocol="http"
 
-get_my_endpoint() {
-  # shellcheck disable=SC2153
-  if is_empty "$CURRENT_POD_NAME" || is_empty "$PEER_FQDNS"; then
-    echo "Error: PEER_FQDNS or CURRENT_POD_NAME is empty. Exiting." >&2
-    return 1
-  fi
+  [ "$TLS_ENABLED" = "true" ] && [ "$PEER_TLS" = "true" ] && peer_protocol="https"
+  [ "$TLS_ENABLED" = "true" ] && [ "$CLIENT_TLS" = "true" ] && client_protocol="https"
 
-  peer_endpoints="$1"
-  current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$PEER_FQDNS" "$CURRENT_POD_NAME")
-  if is_empty "$current_pod_fqdn"; then
-    echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from peer fqdn list: $PEER_FQDNS. Exiting." >&2
-    return 1
-  fi
+  log "Set protocols: peer=$peer_protocol, client=$client_protocol"
 
-  my_peer_endpoint="$current_pod_fqdn"
-  if ! is_empty "$peer_endpoints"; then
-    log "LoadBalancer mode detected. Adapting pod FQDN to balance IP." >&2
-    endpoints=$(echo "$peer_endpoints" | tr ',' '\n')
-    my_endpoint=$(echo "$endpoints" | grep "$CURRENT_POD_NAME")
+  # Get my endpoint
+  my_peer_endpoint=$(get_target_pod_fqdn_from_pod_fqdn_vars "$PEER_FQDNS" "$CURRENT_POD_NAME")
+  [ -z "$my_peer_endpoint" ] && error_exit "Failed to get current pod: $CURRENT_POD_NAME fqdn from peer fqdn list: $PEER_FQDNS"
+  my_peer_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$CURRENT_POD_NAME" "$my_peer_endpoint")
 
-    if is_empty "$my_endpoint"; then
-      log "Failed to get my peer endpoint from PEER_FQDNS:$PEER_FQDNS when loadBalancer mode is enabled, use default pod FQDN to advertise." >&2
+  # Generate cluster configuration
+  cluster_config=""
+  if [ -n "$PEER_ENDPOINT" ]; then
+    log "Using PEER_ENDPOINT for cluster configuration"
+    IFS=',' read -ra endpoints <<<"$PEER_ENDPOINT"
+    if [ "${#endpoints[@]}" -ne "$COMPONENT_REPLICAS" ]; then
+      log "PEER_ENDPOINT cannot parse enough endpoints, fallback to use PEER_FQDNS"
     else
-      # e.g.1 etcd-cluster-etcd-0
-      # e.g.2 etcd-cluster-etcd-0:127.0.0.1
-      if echo "$my_endpoint" | grep -q ":"; then
-        my_peer_endpoint=$(echo "$my_endpoint" | cut -d: -f2)
-      else
-        my_peer_endpoint=$my_endpoint
-      fi
+      for endpoint in "${endpoints[@]}"; do
+        local hostname target_endpoint
+        if [[ "$endpoint" == *":"* ]]; then
+          hostname="${endpoint%:*}"
+          target_endpoint="${endpoint#*:}"
+        else
+          hostname="$endpoint"
+          target_endpoint="$endpoint"
+        fi
+        target_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$hostname" "$target_endpoint")
+        cluster_config="${cluster_config:+$cluster_config,}$hostname=$peer_protocol://$target_endpoint:2380"
+      done
+      return
     fi
   fi
 
-  echo "$my_peer_endpoint"
-  return 0
+  if [ -n "$PEER_FQDNS" ]; then
+    log "Using PEER_FQDNS for cluster configuration"
+    IFS=',' read -ra fqdns <<<"$PEER_FQDNS"
+    for fqdn in "${fqdns[@]}"; do
+      local hostname="${fqdn%%.*}"
+      cluster_config="${cluster_config:+$cluster_config,}$hostname=$peer_protocol://$fqdn:2380"
+    done
+    return
+  fi
+
+  error_exit "Neither PEER_ENDPOINT nor PEER_FQDNS is available"
 }
 
 update_etcd_conf() {
-  default_template_conf="$1"
-  tpl_conf="$2"
-  current_pod_name="$3"
-  my_endpoint="$4"
+  # retain initial-cluster-state, which may be set by data-load.sh
+  [ -f "$default_conf" ] && initial_cluster_state=$(parse_config_value "initial-cluster-state" "$default_conf")
+  cp "$default_template_conf" "$default_conf"
+  [ -n "$initial_cluster_state" ] && sed -i.bak "s|^initial-cluster-state:.*|initial-cluster-state: $initial_cluster_state|g" "$default_conf"
 
-  cp "$default_template_conf" "$tpl_conf"
+  setup_protocols_and_cluster
 
-  sed -i.bak "s/^name:.*/name: $current_pod_name/g" "$tpl_conf"
-  sed -i.bak "s#\(initial-advertise-peer-urls: http\(s\{0,1\}\)://\).*#\1$my_endpoint:2380#g" "$tpl_conf"
-  sed -i.bak "s#\(advertise-client-urls: http\(s\{0,1\}\)://\).*#\1$my_endpoint:2379#g" "$tpl_conf"
-  rm "$tpl_conf.bak"
+  local client_auth="false"
+  local peer_auth="false"
+  [ "$client_protocol" = "https" ] && client_auth="true"
+  [ "$peer_protocol" = "https" ] && peer_auth="true"
+
+  {
+    sed -i.bak "s|^name:.*|name: $CURRENT_POD_NAME|g" "$default_conf"
+    sed -i.bak "s|^initial-cluster-token:.*|initial-cluster-token: $CLUSTER_NAME|g" "$default_conf"
+    sed -i.bak "s|^listen-peer-urls:.*|listen-peer-urls: $peer_protocol://0.0.0.0:2380|g" "$default_conf"
+    sed -i.bak "s|^listen-client-urls:.*|listen-client-urls: $client_protocol://0.0.0.0:2379|g" "$default_conf"
+    sed -i.bak "s|^initial-advertise-peer-urls:.*|initial-advertise-peer-urls: $peer_protocol://$my_peer_endpoint:2380|g" "$default_conf"
+    sed -i.bak "s|^advertise-client-urls:.*|advertise-client-urls: $client_protocol://$my_peer_endpoint:2379|g" "$default_conf"
+    sed -i.bak "s|^initial-cluster:.*|initial-cluster: $cluster_config|g" "$default_conf"
+  }
+
+  if [ "$TLS_ENABLED" = "true" ]; then
+    if [ "$client_protocol" = "https" ]; then
+      sed -i.bak "/^client-transport-security:$/a\\
+  cert-file: $TLS_MOUNT_PATH/cert.pem\\
+  key-file: $TLS_MOUNT_PATH/key.pem\\
+  client-cert-auth: $client_auth\\
+  trusted-ca-file: $TLS_MOUNT_PATH/ca.pem\\
+  auto-tls: false" "$default_conf"
+    fi
+    if [ "$peer_protocol" = "https" ]; then
+      sed -i.bak "/^peer-transport-security:$/a\\
+  cert-file: $TLS_MOUNT_PATH/cert.pem\\
+  key-file: $TLS_MOUNT_PATH/key.pem\\
+  client-cert-auth: $peer_auth\\
+  trusted-ca-file: $TLS_MOUNT_PATH/ca.pem\\
+  auto-tls: false\\
+  allowed-cn:\\
+  allowed-hostname:" "$default_conf"
+    fi
+  else
+    sed -i.bak '/^client-transport-security:/d' "$default_conf"
+    sed -i.bak '/^peer-transport-security:/d' "$default_conf"
+  fi
+
+  rm -f "$default_conf.bak"
 }
 
-rebuild_etcd_conf() {
-  # According to https://etcd.io/docs/v3.5/op-guide/configuration/
-  # etcd ignores command-line flags and environment variables if a configuration file is provided.
-  # need to copy the configuration file and modify it
-  log "start to rebuild etcd configuration..."
-  my_endpoint=$(get_my_endpoint "$PEER_ENDPOINT")
-  status=$?
-  if [ "$status" -ne 0 ]; then
-      log "Failed to get my endpoint. Exiting." >&2
-      return 1
+restore() {
+  if [ -d "$DATA_DIR" ]; then
+    if [ -n "$(find "$DATA_DIR" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+      log "Existing data directory $DATA_DIR detected, skipping snapshot restore when restart etcd"
+      return 0
+    fi
   fi
-  update_etcd_conf "$default_template_conf" "$real_conf" "$CURRENT_POD_NAME" "$my_endpoint"
 
-  log "Updated etcd.conf:"
-  cat "$real_conf"
-  log "---"
-  return 0
+  files=("$BACKUP_DIR"/*)
+  [ ${#files[@]} -eq 0 ] || [ ! -e "${files[0]}" ] && error_exit "No backup file found in $BACKUP_DIR or directory is empty."
+
+  backup_file="${files[0]}"
+  check_backup_file "$backup_file"
+
+  name=$(parse_config_value "name" "$default_conf")
+  advertise_urls=$(parse_config_value "initial-advertise-peer-urls" "$default_conf")
+  cluster=$(parse_config_value "initial-cluster" "$default_conf")
+  cluster_token=$(parse_config_value "initial-cluster-token" "$default_conf")
+  etcdutl snapshot restore "$backup_file" \
+    --data-dir="$DATA_DIR" \
+    --name="$name" \
+    --initial-advertise-peer-urls="$advertise_urls" \
+    --initial-cluster="$cluster" \
+    --initial-cluster-token="$cluster_token"
+  rm -rf "$BACKUP_DIR"
 }
 
 main() {
-  # rebuild etcd configuration
-  if rebuild_etcd_conf; then
-    log "Rebuilt etcd configuration successfully."
-  else
-    log "Failed to rebuild etcd configuration." >&2
-    exit 1
-  fi
+  update_etcd_conf
 
-  # start etcd
+  log "Updated etcd.conf:"
+  cat "$default_conf"
+
+  [ -d "$BACKUP_DIR" ] && restore
+
   log "Starting etcd with updated configuration..."
-  exec etcd --config-file "$real_conf"
+  exec etcd --config-file "$default_conf"
 }
 
-# This is magic for shellspec ut framework.
-# Sometime, functions are defined in a single shell script.
-# You will want to test it. but you do not want to run the script.
-# When included from shellspec, __SOURCED__ variable defined and script
-# end here. The script path is assigned to the __SOURCED__ variable.
-${__SOURCED__:+false} : || return 0
+# Shellspec magic
+setup_shellspec
 
 # main
 load_common_library

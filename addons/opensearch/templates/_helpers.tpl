@@ -51,17 +51,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
-*/}}
-{{- define "opensearch.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "opensearch.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{/*
 Define image
 */}}
 {{- define "opensearch.repository" -}}
@@ -100,7 +89,7 @@ Define image
 Common annotations
 */}}
 {{- define "opensearch.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "opensearch.apiVersion" . }}
 {{- end }}
 
@@ -122,14 +111,14 @@ opensearch-dashboard-{{ .Chart.Version }}
 Define opensearch component definition name
 */}}
 {{- define "opensearch.cmpdName" -}}
-opensearch-{{ .Chart.Version }}
+opensearch-core-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define opensearch component definition regular expression name prefix
 */}}
 {{- define "opensearch.cmpdRegexpPattern" -}}
-^opensearch-
+^opensearch-core-\d+\.\d+\.\d+([-a-zA-Z0-9\.]*)?$
 {{- end -}}
 
 {{/*

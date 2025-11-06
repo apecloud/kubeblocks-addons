@@ -1,51 +1,25 @@
-{{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
-
-{{- $mysql_component := fromJson "{}" }}
-{{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if index $e "componentDef" }}
-    {{- if hasPrefix "mysql" $e.componentDef  }}
-      {{- $mysql_component = $e }}
-    {{- end }}
-  {{- end }}
-{{- end }}
-{{- $mysql_replicas := $mysql_component.replicas | int }}
-
-{{- $proxysql_component := fromJson "{}" }}
-{{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if index $e "componentDef" }}
-    {{- if hasPrefix "proxy" $e.componentDef  }}
-      {{- $proxysql_component = $e }}
-    {{- end }}
-  {{- end }}
-{{- end }}
-{{- $proxy_replicas := $proxysql_component.replicas | int }}
-
-
 datadir="/var/lib/proxysql"
 admin_variables=
 {
 	refresh_interval="2000"
 	cluster_proxysql_servers_save_to_disk="true"
 	cluster_mysql_servers_diffs_before_sync="3"
-	cluster_password="nb2wZpZ9OXXTF2Mv"
 	mysql_ifaces="0.0.0.0:6032"
 	cluster_check_status_frequency="100"
 	cluster_mysql_users_diffs_before_sync="3"
 	cluster_proxysql_servers_diffs_before_sync="3"
-	admin_credentials="admin:admin;cluster:nb2wZpZ9OXXTF2Mv"
-	admin-hash_passwords="true"
+	admin_credentials="admin:${PROXYSQL_ADMIN_PASSWORD};cluster:${PROXYSQL_CLUSTER_PASSWORD}"
+	hash_passwords="false"
 	cluster_check_interval_ms="200"
 	cluster_mysql_servers_save_to_disk="true"
 	cluster_mysql_users_save_to_disk="true"
 	cluster_mysql_query_rules_diffs_before_sync="3"
 	cluster_mysql_query_rules_save_to_disk="true"
-	cluster_username="cluster"
 }
 mysql_variables=
 {
 	threads="4"
-	monitor_password="proxysql"
+	monitor_password="${PROXYSQL_MONITOR_PASSWORD}"
 	poll_timeout="2000"
 	ssl_p2s_cert="/var/lib/certs/tls.crt"
 	server_version="8.0.27"
@@ -109,30 +83,27 @@ mysql_query_rules=
 )
 
 proxysql_servers=
+{{- $hosts := splitList "," .PROXYSQL_FQDNS -}}
 (
-{{- range $i, $e := until $proxy_replicas }}
-  {{- $service_host := printf "%s-%s-proxy-ordinal-%d.%s" $clusterName $proxysql_component.name $i $namespace }}
-  {{- if eq $i (sub $proxy_replicas 1) }}
-    { hostname = "{{$service_host}}", port = 6032, weight = 1 }
-  {{- else }}
-    { hostname = "{{$service_host}}", port = 6032, weight = 1 },
+  {{- range $index, $host := $hosts }}
+  {
+    hostname: "{{ $host }}",
+    port: 6032,
+    weight: 1
+  }{{ if not (eq $index (sub (len $hosts) 1)) }},{{ end }}
   {{- end }}
-{{- end }}
 )
 
 mysql_servers=
+{{- $hosts := splitList "," .MYSQL_FQDNS -}}
 (
-{{- range $i, $e := until $mysql_replicas }}
-  {{- $mysql_service_host := printf "%s-%s-mysql-%d.%s" $clusterName $mysql_component.name $i $namespace }}
-
-  {{- $hostgroup_id := 3 }}
-  {{- if eq $i 0 }}
-    {{- $hostgroup_id = 2 }}
+  {{- range $index, $host := $hosts }}
+  {
+    hostgroup_id: 1,
+    hostname: "{{ $host }}",
+    port: {{ $.MYSQL_PORT }},
+    weight: 1,
+    use_ssl: 0
+  }{{ if not (eq $index (sub (len $hosts) 1)) }},{{ end }}
   {{- end }}
-  {{- if eq $i (sub $mysql_replicas 1) }}
-    { hostgroup_id = {{$hostgroup_id}} , hostname = "{{$mysql_service_host}}", port = 3306, weight = 1, use_ssl = 0 }
-  {{- else }}
-    { hostgroup_id = {{$hostgroup_id}} , hostname = "{{$mysql_service_host}}", port = 3306, weight = 1, use_ssl = 0 },
-  {{- end }}
-{{- end }}
 )

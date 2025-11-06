@@ -2,7 +2,7 @@
 #PGParameter: {
 	// Allows tablespaces directly inside pg_tblspc, for testing, pg version: 15
 	allow_in_place_tablespaces?: bool
-	// Allows modification of the structure of system tables as well as certain other risky actions on system tables. This is otherwise not allowed even for superusers. Ill-advised use of this setting can cause irretrievable data loss or seriously corrupt the database system. 
+	// Allows modification of the structure of system tables as well as certain other risky actions on system tables. This is otherwise not allowed even for superusers. Ill-advised use of this setting can cause irretrievable data loss or seriously corrupt the database system.
 	allow_system_table_mods?: bool
 	// Sets the application name to be reported in statistics and logs.
 	application_name?: string
@@ -137,13 +137,13 @@
 	constraint_exclusion?: string & "partition" | "on" | "off"
 
 	// Sets the planners estimate of the cost of processing each index entry during an index scan.
-	cpu_index_tuple_cost?: float & >=0 & <=1.79769e+308
+	cpu_index_tuple_cost?: float & >=0
 
 	// Sets the planners estimate of the cost of processing each operator or function call.
-	cpu_operator_cost?: float & >=0 & <=1.79769e+308
+	cpu_operator_cost?: float & >=0
 
 	// Sets the planners estimate of the cost of processing each tuple (row).
-	cpu_tuple_cost?: float & >=0 & <=1.79769e+308
+	cpu_tuple_cost?: float & >=0
 
 	// Sets the database to store pg_cron metadata tables
 	"cron.database_name"?: string
@@ -319,7 +319,7 @@
 	// Use of huge pages on Linux.
 	huge_pages?: string & "on" | "off" | "try"
 
-	// The size of huge page that should be requested. Controls the size of huge pages, when they are enabled with huge_pages. The default is zero (0). When set to 0, the default huge page size on the system will be used. This parameter can only be set at server start. 
+	// The size of huge page that should be requested. Controls the size of huge pages, when they are enabled with huge_pages. The default is zero (0). When set to 0, the default huge page size on the system will be used. This parameter can only be set at server start.
 	huge_page_size?: int & >=0 & <=2147483647 @storeResource(1KB)
 
 	// Sets the servers ident configuration file.
@@ -338,13 +338,13 @@
 	jit: bool
 
 	// Perform JIT compilation if query is more expensive.
-	jit_above_cost?: float & >=-1 & <=1.79769e+308
+	jit_above_cost?: float & >=-1
 
 	// Perform JIT inlining if query is more expensive.
-	jit_inline_above_cost?: float & >=-1 & <=1.79769e+308
+	jit_inline_above_cost?: float & >=-1
 
 	// Optimize JITed functions if query is more expensive.
-	jit_optimize_above_cost?: float & >=-1 & <=1.79769e+308
+	jit_optimize_above_cost?: float & >=-1
 
 	// Sets the FROM-list size beyond which JOIN constructs are not flattened.
 	join_collapse_limit?: int & >=1 & <=2147483647
@@ -436,7 +436,7 @@
 	// (kB) Automatic log file rotation will occur after N kilobytes.
 	log_rotation_size?: int & >=0 & <=2097151 @storeResource(1KB)
 
-	// Time between progress updates for long-running startup operations. Sets the amount of time after which the startup process will log a message about a long-running operation that is still in progress, as well as the interval between further progress messages for that operation. The default is 10 seconds. A setting of 0 disables the feature. If this value is specified without units, it is taken as milliseconds. This setting is applied separately to each operation. This parameter can only be set in the postgresql.conf file or on the server command line.  
+	// Time between progress updates for long-running startup operations. Sets the amount of time after which the startup process will log a message about a long-running operation that is still in progress, as well as the interval between further progress messages for that operation. The default is 10 seconds. A setting of 0 disables the feature. If this value is specified without units, it is taken as milliseconds. This setting is applied separately to each operation. This parameter can only be set in the postgresql.conf file or on the server command line.
 	log_startup_progress_interval: int & >=0 & <=2147483647 @timeDurationResource()
 
 	// Sets the type of statements logged.
@@ -520,7 +520,7 @@
 	// (8kB) Sets the minimum amount of index data for a parallel scan.
 	min_parallel_index_scan_size?: int & >=0 & <=715827882 @storeResource(8KB)
 
-	// Sets the minimum size of relations to be considered for parallel scan. Sets the minimum size of relations to be considered for parallel scan. 
+	// Sets the minimum size of relations to be considered for parallel scan. Sets the minimum size of relations to be considered for parallel scan.
 	min_parallel_relation_size?: int & >=0 & <=715827882 @storeResource(8KB)
 
 	// (8kB) Sets the minimum amount of table data for a parallel scan.
@@ -542,16 +542,17 @@
 	parallel_leader_participation?: bool & false | true
 
 	// Sets the planner's estimate of the cost of starting up worker processes for parallel query.
-	parallel_setup_cost?: float & >=0 & <=1.79769e+308
+	parallel_setup_cost?: float & >=0
 
 	// Sets the planner's estimate of the cost of passing each tuple (row) from worker to master backend.
-	parallel_tuple_cost?: float & >=0 & <=1.79769e+308
+	parallel_tuple_cost?: float & >=0
 
 	// Encrypt passwords.
 	password_encryption?: string & "md5" | "scram-sha-256"
 
 	// Specifies which classes of statements will be logged by session audit logging.
 	//	"pgaudit.log"?: string & "ddl" | "function" | "misc" | "read" | "role" | "write" | "none" | "all" | "-ddl" | "-function" | "-misc" | "-read" | "-role" | "-write"
+	"pgaudit.log"?: string
 
 	// Specifies that session logging should be enabled in the case where all relations in a statement are in pg_catalog.
 	"pgaudit.log_catalog"?: bool & false | true
@@ -719,7 +720,7 @@
 	"pg_similarity.mongeelkan_tokenizer"?: string & "alnum" | "gram" | "word" | "camelcase"
 
 	// Sets the gap penalty used by the Needleman-Wunsch similarity measure.
-	"pg_similarity.nw_gap_penalty"?: float & >=-9.22337e+18 & <=9.22337e+18
+	"pg_similarity.nw_gap_penalty"?: float
 
 	// Sets if the result value is normalized or not.
 	"pg_similarity.nw_is_normalized"?: bool & false | true
@@ -803,7 +804,7 @@
 	quote_all_identifiers?: bool & false | true
 
 	// Sets the planners estimate of the cost of a nonsequentially fetched disk page.
-	random_page_cost?: float & >=0 & <=1.79769e+308
+	random_page_cost?: float & >=0
 
 	// Lower threshold of Dice similarity. Molecules with similarity lower than threshold are not similar by # operation.
 	"rdkit.dice_threshold"?: float & >=0 & <=1
@@ -830,7 +831,7 @@
 	search_path?: string
 
 	// Sets the planners estimate of the cost of a sequentially fetched disk page.
-	seq_page_cost?: float & >=0 & <=1.79769e+308
+	seq_page_cost?: float & >=0
 
 	// Lists shared libraries to preload into each backend.
 	session_preload_libraries?: string & "auto_explain" | "orafce" | "pg_bigm" | "pg_hint_plan" | "pg_prewarm" | "pg_similarity" | "pg_stat_statements" | "pg_transport" | "plprofiler"
@@ -980,7 +981,7 @@
 	// Sets the WAL resource managers for which WAL consistency checks are done.
 	wal_consistency_checking?: string
 
-	// Buffer size for reading ahead in the WAL during recovery. 
+	// Buffer size for reading ahead in the WAL during recovery.
 	wal_decode_buffer_size: int & >=65536 & <=1073741823 | *524288 @storeResource()
 
 	// Sets whether a WAL receiver should create a temporary replication slot if no permanent slot is configured.

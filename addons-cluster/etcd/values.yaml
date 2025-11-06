@@ -1,56 +1,42 @@
-## @param nameOverride Override the app name
+## Application Name Overrides
 nameOverride: ""
-
-## @param fullnameOverride Override the full app name
 fullnameOverride: ""
+version: 3.6.1
 
-## @param replicas Number of replicas for the etcd cluster
+## Cluster Configuration
 replicas: 3
 
-## Service configurations
-## set service name to enable peerService and clientService
+## podAntiAffinityEnabled if true, the etcd will add podAntiAffinity
+podAntiAffinityEnabled: true
 
-## @param peerService.enabled Enable peerService (no need to enable for single cluster)
+## Peer Service Configuration, used for advertisement to other etcd members, LoadBalancer is recommended, will support NodePort in the future; otherwise will use headless ClusterIP to advertise
 peerService:
-  enabled: false
-  ## @param peerService.type Service type for etcd peers, default peer service for single cluster use headless ClusterIP, valid option is LoadBalancer, will support NodePort in the future.
-  type: LoadBalancer
-  ## @param peerService.annotations Optional, if peerService type is LoadBalancer, you may need to specify annotations for Cloud Provider
+  type:
   annotations: {}
 
-## clientService is the configuration for etcd client communication
+## Client Service Configuration, used for client access, NodePort and LoadBalancer is recommended; otherwise will will only create headless ClusterIP
 clientService:
-  name: ""
-  ## @param clientService.type etcd service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
-  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  type: ClusterIP
+  type:
   port: 2379
   role: leader
-  ## @param clientService.nodePort Optional, if clientService type is NodePort, by default and for convenience, the Kubernetes control plane will allocate a port from a range (default: 30000-32767)
   nodePort:
-  ## @param clientService.annotations Optional, if clientService type is LoadBalancer, you may need to specify annotations for Cloud Provider
   annotations: {}
 
-## @param cpu resource request for each etcd pod
+## Resource Requests
 cpu: 0.5
-## @param memory resource request for each etcd pod, the unit is Gi
 memory: 0.5
-## @param storage size for each etcd pod, the unit is Gi
-storage: 10
-
-## @param requests.cpu If not set, use cpu
-## @param requests.memory If not set, use memory
 # requests:
 #   cpu: 100m
 #   memory: 128Mi
 
-## @param storageClassName, storage class name
-storageClassName:
+## Storage
+storage: 10
+storageClassName: ""
 
-## @param tlsEnable Enable TLS for etcd cluster
+## TLS Configuration
 tlsEnable: false
 
-## Customized default values to override kblib chart's values
+## Extra Customizations
 extra:
   terminationPolicy: Delete
   disableExporter: false

@@ -10,7 +10,5 @@ spec:
   serviceVersion: 3.2.6
   endpoint:
     value: {{ .Values.orchestrator.serviceReference.endpoint }}
-  port:
-    value: "{{ .Values.orchestrator.serviceReference.port }}"
 {{- end }}
 {{- end }}

@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nebula.scriptsTemplateName" . }}
+  labels:
+    {{- include "nebula.labels" . | nindent 4 }}
+data:
+  start-metad.sh: |
+    {{- .Files.Get "scripts/start-metad.sh" | nindent 4 }}
+  start-graphd.sh: |
+    {{- .Files.Get "scripts/start-graphd.sh" | nindent 4 }}
+  start-storaged.sh: |
+    {{- .Files.Get "scripts/start-storaged.sh" | nindent 4 }}
+  logrotate.sh: |
+    {{- .Files.Get "scripts/logrotate.sh" | nindent 4 }}
+  member-leave.py: |
+    {{- .Files.Get "scripts/member-leave.py" | nindent 4 }}
+  update-parameter.sh: |
+    {{- .Files.Get "scripts/update-parameter.sh" | nindent 4 }}
+  start-agent.sh: |
+    {{- .Files.Get "scripts/start-agent.sh" | nindent 4 }}
+  common.sh: |
+    {{- .Files.Get "scripts/common.sh" | nindent 4 }}
+  start-exporter.sh: |
+    {{- .Files.Get "scripts/start-exporter.sh" | nindent 4 }}

@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "qdrant.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "qdrant.apiVersion" . }}
 {{- end }}
 
@@ -98,4 +98,11 @@ Define qdrant config constraint name
 */}}
 {{- define "qdrant.configConstraintName" -}}
 qdrant-config-constraints
+{{- end -}}
+
+{{/*
+Define qdrant parameter config renderer name
+*/}}
+{{- define "qdrant.pcrName" -}}
+qdrant-pcr
 {{- end -}}

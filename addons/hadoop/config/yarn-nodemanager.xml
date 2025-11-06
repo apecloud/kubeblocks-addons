@@ -1,0 +1,138 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+{{- $phy_memory := .PHY_MEMORY }}
+{{- $v_mem_mb := mul (div $phy_memory 1073741824) 900 | int }}
+{{- if lt $v_mem_mb 1500 }}
+  {{- $v_mem_mb = 1000 }}
+{{- end }}
+{{- $phy_cpu_value := .PHY_CPU }}
+{{- $phy_cpu := $phy_cpu_value | int  }}
+{{- if lt $phy_cpu 2 }}
+  {{- $phy_cpu = 1 }}
+{{- else }}
+  {{- $phy_cpu = sub $phy_cpu 1 }}
+{{- end }}
+
+<configuration>
+    <property>
+        <name>yarn.resourcemanager.cluster-id</name>
+        <value>{{ .CLUSTER_NAME }}</value>
+    </property>
+    <property>
+        <name>yarn.resourcemanager.ha.enabled</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>yarn.nodemanager.bind-host</name>
+        <value>0.0.0.0</value>
+    </property>
+    <property>
+        <name>yarn.resourcemanager.ha.rm-ids</name>
+        {{- $rms := "" }}
+        {{- range $i := until (int .RESOURCEMANAGER_COMPONENT_REPLICAS) }}
+           {{- $val := printf "rm%d" $i }}
+           {{- if eq $rms "" }}{{ $rms = $val }}{{ else }}{{ $rms = print $rms "," $val }}{{ end }}
+        {{- end }}
+        <value>{{ $rms }}</value>
+    </property>
+
+  {{- range $i := until (int .RESOURCEMANAGER_COMPONENT_REPLICAS) }}
+    <property>
+        <name>yarn.resourcemanager.hostname.rm{{ $i }}</name>
+        <value>{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}</value>
+    </property>
+    <property>
+        <name>yarn.resourcemanager.address.rm{{ $i }}</name>
+        <value>{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:8032</value>
+    </property>
+    <property>
+        <name>yarn.resourcemanager.webapp.address.rm{{ $i }}</name>
+        <value>{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:8088</value>
+    </property>
+    <property>
+        <name>yarn.resourcemanager.scheduler.address.rm{{ $i }}</name>
+        <value>{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:8030</value>
+    </property>
+    <property>
+        <name>yarn.resourcemanager.scheduler.resource-tracker.rm{{ $i }}</name>
+        <value>{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.RESOURCEMANAGER_CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:8031</value>
+    </property>
+  {{- end }}
+
+    <property>
+        <name>yarn.nodemanager.recovery.enabled</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.resource.memory-mb</name>
+        <value>{{ $v_mem_mb }}</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.resource.cpu-vcores</name>
+        <value>{{ $phy_cpu }}</value>
+    </property>
+
+    <property>
+        <name>yarn.log-aggregation-enable</name>
+        <value>true</value>
+    </property>
+
+    <!-- 聚合后日志落在 HDFS 的目录 -->
+    <property>
+        <name>yarn.nodemanager.remote-app-log-dir</name>
+        <value>/tmp/logs</value>
+    </property>
+
+    <property>
+        <name>yarn.log-aggregation.retain-seconds</name>
+        <value>604800</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.recovery.dir</name>
+        <value>/hadoop/yarn/yarn-nm-recovery</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.address</name>
+        <value>0.0.0.0:45454</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.recovery.supervised</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.container-log-monitor.enable</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.aux-services</name>
+        <value>mapreduce_shuffle</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.aux-services.mapreduce_shuffle.class</name>
+        <value>org.apache.hadoop.mapred.ShuffleHandler</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.env-whitelist</name>
+        <value>JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_HOME,PATH,LANG,TZ,HADOOP_MAPRED_HOME</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.local-dirs</name>
+        <value>/hadoop/tmp/nm-local-dir</value>
+    </property>
+
+    <property>
+        <name>hadoop.tmp.dir</name>
+        <value>/hadoop/tmp</value>
+    </property>
+
+</configuration>
