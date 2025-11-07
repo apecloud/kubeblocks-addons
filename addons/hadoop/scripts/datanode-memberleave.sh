@@ -10,6 +10,18 @@ get_hostname(){
   hdfs dfsadmin -report -live | grep -A 5 "$host_info" | grep "^Hostname:" | awk '{print $2}'
 }
 
+get_hostname_from_jmx(){
+  local host_ip=$1
+  host_name=$(curl -s http://$host_ip:${DATANODE_HTTP_PORT}/jmx?qry=Hadoop:service=DataNode,name=DataNodeInfo | grep "DatanodeHostname" | awk -F'"' '{print $4}')
+  if [ -z "$host_name" ]; then
+    return
+  else
+    if hdfs dfsadmin -report -live | grep -q "Hostname: $host_name"; then
+       echo "$host_name"
+    fi
+  fi
+}
+
 HOSTNAME=$(hostname)
 if [ -z "$DATANODE_DATA_HOST_PORT" ]; then
    HOSTNAME="${KB_LEAVE_MEMBER_POD_FQDN}"
@@ -18,8 +30,11 @@ else
   HOST_INFO="${HOST_IP}:${DATANODE_DATA_HOST_PORT}"
   HOSTNAME=$(get_hostname "$HOST_INFO")
   if [ -z "$HOSTNAME" ]; then
-    echo "No hostname found for host info: ${HOST_INFO}, exit 0"
-    exit 0
+    HOSTNAME=$(get_hostname_from_jmx "$HOST_IP")
+    if [ -z "$HOSTNAME" ]; then
+      echo "No hostname found for host info: ${HOST_INFO}, exit 0"
+      exit 0
+    fi
   fi
 fi
 # 1. get excludeHosts from cm
