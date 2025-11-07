@@ -36,6 +36,7 @@ metrics:
 zookeeper:
   dataDir: /bitnami/zookeeper/data
   dataLogDir: /bitnami/zookeeper/log
+  dynamicConfigDir: /opt/bitnami/zookeeper/dynamic
 
 extra:
   terminationPolicy: Delete

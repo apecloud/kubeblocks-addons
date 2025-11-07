@@ -56,6 +56,8 @@ spec:
       value: {{ .Values.zookeeper.dataDir }}
     - name: ZOOKEEPER_DATA_LOG_DIR
       value: {{ .Values.zookeeper.dataLogDir }}
+    - name: ZOOKEEPER_DYNAMIC_CONFIG_FILE
+      value: {{ .Values.zookeeper.dynamicConfigDir }}/zoo.cfg.dynamic
     - name: ZOOBINDIR
       value: "/opt/bitnami/zookeeper/bin"
     ## this var is used in the ZkServer.sh of bitnami image version 3.4
@@ -68,6 +70,18 @@ spec:
       value: {{ .Values.metrics.port | quote }}
     - name: ZOO_LOG4J_PROP
       value: "INFO,ROLLINGFILE,TRACEFILE,CONSOLE"
+    - name: ZK_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          username: Required
+    - name: ZK_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
   scripts:
     - name: script
       template: {{ include "zookeeper.scriptTplName" . }}
@@ -79,12 +93,17 @@ spec:
       namespace: {{ .Release.Namespace }}
       template: {{ include "zookeeper.configTplName" . }}
       volumeName: config
-      externalManaged: true
+      restartOnFileChange: true
     - name: config-log
       namespace: {{ .Release.Namespace }}
       template: {{ include "zookeeper.logConfigTplName" . }}
       volumeName: config-log
       restartOnFileChange: true
+    - name: zookeeper-dynamic-config
+      namespace: {{ .Release.Namespace }}
+      template: {{ include "zookeeper.dynamicConfigTplName" . }}
+      volumeName: dynamic-config
+      externalManaged: true
   lifecycleActions:
     roleProbe:
       exec:
@@ -94,6 +113,24 @@ spec:
           - -c
           - |
             /kubeblocks/scripts/roleprobe.sh
+    memberJoin:
+      preCondition: RuntimeReady
+      exec:
+        container: zookeeper
+        command:
+          - /bin/bash
+          - -c
+          - |
+            /kubeblocks/scripts/member_join.sh
+    memberLeave:
+      preCondition: RuntimeReady
+      exec:
+        container: zookeeper
+        command:
+          - /bin/bash
+          - -c
+          - |
+            /kubeblocks/scripts/member_leave.sh
   runtime:
     volumes:
       - name: log
@@ -195,3 +232,8 @@ spec:
             subPath: log4j.properties
           - name: scripts
             mountPath: /kubeblocks/scripts
+          - name: dynamic-config
+            mountPath: {{ .Values.zookeeper.dynamicConfigDir }}
+  systemAccounts:
+    - name: admin
+      initAccount: true

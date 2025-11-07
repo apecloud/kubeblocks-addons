@@ -15,6 +15,10 @@ spec:
       serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
+      configs:
+        - name: zookeeper-config
+          variables:
+            ZOOKEEPER_STANDALONE_ENABLED: "{{ .Values.extra.standaloneEnabled }}"
       env:
         - name: ZOOKEEPER_IMAGE_VERSION
           value: "{{ .Values.version }}"
