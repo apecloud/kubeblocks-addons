@@ -49,3 +49,10 @@ Selector labels
 app.kubernetes.io/name: {{ include "zookeeper.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Define zookeeper dynamic config template name
+*/}}
+{{- define "zookeeper.dynamicConfigTplName" -}}
+zookeeper-dynamic-config-template
+{{- end -}}

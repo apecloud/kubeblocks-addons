@@ -7,3 +7,7 @@ metadata:
 data:
   startup.sh: |-
     {{- .Files.Get "scripts/startup.sh" | nindent 4 }}
+  member_join.sh: |-
+    {{- .Files.Get "scripts/member_join.sh" | nindent 4 }}
+  member_leave.sh: |-
+    {{- .Files.Get "scripts/member_leave.sh" | nindent 4 }}
