@@ -8,7 +8,6 @@ version: 3.9.2
 
 extra:
   terminationPolicy: Delete
-  standaloneEnabled: false
 
 ## @param replicas specify cluster replicas
 ##
@@ -34,3 +33,5 @@ storage: 10
 
 ## @param log storage, the unit is Gi
 logStorage: 2
+
+standaloneEnabled: false
