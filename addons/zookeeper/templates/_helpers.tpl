@@ -124,5 +124,5 @@ zookeeper-pcr
 Define zookeeper parameters definition name
 */}}
 {{- define "zookeeper.paramsDefName" -}}
-zookeeper-pd
+zookeeper-dynamic-pd
 {{- end -}}

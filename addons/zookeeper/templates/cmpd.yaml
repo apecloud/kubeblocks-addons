@@ -70,6 +70,18 @@ spec:
       value: {{ .Values.metrics.port | quote }}
     - name: ZOO_LOG4J_PROP
       value: "INFO,ROLLINGFILE,TRACEFILE,CONSOLE"
+    - name: ZK_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          username: Required
+    - name: ZK_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
   scripts:
     - name: script
       template: {{ include "zookeeper.scriptTplName" . }}
@@ -81,7 +93,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       template: {{ include "zookeeper.configTplName" . }}
       volumeName: config
-      externalManaged: true
+      restartOnFileChange: true
     - name: config-log
       namespace: {{ .Release.Namespace }}
       template: {{ include "zookeeper.logConfigTplName" . }}
@@ -101,6 +113,22 @@ spec:
           - -c
           - |
             /kubeblocks/scripts/roleprobe.sh
+    memberJoin:
+      exec:
+        container: zookeeper
+        command:
+          - /bin/bash
+          - -c
+          - |
+            /kubeblocks/scripts/member_join.sh
+    memberLeave:
+      exec:
+        container: zookeeper
+        command:
+          - /bin/bash
+          - -c
+          - |
+            /kubeblocks/scripts/member_leave.sh
   runtime:
     volumes:
       - name: log
@@ -204,3 +232,6 @@ spec:
             mountPath: /kubeblocks/scripts
           - name: dynamic-config
             mountPath: {{ .Values.zookeeper.dynamicConfigDir }}
+  systemAccounts:
+    - name: admin
+      initAccount: true
