@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<configuration>
+    <property>
+        <name>hive.server2.thrift.port</name>
+        <value>{{ .THRIFT_PORT }}</value>
+    </property>
+    <property>
+        <name>hive.server2.thrift.http.port</name>
+        <value>{{ .HTTP_PORT }}</value>
+    </property>
+    <property>
+        <name>hive.server2.webui.port</name>
+        <value>{{ .WEB_PORT }}</value>
+    </property>
+    <property>
+        <name>hive.metastore.uris</name>
+        <value>{{ .METASTORE_ENDPOINTS }}</value>
+    </property>
+    <!-- use hive server2 thread user (hadoop) doAs the submit user -->
+    <property>
+        <name>hive.server2.enable.doAs</name>
+        <value>false</value>
+    </property>
+    <property>
+        <name>hive.server2.metrics.enabled</name>
+        <value>true</value>
+    </property>
+   <!-- enable it when using tez
+    <property>
+        <name>hive.server2.active.passive.ha.enable</name>
+        <value>true</value>
+    </property>
+    -->
+    <property>
+        <name>hive.server2.authentication</name>
+        <value>CUSTOM</value>
+    </property>
+
+    <property>
+        <name>hive.server2.custom.authentication.class</name>
+        <value>com.github.ixre.hive.SimpleServer2AuthImpl</value>
+    </property>
+    <property>
+        <name>hive.server2.custom.authentication.file</name>
+        <value>/hive/metadata/hive-server2-users.conf</value>
+    </property>
+    <!-- enable dynamic service discovery and zk ha-->
+    {{- if index .ZOOKEEPER_ENDPOINTS }}
+    <property>
+        <name>hive.server2.support.dynamic.service.discovery</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>hive.server2.zookeeper.namespace</name>
+        <value>hiveserver2_{{ .CLUSTER_NAME }}</value>
+    </property>
+
+    <property>
+        <name>hive.zookeeper.quorum</name>
+        <value>{{ .ZOOKEEPER_ENDPOINTS }}</value>
+    </property>
+
+    <property>
+        <name>hive.zookeeper.client.port</name>
+        <value>2181</value>
+    </property>
+
+    <property>
+        <name>hive.execution.engine</name>
+        <value>mr</value>
+    </property>
+    {{- end }}
+</configuration>

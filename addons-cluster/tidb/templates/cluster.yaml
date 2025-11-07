@@ -1,23 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: {{ include "clustername" . }}
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
   labels: {{ include "tidb-cluster.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: tidb  # ref clusterdefinition.name
-  terminationPolicy: {{ $.Values.terminationPolicy }}
+  clusterDef: tidb  # ref clusterdefinition.name
+  terminationPolicy: {{ $.Values.extra.terminationPolicy }}
   topology: cluster
-  affinity:
-    {{- with $.Values.topologyKeys }}
-    topologyKeys: {{ . | toYaml | nindent 6 }}
-    {{- end }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
-  {{- end }}
   componentSpecs:
     {{- with $.Values.pd }}
     - name: tidb-pd
-      serviceAccountName: {{ include "tidb-cluster.serviceAccountName" $ }}
       serviceVersion: {{ default $.Chart.AppVersion $.Values.appVersionOverride }}
       disableExporter: false
       replicas: {{ .replicas | default 3 }}
@@ -28,10 +21,10 @@ spec:
       resources:
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
       volumeClaimTemplates:
       - name: data
@@ -41,11 +34,10 @@ spec:
             - ReadWriteOnce
           resources:
             requests:
-              storage: {{ .persistence.data.size }}
+              storage: {{ print .persistence.data.size "Gi" }}
     {{- end }}
     {{- with $.Values.tikv }}
     - name: tikv
-      serviceAccountName: {{ include "tidb-cluster.serviceAccountName" $ }}
       serviceVersion: {{ default $.Chart.AppVersion $.Values.appVersionOverride }}
       disableExporter: false
       replicas: {{ .replicas | default 3 }}
@@ -56,10 +48,10 @@ spec:
       resources:
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
       volumeClaimTemplates:
       - name: data
@@ -69,11 +61,10 @@ spec:
             - ReadWriteOnce
           resources:
             requests:
-              storage: {{ .persistence.data.size }}
+              storage: {{ print .persistence.data.size "Gi" }}
     {{- end }}
     {{- with $.Values.tidb }}
     - name: tidb
-      serviceAccountName: {{ include "tidb-cluster.serviceAccountName" $ }}
       serviceVersion: {{ default $.Chart.AppVersion $.Values.appVersionOverride }}
       disableExporter: false
       replicas: {{ .replicas | default 2 }}
@@ -84,9 +75,9 @@ spec:
       resources:
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
     {{- end }}

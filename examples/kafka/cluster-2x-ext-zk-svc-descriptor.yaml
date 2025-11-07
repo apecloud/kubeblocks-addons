@@ -1,0 +1,86 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: kafka2-ext-zk-descriptor
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: kafka
+  topology: kafka2-external-zk
+  componentSpecs:
+  - name: kafka-broker
+    replicas: 3
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: 0.5Gi
+      requests:
+        cpu: "0.5"
+        memory: 0.5Gi
+    serviceRefs:
+    - name: kafkaZookeeper
+      namespace: kubeblocks-cloud-ns
+      # Alternatively, you can reference a kubeblocks cluster
+      serviceDescriptor: kafka-cluster-zookeeper-service
+    services:
+    - name: advertised-listener
+      podService: true
+      serviceType: ClusterIP
+    env:
+    - name: KB_KAFKA_ENABLE_SASL_SCRAM
+      value: "false"
+    - name: KB_KAFKA_BROKER_HEAP
+      value: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
+    - name: KB_KAFKA_CONTROLLER_HEAP
+      value: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
+    - name: KB_BROKER_DIRECT_POD_ACCESS
+      value: "false"
+    # By default, broker will store metadata in zookeeper's /$(CLUSTER_NAME) subpath.
+    # If you want to change it, set a `KB_KAFKA_ZK_SUB_PATH` env.
+    tls: false
+    volumeClaimTemplates:
+    - name: data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+    - name: metadata
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+  - name: kafka-exporter
+    replicas: 1
+    env:
+    - name: KB_KAFKA_ENABLE_SASL_SCRAM
+      value: "false"
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: 1Gi
+      requests:
+        cpu: "0.1"
+        memory: 0.2Gi
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ServiceDescriptor
+metadata:
+  name: kafka-cluster-zookeeper-service
+  namespace: demo
+spec:
+  # Specifies the type or nature of the service.
+  # Should represent a well-known application cluster type, such as {mysql, redis, zookeeper}.
+  serviceKind: zookeeper
+  # Represents the version of the service reference.
+  serviceVersion: 3.8.5
+  # Represents the endpoint of the service connection credential.
+  endpoint:
+    # your external zk endpoints here
+    value: "zookeeper-cluster-zookeeper-0.zookeeper-cluster-zookeeper-headless.demo:2181,zookeeper-cluster-zookeeper-1.zookeeper-cluster-zookeeper-headless.demo:2181,zookeeper-cluster-zookeeper-2.zookeeper-cluster-zookeeper-headless.demo:2181"
+  # Represents the port of the service connection credential.
+  port:
+    value: "2181"

@@ -41,16 +41,16 @@ Describe "Redis Start Bash Script Tests"
   }
   AfterAll 'cleanup'
 
-  Describe "extract_ordinal_from_object_name()"
+  Describe "extract_obj_ordinal()"
     It "extracts ordinal from object name correctly"
-      When call extract_ordinal_from_object_name "pod-name-2"
+      When call extract_obj_ordinal "pod-name-2"
       The status should be success
       The stdout should eq "2"
       The stderr should eq ""
     End
 
     It "extracts ordinal from object name with different format"
-      When call extract_ordinal_from_object_name "3"
+      When call extract_obj_ordinal "3"
       The stdout should eq "3"
       The stderr should eq ""
     End
@@ -136,17 +136,17 @@ Describe "Redis Start Bash Script Tests"
 
   Describe "build_announce_ip_and_port()"
     It "builds announce ip and port correctly when advertised svc is enabled"
-      redis_advertised_svc_host_value="172.0.0.1"
-      redis_advertised_svc_port_value="31000"
+      redis_announce_host_value="172.0.0.1"
+      redis_announce_port_value="31000"
       When call build_announce_ip_and_port
-      The contents of file "$redis_real_conf" should include "replica-announce-port $redis_advertised_svc_port_value"
-      The contents of file "$redis_real_conf" should include "replica-announce-ip $redis_advertised_svc_host_value"
-      The stdout should include "redis use nodeport $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
+      The contents of file "$redis_real_conf" should include "replica-announce-port $redis_announce_port_value"
+      The contents of file "$redis_real_conf" should include "replica-announce-ip $redis_announce_host_value"
+      The stdout should include "redis use nodeport $redis_announce_host_value:$redis_announce_port_value to announce"
     End
 
     It "builds announce ip and port correctly when advertised svc is not enabled"
-      unset redis_advertised_svc_host_value
-      unset redis_advertised_svc_port_value
+      unset redis_announce_host_value
+      unset redis_announce_port_value
       export CURRENT_POD_NAME="redis-redis-0"
       export REDIS_POD_FQDN_LIST="redis-redis-0.redis-redis.default.svc.cluster.local,redis-redis-1.redis-redis.default.svc.cluster.local"
       When call build_announce_ip_and_port
@@ -155,8 +155,8 @@ Describe "Redis Start Bash Script Tests"
     End
 
     It "exits with error when failed to get current pod fqdn"
-      unset redis_advertised_svc_host_value
-      unset redis_advertised_svc_port_value
+      unset redis_announce_host_value
+      unset redis_announce_port_value
       export CURRENT_POD_NAME="redis-redis-2"
       export REDIS_POD_FQDN_LIST="redis-redis-0.redis-redis.default,redis-redis-1.redis-redis.default"
       When run build_announce_ip_and_port
@@ -180,27 +180,27 @@ Describe "Redis Start Bash Script Tests"
     End
   End
 
-  Describe "parse_redis_advertised_svc_if_exist()"
+  Describe "parse_redis_announce_addr()"
     It "parses redis advertised service correctly when matching svc is found"
       export REDIS_ADVERTISED_PORT="redis-redis-redis-advertised-0:31000,redis-redis-redis-advertised-1:32000"
       export CURRENT_POD_HOST_IP="10.0.0.1"
-      When call parse_redis_advertised_svc_if_exist "redis-redis-0"
-      The variable redis_advertised_svc_port_value should eq "31000"
-      The variable redis_advertised_svc_host_value should eq "10.0.0.1"
+      When call parse_redis_announce_addr "redis-redis-0"
+      The variable redis_announce_port_value should eq "31000"
+      The variable redis_announce_host_value should eq "10.0.0.1"
       The stdout should include "Found matching svcName and port for podName 'redis-redis-0'"
     End
 
     It "exits with error when no matching svc is found"
       export REDIS_ADVERTISED_PORT="redis-redis-redis-advertised-0:31000,redis-redis-redis-advertised-1:32000"
       export CURRENT_POD_HOST_IP="10.0.0.2"
-      When run parse_redis_advertised_svc_if_exist "redis-redis-2"
+      When run parse_redis_announce_addr "redis-redis-2"
       The status should be failure
       The stdout should include "Error: No matching svcName and port found for podName 'redis-redis-2'"
     End
 
     It "ignores parsing when REDIS_ADVERTISED_PORT env is not set"
       unset REDIS_ADVERTISED_PORT
-      When call parse_redis_advertised_svc_if_exist "redis-redis-0"
+      When call parse_redis_announce_addr "redis-redis-0"
       The status should be success
       The stdout should include "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
     End
@@ -264,8 +264,8 @@ Describe "Redis Start Bash Script Tests"
         export CURRENT_POD_NAME="redis-redis-0"
         export CURRENT_POD_IP="10.0.0.1"
         service_port="6379"
-        redis_advertised_svc_host_value="172.0.0.1"
-        redis_advertised_svc_port_value="31000"
+        redis_announce_host_value="172.0.0.1"
+        redis_announce_port_value="31000"
       }
       Before "setup"
 
@@ -274,12 +274,12 @@ Describe "Redis Start Bash Script Tests"
         unset service_port
         unset primary
         unset primary_port
-        unset redis_advertised_svc_host_value
-        unset redis_advertised_svc_port_value
+        unset redis_announce_host_value
+        unset redis_announce_port_value
       }
       After 'un_setup'
 
-      It "returns false when current redis_advertised_svc_host_value and redis_advertised_svc_port_value exist but not match"
+      It "returns false when current redis_announce_host_value and redis_announce_port_value exist but not match"
         primary="172.0.0.1"
         primary_port="32000"
         When call check_current_pod_is_primary
@@ -287,7 +287,7 @@ Describe "Redis Start Bash Script Tests"
         The stdout should include "redis advertised svc host and port exist but not match"
       End
 
-      It "returns true when current redis_advertised_svc_host_value and redis_advertised_svc_port_value matches the primary"
+      It "returns true when current redis_announce_host_value and redis_announce_port_value matches the primary"
         primary="172.0.0.1"
         primary_port="31000"
         When call check_current_pod_is_primary

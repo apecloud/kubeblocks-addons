@@ -90,32 +90,23 @@ connect_timeout=10
 # character-sets-dir=/usr/share/mysql-8.0/charsets
 
 port={{ $mysql_port }}
-mysqlx-port=33060
+mysqlx_port=33060
 mysqlx=0
 
 datadir={{ $data_root }}/data
 
-{{ block "logsBlock" . }}
 log_statements_unsafe_for_binlog=OFF
 log_error_verbosity=2
 log_output=FILE
 log_error=/data/mysql/log/mysqld-error.log
-{{- if hasKey $.component "enabledLogs" }}
-{{- if mustHas "slow" $.component.enabledLogs }}
 slow_query_log=ON
 long_query_time=5
 slow_query_log_file=/data/mysql/log/mysqld-slowquery.log
-{{- end }}
-{{- if mustHas "general" $.component.enabledLogs }}
-general_log=ON
+general_log=OFF
 general_log_file=/data/mysql/log/mysqld.log
-{{- end }}
-{{- end }}
-{{ end }}
 
-{{- if eq $.cluster.metadata.labels.auditLogEnabled "true" }}
 # audit log
-plugin-load-add=audit_log=audit_log.so
+plugin_load_add=audit_log=audit_log.so
 loose_audit_log_handler=FILE # FILE, SYSLOG
 loose_audit_log_file={{ $data_root }}/auditlog/audit.log
 loose_audit_log_buffer_size=1Mb
@@ -135,7 +126,6 @@ loose_audit_log_rotations=5
 ## | localhost | root             |
 ## +-----------+------------------+
 loose_audit_log_exclude_accounts=root@%,root@localhost
-{{ end }}
 
 #innodb
 innodb_doublewrite_batch_size=16
@@ -186,7 +176,7 @@ binlog_format=ROW
 binlog_row_image=FULL
 # Aliyun AWS binlog_order_commits=ON
 binlog_order_commits=ON
-log-bin={{ $data_root }}/binlog/mysql-bin
+log_bin={{ $data_root }}/binlog/mysql-bin
 log_bin_index={{ $data_root }}/binlog/mysql-bin.index
 binlog_expire_logs_seconds=604800
 binlog_purge_size=102400M
@@ -202,18 +192,15 @@ relay_log_recovery=ON
 relay_log=relay-bin
 relay_log_index=relay-bin.index
 
-pid-file=/var/run/mysqld/mysqld.pid
+pid_file=/var/run/mysqld/mysqld.pid
 socket=/var/run/mysqld/mysqld.sock
 
-{{- if $.component.tlsConfig }}
-{{- $ca_file := getCAFile }}
-{{- $cert_file := getCertFile }}
-{{- $key_file := getKeyFile }}
+{{- if eq (index $ "TLS_ENABLED") "true" }}
 # tls
 # require_secure_transport=ON
-ssl_ca={{ $ca_file }}
-ssl_cert={{ $cert_file }}
-ssl_key={{ $key_file }}
+ssl_ca=/etc/pki/tls/ca.pem
+ssl_cert=/etc/pki/tls/cert.pem
+ssl_key=/etc/pki/tls/key.pem
 {{- end }}
 
 ## smartengine base config

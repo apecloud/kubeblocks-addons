@@ -8,7 +8,7 @@ NLS_CHARACTERSET=UTF8
 [instance]
 LISTEN_ADDR=0.0.0.0:1688
 DB_BLOCK_SIZE=8K
-{{- $phy_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
+{{- $phy_memory := default 0 $.PHY_MEMORY | int }}
 {{- $phy_memory_mb := div $phy_memory ( mul 1024 1024 ) }}
 {{- $buffer_pool_mb := mulf $phy_memory_mb 0.5 | int }}
 DATA_BUFFER_SIZE={{- printf "%dM" $buffer_pool_mb}}

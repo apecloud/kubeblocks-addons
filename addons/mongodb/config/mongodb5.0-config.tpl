@@ -2,16 +2,9 @@
 # for documentation of all options, see:
 #   http://docs.mongodb.org/manual/reference/configuration-options/
 
-{{- $log_root := getVolumePathByName ( index $.podSpec.containers 0 ) "log" }}
-{{- $mongodb_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
-{{- $mongodb_port_info := getPortByName ( index $.podSpec.containers 0 ) "mongodb" }}
-{{- $phy_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
-
-# require port
-{{- $mongodb_port := 27017 }}
-{{- if $mongodb_port_info }}
-{{- $mongodb_port = $mongodb_port_info.containerPort }}
-{{- end }}
+# TODO: .Values.dataMountPath
+{{- $mongodb_root := "/data/mongodb" }}
+{{- $mongodb_port := $.KB_SERVICE_PORT }}
 
 # where and how to store data.
 storage:
@@ -41,7 +34,7 @@ net:
 
 # replica set options
 replication:
-  replSetName: replicaset
+  replSetName: {{ .CLUSTER_COMPONENT_NAME }}
   enableMajorityReadConcern: true
 
 # sharding options
@@ -61,3 +54,8 @@ setParameter:
 security:
   authorization: enabled
   keyFile: /etc/mongodb/keyfile
+
+auditLog:
+  destination: file
+  format: JSON
+  path:  {{ $mongodb_root }}/logs/audit.json

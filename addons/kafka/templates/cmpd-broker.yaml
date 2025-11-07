@@ -4,13 +4,13 @@ metadata:
   name: {{ include "kafka-broker.componentDefName" . }}
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  annotations:
+    {{- include "kafka.annotations" . | nindent 4 }}
 spec:
+  provider: kubeblocks
+  description: Kafka broker component definition
+  serviceKind: kafka
+  serviceVersion: {{ .Values.defaultServiceVersion.broker }}
   services:
     - name: advertised-listener
       serviceName: advertised-listener
@@ -21,80 +21,115 @@ spec:
           - name: broker
             port: 9092
             targetPort: kafka-client
+  {{- include "kafka.tls.cmpdConfig" . | nindent 2 }}
   vars:
-    - name: SUPER_USER
+    - name: CLUSTER_UID
       valueFrom:
-        credentialVarRef:
-          name: admin
-          username: Required
+        clusterVarRef:
+          clusterUID: Required
+    - name: SUPER_USER
+      value: admin
+    - name: POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
           optional: false
-    ## Todo: currently only nodeport and clusterip network modes are supported. LoadBalance is not supported yet and needs future support.
+          podFQDNs: Required
+    - name: POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    - name: CONTROLLER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "kafka-controller.cmpdRegexpPattern" . }}
+          optional: false
+          podFQDNs: Required
+    - name: CONTROLLER_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "kafka-controller.cmpdRegexpPattern" . }}
+          optional: false
+          podNames: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+    ## Todo: currently only nodeport and clusterIp network modes are supported. LoadBalance is not supported yet and needs future support.
     - name: BROKER_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "kafka-broker.componentDefName" . }}
+          compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
           name: advertised-listener
           optional: true
           port:
             name: broker
             option: Optional
-  provider: kubeblocks
-  description: Kafka broker.
-  serviceKind: kafka
-  serviceVersion: {{ .Values.componentServiceVersion.broker }}
-  systemAccounts:
-    - name: client
-      secretRef:
-        name: {{ include "kafka.name" . }}-client-secret
-        namespace: {{ .Release.Namespace }}
-    - name: admin
-      secretRef:
-        name: {{ include "kafka.name" . }}-superusers-secret
-        namespace: {{ .Release.Namespace }}
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
   configs:
     - name: kafka-configuration-tpl
-      constraintRef: {{ include "kafka.name" . }}-cc
-      templateRef: {{ include "kafka.name" . }}-configuration-tpl
+      template: {{ include "kafka.configurationTplName" . }}
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
-    - name: {{ include "kafka.name" . }}-jmx-configuration-tpl
-      templateRef: {{ include "kafka.name" . }}-jmx-configuration-tpl
+      externalManaged: true
+    - name: kafka-jmx-configuration-tpl
+      template: {{ include "kafka.jmxConfigurationTplName" . }}
       volumeName: jmx-config
       namespace: {{ .Release.Namespace }}
   scripts:
     - name: kafka-scripts-tpl
-      templateRef: {{ include "kafka.name" . }}-server-scripts-tpl
+      template: {{ include "kafka.serverScriptsTplName" . }}
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
-    - name: kafka-scripts-tools-tpl
-      templateRef: {{ include "kafka.name" . }}-scripts-tools-tpl
+    - name: kafka-tools-scripts-tpl
+      template: {{ include "kafka.toolsScriptsTplName" . }}
       volumeName: tools
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
   runtime:
+    {{- if .Values.securityContext }}
     securityContext:
-      fsGroup: 1001
+      {{- toYaml .Values.securityContext | nindent 6 }}
+    {{- end }}
     containers:
       - name: kafka
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        {{- if .Values.container.securityContext }}
         securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          runAsUser: 1001
+          {{- toYaml .Values.container.securityContext | nindent 10 }}
+        {{- end }}
         command:
           - /scripts/kafka-server-setup.sh
         env:
           - name: BITNAMI_DEBUG
             value: {{ .Values.debugEnabled | quote }}
           - name: MY_POD_IP
-            value: "$(KB_PODIP)"
-            # value: "$(KB_POD_IP)"
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
           - name: MY_POD_NAME
-            value: "$(KB_POD_NAME)"
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: MY_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
           - name: KAFKA_ENABLE_KRAFT
             value: "yes"
           - name: KAFKA_CFG_PROCESS_ROLES
@@ -108,8 +143,7 @@ spec:
           - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
             value: "INTERNAL:PLAINTEXT,CLIENT:PLAINTEXT,CONTROLLER:PLAINTEXT"
           - name: KAFKA_CFG_ADVERTISED_LISTENERS
-            # value: "INTERNAL://$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc:9094,CLIENT://$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc:9092"
-            value: "INTERNAL://$(KB_POD_IP):9094,CLIENT://$(KB_POD_IP):9092"
+            value: "INTERNAL://$(MY_POD_IP):9094,CLIENT://$(MY_POD_IP):9092"
           - name: KAFKA_CFG_INITIAL_BROKER_REGISTRATION_TIMEOUT_MS
             value: "240000"
           - name: ALLOW_PLAINTEXT_LISTENER
@@ -128,7 +162,7 @@ spec:
           - name: SERVER_PROP_FILE
             value: /scripts/server.properties
           - name: KAFKA_KRAFT_CLUSTER_ID
-            value: $(KB_CLUSTER_UID)
+            value: $(CLUSTER_UID)
           - name: KAFKA_CFG_SUPER_USERS
             value: "User:$(SUPER_USER)"
           # - name: KB_KAFKA_ENABLE_SASL  # enable the SASL with plain mode
@@ -137,6 +171,9 @@ spec:
             value: /tools/server-jaas.properties
           - name: BROKER_MIN_NODE_ID
             value: {{ .Values.kafkaBroker.minNodeId | quote }}
+          {{- with .Values.extraEnvs.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
         ports:
           - name: kafka-client
             containerPort: 9092
@@ -166,6 +203,9 @@ spec:
           - name: scripts
             mountPath: /scripts/kafka-server-setup.sh
             subPath: kafka-server-setup.sh
+          - name: scripts
+            mountPath: /scripts/common.sh
+            subPath: common.sh
           - name: kafka-config
             mountPath: /scripts/server.properties
             subPath: server.properties
@@ -175,12 +215,15 @@ spec:
           - name: tools
             mountPath: /tools/server-jaas.properties
             subPath: server-jaas.properties
+          {{- with .Values.extraVolumeMounts.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
       - name: jmx-exporter
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        {{- if .Values.exporter.securityContext }}
         securityContext:
-          runAsNonRoot: true
-          runAsUser: 1001
+          {{- toYaml .Values.exporter.securityContext | nindent 10 }}
+        {{- end }}
         command:
           - java
         args:
@@ -188,14 +231,17 @@ spec:
           - -XshowSettings:vm
           - -jar
           - jmx_prometheus_httpserver.jar
-          - "5556"
+          - {{ .Values.jmxExporter.port | quote }}
           - /etc/jmx-kafka/jmx-kafka-prometheus.yml
         ports:
           - name: metrics
-            containerPort: 5556
+            containerPort: {{ .Values.jmxExporter.port }}
         env:
           - name: SERVICE_PORT
-            value: "5556"
+            value: {{ .Values.jmxExporter.port | quote }}
+          {{- with .Values.extraEnvs.jmxExporter }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
         volumeMounts:
           - name: jmx-config
             mountPath: /etc/jmx-kafka

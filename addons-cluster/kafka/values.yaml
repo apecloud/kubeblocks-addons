@@ -1,6 +1,6 @@
 ## @param version Kafka cluster version
 ##
-version: kafka-3.3.2
+version: 3.3.2
 
 ## @param mode for Kafka cluster mode, 'combined' is combined Kafka controller (KRaft) and broker,
 ## 'separated' is a Kafka KRaft and Kafka broker cluster.
@@ -11,8 +11,11 @@ mode: combined
 # Todo: Monitoring is not supported when tls is enabled
 tlsEnable: false
 
-# Enable SASL
+# Enable SASL plain auth
 saslEnable: false
+
+# Enable SASL Scram auth
+saslScramEnable: false
 
 # Enable Monitor
 monitorEnable: true
@@ -32,7 +35,7 @@ requests:
 #  cpu:
 #  memory:
 
-storageEnable: false
+storageEnable: true
 
 storageClassName:
 
@@ -55,9 +58,16 @@ brokerReplicas: 1
 ## only effective when clusterMode='separated'
 controllerReplicas: 1
 
-## kafka monitor component replicas
-## only effective when monitorEnable=true
-monitorReplicas: 1
+monitor:
+  ## kafka monitor component replicas
+  ## only effective when monitorEnable=true
+  replicas: 1
+  request:
+    cpu: 0.1
+    memory: 0.2
+  limit:
+    cpu: 0.5
+    memory: 1
 
 ## kafka broker's jvm heap setting
 brokerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
@@ -67,6 +77,23 @@ brokerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
 controllerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
 
 ## @param nodePortEnabled
+## Whether to enable NodePort mode.
+## If set to true, Kafka's `advertised.listeners` will use the NodePort address, suitable for scenarios where clients are outside the Kubernetes cluster but can access the NodePort.
 nodePortEnabled: false
 
-useLegacyCompDef: false
+## @param fixedPodIPEnabled
+## Whether to enable fixed Pod IP mode.
+## If set to true, Kafka's `advertised.listeners` will use the Pod IP address, suitable for scenarios where clients can directly communicate with the Kafka Pod's network.
+fixedPodIPEnabled: false
+
+# zookeeper config, valid only if mode is withZookeeper-10
+zookeeper:
+  serviceRef:
+    namespace:
+    cluster:
+      name:
+      component: zookeeper
+      service: default
+      port: client
+      credential:
+    serviceDescriptor:

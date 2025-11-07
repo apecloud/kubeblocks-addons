@@ -1,13 +1,13 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: Backup
 metadata:
-  name: pg-cluster-backup
-  namespace: default
+  name: pg-cluster-wal-g
+  namespace: demo
 spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - pg-basebackup
   # - volume-snapshot
-  # - config-wal-g and wal-g
+  # - wal-g
   # - archive-wal
   backupMethod: wal-g
   # Specifies the backup policy to be applied for this backup.

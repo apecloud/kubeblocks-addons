@@ -50,14 +50,6 @@
       "minimum": 0,
       "maximum": 64,
       "multipleOf": 1
-    },
-    "shmSize": {
-      "title": "shmSize",
-      "description": "shm size",
-      "type": [
-        "string"
-      ],
-      "default": "64Mi"
     }
   }
 }

@@ -1,0 +1,288 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "kafka2-broker.componentDefName" . }}
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+  annotations:
+    {{- include "kafka.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Kafka 2.x broker component definition
+  serviceKind: kafka
+  serviceVersion: {{ .Values.defaultKafka2ServiceVersion.broker }}
+  services:
+    - name: advertised-listener
+      serviceName: advertised-listener
+      podService: true
+      spec:
+        type: ClusterIP
+        ports:
+          - name: broker
+            port: 9092
+            targetPort: kafka-client
+  serviceRefDeclarations:
+    - name: kafkaZookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: ^3\.[5-9]\.\d{1,2}$
+      optional: false
+  {{- include "kafka.tls.cmpdConfig" . | nindent 2 }}
+  vars:
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
+    - name: KAFKA_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          username: Required
+    - name: KAFKA_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+    - name: KAFKA_CLIENT_USER
+      valueFrom:
+        credentialVarRef:
+          name: client
+          optional: false
+          username: Required
+    - name: KAFKA_CLIENT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: client
+          optional: false
+          password: Required
+    - name: POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: KB_KAFKA_ZOOKEEPER_CONN
+      valueFrom:
+        serviceRefVarRef:
+          name: kafkaZookeeper
+          endpoint: Required
+          optional: false
+    ## Todo: currently only nodeport and clusterIp network modes are supported. LoadBalance is not supported yet and needs future support.
+    - name: BROKER_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "kafka2-broker.cmpdRegexpPattern" . }}
+          name: advertised-listener
+          optional: true
+          port:
+            name: broker
+            option: Optional
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+  ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
+  updateStrategy: BestEffortParallel
+  configs:
+    - name: kafka-configuration-tpl
+      template: {{ include "kafka2.configurationTplName" . }}
+      volumeName: kafka-config
+      namespace: {{ .Release.Namespace }}
+      externalManaged: true
+    - name: kafka-jmx-configuration-tpl
+      template: {{ include "kafka.jmxConfigurationTplName" . }}
+      volumeName: jmx-config
+      namespace: {{ .Release.Namespace }}
+  scripts:
+    - name: kafka-scripts-tpl
+      template: {{ include "kafka2.serverScriptsTplName" . }}
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755
+    - name: kafka-tools-scripts-tpl
+      template: {{ include "kafka.toolsScriptsTplName" . }}
+      volumeName: tools
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755
+  systemAccounts:
+    - name: client
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        letterCase: MixedCases
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        letterCase: MixedCases
+  lifecycleActions:
+    accountProvision:
+      exec:
+        command:
+          - bash
+          - -c
+          - |
+            kafka-configs.sh --zookeeper $KB_KAFKA_ZOOKEEPER_CONN --alter \
+              --add-config "SCRAM-SHA-256=[iterations=8192,password=$KB_ACCOUNT_PASSWORD],SCRAM-SHA-512=[password=$KB_ACCOUNT_PASSWORD]" \
+              --entity-type users --entity-name $KB_ACCOUNT_NAME
+  runtime:
+    {{- if .Values.securityContext }}
+    securityContext:
+      {{- toYaml .Values.securityContext | nindent 6 }}
+    {{- end }}
+    containers:
+      - name: kafka
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        {{- if .Values.container.securityContext }}
+        securityContext:
+          {{- toYaml .Values.container.securityContext | nindent 10 }}
+        {{- end }}
+        command:
+          - /scripts/kafka-server-setup.sh
+        env:
+          - name: BITNAMI_DEBUG
+            value: {{ .Values.debugEnabled | quote }}
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: MY_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+          - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
+            value: "INTERNAL"
+          - name: KB_KAFKA_ZK_SUB_PATH
+            value: $(CLUSTER_NAME)
+          - name: KAFKA_CFG_LISTENERS # required for KRaft
+            value: "INTERNAL://:9094,CLIENT://:9092"
+          - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
+            value: "INTERNAL:PLAINTEXT,CLIENT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+          - name: KAFKA_CFG_ADVERTISED_LISTENERS
+            value: "INTERNAL://$(MY_POD_IP):9094,CLIENT://$(MY_POD_IP):9092"
+          - name: KAFKA_CFG_INITIAL_BROKER_REGISTRATION_TIMEOUT_MS
+            value: "240000"
+          - name: ALLOW_PLAINTEXT_LISTENER
+            value: "yes"
+          - name: JMX_PORT
+            value: "5555"
+          - name: KAFKA_VOLUME_DIR
+            value: "/bitnami/kafka"
+          - name: KAFKA_CFG_METADATA_LOG_DIR
+            value: "/bitnami/kafka/metadata"
+          - name: KAFKA_LOG_DIR
+            value: "/bitnami/kafka/data"
+          - name: KAFKA_HEAP_OPTS
+            #value: "-Xmx1024m -Xms1024m"
+            value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          - name: SERVER_PROP_FILE
+            value: /scripts/server.properties
+          - name: KAFKA_KRAFT_CLUSTER_ID
+            value: $(CLUSTER_UID)
+          - name: KAFKA_CFG_SUPER_USERS
+            value: "User:$(KAFKA_ADMIN_USER)"
+          - name: BROKER_MIN_NODE_ID
+            value: {{ .Values.kafkaBroker.minNodeId | quote }}
+          {{- with .Values.extraEnvs.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
+        ports:
+          - name: kafka-client
+            containerPort: 9092
+          - name: kafka-internal
+            containerPort: 9094
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          tcpSocket:
+            port: kafka-client
+        startupProbe:
+          failureThreshold: 30
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          tcpSocket:
+            port: kafka-client
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/kafka
+          - name: metadata
+            mountPath: /bitnami/kafka/metadata
+          - name: scripts
+            mountPath: /scripts/kafka-server-setup.sh
+            subPath: kafka-server-setup.sh
+          - name: scripts
+            mountPath: /scripts/common.sh
+            subPath: common.sh
+          - name: kafka-config
+            mountPath: /scripts/server.properties
+            subPath: server.properties
+          - name: tools
+            mountPath: /tools/client-ssl.properties
+            subPath: client-ssl.properties
+          - name: tools
+            mountPath: /tools/server-jaas.properties
+            subPath: server-jaas.properties
+          {{- with .Values.extraVolumeMounts.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
+      - name: jmx-exporter
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        {{- if .Values.exporter.securityContext }}
+        securityContext:
+          {{- toYaml .Values.exporter.securityContext | nindent 10 }}
+        {{- end }}
+        command:
+          - java
+        args:
+          - -XX:MaxRAMPercentage=100
+          - -XshowSettings:vm
+          - -jar
+          - jmx_prometheus_httpserver.jar
+          - {{ .Values.jmxExporter.port | quote }}
+          - /etc/jmx-kafka/jmx-kafka-prometheus.yml
+        ports:
+          - name: metrics
+            containerPort: {{ .Values.jmxExporter.port }}
+        env:
+          - name: SERVICE_PORT
+            value: {{ .Values.jmxExporter.port | quote }}
+          {{- with .Values.extraEnvs.jmxExporter }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
+        volumeMounts:
+          - name: jmx-config
+            mountPath: /etc/jmx-kafka

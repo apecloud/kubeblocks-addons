@@ -31,27 +31,27 @@ Describe 'register_to_sentinel.sh'
   }
   AfterAll 'cleanup'
 
-  Describe "parse_redis_advertised_svc_if_exist()"
+  Describe "parse_redis_primary_announce_addr()"
     It "parses redis advertised service correctly when matching svc is found"
       export REDIS_ADVERTISED_PORT="redis-redis-redis-advertised-0:31000,redis-redis-redis-advertised-1:32000"
       export CURRENT_POD_HOST_IP="10.0.0.1"
-      When call parse_redis_advertised_svc_if_exist "redis-redis-0"
-      The variable redis_advertised_svc_port_value should eq "31000"
-      The variable redis_advertised_svc_host_value should eq "10.0.0.1"
+      When call parse_redis_primary_announce_addr "redis-redis-0"
+      The variable redis_announce_port_value should eq "31000"
+      The variable redis_announce_host_value should eq "10.0.0.1"
       The stdout should include "Found matching svcName and port for podName 'redis-redis-0'"
     End
 
     It "exits with error when no matching svc is found"
       export REDIS_ADVERTISED_PORT="redis-redis-redis-advertised-0:31000,redis-redis-redis-advertised-1:32000"
       export CURRENT_POD_HOST_IP="10.0.0.2"
-      When run parse_redis_advertised_svc_if_exist "redis-redis-2"
+      When run parse_redis_primary_announce_addr "redis-redis-2"
       The status should be failure
-      The stdout should include "Error: No matching svcName and port found for podName 'redis-redis-2'"
+      The stderr should include "Error: No matching svcName and port found for podName 'redis-redis-2'"
     End
 
     It "ignores parsing when REDIS_ADVERTISED_PORT env is not set"
       unset REDIS_ADVERTISED_PORT
-      When call parse_redis_advertised_svc_if_exist "redis-redis-0"
+      When call parse_redis_primary_announce_addr "redis-redis-0"
       The status should be success
       The stdout should include "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
     End
@@ -103,8 +103,8 @@ Describe 'register_to_sentinel.sh'
 
       When call register_to_sentinel_wrapper
       The status should be success
-      The stdout should include "register to sentinel:redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local with advertised service: redis_advertised_svc_host_value=10.0.0.1, redis_advertised_svc_port_value=31001"
-      The stdout should include "register to sentinel:redis-redis-sentinel-1.redis-redis-sentinel-headless.default.svc.cluster.local with advertised service: redis_advertised_svc_host_value=10.0.0.1, redis_advertised_svc_port_value=31001"
+      The stdout should include "register to sentinel:redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local with announce addr: redis_announce_host_value=10.0.0.1, redis_announce_port_value=31001"
+      The stdout should include "register to sentinel:redis-redis-sentinel-1.redis-redis-sentinel-headless.default.svc.cluster.local with announce addr: redis_announce_host_value=10.0.0.1, redis_announce_port_value=31001"
     End
 
     It 'fails if required env vars SENTINEL_POD_FQDN_LIST are not set'
@@ -113,13 +113,13 @@ Describe 'register_to_sentinel.sh'
       unset SENTINEL_POD_FQDN_LIST
       When call register_to_sentinel_wrapper
       The status should be failure
-      The stdout should include "Required environment variable SENTINEL_POD_FQDN_LIST is not set"
+      The stderr should include "Required environment variable SENTINEL_POD_FQDN_LIST is not set"
     End
 
     It 'fails if required env vars REDIS_COMPONENT_NAME and REDIS_POD_NAME_LIST are not set'
       unset REDIS_COMPONENT_NAME REDIS_POD_NAME_LIST
       When call register_to_sentinel_wrapper
-      The stdout should include "Required environment variable REDIS_COMPONENT_NAME and REDIS_POD_NAME_LIST is not set"
+      The stderr should include "Required environment variable REDIS_COMPONENT_NAME and REDIS_POD_NAME_LIST is not set"
       The status should be failure
     End
   End
@@ -180,6 +180,12 @@ Describe 'register_to_sentinel.sh'
 
       execute_sentinel_sub_command() {
         echo "host:$1, port:$2 Command:$3 executed successfully."
+        return 0
+      }
+
+      get_master_addr_by_name(){
+        output=""
+        echo "$output"
         return 0
       }
 

@@ -6,6 +6,12 @@ version: "8.8.2"
 ##
 mode: multi-node
 
+# @param roles ElasticSearch roles when mode=multi-node
+# {componentName}:{comma-seperated-roles-list}
+roles:
+  master: master
+  data: data,ingest,transform
+
 ## @param replicas specify cluster replicas
 ##
 replicas: 1
@@ -28,7 +34,17 @@ fullnameOverride: ""
 
 ## customized default values to override kblib chart's values
 extra:
-  podAntiAffinity: Required
   terminationPolicy: Delete
-  rbacEnabled: true
   disableExporter: false
+
+## TLS configuration
+tls:
+  enabled: false
+  ## KubeBlocks or UserProvided
+  issuer: UserProvided
+  ## If issuer is UserProvided, will automatically generate TLS file by cluster-tls-secrets.yaml
+  secretName:
+  elasticAccountSecretName:
+  kibanaAccountSecretName:
+
+enableKibana: true

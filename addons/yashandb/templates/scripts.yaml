@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: yashandb-scripts
-  labels:
-    {{- include "yashandb.labels" . | nindent 4 }}
-data:
-  {{- include "yashandb.extend.scripts" . | nindent 2 }}

@@ -4,16 +4,18 @@ metadata:
   name: pulsar
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pulsar.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: pulsar-basic-cluster
       components:
         - name: broker
-          compDef: pulsar-broker-{{include "pulsar.major.version" .}}
+          compDef: {{ include "pulsar.brokerCmpdRegexPattern" . }}
         - name: bookies
-          compDef: pulsar-bookkeeper-{{include "pulsar.major.version" .}}
+          compDef: {{ include "pulsar.bookkeeperCmpdRegexPattern" . }}
         - name: zookeeper
-          compDef: pulsar-zookeeper-{{include "pulsar.major.version" .}}
+          compDef: {{ include "pulsar.zookeeperCmpdRegexPattern" . }}
       default: true
       orders:
         provision:
@@ -28,25 +30,30 @@ spec:
     - name: pulsar-enhanced-cluster
       components:
         - name: broker
-          compDef: pulsar-broker-{{include "pulsar.major.version" .}}
+          ## regex pattern for broker component definition match pulsar 2.X and 3.X
+          compDef: {{ include "pulsar.brokerCmpdRegexPattern" . }}
         - name: bookies
-          compDef: pulsar-bookkeeper-{{include "pulsar.major.version" .}}
+          ## regex pattern for bookies component definition match pulsar 2.X and 3.X
+          compDef: {{ include "pulsar.bookkeeperCmpdRegexPattern" . }}
         - name: zookeeper
-          compDef: pulsar-zookeeper-{{include "pulsar.major.version" .}}
+          ## regex pattern for zk component definition match pulsar 2.X and 3.X
+          compDef: {{ include "pulsar.zookeeperCmpdRegexPattern" . }}
         - name: proxy
-          compDef: pulsar-proxy-{{include "pulsar.major.version" .}}
+          ## regex pattern for proxy component definition match pulsar 2.X and 3.X
+          compDef: {{ include "pulsar.proxyCmpdRegexPattern" . }}
         - name: bookies-recovery
-          compDef: pulsar-bkrecovery-{{include "pulsar.major.version" .}}
+          ## regex pattern for bookies recovery component definition match pulsar 2.X and 3.X
+          compDef: {{ include "pulsar.bkRecoveryCmpdRegexPattern" . }}
       orders:
         provision:
-          - zookeeper,bookies-recovery
+          - zookeeper
           - broker,bookies
-          - proxy
+          - proxy,bookies-recovery
         terminate:
-          - proxy
+          - proxy,bookies-recovery
           - broker,bookies
-          - zookeeper,bookies-recovery
+          - zookeeper
         update:
-          - zookeeper,bookies-recovery
+          - zookeeper
           - broker,bookies
-          - proxy
+          - proxy,bookies-recovery

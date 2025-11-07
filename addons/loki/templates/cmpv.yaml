@@ -4,37 +4,39 @@ metadata:
   name: loki
   labels:
     {{- include "loki.labels" . | nindent 4 }}
+  annotations:
+    {{- include "loki.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:
         - write-1.0.0
       compDefs:
-        - loki-write
+        - {{ include "loki.writeCmpdRegexpPattern" . }}
     - releases:
         - read-1.0.0
       compDefs:
-        - loki-read
+        - {{ include "loki.readCmpdRegexpPattern" . }}
     - releases:
         - backend-1.0.0
       compDefs:
-        - loki-backend
+        - {{ include "loki.backendCmpdRegexpPattern" . }}
     - releases:
         - gateway-1.0.0
       compDefs:
-        - loki-gateway
+        - {{ include "loki.gatewayCmpdRegexpPattern" . }}
   releases:
     - name: write-1.0.0
       serviceVersion: 1.0.0
       images:
-        write: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.write.repository }}:{{ .Values.images.write.tag }}
+        write: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}
     - name: read-1.0.0
       serviceVersion: 1.0.0
       images:
-        read: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.read.repository }}:{{ .Values.images.read.tag }}
+        read: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}
     - name: backend-1.0.0
       serviceVersion: 1.0.0
       images:
-        backend: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.backend.repository }}:{{ .Values.images.backend.tag }}
+        backend: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}
     - name: gateway-1.0.0
       serviceVersion: 1.0.0
       images:

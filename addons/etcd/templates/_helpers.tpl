@@ -36,6 +36,9 @@ Common labels
 {{- define "etcd.labels" -}}
 helm.sh/chart: {{ include "etcd.chart" . }}
 {{ include "etcd.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
@@ -48,29 +51,101 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Define config template name
+Common annotations
 */}}
-{{- define "etcd.configTplName" -}}
-etcd-config-template
+{{- define "etcd.annotations" -}}
+{{- /*{{ include "kblib.helm.resourcePolicy" . }}*/ -}}
+{{ include "etcd.apiVersion" . }}
 {{- end }}
 
 {{/*
-Define config constriant name
+API version annotation
 */}}
-{{- define "etcd.configConstraintName" -}}
-etcd-config-constraints
+{{- define "etcd.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*
-Define configmap name
+Define etcd 3.X component definition name
 */}}
-{{- define "etcd.cmScriptsName" -}}
-etcd-scripts
+{{- define "etcd3.cmpdName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.major3 ) 0 -}}
+etcd-3-{{ .Chart.Version }}
+{{- else -}}
+{{- printf "%s" .Values.cmpdVersionPrefix.major3 -}}-{{ .Chart.Version }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define etcd component definition regular expression name prefix
+*/}}
+{{- define "etcd3.cmpdRegexpPattern" -}}
+^etcd-3.*
+{{- end -}}
+
+{{/*
+Define etcd 3.X component config template name
+*/}}
+{{- define "etcd3.configTemplate" -}}
+etcd3-config-template-{{ .Chart.Version }}
+{{- end }}
+
+{{/*
+Define etcd 3.X component parameters definition name
+*/}}
+{{- define "etcd3.paramsDefinition" -}}
+etcd3-pd
+{{- end }}
+
+{{/*
+Define etcd 3.X component parameter config renderer name
+*/}}
+{{- define "etcd3.pcrName" -}}
+etcd3-pcr
+{{- end }}
+
+
+{{/*
+Define etcd 3.X component script template name
+*/}}
+{{- define "etcd3.scriptTemplate" -}}
+etcd3-script-template-{{.Chart.Version}}
+{{- end }}
+
+{{/*
+Generate scripts configmap
+*/}}
+{{- define "etcd.extend.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
 {{- end }}
 
 {{/*
 Define etcdctl backup actionSet name
 */}}
-{{- define "etcd.backupActionSetName" -}}
-etcdctl-backup
+{{- define "etcd.backupActionSet" -}}
+etcdctl-br
 {{- end -}}
+
+{{/*
+Define etcd backup policy template name
+*/}}
+{{- define "etcd.backupPolicyTemplateName" -}}
+etcd-backup-policy-template
+{{- end -}}
+
+{{/*
+Define etcd image repository
+*/}}
+{{- define "etcd.repository" -}}
+{{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}
+{{- end }}
+
+{{/*
+Define bash-busybox image
+*/}}
+{{- define "bashBusybox.image" -}}
+{{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.bashBusybox.repository }}:{{ .Values.images.bashBusybox.tag }}
+{{- end }}

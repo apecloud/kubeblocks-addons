@@ -1,25 +1,29 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
   name: {{ include "apecloud-mysql.backupPolicyTemplateName" . }}
   labels:
-    clusterdefinition.kubeblocks.io/name: apecloud-mysql
-    service-kind/mysql: "true"
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
-  annotations:
-    dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
-  backupPolicies:
-  - componentDefs:
-      - {{ include "apecloud-mysql.componentDefName" . }}
-    target:
-      role: follower
-      fallbackRole: leader
-      account: root
-    backupMethods:
+  serviceKind: ApeCloudMySQL
+  compDefs:
+   - {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
+  target:
+    role: follower
+    fallbackRole: leader
+    account: root
+  backupMethods:
     - name: xtrabackup
       snapshotVolumes: false
       actionSetName: {{ include "apecloud-mysql.xtrabackupActionSetName" . }}
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+    - name: xtrabackup-inc
+      compatibleMethod: xtrabackup
+      snapshotVolumes: false
+      actionSetName: {{ include "apecloud-mysql.xtrabackupIncActionSetName" . }}
       targetVolumes:
         volumeMounts:
         - name: data
@@ -33,12 +37,30 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
-    schedules:
+    - name: archive-binlog
+      target:
+        role: leader
+        account: root
+      snapshotVolumes: false
+      actionSetName: apecloud-mysql-pitr
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+  schedules:
     - backupMethod: xtrabackup
       enabled: false
       cronExpression: "0 18 * * *"
+      retentionPeriod: 8d
+    - backupMethod: xtrabackup-inc
+      enabled: false
+      cronExpression: "0 19 * * *"
       retentionPeriod: 7d
     - backupMethod: volume-snapshot
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
+    - backupMethod: archive-binlog
+      enabled: false
+      cronExpression: "*/30 * * * *"
+      retentionPeriod: 8d

@@ -51,14 +51,18 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Common annotations
 */}}
-{{- define "neon.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "neon.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "neon.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "neon.apiVersion" . }}
 {{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "neon.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*
@@ -82,3 +86,13 @@ Generate config configmap
 {{- end }}
 
 
+
+
+
+{{/*
+Define image
+*/}}
+
+{{- define "neon.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
+{{- end }}

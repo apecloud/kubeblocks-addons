@@ -1,18 +1,19 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: opensearch-dashboard-{{ .Chart.Version }}
+  name: {{ include "opensearch-dashboard.cmpdName" . }}
   labels:
     {{- include "opensearch.labels" . | nindent 4 }}
+  annotations:
+    {{- include "opensearch.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
+  serviceVersion: {{ .Values.defaultServiceVersion.opensearch }}
   runtime:
     containers:
       - name: dashboard
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dashboard.repository }}:{{ default .Chart.AppVersion .Values.image.dashboard.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - sh
@@ -23,7 +24,7 @@ spec:
             bash opensearch-dashboards-docker-entrypoint.sh opensearch-dashboards
         env:
           - name: OPENSEARCH_HOSTS
-            value: $(OPENSEARCH_HOST)
+            value: "https://$(OPENSEARCH_HOST):$(OPENSEARCH_SVC_PORT)"
           - name: SERVER_HOST
             value: "0.0.0.0"
         startupProbe:
@@ -58,9 +59,17 @@ spec:
     - name: OPENSEARCH_HOST
       valueFrom:
         serviceVarRef:
-          compDef: opensearch
+          compDef: {{ include "opensearch.cmpdRegexpPattern" . }}
           optional: false
-          Host: Required
+          host: Required
+    - name: OPENSEARCH_SVC_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "opensearch.cmpdRegexpPattern" . }}
+          optional: false
+          port:
+            name: http
+            option: Required
   services:
     - name: default
       spec:

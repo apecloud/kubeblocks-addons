@@ -49,3 +49,166 @@ Selector labels
 app.kubernetes.io/name: {{ include "clickhouse.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "clickhouse.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "clickhouse.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "clickhouse.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+
+{{/*
+=== CLICKHOUSE COMPONENT DEFINITIONS ===
+*/}}
+
+{{/*
+Define clickhouse component definition name
+*/}}
+{{- define "clickhouse.cmpdName" -}}
+clickhouse-{{ .Chart.Version }}
+{{- end }}
+
+{{/*
+Define clickhouse component definition regex pattern
+*/}}
+{{- define "clickhouse.cmpdRegexpPattern" -}}
+^clickhouse-1.*
+{{- end }}
+
+{{/*
+=== CLICKHOUSE-KEEPER COMPONENT DEFINITIONS ===
+*/}}
+
+{{/*
+Define clickhouse-keeper component definition name
+*/}}
+{{- define "clickhouse-keeper.cmpdName" -}}
+clickhouse-keeper-{{ .Chart.Version }}
+{{- end }}
+
+{{/*
+Define clickhouse-keeper component definition regex pattern
+*/}}
+{{- define "clickhouse-keeper.cmpdRegexpPattern" -}}
+^clickhouse-keeper-1.*
+{{- end }}
+
+{{/*
+=== PARAMETER DEFINITIONS ===
+*/}}
+
+{{/*
+Define clickhouse config parameter definition name
+*/}}
+{{- define "clickhouse.paramsDefName" -}}
+clickhouse-pd
+{{- end }}
+
+{{/*
+Define clickhouse user parameter definition name
+*/}}
+{{- define "clickhouse.userParamsDefinition" -}}
+clickhouse-user-pd
+{{- end }}
+
+{{/*
+Define clickhouse config parameter definition name
+*/}}
+{{- define "clickhouse.configParamsDefinition" -}}
+clickhouse-config-pd
+{{- end }}
+
+{{/*
+Define clickhouse keeper parameter definition name
+*/}}
+{{- define "clickhouse.keeperParamsDefinition" -}}
+clickhouse-keeper-pd
+{{- end }}
+
+{{/*
+=== PARAMETER CONFIGURATION RULES ===
+*/}}
+
+{{/*
+Define clickhouse keeper PCR with chart version
+*/}}
+{{- define "clickhouse.keeperPcr" -}}
+clickhouse-keeper-pcr-{{ .Chart.Version }}
+{{- end }}
+
+{{/*
+Define clickhouse PCR with chart version
+*/}}
+{{- define "clickhouse.pcr" -}}
+clickhouse-pcr-{{ .Chart.Version }}
+{{- end }}
+
+{{/*
+=== CONFIGURATION TEMPLATES ===
+*/}}
+
+{{/*
+Define clickhouse default overrides configuration template name
+*/}}
+{{- define "clickhouse.configurationTplName" -}}
+clickhouse-configuration-tpl
+{{- end }}
+
+{{/*
+Define clickhouse client configuration template name
+*/}}
+{{- define "clickhouse.clientTplName" -}}
+clickhouse-client-configuration-tpl
+{{- end }}
+
+{{/*
+Define clickhouse user configuration template name
+*/}}
+{{- define "clickhouse.userTplName" -}}
+clickhouse-user-configuration-tpl
+{{- end }}
+
+{{/*
+Define clickhouse-keeper configuration template name
+*/}}
+{{- define "clickhouse-keeper.configurationTplName" -}}
+clickhouse-keeper-configuration-tpl
+{{- end }}
+
+{{/*
+=== IMAGE DEFINITIONS ===
+*/}}
+
+{{/*
+Define clickhouse image repository
+*/}}
+
+{{/*
+Define busybox image
+*/}}
+{{- define "busybox.image" -}}
+{{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository}}:{{ .Values.busyboxImage.tag }}
+{{- end }}
+
+{{/*
+Define clickhouse image repository
+*/}}
+{{- define "clickhouse.backupImage.repository" -}}
+{{ .Values.backupImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.backupImage.repository }}:{{ .Values.backupImage.tag }}
+{{- end }}
+
+{{/*
+Define clickhouse image repository
+*/}}
+{{- define "clickhouse.repository" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
+{{- end }}

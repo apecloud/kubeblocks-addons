@@ -4,13 +4,20 @@ description: Apache Pulsar is an open-source, distributed messaging and streamin
 
 type: application
 
-version: 1.0.0-alpha.0
+version: 1.1.0-alpha.0
 
 # appVersion specifies the version of the Pulsar database to be created,
 # and this value should be consistent with an existing clusterVersion.
 # All supported clusterVersion versions can be viewed through `kubectl get clusterVersion`.
 # The current default value is the highest version of the Pulsar supported in KubeBlocks.
 appVersion: 3.0.2
+
+# Add a dependency to the kubeblocks definition library chart
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
 
 home: https://pulsar.apache.org/
 icon: https://pulsar.apache.org/img/logo-black.svg
@@ -30,6 +37,6 @@ maintainers:
     url: https://github.com/apecloud/kubeblocks/
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
   addon.kubeblocks.io/model: "streaming"
   addon.kubeblocks.io/provider: "community"

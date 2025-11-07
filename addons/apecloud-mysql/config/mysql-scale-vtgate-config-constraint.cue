@@ -1,20 +1,3 @@
-//Copyright (C) 2022-2023 ApeCloud Co., Ltd
-//
-//This file is part of KubeBlocks project
-//
-//This program is free software: you can redistribute it and/or modify
-//it under the terms of the GNU Affero General Public License as published by
-//the Free Software Foundation, either version 3 of the License, or
-//(at your option) any later version.
-//
-//This program is distributed in the hope that it will be useful
-//but WITHOUT ANY WARRANTY; without even the implied warranty of
-//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//GNU Affero General Public License for more details.
-//
-//You should have received a copy of the GNU Affero General Public License
-//along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 #VtGateParameter: {
 
 	// Stop buffering completely if a failover takes longer than this duration. (default 20s)
@@ -89,16 +72,14 @@
 	// Set default strategy for DDL statements. Override with @@ddl_strategy session variable
 	ddl_strategy: string & "direct" | "online" | "mysql"
 
-    // Enable or disable the feature of showing information about the vttablet node which executing the SQL. (default false)
-    enable_display_sql_execution_vttablets: bool
+	// Enable or disable the feature of showing information about the vttablet node which executing the SQL. (default false)
+	enable_display_sql_execution_vttablets: bool
 
-    // Enable or disable the feature of read write splitting for read only txn (default false)
-    enable_read_write_split_for_read_only_txn: bool
+	// Enable or disable the feature of read write splitting for read only txn (default false)
+	enable_read_write_split_for_read_only_txn: bool
 
-    // Enable or disable the feature of interception for DML without where clause (default true)
-    enable_interception_for_dml_without_where: bool
-
-	...
+	// Enable or disable the feature of interception for DML without where clause (default true)
+	enable_interception_for_dml_without_where: bool
 }
 
 // SectionName is section name

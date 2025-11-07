@@ -1,38 +1,10 @@
 nameOverride: ""
+
 fullnameOverride: ""
 
-## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
+## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Delete, WipeOut.
 ##
 terminationPolicy: Delete
-
-## Service configurations
-##
-service:
-  ## @param service.type RisingWave SQL frontend service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
-  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  ##
-  type: ClusterIP
-
-## @param tolerations define global Tolerations for the cluster all pod's assignment.
-## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-##
-tolerations: [ ]
-
-## @param topologySpreadConstraints Topology Spread Constraints for pod assignment spread across your cluster among failure-domains. Evaluated as a template.
-## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/#spread-constraints-for-pods
-##
-topologyKeys:
-- kubernetes.io/hostname
-
-## @param affinity is affinity setting for RisingWave cluster pods assignment.
-##
-affinity: { }
-
-serviceAccount:
-  ## @param serviceAccount.name is the name of the service account to use.
-  ## Used by all RisingWave component pods.
-  ##
-  name: ""
 
 ## RisingWave Configuration
 ##
@@ -49,11 +21,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   frontend:
@@ -68,11 +40,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   compute:
@@ -87,11 +59,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   compactor:
@@ -106,11 +78,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   connector:
@@ -125,11 +97,11 @@ risingwave:
     ##
     resources:
       requests:
-        cpu: "500m"
-        memory: "500Mi"
+        cpu: "1"
+        memory: "1"
       limits:
         cpu: "1"
-        memory: "1Gi"
+        memory: "1"
 
 
   metaStore:

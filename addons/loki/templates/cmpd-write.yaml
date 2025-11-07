@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: loki-write
+  name: {{ include "loki.writeCmpdName" . }}
   labels:
     {{- include "loki.labels" . | nindent 4 }}
+  annotations:
+    {{- include "loki.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A Loki component definition for Kubernetes
@@ -15,11 +17,11 @@ spec:
     - name: loki-write
       spec:
         ports:
-          - port: {{ .Values.write.httpMetricsPort }}
+          - port: {{ .Values.server.httpMetricsPort }}
             protocol: TCP
             name: http-metrics
             targetPort: http-metrics
-          - port: {{ .Values.write.grpcPort }}
+          - port: {{ .Values.server.grpcPort }}
             protocol: TCP
             name: grpc
             targetPort: grpc
@@ -33,9 +35,11 @@ spec:
               matchLabels:
                 app.kubernetes.io/component: write
             topologyKey: kubernetes.io/hostname
+    securityContext:
+      fsGroup: 10001
     containers:
       - name: write
-        imagePullPolicy: {{ .Values.images.write.pullPolicy }}
+        imagePullPolicy: {{ .Values.images.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -43,15 +47,23 @@ spec:
               - ALL
         args:
           - -config.file=/etc/loki/config/config.yaml
+          - -runtime-config.file=/etc/loki/runtime-config/runtime-config.yaml
           - -target=write
+          - -config.expand-env=true
+        env:
+          - name: KB_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
         ports:
-          - containerPort: {{ .Values.write.httpMetricsPort }}
+          - containerPort: {{ .Values.server.httpMetricsPort }}
             name: http-metrics
             protocol: TCP
-          - containerPort: {{ .Values.write.grpcPort }}
+          - containerPort: {{ .Values.server.grpcPort }}
             name: grpc
             protocol: TCP
-          - containerPort: {{ .Values.write.httpMemberlistPort }}
+          - containerPort: {{ .Values.server.httpMemberlistPort }}
             name: http-memberlist
             protocol: TCP
         readinessProbe:
@@ -60,7 +72,7 @@ spec:
             path: /ready
             port: http-metrics
             scheme: HTTP
-          initialDelaySeconds: 30
+          initialDelaySeconds: 15
           periodSeconds: 10
           successThreshold: 1
           timeoutSeconds: 1
@@ -75,10 +87,34 @@ spec:
             name: data
   configs:
     - name: loki-config
-      templateRef: loki
+      template: loki-tpl
       volumeName: config
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
     - name: loki-runtime-config
-      templateRef: loki-runtime
+      template: loki-runtime-tpl
       volumeName: runtime-config
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
+  vars:
+    - name: SERVER_HTTP_PORT
+      value: {{ .Values.server.httpMetricsPort | quote }}
+    - name: SERVER_GRPC_PORT
+      value: {{ .Values.server.grpcPort | quote }}
+    - name: LOCAL_RULES_DIR
+      value: /var/loki/rules
+    - name: LOCAL_CHUNKS_DIR
+      value: /var/loki/chunks
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.global.clusterDomain}}
+    - name: KB_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: KB_CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    {{- include "loki.object.serviceRefVars" . | indent 4 }}
+  serviceRefDeclarations:
+    {{- include "loki.object.serviceRef" . | indent 4 }}

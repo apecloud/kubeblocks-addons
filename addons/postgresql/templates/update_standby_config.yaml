@@ -1,0 +1,46 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: pg-update-standby-config
+spec:
+  podInfoExtractors:
+    - name: availablePod
+      podSelector:
+        multiPodSelectionPolicy: All
+      env:
+        - name: PG_MODE
+          valueFrom:
+            envRef:
+              envName: PG_MODE
+        - name: CURRENT_POD_IP
+          valueFrom:
+            envRef:
+              envName: CURRENT_POD_IP
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        primaryEndpoint:
+          description: |
+            primaryEndpoint defines endpoint of the primary instance.empty string means no primary instance.
+            The format is {host}:{port}
+          type: string
+      type: object
+  actions:
+    - name: update-config
+      failurePolicy: Fail
+      parameters:
+        - primaryEndpoint
+      workload:
+        podInfoExtractorName: availablePod
+        type: Pod
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: update-config
+              image: {{ include "postgresql.initImage" . }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/reload_patroni_config.sh" | nindent 18 }}

@@ -3,45 +3,40 @@ kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-  annotations:
-  {{- if eq .Values.topology "server-with-proxy" }}
-    kubeblocks.io/extra-env: '{"PROXY_ENABLED":"on"}'
-  {{- end }}
+  namespace: {{ .Release.Namespace }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
+  clusterDef: mysql
+  topology: {{ .Values.topology }}
   componentSpecs:
     - name: mysql
-      replicas: {{ .Values.replicas }}
-      {{- $compdef := .Values.version }}
-      {{- if .Values.orchestrator.enable }}
-      {{- $compdef = printf "%s-orc" $compdef }}
-      {{- end }}
-      componentDef: {{ $compdef }}
+      serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- if .Values.orchestrator.enable }}
+      {{- if hasPrefix "orc" .Values.topology }}
       serviceRefs:
-        {{- if eq .Values.orchestrator.clusterServiceSelector.cluster ""}}
+        {{- if eq .Values.orchestrator.clusterServiceSelector.clusterName ""}}
         - name: orchestrator
-          namespace: {{ .Values.orchestrator.serviceReference.namespace | default .Release.Namespace }}
+          namespace: {{ .Release.Namespace }}
           serviceDescriptor: {{ include "kblib.clusterName" . }}-orc-descriptor
         {{- else }}
         - name: orchestrator
-          namespace: {{ .Values.orchestrator.serviceReference.namespace | default .Release.Namespace }}
+          namespace: {{ .Values.orchestrator.clusterServiceSelector.namespace | default .Release.Namespace }}
           clusterServiceSelector:
-            cluster:  {{ .Values.orchestrator.clusterServiceSelector.cluster }}
+            cluster:  {{ .Values.orchestrator.clusterServiceSelector.clusterName }}
             service:
               component: orchestrator
               service: orchestrator
-              port:  {{ .Values.orchestrator.clusterServiceSelector.portName }}
+              port:  orc-http
+            credential:
+              component: orchestrator
+              name: orchestrator
         {{- end }}
       {{- end }}
-    {{- if eq .Values.topology "server-with-proxy" }}
+    {{- if hasSuffix "proxysql" .Values.topology }}
     - name: proxysql
-      componentDef: proxysql
       replicas: {{.Values.proxysql.replicas}}
       resources:
         limits:

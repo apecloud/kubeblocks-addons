@@ -2,29 +2,23 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "clustername" . }}
+  namespace: {{ .Release.Namespace }}
   labels: {{ include "opensearch-cluster.labels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.terminationPolicy }}
-  affinity:
-    {{- with .Values.topologyKeys }}
-    topologyKeys: {{ . | toYaml | nindent 6 }}
-    {{- end }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
-  {{- end }}
   componentSpecs:
     - name: opensearch
-      componentDef: opensearch
-      monitor: {{ .Values.monitor.enabled | default false }}
+      ## TODO: use regex pattern when cluster validation supported
+      componentDef: opensearch-core
       replicas: {{ .Values.replicaCount | default 3 }}
       {{- with  .Values.resources }}
       resources:
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
       {{- if .Values.persistence.enabled }}
       volumeClaimTemplates:
@@ -35,7 +29,7 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.persistence.data.size }}
+                storage: {{ print .Values.persistence.data.size "Gi" }}
       {{- end }}
     - name: dashboard
       componentDef: opensearch-dashboard
@@ -44,8 +38,8 @@ spec:
       resources:
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}

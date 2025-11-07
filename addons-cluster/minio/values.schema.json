@@ -6,9 +6,9 @@
       "title": "Replicas",
       "description": "The number of replicas",
       "type": "integer",
-      "default": 1,
-      "minimum": 1,
-      "maximum": 5
+      "default": 2,
+      "minimum": 2,
+      "maximum": 32
     },
     "cpu": {
       "title": "CPU",
@@ -47,6 +47,11 @@
     "storageClassName": {
       "title": "Storage Class Name",
       "description": "Storage class name of the data volume",
+      "type": "string"
+    },
+    "buckets": {
+      "title": "bucket Names",
+      "description": "bucket names",
       "type": "string"
     }
   }

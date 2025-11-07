@@ -3,23 +3,24 @@ annotations:
 apiVersion: v2
 name: yashan-cluster
 type: application
-version: 1.0.0-alpha.0
 
 description: YashanDB is an independent-developed next generation analytic database
 
-dependencies:
-  - name: kblib
-    version: 0.1.1
-    repository: file://../kblib
-    alias: extra
+version: 1.1.0-alpha.0
 
 # This is the version number of the yashandb being deployed.
-appVersion: "yashandb-personal-23.1.1.100"
+appVersion: "23.1.1-100"
 
 keywords:
   - yashan
   - database
   - sql
+
+dependencies:
+  - name: kblib
+    version: 0.1.2
+    repository: file://../kblib
+    alias: extra
 
 home: https://www.yashandb.com/
 icon: https://kubeblocks.io/img/logo.png

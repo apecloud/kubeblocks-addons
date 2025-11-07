@@ -1,0 +1,156 @@
+{
+    "$schema": "http://json-schema.org/schema#",
+    "type": "object",
+    "title": "Application Configuration",
+    "description": "Configuration schema for the application Helm chart.",
+    "properties": {
+        "replicaCount": {
+            "type": "integer",
+            "default": 1,
+            "description": "Number of replicas for the deployment"
+        },
+        "resources": {
+            "type": "object",
+            "description": "Resources requested by each replica",
+            "properties": {
+                "limits": {
+                    "type": "object",
+                    "properties": {
+                        "cpu": {
+                            "title": "CPU",
+                            "description": "CPU limit",
+                            "type": [
+                                "number",
+                                "string"
+                            ],
+                            "default": 1
+                        },
+                        "memory": {
+                            "title": "Memory(Gi)",
+                            "description": "Memory limit, the unit is Gi.",
+                            "type": [
+                                "number",
+                                "string"
+                            ],
+                            "default": 1
+                        }
+                    }
+                },
+                "requests": {
+                    "type": "object",
+                    "properties": {
+                        "cpu": {
+                            "title": "CPU",
+                            "description": "CPU request",
+                            "type": [
+                                "number",
+                                "string"
+                            ],
+                            "default": 1
+                        },
+                        "memory": {
+                            "title": "Memory(Gi)",
+                            "description": "Memory request, the unit is Gi.",
+                            "type": [
+                                "number",
+                                "string"
+                            ],
+                            "default": 1
+                        }
+                    }
+                }
+            }
+        },
+        "persistence": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable or disable persistence"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "storageClassName": {
+                            "type": ["string", "null"],
+                            "default": null,
+                            "description": "Storage class name used by persistent volumes"
+                        },
+                        "size": {
+                            "title": "Storage Size(Gi)",
+                            "description": "Storage size, the unit is Gi.",
+                            "type": [
+                                "number",
+                                "string"
+                            ],
+                            "default": 1
+                        }
+                    }
+                }
+            }
+        },
+        "dashboard": {
+            "type": "object",
+            "properties": {
+                "resources": {
+                    "type": "object",
+                    "description": "Resources requested by each dashboard replica",
+                    "properties": {
+                        "limits": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "title": "CPU",
+                                    "description": "CPU limit",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory(Gi)",
+                                    "description": "Memory limit, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "title": "CPU",
+                                    "description": "CPU request",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory(Gi)",
+                                    "description": "Memory request, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
+                            }
+                        }
+                    }
+                },
+                "replicaCount": {
+                    "type": "integer",
+                    "default": 1,
+                    "description": "Number of dashboard replicas"
+                }
+            }
+        }
+    }
+}

@@ -24,9 +24,15 @@ test || __() {
   set -ex;
 }
 
-redis_advertised_svc_host_value=""
-redis_advertised_svc_port_value=""
+redis_announce_host_value=""
+redis_announce_port_value=""
 redis_default_service_port=6379
+if [ -f /data/.fixed_pod_ip_enabled ]; then
+  # if the file /data/.fixed_pod_ip_enabled exists, it means that the redis pod is running in fixed pod ip mode.
+  FIXED_POD_IP_ENABLED=true
+else
+  FIXED_POD_IP_ENABLED=false
+fi
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
@@ -41,24 +47,40 @@ init_redis_service_port() {
   fi
 }
 
-# TODO: it will be removed in the future
-extract_ordinal_from_object_name() {
-  local object_name="$1"
-  local ordinal="${object_name##*-}"
-  echo "$ordinal"
+extract_lb_host_by_svc_name() {
+  local svc_name="$1"
+  for lb_composed_name in $(echo "$REDIS_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
+    if [[ ${lb_composed_name} == *":"* ]]; then
+       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
+         echo "${lb_composed_name#*:}"
+         break
+       fi
+    else
+       break
+    fi
+  done
 }
 
 # TODO: if instanceTemplate is specified, the pod service could not be parsed from the pod ordinal.
-parse_redis_advertised_svc_if_exist() {
-  local pod_name="$1"
-
-  if ! env_exist REDIS_ADVERTISED_PORT; then
+parse_redis_primary_announce_addr() {
+  if is_empty "$REDIS_ADVERTISED_PORT"; then
+     REDIS_ADVERTISED_PORT="$REDIS_LB_ADVERTISED_PORT"
+  fi
+  if is_empty "$REDIS_ADVERTISED_PORT"; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
+    # if redis primary is in host network mode, use the host ip and port as the announce ip and port first
+    if ! is_empty "${REDIS_HOST_NETWORK_PORT}"; then
+      redis_announce_port_value="$REDIS_HOST_NETWORK_PORT"
+      # the post provision action is executed in the primary pod, so we can get the host ip from the env defined in the action context.
+      redis_announce_host_value="$CURRENT_POD_HOST_IP"
+      echo "redis is in host network mode, use the host ip:$CURRENT_POD_HOST_IP and port:$REDIS_HOST_NETWORK_PORT as the announce ip and port."
+    fi
     return 0
   fi
 
+  local pod_name="$1"
   local found=false
-  pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+  pod_name_ordinal=$(extract_obj_ordinal "$pod_name")
   # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   # shellcheck disable=SC2207
   advertised_ports=($(split "$REDIS_ADVERTISED_PORT" ","))
@@ -67,19 +89,26 @@ parse_redis_advertised_svc_if_exist() {
     parts=($(split "$advertised_port" ":"))
     local svc_name="${parts[0]}"
     local port="${parts[1]}"
-    svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
+    svc_name_ordinal=$(extract_obj_ordinal "$svc_name")
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
-      redis_advertised_svc_port_value="$port"
+      redis_announce_port_value="$port"
       # TODO: get the host ip from env defined in the action context.
-      redis_advertised_svc_host_value="$CURRENT_POD_HOST_IP"
+      lb_host=$(extract_lb_host_by_svc_name "$svc_name")
+      if [ -n "$lb_host" ]; then
+        echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
+        redis_announce_host_value="$lb_host"
+        redis_announce_port_value="6379"
+      else
+        redis_announce_host_value="$CURRENT_POD_HOST_IP"
+      fi
       found=true
       break
     fi
   done
 
   if equals "$found" false; then
-    echo "Error: No matching svcName and port found for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. Exiting."
+    echo "Error: No matching svcName and port found for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. Exiting." >&2
     exit 1
   fi
 }
@@ -110,7 +139,7 @@ construct_sentinel_sub_command() {
       echo "SENTINEL set $master_name auth-pass $REDIS_SENTINEL_PASSWORD"
       ;;
     *)
-      echo "Unknown command: $command"
+      echo "Unknown command: $command" >&2
       return 1
       ;;
   esac
@@ -125,7 +154,7 @@ check_connectivity() {
     echo "$host is reachable on port $port."
     return 0
   else
-    echo "$host is not reachable on port $port."
+    echo "$host is not reachable on port $port." >&2
     return 1
   fi
 }
@@ -142,11 +171,32 @@ execute_sentinel_sub_command() {
   echo "$output"
 
   if [ $status -ne 0 ] || ! equals "$output" "OK"; then
-    echo "Command failed with status $status or output not OK."
+    echo "Command failed with status $status or output:$output not OK." >&2
     return 1
   else
     echo "Command executed successfully."
     return 0
+  fi
+}
+
+get_master_addr_by_name(){
+  local sentinel_host=$1
+  local sentinel_port=$2
+  local command=$3
+  local output
+  output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  local status=$?
+  if [ $status -ne 0 ]; then
+    echo "Command failed with status $status." >&2
+    return 1
+  fi
+  local ip_addr=$(echo "$output" | head -n1)
+  if is_empty "$ip_addr" || echo "$ip_addr" | grep -E '^([a-zA-Z0-9-]+\.[a-zA-Z0-9-]+\.default\.svc|([0-9]{1,3}\.){3}[0-9]{1,3})$' > /dev/null; then
+    echo "$output" 
+    return 0
+  else
+    echo "Command failed with $output" >&2
+    return 1
   fi
 }
 
@@ -164,27 +214,79 @@ register_to_sentinel() {
   call_func_with_retry 3 5 check_connectivity "$sentinel_host" "$sentinel_port" "$SENTINEL_PASSWORD" || exit 1
   call_func_with_retry 3 5 check_connectivity "$redis_primary_host" "$redis_primary_port" "$REDIS_DEFAULT_PASSWORD" || exit 1
 
-  # Register and configure the Redis primary to redis sentinel
-  sentinel_commands=("monitor" "down-after-milliseconds" "failover-timeout" "parallel-syncs" "auth-user" "auth-pass")
-  for cmd in "${sentinel_commands[@]}"
+  # Check if Sentinel is already monitoring the Redis primary
+  if ! master_addr=$(call_func_with_retry 3 5 get_master_addr_by_name "$sentinel_host" "$sentinel_port" "SENTINEL get-master-addr-by-name $master_name"); then
+    echo "Failed to get master address after maximum retries." >&2
+    exit 1
+  fi
+  if is_empty "$master_addr"; then
+    echo "Sentinel is not monitoring $master_name. Registering it..."
+    # Register the Redis primary with Sentinel
+    sentinel_monitor_cmd="SENTINEL monitor $master_name $redis_primary_host $redis_primary_port 2"
+    call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_monitor_cmd" || exit 1
+  else
+    echo "Sentinel is already monitoring $master_name at $master_addr. Skipping monitor registration."
+  fi
+  #configure the Redis primary with Sentinel
+  sentinel_configure_commands=("down-after-milliseconds" "failover-timeout" "parallel-syncs" "auth-pass")
+  if [ "$IS_REDIS5" != "true" ]; then
+    sentinel_configure_commands+=("auth-user")
+  fi
+  for cmd in "${sentinel_configure_commands[@]}"
   do
     sentinel_cli_cmd=$(construct_sentinel_sub_command "$cmd" "$master_name" "$redis_primary_host" "$redis_primary_port")
-    call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_cli_cmd"
+    call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_cli_cmd" || exit 1
   done
   set_xtrace_when_ut_mode_false
   echo "redis sentinel register to $sentinel_host succeeded!"
 }
 
+function register_to_sentinel_for_redis5() {
+  local sentinel_pod_fqdn=${1:? "Error: Required argument sentinel_pod_fqdn is not set."}
+  sentinel_pod_ip=$(getent hosts "$sentinel_pod_fqdn" | awk '{ print $1 }')
+  if [ -z "$sentinel_pod_ip" ]; then
+    echo "Error: Failed to resolve pod ip for $sentinel_pod_fqdn."
+    exit 1
+  fi
+  if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value"; then
+    echo "register to sentinel:$sentinel_pod_fqdn with announce addr: redis_announce_host_value=$redis_announce_host_value, redis_announce_port_value=$redis_announce_port_value"
+    register_to_sentinel "$sentinel_pod_ip" "$master_name" "$redis_announce_host_value" "$redis_announce_port_value"
+  elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
+    # the post provision action is executed in the primary pod, so we can get the primary pod ip from the env defined in the action context.
+    echo "register to sentinel:$sentinel_pod_fqdn with fixed primary pod ip: fixed_pod_ip=$CURRENT_POD_IP, redis_default_service_port=$redis_default_service_port"
+    register_to_sentinel "$sentinel_pod_ip" "$master_name" "$CURRENT_POD_IP" "$redis_default_service_port"
+  else
+    echo "register to sentinel:$sentinel_pod_fqdn with pod fqdn: redis_default_primary_pod_fqdn=$redis_default_primary_pod_fqdn, redis_default_service_port=$redis_default_service_port"
+    register_to_sentinel "$sentinel_pod_ip" "$master_name" "$redis_default_primary_pod_fqdn" "$redis_default_service_port"
+  fi
+}
+
+function register_to_sentinel_for_redis() {
+  local sentinel_pod_fqdn=${1:? "Error: Required argument sentinel_pod_fqdn is not set."}
+  if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value"; then
+    echo "register to sentinel:$sentinel_pod_fqdn with announce addr: redis_announce_host_value=$redis_announce_host_value, redis_announce_port_value=$redis_announce_port_value"
+    register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$redis_announce_host_value" "$redis_announce_port_value"
+  elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
+    # the post provision action is executed in the primary pod, so we can get the primary pod ip from the env defined in the action context.
+    echo "register to sentinel:$sentinel_pod_fqdn with fixed primary pod ip: fixed_pod_ip=$CURRENT_POD_IP, redis_default_service_port=$redis_default_service_port"
+    register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$CURRENT_POD_IP" "$redis_default_service_port"
+  else
+    echo "register to sentinel:$sentinel_pod_fqdn with pod fqdn: redis_default_primary_pod_fqdn=$redis_default_primary_pod_fqdn, redis_default_service_port=$redis_default_service_port"
+    register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$redis_default_primary_pod_fqdn" "$redis_default_service_port"
+  fi
+}
+
 register_to_sentinel_wrapper() {
   # check required environment variables, we use REDIS_COMPONENT_NAME as the master_name registered to sentinel
-  if  ! env_exists REDIS_COMPONENT_NAME REDIS_POD_NAME_LIST; then
-    echo "Error: Required environment variable REDIS_COMPONENT_NAME and REDIS_POD_NAME_LIST is not set."
+  if is_empty "$REDIS_COMPONENT_NAME" || is_empty "$REDIS_POD_NAME_LIST"; then
+    echo "Error: Required environment variable REDIS_COMPONENT_NAME and REDIS_POD_NAME_LIST is not set." >&2
     return 1
   fi
 
   # parse redis sentinel pod fqdn list from $SENTINEL_POD_FQDN_LIST env
-  if ! env_exist SENTINEL_POD_FQDN_LIST; then
-    echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
+  # shellcheck disable=SC2153
+  if is_empty "$SENTINEL_POD_FQDN_LIST"; then
+    echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set." >&2
     return 1
   fi
 
@@ -192,25 +294,28 @@ register_to_sentinel_wrapper() {
   redis_default_primary_pod_name=$(min_lexicographical_order_pod "$REDIS_POD_NAME_LIST")
   redis_default_primary_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$redis_default_primary_pod_name")
   init_redis_service_port
-  parse_redis_advertised_svc_if_exist "$redis_default_primary_pod_name"
-
+  parse_redis_primary_announce_addr "$redis_default_primary_pod_name"
+  if is_empty "$CUSTOM_SENTINEL_MASTER_NAME"; then
+    master_name=$REDIS_COMPONENT_NAME
+  else
+    master_name="$CUSTOM_SENTINEL_MASTER_NAME"
+  fi
   sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
   for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
-    if ! is_empty "$redis_advertised_svc_host_value" && ! is_empty "$redis_advertised_svc_port_value"; then
-      echo "register to sentinel:$sentinel_pod_fqdn with advertised service: redis_advertised_svc_host_value=$redis_advertised_svc_host_value, redis_advertised_svc_port_value=$redis_advertised_svc_port_value"
-      register_to_sentinel "$sentinel_pod_fqdn" "$REDIS_COMPONENT_NAME" "$redis_advertised_svc_host_value" "$redis_advertised_svc_port_value"
+    if [ "$IS_REDIS5" == "true" ]; then
+       register_to_sentinel_for_redis5 "${sentinel_pod_fqdn}"
     else
-      echo "register to sentinel:$sentinel_pod_fqdn with pod fqdn: redis_default_primary_pod_fqdn=$redis_default_primary_pod_fqdn, redis_default_service_port=$redis_default_service_port"
-      register_to_sentinel "$sentinel_pod_fqdn" "$REDIS_COMPONENT_NAME" "$redis_default_primary_pod_fqdn" "$redis_default_service_port"
+       register_to_sentinel_for_redis "${sentinel_pod_fqdn}"
     fi
   done
 }
 
+# Notice: make sure post provision action execute in redis primary pod by kbagent
 register_to_sentinel_if_needed() {
-  if env_exist SENTINEL_COMPONENT_NAME; then
+  if ! is_empty "$SENTINEL_COMPONENT_NAME"; then
     echo "redis sentinel component found, register to redis sentinel."
     if ! register_to_sentinel_wrapper; then
-      echo "Failed to register to sentinel."
+      echo "Failed to register to sentinel." >&2
       exit 1
     fi
   else

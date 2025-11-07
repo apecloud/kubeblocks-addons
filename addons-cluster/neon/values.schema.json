@@ -1,70 +1,279 @@
 {
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
+  "title": "Neon Cluster Configuration",
+  "description": "Configuration schema for the Neon Helm chart.",
   "properties": {
     "version": {
-      "title": "Version",
-      "description": "Cluster version.",
       "type": "string",
-      "default": "neon-0.17.0"
+      "default": "1.0.0",
+      "description": "Version of the Neon cluster"
     },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
-      "type": "string",
-      "default": "standalone",
-      "enum": [
-        "standalone",
-        "raftGroup"
-      ]
+    "storageClassName": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Storage class name used by persistent volumes"
     },
-    "replicas": {
-      "title": "Replicas",
-      "description": "The number of replicas, for standalone mode, the replicas is 1, for raftGroup mode, the default replicas is 3.",
-      "type": "integer",
-      "default": 1,
-      "minimum": 1,
-      "maximum": 5
+    "compute": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "default": 1,
+          "description": "Number of compute replicas"
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
+                },
+                "memory": {
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                },
+                "memory": {
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 2
+                }
+              }
+            }
+          }
+        }
+      }
     },
-    "cpu": {
-      "title": "CPU",
-      "description": "CPU cores.",
-      "type": [
-        "number",
-        "string"
-      ],
-      "default": 0.5,
-      "minimum": 0.5,
-      "maximum": 64,
-      "multipleOf": 0.5
+    "storagebroker": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "default": 1,
+          "description": "Number of storage broker replicas"
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
+                },
+                "memory": {
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                },
+                "memory": {
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 2
+                }
+              }
+            }
+          }
+        }
+      }
     },
-    "memory": {
-      "title": "Memory(Gi)",
-      "description": "Memory, the unit is Gi.",
-      "type": [
-        "number",
-        "string"
-      ],
-      "default": 0.5,
-      "minimum": 0.5,
-      "maximum": 1000
+    "safekeeper": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "default": 3,
+          "description": "Number of safekeeper replicas, forming a raft group"
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
+                },
+                "memory": {
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                },
+                "memory": {
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 2
+                }
+              }
+            }
+          }
+        },
+        "dataStorage": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 20,
+          "description": "Data storage size for each safekeeper replica"
+        }
+      }
     },
-    "storage": {
-      "title": "Storage(Gi)",
-      "description": "Storage size, the unit is Gi.",
-      "type": [
-        "number",
-        "string"
-      ],
-      "default": 20,
-      "minimum": 1,
-      "maximum": 10000
-    },
-    "proxyEnabled": {
-      "title": "Proxy",
-      "description": "Enable proxy or not.",
-      "type": "boolean",
-      "default": false
+    "pageserver": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "default": 1,
+          "description": "Number of pageserver replicas"
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
+                },
+                "memory": {
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "CPU",
+                  "description": "CPU cores.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                },
+                "memory": {
+                  "title": "Memory(Gi)",
+                  "description": "Memory, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 2
+                }
+              }
+            }
+          }
+        },
+        "dataStorage": {
+          "title": "Data Storage(Gi)",
+          "description": "Data storage size for each pageserver replica",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 20
+        }
+      }
     }
   }
 }

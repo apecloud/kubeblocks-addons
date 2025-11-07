@@ -3,13 +3,12 @@
 # Declare variables to be passed into your templates.
 
 replicaCount: 1
+
 terminationPolicy: Delete
 
 nameOverride: ""
-fullnameOverride: ""
 
-monitor:
-  enabled: false
+fullnameOverride: ""
 
 resources: { }
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -19,16 +18,12 @@ resources: { }
 
   # limits:
   #   cpu: 500m
-  #   memory: 2Gi
+  #   memory: 2
   # requests:
   #   cpu: 100m
-  #   memory: 1Gi 
+  #   memory: 1
 persistence:
   enabled: true
   data:
-    storageClassName:
-    size: 10Gi
-
-
-serviceAccount:
-  name:
+    storageClassName: ""
+    size: 10

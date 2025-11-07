@@ -1,0 +1,70 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: influxdb
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "influxdb.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - influxdb
+      releases:
+        - 2.7.11
+  releases:
+    - name: 2.7.11
+      changes:
+      serviceVersion: 2.7.11
+      images:
+        init-chmod-data: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.init.repository }}:11-debian-11-r93
+        influxdb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdb.repository }}:2.7.11-debian-12-r18
+
+---
+
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: influxdb-data
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "influxdb.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "influxdb.data.cmpdRegexpPattern" . }}
+      releases:
+        - "1.8.10"
+  releases:
+    - name: "1.8.10"
+      serviceVersion: "1.8.10"
+      images:
+        influxdb-data: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbData.repository }}:1.8.10-c1.1.2-data
+        copy-tools: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:0.1.0
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbData.repository }}:1.8.10-c1.1.2-meta
+
+---
+
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: influxdb-meta
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "influxdb.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "influxdb.meta.cmpdRegexpPattern" . }}
+      releases:
+        - "1.8.10"
+  releases:
+    - name: "1.8.10"
+      serviceVersion: "1.8.10"
+      images:
+        influxdb-meta: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbMeta.repository }}:1.8.10-c1.1.2-meta
+        copy-tools: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:0.1.0
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbMeta.repository }}:1.8.10-c1.1.2-meta
+        roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbMeta.repository }}:1.8.10-c1.1.2-meta

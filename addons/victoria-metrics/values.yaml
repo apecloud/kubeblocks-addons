@@ -1,6 +1,13 @@
 # Default values for victoria-metrics.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+
+nameOverride: ""
+
+fullnameOverride: ""
+
+enableTCP6: false
+
 images:
   # Overrides the image tag whose default is the chart appVersion.
   registry: docker.io
@@ -20,17 +27,6 @@ images:
     repository: victoriametrics/vmstorage
     pullPolicy: IfNotPresent
     tag: v1.101.0-cluster
-
-enableTCP6: false
-
-nameOverride: ""
-fullnameOverride: ""
-clusterVersionOverride: ""
-
-## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
-## if you install multiple releases of this chart.
-## If specified, the cluster definition will use it as name.
-resourceNamePrefix: ""
 
 vmselect:
   # -- Service port

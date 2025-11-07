@@ -1,0 +1,26 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: neo4j
+  labels:
+    {{- include "neo4j.labels" . | nindent 4 }}
+  annotations:
+    {{- include "neo4j.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "neo4j.cmpdNamePrefix" . }}
+      releases:
+        - 5.26.5
+        - 4.4.42
+  releases:
+    - name: 5.26.5
+      changes:
+      serviceVersion: 5.26.5
+      images:
+        neo4j: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.26.5
+    - name: 4.4.42
+      changes:
+      serviceVersion: 4.4.42
+      images:
+        neo4j: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4.42

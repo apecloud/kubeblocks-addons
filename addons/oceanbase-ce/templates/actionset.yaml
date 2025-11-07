@@ -1,9 +1,10 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: {{ printf "%s-physical-backup" (include "oceanbase-release.name" .) }}
+  name: {{ include "oceanbase-ce.backup.actionset" . }}
   labels:
-    clusterdefinition.kubeblocks.io/name: {{ include "oceanbase-release.name" . }}
+    clusterdefinition.kubeblocks.io/name: {{ include "oceanbase-ce.clusterDefinition" . }}
+    {{- include "oceanbase-ce.labels" . | nindent 4 }}
 spec:
   backupType: Full
   env:
@@ -11,21 +12,20 @@ spec:
       value: rep_user
     - name: REP_PASSWD
       value: rep_user
-      # rebuild standby cluster
-    - name: REBUILD_STANDBY
-      value: "false"
     - name: DP_TIME_FORMAT
       value: "2006-01-02 15:04:05"
   backup:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
+      image: {{ include "oceanbase-ce.observer.repository" . }}:{{ .Values.image.observer.tag }}
       runOnTargetPodNode: true
       command:
       - sh
       - -c
       - |
+        set -e
+        {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
       syncProgress:
         enabled: true
@@ -33,10 +33,12 @@ spec:
   restore:
     postReady:
     - job:
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
+        image: {{ include "oceanbase-ce.observer.repository" . }}:{{ .Values.image.observer.tag }}
         runOnTargetPodNode: true
         command:
         - bash
         - -c
         - |
+          set -e
+          {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/restore.sh" | nindent 10 }}

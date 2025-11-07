@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
+source /scripts/utils.sh
 
 function retry {
   until "$@" ; do
-    echo "Command '$*' failed. Attempt $attempt of $max_attempts. Retrying in 5 seconds..."
+    echo "Command failed. Attempt $attempt of $max_attempts. Retrying in 5 seconds..."
     sleep 5
   done
 }
@@ -10,19 +11,24 @@ function retry {
 ZONE_COUNT=${ZONE_COUNT:-3}
 MANAGER_PORT=${MANAGER_PORT:-8089}
 SERVICE_PORT=${SERVICE_PORT:-8088}
-COMP_RPC_PORT=${COMP_RPC_PORT:-2882}
-ORDINAL_OB_PORT=${OB_SERVICE_PORT:-2881}
-COMP_MYSQL_PORT=${COMP_MYSQL_PORT:-${ORDINAL_OB_PORT}}
-ORDINAL_INDEX=$(echo $KB_POD_NAME | awk -F '-' '{print $(NF)}')
+OB_RPC_PORT=${OB_RPC_PORT:-2882}
+OB_SERVICE_PORT=${OB_SERVICE_PORT:-2881}
+OB_ROOT_PASSWD=${OB_ROOT_PASSWD:-""}
+ORDINAL_INDEX=$(echo $POD_NAME | awk -F '-' '{print $(NF)}')
 ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"
-
+CLUSTER_ID=${OB_CLUSTER_ID:-1}
 INITIAL_DELAY=${INITIAL_DELAY:-5}
 
 ## TODO wait ob restarted
 echo "Waiting for observer to be ready..."
 # import mysql client to metrics
 sleep ${INITIAL_DELAY}
-retry /kb_tools/obtools --host 127.0.0.1 -u${MONITOR_USER} -P ${COMP_MYSQL_PORT} --allow-native-passwords ping
+
+obcli_cmd="/kb_tools/obtools --host 127.0.0.1 -u${MONITOR_USER} -P ${OB_SERVICE_PORT} --allow-native-passwords ping"
+if [ -n "${OB_ROOT_PASSWD}" ]; then
+  obcli_cmd=$obcli_cmd" -p ${OB_ROOT_PASSWD}"
+fi
+retry ${obcli_cmd}
 
 echo ""
 echo "==================================================================================="
@@ -33,9 +39,9 @@ echo "  monagent.log.level=info"
 echo "  monagent.log.maxage.days=3"
 echo "  monagent.log.maxsize.mb=100"
 echo "  monagent.ob.monitor.user=${MONITOR_USER}"
-echo "  monagent.ob.sql.port=${COMP_MYSQL_PORT}"
-echo "  monagent.ob.rpc.port=${COMP_RPC_PORT}"
-echo "  monagent.host.ip=${KB_POD_IP}"
+echo "  monagent.ob.sql.port=${OB_SERVICE_PORT}"
+echo "  monagent.ob.rpc.port=${OB_RPC_PORT}"
+echo "  monagent.host.ip=${POD_IP}"
 echo "  monagent.cluster.id=${CLUSTER_ID}"
 echo "  monagent.ob.cluster.name=${CLUSTER_NAME}"
 echo "  monagent.ob.cluster.id=${CLUSTER_ID}"
@@ -50,6 +56,11 @@ echo "  ocp.agent.monitor.http.port=${SERVICE_PORT}"
 echo "==================================================================================="
 echo ""
 
+if [ -z "${MONITOR_PASSWORD}" ]; then
+  echo "MONITOR_PASSWORD is not set, update it with ROOT_PASSWD"
+  MONITOR_PASSWORD=$OB_ROOT_PASSWD
+fi
+
 /home/admin/obagent/bin/ob_agentctl config -u \
 ob.logcleaner.enabled=false,\
 agent.http.basic.auth.metricAuthEnabled=false,\
@@ -58,9 +69,9 @@ monagent.log.maxage.days=3,\
 monagent.log.maxsize.mb=100,\
 monagent.ob.monitor.user=${MONITOR_USER},\
 monagent.ob.monitor.password=${MONITOR_PASSWORD},\
-monagent.ob.sql.port=${COMP_MYSQL_PORT},\
-monagent.ob.rpc.port=${COMP_RPC_PORT},\
-monagent.host.ip=${KB_POD_IP},\
+monagent.ob.sql.port=${OB_SERVICE_PORT},\
+monagent.ob.rpc.port=${OB_RPC_PORT},\
+monagent.host.ip=${POD_IP},\
 monagent.cluster.id=${CLUSTER_ID},\
 monagent.ob.cluster.name=${CLUSTER_NAME},\
 monagent.ob.cluster.id=${CLUSTER_ID},\

@@ -31,3 +31,88 @@ Selector labels
 app.kubernetes.io/name: {{ include "greptimedb.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "greptimedb.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "greptimedb.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "greptimedb.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{/*
+Define greptimedb datanode component definition name
+*/}}
+{{- define "greptimedb-datanode.cmpdName" -}}
+greptimedb-datanode-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define greptimedb datanode component definition regex pattern
+*/}}
+{{- define "greptimedb-datanode.cmpdRegexpPattern" -}}
+^greptimedb-datanode-
+{{- end -}}
+
+{{/*
+Define greptimedb frontend component definition name
+*/}}
+{{- define "greptimedb-frontend.cmpdName" -}}
+greptimedb-frontend-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define greptimedb frontend component definition regex pattern
+*/}}
+{{- define "greptimedb-frontend.cmpdRegexpPattern" -}}
+^greptimedb-frontend-
+{{- end -}}
+
+{{/*
+Define greptimedb meta component definition name
+*/}}
+{{- define "greptimedb-meta.cmpdName" -}}
+greptimedb-meta-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define greptimedb meta component definition regex pattern
+*/}}
+{{- define "greptimedb-meta.cmpdRegexpPattern" -}}
+^greptimedb-meta-
+{{- end -}}
+
+{{/*
+Define greptimedb etcd component definition regex pattern
+*/}}
+{{- define "greptimedb-etcd.cmpdRegexpPattern" -}}
+^etcd-
+{{- end -}}
+
+{{/*
+Define greptimedb datanode configuration template name
+*/}}
+{{- define "greptimedb-datanode.configTemplateName" -}}
+greptimedb-datanode-tpl
+{{- end -}}
+
+{{/*
+Define greptimedb frontend configuration template name
+*/}}
+{{- define "greptimedb-frontend.configTemplateName" -}}
+greptimedb-frontend-tpl
+{{- end -}}
+
+{{/*
+Define greptimedb meta configuration template name
+*/}}
+{{- define "greptimedb-meta.configTemplateName" -}}
+greptimedb-meta-tpl
+{{- end -}}

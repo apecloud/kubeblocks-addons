@@ -4,14 +4,12 @@ metadata:
   name: {{ include "postgresql.clusterDefinition" . }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgresql.apiVersion" . | nindent 4 }}
 spec:
   topologies:
-    - name: standalone
-      components:
-        - name: postgresql
-          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
-      default: true
     - name: replication
       components:
         - name: postgresql
           compDef: {{ include "postgresql.componentDefNamePrefix" . }}
+      default: true

@@ -1,0 +1,17 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "influxdb.prcName" . }}
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "influxdb.annotations" . | nindent 4}}
+spec:
+  componentDef: {{ include "influxdb.standalone.cmpdName" . }}
+  parametersDefs:
+    - {{ include "influxdb.pdName" . }}
+
+  configs:
+    - name: config.toml
+      fileFormatConfig:
+        format: toml

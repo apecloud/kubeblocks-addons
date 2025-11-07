@@ -5,18 +5,44 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-  annotations:
-    kubeblocks.io/extra-env: '{"mdit-roles":"master,data,ingest,transform","mode":"{{ .Values.mode }}"}'
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
-    - name: mdit
-      componentDef: elasticsearch-{{ include "elasticsearch.majorVersion" . }}
+    - name: master
+      componentDef: elasticsearch-master-{{ include "elasticsearch.majorVersion" $ }}
+      serviceVersion: {{ include "elasticsearch.version" $ }}
+      configs:
+        - name: es-cm
+          variables:
+            version: {{ include "elasticsearch.version" $ }}
+      {{- include "elasticsearch-cluster.schedulingPolicy" $ | indent 6 }}
+      {{- include "elasticsearch-cluster.replicaCount" $ | indent 6 }}
+      {{- include "kblib.componentMonitor" $ | indent 6 }}
+      {{- include "kblib.componentResources" $ | indent 6 }}
+      {{- include "kblib.componentStorages" $ | indent 6 }}
+      {{- include "elasticsearch-cluster.tls" $ | indent 6 }}
+      {{- include "elasticsearch-cluster.accounts" $ | indent 6 }}
+    - name: data
+      componentDef: elasticsearch-data-{{ include "elasticsearch.majorVersion" $ }}
+      serviceVersion: {{ include "elasticsearch.version" $ }}
+      configs:
+        - name: es-cm
+          variables:
+            version: {{ include "elasticsearch.version" $ }}
+      {{- include "elasticsearch-cluster.schedulingPolicy" $ | indent 6 }}
+      {{- include "elasticsearch-cluster.replicaCount" $ | indent 6 }}
+      {{- include "kblib.componentMonitor" $ | indent 6 }}
+      {{- include "kblib.componentResources" $ | indent 6 }}
+      {{- include "kblib.componentStorages" $ | indent 6 }}
+      {{- include "elasticsearch-cluster.tls" $ | indent 6 }}
+      {{- include "elasticsearch-cluster.accounts" $ | indent 6 }}
+  {{- if .Values.enableKibana }}
+    - name: kibana
+      componentDef: kibana-{{ include "elasticsearch.majorVersion" . }}
       serviceVersion: {{ include "elasticsearch.version" . }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-      {{- include "elasticsearch-cluster.replicaCount" . | indent 6 }}
+      replicas: 1
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "elasticsearch-cluster.tls" . | indent 6 }}
+  {{- end }}
 {{- end }}

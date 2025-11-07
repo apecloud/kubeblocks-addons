@@ -6,7 +6,7 @@
       "title": "Version",
       "description": "Cluster version.",
       "type": "string",
-      "default": "kafka-3.3.2"
+      "default": "3.3.2"
     },
     "mode": {
       "title": "Mode",
@@ -15,12 +15,19 @@
       "default": "combined",
       "enum": [
         "combined",
-        "separated"
+        "separated",
+        "withZookeeper-10"
       ]
     },
     "saslEnable": {
       "title": "SaslEnable",
       "description": "Enable authentication using SASL/PLAIN for Kafka.",
+      "type": "boolean",
+      "default": false
+    },
+    "saslScramEnable": {
+      "title": "SaslScramEnable",
+      "description": "Enable authentication using SASL/SCRAM for Kafka.",
       "type": "boolean",
       "default": false
     },
@@ -100,14 +107,6 @@
         5
       ]
     },
-    "monitorReplicas": {
-      "title": "MonitorReplicas",
-      "description": "The number of Kafka monitor replicas.",
-      "type": "integer",
-      "default": 1,
-      "minimum": 1,
-      "maximum": 5
-    },
     "cpu": {
       "title": "CPU",
       "description": "CPU cores.",
@@ -131,6 +130,50 @@
       "minimum": 0.5,
       "maximum": 1000
     },
+    "monitor": {
+      "title": "Monitor Configuration",
+      "description": "Configuration for the monitor component. Only effective when monitorEnable=true.",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Monitor Replicas",
+          "description": "Number of replicas for the monitor component.",
+          "type": [ "number", "string" ],
+          "default": 1,
+          "minimum": 1
+        },
+        "request": {
+          "title": "Resource Requests",
+          "description": "CPU and memory resource requests for the monitor component.",
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "type": [ "number", "string" ],
+              "default": 0.1
+            },
+            "memory": {
+              "type": [ "number", "string" ],
+              "default": 0.2
+            }
+          }
+        },
+        "limit": {
+          "title": "Resource Limits",
+          "description": "CPU and memory resource limits for the monitor component.",
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "type": [ "number", "string" ],
+              "default": 0.5
+            },
+            "memory": {
+              "type": [ "number", "string" ],
+              "default": 1
+            }
+          }
+        }
+      }
+    },
     "brokerHeap": {
       "title": "BrokerHeap",
       "description": "Kafka broker's jvm heap setting.",
@@ -147,7 +190,13 @@
       "type": "boolean",
       "default": false,
       "title": "nodePortEnabled",
-      "description":"Whether NodePort service is enabled, default is false"
+      "description":"Whether to enable NodePort mode in Kafka's `advertised.listeners`"
+    },
+    "fixedPodIPEnabled": {
+      "type": "boolean",
+      "default": false,
+      "title": "fixedPodIPEnabled",
+      "description":"Whether to enable fixed Pod IP mode in Kafka's `advertised.listeners`"
     }
   }
 }

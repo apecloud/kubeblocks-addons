@@ -1,0 +1,68 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: orchestrator-cluster
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: orchestrator
+      componentDef: orchestrator-shared-backend
+      replicas: 3
+      resources:
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+      serviceRefs:
+        - name: metadb
+          namespace: demo
+          clusterServiceSelector:
+            cluster: mysqlo-cluster
+            credential:
+              name: root
+              component: mysql
+            service:
+              service: ""
+              component: mysql
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: mysqlo-cluster
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: apecloud-mysql
+  topology: apecloud-mysql
+  componentSpecs:
+    - name: mysql
+      serviceVersion: "8.0.30"
+      disableExporter: false
+      replicas: 3
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi

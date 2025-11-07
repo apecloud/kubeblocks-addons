@@ -49,14 +49,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "weaviate.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{- define "clustername" -}}
-{{ include "weaviate.fullname" .}}
-{{- end}}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "weaviate.serviceAccountName" -}}
-{{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
-{{- end }}

@@ -127,12 +127,46 @@ function check_pg_process() {
     done
     if [[ ${is_ok} == "false" ]];then
       DP_error_log "target backup pod/${DP_TARGET_POD_NAME} is not OK, target role: ${TARGET_POD_ROLE}, pg_is_in_recovery: ${is_secondary}!"
+      DP_log "Before switching to a new instance, back up any remaining WAL logs."
+      upload_wal_log
+      # save backup status which will be updated to `backup` CR by the sidecar
+      save_backup_status
       exit 1
     fi
 }
 
+function uploadMissingLogs() {
+    DP_log "start to upload the wal log which maybe misses"
+    local TODAY_INCR_LOG=$(date +%Y%m%d)
+    cd ${LOG_DIR}
+    uploadedLogs=$(datasafed list -f --recursive / -o json | jq -s -r '.[] | sort_by(.mtime) | .[] | .path')
+    if [[ -z ${uploadedLogs} ]]; then
+      return
+    fi
+    OLDEST_FILE=$(echo $uploadedLogs | awk '{print $1}')
+    OLDEST_FILE=$(basename $OLDEST_FILE)
+    DP_log "oldest uploaded wal: ${OLDEST_FILE}"
+    for i in $(find ./archive_status -type f | sort | grep .done); do
+      wal_done_name=$(basename ${i})
+      wal_name=${wal_done_name%.*}
+      if [[ "$wal_name" < "$OLDEST_FILE" ]]; then
+        continue
+      fi
+      if echo "$uploadedLogs" | grep -qE "${wal_name}\.(zst|partial\.zst)";then
+        continue
+      fi
+      if [ -f ${wal_name} ]; then
+        DP_log "upload ${wal_name}"
+        datasafed push -z zstd ${wal_name} "/${TODAY_INCR_LOG}/${wal_name}.zst"
+      fi
+    done
+    save_backup_status
+}
+
 # trap term signal
 trap "echo 'Terminating...' && sync && exit 0" TERM
+uploadMissingLogs
+
 DP_log "start to archive wal logs"
 while true; do
 

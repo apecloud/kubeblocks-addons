@@ -4,14 +4,19 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+{{- if eq .Values.hostnetwork "enabled" }}
+  annotations:
+    {{- if ne .Values.mode "sharding" }}
+    kubeblocks.io/host-network: mongodb
+    {{- end }}
+{{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
-  componentSpecs:
-    - name: mongodb
-      componentDef: mongodb
-      serviceVersion: {{ .Values.version }}
-      {{- include "mongodb-cluster.replicaCount" . | indent 6 }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-      {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentStorages" . | indent 6 }}
+  clusterDef: mongodb
+  {{- if or (eq .Values.mode "replicaset") (eq .Values.mode "standalone") }}
+  topology: replicaset
+  {{ include "mongodb-cluster.replicasetMode" . | indent 2 }}
+  {{- else if eq .Values.mode "sharding" }}
+  topology: sharding
+  {{ include "mongodb-cluster.shardingMode" . | indent 2 }}
+  {{- end }}

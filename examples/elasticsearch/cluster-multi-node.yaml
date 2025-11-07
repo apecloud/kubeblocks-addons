@@ -1,0 +1,54 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: es-multinode
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: master
+      componentDef: elasticsearch-master-8
+      serviceVersion: 8.8.2
+      configs:
+        - name: es-cm
+          variables:
+            version: 8.8.2
+      replicas: 3
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+    - name: data
+      componentDef: elasticsearch-data-8
+      serviceVersion: 8.8.2
+      configs:
+        - name: es-cm
+          variables:
+            version: 8.8.2
+      replicas: 3
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi

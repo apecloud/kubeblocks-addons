@@ -5,14 +5,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: xinference
+  clusterDef: xinference
   terminationPolicy:  {{ .Values.extra.terminationPolicy }}
   componentSpecs:
     - name: xinference
       componentDef: xinference
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       resources:
         limits:
 {{ if eq .Values.cpuMode false }}

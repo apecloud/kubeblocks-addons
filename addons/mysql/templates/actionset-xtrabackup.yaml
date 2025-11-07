@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: mysql-xtrabackup
+  name: mysql-xtrabackup-br
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
@@ -12,7 +12,7 @@ spec:
   - name: MYSQL_DIR
     value: {{ .Values.dataMountPath }}
   - name: IMAGE_TAG
-    value: 8.0.32
+    value: "8.0"
   - name: BACKUP_FOR_STANDBY
     value: "false"
   backup:

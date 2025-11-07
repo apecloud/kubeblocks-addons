@@ -46,19 +46,19 @@ recover_registered_redis_servers_if_needed() {
 }
 
 reset_redis_sentinel_monitor_conf() {
-    echo "reset sentinel monitor configuration file if there are any residual configurations "
-    if [ -f $redis_sentinel_real_conf ]; then
-      sed "/sentinel monitor/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-      sed "/sentinel down-after-milliseconds/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-      sed "/sentinel failover-timeout/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-      sed "/sentinel parallel-syncs/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-      unset_xtrace_when_ut_mode_false
-      if [[ -v REDIS_SENTINEL_PASSWORD ]]; then
-        sed "/sentinel auth-user/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-        sed "/sentinel auth-pass/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-      fi
-      set_xtrace_when_ut_mode_false
+  echo "reset sentinel monitor configuration file if there are any residual configurations "
+  if [ -f $redis_sentinel_real_conf ]; then
+    sed "/sentinel monitor/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+    sed "/sentinel down-after-milliseconds/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+    sed "/sentinel failover-timeout/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+    sed "/sentinel parallel-syncs/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+    unset_xtrace_when_ut_mode_false
+    if [[ -v REDIS_SENTINEL_PASSWORD ]]; then
+      sed "/sentinel auth-user/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+      sed "/sentinel auth-pass/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
     fi
+    set_xtrace_when_ut_mode_false
+  fi
 }
 
 temp_output=""
@@ -86,7 +86,7 @@ recover_registered_redis_servers() {
   sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
   for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
     while [ $retry_count -lt $max_retries ]; do
-      redis_sentinel_get_masters "$sentinel_pod_fqdn" "$sentinel_port"
+      redis_sentinel_get_masters "$sentinel_pod_fqdn" "$SENTINEL_SERVICE_PORT"
       if [ -n "$temp_output" ]; then
         disconnected=false
         while read -r line; do

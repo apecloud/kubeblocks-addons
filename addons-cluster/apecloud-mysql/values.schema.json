@@ -4,9 +4,9 @@
   "properties": {
     "version": {
       "title": "Version",
-      "description": "Cluster version.",
+      "description": "MySQL Service Version.",
       "type": "string",
-      "default": "ac-mysql-8.0.30"
+      "default": "8.0.30"
     },
     "mode": {
       "title": "Mode",
@@ -70,6 +70,79 @@
       "description": "Enable proxy or not.",
       "type": "boolean",
       "default": false
+    },
+    "etcd": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["serviceRef", "local"],
+          "default": "local"
+        },
+        "local": {
+          "type": "object",
+          "properties": {
+            "serviceVersion": {
+              "type": "string",
+              "default": "3.5.6"
+            },
+            "etcdctlApi": {
+              "type": "string",
+              "default": "3"
+            },
+            "replicas": {
+              "type": "integer",
+              "default": 3,
+              "minimum": 1,
+              "maximum": 3
+            },
+            "resources": {
+              "type": "object",
+              "properties": {
+                "storage": {
+                  "type": "string",
+                  "default": "20Gi"
+                }
+              }
+            }
+          }
+        },
+        "serviceRef": {
+          "type": "object",
+          "properties": {
+            "namespace": {
+              "type": "string",
+              "default": "default"
+            },
+            "cluster": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "component": {
+                  "type": "string",
+                  "default": "etcd"
+                },
+                "service": {
+                  "type": "string",
+                  "default": "headless"
+                },
+                "port": {
+                  "type": "string",
+                  "default": "client"
+                },
+                "credential": {
+                  "type": "string"
+                }
+              }
+            },
+            "serviceDescriptor": {
+              "type": "string"
+            }
+          }
+        }
+      }
     }
   }
 }

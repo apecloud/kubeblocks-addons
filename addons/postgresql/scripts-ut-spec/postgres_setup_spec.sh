@@ -105,6 +105,8 @@ Describe "PostgreSQL Initialization Script Tests"
         :
       }
       When call regenerate_spilo_configuration_and_start_postgres
+      The stdout should include "/home/postgres/.kb_set_up.log: No such file or directory"
+      The stderr should include "/home/postgres/.kb_set_up.log: No such file or directory"
       The status should be success
       The file "tmp_patroni.yaml" should be exist
       The contents of file "tmp_patroni.yaml" should include "bootstrap:"

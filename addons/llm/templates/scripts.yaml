@@ -7,6 +7,7 @@ metadata:
 data:
   start.sh: |
     #!/bin/bash
+    set -x
     echo "model=${MODEL_NAME}"
     domain=${MODEL_NAME%%/*}
     echo "domain=${domain}"
@@ -18,6 +19,8 @@ data:
     if [[ "${domain,,}" == "baichuan-inc" ]]; then
       pip install transformers==4.33.1 tokenizers==0.13.3
     fi
+    apt install git-lfs
+    CLONE_MODEL_SCRIPT="git lfs install; git clone https://huggingface.co/${MODEL_NAME}"
     country=`curl https://ifconfig.io/country_code`
     if [ "$country" == "CN" ]; then
       CLONE_MODEL_SCRIPT="git lfs install; git clone https://www.modelscope.cn/${MODEL_NAME}.git"
@@ -34,31 +37,32 @@ data:
     if [ -n "$CLONE_MODEL_SCRIPT" ]; then
       bash -c "$CLONE_MODEL_SCRIPT"
     fi
-    ordinal=${KB_POD_NAME##*-}
+    ordinal=${POD_NAME##*-}
     echo "current pod ordinal: $ordinal"
     if [ $ordinal -eq 0 ]; then
       /scripts/vllm-start.sh &
       /scripts/ray-health-checker.sh &
       ray start --head --block
     else 
-      ray start --address="${KB_VLLM_0_HOSTNAME}:6379" --block
+      first_pod_name=$(echo "${POD_NAMES}" | cut -d ',' -f 1)
+      ray start --address="${first_pod_name}:6379" --block
     fi
   vllm-start.sh: |
     #!/bin/bash
+    set -x
     echo "model=${MODEL_NAME}"
     echo "EXTRA_ARGS=${EXTRA_ARGS}"
-    cd vllm
     echo "model=${MODEL_NAME}" > log
     # wait for ray start 
     sleep 3
     while true; do
       node_num=`ray status | grep "1 node" | wc -l`
       # continue waiting if ray status not ok
-      if [[ "$node_num" -ne "$KB_VLLM_N" ]]; then 
+      if [[ "$node_num" -ne "$REPLICAS" ]]; then 
         sleep 1
         continue
       fi
-      python -m vllm.entrypoints.api_server --host 0.0.0.0 --port 8000 --model ${MODEL_NAME} --gpu-memory-utilization 0.95 --max-num-seqs 512 --tensor-parallel-size ${KB_VLLM_N} ${EXTRA_ARGS} 2>&1 > log 
+      python3 -m vllm.entrypoints.openai.api_server --host 0.0.0.0 --port 8000 --model ${MODEL_NAME} --gpu-memory-utilization 0.95 --max-num-seqs 512 --tensor-parallel-size ${REPLICAS} ${EXTRA_ARGS} 2>&1 > log
       code=$?
       if [ $code -eq 0 ]; then
         break
@@ -72,9 +76,9 @@ data:
     sleep 10 
     while true; do
       node_num=`ray status | grep "1 node" | wc -l`
-      if [[ "$node_num" -ne "$KB_VLLM_N" ]]; then 
+      if [[ "$node_num" -ne "$REPLICAS" ]]; then 
         # if ray nodes not healthy, restart vllm
-        vllm_pid=`ps aux | grep "python -m vllm.entrypoints.api_server" | grep -v grep | awk '{print $2}'`
+        vllm_pid=`ps aux | grep "python3 -m vllm.entrypoints.openai.api_server" | grep -v grep | awk '{print $2}'`
         if [[ "$vllm_pid" ]]; then 
           kill -9 "$vllm_pid"
         fi
@@ -91,7 +95,9 @@ metadata:
 data:
   start.sh: |
     #!/bin/bash
-    if [ -n "$MODEL_URL" ]; then 
+    set -x
+    if [ -n "$MODEL_URL" ]; then
+      apt-get update
       apt-get install wget -y
       wget "$MODEL_URL" -O model.gguf
     fi
@@ -102,7 +108,8 @@ data:
     fi
     # download model from remote
     # if MODEL_URL configured, download model from it
-    if [ -n "$MODEL_URL" ]; then 
+    if [ -n "$MODEL_URL" ]; then
+      apt-get update
       apt-get install wget -y
       wget "$MODEL_URL" -O model.gguf
       sh /app/docker/simple/run.sh
@@ -118,6 +125,7 @@ data:
     echo "Warning: model$MODEL not found"
     echo "try to download default model vicuna-7b-v1.5.Q2_K.gguf"
     default_url="https://huggingface.co/TheBloke/vicuna-7B-v1.5-GGUF/resolve/main/vicuna-7b-v1.5.Q2_K.gguf"
+    apt-get update
     apt-get install wget -y
     wget "$default_url" -O model.gguf
     sh /app/docker/simple/run.sh

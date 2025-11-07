@@ -2,24 +2,24 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
-  terminationPolicy: {{ .Values.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
     - name: zookeeper
+      ## TODO: use regex pattern when cluster validation supported
       componentDef: zookeeper
       replicas: {{ .Values.replicas }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       env:
         - name: ZOOKEEPER_IMAGE_VERSION
-          value: "{{ .Values.serviceVersion }}"
+          value: "{{ .Values.version }}"
       volumeClaimTemplates:
-        - name: data # ref clusterDefinition components.containers.volumeMounts.name
+        - name: data
           spec:
             accessModes:
               - ReadWriteOnce
@@ -29,7 +29,7 @@ spec:
             {{- if .Values.storageClassName }}
             storageClassName: {{ .Values.storageClassName | quote }}
             {{- end }}
-        - name: log
+        - name: snapshot-log
           spec:
             {{- if .Values.storageClassName }}
             storageClassName: {{ .Values.storageClassName | quote  }}

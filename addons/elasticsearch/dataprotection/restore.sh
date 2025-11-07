@@ -5,7 +5,7 @@ set -o errexit
 
 cat /etc/datasafed/datasafed.conf
 toolConfig=/etc/datasafed/datasafed.conf
-ES_ENDPOINT=http://${DP_DB_HOST}:9200
+ES_ENDPOINT=http://${DP_DB_HOST}.${KB_NAMESPACE}.svc.cluster.local:9200
 REPOSITORY=kb-restore
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
@@ -22,17 +22,75 @@ trap handle_exit EXIT
 
 function getToolConfigValue() {
     local var=$1
-    cat $toolConfig | grep "$var" | awk '{print $NF}'
+    cat $toolConfig | grep "$var[[:space:]]*=" | awk '{print $NF}'
 }
 
 s3_endpoint=$(getToolConfigValue endpoint)
 s3_bucket=$(getToolConfigValue root)
+s3_access_key_id=$(getToolConfigValue access_key_id)
+s3_secret_access_key=$(getToolConfigValue secret_access_key)
 backup_name=$(basename "${DP_BACKUP_BASE_PATH}")
 base_path=$(dirname "${DP_BACKUP_BASE_PATH}")
 base_path=$(dirname "${base_path}")
 base_path=${base_path%/}
 base_path=${base_path#*/}
 
+# Get cluster nodes information and set keystore for restore
+echo "INFO: Getting cluster nodes information for restore"
+if [ -n "${ELASTIC_USER_PASSWORD}" ]; then
+    BASIC_AUTH="-u elastic:${ELASTIC_USER_PASSWORD}"
+    AGENT_AUTH="--user elastic:${ELASTIC_USER_PASSWORD}"
+else
+    BASIC_AUTH=""
+    AGENT_AUTH=""
+fi
+
+# Get cluster node list
+nodes_response=$(curl -s ${BASIC_AUTH} -X GET "${ES_ENDPOINT}/_nodes")
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to get cluster nodes information"
+    exit 1
+fi
+
+# Parse node IP addresses
+node_ips=$(echo "$nodes_response" | grep -o '"ip":"[^"]*"' | cut -d'"' -f4 | sort -u)
+if [ -z "$node_ips" ]; then
+    echo "ERROR: No nodes found in cluster"
+    exit 1
+fi
+
+echo "INFO: Found nodes for restore: $node_ips"
+
+# Set keystore for each node
+for node_ip in $node_ips; do
+    echo "INFO: Setting keystore for node $node_ip (restore)"
+    
+    keystore_request=$(cat <<EOF
+{
+  "access_key_id": "${s3_access_key_id}",
+  "secret_access_key": "${s3_secret_access_key}"
+}
+EOF
+)
+    
+    response=$(curl -s -w "\n%{http_code}" ${AGENT_AUTH} \
+        -X POST "http://${node_ip}:8080/keystore" \
+        -H "Content-Type: application/json" \
+        -d "${keystore_request}")
+    
+    http_code=$(echo "$response" | tail -n1)
+    response_body=$(echo "$response" | head -n -1)
+    
+    if [ "$http_code" != "200" ]; then
+        echo "ERROR: Failed to set keystore for node $node_ip, status: $http_code"
+        echo "ERROR: Response: $response_body"
+        exit 1
+    fi
+    
+    echo "INFO: Successfully set keystore for node $node_ip (restore)"
+done
+
+echo "INFO: All nodes keystore configured for restore, reloading secure settings"
 curl -X POST "${ES_ENDPOINT}/_nodes/reload_secure_settings"
 
 cat > /tmp/repository.json<< EOF
@@ -212,6 +270,20 @@ curl -f -s -X POST "${ES_ENDPOINT}/_snapshot/${REPOSITORY}/${backup_name}/_resto
   "include_global_state": true
 }
 '
+
+# Wait for the cluster health to become green after restore
+wait_interval=10      # Check every 10 seconds
+
+while true; do
+  # Query cluster health status
+  health_status=$(curl -s "${ES_ENDPOINT}/_cluster/health" | grep -o '"status":"[^\"]*"' | awk -F: '{print $2}' | tr -d '"')
+  echo "Current cluster health status: $health_status"
+  if [[ "$health_status" == "green" ]]; then
+    echo "Cluster health is green, restore is complete."
+    break
+  fi
+  sleep $wait_interval
+done
 
 enable_indexing_and_geoip true
 

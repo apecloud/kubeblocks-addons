@@ -1,0 +1,186 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "title": "ClickHouse Cluster Configuration",
+  "description": "Configuration schema for the ClickHouse Helm chart.",
+  "properties": {
+    "version": {
+      "title": "ClickHouse Cluster Version",
+      "description": "Engine Version of the ClickHouse cluster.",
+      "type": "string",
+      "default": "24.8.3"
+    },
+    "mode": {
+      "title": "Cluster Topology Mode",
+      "description": "Define the ClickHouse cluster topology mode.",
+      "type": "string",
+      "default": "cluster",
+      "enum": [
+        "standalone",
+        "cluster"
+      ]
+    },
+    "shards": {
+      "title": "Shard Count",
+      "description": "Number of shards in the ClickHouse cluster.",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1
+    },
+    "sharding": {
+      "title": "Sharding Configuration",
+      "description": "Enable or disable sharding within the ClickHouse cluster.",
+      "type": "boolean",
+      "default": true
+    },
+    "replicas": {
+      "title": "Replica Count",
+      "description": "Number of replicas per shard.",
+      "type": "integer",
+      "default": 2,
+      "minimum": 1
+    },
+    "cpu": {
+      "title": "CPU Request",
+      "description": "The amount of CPU requested for each ClickHouse instance, can be a number or string with units.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 1,
+      "minimum": 0.5,
+      "maximum": 64
+    },
+    "memory": {
+      "title": "Memory(Gi)",
+      "description": "The amount of memory requested for each ClickHouse instance, unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 2,
+      "minimum": 0.5,
+      "maximum": 1000
+    },
+    "storageClassName": {
+      "title": "Storage Class Name",
+      "description": "Kubernetes storage class name to use for persistent volumes.",
+      "type": "string",
+      "default": ""
+    },
+    "storage": {
+      "title": "Storage(Gi)",
+      "description": "Size of the persistent storage volume in Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 20,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "keeper": {
+      "title": "ClickHouse Keeper Configuration",
+      "description": "Settings for the ClickHouse Keeper (coordinator).",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Keeper Replica Count",
+          "description": "Number of ClickHouse Keeper replicas.",
+          "type": "integer",
+          "default": 1,
+          "enum": [
+            1,
+            3,
+            5
+          ]
+        },
+        "storageClassName": {
+          "title": "Keeper Storage Class Name",
+          "description": "Kubernetes storage class name for keeper persistent volumes.",
+          "type": "string",
+          "default": ""
+        },
+        "cpu": {
+          "title": "Keeper CPU Request",
+          "description": "The amount of CPU requested for each ClickHouse Keeper instance, can be a number or string with units.",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 1,
+          "minimum": 0.1,
+          "maximum": 64
+        },
+        "memory": {
+          "title": "Keeper Memory(Gi)",
+          "description": "The amount of memory requested for each ClickHouse Keeper instance, unit is Gi.",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 2,
+          "minimum": 0.5,
+          "maximum": 1000
+        },
+        "storage": {
+          "title": "Keeper Storage(Gi)",
+          "description": "Size of the keeper's persistent storage volume in Gi.",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 10,
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "tolerations": {
+          "title": "Keeper Tolerations",
+          "description": "List of tolerations for scheduling ClickHouse Keeper pods.",
+          "type": "array",
+          "items": {}
+        }
+      }
+    },
+    "service": {
+      "title": "Service Configuration",
+      "description": "Settings for Kubernetes services.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "title": "Service Type",
+          "description": "Type of service to expose ClickHouse. Valid options are 'ExternalName', 'ClusterIP', 'NodePort', and 'LoadBalancer'.",
+          "type": "string",
+          "default": "ClusterIP",
+          "enum": ["ExternalName", "ClusterIP", "NodePort", "LoadBalancer"]
+        }
+      }
+    },
+    "tls": {
+      "title": "TLS Configuration",
+      "description": "Settings for TLS configuration of the ClickHouse cluster.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "TLS Enabled",
+          "description": "Enable or disable TLS for the ClickHouse cluster.",
+          "type": "boolean",
+          "default": false
+        },
+        "issuer": {
+          "title": "TLS Issuer",
+          "description": "Issuer type for TLS certificates. Options are 'KubeBlocks' or 'UserProvided'.",
+          "type": "string",
+          "default": "UserProvided",
+          "enum": ["KubeBlocks", "UserProvided"]
+        },
+        "secretName": {
+          "title": "TLS Secret Name",
+          "description": "Name of the secret containing the TLS certificate when using UserProvided issuer.",
+          "type": "string",
+          "default": "clickhouse-cluster-tls"
+        }
+      }
+    }
+  }
+}

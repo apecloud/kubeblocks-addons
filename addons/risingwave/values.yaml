@@ -1,6 +1,7 @@
 # Default values for RisingWave.
 
 nameOverride: ""
+
 fullnameOverride: ""
 
 ## RisingWave image
@@ -9,3 +10,5 @@ image:
   repository: risingwavelabs/risingwave
   pullPolicy: IfNotPresent
   tag: v1.0.0
+
+clusterDomain: ".cluster.local"

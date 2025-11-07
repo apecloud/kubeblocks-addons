@@ -48,15 +48,154 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Common annotations
+*/}}
+{{- define "milvus.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "milvus.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "milvus.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{/*
+Define milvus standalone component definition name
+*/}}
+{{- define "milvus-standalone.cmpdName" -}}
+milvus-standalone-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus standalone component definition regex pattern
+*/}}
+{{- define "milvus-standalone.cmpdRegexpPattern" -}}
+^milvus-standalone-
+{{- end -}}
+
+{{/*
+Define milvus minio component definition name
+*/}}
+{{- define "milvus-minio.cmpdName" -}}
+milvus-minio-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus minio component definition regex pattern
+*/}}
+{{- define "milvus-minio.cmpdRegexpPattern" -}}
+^milvus-minio-
+{{- end -}}
+
+{{/*
+Define milvus datanode component definition name
+*/}}
+{{- define "milvus-datanode.cmpdName" -}}
+milvus-datanode-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus datanode component definition regex pattern
+*/}}
+{{- define "milvus-datanode.cmpdRegexpPattern" -}}
+^milvus-datanode-
+{{- end -}}
+
+{{/*
+Define milvus indexnode component definition name
+*/}}
+{{- define "milvus-indexnode.cmpdName" -}}
+milvus-indexnode-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus indexnode component definition regex pattern
+*/}}
+{{- define "milvus-indexnode.cmpdRegexpPattern" -}}
+^milvus-indexnode-
+{{- end -}}
+
+{{/*
+Define milvus mixcoord component definition name
+*/}}
+{{- define "milvus-mixcoord.cmpdName" -}}
+milvus-mixcoord-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus mixcoord component definition regex pattern
+*/}}
+{{- define "milvus-mixcoord.cmpdRegexpPattern" -}}
+^milvus-mixcoord-
+{{- end -}}
+
+{{/*
+Define milvus proxy component definition name
+*/}}
+{{- define "milvus-proxy.cmpdName" -}}
+milvus-proxy-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus proxy component definition regex pattern
+*/}}
+{{- define "milvus-proxy.cmpdRegexpPattern" -}}
+^milvus-proxy-
+{{- end -}}
+
+{{/*
+Define milvus querynode component definition name
+*/}}
+{{- define "milvus-querynode.cmpdName" -}}
+milvus-querynode-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus querynode component definition regex pattern
+*/}}
+{{- define "milvus-querynode.cmpdRegexpPattern" -}}
+^milvus-querynode-
+{{- end -}}
+
+{{/*
+Define milvus etcd component definition regex pattern
+*/}}
+{{- define "milvus-etcd.cmpdRegexpPattern" -}}
+^etcd-
+{{- end -}}
+
+{{/*
+Define milvus standalone configuration template name
+*/}}
+{{- define "milvus-standalone.configTemplateName" -}}
+milvus-config-template-standalone-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus cluster configuration template name
+*/}}
+{{- define "milvus-cluster.configTemplateName" -}}
+milvus-config-template-cluster-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus delegate run configuration template name
+*/}}
+{{- define "milvus-delegate-run.configTemplateName" -}}
+milvus-delegate-run-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
 Startup probe
 */}}
 {{- define "milvus.probe.startup" }}
 {{- if .Values.startupProbe.enabled }}
 startupProbe:
-  httpGet:
-    path: /healthz
+  tcpSocket:
     port: metrics
-    scheme: HTTP
   initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
   periodSeconds: {{ .Values.startupProbe.periodSeconds }}
   timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
@@ -71,10 +210,8 @@ Liveness probe
 {{- define "milvus.probe.liveness" }}
 {{- if .Values.livenessProbe.enabled }}
 livenessProbe:
-  httpGet:
-    path: /healthz
+  tcpSocket:
     port: metrics
-    scheme: HTTP
   initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
   periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
   timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
@@ -116,8 +253,8 @@ Milvus init container - setup
   imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
   command:
     - /cp
-    - /run.sh,/merge
-    - /milvus/tools/run.sh,/milvus/tools/merge
+    - /run.sh,/merge,/iam-verify
+    - /milvus/tools/run.sh,/milvus/tools/merge,/milvus/tools/iam-verify
   volumeMounts:
     {{- include "milvus.volumeMount.tools" . | indent 4 }}
 {{- end }}
@@ -187,7 +324,7 @@ Milvus volume mounts - tools
 Milvus volume mounts - user
 */}}
 {{- define "milvus.volumeMount.user" }}
-- mountPath: /milvus/configs/user.yaml.raw
+- mountPath: /milvus/configs/operator/user.yaml.raw
   name: milvus-config
   readOnly: true
   subPath: user.yaml
@@ -210,12 +347,13 @@ Milvus user config - standalone
 */}}
 {{- define "milvus.config.standalone" }}
 - name: config
-  templateRef: milvus-config-template-standalone-{{ .Chart.Version }}
+  template: {{ include "milvus-standalone.configTemplateName" . }}
   volumeName: milvus-config
   namespace: {{.Release.Namespace}}
   defaultMode: 420
+  restartOnFileChange: true
 - name: delegate-run
-  templateRef: milvus-delegate-run-{{ .Chart.Version }}
+  template: {{ include "milvus-delegate-run.configTemplateName" . }}
   volumeName: milvus-delegate-run
   namespace: {{.Release.Namespace}}
   defaultMode: 493
@@ -226,12 +364,13 @@ Milvus user config - cluster
 */}}
 {{- define "milvus.config.cluster" }}
 - name: config
-  templateRef: milvus-config-template-cluster-{{ .Chart.Version }}
+  template: {{ include "milvus-cluster.configTemplateName" . }}
   volumeName: milvus-config
   namespace: {{.Release.Namespace}}
   defaultMode: 420
+  restartOnFileChange: true
 - name: delegate-run
-  templateRef: milvus-delegate-run-{{ .Chart.Version }}
+  template: {{ include "milvus-delegate-run.configTemplateName" . }}
   volumeName: milvus-delegate-run
   namespace: {{.Release.Namespace}}
   defaultMode: 493
@@ -244,11 +383,13 @@ Milvus cluster external storage services reference
 - name: milvus-meta-storage
   serviceRefDeclarationSpecs:
     - serviceKind: etcd
-      serviceVersion: "^3.*"
+      serviceVersion: "^*"
 - name: milvus-log-storage
   serviceRefDeclarationSpecs:
     - serviceKind: pulsar
       serviceVersion: "^2.*"
+    - serviceKind: kafka
+      serviceVersion: "^*"
 - name: milvus-object-storage
   serviceRefDeclarationSpecs:
     - serviceKind: minio
@@ -259,6 +400,14 @@ Milvus cluster external storage services reference
 Milvus cluster vars for external storage services reference
 */}}
 {{- define "milvus.cluster.serviceRefVars" }}
+- name: CLUSTER_NAME
+  valueFrom:
+    clusterVarRef:
+      clusterName: Required
+- name: CLUSTER_NAMESPACE
+  valueFrom:
+    clusterVarRef:
+      namespace: Required
 - name: ETCD_ENDPOINT
   valueFrom:
     serviceRefVarRef:
@@ -296,14 +445,14 @@ Milvus cluster vars for external storage services reference
       name: milvus-object-storage
       optional: false
       password: Required
-- name: PULSAR_SERVER
+- name: LOG_SERVICE_SERVER
   valueFrom:
     serviceRefVarRef:
       name: milvus-log-storage
       optional: false
       endpoint: Required
-  expression: {{ `{{ index (splitList ":" .PULSAR_SERVER) 0 }}` | toYaml }}
-- name: PULSAR_PORT
+  expression: {{ `{{ index (splitList ":" .LOG_SERVICE_SERVER) 0 }}` | toYaml }}
+- name: LOG_SERVICE_PORT
   valueFrom:
     serviceRefVarRef:
       name: milvus-log-storage

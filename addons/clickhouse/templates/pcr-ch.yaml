@@ -1,0 +1,25 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "clickhouse.pcr" . }}
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+  annotations:
+    {{- include "clickhouse.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "clickhouse.cmpdName" . }}
+  parametersDefs:
+    - {{ include "clickhouse.userParamsDefinition" . }}
+    - {{ include "clickhouse.configParamsDefinition" . }}
+
+  configs:
+    - name: user.xml
+      fileFormatConfig:
+        format: xml
+    - name: 00_default_overrides.xml
+      fileFormatConfig:
+        format: xml
+      reRenderResourceTypes:
+        - hscale
+        - shardingHScale
+        - tls

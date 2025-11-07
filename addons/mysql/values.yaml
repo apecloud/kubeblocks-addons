@@ -13,17 +13,17 @@ image:
   xtraBackup:
     # if the value of image.xtraBackup.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
-    repository: perconalab/percona-xtrabackup
+    repository: apecloud/percona-xtrabackup
   syncer:
     repository: apecloud/syncer
-    tag: 0.2.0
-  dbctl:
-    repository: apecloud/dbctl
-    tag: 0.1.2
+    tag: 0.6.5
   # refer: addons/mysql/orc-tools/Dockerfile
   orcTools:
     repository: apecloud/orc-tools
     tag: 1.0.3
+  walgImage:
+    repository: apecloud/wal-g-mysql
+    tag: 3.0.0-ubuntu
 
 ## MySQL Cluster parameters
 cluster:
@@ -64,6 +64,13 @@ auth:
   ##
   replicationPassword: ""
 
+  ## MySQL ProxySQL parameters
+  proxysql:
+    ## @param auth.proxysql.username ProxySQL username
+    username: "proxysql"
+    ## @param auth.proxysql.password ProxySQL password
+    password: "proxysql"
+
 
 configTemplate:
   ## @param config template name
@@ -71,8 +78,6 @@ configTemplate:
 
 imagePullSecrets: []
 nameOverride: ""
-fullnameOverride: ""
-clusterVersionOverride: ""
 
 logConfigs:
   error: /var/lib/mysql/log/mysqld-error.log
@@ -83,7 +88,7 @@ metrics:
   image:
     # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
-    repository: bitnami/mysqld-exporter
+    repository: apecloud/mysqld-exporter
     tag: 0.15.1
     pullPolicy: IfNotPresent
 
@@ -94,10 +99,8 @@ metrics:
 
 dataMountPath: /var/lib/mysql
 
-## @param compDefinitionVersionSuffix for all ComponentDefinition resources name created by this chart, that can avoid name conflict
-## if you install multiple releases of this chart.
-## If specified, the component definition will use it as name.
-compDefinitionVersionSuffix: ""
+## @param architecture CPU architecture. Leave empty to enable jemalloc by default, set to "arm64" to disable jemalloc
+architecture: ""
 
 ## @param orche
 orchestrator:
@@ -111,3 +114,7 @@ roleProbe:
   failureThreshold: 2
   periodSeconds: 1
   timeoutSeconds: 1
+
+## @param cmpdNamePrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
+## If specified, the component definition will use it as prefix.
+cmpdNamePrefix: "mysql"

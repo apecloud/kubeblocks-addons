@@ -10,5 +10,4 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
 {{- end }}

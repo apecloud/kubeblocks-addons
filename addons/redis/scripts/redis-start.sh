@@ -25,7 +25,7 @@ primary_port="6379"
 redis_template_conf="/etc/conf/redis.conf"
 redis_real_conf="/etc/redis/redis.conf"
 redis_acl_file="/data/users.acl"
-redis_acl_file_bak="/data/users.acl"
+redis_acl_file_bak="/data/users.acl.bak"
 retry_times=3
 retry_delay_second=2
 
@@ -36,28 +36,35 @@ load_common_library() {
   source "${common_library_file}"
 }
 
-# TODO: it will be removed in the future
-extract_ordinal_from_object_name() {
-  local object_name="$1"
-  local ordinal="${object_name##*-}"
-  echo "$ordinal"
-}
-
 load_redis_template_conf() {
   echo "include $redis_template_conf" >> $redis_real_conf
 }
 
+extract_lb_host_by_svc_name() {
+  local svc_name="$1"
+  for lb_composed_name in $(echo "$REDIS_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
+    if [[ ${lb_composed_name} == *":"* ]]; then
+       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
+         echo "${lb_composed_name#*:}"
+         break
+       fi
+    else
+       break
+    fi
+  done
+}
+
 build_redis_default_accounts() {
   unset_xtrace_when_ut_mode_false
-  if env_exist REDIS_REPL_PASSWORD; then
+  if ! is_empty "$REDIS_REPL_PASSWORD"; then
     echo "masteruser $REDIS_REPL_USER" >> $redis_real_conf
     echo "masterauth $REDIS_REPL_PASSWORD" >> $redis_real_conf
     echo "user $REDIS_REPL_USER on +psync +replconf +ping >$REDIS_REPL_PASSWORD" >> $redis_acl_file
   fi
-  if env_exist REDIS_SENTINEL_PASSWORD; then
+  if ! is_empty "$REDIS_SENTINEL_PASSWORD"; then
     echo "user $REDIS_SENTINEL_USER on allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill >$REDIS_SENTINEL_PASSWORD" >> $redis_acl_file
   fi
-  if env_exist REDIS_DEFAULT_PASSWORD; then
+  if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     echo "protected-mode yes" >> $redis_real_conf
     echo "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all " >> $redis_acl_file
   else
@@ -69,13 +76,17 @@ build_redis_default_accounts() {
 }
 
 build_announce_ip_and_port() {
-  # build announce ip and port according to whether the advertised svc is enabled
-  if ! is_empty "$redis_advertised_svc_host_value" && ! is_empty "$redis_advertised_svc_port_value"; then
-    echo "redis use nodeport $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
+  # build announce ip and port according to whether the announce addr is exist
+  if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value"; then
+    echo "redis use nodeport $redis_announce_host_value:$redis_announce_port_value to announce"
     {
-      echo "replica-announce-port $redis_advertised_svc_port_value"
-      echo "replica-announce-ip $redis_advertised_svc_host_value"
+      echo "replica-announce-port $redis_announce_port_value"
+      echo "replica-announce-ip $redis_announce_host_value"
     } >> $redis_real_conf
+  elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
+      echo "" > /data/.fixed_pod_ip_enabled
+      echo "redis use immutable pod ip $CURRENT_POD_IP to announce"
+      echo "replica-announce-ip $CURRENT_POD_IP" >> /etc/redis/redis.conf
   else
     current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$CURRENT_POD_NAME")
     if is_empty "$current_pod_fqdn"; then
@@ -247,18 +258,18 @@ get_default_initialize_primary_node() {
 }
 
 check_current_pod_is_primary() {
-  current_pod="$CURRENT_POD_NAME.$REDIS_COMPONENT_NAME"
-  if contains "$primary" "$current_pod"; then
-    echo "current pod is primary with name mapping, primary node: $primary, pod name:$current_pod"
+  current_pod_fqdn_prefix="$CURRENT_POD_NAME.$REDIS_COMPONENT_NAME"
+  if contains "$primary" "$current_pod_fqdn_prefix"; then
+    echo "current pod is primary with name mapping, primary node: $primary, pod fqdn prefix:$current_pod_fqdn_prefix"
     return 0
   fi
 
-  if ! is_empty "$redis_advertised_svc_host_value" && ! is_empty "$redis_advertised_svc_port_value"; then
-    if equals "$primary" "$redis_advertised_svc_host_value" && equals "$primary_port" "$redis_advertised_svc_port_value"; then
-      echo "current pod is primary with advertised svc mapping, primary: $primary, primary port: $primary_port, advertised ip:$redis_advertised_svc_host_value, advertised port:$redis_advertised_svc_port_value"
+  if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value"; then
+    if equals "$primary" "$redis_announce_host_value" && equals "$primary_port" "$redis_announce_port_value"; then
+      echo "current pod is primary with advertised svc mapping, primary: $primary, primary port: $primary_port, advertised ip:$redis_announce_host_value, advertised port:$redis_announce_port_value"
       return 0
     fi
-    echo "redis advertised svc host and port exist but not match, primary: $primary, primary port: $primary_port, advertised ip:$redis_advertised_svc_host_value, advertised port:$redis_advertised_svc_port_value"
+    echo "redis advertised svc host and port exist but not match, primary: $primary, primary port: $primary_port, advertised ip:$redis_announce_host_value, advertised port:$redis_announce_port_value"
   fi
 
   if equals "$primary" "$CURRENT_POD_IP" && equals "$primary_port" "$service_port"; then
@@ -269,54 +280,75 @@ check_current_pod_is_primary() {
 }
 
 start_redis_server() {
+    module_path="/opt/redis-stack/lib"
+    if [[ "$IS_REDIS8" == "true" ]]; then
+       module_path="/usr/local/lib/redis/modules"
+    fi
     exec_cmd="exec redis-server /etc/redis/redis.conf"
-    if [ -f /opt/redis-stack/lib/redisearch.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisearch.so ${REDISEARCH_ARGS}"
+    if [ -f ${module_path}/redisearch.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisearch.so ${REDISEARCH_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redistimeseries.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redistimeseries.so ${REDISTIMESERIES_ARGS}"
+    if [ -f ${module_path}/redistimeseries.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redistimeseries.so ${REDISTIMESERIES_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/rejson.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rejson.so ${REDISJSON_ARGS}"
+    if [ -f ${module_path}/rejson.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/rejson.so ${REDISJSON_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redisbloom.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisbloom.so ${REDISBLOOM_ARGS}"
+    if [ -f ${module_path}/redisbloom.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisbloom.so ${REDISBLOOM_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redisgraph.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgraph.so ${REDISGRAPH_ARGS}"
+    if [ -f ${module_path}/redisgraph.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgraph.so ${REDISGRAPH_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/rediscompat.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rediscompat.so"
+    if [ -f ${module_path}/rediscompat.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/rediscompat.so"
     fi
-    if [ -f /opt/redis-stack/lib/redisgears.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgears.so v8-plugin-path /opt/redis-stack/lib/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
-    fi
+    # NOTE: in replication mode, load this module will lead a memory leak for slave instance.
+    #if [ -f ${module_path}/redisgears.so ]; then
+    #    exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgears.so v8-plugin-path ${module_path}/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
+    #fi
     echo "Starting redis server cmd: $exec_cmd"
     eval "$exec_cmd"
 }
 
 # TODO: if instanceTemplate is specified, the pod service could not be parsed from the pod ordinal.
-parse_redis_advertised_svc_if_exist() {
-  local pod_name="$1"
-
-  if ! env_exist REDIS_ADVERTISED_PORT; then
+parse_redis_announce_addr() {
+  if is_empty "$REDIS_ADVERTISED_PORT"; then
+     REDIS_ADVERTISED_PORT="$REDIS_LB_ADVERTISED_PORT"
+  fi
+  # try to get the announce ip and port from REDIS_ADVERTISED_PORT(support NodePort currently) first
+  if is_empty "${REDIS_ADVERTISED_PORT}"; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
+    # if redis is in host network mode, use the host ip and port as the announce ip and port
+    if ! is_empty "${REDIS_HOST_NETWORK_PORT}"; then
+      echo "redis is in host network mode, use the host ip:$CURRENT_POD_HOST_IP and port:$REDIS_HOST_NETWORK_PORT as the announce ip and port."
+      redis_announce_port_value="$REDIS_HOST_NETWORK_PORT"
+      redis_announce_host_value="$CURRENT_POD_HOST_IP"
+    fi
     return 0
   fi
 
+  local pod_name="$1"
   local found=false
-  pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+  pod_name_ordinal=$(extract_obj_ordinal "$pod_name")
   # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   advertised_ports=($(split "$REDIS_ADVERTISED_PORT" ","))
   for advertised_port in "${advertised_ports[@]}"; do
     parts=($(split "$advertised_port" ":"))
     local svc_name="${parts[0]}"
     local port="${parts[1]}"
-    svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
+    svc_name_ordinal=$(extract_obj_ordinal "$svc_name")
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
-      redis_advertised_svc_port_value="$port"
-      redis_advertised_svc_host_value="$CURRENT_POD_HOST_IP"
+      redis_announce_port_value="$port"
+      lb_host=$(extract_lb_host_by_svc_name "$svc_name")
+      if [ -n "$lb_host" ]; then
+        echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
+        redis_announce_host_value="$lb_host"
+        redis_announce_port_value="6379"
+      else
+        redis_announce_host_value="$CURRENT_POD_HOST_IP"
+      fi
       found=true
       break
     fi
@@ -347,6 +379,6 @@ ${__SOURCED__:+false} : || return 0
 
 # main
 load_common_library
-parse_redis_advertised_svc_if_exist "$CURRENT_POD_NAME"
+parse_redis_announce_addr "$CURRENT_POD_NAME"
 build_redis_conf
 start_redis_server

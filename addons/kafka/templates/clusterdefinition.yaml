@@ -4,21 +4,17 @@ metadata:
   name: {{ include "kafka.name" . }}
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  annotations:
+    {{- include "kafka.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: combined_monitor
       default: true
       components:
         - name: kafka-combine
-          compDef: {{ include "kafka-combine.componentDefName" . }}
+          compDef: {{ include "kafka-combine.cmpdRegexpPattern" . }}
         - name: kafka-exporter
-          compDef: {{ include "kafka-exporter.componentDefName" . }}
+          compDef: {{ include "kafka-exporter.cmpdRegexpPattern" . }}
       orders:
         provision:
           - kafka-combine
@@ -32,19 +28,19 @@ spec:
     - name: combined
       components:
         - name: kafka-combine
-          compDef: {{ include "kafka-combine.componentDefName" . }}
+          compDef: {{ include "kafka-combine.cmpdRegexpPattern" . }}
     - name: separated_monitor
       components:
         - name: kafka-controller
-          compDef: {{ include "kafka-controller.componentDefName" . }}
+          compDef: {{ include "kafka-controller.cmpdRegexpPattern" . }}
         - name: kafka-broker
-          compDef: {{ include "kafka-broker.componentDefName" . }}
+          compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
         - name: kafka-exporter
-          compDef: {{ include "kafka-exporter.componentDefName" . }}
+          compDef: {{ include "kafka-exporter.cmpdRegexpPattern" . }}
       orders:
         provision:
-          - kafka-broker
           - kafka-controller
+          - kafka-broker
           - kafka-exporter
         terminate:
           - kafka-broker
@@ -57,16 +53,22 @@ spec:
     - name: separated
       components:
         - name: kafka-controller
-          compDef: {{ include "kafka-controller.componentDefName" . }}
+          compDef: {{ include "kafka-controller.cmpdRegexpPattern" . }}
         - name: kafka-broker
-          compDef: {{ include "kafka-broker.componentDefName" . }}
+          compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
       orders:
         provision:
-          - kafka-broker
           - kafka-controller
+          - kafka-broker
         terminate:
-          - kafka-controller
           - kafka-broker
+          - kafka-controller
         update:
           - kafka-broker
           - kafka-controller
+    - name: kafka2-external-zk
+      components:
+        - name: kafka-broker
+          compDef: {{ include "kafka2-broker.cmpdRegexpPattern" . }}
+        - name: kafka-exporter
+          compDef: {{ include "kafka-exporter.cmpdRegexpPattern" . }}

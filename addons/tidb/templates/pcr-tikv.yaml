@@ -1,0 +1,16 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "tidb.tikv.pcrName" . }}
+  labels:
+    {{- include "tidb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "tidb.annotations" . | nindent 4}}
+spec:
+  componentDef: {{ include "tidb.tikv7.compDefName" . }}
+  parametersDefs:
+    - {{ include "tidb.tikv.paramName" . }}
+  configs:
+    - name: tikv.toml
+      fileFormatConfig:
+        format: toml

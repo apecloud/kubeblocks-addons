@@ -1,20 +1,3 @@
-//Copyright (C) 2022-2023 ApeCloud Co., Ltd
-//
-//This file is part of KubeBlocks project
-//
-//This program is free software: you can redistribute it and/or modify
-//it under the terms of the GNU Affero General Public License as published by
-//the Free Software Foundation, either version 3 of the License, or
-//(at your option) any later version.
-//
-//This program is distributed in the hope that it will be useful
-//but WITHOUT ANY WARRANTY; without even the implied warranty of
-//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//GNU Affero General Public License for more details.
-//
-//You should have received a copy of the GNU Affero General Public License
-//along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 #MysqlParameter: {
 
 	// reference aws rds params: https://console.amazonaws.cn/rds/home?region=cn-north-1#parameter-groups-detail:ids=default.mysql8.0;type=DbParameterGroup;editing=false
@@ -274,10 +257,8 @@
 	// Compress the mysql.gtid_executed table each time this many transactions have taken place.
 	gtid_executed_compression_period?: int & >=0 & <=4294967295
 
-	gtid_mode?: string & "0" | "OFF" | "ON" | "1"
-
 	// Controls whether GTID based logging is enabled and what type of transactions the logs can contain
-	"gtid-mode"?: string & "OFF" | "OFF_PERMISSIVE" | "ON_PERMISSIVE" | "ON"
+	"gtid_mode"?: string & "OFF" | "OFF_PERMISSIVE" | "ON_PERMISSIVE" | "ON"
 
 	gtid_owned?: string
 
@@ -690,6 +671,9 @@
 
 	// Controls whether or not MySQL uses Linux native asynchronous IO.
 	innodb_use_native_aio?: string & "0" | "1" | "OFF" | "ON"
+
+	// On platforms that support fdatasync() system calls, having innodb_use_fdatasync enabled permits using fdatasync() instead of fsync() system calls for operating system flushes.
+	innodb_use_fdatasync?: string & "0" | "1" | "OFF" | "ON"
 
 	// The number of I/O threads for write operations in InnoDB.
 	innodb_write_io_threads?: int & >=1 & <=64
@@ -1533,11 +1517,70 @@
 	wait_timeout?: int & >=1 & <=31536000
 
 	// For SQL window functions, determines whether to enable inversion optimization for moving window frames also for floating values.
-	windowing_use_high_precision: string & "0" | "1" | "OFF" | "ON" | *"1"
+	windowing_use_high_precision?: string & "OFF" | "ON" | *"ON"
 
-	// other parameters
-	// reference mysql parameters
-	...
+	loose_consensus_enabled?: string & "ON" | "OFF"
+	loose_consensus_io_thread_cnt?: int | *8
+	loose_consensus_worker_thread_cnt?: int | *8
+	loose_consensus_election_timeout?: int | *1000
+	loose_consensus_auto_leader_transfer?: string & "OFF" | "ON" | *"OFF"
+	loose_consensus_prefetch_window_size?: int | *100
+	loose_consensus_auto_reset_match_index?: string & "OFF" | "ON" | *"ON"
+	loose_cluster_mts_recover_use_index?: string & "ON" | "OFF"
+	loose_replicate_same_server_id?: string & "ON" | "OFF"
+	loose_consensus_large_trx?: string & "ON" | "OFF"
+	loose_consensuslog_revise?: string & "OFF" | "ON"
+
+	authentication_policy?: string
+	plugin_load_add?: string
+
+	loose_audit_log_handler?: string & "FILE" | "SYSLOG" | *"FILE"
+	loose_audit_log_file?: string | *"audit.log"
+	loose_audit_log_buffer_size?: string | *"1Mb"
+	loose_audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
+	loose_audit_log_strategy?: string & "ASYNCHRONOUS" | "PERFORMANCE" | "SEMISYNCHRONOUS" | "SYNCHRONOUS" | *"ASYNCHRONOUS"
+	loose_audit_log_rotate_on_size?: int | *0
+	loose_audit_log_rotations?: int | *0
+	loose_audit_log_exclude_accounts?: string
+
+	loose_smartengine_datadir?: string
+	loose_smartengine_wal_dir?: string
+	loose_smartengine_flush_log_at_trx_commit?: int
+	loose_smartengine_enable_2pc?: int
+	loose_smartengine_batch_group_slot_array_size?: int
+	loose_smartengine_batch_group_max_group_size?: int
+	loose_smartengine_batch_group_max_leader_wait_time_us?: int
+	loose_smartengine_block_size?: int
+	loose_smartengine_disable_auto_compactions?: int
+	loose_smartengine_dump_memtable_limit_size?: int
+
+	loose_smartengine_min_write_buffer_number_to_merge?: int
+	loose_smartengine_level0_file_num_compaction_trigger?: int
+	loose_smartengine_level0_layer_num_compaction_trigger?: int
+	loose_smartengine_level1_extents_major_compaction_trigger?: int
+	loose_smartengine_level2_usage_percent?: int
+	loose_smartengine_flush_delete_percent?: int
+	loose_smartengine_compaction_delete_percent?: int
+	loose_smartengine_flush_delete_percent_trigger?: int
+	loose_smartengine_flush_delete_record_trigger?: int
+	loose_smartengine_scan_add_blocks_limit?: int
+
+	loose_smartengine_compression_per_level?: string
+	loose_smartengine_write_buffer_size?: int
+	loose_smartengine_db_write_buffer_size?: int
+	loose_smartengine_db_total_write_buffer_size?: int
+	loose_smartengine_block_cache_size?: int
+	loose_smartengine_row_cache_size?: int
+	loose_smartengine_max_total_wal_size?: int
+
+	loose_smartengine_max_background_flushes?: int
+	loose_smartengine_base_background_compactions?: int
+	loose_smartengine_max_background_compactions?: int
+
+	innodb_redo_log_capacity?: int
+	binlog_purge_size?: string
+	log_replica_updates?: int
+	mysqlx?: int
 }
 
 // SectionName is section name

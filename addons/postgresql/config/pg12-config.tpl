@@ -137,22 +137,16 @@ log_connections = 'False'
 log_disconnections = 'False'
 log_duration = 'False'
 log_executor_stats = 'False'
-{{- block "logsBlock" . }}
-{{- if hasKey $.component "enabledLogs" }}
-{{- if mustHas "running" $.component.enabledLogs }}
 logging_collector = 'True'
 log_destination = 'csvlog'
 log_directory = 'log'
-log_filename = 'postgresql-%Y-%m-%d.log'
-{{ end -}}
-{{ end -}}
-{{ end }}
+log_filename = 'postgresql-%u.log'
 # log_lock_waits = 'True'
 log_min_duration_statement = '1000'
 log_parser_stats = 'False'
 log_planner_stats = 'False'
 log_replication_commands = 'False'
-log_statement = 'ddl'
+log_statement = 'none'
 log_statement_stats = 'False'
 log_temp_files = '128kB'
 log_transaction_sample_rate = '0'
@@ -205,7 +199,7 @@ pgaudit.log_level = 'log'
 pgaudit.log_parameter = 'False'
 pgaudit.log_relation = 'False'
 pgaudit.log_statement_once = 'False'
-pgaudit.log = 'ddl,read,write'
+pgaudit.log = 'ddl'
 # pgaudit.role = ''
 #extension: pglogical
 pglogical.batch_inserts = 'True'
@@ -223,14 +217,11 @@ session_replication_role = 'origin'
 sql_firewall.firewall = 'disable'
 shared_buffers = '{{ printf "%d%s" $shared_buffers $buffer_unit }}'
 shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit'
-{{- if $.component.tlsConfig }}
-{{- $ca_file := getCAFile }}
-{{- $cert_file := getCertFile }}
-{{- $key_file := getKeyFile }}
+{{- if eq (index $ "TLS_ENABLED") "true" }}
 ssl = 'True'
-ssl_ca_file = '{{ $ca_file }}'
-ssl_cert_file = '{{ $cert_file }}'
-ssl_key_file = '{{ $key_file }}'
+ssl_ca_file = '/etc/pki/tls/ca.pem'
+ssl_cert_file = '/etc/pki/tls/cert.pem'
+ssl_key_file = '/etc/pki/tls/key.pem'
 {{- end }}
 ssl_min_protocol_version = 'TLSv1'
 standard_conforming_strings = 'True'
@@ -270,7 +261,7 @@ wal_buffers = '{{ printf "%dMB" ( div ( min ( max ( div $phy_memory 2097152 ) 20
 wal_compression = 'True'
 wal_init_zero = off
 wal_level = 'replica'
-wal_log_hints = 'False'
+wal_log_hints = 'True'
 wal_receiver_status_interval = '1s'
 wal_receiver_timeout = '60000'
 wal_sender_timeout = '60000'
@@ -283,4 +274,4 @@ xmloption = 'content'
 ## the following parameters have been deprecated in postgresql 14
 operator_precedence_warning = 'off'
 vacuum_cleanup_index_scale_factor = '0.1'
-wal_keep_segments = '0'
+wal_keep_segments = '96'

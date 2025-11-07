@@ -22,7 +22,6 @@
       "enum": [
         "Delete",
         "DoNotTerminate",
-        "Halt",
         "WipeOut"
       ]
     },
@@ -67,6 +66,246 @@
       "default": 10,
       "minimum": 1,
       "maximum": 10000
+    },
+    "datanode": {
+      "title": "Datanode Configurations",
+      "description": "Configuration for datanode instances in the cluster.",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for the datanode.",
+          "type": "integer",
+          "default": 3,
+          "minimum": 1
+        },
+        "resources": {
+          "title": "Resource Requests and Limits",
+          "description": "CPU and memory resource requests and limits for each datanode pod. We usually recommend not to specify default resources and to leave this as a conscious choice for the user. This also increases chances charts run on environments with little resources, such as Minikube. If you do want to specify resources, adjust them as necessary.",
+          "type": "object",
+          "properties": {
+            "limits": {
+              "title": "Limits",
+              "description": "The maximum amount of CPU and memory that can be used by the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                },
+                "memory": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                }
+              }
+            },
+            "requests": {
+              "title": "Requests",
+              "description": "The minimum amount of CPU and memory that should be allocated to the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                },
+                "memory": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                }
+              }
+            }
+          }
+        },
+        "volume": {
+          "title": "Volume Configuration",
+          "description": "Storage volume configuration for each datanode pod.",
+          "type": "object",
+          "properties": {
+            "storage": {
+              "title": "Storage Size (Gi)",
+              "description": "Size of the persistent storage volume in Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 10
+            }
+          }
+        }
+      }
+    },
+    "etcd": {
+      "title": "Etcd Configurations",
+      "description": "Configuration for etcd instances in the cluster.",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for the etcd cluster.",
+          "type": "integer",
+          "default": 3,
+          "minimum": 1
+        },
+        "resources": {
+          "title": "Resource Requests and Limits",
+          "description": "CPU and memory resource requests and limits for each etcd pod.",
+          "type": "object"
+        },
+        "volume": {
+          "title": "Volume Configuration",
+          "description": "Storage volume configuration for each etcd pod.",
+          "type": "object",
+          "properties": {
+            "storage": {
+              "title": "Storage Size (Gi)",
+              "description": "Size of the persistent storage volume in Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 10
+            }
+          }
+        }
+      }
+    },
+    "meta": {
+      "title": "Meta Configurations",
+      "description": "Configuration for meta instances in the cluster.",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for the meta service.",
+          "type": "integer",
+          "default": 1,
+          "minimum": 1
+        },
+        "resources": {
+          "title": "Resource Requests and Limits",
+          "description": "CPU and memory resource requests and limits for each meta pod.",
+          "type": "object",
+          "properties": {
+            "limits": {
+              "title": "Limits",
+              "description": "The maximum amount of CPU and memory that can be used by the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                },
+                "memory": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                }
+              }
+            },
+            "requests": {
+              "title": "Requests",
+              "description": "The minimum amount of CPU and memory that should be allocated to the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                },
+                "memory": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                }
+              }
+            }
+          }
+      }
+      }
+    },
+    "frontend": {
+      "title": "Frontend Configurations",
+      "description": "Configuration for frontend instances in the cluster.",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for the frontend service.",
+          "type": "integer",
+          "default": 1,
+          "minimum": 1
+        },
+        "resources": {
+          "title": "Resource Requests and Limits",
+          "description": "CPU and memory resource requests and limits for each frontend pod.",
+          "type": "object",
+          "properties": {
+            "limits": {
+              "title": "Limits",
+              "description": "The maximum amount of CPU and memory that can be used by the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                },
+                "memory": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                }
+              }
+            },
+            "requests": {
+              "title": "Requests",
+              "description": "The minimum amount of CPU and memory that should be allocated to the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                },
+                "memory": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 1
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

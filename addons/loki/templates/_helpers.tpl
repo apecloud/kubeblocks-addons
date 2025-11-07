@@ -24,18 +24,6 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 {{- end }}
 
-{{/* Create a default storage config that uses filesystem storage
-This is required for CI, but Loki will not be queryable with this default
-applied, thus it is encouraged that users override this.
-*/}}
-{{- define "loki.storageConfig" -}}
-{{- if .Values.loki.storageConfig -}}
-{{- .Values.loki.storageConfig | toYaml | nindent 4 -}}
-{{- else }}
-{{- .Values.loki.defaultStorageConfig | toYaml | nindent 4 }}
-{{- end}}
-{{- end}}
-
 {{/*
 Create chart name and version as used by the chart label.
 */}}
@@ -64,15 +52,19 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Common annotations
 */}}
-{{- define "loki.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create -}}
-    {{ default (include "loki.name" .) .Values.serviceAccount.name }}
-{{- else -}}
-    {{ default "default" .Values.serviceAccount.name }}
-{{- end -}}
-{{- end -}}
+{{- define "loki.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "loki.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "loki.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
 
 {{/*
 Base template for building docker image reference
@@ -106,303 +98,6 @@ Docker image name
 */}}
 {{- define "loki.image" -}}
 {{- if .Values.enterprise.enabled -}}{{- include "loki.enterpriseImage" . -}}{{- else -}}{{- include "loki.lokiImage" . -}}{{- end -}}
-{{- end -}}
-
-
-{{/*
-Memcached Docker image
-*/}}
-{{- define "loki.memcachedImage" -}}
-{{- $dict := dict "service" .Values.memcached.image "global" .Values.global.image -}}
-{{- include "loki.image" $dict -}}
-{{- end }}
-
-{{/*
-Memcached Exporter Docker image
-*/}}
-{{- define "loki.memcachedExporterImage" -}}
-{{- $dict := dict "service" .Values.memcachedExporter.image "global" .Values.global.image -}}
-{{- include "loki.image" $dict -}}
-{{- end }}
-{{/* Snippet for the nginx file used by gateway */}}
-{{- define "loki.nginxFile" }}
-worker_processes  5;  ## Default: 1
-error_log  /dev/stderr;
-pid        /tmp/nginx.pid;
-worker_rlimit_nofile 8192;
-
-events {
-  worker_connections  4096;  ## Default: 1024
-}
-
-http {
-  client_body_temp_path /tmp/client_temp;
-  proxy_temp_path       /tmp/proxy_temp_path;
-  fastcgi_temp_path     /tmp/fastcgi_temp;
-  uwsgi_temp_path       /tmp/uwsgi_temp;
-  scgi_temp_path        /tmp/scgi_temp;
-
-  client_max_body_size  4M;
-
-  proxy_read_timeout    600; ## 10 minutes
-  proxy_send_timeout    600;
-  proxy_connect_timeout 600;
-
-  proxy_http_version    1.1;
-
-  default_type application/octet-stream;
-  log_format   {{ .Values.gateway.nginxConfig.logFormat }}
-
-  {{- if .Values.gateway.verboseLogging }}
-  access_log   /dev/stderr  main;
-  {{- else }}
-
-  map $status $loggable {
-    ~^[23]  0;
-    default 1;
-  }
-  access_log   /dev/stderr  main  if=$loggable;
-  {{- end }}
-
-  sendfile     on;
-  tcp_nopush   on;
-  {{- if .Values.gateway.nginxConfig.resolver }}
-  resolver {{ .Values.gateway.nginxConfig.resolver }};
-  {{- else }}
-  resolver {{ .Values.global.dnsService }}.{{ .Values.global.dnsNamespace }}.svc.{{ .Values.global.clusterDomain }}.;
-  {{- end }}
-
-  {{- with .Values.gateway.nginxConfig.httpSnippet }}
-  {{- tpl . $ | nindent 2 }}
-  {{- end }}
-
-  server {
-    {{- if (.Values.gateway.nginxConfig.ssl) }}
-    listen             8080 ssl;
-    {{- if .Values.gateway.nginxConfig.enableIPv6 }}
-    listen             [::]:8080 ssl;
-    {{- end }}
-    {{- else }}
-    listen             8080;
-    {{- if .Values.gateway.nginxConfig.enableIPv6 }}
-    listen             [::]:8080;
-    {{- end }}
-    {{- end }}
-
-    {{- if .Values.gateway.basicAuth.enabled }}
-    auth_basic           "Loki";
-    auth_basic_user_file /etc/nginx/secrets/.htpasswd;
-    {{- end }}
-
-    location = / {
-      return 200 'OK';
-      auth_basic off;
-    }
-    ########################################################
-    # Configure backend targets
-
-    {{- $backendHost := include "loki.backendFullname" .}}
-    {{- $readHost := include "loki.readFullname" .}}
-    {{- $writeHost := include "loki.writeFullname" .}}
-
-    {{- if .Values.read.legacyReadTarget }}
-    {{- $backendHost = include "loki.readFullname" . }}
-    {{- end }}
-
-    {{- $httpSchema := .Values.gateway.nginxConfig.schema }}
-
-    {{- $writeUrl    := printf "%s://%s.%s.svc.%s:%s" $httpSchema $writeHost   .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
-    {{- $readUrl     := printf "%s://%s.%s.svc.%s:%s" $httpSchema $readHost    .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
-    {{- $backendUrl  := printf "%s://%s.%s.svc.%s:%s" $httpSchema $backendHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
-
-    {{- if .Values.gateway.nginxConfig.customWriteUrl }}
-    {{- $writeUrl  = .Values.gateway.nginxConfig.customWriteUrl }}
-    {{- end }}
-    {{- if .Values.gateway.nginxConfig.customReadUrl }}
-    {{- $readUrl = .Values.gateway.nginxConfig.customReadUrl }}
-    {{- end }}
-    {{- if .Values.gateway.nginxConfig.customBackendUrl }}
-    {{- $backendUrl = .Values.gateway.nginxConfig.customBackendUrl }}
-    {{- end }}
-
-    {{- $singleBinaryHost := include "loki.singleBinaryFullname" . }}
-    {{- $singleBinaryUrl  := printf "%s://%s.%s.svc.%s:%s" $httpSchema $singleBinaryHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
-
-    {{- $distributorHost := include "loki.distributorFullname" .}}
-    {{- $ingesterHost := include "loki.ingesterFullname" .}}
-    {{- $queryFrontendHost := include "loki.queryFrontendFullname" .}}
-    {{- $indexGatewayHost := include "loki.indexGatewayFullname" .}}
-    {{- $rulerHost := include "loki.rulerFullname" .}}
-    {{- $compactorHost := include "loki.compactorFullname" .}}
-    {{- $schedulerHost := include "loki.querySchedulerFullname" .}}
-
-
-    {{- $distributorUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $distributorHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) -}}
-    {{- $ingesterUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $ingesterHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
-    {{- $queryFrontendUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $queryFrontendHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
-    {{- $indexGatewayUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $indexGatewayHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
-    {{- $rulerUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $rulerHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
-    {{- $compactorUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $compactorHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
-    {{- $schedulerUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $schedulerHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
-
-    {{- if eq (include "loki.deployment.isSingleBinary" .) "true"}}
-    {{- $distributorUrl = $singleBinaryUrl }}
-    {{- $ingesterUrl = $singleBinaryUrl }}
-    {{- $queryFrontendUrl = $singleBinaryUrl }}
-    {{- $indexGatewayUrl = $singleBinaryUrl }}
-    {{- $rulerUrl = $singleBinaryUrl }}
-    {{- $compactorUrl = $singleBinaryUrl }}
-    {{- $schedulerUrl = $singleBinaryUrl }}
-    {{- else if eq (include "loki.deployment.isScalable" .) "true"}}
-    {{- $distributorUrl = $writeUrl }}
-    {{- $ingesterUrl = $writeUrl }}
-    {{- $queryFrontendUrl = $readUrl }}
-    {{- $indexGatewayUrl = $backendUrl }}
-    {{- $rulerUrl = $backendUrl }}
-    {{- $compactorUrl = $backendUrl }}
-    {{- $schedulerUrl = $backendUrl }}
-    {{- end -}}
-
-    # Distributor
-    location = /api/prom/push {
-      proxy_pass       {{ $distributorUrl }}$request_uri;
-    }
-    location = /loki/api/v1/push {
-      proxy_pass       {{ $distributorUrl }}$request_uri;
-    }
-    location = /distributor/ring {
-      proxy_pass       {{ $distributorUrl }}$request_uri;
-    }
-    location = /otlp/v1/logs {
-      proxy_pass       {{ $distributorUrl }}$request_uri;
-    }
-
-    # Ingester
-    location = /flush {
-      proxy_pass       {{ $ingesterUrl }}$request_uri;
-    }
-    location ^~ /ingester/ {
-      proxy_pass       {{ $ingesterUrl }}$request_uri;
-    }
-    location = /ingester {
-      internal;        # to suppress 301
-    }
-
-    # Ring
-    location = /ring {
-      proxy_pass       {{ $ingesterUrl }}$request_uri;
-    }
-
-    # MemberListKV
-    location = /memberlist {
-      proxy_pass       {{ $ingesterUrl }}$request_uri;
-    }
-
-    # Ruler
-    location = /ruler/ring {
-      proxy_pass       {{ $rulerUrl }}$request_uri;
-    }
-    location = /api/prom/rules {
-      proxy_pass       {{ $rulerUrl }}$request_uri;
-    }
-    location ^~ /api/prom/rules/ {
-      proxy_pass       {{ $rulerUrl }}$request_uri;
-    }
-    location = /loki/api/v1/rules {
-      proxy_pass       {{ $rulerUrl }}$request_uri;
-    }
-    location ^~ /loki/api/v1/rules/ {
-      proxy_pass       {{ $rulerUrl }}$request_uri;
-    }
-    location = /prometheus/api/v1/alerts {
-      proxy_pass       {{ $rulerUrl }}$request_uri;
-    }
-    location = /prometheus/api/v1/rules {
-      proxy_pass       {{ $rulerUrl }}$request_uri;
-    }
-
-    # Compactor
-    location = /compactor/ring {
-      proxy_pass       {{ $compactorUrl }}$request_uri;
-    }
-    location = /loki/api/v1/delete {
-      proxy_pass       {{ $compactorUrl }}$request_uri;
-    }
-    location = /loki/api/v1/cache/generation_numbers {
-      proxy_pass       {{ $compactorUrl }}$request_uri;
-    }
-
-    # IndexGateway
-    location = /indexgateway/ring {
-      proxy_pass       {{ $indexGatewayUrl }}$request_uri;
-    }
-
-    # QueryScheduler
-    location = /scheduler/ring {
-      proxy_pass       {{ $schedulerUrl }}$request_uri;
-    }
-
-    # Config
-    location = /config {
-      proxy_pass       {{ $ingesterUrl }}$request_uri;
-    }
-
-    {{- if and .Values.enterprise.enabled .Values.enterprise.adminApi.enabled }}
-    # Admin API
-    location ^~ /admin/api/ {
-      proxy_pass       {{ $backendUrl }}$request_uri;
-    }
-    location = /admin/api {
-      internal;        # to suppress 301
-    }
-    {{- end }}
-
-
-    # QueryFrontend, Querier
-    location = /api/prom/tail {
-      proxy_pass       {{ $queryFrontendUrl }}$request_uri;
-      proxy_set_header Upgrade $http_upgrade;
-      proxy_set_header Connection "upgrade";
-    }
-    location = /loki/api/v1/tail {
-      proxy_pass       {{ $queryFrontendUrl }}$request_uri;
-      proxy_set_header Upgrade $http_upgrade;
-      proxy_set_header Connection "upgrade";
-    }
-    location ^~ /api/prom/ {
-      proxy_pass       {{ $queryFrontendUrl }}$request_uri;
-    }
-    location = /api/prom {
-      internal;        # to suppress 301
-    }
-    location ^~ /loki/api/v1/ {
-      proxy_pass       {{ $queryFrontendUrl }}$request_uri;
-    }
-    location = /loki/api/v1 {
-      internal;        # to suppress 301
-    }
-
-    {{- with .Values.gateway.nginxConfig.serverSnippet }}
-    {{ . | nindent 4 }}
-    {{- end }}
-  }
-}
-{{- end }}
-
-{{/*
-singleBinary fullname
-*/}}
-{{- define "loki.singleBinaryFullname" -}}
-{{- if .Values.fullnameOverride -}}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- $name := default .Chart.Name .Values.nameOverride -}}
-{{- if contains $name .Release.Name -}}
-{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-{{- end -}}
 {{- end -}}
 
 {{/*
@@ -521,4 +216,96 @@ query-scheduler fullname
 */}}
 {{- define "loki.querySchedulerFullname" -}}
 {{ include "loki.fullname" . }}-query-scheduler
+{{- end }}
+
+{{/*
+Define loki backend component definition name
+*/}}
+{{- define "loki.backendCmpdName" -}}
+loki-backend-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define loki backend component definition regular expression name prefix
+*/}}
+{{- define "loki.backendCmpdRegexpPattern" -}}
+^loki-backend-
+{{- end -}}
+
+{{/*
+Define loki gateway component definition name
+*/}}
+{{- define "loki.gatewayCmpdName" -}}
+loki-gateway-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define loki backend component definition regular expression name prefix
+*/}}
+{{- define "loki.gatewayCmpdRegexpPattern" -}}
+^loki-gateway-
+{{- end -}}
+
+{{/*
+Define loki read component definition name
+*/}}
+{{- define "loki.readCmpdName" -}}
+loki-read-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define loki read component definition regular expression name prefix
+*/}}
+{{- define "loki.readCmpdRegexpPattern" -}}
+^loki-read-
+{{- end -}}
+
+
+{{/*
+Define loki write component definition name
+*/}}
+{{- define "loki.writeCmpdName" -}}
+loki-write-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define loki write component definition regular expression name prefix
+*/}}
+{{- define "loki.writeCmpdRegexpPattern" -}}
+^loki-write-
+{{- end -}}
+
+{{/*
+object storage serviceRef declarations
+*/}}
+{{- define "loki.object.serviceRef" }}
+- name: loki-object-storage
+  serviceRefDeclarationSpecs:
+    - serviceKind: minio
+      serviceVersion: "^*"
+  optional: true
+{{- end }}
+
+{{/*
+object storage serviceRef vars
+*/}}
+{{- define "loki.object.serviceRefVars" }}
+- name: S3_ENDPOINT
+  valueFrom:
+    serviceRefVarRef:
+      name: loki-object-storage
+      optional: true
+      endpoint: Required
+- name: ACCESS_KEY_ID
+  valueFrom:
+    serviceRefVarRef:
+      name: loki-object-storage
+      optional: true
+      username: Required
+- name: SECRET_ACCESS_KEY
+  valueFrom:
+    serviceRefVarRef:
+      name: loki-object-storage
+      optional: true
+      password: Required
 {{- end }}

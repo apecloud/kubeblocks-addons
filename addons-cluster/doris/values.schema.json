@@ -1,0 +1,195 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "version": {
+      "title": "Version",
+      "description": "The version of Doris.",
+      "type": "string",
+      "default": "2.1.6"
+    },
+    "fe": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "FE Replicas",
+          "description": "The number of replicas for FE.",
+          "type": "integer",
+          "default": 3,
+          "minimum": 1
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "FE CPU Limit",
+                  "description": "FE CPU cores limit.",
+                  "type": ["number", "string"],
+                  "default": 1,
+                  "minimum": 1
+                },
+                "memory": {
+                  "title": "FE Memory Limit(Gi)",
+                  "description": "FE Memory limit, the unit is Gi.",
+                  "type": ["number", "string"],
+                  "default": 2,
+                  "minimum": 2
+                }
+              }
+            },
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "FE CPU Request",
+                  "description": "FE CPU cores request.",
+                  "type": ["number", "string"],
+                  "default": 1,
+                  "minimum": 1
+                },
+                "memory": {
+                  "title": "FE Memory Request(Gi)",
+                  "description": "FE Memory request, the unit is Gi.",
+                  "type": ["number", "string"],
+                  "default": 2,
+                  "minimum": 2
+                }
+              }
+            }
+          }
+        },
+        "persistence": {
+          "type": "object",
+          "properties": {
+            "storageClassName": {
+              "title": "Storage Class Name",
+              "description": "Storage class name for persistent volumes.",
+              "type": ["string", "null"],
+              "default": ""
+            },
+            "storages": {
+              "type": "object",
+              "properties": {
+                "metadata": {
+                  "title": "FE Metadata Storage(Gi)",
+                  "description": "FE metadata storage size, the unit is Gi.",
+                  "type": ["number", "string"],
+                  "default": 10,
+                  "minimum": 1
+                },
+                "log": {
+                  "title": "FE Log Storage(Gi)",
+                  "description": "FE log storage size, the unit is Gi.",
+                  "type": ["number", "string"],
+                  "default": 10,
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "be": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "BE Replicas",
+          "description": "The number of replicas for BE.",
+          "type": "integer",
+          "default": 3,
+          "minimum": 1
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "BE CPU Limit",
+                  "description": "BE CPU cores limit.",
+                  "type": ["number", "string"],
+                  "default": 1,
+                  "minimum": 0.5
+                },
+                "memory": {
+                  "title": "BE Memory Limit(Gi)",
+                  "description": "BE Memory limit, the unit is Gi.",
+                  "type": ["number", "string"],
+                  "default": 2,
+                  "minimum": 1
+                }
+              }
+            },
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "title": "BE CPU Request",
+                  "description": "BE CPU cores request.",
+                  "type": ["number", "string"],
+                  "default": 1,
+                  "minimum": 0.5
+                },
+                "memory": {
+                  "title": "BE Memory Request(Gi)",
+                  "description": "BE Memory request, the unit is Gi.",
+                  "type": ["number", "string"],
+                  "default": 2,
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "persistence": {
+          "type": "object",
+          "properties": {
+            "storageClassName": {
+              "title": "Storage Class Name",
+              "description": "Storage class name for persistent volumes.",
+              "type": ["string", "null"],
+              "default": ""
+            },
+            "storages": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "title": "BE Data Storage(Gi)",
+                  "description": "BE data storage size, the unit is Gi.",
+                  "type": ["number", "string"],
+                  "default": 20,
+                  "minimum": 1
+                },
+                "log": {
+                  "title": "BE Log Storage(Gi)",
+                  "description": "BE log storage size, the unit is Gi.",
+                  "type": ["number", "string"],
+                  "default": 10,
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "nameOverride": {
+      "title": "Name Override",
+      "description": "Override the default chart name.",
+      "type": "string",
+      "default": ""
+    },
+    "fullnameOverride": {
+      "title": "Fullname Override",
+      "description": "Override the default full chart name.",
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": ["fe", "be"]
+}

@@ -39,6 +39,21 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+These annotations ensure that resources from previous version won't be cleaned by helm during an upgrade.
+*/}}
+{{- define "tidb.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "tidb.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "tidb.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{/*
 Common labels
 */}}
 {{- define "tidb.labels" -}}
@@ -51,7 +66,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{- define "tidb.cmScriptsName" -}}
-tidb-scripts
+tidb-scripts-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "tidb.tidb.configTplName" -}}
@@ -74,6 +89,51 @@ tidb-config-constraints
 tikv-config-constraints
 {{- end -}}
 
-{{- define "tidb.pd.configConstraintName" -}}
-tidb-pd-config-constraints
+{{- define "tidb.pd.paramName" -}}
+tidb-pd-params
 {{- end -}}
+
+{{- define "tidb.tidb.paramName" -}}
+tidb-tidb-params
+{{- end -}}
+
+{{- define "tidb.tikv.paramName" -}}
+tidb-tikv-params
+{{- end -}}
+
+{{- define "tidb.pd.pcrName" -}}
+tidb-pd-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "tidb.tikv.pcrName" -}}
+tidb-tikv-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "tidb.tidb.pcrName" -}}
+tidb-tidb-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "tidb.pd7.cmpdRegexpPattern" -}}
+^tidb-pd-7-
+{{- end -}}
+
+{{- define "tidb.pd7.compDefName" -}}
+tidb-pd-7-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "tidb.tikv7.cmpdRegexpPattern" -}}
+^tikv-7-
+{{- end -}}
+
+{{- define "tidb.tikv7.compDefName" -}}
+tikv-7-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "tidb.tidb7.cmpdRegexpPattern" -}}
+^tidb-7-
+{{- end -}}
+
+{{- define "tidb.tidb7.compDefName" -}}
+tidb-7-{{ .Chart.Version }}
+{{- end -}}
+

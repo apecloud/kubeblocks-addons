@@ -4,24 +4,20 @@
   "properties": {
     "version": {
       "title": "Version",
-      "description": "Cluster version, run \"kbcli cv list --devel\" to see all versions.",
+      "description": "MySQL version",
       "type": "string",
-      "default": "mysql-8.0",
+      "default": "8.0.39",
       "enum": [
-        "mysql-8.4.2",
-        "mysql-8.0.33",
-        "mysql-5.7.44"
-      ]
-    },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
-      "type": "string",
-      "default": "standalone",
-      "enum": [
-        "standalone",
-        "replication",
-        "raftGroup"
+        "8.0.39",
+        "8.0.38",
+        "8.0.37",
+        "8.0.36",
+        "8.4.7",
+        "8.4.3",
+        "8.4.2",
+        "8.4.1",
+        "8.4.0",
+        "5.7.44"
       ]
     },
     "replicas": {
@@ -65,6 +61,73 @@
       "default": 20,
       "minimum": 1,
       "maximum": 10000
+    },
+    "topology": {
+      "type": "string",
+      "default": "semisync",
+      "description": "Topology type of the serve. Note that under the orc/orc-proxysql topology, it is necessary to specify the Orchestrator cluster information. You should choose either orchestrator.cluster-service-selector or orchestrator.service-reference. This means that depending on your setup, you will configure one of these options to properly integrate with the Orchestrator service for managing your MySQL cluster.",
+      "enum": [
+        "semisync",
+        "semisync-proxysql",
+        "mgr",
+        "mgr-proxysql",
+        "orc",
+        "orc-proxysql"
+      ]
+    },
+    "proxysql": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Proxysql Replicas",
+          "description": "The number of replicas for Proxysql.",
+          "type": "integer",
+          "default": 1
+        },
+        "cpu": {
+          "title": "Proxysql CPU",
+          "description": "Proxysql CPU cores.",
+          "type": [ "number", "string" ],
+          "default": 1
+        },
+        "memory": {
+          "title": "Proxysql Memory(Gi)",
+          "description": "Proxysql Memory, the unit is Gi.",
+          "type": [ "number", "string" ],
+          "default": 1
+        }
+      },
+      "description": "Proxysql configuration"
+    },
+    "orchestrator": {
+      "type": "object",
+      "properties": {
+        "serviceReference": {
+          "type": "object",
+          "properties": {
+            "endpoint": {
+              "type": "string",
+              "description": "Endpoint name of the service reference, format: <host>:<port>"
+            }
+          },
+          "additionalProperties": false
+        },
+        "clusterServiceSelector": {
+          "type": "object",
+          "properties": {
+            "clusterName": {
+              "type": "string",
+              "description": "orchestrator cluster name for service selector"
+            },
+            "namespace": {
+              "type": "string",
+              "description": "orchestrator cluster namespace for service selector"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

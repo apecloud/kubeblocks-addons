@@ -6,24 +6,6 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
-*/}}
-{{- define "apecloud-mysql.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "apecloud-mysql.chart" -}}
@@ -51,16 +33,19 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Common annotations
 */}}
-{{- define "apecloud-mysql.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "apecloud-mysql.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
+{{- define "apecloud-mysql.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "apecloud-mysql.apiVersion" . }}
 {{- end }}
 
+{{/*
+API version annotation
+*/}}
+{{- define "apecloud-mysql.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
 
 {{/*
 Generate scripts configmap
@@ -109,7 +94,7 @@ logConfigs:
   {{- end }}
 scripts:
   - name: apecloud-mysql-scripts
-    templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
+    template: {{ include "apecloud-mysql.cmScriptsName" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555  # for read and execute, mysql container switched user account.
@@ -122,37 +107,45 @@ systemAccounts:
       numSymbols: 0
       letterCase: MixedCases
   - name: kbadmin
-    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT ALL PRIVILEGES ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT ALL PRIVILEGES ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: &defaultPasswordGenerationPolicy
       length: 16
       numDigits: 8
       numSymbols: 0
       letterCase: MixedCases
   - name: kbdataprotection
-    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbprobe
-    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbmonitoring
-    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbreplicator
-    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION SLAVE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME} WITH GRANT OPTION;
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION SLAVE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME} WITH GRANT OPTION;
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+tls:
+  volumeName: tls
+  mountPath: /etc/pki/tls
+  caFile: ca.pem
+  certFile: cert.pem
+  keyFile: key.pem
 roles:
   - name: leader
-    serviceable: true
-    writable: true
-    votable: true
+    updatePriority: 3
+    participatesInQuorum: true
   - name: follower
-    serviceable: true
-    writable: false
-    votable: true
+    updatePriority: 2
+    participatesInQuorum: true
   - name: learner
-    serviceable: false
-    writable: false
-    votable: false
+    updatePriority: 1
+    participatesInQuorum: false
 lifecycleActions:
   roleProbe:
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
@@ -160,31 +153,28 @@ lifecycleActions:
     exec:
       container: mysql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        - wesql
+        - /tools/syncerctl
         - getrole
   memberLeave:
     exec:
       container: mysql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        -  wesql
-        - leavemember
+        - /bin/sh
+        - -c
+        - |
+          /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
   switchover:
-    withCandidate:
-      exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
-        command:
-          - /scripts/switchover-with-candidate.sh
-    withoutCandidate:
-      exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
-        command:
-          - /scripts/switchover-without-candidate.sh
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - |
+          if [ "$KB_SWITCHOVER_ROLE" != "leader" ]; then
+              echo "switchover not triggered for primary, nothing to do, exit 0."
+              exit 0
+          fi
+
+          /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
   accountProvision:
     exec:
       container: mysql
@@ -197,7 +187,44 @@ lifecycleActions:
           eval statement=\"${KB_ACCOUNT_STATEMENT}\"
           mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
       targetPodSelector: Role
-      matchingKey: leader 
+      matchingKey: leader
+  dataDump:
+    exec:
+      command:
+        - bash
+        - -c
+        - |
+          set -ex
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_USER=${MYSQL_ROOT_USER}
+          DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+          DATA_DIR={{ .Values.mysqlConfigs.dataDir }}
+          xtrabackup --compress=zstd --backup --safe-slave-backup --slave-info --stream=xbstream --host=${DB_HOST} --port=${DB_PORT} --user=${DB_USER} --password=${DB_PASSWORD} --datadir=${DATA_DIR}
+      targetPodSelector: Role
+      matchingKey: leader
+      container: mysql
+  dataLoad:
+    exec:
+      command:
+        - bash
+        - -c
+        - |
+          set -ex
+          DATA_MOUNT_DIR={{ .Values.mysqlConfigs.dataMountPath }}
+          DATA_DIR={{ .Values.mysqlConfigs.dataDir }}
+          LOG_BIN={{ .Values.mysqlConfigs.logBin }}
+          TMP_DIR=${DATA_MOUNT_DIR}/temp
+          mkdir -p ${DATA_DIR} ${TMP_DIR}
+          cd ${TMP_DIR}
+          xbstream -x
+          xtrabackup --decompress --remove-original --target-dir=${TMP_DIR}
+          xtrabackup --prepare --target-dir=${TMP_DIR}
+          xtrabackup --move-back --target-dir=${TMP_DIR} --datadir=${DATA_DIR}/ --log-bin=${LOG_BIN}
+          touch ${DATA_DIR}/.xtrabackup_restore
+          rm -rf ${TMP_DIR}
+          chmod -R 0777 ${DATA_DIR}
+      container: mysql
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
@@ -213,14 +240,14 @@ vars:
     valueFrom:
       credentialVarRef:
         # it will match a comp in the cluster with cmpd name starting with "apecloud-mysql"
-        compDef: {{ include "apecloud-mysql.componentDefName" . }}
+        compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
         name: root
         optional: false
         username: Required
   - name: MYSQL_ROOT_PASSWORD
     valueFrom:
       credentialVarRef:
-        compDef: {{ include "apecloud-mysql.componentDefName" . }}
+        compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
         name: root
         optional: false
         password: Required
@@ -249,9 +276,55 @@ vars:
         compDef: {{ .Values.etcd.etcdCmpdName }}
         name: headless
         optional: true
-        port: 
+        port:
           name: client
           option: Optional
+  - name: COMPONENT_POD_LIST
+    valueFrom:
+      componentVarRef:
+        optional: false
+        podNames: Required
+  - name: COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        shortName: Required
+  - name: COMPONENT_REPLICAS
+    valueFrom:
+      componentVarRef:
+        optional: false
+        replicas: Required
+  - name: CLUSTER_COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        componentName: Required
+  - name: CLUSTER_NAME
+    valueFrom:
+      clusterVarRef:
+        clusterName: Required
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      clusterVarRef:
+        namespace: Required
+  - name: CLUSTER_UID
+    valueFrom:
+      clusterVarRef:
+        clusterUID: Required
+  ## the mysql primary pod name which is dynamically selected, caution to use it
+  - name: MYSQL_LEADER_POD_NAME
+    valueFrom:
+      componentVarRef:
+        optional: true
+        podNamesForRole:
+          role: leader
+          option: Optional
+  - name: SYNCER_HTTP_PORT
+    value: "3601"
+  - name: TLS_ENABLED
+    valueFrom:
+      tlsVarRef:
+        enabled: Optional
 {{- end -}}
 
 {{- define "apecloud-mysql.spec.runtime.mysql" -}}
@@ -283,11 +356,35 @@ env:
   - name: KB_MYSQL_CONF_FILE
     value: "/opt/mysql/my.cnf"
   - name: KB_MYSQL_CLUSTER_UID
-    value: $(KB_CLUSTER_UID)
+    value: $(CLUSTER_UID)
   - name: KB_MYSQL_N
-    value: $(KB_REPLICA_COUNT)
+    value: $(COMPONENT_REPLICAS)
   - name: CLUSTER_DOMAIN
     value: {{ .Values.clusterDomain }}
+  - name: POD_NAMESPACE
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.namespace
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.name
+  - name: POD_UID
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.uid
+  - name: POD_IP
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: status.podIP
+  - name: KB_SERVICE_CHARACTER_TYPE
+    value: wesql
+  - name: PATH
+    value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 volumeMounts:
   - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
     name: data
@@ -323,11 +420,31 @@ env:
     value: "15100"
   - name: VTTABLET_GRPC_PORT
   - name: VTCTLD_HOST
-    value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+    value: "$(CLUSTER_NAME)-wescale-ctrl-headless"
   - name: VTCTLD_WEB_PORT
     value: "15000"
   - name: SERVICE_PORT
     value: "$(VTTABLET_PORT)"
+  - name: POD_NAMESPACE
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.namespace
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.name
+  - name: POD_UID
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.uid
+  - name: POD_IP
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: status.podIP
 command: ["/scripts/vttablet.sh"]
 volumeMounts:
   - name: scripts
@@ -348,7 +465,6 @@ env:
     value: $(MYSQL_ROOT_PASSWORD)
   - name: EXPORTER_WEB_PORT
     value: "{{ .Values.metrics.service.port }}"
-image: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
 imagePullPolicy: IfNotPresent
 ports:
   - name: http-metrics
@@ -365,13 +481,4 @@ volumeMounts:
     path: /var/log/kubeblocks
     type: DirectoryOrCreate
 {{- end }}
-- name: annotations
-  downwardAPI:
-    items:
-      - path: "leader"
-        fieldRef:
-          fieldPath: metadata.annotations['cs.apps.kubeblocks.io/leader']
-      - path: "component-replicas"
-        fieldRef:
-          fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
 {{- end -}}

@@ -99,3 +99,92 @@ Get the password key.
 {{ index (lookup "apps.kubeblocks.io/v1alpha1" "ClusterDefinition" "" "mongodb").spec.connectionCredential "password"}}
 {{- end }}
 {{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "mongodb.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "mongodb.apiVersion" . }}
+apps.kubeblocks.io/skip-immutable-check: "true"
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "mongodb.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{/*
+Define mongodb component definition name prefix
+*/}}
+{{- define "mongodb.componentDefNamePrefix" -}}
+{{- printf "mongodb-" -}}
+{{- end -}}
+
+{{/*
+Define mongodb component definition name
+*/}}
+{{- define "mongodb.compDefName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix) 0 -}}
+mongodb-{{ .Chart.Version }}
+{{- else -}}
+{{ .Values.cmpdVersionPrefix}}-{{ .Chart.Version }}
+{{- end -}}
+{{- end -}}
+
+
+{{/*
+Define mongodb-shard component definition name
+*/}}
+{{- define "mongodbShard.compDefName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix) 0 -}}
+mongo-shard-{{ .Chart.Version }}
+{{- else -}}
+{{- printf "mongo-shard-%s" .Values.cmpdVersionPrefix -}}-{{ .Chart.Version }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mongo-shard component definition name prefix
+*/}}
+{{- define "mongodbShard.componentDefNamePrefix" -}}
+{{- printf "mongo-shard-" -}}
+{{- end -}}
+
+{{/*
+Define mongos component definition name
+*/}}
+{{- define "mongos.compDefName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix) 0 -}}
+mongo-mongos-{{ .Chart.Version }}
+{{- else -}}
+{{- printf "mongo-mongos-%s" .Values.cmpdVersionPrefix -}}-{{ .Chart.Version }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mongos component definition name prefix
+*/}}
+{{- define "mongos.componentDefNamePrefix" -}}
+{{- printf "mongo-mongos-" -}}
+{{- end -}}
+
+{{/*
+Define config server component definition name
+*/}}
+{{- define "cfgServer.compDefName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix) 0 -}}
+mongo-config-server-{{ .Chart.Version }}
+{{- else -}}
+{{- printf "mongo-config-server-%s" .Values.cmpdVersionPrefix -}}-{{ .Chart.Version }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define config server component definition name prefix
+*/}}
+{{- define "cfgServer.componentDefNamePrefix" -}}
+{{- printf "mongo-config-server-" -}}
+{{- end -}}

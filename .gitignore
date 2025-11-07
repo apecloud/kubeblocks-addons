@@ -11,6 +11,8 @@
 *.swo
 *~
 
+.mirrord/
+
 # helm dependency charts
 addons/**/Chart.lock
 addons/**/charts
@@ -19,3 +21,6 @@ addons-cluster/**/charts
 
 # generated temp directory
 temp
+
+# local debugging helm values
+values-override*.yaml

@@ -1,0 +1,149 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "title": "Loki Cluster Configuration",
+  "description": "Configuration schema for the Loki Helm chart with cluster modes.",
+  "properties": {
+    "mode": {
+      "title": "Mode",
+      "description": "Mode of the cluster, optional: standalone, distributed",
+      "type": "string",
+      "enum": [
+        "standalone",
+        "distributed"
+      ],
+      "default": "standalone"
+    },
+    "replicas": {
+      "title": "Replicas",
+      "description": "Number of replicas for standalone mode",
+      "type": "integer",
+      "default": 1
+    },
+    "cpu": {
+      "title": "CPU",
+      "description": "CPU cores.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 0.5,
+      "minimum": 0.5,
+      "maximum": 64,
+      "multipleOf": 0.5
+    },
+    "memory": {
+      "title": "Memory(Gi)",
+      "description": "Memory, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 0.5,
+      "minimum": 0.5,
+      "maximum": 1000
+    },
+    "persistence": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "description": "Enable or disable persistence.",
+          "type": "boolean",
+          "default": true
+        },
+        "data": {
+          "title": "Data",
+          "description": "Data settings for persistence.",
+          "type": "object",
+          "properties": {
+            "storageClassName": {
+              "title": "Storage Class Name",
+              "description": "Storage class name of the data volume",
+              "type": ["string", "null"],
+              "default": null
+            },
+            "size": {
+              "title": "Size(Gi)",
+              "description": "Size of the data volume, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 10
+            }
+          }
+        }
+      }
+    },
+    "proxy": {
+      "title": "Proxy",
+      "description": "Parameters for proxy in cluster mode",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for proxy in cluster mode",
+          "type": "integer",
+          "default": 1
+        }
+      }
+    },
+    "mixcoord": {
+      "title": "Mixcoord",
+      "description": "Parameters for mixcoord in cluster mode",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for mixcoord in cluster mode",
+          "type": "integer",
+          "default": 1
+        }
+      }
+    },
+    "datanode": {
+      "title": "Datanode",
+      "description": "Parameters for datanode in cluster mode",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for datanode in cluster mode",
+          "type": "integer",
+          "default": 1
+        }
+      }
+    },
+    "indexnode": {
+      "title": "Indexnode",
+      "description": "Parameters for indexnode in cluster mode",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for indexnode in cluster mode",
+          "type": "integer",
+          "default": 1
+        }
+      }
+    },
+    "querynode": {
+      "title": "Querynode",
+      "description": "Parameters for querynode in cluster mode",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Replicas",
+          "description": "Number of replicas for querynode in cluster mode",
+          "type": "integer",
+          "default": 1
+        }
+      }
+    }
+  }
+}

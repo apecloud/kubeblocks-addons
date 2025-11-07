@@ -1,29 +1,36 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: etcd
+  name: {{ include "etcd3.cmpdName" . }}
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
+  annotations:
+    {{- include "etcd.annotations" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
   runtime:
     initContainers:
-      - name: inject-shell
-        imagePullPolicy: {{default .Values.busyboxImage.pullPolicy "IfNotPresent"}}
+      - name: inject-bash
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         volumeMounts:
-          - name: shell
-            mountPath: /shell
+          - name: scripts
+            mountPath: /scripts
+          - name: bin
+            mountPath: /shared/bin
+          - name: data
+            mountPath: {{ .Values.dataMountDir }}
         command:
-          - bin/sh
+          - /bin/bash
           - -c
           - |
-            {{- .Files.Get "scripts/inject-shell.sh" | nindent 14 }}
+            mkdir -p {{ .Values.binDir }}
+            /scripts/inject-bash.sh {{ .Values.binDir }}
     containers:
       - name: etcd
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        workingDir: {{ .Values.dataMountDir }}
         ports:
           - containerPort: 2379
             name: client
@@ -31,43 +38,51 @@ spec:
             name: peer
         volumeMounts:
           - name: data
-            mountPath: {{ .Values.dataMountPath }}
+            mountPath: {{ .Values.dataMountDir }}
           - name: config
             mountPath: /etc/etcd
           - name: scripts
             mountPath: /scripts
-          - name: shell
-            mountPath: /shell
+          - name: bin
+            mountPath: /bin
         command:
-          - /shell/sh
+          - /bin/bash
           - -c
           - |
-            export PATH=$PATH:/shell
-            # for convenient to use the same entrypoint
-            if [ ! -e /bin/sh ]; then
-              cp /shell/sh /bin
-            fi
+            export PATH="/bin:$PATH"
             /scripts/start.sh
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
     volumes:
-      - name: shell
+      - name: bin
         emptyDir: {}
   vars:
     - name: ETCD_VERSION
       value: {{ .Chart.AppVersion }}
-    - name: CLUSTER_DOMAIN
-      value: {{ .Values.clusterDomain }}
     - name: DATA_DIR
       value: {{ .Values.dataDir }}
+    - name: BACKUP_DIR
+      value: {{ .Values.backupDir }}
+    - name: BIN_DIR
+      value: {{ .Values.binDir }}
     - name: CLUSTER_NAME
-      value: "$(KB_CLUSTER_COMP_NAME)"
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
     - name: TLS_MOUNT_PATH
       value: {{ .Values.tlsMountPath }}
     - name: CLIENT_TLS
       value: "{{ .Values.tls.client }}"
     - name: PEER_TLS
       value: "{{ .Values.tls.peer }}"
-    - name: TMP_CONFIG_PATH
-      value: {{ .Values.tmpConfigPath }}
+    - name: CONFIG_TEMPLATE_PATH
+      value: {{ .Values.configTemplatePath }}
+    - name: CONFIG_FILE_PATH
+      value: {{ .Values.configFilePath }}
     - name: PEER_FQDNS
       valueFrom:
         componentVarRef:
@@ -86,11 +101,38 @@ spec:
           podFQDNsForRole:
             role: leader
             option: Required
+    - name: ETCD_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
   volumes:
     - name: data
       needSnapshot: true
   services:
+    - name: client
+      serviceName: client
+      spec:
+        ports:
+          - name: client
+            port: 2379
+            targetPort: client
+      disableAutoProvision: true
     - name: peer
+      serviceName:
       spec:
         ports:
           - name: peer
@@ -98,81 +140,74 @@ spec:
             targetPort: peer
       podService: true
       disableAutoProvision: true
-  # reference: https://etcd.io/docs/v3.5/op-guide/runtime-configuration/ single member changes is better
+  tls:
+    volumeName: tls
+    mountPath: {{ .Values.tlsMountPath }}
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem
+  # reference: https://etcd.io/docs/v3.6/op-guide/runtime-configuration/ single member changes is better
   updateStrategy: Serial
   roles:
     - name: leader
-      serviceable: true
-      writable: true
-      votable: true
+      updatePriority: 2
+      participatesInQuorum: true
     - name: follower
-      serviceable: true
-      writable: false
-      votable: true
+      updatePriority: 1
+      participatesInQuorum: true
   lifecycleActions:
     roleProbe:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        container: etcd
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
-          - |
-            {{- .Files.Get "scripts/common.sh" | nindent 14 }}
-            {{- .Files.Get "scripts/role-probe-script.sh" | nindent 14 }}
+          - /scripts/roleprobe.sh
+      initialDelaySeconds: 10
+      periodSeconds: 5
     memberJoin:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
-          - |
-            {{- .Files.Get "scripts/common.sh" | nindent 14 }}
-            {{- .Files.Get "scripts/etcd-member-join.sh" | nindent 14 }}
+          - /scripts/member-join.sh > /tmp/member-join.log 2>&1
     memberLeave:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
-          - |
-            {{- .Files.Get "scripts/common.sh" | nindent 14 }}
-            {{- .Files.Get "scripts/etcd-member-leave.sh" | nindent 14 }}
+          - /scripts/member-leave.sh > /tmp/member-leave.log 2>&1
     switchover:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
-        env:
-          - name: CLUSTER_DOMAIN
-            value: {{ .Values.clusterDomain }}
         command:
-        - /bin/sh
-        - -c
-        - |
-          set -ex
-
-          {{- .Files.Get "scripts/common.sh" | nindent 12 }}
-          {{- .Files.Get "scripts/switchover.sh" | nindent 12 }}
-
-          if [ -z "$KB_SWITCHOVER_CANDIDATE_FQDN" ]; then
-              switchoverWithoutCandidate
-          else
-              switchoverWithCandidate
-          fi
+          - /bin/bash
+          - -c
+          - /scripts/switchover.sh > /tmp/switchover.log 2>&1
+    dataDump:
+      exec:
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/data-dump.sh > /tmp/data-dump.log 2>&1
+        targetPodSelector: Role
+        matchingKey: leader
+    # send by kbagent-worker as init container, send data dump request to leader, and load data to this pod
+    dataLoad:
+      exec:
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/data-load.sh > /tmp/data-load.log 2>&1
   configs:
-    - name: etcd-configuration-tpl
-      templateRef: {{ include "etcd.configTplName" .}}
-      constraintRef: {{ include "etcd.configConstraintName" .}}
+    - name: config
+      template: {{ include "etcd3.configTemplate" .}}
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
-      reRenderResourceTypes:
-        - hscale
-    - name: etcd-scripts
-      templateRef: {{ include "etcd.cmScriptsName" .}}
+      restartOnFileChange: true
+  scripts:
+    - name: script
+      template: {{ include "etcd3.scriptTemplate" .}}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
-  exporter:
-    containerName: etcd
-    scrapePort: "2379"
-    scrapePath: /metrics
-    scrapeScheme: http

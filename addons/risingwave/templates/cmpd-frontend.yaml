@@ -1,18 +1,34 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: risingwave-frontend-{{ .Chart.Version }}
+  name: {{ include "risingwave-frontend.cmpdName" . }}
   labels:
     {{- include "risingwave.labels" . | nindent 4 }}
+  annotations:
+    {{- include "risingwave.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: risingwave
   serviceVersion: {{ .Chart.AppVersion }}
+  services:
+    - name: default
+      spec:
+        ports:
+          - port: 4567
+            targetPort: svc
+            name: svc
+          - port: 8080
+            targetPort: metrics
+            name: metrics
+  configs:
+    {{- include "risingwave.conftpl.default" . | indent  4 }}
+  vars:
+    {{- include "risingwave.vars.meta" . | indent 4 }}
+    {{- include "risingwave.vars.connector" . | indent 4 }}
   runtime:
     containers:
       - name: frontend
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         {{- include "risingwave.securityContext" . | indent  8 }}
         command:
@@ -37,6 +53,8 @@ spec:
             value: "1"
           - name: RW_PROMETHEUS_LISTENER_ADDR
             value: "0.0.0.0:8080"
+          - name: RW_CONNECTOR_RPC_ENDPOINT
+            value: $(CONNECTOR_SVC):50051
         ports:
           - containerPort: 4567
             name: svc
@@ -48,17 +66,3 @@ spec:
           {{- include "risingwave.volumeMount.conftpl.default" . | indent  10 }}
         {{- include "risingwave.probe.liveness" . | indent  8 }}
         {{- include "risingwave.probe.readiness" . | indent 8 }}
-  vars:
-    {{- include "risingwave.vars.meta" . | indent 4 }}
-  services:
-    - name: default
-      spec:
-        ports:
-          - port: 4567
-            targetPort: svc
-            name: svc
-          - port: 8080
-            targetPort: metrics
-            name: metrics
-  configs:
-    {{- include "risingwave.conftpl.default" . | indent  4 }}

@@ -4,16 +4,18 @@ metadata:
   name: victoria-metrics
   labels:
     {{- include "victoria-metrics.labels" . | nindent 4 }}
+  annotations:
+    {{- include "victoria-metrics.apiVersion" . | nindent 4 }}
 spec:
   topologies:
   - name: vm-cluster
     components:
       - name: vminsert
-        compDef: vm-insert
+        compDef: {{ include "vminsert.cmpdRegexpPattern" . }}
       - name: vmselect
-        compDef: vm-select
+        compDef: {{ include "vmselect.cmpdRegexpPattern" . }}
       - name: vmstorage
-        compDef: vm-storage
+        compDef: {{ include "vmstorage.cmpdRegexpPattern" . }}
     orders:
       provision:
         - vmstorage

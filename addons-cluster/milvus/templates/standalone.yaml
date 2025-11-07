@@ -6,10 +6,9 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: milvus
+  clusterDef: milvus
   topology: standalone
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: etcd
       replicas: {{ .Values.replicas | default 1 }}
@@ -18,7 +17,6 @@ spec:
       volumeClaimTemplates:
         {{- include "milvus.vct.data" . | indent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: minio
       replicas: {{ .Values.replicas | default 1 }}
@@ -27,7 +25,6 @@ spec:
       volumeClaimTemplates:
         {{- include "milvus.vct.data" . | indent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: milvus
       replicas: {{ .Values.replicas | default 1 }}
@@ -36,6 +33,5 @@ spec:
       volumeClaimTemplates:
         {{- include "milvus.vct.data" . | indent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
 {{- end }}

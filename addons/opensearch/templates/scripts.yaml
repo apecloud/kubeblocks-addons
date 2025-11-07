@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "opensearch.scriptsTemplate" . }}
+  labels:
+    {{- include "opensearch.labels" . | nindent 4 }}
+  annotations:
+    {{- include "opensearch.annotations" . | nindent 4 }}
+data:
+  {{- with include "opensearch.extend.scripts" . }}
+  {{- . | nindent 2 }}
+  {{- end }}

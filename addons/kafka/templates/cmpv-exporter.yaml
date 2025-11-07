@@ -2,10 +2,14 @@ apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: kafka-exporter
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+  annotations:
+    {{- include "kafka.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "kafka-exporter.componentDefName" . }}
+        - {{ include "kafka-exporter.cmpdRegexpPattern" . }}
       releases:
         - 1.6.0-debian-11-r67
   releases:

@@ -12,60 +12,33 @@
 # See the Mulan PSL v2 for more details.
 #
 
-function conn_local {
-  mysql -h127.0.0.1 -uroot -P 2881 -A -e "$1"
+function conn_local_wo_passwd {
+  mysql -h127.0.0.1 -uroot -P $OB_SERVICE_PORT -A -e "$1"
 }
 
-function conn_local_as_tenant {
-  mysql -h127.0.0.1 -uroot@"$1" -P 2881 -A -Doceanbase -e "$2"
+
+function conn_local {
+  echo "[DEBUG] $1"
+  mysql -h127.0.0.1 -uroot -P $OB_SERVICE_PORT -A -e "$1" -p"$OB_ROOT_PASSWD"
 }
 
 function conn_local_obdb {
-  mysql -h127.0.0.1 -uroot -P 2881 -A -Doceanbase -e "$1"
+  mysql -h127.0.0.1 -uroot -P $OB_SERVICE_PORT -A -Doceanbase -e "$1"  -p"$OB_ROOT_PASSWD"
 }
 
 function conn_remote {
-  mysql -h$1 -uroot -P 2881 -A -e "$2"
+  mysql -h$1 -uroot -A -p"$OB_ROOT_PASSWD"  -P $OB_SERVICE_PORT -e "$2"
 }
 
-function conn_remote_obdb {
-  mysql -h$1 -uroot -P 2881 -A -Doceanbase -e "$2"
+function conn_local_as_mysql_tenant {
+  mysql -h127.1 -P $OB_SERVICE_PORT -uroot@"$1"  -A -e "$2"
+}
+
+function conn_local_as_user {
+  echo "[DEBUG] conn_local_as_user:" mysql -h127.1 -P $OB_SERVICE_PORT -u"$2"@"$1" -A -e "$3"
+  mysql -h127.1 -P $OB_SERVICE_PORT -u"$2"@"$1" -p"$4" -A -e "$3"
 }
 
 function conn_remote_batch {
-  # Used for querying results
-  mysql -h$1 -uroot -P 2881 -A -Doceanbase -e "$2" -B
-}
-
-function conn_remote_as_tenant {
-  mysql -h$1 -uroot@"$2" -P 2881 -A -e "$3"
-}
-
-function conn_local_w_port {
-  mysql -h127.0.0.1 -uroot -P $1 -A -e "$2"
-}
-
-function conn_local_as_tenant_w_port {
-  mysql -h127.0.0.1 -P $1 -uroot@"$2" -A -Doceanbase -e "$2"
-}
-
-function conn_local_obdb_w_port {
-  mysql -h127.0.0.1 -uroot -P $1 -A -Doceanbase -e "$2"
-}
-
-function conn_remote_w_port {
-  mysql -h$1 -uroot -P $2 -A -e "$3"
-}
-
-function conn_remote_obdb_w_port {
-  mysql -h$1 -uroot -P $2 -A -Doceanbase -e "$3"
-}
-
-function conn_remote_batch_w_port {
-  # Used for querying results
-  mysql -h$1 -uroot -P $2 -A -Doceanbase -e "$3" -B
-}
-
-function conn_remote_as_tenant_w_port {
-  mysql -h$1 -P $2 -uroot@"$3"  -A -e "$4"
+  mysql -h$1 -uroot -P $OB_SERVICE_PORT -A -Doceanbase -e "$2" -B -p"$OB_ROOT_PASSWD"
 }

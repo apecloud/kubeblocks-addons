@@ -54,13 +54,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{ include "elasticsearch-cluster.fullname" .}}
 {{- end}}
 
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "elasticsearch-cluster.serviceAccountName" -}}
-{{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
-{{- end }}
-
 {{- define "elasticsearch-cluster.replicaCount" }}
 {{- if eq .Values.mode "single-node" }}
 replicas: 1
@@ -70,10 +63,83 @@ replicas: {{ max .Values.replicas 3 }}
 {{- end }}
 
 {{- define "elasticsearch.version" }}
+{{- if .Values.version }}
 {{- trimPrefix "elasticsearch-" .Values.version }}
+{{- else }}
+{{- .Chart.AppVersion }}
+{{- end }}
 {{- end }}
 
 {{- define "elasticsearch.majorVersion" }}
 {{- $version := semver (include "elasticsearch.version" .) }}
 {{- printf "%d" $version.Major }}
+{{- end }}
+
+{{- define "elasticsearch-cluster.schedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ include "kblib.clusterName" . }}
+              apps.kubeblocks.io/component-name: elasticsearch
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+{{- end -}}
+
+{{- define "tlsSecretName" -}}
+{{- if .Values.tls.secretName -}}
+{{- .Values.tls.secretName -}}
+{{- else -}}
+{{- include "kblib.clusterName" . -}}-tls-secret
+{{- end -}}
+{{- end -}}
+
+{{- define "elasticAccountSecretname" -}}
+{{- if .Values.tls.elasticAccountSecretName -}}
+{{- .Values.tls.elasticAccountSecretName -}}
+{{- else -}}
+{{- include "kblib.clusterName" . -}}-account-elastic
+{{- end -}}
+{{- end -}}
+
+{{- define "kibanaAccountSecretname" -}}
+{{- if .Values.tls.kibanaAccountSecretName -}}
+{{- .Values.tls.kibanaAccountSecretName -}}
+{{- else -}}
+{{- include "kblib.clusterName" . -}}-account-kibana-system
+{{- end -}}
+{{- end -}}
+
+
+{{- define "elasticsearch-cluster.tls" }}
+tls: {{ .Values.tls.enabled }}
+{{- if .Values.tls.enabled }}
+issuer:
+  name: {{ .Values.tls.issuer }}
+{{- if eq .Values.tls.issuer "UserProvided" }}
+  secretRef:
+    name: {{ include "tlsSecretName" . }}
+    namespace: {{ .Release.Namespace }}
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- define "elasticsearch-cluster.accounts" }}
+{{- if .Values.tls.enabled }}
+systemAccounts:
+- name: elastic
+  secretRef:
+    name: {{ include "elasticAccountSecretname" .}}
+    namespace: {{ .Release.Namespace }}
+- name: kibana_system
+  secretRef:
+    name: {{ include "kibanaAccountSecretname" .}}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
 {{- end }}

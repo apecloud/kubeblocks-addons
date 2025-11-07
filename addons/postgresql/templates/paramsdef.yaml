@@ -1,0 +1,55 @@
+{{- range .Values.versions -}}
+{{- $cc := $.Files.Get (printf "config/pg%s-config-effect-scope.yaml" .major) | fromYaml }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ printf "postgresql%s-pd-%s" .major $.Chart.Version }}
+  labels:
+    {{- include "postgresql.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "postgresql.annotations" $ | nindent 4 }}
+spec:
+  fileName: postgresql.conf
+
+  reloadAction:
+    tplScriptTrigger:
+      sync: true
+      scriptConfigMapRef: {{ include "postgresql.patroniReloadScriptsTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
+    ## update patroni master
+    targetPodSelector:
+      matchLabels:
+        "kubeblocks.io/role": "primary"
+
+  mergeReloadAndRestart: false
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # top level pg configuration type
+    topLevelKey: PGParameter
+
+    # schemaInJSON: auto generate from cue scripts
+    # example: ../../pkg/configuration/testdata/mysql_openapi.json
+    cue: |-
+      {{- $.Files.Get (printf "config/pg%s-config-constraint.cue" .major) | nindent 6 }}
+
+  ##  require db instance restart
+  ## staticParameters
+  {{- if hasKey $cc "staticParameters" }}
+  staticParameters:
+    {{- $params := get $cc "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+  ## define immutable parameter list, this feature is not currently supported.
+  {{- if hasKey $cc "immutableParameters" }}
+  immutableParameters:
+   {{- $params := get $cc "immutableParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+  {{- end}}
+{{- end }}

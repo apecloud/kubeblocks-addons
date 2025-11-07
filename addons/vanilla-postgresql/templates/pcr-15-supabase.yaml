@@ -1,0 +1,21 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "vanilla.prcsupabase15Name" . }}
+  labels:
+    {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "vanilla-postgresql.annotations" . | nindent 4}}
+spec:
+  componentDef: {{ include "supabase15.compDefName" . }}
+  parametersDefs:
+    - {{ include "vanilla.pd15Name" . }}
+
+  configs:
+    - name: postgresql.conf
+      fileFormatConfig:
+        format: properties
+      templateName: supabase-postgresql-configuration
+      reRenderResourceTypes:
+        - vscale
+        - tls

@@ -1,0 +1,18 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: orioledb-16-pcr-{{ .Chart.Version }}
+  labels:
+    {{- include "orioledb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orioledb.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "orioledb.cmpdName" . }}
+  parametersDefs:
+    - orioledb-16-pdf
+
+  configs:
+    - name: postgresql.conf
+      fileFormatConfig:
+        format: properties
+      templateName: orioledb-configuration

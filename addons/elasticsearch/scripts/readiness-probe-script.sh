@@ -9,17 +9,15 @@ function fail {
 
 READINESS_PROBE_TIMEOUT=${READINESS_PROBE_TIMEOUT:=3}
 
-# Check if PROBE_PASSWORD_PATH is set, otherwise fall back to its former name in 1.0.0.beta-1: PROBE_PASSWORD_FILE
-if [[ -z "${PROBE_PASSWORD_PATH}" ]]; then
-  probe_password_path="${PROBE_PASSWORD_FILE}"
+if [ "${TLS_ENABLED}" == "true" ]; then
+    READINESS_PROBE_PROTOCOL=https
 else
-  probe_password_path="${PROBE_PASSWORD_PATH}"
+    READINESS_PROBE_PROTOCOL=http
 fi
 
 # setup basic auth if credentials are available
-if [ -n "${PROBE_USERNAME}" ] && [ -f "${probe_password_path}" ]; then
-  PROBE_PASSWORD=$(<${probe_password_path})
-  BASIC_AUTH="-u ${PROBE_USERNAME}:${PROBE_PASSWORD}"
+if [ -n "${ELASTIC_USER_PASSWORD}" ]; then
+  BASIC_AUTH="-u elastic:${ELASTIC_USER_PASSWORD}"
 else
   BASIC_AUTH=''
 fi
@@ -33,7 +31,7 @@ fi
 
 # request Elasticsearch on /
 # we are turning globbing off to allow for unescaped [] in case of IPv6
-ENDPOINT="${READINESS_PROBE_PROTOCOL:-https}://${LOOPBACK}:9200/"
+ENDPOINT="${READINESS_PROBE_PROTOCOL}://${LOOPBACK}:9200/"
 status=$(curl -o /dev/null -w "%{http_code}" --max-time ${READINESS_PROBE_TIMEOUT} -XGET -g -s -k ${BASIC_AUTH} $ENDPOINT)
 curl_rc=$?
 

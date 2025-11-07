@@ -1,23 +1,67 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "orchestrator.componentDefName" . }}-raft
+  name: {{ include "orchestrator.cmpdNameRaft" . }}
   labels:
       {{- include "orchestrator.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orchestrator.annotations" . | nindent 4 }}
 spec:
   {{- include "orchestrator.cmpd.spec.common" . | nindent 2 }}
   roles:
     - name: primary
-      serviceable: true
-      writable: true
-      votable: true
+      updatePriority: 2
+      participatesInQuorum: true
     - name: secondary
-      serviceable: true
-      writable: false
-      votable: true
-
+      updatePriority: 1
+      participatesInQuorum: true
+  vars:
+    - name: ORC_META_DATABASE
+      value: orchestrator
+    - name: ORC_META_USER
+      value: orchestrator
+    - name: ORC_META_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: meta
+          password: Required
+    - name: ORC_TOPOLOGY_USER
+      valueFrom:
+        credentialVarRef:
+          name: orchestrator
+          username: Required
+    - name: ORC_TOPOLOGY_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: orchestrator
+          password: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
+    - name: ORC_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "orchestrator.componentDefName" . }}
+          optional: false
+          podFQDNs: Required
   lifecycleActions:
     roleProbe:
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
       exec:
         command:
           - /bin/bash
@@ -31,7 +75,6 @@ spec:
             else
               echo -n ""
             fi
-
   services:
     - name: orchestrator
       roleSelector: primary
@@ -40,7 +83,6 @@ spec:
           - name: orc-http
             port: 80
             targetPort: orc-http
-
   runtime:
     containers:
       - name: orchestrator
@@ -52,3 +94,8 @@ spec:
             value: "true"
           - name: ORC_BACKEND_DB
             value: sqlite
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name

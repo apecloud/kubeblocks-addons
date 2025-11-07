@@ -1,14 +1,17 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: zookeeper-backup-zoocreeper
+  name: zookeeper-zoocreeper
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:
   backupType: Full
+  env:
+    - name: ZK_CLIENT_PORT
+      value: "2181"
   backup:
     backupData:
-      image: {{ .Values.images.zoocreeper.registry | default (.Values.images.registry | default "docker.io") }}/{{ .Values.images.zoocreeper.repository }}:{{ .Values.images.zoocreeper.tag }}
+      image: {{ include "zoocreeper.image" . }}
       runOnTargetPodNode: true
       command:
         - sh
@@ -22,7 +25,7 @@ spec:
   restore:
     postReady:
       - job:
-          image: {{ .Values.images.zoocreeper.registry | default (.Values.images.registry | default "docker.io") }}/{{ .Values.images.zoocreeper.repository }}:{{ .Values.images.zoocreeper.tag }}
+          image: {{ include "zoocreeper.image" . }}
           runOnTargetPodNode: true
           command:
             - sh

@@ -4,27 +4,63 @@
 
 image:
   registry: docker.io
-  repository: mongo
+  repository: apecloud/percona-server-mongodb
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 5.0.14 # 6.0.3-debian-11-r0
+  tag: 8.0.8
+  percona:
+    backup:
+      repository: apecloud/percona-backup-mongodb
+      tag: 2.9.1
+  kubectl:
+    repository: apecloud/kubectl
+    tag: 1.29
   syncer:
     repository: apecloud/syncer
-    tag: "0.2.0"
+    tag: "0.6.6"
+  exporter:
+    repository: apecloud/mongodb_exporter
+    tag: "0.44.0"
+  walgImage:
+    repository: apecloud/wal-g-mongo
+    tag: 3.0.0
 
-  # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
-  dbctl:
-    repository: apecloud/dbctl
-    tag: "0.1.2"
-
-componentServiceVersion:
-  mongodb: 5.0.14
-
-# refer: https://github.com/apecloud/wal-g/blob/kb-dev/docker/wal-g/Dockerfile-mongo
-# this image is built from Dockerfile of apecloud/wal-g forked from wal-g/wal-g.
-walg:
-  repository: apecloud/wal-g
-  tag: mongo-latest
+## @param supported versions with detailed information
+versions:
+  - major: "8"
+    componentDef: "^mongodb-"
+    minors:
+      # [version, serviceVersion, tag, pbm tag, deprecated]
+      - ["8.0.8", "8.0.8", "8.0.8", "2.9.1", false]
+      - ["8.0.6", "8.0.6", "8.0.6", "2.9.1", true]
+      - ["8.0.4", "8.0.4", "8.0.4", "2.9.1", true]
+  - major: "7"
+    componentDef: "^mongodb-"
+    minors:
+      - ["7.0.19", "7.0.19", "7.0.19", "2.9.1", true]
+      - ["7.0.18", "7.0.18", "7.0.18", "2.9.1", false]
+      - ["7.0.16", "7.0.16", "7.0.16", "2.9.1", true]
+      - ["7.0.12", "7.0.12", "7.0.12", "2.9.1", true]
+  - major: "6"
+    componentDef: "^mongodb-"
+    minors:
+      - ["6.0.22", "6.0.22", "6.0.22", "2.9.1", true]
+      - ["6.0.21", "6.0.21", "6.0.21", "2.9.1", false]
+      - ["6.0.20", "6.0.20", "6.0.20", "2.9.1", true]
+      - ["6.0.16", "6.0.16", "6.0.16", "2.9.1", true]
+  - major: "5"
+    componentDef: "^mongodb-"
+    minors:
+      - ["5.0.30", "5.0.30", "5.0.30", "2.5.0-multi", true]
+      - ["5.0.29", "5.0.29", "5.0.29-multi", "2.5.0-multi", false]
+      - ["5.0.28", "5.0.28", "5.0.28", "2.5.0-multi", true]
+  - major: "4"
+    componentDef: "^mongodb-"
+    minors:
+      - ["4.4.29", "4.4.29", "4.4.29-multi", "2.5.0-multi", false]
+      - ["4.2.25", "4.2.25", "4.2.25", "2.5.0-multi", true]
+      - ["4.2.24", "4.2.24", "4.2.24", "2.5.0-multi", true]
+      - ["4.0.28", "4.0.28", "4.0.28", "2.5.0-multi", true]
 
 nameOverride: ""
 fullnameOverride: ""
@@ -37,7 +73,7 @@ roleProbe:
 ## Authentication parameters
 ##
 auth:
-  ## @param auth.password Password for the "mongodb" admin user, leave empty 
+  ## @param auth.password Password for the "mongodb" admin user, leave empty
   ## for random generated password.
   ##
   password:
@@ -53,70 +89,15 @@ logCollector:
 
 dataMountPath: /data/mongodb
 
-metrics:
-  image:
-    # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-    registry: ""
-    repository: apecloud/agamotto
-    tag: 0.1.2-beta.1
-    pullPolicy: IfNotPresent
-  config:
-    extensions:
-      health_check:
-        endpoint: 0.0.0.0:13133
-        path: /health/status
-        check_collector_pipeline:
-          enabled: true
-          interval: 2m
-          exporter_failure_threshold: 5
-
-    receivers:
-      apecloudmongodb:
-        endpoint: 127.0.0.1:27017
-        username: ${env:MONGODB_ROOT_USER}
-        password: ${env:MONGODB_ROOT_PASSWORD}
-        connect_params: admin?ssl=false&authSource=admin
-        collect_all: true
-        collection_interval: 15s
-        direct_connect: true
-        global_conn_pool: true
-        compatible_mode: true
-
-    processors:
-      batch:
-        timeout: 5s
-      memory_limiter:
-        limit_mib: 1024
-        spike_limit_mib: 256
-        check_interval: 10s
-
-    exporters:
-      prometheus:
-        endpoint: 0.0.0.0:9216
-        const_labels: [ ]
-        send_timestamps: false
-        metric_expiration: 30s
-        enable_open_metrics: false
-        resource_to_telemetry_conversion:
-          enabled: true
-
-    service:
-      telemetry:
-        logs:
-          level: info
-        metrics:
-          address: 0.0.0.0:8888
-      pipelines:
-        metrics:
-          receivers: [apecloudmongodb]
-          processors: [memory_limiter]
-          exporters: [prometheus]
-
-      extensions: [health_check]
-
 ## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
 ## if you install multiple releases of this chart.
 ## If specified, the cluster definition will use it as name.
 resourceNamePrefix: ""
 
-useHostNetwork: false
+## @param cmpdVersionPrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
+## If specified, the component definition will use it as prefix.
+cmpdVersionPrefix: ""
+
+clusterDomain: "cluster.local"
+
+rediectSuffix: ">&2"

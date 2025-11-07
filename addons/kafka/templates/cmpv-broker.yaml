@@ -2,15 +2,34 @@ apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: kafka-broker
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+  annotations:
+    {{- include "kafka.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
+  {{- range $key, $val := .Values.images.kafka.versions }}
     - compDefs:
-        - {{ include "kafka-broker.componentDefName" . }}
+      {{- if eq $key "v3" }}
+        - {{ include "kafka-broker.cmpdRegexpPattern" . }}
+      {{- else if eq $key "v2" }}
+        - {{ include "kafka2-broker.cmpdRegexpPattern" . }}
+      {{- end }}
       releases:
-        - 3.3.2-debian-11-r54
+      {{- range $val }}
+        - {{ .tag }}
+      {{- end }}
+  {{- end }}
   releases:
-    - name: 3.3.2-debian-11-r54
-      changes:
-      serviceVersion: 3.3.2
+  {{- range $key, $val := .Values.images.kafka.versions }}
+  {{- range $val }}
+    - name: {{ .tag }}
+      serviceVersion: {{ .version }}
       images:
-        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+        kafka: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.kafka.repository }}:{{ .tag }}
+        jmx-exporter: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.jmxExporter.repository }}:{{ $.Values.images.jmxExporter.tag }}
+        {{- if eq $key "v2" }}
+        accountProvision: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.kafka.repository }}:{{ .tag }}
+        {{- end }}
+  {{- end }}
+  {{- end }}

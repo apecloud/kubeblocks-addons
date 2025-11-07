@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 data:
-  docker-entrypoint-5.7.sh: |-
+  docker-entrypoint.sh: |-
     {{- .Files.Get "scripts/docker-entrypoint-5.7.sh" | nindent 4 }}
   mysql-orchestrator-register.sh: |-
     {{- .Files.Get "scripts/mysql-orchestrator-register.sh" | nindent 4 }}
@@ -36,7 +36,10 @@ data:
         sectionName: mysqld
 
     dataType: mysql
-    dsn: '{%- expandenv "${MYSQL_ROOT_USER}:${MYSQL_ROOT_PASSWORD}@(localhost:3306)/" | trim %}'
+    dsn: |-
+      {%- $user := env "MYSQL_ADMIN_USER" | default ( env "MYSQL_ROOT_USER" ) | default ( env "MYSQL_USER" ) %}
+      {%- $pass := env "MYSQL_ADMIN_PASSWORD" | default ( env "MYSQL_ROOT_PASSWORD" ) | default ( env "MYSQL_PASSWORD" ) %}
+      {%- printf "%s:%s@(localhost:3306)/" $user $pass | trim %}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -55,3 +58,17 @@ data:
     {{- .Files.Get "scripts/proxysql-entry.sh" | nindent 4 }}
   configure-proxysql.sh: |-
     {{- .Files.Get "scripts/configure-proxysql.sh" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-orc-actions-scripts
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+data:
+  switchover.sh: |-
+    {{- .Files.Get "scripts/orc-switchover.sh" | nindent 4 }}
+  member-leave.sh: |-
+    {{- .Files.Get "scripts/orc-member-leave.sh" | nindent 4 }}
+  preterminate.sh: |-
+    {{- .Files.Get "scripts/orc-preterminate.sh" | nindent 4 }}

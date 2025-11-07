@@ -3,9 +3,20 @@ Define xtrabackup actionSet name
 */}}
 {{- define "apecloud-mysql.xtrabackupActionSetName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-xtrabackup-for-apecloud-mysql
+apecloud-mysql-xtrabackup
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-xtrabackup
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define xtrabackup actionSet name for incremental backups
+*/}}
+{{- define "apecloud-mysql.xtrabackupIncActionSetName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+apecloud-mysql-xtrabackup-incremental
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-xtrabackup-incremental
 {{- end -}}
 {{- end -}}
 
@@ -14,7 +25,7 @@ Define volume snapshot actionSet name
 */}}
 {{- define "apecloud-mysql.vsActionSetName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-volumesnapshot-for-apecloud-mysql
+apecloud-mysql-volume-snapshot
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-volumesnapshot
 {{- end -}}
@@ -32,28 +43,6 @@ apecloud-mysql-backup-policy-template
 {{- end -}}
 
 {{/*
-Define backup policy template
-*/}}
-{{- define "apecloud-mysql.hscaleBackupPolicyTemplateName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql-backup-policy-for-hscale
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-bpt-for-hscale
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define class name
-*/}}
-{{- define "apecloud-mysql.className" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-kb.classes.default.apecloud-mysql.mysql
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-class
-{{- end -}}
-{{- end -}}
-
-{{/*
 Define cluster definition name, if resourceNamePrefix is specified, use it as clusterDefName
 */}}
 {{- define "apecloud-mysql.clusterDefName" -}}
@@ -65,51 +54,86 @@ apecloud-mysql
 {{- end -}}
 
 {{/*
-Define cluster version
+Define apecloud-mysql component definition name prefix
 */}}
-{{- define "apecloud-mysql.clusterVersion" -}}
+{{- define "apecloud-mysql.cmpdNameApecloudMySQLPrefix" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-ac-mysql-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+apecloud-mysql-
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+{{- .Values.resourceNamePrefix -}}-apecloud-mysql-
 {{- end -}}
 {{- end -}}
 
 {{/*
-Define component definition name
-*/}}
-{{- define "apecloud-mysql.componentDefName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}
 {{- end -}}
+
+{{/*
+Define wescale component definition name prefix
+*/}}
+{{- define "apecloud-mysql.cmpdNameWescalePrefix" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+wescale-
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-wescale-
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define wescale controller component definition name prefix
+*/}}
+{{- define "apecloud-mysql.cmpdNameWescaleCtrlPrefix" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+wescalecontroller-
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-wescale-controller-
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define apecloud-mysql component definition name
+*/}}
+{{- define "apecloud-mysql.cmpdNameApecloudMySQL" -}}
+{{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define wescale component definition name
+*/}}
+{{- define "apecloud-mysql.cmpdNameWescale" -}}
+{{ include "apecloud-mysql.cmpdNameWescalePrefix" . }}{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define wescale-controller component definition name
+*/}}
+{{- define "apecloud-mysql.cmpdNameWescaleCtrl" -}}
+{{ include "apecloud-mysql.cmpdNameWescaleCtrlPrefix" . }}{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define config constriant name
 */}}
-{{- define "apecloud-mysql.configConstraintName" -}}
+{{- define "apecloud-mysql.wesqlParamsDefName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mysql8.0-config-constraints
+apecloud-mysql8.0-pd
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-config-constraints
+{{- .Values.resourceNamePrefix -}}-pd
 {{- end -}}
 {{- end -}}
 
-{{- define "apecloud-mysql.configConstraintVttabletName" }}
+{{- define "apecloud-mysql.wesqlVttabletParamsDefName" }}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mysql-scale-vttablet-config-constraints
+apecloud-mysql-scale-vttablet-pd
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-vttablet-config-constraints
+{{- .Values.resourceNamePrefix -}}-vttablet-pd
 {{- end -}}
 {{- end -}}
 
-{{- define "apecloud-mysql.configConstraintVtgateName" }}
+{{- define "apecloud-mysql.wescaleParamsDefName" }}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mysql-scale-vtgate-config-constraints
+apecloud-mysql-scale-vtgate-pd
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-vtgate-config-constraints
+{{- .Values.resourceNamePrefix -}}-vtgate-pd
 {{- end -}}
 {{- end -}}
 
@@ -150,5 +174,27 @@ mysql-reload-script
 apecloud-mysql-scripts
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-scripts
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define config constriant name
+*/}}
+{{- define "apecloud-mysql.wesqlPCRName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+apecloud-mysql8.0-wesql-pcr-{{ .Chart.Version }}
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-wesql-pcr-{{ .Chart.Version }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define config constriant name
+*/}}
+{{- define "apecloud-mysql.wescalePCRName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+apecloud-mysql8.0-wescale-pcr-{{ .Chart.Version }}
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-wescale-pcr-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}

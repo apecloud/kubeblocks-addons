@@ -1,0 +1,27 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "apecloud-mysql.wesqlPCRName" . }}
+  labels:
+    {{- include "apecloud-mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-mysql.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
+  parametersDefs:
+    - {{ include "apecloud-mysql.wesqlParamsDefName" . }}
+    - {{ include "apecloud-mysql.wesqlVttabletParamsDefName" . }}
+
+  configs:
+    - name: my.cnf
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: mysqld
+      reRenderResourceTypes:
+        - vscale
+    - name: vttablet.cnf
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: vttablet

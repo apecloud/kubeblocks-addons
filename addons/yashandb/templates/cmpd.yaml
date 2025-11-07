@@ -1,20 +1,45 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: yashandb-{{ .Chart.Version }}
+  name: {{ include "yashandb.cmpdName" . }}
   labels:
     {{- include "yashandb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "yashandb.annotations" . | nindent 4 }}
 spec:
   provider: Community
-  description: {{ .Chart.Description }}
+  description: YashanDB is a new database system completely independently designed and developed by SICS.
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
+  volumes:
+    - name: data
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: yashandb
+            port: 1688
+            targetPort: yashandb
+  configs:
+    - name: yashandb-configs
+      template: {{ include "yashandb.configTplName" . }}
+      volumeName: yashandb-configs
+      namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
+  scripts:
+    - name: yashandb-scripts
+      template: {{ include "yashandb.scriptsTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: yashandb-scripts
+  logConfigs:
+    {{- range $name,$pattern := .Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
   runtime:
     # hostNetwork: true
     # dnsPolicy: ClusterFirstWithHostNet
     initContainers:
       - name: volume-permissions
-        image: {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository }}:{{ .Values.busyboxImage.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.busyboxImage.pullPolicy }}
         command:
           - /bin/sh
@@ -28,7 +53,6 @@ spec:
             name: data
     containers:
       - name: yashandb-container
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
@@ -53,30 +77,8 @@ spec:
           - name: YASDB_MOUNT_HOME
             value: /home/yashan/mydb
         workingDir: /home/yashan/
-  volumes:
-    - name: data
-  services:
-    - name: default
-      spec:
-        ports:
-          - name: yashandb
-            port: 1688
-            targetPort: yashandb
-  configs:
-    - name: yashandb-configs
-      templateRef: yashandb-configs
-      volumeName: yashandb-configs
-      namespace: {{ .Release.Namespace }}
-  scripts:
-    - name: yashandb-scripts
-      templateRef: yashandb-scripts
-      namespace: {{ .Release.Namespace }}
-      volumeName: yashandb-scripts
-  logConfigs:
-    {{- range $name,$pattern := .Values.logConfigs }}
-    - name: {{ $name }}
-      filePathPattern: {{ $pattern }}
-    {{- end }}
-  # systemAccounts:
-  #   - name: sys
-  #     password: yasdb_123
+  vars:
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required

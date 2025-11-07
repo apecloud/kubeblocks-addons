@@ -1,13 +1,13 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: opensearch-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: opensearch-cluster
   type: VerticalScaling
-  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling. 
+  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling.
   verticalScaling:
     # - opensearch
     # - dashboard

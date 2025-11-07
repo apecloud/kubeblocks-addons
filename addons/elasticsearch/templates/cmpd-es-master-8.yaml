@@ -1,0 +1,98 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "elasticsearchMaster8.cmpdName" . }}
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
+    {{- include "elasticsearch.annotations" . | nindent 4 }}
+spec:
+  serviceVersion: 8.8.2
+  configs:
+    - name: es-cm
+      template: {{ include "elasticsearch8.configTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: es-cm
+      restartOnFileChange: true
+  vars:
+    - name: ELASTICSEARCH_VERSION
+      valueFrom:
+        componentVarRef:
+          optional: false
+          serviceVersion: Required
+    - name: ELASTIC_USER_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "elasticsearchMaster8.cmpdName" . }}
+          name: elastic
+          optional: false
+          password: Required
+    - name: ELASTIC_PASSWORD
+      value: $(ELASTIC_USER_PASSWORD)
+    - name: KIBANA_SYSTEM_USER_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "elasticsearchMaster8.cmpdName" . }}
+          name: kibana_system
+          optional: false
+          password: Required
+    - name: ELASTICSEARCH_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "elasticsearchMaster8.cmpdName" . }}
+          name: http
+          host: Required
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
+    - name: ES_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: ES_COMPONENT_SHORT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: ELASTICSEARCH_ROLES
+      value: master
+    {{/* ALL_CMP_REPLICA_LIST ='master:podName0,podName1,podName2;data:podName0,podName1'*/}}
+    - name: ALL_CMP_REPLICA_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+          optional: false
+          podNames: Required
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: ";"
+                keyValueDelimiter: ":"
+    {{/* ALL_CMP_REPLICA_FQDN ='master:podFQDN0,podFQDN1,podFQDN2;data:podFQDN0,podFQDN1'*/}}
+    - name: ALL_CMP_REPLICA_FQDN
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+          optional: false
+          podFQDNs: Required
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: ";"
+                keyValueDelimiter: ":"
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+  {{ include "elasticsearch.common" . | nindent 2 }}

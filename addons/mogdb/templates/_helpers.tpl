@@ -51,6 +51,63 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Common mogdb annotations
+*/}}
+{{- define "mogdb.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "mogdb.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "mogdb.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{/*
+Define mogdb component definition name
+*/}}
+{{- define "mogdb.cmpdName" -}}
+mogdb-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define mogdb component definition regular expression name prefix
+*/}}
+{{- define "mogdb.cmpdRegexpPattern" -}}
+^mogdb-
+{{- end -}}
+
+{{/*
+Define mogdb scripts template name
+*/}}
+{{- define "mogdb.scriptsTplName" -}}
+mogdb-scripts-tpl
+{{- end -}}
+
+{{/*
+Define mogdb config template name
+*/}}
+{{- define "mogdb.configTplName" -}}
+mogdb-configuration-tpl
+{{- end -}}
+
+{{/*
+Define mogdb parameters definition name
+*/}}
+{{- define "mogdb.pdName" -}}
+mogdb-pd
+{{- end -}}
+
+{{/*
+Define mogdb parameter config rendered name
+*/}}
+{{- define "mogdb.pcrName" -}}
+mogdb-pcr
+{{- end -}}
+
+{{/*
 Generate scripts configmap
 */}}
 {{- define "mogdb.extend.scripts" -}}

@@ -27,6 +27,4 @@ storage: 20
 
 ## customized default values to override kblib chart's values
 extra:
-  podAntiAffinity: Required
   terminationPolicy: Delete
-  rbacEnabled: true

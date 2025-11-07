@@ -5,31 +5,54 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: {{ include "starrocks-release.name" .}}
+  clusterDef: {{ include "starrocks-release.name" .}}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   topology: shared-nothing
-  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: fe
-      componentDef: starrocks-ce-fe
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       serviceVersion: {{ include "starrocks.version" . }}
-      replicas: {{ .Values.replicas | default 1 }}
-      {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentStorages" . | indent 6 }}
-    - name: be
-      componentDef: starrocks-ce-be
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-      serviceVersion: {{ include "starrocks.version" . }}
-      replicas: {{ index .Values.beReplicas | default 1 }}
+      replicas: {{ .Values.fe.replicas | default 1 }}
+      {{- with .Values.fe.resources }}
       resources:
+        {{- with .limits }}
         limits:
-          cpu: {{ .Values.beCPU | quote }}
-          memory: {{ print .Values.beMemory "Gi" | quote }}
+          cpu: {{ .cpu | quote }}
+          memory: {{ print .memory "Gi" | quote }}
+        {{- end }}
+        {{- with .requests }}
         requests:
-          cpu: {{ .Values.beCPU | quote }}
-          memory: {{ print .Values.beMemory "Gi" | quote }}
+          cpu: {{ .cpu | quote }}
+          memory: {{ print .memory "Gi" | quote }}
+        {{- end }}
+      {{- end }}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ print .Values.fe.storage "Gi" }}
+            {{- if .Values.fe.storageClassName }}
+            storageClassName: {{ .Values.fe.storageClassName | quote }}
+            {{- end }}
+    - name: be
+      serviceVersion: {{ include "starrocks.version" . }}
+      replicas: {{ .Values.be.replicas | default 1 }}
+      {{- with .Values.be.resources }}
+      resources:
+        {{- with .limits }}
+        limits:
+          cpu: {{ .cpu | quote }}
+          memory: {{ print .memory "Gi" | quote }}
+        {{- end }}
+        {{- with .requests }}
+        requests:
+          cpu: {{ .cpu | quote }}
+          memory: {{ print .memory "Gi" | quote }}
+        {{- end }}
+      {{- end }}
       volumeClaimTemplates:
       - name: data
         spec:
@@ -37,4 +60,7 @@ spec:
           - ReadWriteOnce
           resources:
             requests:
-              storage: {{ print .Values.beStorage "Gi" | quote }}
+              storage: {{ print .Values.be.storage "Gi" }}
+            {{- if .Values.be.storageClassName }}
+            storageClassName: {{ .Values.be.storageClassName | quote }}
+            {{- end }}

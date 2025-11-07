@@ -2,12 +2,6 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "version": {
-      "title": "Version",
-      "description": "Cluster version.",
-      "type": "string",
-      "default": "mariadb-10.6.15"
-    },
     "mode": {
       "title": "Mode",
       "description": "Cluster topology mode.",

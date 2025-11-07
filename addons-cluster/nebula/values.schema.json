@@ -1,0 +1,321 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "title": "Nebula Graph Cluster Configuration",
+  "description": "Configuration schema for the Nebula Graph Helm chart.",
+  "properties": {
+    "nebula": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "default": "v3.5.0",
+          "description": "Version of nebula-graph, check https://docs.nebula-graph.io/ for latest and LTS versions"
+        },
+        "storageClassName": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Storage class name"
+        },
+        "console": {
+          "type": "object",
+          "properties": {
+            "replicas": {
+              "type": "integer",
+              "default": 1,
+              "description": "Number of nebula-console instances in a nebula-graph cluster"
+            },
+            "resources": {
+              "type": "object",
+              "properties": {
+                "requests": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": {
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    },
+                    "memory": {
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    }
+                  }
+                },
+                "limits": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": {
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    },
+                    "memory": {
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "graphd": {
+          "type": "object",
+          "properties": {
+            "replicas": {
+              "type": "integer",
+              "default": 1,
+              "description": "Number of nebula-graph instances in a nebula-graph cluster, all nebula-graphd instances are independent"
+            },
+            "serviceType": {
+              "type": "string",
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ],
+              "default": "NodePort",
+              "description": "Service type for graphd"
+            },
+            "resources": {
+              "type": "object",
+              "properties": {
+                "requests": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": {
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    },
+                    "memory": {
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    }
+                  }
+                },
+                "limits": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": {
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    },
+                    "memory": {
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    }
+                  }
+                }
+              }
+            },
+            "logStorage": {
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1,
+              "description": "Log storage size"
+            }
+          }
+        },
+        "metad": {
+          "type": "object",
+          "properties": {
+            "replicas": {
+              "type": "integer",
+              "default": 3,
+              "description": "Number of nebula-metad instances in a nebula-graph cluster, forming a raft group"
+            },
+            "resources": {
+              "type": "object",
+              "properties": {
+                "requests": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": {
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    },
+                    "memory": {
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    }
+                  }
+                },
+                "limits": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": {
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    },
+                    "memory": {
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    }
+                  }
+                }
+              }
+            },
+            "logStorage": {
+              "title": "Log Storage(Gi)",
+              "description": "Log storage size, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1
+            },
+            "dataStorage": {
+              "title": "Data Storage(Gi)",
+              "description": "Data storage size, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1
+            }
+          }
+        },
+        "storaged": {
+          "type": "object",
+          "properties": {
+            "replicas": {
+              "type": "integer",
+              "default": 3,
+              "description": "Number of nebula-storaged instances in a nebula-graph cluster, forming a raft group"
+            },
+            "resources": {
+              "type": "object",
+              "properties": {
+                "requests": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": {
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    },
+                    "memory": {
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    }
+                  }
+                },
+                "limits": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": {
+                      "title": "CPU",
+                      "description": "CPU cores.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    },
+                    "memory": {
+                      "title": "Memory(Gi)",
+                      "description": "Memory, the unit is Gi.",
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "default": 1
+                    }
+                  }
+                }
+              }
+            },
+            "logStorage": {
+              "title": "Log Storage(Gi)",
+              "description": "Log storage size, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1
+            },
+            "dataStorage": {
+              "title": "Data Storage(Gi)",
+              "description": "Data storage size, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -51,14 +51,17 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Common annotations
 */}}
-{{- define "orchestrator.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "orchestrator.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "orchestrator.annotations" -}}
+{{ include "orchestrator.apiVersion" . }}
 {{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "orchestrator.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 
@@ -102,20 +105,33 @@ description: orchestrator is a MySQL high availability and replication managemen
 serviceKind: orchestrator
 serviceVersion: 3.2.6
 updateStrategy: BestEffortParallel
-
+systemAccounts:
+  - name: meta
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 16
+      numDigits: 8
+      numSymbols: 0
+      letterCase: MixedCases
+  - name: orchestrator
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 16
+      numDigits: 8
+      numSymbols: 0
+      letterCase: MixedCases
 configs:
   - name: orchestrator-config
-    templateRef: {{ include "orchestrator.componentDefName" . }}-config
+    template: {{ include "orchestrator.componentDefName" . }}-config
     namespace: {{ .Release.Namespace }}
     volumeName: configs
-
+    restartOnFileChange: true
 scripts:
   - name: orc-scripts
-    templateRef: {{ include "orchestrator.componentDefName" . }}-scripts
+    template: {{ include "orchestrator.componentDefName" . }}-scripts
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555
-
 {{- end }}
 
 
@@ -147,3 +163,17 @@ readinessProbe:
   successThreshold: 1
   timeoutSeconds: 3
 {{- end }}
+
+{{/*
+Define orchestrator raft component definition name
+*/}}
+{{- define "orchestrator.cmpdNameRaft" -}}
+orchestrator-raft-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define orchestrator shared-backend component definition name
+*/}}
+{{- define "orchestrator.cmpdNameSharedBackend" -}}
+orchestrator-shared-backend-{{ .Chart.Version }}
+{{- end -}}

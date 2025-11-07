@@ -1,0 +1,30 @@
+annotations:
+  category: Database
+apiVersion: v2
+name: neo4j-cluster
+type: application
+version: 1.1.0-alpha.0
+description: A Neo4j cluster Helm chart for KubeBlocks
+dependencies:
+  - name: kblib
+    version: 0.1.2
+    repository: file://../kblib
+    alias: extra
+
+appVersion: "3.13.2"
+
+keywords:
+  - neo4j
+  - database
+  - graph
+
+home: https://github.com/apecloud/kubeblocks/tree/main/deploy/neo4j-cluster
+icon: https://kubeblocks.io/img/logo.png
+
+maintainers:
+  - name: ApeCloud
+    url: https://kubeblocks.io/
+
+sources:
+  - https://github.com/apecloud/kubeblocks/
+  - https://github.com/apecloud/kubeblocks/tree/main/deploy/neo4j

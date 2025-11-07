@@ -29,10 +29,7 @@
         "number",
         "string"
       ],
-      "default": 0,
-      "minimum": 0,
-      "maximum": 64,
-      "multipleOf": 0.5
+      "default": 1
     },
     "memory": {
       "title": "Memory(Gi)",
@@ -41,9 +38,7 @@
         "number",
         "string"
       ],
-      "default": 0,
-      "minimum": 0,
-      "maximum": 1000
+      "default": 1
     },
     "gpu": {
       "title": "GPU",
@@ -52,10 +47,7 @@
         "number",
         "string"
       ],
-      "default": 1,
-      "minimum": 0,
-      "maximum": 64,
-      "multipleOf": 1
+      "default": 1
     },
     "model": {
       "title": "Model",

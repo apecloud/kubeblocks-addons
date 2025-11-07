@@ -4,9 +4,9 @@
   "properties": {
     "version": {
       "title": "Version",
-      "description": "Cluster version, run \"kbcli cv list --devel\" to see all versions.",
+      "description": "Cluster version",
       "type": "string",
-      "default": "yashandb-personal-23.1.1.100"
+      "default": "23.1.1.100"
     },
     "replicas": {
       "title": "Replicas",

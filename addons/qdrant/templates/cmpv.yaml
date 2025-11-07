@@ -1,0 +1,32 @@
+{{- $imageRegistry := .Values.image.registry | default "docker.io" -}}
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: qdrant
+  labels:
+    {{- include "qdrant.labels" . | nindent 4 }}
+  annotations:
+    {{- include "qdrant.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+{{- range .Values.versions }}
+  - compDefs:
+    - {{ .componentDef }}
+    releases:
+{{- range .minors }}
+      - {{ index . 0 }}
+{{- end }}
+{{- end }}
+  releases:
+{{- range .Values.versions }}
+{{- range .minors }}
+{{- if not (index . 3) }}
+  - name: {{ index . 0 }}
+    serviceVersion: {{ index . 1 }}
+    images:
+      qdrant: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      qdrant-tools: {{ $imageRegistry }}/{{ $.Values.image.tools.repository }}:{{ $.Values.image.tools.tag | default "latest" }}
+      memberleave: {{ $imageRegistry }}/{{ $.Values.image.tools.repository }}:{{ $.Values.image.tools.tag | default "latest" }}
+{{- end }}
+{{- end }}
+{{- end }}

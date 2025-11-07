@@ -1,0 +1,42 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: hadoop-hdfs-namenode
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+spec:
+  serviceKind: HadoopHDFS
+  compDefs:
+   - hadoop-hdfs-namenode
+  target:
+    role: standby
+    fallbackRole: active
+  backupMethods:
+    - name: full-namenode
+      snapshotVolumes: false
+      actionSetName: hdfs-namenode-backup
+      targetVolumes:
+        volumeMounts:
+        - name: metadata-dir
+          mountPath: /hadoop
+        - name: hadoop-core-config
+          mountPath: /hadoop/conf/core-site.xml
+          subPath: core-site.xml
+        - name: namenode-config
+          mountPath: /hadoop/conf/hdfs-site.xml
+          subPath: hdfs-site.xml
+      env:
+        - name: IMAGE_TAG
+          valueFrom:
+            versionMapping:
+              - serviceVersions:
+                  - "3.3.1"
+                mappedValue: "3.3.1"
+              - serviceVersions:
+                  - "3.3.6"
+                mappedValue: "3.3.6"
+  schedules:
+    - backupMethod: full-namenode
+      enabled: false
+      cronExpression: "0 18 * * 0"
+      retentionPeriod: 7d

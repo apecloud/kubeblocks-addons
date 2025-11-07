@@ -2,11 +2,11 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "clustername" . }}
-  labels: 
+  namespace: {{ .Release.Namespace }}
+  labels:
     {{- include "greptimedb.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: greptimedb
-
+  clusterDef: greptimedb
   terminationPolicy: {{ .Values.terminationPolicy }}
   componentSpecs:
     - name: frontend
@@ -16,12 +16,12 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
     - name: datanode
@@ -31,12 +31,12 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       volumeClaimTemplates:
@@ -46,7 +46,7 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.datanode.volume.storage | default "10Gi" }}
+                storage: {{ print .Values.datanode.volume.storage "Gi" }}
     - name: meta
       replicas: {{ .Values.meta.replicas | default 1 }}
       {{- with  .Values.meta.resources }}
@@ -54,12 +54,12 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
     - name: etcd
@@ -69,12 +69,12 @@ spec:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       volumeClaimTemplates:
@@ -84,4 +84,4 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.etcd.volume.storage | default "10Gi" }}
+                storage: {{ print .Values.etcd.volume.storage "Gi" }}

@@ -7,9 +7,16 @@ replicaCount: 1
 terminationPolicy: Delete
 
 nameOverride: ""
+
 fullnameOverride: ""
 
-resources: {}
+resources:
+  limits:
+    cpu: 1
+    memory: 1
+  requests:
+    cpu: 1
+    memory: 1
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
@@ -27,23 +34,12 @@ ingress:
 service:
   type: ClusterIP
 
-tolerations: []
-
-topologyKeys:
-- kubernetes.io/hostname
-
-monitor:
-  enabled: false
-
 persistence:
   enabled: true
   data:
     storageClassName:
-    size: 1Gi
+    size: 1
 
 dashboard:
   resources: {}
   replicaCount: 1
-
-serviceAccount:
-  name:

@@ -4,25 +4,29 @@ metadata:
   name: greptimedb
   labels:
     {{- include "greptimedb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "greptimedb.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:
         - datanode-0.3.2
       compDefs:
-        - greptimedb-datanode
+        - {{ include "greptimedb-datanode.cmpdRegexpPattern" . }}
     - releases:
         - frontend-0.3.2
       compDefs:
-        - greptimedb-frontend
+        - {{ include "greptimedb-frontend.cmpdRegexpPattern" . }}
     - releases:
         - meta-0.3.2
       compDefs:
-        - greptimedb-meta
+        - {{ include "greptimedb-meta.cmpdRegexpPattern" . }}
   releases:
     - name: datanode-0.3.2
       serviceVersion: 0.3.2
       images:
         datanode: {{ .Values.images.greptimedb.registry | default .Values.images.registry }}/{{ .Values.images.greptimedb.repository }}:0.3.2
+        wait-meta: {{ .Values.images.busybox.registry | default (.Values.images.registry | default "docker.io") }}/{{ .Values.images.busybox.repository }}:{{ .Values.images.busybox.tag }}
+        initializer: {{ .Values.images.initializer.registry | default (.Values.images.registry | default "docker.io") }}/{{ .Values.images.initializer.repository }}:{{ .Values.images.initializer.tag }}
     - name: frontend-0.3.2
       serviceVersion: 0.3.2
       images:

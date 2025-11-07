@@ -1,0 +1,29 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "kafka.paramsDefName" . }}
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+spec:
+  fileName: server.properties
+  parametersSchema:
+    # top level mysql configuration type
+    topLevelKey: KafkaParameter
+    # schemaInJSON: auto generate from cue scripts
+    cue: |-
+      {{- .Files.Get "configs/kafka-server-constraint.cue" | nindent 6 }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "kafka2.paramsDefName" . }}
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+spec:
+  fileName: server.properties
+  parametersSchema:
+    # top level mysql configuration type
+    topLevelKey: KafkaParameter
+    # schemaInJSON: auto generate from cue scripts
+    cue: |-
+      {{- .Files.Get "configs/2.7/kafka-server-constraint.cue" | nindent 6 }}

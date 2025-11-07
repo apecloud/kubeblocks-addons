@@ -1,49 +1,48 @@
 ## cluster settings for neon
-version: latest
-storageClassName: ""
-terminationPolicy: Delete
+version: 1.0.0
 
-useLegacyCompDef: false
+storageClassName: ""
+
+terminationPolicy: Delete
 
 compute:
   replicas: 1
   resources:
     requests:
-      cpu: "500m"
-      memory: "500Mi"
+      cpu: 1
+      memory: 1
     limits:
-      cpu: "1"
-      memory: "2Gi"
+      cpu: 1
+      memory: 2
 
 storagebroker:
   replicas: 1
   resources:
     requests:
-      cpu: "500m"
-      memory: "500Mi"
+      cpu: 1
+      memory: 1
     limits:
-      cpu: "1"
-      memory: "2Gi"
-  dataStorage: "20Gi"
+      cpu: 1
+      memory: 2
 
 safekeeper:
   replicas: 3
   resources:
     requests:
-      cpu: "500m"
-      memory: "500Mi"
+      cpu: 1
+      memory: 1
     limits:
-      cpu: "1"
-      memory: "2Gi"
-  dataStorage: "20Gi"
+      cpu: 1
+      memory: 2
+  dataStorage: 20
 
 pageserver:
   replicas: 1
   resources:
     requests:
-      cpu: "500m"
-      memory: "500Mi"
+      cpu: 1
+      memory: 1
     limits:
-      cpu: "1"
-      memory: "2Gi"
-  dataStorage: "20Gi"
+      cpu: 1
+      memory: 2
+  dataStorage: 20

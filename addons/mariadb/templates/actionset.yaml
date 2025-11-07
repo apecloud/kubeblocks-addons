@@ -1,10 +1,8 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: mariadb-physical-backup
+  name: mariadb-physical-br
   labels:
-    clusterdefinition.kubeblocks.io/name: mariadb
-    dataprotection.kubeblocks.io/is-default-policy-template: "true"
     {{- include "mariadb.labels" . | nindent 4 }}
 spec:
   env:

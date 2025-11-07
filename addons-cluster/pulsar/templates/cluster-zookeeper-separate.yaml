@@ -11,29 +11,21 @@ metadata:
   {{- end }}
 spec:
   terminationPolicy: {{ $.Values.terminationPolicy }}
-  affinity:
-    {{- with $.Values.topologyKeys }}
-    topologyKeys: {{ . | toYaml | nindent 6 }}
-    {{- end }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
-  {{- end }}
   componentSpecs:
     - name: zookeeper
       componentDef: zookeeper
-      monitor: {{ .Values.monitor.enabled | default false }}
       replicas: {{ .Values.zookeeper.replicaCount | default 3 }}
       {{- with  .Values.zookeeper.resources }}
       resources:
         {{- if .limits }}
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
         {{- end }}
         {{- if .requests }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       {{- if .Values.zookeeper.persistence.enabled }}
@@ -47,7 +39,7 @@ spec:
             {{- end }}
             resources:
               requests:
-                storage: {{ .Values.zookeeper.persistence.data.size }}
+                storage: {{ print .Values.zookeeper.persistence.data.size "Gi" }}
       {{- end }}
 {{- end }}
 {{- end }}

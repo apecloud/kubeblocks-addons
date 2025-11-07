@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: vm-select
+  name: {{ include "vmselect.componentDefName" . }}
   labels:
     {{- include "victoria-metrics.labels" . | nindent 4 }}
+  annotations:
+    {{- include "victoria-metrics.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A VictoriaMetrics component definition for Kubernetes
@@ -25,27 +27,32 @@ spec:
     - name: VMSTORAGE_ENDPOINT
       valueFrom:
         serviceVarRef:
-          compDef: vm-storage
+          compDef: vmstorage
           optional: true
           host: Required
     - name: VMSTORAGE_ADDR
       valueFrom:
         serviceVarRef:
-          compDef: vm-storage
+          compDef: {{ include "vmstorage.componentDefName" . }}
           port:
             name: vmselect
             option: Required
+    - name: SERVICE_PORT
+      value: "{{ .Values.vmselect.servicePort }}"
   runtime:
     automountServiceAccountToken: true
     terminationGracePeriodSeconds: 60
+    volumes:
+      - name: cache-volume
+        emptyDir: {}
     containers:
       - name: vmselect
-        imagePullPolicy: {{ .Values.images.vminsert.pullPolicy }}
+        imagePullPolicy: {{ .Values.images.vmselect.pullPolicy }}
         securityContext: {}
         args:
           - --storageNode=$(VMSTORAGE_ADDR)
           - --cacheDataPath=/cache
-          {{- range $key, $value := .Values.vmstorage.extraArgs }}
+          {{- range $key, $value := .Values.vmselect.extraArgs }}
           - --{{ $key }}={{ $value }}
           {{- end }}
           - --httpListenAddr=:{{ .Values.vmselect.servicePort }}
@@ -75,5 +82,13 @@ spec:
           timeoutSeconds: 5
           failureThreshold: 3
         volumeMounts:
-          - mountPath: /cache
-            name: cache-volume
+          - name: config
+            mountPath: /etc/victoria-metrics/config
+          - name: cache-volume
+            mountPath: /cache
+  configs:
+    - name: vmselect-config
+      template: vmselect-tpl
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true

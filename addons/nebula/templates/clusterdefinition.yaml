@@ -4,21 +4,21 @@ metadata:
   name: nebula
   labels:
     {{- include "nebula.labels" . | nindent 4 }}
+  annotations:
+    {{- include "nebula.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: default
       default: true
       components:
-        - name: console
-          compDef: nebula-console
         - name: graphd
-          compDef: nebula-graphd
+          compDef: {{ include "nebula-graphd.cmpdRegexpPattern" . }}
         - name: metad
-          compDef: nebula-metad
+          compDef: {{ include "nebula-metad.cmpdRegexpPattern" . }}
         - name: storaged
-          compDef: nebula-storaged
+          compDef: {{ include "nebula-storaged.cmpdRegexpPattern" . }}
       orders:
         provision:
           - metad
           - graphd
-          - console,storaged
+          - storaged

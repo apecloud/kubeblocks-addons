@@ -1,4 +1,4 @@
-{{- $phy_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
+{{- $phy_memory := default 0 $.PHY_MEMORY | int }}
 
 journalDirectories=/pulsar/data/bookkeeper/journal
 compactionRateByBytes=52428800
@@ -71,10 +71,12 @@ zkLedgersRootPath=/ledgers
 
 {{- $autoRecoveryDaemonEnabled := "true" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if index $e "componentDefRef" }}
-    {{- if eq $e.componentDefRef "bookies-recovery" }}
+  {{- if index $e "componentDef" }}
+    {{- if eq $e.componentDef "bookies-recovery" }}
       {{- $autoRecoveryDaemonEnabled = "false" }}
     {{- end }}
   {{- end }}
 {{- end }}
 autoRecoveryDaemonEnabled={{ $autoRecoveryDaemonEnabled }}
+
+zkServers={{ .ZOOKEEPER_SERVERS }}

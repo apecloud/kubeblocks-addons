@@ -55,13 +55,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end}}
 
 {{/*
-Create the name of the service account to use
-*/}}
-{{- define "risingwave-cluster.serviceAccountName" -}}
-{{- default .Values.risingwave.stateStore.s3.authentication.serviceAccountName .Values.serviceAccount.name }}
-{{- end }}
-
-{{/*
 Create the hummock option
 */}}
 {{- define "risingwave-cluster.options.hummock" }}
@@ -71,7 +64,7 @@ hummock+s3://{{ .Values.risingwave.stateStore.s3 }}
 {{/*
 Cluster envs.
 */}}
-{{- define "risingwave-cluster.envs" }}
+{{- define "risingwave-cluster.envs" -}}
 - name: RW_STATE_STORE
   value: hummock+s3://{{ .Values.risingwave.stateStore.s3.bucket }}
 - name: AWS_REGION
@@ -97,5 +90,5 @@ Cluster envs.
 - name: RW_ETCD_ENDPOINTS
   value: {{ .Values.risingwave.metaStore.etcd.endpoints }}
 - name: RW_ETCD_AUTH
-  value: {{ .Values.risingwave.metaStore.etcd.authentication.enabled}}
+  value: {{ .Values.risingwave.metaStore.etcd.authentication.enabled | quote }}
 {{- end }}

@@ -1,0 +1,144 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "tidb.tidb7.compDefName" . }}
+  annotations:
+    {{- include "tidb.annotations" . | nindent 4}}
+  labels:
+    {{- include "tidb.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: tidb's SQL layer
+  serviceKind: MySQL
+  updateStrategy: BestEffortParallel
+  vars:
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: DOMAIN
+      value: "$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain }}"
+    - name: TIDB_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: PD_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "tidb.pd7.compDefName" . }}
+          host: Required
+    - name: PD_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "tidb.pd7.compDefName" . }}
+          port:
+            name: client
+    - name: PD_ADDRESS
+      value: "$(PD_HOST).$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain }}:$(PD_PORT)"
+    - name: TIDB_PORT
+      valueFrom:
+        serviceVarRef:
+          port:
+            name: client
+    - name: TIDB_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: root
+          password: Required
+  runtime:
+    containers:
+      - name: tidb
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: SERVICE_PORT
+            value: "10080"
+        ports:
+          - containerPort: 4000
+            name: client
+          - containerPort: 10080
+            name: status
+        command:
+          - bin/sh
+          - -c
+          - |
+            echo "start tidb..."
+            exec /tidb-server --store=tikv \
+            --advertise-address=${CURRENT_POD_NAME}.${TIDB_COMPONENT_NAME}-headless.${DOMAIN} \
+            --host=0.0.0.0 \
+            --path=${PD_ADDRESS} \
+            --log-slow-query=/var/log/tidb/slowlog \
+            --log-file=/var/log/tidb/running.log \
+            --config=/etc/tidb/tidb.toml
+        volumeMounts:
+          - name: slowlog
+            mountPath: /var/log/tidb
+          - name: config
+            mountPath: /etc/tidb
+      - name: slowlog
+        imagePullPolicy: IfNotPresent
+        command:
+          - bin/sh
+          - -c
+          - |
+            echo "start slowlog..."
+            touch /var/log/tidb/slowlog
+            tail -n0 -F /var/log/tidb/slowlog;
+        volumeMounts:
+          - name: slowlog
+            mountPath: /var/log/tidb
+    volumes:
+      - name: slowlog
+        emptyDir: {}
+  configs:
+    - name: tidb-configuration
+      template: {{ include "tidb.tidb.configTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: config
+      externalManaged: true
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy: &defaultPasswordGenerationPolicy
+        length: 16
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+    - name: kbadmin
+      passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+      statement:
+        create: CREATE USER '${KB_ACCOUNT_NAME}'@'%' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT ALL PRIVILEGES ON *.* TO '${KB_ACCOUNT_NAME}'@'%';
+  lifecycleActions:
+    postProvision:
+      preCondition: RuntimeReady
+      exec:
+        command:
+          - sh
+          - -c
+          - |
+            {{- .Files.Get "scripts/tidb_postprovision.sh" | nindent 12 }}
+    accountProvision:
+      exec:
+        command:
+          - sh
+          - -c
+          - |
+            {{- .Files.Get "scripts/tidb_accountprovision.sh" | nindent 12 }}
+  exporter:
+    containerName: tidb
+    scrapePort: "10080"
+  services:
+    - name: tidb
+      spec:
+        ports:
+          - name: client
+            port: 4000
+            targetPort: client
+          - name: status
+            port: 10080
+            targetPort: status

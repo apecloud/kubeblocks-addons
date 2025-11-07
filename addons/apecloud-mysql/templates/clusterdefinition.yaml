@@ -4,39 +4,50 @@ metadata:
   name: {{ include "apecloud-mysql.clusterDefName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-mysql.apiVersion" . | nindent 4 }}
 spec:
   topologies:
   - name: apecloud-mysql
     default: true
     components:
     - name: mysql
-      compDef: apecloud-mysql
+      compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
   - name: apecloud-mysql-proxy
     components:
     - name: mysql
-      compDef: apecloud-mysql
+      compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
     - name: wescale-ctrl
-      compDef: wescale-ctrl
+      compDef: {{ include "apecloud-mysql.cmpdNameWescaleCtrlPrefix" . }}
     - name: wescale
-      compDef: wescale
+      compDef: {{ include "apecloud-mysql.cmpdNameWescalePrefix" . }}
     orders:
       provision:
       - mysql
       - wescale-ctrl
       - wescale
+      terminate:
+      - wescale
+      - wescale-ctrl
+      - mysql
   - name: apecloud-mysql-proxy-etcd
     components:
     - name: mysql
-      compDef: apecloud-mysql
+      compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
     - name: etcd
       compDef: {{ .Values.etcd.etcdCmpdName }}
     - name: wescale-ctrl
-      compDef: wescale-ctrl
+      compDef: {{ include "apecloud-mysql.cmpdNameWescaleCtrlPrefix" . }}
     - name: wescale
-      compDef: wescale
+      compDef: {{ include "apecloud-mysql.cmpdNameWescalePrefix" . }}
     orders:
       provision:
       - etcd
       - mysql
       - wescale-ctrl
       - wescale
+      terminate:
+      - wescale
+      - wescale-ctrl
+      - mysql
+      - etcd

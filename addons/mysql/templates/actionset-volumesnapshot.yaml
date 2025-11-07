@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: mysql-volumesnapshot
+  name: mysql-volume-snapshot
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
@@ -13,7 +13,7 @@ spec:
     value: {{ .Values.dataMountPath }}
   restore:
     prepareData:
-      image: {{ .Values.image.xtraBackup.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackup.repository }}:8.0.32
+      image: {{ .Values.image.xtraBackup.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackup.repository }}:8.0
       command:
       - bash
       - -c

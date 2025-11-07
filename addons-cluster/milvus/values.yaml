@@ -1,71 +1,176 @@
-# Default values for wesqlcluster.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
+#################################################
+# Global Configuration
+#################################################
+# -- Override the name of the chart
+# @optional
 nameOverride: ""
+
+# -- Override the generated fully qualified app name
+# @optional
 fullnameOverride: ""
 
-## Mode of the cluster, optional: standalone, cluster
-mode:
-  standalone
+#################################################
+# Deployment Mode
+#################################################
+# -- Cluster deployment mode configuration
+# @param mode The deployment mode of the cluster
+# @valid standalone, distributed
+mode: standalone
 
-##### parameters for standalone mode
+#################################################
+# Standalone Mode Parameters
+#################################################
+# -- Number of pod replicas in standalone mode
+# @default 1
 replicas: 1
 
+# -- CPU resource request/limit in cores
+# @default 0.5
+cpu: 0.5
+
+# -- Memory resource request/limit in GB
+# @default 0.5
+memory: 0.5
+
+# Persistence Configuration
 persistence:
+  # -- Enable/disable persistent storage
+  # @default true
   enabled: true
   data:
+    # -- Storage class for PVC
+    # @optional If empty, uses cluster default
     storageClassName:
-    size: 10Gi
+    # -- Size of persistent volume claim
+    # @default 10Gi
+    size: 10
 
-##### parameters for cluster mode
+#################################################
+# Distributed Mode Parameters
+#################################################
 proxy:
+  # -- Enable/disable proxy component
+  # @default true
   enabled: true
+  # -- Number of proxy replicas
+  # @default 1
   replicas: 1
 
+# -- Mix Coordinator configuration
 mixcoord:
+  # -- Number of mix coordinator replicas
+  # @default 1
   replicas: 1
 
+# -- Data Node configuration
 datanode:
+  # -- Number of data node replicas
+  # @default 1
   replicas: 1
 
+# -- Index Node configuration
 indexnode:
+  # -- Number of index node replicas
+  # @default 1
   replicas: 1
 
+# -- Query Node configuration
 querynode:
+  # -- Number of query node replicas
+  # @default 1
   replicas: 1
 
+#################################################
+# Storage Backend Configuration
+#################################################
 storage:
+  # Metadata Storage (etcd)
   meta:
-    mode: serviceref  # optional: incluster, serviceref
+    # -- service mode type
+    # @default serviceref
+    mode: serviceref
     serviceRef:
-      namespace:
+      # -- Kubernetes namespace for etcd
+      # @default default
+      namespace: default
       cluster:
-        name:
-        component:
-        service:
-        port:
+        # -- Name of the etcd cluster
+        # @required
+        name: 
+        # -- Component name for etcd
+        # @default etcd
+        component: etcd
+        # -- Service type for etcd
+        # @default headless
+        service: headless
+        # -- Port name for etcd client
+        # @default client
+        port: client
+        # -- Credentials for etcd
+        # @optional
         credential:
       serviceDescriptor:
+
+  # Log Storage (Pulsar)
   log:
-    mode: serviceref  # optional: incluster, serviceref
+    # -- Service mode type
+    # @default serviceref
+    mode: serviceref
+    # type can be kafka or pulsar 
+    type: kafka
     serviceRef:
-      namespace:
+      # -- Kubernetes namespace
+      # @default default
+      namespace: default
       cluster:
-        name:
-        component:
-        service:
-        port:
+        # -- Name of the Pulsar/kafka cluster
+        # @required
+        name: 
+        # -- Component name for Pulsar/kafka broker
+        # @default broker
+        component: broker
+        # -- Service name for Pulsar/kafka
+        # @default headless
+        service: headless
+        # -- Port name for Pulsar/kafka
+        # @default kafka-client
+        port: kafka-client
+        # -- Credentials for Pulsar/kafka
+        # @optional
         credential:
       serviceDescriptor:
+
+  # Object Storage (MinIO)
   object:
-    mode: serviceref  # optional: incluster, serviceref
+    # -- Service mode type
+    # @default serviceref
+    mode: serviceref
     serviceRef:
-      namespace:
+      # -- Kubernetes namespace for MinIO
+      # @default default
+      namespace: default
       cluster:
-        name:
-        component:
-        service:
-        port:
-        credential:
+        # -- Name of the MinIO cluster
+        # @required
+        name: 
+        # -- Component name for MinIO
+        # @default minio
+        component: minio
+        # -- Service type for MinIO
+        # @default headless
+        service: headless
+        # -- Port name for MinIO API protocol
+        # @default api
+        port: api
+        # -- Credentials for MinIO
+        # @optional
+        credential: root
       serviceDescriptor:
+    # bucket name of the object storage
+    bucket:
+    # root path of the bucket
+    path:
+    # if true, path style will be used. If false, virtual host style will be used.
+    # @type string
+    usePathStyle: "true"
+

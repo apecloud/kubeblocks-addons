@@ -51,12 +51,82 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Common annotations
 */}}
-{{- define "tdengine.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "tdengine.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "tdengine.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "tdengine.apiVersion" . }}
 {{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "tdengine.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
+
+{{/*
+Define tdengine component definition name
+*/}}
+{{- define "tdengine.cmpdName" -}}
+tdengine-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define tdengine component version name
+*/}}
+{{- define "tdengine.cmpvName" -}}
+tdengine
+{{- end -}}
+
+{{/*
+Define tdengine component definition regex pattern
+*/}}
+{{- define "tdengine.cmpdRegexPattern" -}}
+^tdengine-
+{{- end -}}
+
+{{/*
+Define tdengine component configuration template name
+*/}}
+{{- define "tdengine.configurationTemplate" -}}
+tdengine-config-template
+{{- end -}}
+
+{{/*
+Define tdengine scripts configMap template name
+*/}}
+{{- define "tdengine.scriptsTemplate" -}}
+tdengine-scripts-template
+{{- end -}}
+
+{{/*
+Define tdengine component metrice configuration name
+*/}}
+{{- define "tdengine.metricsConfiguration" -}}
+tdengine-metrics-configuration-template
+{{- end -}}
+
+
+{{/*
+Define tdengine component adapter configuration name
+*/}}
+{{- define "tdengine.adapterConfiguration" -}}
+tdengine-adapter-config-template
+{{- end -}}
+
+
+{{/*
+Define tdengine component parameter definition name
+*/}}
+{{- define "tdengine.parameterDefinitionName" -}}
+tdengine-pd
+{{- end -}}
+
+
+{{/*
+Define tdengine component parameter config renderer
+*/}}
+{{- define "tdengine.parameterConfigRenderer" -}}
+tdengine-pcr-{{ .Chart.Version }}
+{{- end -}}

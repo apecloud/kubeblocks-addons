@@ -6,7 +6,6 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{ include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - componentDef: minio 
       name: minio
@@ -14,7 +13,6 @@ spec:
       env:
       - name: MINIO_BUCKETS
         value: {{ .Values.buckets }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}

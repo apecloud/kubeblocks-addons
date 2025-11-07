@@ -4,43 +4,29 @@ metadata:
   name: {{ include "mysql.componentDefNameOrc57" . }}
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mysql.annotations" . | nindent 4 }}
 spec:
   {{- include "mysql-orc.spec.common" . | nindent 2 }}
   serviceVersion: 5.7.44
   lifecycleActions:
     {{- include "mysql-orc.spec.lifecycle.common" . | nindent 4 }}
-    postProvision:
-      exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
-        command:
-          - bash
-          - -c
-          - "/scripts/mysql-orchestrator-register.sh"
-      preCondition: RuntimeReady
-    preTerminate:
-      exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
-        command:
-          - bash
-          - -c
-          - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${KB_CLUSTER_NAME} || true
+
   configs:
     - name: mysql-replication-config
-      templateRef: mysql-5.7-config-template
-      constraintRef: mysql-config-constraints
+      template: mysql-5.7-config-template
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
-      reRenderResourceTypes:
-        - vscale
+      externalManaged: true
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   runtime:
     initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:5.7.44
-        name: init-data
+      - name: init-data
         command:
           - bash
           - -c
           - |
-            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
             cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         volumeMounts:
@@ -49,7 +35,6 @@ spec:
       {{- include "mysql-orc.spec.initcontainer.common" . | nindent 6 }}
     containers:
       - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
         {{- include "mysql-orc.spec.runtime.mysql" . | nindent 8 }}
       - name: mysql-exporter
         {{- include "mysql.spec.runtime.exporter" . | nindent 8 }}

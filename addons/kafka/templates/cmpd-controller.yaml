@@ -4,64 +4,88 @@ metadata:
   name: {{ include "kafka-controller.componentDefName" . }}
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  annotations:
+    {{- include "kafka.annotations" . | nindent 4 }}
 spec:
-  vars:
-    - name: SUPER_USER
-      valueFrom:
-        credentialVarRef:
-          name: admin
-          compDef: kafka-broker
-          username: Required
-          optional: false
   provider: kubeblocks
   description: Kafka controller that act as controllers (kraft) only server.
   serviceKind: kafka-controller
-  serviceVersion: {{ .Values.componentServiceVersion.controller }}
+  serviceVersion: {{ .Values.defaultServiceVersion.controller }}
+  vars:
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
+    - name: POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
   configs:
     - name: kafka-configuration-tpl
-      constraintRef: {{ include "kafka.name" . }}-cc
-      templateRef: {{ include "kafka.name" . }}-configuration-tpl
+      template: {{ include "kafka.configurationTplName" . }}
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
+      externalManaged: true
     - name: kafka-jmx-configuration-tpl
-      templateRef: {{ include "kafka.name" . }}-jmx-configuration-tpl
+      template: {{ include "kafka.jmxConfigurationTplName" . }}
       volumeName: jmx-config
       namespace: {{ .Release.Namespace }}
   scripts:
     - name: kafka-scripts-tpl
-      templateRef: {{ include "kafka.name" . }}-server-scripts-tpl
+      template: {{ include "kafka.serverScriptsTplName" . }}
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
   runtime:
+    {{- if .Values.securityContext }}
     securityContext:
-      fsGroup: 1001
+      {{- toYaml .Values.securityContext | nindent 6 }}
+    {{- end }}
     containers:
       - name: kafka
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        {{- if .Values.container.securityContext }}
         securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          runAsUser: 1001
+          {{- toYaml .Values.container.securityContext | nindent 10 }}
+        {{- end }}
         command:
           - /scripts/kafka-server-setup.sh
         env:
           - name: BITNAMI_DEBUG
             value: {{ .Values.debugEnabled | quote }}
           - name: MY_POD_IP
-            value: "$(KB_PODIP)"
-            # value: "$(KB_POD_IP)"
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
           - name: MY_POD_NAME
-            value: "$(KB_POD_NAME)"
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: MY_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
           - name: KAFKA_ENABLE_KRAFT
             value: "yes"
           - name: KAFKA_CFG_PROCESS_ROLES
@@ -87,10 +111,11 @@ spec:
             value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
           - name: SERVER_PROP_FILE
             value: /scripts/server.properties
-          - name: KAFKA_CFG_SUPER_USERS
-            value: "User:$(SUPER_USER)"
           - name: KAFKA_KRAFT_CLUSTER_ID
-            value: $(KB_CLUSTER_UID)
+            value: $(CLUSTER_UID)
+          {{- with .Values.extraEnvs.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
         ports:
           - name: kafka-ctrlr
             containerPort: 9093
@@ -120,14 +145,20 @@ spec:
             mountPath: /scripts/kafka-server-setup.sh
             subPath: kafka-server-setup.sh
           - name: scripts
+            mountPath: /scripts/common.sh
+            subPath: common.sh
+          - name: scripts
             mountPath: /opt/bitnami/scripts/kafka-env.sh
             subPath: kafka-env.sh
+          {{- with .Values.extraVolumeMounts.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
       - name: jmx-exporter
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        {{- if .Values.exporter.securityContext }}
         securityContext:
-          runAsNonRoot: true
-          runAsUser: 1001
+          {{- toYaml .Values.exporter.securityContext | nindent 10 }}
+        {{- end }}
         command:
           - java
         args:
@@ -135,14 +166,17 @@ spec:
           - -XshowSettings:vm
           - -jar
           - jmx_prometheus_httpserver.jar
-          - "5556"
+          - {{ .Values.jmxExporter.port | quote }}
           - /etc/jmx-kafka/jmx-kafka-prometheus.yml
         ports:
           - name: metrics
-            containerPort: 5556
+            containerPort: {{ .Values.jmxExporter.port }}
         volumeMounts:
           - name: jmx-config
             mountPath: /etc/jmx-kafka
         env:
           - name: SERVICE_PORT
-            value: "5556"
+            value: {{ .Values.jmxExporter.port | quote }}
+          {{- with .Values.extraEnvs.jmxExporter }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}

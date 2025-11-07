@@ -2,8 +2,14 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-replicaCount: 1
+nameOverride: ""
 
+fullnameOverride: ""
+
+clusterDomain: "cluster.local"
+
+## @param application images
+##
 image:
   # bitnami/elasticsearch
   # docker pull bitnami/elasticsearch
@@ -18,62 +24,68 @@ image:
   # refer: addons/elasticsearch/plugins/Dockerfile
   plugin:
     repository: apecloud/elasticsearch-plugins
-    tag: "8.8.2"
+    tag: "0.1.0"
   tools:
     repository: apecloud/curl-jq
     tag: 0.1.0
+  kibana:
+    repository: apecloud/kibana
+    tag: "8.8.2"
+  agent:
+    repository: apecloud/elasticsearch-agent
+    tag: "0.1.0"
+
+## @param supported elasticsearch versions with detailed information
+esVersions:
+  - major: "6"
+    componentDef: "^elasticsearch-6-"
+    masterComponentDef: "^elasticsearch-master-6-"
+    dataComponentDef: "^elasticsearch-data-6-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["6.8.23", "6.8.23", "6.8.23", false]
+  - major: "7"
+    componentDef: "^elasticsearch-7-"
+    masterComponentDef: "^elasticsearch-master-7-"
+    dataComponentDef: "^elasticsearch-data-7-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["7.7.1", "7.7.1", "7.7.1", false]
+      - ["7.8.1", "7.8.1", "7.8.1", false]
+      - ["7.10.1", "7.10.1", "7.10.1", false]
+  - major: "8"
+    componentDef: "^elasticsearch-8-"
+    masterComponentDef: "^elasticsearch-master-8-"
+    dataComponentDef: "^elasticsearch-data-8-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["8.1.3", "8.1.3", "8.1.3", false]
+      - ["8.8.2", "8.8.2", "8.8.2", false]
+      - ["8.15.5", "8.15.5", "8.15.5", false]
+
+## @param supported kibana versions with detailed information
+kibanaVersions:
+  - major: "6"
+    componentDef: "^kibana-6-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["6.8.23", "6.8.23", "6.8.23", false]
+  - major: "7"
+    componentDef: "^kibana-7-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["7.7.1", "7.7.1", "7.7.1", false]
+      - ["7.8.1", "7.8.1", "7.8.1", false]
+      - ["7.10.1", "7.10.1", "7.10.1", false]
+  - major: "8"
+    componentDef: "^kibana-8-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["8.1.3", "8.1.3", "8.1.3", false]
+      - ["8.8.2", "8.8.2", "8.8.2", false]
+      - ["8.9.1", "8.9.1", "8.9.1", false]
+      - ["8.15.5", "8.15.5", "8.15.5", false]
 
 exporter:
   service:
     port: 9114
-
-imagePullSecrets: [ ]
-nameOverride: ""
-fullnameOverride: ""
-clusterVersionOverride: ""
-
-serviceAccount:
-  # Specifies whether a service account should be created
-  create: true
-  # Annotations to add to the service account
-  annotations: { }
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  name: ""
-
-podAnnotations: { }
-
-podSecurityContext: { }
-# fsGroup: 2000
-
-securityContext: { }
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-# runAsUser: 1000
-
-resources: { }
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-#   memory: 128Mi
-
-nodeSelector: { }
-
-tolerations: [ ]
-
-affinity: { }
-
-ingress:
-  enabled: false
-
-service:
-  type: ClusterIP

@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rocketmq-broker4.scriptsTemplate" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+data:
+  broker-setup.sh: |-
+    {{- .Files.Get "scripts/broker-setup.sh" | nindent 4 }}
+  get-role.sh: |-
+    {{- .Files.Get "scripts/get-role.sh" | nindent 4 }}
+  util.sh: |-
+    {{- .Files.Get "scripts/util.sh" | nindent 4 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rocketmq-namesrv4.scriptsTemplate" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+data:
+  nameserver-setup.sh: |-
+    {{- .Files.Get "scripts/nameserver-setup.sh" | nindent 4 }}
+  update-nameserver-addrs.sh: |-
+    {{- .Files.Get "scripts/update-nameserver-addrs.sh" | nindent 4 }}
+  util.sh: |-
+    {{- .Files.Get "scripts/util.sh" | nindent 4 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rocketmq-dashboard.scriptsTemplate" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+data:
+  dashboard-setup.sh: |-
+    {{- .Files.Get "scripts/dashboard-setup.sh" | nindent 4 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rocketmq-exporter.scriptsTemplate" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+data:
+  exporter-setup.sh: |-
+    {{- .Files.Get "scripts/exporter-setup.sh" | nindent 4 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rocketmq.reloader.scripts" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+data:
+  {{- include "rocketmq.extend.reload.scripts" . | nindent 2 }}

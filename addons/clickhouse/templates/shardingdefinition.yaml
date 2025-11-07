@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ShardingDefinition
+metadata:
+  name: clickhouse
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+  annotations:
+    {{- include "clickhouse.apiVersion" . | nindent 4 }}
+spec:
+  template:
+    compDef: {{ include "clickhouse.cmpdRegexpPattern" . }}
+  shardsLimit:
+    minShards: 1
+    maxShards: 128
+  provisionStrategy: Parallel
+  updateStrategy: Parallel

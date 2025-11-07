@@ -12,13 +12,10 @@ on:
           - ""
           - apecloud-mysql
           - apecloud-postgresql
-          - camellia-redis-proxy
           - clickhouse
-          - dmdb
           - elasticsearch
           - etcd
-          - flink
-          - greatsql
+          - falkordb
           - greptimedb
           - influxdb
           - kafka
@@ -31,13 +28,11 @@ on:
           - mongodb
           - mysql
           - nebula
+          - neo4j
           - neon
           - oceanbase-ce
-          - official-postgresql
-          - opengauss
-          - openldap
+          - vanilla-postgresql
           - opensearch
-          - oracle
           - orchestrator
           - orioledb
           - polardbx
@@ -47,7 +42,7 @@ on:
           - rabbitmq
           - redis
           - risingwave
-          - solr
+          - rocketmq
           - starrocks-ce
           - tdengine
           - tidb
@@ -56,6 +51,13 @@ on:
           - xinference
           - yashandb
           - zookeeper
+          - hadoop
+          - hive
+      custom_chart_dir:
+        description: 'release specify custom chart dir when chart_dir is empty'
+        required: false
+        default: ''
+        type: string
       chart_version:
         description: 'release specify chart version or empty to release default'
         required: false
@@ -64,32 +66,32 @@ on:
 env:
   GH_TOKEN: ${{ github.token }}
 
-run-name: Release Chart ${{ inputs.chart_dir }} ${{ inputs.chart_version }}
+run-name: Release Chart ${{ inputs.chart_dir || inputs.custom_chart_dir }} ${{ inputs.chart_version }}
 
 jobs:
   release-chart:
-    if: ${{ inputs.chart_dir != '' }}
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.68
+    if: ${{ inputs.chart_dir != '' || inputs.custom_chart_dir != '' }}
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.96
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons"
-      SPECIFY_CHART: "${{ inputs.chart_dir }}"
-      APECD_REF: "v0.1.68"
+      SPECIFY_CHART: "${{ inputs.chart_dir || inputs.custom_chart_dir }}"
+      APECD_REF: "v0.1.96"
     secrets: inherit
 
   release-chart-all:
-    if: ${{ inputs.chart_dir == '' }}
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.68
+    if: ${{ inputs.chart_dir == '' && inputs.custom_chart_dir == '' }}
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.96
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons"
-      SPECIFY_CHART: "${{ inputs.chart_dir }}"
-      APECD_REF: "v0.1.68"
+      SPECIFY_CHART: ""
+      APECD_REF: "v0.1.96"
       ENABLE_JIHU: false
     secrets: inherit
 
   get-addons-chart-dir:
-    if: ${{ inputs.chart_dir == '' }}
+    if: ${{ inputs.chart_dir == '' && inputs.custom_chart_dir == '' }}
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.get_addons_chart_dir.outputs.matrix }}
@@ -113,14 +115,14 @@ jobs:
 
   release-addons-chart-jihu:
     needs: [ get-addons-chart-dir ]
-    if: ${{ inputs.chart_dir == '' }}
+    if: ${{ inputs.chart_dir == '' && inputs.custom_chart_dir == '' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.get-addons-chart-dir.outputs.matrix) }}
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts-jihu.yml@v0.1.68
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts-jihu.yml@v0.1.96
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons"
       SPECIFY_CHART: "${{ matrix.addon-name }}"
-      APECD_REF: "v0.1.68"
+      APECD_REF: "v0.1.96"
     secrets: inherit

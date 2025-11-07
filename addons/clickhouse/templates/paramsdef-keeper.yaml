@@ -1,0 +1,35 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "clickhouse.keeperParamsDefinition" . }}
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+spec:
+  reloadAction:
+    autoTrigger:
+      processName: ""
+
+  fileName: ch_keeper_00_default_overrides.xml
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # top level clickhouse configuration type
+    topLevelKey: ClickhouseParameter
+
+    # schemaInJSON: auto generate from cue scripts
+    # example: ../../pkg/configuration/testdata/mysql_openapi.json
+    cue: |-
+      {{- .Files.Get "configs/clickhouse-config-constraint.cue" | nindent 6 }}
+
+  immutableParameters:
+    - clickhouse.allow_experimental_cluster_discovery
+    - clickhouse.http_port
+    - clickhouse.https_port
+    - clickhouse.interserver_http_port
+    - clickhouse.macros
+    - clickhouse.logger
+    - clickhouse.tcp_port
+    - clickhouse.listen_host
+
+  staticParameters:
+    - none

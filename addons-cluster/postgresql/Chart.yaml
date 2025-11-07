@@ -1,18 +1,18 @@
 apiVersion: v2
 name: postgresql-cluster
 type: application
-version: 1.0.0-alpha.0
+version: 1.1.0-alpha.0
 description: A PostgreSQL (with Patroni HA) cluster Helm chart for KubeBlocks.
 
 dependencies:
   - name: kblib
-    version: 0.1.1
+    version: 0.1.2
     repository: file://../kblib
     alias: extra
 
 # appVersion specifies the version of the PostgreSQL (with Patroni HA) database to be created.
 # The current default value is the highest version of the PostgreSQL (with Patroni HA) supported in KubeBlocks.
-appVersion: "15.7.0"
+appVersion: "17.5.0"
 
 keywords:
   - postgresql
@@ -21,16 +21,16 @@ keywords:
   - replication
   - patroni
 
-home: https://github.com/apecloud/kubeblocks/tree/main/deploy/postgresql-cluster
-icon: https://kubeblocks.io/img/logo.png
+home: https://github.com/apecloud/kubeblocks-addons/tree/main/addons-cluster/postgresql
+icon: https://www.postgresql.org/media/img/about/press/elephant.png
 
 maintainers:
-  - name: ApeCloud
-    url: https://kubeblocks.io/
+  - name: ldming
+    url: https://github.com/apecloud/kubeblocks/
 
 sources:
   - https://github.com/apecloud/kubeblocks/
-  - https://github.com/apecloud/kubeblocks/tree/main/deploy/postgresql
+  - https://github.com/apecloud/kubeblocks-addons/tree/main/addons/postgresql
 
 annotations:
   category: Database

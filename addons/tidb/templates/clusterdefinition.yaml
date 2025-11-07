@@ -4,17 +4,19 @@ metadata:
   name: tidb
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "tidb.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: cluster
       default: true
       components:
         - name: tidb-pd
-          compDef: tidb-pd-7
+          compDef: {{ include "tidb.pd7.cmpdRegexpPattern" . }}
         - name: tikv
-          compDef: tikv-7
+          compDef: {{ include "tidb.tikv7.cmpdRegexpPattern" . }}
         - name: tidb
-          compDef: tidb-7
+          compDef: {{ include "tidb.tidb7.cmpdRegexpPattern" . }}
       orders:
         provision:
           - tidb-pd
@@ -24,8 +26,7 @@ spec:
           - tidb
           - tikv
           - tidb-pd
-        # FIXME: due to kb bugs, if update order is specified, update will not succeed
-        # update:
-        #   - tidb
-        #   - tikv
-        #   - tidb-pd
+        update:
+          - tidb
+          - tikv
+          - tidb-pd

@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: loki-gateway
+  name: {{ include "loki.gatewayCmpdName" . }}
   labels:
     {{- include "loki.labels" . | nindent 4 }}
+  annotations:
+    {{- include "loki.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A Loki component definition for Kubernetes
@@ -15,8 +17,8 @@ spec:
         ports:
           - port: {{ .Values.gateway.httpMetricsSvcPort }}
             protocol: TCP
-            name: http-metrics
-            targetPort: http-metrics
+            name: http
+            targetPort: http
   updateStrategy: BestEffortParallel
   runtime:
     automountServiceAccountToken: true
@@ -37,13 +39,19 @@ spec:
               - ALL
         ports:
           - containerPort: {{ .Values.gateway.httpMetricsContainerPort }}
-            name: http-metrics
+            name: http
             protocol: TCP
+        env:
+          - name: KB_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
         readinessProbe:
           failureThreshold: 3
           httpGet:
             path: /
-            port: http-metrics
+            port: http
             scheme: HTTP
           initialDelaySeconds: 15
           periodSeconds: 10
@@ -58,6 +66,24 @@ spec:
             name: docker-entrypoint-d-override
   configs:
     - name: config-gateway
-      templateRef: loki-gateway
+      template: loki-gateway-tpl
       volumeName: config
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
+  vars:
+    - name: DNS_SERVICE
+      value: {{ .Values.global.dnsService }}
+    - name: DNS_NAMESPACE
+      value: {{ .Values.global.dnsNamespace}}
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.global.clusterDomain}}
+    - name: ENABLE_IPV6
+      value: {{ .Values.gateway.nginxConfig.enableIPv6 | quote }}
+    - name: KB_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: KB_CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required

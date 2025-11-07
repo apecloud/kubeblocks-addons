@@ -2,7 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-images:
+image:
   registry: docker.io
   pullPolicy: IfNotPresent
   observer:
@@ -14,10 +14,6 @@ images:
   obtools:
     repository: apecloud/obtools
     tag: 4.2.1
-  dbctl:
-    repository: apecloud/dbctl
-    tag: 0.1.2
-
 
 roleProbe:
   failureThreshold: 3

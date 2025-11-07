@@ -51,13 +51,106 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
+Common risingwave annotations
+*/}}
+{{- define "risingwave.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "risingwave.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "risingwave.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{/*
+Define risingwave compactor component definition name
+*/}}
+{{- define "risingwave-compactor.cmpdName" -}}
+risingwave-compactor-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define risingwave compactor component definition regular expression name pattern
+*/}}
+{{- define "risingwave-compactor.cmpdRegexpPattern" -}}
+^risingwave-compactor-
+{{- end -}}
+
+{{/*
+Define risingwave compute component definition name
+*/}}
+{{- define "risingwave-compute.cmpdName" -}}
+risingwave-compute-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define risingwave compute component definition regular expression name pattern
+*/}}
+{{- define "risingwave-compute.cmpdRegexpPattern" -}}
+^risingwave-compute-
+{{- end -}}
+
+{{/*
+Define risingwave connector component definition name
+*/}}
+{{- define "risingwave-connector.cmpdName" -}}
+risingwave-connector-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define risingwave connector component definition regular expression name pattern
+*/}}
+{{- define "risingwave-connector.cmpdRegexpPattern" -}}
+^risingwave-connector-
+{{- end -}}
+
+{{/*
+Define risingwave frontend component definition name
+*/}}
+{{- define "risingwave-frontend.cmpdName" -}}
+risingwave-frontend-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define risingwave frontend component definition regular expression name pattern
+*/}}
+{{- define "risingwave-frontend.cmpdRegexpPattern" -}}
+^risingwave-frontend-
+{{- end -}}
+
+{{/*
+Define risingwave meta component definition name
+*/}}
+{{- define "risingwave-meta.cmpdName" -}}
+risingwave-meta-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define risingwave meta component definition regular expression name pattern
+*/}}
+{{- define "risingwave-meta.cmpdRegexpPattern" -}}
+^risingwave-meta-
+{{- end -}}
+
+{{/*
+Define risingwave config template name
+*/}}
+{{- define "risingwave.configTplName" -}}
+risingwave-configuration-tpl
+{{- end -}}
+
+{{/*
 Default config template.
 */}}
 {{- define "risingwave.conftpl.default" }}
 - name: risingwave-configuration
-  templateRef: {{ include "risingwave.name" . }}-conf-tpl
+  template: {{ include "risingwave.configTplName" . }}
   namespace: {{ .Release.Namespace }}
   volumeName: risingwave-configuration
+  restartOnFileChange: true
 {{- end }}
 
 {{/*
@@ -115,7 +208,7 @@ Connector service vars.
 - name: CONNECTOR_SVC
   valueFrom:
     serviceVarRef:
-      compDef: risingwave-connector
+      compDef: {{ include "risingwave-connector.cmpdRegexpPattern" . }}
       optional: false
       host: Required
 {{- end }}
@@ -127,7 +220,7 @@ Meta service vars.
 - name: META_SVC
   valueFrom:
     serviceVarRef:
-      compDef: risingwave-meta
+      compDef: {{ include "risingwave-meta.cmpdRegexpPattern" . }}
       optional: false
       host: Required
 {{- end }}

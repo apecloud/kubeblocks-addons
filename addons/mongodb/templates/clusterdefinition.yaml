@@ -4,10 +4,29 @@ metadata:
   name: mongodb
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.apiVersion" . | nindent 4 }}
 spec:
   topologies:
-    - name: default
+    - name: replicaset
       components:
         - name: mongodb
-          compDef: {{ include "mongodb.componentDefName" . }}
+          compDef: {{ include "mongodb.componentDefNamePrefix" . }}
       default: true
+    - name: sharding
+      components:
+        - name: mongos
+          compDef: {{ include "mongos.componentDefNamePrefix" . }}
+        - name: config-server
+          compDef: {{ include "cfgServer.componentDefNamePrefix" . }}
+      shardings:
+        - name: shard
+          shardingDef: {{ include "mongodbShard.componentDefNamePrefix" . }}
+      orders:
+        terminate:
+          - shard
+          - mongos,config-server
+        update:
+          - mongos
+          - config-server
+          - shard

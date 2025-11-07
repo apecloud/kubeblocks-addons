@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vanilla-postgresql.scriptsTemplate" . }}
+  labels:
+    {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "vanilla-postgresql.annotations" . | nindent 4 }}
+data:
+  {{- include "vanilla-postgresql.extend.scripts" . | nindent 2 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vanilla-postgresql.reloader.scripts" . }}
+  labels:
+    {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+data:
+  {{- include "vanilla-postgresql.extend.reload.scripts" . | nindent 2 }}

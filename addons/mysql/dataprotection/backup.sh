@@ -21,7 +21,19 @@ if [ "${IMAGE_TAG}" == "2.4" ]; then
   lock_per_table_ddl="--lock-ddl-per-table"
 fi
 
+TMP_DIR=${MYSQL_DIR}/xtrabackup-temp
+mkdir -p ${TMP_DIR}
 xtrabackup --backup --safe-slave-backup --slave-info ${lock_per_table_ddl} --stream=xbstream \
-  --host=${DP_DB_HOST} --user=${DP_DB_USER} --password=${DP_DB_PASSWORD} --datadir=${DATA_DIR} | datasafed push -z zstd-fastest - "/${DP_BACKUP_NAME}.xbstream.zst"
+  --host=${DP_DB_HOST} --user=${DP_DB_USER} --password=${DP_DB_PASSWORD} --datadir=${DATA_DIR} \
+  2> >(tee ${TMP_DIR}/xtrabackup.log >&2) \
+  | datasafed push -z zstd-fastest - "/${DP_BACKUP_NAME}.xbstream.zst"
+# record lsn for incremental backups
+cat "${TMP_DIR}/xtrabackup.log" \
+  | grep "The latest check point (for incremental)" \
+  | awk -F"'" '{print $2}' \
+  | datasafed push - "/${DP_BACKUP_NAME}.lsn"
+# record server uuid
+cat ${MYSQL_DIR}/data/auto.cnf | grep server-uuid | awk -F '=' '{print $2}' | datasafed push - "${DP_BACKUP_NAME}.server-uuid"
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
+rm -rf ${TMP_DIR}

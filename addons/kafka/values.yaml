@@ -1,45 +1,61 @@
-## Common override values:
-##
-## @param clusterVersionOverride
-## @param nameOverride
-## @param fullnameOverride
-clusterVersionOverride: ""
-
-componentServiceVersion:
-  combine: 3.3.2
-  controller: 3.3.2
-  broker: 3.3.2
-  exporter: 1.6.0
+# Default values for Kafka.
 
 nameOverride: ""
-fullnameOverride: ""
 
-## @param commonLabels Labels to add to all deployed objects
-##
-commonLabels: {}
+fullnameOverride: ""
 
 ## @param application images
 ##
 images:
   registry: docker.io
   pullPolicy: IfNotPresent
+  # these images are originally from bitnami repos. bitnami repos will soon be archived so we use apecloud's repos.
   kafka:
-    repository: bitnami/kafka
-#    tag: 3.4.0-debian-11-r22
-    tag: 3.3.2-debian-11-r54
+    # unless otherwise noted, kakfa images are mirrored from bitnamilegacy/kafka
+    repository: apecloud/kafka
+    tag:
+      v3_3_2: 3.3.2-debian-11-r54
+      v2_7_0: 2.7.0-debian-10-r124
+      # 2.8.2 is built from https://github.com/apecloud/containers/tree/main/apecloud/kafka-2.8.2
+      v2_8_2: 2.8.2-r1
+
+    versions:
+      v3:
+        - version: "3.3.2"
+          tag: "3.3.2-debian-11-r54"
+        - version: "3.7.1"
+          tag: "3.7.1-debian-12-r11"
+        - version: "3.8.1"
+          tag: "3.8.1-debian-12-r2"
+        - version: "3.9.0"
+          tag: "3.9.0-debian-12-r13"
+      v2:
+        - version: "2.7.0"
+          tag: "2.7.0-debian-10-r124"
+        # 2.8.2 is built from https://github.com/apecloud/containers/tree/main/apecloud/kafka-2.8.2
+        - version: "2.8.2"
+          tag: "2.8.2-r1"
   kafkaExporter:
-    repository: bitnami/kafka-exporter
+    repository: apecloud/kafka-exporter
     tag: 1.6.0-debian-11-r67
   jmxExporter:
-    repository: bitnami/jmx-exporter
+    repository: apecloud/jmx-exporter
     tag: 0.18.0-debian-11-r20
 
+## @param define default serviceVersion of each Component
+defaultServiceVersion:
+  combine: 3.3.2
+  controller: 3.3.2
+  broker: 3.3.2
+  exporter: 1.6.0
+
+## @param define default kafka2 serviceVersion of each Component
+defaultKafka2ServiceVersion:
+  broker: 2.7.0
 
 ## @param debugEnabled enables containers' debug logging
 ##
 debugEnabled: true
-
-commonAnnotations: {}
 
 kafkaBroker:
   minNodeId: 100
@@ -61,3 +77,56 @@ storageClassParameters:
   metadata:
     awsEBSVolumeType: io2
     awsEBSEnableBlockExpress: false
+
+## pod security context settings
+securityContext:
+  fsGroup: 1001
+
+## container security context settings
+container:
+  securityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    runAsUser: 1001
+
+## exporter security context settings
+exporter:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+
+## extra volumeMounts for containers
+## you can use this values for additional volumeMount like log-path,config-path etc
+## example:
+##
+## extraVolumeMounts:
+##   kafka:
+##     - name: log-mount-path
+##       mountPath: /docker/logs/kfk27-external/
+##       subPathExpr: $(POD_UUID)
+##     - name: cmdb-conf
+##       mountPath: /conf/cmdb.ini
+extraVolumeMounts:
+  ## apply to all kafka container, include broker/controller/combine.
+  kafka: []
+
+## extra Envs for containers
+## you can use this values for additional envs which extraVolumeMounts needed, like `subPathExpr`
+## example:
+##
+## extraEnvs:
+##   kafka:
+##     - name: POD_UUID
+##       valueFrom:
+##         fieldRef:
+##           fieldPath: metadata.uid
+extraEnvs:
+  ## apply to all kafka container, include broker/controller/combine.
+  kafka: []
+  ## apply to all jmx-exporter container
+  jmxExporter: []
+
+## customize jmx-exporter's port exposed
+jmxExporter:
+  port: 5556
+  jmxKafkaPrometheusYml: ""

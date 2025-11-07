@@ -11,6 +11,11 @@
   "MySQLTopologySSLCAFile": "",
   "MySQLTopologySSLSkipVerify": true,
   "MySQLTopologyUseMutualTLS": false,
+  "MySQLTopologyReadTimeoutSeconds": 3,
+  "MySQLDiscoveryReadTimeoutSeconds": 3,
+  "MySQLConnectTimeoutSeconds": 1,
+
+
 
   "MySQLOrchestratorHost": "${META_MYSQL_ENDPOINT}",
   "MySQLOrchestratorPort": ${META_MYSQL_PORT},
@@ -23,14 +28,13 @@
   "DefaultRaftPort": 10008,
   "RaftNodes": [ ${ORC_PEERS} ],
 
-  "DetectClusterAliasQuery": "select ifnull(max(cluster_name), '') as cluster_alias from kb_orc_meta_cluster.kb_orc_meta_cluster where anchor=1",
   "ApplyMySQLPromotionAfterMasterFailover": true,
   "DetachLostReplicasAfterMasterFailover": true,
   "FailMasterPromotionIfSQLThreadNotUpToDate": true,
   "MySQLOrchestratorRejectReadOnly": true,
 
   "HostnameResolveMethod": "none",
-  "MySQLHostnameResolveMethod": "@@report_host",
+  "MySQLHostnameResolveMethod": "@@hostname",
   "InstancePollSeconds": 5,
 
   "MasterFailoverLostInstancesDowntimeMinutes": 10,
@@ -53,5 +57,8 @@
 
   "OnFailureDetectionProcesses": [
     "echo 'Detected {failureType} on {failureCluster}. Affected replicas: {countReplicas}' >> /tmp/recovery.log"
-  ]
+  ],
+
+  "RecoverLockedSemiSyncMaster": true,
+  "UseSuperReadOnly": true
 }

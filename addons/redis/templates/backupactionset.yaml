@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: redis-physical-backup
+  name: redis-physical-br
   labels:
     clusterdefinition.kubeblocks.io/name: redis
     {{- include "redis.labels" . | nindent 4 }}
@@ -33,13 +33,23 @@ spec:
       - bash
       - -c
       - |
+        {{- .Files.Get "dataprotection/switch-data-dir.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/restore.sh" | nindent 8 }}
-    postReady: []
+    postReady:
+    - job:
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
+        image: {{ include "redis7.image" . }}
+        onError: Fail
+        runOnTargetPodNode: true
 ---
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: redis-cluster-backup
+  name: redis-cluster-br
   labels:
     clusterdefinition.kubeblocks.io/name: redis-cluster
     {{- include "redis.labels" . | nindent 4 }}
@@ -67,6 +77,13 @@ spec:
       - |
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
+    prepareData:
+      image: {{ include "redis7.image" . }}
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/restore-cluster-users.sh" | nindent 8 }}
     postReady:
     - job:
         command:
@@ -81,7 +98,7 @@ spec:
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: redis-pitr-backup
+  name: redis-for-pitr
   labels:
     clusterdefinition.kubeblocks.io/name: redis
     {{- include "redis.labels" . | nindent 4 }}
@@ -94,11 +111,13 @@ spec:
       value: "6379"
     - name: LOG_ARCHIVE_SECONDS
       value: "3"
+    - name: IMAGE
+      value: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
   backup:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "redis7.image" . }}
+      image: $(IMAGE)
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -112,13 +131,58 @@ spec:
         {{- .Files.Get "dataprotection/pitr-backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "redis7.image" . }}
+      image: $(IMAGE)
       command:
       - bash
       - -c
       - |
         #!/bin/bash
         {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/switch-data-dir.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/pitr-restore.sh" | nindent 8 }}
-    postReady: []
+    postReady:
+    - job:
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
+        image: {{ include "redis7.image" . }}
+        onError: Fail
+        runOnTargetPodNode: true
     baseBackupRequired: false
+---
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: redis-for-rebuild-instance
+  labels:
+    clusterdefinition.kubeblocks.io/name: redis
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}
+    - name: REBUILD_CLUSTER_INSTANCE
+      value: "false"
+  backup:
+    backupData:
+      image: {{ include "busybox.image" . }}
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+      - sh
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/backup_for_rebuild.sh" | nindent 8 }}
+  restore:
+    prepareData:
+      image: {{ include "busybox.image" . }}
+      command:
+      - sh
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/restore-cluster-users.sh" | nindent 8 }}

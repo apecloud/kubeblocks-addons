@@ -1,55 +1,60 @@
 {{/*
-Expand the name of the chart.
+etcd schedulingPolicy
 */}}
-{{- define "etcd-cluster.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- define "etcd-cluster.schedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
+              app.kubernetes.io/managed-by: "kubeblocks"
+              apps.kubeblocks.io/component-name: "etcd"
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+{{- end -}}
+
+{{/*
+Define "etcd-cluster.componentPeerService" to override component peer service
+Primarily used for LoadBalancer service to enable multi-cluster communication
+*/}}
+{{- define "etcd-cluster.componentPeerService" -}}
+{{- if .Values.peerService.type }}
+services:
+  - name: peer
+    serviceType: {{ .Values.peerService.type }}
+    podService: true
+    {{- if and (eq .Values.peerService.type "LoadBalancer") (not (empty .Values.peerService.annotations)) }}
+    annotations:  {{ .Values.peerService.annotations | toYaml | nindent 12 }}
+    {{- end }}
+{{- end }}
 {{- end }}
 
 {{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
+Define "etcd-cluster.clientService" to configure client service for etcd.
 */}}
-{{- define "etcd-cluster.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
-{{- end }}
 
-{{/*
-Create chart name and version as used by the chart label.
-*/}}
-{{- define "etcd-cluster.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- define "etcd-cluster.clientService" -}}
+{{- if .Values.clientService.type }}
+services:
+  - name: client
+    serviceName: etcd-client
+    {{- if and (eq .Values.clientService.type "LoadBalancer") (not (empty .Values.clientService.annotations)) }}
+    annotations: {{ .Values.clientService.annotations | toYaml | nindent 8 }}
+    {{- end }}
+    spec:
+      type: {{ .Values.clientService.type }}
+      ports:
+        - port: {{ .Values.clientService.port }}
+          targetPort: 2379
+          {{- if .Values.clientService.nodePort }}
+          nodePort: {{ .Values.clientService.nodePort }}
+          {{- end }}
+    componentSelector: etcd
+    {{- if ne .Values.clientService.type "LoadBalancer" }}
+    roleSelector: {{ .Values.clientService.role }}
+    {{- end }}
 {{- end }}
-
-{{/*
-Common labels
-*/}}
-{{- define "etcd-cluster.labels" -}}
-helm.sh/chart: {{ include "etcd-cluster.chart" . }}
-{{ include "etcd-cluster.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- end }}
-
-{{/*
-Selector labels
-*/}}
-{{- define "etcd-cluster.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "etcd-cluster.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{- define "clustername" -}}
-{{ include "etcd-cluster.fullname" .}}
-{{- end}}

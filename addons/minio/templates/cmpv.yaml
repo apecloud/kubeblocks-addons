@@ -1,0 +1,21 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: minio
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+  annotations:
+    {{- include "minio.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - 2024.6.29
+      compDefs:
+        - {{ include "minio.cmpdRegexpPattern" . }}
+  releases:
+    - name: 2024.6.29
+      serviceVersion: 2024.6.29
+      images:
+        minio: &minioImage {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:RELEASE.2024-06-29T01-20-47Z
+        roleProbe: *minioImage
+        init: {{ .Values.image.registry | default "docker.io" }}/apecloud/kubeblocks-tools:1.0.0

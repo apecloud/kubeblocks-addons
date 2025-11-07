@@ -1,4 +1,4 @@
-{{- if eq .Values.mode "cluster" }}
+{{- if eq .Values.mode "distributed" }}
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
@@ -6,10 +6,9 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: milvus
+  clusterDef: milvus
   topology: cluster
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     {{- if .Values.proxy.enabled }}
     - name: proxy
@@ -19,8 +18,9 @@ spec:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      configs:
+        {{- include "milvus.configs" . | indent 8 }}
     {{- end }}
     - name: mixcoord
       replicas: {{ .Values.mixcoord.replicas}}
@@ -29,8 +29,9 @@ spec:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      configs:
+        {{- include "milvus.configs" . | indent 8 }}
     - name: datanode
       replicas: {{ .Values.datanode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
@@ -39,8 +40,9 @@ spec:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      configs:
+        {{- include "milvus.configs" . | indent 8 }}
     - name: indexnode
       replicas: {{ .Values.indexnode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
@@ -49,8 +51,9 @@ spec:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      configs:
+        {{- include "milvus.configs" . | indent 8 }}
     - name: querynode
       replicas: {{ .Values.querynode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
@@ -59,6 +62,7 @@ spec:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      configs:
+        {{- include "milvus.configs" . | indent 8 }}
 {{- end }}

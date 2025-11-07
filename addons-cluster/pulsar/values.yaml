@@ -1,7 +1,14 @@
 ## @param version Pulsar Cluster version
 ##
-version: pulsar-3.0.2
+version: 3.0.2
 
+nameOverride: ""
+
+fullnameOverride: ""
+
+## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Delete, WipeOut.
+##
+terminationPolicy: Delete
 
 ## Annotation configurations
 commonAnnotations:
@@ -16,36 +23,13 @@ image:
 ## If you want to use any other topologies, such as adding only a proxy to the pulsar-basic-cluster, this parameter needs to be set to "".
 mode: pulsar-enhanced-cluster
 
-## Monitoring configurations
-monitor:
-  ## @param monitor.enabled if `true`, enable Cluster monitor capabilities
-  ##
-  enabled: false
-
 ## Service configurations
 ##
 service:
   ## @param service.type ClickHouse service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  ## 
+  ##
   type: ClusterIP
-
-## @param tolerations define global Tolerations for the cluster all pod's assignment
-## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-##
-tolerations: []
-
-
-## @param topologySpreadConstraints Topology Spread Constraints for pod assignment spread across your cluster among failure-domains. Evaluated as a template
-## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/#spread-constraints-for-pods
-##
-topologyKeys:
-  - kubernetes.io/hostname
-
-
-## @param affinity is affinity setting for ClickHouse cluster pods assignment
-##
-affinity: {}
 
 ## Bookies configuration
 bookies:
@@ -60,19 +44,19 @@ bookies:
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     limits:
-      memory: 512Mi
+      memory: 1
     requests:
-      cpu: 200m
-      memory: 512Mi
+      cpu: 1
+      memory: 1
 
   persistence:
     enabled: true
     data:
       storageClassName:
-      size: 8Gi
+      size: 8
     log:
       storageClassName:
-      size: 8Gi
+      size: 8
 
 ## Bookies-recovery configuration
 bookiesRecovery:
@@ -87,10 +71,10 @@ bookiesRecovery:
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     limits:
-      memory: 512Mi
+      memory: 1
     requests:
-      cpu: 200m
-      memory: 512Mi
+      cpu: 1
+      memory: 1
 
 ## Zookeeper configuration
 zookeeper:
@@ -107,19 +91,19 @@ zookeeper:
     ## lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     ##
     limits:
-      memory: 512Mi
+      memory: 1
     requests:
-      cpu: 100m
-      memory: 512Mi
+      cpu: 1
+      memory: 1
 
   persistence:
     enabled: true
     data:
       storageClassName:
-      size: 8Gi
+      size: 8
     log:
       storageClassName:
-      size: 8Gi
+      size: 8
 
   ## @param keeper.tolerations Tolerations for *Keeper pods assignment
   ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
@@ -136,11 +120,10 @@ broker:
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     limits:
-      memory: 512Mi
+      memory: 1
     requests:
-      cpu: 200m
-      memory: 512Mi
-
+      cpu: 1
+      memory: 1
 
 proxy:
   ## @param proxy.replicaCount Number of Proxy replicas
@@ -153,22 +136,15 @@ proxy:
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     limits:
-      memory: 512Mi
+      memory: 1
     requests:
-      cpu: 200m
-      memory: 512Mi
+      cpu: 1
+      memory: 1
 
-nameOverride: ""
-fullnameOverride: ""
-
-# The RBAC permission used by cluster component pod, now include event.create
-serviceAccount:
-  name: ""
 
 # Cluster domain
 #
 clusterDomain: ".cluster.local"
-
 
 # test suites
 tests:

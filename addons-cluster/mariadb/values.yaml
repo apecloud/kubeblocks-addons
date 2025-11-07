@@ -2,13 +2,10 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+mode: standalone
 ## @param version MARIADB cluster version
 ##
 version: mariadb
-
-## @param mode MARIADB cluster topology mode, standalone, raftGroup
-##
-mode: standalone
 
 ## @param replicas specify cluster replicas
 ##
@@ -32,8 +29,3 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
-
-
-## customized default values to override kblib chart's values
-extra:
-  podAntiAffinity: Required

@@ -31,3 +31,72 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "influxdb.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "influxdb.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "influxdb.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{/*
+Define influxdb component definition name
+*/}}
+{{- define "influxdb.standalone.cmpdName" -}}
+influxdb-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "influxdb.standalone.cmpdRegexpPattern" -}}
+^influxdb-\d+
+{{- end -}}
+
+{{- define "influxdb.meta.cmpdName" -}}
+influxdb-meta-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "influxdb.meta.cmpdRegexpPattern" -}}
+^influxdb-meta-
+{{- end -}}
+
+{{- define "influxdb.data.cmpdName" -}}
+influxdb-data-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "influxdb.data.cmpdRegexpPattern" -}}
+^influxdb-data-
+{{- end -}}
+
+{{/*
+Define influxdb configuration template name
+*/}}
+{{- define "influxdb.standalone.configurationTemplate" -}}
+influxdb-configuration
+{{- end -}}
+
+{{- define "influxdb.meta.configurationTemplate" -}}
+influxdb-meta-configuration-tpl
+{{- end -}}
+
+{{- define "influxdb.data.configurationTemplate" -}}
+influxdb-data-configuration-tpl
+{{- end -}}
+
+{{- define "influxdb.prcName" -}}
+influxdb-pcr
+{{- end -}}
+
+{{- define "influxdb.pdName" -}}
+influxdb-pd
+{{- end -}}
+
+{{- define "influxdb.cmScriptsName" -}}
+influxdb-scripts-{{ .Chart.Version }}
+{{- end -}}

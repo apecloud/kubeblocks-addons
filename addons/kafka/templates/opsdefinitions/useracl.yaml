@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsDefinition
 metadata:
   name: kafka-user-acl
@@ -100,7 +100,7 @@ spec:
         podSpec:
           containers:
           - name: kafka-topic
-            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag.v3_3_2 }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             command:
             - bash
@@ -108,7 +108,7 @@ spec:
             - |
               set -e
               SERVERS=()
-              for i in $(seq 0 $((${KB_COMP_REPLICAS}-1))); do
+              for i in $(seq 0 $((${COMPONENT_REPLICAS}-1))); do
                 SERVERS+=("${KB_COMP_SVC_NAME}-${i}:${KB_COMP_SVC_PORT_BROKER}")
               done
               KB_CONNECT_ENDPOINT=$(printf "%s," "${SERVERS[@]}")

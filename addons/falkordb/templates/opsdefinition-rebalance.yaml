@@ -1,0 +1,73 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: falkordb-cluster-rebalance
+spec:
+  podInfoExtractors:
+    - name: falkordbUrl
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: REDIS_DEFAULT_USER
+          valueFrom:
+            envRef:
+              envName: REDIS_DEFAULT_USER
+        - name: REDIS_DEFAULT_PASSWORD
+          valueFrom:
+            envRef:
+              envName: REDIS_DEFAULT_PASSWORD
+        - name: CLUSTER_DOMAIN
+          valueFrom:
+            envRef:
+              envName: CLUSTER_DOMAIN
+        - name: CURRENT_POD_NAME
+          valueFrom:
+            envRef:
+              envName: CURRENT_POD_NAME
+        - name: CURRENT_SHARD_COMPONENT_NAME
+          valueFrom:
+            envRef:
+              envName: CURRENT_SHARD_COMPONENT_NAME
+        - name: CLUSTER_NAMESPACE
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAMESPACE
+  actions:
+    - name: rebalance
+      workload:
+        type: Job
+        podInfoExtractorName: falkordbUrl
+        podSpec:
+          containers:
+          - name: busybox-init
+            image: {{ include "busybox.image" . }}
+            command: ["/bin/sh", "-c"]
+            args:
+              - |
+                POD_FQDN=$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN
+                REDIS_URL="falkordb://${REDIS_DEFAULT_USER}:${REDIS_DEFAULT_PASSWORD}@${POD_FQDN}"
+                echo ${REDIS_URL}
+                cat <<EOF > /tmp/reshard.ini
+                [extractor]
+                db_type=falkordb
+                extract_type=reshard
+                url=${REDIS_URL}
+                [sinker]
+                sink_type=dummy
+                EOF
+            volumeMounts:
+            - name: reshard-config
+              mountPath: /tmp
+          - name: falkordb-rebalance
+            image: {{ include "apeDts.reshard.image" . }}
+            imagePullPolicy: IfNotPresent
+            command: ["/ape-dts"]
+            args:
+              - /tmp/reshard.ini
+            volumeMounts:
+            - name: reshard-config
+              mountPath: /tmp
+          restartPolicy: Never
+          volumes:
+          - name: reshard-config
+            emptyDir: {}

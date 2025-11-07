@@ -51,12 +51,96 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Define image
 */}}
-{{- define "opensearch.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "opensearch.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "opensearch.repository" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
+{{- end }}
+
+{{- define "opensearch.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+{{- end }}
+
+{{- define "dashboard.repository" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dashboard.repository }}
+{{- end }}
+
+{{- define "dashboard.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dashboard.repository }}:{{ default .Chart.AppVersion .Values.image.dashboard.tag }}
+{{- end }}
+
+{{- define "os-master-graceful-handler.repository" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
+{{- end }}
+
+{{- define "os-master-graceful-handler.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+{{- end }}
+
+{{- define "fsgroup-volume.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/apecloud/alpine:3.16
+{{- end }}
+
+{{- define "sysctl.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/apecloud/alpine:3.16
+{{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "opensearch.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "opensearch.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "opensearch.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{/*
+Define opensearch-dashboard component definition name
+*/}}
+{{- define "opensearch-dashboard.cmpdName" -}}
+opensearch-dashboard-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define opensearch component definition name
+*/}}
+{{- define "opensearch.cmpdName" -}}
+opensearch-core-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define opensearch component definition regular expression name prefix
+*/}}
+{{- define "opensearch.cmpdRegexpPattern" -}}
+^opensearch-core-\d+\.\d+\.\d+([-a-zA-Z0-9\.]*)?$
+{{- end -}}
+
+{{/*
+Define opensearch-dashboard component definition regular expression name prefix
+*/}}
+{{- define "opensearch-dashboard.cmpdRegexpPattern" -}}
+^opensearch-dashboard-
+{{- end -}}
+
+{{/*
+Generate scripts configmap
+*/}}
+{{- define "opensearch.extend.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Define opensearch component script template name
+*/}}
+{{- define "opensearch.scriptsTemplate" -}}
+opensearch-scripts-template-{{ .Chart.Version }}
+{{- end -}}

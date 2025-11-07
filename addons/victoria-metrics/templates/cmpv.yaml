@@ -4,20 +4,22 @@ metadata:
   name: victoria-metrics
   labels:
     {{- include "victoria-metrics.labels" . | nindent 4 }}
+  annotations:
+    {{- include "victoria-metrics.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:
         - vmstorage-1.0.0
       compDefs:
-        - vm-storage
+        - {{ include "vmstorage.cmpdRegexpPattern" . }}
     - releases:
         - vmselect-1.0.0
       compDefs:
-        - vm-select
+        - {{ include "vmselect.cmpdRegexpPattern" . }}
     - releases:
         - vminsert-1.0.0
       compDefs:
-        - vm-insert
+        - {{ include "vminsert.cmpdRegexpPattern" . }}
   releases:
     - name: vmstorage-1.0.0
       serviceVersion: 1.0.0

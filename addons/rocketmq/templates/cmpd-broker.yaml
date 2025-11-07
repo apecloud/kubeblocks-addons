@@ -1,0 +1,211 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "rocketmq.compDefRocketMQBroker4" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 6 }}
+  annotations:
+    {{- include "rocketmq.annotations" . | nindent 4}}
+spec:
+  provider: community
+  serviceKind: {{ .Chart.Name }}-broker
+  description: RocketMQ Broker
+  serviceVersion: 4.9.6
+  minReadySeconds: 10
+  podManagementPolicy: Parallel
+  configs:
+    - name: rocketmq-broker-config
+      template: {{ include "rocketmq-broker4.configurationTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: rocketmq-broker-config
+      externalManaged: true
+      defaultMode: 0555
+    - name: {{ include "rocketmq.jxm-exporter.configurationTemplate" . }}
+      template: {{ include "rocketmq.jxm-exporter.configurationTemplate" . }}
+      volumeName: jmx-config
+      namespace: {{ .Release.Namespace }}
+  scripts:
+    - name: rocketmq-broker-scripts
+      template: {{ include "rocketmq-broker4.scriptsTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  updateStrategy: BestEffortParallel
+  logConfigs:
+    - name: broker
+      filePathPattern: {{ .Values.broker.logPath }}/rocketmqlogs/broker*
+  lifecycleActions:
+    roleProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      timeoutSeconds: 3
+      exec:
+        container: rocketmq-broker
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        command: [ "/scripts/get-role.sh" ]
+  roles:
+    - name: master
+      updatePriority: 2
+      participatesInQuorum: false
+    - name: slave
+      updatePriority: 1
+      participatesInQuorum: false
+  volumes:
+    - name: data
+  vars:
+    - name: ALL_BROKER_FQDN
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "rocketmq.compDefRocketMQBroker4" . }}
+          optional: false
+          podFQDNs: Required
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                keyValueDelimiter: ":"
+                delimiter: "@"
+    - name: ALL_NAMESRV_FQDN
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "rocketmq.compDefRocketMQNameSrv4" . }}
+          optional: false
+          podFQDNs: Required
+    - name: ROCKETMQ_USER
+      valueFrom:
+        credentialVarRef:
+          name: rocketmq-admin
+          optional: false
+          username: Required
+    - name: ROCKETMQ_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: rocketmq-admin
+          optional: false
+          password: Required
+    - name: LOG_PATH
+      value: {{ .Values.broker.logPath }}
+    - name: NAMESRV_PORT
+      value: "{{ .Values.nameserver.port }}"
+    - name: BROKER_PORT
+      value: "{{ .Values.broker.port }}"
+    - name: DLEDGER_PORT
+      value: "{{ .Values.broker.dledgerPort }}"
+    - name: MY_CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: MY_COMP_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: MY_CLUSTER_COMP_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: MY_POD_LIST
+      valueFrom:
+        componentVarRef:
+          optional: true
+          podNames: Optional
+  runtime:
+    securityContext:
+      # uid=3000(rocketmq) gid=3000(rocketmq) groups=3000(rocketmq)
+      fsGroup: 3000
+    volumes:
+      - name: logs
+        emptyDir: { }
+      - name: conf
+        emptyDir: { }
+    containers:
+      - name: rocketmq-broker
+        command: [ "/scripts/broker-setup.sh" ]
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          successThreshold: 1
+          tcpSocket:
+            port: broker
+          timeoutSeconds: 1
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          successThreshold: 1
+          tcpSocket:
+            port: broker
+          timeoutSeconds: 1
+        ports:
+          - name: broker
+            containerPort: {{ .Values.broker.port }}
+            protocol: TCP
+          - name: vip-channel
+            containerPort: {{ sub .Values.broker.port 2 }}
+            protocol: TCP
+          - name: ha
+            containerPort: {{ add .Values.broker.port 1 }}
+            protocol: TCP
+          - name: dledger
+            containerPort: {{ .Values.broker.dledgerPort }}
+        volumeMounts:
+          - mountPath: /kb-config
+            name: rocketmq-broker-config
+          - mountPath: /scripts
+            name: scripts
+          - mountPath: {{ .Values.broker.dataMountPath }}
+            name: data
+          - mountPath: {{ .Values.broker.logPath }}
+            name: logs
+          - mountPath: /home/rocketmq/rocketmq-4.9.6/conf
+            name: conf
+        env:
+          - name: DATA_DIR
+            value: {{ .Values.broker.dataMountPath }}
+          - name: JMX_PORT
+            value: "{{ .Values.broker.jxmPort }}"
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+      - name: jmx-exporter
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        command:
+          - java
+        args:
+          - -XX:MaxRAMPercentage=100
+          - -XshowSettings:vm
+          - -jar
+          - jmx_prometheus_httpserver.jar
+          - "5556"
+          - /etc/jmx-rocketmq/jmx-rocketmq-prometheus.yml
+        ports:
+          - name: metrics
+            containerPort: 5556
+        env:
+          - name: SERVICE_PORT
+            value: "5556"
+        volumeMounts:
+          - name: jmx-config
+            mountPath: /etc/jmx-rocketmq
+  systemAccounts:
+    - name: rocketmq-admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 8
+        numDigits: 6
+        letterCase: MixedCases
+        # useless seed, will be overRide by system accounts defined in cluster.
+        seed: {{ include "rocketmq.compDefRocketMQBroker4" . }}

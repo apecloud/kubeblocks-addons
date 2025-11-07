@@ -7,106 +7,94 @@ metadata:
     {{ include "risingwave-cluster.labels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.terminationPolicy }}
-  affinity:
-    {{- with $.Values.topologyKeys }}
-    topologyKeys: {{ . | toYaml | nindent 6 }}
-    {{- end }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
-  {{- end }}
   componentSpecs:
   - componentDef: risingwave-frontend
     name: frontend
     replicas: {{ .Values.risingwave.frontend.replicas }}
     env:
-      {{ include "risingwave-cluster.envs" . | nindent 6 }}
-    serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
+      {{- include "risingwave-cluster.envs" . | nindent 6 }}
     {{- with .Values.risingwave.frontend.resources }}
     resources:
     {{- if .limits }}
       limits:
         cpu: {{ .limits.cpu | quote }}
-        memory: {{ .limits.memory | quote }}
+        memory: {{ print .limits.memory "Gi" | quote }}
     {{- end }}
     {{- if .requests }}
       requests:
         cpu: {{ .requests.cpu | quote }}
-        memory: {{ .requests.memory | quote }}
+        memory: {{ print .requests.memory "Gi" | quote }}
     {{- end }}
     {{- end }}
   - componentDef: risingwave-meta
     name: meta
     replicas: {{ .Values.risingwave.meta.replicas }}
     env:
-      {{ include "risingwave-cluster.envs" . | nindent 6 }}
-    serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
+      {{- include "risingwave-cluster.envs" . | nindent 6 }}
     {{- with .Values.risingwave.meta.resources }}
     resources:
     {{- if .limits }}
       limits:
         cpu: {{ .limits.cpu | quote }}
-        memory: {{ .limits.memory | quote }}
+        memory: {{ print .limits.memory "Gi" | quote }}
     {{- end }}
     {{- if .requests }}
       requests:
         cpu: {{ .requests.cpu | quote }}
-        memory: {{ .requests.memory | quote }}
+        memory: {{ print .requests.memory "Gi" | quote }}
     {{- end }}
     {{- end }}
   - componentDef: risingwave-compute
     name: compute
     replicas: {{ .Values.risingwave.compute.replicas }}
     env:
-      {{ include "risingwave-cluster.envs" . | nindent 6 }}
-    serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
+      {{- include "risingwave-cluster.envs" . | nindent 6 }}
     {{- with .Values.risingwave.compute.resources }}
     resources:
     {{- if .limits }}
       limits:
         cpu: {{ .limits.cpu | quote }}
-        memory: {{ .limits.memory | quote }}
+        memory: {{ print .limits.memory "Gi" | quote }}
     {{- end }}
     {{- if .requests }}
       requests:
         cpu: {{ .requests.cpu | quote }}
-        memory: {{ .requests.memory | quote }}
+        memory: {{ print .requests.memory "Gi" | quote }}
     {{- end }}
     {{- end }}
   - componentDef: risingwave-compactor
     name: compactor
     replicas: {{ .Values.risingwave.compactor.replicas }}
     env:
-      {{ include "risingwave-cluster.envs" . | nindent 6 }}
-    serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
+      {{- include "risingwave-cluster.envs" . | nindent 6 }}
     {{- with .Values.risingwave.compactor.resources }}
     resources:
     {{- if .limits }}
       limits:
         cpu: {{ .limits.cpu | quote }}
-        memory: {{ .limits.memory | quote }}
+        memory: {{ print .limits.memory "Gi" | quote }}
     {{- end }}
     {{- if .requests }}
       requests:
         cpu: {{ .requests.cpu | quote }}
-        memory: {{ .requests.memory | quote }}
+        memory: {{ print .requests.memory "Gi" | quote }}
     {{- end }}
     {{- end }}
   - componentDef: risingwave-connector
     name: connector
     replicas: {{ .Values.risingwave.connector.replicas }}
     env:
-      {{ include "risingwave-cluster.envs" . | nindent 6 }}
-    serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
+      {{- include "risingwave-cluster.envs" . | nindent 6 }}
     {{- with .Values.risingwave.connector.resources }}
     resources:
     {{- if .limits }}
       limits:
         cpu: {{ .limits.cpu | quote }}
-        memory: {{ .limits.memory | quote }}
+        memory: {{ print .limits.memory "Gi" | quote }}
     {{- end }}
     {{- if .requests }}
       requests:
         cpu: {{ .requests.cpu | quote }}
-        memory: {{ .requests.memory | quote }}
+        memory: {{ print .requests.memory "Gi" | quote }}
     {{- end }}
     {{- end }}

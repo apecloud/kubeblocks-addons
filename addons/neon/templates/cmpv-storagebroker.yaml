@@ -2,10 +2,14 @@ apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: neon-broker
+  labels:
+    {{- include "neon.labels" . | nindent 4 }}
+  annotations:
+    {{- include "neon.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "neon-storagebroker.componentDefNamePrefix" . }}
+        - {{ include "neon-storagebroker.cmpdRegexpPattern" . }}
       releases:
         - pg14-1.0.0
   releases:
@@ -13,4 +17,4 @@ spec:
       changes:
       serviceVersion: 1.0.0
       images:
-        neon-storagebroker: perconalab/neon:pg14-1.0.0
+        neon-storagebroker: {{ include "neon.image" . }}:pg14-1.0.0

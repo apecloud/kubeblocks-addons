@@ -42,3 +42,24 @@ call_func_with_retry() {
   done
 }
 {{- end }}
+
+{{/*
+This function is used to extract the ordinal number from an object name.
+
+Usage:
+    extract_obj_ordinal <object_name>
+Arguments:
+    - object_name: The name of the object from which to extract the ordinal number.
+Result:
+    The ordinal number extracted from the object name.
+Example:
+    extract_obj_ordinal "my-object-1"    # Output: 1
+    extract_obj_ordinal "my-object-0-1"  # Output: 1
+*/}}
+{{- define "kblib.commons.extract_obj_ordinal" }}
+extract_obj_ordinal() {
+  local object_name="$1"
+  local ordinal="${object_name##*-}"
+  echo "$ordinal"
+}
+{{- end }}

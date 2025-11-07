@@ -46,7 +46,15 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Common annotations
 */}}
 {{- define "postgresql.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "postgresql.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "postgresql.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*
@@ -89,175 +97,102 @@ Define postgresql component definition name prefix
 {{- end -}}
 
 {{/*
-Define postgresql 12 component definition name prefix
+Define postgresql component definition name prefix by major version
 */}}
-{{- define "postgresql12.componentDefNamePrefix" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.postgresql12) 0 -}}
-{{- printf "postgresql-12-" -}}
+{{- define "postgresql.componentDefNamePrefixByMajor" -}}
+{{ printf "postgresql-%s-" .major }}
+{{- end -}}
+
+{{/*
+Get PostgreSQL image address by major and minor version
+Parameters: major (string), minor (string), root context
+Usage: {{ include "postgresql.imageByVersion" (dict "major" "14" "minor" "14.8.0" "root" .) }}
+*/}}
+{{- define "postgresql.imageByVersion" -}}
+{{- $major := .major -}}
+{{- $minor := .minor -}}
+{{- $root := .root -}}
+{{- $tag := "" -}}
+{{- range $root.Values.versions -}}
+  {{- if eq .major $major -}}
+    {{- range .minors -}}
+      {{- if eq .version $minor -}}
+        {{- $tag = .tag -}}
+        {{- break -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- if $tag -}}
+{{- printf "%s/%s:%s" ($root.Values.image.registry | default "docker.io") $root.Values.image.repository $tag -}}
 {{- else -}}
-{{- printf "%s-" .Values.cmpdVersionPrefix.postgresql12 -}}
+{{- fail (printf "image tag not found for major: %s, minor: %s" $major $minor) -}}
 {{- end -}}
 {{- end -}}
 
 {{/*
-Define postgresql 14 component definition name prefix
+Get PostgreSQL image pull policy
+Parameters: root context
+Usage: {{ include "postgresql.imagePullPolicy" . }}
 */}}
-{{- define "postgresql14.componentDefNamePrefix" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.postgresql14) 0 -}}
-{{- printf "postgresql-14-" -}}
+{{- define "postgresql.imagePullPolicy" -}}
+{{- default "IfNotPresent" .Values.image.pullPolicy -}}
+{{- end -}}
+
+{{/*
+Get PostgreSQL componentDef by major version
+Parameters: major (string), root context
+Usage: {{ include "postgresql.componentDefByMajor" (dict "major" "14" "root" .) }}
+*/}}
+{{- define "postgresql.componentDefByMajor" -}}
+{{- $major := .major -}}
+{{- $root := .root -}}
+{{- $componentDef := "" -}}
+{{- range $root.Values.versions -}}
+  {{- if eq .major $major -}}
+    {{- $componentDef = .componentDef -}}
+    {{- break -}}
+  {{- end -}}
+{{- end -}}
+{{- if $componentDef -}}
+{{- printf "%s-%s" $componentDef $root.Chart.Version -}}
 {{- else -}}
-{{- printf "%s-" .Values.cmpdVersionPrefix.postgresql14 -}}
+{{- fail (printf "componentDef not found for major: %s" $major) -}}
 {{- end -}}
 {{- end -}}
 
 {{/*
-Define postgresql 15 component definition name prefix
+Define component configuration template name by major version
 */}}
-{{- define "postgresql15.componentDefNamePrefix" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.postgresql15) 0 -}}
-{{- printf "postgresql-15-" -}}
-{{- else -}}
-{{- printf "%s-" .Values.cmpdVersionPrefix.postgresql15 -}}
-{{- end -}}
+{{- define "postgresql.parameterTemplate" -}}
+{{- $major := .major -}}
+{{- $root := .root -}}
+postgresql{{ $major }}-configuration-{{ $root.Chart.Version }}
 {{- end -}}
 
 {{/*
-Define postgresql 16 component definition name prefix
+Define component config constraint name by major version
 */}}
-{{- define "postgresql16.componentDefNamePrefix" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.postgresql16) 0 -}}
-{{- printf "postgresql-16-" -}}
-{{- else -}}
-{{- printf "%s-" .Values.cmpdVersionPrefix.postgresql16 -}}
-{{- end -}}
+{{- define "postgresql.parametersDefinition" -}}
+{{- $major := .major -}}
+{{- $root := .root -}}
+postgresql{{ $major }}-pd-{{ $root.Chart.Version }}
 {{- end -}}
 
 {{/*
-Define postgresql12 component definition name
+Define ParameterDrivenConfigRender name by major version
 */}}
-{{- define "postgresql12.compDefName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.postgresql12) 0 -}}
-postgresql-12-{{ .Chart.Version }}
-{{- else -}}
-{{ .Values.cmpdVersionPrefix.postgresql12 }}-{{ .Chart.Version }}
-{{- end -}}
+{{- define "postgresql.pcr" -}}
+{{- $major := .major -}}
+{{- $root := .root -}}
+postgresql{{ $major }}-pcr-{{ $root.Chart.Version }}
 {{- end -}}
 
 {{/*
-Define postgresql14 component definition name with Chart.Version suffix
+Define component metrics configuration name by major version
 */}}
-{{- define "postgresql14.compDefName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.postgresql14) 0 -}}
-postgresql-14-{{ .Chart.Version }}
-{{- else -}}
-{{ .Values.cmpdVersionPrefix.postgresql14 }}-{{ .Chart.Version }}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define postgresql15 component definition name
-*/}}
-{{- define "postgresql15.compDefName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.postgresql15) 0 -}}
-postgresql-15-{{ .Chart.Version }}
-{{- else -}}
-{{ .Values.cmpdVersionPrefix.postgresql15 }}-{{ .Chart.Version }}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define postgresql16 component definition name
-*/}}
-{{- define "postgresql16.compDefName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.postgresql16) 0 -}}
-postgresql-15-{{ .Chart.Version }}
-{{- else -}}
-{{ .Values.cmpdVersionPrefix.postgresql16 }}-{{ .Chart.Version }}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define postgresql12 component configuration template name
-*/}}
-{{- define "postgresql12.configurationTemplate" -}}
-postgresql12-configuration-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define postgresql14 component configuration template name
-*/}}
-{{- define "postgresql14.configurationTemplate" -}}
-postgresql14-configuration-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define postgresql15 component configuration template name
-*/}}
-{{- define "postgresql15.configurationTemplate" -}}
-postgresql15-configuration-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define postgresql16 component configuration template name
-*/}}
-{{- define "postgresql16.configurationTemplate" -}}
-postgresql16-configuration-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define postgresql12 component config constraint name
-*/}}
-{{- define "postgresql12.configConstraint" -}}
-postgresql12-cc
-{{- end -}}
-
-{{/*
-Define postgresql14 component config constraint name
-*/}}
-{{- define "postgresql14.configConstraint" -}}
-postgresql14-cc
-{{- end -}}
-
-{{/*
-Define postgresql15 component config constraint name
-*/}}
-{{- define "postgresql15.configConstraint" -}}
-postgresql15-cc
-{{- end -}}
-
-{{/*
-Define postgresql16 component config constraint name
-*/}}
-{{- define "postgresql16.configConstraint" -}}
-postgresql16-cc
-{{- end -}}
-
-{{/*
-Define postgresql12 component metrice configuration name
-*/}}
-{{- define "postgresql12.metricsConfiguration" -}}
-postgresql12-custom-metrics
-{{- end -}}
-
-{{/*
-Define postgresql14 component metrice configuration name
-*/}}
-{{- define "postgresql14.metricsConfiguration" -}}
-postgresql14-custom-metrics
-{{- end -}}
-
-{{/*
-Define postgresql15 component metrice configuration name
-*/}}
-{{- define "postgresql15.metricsConfiguration" -}}
-postgresql15-custom-metrics
-{{- end -}}
-
-{{/*
-Define postgresql16 component metrice configuration name
-*/}}
-{{- define "postgresql16.metricsConfiguration" -}}
-postgresql16-custom-metrics
+{{- define "postgresql.metricsConfiguration" -}}
+postgresql{{ .major }}-custom-metrics
 {{- end -}}
 
 {{/*
@@ -288,30 +223,22 @@ Define image
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
 {{- end }}
 
-{{- define "postgresql.image.major12.minor150" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
-{{- end }}
-
-{{- define "postgresql.image.major14.minor080" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor080 }}
-{{- end }}
-
-{{- define "postgresql.image.major15.minor070" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major15.minor070 }}
-{{- end }}
-
-{{- define "postgresql.image.major16.minor040" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major16.minor040 }}
-{{- end }}
-
-{{- define "pgbouncer.repository" -}}
-{{ .Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io") }}/{{ .Values.pgbouncer.image.repository }}
-{{- end }}
-
-{{- define "pgbouncer.image" -}}
+{{- define "postgresql.pgbouncerImage" -}}
 {{ .Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io") }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
 {{- end }}
 
-{{- define "metrics.image" -}}
+{{- define "postgresql.metricsImage" -}}
 {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+{{- end }}
+
+{{- define "postgresql.dbctlImage" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+{{- end }}
+
+{{- define "postgresql.walgImage" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.walg.repository }}:{{ .Values.image.walg.tag }}
+{{- end }}
+
+{{- define "postgresql.initImage" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.init.repository }}:{{ .Values.image.init.tag }}
 {{- end }}

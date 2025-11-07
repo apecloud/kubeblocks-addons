@@ -2,33 +2,15 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 images:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
+  tag: 2.9.4
+  repository: grafana/loki
+  pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  write:
-    tag: 3.0.0
-    repository: apecloud/loki
-    pullPolicy: IfNotPresent
-  read:
-    tag: 3.0.0
-    repository: apecloud/loki
-    pullPolicy: IfNotPresent
-  backend:
-    tag: 3.0.0
-    repository: apecloud/loki
-    pullPolicy: IfNotPresent
   gateway:
     tag: 1.24-alpine
-    repository: apecloud/nginx-unprivileged
+    repository: nginxinc/nginx-unprivileged
     pullPolicy: IfNotPresent
-  sidecar:
-    tag: 1.24.3
-    repository: apecloud/k8s-sidecar
-    pullPolicy: IfNotPresent
-sidecarImage:
-  registry: ""
-  repository: kiwigrid/k8s-sidecar
-  pullPolicy: IfNotPresent
-  tag: 1.24.3
 
 nameOverride: ""
 fullnameOverride: ""
@@ -51,18 +33,7 @@ global:
 enterprise:
   enabled: false
 
-
-read:
-  httpMetricsPort: 3100
-  grpcPort: 9095
-  httpMemberlistPort: 7946
-
-write:
-  httpMetricsPort: 3100
-  grpcPort: 9095
-  httpMemberlistPort: 7946
-
-backend:
+server:
   httpMetricsPort: 3100
   grpcPort: 9095
   httpMemberlistPort: 7946

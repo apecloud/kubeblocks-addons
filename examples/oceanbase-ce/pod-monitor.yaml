@@ -1,0 +1,37 @@
+
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: ob-cluster-pod-monitor
+  namespace: demo
+  labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
+    release: prometheus
+spec:
+  jobLabel: app.kubernetes.io/managed-by
+  # defines the labels which are transferred from the
+  # associated Kubernetes `Pod` object onto the ingested metrics
+  # set the lables w.r.t you own needs
+  podTargetLabels:
+  - app.kubernetes.io/instance
+  - app.kubernetes.io/managed-by
+  - apps.kubeblocks.io/component-name
+  - apps.kubeblocks.io/pod-name
+  podMetricsEndpoints:
+    - path: /metrics/stat
+      port: http
+      scheme: http
+    - path: /metrics/ob/basic
+      port: http
+      scheme: http
+    - path: /metrics/ob/extra
+      port: http
+      scheme: http
+    - path: /metrics/node/ob
+      port: http
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - demo
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: ob-cluster

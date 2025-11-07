@@ -6,13 +6,14 @@
       "title": "Version",
       "description": "Cluster version.",
       "type": "string",
-      "default": "6.0.16",
+      "default": "6.0.21",
       "enum": [
-        "7.0.12",
-        "6.0.16",
-        "5.0.28",
+        "8.0.8",
+        "7.0.18",
+        "6.0.21",
+        "5.0.29",
         "4.4.29",
-        "4.2.24",
+        "4.2.25",
         "4.0.28"
       ]
     },
@@ -23,7 +24,8 @@
       "default": "standalone",
       "enum": [
         "standalone",
-        "replicaset"
+        "replicaset",
+        "sharding"
       ]
     },
     "replicas": {
@@ -33,6 +35,14 @@
       "default": 1,
       "minimum": 1,
       "maximum": 5
+    },
+    "shards": {
+      "title": "Shards",
+      "description": "The number of shards, for sharding mode, the default shards is 3.",
+      "type": "integer",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 128
     },
     "cpu": {
       "title": "CPU",
@@ -72,6 +82,14 @@
       "title": "Storage Class Name",
       "description": "Storage class name of the data volume",
       "type": "string"
+    },
+    "hostnetwork": {
+      "type": "string",
+      "default": "enabled",
+      "enum": [
+        "enabled",
+        "disabled"
+      ]
     }
   }
 }

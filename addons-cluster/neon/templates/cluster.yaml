@@ -2,28 +2,27 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "neon-cluster.labels" . | indent 4 }}
 spec:
-  clusterDefinitionRef: neon
+  clusterDef: neon
+  topology: default
   terminationPolicy: {{ .Values.terminationPolicy }}
   componentSpecs:
     - name: neon-compute
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: neon-compute
-      {{- end }}
       replicas: {{ .Values.compute.replicas }}
       {{- with  .Values.compute.resources }}
       resources:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
             {{- end }}
             {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       volumeClaimTemplates:
@@ -34,50 +33,35 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.safekeeper.dataStorage }}
+                storage: {{ print .Values.safekeeper.dataStorage "Gi" }}
     - name: neon-broker
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: neon-broker
-      {{- end }}
       replicas: 1
       {{- with  .Values.storagebroker.resources }}
       resources:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
             {{- end }}
             {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: {{ .Values.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ .Values.storagebroker.dataStorage }}
     - name: neon-safekeeper
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: neon-safekeeper
-      {{- end }}
       replicas: {{ .Values.safekeeper.replicas }}
       {{- with  .Values.safekeeper.resources }}
       resources:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
             {{- end }}
             {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       volumeClaimTemplates:
@@ -88,23 +72,20 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.safekeeper.dataStorage }}
+                storage: {{ print .Values.safekeeper.dataStorage "Gi" }}
     - name: neon-pageserver
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: neon-pageserver
-      {{- end }}
       replicas: {{ .Values.pageserver.replicas }}
       {{- with  .Values.safekeeper.resources }}
       resources:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
             {{- end }}
             {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       volumeClaimTemplates:
@@ -115,4 +96,4 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.pageserver.dataStorage }}
+                storage: {{ print .Values.pageserver.dataStorage "Gi" }}

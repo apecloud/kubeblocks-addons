@@ -31,3 +31,33 @@ Selector labels
 app.kubernetes.io/name: {{ include "llm.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "llm.annotations" -}}
+{{ include "llm.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "llm.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+
+
+{{/*
+Define vllm component definition name
+*/}}
+{{- define "llm.cmpdNameVLLM" -}}
+llm-vllm-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define ggml component definition name
+*/}}
+{{- define "llm.cmpdNameGGML" -}}
+llm-ggml-{{ .Chart.Version }}
+{{- end -}}

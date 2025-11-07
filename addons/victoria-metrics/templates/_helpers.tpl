@@ -51,45 +51,58 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Common annotations
 */}}
-{{- define "victoria-metrics.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "victoria-metrics.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "victoria-metrics.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "victoria-metrics.apiVersion" . }}
 {{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "victoria-metrics.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*
 Define component definition name
 */}}
-{{- define "vmstroage.componentDefName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-vmstorage
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}
+{{- define "vmstorage.componentDefName" -}}
+vmstorage-{{ .Chart.Version }}
 {{- end -}}
+
+{{/*
+Define victoria-metrics stroage component definition regular expression name prefix
+*/}}
+{{- define "vmstorage.cmpdRegexpPattern" -}}
+^vmstorage-
 {{- end -}}
 
 {{/*
 Define component definition name
 */}}
 {{- define "vminsert.componentDefName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-vminsert
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}
+vminsert-{{ .Chart.Version }}
 {{- end -}}
+
+{{/*
+Define victoria-metrics insert component definition regular expression name prefix
+*/}}
+{{- define "vminsert.cmpdRegexpPattern" -}}
+^vminsert-
 {{- end -}}
 
 {{/*
 Define component definition name
 */}}
 {{- define "vmselect.componentDefName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-vmselect
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}
+vmselect-{{ .Chart.Version }}
 {{- end -}}
+
+{{/*
+Define victoria-metrics select component definition regular expression name prefix
+*/}}
+{{- define "vmselect.cmpdRegexpPattern" -}}
+^vmselect-
 {{- end -}}

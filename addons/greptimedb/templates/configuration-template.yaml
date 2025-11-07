@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "greptimedb-meta.configTemplateName" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+  {{- include "greptimedb.labels" . | nindent 4 }}
+data:
+  config.toml: ""
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "greptimedb-frontend.configTemplateName" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+  {{- include "greptimedb.labels" . | nindent 4 }}
+data:
+  config.toml: ""
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "greptimedb-datanode.configTemplateName" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+  {{- include "greptimedb.labels" . | nindent 4 }}
+data:
+  config.toml: ""

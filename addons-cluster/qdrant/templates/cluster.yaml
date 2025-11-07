@@ -6,14 +6,12 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   topology: cluster
-  clusterDefinitionRef: qdrant # ref clusterdefinition.name
+  clusterDef: qdrant # ref clusterdefinition.name
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: qdrant
       componentDef: qdrant
       serviceVersion: {{ include "qdrant.version" . }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}

@@ -1,0 +1,22 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: {{ include "polardbx-cdc.cmpvName" . }}
+  labels:
+    {{- include "polardbx.labels" . | nindent 4 }}
+  annotations:
+    {{- include "polardbx.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "polardbx-cdc.cmpdRegexPattern" . }}
+      releases:
+        - 2.3.0
+  releases:
+    - name: 2.3.0
+      changes:
+      serviceVersion: 2.3.0
+      images:
+        wait-cn-ready: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.mysql.repository }}:8.0.30
+        engine: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.cdc.repository}}:5.4.18-20231101115000
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.exporter.repository}}:{{.Values.images.polardbx.exporter.tag}}

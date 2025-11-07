@@ -10,13 +10,13 @@ data:
     #!/bin/bash
     # ref xinference doc: https://inference.readthedocs.io/zh-cn/latest/getting_started/using_xinference.html
     set -x 
-    ordinal=${KB_POD_NAME##*-}
+    ordinal=${POD_NAME##*-}
     echo "current pod ordinal: $ordinal"
+    first_pod_name=$(echo "${POD_NAMES}" | cut -d ',' -f 1)
     if [ $ordinal -eq 0 ]; then
-      xinference-supervisor -H "${KB_XINFERENCE_0_HOSTNAME}"
+      xinference-supervisor -H "${first_pod_name}"
     else 
-      worker_host=`env | grep "KB_XINFERENCE_${ordinal}_HOSTNAME" | awk -F= '{print $2}'`
-      xinference-worker -e "http://${KB_XINFERENCE_0_HOSTNAME}:9997" -H "${worker_host}"
+      xinference-worker -e "http://${first_pod_name}:9997" -H "${POD_NAME}"
     fi
 {{ else }}
   start.sh: |

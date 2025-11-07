@@ -1,0 +1,451 @@
+{
+    "$schema": "http://json-schema.org/schema#",
+    "type": "object",
+    "properties": {
+        "version": {
+            "title": "Version",
+            "description": "Service version",
+            "type": "string",
+            "default": "3.0.2"
+        },
+        "mode": {
+            "title": "Mode",
+            "description": "topology mode.",
+            "type": "string",
+            "default": "pulsar-enhanced-cluster",
+            "enum": [
+                "pulsar-basic-cluster",
+                "pulsar-enhanced-cluster"
+            ]
+        },
+        "bookies": {
+            "type": "object",
+            "properties": {
+                "replicaCount": {
+                    "title": "Replicas",
+                    "description": "The number of bookies replicas.",
+                    "type": "integer",
+                    "default": 1,
+                    "enum": [
+                        1,
+                        3,
+                        5
+                    ]
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": [
+                        "selfVerifying",
+                        "generic"
+                    ],
+                    "default": "generic",
+                    "description": "Bookie operation mode"
+                },
+                "resources": {
+                    "type": "object",
+                    "properties": {
+                        "limits": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "title": "CPU limit",
+                                    "description": "CPU limit",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory limit(Gi)",
+                                    "description": "Memory limit, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "title": "CPU request",
+                                    "description": "CPU request",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory request(Gi)",
+                                    "description": "Memory request, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
+                            }
+                        }
+                    }
+                },
+                "persistence": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": { "type": "boolean", "default": true },
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "storageClassName": {
+                                    "title": "Storage Class Name",
+                                    "description": "Storage class name of the data volume",
+                                    "type": ["string", "null"],
+                                    "default": null
+                                },
+                                "size": {
+                                    "title": "Size of data volume(Gi)",
+                                    "description": "Size of data volume, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 8
+                                }
+                            }
+                        },
+                        "log": {
+                            "type": "object",
+                            "properties": {
+                                "storageClassName": {
+                                    "title": "Storage Class Name",
+                                    "description": "Storage class name of the data volume",
+                                    "type": ["string", "null"],
+                                    "default": null
+                                },
+                                "size": {
+                                    "title": "Size of log volume(Gi)",
+                                    "description": "Size of log volume, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 8
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "bookiesRecovery": {
+            "type": "object",
+            "properties": {
+                "enabled": { "type": "boolean", "default": false },
+                "replicaCount": { "type": "integer", "default": 1 },
+                "resources": {
+                    "type": "object",
+                    "properties": {
+                        "limits": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "title": "CPU limit",
+                                    "description": "CPU limit",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory limit(Gi)",
+                                    "description": "Memory limit, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "title": "CPU request",
+                                    "description": "CPU request",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory request(Gi)",
+                                    "description": "Memory request, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "broker": {
+            "type": "object",
+            "properties": {
+                "replicaCount": {
+                    "title": "Replicas",
+                    "description": "The number of broker replicas.",
+                    "type": "integer",
+                    "default": 1,
+                    "minimum": 1,
+                    "maximum": 5
+                },
+                "resources": {
+                    "type": "object",
+                    "properties": {
+                        "limits": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "title": "CPU limit",
+                                    "description": "CPU limit",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory limit(Gi)",
+                                    "description": "Memory limit, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "title": "CPU request",
+                                    "description": "CPU request",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory request(Gi)",
+                                    "description": "Memory request, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "zookeeper": {
+            "type": "object",
+            "properties": {
+                "replicaCount": {
+                    "type": "integer",
+                    "default": 1
+                },
+                "resources": {
+                    "type": "object",
+                    "properties": {
+                        "limits": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "title": "CPU limit",
+                                    "description": "CPU limit",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory limit(Gi)",
+                                    "description": "Memory limit, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "title": "CPU request",
+                                    "description": "CPU request",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 0.1
+                                },
+                                "memory": {
+                                    "title": "Memory request(Gi)",
+                                    "description": "Memory request, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
+                            }
+                        }
+                    }
+                },
+                "persistence": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "default": true
+                        },
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "storageClassName": {
+                                    "title": "Storage Class Name",
+                                    "description": "Storage class name of the data volume",
+                                    "type": ["string", "null"],
+                                    "default": null
+                                },
+                                "size": {
+                                    "title": "Size of data volume(Gi)",
+                                    "description": "Size of data volume, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 8
+                                }
+                            }
+                        },
+                        "log": {
+                            "type": "object",
+                            "properties": {
+                                "storageClassName": {
+                                    "title": "Storage Class Name",
+                                    "description": "Storage class name of the data volume",
+                                    "type": ["string", "null"],
+                                    "default": null
+                                },
+                                "size": {
+                                    "title": "Size of log volume(Gi)",
+                                    "description": "Size of log volume, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 8
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "proxy": {
+            "type": "object",
+            "properties": {
+                "replicaCount": {
+                    "title": "Replicas",
+                    "description": "The number of proxy replicas.",
+                    "type": "integer",
+                    "default": 1,
+                    "minimum": 1,
+                    "maximum": 5
+                },
+                "enabled": {
+                    "title": "Enabled",
+                    "description": "Enable proxy",
+                    "type": "boolean",
+                    "default": false
+                },
+                "resources": {
+                    "type": "object",
+                    "properties": {
+                        "limits": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "title": "CPU limit",
+                                    "description": "CPU limit",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory limit(Gi)",
+                                    "description": "Memory limit, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "title": "CPU request",
+                                    "description": "CPU request",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                },
+                                "memory": {
+                                    "title": "Memory request(Gi)",
+                                    "description": "Memory request, the unit is Gi.",
+                                    "type": [
+                                        "number",
+                                        "string"
+                                    ],
+                                    "default": 1
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "nodePortEnabled": {
+            "title": "Node Port Enabled",
+            "description": "Enable Node Port",
+            "type": "boolean",
+            "default": false
+        }
+    }
+}

@@ -1,9 +1,9 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: pulsar-cluster
+  clusterName: pulsar-basic-cluster
   type: Start

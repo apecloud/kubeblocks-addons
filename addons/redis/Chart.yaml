@@ -4,9 +4,9 @@ description: "Redis is an in-memory database that persists on disk. The data mod
 
 type: application
 
-version: 1.0.0-alpha.0
+version: 1.1.0-alpha.0
 
-appVersion: "7.2.4"
+appVersion: "7.2.7"
 
 # Add a dependency to the kubeblocks definition library chart
 dependencies:
@@ -25,10 +25,13 @@ keywords:
   - redis cluster
 
 maintainers:
-  - name: Y-Rookie
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/
+  - name: wangyelei
     url: https://github.com/apecloud/kubeblocks/
 
+
 annotations:
-    addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
-    addon.kubeblocks.io/model: "key-value"
-    addon.kubeblocks.io/provider: "community"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/model: "key-value"
+  addon.kubeblocks.io/provider: "community"

@@ -1,0 +1,103 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<configuration>
+    <property>
+        <name>yarn.resourcemanager.cluster-id</name>
+        <value>{{ .CLUSTER_NAME }}</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.ha.rm-ids</name>
+        {{- $rms := "" }}
+        {{- range $pod_name := splitList "," .POD_NAME_LIST }}
+           {{- $val := printf "rm%s" (splitList "-" $pod_name | last) }}
+           {{- if eq $rms "" }}{{ $rms = $val }}{{ else }}{{ $rms = print $rms "," $val }}{{ end }}
+        {{- end }}
+        <value>{{ $rms }}</value>
+    </property>
+
+    {{- range $pod_name := splitList "," .POD_NAME_LIST }}
+    {{- $i := splitList "-" $pod_name | last }}
+    <property>
+        <name>yarn.resourcemanager.hostname.rm{{ $i }}</name>
+        <value>{{ $.CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}</value>
+    </property>
+    <property>
+        <name>yarn.resourcemanager.address.rm{{ $i }}</name>
+        <value>{{ $.CLUSTER_COMPONENT_NAME }}-{{ $i }}.{{ $.CLUSTER_COMPONENT_NAME }}-headless.{{ $.CLUSTER_NAMESPACE }}.svc.{{ $.CLUSTER_DOMAIN }}:8032</value>
+    </property>
+  {{- end }}
+
+    <property>
+        <name>yarn.resourcemanager.ha.enabled</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.bind-host</name>
+        <value>0.0.0.0</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.recovery.enabled</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.scheduler.class</name>
+        <value>org.apache.hadoop.yarn.server.resourcemanager.scheduler.capacity.CapacityScheduler</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.store.class</name>
+        <value>org.apache.hadoop.yarn.server.resourcemanager.recovery.ZKRMStateStore</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.ha.automatic-failover.enabled</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.ha.automatic-failover.embedded</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>hadoop.zk.address</name>
+        <value>{{- .ZOOKEEPER_ENDPOINTS }}</value>
+    </property>
+
+    <property>
+        <name>yarn.scheduler.maximum-allocation-mb</name>
+        <value>131072</value>  <!-- 32 GB -->
+    </property>
+
+    <property>
+        <name>yarn.scheduler.maximum-allocation-vcores</name>
+        <value>128</value>
+    </property>
+
+    <!-- Minimum allocation unit for every container request at the RM -->
+    <property>
+        <name>yarn.scheduler.minimum-allocation-mb</name>
+        <value>512</value>
+    </property>
+
+    <property>
+        <name>yarn.scheduler.minimum-allocation-vcores</name>
+        <value>1</value>
+    </property>
+
+    <!-- Remove untracked nodes without include path -->
+    <property>
+        <name>yarn.resourcemanager.enable-node-untracked-without-include-path</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.node-removal-untracked.timeout-ms</name>
+        <value>60000</value>
+    </property>
+</configuration>

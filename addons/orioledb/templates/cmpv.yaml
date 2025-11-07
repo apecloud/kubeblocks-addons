@@ -1,0 +1,20 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: orioledb
+  labels:
+    {{- include "orioledb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orioledb.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "orioledb.cmpdRegexpPattern" . }}
+      releases:
+        - pg-16.4.0
+  releases:
+    - name: pg-16.4.0
+      serviceVersion: 16.4.0
+      images:
+        orioledb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}

@@ -1,0 +1,268 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "fe.componentDefName" . }}
+  labels:
+    {{ include "doris.labels" . | nindent 4 }}
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
+    {{- include "doris.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A Doris FE component definition for Kubernetes
+  # The FE can only perform leader election when the majority of members are active.
+  podManagementPolicy: Parallel
+  serviceKind: doris-fe
+  services:
+  - name: fe
+    serviceName: fe
+    spec:
+      ipFamilies:
+      - IPv4
+      ipFamilyPolicy: PreferDualStack
+      ports:
+      - name: mysql
+        port: 9030
+        targetPort: mysql
+      - name: http
+        port: 8030
+        targetPort: http
+      - name: rpc
+        port: 9020
+        targetPort: rpc
+      - name: edit-log
+        port: 9010
+        targetPort: edit-log
+  scripts:
+  - name: scripts
+    template: {{ include "fe.scriptsTemplate" . }}
+    namespace: {{ .Release.Namespace }}
+    volumeName: scripts
+    defaultMode: 0555
+  volumes:
+  - name: metadata
+    needSnapshot: true
+  - name: log
+  systemAccounts:
+  - name: root
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 5
+      numSymbols: 0
+      letterCase: MixedCases
+  - name: admin
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 5
+      numSymbols: 0
+      letterCase: MixedCases
+  configs:
+    - name: fe-cm
+      template: {{ include "fe.configurationTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: fe-cm
+      restartOnFileChange: true
+      externalManaged: true
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: COMPONENT_NAME
+      value: fe
+    - name: POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    - name: POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: FE_DISCOVERY_SERVICE_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "fe.componentDefName" . }}
+          name: fe
+          host: Required
+    - name: FE_DISCOVERY_ADDR
+      value: $(FE_DISCOVERY_SERVICE_NAME).$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
+    - name: FE_QUERY_PORT
+      value: "9030"
+    - name: DORIS_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "fe.componentDefName" . }}
+          name: root
+          optional: false
+          username: Required
+    - name: DORIS_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "fe.componentDefName" . }}
+          name: root
+          optional: false
+          password: Required
+    - name: DORIS_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "fe.componentDefName" . }}
+          name: admin
+          optional: false
+          password: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+  runtime:
+    containers:
+    - name: fe
+      imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+      command:
+      - bash
+      - -c
+      - |
+        /opt/apache-doris/scripts/init_fe.sh
+      ports:
+      - containerPort: 8030
+        name: http
+        protocol: TCP
+      - containerPort: 9020
+        name: rpc
+        protocol: TCP
+      - containerPort: 9030
+        name: mysql
+        protocol: TCP
+      - containerPort: 9010
+        name: edit-log
+        protocol: TCP
+      env:
+      - name: HOST_TYPE
+        value: FQDN
+      - name: TZ
+        value: {{ .Values.timezone }}
+      - name: POD_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.name
+      - name: POD_IP
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: status.podIP
+      - name: HOST_IP
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: status.hostIP
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.namespace
+      - name: CONFIGMAP_MOUNT_PATH
+        value: /etc/doris/fe/conf
+      - name: HTTP_PORT
+        value: "8030"
+      - name: FE_EDIT_LOG_PORT
+        value: "9010"
+      - name: JAVA_HOME
+        value: /usr/lib/jvm/java
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+      volumeMounts:
+      - mountPath: /opt/apache-doris/fe/doris-meta
+        name: metadata
+      - mountPath: /opt/apache-doris/fe/log
+        name: log
+      - mountPath: /etc/config
+        name: fe-cm
+      - mountPath: /opt/apache-doris/scripts
+        name: scripts
+      # volume certificates is defined in cluster.yaml and referenced here
+      # as the
+      - mountPath: /certificates
+        name: certificates
+      lifecycle:
+        postStart:
+          exec:
+            command:
+            - bash
+            - -c
+            - |
+              /opt/apache-doris/scripts/fe_post_start.sh > /tmp/post-start-hook.log 2>&1 &
+        preStop:
+          exec:
+            command:
+            - bash
+            - -c
+            - |
+              /opt/apache-doris/scripts/fe_prestop.sh > /tmp/pre-stop-hook.log 2>&1 &
+      livenessProbe:
+        httpGet:
+          path: /api/health
+          port: 8030
+        periodSeconds: 5
+        failureThreshold: 60
+        successThreshold: 1
+        timeoutSeconds: 5
+        initialDelaySeconds: 15
+      readinessProbe:
+        httpGet:
+          path: /api/health
+          port: 8030
+        periodSeconds: 5
+        failureThreshold: 60
+        successThreshold: 1
+        timeoutSeconds: 5
+        initialDelaySeconds: 15
+  lifecycleActions:
+    roleProbe:
+      initialDelaySeconds: 15
+      periodSeconds: 5
+      exec:
+        container: fe
+        command:
+          - bash
+          - -c
+          - /opt/apache-doris/scripts/fe_role_probe.sh
+    memberLeave:
+      retryPolicy:
+        maxRetries: 3
+        retryInterval: 5
+      exec:
+        command:
+        - /bin/bash
+        - -c
+        - |
+          /opt/apache-doris/scripts/fe_member_leave.sh > /tmp/member-leave.log 2>&1
+        targetPodSelector: Role
+        container: fe
+        matchingKey: master
+  roles:
+    - name: master
+      updatePriority: 3
+      participatesInQuorum: true
+    - name: follower
+      updatePriority: 2
+      participatesInQuorum: true
+    - name: observer
+      updatePriority: 1
+      participatesInQuorum: false
+  tls:
+    volumeName: tls
+    mountPath: /etc/pki/tls
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem

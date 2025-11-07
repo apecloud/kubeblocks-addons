@@ -1,20 +1,3 @@
-//Copyright (C) 2022-2023 ApeCloud Co., Ltd
-//
-//This file is part of KubeBlocks project
-//
-//This program is free software: you can redistribute it and/or modify
-//it under the terms of the GNU Affero General Public License as published by
-//the Free Software Foundation, either version 3 of the License, or
-//(at your option) any later version.
-//
-//This program is distributed in the hope that it will be useful
-//but WITHOUT ANY WARRANTY; without even the implied warranty of
-//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//GNU Affero General Public License for more details.
-//
-//You should have received a copy of the GNU Affero General Public License
-//along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 #VtTabletParameter: {
 
 	// Connection timeout to mysqld in milliseconds. (0 for no timeout, default 500)
@@ -60,30 +43,28 @@
 	queryserver_config_transaction_cap: int & >=0
 
 	// the size of database connection pool in non transaction dml
-    non_transactional_dml_database_pool_size: int & >=1
+	non_transactional_dml_database_pool_size: int & >=1
 
-    // the number of rows to be processed in one batch by default
-    non_transactional_dml_default_batch_size: int & >=1
+	// the number of rows to be processed in one batch by default
+	non_transactional_dml_default_batch_size: int & >=1
 
-    // the interval of batch processing in milliseconds by default
-    non_transactional_dml_default_batch_interval: int & >=1
+	// the interval of batch processing in milliseconds by default
+	non_transactional_dml_default_batch_interval: int & >=1
 
-    // the interval of table GC in hours
-    non_transactional_dml_table_gc_interval: int & >=1
+	// the interval of table GC in hours
+	non_transactional_dml_table_gc_interval: int & >=1
 
-    // the interval of job scheduler running in seconds
-    non_transactional_dml_job_manager_running_interval: int & >=1
+	// the interval of job scheduler running in seconds
+	non_transactional_dml_job_manager_running_interval: int & >=1
 
-    // the interval of throttle check in milliseconds
-    non_transactional_dml_throttle_check_interval: int & >=1
+	// the interval of throttle check in milliseconds
+	non_transactional_dml_throttle_check_interval: int & >=1
 
-    // the threshold of batch size
-    non_transactional_dml_batch_size_threshold: int & >=1 & <=1000000
+	// the threshold of batch size
+	non_transactional_dml_batch_size_threshold: int & >=1 & <=1000000
 
-    // final threshold = ratio * non_transactional_dml_batch_size_threshold / table index numbers
-    non_transactional_dml_batch_size_threshold_ratio: float & >=0 & <=1
-
-	...
+	// final threshold = ratio * non_transactional_dml_batch_size_threshold / table index numbers
+	non_transactional_dml_batch_size_threshold_ratio: float & >=0 & <=1
 }
 
 // SectionName is section name

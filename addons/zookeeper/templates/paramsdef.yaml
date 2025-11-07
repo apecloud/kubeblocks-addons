@@ -1,0 +1,45 @@
+{{- $pd := .Files.Get "config/config-effect-scope.yaml" | fromYaml }}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "zookeeper.paramsDefName" . }}
+  labels:
+    {{- include "zookeeper.labels" . | nindent 4 }}
+spec:
+  reloadAction:
+    autoTrigger:
+      processName: zookeeper
+
+  ## define immutable parameter list
+  {{- if hasKey $pd "immutableParameters" }}
+  immutableParameters:
+    {{- $params := get $pd "immutableParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- $params := get $pd "dynamicParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- $params := get $pd "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+  fileName: zoo.cfg
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # define parameter validation rules
+    topLevelKey: ZookeeperParameter
+
+    cue: |-
+      {{- .Files.Get "config/zookeeper-params_schema.cue" | nindent 6 }}

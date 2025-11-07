@@ -4,26 +4,16 @@
     "properties": {
         "version": {
             "title": "Version",
-            "description": "Cluster version.",
+            "description": "Version.",
             "type": "string",
-            "default": "ob-ce-4.3.0.1-100000242024032211"
+            "default": "4.3.0"
         },
-        "obClusters": {
-            "title": "ObClusters",
-            "description": "OceanBase Clusters, for standalone mode, set to 1, for primary-secondary mode, set to 2.",
+        "zoneCount": {
+            "title": "ZontCount",
+            "description": "OceanBase Zones.",
             "type": [
                 "integer"
             ],
-            "default": 2,
-            "minimum": 1,
-            "maximum": 2
-        },
-        "zoneCount": {
-            "title": "ZoneCount",
-            "description": "OceanBase Zones.",
-            "type": [
-              "integer"
-          ],
             "default": 1,
             "minimum": 1,
             "maximum": 3
@@ -32,11 +22,9 @@
             "title": "Replicas",
             "description": "The number of replicas, no less than zoneCount.",
             "type": [
-              "integer"
-          ],
-            "default": { "$data": "/zoneCount" },
-            "minimum": 1,
-            "maximum": 6
+                "integer"
+            ],
+            "minimum": 1
         },
         "cpu": {
             "title": "CPU",
@@ -46,9 +34,7 @@
                 "string"
             ],
             "default": 8,
-            "minimum": 2,
-            "maximum": 128,
-            "multipleOf": 0.5
+            "minimum": 3
         },
         "memory": {
             "title": "Memory(Gi)",
@@ -58,46 +44,112 @@
                 "string"
             ],
             "default": 16,
-            "minimum": 2,
-            "maximum": 1024
+            "minimum": 4
         },
-        "datafile": {
-            "title": "Data file Storage(Gi)",
-            "description": "Data file Storage size, the unit is Gi.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "default": 50,
-            "minimum": 20,
-            "maximum": 10000
+        "hostnetwork": {
+            "title": "Host Network",
+            "description": "Enable or Disable Pod Host Network.",
+            "type": "string",
+            "default": "enabled",
+            "enum": [
+                "enabled",
+                "disabled"
+            ]
         },
-        "datalog": {
-            "title": "Data log Storage(Gi)",
-            "description": "Data log Storage size, the unit is Gi.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "default": 50,
-            "minimum": 20,
-            "maximum": 10000
+        "clusterIP": {
+            "title": "Cluster IP",
+            "description": "Enable or Disable ClusterIP SVC IP as POD IP.",
+            "type": "string",
+            "default": "enabled",
+            "enum": [
+                "enabled",
+                "disabled"
+            ]
         },
-        "log": {
-            "title": "Log Storage(Gi)",
-            "description": "Log Storage size, the unit is Gi.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "default": 20,
-            "minimum": 1,
-            "maximum": 100
+        "persistence": {
+            "type": "object",
+            "properties": {
+                "storageClassName": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "default": "",
+                    "description": "Storage class name used by persistent volumes"
+                },
+                "storages": {
+                    "type": "object",
+                    "properties": {
+                        "data-file": {
+                            "type": "integer",
+                            "default": 30,
+                            "description": "Size of data file storage in GiB"
+                        },
+                        "data-log": {
+                            "type": "integer",
+                            "default": 30,
+                            "description": "Size of data log storage in GiB"
+                        },
+                        "log": {
+                            "type": "integer",
+                            "default": 10,
+                            "description": "Size of log storage in GiB"
+                        },
+                        "workdir": {
+                            "type": "integer",
+                            "default": 1,
+                            "description": "Size of work directory storage in GiB"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "description": "Sizes of different storages in GiB"
+                }
+            }
         }
     },
     "required": [
-        "obClusters",
         "zoneCount",
         "replicas"
+    ],
+    "allOf": [
+        {
+            "description": "if zoneCount is 1, replicas must be at least 1",
+            "if": {
+                "properties": {
+                    "zoneCount": { "const": 1 }
+                }
+            },
+            "then": {
+                "properties": {
+                    "replicas": { "minimum": 1 }
+                }
+            }
+        },
+        {
+            "description": "if zoneCount is 2, replicas must be at least 2",
+            "if": {
+                "properties": {
+                    "zoneCount": { "const": 2 }
+                }
+            },
+            "then": {
+                "properties": {
+                    "replicas": { "minimum": 2 }
+                }
+            }
+        },
+        {
+            "description": "if zoneCount is 3, replicas must be at least 3",
+            "if": {
+                "properties": {
+                    "zoneCount": { "const": 3 }
+                }
+            },
+            "then": {
+                "properties": {
+                    "replicas": { "minimum": 3 }
+                }
+            }
+        }
     ]
 }

@@ -1,5 +1,5 @@
-#!/bin/sh
-set -ex
+#!/bin/bash
+CONNECTION_TIMEOUT=${CONNECTION_TIMEOUT:-600}
 
 # logging functions
 mysql_log() {
@@ -7,7 +7,7 @@ mysql_log() {
 	# accept argument string or stdin
 	local text="$*"; if [ "$#" -eq 0 ]; then text="$(cat)"; fi
 	local dt; dt="$(date --rfc-3339=seconds)"
-	printf '%s [%s] [Entrypoint]: %s\n' "$dt" "$type" "$text"
+	printf '%s [%s] [WRAPPER]: %s\n' "$dt" "$type" "$text"
 }
 mysql_note() {
 	mysql_log Note "$@"
@@ -20,189 +20,137 @@ mysql_error() {
 	exit 1
 }
 
-
-mysql_port="3306"
-topology_user="$ORC_TOPOLOGY_USER"
-topology_password="$ORC_TOPOLOGY_PASSWORD"
-
-
 # create orchestrator user in mysql
 create_mysql_user() {
-  local service_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
-
   mysql_note "Create MySQL User and Grant Permissions..."
 
-  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
-CREATE USER IF NOT EXISTS '$topology_user'@'%' IDENTIFIED BY '$topology_password';
-GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$topology_user'@'%';
-GRANT SELECT ON mysql.slave_master_info TO '$topology_user'@'%';
-GRANT DROP ON _pseudo_gtid_.* to '$topology_user'@'%';
-GRANT ALL ON kb_orc_meta_cluster.* TO '$topology_user'@'%';
-CREATE USER IF NOT EXISTS 'proxysql'@'%' IDENTIFIED BY 'proxysql';
-GRANT SELECT ON performance_schema.* TO 'proxysql'@'%';
-GRANT SELECT ON sys.* TO 'proxysql'@'%';
-set global slave_net_timeout = 4;
+  mysql -P 3306 -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
+set SQL_LOG_BIN=off;
+CREATE USER IF NOT EXISTS '$ORC_TOPOLOGY_USER'@'%' IDENTIFIED BY '$ORC_TOPOLOGY_PASSWORD';
+GRANT SUPER, PROCESS, REPLICATION SLAVE, REPLICATION CLIENT, RELOAD ON *.* TO '$ORC_TOPOLOGY_USER'@'%';
+GRANT SELECT ON mysql.slave_master_info TO '$ORC_TOPOLOGY_USER'@'%';
+GRANT DROP ON _pseudo_gtid_.* to '$ORC_TOPOLOGY_USER'@'%';
+FLUSH PRIVILEGES;
+set SQL_LOG_BIN=on;
 EOF
 
   mysql_note "Create MySQL User and Grant Permissions completed."
-
 }
 
-init_cluster_info_database() {
-  service_name=$1
-  mysql_note "init cluster info database"
-  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
-CREATE DATABASE IF NOT EXISTS kb_orc_meta_cluster;
-EOF
-  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/cluster-info.sql'
-  #  if [ "${MYSQL_MAJOR}" = '5.7' ]; then
-  #  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/addition_to_sys_v5.sql'
-  #  else
-  #  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/addition_to_sys_v8.sql'
-  #  fi
-  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
-USE kb_orc_meta_cluster;
-INSERT INTO kb_orc_meta_cluster (anchor,host_name,cluster_name, cluster_domain, data_center)
-VALUES (1, '$service_name', '$KB_CLUSTER_NAME', '', '')
-ON DUPLICATE KEY UPDATE
-    cluster_name = VALUES(cluster_name),
-    cluster_domain = VALUES(cluster_domain),
-    data_center = VALUES(data_center);
-EOF
+# Register cluster with alias via HTTP API for MASTER node only
+register_cluster_in_orchestrator() {
+  local instance="${POD_NAME}:3306"
+  local cluster_alias="${CLUSTER_NAME}"
+  local orchestrator_url="${ORC_ENDPOINTS}" # for example, http://orchestrator:3000
 
+  mysql_note "Registering cluster in Orchestrator"
+  mysql_note "  Instance: $instance"
+  mysql_note "  Alias: $cluster_alias"
+
+  # First, trigger discovery
+  mysql_note "Discovering instance..."
+  /scripts/orchestrator-client -c discover -i "$instance" 2>/dev/null || true
+
+  # Wait for discovery and check if instance is registered
+  local max_attempts=30
+  local attempt=0
+  local cluster_info=""
+
+  mysql_note "Waiting for instance to be discovered..."
+
+  while [ $attempt -lt $max_attempts ]; do
+    ## check master
+    cluster_info=$(/scripts/orchestrator-client -c which-cluster-master -i "$instance" 2>/dev/null) || true
+
+    if [ -n "$cluster_info" ]; then
+      mysql_note "Instance successfully discovered and registered"
+      break
+    fi
+
+    mysql_note "Instance not yet discovered, waiting... (attempt $((attempt + 1))/$max_attempts)"
+    sleep 3
+    attempt=$((attempt + 1))
+  done
+
+  if [ -z "$cluster_info" ]; then
+    mysql_error "Instance was not discovered after $max_attempts attempts"
+  fi
+
+  # Set alias via API
+  curl --silent -X GET "http://${orchestrator_url}/api/set-cluster-alias/${instance}?alias=${cluster_alias}"
+  sleep 3
+  result=""
+  attempt=0
+  while [ "$result" != "$cluster_alias" ] && [ $attempt -lt $max_attempts ]; do
+    result=$(/scripts/orchestrator-client -c which-cluster-alias -i "${instance}")
+    mysql_note "Cluster alias: $result"
+    if [ "$result" == "$cluster_alias" ]; then
+      break
+    fi
+    mysql_note "Cluster alias not set yet, waiting... (attempt $((attempt + 1))/$max_attempts)"
+    attempt=$((attempt + 1))
+    curl --silent -X GET "http://${orchestrator_url}/api/set-cluster-alias/${instance}?alias=${cluster_alias}"
+    sleep 3
+  done
+  if [ $attempt -eq $max_attempts ]; then
+    mysql_error "Failed to set cluster alias via API"
+  fi
+  mysql_note "Cluster alias set successfully: $cluster_alias"
+  return 0
 }
 
 # wait for mysql to be available
 wait_for_connectivity() {
-  local timeout=600
-  local start_time=$(date +%s)
+  local timeout=$CONNECTION_TIMEOUT
+  local start_time
   local current_time
+
+  start_time=$(date +%s)
 
   while true; do
     current_time=$(date +%s)
-    if [ $((current_time - start_time)) -gt $timeout ]; then
-      exit 1
+    if (( current_time - start_time > timeout )); then
+      mysql_error "Timeout waiting for mysql to be available."
     fi
 
-    # Send PING and check for mysql response
-    if  mysqladmin -P 3306 -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" PING | grep -q "mysqld is alive"; then
+    # Send SELECT 1 and check for mysql response
+    if mysql -P 3306 -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1;" >/dev/null 2>&1; then
       mysql_note "mysql is reachable."
       break
+    else
+      mysql_note "mysql is not reachable yet..."
     fi
-
     sleep 5
   done
 }
 
-setup_master_slave() {
-
-  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "STOP SLAVE;RESET MASTER;RESET SLAVE ALL;";
-
-  mysql_note "setup_master_slave"
-  master_host_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
-  master_host=${!master_host_name}
-
-  master_from_orc=""
-  get_master_from_orc
-
-  last_digit=${KB_POD_NAME##*-}
-  self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
-  host_name=$(echo "${self_service_name}_SERVICE_HOST" | tr '-' '_'  | tr '[:lower:]' '[:upper:]'  )
-
-  # If the cluster is already registered to the Orchestrator and the Master of the cluster is itself, then no action is required.
-  if [ "$master_from_orc" == "${self_service_name}" ]; then
-    return 0
-  fi
-
-  # If master_from_orc is not empty, then replace master_host with master_from_orc.
-  if [[ $master_from_orc != "" ]]; then
-    master_host=$master_from_orc
-  fi
-
-  # If the master_host is empty, then this pod is the first one in the cluster, init cluster info database and create user.
-  if [[ $master_from_orc == "" && $last_digit -eq 0 ]]; then
-    echo "Create MySQL User and Grant Permissions"
-
-    if mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "SELECT 1 FROM mysql.user WHERE user='$topology_user'" 2>/dev/null | grep $topology_user >/dev/null; then
-        return 0
-    fi
-    create_mysql_user
-    init_cluster_info_database self_service_name
-  # If the master_host is not empty, change master to the master_host.
+init_semi_sync_config() {
+  mysql_note "setup semi_sync"
+  if [[ "${MYSQL_MAJOR}" == "5.7" ]]; then
+    mysql -P 3306 -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
+SET GLOBAL slave_net_timeout = 4;
+SET GLOBAL rpl_semi_sync_slave_enabled = 1;
+SET GLOBAL rpl_semi_sync_master_enabled = 1;
+EOF
   else
-    mysql_note "Wait for master to be ready"
-    change_master "$master_host"
+    mysql -P 3306 -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" --get-server-public-key << EOF
+SET GLOBAL slave_net_timeout = 4;
+SET GLOBAL rpl_semi_sync_replica_enabled = 1;
+SET GLOBAL rpl_semi_sync_source_enabled = 1;
+EOF
   fi
-  return 0
-}
-
-get_master_from_orc() {
-  local timeout=50
-  local start_time=$(date +%s)
-  local current_time
-
-  while true; do
-    current_time=$(date +%s)
-    if [ $((current_time - start_time)) -gt $timeout ]; then
-      mysql_note "Timeout waiting for $host to become available."
-      return 0
-    fi
-
-    topology_info=$(/scripts/orchestrator-client -c topology -i $KB_CLUSTER_NAME) || true
-    if [[ $topology_info == "" ]]; then
-      return 0
-    fi
-    if [[ $topology_info =~ ^ERROR ]]; then
-        return 0
-    fi
-    # Extract the first line
-    first_line=$(echo "$topology_info" | head -n 1)
-
-    # Remove square brackets and split by comma
-    cleaned_line=$(echo "$first_line" | tr -d '[]')
-
-    # Parse the status variables using comma as the delimiter
-    old_ifs="$IFS"
-    IFS=',' read -ra status_array <<< "$cleaned_line"
-    IFS="$old_ifs"
-
-    # Save individual status variables
-    lag="${status_array[0]}"
-    status="${status_array[1]}"
-    version="${status_array[2]}"
-    rw="${status_array[3]}"
-    mod="${status_array[4]}"
-    type="${status_array[5]}"
-    GTID="${status_array[6]}"
-    GTIDMOD="${status_array[7]}"
-
-    address_port=$(echo "$first_line" | awk '{print $1}')
-    address="${address_port%*:}"
-    port="${address_port#*:}"
-
-    if [ -z "$address_port" ]; then
-      return 0
-    fi
-
-    if  [ "$status" == "ok" ]; then
-      master_from_orc="${address_port%:*}"
-      break
-    fi
-    sleep 5
-  done
-  return 0
 }
 
 change_master() {
+  local master_host=$1
+  local master_port=3306
+
   mysql_note "Change master"
-  master_host=$1
-  master_port=3306
 
-  username=$mysql_username
-  password=$mysql_password
-
-  mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
+  if [[ "${MYSQL_MAJOR}" == "5.7" ]]; then
+    mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
 SET GLOBAL READ_ONLY=1;
+SET GLOBAL SUPER_READ_ONLY=1;
 STOP SLAVE;
 CHANGE MASTER TO
 MASTER_AUTO_POSITION=1,
@@ -214,14 +162,97 @@ MASTER_USER='$MYSQL_ROOT_USER',
 MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
 START SLAVE;
 EOF
+  else
+    mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
+SET GLOBAL READ_ONLY=1;
+SET GLOBAL SUPER_READ_ONLY=1;
+STOP SLAVE;
+CHANGE MASTER TO
+SOURCE_AUTO_POSITION=1,
+SOURCE_SSL=1,
+MASTER_CONNECT_RETRY=1,
+MASTER_RETRY_COUNT=86400,
+MASTER_HOST='$master_host',
+MASTER_PORT=$master_port,
+MASTER_USER='$MYSQL_ROOT_USER',
+MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
+START SLAVE;
+EOF
+  fi
   mysql_note "CHANGE MASTER successful for $master_host."
-
-}
-main() {
-  wait_for_connectivity
-  setup_master_slave
-  echo "init mysql instance for orc completed"
-
 }
 
-main
+setup_master_slave() {
+  mysql_note "setup_master_slave"
+
+  local timeout=50
+  local start_time
+  local current_time
+
+  start_time=$(date +%s)
+
+  master_info=$(/scripts/orchestrator-client -c which-cluster-master -alias "${CLUSTER_NAME}")
+
+  while [ -z "$master_info" ]; do
+    mysql_note "Waiting for master info..."
+    mysql_note "  Instance: $POD_NAME"
+    mysql_note "  Cluster: $CLUSTER_NAME"
+
+    current_time=$(date +%s)
+    if [ $((current_time - start_time)) -gt $timeout ]; then
+      mysql_error "Timeout waiting for topology info."
+    fi
+
+    self_last_digit=${POD_NAME##*-}
+    if [ "$self_last_digit" -eq 0 ]; then
+      mysql_note "This is the first instance, registering cluster with alias..."
+      create_mysql_user
+      register_cluster_in_orchestrator
+      return 0
+    fi
+
+    sleep 5
+    mysql_note "Checking topology info."
+    master_info=$(/scripts/orchestrator-client -c which-cluster-master -alias "${CLUSTER_NAME}")
+  done
+
+  mysql_note "  Master info: $master_info"
+  master_from_orc="${master_info%%:*}"
+  if [ "$master_from_orc" == "${POD_NAME}" ]; then
+    mysql_note "This instance is the master"
+    return 0
+  fi
+
+  # get all instances from the same cluster as master
+  replicas=$(/scripts/orchestrator-client -c which-cluster-instances -i "${master_from_orc}")
+
+  for replica in $replicas; do
+    if [ "$replica" == "${POD_NAME}" ]; then
+      mysql_note "This instance is already a replica of the master"
+      return 0
+    fi
+  done
+
+  create_mysql_user
+  # init_semi_sync_config
+  change_master "$master_from_orc.${CLUSTER_COMPONENT_NAME}-headless"
+  # discover the instance
+  attempt=0
+  max_attempts=30
+  while true; do
+    if [ $attempt -gt $max_attempts ]; then
+      mysql_error "Timeout waiting for instance to be discovered."
+    fi
+    cluster_info=$(/scripts/orchestrator-client -c which-cluster -i "${POD_NAME}:3306" 2>/dev/null)
+    if [ -n "$cluster_info" ]; then
+      break
+    fi
+    mysql_note "Instance not yet registered, waiting... (attempt $((attempt + 1))/$max_attempts)"
+    # discover the instance
+    sleep 5
+    attempt=$((attempt + 1))
+
+    /scripts/orchestrator-client -c discover -i "${master_from_orc}" 2>/dev/null || true
+  done
+  return 0
+}

@@ -1,74 +1,72 @@
-
 {{/*
 Define neon-compute component definition name
 */}}
 {{- define "neon-compute.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-neon-compute
-{{- else -}}
-{{- printf "neon-compute-%s" .Values.compDefinitionVersionSuffix -}}
+neon-compute-{{ .Chart.Version }}
 {{- end -}}
+
+{{/*
+Define neon-compute component definition regex pattern
+*/}}
+{{- define "neon-compute.cmpdRegexpPattern" -}}
+^neon-compute-
 {{- end -}}
 
 {{/*
 Define neon-pageserver component definition name
 */}}
 {{- define "neon-pageserver.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-neon-pageserver
-{{- else -}}
-{{- printf "neon-pageserver-%s" .Values.compDefinitionVersionSuffix -}}
+neon-pageserver-{{ .Chart.Version }}
 {{- end -}}
+
+{{/*
+Define neon-pageserver component definition regex pattern
+*/}}
+{{- define "neon-pageserver.cmpdRegexpPattern" -}}
+^neon-pageserver-
 {{- end -}}
 
 {{/*
 Define neon-safekeeper component definition name
 */}}
 {{- define "neon-safekeeper.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-neon-safekeeper
-{{- else -}}
-{{- printf "neon-safekeeper-%s" .Values.compDefinitionVersionSuffix -}}
+neon-safekeeper-{{ .Chart.Version }}
 {{- end -}}
+
+{{/*
+Define neon-safekeeper component definition regex pattern
+*/}}
+{{- define "neon-safekeeper.cmpdRegexpPattern" -}}
+^neon-safekeeper-
 {{- end -}}
 
 {{/*
 Define neon-storagebroker component definition name
 */}}
 {{- define "neon-storagebroker.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-neon-broker
-{{- else -}}
-{{- printf "neon-broker-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
+neon-broker-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define neon-compute component definition name prefix
+Define neon-storagebroker component definition regex pattern
 */}}
-{{- define "neon-compute.componentDefNamePrefix" -}}
-{{- printf "neon-compute-%s" .Values.compDefinitionVersionSuffix -}}
+{{- define "neon-storagebroker.cmpdRegexpPattern" -}}
+^neon-broker-
 {{- end -}}
 
 {{/*
-Define neon-pageserver component definition name prefix
+Define neon configuration template name
 */}}
-{{- define "neon-pageserver.componentDefNamePrefix" -}}
-{{- printf "neon-pageserver-%s" .Values.compDefinitionVersionSuffix -}}
+{{- define "neon.configTemplateName" -}}
+neon-config-template
 {{- end -}}
 
-{{/*
-Define neon-safekeeper component definition name prefix
-*/}}
-{{- define "neon-safekeeper.componentDefNamePrefix" -}}
-{{- printf "neon-safekeeper-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
 
 {{/*
-Define neon-storagebroker component definition name prefix
+Define neon scripts template name
 */}}
-{{- define "neon-storagebroker.componentDefNamePrefix" -}}
-{{- printf "neon-broker-%s" .Values.compDefinitionVersionSuffix -}}
+{{- define "neon.scriptsTemplateName" -}}
+neon-scripts-template
 {{- end -}}
 
 {{/*

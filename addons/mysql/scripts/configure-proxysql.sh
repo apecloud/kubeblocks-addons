@@ -32,7 +32,7 @@ function mysql_exec() {
     local query="$5"
     local exec_opt="$6"
     pass_ssl=""
-    if [ $BACKEND_TLS_ENABLED == "true" ]; then
+    if [ "$BACKEND_TLS_ENABLED" == "true" ]; then
         if [ $port == 3306 ]; then
             pass_ssl="--ssl-ca=/var/lib/certs/ca.crt"
         fi
@@ -63,6 +63,12 @@ function wait_for_mysql() {
     fi
 }
 
+# if test by shellspec include, just return 0
+if [ "${__SOURCED__:+x}" ]; then
+  return 0
+fi
+
+
 log "$MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT"
 wait_for_mysql $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT
 
@@ -80,12 +86,8 @@ mysql_version=$(mysql_exec $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER
 log "connecting to mysql $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT"
 mysql_exec $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT "$additional_sys_query" $opt
 
-mysql_exec $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT << EOF
-CREATE USER 'monitor'@'%' IDENTIFIED BY 'monitor';
-GRANT USAGE, REPLICATION CLIENT ON *.* TO 'monitor'@'%';
-EOF
 # wait for proxysql process to run
-wait_for_mysql admin admin 127.0.0.1 6032
+wait_for_mysql admin ${PROXYSQL_ADMIN_PASSWORD} 127.0.0.1 6032
 
 log "INFO" "CURRENT CONFIGURATION"
 
@@ -102,9 +104,8 @@ select * from runtime_proxysql_servers;
 
 "
 
-mysql -uadmin -padmin -h127.0.0.1 -P6032 -vvve "$configuration_sql"
+mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "$configuration_sql"
 
-
-mysql -uadmin -padmin -h127.0.0.1 -P6032 -vvve "insert or replace into mysql_users (username,password) values ('$MYSQL_ROOT_USER','$MYSQL_ROOT_PASSWORD');LOAD MYSQL USERS TO RUNTIME;SAVE MYSQL USERS TO DISK;"
-mysql -uadmin -padmin -h127.0.0.1 -P6032 -vvve "insert into mysql_replication_hostgroups ( writer_hostgroup, reader_hostgroup, comment) values (2,3,'proxy');load mysql servers to runtime;save mysql servers to disk;"
-mysql -uadmin -padmin -h127.0.0.1 -P6032 -vvve "select * from main.runtime_mysql_replication_hostgroups; select * from main.mysql_replication_hostgroups; select * from mysql_replication_hostgroups;"
+mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "insert or replace into mysql_users (username,password) values ('$MYSQL_ROOT_USER','$MYSQL_ROOT_PASSWORD');LOAD MYSQL USERS TO RUNTIME;SAVE MYSQL USERS TO DISK;"
+mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "insert into mysql_replication_hostgroups ( writer_hostgroup, reader_hostgroup, comment) values (1,2,'proxy');load mysql servers to runtime;save mysql servers to disk;"
+mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "select * from main.runtime_mysql_replication_hostgroups; select * from main.mysql_replication_hostgroups; select * from mysql_replication_hostgroups;"

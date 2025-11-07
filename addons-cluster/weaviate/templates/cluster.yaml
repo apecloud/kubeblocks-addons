@@ -1,33 +1,26 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: {{ include "clustername" . }}
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
   labels: {{ include "weaviate.labels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.terminationPolicy }}
-  affinity:
-    {{- with .Values.topologyKeys }}
-    topologyKeys: {{ . | toYaml | nindent 6 }}
-    {{- end }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
-  {{- end }}
   componentSpecs:
     - name: weaviate
       componentDef: weaviate
-      monitor: {{ .Values.monitor.enabled | default false }}
       replicas: {{ .Values.replicaCount | default 1 }}
       {{- with  .Values.resources }}
       resources:
         {{- with .limits }}
         limits:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
         {{- with .requests }}
         requests:
           cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
+          memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       {{- if .Values.persistence.enabled }}
@@ -39,6 +32,6 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.persistence.data.size }}
+                storage: {{ print .Values.persistence.data.size "Gi" }}
       {{- end }}
 

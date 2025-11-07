@@ -4,15 +4,11 @@
 
 ## @param version MySQL cluster version
 ##
-version: mysql-8.0.33
-
-## @param mode MySQL cluster topology mode, standalone, replication or raftGroup
-##
-mode: standalone
+version: 8.0.39
 
 ## @param replicas specify cluster replicas
 ##
-replicas: 1
+replicas: 2
 
 ## @param cpu
 ##
@@ -32,30 +28,23 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
-
-topology: server
-mysql:
-  version: mysql-8.0
-
+topology: semisync
 proxysql:
-  enable: false
   replicas: 1
   cpu: 1
   memory: 1
 
-## @param extra.rbacEnabled if true, create rbac
-# extra:
-#   rbacEnabled: true
+extra:
+  terminationPolicy: Delete
+  disableExporter: true
 
 orchestrator:
-  enable: false
   # monitor_password: proxysql
   # cluster_password: nb2wZpZ9OXXTF2Mv
 
   serviceReference:
-    namespace: ""
-    port: 80
+    # format <host>:<port>
     endpoint: "myorc-orchestrator"
   clusterServiceSelector:
-    cluster: ""
-    portName: "http"
+    clusterName: ""
+    namespace: ""

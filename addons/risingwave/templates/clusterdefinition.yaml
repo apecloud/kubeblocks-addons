@@ -1,0 +1,34 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: risingwave
+  labels:
+    {{- include "risingwave.labels" . | nindent 4 }}
+  annotations:
+    {{- include "risingwave.apiVersion" . | nindent 4 }}
+spec:
+  topologies:
+    - name: cluster
+      components:
+        - name: meta
+          compDef: {{ include "risingwave-meta.cmpdRegexpPattern" . }}
+        - name: compactor
+          compDef: {{ include "risingwave-compactor.cmpdRegexpPattern" . }}
+        - name: compute
+          compDef: {{ include "risingwave-compute.cmpdRegexpPattern" . }}
+        - name: connector
+          compDef: {{ include "risingwave-connector.cmpdRegexpPattern" . }}
+        - name: frontend
+          compDef: {{ include "risingwave-frontend.cmpdRegexpPattern" . }}
+      orders:
+        provision:
+          - connector
+          - meta
+          - compactor,compute
+          - frontend
+        terminate:
+          - frontend
+          - compactor,compute
+          - meta
+          - connector
+      default: true

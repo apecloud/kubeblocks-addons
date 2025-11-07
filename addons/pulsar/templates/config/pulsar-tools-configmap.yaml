@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pulsar-tools-script
+  name: {{ include "pulsar.toolsScriptsTplName" . }}
 data:
   update-dynamic-config.sh: |
     #!/bin/sh

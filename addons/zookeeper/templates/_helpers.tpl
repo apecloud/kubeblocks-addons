@@ -49,3 +49,73 @@ Selector labels
 app.kubernetes.io/name: {{ include "zookeeper.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "zookeeper.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+apps.kubeblocks.io/skip-immutable-check: "true"
+{{ include "zookeeper.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "zookeeper.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{- define "zoocreeper.image" -}}
+{{ .Values.images.registry | default "docker.io" }}/{{ .Values.zoocreeperImage.repository }}:{{ .Values.zoocreeperImage.tag }}
+{{- end }}}
+
+{{/*
+Define zookeeper component definition name
+*/}}
+{{- define "zookeeper.cmpdName" -}}
+zookeeper-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define zookeeper component definition regular expression name prefix
+*/}}
+{{- define "zookeeper.cmpdRegexpPattern" -}}
+^zookeeper-
+{{- end -}}
+
+{{/*
+Define zookeeper script template name
+*/}}
+{{- define "zookeeper.scriptTplName" -}}
+zookeeper-script-template
+{{- end -}}
+
+{{/*
+Define zookeeper config template name
+*/}}
+{{- define "zookeeper.configTplName" -}}
+zookeeper-config-template
+{{- end -}}
+
+{{/*
+Define zookeeper log config template name
+*/}}
+{{- define "zookeeper.logConfigTplName" -}}
+zookeeper-log-config-template
+{{- end -}}
+
+
+{{/*
+Define zookeeper parameter config renderer name
+*/}}
+{{- define "zookeeper.pcrName" -}}
+zookeeper-pcr
+{{- end -}}
+
+{{/*
+Define zookeeper parameters definition name
+*/}}
+{{- define "zookeeper.paramsDefName" -}}
+zookeeper-pd
+{{- end -}}
