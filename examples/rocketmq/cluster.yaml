@@ -1,0 +1,87 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  # The name of the RocketMQ cluster instance
+  name: rocketmq-cluster
+  # The namespace where the cluster will be deployed
+  namespace: demo
+spec:
+  # Reference to the cluster definition that defines the cluster's behavior
+  clusterDef: rocketmq
+  # Specifies cluster topology defined in ClusterDefinition.Spec.topologies.
+  # - `master-slave`
+  topology: master-slave
+  # Specifies the behavior when a Cluster is deleted.
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  # Component specifications - defines individual components of the cluster
+  componentSpecs:
+    # NameServer component - provides routing information for message producers and consumers
+    - name: namesrv
+      # Number of NameServer instances
+      replicas: 1
+      # Version of the RocketMQ NameServer
+      serviceVersion: 4.9.6
+      resources:
+        limits:
+          cpu: "2"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "1Gi"
+    # Exporter component - exposes metrics for monitoring
+    - name: exporter
+      replicas: 1
+      # Version of the RocketMQ exporter
+      serviceVersion: 0.0.3
+      resources:
+        limits:
+          cpu: "1"
+          memory: "1Gi"
+        requests:
+          cpu: "0.1"
+          memory: "1Gi"
+    # Dashboard component - provides web UI for cluster management
+    - name: dashboard
+      replicas: 1
+      # Version of the RocketMQ dashboard
+      serviceVersion: 2.0.1
+      resources:
+        limits:
+          cpu: "1"
+          memory: "1Gi"
+        requests:
+          cpu: "0.1"
+          memory: "1Gi"
+  # Shardings - defines horizontally sharded components (like brokers)
+  shardings:
+    - name: broker
+      # Number of broker shards - each shard can have multiple replicas
+      shards: 1
+      template:
+        # Template name for the broker instances
+        name: rocketmq-broker
+        # Number of replicas per shard (1 = master only, >1 = master with slaves)
+        replicas: 2
+        # Version of the RocketMQ broker
+        serviceVersion: 4.9.6
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+          requests:
+            cpu: "1"
+            memory: "1Gi"
+        # Persistent volume configuration for broker data storage
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              # Volume access mode - ReadWriteOnce means single node read-write access
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  # Storage size for each broker instance
+                  storage: 20Gi
