@@ -10,6 +10,6 @@ Create extra env
 */}}
 {{- define "zookeeper-cluster.extra-envs" -}}
 {
-"ZOOKEEPER_DYNAMIC_CONFIG_FILE": "{{ .Values.standaloneEnabled }}",
+"ZOOKEEPER_STANDALONE_ENABLED": "{{ .Values.standaloneEnabled }}",
 }
 {{- end -}}

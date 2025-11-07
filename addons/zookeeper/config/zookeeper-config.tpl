@@ -47,8 +47,8 @@ autopurge.purgeInterval=12
 
 {{- if hasKey $.cluster.metadata.annotations "kubeblocks.io/extra-env" -}}
 {{- $extraEnv := index $.cluster.metadata.annotations "kubeblocks.io/extra-env" | fromJson -}}
-{{- if hasKey $extraEnv "ZOOKEEPER_DYNAMIC_CONFIG_FILE" }}
-standaloneEnabled={{ $extraEnv.ZOOKEEPER_DYNAMIC_CONFIG_FILE }}
+{{- if hasKey $extraEnv "ZOOKEEPER_STANDALONE_ENABLED" }}
+standaloneEnabled={{ $extraEnv.ZOOKEEPER_STANDALONE_ENABLED }}
 {{- else }}
 standaloneEnabled=false
 {{- end -}}
