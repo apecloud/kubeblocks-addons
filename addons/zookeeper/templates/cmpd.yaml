@@ -44,6 +44,28 @@ spec:
       writable: false
       votable: false
   lifecycleActions:
+    memberJoin:
+      builtinHandler: custom
+      customHandler:
+        preCondition: RuntimeReady
+        container: zookeeper
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - |
+              /kubeblocks/scripts/member_join.sh
+    memberLeave:
+      builtinHandler: custom
+      customHandler:
+        preCondition: RuntimeReady
+        container: zookeeper
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - |
+              /kubeblocks/scripts/member_leave.sh
     roleProbe:
       builtinHandler: custom
       customHandler:
@@ -171,6 +193,9 @@ spec:
             subPath: log4j.properties
           - name: scripts
             mountPath: /kubeblocks/scripts
+          - name: dynamic-config
+            mountPath: {{ .Values.zookeeper.dynamicConfigDir }}
+
   vars:
     - name: ZOOKEEPER_POD_FQDN_LIST
       valueFrom:
@@ -185,6 +210,20 @@ spec:
       value: {{ .Values.zookeeper.dataDir }}
     - name: ZOOKEEPER_DATA_LOG_DIR
       value: {{ .Values.zookeeper.dataLogDir }}
+    - name: ZOOKEEPER_DYNAMIC_CONFIG_FILE
+      value: {{ .Values.zookeeper.dynamicConfigDir }}/zoo.cfg.dynamic
+    - name: ZK_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          username: Required
+    - name: ZK_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
 
   scripts:
     - name: zookeeper-scripts
@@ -200,6 +239,11 @@ spec:
       constraintRef: {{ include "zookeeper.name" . }}-config-constraints
       volumeName: config
       defaultMode: 0755
+    - name: zookeeper-dynamic-config
+      namespace: {{ .Release.Namespace }}
+      templateRef: {{ include "zookeeper.dynamicConfigTplName" . }}
+      constraintRef: {{ include "zookeeper.name" . }}-dynamic-config-constraints
+      volumeName: dynamic-config
       reRenderResourceTypes:
         - hscale
     - name: zookeeper-log
@@ -207,3 +251,6 @@ spec:
       templateRef: {{ include "zookeeper.name" . }}-configmap
       volumeName: config-log
   updateStrategy: BestEffortParallel
+  systemAccounts:
+    - name: admin
+      initAccount: true

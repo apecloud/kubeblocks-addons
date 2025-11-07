@@ -46,3 +46,25 @@ spec:
 
     cue: |-
       {{- .Files.Get "config/zookeeper-config-constraint.cue" | nindent 6 }}
+
+---
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: {{ include "zookeeper.name" . }}-dynamic-config-constraints
+  labels:
+    {{- include "zookeeper.labels" . | nindent 4 }}
+spec:
+  reloadAction:
+    autoTrigger:
+      processName: zookeeper
+
+  # zookeeper configuration file format
+  fileFormatConfig:
+    format: props-plus
+  dynamicParameters:
+    - server.1
+    - server.2
+    - server.3
+    - server.4
+    - server.5
