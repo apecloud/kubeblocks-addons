@@ -3,6 +3,17 @@ kind: OpsDefinition
 metadata:
   name: hive-server2-apply-account
 spec:
+  componentInfos:
+    - componentDefinitionName: ^hive-server2.*$
+      imageMappings:
+        - serviceVersions:
+            - 3.1.2
+          images:
+            apply-account: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.hive.repository }}:3.1.2
+        - serviceVersions:
+          - 4.0.1
+          images:
+            apply-account: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.hive.repository }}:4.0.1
   podInfoExtractors:
     - name: apply-account
       podSelector:
@@ -29,7 +40,7 @@ spec:
         backoffLimit: 0
         podSpec:
           containers:
-            - name: redis-account-ops
+            - name: apply-account
               image: "{{ $.Values.images.registry }}/{{ $.Values.images.hive.repository }}:{{ $.Values.images.hive.tag }}"
               imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
               command:
