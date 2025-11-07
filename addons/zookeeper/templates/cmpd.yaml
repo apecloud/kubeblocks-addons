@@ -114,6 +114,7 @@ spec:
           - |
             /kubeblocks/scripts/roleprobe.sh
     memberJoin:
+      preCondition: RuntimeReady
       exec:
         container: zookeeper
         command:
@@ -122,6 +123,7 @@ spec:
           - |
             /kubeblocks/scripts/member_join.sh
     memberLeave:
+      preCondition: RuntimeReady
       exec:
         container: zookeeper
         command:
