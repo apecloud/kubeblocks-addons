@@ -88,6 +88,20 @@ main() {
     do_backup_and_wait
     cleanup_repository
     end_time=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+    total_size=0
+    for i in $(seq 1 5); do
+        echo "Attempt ${i} to get backup total size..."
+        output=$(datasafed stat / 2>&1)
+        if echo "${output}" | grep -q 'TotalSize:'; then
+            total_size=$(echo "${output}" | grep 'TotalSize:' | awk '{print $2}')
+            if [[ -n "${total_size}" && "${total_size}" -gt 0 ]]; then
+                echo "Successfully got total size: ${total_size}"
+                break
+            fi
+        fi
+        echo "Failed to get a valid total size. Full output: ${output}"
+        sleep 2
+    done
     total_size=$(datasafed stat / | grep 'TotalSize:' | awk '{print $2}')
     DP_save_backup_status_info "${total_size:-0}" "$start_time" "$end_time" "" ""
 }
