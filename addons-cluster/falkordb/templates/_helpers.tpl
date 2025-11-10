@@ -75,11 +75,6 @@ Define falkordb ComponentSpec with ComponentDefinition.
   {{- if .Values.podAntiAffinityEnabled }}
   {{- include "falkordb-cluster.schedulingPolicy" . | indent 2 }}
   {{- end }}
-  {{- if .Values.hostNetworkEnabled }}
-  network:
-    hostPorts: 
-      {{- toYaml .Values.hostPorts | nindent 4 }} 
-  {{- end }}
   {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) (not .Values.fixedPodIPEnabled) (not .Values.loadBalancerEnabled)}}
   services:
   - name: falkordb-advertised
@@ -126,11 +121,6 @@ Define falkordb sentinel ComponentSpec with ComponentDefinition.
   replicas: {{ .Values.sentinel.replicas }}
   {{- if .Values.podAntiAffinityEnabled }}
   {{- include "falkordb-cluster.sentinelschedulingPolicy" . | indent 2 }}
-  {{- end }}
-  {{- if .Values.hostNetworkEnabled }}
-  network:
-    hostPorts: 
-      {{- toYaml .Values.hostPorts | nindent 4 }} 
   {{- end }}
   {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) (not .Values.fixedPodIPEnabled) (not .Values.loadBalancerEnabled)  }}
   services:

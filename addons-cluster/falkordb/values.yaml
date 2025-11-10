@@ -93,9 +93,3 @@ extra:
 
 prometheus:
   enabled: false
-
-hostPorts:
-  - name: falkordb
-    port: 6379
-  - name: falkordb-sent
-    port: 26379
