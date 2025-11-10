@@ -89,17 +89,16 @@ main() {
     cleanup_repository
     end_time=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
     total_size=0
-    for i in $(seq 1 5); do
-        echo "Attempt ${i} to get backup total size..."
+    for _ in $(seq 1 5); do
         output=$(datasafed stat / 2>&1)
+        DP_log "datasafed stat / output: ${output}"
         if echo "${output}" | grep -q 'TotalSize:'; then
             total_size=$(echo "${output}" | grep 'TotalSize:' | awk '{print $2}')
             if [[ -n "${total_size}" && "${total_size}" -gt 0 ]]; then
-                echo "Successfully got total size: ${total_size}"
                 break
             fi
         fi
-        echo "Failed to get a valid total size. Full output: ${output}"
+        DP_log "Failed to get a valid total size. Full output: ${output}"
         sleep 2
     done
     total_size=$(datasafed stat / | grep 'TotalSize:' | awk '{print $2}')
