@@ -18,7 +18,7 @@ spec:
       configs:
         - name: zookeeper-config
           variables:
-            ZOOKEEPER_STANDALONE_ENABLED: "{{ .Values.extra.standaloneEnabled }}"
+            ZOOKEEPER_STANDALONE_ENABLED: "{{ .Values.standaloneEnabled }}"
       env:
         - name: ZOOKEEPER_IMAGE_VERSION
           value: "{{ .Values.version }}"
