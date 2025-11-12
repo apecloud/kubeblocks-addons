@@ -49,3 +49,14 @@ Selector labels
 app.kubernetes.io/name: {{ include "clickhouse.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Define common image helpers.
+*/}}
+{{- define "busybox.image" -}}
+{{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository }}:{{ .Values.busyboxImage.tag }}
+{{- end }}
+
+{{- define "clickhouse.repository" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
+{{- end }}

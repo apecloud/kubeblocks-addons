@@ -1,3 +1,8 @@
+{{- $root := . -}}
+{{- $releases := default (list) .Values.clickhouseVersions -}}
+{{- $repo := include "clickhouse.repository" $root -}}
+{{- $busybox := include "busybox.image" $root -}}
+
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentVersion
 metadata:
@@ -7,34 +12,19 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - 24.8.3
-        - 22.9.4
-        - 22.3.18
-        - 22.3.20
-        - 25.4.4
+{{- range $releases }}
+        - {{ .version }}
+{{- end }}
       compDefs:
         - clickhouse-24
   releases:
-    - name: 25.4.4
-      serviceVersion: 25.4.4
+{{- range $idx, $release := $releases }}
+    - name: {{ $release.version }}
+      serviceVersion: {{ $release.version }}
       images:
-        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:25.4.4-debian-12-r1
-    - name: 24.8.3
-      serviceVersion: 24.8.3
-      images:
-        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:24.8.3-debian-12-r1
-    - name: 22.9.4
-      serviceVersion: 22.9.4
-      images:
-        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:22.9.4-debian-11-r1
-    - name: 22.3.18
-      serviceVersion: 22.3.18
-      images:
-        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:22.3.18-debian-11-r3
-    - name: 22.3.20
-      serviceVersion: 22.3.20
-      images:
-        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:22.3.20
+        clickhouse: {{ $repo }}:{{ $release.imageTag }}
+        copy-tools: {{ $busybox }}
+{{- end }}
 
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
@@ -46,36 +36,16 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - 24.8.3
-        - 22.9.4
-        - 22.3.18
-        - 22.3.20
-        - 25.4.4
+{{- range $releases }}
+        - {{ .version }}
+{{- end }}
       compDefs:
         - ch-keeper-24
   releases:
-    - name: 25.4.4
-      serviceVersion: 25.4.4
+{{- range $release := $releases }}
+    - name: {{ $release.version }}
+      serviceVersion: {{ $release.version }}
       images:
-        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:25.4.4-debian-12-r1
-        copy-tools: {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository }}:{{ .Values.busyboxImage.tag }}
-    - name: 24.8.3
-      serviceVersion: 24.8.3
-      images:
-        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:24.8.3-debian-12-r1
-        copy-tools: {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository }}:{{ .Values.busyboxImage.tag }}
-    - name: 22.9.4
-      serviceVersion: 22.9.4
-      images:
-        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:22.9.4-debian-11-r1
-        copy-tools: {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository }}:{{ .Values.busyboxImage.tag }}
-    - name: 22.3.18
-      serviceVersion: 22.3.18
-      images:
-        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:22.3.18-debian-11-r3
-        copy-tools: {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository }}:{{ .Values.busyboxImage.tag }}
-    - name: 22.3.20
-      serviceVersion: 22.3.20
-      images:
-        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:22.3.20
-        copy-tools: {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository }}:{{ .Values.busyboxImage.tag }}
+        clickhouse: {{ $repo }}:{{ $release.imageTag }}
+        copy-tools: {{ $busybox }}
+{{- end }}
