@@ -17,6 +17,18 @@ image:
     major22: 22.9.4-debian-11-r1
     major25: 25.4.4-debian-12-r1
 
+clickhouseVersions:
+  - version: 25.4.4
+    imageTag: 25.4.4-debian-12-r1
+  - version: 24.8.3
+    imageTag: 24.8.3-debian-12-r1
+  - version: 22.9.4
+    imageTag: 22.9.4-debian-11-r1
+  - version: 22.3.20
+    imageTag: 22.3.20
+  - version: 22.3.18
+    imageTag: 22.3.18-debian-11-r3
+
 busyboxImage:
   # if the value of busyboxImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
   registry: ""

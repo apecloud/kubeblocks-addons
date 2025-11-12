@@ -17,6 +17,18 @@ spec:
       fsGroup: 0
       seccompProfile:
         type: RuntimeDefault
+    initContainers:
+      - name: copy-tools
+        imagePullPolicy: {{ .Values.busyboxImage.pullPolicy }}
+        command:
+          - sh
+          - -c
+          - |
+            cp /bin/wget /shared-tools/wget
+            chmod +x /shared-tools/wget
+        volumeMounts:
+          - name: shared-tools
+            mountPath: /shared-tools
     containers:
       - name: clickhouse
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
@@ -68,6 +80,17 @@ spec:
             mountPath: /etc/clickhouse-client
           - name: scripts
             mountPath: /scripts
+          - name: shared-tools
+            mountPath: /shared-tools
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+    volumes:
+      - name: shared-tools
+        emptyDir: {}
   updateStrategy: BestEffortParallel
   logConfigs:
     {{- range $name, $pattern := .Values.logConfigs }}
