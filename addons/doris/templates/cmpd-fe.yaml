@@ -231,6 +231,7 @@ spec:
     roleProbe:
       initialDelaySeconds: 15
       periodSeconds: 5
+      timeoutSeconds: 3
       exec:
         container: fe
         command:
@@ -241,6 +242,7 @@ spec:
       retryPolicy:
         maxRetries: 3
         retryInterval: 5
+      timeoutSeconds: 60
       exec:
         command:
         - /bin/bash

@@ -7,7 +7,8 @@ leader_host=""
 leave_member_host=""
 leave_member_port=""
 leave_role=""
-helper_endpoints=""
+# always use 0 pod FQDN as helper_endpoints
+helper_endpoints=$(echo "$POD_FQDN_LIST" | cut -d, -f1)
 candidate_names=""
 
 function info() {
@@ -60,14 +61,10 @@ while IFS= read -r line; do
     if [ "${is_master}" == "true" ]; then
         leader_host=${ip}
     fi
-    if [ "${is_leaving}" == "False" ] && [ "${role}" == "FOLLOWER" ]; then
-        if [ -n "${helper_endpoints}" ]; then
-            helper_endpoints=${helper_endpoints},${ip}:${edit_log_port}
-            candidate_names=${candidate_names},${name}
-        else
-            helper_endpoints=${ip}:${edit_log_port}
-            candidate_names=${name}
-        fi
+
+    if [[ ${ip} == ${helper_endpoints} ]]; then
+        candidate_names=${name}
+        helper_endpoints=${ip}:${edit_log_port}
     fi
 done <<< "$output"
 
