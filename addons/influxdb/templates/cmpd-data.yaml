@@ -47,6 +47,8 @@ spec:
           host: Required
     - name: META_ADDRESS
       value: "$(META_HOST).$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain }}:8091"
+    - name: SERVICE_PORT
+      value: "8086"
   systemAccounts:
     - name: admin
       initAccount: true
