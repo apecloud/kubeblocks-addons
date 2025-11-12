@@ -13,7 +13,7 @@ spec:
   clusterDef: hadoop
   topology: {{ .Values.topology }}
   componentSpecs:
-    {{- if eq .Values.topology "ha-cluster"  }}
+    {{- if or (eq .Values.topology "ha-cluster") (eq .Values.topology "hdfs-cluster") }}
     - name: zookeeper
       componentDef: zookeeper
       serviceVersion: {{ .Values.zookeeperServiceVersion }}
@@ -131,6 +131,7 @@ spec:
           resources:
             requests:
               storage: {{ .Values.storage.datanode }}
+    {{- if ne .Values.topology "hdfs-cluster" }}
     - name: resourcemanager
       componentDef: hadoop-yarn-resourcemanager
       replicas: {{ .Values.replicas.resourcemanager }}
@@ -197,3 +198,4 @@ spec:
               resources:
                 requests:
                   storage: {{ .Values.storage.nodemanager }}
+      {{- end }}

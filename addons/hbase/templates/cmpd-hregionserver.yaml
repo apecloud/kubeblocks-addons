@@ -1,0 +1,105 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: hbase-hregionserver-{{ .Chart.Version }}
+  labels:
+    {{- include "hbase.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hbase.annotations" . | nindent 4 }}
+    apps.kubeblocks.io/skip-immutable-check: "true"
+spec:
+  provider: kubeblocks
+  description: HBase RegionServer component
+  serviceKind: hbase-hregionserver
+  serviceVersion: 2.5.12
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: hregionserver
+            port: 16020
+  serviceRefDeclarations:
+    - name: hbase-zookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: "^*"
+  runtime:
+    containers:
+      - name: hbase-hregionserver
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        command:
+          - bash
+          - -c
+          - |
+            /hbase/scripts/start-regionserver.sh
+        ports:
+          - containerPort: 16020
+            name: hregionserver
+        env:
+          - name: DEBUG_MODEL
+            value: "false"
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        volumeMounts:
+          - name: hbase-orig-conf
+            mountPath: /hbase/origconf
+          - name: hadoop-core-config
+            mountPath: /hadoop/conf/core-site.xml
+            subPath: core-site.xml
+          - name: hadoop-hdfs-config
+            mountPath: /hadoop/conf/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: hbase-scripts
+            mountPath: /hbase/scripts
+          - name: hbase-temp-data
+            mountPath: /hbase/temp
+        securityContext:
+          runAsUser: 10000
+          runAsGroup: 1000
+          runAsNonRoot: true
+          privileged: false
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ "ALL" ]
+          seccompProfile:
+            type: "RuntimeDefault"
+    securityContext:
+      fsGroupChangePolicy: Always
+      fsGroup: 1000
+  vars:
+    - name: HADOOP_CLUSTER_NAME
+      value: "ENV_HADOOP_CLUSTER_NAME"
+    - name: ZOOKEEPER_ENDPOINTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hbase-zookeeper
+          optional: true
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .ZOOKEEPER_ENDPOINTS }}{{ range $idx, $host := $hosts }}{{ $host }}:2181{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+  configs:
+    - name: config
+      namespace: {{ .Release.Namespace }}
+      template: hbase-config-template
+      volumeName: hbase-orig-conf
+      defaultMode: 0755
+  scripts:
+    - name: hbase-scripts
+      template: hbase-scripts-template
+      namespace: {{ .Release.Namespace }}
+      volumeName: hbase-scripts
+      defaultMode: 0755

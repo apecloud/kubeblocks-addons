@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hbase-scripts-template
+  labels:
+    {{- include "hbase.labels" . | nindent 4 }}
+data:
+  hbase-config-setup.sh: |-
+    {{- .Files.Get "scripts/hbase-config-setup.sh" | nindent 4 }}
+  start-master.sh: |-
+    {{- .Files.Get "scripts/start-master.sh" | nindent 4 }}
+  start-regionserver.sh: |-
+    {{- .Files.Get "scripts/start-regionserver.sh" | nindent 4 }}

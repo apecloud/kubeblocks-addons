@@ -86,9 +86,10 @@ serviceRefs:
 # Advanced configurations
 terminationPolicy: Delete
 
-# enum values: ha-cluster, ha-ref-zk-cluster
+# enum values: ha-cluster, ha-ref-zk-cluster, hdfs-cluster
 # default: ha-cluster, will create a zk instance for hadoop
 # ha-ref-zk-cluster: need specify the serviceRefs of the already existed zk cluster
+# hdfs-cluster: no yarn instances will be created
 topology: ha-cluster
 
 hostNetworkEnabled: false

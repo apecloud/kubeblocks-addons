@@ -139,4 +139,13 @@
         <name>dfs.hosts.exclude</name>
         <value>/hadoop/conf-host/hosts.exclude</value>
     </property>
+
+    <property>
+        <name>dfs.namenode.avoid.write.stale.datanode</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>dfs.namenode.avoid.read.stale.datanode</name>
+        <value>true</value>
+    </property>
 </configuration>

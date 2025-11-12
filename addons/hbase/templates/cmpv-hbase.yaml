@@ -1,0 +1,28 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: hbase
+  labels:
+    {{- include "hbase.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hbase.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - hbase-hmaster
+      releases:
+        - hmaster-2.5.12
+    - compDefs:
+        - hbase-hregionserver
+      releases:
+        - hregionserver-2.5.12
+  releases:
+    - name: hmaster-2.5.12
+      serviceVersion: 2.5.12
+      images:
+        hbase-hmaster: "{{ .Values.images.registry }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}"
+        debug: "{{ .Values.images.registry }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}"
+    - name: hregionserver-2.5.12
+      serviceVersion: 2.5.12
+      images:
+        hbase-hregionserver: "{{ .Values.images.registry }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}"

@@ -33,6 +33,20 @@
     </property>
 
     <property>
+        <name>dfs.datanode.max.transfer.threads</name>
+        <value>8192</value>
+    </property>
+
+    <property>
+        <name>dfs.namenode.avoid.write.stale.datanode</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>dfs.namenode.avoid.read.stale.datanode</name>
+        <value>true</value>
+    </property>
+
+    <property>
         <name>dfs.ha.namenodes.{{ .CLUSTER_NAME }}</name>
         {{- $nns := "" }}
         {{- range $pod_name := splitList "," .NAMENODE_POD_NAME_LIST }}
