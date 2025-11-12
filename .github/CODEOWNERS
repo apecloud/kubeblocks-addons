@@ -31,6 +31,9 @@ addons-cluster/greptimedb/ @GreptimeTeam @sh2 @leon-inf @apecloud/kb-reviewers @
 addons/hadoop/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/hadoop/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
+addons/hbase/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/hbase/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+
 addons/hive/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/hive/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
