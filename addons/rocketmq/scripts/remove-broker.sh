@@ -4,13 +4,13 @@ export NAMESRV_ADDR=${ALL_NAMESRV_FQDN//,/:${NAMESRV_PORT};}:${NAMESRV_PORT}
 export PATH="$PATH:/opt/java/openjdk/bin"
 
 # 1. stop broker write
-/home/rocketmq/rocketmq-"${ROCKETMQ_VERSION}"/bin/mqadmin updateBrokerConfig -b "127.0.0.1:${BROKER_PORT}" -k brokerPermission -v 4
+/home/rocketmq/rocketmq-"${ROCKETMQ_VERSION}"/bin/mqadmin updateBrokerConfig -b "${MY_POD_IP}:${BROKER_PORT}" -k brokerPermission -v 4
 
 # 2. checking consume stats
 max_retries=3
 diff_left=true
 for ((i=1; i<=max_retries; i++)); do
-    stats=$(/home/rocketmq/rocketmq-"${ROCKETMQ_VERSION}"/bin/mqadmin brokerConsumeStats -b "127.0.0.1:${BROKER_PORT}")
+    stats=$(/home/rocketmq/rocketmq-"${ROCKETMQ_VERSION}"/bin/mqadmin brokerConsumeStats -b "${MY_POD_IP}:${BROKER_PORT}")
     diff_total=$(echo "$stats" | grep "Diff Total" | awk -F': ' '{print $2}')
     if [ "$diff_total" -eq 0 ]; then
         echo "All messages have been consumed. Proceeding to remove the broker."
