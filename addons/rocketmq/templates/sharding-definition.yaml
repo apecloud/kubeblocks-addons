@@ -14,3 +14,22 @@ spec:
     maxShards: 128
   provisionStrategy: Parallel
   updateStrategy: Parallel
+  lifecycleActions:
+    shardRemove:
+      timeoutSeconds: 60
+      exec:
+        container: rocketmq-broker
+        targetPodSelector: Role
+        matchingKey: master
+        env:
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/remove-broker.sh
