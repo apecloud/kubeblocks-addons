@@ -49,5 +49,6 @@ staticParameters:
   - mnesia_table_loading_retry_timeout
   - mnesia_table_loading_retry_limit
   - proxy_protocol
+  - raft.wal_max_size_bytes
 immutableParameters:
   - cluster_name
