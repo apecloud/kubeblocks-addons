@@ -26,6 +26,7 @@ readonly RETRY_INTERVAL=3
 readonly FE_CONFIG_FILE="${DORIS_HOME}/fe/conf/fe.conf"
 readonly FOLLOWER_NUMBER=3
 readonly BACKUP_DIR="${DORIS_HOME}/fe/doris-meta/ape/backup"
+
 export DATE="$(date +%Y%m%d-%H%M%S)"
 
 cp /etc/config/fe.conf ${FE_CONFIG_FILE}
@@ -110,7 +111,14 @@ setup_election_mode() {
     done
 
     if [ "$found" = "false" ]; then
-        log_error "Could not find configuration for pod '${pod_name}' in POD_FQDN_LIST"
+        log_info "Could not find configuration for pod '${pod_name}' in POD_FQDN_LIST"
+        log_info "The pod may be removed by scale-in Ops"
+        local retry_count=0
+        while [ "$retry_count" -lt "$MAX_RETRY_TIMES" ]; do
+            sleep ${RETRY_INTERVAL}
+            retry_count=$((retry_count + 1))
+        done 
+        log_error "Pod should be removed by scale-in Ops after ${retry_count} retries"
     fi
 
     is_master_fe=$([[ "$pod_name" == "${pod_name_array[0]}" ]] && echo "true" || echo "false")
