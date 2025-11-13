@@ -23,24 +23,32 @@ Describe "FalkorDB Cluster Server Start Bash Script Tests"
   init() {
     # override name of redis related file defined in redis-start.sh because default conf /etc/redis/redis.conf does not exist
     redis_real_conf="./redis.conf"
+    redis_extra_conf="./redis-extra.conf"
     redis_acl_file="./users.acl"
     redis_acl_file_bak="./users.acl.bak"
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
   }
+
   BeforeAll "init"
 
   cleanup() {
     rm -f $redis_real_conf;
+    rm -f $redis_extra_conf;
     rm -f $redis_acl_file;
     rm -f $common_library_file;
   }
   AfterAll 'cleanup'
 
   Describe "load_redis_template_conf()"
+    setup() {
+      echo "" > $redis_extra_conf
+    }
+    Before 'setup'
     It "appends include directive to redis.conf"
       When call load_redis_template_conf
       The contents of file "$redis_real_conf" should include "include /etc/conf/redis.conf"
+      The contents of file "$redis_real_conf" should include "include $redis_extra_conf"
     End
   End
 
@@ -48,6 +56,7 @@ Describe "FalkorDB Cluster Server Start Bash Script Tests"
     Context 'when all environment variables exist'
       setup() {
         echo "" > $redis_real_conf
+        echo "" > $redis_extra_conf
         echo "" > $redis_acl_file
         export REDIS_REPL_PASSWORD="repl_password"
         export REDIS_DEFAULT_PASSWORD="default_password"
@@ -76,6 +85,7 @@ Describe "FalkorDB Cluster Server Start Bash Script Tests"
     Context 'when default password environment variables exist'
       setup() {
         echo "" > $redis_real_conf
+        echo "" > $redis_extra_conf
         echo "" > $redis_acl_file
         export REDIS_DEFAULT_PASSWORD="default_password"
       }
@@ -99,6 +109,7 @@ Describe "FalkorDB Cluster Server Start Bash Script Tests"
     Context 'when all environment variables are not exist'
       setup() {
         echo "" > $redis_real_conf
+        echo "" > $redis_extra_conf
         echo "" > $redis_acl_file
       }
       Before 'setup'

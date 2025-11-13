@@ -676,6 +676,44 @@ spec:
 ```
 Service `falkordb-advertised` and `falkordb-sent` are defined in `ComponentDefinition` name `falkordb-4` and `falkordb-sent-4`.  They are used to to parse the advertised endpoints of the FalkorDB pods and Sentinel Pods.
 
+#### Create FalkorDB Standalone with Extra Configuration
+
+To create a standalone FalkorDB cluster with additional custom configurations that are appended to the `redis.conf` file:
+
+```bash
+kubectl apply -f examples/falkordb/extra-config.yaml
+```
+
+This example demonstrates how to mount an additional ConfigMap containing custom FalkorDB (Redis) configuration parameters. The configuration in the ConfigMap will be appended to the default `redis.conf` file.
+
+```yaml
+# snippet of extra-config.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: falkordb
+      volumes:
+        - name: falkordb-config-extra
+          configMap:
+            name: falkordb-config-extra
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falkordb-config-extra
+  namespace: demo
+data:
+  redis.conf: |
+    always-show-logo yes
+    # Add any additional redis.conf parameters here
+```
+
+The volume named `falkordb-config-extra` mounts the ConfigMap, and any configuration parameters defined in the `redis.conf` key will be merged with the base configuration. This allows you to customize FalkorDB behavior without modifying the base configuration templates.
+
+> [!NOTE]
+> Make sure to create the ConfigMap in the same namespace as your cluster before creating the cluster resource.
+
 #### Create FalkorDB with Multiple Shards
 
 To create a falkordb sharding cluster (An official distributed FalkorDB)  with 3 shards and 2 replica for each shard:

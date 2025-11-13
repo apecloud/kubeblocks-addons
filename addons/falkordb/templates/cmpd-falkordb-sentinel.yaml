@@ -217,6 +217,8 @@ spec:
           mountPath: /data
         - name: scripts
           mountPath: /scripts
+        - name: falkordb-sentinel-extra-config
+          mountPath: /etc/conf/extra
       env:
         - name: CURRENT_POD_NAME
           valueFrom:

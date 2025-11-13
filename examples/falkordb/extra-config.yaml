@@ -1,0 +1,40 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: falkordb-standalone
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: falkordb
+  topology: standalone # set topology to standalone
+  componentSpecs:
+    - name: falkordb
+      replicas: 1 # set replica to 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+      volumes:
+        - name: falkordb-config-extra
+          configMap:
+            name: falkordb-config-extra
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falkordb-config-extra
+  namespace: demo
+data:
+  redis.conf: |
+    always-show-logo yes
