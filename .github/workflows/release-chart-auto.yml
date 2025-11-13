@@ -42,11 +42,14 @@ jobs:
               fi
           done
           echo "RELEASE_REF:${RELEASE_REF}"
-          echo "matrix={\"include\":[${RELEASE_REF}]}" >> $GITHUB_OUTPUT
+          if [[ -n "${RELEASE_REF}" ]]; then
+              echo "matrix={\"include\":[${RELEASE_REF}]}" >> $GITHUB_OUTPUT
+          fi
 
   release-chart:
     needs: [get-ref]
     runs-on: ubuntu-latest
+    if: ${{ needs.get-ref.outputs.matrix != '' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.get-ref.outputs.matrix) }}
