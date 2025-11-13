@@ -158,6 +158,9 @@
 	
 	// Enable/disable proxy protocol
 	proxy_protocol?: bool | *false
+
+	// The WAL file size limit at which it is flushed to disk
+	"raft.wal_max_size_bytes"?: int | *512000000
 	
 	// Operator-controlled cluster name
 	cluster_name?: string
