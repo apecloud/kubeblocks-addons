@@ -23,7 +23,8 @@ spec:
         componentVarRef:
           optional: false
           podFQDNs: Required
-    - name: INFLUXDB_ADMIN_USER
+    # don't use INFLUXDB_ADMIN_USER to avoid conflict with image's init script
+    - name: INFLUXDB_ADMIN_USER_POSTPROVISON
       valueFrom:
         credentialVarRef:
           name: admin
@@ -46,6 +47,8 @@ spec:
           host: Required
     - name: META_ADDRESS
       value: "$(META_HOST).$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain }}:8091"
+    - name: SERVICE_PORT
+      value: "8086"
   systemAccounts:
     - name: admin
       initAccount: true
@@ -69,6 +72,16 @@ spec:
           - -c
           - |
             cp /bin/jq /tools/
+        volumeMounts:
+          - name: tools
+            mountPath: /tools
+      - name: copy-client
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+          - |
+            cp /usr/bin/influx /tools/
         volumeMounts:
           - name: tools
             mountPath: /tools
@@ -97,9 +110,9 @@ spec:
             containerPort: 8088
             protocol: TCP
         startupProbe:
-          failureThreshold: 6
+          failureThreshold: 12
           initialDelaySeconds: 10
-          periodSeconds: 30
+          periodSeconds: 10
           timeoutSeconds: 10
           httpGet:
             port: 8086
@@ -131,3 +144,4 @@ spec:
         container: influxdb-data
         command:
           - /scripts/data_postprovision.sh
+  podManagementPolicy: Parallel

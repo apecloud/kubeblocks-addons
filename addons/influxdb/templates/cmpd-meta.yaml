@@ -71,9 +71,9 @@ spec:
             containerPort: 8089
             protocol: TCP
         startupProbe:
-          failureThreshold: 6
+          failureThreshold: 12
           initialDelaySeconds: 10
-          periodSeconds: 30
+          periodSeconds: 10
           timeoutSeconds: 10
           httpGet:
             port: 8091
@@ -117,3 +117,4 @@ spec:
         container: influxdb-meta
         command:
           - /scripts/meta_postprovision.sh
+  podManagementPolicy: Parallel
