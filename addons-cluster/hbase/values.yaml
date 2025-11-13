@@ -6,8 +6,8 @@ fullnameOverride: ""
 
 # Replicas for each component
 replicas:
-  hmaster: 1
-  hregionserver: 1
+  hmaster: 2
+  hregionserver: 3
 
 # Resource requirements for each component
 resources:

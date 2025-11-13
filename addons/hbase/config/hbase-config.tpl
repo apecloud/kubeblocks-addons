@@ -13,10 +13,9 @@
     </property>
 
     <!-- Root Directory Configuration -->
-    <!-- TODO: using logic name service instead of namenode url -->
     <property>
         <name>hbase.rootdir</name>
-        <value>hdfs://{{ .HADOOP_CLUSTER_NAME }}-namenode:8020/{{ .CLUSTER_NAME }}</value>
+        <value>hdfs://{{ .HADOOP_CLUSTER_NAME }}/{{ .CLUSTER_NAME }}</value>
         <description>Root directory of HBase on HDFS. Use file:///hbase for standalone mode. ENV_HADOOP_CLUSTER_NAME will be replaced in init scripts.</description>
     </property>
 

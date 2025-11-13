@@ -12,6 +12,8 @@ spec:
   description: HBase RegionServer component
   serviceKind: hbase-hregionserver
   serviceVersion: 2.5.12
+  minReadySeconds: 10
+  podManagementPolicy: Parallel
   services:
     - name: default
       spec:
@@ -35,6 +37,8 @@ spec:
         ports:
           - containerPort: 16020
             name: hregionserver
+          - containerPort: 16030
+            name: webui
         env:
           - name: DEBUG_MODEL
             value: "false"
@@ -51,6 +55,9 @@ spec:
           - name: hadoop-hdfs-config
             mountPath: /hadoop/conf/hdfs-site.xml
             subPath: hdfs-site.xml
+          - name: hadoop-hdfs-config
+            mountPath: /hadoop/conf/log4j.properties
+            subPath: log4j.properties
           - name: hbase-scripts
             mountPath: /hbase/scripts
           - name: hbase-temp-data
@@ -77,7 +84,7 @@ spec:
           name: hbase-zookeeper
           optional: true
           podFQDNs: Required
-      expression: {{ `{{ $hosts := splitList "," .ZOOKEEPER_ENDPOINTS }}{{ range $idx, $host := $hosts }}{{ $host }}:2181{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
+      expression: {{ `{{ $hosts := splitList "," .ZOOKEEPER_ENDPOINTS }}{{ range $idx, $host := $hosts }}{{ $host }}{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
     - name: CLUSTER_COMPONENT_NAME
       valueFrom:
         componentVarRef:

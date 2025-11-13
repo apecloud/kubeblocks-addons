@@ -21,7 +21,7 @@ spec:
       serviceVersion: 2.5.12
       images:
         hbase-hmaster: "{{ .Values.images.registry }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}"
-        debug: "{{ .Values.images.registry }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}"
+        roleProbe: "{{ .Values.images.registry }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}"
     - name: hregionserver-2.5.12
       serviceVersion: 2.5.12
       images:

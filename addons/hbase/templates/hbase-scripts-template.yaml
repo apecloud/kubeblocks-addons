@@ -11,3 +11,7 @@ data:
     {{- .Files.Get "scripts/start-master.sh" | nindent 4 }}
   start-regionserver.sh: |-
     {{- .Files.Get "scripts/start-regionserver.sh" | nindent 4 }}
+  common.sh: |-
+    {{- .Files.Get "scripts/common.sh" | nindent 4 }}
+  role-check.sh: |-
+    {{- .Files.Get "scripts/role-check.sh" | nindent 4 }}

@@ -13,17 +13,8 @@ set -o pipefail
 . /opt/scripts/libs/libos.sh
 
 # Load HRegionServer environment variables
-. /opt/scripts/hbase/env.sh
-
-print_welcome_page
-
-if [[ $DEBUG_MODEL == true ]]; then
-  info ************** env-start **************
-  env
-  info ************** env-end **************
-fi
-
-bash /hbase/scripts/hbase-config-setup.sh
+export HOME="/home/hadoop"
+. /hbase/scripts/common.sh
 
 if [[ "$*" = *"/opt/scripts/hbase/run.sh"* || "$*" = *"/run.sh"* ]]; then
     info "** HRegionServer setup **"
@@ -33,11 +24,12 @@ fi
 
 START_COMMAND=("${HBASE_HOME}/bin/hbase-daemon.sh" "foreground_start" "regionserver" "$@")
 
+tail_logs "regionserver" &
+
 if am_i_root; then
   info "** Starting HRegionServer **"
   exec_as_user "$HBASE_DAEMON_USER" "${START_COMMAND[@]}"
 else
   info "** Starting HRegionServer **"
-  #${HBASE_HOME}/bin/hbase-daemon.sh start regionserver
   exec "${START_COMMAND[@]}"
 fi
