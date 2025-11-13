@@ -1,12 +1,14 @@
 # acl config
-{{- if hasKey $.cluster.metadata.annotations "kubeblocks.io/extra-env" -}}
-{{- $extraEnv := index $.cluster.metadata.annotations "kubeblocks.io/extra-env" | fromJson -}}
-{{- if hasKey $extraEnv "ENABLE_ACL" }}
+{{- if $.cluster.metadata.annotations -}}
+  {{- if hasKey $.cluster.metadata.annotations "kubeblocks.io/extra-env" -}}
+    {{- $extraEnv := index $.cluster.metadata.annotations "kubeblocks.io/extra-env" | fromJson -}}
+    {{- if hasKey $extraEnv "ENABLE_ACL" }}
 aclEnable={{ $extraEnv.ENABLE_ACL }}
-{{- end -}}
-{{- if hasKey $extraEnv "ENABLE_DLEDGER" }}
+    {{- end -}}
+    {{- if hasKey $extraEnv "ENABLE_DLEDGER" }}
 enableDLegerCommitLog={{ $extraEnv.ENABLE_DLEDGER }}
-{{- end -}}
+    {{- end -}}
+  {{- end -}}
 {{- end }}
 
 # common configs
