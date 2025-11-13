@@ -8,14 +8,13 @@ Apache RocketMQ is a distributed messaging and streaming platform with low laten
 
 |   Topology       | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| cluster     | Yes                    | Yes                   | Yes              | Yes       | Yes        | No       | Yes    | N/A     |
+| cluster          | Yes                    | Yes                   | Yes               | Yes       | Yes        | Yes       | Yes    | N/A        |
 
 ### Versions
 
 | Major Versions | Description |
 |---------------|-------------|
 | 4.x | 4.9.6 |
-| 5.x | 5.x.x (when available) |
 
 ## Prerequisites
 
@@ -99,12 +98,12 @@ spec:
   shardings:
     - name: broker
       # Number of broker shards - each shard can have multiple replicas
-      shards: 2
+      shards: 1
       template:
         # Template name for the broker instances
         name: rocketmq-broker
         # Number of replicas per shard (1 = master only, >1 = master with slaves)
-        replicas: 1
+        replicas: 2
         # Version of the RocketMQ broker
         serviceVersion: 4.9.6
         resources:
@@ -131,7 +130,7 @@ spec:
 kubectl apply -f examples/rocketmq/cluster.yaml
 ```
 
-This creates a RocketMQ cluster with nameserver, broker (with sharding), exporter, and dashboard components.
+This creates a RocketMQ cluster with four components: nameserver, broker (with sharding), exporter, and dashboard.
 
 ### Horizontal scaling
 
@@ -321,7 +320,7 @@ spec:
   # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion.
   volumeExpansion:
     # Specifies the name of the Component.
-  - componentName: rocketmq
+  - componentName: namesrv
     # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
     volumeClaimTemplates:
     - name: data
@@ -594,4 +593,20 @@ Then access the Grafana dashboard at `http://localhost:3000/`.
 ### Delete
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+
+```bash
+kubectl patch cluster -n demo rocketmq-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+
+kubectl delete -f examples/rocketmq/cluster.yaml
+```
+
+## Appendix
+
+### How to access RocketMQ Management Console
+
+To access the RocketMQ Management console , you can port-forward the dashboard service:
+
+```bash
+kubectl port-forward svc/rocketmq-cluster-dashboard 18080:8080
+```
 
