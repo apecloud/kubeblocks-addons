@@ -8,7 +8,7 @@ Apache RocketMQ is a distributed messaging and streaming platform with low laten
 
 |   Topology       | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| cluster          | Yes                    | Yes                   | Yes               | Yes       | Yes        | Yes       | Yes    | N/A        |
+| cluster          | Yes (NameServer)       | Yes                   | Yes               | Yes       | Yes        | Yes       | Yes    | N/A        |
 
 ### Versions
 
@@ -198,30 +198,6 @@ kubectl apply -f examples/rocketmq/scale-in-namesrv.yaml
 
 On scale-in, the replica with the highest number (if not specified in particular) will be stopped and removed from the cluster.
 
-
-#### Scale Broker Shards by OpsRequest
-
-Horizontal scaling out Broker shards by adding ONE more shard:
-
-```yaml
-# cat examples/rocketmq/scale-shard-broker.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: rocketmq-scale-shard
-  namespace: demo
-spec:
-  clusterName: rocketmq-cluster
-  type: HorizontalScaling
-  horizontalScaling:
-  - componentName: broker
-    shard: 3
-```
-
-```bash
-kubectl apply -f examples/rocketmq/scale-shard-broker.yaml
-```
-
 #### Scale-in/out using Cluster API
 
 Alternatively, you can update the `replicas` and `shards` field in cluster CR to your desired non-zero number.
@@ -233,10 +209,10 @@ spec:
   componentSpecs:
     - name: namesrv
       replicas: 3 # Update `replicas` to your desired number
-  shardings:
-    - name: broker
-      shards: 3 # Update broker shards to your desired number
 ```
+
+> [!NOTE]
+> Horizontal scaling of Broker is not fully supported yet.
 
 ### Vertical scaling
 
