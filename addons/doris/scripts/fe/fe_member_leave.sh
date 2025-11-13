@@ -3,6 +3,13 @@
 set +x
 set -o errexit
 
+
+function info() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
+}
+
+info "Start to leave FE member"
+
 leader_host=""
 leave_member_host=""
 leave_member_port=""
@@ -12,9 +19,6 @@ helper_endpoints=$(echo "$POD_FQDN_LIST" | cut -d, -f1)
 helper_pod_name=$(echo "$helper_endpoints" | cut -d: -f1 | cut -d. -f1)
 candidate_names=""
 
-function info() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
-}
 
 # root@x-fe-0:/opt/starrocks#  mysql -h 127.0.0.1 -P 9030 -e "show frontends"
 ## +-----------------------------------------+------------------------------------------------------+-------------+----------+-----------+---------+--------------------+----------+----------+-----------+------+-------+-------------------+---------------------+---------------------+----------+--------+-----------------------------+------------------+
@@ -26,7 +30,19 @@ function info() {
 # +-----------------------------------------+------------------------------------------------------+-------------+----------+-----------+---------+--------------------+----------+----------+-----------+------+-------+-------------------+---------------------+---------------------+----------+--------+-----------------------------+------------------+
 
 function show_frontends() {
-    mysql -N -B -h "${FE_DISCOVERY_ADDR}" -P 9030 -u"${DORIS_USER}" -p"${DORIS_PASSWORD}" -e "show frontends"
+    local retry_count=0
+    local max_retries=20
+    local retry_interval=6
+    while (( retry_count < max_retries )); do
+        if mysql -N -B -h "${FE_DISCOVERY_ADDR}" -P 9030 -u"${DORIS_USER}" -p"${DORIS_PASSWORD}" -e "show frontends"; then
+            return 0
+        fi
+        retry_count=$((retry_count + 1))
+        info "Failed to execute 'show frontends', retrying in ${retry_interval} seconds... (${retry_count}/${max_retries})" >&2
+        sleep ${retry_interval}
+    done
+    info "Failed to execute 'show frontends' after ${max_retries} retries." >&2
+    exit 1
 }
 
 function switch_leader() {
@@ -85,3 +101,5 @@ if [[ ${KB_AGENT_POD_NAME} != ${helper_pod_name} ]]; then
 fi
 
 mysql -h "${leader_host}" -u"${DORIS_USER}" -p"${DORIS_PASSWORD}" -P 9030 -e "alter system drop ${leave_role} '${leave_member_host}:${leave_member_port}';"
+
+info "leave member ${leave_member_host}:${leave_member_port} success"
