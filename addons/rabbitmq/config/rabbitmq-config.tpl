@@ -1,5 +1,5 @@
 {{- $GiB := 1073741824 }}
-{{- $phy_memory := .PHY_MEMORY }}
+{{- $phy_memory := default 0 $.PHY_MEMORY | int }}
 
 # rabbitmq.conf
 
