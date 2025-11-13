@@ -231,6 +231,7 @@ spec:
     roleProbe:
       initialDelaySeconds: 15
       periodSeconds: 5
+      timeoutSeconds: 3
       exec:
         container: fe
         command:
@@ -241,12 +242,13 @@ spec:
       retryPolicy:
         maxRetries: 3
         retryInterval: 5
+      timeoutSeconds: 300
       exec:
         command:
         - /bin/bash
         - -c
         - |
-          /opt/apache-doris/scripts/fe_member_leave.sh > /tmp/member-leave.log 2>&1
+          /opt/apache-doris/scripts/fe_member_leave.sh >> /opt/apache-doris/fe/log/member-leave.log 2>&1
         targetPodSelector: Role
         container: fe
         matchingKey: master

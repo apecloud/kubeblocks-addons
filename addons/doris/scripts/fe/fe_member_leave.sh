@@ -3,16 +3,22 @@
 set +x
 set -o errexit
 
-leader_host=""
-leave_member_host=""
-leave_member_port=""
-leave_role=""
-helper_endpoints=""
-candidate_names=""
 
 function info() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
 }
+
+info "Start to leave FE member"
+
+leader_host=""
+leave_member_host=""
+leave_member_port=""
+leave_role=""
+# always use 0 pod FQDN as helper_endpoints
+helper_endpoints=$(echo "$POD_FQDN_LIST" | cut -d, -f1)
+helper_pod_name=$(echo "$helper_endpoints" | cut -d: -f1 | cut -d. -f1)
+candidate_names=""
+
 
 # root@x-fe-0:/opt/starrocks#  mysql -h 127.0.0.1 -P 9030 -e "show frontends"
 ## +-----------------------------------------+------------------------------------------------------+-------------+----------+-----------+---------+--------------------+----------+----------+-----------+------+-------+-------------------+---------------------+---------------------+----------+--------+-----------------------------+------------------+
@@ -24,10 +30,23 @@ function info() {
 # +-----------------------------------------+------------------------------------------------------+-------------+----------+-----------+---------+--------------------+----------+----------+-----------+------+-------+-------------------+---------------------+---------------------+----------+--------+-----------------------------+------------------+
 
 function show_frontends() {
-    mysql -N -B -h "${FE_DISCOVERY_ADDR}" -P 9030 -u"${DORIS_USER}" -p"${DORIS_PASSWORD}" -e "show frontends"
+    local retry_count=0
+    local max_retries=20
+    local retry_interval=6
+    while (( retry_count < max_retries )); do
+        if mysql -N -B -h "${FE_DISCOVERY_ADDR}" -P 9030 -u"${DORIS_USER}" -p"${DORIS_PASSWORD}" -e "show frontends"; then
+            return 0
+        fi
+        retry_count=$((retry_count + 1))
+        info "Failed to execute 'show frontends', retrying in ${retry_interval} seconds... (${retry_count}/${max_retries})" >&2
+        sleep ${retry_interval}
+    done
+    info "Failed to execute 'show frontends' after ${max_retries} retries." >&2
+    exit 1
 }
 
 function switch_leader() {
+    info "switch leader from ${leader_host} to ${candidate_names}, address:${helper_endpoints}"
     java -jar /opt/apache-doris/fe/lib/je-18.3.14-doris-SNAPSHOT.jar DbGroupAdmin -helperHosts "${helper_endpoints}" -groupName PALO_JOURNAL_GROUP -transferMaster -force "${candidate_names}" 5000
 }
 
@@ -50,9 +69,7 @@ while IFS= read -r line; do
     edit_log_port=$(echo "$line" | awk '{print $3}')
     role=$(echo "$line" | awk '{print $8}')
     is_master=$(echo "$line" | awk '{print $9}')
-    is_leaving=False
     if [[ ${ip} == ${KB_LEAVE_MEMBER_POD_NAME}* ]]; then
-        is_leaving=True
         leave_member_host=${ip}
         leave_member_port=${edit_log_port}
         leave_role=${role}
@@ -60,14 +77,10 @@ while IFS= read -r line; do
     if [ "${is_master}" == "true" ]; then
         leader_host=${ip}
     fi
-    if [ "${is_leaving}" == "False" ] && [ "${role}" == "FOLLOWER" ]; then
-        if [ -n "${helper_endpoints}" ]; then
-            helper_endpoints=${helper_endpoints},${ip}:${edit_log_port}
-            candidate_names=${candidate_names},${name}
-        else
-            helper_endpoints=${ip}:${edit_log_port}
-            candidate_names=${name}
-        fi
+
+    if [[ ${ip} == "${helper_endpoints}" ]]; then
+        candidate_names=${name}
+        helper_endpoints=${ip}:${edit_log_port}
     fi
 done <<< "$output"
 
@@ -82,10 +95,11 @@ if [ -z "${leave_member_host}" ] || [ -z "${leave_member_port}" ]; then
     exit 0
 fi
 
-# The leader will exit if lost it's leader role
-if [[ ${leader_host} == ${KB_LEAVE_MEMBER_POD_NAME}* ]]; then
+if [[ ${KB_AGENT_POD_NAME} != ${helper_pod_name} ]]; then
     switch_leader
     wait_for_leader_switched
 fi
 
 mysql -h "${leader_host}" -u"${DORIS_USER}" -p"${DORIS_PASSWORD}" -P 9030 -e "alter system drop ${leave_role} '${leave_member_host}:${leave_member_port}';"
+
+info "leave member ${leave_member_host}:${leave_member_port} success"
