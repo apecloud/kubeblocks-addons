@@ -9,6 +9,7 @@ leave_member_port=""
 leave_role=""
 # always use 0 pod FQDN as helper_endpoints
 helper_endpoints=$(echo "$POD_FQDN_LIST" | cut -d, -f1)
+helper_pod_name=$(echo "$helper_endpoints" | cut -d: -f1 | cut -d. -f1)
 candidate_names=""
 
 function info() {
@@ -29,6 +30,7 @@ function show_frontends() {
 }
 
 function switch_leader() {
+    info "switch leader from ${leader_host} to ${candidate_names}, address:${helper_endpoints}"
     java -jar /opt/apache-doris/fe/lib/je-18.3.14-doris-SNAPSHOT.jar DbGroupAdmin -helperHosts "${helper_endpoints}" -groupName PALO_JOURNAL_GROUP -transferMaster -force "${candidate_names}" 5000
 }
 
@@ -51,9 +53,7 @@ while IFS= read -r line; do
     edit_log_port=$(echo "$line" | awk '{print $3}')
     role=$(echo "$line" | awk '{print $8}')
     is_master=$(echo "$line" | awk '{print $9}')
-    is_leaving=False
     if [[ ${ip} == ${KB_LEAVE_MEMBER_POD_NAME}* ]]; then
-        is_leaving=True
         leave_member_host=${ip}
         leave_member_port=${edit_log_port}
         leave_role=${role}
@@ -62,7 +62,7 @@ while IFS= read -r line; do
         leader_host=${ip}
     fi
 
-    if [[ ${ip} == ${helper_endpoints} ]]; then
+    if [[ ${ip} == "${helper_endpoints}" ]]; then
         candidate_names=${name}
         helper_endpoints=${ip}:${edit_log_port}
     fi
@@ -79,8 +79,7 @@ if [ -z "${leave_member_host}" ] || [ -z "${leave_member_port}" ]; then
     exit 0
 fi
 
-# The leader will exit if lost it's leader role
-if [[ ${leader_host} == ${KB_LEAVE_MEMBER_POD_NAME}* ]]; then
+if [[ ${KB_AGENT_POD_NAME} != ${helper_pod_name} ]]; then
     switch_leader
     wait_for_leader_switched
 fi
