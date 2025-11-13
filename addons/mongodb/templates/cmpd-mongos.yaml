@@ -165,6 +165,11 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: KB_CLUSTER_COMP_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     - name: KB_SERVICE_PORT  
       value: "27017"
     - name: CFG_SERVER_REPLICA_SET_NAME
