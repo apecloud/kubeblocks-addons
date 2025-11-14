@@ -12,6 +12,7 @@ spec:
         - 3.7.2
         - 3.8.4
         - 3.9.2
+        - 3.9.4
       compDefs:
         # todo: delete zookeeper
         - zookeeper
@@ -37,3 +38,7 @@ spec:
       serviceVersion: 3.9.2
       images:
         zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.9.2
+    - name: 3.9.4
+      serviceVersion: 3.9.4
+      images:
+        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.9.4
