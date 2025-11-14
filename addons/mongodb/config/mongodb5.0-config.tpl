@@ -60,4 +60,4 @@ setParameter:
 # security options
 security:
   authorization: enabled
-  keyFile:  {{ $mongodb_root }}/keyfile
+  keyFile: /etc/mongodb/keyfile

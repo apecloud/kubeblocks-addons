@@ -16,9 +16,6 @@ mkdir -p $MONGODB_ROOT/logs
 mkdir -p $MONGODB_ROOT/tmp
 export PATH=$MONGODB_ROOT/tmp/bin:$PATH
 
-cp /etc/mongodb/keyfile $MONGODB_ROOT/keyfile
-chmod 600 $MONGODB_ROOT/keyfile
-
 . "/scripts/mongodb-common.sh"
 
 # Restore from datafile
