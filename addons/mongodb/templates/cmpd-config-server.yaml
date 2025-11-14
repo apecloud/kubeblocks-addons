@@ -276,6 +276,11 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: KB_CLUSTER_COMP_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     - name: MONGODB_USER
       valueFrom:
         credentialVarRef:
