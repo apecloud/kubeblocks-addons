@@ -110,6 +110,8 @@ spec:
             value: "/opt/bitnami/zookeeper/bin"
           - name: ZOO_ENABLE_AUTH
             value: "yes"
+          - name: ZOO_FIPS_MODE
+            value: "no"
           - name: SERVICE_PORT
             value: {{ .Values.metrics.port | quote }}
           - name: ZOO_LOG4J_PROP
