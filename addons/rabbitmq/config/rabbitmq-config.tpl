@@ -1,3 +1,6 @@
+{{- $GiB := 1073741824 }}
+{{- $phy_memory := default 0 $.PHY_MEMORY | int }}
+
 # rabbitmq.conf
 
 ## DEFAULT SETTINGS ARE NOT MEANT TO BE TAKEN STRAIGHT INTO PRODUCTION
@@ -39,3 +42,9 @@ cluster_name                               = {{ .KB_CLUSTER_NAME }}
 
 {{- $rabbitmq_port := 5672 }}
 listeners.tcp.1 = :::{{ $rabbitmq_port }}
+
+{{- if gt (div $phy_memory 5) (mul 2 $GiB) }}
+total_memory_available_override_value = {{ $phy_memory (mul 2 $GiB) }}
+{{- else if gt $phy_memory 0 }}
+total_memory_available_override_value = {{ sub $phy_memory (div $phy_memory 5) }}
+{{- end }}
