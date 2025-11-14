@@ -65,6 +65,8 @@ spec:
       value: "/opt/bitnami/zookeeper/bin"
     - name: ZOO_ENABLE_AUTH
       value: "yes"
+    - name: ZOO_FIPS_MODE
+      value: "no"
     ## this var needs to be preserved as Gemini will utilize this variable
     - name: SERVICE_PORT
       value: {{ .Values.metrics.port | quote }}
