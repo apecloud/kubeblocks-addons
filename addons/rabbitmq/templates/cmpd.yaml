@@ -186,3 +186,7 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required
