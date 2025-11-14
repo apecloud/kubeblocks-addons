@@ -12,6 +12,7 @@ versions:
     componentDef: "^zookeeper-"
     minors:
       # [version, serviceVersion, tag, deprecated]
+      - ["3.9.4", "3.9.4", "3.9.4", false]
       - ["3.9.2", "3.9.2", "3.9.2", false]
       - ["3.8.4", "3.8.4", "3.8.4", false]
       - ["3.7.2", "3.7.2", "3.7.2", false]
