@@ -162,6 +162,21 @@
 	// The WAL file size limit at which it is flushed to disk
 	"raft.wal_max_size_bytes"?: int | *512000000
 	
+	// Maximum HTTP API request body size
+	"management.http.max_body_size"?: int | *20971520
+	
+	// Maximum number of concurrent client connections a node will accept 
+	"connection_max"?: int 
+	
+	// Maximum number of queues that can be declared in the cluster
+	"cluster_queue_limit"?: int 
+	
+	// Maximum number of exchanges that can be declared in the cluster
+	"cluster_exchange_limit"?: int
+	
+	// Maximum number of virtual hosts that can be created in the cluster
+	"vhost_max"?: int
+	
 	// Operator-controlled cluster name
 	cluster_name?: string
     // "cluster_formation.peer_discovery_backend"?: string | *"rabbit_peer_discovery_k8s"
