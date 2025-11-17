@@ -190,7 +190,6 @@ staticParameters:
   - audit_log_handler
   - audit_log_file
   - audit_log_buffer_size
-  - audit_log_policy
   - audit_log_strategy
 
 dynamicParameters:
