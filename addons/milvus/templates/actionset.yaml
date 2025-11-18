@@ -1,0 +1,30 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: milvus-full
+  labels:
+    {{- include "milvus.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  backup:
+    backupData:
+      image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.milvusBackup.repository }}:v0.5.9
+      syncProgress:
+        enabled: false
+        intervalSeconds: 5
+      command:
+      - sh
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/common.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+  restore:
+    postReady:
+    - job:
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.milvusBackup.repository }}:v0.5.9
+        command:
+        - sh
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/common.sh" | nindent 12 }}
+          {{- .Files.Get "dataprotection/restore.sh" | nindent 12 }}
