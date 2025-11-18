@@ -310,3 +310,13 @@ Generate LD_PRELOAD environment variable - always set, but will be cleared at ru
   value: /tools/lib/libjemalloc.so.2
 {{- end }}
 {{- end -}}
+
+{{/*
+Generate reloader scripts configmap
+*/}}
+{{- define "mysql.extend.reload.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "reloader/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
