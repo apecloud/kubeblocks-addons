@@ -28,25 +28,12 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mysql8.0-reload-script
+  name: mysql-reload-script
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 data:
-  reload.tpl: |-
-    {{- .Files.Get "config/mysql-reload.tpl" | nindent 4 }}
-  reload.yaml: |-
-    scripts: reload.tpl
-    fileRegex: my.cnf
-    formatterConfig:
-      format: ini
-      iniConfig:
-        sectionName: mysqld
+  {{- include "mysql.extend.reload.scripts" . | nindent 2 }}
 
-    dataType: mysql
-    dsn: |-
-      {%- $user := env "MYSQL_ADMIN_USER" | default ( env "MYSQL_ROOT_USER" ) | default ( env "MYSQL_USER" ) %}
-      {%- $pass := env "MYSQL_ADMIN_PASSWORD" | default ( env "MYSQL_ROOT_PASSWORD" ) | default ( env "MYSQL_PASSWORD" ) %}
-      {%- printf "%s:%s@(localhost:3306)/" $user $pass | trim %}
 ---
 apiVersion: v1
 kind: ConfigMap

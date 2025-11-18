@@ -187,11 +187,10 @@ staticParameters:
   - version_compile_zlib
   - log_replica_updates
   - relay_log_recovery
-  - audit_log_handler
-  - audit_log_file
-  - audit_log_buffer_size
-  - audit_log_policy
-  - audit_log_strategy
+  - loose_audit_log_handler
+  - loose_audit_log_file
+  - loose_audit_log_buffer_size
+  - loose_audit_log_strategy
 
 dynamicParameters:
   - activate_all_roles_on_login
@@ -538,11 +537,11 @@ dynamicParameters:
   - wait_timeout
   - windowing_use_high_precision
   - innodb_redo_log_capacity
-  - audit_log_policy
+  - loose_audit_log_policy
   - relay_log_info_repository
-  - audit_log_exclude_accounts
-  - audit_log_rotations
-  - audit_log_rotate_on_size
+  - loose_audit_log_exclude_accounts
+  - loose_audit_log_rotations
+  - loose_audit_log_rotate_on_size
 
 immutableParameters:
   - allow-suspicious-udfs
