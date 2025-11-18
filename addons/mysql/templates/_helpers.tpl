@@ -689,3 +689,13 @@ volumeMounts:
   - name: scripts
     mountPath: /scripts
 {{- end -}}
+
+{{/*
+Generate reloader scripts configmap
+*/}}
+{{- define "mysql.extend.reload.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "reloader/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
