@@ -1082,9 +1082,6 @@
 	// Server current time zone
 	default_time_zone?: string
 
-	// This variable is used to specify which events should be logged.
-	loose_audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
-
 	// slave_exec_mode controls how a replication thread resolves conflicts and errors during replication.
 	slave_exec_mode?: string & "IDEMPOTENT" | "STRICT"
 

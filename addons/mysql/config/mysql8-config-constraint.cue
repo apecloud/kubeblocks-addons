@@ -1528,9 +1528,6 @@
 	// The size at which the audit log file is rotated.
 	loose_audit_log_buffer_size?: string
 
-	// This variable is used to specify which events should be logged.
-	loose_audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
-
 	// The strategy used to write audit log records.
 	loose_audit_log_strategy?: string & "ASYNCHRONOUS" | "PERFORMANCE" | "SEMISYNCHRONOUS" | "SYNCHRONOUS" | *"ASYNCHRONOUS"
 
