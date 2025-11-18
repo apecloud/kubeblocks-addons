@@ -4,7 +4,7 @@ etcd:
   rootPath: {{ .CLUSTER_NAME }}
 messageQueue: pulsar
 minio:
-  address: {{ .MINIO_SERVER }}
+  address: {{ .MINIO_HOST }}
   port: {{ .MINIO_PORT }}
   {{- if eq .MINIO_PORT "443" }}
   useSSL: true
@@ -31,6 +31,5 @@ pulsar:
   port: {{ .LOG_SERVICE_PORT }}
 {{- else if eq .mq_type "kafka" }}
 kafka:
-  # port is actually endpoint, maybe a bug of kb
-  brokerList: {{ .LOG_SERVICE_SERVER }}:{{ .LOG_SERVICE_PORT }}
+  brokerList: {{ .LOG_SERVICE_PORT }}
 {{- end }}
