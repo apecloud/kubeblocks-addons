@@ -1083,7 +1083,7 @@
 	default_time_zone?: string
 
 	// This variable is used to specify which events should be logged.
-	audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
+	loose_audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
 
 	// slave_exec_mode controls how a replication thread resolves conflicts and errors during replication.
 	slave_exec_mode?: string & "IDEMPOTENT" | "STRICT"
@@ -1127,28 +1127,28 @@
 	relay_log_info_repository?: string & "FILE" | "TABLE"
 
 	// Specifies the audit log plugin to use.
-	audit_log_handler?: string & "FILE" | "SYSLOG" | *"FILE"
+	loose_audit_log_handler?: string & "FILE" | "SYSLOG" | *"FILE"
 
 	// The file name of the audit log.
-	audit_log_file?: string
+	loose_audit_log_file?: string
 
 	// The size at which the audit log file is rotated.
-	audit_log_buffer_size?: string
+	loose_audit_log_buffer_size?: string
 
 	// This variable is used to specify which events should be logged.
-	audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
+	loose_audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
 
 	// The strategy used to write audit log records.
-	audit_log_strategy?: string & "ASYNCHRONOUS" | "PERFORMANCE" | "SEMISYNCHRONOUS" | "SYNCHRONOUS" | *"ASYNCHRONOUS"
+	loose_audit_log_strategy?: string & "ASYNCHRONOUS" | "PERFORMANCE" | "SEMISYNCHRONOUS" | "SYNCHRONOUS" | *"ASYNCHRONOUS"
 
 	// The size at which the audit log file is rotated.
-	audit_log_rotate_on_size?: int | *0
+	loose_audit_log_rotate_on_size?: int | *0
 
 	// The number of rotated audit log files to keep.
-	audit_log_rotations?: int | *0
+	loose_audit_log_rotations?: int | *0
 
 	// A comma-separated list of accounts that are not subject to audit logging.
-	audit_log_exclude_accounts?: string
+	loose_audit_log_exclude_accounts?: string
 
 	// other parameters
 	// reference mysql parameters
