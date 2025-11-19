@@ -39,21 +39,13 @@ spec:
         - name: IMAGE_TAG
           valueFrom:
             versionMapping:
+              {{- range .Values.versions }}
+              {{- range .minors }}
               - serviceVersions:
-                  - "12"
-                mappedValue: "12.15.0-pgvector-v0.6.1"
-              - serviceVersions:
-                  - "14"
-                mappedValue: "14.8.0-pgvector-v0.6.1"
-              - serviceVersions:
-                  - "15"
-                mappedValue: "15.7.0"
-              - serviceVersions:
-                  - "16"
-                mappedValue: "16.4.0"
-              - serviceVersions:
-                  - "17"
-                mappedValue: "17.5"
+                  - "{{ .version }}"
+                mappedValue: "{{ .tag }}"
+              {{- end }}
+              {{- end }}
       targetVolumes:
         volumeMounts:
           - name: data
