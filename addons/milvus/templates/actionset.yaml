@@ -8,12 +8,14 @@ spec:
   backupType: Full
   backup:
     backupData:
-      image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.milvusBackup.repository }}:v0.5.9
+      image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.milvusBackup.repository }}:v0.5.9-yq
+      # runOnTargetPodNode is needed to let backup controller mount volumes for backup job
+      runOnTargetPodNode: true
       syncProgress:
         enabled: false
         intervalSeconds: 5
       command:
-      - sh
+      - bash
       - -c
       - |
         {{- .Files.Get "dataprotection/common.sh" | nindent 8 }}
@@ -21,9 +23,10 @@ spec:
   restore:
     postReady:
     - job:
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.milvusBackup.repository }}:v0.5.9
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.milvusBackup.repository }}:v0.5.9-yq
+        runOnTargetPodNode: true
         command:
-        - sh
+        - bash
         - -c
         - |
           {{- .Files.Get "dataprotection/common.sh" | nindent 12 }}

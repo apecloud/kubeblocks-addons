@@ -36,6 +36,13 @@ spec:
     - name: full
       snapshotVolumes: false
       actionSetName: milvus-full
+      targetVolumes:
+        volumes:
+          - milvus-config
+        volumeMounts:
+          - mountPath: /milvus/configs/
+            name: milvus-config
+            readOnly: true
   schedules:
     - backupMethod: full
       enabled: false

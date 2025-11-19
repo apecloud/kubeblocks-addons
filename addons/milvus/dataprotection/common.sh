@@ -8,7 +8,7 @@ function getToolConfigValue() {
 }
 
 # shellcheck disable=SC2034
-function setStorageVar() {
+function setStorageConfig() {
   TOOL_CONFIG=/etc/datasafed/datasafed.conf
 
   ACCESS_KEY_ID=$(getToolConfigValue access_key_id)
@@ -17,14 +17,44 @@ function setStorageVar() {
   BUCKET=$(getToolConfigValue "root =")
   PROVIDER=$(getToolConfigValue provider)
 
-  BR_EXTRA_ARGS=""
   if [[ "$PROVIDER" == "Alibaba" ]]; then
     ENDPOINT="https://${ENDPOINT}"
-    BR_EXTRA_ARGS="--s3.provider alibaba"
   fi
 
   export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
   export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
+
+  BACKUP_CONFIG=configs/backup.yaml
+  MILVUS_CONFIG=/milvus/configs/user.yaml
+
+  # connection config
+  yq -i ".milvus.address = \"$DP_DB_HOST\"" "$BACKUP_CONFIG"
+  yq -i ".milvus.port = $DP_DB_PORT" "$BACKUP_CONFIG"
+  yq -i ".milvus.user = \"\"" "$BACKUP_CONFIG"
+  yq -i ".milvus.password = \"\"" "$BACKUP_CONFIG"
+
+  # milvus storage config
+  yq -i ".minio.address = \"$MINIO_HOST\"" "$BACKUP_CONFIG"
+  yq -i ".minio.port = \"$MINIO_PORT\"" "$BACKUP_CONFIG"
+  yq -i ".minio.accessKeyID = \"$MINIO_ACCESS_KEY\"" "$BACKUP_CONFIG"
+  yq -i ".minio.secretAccessKey = \"$MINIO_SECRET_KEY\"" "$BACKUP_CONFIG"
+
+  yq -i ".minio.bucketName = (load(\"$MILVUS_CONFIG\") | .minio.bucketName)" "$BACKUP_CONFIG"
+  yq -i ".minio.useSSL = (load(\"$MILVUS_CONFIG\") | .minio.useSSL)" "$BACKUP_CONFIG"
+  yq -i ".minio.rootPath = (load(\"$MILVUS_CONFIG\") | .minio.rootPath)" "$BACKUP_CONFIG"
+  # TODO: is this right?
+  yq -i ".minio.storageType = (load(\"$MILVUS_CONFIG\") | .minio.cloudProvider)" "$BACKUP_CONFIG"
+
+  # backup storage config
+  without_scheme=${ENDPOINT#http://}
+  IFS=":" read -r -a parts <<< "$without_scheme"
+  yq -i ".minio.backupAddress = \"${parts[0]}\"" "$BACKUP_CONFIG"
+  # FIXME: will backupPort be empty?
+  yq -i ".minio.backupPort = \"${parts[1]}\"" "$BACKUP_CONFIG"
+  yq -i ".minio.backupAccessKeyID = \"$ACCESS_KEY_ID\"" "$BACKUP_CONFIG"
+  yq -i ".minio.backupSecretAccessKey = \"$SECRET_ACCESS_KEY\"" "$BACKUP_CONFIG"
+  yq -i ".minio.backupBucketName = \"$BUCKET\"" "$BACKUP_CONFIG"
+  yq -i ".minio.backupRootPath = \"$DP_BACKUP_BASE_PATH\"" "$BACKUP_CONFIG"
 }
 
 # Save backup status info file for syncing progress.
