@@ -14,7 +14,7 @@ function handle_exit() {
 trap handle_exit EXIT
 setStorageConfig
 
-./milvus-backup create -n "$DP_BACKUP_NAME"
+./milvus-backup create -n "$BACKUP_NAME"
 
 # use datasafed to get backup size
 # if we do not write into $DP_BACKUP_INFO_FILE, the backup job will stuck

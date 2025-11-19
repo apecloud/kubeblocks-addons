@@ -24,6 +24,9 @@ function setStorageConfig() {
   export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
   export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
 
+  # only underscores are allowed in backup name
+  BACKUP_NAME=${DP_BACKUP_NAME//-/_}
+
   BACKUP_CONFIG=configs/backup.yaml
   MILVUS_CONFIG=/milvus/configs/user.yaml
 
@@ -32,7 +35,7 @@ function setStorageConfig() {
   yq -i ".milvus.port = $DP_DB_PORT" "$BACKUP_CONFIG"
   yq -i ".milvus.user = \"\"" "$BACKUP_CONFIG"
   yq -i ".milvus.password = \"\"" "$BACKUP_CONFIG"
-  yq -i ".gcPause.address = \"http://$DP_DB_HOST:9091\"" "$BACKUP_CONFIG"
+  yq -i ".backup.gcPause.address = \"http://$DP_DB_HOST:9091\"" "$BACKUP_CONFIG"
 
   # milvus storage config
   yq -i ".minio.address = \"$MINIO_HOST\"" "$BACKUP_CONFIG"

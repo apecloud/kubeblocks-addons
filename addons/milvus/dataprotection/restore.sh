@@ -2,6 +2,6 @@
 
 setStorageConfig
 
-./milvus-backup restore -n "$DP_BACKUP_NAME"
+./milvus-backup restore -n "$BACKUP_NAME"
 
 sleep 180
