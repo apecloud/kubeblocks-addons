@@ -32,6 +32,7 @@ function setStorageConfig() {
   yq -i ".milvus.port = $DP_DB_PORT" "$BACKUP_CONFIG"
   yq -i ".milvus.user = \"\"" "$BACKUP_CONFIG"
   yq -i ".milvus.password = \"\"" "$BACKUP_CONFIG"
+  yq -i ".gcPause.address = \"http://$DP_DB_HOST:9091\"" "$BACKUP_CONFIG"
 
   # milvus storage config
   yq -i ".minio.address = \"$MINIO_HOST\"" "$BACKUP_CONFIG"

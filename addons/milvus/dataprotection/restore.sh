@@ -1,3 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 
-sleep 3600
+setStorageConfig
+
+./milvus-backup restore -n "$DP_BACKUP_NAME"
+
+sleep 180
