@@ -20,5 +20,3 @@ setStorageConfig
 # if we do not write into $DP_BACKUP_INFO_FILE, the backup job will stuck
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 DP_save_backup_status_info "$TOTAL_SIZE"
-
-sleep 180
