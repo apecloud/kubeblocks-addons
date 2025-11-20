@@ -3,7 +3,7 @@ set -e
 
 function mysql_exec() {
     local query="$1"
-    mysql --user=${MYSQL_ADMIN_USER} --password=${MYSQL_ADMIN_PASSWORD} --host=127.0.0.1 -P 3306 -NBe "${query}"
+    mysql --user=${MYSQL_ROOT_USER} --password=${MYSQL_ROOT_PASSWORD} --host=127.0.0.1 -P 3306 -NBe "${query}"
 }
 
 paramName="${1:?missing param name}"
