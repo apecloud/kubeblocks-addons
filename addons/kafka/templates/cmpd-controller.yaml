@@ -97,6 +97,10 @@ spec:
             value: "CONTROLLER://:9093"
           - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
             value: "CONTROLLER:PLAINTEXT"
+          # FIXME: why this config is needed for controller? 
+          # kafka 3.8/3.9 controller failed to start without this 
+          - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
+            value: "CONTROLLER"
           - name: ALLOW_PLAINTEXT_LISTENER
             value: "yes"
           - name: JMX_PORT
