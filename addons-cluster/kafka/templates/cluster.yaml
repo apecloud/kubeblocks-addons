@@ -29,6 +29,7 @@ spec:
       env:
         {{- include "kafka-cluster.brokerCommonEnv" . | nindent 8 }}
       {{- include "kafka-cluster.brokerVCT" . | indent 6 }}
+      {{- include "kafka-broker-volumes" . | indent 6 }}
     {{- else }}
     - name: kafka-broker
       tls: {{ .Values.tlsEnable }}
@@ -49,6 +50,7 @@ spec:
       env:
         {{- include "kafka-cluster.brokerCommonEnv" . | nindent 8 }}
       {{- include "kafka-cluster.brokerVCT" . | indent 6 }}
+      {{- include "kafka-broker-volumes" . | indent 6 }}
       {{- if eq "withZookeeper-10" $.Values.mode }}
       serviceRefs:
         - name: kafkaZookeeper

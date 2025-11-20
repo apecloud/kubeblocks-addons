@@ -11,11 +11,45 @@ mode: combined
 # Todo: Monitoring is not supported when tls is enabled
 tlsEnable: false
 
+
+# Deprecated: use sasl.enable + sasl.mechanisms instead
+# equals with:
+#   sasl:
+#     enable: true
+#     useKBBuildInSasl: false
+#     mechanism: 
+#       - PLAIN
+#     interBrokerProtocol: PLAIN
 # Enable SASL plain auth
 saslEnable: false
 
+# Will deprecate when 'sasl.mechanisms' support SCRAM-SHA-256, SCRAM-SHA-512
+# equals with:
+#   sasl:
+#     enable: true
+#     useKBBuildInSasl: false
+#     mechanism:
+#       - SCRAM-SHA-256
+#       - SCRAM-SHA-512
+#     interBrokerProtocol: SCRAM-SHA-512
 # Enable SASL Scram auth
 saslScramEnable: false
+
+# SASL settings
+sasl:
+  enable: false
+  # if true, the built-in SASL server callback handler in the knowledge base is used, and users are managed by modifying the key.
+  # if false, use kafka native SASL callback handler
+  # server.properties: 
+  #   useKBBuildInSasl=true -> sasl.server.callback.handler.class=${KBClassName}
+  #   useKBBuildInSasl=false -> sasl.server.callback.handler.class=''
+  useKBBuildInSasl: true
+  # [PLAIN,SCRAM-SHA-256,SCRAM-SHA-512]
+  # when useKBBuildInSasl=true, only supported [PLAIN] yet. SCRAM-SHA-256, SCRAM-SHA-512 will be comming soon
+  mechanisms:
+    - PLAIN
+  # should be one of sasl.mechanisms setting  
+  interBrokerProtocol: PLAIN
 
 # Enable Monitor
 monitorEnable: true

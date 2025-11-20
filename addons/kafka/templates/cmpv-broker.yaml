@@ -28,6 +28,7 @@ spec:
       images:
         kafka: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.kafka.repository }}:{{ .tag }}
         jmx-exporter: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.jmxExporter.repository }}:{{ $.Values.images.jmxExporter.tag }}
+        kafkatools: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.kafkatools.repository }}:{{ $.Values.images.kafkatools.tag }}
         {{- if eq $key "v2" }}
         accountProvision: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.kafka.repository }}:{{ .tag }}
         {{- end }}

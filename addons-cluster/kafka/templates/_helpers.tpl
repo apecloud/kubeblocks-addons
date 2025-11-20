@@ -91,10 +91,27 @@ kafka2-external-zk
 {{- end -}}
 
 {{- define "kafka-cluster.brokerCommonEnv" -}}
+- name: KB_CLUSTER_VERSION
+  value: "{{ .Values.version }}"
+{{/*
+will deprecated:
+- KB_KAFKA_ENABLE_SASL
+- KB_KAFKA_ENABLE_SASL_SCRAM
+*/}}
 - name: KB_KAFKA_ENABLE_SASL
   value: "{{ .Values.saslEnable }}"
 - name: KB_KAFKA_ENABLE_SASL_SCRAM
   value: "{{ .Values.saslScramEnable }}"
+- name: KB_KAFKA_SASL_ENABLE
+  value: "{{ .Values.sasl.enable }}"
+{{- if .Values.sasl.enable }}
+- name: KB_KAFKA_SASL_USE_KB_BUILTIN
+  value: "{{ .Values.sasl.useKBBuildInSasl }}"
+- name: KB_KAFKA_SASL_MECHANISMS
+  value: "{{ .Values.sasl.mechanisms | join "," }}"
+- name: KB_KAFKA_SASL_INTER_BROKER_PROTOCOL
+  value: "{{ .Values.sasl.interBrokerProtocol }}"  
+{{- end }}
 - name: KB_KAFKA_BROKER_HEAP
   value: "{{ .Values.brokerHeap }}"
 - name: KB_KAFKA_CONTROLLER_HEAP
@@ -143,3 +160,23 @@ volumeClaimTemplates:
 {{- end }}
 {{- end -}}
 
+{{- define "kafka-broker-component" -}}
+{{- if eq "combined" .Values.mode -}}
+  kafka-combine
+{{- else }}
+  kafka-broker
+{{- end -}}
+{{- end -}}
+
+{{- define "kafka-broker-accounts-secret-name" -}}
+{{ include "kblib.clusterName" . }}-{{ include "kafka-broker-component" . }}-accounts
+{{- end -}}
+
+{{- define "kafka-broker-volumes" -}}
+{{- if .Values.sasl.enable }}
+volumes:
+  - name: accounts
+    secret:
+      secretName: {{ include "kafka-broker-accounts-secret-name" . }}
+{{- end }}
+{{- end -}}
