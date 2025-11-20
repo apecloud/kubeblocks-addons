@@ -198,5 +198,53 @@
       "title": "fixedPodIPEnabled",
       "description":"Whether to enable fixed Pod IP mode in Kafka's `advertised.listeners`"
     }
+    ,
+    "sasl": {
+      "title": "Sasl",
+      "description": "Advanced SASL authentication options.",
+      "type": "object",
+      "properties": {
+        "enable": {
+          "title": "Enable",
+          "description": "Enable SASL authentication.",
+          "type": "boolean",
+          "default": false
+        },
+        "useKBBuildInSasl": {
+          "title": "UseKBBuildInSasl",
+          "description": "Whether to use the built-in SASL server callback handler.",
+          "type": "boolean",
+          "default": true
+        },
+        "mechanisms": {
+          "title": "Mechanisms",
+          "description": "List of SASL mechanisms to enable. When useKBBuildInSasl is true, only [PLAIN] is supported currently.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "PLAIN",
+              "SCRAM-SHA-256",
+              "SCRAM-SHA-512"
+            ]
+          },
+          "default": [
+            "PLAIN"
+          ],
+          "minItems": 1
+        },
+        "interBrokerProtocol": {
+          "title": "Inter Broker Protocol",
+          "description": "SASL mechanism used for inter-broker communication. Should be one of sasl.mechanisms.",
+          "type": "string",
+          "enum": [
+            "PLAIN",
+            "SCRAM-SHA-256",
+            "SCRAM-SHA-512"
+          ],
+          "default": "PLAIN"
+        }
+      }
+    }
   }
 }

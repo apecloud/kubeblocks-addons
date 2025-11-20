@@ -94,11 +94,6 @@ spec:
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
-    - name: kafka-tools-scripts-tpl
-      template: {{ include "kafka.toolsScriptsTplName" . }}
-      volumeName: tools
-      namespace: {{ .Release.Namespace }}
-      defaultMode: 0755
   runtime:
     {{- if .Values.securityContext }}
     securityContext:
@@ -166,10 +161,6 @@ spec:
             value: $(CLUSTER_UID)
           - name: KAFKA_CFG_SUPER_USERS
             value: "User:$(SUPER_USER)"
-          # - name: KB_KAFKA_ENABLE_SASL  # enable the SASL with plain mode
-          #   value: "true"
-          - name: KB_KAFKA_SASL_CONFIG_PATH  # specify the SASL jaas users
-            value: /tools/server-jaas.properties
           - name: BROKER_MIN_NODE_ID
             value: {{ .Values.kafkaBroker.minNodeId | quote }}
           {{- with .Values.extraEnvs.kafka }}
