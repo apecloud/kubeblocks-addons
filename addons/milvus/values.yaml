@@ -25,7 +25,8 @@ images:
   milvus:
     registry: ""
     repository: milvusdb/milvus
-
+  milvusBackup:
+    repository: apecloud/milvus-backup
 
 livenessProbe:
   enabled: true
