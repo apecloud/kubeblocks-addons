@@ -14,7 +14,7 @@ spec:
       command:
         - "update-parameter.sh"
       scriptConfig:
-        scriptConfigMapRef: mysql-reload-script
+        scriptConfigMapRef: mysql-reconfigure-script
         namespace: {{ .Release.Namespace }}
       toolsSetup:
         mountPoint: /kb_tools
