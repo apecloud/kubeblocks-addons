@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 parse_yaml_array() {
     local file="$1"
