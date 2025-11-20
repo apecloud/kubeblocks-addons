@@ -15,3 +15,5 @@ data:
     {{- .Files.Get "scripts/common.sh" | nindent 4 }}
   role-check.sh: |-
     {{- .Files.Get "scripts/role-check.sh" | nindent 4 }}
+  start-thrift.sh: |-
+    {{- .Files.Get "scripts/start-thrift.sh" | nindent 4 }}

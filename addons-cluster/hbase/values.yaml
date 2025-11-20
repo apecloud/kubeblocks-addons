@@ -8,32 +8,51 @@ fullnameOverride: ""
 replicas:
   hmaster: 2
   hregionserver: 3
+  zookeeper: 3
+  thrift: 2
 
 # Resource requirements for each component
 resources:
   hmaster:
     requests:
       cpu: "0.1"
-      memory: 0.5Gi
+      memory: 0.1Gi
     limits:
       cpu: "1"
       memory: 2Gi
   hregionserver:
     requests:
       cpu: "0.1"
-      memory: 0.5Gi
+      memory: 0.1Gi
     limits:
       cpu: "1"
       memory: 2Gi
+  zookeeper:
+    requests:
+      cpu: "0.1"
+      memory: 0.1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  thrift:
+    requests:
+      cpu: "0.1"
+      memory: 0.1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+
 
 # Storage requirements for each component
 storage:
   hbaseLog: 2Gi
   hbaseTempData: 10Gi
+  zookeeper: 10Gi
 
 # Advanced configurations
 terminationPolicy: Delete
 clusterDef: hbase
 topology: hbase-cluster
+zookeeperServiceVersion: 3.9.2
 hadoopCluster:
   name: hadoopcluster

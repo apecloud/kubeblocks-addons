@@ -11,11 +11,16 @@ spec:
     - name: hbase-cluster
       default: true
       components:
+        - name: zookeeper
+          compDef: zookeeper
         - name: hmaster
           compDef: hbase-hmaster
         - name: hregionserver
           compDef: hbase-hregionserver
+        - name: thrift
+          compDef: hbase-thrift
       orders:
         provision:
+          - zookeeper
           - hmaster
-          - hregionserver
+          - hregionserver,thrift

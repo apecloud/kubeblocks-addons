@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: hbase-hregionserver-{{ .Chart.Version }}
+  name: hbase-thrift-{{ .Chart.Version }}
   labels:
     {{- include "hbase.labels" . | nindent 4 }}
   annotations:
@@ -9,31 +9,27 @@ metadata:
     apps.kubeblocks.io/skip-immutable-check: "true"
 spec:
   provider: kubeblocks
-  description: HBase RegionServer component
-  serviceKind: hbase-hregionserver
+  description: HBase Thrift component
+  serviceKind: hbase-thrift
   serviceVersion: 2.5.12
-  minReadySeconds: 60
+  minReadySeconds: 10
   podManagementPolicy: Parallel
   services:
     - name: default
       spec:
         ports:
-          - name: hregionserver
-            port: 16020
+          - name: thrift
+            port: 9090
   runtime:
     containers:
-      - name: hbase-hregionserver
+      - name: hbase-thrift
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         command:
           - bash
           - -c
           - |
-            /hbase/scripts/start-regionserver.sh
+            /hbase/scripts/start-thrift.sh
         ports:
-          - containerPort: 16020
-            name: hregionserver
-          - containerPort: 16030
-            name: webui
           - containerPort: 9090
             name: thrift
           - containerPort: 9095
@@ -59,8 +55,8 @@ spec:
             subPath: log4j.properties
           - name: hbase-scripts
             mountPath: /hbase/scripts
-          - name: hbase-temp-data
-            mountPath: /hbase/temp
+          - name: hbase-log
+            mountPath: /hbase/logs/
         securityContext:
           runAsUser: 0
           runAsGroup: 0
@@ -84,6 +80,11 @@ spec:
           optional: true
           podFQDNs: Required
       expression: {{ `{{ $hosts := splitList "," .ZOOKEEPER_ENDPOINTS }}{{ range $idx, $host := $hosts }}{{ $host }}{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
+    - name: HBASE_MASTER_POD_LIST
+      valueFrom:
+        componentVarRef:
+          optional: true
+          podNames: Optional
     - name: CLUSTER_COMPONENT_NAME
       valueFrom:
         componentVarRef:
@@ -109,6 +110,3 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: hbase-scripts
       defaultMode: 0755
-  replicasLimit:
-    minReplicas: 3
-    maxReplicas: 1000

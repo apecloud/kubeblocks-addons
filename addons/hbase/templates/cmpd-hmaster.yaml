@@ -22,11 +22,6 @@ spec:
             port: 16000
           - name: webui
             port: 16010
-  serviceRefDeclarations:
-    - name: hbase-zookeeper
-      serviceRefDeclarationSpecs:
-        - serviceKind: zookeeper
-          serviceVersion: "^*"
   runtime:
     containers:
       - name: hbase-hmaster
@@ -39,6 +34,12 @@ spec:
         ports:
           - containerPort: 16000
             name: hmaster
+          - containerPort: 16010
+            name: webui
+          - containerPort: 9090
+            name: thrift
+          - containerPort: 9095
+            name: thrift-internal
         env:
           - name: DEBUG_MODEL
             value: "false"
@@ -99,8 +100,8 @@ spec:
       value: "ENV_HADOOP_CLUSTER_NAME"
     - name: ZOOKEEPER_ENDPOINTS
       valueFrom:
-        serviceRefVarRef:
-          name: hbase-zookeeper
+        componentVarRef:
+          compDef: zookeeper
           optional: true
           podFQDNs: Required
       expression: {{ `{{ $hosts := splitList "," .ZOOKEEPER_ENDPOINTS }}{{ range $idx, $host := $hosts }}{{ $host }}{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}

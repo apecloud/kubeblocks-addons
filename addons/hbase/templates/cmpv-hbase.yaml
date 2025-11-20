@@ -16,6 +16,10 @@ spec:
         - hbase-hregionserver
       releases:
         - hregionserver-2.5.12
+    - compDefs:
+        - hbase-thrift
+      releases:
+        - thrift-2.5.12
   releases:
     - name: hmaster-2.5.12
       serviceVersion: 2.5.12
@@ -26,3 +30,7 @@ spec:
       serviceVersion: 2.5.12
       images:
         hbase-hregionserver: "{{ .Values.images.registry }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}"
+    - name: thrift-2.5.12
+      serviceVersion: 2.5.12
+      images:
+        hbase-thrift: "{{ .Values.images.registry }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}"

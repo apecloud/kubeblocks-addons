@@ -126,11 +126,56 @@
 
     <property>
         <name>hbase.master.wait.on.regionservers.timeout</name>
-        <value>300000</value>
+        <value>100000</value>
     </property>
 
     <property>
         <name>hbase.master.startup.retainassign.timeout</name>
         <value>300000</value>
+    </property>
+
+    <property>
+        <name>hbase.master.wait.on.regionservers.mintostart</name>
+        <value>3</value>
+    </property>
+
+     <!-- Thrift Server Configuration -->
+    <property>
+       <!-- Enable HTTP transport for Thrift Server -->
+       <name>hbase.regionserver.thrift.http</name>
+       <value>false</value>
+    </property>
+    <property>
+       <name>hbase.thrift.support.proxyuser</name>
+       <value>true</value>
+    </property>
+    <property>
+       <name>hadoop.proxyuser.hadoop.hosts</name>
+       <value>*</value>
+    </property>
+    <property>
+       <name>hadoop.proxyuser.hadoop.groups</name>
+       <value>*</value>
+    </property>
+    <property>
+       <name>hadoop.security.authorization</name>
+       <value>true</value>
+    </property>
+    <property>
+       <name>hbase.regionserver.thrift.port</name>
+       <value>9090</value>
+    </property>
+    <!-- Thrift Server Info/web Port with hbase -->
+    <property>
+       <name>hbase.thrift.info.port</name>
+       <value>9095</value>
+    </property>
+    <property>
+        <name>hbase.regionserver.thrift.compact</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>hbase.regionserver.thrift.framed</name>
+        <value>true</value>
     </property>
 </configuration>
