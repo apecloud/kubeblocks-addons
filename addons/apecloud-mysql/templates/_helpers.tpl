@@ -482,3 +482,13 @@ volumeMounts:
     type: DirectoryOrCreate
 {{- end }}
 {{- end -}}
+
+{{/*
+Generate reloader scripts configmap
+*/}}
+{{- define "apecloud-mysql.extend.reload.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "reloader/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}

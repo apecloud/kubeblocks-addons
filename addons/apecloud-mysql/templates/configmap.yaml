@@ -36,14 +36,4 @@ metadata:
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 data:
-  reload.tpl: |-
-    {{- .Files.Get "config/mysql-reload.tpl" | nindent 4 }}
-  reload.yaml: |-
-    scripts: reload.tpl
-    fileRegex: my.cnf
-    dataType: mysql
-    dsn: '{%- expandenv "${MYSQL_ROOT_USER}:${MYSQL_ROOT_PASSWORD}@(localhost:3306)/" | trim %}'
-    formatterConfig:
-      format: ini
-      iniConfig:
-        sectionName: mysqld
+  {{- include "apecloud-mysql.extend.reload.scripts" . | nindent 2 }}
