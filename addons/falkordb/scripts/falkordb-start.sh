@@ -24,6 +24,7 @@ primary=""
 primary_port="6379"
 redis_template_conf="/etc/conf/redis.conf"
 redis_real_conf="/etc/redis/redis.conf"
+redis_extra_conf="/etc/conf/extra/redis.conf"
 redis_acl_file="/data/users.acl"
 redis_acl_file_bak="/data/users.acl.bak"
 retry_times=3
@@ -38,6 +39,10 @@ load_common_library() {
 
 load_redis_template_conf() {
   echo "include $redis_template_conf" >> $redis_real_conf
+  # if the file redis_extra_conf exists, include it too
+  if [ -f $redis_extra_conf ]; then
+    echo "include $redis_extra_conf" >> $redis_real_conf
+  fi
 }
 
 extract_lb_host_by_svc_name() {

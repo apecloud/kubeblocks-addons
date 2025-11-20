@@ -392,6 +392,8 @@ spec:
             mountPath: {{ $.Values.dataMountPath }}
           - name: falkordb-config
             mountPath: /etc/conf
+          - name: falkordb-config-extra
+            mountPath: /etc/conf/extra
           - name: scripts
             mountPath: /scripts
           - name: falkordb-conf

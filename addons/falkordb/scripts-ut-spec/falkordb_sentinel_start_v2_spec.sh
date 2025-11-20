@@ -19,6 +19,7 @@ Describe "FalkorDB Start Sentinel Bash Script Tests"
 
   init() {
     redis_sentinel_real_conf="./redis_sentinel.conf"
+    redis_sentinel_extra_conf="./redis-sentinel-extra.conf"
     redis_sentinel_real_conf_bak="./redis_sentinel.conf.bak"
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
@@ -26,7 +27,8 @@ Describe "FalkorDB Start Sentinel Bash Script Tests"
   BeforeAll "init"
 
   cleanup() {
-    rm -f ./redis_sentinel.conf;
+    rm -f $redis_sentinel_real_conf;
+    rm -f $redis_sentinel_extra_conf;
     rm -f $common_library_file;
   }
   AfterAll 'cleanup'
@@ -34,6 +36,7 @@ Describe "FalkorDB Start Sentinel Bash Script Tests"
   Describe "build_redis_sentinel_conf()"
     setup() {
         echo "" > $redis_sentinel_real_conf
+        echo "" > $redis_sentinel_extra_conf
         sentinel_port="26379"
         CURRENT_POD_NAME="redis-redis-sentinel-0"
         SENTINEL_POD_FQDN_LIST="redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local,redis-redis-sentinel-1.redis-redis-sentinel-headless.default.svc.cluster.local"
@@ -54,6 +57,7 @@ Describe "FalkorDB Start Sentinel Bash Script Tests"
       When call build_redis_sentinel_conf
       The status should be success
       The stdout should include "build redis sentinel conf succeeded!"
+      The contents of file "$redis_sentinel_real_conf" should include "include $redis_sentinel_extra_conf"
       The contents of file "$redis_sentinel_real_conf" should include "port $sentinel_port"
       The contents of file "$redis_sentinel_real_conf" should include "sentinel announce-ip $CURRENT_POD_NAME.redis-redis-sentinel-headless.default.svc.cluster.local"
       The contents of file "$redis_sentinel_real_conf" should include "resolve-hostnames yes"
