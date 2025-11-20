@@ -58,6 +58,7 @@ function setStorageConfig() {
   yq -i ".minio.backupAccessKeyID = \"$ACCESS_KEY_ID\"" "$BACKUP_CONFIG"
   yq -i ".minio.backupSecretAccessKey = \"$SECRET_ACCESS_KEY\"" "$BACKUP_CONFIG"
   yq -i ".minio.backupBucketName = \"$BUCKET\"" "$BACKUP_CONFIG"
+  # eliminate the leading slash, or go-minio will return an empty list when listing
   BACKUP_ROOT_PATH=${DP_BACKUP_BASE_PATH#/}
   yq -i ".minio.backupRootPath = \"$BACKUP_ROOT_PATH\"" "$BACKUP_CONFIG"
 }
