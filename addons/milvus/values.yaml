@@ -28,6 +28,8 @@ images:
     registry: ""
     repository: apecloud/os-shell
     tag: 11-debian-11-r90
+  milvusBackup:
+    repository: apecloud/milvus-backup
 
 livenessProbe:
   enabled: true

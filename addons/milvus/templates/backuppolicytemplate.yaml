@@ -20,3 +20,32 @@ spec:
       enabled: false
       retentionPeriod: 7d
       cronExpression: "0 18 * * 0"
+
+---
+
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: milvus-cluster-backup-policy-template
+  labels:
+    {{- include "milvus.labels" . | nindent 4 }}
+spec:
+  serviceKind: Milvus
+  compDefs:
+    - {{ include "milvus-proxy.cmpdRegexpPattern" . }}
+  backupMethods:
+    - name: full
+      snapshotVolumes: false
+      actionSetName: milvus-full
+      targetVolumes:
+        volumes:
+          - milvus-config
+        volumeMounts:
+          - mountPath: /milvus/configs/
+            name: milvus-config
+            readOnly: true
+  schedules:
+    - backupMethod: full
+      enabled: false
+      retentionPeriod: 7d
+      cronExpression: "0 18 * * 0"

@@ -1,0 +1,33 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: milvus-full
+  labels:
+    {{- include "milvus.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  backup:
+    backupData:
+      image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.milvusBackup.repository }}:v0.5.9-yq
+      # runOnTargetPodNode is needed to let backup controller mount volumes for backup job
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: false
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/common.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+  restore:
+    postReady:
+    - job:
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.milvusBackup.repository }}:v0.5.9-yq
+        runOnTargetPodNode: true
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/common.sh" | nindent 12 }}
+          {{- .Files.Get "dataprotection/restore.sh" | nindent 12 }}
