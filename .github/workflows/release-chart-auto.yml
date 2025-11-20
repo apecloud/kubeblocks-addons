@@ -68,7 +68,7 @@ jobs:
         id: get_addons_chart_dir
         run: |
           for filePath in $(git diff --name-only HEAD HEAD^ | (egrep "addons/|addons-cluster/" || true) | cut -d'/' -f1,2 | sort -u); do
-              if [[ "$filePath" == "addons/"*" || "$filePath" == "addons-cluster/"*" ]]; then
+              if [[ "$filePath" == "addons/"* || "$filePath" == "addons-cluster/"* ]]; then
                   echo "release $filePath chart"
                   addon_dir=${filePath%%/*}
                   addon_name=${filePath#*/}
@@ -86,8 +86,10 @@ jobs:
                   fi
                   cmd=$cmd"--branch-name \"${{ matrix.ref-name }}\" "
                  
-                  if [[ -n "${{ inputs.EXTRA_ARGS }}" ]]; then
+                  if [[ -n "${addon_name}" ]]; then
                       cmd=$cmd"--extra-args \"custom_chart_dir=${addon_name}\" "
+                  else
+                      continue
                   fi
         
                   echo "$cmd"
