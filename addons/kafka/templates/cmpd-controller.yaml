@@ -11,6 +11,7 @@ spec:
   description: Kafka controller that act as controllers (kraft) only server.
   serviceKind: kafka-controller
   serviceVersion: {{ .Values.defaultServiceVersion.controller }}
+  podManagementPolicy: Parallel
   vars:
     - name: CLUSTER_UID
       valueFrom:
