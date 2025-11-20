@@ -21,7 +21,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mysql-reload-script
+  name: mysql-reconfigure-script
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 data:
