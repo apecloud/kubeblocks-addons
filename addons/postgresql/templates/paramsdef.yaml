@@ -26,6 +26,10 @@ spec:
           - name: kb-tools
             image: {{ $.Values.image.registry | default "docker.io" }}/{{ $.Values.image.repository }}:{{ (index .minors 0).tag }}
             asContainerImage: true
+    ## update patroni master
+    targetPodSelector:
+      matchLabels:
+        "kubeblocks.io/role": "primary"
 
   mergeReloadAndRestart: false
 
