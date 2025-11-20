@@ -9,10 +9,19 @@ spec:
   # configmap reference
   # tplRef: mysql-3node-tpl-8.0
   reloadAction:
-    tplScriptTrigger:
+    shellTrigger:
       sync: true
-      scriptConfigMapRef: {{ include "apecloud-mysql.cmReloadScriptName" .}}
-      namespace: {{ .Release.Namespace }}
+      command:
+        - "update-parameter.sh"
+      scriptConfig:
+        scriptConfigMapRef: {{ include "apecloud-mysql.cmReloadScriptName" . }}
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30
+            asContainerImage: true
 
 
   fileName: my.cnf
