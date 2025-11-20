@@ -13,14 +13,19 @@ spec:
   fileName: postgresql.conf
 
   reloadAction:
-    tplScriptTrigger:
+    shellTrigger:
       sync: true
-      scriptConfigMapRef: {{ include "postgresql.patroniReloadScriptsTemplate" $ }}
-      namespace: {{ $.Release.Namespace }}
-    ## update patroni master
-    targetPodSelector:
-      matchLabels:
-        "kubeblocks.io/role": "primary"
+      command:
+        - "update-parameter.sh"
+      scriptConfig:
+        scriptConfigMapRef: {{ include "postgresql.patroniReloadScriptsTemplate" $ }}
+        namespace: {{ $.Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            image: {{ $.Values.image.registry | default "docker.io" }}/{{ $.Values.image.repository }}:{{ (index .minors 0).tag }}
+            asContainerImage: true
 
   mergeReloadAndRestart: false
 
