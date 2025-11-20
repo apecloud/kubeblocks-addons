@@ -421,12 +421,12 @@ Milvus cluster vars for external storage services reference
       name: milvus-meta-storage
       optional: false
       port: Required
-- name: MINIO_SERVER
+- name: MINIO_HOST
   valueFrom:
     serviceRefVarRef:
       name: milvus-object-storage
       optional: false
-      endpoint: Required
+      host: Required
 - name: MINIO_PORT
   valueFrom:
     serviceRefVarRef:
@@ -452,6 +452,8 @@ Milvus cluster vars for external storage services reference
       optional: false
       endpoint: Required
   expression: {{ `{{ index (splitList ":" .LOG_SERVICE_SERVER) 0 }}` | toYaml }}
+# FIXME: in current implementation, kafka service can't be NodePort or the LOG_SERVICE_PORT will
+# be "svcName:nodePort", which is incorrect
 - name: LOG_SERVICE_PORT
   valueFrom:
     serviceRefVarRef:
