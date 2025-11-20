@@ -210,6 +210,16 @@ patroni-reload-scripts-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
+Generate reloader scripts configmap
+*/}}
+{{- define "postgresql.extend.reload.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "reloader/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{/*
 Define pgbouncer configuration template name
 */}}
 {{- define "pgbouncer.configurationTemplate" -}}
