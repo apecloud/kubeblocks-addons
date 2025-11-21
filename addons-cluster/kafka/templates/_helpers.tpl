@@ -93,6 +93,8 @@ kafka2-external-zk
 {{- define "kafka-cluster.brokerCommonEnv" -}}
 - name: KB_CLUSTER_VERSION
   value: "{{ .Values.version }}"
+- name: KB_CLUSTER_WITH_ZK
+  value: "{{- if hasPrefix "withZookeeper" .Values.mode }}true{{- else }}false{{- end }}"
 {{/*
 will deprecated:
 - KB_KAFKA_ENABLE_SASL

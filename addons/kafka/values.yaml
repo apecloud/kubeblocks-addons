@@ -41,8 +41,8 @@ images:
   jmxExporter:
     repository: apecloud/jmx-exporter
     tag: 0.18.0-debian-11-r20
-  kafkatools:
-    repository: apecloud/kafkatools
+  kafkatool:
+    repository: apecloud/kafkatool
     tag: 0.1.0
 
 ## @param define default serviceVersion of each Component
