@@ -108,19 +108,13 @@ convert_server_properties_to_env_var() {
 }
 
 override_sasl_configuration() {
-  # override SASL settings
-  if [[ "true" == "$KB_KAFKA_ENABLE_SASL" ]]; then
-    # bitnami default jaas setting: /opt/bitnami/kafka/config/kafka_jaas.conf
-    if [[ "${KB_KAFKA_SASL_CONFIG_PATH}" ]]; then
-      cp ${KB_KAFKA_SASL_CONFIG_PATH} $kafka_config_path/kafka_jaas.conf 2>/dev/null
-      echo "[sasl]do: cp ${KB_KAFKA_SASL_CONFIG_PATH} $kafka_config_path/kafka_jaas.conf "
-    fi
-    export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:SASL_PLAINTEXT,CLIENT:SASL_PLAINTEXT
-    echo "[sasl]KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
-    export KAFKA_CFG_SASL_ENABLED_MECHANISMS="PLAIN"
-    echo "[sasl]export KAFKA_CFG_SASL_ENABLED_MECHANISMS=${KAFKA_CFG_SASL_ENABLED_MECHANISMS}"
-    export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL="PLAIN"
-    echo "[sasl]export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL=${KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL}"
+  local isZkOrNot="false"
+  local defaultLoginModule="org.apache.kafka.common.security.plain.PlainLoginModule required"
+
+  if [[ $(is_sasl_enabled "${isZkOrNot}") == "true" ]]; then
+    build_server_jaas_config "${defaultLoginModule}"
+    build_if_build_in_enabled
+    build_kraft_server_sasl_properties
   fi
 }
 
