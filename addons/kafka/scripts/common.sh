@@ -66,19 +66,16 @@ build_server_jaas_config() {
     if [ "$(is_sasl_build_in_enabled)" == "true" ]; then
         # build-in only support plain yet
         login_module="org.apache.kafka.common.security.plain.PlainLoginModule required"
-        # encode password
-        admin_password=$(build_encode_password "${admin_password}")
-        client_password=$(build_encode_password "${client_password}")
     fi
 
     cat << EOF > /opt/bitnami/kafka/config/kafka_jaas.conf
 KafkaServer {
-  ${login_module}"
+  ${login_module}
   username="$KAFKA_ADMIN_USER"
   password="$admin_password";
 };
 KafkaClient {
-  ${login_module}"
+  ${login_module}
   username="$KAFKA_CLIENT_USER"
   password="$client_password";
 };
@@ -114,6 +111,30 @@ build_if_build_in_enabled() {
         return 1
     fi
 
-    export KAFKA_CFG_LISTENER_NAME_SASL_SSL_PLAIN_SASL_SERVER_CALLBACK_HANDLER_CLASS=${jar_path}
-    echo "[sasl]export KAFKA_CFG_LISTENER_NAME_SASL_SSL_PLAIN_SASL_SERVER_CALLBACK_HANDLER_CLASS=${KAFKA_CFG_LISTENER_NAME_SASL_SSL_PLAIN_SASL_SERVER_CALLBACK_HANDLER_CLASS}"
+    export KAFKA_CFG_LISTENER_NAME_CLIENT_PLAIN_SASL_SERVER_CALLBACK_HANDLER_CLASS=${jar_path}
+    echo "[sasl]export KAFKA_CFG_LISTENER_NAME_CLIENT_PLAIN_SASL_SERVER_CALLBACK_HANDLER_CLASS=${KAFKA_CFG_LISTENER_NAME_CLIENT_PLAIN_SASL_SERVER_CALLBACK_HANDLER_CLASS}"
+    
+    export KAFKA_CFG_LISTENER_NAME_INTERNAL_PLAIN_SASL_SERVER_CALLBACK_HANDLER_CLASS=${jar_path}
+    echo "[sasl]export KAFKA_CFG_LISTENER_NAME_INTERNAL_PLAIN_SASL_SERVER_CALLBACK_HANDLER_CLASS=${KAFKA_CFG_LISTENER_NAME_INTERNAL_PLAIN_SASL_SERVER_CALLBACK_HANDLER_CLASS}"
+}
+
+get_client_default_mechanism() {
+    isZkOrNot="$1"
+    if [[ "$(is_sasl_enabled)" == "false" ]]; then
+        echo ""
+        return 0
+    fi
+    if [[ -n "$KB_KAFKA_SASL_MECHANISMS" ]]; then
+        if [[ "$KB_KAFKA_SASL_MECHANISMS" == *,* ]]; then
+            echo "${KB_KAFKA_SASL_MECHANISMS%%,*}"
+        else
+            echo "$KB_KAFKA_SASL_MECHANISMS"
+        fi
+        return 0
+    fi
+    if [[ "${isZkOrNot}" == "true" ]] && [[ "${KB_KAFKA_ENABLE_SASL_SCRAM}" == "true" ]]; then
+        echo "SCRAM-SHA-512"
+        return 0
+    fi
+    echo "PLAIN"
 }

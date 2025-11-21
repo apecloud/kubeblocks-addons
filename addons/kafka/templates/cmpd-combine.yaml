@@ -90,15 +90,6 @@ spec:
           enabled: Optional
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
-  volumes:
-    - name: data
-      needSnapshot: true
-    - name: metadata
-      needSnapshot: true
-    {{- if .Values.customVolume.enabled }}
-    - name: {{ .Values.customVolume.name | default "custom-volume" }}
-      needSnapshot: {{ .Values.customVolume.needSnapshot | default false }}
-    {{- end }}
   configs:
     - name: kafka-configuration-tpl
       template: {{ include "kafka.configurationTplName" . }}
@@ -134,7 +125,7 @@ spec:
       {{- toYaml .Values.securityContext | nindent 6 }}
     {{- end }}
     initContainers:
-      - name: kafkatools
+      - name: kafkatool
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         command:
           - sh
@@ -253,10 +244,6 @@ spec:
             mountPath: /shared-tools
           - name: accounts
             mountPath: /accounts/accounts-mount  
-          {{- if .Values.customVolume.enabled }}
-          - name: {{ .Values.customVolume.name | default "custom-volume" }}
-            mountPath: {{ .Values.customVolume.mountPath | default "/custom" }}
-          {{- end }}
           {{- with .Values.extraVolumeMounts.kafka }}
           {{- toYaml . | nindent 10}}
           {{- end }}
