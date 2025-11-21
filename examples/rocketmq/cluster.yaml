@@ -59,7 +59,7 @@ spec:
   shardings:
     - name: broker
       # Number of broker shards - each shard can have multiple replicas
-      shards: 1
+      shards: 2
       template:
         # Template name for the broker instances
         name: rocketmq-broker

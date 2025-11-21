@@ -23,7 +23,7 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 Common annotations
 */}}
 {{- define "rocketmq.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "rocketmq.apiVersion" . }}
 {{- end }}
 
