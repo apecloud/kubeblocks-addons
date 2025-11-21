@@ -41,6 +41,9 @@ images:
   jmxExporter:
     repository: apecloud/jmx-exporter
     tag: 0.18.0-debian-11-r20
+  kafkactl:
+    repository: apecloud/kafkactl
+    tag: v5.15.0
 
 ## @param define default serviceVersion of each Component
 defaultServiceVersion:

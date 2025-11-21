@@ -1,0 +1,21 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: kafka-backup-policy-template
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+spec:
+  serviceKind: Kafka
+  compDefs:
+    - {{ include "kafka2-broker.cmpdRegexpPattern" . }}
+    - {{ include "kafka-broker.cmpdRegexpPattern" . }}
+    - {{ include "kafka-combine.cmpdRegexpPattern" . }}
+  backupMethods:
+    - name: topics
+      snapshotVolumes: false
+      actionSetName: kafka-topics
+  schedules:
+    - backupMethod: topics
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
