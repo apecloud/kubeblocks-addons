@@ -1,5 +1,7 @@
 #!/bin/bash
 
-set -eo pipefail
-
-cat json-raw.json  | kafkactl produce new2 --input-format=json
+readarray -t topics < <(datasafed pull topics.txt -)
+for topic in "${topics[@]}"; do
+  kafkactl create topic "$topic"
+  datasafed pull "data/${topic}.json" - | kafkactl produce "$topic" --input-format=json
+done
