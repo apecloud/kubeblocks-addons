@@ -22,7 +22,7 @@ trap handle_exit EXIT
 
 function getToolConfigValue() {
     local var=$1
-    cat $toolConfig | grep "$var[[:space:]]*=" | awk '{print $NF}'
+    cat $toolConfig | grep "${var}[[:space:]]*=" | awk '{print $NF}'
 }
 
 s3_endpoint=$(getToolConfigValue endpoint)
