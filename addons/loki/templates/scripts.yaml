@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "loki.scriptsTemplate" . }}
+  labels:
+    {{- include "loki.labels" . | nindent 4 }}
+  annotations:
+    {{- include "loki.annotations" . | nindent 4 }}
+data:
+  {{- with include "loki.extend.scripts" . }}
+  {{- . | nindent 2 }}
+  {{- end }}

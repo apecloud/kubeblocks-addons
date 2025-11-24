@@ -100,6 +100,7 @@ Docker image name
 {{- if .Values.enterprise.enabled -}}{{- include "loki.enterpriseImage" . -}}{{- else -}}{{- include "loki.lokiImage" . -}}{{- end -}}
 {{- end -}}
 
+
 {{/*
 write fullname
 */}}
@@ -274,6 +275,23 @@ Define loki write component definition regular expression name prefix
 {{- define "loki.writeCmpdRegexpPattern" -}}
 ^loki-write-
 {{- end -}}
+
+{{/*
+Define loki scripts configMap template name
+*/}}
+{{- define "loki.scriptsTemplate" -}}
+loki-scripts-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Generate loki scripts configmap
+*/}}
+{{- define "loki.extend.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
 
 {{/*
 object storage serviceRef declarations

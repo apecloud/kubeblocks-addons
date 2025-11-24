@@ -37,6 +37,26 @@ spec:
             topologyKey: kubernetes.io/hostname
     securityContext:
       fsGroup: 10001
+    initContainers:
+      - name: wait-index-gateway
+        imagePullPolicy: {{ .Values.images.curl.pullPolicy }}
+        command:
+          - /bin/sh
+          - -c
+          - |
+            # Copy curl to tools volume for use in probes
+            cp /bin/curl /kb-tools/curl
+
+            # Execute wait script
+            /kb-scripts/wait-index-gateway-ring.sh
+        env:
+          - name: MAX_WAIT
+            value: "300"
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: tools
+            mountPath: /kb-tools
     containers:
       - name: read
         imagePullPolicy: {{ .Values.images.pullPolicy }}
@@ -69,18 +89,26 @@ spec:
           - containerPort: {{ .Values.server.httpMemberlistPort }}
             name: http-memberlist
             protocol: TCP
+        startupProbe:
+          exec:
+            command:
+              - /kb-scripts/check-index-gateway-ring.sh
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 60
         readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /ready
-            port: http-metrics
-            scheme: HTTP
+          exec:
+            command:
+              - /kb-scripts/check-index-gateway-ring.sh
           initialDelaySeconds: 15
           periodSeconds: 10
+          timeoutSeconds: 3
           successThreshold: 1
-          timeoutSeconds: 1
+          failureThreshold: 3
         volumeMounts:
-          - mountPath: /etc/loki/config          
+          - mountPath: /etc/loki/config
             name: config
           - mountPath: /etc/loki/runtime-config
             name: runtime-config
@@ -88,6 +116,13 @@ spec:
             name: tmp
           - mountPath: /var/loki
             name: data
+          - mountPath: /kb-scripts
+            name: scripts
+          - mountPath: /kb-tools
+            name: tools
+    volumes:
+      - emptyDir: {}
+        name: tools
   configs:
     - name: loki-config
       template: loki-tpl
@@ -99,6 +134,12 @@ spec:
       volumeName: runtime-config
       namespace: {{ .Release.Namespace }}
       restartOnFileChange: true
+  scripts:
+    - name: loki-scripts
+      template: {{ include "loki.scriptsTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
   vars:
     - name: SERVER_HTTP_PORT
       value: {{ .Values.server.httpMetricsPort | quote }}
