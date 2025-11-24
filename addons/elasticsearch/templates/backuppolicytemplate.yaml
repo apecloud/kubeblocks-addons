@@ -9,7 +9,8 @@ spec:
   clusterDefinitionRef: elasticsearch
   backupPolicies:
   - componentDefs:
-    - elasticsearch
+    - {{ include "elasticsearchData.cmpdRegexPattern" . }}
+    - ^elasticsearch-\d+
     backupMethods:
     - name: full-backup
       target:
