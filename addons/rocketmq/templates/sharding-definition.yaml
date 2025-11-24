@@ -14,13 +14,3 @@ spec:
     maxShards: 128
   provisionStrategy: Parallel
   updateStrategy: Parallel
-  systemAccounts:
-    - name: rocketmq-admin
-      # Password generation configuration
-      passwordConfig:
-        # Total password length
-        length: 8
-        # Number of digits in the password
-        numDigits: 6
-        # Letter case: MixedCases, LowerCases, or UpperCases
-        letterCase: MixedCases
