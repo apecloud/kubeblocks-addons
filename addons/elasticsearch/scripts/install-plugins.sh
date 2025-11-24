@@ -10,6 +10,10 @@ if [ ! -d $src_plugins_dir ]; then
   exit 0
 fi
 
+# [root@35bde36fc986 elasticsearch]# elasticsearch --version
+# Version: 7.10.1, Build: default/docker/1c34507e66d7db1211f66f3513706fdf548736aa/2020-12-05T01:00:33.671820Z, JVM: 15.0.1
+ELASTICSEARCH_VERSION=$(elasticsearch --version | grep "Version:" | awk '{print $2}' | sed 's/,.*//')
+
 if [ -z "$ELASTICSEARCH_VERSION" ]; then
   echo "ELASTICSEARCH_VERSION is not set"
   exit 1
