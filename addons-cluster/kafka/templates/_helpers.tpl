@@ -90,7 +90,7 @@ kafka2-external-zk
 {{- end -}}
 {{- end -}}
 
-{{- define "kafka-cluster.brokerCommonEnv" -}}
+{{- define "kafka-cluster.basicEnv" -}}
 - name: KB_CLUSTER_VERSION
   value: "{{ .Values.version }}"
 - name: KB_CLUSTER_WITH_ZK
@@ -114,6 +114,10 @@ will deprecated:
 - name: KB_KAFKA_SASL_INTER_BROKER_PROTOCOL
   value: "{{ .Values.sasl.interBrokerProtocol }}"  
 {{- end }}
+{{- end -}}
+
+{{- define "kafka-cluster.brokerCommonEnv" -}}
+{{- include "kafka-cluster.basicEnv" . }}
 - name: KB_KAFKA_BROKER_HEAP
   value: "{{ .Values.brokerHeap }}"
 - name: KB_KAFKA_CONTROLLER_HEAP
@@ -164,9 +168,9 @@ volumeClaimTemplates:
 
 {{- define "kafka-broker-component" -}}
 {{- if eq "combined" .Values.mode -}}
-  kafka-combine
-{{- else }}
-  kafka-broker
+kafka-combine
+{{- else -}}
+kafka-broker
 {{- end -}}
 {{- end -}}
 
