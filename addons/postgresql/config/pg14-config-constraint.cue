@@ -904,7 +904,7 @@
 
 	// Lists shared libraries to preload into server.
 	// TODO: support enum list, e.g. shared_preload_libraries = 'pg_stat_statements, auto_explain'
-	// shared_preload_libraries?: string & "auto_explain" | "orafce" | "pgaudit" | "pglogical" | "pg_bigm" | "pg_cron" | "pg_hint_plan" | "pg_prewarm" | "pg_similarity" | "pg_stat_statements" | "pg_tle" | "pg_transport" | "plprofiler"
+	shared_preload_libraries?: string
 
 	// Enables SSL connections.
 	ssl: bool & false | true | *true
