@@ -10,6 +10,7 @@ spec:
   provider: kubeblocks
   description: a distributed transactional key-value database
   updateStrategy: BestEffortParallel
+  podManagementPolicy: Parallel
   vars:
     - name: CLUSTER_NAMESPACE
       valueFrom:
