@@ -20,7 +20,7 @@ is_sasl_build_in_enabled() {
     if [[ "${KB_KAFKA_SASL_ENABLE:-false}" == "false" ]] || [[ "${KB_KAFKA_ENABLE_SASL_SCRAM:-false}" == "true" ]]; then
         echo "false"
     else
-        echo "${KB_KAFKA_SASL_USE_KB_BUILTIN:-true}"
+        echo "${KB_KAFKA_SASL_USE_KB_BUILTIN:-false}"
     fi
 }
 
