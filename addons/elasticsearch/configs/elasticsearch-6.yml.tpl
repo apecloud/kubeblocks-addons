@@ -40,8 +40,8 @@ cluster:
       awareness:
         attributes: k8s_node_name
 discovery:
-  zen:
 {{- if eq $mode "multi-node" }}
+  zen:
     minimum_master_nodes: {{ div (add $totalMasterNodes 1) 2 }}
     ping:
       unicast:
