@@ -10,6 +10,15 @@ if [ ! -d $src_plugins_dir ]; then
   exit 0
 fi
 
+# [root@35bde36fc986 elasticsearch]# elasticsearch --version
+# Version: 7.10.1, Build: default/docker/1c34507e66d7db1211f66f3513706fdf548736aa/2020-12-05T01:00:33.671820Z, JVM: 15.0.1
+ELASTICSEARCH_VERSION=$(elasticsearch --version | grep "Version:" | awk '{print $2}' | sed 's/,.*//')
+
+if [ -z "$ELASTICSEARCH_VERSION" ]; then
+  echo "ELASTICSEARCH_VERSION is not set"
+  exit 1
+fi
+
 function native_install_plugin() {
   plugin=$1
   msg=`/usr/share/elasticsearch/bin/elasticsearch-plugin install -b $plugin`
@@ -36,12 +45,21 @@ function copy_install_plugin() {
    echo "successfully installed plugin $plugin"
 }
 
-for plugin in $(ls $src_plugins_dir); do
-    # check if plugin has suffix .zip or .gz or .tar.gz
-    echo "installing plugin $plugin"
-    if [[ $plugin == *.zip || $plugin == *.gz || $plugin == *.tar.gz ]]; then
-        native_install_plugins $src_plugins_dir/$plugin
-    else
-        copy_install_plugin $src_plugins_dir/$plugin
-    fi
-done
+# Install version-specific plugins - simply install all plugins that exist for this version
+echo "Installing plugins for Elasticsearch version $ELASTICSEARCH_VERSION"
+
+# Check if version-specific plugin directory exists
+if [ -d "$src_plugins_dir/$ELASTICSEARCH_VERSION" ]; then
+    echo "Found plugin directory for version $ELASTICSEARCH_VERSION"
+
+    # Install all plugin subdirectories that exist
+    for plugin_dir in "$src_plugins_dir/$ELASTICSEARCH_VERSION"/*/; do
+        if [ -d "$plugin_dir" ]; then
+            plugin_name=$(basename "$plugin_dir")
+            echo "Installing $plugin_name plugin for version $ELASTICSEARCH_VERSION"
+            copy_install_plugin "$plugin_dir"
+        fi
+    done
+else
+    echo "No plugin directory found for version $ELASTICSEARCH_VERSION"
+fi
