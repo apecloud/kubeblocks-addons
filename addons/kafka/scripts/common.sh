@@ -68,7 +68,7 @@ build_server_jaas_config() {
         login_module="org.apache.kafka.common.security.plain.PlainLoginModule required"
     fi
 
-    cat << EOF > /opt/bitnami/kafka/config/kafka_jaas.conf
+    cat << EOF > ${kafka_config_path}/kafka_jaas.conf
 KafkaServer {
   ${login_module}
   username="$KAFKA_ADMIN_USER"
@@ -81,8 +81,7 @@ KafkaClient {
 };
 EOF
 
-    echo "[sasl] write jaas config to /opt/bitnami/kafka/config/kafka_jaas.conf:"
-    cat $kafka_config_path/kafka_jaas.conf
+    echo "[sasl] write jaas config to /opt/bitnami/kafka/config/kafka_jaas.conf"
 }
 
 build_encode_password() {

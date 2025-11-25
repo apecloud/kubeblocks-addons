@@ -147,6 +147,18 @@ spec:
     securityContext:
       {{- toYaml .Values.securityContext | nindent 6 }}
     {{- end }}
+    initContainers:
+      - name: kafkatool
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        command:
+          - sh
+          - -c
+          - |
+            cp -r /sasl /shared-tools/sasl
+            chmod +x /shared-tools/sasl
+        volumeMounts:
+          - name: shared-tools
+            mountPath: /shared-tools
     containers:
       - name: kafka
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
@@ -205,10 +217,10 @@ spec:
             value: $(CLUSTER_UID)
           - name: KAFKA_CFG_SUPER_USERS
             value: "User:$(KAFKA_ADMIN_USER)"
-          - name: KAFKA_DYNAMIC_CREDENTIAL_DIR
-            value: "/accounts/accounts-mount"   
           - name: BROKER_MIN_NODE_ID
             value: {{ .Values.kafkaBroker.minNodeId | quote }}
+          - name: KAFKA_DYNAMIC_CREDENTIAL_FILE
+            value: "/accounts/accounts-mount/accounts"    
           {{- with .Values.extraEnvs.kafka }}
           {{- toYaml . | nindent 10}}
           {{- end }}
@@ -249,6 +261,8 @@ spec:
             subPath: server.properties
           - name: shared-tools
             mountPath: /shared-tools  
+          - name: accounts
+            mountPath: /accounts/accounts-mount   
           {{- with .Values.extraVolumeMounts.kafka }}
           {{- toYaml . | nindent 10}}
           {{- end }}

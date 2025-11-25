@@ -116,6 +116,19 @@ spec:
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
+  systemAccounts:
+    - name: client
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        letterCase: MixedCases
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        letterCase: MixedCases       
   runtime:
     {{- if .Values.securityContext }}
     securityContext:
@@ -197,6 +210,8 @@ spec:
             value: "User:$(KAFKA_ADMIN_USER)"
           - name: BROKER_MIN_NODE_ID
             value: {{ .Values.kafkaBroker.minNodeId | quote }}
+          - name: KAFKA_DYNAMIC_CREDENTIAL_FILE
+            value: "/accounts/accounts-mount/accounts"  
           {{- with .Values.extraEnvs.kafka }}
           {{- toYaml . | nindent 10}}
           {{- end }}

@@ -1,6 +1,9 @@
 ## @param version Kafka cluster version
 ##
 version: 3.9.0
+# @param version Kafka exporter component version
+##
+exporterVersion: 1.6.0
 
 ## @param mode for Kafka cluster mode, 'combined' is combined Kafka controller (KRaft) and broker,
 ## 'separated' is a Kafka KRaft and Kafka broker cluster.
