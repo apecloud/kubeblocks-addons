@@ -27,10 +27,12 @@ spec:
       serviceVersion: 1.0.0
       images:
         write: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}
+        wait-index-gateway: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.curl.repository }}:{{ .Values.images.curl.tag }}
     - name: read-1.0.0
       serviceVersion: 1.0.0
       images:
         read: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}
+        wait-index-gateway: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.curl.repository }}:{{ .Values.images.curl.tag }}
     - name: backend-1.0.0
       serviceVersion: 1.0.0
       images:
