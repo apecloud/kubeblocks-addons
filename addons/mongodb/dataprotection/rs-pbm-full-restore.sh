@@ -53,11 +53,12 @@ while [ $attempt -le $MAX_RETRIES ]; do
         continue
     else
         echo "ERROR: Failed to get backup metadata: $describe_result"
+        exit 1
     fi
 done
 set -e
 
-if [ -z "$describe_result" ]; then
+if [ -z "$describe_result" ] || echo "$describe_result" | grep -q "not found"; then
     echo "ERROR: Failed to get backup metadata after $MAX_RETRIES attempts"
     exit 1
 fi
