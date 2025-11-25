@@ -108,6 +108,7 @@ Docker image name
 {{- if .Values.enterprise.enabled -}}{{- include "loki.enterpriseImage" . -}}{{- else -}}{{- include "loki.lokiImage" . -}}{{- end -}}
 {{- end -}}
 
+
 {{/*
 write fullname
 */}}
@@ -224,6 +225,16 @@ query-scheduler fullname
 */}}
 {{- define "loki.querySchedulerFullname" -}}
 {{ include "loki.fullname" . }}-query-scheduler
+{{- end }}
+
+{{/*
+Generate loki scripts configmap
+*/}}
+{{- define "loki.extend.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
 {{- end }}
 
 {{/*
