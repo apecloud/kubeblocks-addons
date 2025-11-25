@@ -11,6 +11,11 @@ images:
     tag: 1.24-alpine
     repository: nginxinc/nginx-unprivileged
     pullPolicy: IfNotPresent
+  # Curl image for init container
+  curl:
+    repository: apecloud/curl-jq
+    tag: 0.1.0
+    pullPolicy: IfNotPresent
 
 nameOverride: ""
 fullnameOverride: ""
