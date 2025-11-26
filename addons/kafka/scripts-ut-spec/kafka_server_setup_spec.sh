@@ -57,8 +57,6 @@ Describe "Kafka Server Setup Script Tests"
     unset CONTROLLER_POD_NAME_LIST
     unset KB_HOST_IP
     unset BROKER_MIN_NODE_ID
-    unset KB_KAFKA_ENABLE_SASL
-    unset KB_KAFKA_SASL_CONFIG_PATH
     unset KAFKA_KRAFT_CLUSTER_ID
     unset KB_KAFKA_BROKER_HEAP
     unset KB_KAFKA_CONTROLLER_HEAP
@@ -143,24 +141,6 @@ Describe "Kafka Server Setup Script Tests"
       When run convert_server_properties_to_env_var
       The output should include "[cfg]export KAFKA_CFG_BROKER_ID=0"
       The output should not include "listeners"
-      The status should be success
-    End
-  End
-
-  Describe "override_sasl_configuration()"
-    It "sets SASL configuration when KB_KAFKA_ENABLE_SASL is true"
-      KB_KAFKA_ENABLE_SASL="true"
-      KB_KAFKA_SASL_CONFIG_PATH="$kafka_config_path/kafka_jaas.conf"
-      touch "$KB_KAFKA_SASL_CONFIG_PATH"
-      When run override_sasl_configuration
-      The output should include "[sasl]KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:SASL_PLAINTEXT,CLIENT:SASL_PLAINTEXT"
-      The status should be success
-    End
-
-    It "does not set SASL configuration when KB_KAFKA_ENABLE_SASL is false"
-      KB_KAFKA_ENABLE_SASL="false"
-      When run override_sasl_configuration
-      The output should not include "KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
       The status should be success
     End
   End

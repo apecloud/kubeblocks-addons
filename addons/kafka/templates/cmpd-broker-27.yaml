@@ -119,11 +119,6 @@ spec:
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
-    - name: kafka-tools-scripts-tpl
-      template: {{ include "kafka.toolsScriptsTplName" . }}
-      volumeName: tools
-      namespace: {{ .Release.Namespace }}
-      defaultMode: 0755
   systemAccounts:
     - name: client
       initAccount: true
@@ -152,6 +147,18 @@ spec:
     securityContext:
       {{- toYaml .Values.securityContext | nindent 6 }}
     {{- end }}
+    initContainers:
+      - name: kafkatool
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        command:
+          - sh
+          - -c
+          - |
+            cp -r /sasl /shared-tools/sasl
+            chmod +x /shared-tools/sasl
+        volumeMounts:
+          - name: shared-tools
+            mountPath: /shared-tools
     containers:
       - name: kafka
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
@@ -212,6 +219,8 @@ spec:
             value: "User:$(KAFKA_ADMIN_USER)"
           - name: BROKER_MIN_NODE_ID
             value: {{ .Values.kafkaBroker.minNodeId | quote }}
+          - name: KAFKA_DYNAMIC_CREDENTIAL_FILE
+            value: "/accounts/accounts-mount/accounts"    
           {{- with .Values.extraEnvs.kafka }}
           {{- toYaml . | nindent 10}}
           {{- end }}
@@ -250,12 +259,10 @@ spec:
           - name: kafka-config
             mountPath: /scripts/server.properties
             subPath: server.properties
-          - name: tools
-            mountPath: /tools/client-ssl.properties
-            subPath: client-ssl.properties
-          - name: tools
-            mountPath: /tools/server-jaas.properties
-            subPath: server-jaas.properties
+          - name: shared-tools
+            mountPath: /shared-tools  
+          - name: accounts
+            mountPath: /accounts/accounts-mount   
           {{- with .Values.extraVolumeMounts.kafka }}
           {{- toYaml . | nindent 10}}
           {{- end }}
@@ -286,3 +293,6 @@ spec:
         volumeMounts:
           - name: jmx-config
             mountPath: /etc/jmx-kafka
+    volumes:
+      - name: shared-tools
+        emptyDir: {}            
