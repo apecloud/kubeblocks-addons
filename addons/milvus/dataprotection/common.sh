@@ -30,6 +30,10 @@ function setStorageConfig() {
   BACKUP_CONFIG=configs/backup.yaml
   MILVUS_CONFIG=/milvus/configs/user.yaml
 
+  if [[ -z $DP_DB_PORT ]]; then
+    DP_DB_PORT=19530
+  fi
+
   # connection config
   yq -i ".milvus.address = \"$DP_DB_HOST\"" "$BACKUP_CONFIG"
   yq -i ".milvus.port = $DP_DB_PORT" "$BACKUP_CONFIG"
@@ -43,9 +47,11 @@ function setStorageConfig() {
   yq -i ".minio.accessKeyID = \"$MINIO_ACCESS_KEY\"" "$BACKUP_CONFIG"
   yq -i ".minio.secretAccessKey = \"$MINIO_SECRET_KEY\"" "$BACKUP_CONFIG"
 
-  yq -i ".minio.bucketName = (load(\"$MILVUS_CONFIG\") | .minio.bucketName)" "$BACKUP_CONFIG"
-  yq -i ".minio.useSSL = (load(\"$MILVUS_CONFIG\") | .minio.useSSL)" "$BACKUP_CONFIG"
-  yq -i ".minio.rootPath = (load(\"$MILVUS_CONFIG\") | .minio.rootPath)" "$BACKUP_CONFIG"
+  yq -i ".minio.bucketName = \"$MINIO_BUCKET\"" "$BACKUP_CONFIG"
+  if [[ $MINIO_PORT == "443" ]]; then
+    yq -i ".minio.useSSL = true" "$BACKUP_CONFIG"
+  fi
+  yq -i ".minio.rootPath = \"$MINIO_ROOT_PATH\"" "$BACKUP_CONFIG"
   # TODO: is this right?
   yq -i ".minio.storageType = (load(\"$MILVUS_CONFIG\") | .minio.cloudProvider)" "$BACKUP_CONFIG"
 
