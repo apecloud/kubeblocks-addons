@@ -8,32 +8,17 @@ metadata:
 spec:
   clusterDefinitionRef: milvus
   backupPolicies:
-  - componentDefRef: milvus
+  - componentDefs: 
+    - milvus-standalone
     backupMethods:
     - name: volume-snapshot
       snapshotVolumes: true
       targetVolumes:
         volumes:
         - data
-    schedules:
-    - backupMethod: volume-snapshot
-      enabled: false
-      retentionPeriod: 7d
-      cronExpression: "0 18 * * 0"
-
----
-
-apiVersion: dataprotection.kubeblocks.io/v1alpha1
-kind: BackupPolicyTemplate
-metadata:
-  name: milvus-cluster-backup-policy-template
-  labels:
-    {{- include "milvus.labels" . | nindent 4 }}
-spec:
-  serviceKind: Milvus
-  compDefs:
-    - {{ include "milvus-proxy.cmpdRegexpPattern" . }}
-  backupMethods:
+  - componentDefs:
+    - milvus-proxy
+    backupMethods:
     - name: full
       snapshotVolumes: false
       actionSetName: milvus-full
@@ -44,8 +29,8 @@ spec:
           - mountPath: /milvus/configs/
             name: milvus-config
             readOnly: true
-  schedules:
-    - backupMethod: full
+    schedules:
+    - backupMethod: volume-snapshot
       enabled: false
       retentionPeriod: 7d
       cronExpression: "0 18 * * 0"

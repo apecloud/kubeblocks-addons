@@ -325,7 +325,6 @@ Milvus cluster vars for external storage services reference
       name: milvus-object-storage
       optional: false
       host: Required
-      host: Required
 - name: MINIO_PORT
   valueFrom:
     serviceRefVarRef:

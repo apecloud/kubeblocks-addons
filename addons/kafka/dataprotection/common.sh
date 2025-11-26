@@ -23,6 +23,10 @@ function DP_save_backup_status_info() {
   fi
 }
 
+if [[ -z $DP_DB_PORT ]]; then
+  DP_DB_PORT=9092
+fi
+
 export BROKERS="$DP_DB_HOST:$DP_DB_PORT"
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
