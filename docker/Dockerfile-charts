@@ -1,5 +1,5 @@
 # Build image that contains all dependent helm charts
-FROM alpine/helm:3.12.1 as builder
+FROM alpine/helm:3.17.3 as builder
 
 COPY docker/custom-scripts/package-all-helm-charts.sh /tmp/package-all-helm-charts.sh
 
@@ -11,7 +11,7 @@ RUN bash /tmp/package-all-helm-charts.sh /tmp/charts
 
 RUN rm -rf addons
 
-FROM docker.io/alpine:edge as dist
+FROM docker.io/alpine:3.22 as dist
 
 COPY --from=builder /tmp/charts /charts
 USER 65532:65532
