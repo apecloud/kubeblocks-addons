@@ -45,6 +45,9 @@ images:
     # mirrored from deviceinsight/kafkactl
     repository: apecloud/kafkactl
     tag: v5.15.0
+  kafkatool:
+    repository: apecloud/kafkatools
+    tag: 0.1.0
 
 ## @param define default serviceVersion of each Component
 defaultServiceVersion:

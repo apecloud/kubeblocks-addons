@@ -15,3 +15,13 @@ Validate kafka version and mode
     {{- end }}
   {{- end }}
 {{- end }}
+
+{{- if or (eq .Values.mode "combined") (eq .Values.mode "separated") }}
+  {{- if .Values.sasl.mechanisms }}
+    {{- range $mech := .Values.sasl.mechanisms }}
+      {{- if ne $mech "PLAIN" }}
+        {{ fail (printf "When mode is 'combined' or 'separated', only 'PLAIN' is supported in sasl.mechanisms (got: %s)" $mech) }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}

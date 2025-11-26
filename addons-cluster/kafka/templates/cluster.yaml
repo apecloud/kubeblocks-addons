@@ -11,6 +11,7 @@ spec:
   componentSpecs:
     {{- if eq "combined" .Values.mode }}
     - name: kafka-combine
+      serviceVersion: {{ .Values.version }}
       tls: {{ .Values.tlsEnable }}
       {{- if .Values.tlsEnable }}
       issuer:
@@ -29,8 +30,10 @@ spec:
       env:
         {{- include "kafka-cluster.brokerCommonEnv" . | nindent 8 }}
       {{- include "kafka-cluster.brokerVCT" . | indent 6 }}
+      {{- include "kafka-broker-volumes" . | indent 6 }}
     {{- else }}
     - name: kafka-broker
+      serviceVersion: {{ .Values.version }}
       tls: {{ .Values.tlsEnable }}
       {{- if .Values.tlsEnable }}
       issuer:
@@ -49,6 +52,7 @@ spec:
       env:
         {{- include "kafka-cluster.brokerCommonEnv" . | nindent 8 }}
       {{- include "kafka-cluster.brokerVCT" . | indent 6 }}
+      {{- include "kafka-broker-volumes" . | indent 6 }}
       {{- if eq "withZookeeper-10" $.Values.mode }}
       serviceRefs:
         - name: kafkaZookeeper
@@ -66,6 +70,7 @@ spec:
       {{- end }}
       {{- if eq "separated" $.Values.mode }}
     - name: kafka-controller
+      serviceVersion: {{ .Values.version }}
       tls: {{ .Values.tlsEnable }}
       {{- if .Values.tlsEnable }}
       issuer:
@@ -78,9 +83,9 @@ spec:
     {{- end }}
     {{- if .Values.monitorEnable }}
     - name: kafka-exporter
+      serviceVersion: {{ .Values.exporterVersion }}
       replicas: {{ .Values.monitor.replicas }}
       env:
-        - name: KB_KAFKA_ENABLE_SASL_SCRAM
-          value: "{{ .Values.saslScramEnable }}"
+        {{- include "kafka-cluster.basicEnv" . | nindent 8 }}  
       {{- include "kafka-exporter.resources" . | nindent 6 }}
     {{- end }}
