@@ -483,6 +483,11 @@ runtime:
           readOnly: true
         - mountPath: /tmp
           name: tmp-volume
+{{- if .Values.zoneAware.enabled }}
+        - mountPath: /mnt/zone-aware-mapping
+          name: zone-aware-mapping
+          readOnly: true
+{{- end }}
     - name: exporter
       command:
         - /bin/elasticsearch_exporter
@@ -595,6 +600,11 @@ runtime:
       name: local-plugins
     - emptyDir: { }
       name: plugins
+{{- if .Values.zoneAware.enabled }}
+    - name: zone-aware-mapping
+      configMap:
+        name: {{ .Values.zoneAware.configMap }}
+{{- end }}
 {{- end }}
 
 {{- define "kibana.common" }}

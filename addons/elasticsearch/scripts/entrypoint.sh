@@ -1,9 +1,16 @@
 #!/usr/bin/env sh
 cp /etc/pki/tls/* /usr/share/elasticsearch/config/
-# Parse zone from ZONE_AWARE_MAPPING based on NODE_NAME
+# Parse zone from zone-aware-mapping file based on NODE_NAME
+# Zone-aware-mapping file format: YAML format with zone name as key and comma-separated node names as value
+# Empty node list is allowed for a zone
+# Example:
+#   zone1: node1,node2
+#   zone2: node3,node4,node5
+#   zone3:
+ZONE_AWARE_MAPPING_FILE="/mnt/zone-aware-mapping/mapping"
 if [ "${ZONE_AWARE_ENABLED}" = "true" ]; then
-  if [ -z "${ZONE_AWARE_MAPPING}" ]; then
-    echo "Error: ZONE_AWARE_ENABLED is true but ZONE_AWARE_MAPPING is not set"
+  if [ ! -f "${ZONE_AWARE_MAPPING_FILE}" ]; then
+    echo "Error: ZONE_AWARE_ENABLED is true but zone-aware-mapping file not found at ${ZONE_AWARE_MAPPING_FILE}"
     exit 1
   fi
   if [ -z "${NODE_NAME}" ]; then
@@ -12,31 +19,46 @@ if [ "${ZONE_AWARE_ENABLED}" = "true" ]; then
   fi
   CURRENT_ZONE=""
   ZONES=()
-  IFS=';' read -ra PARTS <<< "${ZONE_AWARE_MAPPING}"
-  for PART in "${PARTS[@]}"; do
-    IFS=':' read -ra ZONE_PART <<< "${PART}"
-    if [ ${#ZONE_PART[@]} -eq 2 ]; then
-      ZONE="${ZONE_PART[0]// /}"
-      ZONES+=("${ZONE}")
-      NODES="${ZONE_PART[1]}"
-      IFS=',' read -ra NODE_LIST <<< "${NODES}"
-      for NODE in "${NODE_LIST[@]}"; do
-        NODE_NAME_TRIMMED="${NODE// /}"
-        if [ "${NODE_NAME_TRIMMED}" = "${NODE_NAME}" ]; then
-          export CURRENT_ZONE="${ZONE}"
+  # Parse YAML format: each line is "zone_name: node1,node2,..."
+  while IFS= read -r LINE || [ -n "${LINE}" ]; do
+    # Skip empty lines and comments
+    LINE="${LINE%%#*}"  # Remove comments
+    LINE=$(echo "${LINE}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')  # Trim whitespace
+    if [ -z "${LINE}" ]; then
+      continue
+    fi
+    # Split by first colon to get zone name and node list
+    ZONE_NAME="${LINE%%:*}"
+    NODE_LIST="${LINE#*:}"
+    # Trim whitespace
+    ZONE_NAME=$(echo "${ZONE_NAME}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    NODE_LIST=$(echo "${NODE_LIST}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    # Skip if zone name is empty (node list can be empty)
+    if [ -z "${ZONE_NAME}" ]; then
+      continue
+    fi
+    # Add zone to ZONES array (even if node list is empty)
+    ZONES+=("${ZONE_NAME}")
+    # Check if current node is in this zone (only if not found yet and node list is not empty)
+    if [ -z "${CURRENT_ZONE}" ] && [ -n "${NODE_LIST}" ]; then
+      IFS=',' read -ra NODES <<< "${NODE_LIST}"
+      for NODE in "${NODES[@]}"; do
+        NODE_TRIMMED=$(echo "${NODE}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        if [ -n "${NODE_TRIMMED}" ] && [ "${NODE_TRIMMED}" = "${NODE_NAME}" ]; then
+          export CURRENT_ZONE="${ZONE_NAME}"
           break
         fi
       done
     fi
-  done
+  done < "${ZONE_AWARE_MAPPING_FILE}"
   if [ -z "${CURRENT_ZONE}" ]; then
-    echo "Error: ZONE_AWARE_ENABLED is true but failed to find zone for node ${NODE_NAME} in ZONE_AWARE_MAPPING: ${ZONE_AWARE_MAPPING}"
+    echo "Error: ZONE_AWARE_ENABLED is true but failed to find zone for node ${NODE_NAME} in zone-aware-mapping file"
     exit 1
   fi
   echo "CURRENT_ZONE: ${CURRENT_ZONE}"
-  # check if ZONES is empty
+  # Check if ZONES is empty
   if [ ${#ZONES[@]} -eq 0 ]; then
-    echo "Error: ZONE_AWARE_ENABLED is true but failed to find zones in ZONE_AWARE_MAPPING: ${ZONE_AWARE_MAPPING}"
+    echo "Error: ZONE_AWARE_ENABLED is true but failed to find zones in zone-aware-mapping file"
     exit 1
   fi
   export ALL_ZONES=$(IFS=,; echo "${ZONES[*]}")

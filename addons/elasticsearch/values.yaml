@@ -89,13 +89,17 @@ kibanaVersions:
 # @param zoneAware enable zone awareness
 # @param zoneAware.enabled enable zone awareness
 # @param zoneAware.configMap config map name for zone awareness mapping
+# The config map will be mounted as a volume at /mnt/zone-aware-mapping/mapping
 # The config map should have the following format:
 # apiVersion: v1
 # kind: ConfigMap
 # metadata:
 #   name: elasticsearch-zone-aware-mapping
 # data:
-#   mapping: zone1:node1,node2;zone2:node3,node4,node5
+#   mapping: |
+#     zone1: node1,node2
+#     zone2: node3,node4,node5
+#     zone3:
 zoneAware:
   enabled: false
   configMap: elasticsearch-zone-aware-mapping

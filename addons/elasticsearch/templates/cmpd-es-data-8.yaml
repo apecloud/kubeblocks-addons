@@ -97,11 +97,4 @@ spec:
           enabled: Optional
     - name: ZONE_AWARE_ENABLED
       value: {{ .Values.zoneAware.enabled | quote }}
-    {{/* ZONE_AWARE_MAPPING ='zone1:node1,node2;zone2:node3,node4,node5' */}}
-    - name: ZONE_AWARE_MAPPING
-      valueFrom:
-        configMapKeyRef:
-          optional: {{ .Values.zoneAware.enabled }}
-          name: {{ .Values.zoneAware.configMap }}
-          key: mapping
   {{ include "elasticsearch.common" . | nindent 2 }}
