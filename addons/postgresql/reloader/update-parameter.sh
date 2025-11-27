@@ -1,13 +1,13 @@
-#!/bin/ash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 parse_yaml_array() {
-    local file="$1"
-    [[ -f "$file" ]] && grep "^- " "$file" | sed 's/^- //' | sed 's/^["'\'']//' | sed 's/["'\'']$//'
+    file="$1"
+    [ -f "$file" ] && grep "^- " "$file" | sed 's/^- //' | sed 's/^["'\'']//' | sed 's/["'\'']$//'
 }
 
 in_array() {
-    local target="$1"
+    target="$1"
     shift
     items="$*"
 
@@ -17,8 +17,9 @@ in_array() {
     return 1
 }
 
-BOOTSTRAP_FILE="./restart-parameter.yaml"
-PATRONI_PARAMS_FILE="./patroni-parameter.yaml"
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+BOOTSTRAP_FILE="${SCRIPT_DIR}/restart-parameter.yaml"
+PATRONI_PARAMS_FILE="${SCRIPT_DIR}/patroni-parameter.yaml"
 
 restart_params=$(parse_yaml_array "$BOOTSTRAP_FILE")
 patroni_params=$(parse_yaml_array "$PATRONI_PARAMS_FILE")
@@ -26,8 +27,9 @@ patroni_params=$(parse_yaml_array "$PATRONI_PARAMS_FILE")
 command="reload"
 paramName="${1:?missing param name}"
 paramValue="${2:?missing value}"
-paramValue="${paramValue//\'/}"
+paramValue=$(echo "$paramValue" | sed "s/'//g")
 
+json_params="{}"
 if in_array "$paramName" "$patroni_params"; then
     json_params=$(echo "$json_params" | jq --arg k "$paramName" --arg v "$paramValue" '. + {($k): $v}')
 else
@@ -41,7 +43,7 @@ curl -s -X PATCH -H "Content-Type: application/json" \
     --data "$json_params" \
     "http://localhost:8008/config"
 
-if [[ "$command" == "restart" ]]; then
+if [ "$command" = "restart" ]; then
     curl -s -X POST "http://localhost:8008/restart"
 else
     curl -s -X POST "http://localhost:8008/reload"
