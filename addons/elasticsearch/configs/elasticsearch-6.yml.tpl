@@ -1,6 +1,7 @@
 {{- $clusterName := .CLUSTER_NAME }}
 {{- $defaultRoles := .ELASTICSEARCH_ROLES }}
 {{- $namespace := .CLUSTER_NAMESPACE }}
+{{- $zoneAwareEnabled := .ZONE_AWARE_ENABLED }}
 
 {{- $mode := "multi-node" }}
 {{- if index . "mode" }}
@@ -17,7 +18,14 @@ cluster:
   routing:
     allocation:
       awareness:
+        {{- if eq $zoneAwareEnabled "true" }}
+        attributes: zone,k8s_node_name
+        force:
+          zone:
+            values: ${ALL_ZONES}
+        {{- else }}
         attributes: k8s_node_name
+        {{- end }}
 # In ES 6.x, discovery configuration is handled differently
 discovery:
 {{- if eq $mode "multi-node" }}
@@ -64,6 +72,9 @@ network:
 node:
   attr:
     k8s_node_name: ${NODE_NAME}
+    {{- if eq $zoneAwareEnabled "true" }}
+    zone: ${CURRENT_ZONE}
+    {{- end }}
   name: ${POD_NAME}
   store:
     allow_mmap: false
