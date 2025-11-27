@@ -1,0 +1,30 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: kafka-topics
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  backup:
+    backupData:
+      image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafkactl.repository }}:{{ .Values.images.kafkactl.tag }}
+      syncProgress:
+        enabled: false
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/common.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+  restore:
+    postReady:
+    - job:
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafkactl.repository }}:{{ .Values.images.kafkactl.tag }}
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/common.sh" | nindent 12 }}
+          {{- .Files.Get "dataprotection/restore.sh" | nindent 12 }}

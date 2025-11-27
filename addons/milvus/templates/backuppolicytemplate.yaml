@@ -8,13 +8,27 @@ metadata:
 spec:
   clusterDefinitionRef: milvus
   backupPolicies:
-  - componentDefRef: milvus
+  - componentDefs: 
+    - milvus-standalone
     backupMethods:
     - name: volume-snapshot
       snapshotVolumes: true
       targetVolumes:
         volumes:
         - data
+  - componentDefs:
+    - milvus-proxy
+    backupMethods:
+    - name: full
+      snapshotVolumes: false
+      actionSetName: milvus-full
+      targetVolumes:
+        volumes:
+          - milvus-config
+        volumeMounts:
+          - mountPath: /milvus/configs/
+            name: milvus-config
+            readOnly: true
     schedules:
     - backupMethod: volume-snapshot
       enabled: false

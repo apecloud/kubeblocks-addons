@@ -1,0 +1,6 @@
+# build with 
+# docker buildx build --platform linux/amd64,linux/arm64 --tag apecloud/milvus-backup:v0.5.9-yq -f Dockerfile.backup .
+
+FROM milvusdb/milvus-backup:v0.5.9
+
+RUN apk update && apk add --no-cache bash yq
