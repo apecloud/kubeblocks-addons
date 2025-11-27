@@ -15,6 +15,9 @@ cluster:
       awareness:
         {{- if eq $zoneAwareEnabled "true" }}
         attributes: zone,k8s_node_name
+        force:
+          zone:
+            values: ${ALL_ZONES}
         {{- else }}
         attributes: k8s_node_name
         {{- end }}
@@ -68,7 +71,7 @@ node:
   attr:
     k8s_node_name: ${NODE_NAME}
     {{- if eq $zoneAwareEnabled "true" }}
-    zone: ${ZONE_NAME}
+    zone: ${CURRENT_ZONE}
     {{- end }}
   name: ${POD_NAME}
   store:

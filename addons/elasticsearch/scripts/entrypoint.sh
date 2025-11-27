@@ -10,7 +10,8 @@ if [ "${ZONE_AWARE_ENABLED}" = "true" ]; then
     echo "Error: ZONE_AWARE_ENABLED is true but NODE_NAME is not set"
     exit 1
   fi
-  ZONE_NAME=""
+  CURRENT_ZONE=""
+  ZONES=()
   IFS=';' read -ra PARTS <<< "${ZONE_AWARE_MAPPING}"
   for PART in "${PARTS[@]}"; do
     IFS=':' read -ra ZONE_PART <<< "${PART}"
@@ -21,20 +22,24 @@ if [ "${ZONE_AWARE_ENABLED}" = "true" ]; then
       for NODE in "${NODE_LIST[@]}"; do
         NODE_NAME_TRIMMED="${NODE// /}"
         if [ "${NODE_NAME_TRIMMED}" = "${NODE_NAME}" ]; then
-          export ZONE_NAME="${ZONE}"
+          export CURRENT_ZONE="${ZONE}"
+          ZONES+=("${ZONE}")
           break
         fi
       done
-      if [ -n "${ZONE_NAME}" ]; then
+      if [ -n "${CURRENT_ZONE}" ]; then
         break
       fi
     fi
   done
-  if [ -z "${ZONE_NAME}" ]; then
+  if [ -z "${CURRENT_ZONE}" ]; then
     echo "Error: ZONE_AWARE_ENABLED is true but failed to find zone for node ${NODE_NAME} in ZONE_AWARE_MAPPING: ${ZONE_AWARE_MAPPING}"
     exit 1
   fi
 fi
+# join ZONES array with comma
+ALL_ZONES=$(IFS=,; echo "${ZONES[*]}")
+export ALL_ZONES
 # remove initial master nodes block if cluster has been formed
 if [ -f "${CLUSTER_FORMED_FILE}" ]; then
   sed -i '/# INITIAL_MASTER_NODES_BLOCK_START/,/# INITIAL_MASTER_NODES_BLOCK_END/d' config/elasticsearch.yml
