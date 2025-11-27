@@ -20,12 +20,7 @@ spec:
       scriptConfig:
         scriptConfigMapRef: {{ include "postgresql.patroniReloadScriptsTemplate" $ }}
         namespace: {{ $.Release.Namespace }}
-      toolsSetup:
-        mountPoint: /kb_tools
-        toolConfigs:
-          - name: kb-tools
-            image: {{ $.Values.image.registry | default "docker.io" }}/{{ $.Values.image.repository }}:{{ (index .minors 0).tag }}
-            asContainerImage: true
+
     ## update patroni master
     targetPodSelector:
       matchLabels:
