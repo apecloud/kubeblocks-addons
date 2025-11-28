@@ -10,7 +10,7 @@ spec:
   provider: kubeblocks
   description: Xinference is a powerful and versatile library designed to serve language, speech recognition, and multimodal models.
   serviceKind: xinference
-  serviceVersion: 0.11.0
+  serviceVersion: 1.13.0
   updateStrategy: BestEffortParallel
   scripts:
   - name: scripts

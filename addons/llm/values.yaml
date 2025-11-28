@@ -3,7 +3,7 @@ image:
   pullPolicy: IfNotPresent
   registry: docker.io
   # Overrides the image tag whose default is the chart appVersion.
-  tag: v0.7.2
+  tag: v0.11.2
 imageDev:
   # refer: ghcr.io/abetlen/llama-cpp-python:latest
   repository: apecloud/llama-cpp-python
