@@ -16,7 +16,12 @@ spec:
       scriptConfig:
         scriptConfigMapRef: {{ include "fe.scriptsTemplate" . }}
         namespace: {{ .Release.Namespace }}
-
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:2.1.6
+            asContainerImage: true
   fileName: fe.conf
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
