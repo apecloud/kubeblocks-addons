@@ -5,6 +5,7 @@ metadata:
   labels:
     {{- include "llm.labels" . | nindent 4}}
   annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "llm.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
@@ -30,7 +31,6 @@ spec:
         emptyDir: {}
     containers:
       - name: ggml
-        image: {{ .Values.imageDev.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.imageDev.repository}}:{{ default .Chart.AppVersion .Values.imageDev.tag}}
         imagePullPolicy: {{default .Values.imageDev.pullPolicy "IfNotPresent"}}
         securityContext:
           runAsUser: 0

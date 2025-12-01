@@ -1,0 +1,20 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: llm-ggml
+  labels:
+    {{- include "llm.labels" . | nindent 4 }}
+  annotations:
+    {{- include "llm.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "llm.cmpdNameGGML" . }}
+      releases:
+        - 20241115-latest
+  releases:
+    - name: 20241115-latest
+      serviceVersion: 20241115-latest
+      images:
+        ggml: {{ .Values.imageDev.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.imageDev.repository }}:20241115-latest
+
