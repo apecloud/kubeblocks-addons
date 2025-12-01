@@ -10,7 +10,7 @@ spec:
   provider: kubeblocks
   description: Minio is a High Performance Object Storage.
   serviceKind: minio
-  serviceVersion: {{ .Values.defaultServiceVersion.minio }}
+  serviceVersion: {{ include "minio.defaultServiceVersion" . }}
   minReadySeconds: 10
   replicasLimit:
     minReplicas: 2
