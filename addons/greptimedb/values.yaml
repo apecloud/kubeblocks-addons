@@ -21,10 +21,6 @@ images:
     registry: ""
     repository: greptime/greptimedb-initializer
     tag: 0.1.0-alpha.12
-  busybox:
-    registry: ""
-    repository: busybox
-    tag: 1.35
 
 ## @param metasrv config
 ##

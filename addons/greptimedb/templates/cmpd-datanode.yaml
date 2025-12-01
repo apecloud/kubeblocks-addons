@@ -86,16 +86,6 @@ spec:
           - /etc/greptimedb/config.toml
     dnsPolicy: ClusterFirst
     initContainers:
-      - name: wait-meta
-        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
-        command:
-          - bin/sh
-          - -c
-          - |
-            until nslookup ${GREPTIMEDB_META_SVC}; do
-              # datanode requires at least one meta is ready
-              echo "waiting for meta"; sleep 2;
-            done;
       - name: initializer
         args:
           - --config-path
