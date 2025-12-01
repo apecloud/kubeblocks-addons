@@ -122,7 +122,9 @@ spec:
           - /bin/sh
           - -c
           - |
-            if mc config host add minio http://127.0.0.1:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD &>/dev/null; then
+            # Set alias and check MinIO readiness using mc command
+            mc alias set local http://127.0.0.1:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD >/dev/null 2>&1
+            if mc admin info local >/dev/null 2>&1; then
               echo -n "readwrite"
             else
               echo -n "notready"
