@@ -26,3 +26,15 @@ function DP_save_backup_status_info() {
 export BROKERS="$DP_DB_HOST:$DP_DB_PORT"
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
+
+if [[ $KB_KAFKA_SASL_ENABLE == "true" ]]; then
+  echo "using sasl auth.."
+  if [[ $KB_KAFKA_SASL_MECHANISMS != *"PLAIN"* ]]; then
+    echo "unsupported KB_KAFKA_SASL_MECHANISMS: $KB_KAFKA_SASL_MECHANISMS"
+    exit 1
+  fi
+  export SASL_ENABLED="true"
+  export SASL_MECHANISM="plaintext"
+  export SASL_USERNAME=$KAFKA_ADMIN_USER
+  export SASL_PASSWORD=$KAFKA_ADMIN_PASSWORD
+fi
