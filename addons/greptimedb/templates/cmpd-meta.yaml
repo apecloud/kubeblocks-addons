@@ -33,7 +33,7 @@ spec:
         clusterVarRef:
           namespace: Required
     - name: GREPTIMEDB_ETCD_SVC_DEFAULT
-      value: $(CLUSTER_NAME)-etcd-headless.$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain}}
+      value: $(CLUSTER_NAME)-etcd-headless.$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain}}:2379
     - name: GREPTIMEDB_ETCD_SVC
       valueFrom:
         serviceRefVarRef:
@@ -83,7 +83,7 @@ spec:
           - --server-addr
           - $(POD_IP):3002
           - --store-addr
-          - $(GREPTIMEDB_ETCD_SVC):2379
+          - $(GREPTIMEDB_ETCD_SVC)
           - --config-file
           - /etc/greptimedb/config.toml
         env:
