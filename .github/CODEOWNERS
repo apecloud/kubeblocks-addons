@@ -52,8 +52,8 @@ addons-cluster/mariadb/ @yinmin @leon-inf @apecloud/kb-reviewers @apecloud/kb-ad
 addons/milvus/ @leon-inf @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/milvus/ @leon-inf @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/minio/ @fengluodb @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/minio/ @fengluodb @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/minio/ @ldming @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/minio/ @ldming @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/mogdb/ @yabinji @shanshanying @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/mogdb/ @yabinji @shanshanying @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers

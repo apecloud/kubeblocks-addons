@@ -17,7 +17,7 @@ sources:
   - https://github.com/minio/minio
 
 maintainers:
-  - name: fengluodb
+  - name: ldming
     url: https://github.com/apecloud/kubeblocks/
 
 annotations:
