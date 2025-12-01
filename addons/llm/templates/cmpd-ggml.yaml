@@ -10,7 +10,6 @@ metadata:
 spec:
   provider: kubeblocks
   serviceKind: ggml
-  serviceVersion: 0.1.0
   updateStrategy: BestEffortParallel
   scripts:
     - name: scripts

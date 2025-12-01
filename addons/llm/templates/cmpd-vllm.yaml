@@ -10,7 +10,6 @@ metadata:
 spec:
   provider: kubeblocks
   serviceKind: vllm
-  serviceVersion: 0.2.7
   updateStrategy: BestEffortParallel
   scripts:
     - name: scripts
