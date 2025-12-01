@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
+# the sync progress container will check this file and exit if it exists
+function handle_exit() {
+  exit_code=$?
+  if [ $exit_code -ne 0 ]; then
+    echo "failed with exit code $exit_code"
+    touch "${DP_BACKUP_INFO_FILE}.exit"
+    exit $exit_code
+  fi
+}
+
+trap handle_exit EXIT
+
 # topics.txt format is like:
 # (topic name)             (partitions)   (replication factor)
 # topic1                   1              1
@@ -7,7 +20,12 @@
 #
 # We also ignores the __consumer_offsets topic as offsets won't be backuped up.
 echo "getting topics..."
-kafkactl get topics | tail -n +2 | grep -v __consumer_offsets | datasafed push - topics.txt
+topic_list=$(kafkactl get topics | tail -n +2)
+if [[ -z $topic_list ]]; then
+  echo "nothing to backup"
+  exit 1
+fi
+echo $topic_list | grep -v __consumer_offsets | datasafed push - topics.txt
 readarray -t topics < <(kafkactl get topics -o compact | grep -v  __consumer_offsets)
 
 for topic in "${topics[@]}"; do
