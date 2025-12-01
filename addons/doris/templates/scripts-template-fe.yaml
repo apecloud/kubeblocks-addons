@@ -19,7 +19,7 @@ data:
     {{- .Files.Get "scripts/fe/fe_check_status.sh" | nindent 4 }}
   fe_member_leave.sh: |-
     {{- .Files.Get "scripts/fe/fe_member_leave.sh" | nindent 4 }}
-  fe-update-dynamic-config: |-
+  fe-update-dynamic-config.sh: |-
     #!/bin/sh
     set -ex
     key="${1:?missing parameterkey}"
