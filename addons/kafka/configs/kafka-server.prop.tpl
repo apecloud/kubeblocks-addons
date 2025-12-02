@@ -225,7 +225,7 @@ password.encoder.key.length=128
 password.encoder.iterations=4096
 
 # SSL Keystore of an Existing Listener
-ssl.keystore.type=JKS
+# ssl.keystore.type=JKS
 # ssl.keystore.location=
 # ssl.keystore.password=
 # ssl.key.password=
@@ -233,7 +233,7 @@ ssl.keystore.type=JKS
 # ssl.keystore.certificate.chain=
 
 # SSL Truststore of an Existing Listener
-ssl.truststore.type=JKS
+# ssl.truststore.type=JKS
 # ssl.truststore.location=
 # ssl.truststore.password=
 # ssl.truststore.certificates=

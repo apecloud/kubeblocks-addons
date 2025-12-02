@@ -72,8 +72,6 @@ set_tls_configuration_if_needed() {
   fi
   export KAFKA_TLS_TRUSTSTORE_FILE="$kafka_config_certs_path/kafka.truststore.pem"
   echo "[tls]KAFKA_TLS_TRUSTSTORE_FILE=$KAFKA_TLS_TRUSTSTORE_FILE"
-  echo "[tls]ssl.endpoint.identification.algorithm=" >> $kafka_kraft_config_path/server.properties
-  echo "[tls]ssl.endpoint.identification.algorithm=" >> $kafka_config_path/server.properties
   return 0
 }
 
