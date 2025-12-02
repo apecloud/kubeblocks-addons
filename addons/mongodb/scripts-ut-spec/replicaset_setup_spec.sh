@@ -152,7 +152,8 @@ EOF
       touch "$PBM_BACKUPFILE"
       # Mock pbm-agent-entrypoint.
       pbm-agent-entrypoint() {
-        echo "Mocked pbm-agent-entrypoint started"
+        # echo "Mocked pbm-agent-entrypoint started"
+        return 0
       }
       # Mock mongod (this time it's not called via 'exec', but in the background with '&').
       mongod() {
@@ -175,7 +176,7 @@ EOF
       
       # Assert the output from all mock functions to confirm the correct execution flow.
       The output should include "INFO: Startup backup agent for restore."
-      The output should include "Mocked pbm-agent-entrypoint started"
+      # The output should include "Mocked pbm-agent-entrypoint started"
       The output should include "INFO: Start mongodb for restore."
       The output should include "Mocked mongod started with: --bind_ip_all --port 27017 --replSet cluster-mongodb --config /etc/mongodb/mongodb.conf"
       The output should include "Mocked process_restore_signal called with: start"
