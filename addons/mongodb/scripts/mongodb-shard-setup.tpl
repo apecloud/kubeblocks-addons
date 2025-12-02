@@ -24,7 +24,7 @@ process="mongod --bind_ip_all --port $PORT --replSet $KB_CLUSTER_COMP_NAME --con
 boot_or_enter_restore "$process"
 
 echo "INFO: Startup backup agent for restore."
-pbm-agent-entrypoint &
+pbm-agent-entrypoint >> $MONGODB_ROOT/tmp/pbm_agent_restore.log 2>&1 &
 
 echo "INFO: Start mongodb for restore."
 $process &
