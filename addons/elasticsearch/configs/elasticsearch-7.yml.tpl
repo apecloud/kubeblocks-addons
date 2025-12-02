@@ -13,7 +13,7 @@
 {{- end }}
 
 cluster:
-  name: {{ .CLUSTER_NAMESPACE }}
+  name: {{ $clusterName }}
   routing:
     allocation:
       awareness:
