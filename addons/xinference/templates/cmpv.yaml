@@ -13,6 +13,8 @@ spec:
     releases:
     - 0.11.0
     - 0.11.0-cpu
+    - 1.13.0
+    - 1.13.0-cpu
   releases:
   - name: 0.11.0
     serviceVersion: 0.11.0
@@ -22,3 +24,11 @@ spec:
     serviceVersion: 0.11.0-cpu
     images:
       xinference: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v0.11.0-cpu
+  - name: 1.13.0
+    serviceVersion: 1.13.0
+    images:
+      xinference: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v1.13.0
+  - name: 1.13.0-cpu
+    serviceVersion: 1.13.0-cpu
+    images:
+      xinference: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v1.13.0-cpu
