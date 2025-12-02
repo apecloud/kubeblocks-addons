@@ -26,7 +26,7 @@ function wait_restore_completion_by_cluster_cr() {
             # echo "INFO: No restore-from-backup annotation, do not need to restore."
             return 0
         else
-            if [[ "$state" -ne 1 ]]; then
+            if [[ "$state" != "1" ]]; then
                 echo "INFO: Waiting for restore completion..."
                 state=1
             fi
@@ -58,17 +58,23 @@ function process_restore_signal() {
     local target_signal="$2"
     local pbm_backupfile=$MONGODB_ROOT/tmp/mongodb_pbm.backup
     local last_annotation_value=""
-    restore_signal_cm_name="$KB_CLUSTER_NAME-restore-signal" 
-    restore_signal_cm_namespace="$KB_NAMESPACE"
+    local last_state="0"
+    restore_signal_cm_name="$CLUSTER_NAME-restore-signal" 
+    restore_signal_cm_namespace="$CLUSTER_NAMESPACE"
     while true; do
         kubectl_get_result=$(kubectl get configmap $restore_signal_cm_name -n $restore_signal_cm_namespace -o json 2>&1)
         kubectl_get_exit_code=$?
-        if [[ "$kubectl_get_exit_code" -ne 0 ]]; then
-            echo "INFO: Waiting for restore signal..."
+        if [ "$kubectl_get_exit_code" -ne 0 ]; then
+            if [[ "$last_state" != "1" ]]; then
+                echo "INFO: Waiting for restore signal..."
+                last_state="1"
+            fi
         else
+            last_state="0"
             annotation_value=$(echo "$kubectl_get_result" | jq -r '.metadata.labels["apps.kubeblocks.io/restore-mongodb-shard"] // empty')
             if [[ "$annotation_value" != "$last_annotation_value" ]]; then
                 echo "INFO: Restore signal is $annotation_value."
+                last_annotation_value="$annotation_value"
             fi
             if [[ "$annotation_value" == "start" ]]; then
                 if [[ "$target_signal" == "start" ]]; then

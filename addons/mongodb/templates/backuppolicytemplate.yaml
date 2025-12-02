@@ -63,8 +63,10 @@ spec:
         - name: PBM_IMAGE_TAG
           valueFrom:
             versionMapping:
-              - serviceVersions: ["6.0", "7.0", "8.0"]
-                mappedValue: "2.9.1"
+              - serviceVersions: ["7.0", "8.0"]
+                mappedValue: "2.12.0"
+              - serviceVersions: ["6.0"]
+                mappedValue: "2.10.0"
               - serviceVersions: ["5.0", "4.4", "4.2", "4.0"]
                 mappedValue: "2.5.0-multi"
       targetVolumes:
@@ -78,8 +80,10 @@ spec:
         - name: PBM_IMAGE_TAG
           valueFrom:
             versionMapping:
-              - serviceVersions: ["6.0", "7.0", "8.0"]
-                mappedValue: "2.9.1"
+              - serviceVersions: ["7.0", "8.0"]
+                mappedValue: "2.12.0"
+              - serviceVersions: ["6.0"]
+                mappedValue: "2.10.0"
               - serviceVersions: ["5.0", "4.4", "4.2", "4.0"]
                 mappedValue: "2.5.0-multi"
       targetVolumes:
