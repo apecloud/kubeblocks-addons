@@ -5,6 +5,7 @@ function wait_restore_completion_by_cluster_cr() {
     local max_retries=$1
     local wait_interval=5
     local retries=0
+    local state=0
 
     while true; do
         cluster_json=$(kubectl get clusters.apps.kubeblocks.io "${CLUSTER_NAME}" -n "${CLUSTER_NAMESPACE}" -o json 2>&1)
@@ -25,7 +26,10 @@ function wait_restore_completion_by_cluster_cr() {
             # echo "INFO: No restore-from-backup annotation, do not need to restore."
             return 0
         else
-            echo "INFO: Waiting for restore completion..."
+            if [[ "$state" != "1" ]]; then
+                echo "INFO: Waiting for restore completion..."
+                state=1
+            fi
             sleep $wait_interval
             ((retries++))
             if [[ -n "$max_retries" && "$retries" -ge "$max_retries" ]]; then
@@ -53,16 +57,25 @@ function process_restore_signal() {
     local process="$1"
     local target_signal="$2"
     local pbm_backupfile=$MONGODB_ROOT/tmp/mongodb_pbm.backup
+    local last_annotation_value=""
+    local last_state="0"
     restore_signal_cm_name="$CLUSTER_NAME-restore-signal" 
     restore_signal_cm_namespace="$CLUSTER_NAMESPACE"
     while true; do
         kubectl_get_result=$(kubectl get configmap $restore_signal_cm_name -n $restore_signal_cm_namespace -o json 2>&1)
         kubectl_get_exit_code=$?
         if [ "$kubectl_get_exit_code" -ne 0 ]; then
-            echo "INFO: Waiting for restore signal..."
+            if [[ "$last_state" != "1" ]]; then
+                echo "INFO: Waiting for restore signal..."
+                last_state="1"
+            fi
         else
+            last_state="0"
             annotation_value=$(echo "$kubectl_get_result" | jq -r '.metadata.labels["apps.kubeblocks.io/restore-mongodb-shard"] // empty')
-            echo "INFO: Restore signal is $annotation_value."
+            if [[ "$annotation_value" != "$last_annotation_value" ]]; then
+                echo "INFO: Restore signal is $annotation_value."
+                last_annotation_value="$annotation_value"
+            fi
             if [[ "$annotation_value" == "start" ]]; then
                 if [[ "$target_signal" == "start" ]]; then
                     echo "INFO: Restore $annotation_value signal received, starting restore..."
