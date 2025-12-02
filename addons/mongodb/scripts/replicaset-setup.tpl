@@ -43,7 +43,7 @@ then
 fi
 
 echo "INFO: Startup backup agent for restore."
-pbm-agent-entrypoint &
+pbm-agent-entrypoint >> $MONGODB_ROOT/tmp/pbm_agent_restore.log 2>&1 &
 
 echo "INFO: Start mongodb for restore."
 $process &

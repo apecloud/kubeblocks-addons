@@ -19,7 +19,9 @@ spec:
     - name: PBM_OPLOG_SPAN_MIN_MINUTES
       value: "5"
     - name: PBM_COMPRESSION
-      value: zstd
+      value: s2 # for big data, use s2 compression to reduce memory usage during restoration
+    - name: PBM_RESTORE_DOWNLOAD_WORKERS
+      value: "4"
     - name: PBM_PURGE_INTERVAL_SECONDS
       value: "86400"
     - name: PBM_BACKUP_TYPE
