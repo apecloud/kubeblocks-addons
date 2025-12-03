@@ -23,7 +23,8 @@ echo "getting topics..."
 topic_list=$(kafkactl get topics | tail -n +2)
 if [[ -z $topic_list ]]; then
   echo "nothing to backup"
-  exit 1
+  DP_save_backup_status_info 0
+  exit 0
 fi
 echo $topic_list | grep -v __consumer_offsets | datasafed push - topics.txt
 readarray -t topics < <(kafkactl get topics -o compact | grep -v  __consumer_offsets)
