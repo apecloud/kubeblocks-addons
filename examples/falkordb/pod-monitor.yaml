@@ -25,5 +25,4 @@ spec:
       - demo
   selector:
     matchLabels:
-      app.kubernetes.io/instance: falkordb-replication
       apps.kubeblocks.io/component-name: falkordb

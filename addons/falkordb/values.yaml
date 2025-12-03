@@ -61,9 +61,9 @@ busyboxImage:
 metrics:
   image:
     # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-    registry: ""
-    repository: apecloud/agamotto
-    tag: 0.1.2-beta.1
+    registry: docker.io
+    repository: oliver006/redis_exporter
+    tag: v1.80.0
     pullPolicy: IfNotPresent
   service:
     port: 9121
@@ -78,4 +78,4 @@ logConfigs:
 # cluster domain without . prefix
 clusterDomain: "cluster.local"
 
-enableMetrics: false
+enableMetrics: true
