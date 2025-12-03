@@ -1084,7 +1084,7 @@ When the cluster is running, each POD should have a sidecar container, named `me
 You can retrieve the `scrapePath` and `scrapePort` from pod's exporter container.
 
 ```bash
-get po falkordb-replication-falkordb-0 -oyaml | yq '.spec.containers[] | select(.name=="metrics") | .ports'
+kubectl get po falkordb-replication-falkordb-0 -oyaml | yq '.spec.containers[] | select(.name=="metrics") | .ports'
 ```
 
 And the expected output is like:
@@ -1154,7 +1154,6 @@ spec:
       - demo
   selector:
     matchLabels:
-      app.kubernetes.io/instance: falkordb-replication
       apps.kubeblocks.io/component-name: falkordb
 ```
 
@@ -1166,7 +1165,7 @@ kubectl apply -f examples/falkordb/pod-monitor.yaml
 
 Login to the Grafana dashboard and import the dashboard.
 
-There is a pre-configured dashboard for PostgreSQL under the `FalkorDB` folder in the Grafana dashboard. And more dashboards can be found in the Grafana dashboard store[^5].
+The `redis_exporter` used here is provided by [redis_exporter](https://github.com/oliver006/redis_exporter)[^3], and more dashboards can be found in the Grafana dashboard store[^2].
 
 > [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
@@ -1490,4 +1489,5 @@ spec:
 ## Reference
 
 [^1]: Sentinel: <https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/>
-[^5]: Grafana Dashboard Store: <https://grafana.com/grafana/dashboards/>
+[^2]: Grafana Dashboard Store: <https://grafana.com/grafana/dashboards/>
+[^3]: Redis Exporter Metrics: <https://github.com/oliver006/redis_exporter>
