@@ -23,7 +23,10 @@ function DP_save_backup_status_info() {
   fi
 }
 
-export BROKERS="$DP_DB_HOST:$DP_DB_PORT"
+# don't let kb's env affect kafkactl's config
+export TLS_ENABLED="false"
+# we'll use the internal listener to avoid using ssl
+export BROKERS="$DP_DB_HOST:9094"
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
 

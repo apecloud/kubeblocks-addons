@@ -1,6 +1,10 @@
 #!/bin/bash
 
 echo "getting topics..."
+if [[ -z $(datasafed list topics.txt) ]]; then
+  echo "restore from an empty backup! doing nothing..."
+  exit 0
+fi
 readarray -t lines < <(datasafed pull topics.txt -)
 for line in "${lines[@]}"; do
   read -r topic partitions replication <<< "$line"
