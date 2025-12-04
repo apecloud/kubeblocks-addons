@@ -11,6 +11,11 @@ RUN set -e && \
         wget -q https://release.infinilabs.com/analysis-ik/stable/elasticsearch-analysis-ik-${version}.zip && \
         unzip -q elasticsearch-analysis-ik-${version}.zip -d ./${version}/ik/ && \
         rm elasticsearch-analysis-ik-${version}.zip; \
+        echo "Installing Pinyin plugin for Elasticsearch $version"; \
+        mkdir -p ./${version}/pinyin && \
+        wget -q https://release.infinilabs.com/analysis-pinyin/stable/elasticsearch-analysis-pinyin-${version}.zip && \
+        unzip -q elasticsearch-analysis-pinyin-${version}.zip -d ./${version}/pinyin/ && \
+        rm elasticsearch-analysis-pinyin-${version}.zip; \
     done && \
     \
     # S3 plugins for 6.x and 7.x (8.x has it built-in) \
