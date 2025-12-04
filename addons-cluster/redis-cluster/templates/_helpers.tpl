@@ -20,19 +20,23 @@ Define redis cluster shardingSpec with ComponentDefinition.
       serviceType: LoadBalancer
       podService: true
       {{- include "kblib.loadBalancerAnnotations" . | indent 4 }}
+    {{- end }}
     env:
-    - name: LOAD_BALANCER_ENABLED
+    {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) (not .Values.loadBalancerEnabled) }}
+    - name: HOST_NETWORK_ENABLED
       value: "true"
     {{- end }}
     {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled)  }}
-    env:
     - name: FIXED_POD_IP_ENABLED
       value: "true"
     {{- end }}
-    {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) (not .Values.loadBalancerEnabled) }}
-    env:
-    - name: HOST_NETWORK_ENABLED
+    {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) }}
+    - name: LOAD_BALANCER_ENABLED
       value: "true"
+    {{- end }}
+    {{- if .Values.emptyDefaultPassword }}
+    - name: REDIS_DEFAULT_PASSWORD
+      value: ""
     {{- end }}
     serviceVersion: {{ .Values.version }}
     systemAccounts:
@@ -99,6 +103,10 @@ Define redis ComponentSpec with ComponentDefinition.
   {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) (not .Values.loadBalancerEnabled) }}
   - name: HOST_NETWORK_ENABLED
     value: "true"
+  {{- end }}
+  {{- if .Values.emptyDefaultPassword }}
+  - name: REDIS_DEFAULT_PASSWORD
+    value: ""
   {{- end }}
   enabledLogs:
     - running
