@@ -24,12 +24,17 @@ Define redis cluster shardingSpec with ComponentDefinition.
       serviceType: LoadBalancer
       podService: true
       {{- include "kblib.loadBalancerAnnotations" . | indent 4 }}
-    env:
-    - name: LOAD_BALANCER_ENABLED
-      value: "true"
     {{- end }}
-    {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled) }}
     env:
+      {{- if .Values.emptyDefaultPassword }}
+      - name: REDIS_DEFAULT_PASSWORD
+        value: ""
+      {{- end }}
+      {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) }}
+      - name: LOAD_BALANCER_ENABLED
+        value: "true"
+      {{- end }}
+    {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled) }}
       - name: FIXED_POD_IP_ENABLED
         value: "true"
     {{- end }}
@@ -100,6 +105,10 @@ Define redis ComponentSpec with ComponentDefinition.
   {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) }}
   - name: LOAD_BALANCER_ENABLED
     value: "true"
+  {{- end }}
+  {{- if .Values.emptyDefaultPassword }}
+  - name: REDIS_DEFAULT_PASSWORD
+    value: ""
   {{- end }}
   serviceVersion: {{ .Values.version }}
   {{- if and .Values.customSecretName .Values.customSecretNamespace }}
