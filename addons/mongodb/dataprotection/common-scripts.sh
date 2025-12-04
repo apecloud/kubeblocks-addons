@@ -227,6 +227,8 @@ storage:
     credentials:
       access-key-id: ${S3_ACCESS_KEY}
       secret-access-key: ${S3_SECRET_KEY}
+restore:
+    numDownloadWorkers: ${PBM_RESTORE_DOWNLOAD_WORKERS:-4}
 EOF
     echo "INFO: PBM storage configuration completed."
   fi

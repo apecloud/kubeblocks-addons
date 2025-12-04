@@ -32,30 +32,30 @@ spec:
       serviceVersion: 8.0.8
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.8
-        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
+        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.12.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
+        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.12.0
         exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 7.0.18
       changes:
       serviceVersion: 7.0.18
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.18
-        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
+        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.12.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
+        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.12.0
         exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 6.0.21
       changes:
       serviceVersion: 6.0.21
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.21
-        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
+        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.10.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
+        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.10.0
         exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 5.0.29
       changes:

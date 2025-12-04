@@ -103,8 +103,10 @@ spec:
           - key: PBM_IMAGE_TAG
             valueFrom:
               serviceVersion:
-                - names: ["6.0.21", "7.0.18", "8.0.8"]
-                  mappingValue: "2.9.1"
+                - names: ["7.0.18", "8.0.8"]
+                  mappingValue: "2.12.0"
+                - names: ["6.0.21"]
+                  mappingValue: "2.10.0"
                 - names: ["5.0.29", "4.4.29", "4.2.25", "4.0.28"]
                   mappingValue: "2.5.0-multi"
           - key: PSM_IMAGE_TAG
@@ -135,8 +137,10 @@ spec:
           - key: PBM_IMAGE_TAG
             valueFrom:
               serviceVersion:
-                - names: ["6.0.21", "7.0.18", "8.0.8"]
-                  mappingValue: "2.9.1"
+                - names: ["7.0.18", "8.0.8"]
+                  mappingValue: "2.12.0"
+                - names: ["6.0.21"]
+                  mappingValue: "2.10.0"
                 - names: ["5.0.29", "4.4.29", "4.2.25", "4.0.28"]
                   mappingValue: "2.5.0-multi"
           - key: PSM_IMAGE_TAG
@@ -203,8 +207,10 @@ spec:
           - key: PBM_IMAGE_TAG
             valueFrom:
               serviceVersion:
-                - names: ["6.0.21", "7.0.18", "8.0.8"]
-                  mappingValue: "2.9.1"
+                - names: ["7.0.18", "8.0.8"]
+                  mappingValue: "2.12.0"
+                - names: ["6.0.21"]
+                  mappingValue: "2.10.0"
                 - names: ["5.0.29", "4.4.29", "4.2.25", "4.0.28"]
                   mappingValue: "2.5.0-multi"
           - key: PSM_IMAGE_TAG
@@ -235,8 +241,10 @@ spec:
           - key: PBM_IMAGE_TAG
             valueFrom:
               serviceVersion:
-                - names: ["6.0.21", "7.0.18", "8.0.8"]
-                  mappingValue: "2.9.1"
+                - names: ["7.0.18", "8.0.8"]
+                  mappingValue: "2.12.0"
+                - names: ["6.0.21"]
+                  mappingValue: "2.10.0"
                 - names: ["5.0.29", "4.4.29", "4.2.25", "4.0.28"]
                   mappingValue: "2.5.0-multi"
           - key: PSM_IMAGE_TAG
@@ -267,8 +275,10 @@ spec:
           - key: PBM_IMAGE_TAG
             valueFrom:
               serviceVersion:
-                - names: ["6.0.21", "7.0.18", "8.0.8"]
-                  mappingValue: "2.9.1"
+                - names: ["7.0.18", "8.0.8"]
+                  mappingValue: "2.12.0"
+                - names: ["6.0.21"]
+                  mappingValue: "2.10.0"
                 - names: ["5.0.29", "4.4.29", "4.2.25", "4.0.28"]
                   mappingValue: "2.5.0-multi"
           - key: PSM_IMAGE_TAG
