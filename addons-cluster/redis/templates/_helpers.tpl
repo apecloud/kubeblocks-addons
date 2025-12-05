@@ -137,20 +137,25 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
     serviceType: NodePort
     podService: true
   {{- end }}
-  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled)  }}
-  env:
-  - name: FIXED_POD_IP_ENABLED
-    value: "true"
-  {{- end }}
   {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) (hasPrefix "5." .Values.version) }}
   services:
   - name: sentinel-lb-advertised
     serviceType: LoadBalancer
     podService: true
     {{- include "kblib.loadBalancerAnnotations" . | indent 4 }}
+  {{- end }}
   env:
+  {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) (hasPrefix "5." .Values.version) }}
   - name: LOAD_BALANCER_ENABLED
     value: "true"
+  {{- end }}
+  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) (not .Values.loadBalancerEnabled)  }}
+  - name: FIXED_POD_IP_ENABLED
+    value: "true"
+  {{- end }}
+  {{- if .Values.emptyDefaultPassword }}
+  - name: SENTINEL_PASSWORD
+    value: ""
   {{- end }}
   serviceVersion: {{ .Values.version }}
   {{- if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}
