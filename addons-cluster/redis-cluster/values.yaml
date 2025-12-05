@@ -99,5 +99,3 @@ redisCluster:
   customSecretName: ""
   customSecretNamespace: ""
 
-emptyDefaultPassword: false
-
