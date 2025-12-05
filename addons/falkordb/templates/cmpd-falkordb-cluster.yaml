@@ -75,11 +75,6 @@ spec:
       namespace: {{ $.Release.Namespace }}
       volumeName: falkordb-cluster-config
       externalManaged: true
-    - name: falkordb-metrics-config
-      template: {{ include "falkordb.metricsConfiguration" $ }}
-      namespace: {{ $.Release.Namespace }}
-      volumeName: falkordb-metrics-config
-      defaultMode: 0444
   scripts:
     - name: falkordb-cluster-scripts
       template: {{ include "falkordbCluster.scriptsTemplate" $ }}
@@ -106,7 +101,6 @@ spec:
       - container: metrics
         ports:
           - http-metrics
-          - server-metrics
   {{- end }}
   vars:
     ## the name of current cluster instance
@@ -356,19 +350,6 @@ spec:
     - name: REDIS_METRICS_HTTP_PORT
       value: "9121"
       expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}{{.REDIS_METRICS_HTTP_PORT}}{{end}}` | toYaml }}
-    ## the falkordb server metrics container host network server port when using host network mode, the port will be allocated automatically by KubeBlocks
-    - name: REDIS_METRICS_HOST_NETWORK_SERVER_PORT
-      valueFrom:
-        hostNetworkVarRef:
-          optional: true
-          container:
-            name: metrics
-            port:
-              name: server-metrics
-              option: Required
-    - name: REDIS_METRICS_SERVER_PORT
-      value: "8888"
-      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
     ## the falkordb cluster host network port list for all shard pods, the all pods in same shard has the same host network port allocated automatically by KubeBlocks.
     ## the value format is like "shard-chg:1057,shard-khh:1056,shard-mpg:1053"
     - name: REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT
@@ -566,29 +547,21 @@ spec:
       - name: metrics
         imagePullPolicy: {{ $.Values.metrics.image.pullPolicy | quote }}
         securityContext:
-          runAsNonRoot: true
-          runAsUser: 1001
+          runAsUser: 59000
+          runAsGroup: 59000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
         env:
-          - name: ENDPOINT
+          - name: REDIS_ADDR
             value: "localhost:$(SERVICE_PORT)"
-          - name: METRICS_HTTP_PORT
-            value: $(REDIS_METRICS_HTTP_PORT)
-          - name: METRICS_SERVER_PORT
-            value: $(REDIS_METRICS_SERVER_PORT)
           - name: REDIS_USER
             value: $(REDIS_DEFAULT_USER)
           - name: REDIS_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
-        command:
-          - "/bin/agamotto"
-          - "--config=/opt/conf/metrics-config.yaml"
         ports:
           - name: http-metrics
-            containerPort: {{ $.Values.metrics.service.port }}
-          - name: server-metrics
-            containerPort: {{ $.Values.metrics.service.serverPort }}
-        volumeMounts:
-          - name: falkordb-metrics-config
-            mountPath: /opt/conf
+            containerPort: 9121
   {{- end }}
 {{- end }}

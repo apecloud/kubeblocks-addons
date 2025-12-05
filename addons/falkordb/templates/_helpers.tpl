@@ -105,13 +105,6 @@ Define falkordb cluster component script template name
 falkordb-cluster-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
-{{/*
-Define falkordb metrics config name
-*/}}
-{{- define "falkordb.metricsConfiguration" -}}
-falkordb-metrics-config
-{{- end -}}
-
 {{- define "falkordb4.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major4.minor12 }}
 {{- end }}
