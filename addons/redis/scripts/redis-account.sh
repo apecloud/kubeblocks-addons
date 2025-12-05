@@ -16,6 +16,9 @@ function do_acl_command() {
         # we need to remove the @1 or @2 and remove the port
         host=$(echo "$host" | sed 's/@[0-9]*//g' | sed 's/:[0-9]*/ /g')
         cmd="redis-cli -h $host -p $service_port --user $user -a $password"
+        if [ -z "$password" ]; then
+            cmd="redis-cli -h $host -p $service_port --user $user"
+        fi
         if [ -n "$ACL_COMMAND" ]; then
             echo "DO ACL COMMAND FOR HOST: $host"
             $cmd $ACL_COMMAND
@@ -51,11 +54,6 @@ function env_pre_check() {
 
     if [ -z "$REDIS_DEFAULT_USER" ]; then
         echo "REDIS_DEFAULT_USER is empty, skip ACL operation"
-        exit 1
-    fi
-
-    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-        echo "REDIS_DEFAULT_PASSWORD is empty, skip ACL operation"
         exit 1
     fi
 
@@ -99,10 +97,13 @@ function create_post_check() {
 }
 
 function get_cluster_host_list() {
+    passwd_cmd="-a $REDIS_DEFAULT_PASSWORD"
+    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+        passwd_cmd=""
+    fi
     host_list=$(redis-cli -c -h "$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN" \
         -p $SERVICE_PORT \
-        --user $REDIS_DEFAULT_USER \
-        -a $REDIS_DEFAULT_PASSWORD \
+        --user $REDIS_DEFAULT_USER $passwd_cmd \
         CLUSTER NODES |
         grep -v "fail" |
         grep -v "noaddr" |
