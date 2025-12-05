@@ -5,11 +5,11 @@ metadata:
   labels:
     {{- include "llm.labels" . | nindent 4}}
   annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "llm.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   serviceKind: vllm
-  serviceVersion: 0.2.7
   updateStrategy: BestEffortParallel
   scripts:
     - name: scripts
@@ -42,7 +42,6 @@ spec:
         emptyDir: {}
     containers:
       - name: vllm
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:{{ default .Chart.AppVersion .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
           runAsUser: 0
