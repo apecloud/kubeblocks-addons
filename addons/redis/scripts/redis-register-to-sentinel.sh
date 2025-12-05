@@ -136,9 +136,7 @@ construct_sentinel_sub_command() {
       echo "SENTINEL set $master_name auth-user $REDIS_SENTINEL_USER"
       ;;
     "auth-pass")
-      if is_empty "$REDIS_SENTINEL_PASSWORD"; then
-        echo "SENTINEL set $master_name auth-pass \"\""
-      else
+      if ! is_empty "$REDIS_SENTINEL_PASSWORD"; then
         echo "SENTINEL set $master_name auth-pass $REDIS_SENTINEL_PASSWORD"
       fi
       ;;
@@ -252,7 +250,9 @@ register_to_sentinel() {
   for cmd in "${sentinel_configure_commands[@]}"
   do
     sentinel_cli_cmd=$(construct_sentinel_sub_command "$cmd" "$master_name" "$redis_primary_host" "$redis_primary_port")
-    call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_cli_cmd" || exit 1
+    if [ -n "$sentinel_cli_cmd" ]; then
+       call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_cli_cmd" || exit 1
+    fi
   done
   set_xtrace_when_ut_mode_false
   echo "redis sentinel register to $sentinel_host succeeded!"
