@@ -21,4 +21,8 @@ fi
 if [ "$paramValue" = "\"\"" ]; then
   paramValue=""
 fi
-redis-cli -a ${REDIS_DEFAULT_PASSWORD} CONFIG SET ${paramName} "${paramValue}"
+if [ -z $REDIS_DEFAULT_PASSWORD ]; then
+  redis-cli CONFIG SET ${paramName} "${paramValue}"
+else
+  redis-cli -a ${REDIS_DEFAULT_PASSWORD} CONFIG SET ${paramName} "${paramValue}"
+fi
