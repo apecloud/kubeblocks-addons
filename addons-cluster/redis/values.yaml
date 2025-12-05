@@ -105,7 +105,3 @@ extra:
 
 prometheus:
   enabled: false
-
-emptyDefaultPassword: false
-
-
