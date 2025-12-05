@@ -136,7 +136,11 @@ construct_sentinel_sub_command() {
       echo "SENTINEL set $master_name auth-user $REDIS_SENTINEL_USER"
       ;;
     "auth-pass")
-      echo "SENTINEL set $master_name auth-pass $REDIS_SENTINEL_PASSWORD"
+      if is_empty "$REDIS_SENTINEL_PASSWORD"; then
+        echo "SENTINEL set $master_name auth-pass \"\""
+      else
+        echo "SENTINEL set $master_name auth-pass $REDIS_SENTINEL_PASSWORD"
+      fi
       ;;
     *)
       echo "Unknown command: $command" >&2
@@ -150,7 +154,12 @@ check_connectivity() {
   local port=$2
   local password=$3
   echo "Checking connectivity to $host on port $port using redis-cli..."
-  if redis-cli -h "$host" -p "$port" -a "$password" PING | grep -q "PONG"; then
+  if is_empty "$password"; then
+    redis-cli -h "$host" -p "$port" PING | grep -q "PONG"
+  else
+    redis-cli -h "$host" -p "$port" -a "$password" PING | grep -q "PONG"
+  fi
+  if [ $? -eq 0 ]; then
     echo "$host is reachable on port $port."
     return 0
   else
@@ -166,7 +175,11 @@ execute_sentinel_sub_command() {
   local command=$3
 
   local output
-  output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  if is_empty "$SENTINEL_PASSWORD"; then
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" $command)
+  else
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  fi
   local status=$?
   echo "$output"
 
@@ -184,7 +197,11 @@ get_master_addr_by_name(){
   local sentinel_port=$2
   local command=$3
   local output
-  output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  if is_empty "$SENTINEL_PASSWORD"; then
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" $command)
+  else
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  fi
   local status=$?
   if [ $status -ne 0 ]; then
     echo "Command failed with status $status." >&2

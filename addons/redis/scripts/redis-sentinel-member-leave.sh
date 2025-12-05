@@ -119,7 +119,11 @@ redis_sentinel_remove_monitor() {
       esac
       if [[ -n "$master_name" ]]; then
         echo "master name: $master_name"
-        redis-cli -h "$sentinel_leave_member_fqdn" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" SENTINEL REMOVE "$master_name"
+        if [ -z "$SENTINEL_PASSWORD" ]; then
+          redis-cli -h "$sentinel_leave_member_fqdn" -p "$redis_default_service_port" SENTINEL REMOVE "$master_name"
+        else
+          redis-cli -h "$sentinel_leave_member_fqdn" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" SENTINEL REMOVE "$master_name"
+        fi
         echo "sentinel no longer monitors $master_name"
         master_name=""
       fi
