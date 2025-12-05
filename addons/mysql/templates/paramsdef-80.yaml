@@ -20,7 +20,7 @@ spec:
         mountPoint: /kb_tools
         toolConfigs:
           - name: kb-tools
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.44
             asContainerImage: true
 
 
