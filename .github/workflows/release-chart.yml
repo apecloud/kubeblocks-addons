@@ -51,8 +51,6 @@ on:
           - xinference
           - yashandb
           - zookeeper
-          - hadoop
-          - hive
       custom_chart_dir:
         description: 'release specify custom chart dir when chart_dir is empty'
         required: false

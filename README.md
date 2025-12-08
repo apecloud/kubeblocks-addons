@@ -12,8 +12,6 @@ KubeBlocks add-ons.
 | etcd | etcd-3.5.15<br>etcd-3.5.6<br>etcd-3.6.1 | Etcd is a strongly consistent, distributed key-value store that provides a reliable way to store data that needs to be accessed by a distributed system or cluster of machines. | ApeCloud |
 | falkordb | falkordb-4.12.5<br>falkordb-cluster-4.12.5<br>falkordb-sent-4.12.5 | FalkorDB is an in-memory graph database based on Redis. | ApeCloud dudizimber |
 | greptimedb | greptimedb-0.3.2 | An open-source, cloud-native, distributed time-series database with PromQL/SQL/Python supported. | GreptimeTeam sh2 |
-| hadoop | hadoop-3.3.1<br>hadoop-3.3.6 | A Helm chart for Kubernetes |  |
-| hive | hive-3.1.2<br>hive-3.1.3<br>hive-4.0.1 | A Helm chart for Kubernetes |  |
 | influxdb | influxdb-2.7.11<br>influxdb-data-1.8.10<br>influxdb-meta-1.8.10 | InfluxDB is an open source time-series database. It is a core component of the TICK (Telegraf, InfluxDB(TM), Chronograf, Kapacitor) stack. |  |
 | kafka | kafka-broker-2.7.0<br>kafka-broker-2.8.2<br>kafka-broker-3.3.2<br>kafka-broker-3.7.1<br>kafka-broker-3.8.1<br>kafka-broker-3.9.0<br>kafka-combine-3.3.2<br>kafka-combine-3.7.1<br>kafka-combine-3.8.1<br>kafka-combine-3.9.0<br>kafka-controller-3.3.2<br>kafka-controller-3.7.1<br>kafka-controller-3.8.1<br>kafka-controller-3.9.0<br>kafka-exporter-1.6.0 | Apache Kafka is a distributed streaming platform designed to build real-time pipelines and can be used as a message broker or as a replacement for a log aggregation solution for big data applications. | caiq1nyu vipshop |
 | llm | llm-ggml-20241115-latest<br>llm-vllm-0.11.2 | Large language models. | ApeCloud |
