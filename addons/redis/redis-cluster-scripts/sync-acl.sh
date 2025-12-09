@@ -45,7 +45,7 @@ while IFS= read -r user_rule; do
         continue
     fi
     rule_part="${user_rule#user $username }"
-    echo $username, $user_rule
     $redis_base_cmd -h $KB_JOIN_MEMBER_POD_FQDN ACL SETUSER "$username" $rule_part >&2
-    $redis_base_cmd -h $KB_JOIN_MEMBER_POD_FQDN ACL save >&2
 done <<< "$acl_list"
+
+$redis_base_cmd -h $KB_JOIN_MEMBER_POD_FQDN ACL save >&2
