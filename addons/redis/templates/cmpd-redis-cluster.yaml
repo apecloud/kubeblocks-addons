@@ -26,6 +26,7 @@ spec:
   serviceKind: redis-cluster
   serviceVersion: {{ .serviceVersion }}
   minReadySeconds: 10
+  podUpgradePolicy: ReCreate
   services:
     - name: redis-advertised
       serviceName: redis-advertised
