@@ -377,6 +377,14 @@ spec:
           - /bin/bash
           - -c
           - /scripts/redis-switchover.sh > /tmp/switchover.log 2>&1
+    memberJoin:
+      exec:
+        container: redis
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/sync-acl.sh
+        targetPodSelector: Any
   runtime:
     initContainers:
       - name: init-dbctl

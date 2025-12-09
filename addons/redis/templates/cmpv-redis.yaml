@@ -33,5 +33,6 @@ spec:
       postProvision: {{ $redisRepository }}:{{ .imageTag }}
       accountProvision: {{ $redisRepository }}:{{ .imageTag }}
       switchover: {{ $redisRepository }}:{{ .imageTag }}
+      memberJoin: {{ $redisRepository }}:{{ .imageTag }}
   {{- end }}
   {{- end }}
