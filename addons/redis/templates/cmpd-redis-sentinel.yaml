@@ -18,6 +18,7 @@ spec:
   serviceKind: redis-sentinel
   serviceVersion: {{ .serviceVersion }}
   podManagementPolicy: Parallel
+  podUpgradePolicy: ReCreate
   services:
     - name: redis-sentinel
       serviceName: redis-sentinel
