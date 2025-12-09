@@ -18,6 +18,7 @@ spec:
   serviceKind: redis
   serviceVersion: {{ .serviceVersion }}
   podManagementPolicy: OrderedReady
+  podUpgradePolicy: ReCreate
   minReadySeconds: 10
   services:
     - name: redis
