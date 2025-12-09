@@ -158,6 +158,21 @@ spec:
           - mountPath: /etc/rabbitmq/enabled_plugins
             name: rabbitmq-config
             subPath: enabled_plugins
+          - name: timezone
+            mountPath: /etc/localtime
+            readOnly: true
+          - name: zoneinfo
+            mountPath: /usr/share/zoneinfo
+            readOnly: true
+    volumes:
+      - name: timezone
+        hostPath:
+          path: /etc/localtime
+          type: File
+      - name: zoneinfo
+        hostPath:
+          path: /usr/share/zoneinfo
+          type: Directory
   vars:
     - name: KB_CLUSTER_NAME
       valueFrom:
