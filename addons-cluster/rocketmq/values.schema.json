@@ -1,0 +1,295 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "version": {
+      "title": "Version",
+      "description": "RocketMQ version",
+      "type": "string",
+      "default": "4.9.6",
+      "enum": [
+        "4.9.6"
+      ]
+    },
+    "mode": {
+      "title": "Mode",
+      "description": "RocketMQ cluster mode",
+      "type": "string",
+      "default": "master-slave",
+      "enum": [
+        "master-slave"
+      ]
+    },
+    "cpu": {
+      "title": "CPU",
+      "description": "CPU cores",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 2,
+      "minimum": 2,
+      "maximum": 64,
+      "multipleOf": 1
+    },
+    "memory": {
+      "title": "Memory(Gi)",
+      "description": "Memory, the unit is Gi",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 4,
+      "minimum": 4,
+      "maximum": 1000
+    },
+    "storage": {
+      "title": "Storage(Gi)",
+      "description": "Storage size, the unit is Gi",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 20,
+      "minimum": 10,
+      "maximum": 10000
+    },
+    "broker": {
+      "title": "Broker Configuration",
+      "description": "RocketMQ broker configuration",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Broker Replicas",
+          "description": "The number of broker replicas",
+          "type": "integer",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 10
+        },
+        "shardCount": {
+          "title": "Shard Count",
+          "description": "The number of broker shards",
+          "type": "integer",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 10
+        },
+        "enableAcl": {
+          "title": "Enable ACL",
+          "description": "Enable Access Control List",
+          "type": "boolean",
+          "default": false
+        },
+        "enableDledger": {
+          "title": "Enable DLedger",
+          "description": "Enable DLedger for broker",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "namesrv": {
+      "title": "NameServer Configuration",
+      "description": "RocketMQ NameServer configuration",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "NameServer Replicas",
+          "description": "The number of NameServer replicas",
+          "type": "integer",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    },
+    "dashboardEnable": {
+      "title": "Enable Dashboard",
+      "description": "Enable RocketMQ dashboard",
+      "type": "boolean",
+      "default": true
+    },
+    "dashboard": {
+      "title": "Dashboard Configuration",
+      "description": "RocketMQ dashboard configuration",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Dashboard Replicas",
+          "description": "The number of dashboard replicas",
+          "type": "integer",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 1
+        },
+        "request": {
+          "title": "Dashboard Request Resources",
+          "description": "Dashboard requested resources",
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "title": "Dashboard Request CPU",
+              "description": "Dashboard requested CPU cores",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 0.1,
+              "minimum": 0.1,
+              "maximum": 8
+            },
+            "memory": {
+              "title": "Dashboard Request Memory(Gi)",
+              "description": "Dashboard requested memory, the unit is Gi",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1,
+              "minimum": 0.5,
+              "maximum": 16
+            }
+          }
+        },
+        "limit": {
+          "title": "Dashboard Limit Resources",
+          "description": "Dashboard resource limits",
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "title": "Dashboard CPU Limit",
+              "description": "Dashboard CPU limit",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1,
+              "minimum": 0.5,
+              "maximum": 8
+            },
+            "memory": {
+              "title": "Dashboard Memory Limit(Gi)",
+              "description": "Dashboard memory limit, the unit is Gi",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1,
+              "minimum": 0.5,
+              "maximum": 16
+            }
+          }
+        }
+      }
+    },
+    "monitorEnable": {
+      "title": "Enable Monitor",
+      "description": "Enable RocketMQ monitoring",
+      "type": "boolean",
+      "default": true
+    },
+    "monitor": {
+      "title": "Monitor Configuration",
+      "description": "RocketMQ monitoring configuration",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Monitor Replicas",
+          "description": "The number of monitor replicas",
+          "type": "integer",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 1
+        },
+        "request": {
+          "title": "Monitor Request Resources",
+          "description": "Monitor requested resources",
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "title": "Monitor Request CPU",
+              "description": "Monitor requested CPU cores",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 0.1,
+              "minimum": 0.1,
+              "maximum": 8
+            },
+            "memory": {
+              "title": "Monitor Request Memory(Gi)",
+              "description": "Monitor requested memory, the unit is Gi",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1,
+              "minimum": 0.5,
+              "maximum": 16
+            }
+          }
+        },
+        "limit": {
+          "title": "Monitor Limit Resources",
+          "description": "Monitor resource limits",
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "title": "Monitor CPU Limit",
+              "description": "Monitor CPU limit",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1,
+              "minimum": 0.5,
+              "maximum": 8
+            },
+            "memory": {
+              "title": "Monitor Memory Limit(Gi)",
+              "description": "Monitor memory limit, the unit is Gi",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 1,
+              "minimum": 0.5,
+              "maximum": 16
+            }
+          }
+        }
+      }
+    },
+    "requests": {
+      "title": "Requested Resources",
+      "description": "Requested resources for the cluster",
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "title": "Requested CPU",
+          "description": "Requested CPU cores, if not set, use cpu",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 1,
+          "minimum": 0.5,
+          "maximum": 64
+        },
+        "memory": {
+          "title": "Requested Memory(Gi)",
+          "description": "Requested memory, if not set, use memory, the unit is Gi",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 1,
+          "minimum": 0.5,
+          "maximum": 1000
+        }
+      }
+    }
+  }
+}
