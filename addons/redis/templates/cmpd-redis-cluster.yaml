@@ -504,6 +504,14 @@ spec:
           - /bin/bash
           - -c
           - /scripts/{{ $redisClusterSwitchoverScripts }}  > /tmp/switchover.log 2>&1
+    memberJoin:
+      exec:
+        container: redis-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/sync-acl.sh
+        targetPodSelector: Any
   runtime:
     initContainers:
       - name: init-dbctl
