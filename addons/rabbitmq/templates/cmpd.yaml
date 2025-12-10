@@ -85,7 +85,7 @@ spec:
             if [ ! -f {{ .Values.dataMountPath }}/enabled_plugins ]; then
               cp /etc/rabbitmq/enabled_plugins {{ .Values.dataMountPath }}/enabled_plugins
             fi
-            cp /root/erlang.cookie {{ .Values.dataMountPath }}/erlang.cookie
+            cp /root/erlang.cookie {{ .Values.dataMountPath }}/.erlang.cookie
             chown rabbitmq:rabbitmq {{ .Values.dataMountPath }}/.erlang.cookie
             chmod 400 {{ .Values.dataMountPath }}/.erlang.cookie
             exec /opt/rabbitmq/sbin/rabbitmq-server
