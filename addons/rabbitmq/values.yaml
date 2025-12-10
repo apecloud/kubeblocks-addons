@@ -15,6 +15,8 @@ versions:
     componentDef: "^rabbitmq.*"
     minors:
       # [version, serviceVersion, tag, deprecated]
+      - ["4.2.1", "4.2.1", "4.2.1-management", false]
+      - ["4.1.6", "4.1.6", "4.1.6-management", false]
       - ["4.0.9", "4.0.9", "4.0.9-management", false]
   - major: "3"
     componentDef: "^rabbitmq.*"
@@ -25,10 +27,10 @@ versions:
       - ["3.11.28", "3.11.28", "3.11.28-management", false]
       - ["3.10.25", "3.10.25", "3.10.25-management", false]
       - ["3.9.29", "3.9.29", "3.9.29-management", false]
-      - ["3.8.14", "3.8.14", "3.8.14-management", false]
+      - ["3.8.34", "3.8.34", "3.8.34-management", false]
 
 componentServiceVersion:
-  rabbitmq: 3.13.2
+  rabbitmq: 3.13.7
 
 nameOverride: ""
 
