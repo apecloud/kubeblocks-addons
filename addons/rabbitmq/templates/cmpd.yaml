@@ -82,12 +82,12 @@ spec:
           - /bin/sh
           - -c
           - |
-            if [ ! -f /var/lib/rabbitmq/enabled_plugins ]; then
-              cp /etc/rabbitmq/enabled_plugins /var/lib/rabbitmq/enabled_plugins
+            if [ ! -f {{ .Values.dataMountPath }}/enabled_plugins ]; then
+              cp /etc/rabbitmq/enabled_plugins {{ .Values.dataMountPath }}/enabled_plugins
             fi
-            cp /root/erlang.cookie /var/lib/rabbitmq/.erlang.cookie
-            chown rabbitmq:rabbitmq /var/lib/rabbitmq/.erlang.cookie
-            chmod 400 /var/lib/rabbitmq/.erlang.cookie
+            cp /root/erlang.cookie {{ .Values.dataMountPath }}/erlang.cookie
+            chown rabbitmq:rabbitmq {{ .Values.dataMountPath }}/.erlang.cookie
+            chmod 400 {{ .Values.dataMountPath }}/.erlang.cookie
             exec /opt/rabbitmq/sbin/rabbitmq-server
         env:
         - name: POD_NAME
