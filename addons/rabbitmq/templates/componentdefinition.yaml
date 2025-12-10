@@ -53,9 +53,12 @@ spec:
           - /bin/sh
           - -c
           - |
-            cp /root/erlang.cookie /var/lib/rabbitmq/.erlang.cookie
-            chown rabbitmq:rabbitmq /var/lib/rabbitmq/.erlang.cookie
-            chmod 400 /var/lib/rabbitmq/.erlang.cookie
+            if [ ! -f {{ .Values.dataMountPath }}/enabled_plugins ]; then
+              cp /etc/rabbitmq/enabled_plugins {{ .Values.dataMountPath }}/enabled_plugins
+            fi
+            cp /root/erlang.cookie {{ .Values.dataMountPath }}/erlang.cookie
+            chown rabbitmq:rabbitmq {{ .Values.dataMountPath }}/.erlang.cookie
+            chmod 400 {{ .Values.dataMountPath }}/.erlang.cookie
             exec /opt/rabbitmq/sbin/rabbitmq-server
         env:
         - name: MY_POD_NAME
@@ -77,7 +80,7 @@ spec:
         - name: K8S_SERVICE_NAME
           value: $(KB_CLUSTER_COMP_NAME)-headless
         - name: RABBITMQ_ENABLED_PLUGINS_FILE
-          value: /etc/rabbitmq/enabled_plugins
+          value: {{ .Values.dataMountPath }}/enabled_plugins
         - name: RABBITMQ_USE_LONGNAME
           value: "true"
         - name: RABBITMQ_NODENAME
@@ -130,6 +133,21 @@ spec:
           - mountPath: /etc/rabbitmq/enabled_plugins
             name: rabbitmq-config
             subPath: enabled_plugins
+          - name: timezone
+            mountPath: /etc/localtime
+            readOnly: true
+          - name: zoneinfo
+            mountPath: /usr/share/zoneinfo
+            readOnly: true
+    volumes:
+      - name: timezone
+        hostPath:
+          path: /etc/localtime
+          type: File
+      - name: zoneinfo
+        hostPath:
+          path: /usr/share/zoneinfo
+          type: Directory
   vars:
     - name: RABBITMQ_DEFAULT_USER
       valueFrom:
