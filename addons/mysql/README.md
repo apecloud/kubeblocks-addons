@@ -21,7 +21,7 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 | Major Versions | Description |
 |---------------|--------------|
 | 5.7 | 5.7.44  |
-| 8.0 | \[8.0.30 ~ 8.0.39\] |
+| 8.0 | \[8.0.33 ~ 8.0.44\] |
 | 8.4 | 8.4.0 ~ 8.4.2|
 
 ## Prerequisites
@@ -74,7 +74,7 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.30~8.0.39]
+      # Valid options are: [8.0.33~8.0.44]
       serviceVersion: 8.0.35
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
@@ -126,7 +126,7 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.30 to 8.0.39]
+      # Valid options are: [8.0.33 to 8.0.44]
       serviceVersion: 8.0.35
 ```
 
