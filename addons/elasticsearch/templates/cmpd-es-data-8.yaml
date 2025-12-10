@@ -98,4 +98,6 @@ spec:
       valueFrom:
         tlsVarRef:
           enabled: Optional
+    - name: ZONE_AWARE_ENABLED
+      value: {{ .Values.zoneAware.enabled | quote }}
   {{ include "elasticsearch.common" . | nindent 2 }}
