@@ -392,19 +392,7 @@ runtime:
         - sh
         - -c
         - |
-          cp /etc/pki/tls/* /usr/share/elasticsearch/config/
-          # remove initial master nodes block if cluster has been formed
-          if [ -f "${CLUSTER_FORMED_FILE}" ]; then
-            sed -i '/# INITIAL_MASTER_NODES_BLOCK_START/,/# INITIAL_MASTER_NODES_BLOCK_END/d' config/elasticsearch.yml
-          fi
-          if [ -f /bin/tini ]; then
-            /bin/tini -- /usr/local/bin/docker-entrypoint.sh
-          elif [ -f /tini ]; then
-            /tini -- /usr/local/bin/docker-entrypoint.sh
-          else
-            /usr/local/bin/docker-entrypoint.sh
-          fi
-
+          {{- .Files.Get "scripts/entrypoint.sh" | nindent 10 }}
       env:
         - name: POD_IP
           valueFrom:
@@ -495,6 +483,11 @@ runtime:
           readOnly: true
         - mountPath: /tmp
           name: tmp-volume
+{{- if .Values.zoneAware.enabled }}
+        - mountPath: /mnt/zone-aware-mapping
+          name: zone-aware-mapping
+          readOnly: true
+{{- end }}
     - name: exporter
       command:
         - /bin/elasticsearch_exporter
@@ -607,6 +600,11 @@ runtime:
       name: local-plugins
     - emptyDir: { }
       name: plugins
+{{- if .Values.zoneAware.enabled }}
+    - name: zone-aware-mapping
+      configMap:
+        name: {{ .Values.zoneAware.configMap }}
+{{- end }}
 {{- end }}
 
 {{- define "kibana.common" }}
