@@ -11,7 +11,7 @@ dependencies:
     repository: file://../kblib
     alias: extra
 
-appVersion: "3.13.2"
+appVersion: "3.13.7"
 
 keywords:
   - rabbitmq
