@@ -19,7 +19,7 @@ RabbitMQ is an open-source and lightweight message broker which supports multipl
 | 3.10 | 3.10.25|
 | 3.11 | 3.11.28|
 | 3.12 | 3.12.14|
-| 3.13 | 3.13.2, 3.13.7|
+| 3.13 | 3.13.7|
 
 ## Prerequisites
 
