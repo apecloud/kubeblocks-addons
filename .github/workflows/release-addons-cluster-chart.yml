@@ -13,7 +13,6 @@ on:
           - apecloud-mysql
           - apecloud-postgresql
           - clickhouse
-          - doris
           - elasticsearch
           - etcd
           - greptimedb
