@@ -10,6 +10,7 @@ spec:
   provider: kubeblocks
   description: tidb's metadata server
   updateStrategy: BestEffortParallel
+  minReadySeconds: 30
   vars:
     - name: PD_LEADER_POD_NAME
       valueFrom:
