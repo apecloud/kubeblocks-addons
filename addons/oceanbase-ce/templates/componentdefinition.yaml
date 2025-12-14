@@ -48,6 +48,25 @@ spec:
       ports:
       - http
       - pprof
+  available:
+    withProbe:
+      all:
+        stdout:
+          equalTo: available
+  lifecycleActions:
+    availableProbe:
+      exec:
+        command:
+          - bash
+          - -c
+          - |
+            ret=$(mysql -h 127.0 -uroot -p$OB_ROOT_PASSWD -P$OB_SERVICE_PORT -e 'show databases;')
+            if [ $? -eq 0 ];then
+              echo -n "available"
+            else
+              echo -n 'notavailable'
+            fi
+      initialDelaySeconds: 10
   runtime:
     containers:
       - name: observer-container
