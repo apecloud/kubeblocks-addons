@@ -22,7 +22,7 @@ trap handle_exit EXIT
 
 function getToolConfigValue() {
     local var=$1
-    cat $toolConfig | grep "$var[[:space:]]*=" | awk '{print $NF}'
+    cat $toolConfig | grep "${var}[[:space:]]*=" | awk '{print $NF}'
 }
 
 s3_endpoint=$(getToolConfigValue endpoint)
@@ -64,7 +64,7 @@ echo "INFO: Found nodes for restore: $node_ips"
 # Set keystore for each node
 for node_ip in $node_ips; do
     echo "INFO: Setting keystore for node $node_ip (restore)"
-    
+
     keystore_request=$(cat <<EOF
 {
   "access_key_id": "${s3_access_key_id}",
@@ -72,26 +72,45 @@ for node_ip in $node_ips; do
 }
 EOF
 )
-    
+
     response=$(curl -s -w "\n%{http_code}" ${AGENT_AUTH} \
         -X POST "http://${node_ip}:8080/keystore" \
         -H "Content-Type: application/json" \
         -d "${keystore_request}")
-    
+
     http_code=$(echo "$response" | tail -n1)
     response_body=$(echo "$response" | head -n -1)
-    
+
     if [ "$http_code" != "200" ]; then
         echo "ERROR: Failed to set keystore for node $node_ip, status: $http_code"
         echo "ERROR: Response: $response_body"
         exit 1
     fi
-    
+
     echo "INFO: Successfully set keystore for node $node_ip (restore)"
 done
 
 echo "INFO: All nodes keystore configured for restore, reloading secure settings"
 curl -X POST "${ES_ENDPOINT}/_nodes/reload_secure_settings"
+
+# Get Elasticsearch major version (call once at the beginning)
+function get_es_major_version() {
+    local version_info=$(curl -s ${BASIC_AUTH} -X GET "${ES_ENDPOINT}/_nodes" | grep -o '"version":"[^"]*"' | head -1 | cut -d'"' -f4)
+    if [ -z "$version_info" ]; then
+        echo "ERROR: Failed to get Elasticsearch version" >&2
+        return 1
+    fi
+    # Extract major version (e.g., "7.10.1" -> "7")
+    echo "$version_info" | cut -d'.' -f1
+}
+
+echo "INFO: Getting Elasticsearch version"
+es_major_version=$(get_es_major_version)
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to get Elasticsearch version"
+    exit 1
+fi
+echo "INFO: Detected Elasticsearch major version: $es_major_version"
 
 cat > /tmp/repository.json<< EOF
 {
@@ -120,14 +139,20 @@ function enable_indexing_and_geoip() {
         exit 1
         ;;
     esac
-    curl -f -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
-    {
-      "persistent": {
-        "ingest.geoip.downloader.enabled": '$switch',
-        "indices.lifecycle.history_index_enabled": '$switch'
-      }
-    }
-    '
+
+    # Check if version is less than 8.0
+    if [ "$es_major_version" -lt 8 ]; then
+        echo "WARNING: Elasticsearch version is $es_major_version.x, which does not support dynamically updating 'indices.lifecycle.history_index_enabled' and 'ingest.geoip.downloader.enabled'. "
+    else
+        curl -f -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
+        {
+          "persistent": {
+            "ingest.geoip.downloader.enabled": '$switch',
+            "indices.lifecycle.history_index_enabled": '$switch'
+          }
+        }
+        '
+    fi
 }
 
 function switch_ilm() {
@@ -258,7 +283,12 @@ fi
 enable_destructive_requires_name false
 
 # Delete all existing data streams on the cluster.
-curl -f -s -X DELETE "${ES_ENDPOINT}/_data_stream/*?expand_wildcards=all&pretty"
+# expand_wildcards parameter is not supported in ES 7.x for data stream deletion
+if [ "$es_major_version" -lt 8 ]; then
+    curl -f -s -X DELETE "${ES_ENDPOINT}/_data_stream/*?pretty"
+else
+    curl -f -s -X DELETE "${ES_ENDPOINT}/_data_stream/*?expand_wildcards=all&pretty"
+fi
 
 # Delete all existing indices on the cluster.
 curl -f -s -X DELETE "${ES_ENDPOINT}/*?expand_wildcards=all&pretty"
