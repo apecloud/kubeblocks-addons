@@ -157,7 +157,7 @@ spec:
               option: Required
     - name: SENTINEL_SERVICE_PORT
       value: "26379"
-      expression: {{ `{{if ne (index . "REDIS_SENTINEL_HOST_NETWORK_PORT") ""}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}{{.SENTINEL_SERVICE_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if index . "REDIS_SENTINEL_HOST_NETWORK_PORT"}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}{{.SENTINEL_SERVICE_PORT}}{{end}}` | toYaml }}
     ## the env of redis sentinel server port for dbctl to connect to redis cluster server
     - name: DBCTL_REDIS_SENTINEL_SERVICE_PORT
       value: $(SENTINEL_SERVICE_PORT)
