@@ -168,7 +168,7 @@ vars:
           name: sql
           option: Optional
       optional: true
-  expression: {{ `{{if ne (index . "OB_SERVICE_PORT") ""}}{{.OB_SERVICE_PORT}}{{else}}2881{{end}}` | toYaml }}
+  expression: {{ `{{if index . "OB_SERVICE_PORT"}}{{.OB_SERVICE_PORT}}{{else}}2881{{end}}` | toYaml }}
 - name: OB_RPC_PORT
   valueFrom:
     hostNetworkVarRef:
@@ -178,7 +178,7 @@ vars:
           name: rpc
           option: Optional
       optional: true
-  expression: {{ `{{if ne (index . "OB_RPC_PORT") ""}}{{.OB_RPC_PORT}}{{else}}2882{{end}}` | toYaml }}
+  expression: {{ `{{if index . "OB_RPC_PORT"}}{{.OB_RPC_PORT}}{{else}}2882{{end}}` | toYaml }}
 - name: SERVICE_PORT
   valueFrom:
     hostNetworkVarRef:
@@ -188,7 +188,7 @@ vars:
           name: http
           option: Optional
       optional: true
-  expression: {{ `{{if ne (index . "SERVICE_PORT") ""}}{{.SERVICE_PORT}}{{else}}8088{{end}}` | toYaml }}
+  expression: {{ `{{if index . "SERVICE_PORT"}}{{.SERVICE_PORT}}{{else}}8088{{end}}` | toYaml }}
 - name: MANAGER_PORT
   valueFrom:
     hostNetworkVarRef:
@@ -198,7 +198,7 @@ vars:
           name: http
           option: Optional
       optional: true
-  expression: {{ `{{if ne (index . "MANAGER_PORT") ""}}{{.MANAGER_PORT}}{{else}}8089{{end}}` | toYaml }}
+  expression: {{ `{{if index . "MANAGER_PORT"}}{{.MANAGER_PORT}}{{else}}8089{{end}}` | toYaml }}
 - name: COMP_MYSQL_PORT
   value: $(OB_SERVICE_PORT)
 - name: OB_COMPONENT_NAME

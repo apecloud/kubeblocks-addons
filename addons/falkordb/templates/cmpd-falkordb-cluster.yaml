@@ -319,7 +319,7 @@ spec:
               option: Required
     - name: SERVICE_PORT
       value: "6379"
-      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if index . "REDIS_CLUSTER_HOST_NETWORK_PORT"}}{{.REDIS_CLUSTER_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
     ## the env of falkordb server port for dbctl to connect to falkordb cluster server
     - name: DBCTL_REDIS_SERVICE_PORT
       value: $(SERVICE_PORT)
@@ -335,7 +335,7 @@ spec:
               option: Required
     - name: CLUSTER_BUS_PORT
       value: "16379"
-      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_BUS_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}}{{else}}{{.CLUSTER_BUS_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if index . "REDIS_CLUSTER_HOST_NETWORK_BUS_PORT"}}{{.REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}}{{else}}{{.CLUSTER_BUS_PORT}}{{end}}` | toYaml }}
   {{- if $.Values.enableMetrics }}
     ## the falkordb server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks
     - name: REDIS_METRICS_HOST_NETWORK_PORT
@@ -349,7 +349,7 @@ spec:
               option: Required
     - name: REDIS_METRICS_HTTP_PORT
       value: "9121"
-      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}{{.REDIS_METRICS_HTTP_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if index . "REDIS_METRICS_HOST_NETWORK_PORT"}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}{{.REDIS_METRICS_HTTP_PORT}}{{end}}` | toYaml }}
     ## the falkordb cluster host network port list for all shard pods, the all pods in same shard has the same host network port allocated automatically by KubeBlocks.
     ## the value format is like "shard-chg:1057,shard-khh:1056,shard-mpg:1053"
     - name: REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT

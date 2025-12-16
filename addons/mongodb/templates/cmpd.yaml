@@ -326,7 +326,7 @@ spec:
             port:
               name: mongodb
               option: Optional
-      expression: {{ `{{if ne (index . "KB_SERVICE_PORT") ""}}{{.KB_SERVICE_PORT}}{{else}}27017{{end}}` | toYaml }}
+      expression: {{ `{{if index . "KB_SERVICE_PORT"}}{{.KB_SERVICE_PORT}}{{else}}27017{{end}}` | toYaml }}
     - name: SYNCER_SERVICE_PORT
       valueFrom:
         hostNetworkVarRef:
@@ -345,7 +345,7 @@ spec:
             port:
               name: exporter
               option: Optional
-      expression: {{ `{{if ne (index . "EXPORTER_SERVICE_PORT") ""}}{{.EXPORTER_SERVICE_PORT}}{{else}}9216{{end}}` | toYaml }}
+      expression: {{ `{{if index . "EXPORTER_SERVICE_PORT"}}{{.EXPORTER_SERVICE_PORT}}{{else}}9216{{end}}` | toYaml }}
   hostNetwork:
     containerPorts:
       - container: mongodb

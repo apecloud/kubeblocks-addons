@@ -217,7 +217,7 @@ spec:
               option: Required
     - name: SERVICE_PORT
       value: "6379"
-      expression: {{ `{{if ne (index . "REDIS_HOST_NETWORK_PORT") ""}}{{.REDIS_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if index . "REDIS_HOST_NETWORK_PORT"}}{{.REDIS_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
     ## the env of redis server port for dbctl to connect to redis server
     - name: DBCTL_REDIS_SERVICE_PORT
       value: $(SERVICE_PORT)
@@ -234,7 +234,7 @@ spec:
               option: Required
     - name: REDIS_METRICS_HTTP_PORT
       value: "9121"
-      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}{{.REDIS_METRICS_HTTP_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if index . "REDIS_METRICS_HOST_NETWORK_PORT"}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}{{.REDIS_METRICS_HTTP_PORT}}{{end}}` | toYaml }}
     ## the redis server metrics container host network server port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 8888
     - name: REDIS_METRICS_HOST_NETWORK_SERVER_PORT
       valueFrom:
@@ -247,7 +247,7 @@ spec:
               option: Required
     - name: REDIS_METRICS_SERVER_PORT
       value: "8888"
-      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT"}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
   {{- end }}
     ## the component name of redis sentinel when redis sentinel is enabled, it's the fullname of redis-sentinel component
     - name: SENTINEL_COMPONENT_NAME
@@ -304,7 +304,7 @@ spec:
             port:
               name: redis-sentinel
               option: Required
-      expression: {{ `{{if ne (index . "SENTINEL_SERVICE_PORT") ""}}{{.SENTINEL_SERVICE_PORT}}{{else}}26379{{end}}` | toYaml }}
+      expression: {{ `{{if index . "SENTINEL_SERVICE_PORT"}}{{.SENTINEL_SERVICE_PORT}}{{else}}26379{{end}}` | toYaml }}
     - name: PHY_MEMORY
       valueFrom:
         resourceVarRef:
