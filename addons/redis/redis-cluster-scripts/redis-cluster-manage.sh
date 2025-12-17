@@ -859,6 +859,10 @@ scale_out_redis_cluster_shard() {
   for secondary_pod_name in "${!scale_out_shard_default_other_nodes[@]}"; do
     scale_out_shard_secondary_node="${scale_out_shard_default_other_nodes[$secondary_pod_name]}"
     echo "primary_node_with_port: $primary_node_with_port, primary_node_fqdn: $primary_node_fqdn, mapping_primary_cluster_id: $mapping_primary_cluster_id"
+    if check_node_in_cluster "$primary_node_fqdn" "$primary_node_with_port" "$secondary_pod_name"; then
+      echo "Secondary node $secondary_pod_name already joined the cluster, skip replicating to primary"
+      continue
+    fi
     if secondary_replicated_to_primary "$scale_out_shard_secondary_node" "$primary_node_with_port" "$mapping_primary_cluster_id"; then
       echo "Redis cluster scale out shard secondary node $secondary_pod_name successfully"
     else
