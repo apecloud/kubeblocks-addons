@@ -2,4 +2,4 @@
 
 setStorageConfig
 
-./milvus-backup restore -n "$BACKUP_NAME"
+./milvus-backup restore -n "$BACKUP_NAME" --rebuild_index
