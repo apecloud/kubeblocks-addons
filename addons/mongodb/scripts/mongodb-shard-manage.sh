@@ -31,7 +31,11 @@ wait_for_mongos() {
 check_shard_exists() {
     # check if the shard exists in the config database
     local shard_exists
-    shard_exists=$($CLUSTER_MONGO "db.getSiblingDB(\"config\").shards.find({ _id: \"$MONGODB_REPLICA_SET_NAME\" })")
+    shard_exists=$($CLUSTER_MONGO "db.getSiblingDB(\"config\").shards.find({ _id: \"$MONGODB_REPLICA_SET_NAME\" })" 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    echo "INFO: Check if shard $MONGODB_REPLICA_SET_NAME exists: $shard_exists"
     if [ -n "$shard_exists" ]; then
         return 0 # true
     else
