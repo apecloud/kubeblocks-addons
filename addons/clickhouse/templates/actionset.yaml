@@ -6,6 +6,11 @@ metadata:
     clusterdefinition.kubeblocks.io/name: clickhouse
 spec:
   backupType: Full
+  env:
+    - name: RESTORE_SCHEMA_READY_TIMEOUT_SECONDS
+      value: "{{ .Values.restore.schemaReadyTimeoutSeconds }}"
+    - name: RESTORE_SCHEMA_READY_CHECK_INTERVAL_SECONDS
+      value: "{{ .Values.restore.schemaReadyCheckIntervalSeconds }}"
   backup:
     preBackup: []
     postBackup: []
