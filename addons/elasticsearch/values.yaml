@@ -46,6 +46,7 @@ esVersions:
       - ["7.7.1", "7.7.1", "7.7.1", false]
       - ["7.8.1", "7.8.1", "7.8.1", false]
       - ["7.10.1", "7.10.1", "7.10.1", false]
+      - ["7.10.2", "7.10.2", "7.10.2", false]
   - major: "8"
     componentDef: "^elasticsearch-8"
     masterComponentDef: "^elasticsearch-master-8"
@@ -71,6 +72,7 @@ kibanaVersions:
       - ["7.7.1", "7.7.1", "7.7.1", false]
       - ["7.8.1", "7.8.1", "7.8.1", false]
       - ["7.10.1", "7.10.1", "7.10.1", false]
+      - ["7.10.2", "7.10.2", "7.10.2", false]
   - major: "8"
     componentDef: "^kibana-8"
     minors:
