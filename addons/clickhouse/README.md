@@ -25,19 +25,19 @@ There are two key components in the ClickHouse cluster:
 
 ### Backup and Restore
 
-| Feature     | Method | Description |
-|-------------|--------|------------|
-| Full Backup | clickhouse-backup | uses `clickhouse-backup` tool to perform full backups of ClickHouse data |
+| Feature            | Method            | Description                                                                           |
+| ------------------ | ----------------- | ------------------------------------------------------------------------------------- |
+| Full Backup        | clickhouse-backup | uses `clickhouse-backup` tool to perform full backups of ClickHouse data              |
 | Incremental Backup | clickhouse-backup | uses `clickhouse-backup` tool to perform incremental backups based on previous backup |
 
 
 ### Versions
 
-| Major Versions | Description     |
-| -------------- | --------------- |
+| Major Versions | Description               |
+| -------------- | ------------------------- |
 | 22             | 22.3.18, 22.3.20, 22.8.21 |
-| 24             | 24.8.3          |
-| 25             | 25.4.4          |
+| 24             | 24.8.3                    |
+| 25             | 25.4.4                    |
 
 ## Prerequisites
 
@@ -344,7 +344,7 @@ spec:
       systemAccounts:
         - name: admin
           secretRef:
-            name: udf-account-info
+            name: udf-tls-account-info
             namespace: demo
       volumeClaimTemplates:
         - name: data
@@ -373,7 +373,7 @@ spec:
         systemAccounts:
           - name: admin
             secretRef:
-              name: udf-account-info
+              name: udf-tls-account-info
               namespace: demo
         resources:
           limits:
@@ -403,7 +403,7 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: udf-account-info
+  name: udf-tls-account-info
   namespace: demo
 type: Opaque
 data:
@@ -489,6 +489,7 @@ stringData:
     Lv4A0A0slfWLy5WFUqa3JNIzmDEeugaHGGyeJoKXZz5Hrjeq+JEL1FsiMhCYwrl8
     jE0KUAC77WR5lWODcvXAmD58
     -----END PRIVATE KEY-----
+
 ```
 
 ```bash
@@ -1035,9 +1036,9 @@ To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profil
 ### Using Config Templates
 
 > [!NOTE]
-> This section is applicable for ClickHouse Addons v1.0.2 and above.
+> Applicable for ClickHouse Addons v1.0.2+.
 
-Create a ClickHouse cluster with config templates:
+Create a cluster that uses a custom configuration template (`user.xml` settings):
 
 ```yaml
 # cat examples/clickhouse/cluster-with-config-templates.yaml
@@ -1259,21 +1260,24 @@ There are two ways to update the configuration:
 
 #### Comparison between Option 1 and Option 2
 
-| Aspect | Option 1 (Variables) | Option 2 (Config Template) |
-|--------|---------------------|----------------------------|
-| **Configuration Method** | Through variables in cluster CR | Direct modification of config template |
-| **Reconcile Trigger** | Automatic when CR is updated | Manual annotation required |
-| **Complexity** | Lower - declarative approach | Higher - requires understanding of template structure |
-| **Use Case** | When only a couple of configurations need to be updated | Best for batch updates of configurations |
+| Aspect                   | Option 1 (Variables)                                    | Option 2 (Config Template)                            |
+| ------------------------ | ------------------------------------------------------- | ----------------------------------------------------- |
+| **Configuration Method** | Through variables in cluster CR                         | Direct modification of config template                |
+| **Reconcile Trigger**    | Automatic when CR is updated                            | Manual annotation required                            |
+| **Complexity**           | Lower - declarative approach                            | Higher - requires understanding of template structure |
+| **Use Case**             | When only a couple of configurations need to be updated | Best for batch updates of configurations              |
 
 You can choose the appropriate method based on your needs and operational preferences.
 
 ### Backup and Restore
 
+- Backups are created per shard.
+- Schema and rbac restore runs once on the first shard and uses `ON CLUSTER INIT_CLUSTER_NAME` to apply DDL across all shards.
+- Data is restored from each shard's backup.
+
 #### Prerequisites for Backup
 
-Before creating backups, you need to set up a backup repository. First, create a BackupRepo:
-
+1. **Setup BackupRepo**: Update `examples/clickhouse/backuprepo.yaml` with your storage provider config (S3, MinIO, etc.) and apply it:
 ```yaml
 # cat examples/clickhouse/backuprepo.yaml
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
@@ -1292,6 +1296,7 @@ spec:
   # - gcs (Google Cloud Storage)
   # - obs (Huawei Cloud Object Storage)
   # - minio, and other S3-compatible services.
+  # - rustfs (RustFS Object Storage)
   # Note: set the provider name to you own needs
   storageProviderRef: oss
   # Specifies the access method of the backup repository.
@@ -1323,7 +1328,6 @@ spec:
 ```
 
 ```bash
-# Edit the backuprepo.yaml file with your storage provider details
 kubectl apply -f examples/clickhouse/backuprepo.yaml
 ```
 
@@ -1381,6 +1385,104 @@ To create an incremental backup, modify the `backupMethod` field in `backup.yaml
 spec:
   backupMethod: incremental  # Change from 'full' to 'incremental'
 ```
+
+#### Restore Settings
+
+> [!NOTE]
+> Restoring a TLS-enabled cluster directly from backup is NOT supported. You should restore the cluster with TLS disabled first, and then enable TLS manually after the restore process is complete.
+
+Restore process will restore schema and rbac first, then restore data. You can tune schema-ready waiting behavior for restore jobs via Helm values:
+
+```yaml
+restore:
+  schemaReadyTimeoutSeconds: 1800
+  schemaReadyCheckIntervalSeconds: 5
+```
+
+To restore the cluster from a backup, you can apply the restore configuration:
+
+```yaml
+# cat examples/clickhouse/restore.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: clickhouse-cluster-restore
+  namespace: demo
+  annotations:
+    # clickhouse-cluster-backup is the Backup CR name.
+    kubeblocks.io/restore-from-backup: '{"clickhouse":{"name":"clickhouse-cluster-backup-inc-inc","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+spec:
+  clusterDef: clickhouse
+  topology: cluster
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: ch-keeper
+      componentDef: clickhouse-keeper-1
+      replicas: 1
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 1Gi
+        requests:
+          cpu: '0.5'
+          memory: 1Gi
+      systemAccounts:
+        - name: admin
+          secretRef:
+            name: udf-restore-account-info
+            namespace: demo
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+  shardings:
+    - name: clickhouse
+      shards: 3
+      template:
+        name: clickhouse
+        componentDef: clickhouse-1
+        replicas: 2
+        systemAccounts:
+          - name: admin
+            secretRef:
+              name: udf-restore-account-info
+              namespace: demo
+        resources:
+          limits:
+            cpu: "1"
+            memory: 2Gi
+          requests:
+            cpu: "1"
+            memory: 2Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: udf-restore-account-info
+  namespace: demo
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=  # 'password123' in base64
+
+```
+
+```bash
+kubectl apply -f examples/clickhouse/restore.yaml
+```
+This will create a new cluster named `clickhouse-cluster-restore` with the data restored from the specified backup.
+It also creates the necessary system account secret `udf-restore-account-info`.
 
 ### Restart
 
