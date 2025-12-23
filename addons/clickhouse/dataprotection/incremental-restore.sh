@@ -32,18 +32,21 @@ if [[ -z "$first_component" || "$first_component" == "$first_entry" ]]; then
 	exit 1
 fi
 
-schema_db="default"
-schema_table="__kubeblocks_schema_ready__"
+schema_db="kubeblocks"
+schema_table="__restore_ready__"
 schema_timeout="${RESTORE_SCHEMA_READY_TIMEOUT_SECONDS:-1800}"
 schema_interval="${RESTORE_SCHEMA_READY_CHECK_INTERVAL_SECONDS:-5}"
-expected_shards=$(get_expected_shard_count "$ALL_COMBINED_SHARDS_POD_FQDN_LIST")
 
 if [[ "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" == "${first_component}" ]]; then
 	clickhouse-backup restore_remote "${DP_BACKUP_NAME}" --schema --rbac || {
 		DP_error_log "Clickhouse-backup restore_remote backup $DP_BACKUP_NAME FAILED"
 		exit 1
 	}
-	ch_query "CREATE TABLE IF NOT EXISTS \`${schema_db}\`.\`${schema_table}\` ON CLUSTER \`${INIT_CLUSTER_NAME}\` (shard String, finished_at DateTime) ENGINE=TinyLog" || {
+	ch_query "CREATE DATABASE IF NOT EXISTS \`${schema_db}\` ON CLUSTER \`${INIT_CLUSTER_NAME}\`" || {
+		DP_error_log "Failed to create database ${schema_db}"
+		exit 1
+	}
+	ch_query "CREATE TABLE IF NOT EXISTS \`${schema_db}\`.\`${schema_table}\` ON CLUSTER \`${INIT_CLUSTER_NAME}\` (shard String, finished_at DateTime, backup_name String) ENGINE=TinyLog" || {
 		DP_error_log "Failed to create schema ready marker"
 		exit 1
 	}
@@ -68,19 +71,10 @@ clickhouse-backup restore_remote "${DP_BACKUP_NAME}" --data || {
 	DP_error_log "Clickhouse-backup restore_remote backup $DP_BACKUP_NAME FAILED"
 	exit 1
 }
-
-ch_query "INSERT INTO \`${schema_db}\`.\`${schema_table}\` (shard, finished_at) VALUES ('${CURRENT_SHARD_COMPONENT_SHORT_NAME}', now())" || {
+ch_query "INSERT INTO \`${schema_db}\`.\`${schema_table}\` (shard, finished_at, backup_name) VALUES ('${CURRENT_SHARD_COMPONENT_SHORT_NAME}', now(), '${DP_BACKUP_NAME}')" || {
 	DP_error_log "Failed to insert shard ready marker"
 	exit 1
 }
-
-ready_count=$(ch_query "SELECT countDistinct(shard) FROM clusterAllReplicas('${INIT_CLUSTER_NAME}', '${schema_db}', '${schema_table}')")
-if [[ "$ready_count" -ge "$expected_shards" ]]; then
-	DP_log "All shards ready (${ready_count}/${expected_shards}), dropping schema ready marker"
-	ch_query "DROP TABLE IF EXISTS \`${schema_db}\`.\`${schema_table}\` ON CLUSTER \`${INIT_CLUSTER_NAME}\`" || {
-		DP_log "Warning: Failed to drop schema ready marker"
-	}
-fi
 
 # 5. delete local backup
 backup_list=$(clickhouse-backup list)
@@ -89,4 +83,3 @@ echo "$backup_list" | awk '/local/ {print $1}' | while IFS= read -r backup_name;
 		echo "Clickhouse-backup delete local backup $backup_name FAILED"
 	}
 done
-

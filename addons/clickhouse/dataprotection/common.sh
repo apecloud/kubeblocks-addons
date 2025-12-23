@@ -294,7 +294,7 @@ function set_clickhouse_backup_config_env() {
 		else
 			DP_log "Failed to extract region from endpoint: $endpoint"
 		fi
-	elif [[ "$provider" == "Minio" ]]; then
+	elif [[ "$provider" == "Minio" || "$provider" == "RustFS" ]]; then
 		export S3_FORCE_PATH_STYLE=true
 	else
 		echo "Unsupported provider: $provider"
@@ -355,21 +355,6 @@ function fetch_backup() {
 		}
 	fi
 	DP_log "Backup '$backup_name' is available locally."
-}
-
-function get_expected_shard_count() {
-	local shards_list="$1"
-	DP_log "DEBUG: shards_list=${shards_list}" >&2
-	local stripped="${shards_list//:/}"
-	local count=$((${#shards_list} - ${#stripped}))
-	echo "$count"
-}
-
-function get_shard_fqdn_list() {
-	local pattern="ALL_SHARDS_POD_FQDN_LIST*"
-	fqdn_list=$(env | grep "^$pattern" | grep "$DP_DB_HOST")
-	fqdn_list=${fqdn_list#*=}
-	echo -e "$fqdn_list"
 }
 
 function delete_backups_except() {
