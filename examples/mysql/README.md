@@ -62,7 +62,7 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.30 to 8.0.39]
+      # Valid options are: [8.0.33 to 8.0.44]
       serviceVersion: 8.0.35
 ```
 
