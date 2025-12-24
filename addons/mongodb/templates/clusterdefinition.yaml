@@ -27,6 +27,5 @@ spec:
           - shard
           - mongos,config-server
         update:
-          - mongos
-          - config-server
+          - mongos,config-server
           - shard
