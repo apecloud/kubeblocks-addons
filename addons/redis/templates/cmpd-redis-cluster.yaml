@@ -85,11 +85,6 @@ spec:
       namespace: {{ $.Release.Namespace }}
       volumeName: redis-cluster-config
       externalManaged: true
-    - name: redis-metrics-config
-      template: {{ include "redis.metricsConfiguration" $ }}
-      namespace: {{ $.Release.Namespace }}
-      volumeName: redis-metrics-config
-      defaultMode: 0444
   scripts:
     - name: redis-cluster-scripts
       template: {{ include "redisCluster.scriptsTemplate" $ }}
@@ -589,26 +584,20 @@ spec:
           runAsNonRoot: true
           runAsUser: 1001
         env:
-          - name: ENDPOINT
-            value: "localhost:$(SERVICE_PORT)"
-          - name: METRICS_HTTP_PORT
-            value: $(REDIS_METRICS_HTTP_PORT)
-          - name: METRICS_SERVER_PORT
-            value: $(REDIS_METRICS_SERVER_PORT)
+          - name: REDIS_ADDR
+            value: "redis://localhost:$(SERVICE_PORT)"
+          - name: REDIS_EXPORTER_WEB_LISTEN_ADDRESS
+            value: "0.0.0.0:$(REDIS_METRICS_HTTP_PORT)"
           - name: REDIS_USER
             value: $(REDIS_DEFAULT_USER)
           - name: REDIS_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
-        command:
-          - "/bin/agamotto"
-          - "--config=/opt/conf/metrics-config.yaml"
+          - name: REDIS_EXPORTER_IS_CLUSTER
+            value: true
         ports:
           - name: http-metrics
             containerPort: {{ $.Values.metrics.service.port }}
           - name: server-metrics
             containerPort: {{ $.Values.metrics.service.serverPort }}
-        volumeMounts:
-          - name: redis-metrics-config
-            mountPath: /opt/conf
   {{- end }}
 {{- end }}
