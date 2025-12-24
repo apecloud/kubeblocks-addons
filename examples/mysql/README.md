@@ -18,11 +18,11 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 
 ### Versions
 
-| Major Versions | Description         |
-|---------------|---------------------|
-| 5.7 | 5.7.44              |
+| Major Versions | Description |
+|---------------|--------------|
+| 5.7 | 5.7.44  |
 | 8.0 | \[8.0.33 ~ 8.0.44\] |
-| 8.4 | 8.4.0 ~ 8.4.2       |
+| 8.4 | 8.4.0 ~ 8.4.2|
 
 ## Prerequisites
 
