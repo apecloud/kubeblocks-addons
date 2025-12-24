@@ -42,6 +42,8 @@ redisVersions:
         imageTag: "6.2.6-v10"
       - version: "6.2.17"
         imageTag: "6.2.6-v18"
+      - version: "6.2.18"
+        imageTag: "6.2.6-v19"
   - major: "7"
     componentDef: "redis-7"
     serviceVersion: "7.2.11"
@@ -61,10 +63,14 @@ redisVersions:
         imageTag: "7.2.0-v18"
       - version: "7.2.11"
         imageTag: "7.2.0-v19"
+      - version: "7.2.12"
+        imageTag: "7.2.0-v20"
       - version: "7.4.5"
         imageTag: "7.4.0-v6"
       - version: "7.4.6"
         imageTag: "7.4.0-v7"
+      - version: "7.4.7"
+        imageTag: "7.4.0-v8"
   - major: "8"
     componentDef: "redis-8"
     serviceVersion: "8.2.2"
@@ -78,10 +84,16 @@ redisVersions:
         imageTag: "8.0.3"
       - version: "8.0.4"
         imageTag: "8.0.4"
+      - version: "8.0.5"
+        imageTag: "8.0.5"
       - version: "8.2.1"
         imageTag: "8.2.1"
       - version: "8.2.2"
         imageTag: "8.2.2"
+      - version: "8.2.3"
+        imageTag: "8.2.3"
+      - version: "8.4.0"
+        imageTag: "8.4.0"
 
 image:
   # refer: https://redis.io/docs/stack/
@@ -94,10 +106,7 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag:
     major7:
-      minor70: 7.0.6-RC4
       minor72: 7.2.0-v18
-    major8:
-      minor80: 8.0.1
 
   apeDts:
     registry: ""
@@ -109,9 +118,6 @@ ceImage:
   registry:
   repository: redis
   pullPolicy: IfNotPresent
-  tag:
-    major8:
-      minor80: 8.0.1
 
 apeDtsImage:
   registry: ""

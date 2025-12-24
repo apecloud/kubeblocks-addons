@@ -140,10 +140,6 @@ redis-metrics-config
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
 {{- end }}
 
-{{- define "redis8.image" -}}
-{{ .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ceImage.repository }}:{{ .Values.image.tag.major8.minor80 }}
-{{- end }}
-
 {{- define "redisTwemproxy.repository" -}}
 {{ .Values.redisTwemproxyImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.redisTwemproxyImage.repository }}
 {{- end }}
