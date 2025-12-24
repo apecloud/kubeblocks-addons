@@ -101,7 +101,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/mongodb-shard-manage.sh --post-provision > /tmp/post-provision.log 2>&1
+          - /scripts/mongodb-shard-manage.sh --post-provision >> /tmp/post-provision.log 2>&1
         targetPodSelector: Role
         matchingKey: primary
       preCondition: RuntimeReady
@@ -113,7 +113,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/mongodb-shard-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
+          - /scripts/mongodb-shard-manage.sh --pre-terminate >> /tmp/pre-terminate.log 2>&1
         targetPodSelector: Role
         matchingKey: primary
       retryPolicy:
@@ -222,6 +222,9 @@ spec:
             value: "TRUE"
           - name: PBM_MONGODB_URI
             value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+          # syncer uses the env to wait dns ready
+          - name: KB_POD_FQDN
+            value: "$(POD_NAME).$(CLUSTER_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data

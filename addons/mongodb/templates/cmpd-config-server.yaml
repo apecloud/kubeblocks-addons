@@ -175,6 +175,9 @@ spec:
             value: $(MONGODB_PASSWORD)
           - name: PBM_MONGODB_URI
             value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+          # syncer uses the env to wait dns ready
+          - name: KB_POD_FQDN
+            value: "$(POD_NAME).$(CLUSTER_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
