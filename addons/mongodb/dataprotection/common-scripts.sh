@@ -366,3 +366,66 @@ function process_restore_end_signal() {
     done
     echo "INFO: Prepare restore end signal completed."
 }
+
+function get_describe_backup_info() {
+  max_retries=360
+  retry_interval=2
+  attempt=1
+  describe_result=""
+  set +e
+  while [ $attempt -le $max_retries ]; do
+      describe_result=$(pbm describe-backup --mongodb-uri "$PBM_MONGODB_URI" "$backup_name" -o json 2>&1)
+      if [ $? -eq 0 ] && [ -n "$describe_result" ]; then
+          break
+      elif echo "$describe_result" | grep -q "not found"; then
+          echo "INFO: Attempt $attempt: backup $backup_name not found, retrying in ${retry_interval}s..."
+          if [ $((attempt % 30)) -eq 29 ]; then
+              echo "INFO: Sync PBM config from storage again."
+              sync_pbm_config_from_storage
+          fi
+          sleep $retry_interval
+          ((attempt++))
+          continue
+      else
+          echo "ERROR: Failed to get backup metadata: $describe_result"
+          exit 1
+      fi
+  done
+  set -e
+
+  if [ -z "$describe_result" ] || echo "$describe_result" | grep -q "not found"; then
+      echo "ERROR: Failed to get backup metadata after $max_retries attempts"
+      exit 1
+  fi
+}
+
+function wait_for_restoring() {
+  local cnf_file="${MOUNT_DIR}/tmp/pbm_restore.cnf"
+  cat <<EOF > ${MOUNT_DIR}/tmp/pbm_restore.cnf
+storage:
+  type: s3
+  s3:
+    region: ${S3_REGION}
+    bucket: ${S3_BUCKET}
+    prefix: ${S3_PREFIX}
+    endpointUrl: ${S3_ENDPOINT}
+    forcePathStyle: ${S3_FORCE_PATH_STYLE:-false}
+    credentials:
+      access-key-id: ${S3_ACCESS_KEY}
+      secret-access-key: ${S3_SECRET_KEY}
+EOF
+
+  while true; do
+    restore_status=$(pbm describe-restore "$restore_name" -c $cnf_file -o json | jq -r '.status') 
+    echo "INFO: Restore $restore_name status: $restore_status"
+    if [ "$restore_status" = "done" ]; then
+      rm $cnf_file
+      break
+    elif [ "$restore_status" = "" ] || [ "$restore_status" = "starting" ] || [ "$restore_status" = "running" ]; then
+      sleep 5
+    else
+      rm $cnf_file
+      exit 1
+    fi
+  done
+}

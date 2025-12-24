@@ -37,31 +37,7 @@ if [ -z "$backup_type" ] || [ -z "$backup_name" ]; then
     exit 1
 fi
 
-MAX_RETRIES=360
-RETRY_INTERVAL=2
-attempt=1
-describe_result=""
-set +e
-while [ $attempt -le $MAX_RETRIES ]; do
-    describe_result=$(pbm describe-backup --mongodb-uri "$PBM_MONGODB_URI" "$backup_name" -o json 2>&1)
-    if [ $? -eq 0 ] && [ -n "$describe_result" ]; then
-        break
-    elif echo "$describe_result" | grep -q "not found"; then
-        echo "INFO: Attempt $attempt: Failed to get backup metadata, retrying in ${RETRY_INTERVAL}s..."
-        sleep $RETRY_INTERVAL
-        ((attempt++))
-        continue
-    else
-        echo "ERROR: Failed to get backup metadata: $describe_result"
-        exit 1
-    fi
-done
-set -e
-
-if [ -z "$describe_result" ] || echo "$describe_result" | grep -q "not found"; then
-    echo "ERROR: Failed to get backup metadata after $MAX_RETRIES attempts"
-    exit 1
-fi
+get_describe_backup_info
 
 configsvr_name=$(echo "$describe_result" | jq -r '.replsets[] | select(.configsvr == true) | .name')
 echo "INFO: Config server replica set name: $configsvr_name"
@@ -104,6 +80,8 @@ process_restore_start_signal
 
 wait_for_other_operations
 
-pbm restore $backup_name --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" --wait
+restore_name=$(pbm restore $backup_name --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" -o json | jq -r '.name')
+
+wait_for_restoring
 
 process_restore_end_signal

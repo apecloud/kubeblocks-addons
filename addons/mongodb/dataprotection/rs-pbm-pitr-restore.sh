@@ -28,7 +28,6 @@ sync_pbm_storage_config
 
 sync_pbm_config_from_storage
 
-
 process_restore_start_signal
 
 extras=$(cat /dp_downward/status_extras)
@@ -43,7 +42,9 @@ echo "INFO: Starting restore..."
 
 wait_for_other_operations
 
-pbm restore --time="$recovery_target_time" --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" --wait
+restore_name=$(pbm restore --time="$recovery_target_time" --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" -o json | jq -r '.name')
+
+wait_for_restoring
 
 process_restore_end_signal
 
