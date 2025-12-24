@@ -111,6 +111,17 @@ spec:
             mountPath: /scripts
           - mountPath: /kubeblocks
             name: kubeblocks
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          timeoutSeconds: 3
+          exec:
+            command:
+              - bash
+              - -c
+              - |
+                client=$(mongosh --version 1>/dev/null&&echo mongosh||echo mongo)
+                $client --port $SERVICE_PORT -u $MONGOS_USER -p $MONGOS_PASSWORD --authenticationDatabase admin --eval "db.adminCommand('ping')"
       - name: exporter
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:

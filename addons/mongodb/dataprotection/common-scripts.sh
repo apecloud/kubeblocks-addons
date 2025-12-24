@@ -229,6 +229,10 @@ function print_pbm_logs_by_event() {
 function print_pbm_tail_logs() {
   echo "INFO: Printing PBM tail logs"
   pbm logs --tail 20 --mongodb-uri "$PBM_MONGODB_URI"
+  if [ $? -ne 0 ]; then
+    echo "ERROR: PBM logs could not be retrieved."
+    exit 1
+  fi
 }
 
 
