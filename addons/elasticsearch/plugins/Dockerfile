@@ -5,7 +5,7 @@ WORKDIR /plugins
 # Install all plugins
 RUN set -e && \
     # IK plugins for all versions \
-    for version in 6.8.23 7.7.1 7.8.1 7.10.1 8.1.3 8.8.2 8.15.5; do \
+    for version in 6.8.23 7.7.1 7.8.1 7.10.1 7.10.2 8.1.3 8.8.2 8.15.5; do \
         echo "Installing IK plugin for Elasticsearch $version"; \
         mkdir -p ./${version}/ik && \
         wget -q https://release.infinilabs.com/analysis-ik/stable/elasticsearch-analysis-ik-${version}.zip && \
@@ -19,7 +19,7 @@ RUN set -e && \
     done && \
     \
     # S3 plugins for 6.x and 7.x (8.x has it built-in) \
-    for version in 6.8.23 7.7.1 7.8.1 7.10.1; do \
+    for version in 6.8.23 7.7.1 7.8.1 7.10.1 7.10.2; do \
         echo "Installing S3 plugin for Elasticsearch $version"; \
         mkdir -p ./${version}/s3 && \
         wget -q https://artifacts.elastic.co/downloads/elasticsearch-plugins/repository-s3/repository-s3-${version}.zip && \
