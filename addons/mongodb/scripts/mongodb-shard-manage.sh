@@ -31,7 +31,12 @@ wait_for_mongos() {
 check_shard_exists() {
     # check if the shard exists in the config database
     local shard_exists
-    shard_exists=$($CLUSTER_MONGO "db.getSiblingDB(\"config\").shards.find({ _id: \"$MONGODB_REPLICA_SET_NAME\" })")
+    shard_exists=$($CLUSTER_MONGO "db.getSiblingDB(\"config\").shards.find({ _id: \"$MONGODB_REPLICA_SET_NAME\" })" 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Failed to check if shard $MONGODB_REPLICA_SET_NAME exists." >&2
+        exit 1
+    fi
+    echo "INFO: Check if shard $MONGODB_REPLICA_SET_NAME exists: $shard_exists"
     if [ -n "$shard_exists" ]; then
         return 0 # true
     else
@@ -63,7 +68,11 @@ initialize_or_scale_out_mongodb_shard() {
 get_remove_shard_status() {
     # Execute the removeShard command and capture its JSON output
     local result
-    result=$($CLUSTER_MONGO "EJSON.stringify(db.adminCommand( { removeShard: \"$MONGODB_REPLICA_SET_NAME\" } ))")
+    if [ "$CLIENT" = "mongosh" ]; then
+        result=$($CLUSTER_MONGO "EJSON.stringify(db.adminCommand( { removeShard: \"$MONGODB_REPLICA_SET_NAME\" } ))")
+    else
+        result=$($CLUSTER_MONGO "JSON.stringify(db.adminCommand( { removeShard: \"$MONGODB_REPLICA_SET_NAME\" } ))")
+    fi
     echo "$result"
 }
 
@@ -74,6 +83,32 @@ get_remove_shard_state() {
     state=$(echo "$result" | jq -r '.state')
     # Return the state as the function output
     echo "$state"
+}
+
+get_remaining_jumbo_chunks() {
+    local result=$1
+    # Parse and log the jumboChunks count using jq
+    local jumbo_chunks
+    if [ "$CLIENT" = "mongosh" ]; then
+        jumbo_chunks=$(echo "$result" | jq -r '.remaining.jumboChunks // 0')
+    else
+        jumbo_chunks=$(echo "$result" | jq -r '.remaining.jumboChunks.numberLong // 0')
+    fi
+    # Return the jumboChunks count as the function output
+    echo "$jumbo_chunks"
+}
+
+get_remaining_chunks() {
+    local result=$1
+    # Parse and log the chunks count using jq
+    local chunks
+    if [ "$CLIENT" = "mongosh" ]; then
+        chunks=$(echo "$result" | jq -r '.remaining.chunks // 0')
+    else
+        chunks=$(echo "$result" | jq -r '.remaining.chunks.numberLong // 0')
+    fi
+    # Return the chunks count as the function output
+    echo "$chunks"
 }
 
 delete_or_scale_in_mongodb_shard() {
@@ -111,13 +146,13 @@ delete_or_scale_in_mongodb_shard() {
         if [ "$state" = "completed" ]; then
             break
         elif [ "$state" = "ongoing" ]; then
-            remaining_jumboChunks=$(echo "$status_json" | jq -r '.remaining.jumboChunks')
+            remaining_jumboChunks=$(get_remaining_jumbo_chunks "$status_json")
             if [ "$remaining_jumboChunks" -gt 0 ]; then
                 echo "INFO: $remaining_jumboChunks jumbo chunks remaining, please clear jumbo chunks before removing the shard."
                 exit 1
             fi
 
-            remaining_chunks=$(echo "$status_json" | jq -r '.remaining.chunks')
+            remaining_chunks=$(get_remaining_chunks "$status_json")
             echo "INFO: $remaining_chunks chunks remaining."
             if [ "$remaining_chunks" -eq 0 ]; then
                 dbs_to_move=$(echo "$status_json" | jq -r '.dbsToMove[]')
