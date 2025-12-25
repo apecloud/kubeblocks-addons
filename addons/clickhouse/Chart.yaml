@@ -17,8 +17,8 @@ keywords:
 - sharding
 
 maintainers:
-  - name: sophon-zt
-    url: https://github.com/apecloud/kubeblocks/
+  - name: ApeCloud
+    url: https://kubeblocks.io/
 
 dependencies:
   - name: kblib
