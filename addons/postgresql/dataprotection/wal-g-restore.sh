@@ -55,28 +55,106 @@ wal-g backup-fetch ${DATA_DIR} ${backupName}
 if [ ! -z "${DP_RESTORE_TIMESTAMP}" ]; then
    exit 0
 fi
+
 # 3. config restore script
-touch ${DATA_DIR}/recovery.signal;
-mkdir -p ${RESTORE_SCRIPT_DIR} && chmod 777 -R ${RESTORE_SCRIPT_DIR} && touch ${RESTORE_SCRIPT_DIR}/kb_restore.signal;
-echo "#!/bin/bash" > ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
-echo "[[ -d '${DATA_DIR}.old' ]] && [[ ! -d '${DATA_DIR}.failed' ]] && mv -f ${DATA_DIR}.old/* ${DATA_DIR}/ && rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
-echo "[[ -d '${DATA_DIR}.failed' ]] && mkdir -p ${DATA_DIR}/ && mv -f ${DATA_DIR}.failed/* ${DATA_DIR}/ && rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal && rm -rf ${DATA_DIR}/recovery.signal;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
-echo "sync;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
-chmod +x ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
+# Create recovery signal file for PostgreSQL
+touch ${DATA_DIR}/recovery.signal
+
+# Prepare restore script directory
+mkdir -p ${RESTORE_SCRIPT_DIR}
+chmod 777 -R ${RESTORE_SCRIPT_DIR}
+touch ${RESTORE_SCRIPT_DIR}/kb_restore.signal
+
+# Generate kb_restore.sh script that Patroni will execute
+cat > ${RESTORE_SCRIPT_DIR}/kb_restore.sh << 'EOF'
+#!/bin/bash
+set -e
+
+# This script is executed by Patroni to finalize the restore process
+# Usage: kb_restore.sh [--replica]
+#   --replica: Indicates this is for replica creation, will skip restore and use basebackup
+
+# Parse command line arguments
+IS_REPLICA=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --replica)
+            IS_REPLICA=true
+            shift
+            ;;
+        *)
+            # Unknown argument, skip it and continue
+            shift
+            ;;
+    esac
+done
+
+# If this is for replica creation, clean up and let Patroni use basebackup
+if [[ "${IS_REPLICA}" == "true" ]]; then
+    echo "Replica creation detected, cleaning up restored data..."
+
+    # Remove the restored data directory
+    if [[ -d "${DATA_DIR}.old" ]]; then
+        echo "Removing ${DATA_DIR}.old..."
+        rm -rf ${DATA_DIR}.old
+    fi
+
+    # Remove restore signal
+    if [[ -f "${RESTORE_SCRIPT_DIR}/kb_restore.signal" ]]; then
+        rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal
+    fi
+
+    echo "Cleanup completed. Patroni will use basebackup to create replica from primary."
+    # Return non-zero to signal Patroni to fall back to basebackup
+    exit 1
+fi
+
+# Primary restore: Restore from successful backup (.old directory exists)
+if [[ -d "${DATA_DIR}.old" ]] && [[ ! -d "${DATA_DIR}.failed" ]]; then
+    echo "Restoring data from ${DATA_DIR}.old..."
+    mkdir -p "${DATA_DIR}"
+    mv -f ${DATA_DIR}.old/* ${DATA_DIR}/
+    rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal
+    echo "Data restore completed successfully"
+fi
+
+# Recover from failed restore attempt (.failed directory exists)
+if [[ -d "${DATA_DIR}.failed" ]]; then
+    echo "Recovering from failed restore..."
+    mkdir -p ${DATA_DIR}/
+    mv -f ${DATA_DIR}.failed/* ${DATA_DIR}/
+    rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal
+    rm -rf ${DATA_DIR}/recovery.signal
+    echo "Failed restore recovery completed"
+fi
+
+sync
+EOF
+
+# Replace variables in the generated script
+sed -i "s|\${DATA_DIR}|${DATA_DIR}|g" ${RESTORE_SCRIPT_DIR}/kb_restore.sh
+sed -i "s|\${RESTORE_SCRIPT_DIR}|${RESTORE_SCRIPT_DIR}|g" ${RESTORE_SCRIPT_DIR}/kb_restore.sh
+chmod +x ${RESTORE_SCRIPT_DIR}/kb_restore.sh
 
 # 4. config wal-g to fetch wal logs
 config_wal_g_for_fetch_wal_log "${backupRepoPath}"
 
 # 5. config restore command
-mkdir -p ${CONF_DIR} && chmod 777 -R ${CONF_DIR};
-WALG_DIR=/home/postgres/pgdata/wal-g
+# Create recovery.conf for PostgreSQL PITR
+mkdir -p ${CONF_DIR}
+chmod 777 -R ${CONF_DIR}
 
+WALG_DIR=/home/postgres/pgdata/wal-g
 restore_command_str="envdir ${WALG_DIR}/restore-env ${WALG_DIR}/wal-g wal-fetch %f %p >> ${RESTORE_SCRIPT_DIR}/wal-g.log 2>&1"
+
 cat << EOF > "${CONF_DIR}/recovery.conf"
 restore_command='${restore_command_str}'
 recovery_target='immediate'
 recovery_target_action='promote'
 EOF
-# this step is necessary, data dir must be empty for patroni
+
+# 6. Rename data directory (required by Patroni bootstrap)
+# Patroni expects an empty data directory, so we move the restored data to .old
+# The kb_restore.sh script will move it back during bootstrap
 mv ${DATA_DIR} ${DATA_DIR}.old
 sync
