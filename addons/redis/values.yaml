@@ -150,8 +150,9 @@ metrics:
   image:
     # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
-    repository: apecloud/agamotto
-    tag: 0.1.2-beta.1
+    # Supports Valkey and Redis 2.x, 3.x, 4.x, 5.x, 6.x, and 7.x
+    repository: oliver006/redis_exporter
+    tag: v1.80.1
     pullPolicy: IfNotPresent
   service:
     port: 9121
