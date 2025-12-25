@@ -129,13 +129,6 @@ Define redis cluster component script template name
 redis-cluster-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
-{{/*
-Define redis metrics config name
-*/}}
-{{- define "redis.metricsConfiguration" -}}
-redis-metrics-config
-{{- end -}}
-
 {{- define "redis7.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
 {{- end }}
