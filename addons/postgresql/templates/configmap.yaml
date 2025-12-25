@@ -31,8 +31,9 @@ data:
   replica_restore.conf: |
     create_replica_methods:
     - restore_data
+    - basebackup
     restore_data:
-      command: bash /home/postgres/pgdata/kb_restore/kb_restore.sh
+      command: bash /home/postgres/pgdata/kb_restore/kb_restore.sh --replica
   patroni.yaml: |-
     {{- $.Files.Get "config/patroni-yaml.tpl" | nindent 4 }}
 {{- end }}
