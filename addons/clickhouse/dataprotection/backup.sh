@@ -10,8 +10,4 @@ clickhouse-backup create_remote "$DP_BACKUP_NAME" || {
 	exit 1
 }
 
-shard_base_dir=$(dirname "${DP_BACKUP_BASE_PATH}")
-export DATASAFED_BACKEND_BASE_PATH="$shard_base_dir"
-export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
-BACKUP_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
-DP_save_backup_status_info "$BACKUP_SIZE"
+save_backup_size

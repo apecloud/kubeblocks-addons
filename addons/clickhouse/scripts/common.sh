@@ -33,14 +33,19 @@ function keeper_run() {
 
 	for attempt in $(seq 1 $RETRY_ATTEMPTS); do
 		local output
-		if output=$(clickhouse-keeper-client \
-			--connection-timeout=15 \
-			--session-timeout=30 \
-			--operation-timeout=15 \
-			--history-file=/dev/null \
-			-h "$host" \
-			-p "$CLICKHOUSE_KEEPER_PORT" \
-			--query "$query" 2>&1); then
+		local keeper_args=(
+			--connection-timeout=15
+			--session-timeout=30
+			--operation-timeout=15
+			--history-file=/dev/null
+			-h "$host"
+			-p "$CLICKHOUSE_KEEPER_PORT"
+			--query "$query"
+		)
+		if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
+			keeper_args+=(--secure --tls-ca-file "$CLICKHOUSE_TLS_CA" --tls-cert-file "$CLICKHOUSE_TLS_CERT" --tls-key-file "$CLICKHOUSE_TLS_KEY")
+		fi
+		if output=$(clickhouse-keeper-client "${keeper_args[@]}" 2>&1); then
 
 			if [[ "$output" != *"Coordination error"* ]] &&
 				[[ "$output" != *"Connection refused"* ]] &&

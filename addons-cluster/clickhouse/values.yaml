@@ -12,8 +12,7 @@ version: 25.4.4
 mode: cluster
 
 ## Sharding configuration
-shards: 1
-sharding: true
+shards: 2
 
 ## Number of ClickHouse replicas per shard to deploy
 replicas: 2

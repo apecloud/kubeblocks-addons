@@ -1,85 +1,46 @@
 #!/bin/bash
 set -exo pipefail
 
-# ClickHouse Cluster Restore Strategy:
-# - Jobs run on first replica in first shard, restore schema with ON CLUSTER across all shards
-# - Always use 'ON CLUSTER' DDL (which will execute across all shards)
-# - Only supports original topology: ordinal-0 pods in different shards, all replicas in same cluster
-# - Partial replica usage not supported (e.g., shard0: ch-0-1, shard1: ch-1-0 from total ch-0-0,ch-0-1,ch-1-0,ch-1-1)
+# Downloads full backup + ancestor incremental backups before restore
+# Supports: standalone (single node) and cluster (multi-shard) topologies, each typology only can use its backup
 
 trap handle_exit EXIT
 generate_backup_config
 set_clickhouse_backup_config_env
-CLICKHOUSE_SECURE=false # Not support for TLS restore
 
-# 1. download full backup
+if [[ "${CLICKHOUSE_SECURE}" = "true" ]]; then
+	DP_error_log "ClickHouse restore does not support TLS"
+	exit 1
+fi
+
+# 1. Download full (base) backup
 export S3_PATH="$DP_BACKUP_ROOT_PATH/$DP_BASE_BACKUP_NAME/$DP_TARGET_RELATIVE_PATH"
 fetch_backup "$DP_BASE_BACKUP_NAME"
 
-# 2. download ancestor incremental backups
-IFS=',' read -r -a ANCESTOR_INCREMENTAL_BACKUP_NAMES <<<"${DP_ANCESTOR_INCREMENTAL_BACKUP_NAMES}"
-for parent_name in "${ANCESTOR_INCREMENTAL_BACKUP_NAMES[@]}"; do
+# 2. Download ancestor incremental backups
+IFS=',' read -r -a ancestors <<<"${DP_ANCESTOR_INCREMENTAL_BACKUP_NAMES}"
+for parent_name in "${ancestors[@]}"; do
 	export S3_PATH="$DP_BACKUP_ROOT_PATH/$parent_name/$DP_TARGET_RELATIVE_PATH"
 	fetch_backup "$parent_name"
 done
 
-# 3. restore schema and rbac
+# 3. Detect topology mode: standalone (no ':' in FQDN) or cluster
 export S3_PATH="${DP_BACKUP_BASE_PATH}"
 first_entry="${ALL_COMBINED_SHARDS_POD_FQDN_LIST%%,*}"
 first_component="${first_entry%%:*}"
-if [[ -z "$first_component" || "$first_component" == "$first_entry" ]]; then
-	DP_error_log "Invalid ALL_COMBINED_SHARDS_POD_FQDN_LIST: ${ALL_COMBINED_SHARDS_POD_FQDN_LIST}"
+if [[ -z "$first_component" ]]; then
+	DP_error_log "Invalid ALL_COMBINED_SHARDS_POD_FQDN_LIST"
 	exit 1
 fi
-
-schema_db="kubeblocks"
-schema_table="__restore_ready__"
-schema_timeout="${RESTORE_SCHEMA_READY_TIMEOUT_SECONDS:-1800}"
-schema_interval="${RESTORE_SCHEMA_READY_CHECK_INTERVAL_SECONDS:-5}"
-
-if [[ "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" == "${first_component}" ]]; then
-	clickhouse-backup restore_remote "${DP_BACKUP_NAME}" --schema --rbac || {
-		DP_error_log "Clickhouse-backup restore_remote backup $DP_BACKUP_NAME FAILED"
-		exit 1
-	}
-	ch_query "CREATE DATABASE IF NOT EXISTS \`${schema_db}\` ON CLUSTER \`${INIT_CLUSTER_NAME}\`" || {
-		DP_error_log "Failed to create database ${schema_db}"
-		exit 1
-	}
-	ch_query "CREATE TABLE IF NOT EXISTS \`${schema_db}\`.\`${schema_table}\` ON CLUSTER \`${INIT_CLUSTER_NAME}\` (shard String, finished_at DateTime, backup_name String) ENGINE=TinyLog" || {
-		DP_error_log "Failed to create schema ready marker"
-		exit 1
-	}
+if [[ "$first_component" == "$first_entry" ]]; then
+	mode_info="standalone"
+	DP_log "Standalone mode detected"
 else
-	DP_log "Waiting for schema ready table on ${CLICKHOUSE_HOST}..."
-	start=$(date +%s)
-	while true; do
-		if [[ "$(ch_query "EXISTS TABLE \`${schema_db}\`.\`${schema_table}\`")" == "1" ]]; then
-			break
-		fi
-		now=$(date +%s)
-		if [[ $((now - start)) -ge $schema_timeout ]]; then
-			DP_error_log "Timeout waiting for schema ready table on ${CLICKHOUSE_HOST}"
-			exit 1
-		fi
-		sleep "$schema_interval"
-	done
+	mode_info="cluster:$first_component"
 fi
 
-# 4. restore data for this pod(will automatically replicate to other pods)
-clickhouse-backup restore_remote "${DP_BACKUP_NAME}" --data || {
-	DP_error_log "Clickhouse-backup restore_remote backup $DP_BACKUP_NAME FAILED"
-	exit 1
-}
-ch_query "INSERT INTO \`${schema_db}\`.\`${schema_table}\` (shard, finished_at, backup_name) VALUES ('${CURRENT_SHARD_COMPONENT_SHORT_NAME}', now(), '${DP_BACKUP_NAME}')" || {
-	DP_error_log "Failed to insert shard ready marker"
-	exit 1
-}
+# 4. Restore schema + data + marker
+do_restore "${DP_BACKUP_NAME}" "$mode_info" || exit 1
 
-# 5. delete local backup
-backup_list=$(clickhouse-backup list)
-echo "$backup_list" | awk '/local/ {print $1}' | while IFS= read -r backup_name; do
-	clickhouse-backup delete local "$backup_name" || {
-		echo "Clickhouse-backup delete local backup $backup_name FAILED"
-	}
-done
+# 5. Cleanup all local backups
+delete_backups_except ""

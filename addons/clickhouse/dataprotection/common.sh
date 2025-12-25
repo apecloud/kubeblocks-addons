@@ -318,6 +318,7 @@ function set_clickhouse_backup_config_env() {
 		export CLICKHOUSE_TLS_CA="/etc/pki/tls/ca.pem"
 		export CLICKHOUSE_TLS_CERT="/etc/pki/tls/cert.pem"
 		export CLICKHOUSE_TLS_KEY="/etc/pki/tls/key.pem"
+		export CLICKHOUSE_SKIP_VERIFY=true
 	fi
 	DP_log "Dynamic environment variables for clickhouse-backup have been set."
 }
@@ -368,4 +369,93 @@ function delete_backups_except() {
 			}
 		fi
 	done
+}
+
+# Save backup size info for DP status reporting
+function save_backup_size() {
+	local shard_base_dir
+	shard_base_dir=$(dirname "${DP_BACKUP_BASE_PATH}")
+	export DATASAFED_BACKEND_BASE_PATH="$shard_base_dir"
+	export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
+	local backup_size
+	backup_size=$(datasafed stat / | grep TotalSize | awk '{print $2}')
+	DP_save_backup_status_info "$backup_size"
+}
+
+# Restore schema and wait for sync across shards
+function restore_schema_and_sync() {
+	local backup_name="$1"
+	local mode_info="$2"
+	local schema_db="kubeblocks"
+	local schema_table="__restore_ready__"
+	local timeout="${RESTORE_SCHEMA_READY_TIMEOUT_SECONDS:-1800}"
+	local interval="${RESTORE_SCHEMA_READY_CHECK_INTERVAL_SECONDS:-5}"
+
+	# Determine if this pod should execute schema restore
+	local should_restore_schema=false
+	if [[ "$mode_info" == "standalone" ]]; then
+		should_restore_schema=true
+	else
+		local first_component="${mode_info#cluster:}"
+		[[ "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" == "$first_component" ]] && should_restore_schema=true
+	fi
+
+	if [[ "$should_restore_schema" == "true" ]]; then
+		# Standalone: unset ON CLUSTER mode to avoid ZK requirement
+		[[ "$mode_info" == "standalone" ]] && unset RESTORE_SCHEMA_ON_CLUSTER
+		clickhouse-backup restore_remote "$backup_name" --schema --rbac || {
+			DP_error_log "Clickhouse-backup restore_remote backup $backup_name FAILED"
+			return 1
+		}
+		# Cluster mode: create marker table for cross-shard coordination
+		if [[ "$mode_info" != "standalone" ]]; then
+			ch_query "CREATE DATABASE IF NOT EXISTS \`${schema_db}\` ON CLUSTER \`${INIT_CLUSTER_NAME}\`" || {
+				DP_error_log "Failed to create database ${schema_db}"
+				return 1
+			}
+			ch_query "CREATE TABLE IF NOT EXISTS \`${schema_db}\`.\`${schema_table}\` ON CLUSTER \`${INIT_CLUSTER_NAME}\` (shard String, finished_at DateTime, backup_name String) ENGINE=TinyLog" || {
+				DP_error_log "Failed to create schema ready marker"
+				return 1
+			}
+		fi
+	else
+		DP_log "Waiting for schema ready table on ${CLICKHOUSE_HOST}..."
+		local start=$(date +%s)
+		while true; do
+			if [[ "$(ch_query "EXISTS TABLE \`${schema_db}\`.\`${schema_table}\`")" == "1" ]]; then
+				break
+			fi
+			local now=$(date +%s)
+			if [[ $((now - start)) -ge $timeout ]]; then
+				DP_error_log "Timeout waiting for schema ready table on ${CLICKHOUSE_HOST}"
+				return 1
+			fi
+			sleep "$interval"
+		done
+	fi
+}
+
+# Full restore: schema + data + marker
+function do_restore() {
+	local backup_name="$1"
+	local mode_info="$2"
+	local schema_db="kubeblocks"
+	local schema_table="__restore_ready__"
+
+	# Restore schema (first shard in cluster uses ON CLUSTER DDL)
+	restore_schema_and_sync "$backup_name" "$mode_info" || return 1
+
+	# Restore data
+	clickhouse-backup restore_remote "$backup_name" --data || {
+		DP_error_log "Clickhouse-backup restore_remote --data FAILED"
+		return 1
+	}
+
+	# Insert shard ready marker (cluster mode only)
+	if [[ "$mode_info" != "standalone" ]]; then
+		ch_query "INSERT INTO \`${schema_db}\`.\`${schema_table}\` (shard, finished_at, backup_name) VALUES ('${CURRENT_SHARD_COMPONENT_SHORT_NAME}', now(), '$backup_name')" || {
+			DP_error_log "Failed to insert shard ready marker"
+			return 1
+		}
+	fi
 }

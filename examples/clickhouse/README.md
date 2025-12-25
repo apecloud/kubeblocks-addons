@@ -73,19 +73,21 @@ clickhouse-client --host <clickhouse-endpoint> --port 9000 --user admin --passwo
 ```
 
 > [!NOTE]
-> The password is defined in the secret `udf-account-info` or you can find it in `<clusterName>-clickhouse-account-admin`.
+> The password is defined in the secret `udf-account-info` or you can find it in secrets matching pattern `<clusterName>-*-account-admin`.
 
 e.g. you can get the password by the following command:
 
 ```bash
-# For the standalone cluster
-kubectl get secrets clickhouse-standalone-clickhouse-account-admin -n demo -oyaml  | yq .data.password -r | base64 -d
+# Get the secret name for standalone cluster
+SECRET_NAME=$(kubectl get secrets -n demo -o name | grep clickhouse-standalone | grep account-admin)
 
-# Or from the predefined secret
-kubectl get secrets udf-account-info -n demo -oyaml  | yq .data.password -r | base64 -d
+# Get username and password
+kubectl get $SECRET_NAME -n demo -o jsonpath='{.data.username}' | base64 -d && echo
+kubectl get $SECRET_NAME -n demo -o jsonpath='{.data.password}' | base64 -d && echo
+
+# Or from the predefined secret (if used)
+kubectl get secrets udf-account-info -n demo -o jsonpath='{.data.password}' | base64 -d && echo
 ```
-
-where the secret name follows the pattern `<clusterName>-<componentName>-account-<accountName>`.
 
 #### Cluster Mode
 
@@ -262,16 +264,18 @@ kubectl apply -f examples/clickhouse/keeper-scale-in.yaml
 
 #### Scale-in/out using Cluster API
 
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
+Alternatively, you can update the `replicas` field in the `spec.shardings[].template.replicas` section to your desired non-zero number.
 
 ```yaml
 # snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
-  componentSpecs:
+  shardings:
     - name: clickhouse
-      replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
+      shards: 2
+      template:
+        replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
 ```
 
 ### [Vertical scaling](verticalscale.yaml)
@@ -549,8 +553,9 @@ You can choose the appropriate method based on your needs and operational prefer
 ### Backup and Restore
 
 - Backups are created per shard.
-- Schema and rbac restore runs once on the first shard and uses `ON CLUSTER INIT_CLUSTER_NAME` to apply DDL across all shards.
+- Schema and RBAC restore runs once on the first shard and uses `ON CLUSTER INIT_CLUSTER_NAME` to apply DDL across all shards.
 - Data is restored from each shard's backup.
+- **Important**: Standalone and cluster backups are NOT interchangeable. A backup from standalone can only be restored to standalone, and a cluster backup can only be restored to a cluster with compatible topology.
 
 #### Prerequisites for Backup
 

@@ -5,7 +5,7 @@ metadata:
   namespace: demo
   annotations:
     # clickhouse-cluster-backup is the Backup CR name.
-    kubeblocks.io/restore-from-backup: '{"clickhouse":{"name":"clickhouse-cluster-backup-inc-inc","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"clickhouse":{"name":"clickhouse-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   clusterDef: clickhouse
   topology: cluster

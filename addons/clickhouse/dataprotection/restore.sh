@@ -1,72 +1,34 @@
 #!/bin/bash
 set -exo pipefail
 
-# ClickHouse Cluster Restore Strategy:
-# - Jobs run on first replica in first shard, restore schema with ON CLUSTER across all shards
-# - Always use 'ON CLUSTER' DDL (which will execute across all shards)
-# - Only supports original topology: ordinal-0 pods in different shards, all replicas in same cluster
-# - Partial replica usage not supported (e.g., shard0: ch-0-1, shard1: ch-1-0 from total ch-0-0,ch-0-1,ch-1-0,ch-1-1)
+# Supports: standalone (single node) and cluster (multi-shard) topologies
+# Strategy: first shard restores schema with ON CLUSTER, others wait for sync
 
 trap handle_exit EXIT
 generate_backup_config
 set_clickhouse_backup_config_env
-CLICKHOUSE_SECURE=false # Not support for TLS restore
 
-# 1. detect first shard
+if [[ "${CLICKHOUSE_SECURE}" = "true" ]]; then
+	DP_error_log "ClickHouse restore does not support TLS"
+	exit 1
+fi
+
+# 1. Detect topology mode: standalone (no ':' in FQDN) or cluster
 first_entry="${ALL_COMBINED_SHARDS_POD_FQDN_LIST%%,*}"
 first_component="${first_entry%%:*}"
-if [[ -z "$first_component" || "$first_component" == "$first_entry" ]]; then
-	DP_error_log "Invalid ALL_COMBINED_SHARDS_POD_FQDN_LIST: ${ALL_COMBINED_SHARDS_POD_FQDN_LIST}"
+if [[ -z "$first_component" ]]; then
+	DP_error_log "Invalid ALL_COMBINED_SHARDS_POD_FQDN_LIST"
 	exit 1
 fi
-
-schema_db="kubeblocks"
-schema_table="__restore_ready__"
-schema_timeout="${RESTORE_SCHEMA_READY_TIMEOUT_SECONDS:-1800}"
-schema_interval="${RESTORE_SCHEMA_READY_CHECK_INTERVAL_SECONDS:-5}"
-
-# 2. restore schema on first shard and wait for marker on others
-if [[ "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" == "${first_component}" ]]; then
-	clickhouse-backup restore_remote "${DP_BACKUP_NAME}" --schema --rbac || {
-		DP_error_log "Clickhouse-backup restore_remote backup $DP_BACKUP_NAME FAILED"
-		exit 1
-	}
-	ch_query "CREATE DATABASE IF NOT EXISTS \`${schema_db}\` ON CLUSTER \`${INIT_CLUSTER_NAME}\`" || {
-		DP_error_log "Failed to create database ${schema_db}"
-		exit 1
-	}
-	ch_query "CREATE TABLE IF NOT EXISTS \`${schema_db}\`.\`${schema_table}\` ON CLUSTER \`${INIT_CLUSTER_NAME}\` (shard String, finished_at DateTime, backup_name String) ENGINE=TinyLog" || {
-		DP_error_log "Failed to create schema ready marker"
-		exit 1
-	}
+if [[ "$first_component" == "$first_entry" ]]; then
+	mode_info="standalone"
+	DP_log "Standalone mode detected"
 else
-	DP_log "Waiting for schema ready table on ${CLICKHOUSE_HOST}..."
-	start=$(date +%s)
-	while true; do
-		if [[ "$(ch_query "EXISTS TABLE \`${schema_db}\`.\`${schema_table}\`")" == "1" ]]; then
-			break
-		fi
-		now=$(date +%s)
-		if [[ $((now - start)) -ge $schema_timeout ]]; then
-			DP_error_log "Timeout waiting for schema ready table on ${CLICKHOUSE_HOST}"
-			exit 1
-		fi
-		sleep "$schema_interval"
-	done
+	mode_info="cluster:$first_component"
 fi
 
-# 3. restore data for this shard (replication handled by ClickHouse)
-clickhouse-backup restore_remote "${DP_BACKUP_NAME}" --data || {
-	DP_error_log "Clickhouse-backup restore_remote backup $DP_BACKUP_NAME FAILED"
-	exit 1
-}
-ch_query "INSERT INTO \`${schema_db}\`.\`${schema_table}\` (shard, finished_at, backup_name) VALUES ('${CURRENT_SHARD_COMPONENT_SHORT_NAME}', now(), '${DP_BACKUP_NAME}')" || {
-	DP_error_log "Failed to insert shard ready marker"
-	exit 1
-}
+# 2. Restore schema + data + marker
+do_restore "${DP_BACKUP_NAME}" "$mode_info" || exit 1
 
-# 4. delete local backup
-clickhouse-backup delete local "${DP_BACKUP_NAME}" || {
-	DP_error_log "Clickhouse-backup delete local backup $DP_BACKUP_NAME FAILED"
-	exit 1
-}
+# 3. Cleanup local backups
+delete_backups_except ""

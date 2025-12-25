@@ -13,9 +13,8 @@ spec:
   # - gcs (Google Cloud Storage)
   # - obs (Huawei Cloud Object Storage)
   # - minio (MinIO Object Storage)
-  # - rustfs (RustFS Object Storage)
   # - other S3-compatible services.
-  storageProviderRef: rustfs
+  storageProviderRef: minio
   # Specifies the access method of the backup repository.
   # - Tool
   # - Mount
