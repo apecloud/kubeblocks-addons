@@ -15,6 +15,8 @@ export_logs_start_time_env
 function handle_backup_exit() {
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
+    set +e
+    
     print_pbm_tail_logs
 
     echo "failed with exit code $exit_code"
@@ -29,8 +31,10 @@ wait_for_other_operations
 
 sync_pbm_storage_config
 
+wait_for_other_operations
+
 echo "INFO: Starting $PBM_BACKUP_TYPE backup for MongoDB..."
-backup_result=$(pbm backup --type=$PBM_BACKUP_TYPE --mongodb-uri "$PBM_MONGODB_URI" --compression=$PBM_COMPRESSION --wait -o json)
+backup_result=$(pbm backup --type=$PBM_BACKUP_TYPE --mongodb-uri "$PBM_MONGODB_URI" --compression=$PBM_COMPRESSION -o json)
 backup_name=$(echo "$backup_result" | jq -r '.name')
 extras=$(buildJsonString "" "backup_name" "$backup_name")
 extras=$(buildJsonString $extras "backup_type" "$PBM_BACKUP_TYPE")
@@ -53,12 +57,12 @@ while [ $attempt -le $MAX_RETRIES ]; do
         fi
         break
     elif echo "$describe_result" | grep -q "not found"; then
-        echo "INFO: Attempt $attempt: Failed to get backup metadata, retrying in ${RETRY_INTERVAL}s..."
+        echo "INFO: Attempt $attempt: Backup metadata not found, retrying in ${RETRY_INTERVAL}s..."
         sleep $RETRY_INTERVAL
         ((attempt++))
         continue
     else
-        echo "ERROR: Failed to get backup metadata: $describe_result"
+        echo "ERROR: Unexpected: $describe_result"
     fi
 done
 set -e

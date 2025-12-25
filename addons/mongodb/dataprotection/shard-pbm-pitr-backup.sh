@@ -128,15 +128,17 @@ function purge_pitr_chunks() {
 }
 
 function handle_pitr_exit() {
-  echo "INFO: Handling PBM pitr exit..."
-  print_pbm_tail_logs
+  exit_code=$?
+
+  set +e
 
   if [[ "$PBM_DISABLE_PITR_WHEN_EXIT" == "true" ]]; then
     disable_pitr
   fi
 
-  exit_code=$?
   if [ $exit_code -ne 0 ]; then
+    print_pbm_tail_logs
+
     echo "failed with exit code $exit_code"
     touch "${DP_BACKUP_INFO_FILE}.exit"
     exit 1
@@ -150,8 +152,6 @@ set_backup_config_env
 export_logs_start_time_env
 
 trap handle_pitr_exit EXIT
-
-wait_for_other_operations
 
 sync_pbm_storage_config
 

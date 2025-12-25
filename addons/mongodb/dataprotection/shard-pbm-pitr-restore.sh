@@ -12,6 +12,7 @@ export_logs_start_time_env
 
 function handle_restore_exit() {
   exit_code=$?
+  set +e
   if [ $exit_code -ne 0 ]; then
     print_pbm_tail_logs
 
