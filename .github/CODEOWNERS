@@ -103,9 +103,6 @@ addons-cluster/rocketmq/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-rev
 addons/starrocks-ce/ @yandongxiao @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/starrocks-ce/ @yandongxiao @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/tdengine/ @leon-inf @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/tdengine/ @leon-inf @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-
 addons/tidb/ @csuzhangxc @cjc7373 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/tidb/ @csuzhangxc @cjc7373 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 

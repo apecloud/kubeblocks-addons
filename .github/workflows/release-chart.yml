@@ -44,7 +44,6 @@ on:
           - risingwave
           - rocketmq
           - starrocks-ce
-          - tdengine
           - tidb
           - victoria-metrics
           - weaviate
