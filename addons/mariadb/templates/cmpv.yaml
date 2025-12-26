@@ -14,7 +14,6 @@ spec:
         - 10.6.15
   releases:
     - name: 10.6.15
-      changes:
       serviceVersion: 10.6.15
       images:
         mariadb: {{ include "mariadb.repository" . }}:10.6.15
