@@ -25,7 +25,6 @@ spec:
 {{- range .minors }}
 {{- if not (index . 4) }}
   - name: {{ index . 0 }}
-    changes:
     serviceVersion: {{ index . 1 }}
     images:
       mongodb: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
