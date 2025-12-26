@@ -9,8 +9,8 @@ version: 1.0.1
 appVersion: "1.100.1"
 
 maintainers:
-  - name: sophon-zt
-    url: https://github.com/apecloud/kubeblocks/
+  - name: ApeCloud
+    url: https://kubeblocks.io/
   - name: ButterBright
     url: https://github.com/apecloud/kubeblocks/
 

@@ -8,7 +8,7 @@ type: application
 
 version: 1.0.2
 
-appVersion: 25.4.4
+appVersion: 25.9.7
 
 home: https://clickhouse.com/
 icon: https://bitnami.com/assets/stacks/clickhouse/img/clickhouse-stack-220x234.png
@@ -17,8 +17,8 @@ keywords:
 - sharding
 
 maintainers:
-  - name: sophon-zt
-    url: https://github.com/apecloud/kubeblocks/
+  - name: ApeCloud
+    url: https://kubeblocks.io/
 
 dependencies:
   - name: kblib
