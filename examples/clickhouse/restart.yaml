@@ -11,6 +11,6 @@ spec:
   restart:
     # Specifies the name of the Component.
     # - clickhouse
-    # - clickhouse-1
+    # - clickhouse-24
     # - ch-keeper
   - componentName: clickhouse

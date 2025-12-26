@@ -4,7 +4,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 ## Clickhouse cluster version
-version: 24.8.3
+version: 25.9.7
 
 ## ClickHouse cluster topology mode defined in ClusterDefinition.Spec.topologies, support standalone and cluster
 ## - `standalone`: single clickhouse instance
@@ -13,10 +13,9 @@ mode: cluster
 
 ## Sharding configuration
 shards: 2
-sharding: true
 
 ## Number of ClickHouse replicas per shard to deploy
-replicas: 2
+replicas: 1
 
 ## ClickHouse per shard component configurations
 cpu: 1
@@ -38,7 +37,7 @@ tolerations: []
 ## ClickHouse Keeper configuration
 keeper:
   ## Number of ClickHouse Keeper replicas
-  replicas: 3
+  replicas: 1 
   storageClassName: ""
   cpu: 1
   memory: 2

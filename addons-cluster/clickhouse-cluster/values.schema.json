@@ -27,12 +27,6 @@
       "default": 1,
       "minimum": 1
     },
-    "sharding": {
-      "title": "Sharding Configuration",
-      "description": "Enable or disable sharding within the ClickHouse cluster.",
-      "type": "boolean",
-      "default": true
-    },
     "replicas": {
       "title": "Replica Count",
       "description": "Number of replicas per shard.",

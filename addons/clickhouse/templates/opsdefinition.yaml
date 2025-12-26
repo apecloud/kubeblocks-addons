@@ -43,7 +43,7 @@ spec:
         podSpec:
           containers:
             - name: post-rebuild
-              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:24.8.3-debian-12-r1
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ .Chart.AppVersion }}
               imagePullPolicy: IfNotPresent
               command:
                 - bash
@@ -65,6 +65,10 @@ spec:
           valueFrom:
             envRef:
               envName: CLICKHOUSE_TCP_PORT
+        - name: CLICKHOUSE_TCP_SECURE_PORT
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_TCP_SECURE_PORT
         - name: CLICKHOUSE_ADMIN_USER
           valueFrom:
             envRef:
@@ -87,7 +91,7 @@ spec:
         podSpec:
           containers:
             - name: post-rebuild
-              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:24.8.3-debian-12-r1
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ .Chart.AppVersion }}
               imagePullPolicy: IfNotPresent
               command:
                 - bash

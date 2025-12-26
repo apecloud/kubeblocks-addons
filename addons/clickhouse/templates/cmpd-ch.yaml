@@ -10,7 +10,7 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: "24.8.3"
+  serviceVersion: {{ .Chart.AppVersion }}
   minReadySeconds: 10
   runtime:
     securityContext:

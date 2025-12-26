@@ -11,7 +11,7 @@ spec:
   horizontalScaling:
     # Specifies the name of the Component.
     # -  clickhouse
-    # -  clickhouse-1
+    # -  clickhouse-24
   - componentName: clickhouse
     # Specifies the number of total replicas.
     replicas: 2
