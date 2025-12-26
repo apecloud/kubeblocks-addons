@@ -14,7 +14,6 @@ spec:
       - {{ include "oceanbase-ce.componentDefNamePrefix" . }}
   releases:
   - name: 4.3.0.1
-    changes:
     serviceVersion: "4.3.0"
     images:
       observer-container: {{ include "oceanbase-ce.observer.repository" . }}:4.3.0.1-100000242024032211

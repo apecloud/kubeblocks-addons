@@ -22,7 +22,6 @@ spec:
 {{- range .minors }}
 {{- if not (index . 3) }}
   - name: {{ index . 0 }}
-    changes:
     serviceVersion: {{ index . 1 }}
     images:
       rabbitmq: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}

@@ -14,7 +14,6 @@ spec:
         - 2.7.0
   releases:
     - name: 2.7.0
-      changes:
       serviceVersion: 2.7.0
       images:
         opensearch: {{ include "opensearch.repository" . }}:2.7.0

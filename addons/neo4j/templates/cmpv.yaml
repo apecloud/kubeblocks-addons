@@ -15,12 +15,10 @@ spec:
         - 4.4.42
   releases:
     - name: 5.26.5
-      changes:
       serviceVersion: 5.26.5
       images:
         neo4j: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.26.5
     - name: 4.4.42
-      changes:
       serviceVersion: 4.4.42
       images:
         neo4j: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4.42
