@@ -21,6 +21,12 @@ spec:
         volumeMounts:
           - name: data
             mountPath: /bitnami/clickhouse
+          - name: tls
+            mountPath: /etc/pki/tls
+          - name: client-config
+            mountPath: /etc/clickhouse-client
+          - name: config
+            mountPath: /opt/bitnami/clickhouse/etc/conf.d
     - name: incremental
       compatibleMethod: full
       actionSetName: clickhouse-incremental-backup
@@ -28,6 +34,12 @@ spec:
         volumeMounts:
           - name: data
             mountPath: /bitnami/clickhouse
+          - name: tls
+            mountPath: /etc/pki/tls
+          - name: client-config
+            mountPath: /etc/clickhouse-client
+          - name: config
+            mountPath: /opt/bitnami/clickhouse/etc/conf.d
   schedules:
     - backupMethod: full
       enabled: false

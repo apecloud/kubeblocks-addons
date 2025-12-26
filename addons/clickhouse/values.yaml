@@ -19,6 +19,8 @@ image:
   pullPolicy: IfNotPresent
 
 clickhouseVersions:
+  - version: 25.9.7
+    imageTag: 25.9.7
   - version: 25.4.4
     imageTag: 25.4.4-debian-12-r1
   - version: 24.8.3
@@ -50,3 +52,7 @@ backupImage:
   repository: apecloud/clickhouse-backup-full
   pullPolicy: IfNotPresent
   tag: 2.6.14
+
+restore:
+  schemaReadyTimeoutSeconds: 1800
+  schemaReadyCheckIntervalSeconds: 5
