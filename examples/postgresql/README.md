@@ -449,14 +449,6 @@ kubectl apply -f examples/postgresql/backup-wal-g.yaml
 
 To restore a new cluster from a Backup:
 
-1. Get the list of accounts and their passwords from the backup:
-
-```bash
-kubectl get backup -n demo pg-cluster-pg-basebackup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
-```
-
-1. Update `examples/postgresql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
-
 ```bash
 kubectl apply -f examples/postgresql/restore.yaml
 ```

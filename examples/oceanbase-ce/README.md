@@ -273,14 +273,6 @@ spec:
 
 To restore a new cluster from a `Backup`, you can apply the following yaml file:
 
-1. Get the list of accounts and their passwords from the backup:
-
-```bash
-kubectl get backup -n demo ob-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
-```
-
-1. Update `examples/oceanbase-ce/restore.yaml` and set fields quoted with `<ENCRYPTED-SYSTEM-ACCOUNTS>` to your own settings and apply it.
-
 ```bash
 kubectl apply -f examples/oceanbase-ce/restore.yaml
 ```
