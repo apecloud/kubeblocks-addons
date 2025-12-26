@@ -443,14 +443,6 @@ spec:
 
 To restore a new cluster from a Backup:
 
-1. Get the list of accounts and their passwords from the backup:
-
-```bash
-kubectl get backup -n demo acmysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
-```
-
-1. Update `examples/falkordb/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
-
 ```bash
 kubectl apply -f examples/falkordb/restore.yaml
 ```

@@ -663,14 +663,6 @@ Alternatively, you can update the `BackupSchedule` to enable the method `xtrabac
 
 Restore a new cluster from a backup
 
-1. Get the list of accounts and their passwords from the backup:
-
-```bash
-kubectl get backup -n demo mongo-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
-```
-
-1. Update `examples/mongodb/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
-
 ```yaml
 # cat examples/mongodb/restore.yaml
 apiVersion: apps.kubeblocks.io/v1
@@ -679,8 +671,7 @@ metadata:
   name: mongo-cluster-restore
   namespace: demo
   annotations:
-    # e.g. set  "encryptedSystemAccounts": {\"root\":\"ENCRYPTEDPASSWORD\"}
-    kubeblocks.io/restore-from-backup: '{"mongodb":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"mongo-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"mongodb":{"name":"mongo-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: mongodb

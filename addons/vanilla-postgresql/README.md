@@ -566,14 +566,6 @@ Alternatively, you can update the `BackupSchedule` to enable the method `vanilla
 
 To restore a new cluster from a Backup:
 
-Get the list of accounts and their passwords from the backup:
-
-```bash
-kubectl get backup -n demo vanpg-cluster-pg-basebackup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
-```
-
-Update `examples/vanilla-postgresql/restore.yaml` and set fields quoted with `<<ENCRYPTED-SYSTEM-ACCOUNTS>` to your own settings and apply it.
-
 ```yaml
 # cat examples/vanilla-postgresql/restore.yaml
 apiVersion: apps.kubeblocks.io/v1
@@ -582,8 +574,7 @@ metadata:
   name: vanpg-restore
   namespace: demo
   annotations:
-    # NOTE: replace <ENCRYPTED-SYSTEM-ACCOUNTS> with the accounts info from you backup
-    kubeblocks.io/restore-from-backup: '{"postgresql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"vanpg-cluster-pg-basebackup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"postgresql":{"name":"vanpg-cluster-pg-basebackup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: vanilla-postgresql

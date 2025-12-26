@@ -747,14 +747,6 @@ spec:
 
 To restore a new cluster from a Backup:
 
-1. Get the list of accounts and their passwords from the backup:
-
-```bash
-kubectl get backup -n demo acmysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
-```
-
-1. Update `examples/redis/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
-
 ```yaml
 # cat examples/redis/restore.yaml
 apiVersion: apps.kubeblocks.io/v1
@@ -763,7 +755,7 @@ metadata:
   name: redis-replication-restore
   namespace: demo
   annotations:
-    kubeblocks.io/restore-from-backup: '{"redis":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"redis-replication-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"redis":{"name":"redis-replication-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: redis
