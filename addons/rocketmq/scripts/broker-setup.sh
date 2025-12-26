@@ -109,9 +109,57 @@ init_acl() {
     fi
 }
 
+sync_file() {
+    file_type=$1
+    if [ "$file_type" == "topics.json" ]; then
+        query_path="topicInfo"
+    elif [ "$file_type" == "subscriptionGroup.json" ]; then
+        query_path="subscriptionGroupInfo"
+    else
+        echo "Unknown file type: ${file_type}"
+    fi
+
+    if [ -f "${DATA_DIR}"/config/"${file_type}" ]; then
+        return
+    fi
+
+    brokers=$(eval echo "${ALL_BROKER_FQDN}" | tr '@' '\n')
+    if [ "$(echo "${brokers}" | wc -l)" -lt 2 ]; then
+        return
+    fi
+
+    for broker in ${brokers}; do
+        broker_name=$(echo "${broker}" | awk -F':' '{print $1}')
+        fqdns_str=$(echo "${broker}" | awk -F':' '{print $NF}')
+        if [ "$broker_name" == "${MY_COMP_NAME}" ]; then
+            continue
+        fi
+        fqdns=$(eval echo "${fqdns_str}" | tr ',' '\n')
+        for fqdn in ${fqdns}; do
+            if ! curl -X GET -H 'Content-Type: application/json' http://"${fqdn}:${ROCKETMQ_AGENT}"/"${query_path}" > /tmp/"${file_type}" 2>/dev/null; then
+                echo "Failed to fetch ${file_type} from ${fqdn}"
+                continue
+            else
+                echo "Successfully fetched ${file_type} from ${fqdn}"
+                break
+            fi
+        done
+
+        if grep -q "dataVersion" /tmp/"${file_type}"; then
+            if [ ! -d "${DATA_DIR}"/config ]; then
+                mkdir -p "${DATA_DIR}"/config
+            fi
+            mv /tmp/"${file_type}" "${DATA_DIR}"/config/"${file_type}"
+            return
+        fi
+    done
+}
+
 copy_log_config
 init_broker
 init_acl
+sync_file "topics.json"
+sync_file "subscriptionGroup.json"
 
 export NAMESRV_ADDR=${ALL_NAMESRV_FQDN//,/:${NAMESRV_PORT};}:${NAMESRV_PORT}
 if ! grep -q "NAMESRV_ADDR" ~/.bashrc; then
