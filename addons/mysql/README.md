@@ -572,14 +572,6 @@ kubectl apply -f examples/mysql/backup.yaml
 
 To restore a new cluster from a Backup:
 
-1. Get the list of accounts and their passwords from the backup:
-
-```bash
-kubectl get backup -n demo mysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
-```
-
-1. Update `examples/mysql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
-
 ```yaml
 # cat examples/mysql/restore.yaml
 apiVersion: apps.kubeblocks.io/v1
@@ -588,7 +580,7 @@ metadata:
   name: mysql-cluster-restore
   namespace: demo
   annotations:
-    kubeblocks.io/restore-from-backup: '{"mysql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"mysql-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"mysql":{"name":"mysql-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   componentSpecs:
