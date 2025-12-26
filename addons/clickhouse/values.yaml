@@ -19,6 +19,8 @@ image:
   pullPolicy: IfNotPresent
 
 clickhouseVersions:
+  - version: 25.9.7
+    imageTag: 25.9.7
   - version: 25.4.4
     imageTag: 25.4.4-debian-12-r1
   - version: 24.8.3
@@ -31,8 +33,6 @@ clickhouseVersions:
     imageTag: 22.3.18-debian-11-r3
   - version: 22.6.1
     imageTag: 22.6.1
-  - version: 25.9.7
-    imageTag: 25.9.7
 
 roleProbe:
   initialDelaySeconds: 15

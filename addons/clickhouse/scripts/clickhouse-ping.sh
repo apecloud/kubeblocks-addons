@@ -6,7 +6,7 @@ SCHEME="http"
 PORT="${CLICKHOUSE_HTTP_PORT:-8123}"
 
 wget_args=(
-	--spider
+	-O /dev/null
 	-q
 	-T 3
 	--tries=1
