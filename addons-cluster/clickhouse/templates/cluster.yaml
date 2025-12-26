@@ -5,9 +5,5 @@
   {{- if eq .Values.mode "cluster" }}
   {{- include "clickhouse-keeper-component" . | nindent 4 }}
   {{- end }}
-  {{- if not .Values.sharding }}
-  {{- include "clickhouse-nosharding-component" . | nindent 4 }}
-  {{- else }}
   shardings:
   {{- include "clickhouse-sharding-component" . | nindent 4 }}
-  {{- end }}

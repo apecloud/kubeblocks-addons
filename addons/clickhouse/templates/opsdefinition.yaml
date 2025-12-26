@@ -65,6 +65,10 @@ spec:
           valueFrom:
             envRef:
               envName: CLICKHOUSE_TCP_PORT
+        - name: CLICKHOUSE_TCP_SECURE_PORT
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_TCP_SECURE_PORT
         - name: CLICKHOUSE_ADMIN_USER
           valueFrom:
             envRef:

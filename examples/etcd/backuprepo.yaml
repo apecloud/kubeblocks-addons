@@ -12,7 +12,8 @@ spec:
   # - cos (Tencent Cloud Object Storage)
   # - gcs (Google Cloud Storage)
   # - obs (Huawei Cloud Object Storage)
-  # - minio, and other S3-compatible services.
+  # - minio (MinIO Object Storage)
+  # - other S3-compatible services.
   storageProviderRef: minio
   # Specifies the access method of the backup repository.
   # - Tool
@@ -24,8 +25,8 @@ spec:
   volumeCapacity: 100Gi
   # Stores the non-secret configuration parameters for the `StorageProvider`.
   config:
-    bucket: test-minio
-    endpoint: 'http://minio.kb-system.svc.cluster.local:9000'
+    bucket: test-rustfs
+    endpoint: 'http://rustfs-svc.rustfs.svc.cluster.local:9000'
     mountOptions: --memory-limit 1000 --dir-mode 0777 --file-mode 0666
     region: cn-northwest-1
   # References to the secret that holds the credentials for the `StorageProvider`.

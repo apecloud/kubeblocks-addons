@@ -25,19 +25,19 @@ There are two key components in the ClickHouse cluster:
 
 ### Backup and Restore
 
-| Feature     | Method | Description |
-|-------------|--------|------------|
-| Full Backup | clickhouse-backup | uses `clickhouse-backup` tool to perform full backups of ClickHouse data |
+| Feature            | Method            | Description                                                                           |
+| ------------------ | ----------------- | ------------------------------------------------------------------------------------- |
+| Full Backup        | clickhouse-backup | uses `clickhouse-backup` tool to perform full backups of ClickHouse data              |
 | Incremental Backup | clickhouse-backup | uses `clickhouse-backup` tool to perform incremental backups based on previous backup |
 
 
 ### Versions
 
-| Major Versions | Description     |
-| -------------- | --------------- |
+| Major Versions | Description               |
+| -------------- | ------------------------- |
 | 22             | 22.3.18, 22.3.20, 22.8.21 |
-| 24             | 24.8.3          |
-| 25             | 25.4.4          |
+| 24             | 24.8.3                    |
+| 25             | 25.4.4, 25.9.7            |
 
 ## Prerequisites
 
@@ -73,19 +73,21 @@ clickhouse-client --host <clickhouse-endpoint> --port 9000 --user admin --passwo
 ```
 
 > [!NOTE]
-> The password is defined in the secret `udf-account-info` or you can find it in `<clusterName>-clickhouse-account-admin`.
+> The password is defined in the secret `udf-account-info` or you can find it in secrets matching pattern `<clusterName>-*-account-admin`.
 
 e.g. you can get the password by the following command:
 
 ```bash
-# For the standalone cluster
-kubectl get secrets clickhouse-standalone-clickhouse-account-admin -n demo -oyaml  | yq .data.password -r | base64 -d
+# Get the secret name for standalone cluster
+SECRET_NAME=$(kubectl get secrets -n demo -o name | grep clickhouse-standalone | grep account-admin)
 
-# Or from the predefined secret
-kubectl get secrets udf-account-info -n demo -oyaml  | yq .data.password -r | base64 -d
+# Get username and password
+kubectl get $SECRET_NAME -n demo -o jsonpath='{.data.username}' | base64 -d && echo
+kubectl get $SECRET_NAME -n demo -o jsonpath='{.data.password}' | base64 -d && echo
+
+# Or from the predefined secret (if used)
+kubectl get secrets udf-account-info -n demo -o jsonpath='{.data.password}' | base64 -d && echo
 ```
-
-where the secret name follows the pattern `<clusterName>-<componentName>-account-<accountName>`.
 
 #### Cluster Mode
 
@@ -262,16 +264,18 @@ kubectl apply -f examples/clickhouse/keeper-scale-in.yaml
 
 #### Scale-in/out using Cluster API
 
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
+Alternatively, you can update the `replicas` field in the `spec.shardings[].template.replicas` section to your desired non-zero number.
 
 ```yaml
 # snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
-  componentSpecs:
+  shardings:
     - name: clickhouse
-      replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
+      shards: 2
+      template:
+        replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
 ```
 
 ### [Vertical scaling](verticalscale.yaml)
@@ -437,9 +441,9 @@ To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profil
 ### Using Config Templates
 
 > [!NOTE]
-> This section is applicable for ClickHouse Addons v1.0.2 and above.
+> Applicable for ClickHouse Addons v1.0.2+.
 
-Create a ClickHouse cluster with config templates:
+Create a cluster that uses a custom configuration template (`user.xml` settings):
 
 ```bash
 kubectl apply -f examples/clickhouse/cluster-with-config-templates.yaml
@@ -537,23 +541,26 @@ There are two ways to update the configuration:
 
 #### Comparison between Option 1 and Option 2
 
-| Aspect | Option 1 (Variables) | Option 2 (Config Template) |
-|--------|---------------------|----------------------------|
-| **Configuration Method** | Through variables in cluster CR | Direct modification of config template |
-| **Reconcile Trigger** | Automatic when CR is updated | Manual annotation required |
-| **Complexity** | Lower - declarative approach | Higher - requires understanding of template structure |
-| **Use Case** | When only a couple of configurations need to be updated | Best for batch updates of configurations |
+| Aspect                   | Option 1 (Variables)                                    | Option 2 (Config Template)                            |
+| ------------------------ | ------------------------------------------------------- | ----------------------------------------------------- |
+| **Configuration Method** | Through variables in cluster CR                         | Direct modification of config template                |
+| **Reconcile Trigger**    | Automatic when CR is updated                            | Manual annotation required                            |
+| **Complexity**           | Lower - declarative approach                            | Higher - requires understanding of template structure |
+| **Use Case**             | When only a couple of configurations need to be updated | Best for batch updates of configurations              |
 
 You can choose the appropriate method based on your needs and operational preferences.
 
 ### Backup and Restore
 
+- Backups are created per shard.
+- Schema and RBAC restore runs once on the first shard and uses `ON CLUSTER INIT_CLUSTER_NAME` to apply DDL across all shards.
+- Data is restored from each shard's backup.
+- **Important**: Standalone and cluster backups are NOT interchangeable. A backup from standalone can only be restored to standalone, and a cluster backup can only be restored to a cluster with compatible topology.
+
 #### Prerequisites for Backup
 
-Before creating backups, you need to set up a backup repository. First, create a BackupRepo:
-
+1. **Setup BackupRepo**: Update `examples/clickhouse/backuprepo.yaml` with your storage provider config (S3, MinIO, etc.) and apply it:
 ```bash
-# Edit the backuprepo.yaml file with your storage provider details
 kubectl apply -f examples/clickhouse/backuprepo.yaml
 ```
 
@@ -590,6 +597,27 @@ To create an incremental backup, modify the `backupMethod` field in `backup.yaml
 spec:
   backupMethod: incremental  # Change from 'full' to 'incremental'
 ```
+
+#### Restore Settings
+
+> [!NOTE]
+> Restoring a TLS-enabled cluster directly from backup is NOT supported. You should restore the cluster with TLS disabled first, and then enable TLS manually after the restore process is complete.
+
+Restore process will restore schema and rbac first, then restore data. You can tune schema-ready waiting behavior for restore jobs via Helm values:
+
+```yaml
+restore:
+  schemaReadyTimeoutSeconds: 1800
+  schemaReadyCheckIntervalSeconds: 5
+```
+
+To restore the cluster from a backup, you can apply the restore configuration:
+
+```bash
+kubectl apply -f examples/clickhouse/restore.yaml
+```
+This will create a new cluster named `clickhouse-cluster-restore` with the data restored from the specified backup.
+It also creates the necessary system account secret `udf-restore-account-info`.
 
 ### [Restart](restart.yaml)
 
