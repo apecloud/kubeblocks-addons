@@ -24,7 +24,6 @@ spec:
   {{- end }}
   {{- range .mirrorVersions }}
   - name: {{ .version }}
-    changes:
     serviceVersion: {{ .version }}
     images:
       redis-sentinel: {{ $redisRepository }}:{{ .imageTag }}

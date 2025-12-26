@@ -33,7 +33,6 @@ spec:
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
     - name: 8.0.33
-      changes:
       serviceVersion: 8.0.33
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
@@ -43,7 +42,6 @@ spec:
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
     - name: 8.0.34
-      changes:
       serviceVersion: 8.0.34
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.34
@@ -53,7 +51,6 @@ spec:
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
     - name: 8.0.35
-      changes:
       serviceVersion: 8.0.35
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.35
@@ -63,7 +60,6 @@ spec:
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
     - name: 8.0.36
-      changes:
       serviceVersion: 8.0.36
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.36
@@ -73,7 +69,6 @@ spec:
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
     - name: 8.0.37
-      changes:
       serviceVersion: 8.0.37
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.37
@@ -83,7 +78,6 @@ spec:
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
     - name: 8.0.38
-      changes:
       serviceVersion: 8.0.38
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.38
@@ -93,7 +87,6 @@ spec:
         init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
         mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
     - name: 8.0.39
-      changes:
       serviceVersion: 8.0.39
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.39

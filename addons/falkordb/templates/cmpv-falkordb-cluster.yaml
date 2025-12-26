@@ -21,7 +21,6 @@ spec:
   {{- $falkordbRepository := printf "%s/%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository }}
   {{- range .mirrorVersions }}
   - name: {{ .version }}
-    changes:
     serviceVersion: {{ .version }}
     images:
       falkordb-cluster: {{ $falkordbRepository }}:{{ .imageTag }}

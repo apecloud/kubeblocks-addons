@@ -14,7 +14,6 @@ spec:
         - 2.3.0
   releases:
     - name: 2.3.0
-      changes:
       serviceVersion: 2.3.0
       images:
         tools-updater: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.toolsUpdater.repository }}:v1.5.0
