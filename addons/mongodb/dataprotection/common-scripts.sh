@@ -228,8 +228,12 @@ storage:
       access-key-id: ${S3_ACCESS_KEY}
       secret-access-key: ${S3_SECRET_KEY}
 restore:
-    numDownloadWorkers: ${PBM_RESTORE_DOWNLOAD_WORKERS:-4}
+  numDownloadWorkers: ${PBM_RESTORE_DOWNLOAD_WORKERS:-4}
+backup:
+  timeouts:
+    startingStatus: 60
 EOF
+    sleep 5
     echo "INFO: PBM storage configuration completed."
   fi
 }
@@ -252,18 +256,61 @@ function print_pbm_tail_logs() {
   pbm logs --tail 20 --mongodb-uri "$PBM_MONGODB_URI"
 }
 
+function handle_backup_exit() {
+  exit_code=$?
+  set +e
+  if [ $exit_code -ne 0 ]; then
+    print_pbm_tail_logs
+
+    echo "failed with exit code $exit_code"
+    touch "${DP_BACKUP_INFO_FILE}.exit"
+    exit 1
+  fi
+}
+
+function handle_restore_exit() {
+  exit_code=$?
+  set +e
+  if [ $exit_code -ne 0 ]; then
+    print_pbm_tail_logs
+
+    echo "failed with exit code $exit_code"
+    exit 1
+  fi
+}
+
+function handle_pitr_exit() {
+  exit_code=$?
+  set +e
+  if [[ "$PBM_DISABLE_PITR_WHEN_EXIT" == "true" ]]; then
+    disable_pitr
+  fi
+
+  if [ $exit_code -ne 0 ]; then
+    print_pbm_tail_logs
+
+    echo "failed with exit code $exit_code"
+    touch "${DP_BACKUP_INFO_FILE}.exit"
+    exit 1
+  fi
+}
 
 function wait_for_other_operations() {
   status_result=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json) || {
     echo "INFO: PBM is not configured."
     return
   }
+  local except_type=$1
   local running_status=$(echo "$status_result" | jq -r '.running')
   local retry_count=0
   local max_retries=60
   while [ -n "$running_status" ] && [ "$running_status" != "{}" ] && [ $retry_count -lt $max_retries ]; do
     retry_count=$((retry_count+1))
-    echo "INFO: Other operation $(echo "$running_status" | jq -r '.type') are running, waiting... ($retry_count/$max_retries)"
+    local running_type=$(echo "$running_status" | jq -r '.type')
+    if [ -n "$running_type" ] && [ "$running_type" = "$except_type" ]; then
+      break
+    fi
+    echo "INFO: Other operation $running_type is running, waiting... ($retry_count/$max_retries)"
     sleep 5
     running_status=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.running')
   done
@@ -290,6 +337,46 @@ function sync_pbm_config_from_storage() {
   wait_for_other_operations
 
   echo "INFO: PBM config synced from storage."
+}
+
+function wait_for_backup_completion() {
+  retry_interval=5
+  attempt=1
+  describe_result=""
+  set +e
+  while true; do
+    describe_result=$(pbm describe-backup --mongodb-uri "$PBM_MONGODB_URI" "$backup_name" -o json 2>&1)
+    if [ $? -eq 0 ] && [ -n "$describe_result" ]; then
+      backup_status=$(echo "$describe_result" | jq -r '.status')
+      if [ "$backup_status" = "" ] || [ "$backup_status" = "starting" ] || [ "$backup_status" = "running" ]; then
+        echo "INFO: Attempt $attempt: Backup status is $backup_status, retrying in ${retry_interval}s..."
+        sleep $retry_interval
+        ((attempt++))
+        continue
+      elif [ "$backup_status" = "done" ]; then
+        echo "INFO: Backup status is done."
+        break
+      else
+        echo "ERROR: Backup failed with status: $backup_status"
+        exit 1
+      fi
+    elif echo "$describe_result" | grep -q "not found"; then
+      echo "INFO: Attempt $attempt: Backup metadata not found, retrying in ${retry_interval}s..."
+      sleep $retry_interval
+      ((attempt++))
+      continue
+    else
+      echo "ERROR: Unexpected: $describe_result"
+      exit 1
+    fi
+  done
+  set -e
+
+  backup_status=$(echo "$describe_result" | jq -r '.status')
+  if [ "$backup_status" != "done" ]; then
+      echo "ERROR: Backup did not complete successfully, final status: $backup_status"
+      exit 1
+  fi
 }
 
 function create_restore_signal() {
@@ -368,8 +455,8 @@ function process_restore_end_signal() {
 }
 
 function get_describe_backup_info() {
-  max_retries=360
-  retry_interval=2
+  max_retries=60
+  retry_interval=5
   attempt=1
   describe_result=""
   set +e

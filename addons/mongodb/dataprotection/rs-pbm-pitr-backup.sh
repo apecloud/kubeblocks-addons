@@ -17,7 +17,7 @@ function enable_pitr() {
 
   if [ "$current_pitr_enabled" != "true" ] || [ "$current_oplog_span_min" != "$PBM_OPLOG_SPAN_MIN_MINUTES" ] || [ "$current_pitr_compression" != "$PBM_COMPRESSION" ]; then
     echo "INFO: Pitr config is not equal to the current config, updating..."
-    wait_for_other_operations
+    wait_for_other_operations "backup"
 
     pbm config --mongodb-uri "$PBM_MONGODB_URI" --set pitr.enabled=true --set pitr.oplogSpanMin=$PBM_OPLOG_SPAN_MIN_MINUTES --set pitr.compression=$PBM_COMPRESSION
     echo "INFO: Pitr config updated."
@@ -79,9 +79,12 @@ function purge_pitr_chunks() {
   last_global_purge_time=$current_time
   
   echo "INFO: Purging PBM chunks..."
-  wait_for_other_operations
+  wait_for_other_operations "backup"
 
-  sync_pbm_config_from_storage
+  pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI"
+
+  # resync wait flag might don't work
+  wait_for_other_operations "backup"
 
   local pitr_chunks_result=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.backups.pitrChunks')
   local pitr_chunks_arr=$(echo "$pitr_chunks_result" | jq -r '.pitrChunks')
@@ -102,22 +105,6 @@ function purge_pitr_chunks() {
   echo "INFO: No base snapshot chunks cleaned up."
 }
 
-function handle_pitr_exit() {
-  echo "INFO: Handling PBM pitr exit..."
-  print_pbm_tail_logs
-
-  if [[ "$PBM_DISABLE_PITR_WHEN_EXIT" == "true" ]]; then
-    disable_pitr
-  fi
-
-  exit_code=$?
-  if [ $exit_code -ne 0 ]; then
-    echo "failed with exit code $exit_code"
-    touch "${DP_BACKUP_INFO_FILE}.exit"
-    exit 1
-  fi
-}
-
 export_pbm_env_vars_for_rs
 
 set_backup_config_env
@@ -126,14 +113,12 @@ export_logs_start_time_env
 
 trap handle_pitr_exit EXIT
 
-wait_for_other_operations
-
 sync_pbm_storage_config
 
 sync_pbm_config_from_storage
 
 while true; do
-  wait_for_other_operations
+  wait_for_other_operations "backup"
 
   sync_pbm_storage_config
 
@@ -147,5 +132,5 @@ while true; do
 
   export_logs_start_time_env
 
-  sleep 5
+  sleep 30
 done
