@@ -12,19 +12,6 @@ set_backup_config_env
 
 export_logs_start_time_env
 
-function handle_backup_exit() {
-  exit_code=$?
-  if [ $exit_code -ne 0 ]; then
-    set +e
-
-    print_pbm_tail_logs
-
-    echo "failed with exit code $exit_code"
-    touch "${DP_BACKUP_INFO_FILE}.exit"
-    exit 1
-  fi
-}
-
 trap handle_backup_exit EXIT
 
 wait_for_other_operations
@@ -40,39 +27,7 @@ extras=$(buildJsonString "" "backup_name" "$backup_name")
 extras=$(buildJsonString $extras "backup_type" "$PBM_BACKUP_TYPE")
 echo "INFO: Backup name: $backup_name"
 
-MAX_RETRIES=360
-RETRY_INTERVAL=2
-attempt=1
-describe_result=""
-set +e
-while [ $attempt -le $MAX_RETRIES ]; do
-    describe_result=$(pbm describe-backup --mongodb-uri "$PBM_MONGODB_URI" "$backup_name" -o json 2>&1)
-    if [ $? -eq 0 ] && [ -n "$describe_result" ]; then
-        backup_status=$(echo "$describe_result" | jq -r '.status')
-        if [ "$backup_status" != "done" ]; then
-            echo "INFO: Attempt $attempt: Backup status is not 'done', retrying in ${RETRY_INTERVAL}s..."
-            sleep $RETRY_INTERVAL
-            ((attempt++))
-            continue
-        fi
-        break
-    elif echo "$describe_result" | grep -q "not found"; then
-        echo "INFO: Attempt $attempt: Backup metadata not found, retrying in ${RETRY_INTERVAL}s..."
-        sleep $RETRY_INTERVAL
-        ((attempt++))
-        continue
-    else
-        echo "ERROR: Unexpected: $describe_result"
-    fi
-done
-set -e
-
-backup_status=$(echo "$describe_result" | jq -r '.status')
-
-if [ "$backup_status" != "done" ]; then
-    echo "ERROR: Backup failed with status: $backup_status"
-    exit 1
-fi
+wait_for_backup_completion
 
 echo "INFO: Backup description result:"
 echo "$(echo $describe_result | jq)"

@@ -10,17 +10,6 @@ set_backup_config_env
 
 export_logs_start_time_env
 
-function handle_restore_exit() {
-  exit_code=$?
-  set +e
-  if [ $exit_code -ne 0 ]; then
-    print_pbm_tail_logs
-
-    echo "failed with exit code $exit_code"
-    exit 1
-  fi
-}
-
 trap handle_restore_exit EXIT
 
 wait_for_other_operations
