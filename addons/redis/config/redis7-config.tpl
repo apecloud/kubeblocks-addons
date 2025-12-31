@@ -82,3 +82,10 @@ maxmemory-policy volatile-lru
 {{- if gt $request_memory 0 }}
 maxmemory {{ mulf $request_memory 0.8 | int }}
 {{- end -}}
+
+
+
+{{- if $.TLS_ENABLED }}
+
+
+{{- end -}}
