@@ -129,19 +129,8 @@ Define redis cluster component script template name
 redis-cluster-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
-{{/*
-Define redis metrics config name
-*/}}
-{{- define "redis.metricsConfiguration" -}}
-redis-metrics-config
-{{- end -}}
-
 {{- define "redis7.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
-{{- end }}
-
-{{- define "redis8.image" -}}
-{{ .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ceImage.repository }}:{{ .Values.image.tag.major8.minor80 }}
 {{- end }}
 
 {{- define "redisTwemproxy.repository" -}}
@@ -185,6 +174,10 @@ Generate scripts configmap
 {{- range $path, $_ :=  $.Files.Glob "redis-cluster-scripts/**" }}
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- if $.Files.Get "scripts/redis-account.sh" }}
+redis-account.sh: |-
+{{- $.Files.Get "scripts/redis-account.sh" | nindent 2 }}
 {{- end }}
 {{- end }}
 

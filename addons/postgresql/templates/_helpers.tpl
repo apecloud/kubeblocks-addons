@@ -210,6 +210,16 @@ patroni-reload-scripts-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
+Generate reloader scripts configmap
+*/}}
+{{- define "postgresql.extend.reload.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "reloader/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{/*
 Define pgbouncer configuration template name
 */}}
 {{- define "pgbouncer.configurationTemplate" -}}
@@ -233,4 +243,12 @@ Define image
 
 {{- define "postgresql.dbctlImage" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+{{- end }}
+
+{{- define "postgresql.walgImage" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.walg.repository }}:{{ .Values.image.walg.tag }}
+{{- end }}
+
+{{- define "postgresql.initImage" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.init.repository }}:{{ .Values.image.init.tag }}
 {{- end }}

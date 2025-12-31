@@ -1,0 +1,278 @@
+{{- range .Values.falkordbVersions }}
+{{- $falkordbSentinelStartScripts := "falkordb-sent-start-v2.sh" }}
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+  labels:
+    {{- include "falkordb.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "falkordb.annotations" $ | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A falkordb Sentinel v{{ .major }}.0 component definition for Kubernetes
+  serviceKind: falkordb-sent
+  serviceVersion: {{ .serviceVersion }}
+  podManagementPolicy: Parallel
+  services:
+    - name: falkordb-sent
+      serviceName: falkordb-sent
+      spec:
+        ports:
+          - name: falkordb-sent
+            port: 26379
+            targetPort: falkordb-sent
+    - name: sentinel-advertised
+      serviceName: sentinel-advertised
+      spec:
+        type: NodePort
+        ports:
+          - name: sentinel-advertised
+            port: 26379
+            targetPort: 26379
+      podService: true
+      disableAutoProvision: true
+    - name: sentinel-lb-advertised
+      serviceName: sentinel-lb-advertised
+      spec:
+        type: LoadBalancer
+        externalTrafficPolicy: Cluster
+        # allocateLoadBalancerNodePorts: false
+        ports:
+          - name: sentinel-advertised
+            port: 26379
+            targetPort: falkordb-sent
+      podService: true
+      disableAutoProvision: true
+  updateStrategy: BestEffortParallel
+  volumes:
+    - name: data
+      needSnapshot: true
+  logConfigs:
+    {{- range $name,$pattern := $.Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  scripts:
+    - name: falkordb-scripts
+      template: {{ include "falkordb.scriptsTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  systemAccounts:
+    ## TODO: the other accounts should be created for backward compatibility
+    - name: default
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+  hostNetwork:
+    containerPorts:
+      - container: falkordb-sent
+        ports:
+          - falkordb-sent
+  vars:
+    ## the name of current cluster instance
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    ## the username of falkordb sentinel
+    - name: SENTINEL_USER
+      valueFrom:
+        credentialVarRef:
+          name: default
+          optional: false
+          username: Required
+    ## the password of falkordb sentinel
+    - name: SENTINEL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: default
+          optional: false
+          password: Required
+    ## the sentinel pod name list
+    - name: SENTINEL_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    ## the sentinel pod fqdn list
+    - name: SENTINEL_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    ## the falkordb sentinel advertised service port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: REDIS_SENTINEL_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          name: sentinel-advertised
+          optional: true
+          port:
+            name: sentinel-advertised
+            option: Required
+    ## the falkordb sentinel advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
+    - name: REDIS_SENTINEL_ADVERTISED_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          name: sentinel-advertised
+          optional: true
+          host: Required
+    - name: REDIS_SENTINEL_LB_ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          name: sentinel-lb-advertised
+          optional: true
+          loadBalancer: Required
+          host: Required
+    - name: REDIS_SENTINEL_LB_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          name: sentinel-lb-advertised
+          optional: true
+          port:
+            name: sentinel-advertised
+            option: Required
+    ## the falkordb sentinel server host network port when using host network mode, the port will be allocated automatically by KubeBlocks
+    - name: REDIS_SENTINEL_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: falkordb-sent
+            port:
+              name: falkordb-sent
+              option: Required
+    - name: SENTINEL_SERVICE_PORT
+      value: "26379"
+      expression: {{ `{{if index . "REDIS_SENTINEL_HOST_NETWORK_PORT"}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}{{.SENTINEL_SERVICE_PORT}}{{end}}` | toYaml }}
+    ## the env of falkordb sentinel server port for dbctl to connect to falkordb cluster server
+    - name: DBCTL_REDIS_SENTINEL_SERVICE_PORT
+      value: $(SENTINEL_SERVICE_PORT)
+    ## the username of falkordb for falkordb sentinel connection which is only used to recover falkordb servers when scale-out falkordb sentinel.
+    - name: REDIS_SENTINEL_USER
+      value: "kbreplicator-sentinel"
+    ## the password of falkordb for falkordb sentinel connection, which is only used to recover falkordb servers when scale-out falkordb sentinel.
+    ## TODO: Obtaining the falkordb password here will cause a circular dependency issue, which will lead to the abnormal restart of the falkordb Sentinel pod, details refer to falkordb-sent-member-join.sh
+{{/*    - name: REDIS_SENTINEL_PASSWORD*/}}
+{{/*      valueFrom:*/}}
+{{/*        credentialVarRef:*/}}
+{{/*          compDef: {{ include "falkordb4.cmpdName" . }}*/}}
+{{/*          name: default*/}}
+{{/*          optional: true*/}}
+{{/*          password: Required*/}}
+{{/*          multipleClusterObjectOption:*/}}
+{{/*            strategy: individual*/}}
+  lifecycleActions:
+    accountProvision:
+      exec:
+        container: falkordb-sent
+        command:
+          - sh
+          - -c
+        args:
+          - "falkordb-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD $(KB_ACCOUNT_STATEMENT) && falkordb-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD acl save "
+    memberLeave:
+      exec:
+        container: falkordb-sent
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/falkordb-sent-member-leave.sh > /tmp/member-leave.log 2>&1
+        targetPodSelector: Any
+        ## all lifecycle actions share the same env
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+  runtime:
+    containers:
+    - name: falkordb-sent
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 26379
+          name: falkordb-sent
+      volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: scripts
+          mountPath: /scripts
+        - name: falkordb-sentinel-extra-config
+          mountPath: /etc/conf/extra
+      env:
+        - name: CURRENT_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: CURRENT_POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: CURRENT_POD_HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+      command:
+        - /bin/bash
+      args:
+        - -c
+        - |
+          set -e
+          /scripts/{{ $falkordbSentinelStartScripts }}
+{{- if eq .major "6" }}
+      lifecycle:
+        postStart:
+          exec:
+            command: [ "/scripts/falkordb6-sentinel-post-start.sh" ]
+{{- else if ge .major "7" }}
+      lifecycle:
+        postStart:
+          exec:
+            command: [ "/scripts/falkordb-sent-post-start.sh" ]
+{{- end }}
+      livenessProbe:
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 5
+        exec:
+          command:
+            - sh
+            - -c
+            - /scripts/falkordb-sent-ping.sh
+      readinessProbe:
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 5
+        exec:
+          command:
+            - sh
+            - -c
+            - /scripts/falkordb-sent-ping.sh
+{{- end }}

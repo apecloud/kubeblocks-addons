@@ -1,36 +1,6 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: postgresql-config-wal-g
-  labels:
-    clusterdefinition.kubeblocks.io/name: postgresql
-    {{- include "postgresql.labels" . | nindent 4 }}
-spec:
-  backupType: Full
-  env:
-    - name: VOLUME_DATA_DIR
-      value: {{ .Values.dataMountPath }}
-  backup:
-    preBackup: []
-    postBackup: []
-    backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
-      runOnTargetPodNode: true
-      command:
-        - bash
-        - -c
-        - |
-          #!/bin/bash
-          {{- include "kblib.logs.format_log_content" $ | nindent 10 }}
-          {{- include "kblib.logs.setup_logging" $ | nindent 10 }}
-          {{- .Files.Get "dataprotection/wal-g-config.sh" | nindent 10 }}
-      syncProgress:
-        enabled: false
-        intervalSeconds: 5
----
-apiVersion: dataprotection.kubeblocks.io/v1alpha1
-kind: ActionSet
-metadata:
   name: postgresql-wal-g
   labels:
     clusterdefinition.kubeblocks.io/name: postgresql
@@ -50,7 +20,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
+      image: {{ include "postgresql.walgImage" . }}
       runOnTargetPodNode: true
       command:
         - bash
@@ -64,7 +34,7 @@ spec:
         enabled: true
         intervalSeconds: 5
     preDelete:
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
+      image: {{ include "postgresql.walgImage" . }}
       command:
         - bash
         - -c
@@ -75,7 +45,7 @@ spec:
           {{- .Files.Get "dataprotection/wal-g-delete.sh" | nindent 10 }}
   restore:
     prepareData:
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
+      image: {{ include "postgresql.walgImage" . }}
       command:
         - bash
         - -c

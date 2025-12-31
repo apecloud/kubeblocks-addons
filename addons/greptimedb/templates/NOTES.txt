@@ -7,11 +7,8 @@ Example routines to create and connect a GreptimeDB cluster using kbcli.
 
 1. Create a GreptimeDB cluster
 
-Minimal >
-kbcli cluster create my-cluster --cluster-definition greptimedb
-
 Replicas >
-helm install my-cluster ./addons/greptimedb-cluster
+helm install my-cluster ./addons-cluster/greptimedb-cluster
 
 2. Port-forward svc to localhost and connect to GreptimeDB cluster
 

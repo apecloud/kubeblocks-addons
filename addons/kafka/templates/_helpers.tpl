@@ -214,9 +214,11 @@ Define kafka 2.x broker env configmap tpl name
 kafka2-broker-env-tpl
 {{- end -}}
 
-{{/*
-Define kafka tools scripts tpl name
-*/}}
-{{- define "kafka.toolsScriptsTplName" -}}
-kafka-tools-scripts-tpl
+{{- define "kafka.tls.cmpdConfig" -}}
+tls:
+  volumeName: tls 
+  mountPath: /etc/pki/tls
+  caFile: ca.crt
+  certFile: tls.crt
+  keyFile: tls.key
 {{- end -}}

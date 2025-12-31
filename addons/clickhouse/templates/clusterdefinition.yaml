@@ -9,9 +9,9 @@ metadata:
 spec:
   topologies:
     - name: standalone
-      components:
+      shardings:
         - name: clickhouse
-          compDef: {{ include "clickhouse.cmpdRegexpPattern" . }}
+          shardingDef: clickhouse
     - name: cluster
       components:
         - name: ch-keeper

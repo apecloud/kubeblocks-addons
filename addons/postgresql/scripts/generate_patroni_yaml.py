@@ -70,6 +70,7 @@ def main(filename):
             re_config = postgresql_conf_to_dict("/home/postgres/pgdata/conf/recovery.conf")
             pitr_config[pitr_config['method']]['recovery_conf'].update(re_config)
             local_config['bootstrap'].update(pitr_config)
+
     # patroni parameters
     if 'bootstrap' not in local_config:
         local_config['bootstrap'] = {}
@@ -80,6 +81,10 @@ def main(filename):
             local_config['bootstrap']['dcs'].update(yaml.safe_load(f))
     else:
         print('patroni.yaml not found')
+    synchronous_mode = os.environ.get('SYNCHRONOUS_MODE')
+    if synchronous_mode:
+        local_config['bootstrap']['dcs']['synchronous_mode'] = synchronous_mode
+
     write_file(yaml.dump(local_config, default_flow_style=False), filename, True)
 
 

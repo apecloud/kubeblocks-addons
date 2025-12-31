@@ -63,6 +63,7 @@ remove_replica_from_shard_if_need() {
     if contains "$current_node_role" "fail"; then
       do_forget_node=true
     fi
+    echo "Current node id: $current_node_cluster_id"
     if secondary_member_leave_del_node_with_retry "$current_node_ip_and_port" "$current_node_cluster_id" "$do_forget_node"; then
       echo "Successfully removed replica from shard."
     else

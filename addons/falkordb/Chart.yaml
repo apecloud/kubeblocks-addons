@@ -1,0 +1,39 @@
+apiVersion: v2
+name: falkordb
+description: "FalkorDB is an in-memory graph database based on Redis."
+
+type: application
+
+version: 1.0.1
+
+appVersion: "4.12.5"
+
+# Add a dependency to the kubeblocks definition library chart
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+
+home: https://falkordb.com/
+icon: https://bitnami.com/assets/stacks/redis/img/redis-stack-220x234.png
+keywords:
+  - falkordb
+  - database
+  - nosql
+  - replication
+  - falkordb cluster
+  - graph
+  - ai
+
+maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/
+  - name: dudizimber
+    url: https://github.com/FalkorDB/kubeblocks-addons/
+
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/model: "key-value"
+  addon.kubeblocks.io/provider: "community"

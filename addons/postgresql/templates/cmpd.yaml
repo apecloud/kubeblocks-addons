@@ -20,6 +20,11 @@ spec:
         - serviceKind: etcd
           serviceVersion: "^*"
       optional: true
+    - name: remote-instances
+      serviceRefDeclarationSpecs:
+        - serviceKind: postgresql
+          serviceVersion: "{{ .major }}\\.\\d+\\.\\d+"
+      optional: true
   services:
     - name: postgresql
       serviceName: postgresql
@@ -85,6 +90,10 @@ spec:
       valueFrom:
         clusterVarRef:
             clusterName: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
@@ -133,6 +142,30 @@ spec:
           name: postgres
           optional: false
           password: Required
+    - name: STANDBY_HOST
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          host: Required
+    - name: STANDBY_PORT
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          port: Required
+    - name: KB_PGUSER_STANDBY
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          username: Optional
+    - name: KB_PGPASSWORD_STANDBY
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          password: Optional
     ## the postgres pod name list for each pod, the value format is "pod1,pod2,..."
     - name: POSTGRES_POD_NAME_LIST
       valueFrom:
@@ -193,14 +226,9 @@ spec:
     roleProbe:
       periodSeconds: 1
       timeoutSeconds: 1
-      exec:
-        container: postgresql
-        command:
-          - /tools/dbctl
-          - --config-path
-          - /tools/config/dbctl/components
-          - postgresql
-          - getrole
+      http:
+        port: "5001"
+        path: "/v1.0/getrole"
     switchover:
       exec:
         container: postgresql
@@ -284,17 +312,6 @@ spec:
             mountPath: /home/postgres/conf
           - name: scripts
             mountPath: /kb-scripts
-      - command:
-          - cp
-          - -r
-          - /bin/dbctl
-          - /config
-          - /tools/
-        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
-        name: init-dbctl
-        volumeMounts:
-          - mountPath: /tools
-            name: tools
     containers:
       - name: postgresql
         imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
@@ -337,8 +354,6 @@ spec:
             value: "true"
           - name: KUBERNETES_USE_CONFIGMAPS
             value: "true"
-          - name: SCOPE
-            value: $(POSTGRES_COMPONENT_NAME)
           - name: KUBERNETES_SCOPE_LABEL
             value: "workloads.kubeblocks.io/instance"
           - name: KUBERNETES_ROLE_LABEL
@@ -473,6 +488,15 @@ spec:
         volumeMounts:
           - name: postgresql-custom-metrics
             mountPath: /opt/conf
+      - name: dbctl
+        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
+        env:
+          - name: PATRONI_PORT
+            value: "8008"
+        command:
+          - /bin/dbctl
+          - postgresql
+          - service
     volumes:
       - name: dshm
         emptyDir:

@@ -88,34 +88,6 @@ issuer:
 {{- end }}
 
 {{/*
-Define clickhouse componentSpec with ComponentDefinition.
-*/}}
-{{- define "clickhouse-component" -}}
-- name: clickhouse
-  componentDef: {{ include "clickhouse-cluster.cmpdName" . }}
-  replicas: {{ $.Values.replicas | default 2 }}
-  disableExporter: {{ $.Values.disableExporter | default "false" }}
-  serviceVersion: {{ $.Values.version }}
-  services:
-  - name: default
-    serviceType: {{ .Values.service.type | default "NodePort" }}
-  systemAccounts:
-    - name: admin
-      passwordConfig:
-        length: 10
-        numDigits: 5
-        numSymbols: 0
-        letterCase: MixedCases
-        seed: {{ include "kblib.clusterName" . }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ .| toYaml | nindent 4 }}
-  {{- end }}
-  {{- include "kblib.componentResources" . | indent 2 }}
-  {{- include "kblib.componentStorages" . | indent 2 }}
-  {{- include "clickhouse-cluster.tls" . | indent 2 }}
-{{- end }}
-
-{{/*
 Define clickhouse keeper componentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-keeper-component" -}}
@@ -191,33 +163,4 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
     {{- include "kblib.componentResources" . | indent 4 }}
     {{- include "kblib.componentStorages" . | indent 4 }}
     {{- include "clickhouse-cluster.tls" . | indent 4 }}
-{{- end }}
-
-{{/*
-Define clickhouse componentSpec with compatible ComponentDefinition API
-*/}}
-{{- define "clickhouse-nosharding-component" -}}
-{{- range $i := until (.Values.shards | int) }}
-{{- $name := printf "clickhouse-%d" $i }}
-{{- if eq $i 0 }}
-{{- $name = "clickhouse" }}
-{{- end}}
-- name: {{ $name }}
-  env:
-  - name: "INIT_CLUSTER_NAME"
-    value: "{{ .Values.clickhouse.initClusterName }}"
-  componentDef: {{ include "clickhouse-cluster.cmpdName" . }}
-  replicas: {{ $.Values.replicas | default 2 }}
-  disableExporter: {{ $.Values.disableExporter | default "false" }}
-  serviceVersion: {{ $.Values.version }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ .| toYaml | nindent 4 }}
-  services:
-  - name: default
-    serviceType: {{ .Values.service.type | default "NodePort" }}
-  {{- end }}
-  {{- include "kblib.componentResources" $ | indent 2 }}
-  {{- include "kblib.componentStorages" $ | indent 2 }}
-  {{- include "clickhouse-cluster.tls" $ | indent 2 }}
-{{- end }}
 {{- end }}

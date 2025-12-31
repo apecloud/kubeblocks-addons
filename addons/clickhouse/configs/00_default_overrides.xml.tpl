@@ -1,5 +1,5 @@
 <clickhouse>
-  <listen_host>0.0.0.0</listen_host>
+  <listen_host replace="replace">::</listen_host>
   {{- if eq (index $ "TLS_ENABLED") "true" }}
   <https_port replace="replace" from_env="CLICKHOUSE_HTTPS_PORT"/>
   <tcp_port_secure replace="replace" from_env="CLICKHOUSE_TCP_SECURE_PORT"/>
@@ -16,7 +16,7 @@
   <macros>
     <shard from_env="CURRENT_SHARD_COMPONENT_SHORT_NAME"/>
     <replica from_env="CURRENT_POD_NAME"/>
-    <layer>{{ .CLUSTER_NAME }}</layer>
+    <layer>{{ .KB_CLUSTER_NAME }}</layer>
   </macros>
   <default_replica_path>/clickhouse/tables/{layer}/{shard}/{database}/{table}</default_replica_path>
   <default_replica_name>{replica}</default_replica_name>

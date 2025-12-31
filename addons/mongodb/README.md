@@ -74,8 +74,8 @@ spec:
     - name: mongodb
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [4.0.28,4.2.24,4.4.29,5.0.28,6.0.16,7.0.1]
-      serviceVersion: "6.0.16"
+      # Valid options are: [8.0.8,7.0.18,6.0.21,5.0.29,4.4.29]
+      serviceVersion: "6.0.21"
       # Specifies the desired number of replicas in the Component
       replicas: 3
       # Specifies the resources required by the Component.
@@ -103,8 +103,6 @@ spec:
               requests:
                 # Set the storage size as needed
                 storage: 20Gi
-
-
 ```
 
 ```bash
@@ -665,14 +663,6 @@ Alternatively, you can update the `BackupSchedule` to enable the method `xtrabac
 
 Restore a new cluster from a backup
 
-1. Get the list of accounts and their passwords from the backup:
-
-```bash
-kubectl get backup -n demo mongo-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
-```
-
-1. Update `examples/mongodb/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
-
 ```yaml
 # cat examples/mongodb/restore.yaml
 apiVersion: apps.kubeblocks.io/v1
@@ -681,8 +671,7 @@ metadata:
   name: mongo-cluster-restore
   namespace: demo
   annotations:
-    # e.g. set  "encryptedSystemAccounts": {\"root\":\"ENCRYPTEDPASSWORD\"}
-    kubeblocks.io/restore-from-backup: '{"mongodb":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"mongo-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"mongodb":{"name":"mongo-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: mongodb

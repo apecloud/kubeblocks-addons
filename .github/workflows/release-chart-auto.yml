@@ -1,0 +1,98 @@
+name: Release Chart Auto
+
+on:
+  pull_request_target:
+    types:
+      - closed
+    branches:
+      - main
+      - release-*
+
+env:
+  GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+jobs:
+  get-ref:
+    if: github.event.pull_request.merged == true && (github.base_ref == 'main' || startsWith(github.base_ref, 'release-'))
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.get_release_ref.outputs.matrix }}
+    steps:
+      - name: pr label check
+        id: get_release_ref
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_LABELS=$(gh pr view ${PR_NUMBER} --repo ${{ github.repository }} --json labels | jq -r '.labels[].name')
+          echo "PR_LABELS: ${PR_LABELS}"
+          RELEASE_REF=""
+          for pr_label in $(echo "${PR_LABELS}"); do
+              ref_name=""
+              if [[ "${pr_label}" == "chart-release" ]]; then
+                  ref_name="main"
+              elif [[ "${pr_label}" == "chart-release-"* ]]; then
+                  ref_name=${pr_label/chart-/}
+              else
+                  continue
+              fi
+              
+              if [[ -z "${RELEASE_REF}" ]]; then
+                  RELEASE_REF="{\"ref-name\":\"$ref_name\"}"
+              else
+                  RELEASE_REF="${RELEASE_REF},{\"ref-name\":\"$ref_name\"}"
+              fi
+          done
+          echo "RELEASE_REF:${RELEASE_REF}"
+          if [[ -n "${RELEASE_REF}" ]]; then
+              echo "matrix={\"include\":[${RELEASE_REF}]}" >> $GITHUB_OUTPUT
+          fi
+
+  release-chart:
+    needs: [get-ref]
+    runs-on: ubuntu-latest
+    if: ${{ needs.get-ref.outputs.matrix != '' }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.get-ref.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout apecloud-cd Code
+        uses: actions/checkout@v4
+        with:
+          repository: apecloud/apecloud-cd
+          path: apecloud-cd
+
+      - name: get addons chart dir
+        id: get_addons_chart_dir
+        run: |
+          for filePath in $(git diff --name-only HEAD HEAD^ | (egrep "addons/|addons-cluster/" || true) | cut -d'/' -f1,2 | sort -u); do
+              if [[ "$filePath" == "addons/"* || "$filePath" == "addons-cluster/"* ]]; then
+                  echo "release $filePath chart"
+                  addon_dir=${filePath%%/*}
+                  addon_name=${filePath#*/}
+          
+                  cmd="bash ${{ github.workspace }}/apecloud-cd/.github/utils/utils.sh --type 7 "
+                  cmd=$cmd"--github-token \"${{ env.GH_TOKEN }}\" "
+                  cmd=$cmd"--github-repo \"${{ github.repository }}\" "
+        
+                  if [[ "$addon_dir" == "addons" ]]; then
+                      cmd=$cmd"--workflow-id \"release-chart.yml\" "
+                  elif [[ "$addon_dir" == "addons-cluster" ]]; then
+                      cmd=$cmd"--workflow-id \"release-addons-cluster-chart.yml\" "
+                  else
+                      continue
+                  fi
+                  cmd=$cmd"--branch-name \"${{ matrix.ref-name }}\" "
+                 
+                  if [[ -n "${addon_name}" ]]; then
+                      cmd=$cmd"--extra-args \"custom_chart_dir=${addon_name}\" "
+                  else
+                      continue
+                  fi
+        
+                  echo "$cmd"
+                  eval "$cmd"
+              fi
+          done

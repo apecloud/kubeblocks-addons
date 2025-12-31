@@ -5,11 +5,26 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
+  clusterDef: influxdb
+  topology: {{ .Values.mode }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
+  # don't set componentDef, kb will automatically use the one defined in topology
+  {{- if eq "standalone" .Values.mode }}
     - name: influxdb
-      componentDef: influxdb
       serviceVersion: {{ .Values.version }}
-      replicas: {{ include "influxdb-cluster.replicas" . }}
+      replicas: 1
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
+  {{- else }}
+    - name: influxdb-meta
+      serviceVersion: {{ .Values.version }}
+      replicas: {{ .Values.metaReplicas }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+    - name: influxdb-data
+      serviceVersion: {{ .Values.version }}
+      replicas: {{ .Values.dataReplicas }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+  {{- end }}

@@ -1,0 +1,14 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: ch-post-scale-out-shard
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: Custom
+  # Custom operation to trigger post-processing after shard scale-out
+  custom:
+    opsDefinitionName: post-scale-out-shard-for-clickhouse
+    components:
+    - componentName: clickhouse

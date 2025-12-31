@@ -637,7 +637,7 @@ spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - pg-basebackup
   # - volume-snapshot
-  # - config-wal-g and wal-g
+  # - wal-g
   # - archive-wal
   backupMethod: pg-basebackup
   # Specifies the backup policy to be applied for this backup.
@@ -718,63 +718,23 @@ WAL-G is an archival restoration tool for PostgreSQL, MySQL/MariaDB, and MS SQL 
 
 To create wal-g backup for the cluster, it is a multi-step process.
 
-1. configure WAL-G on all PostgreSQL pods
-
-```yaml
-# cat examples/postgresql/config-wal-g.yaml
-apiVersion: dataprotection.kubeblocks.io/v1alpha1
-kind: Backup
-metadata:
-  name: pg-cluster-config-wal-g
-  namespace: demo
-spec:
-  # Specifies the backup method name that is defined in the backup policy.
-  # - pg-basebackup
-  # - volume-snapshot
-  # - config-wal-g and wal-g
-  # - archive-wal
-  backupMethod: config-wal-g
-  # Specifies the backup policy to be applied for this backup.
-  backupPolicyName: pg-cluster-postgresql-backup-policy
-  # Determines whether the backup contents stored in the backup repository should be deleted when the backup custom resource(CR) is deleted. Supported values are `Retain` and `Delete`. - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
-  # - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
-  # - `Delete` means that the backup content and its physical snapshot on backup repository are deleted.
-  deletionPolicy: Delete
-```
+1. enable the cluster PITR and set continuous backup method to `wal-g-archive`
 
 ```bash
-kubectl apply -f examples/postgresql/config-wal-g.yaml
+kubectl edit cluster pg-cluster -n demo
 ```
 
-1. set `archive_command` to `wal-g wal-push %p`
+Set the cluster backup spec to the following:
 
 ```yaml
-# cat examples/postgresql/backup-wal-g.yaml
-apiVersion: dataprotection.kubeblocks.io/v1alpha1
-kind: Backup
-metadata:
-  name: pg-cluster-wal-g
-  namespace: demo
 spec:
-  # Specifies the backup method name that is defined in the backup policy.
-  # - pg-basebackup
-  # - volume-snapshot
-  # - config-wal-g and wal-g
-  # - archive-wal
-  backupMethod: wal-g
-  # Specifies the backup policy to be applied for this backup.
-  backupPolicyName: pg-cluster-postgresql-backup-policy
-  # Determines whether the backup contents stored in the backup repository should be deleted when the backup custom resource(CR) is deleted. Supported values are `Retain` and `Delete`.
-  # - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
-  # - `Delete` means that the backup content and its physical snapshot on backup repository are deleted.
-  deletionPolicy: Delete
-
+  backup:
+    continuousMethod: wal-g-archive
+    enabled: true
+    method: wal-g
+    pitrEnabled: true
+...
 ```
-
-```bash
-kubectl apply -f examples/postgresql/backup-wal-g.yaml
-```
-
 1. you cannot do wal-g backup for a brand-new cluster, you need to insert some data before backup
 
 1. create a backup
@@ -790,7 +750,7 @@ spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - pg-basebackup
   # - volume-snapshot
-  # - config-wal-g and wal-g
+  # - wal-g
   # - archive-wal
   backupMethod: wal-g
   # Specifies the backup policy to be applied for this backup.
@@ -806,20 +766,9 @@ spec:
 kubectl apply -f examples/postgresql/backup-wal-g.yaml
 ```
 
-> [!NOTE]
-> if there is horizontal scaling out new pods after step 2, you need to do config-wal-g again
-
 ### Restore
 
 To restore a new cluster from a Backup:
-
-1. Get the list of accounts and their passwords from the backup:
-
-```bash
-kubectl get backup -n demo pg-cluster-pg-basebackup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
-```
-
-1. Update `examples/postgresql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
 
 ```yaml
 # cat examples/postgresql/restore.yaml
@@ -829,8 +778,7 @@ metadata:
   name: pg-restore
   namespace: demo
   annotations:
-    # NOTE: replace <ENCRYPTED-SYSTEM-ACCOUNTS> with the accounts info from you backup
-    kubeblocks.io/restore-from-backup: '{"postgresql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"pg-cluster-pg-basebackup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"postgresql":{"name":"pg-cluster-pg-basebackup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: postgresql
@@ -1221,6 +1169,9 @@ spec:
     - path: /metrics
       port: http-metrics
       scheme: http
+    - path: /metrics
+      port: patroni
+      scheme: http
   namespaceSelector:
     matchNames:
       - demo
@@ -1239,6 +1190,8 @@ kubectl apply -f examples/postgresql/pod-monitor.yaml
 Login to the Grafana dashboard and import the dashboard.
 
 There is a pre-configured dashboard for PostgreSQL under the `APPS / PostgreSQL` folder in the Grafana dashboard. And more dashboards can be found in the Grafana dashboard store[^5].
+
+And you can import the patroni dashboard from [Grafana PostgreSQL Patroni](https://grafana.com/grafana/dashboards/18870-postgresql-patroni/).
 
 > [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
@@ -1270,11 +1223,11 @@ spec:
   topology: replication
   componentSpecs:
     - name: postgresql
-      serviceVersion: "14.7.2"
+      serviceVersion: "16.4.0"
       env:
       - name: DCS_ENABLE_KUBERNETES_API  # unset this env if you use zookeeper or etcd, default to empty
       - name: ETCD3_HOST
-        value: 'myetcd-etcd-headless.default.svc.cluster.local:2379' # where is your etcd?
+        value: 'etcd-cluster-etcd-headless.demo.svc.cluster.local:2379' # where is your etcd?
       # - name: ZOOKEEPER_HOSTS
       #   value: 'myzk-zookeeper-0.myzk-zookeeper-headless.default.svc.cluster.local:2181' # where is your zookeeper?
       replicas: 2

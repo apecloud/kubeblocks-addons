@@ -50,12 +50,29 @@ set_jvm_configuration() {
   fi
   MAX_HEAP_SIZE="${max_heap_size_in_mb}M"
 
-  export JVMFLAGS="$JVMFLAGS \
-        -XX:+UseG1GC \
-        -Xlog:gc:/opt/bitnami/zookeeper/logs/gc.log
-        -Xlog:gc* \
-        -XX:NewRatio=2 \
-        -Xms$MAX_HEAP_SIZE -Xmx$MAX_HEAP_SIZE"
+  gc_file="/opt/bitnami/zookeeper/logs/gc.log"
+  java_major=$(java -XshowSettings:properties -version 2>&1 | grep "java.specification.version" | awk '{print $3}')
+  if [ "${java_major}" -ge 9 ];then
+    JVMFLAGS="$JVMFLAGS \
+      -XX:+UseG1GC \
+      -Xlog:gc:${gc_file}
+      -Xlog:gc* \
+      -XX:NewRatio=2 \
+      -Xms$MAX_HEAP_SIZE -Xmx$MAX_HEAP_SIZE"
+  else
+    JVMFLAGS="$JVMFLAGS \
+      -XX:+UseG1GC \
+      -Xloggc:${gc_file} \
+      -XX:+PrintGCDetails \
+      -XX:+PrintGCDateStamps \
+      -XX:+PrintGCTimeStamps \
+      -XX:+UseGCLogFileRotation
+      -XX:NewRatio=2 \
+      -Xms$MAX_HEAP_SIZE -Xmx$MAX_HEAP_SIZE"
+  fi
+
+  hash_str=$(echo -n ${ZK_ADMIN_USER}:${ZK_ADMIN_PASSWORD} | openssl dgst -binary -sha1 | openssl base64)
+  export JVMFLAGS="${JVMFLAGS} -Dzookeeper.DigestAuthenticationProvider.superDigest=${ZK_ADMIN_USER}:${hash_str}"
 }
 
 start() {

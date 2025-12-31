@@ -257,10 +257,8 @@
 	// Compress the mysql.gtid_executed table each time this many transactions have taken place.
 	gtid_executed_compression_period?: int & >=0 & <=4294967295
 
-	gtid_mode?: string & "0" | "OFF" | "ON" | "1"
-
 	// Controls whether GTID based logging is enabled and what type of transactions the logs can contain
-	"gtid-mode"?: string & "OFF" | "OFF_PERMISSIVE" | "ON_PERMISSIVE" | "ON"
+	"gtid_mode"?: string & "OFF" | "OFF_PERMISSIVE" | "ON_PERMISSIVE" | "ON"
 
 	gtid_owned?: string
 
@@ -673,6 +671,9 @@
 
 	// Controls whether or not MySQL uses Linux native asynchronous IO.
 	innodb_use_native_aio?: string & "0" | "1" | "OFF" | "ON"
+
+	// On platforms that support fdatasync() system calls, having innodb_use_fdatasync enabled permits using fdatasync() instead of fsync() system calls for operating system flushes.
+	innodb_use_fdatasync?: string & "0" | "1" | "OFF" | "ON"
 
 	// The number of I/O threads for write operations in InnoDB.
 	innodb_write_io_threads?: int & >=1 & <=64

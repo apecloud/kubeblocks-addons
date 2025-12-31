@@ -15,6 +15,8 @@ handle_exit() {
 trap handle_exit EXIT
 
 # use etcdctl create snapshot
+mkdir -p "$BACKUP_DIR"
+cd "$BACKUP_DIR"
 ENDPOINT="$DP_DB_HOST.$CLUSTER_NAMESPACE.svc$CLUSTER_DOMAIN:2379"
 exec_etcdctl "${ENDPOINT}" snapshot save "${DP_BACKUP_NAME}"
 
@@ -27,6 +29,7 @@ export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 tar -cvf - "${DP_BACKUP_NAME}" | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst"
+rm -rf "${BACKUP_DIR}"
 
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}" && sync

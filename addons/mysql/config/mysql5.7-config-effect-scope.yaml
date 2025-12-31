@@ -17,8 +17,6 @@ dynamicParameters:
   - binlog_stmt_cache_size
   - block_encryption_mode
   - bulk_insert_buffer_size
-  - character_set_client
-  - character_set_connection
   - character_set_database
   - character_set_filesystem
   - character_set_results
@@ -254,6 +252,21 @@ dynamicParameters:
   - transaction_write_set_extraction
   - unique_checks
   - updatable_views_with_limit
+  - loose_audit_log_policy
+  - slave_exec_mode
+  - slave_net_timeout
+  - sort_buffer_size
+  - join_buffer_size
+  - slave_parallel_type
+  - slave_parallel_workers
+  - slave_preserve_commit_order
+  - performance_schema_digests_size
+  - performance_schema_events_stages_history_long_size
+  - performance_schema_events_transactions_history_long_size
+  - relay_log_info_repository
+  - loose_audit_log_exclude_accounts
+  - loose_audit_log_rotations
+  - loose_audit_log_rotate_on_size
 immutableParameters:
   - auto_generate_certs
   - basedir
@@ -270,9 +283,9 @@ immutableParameters:
   - innodb_temp_data_file_path
   - log_bin
   - log_bin_index
-  - log_slave_updates
   - mecab_rc_file
   - open_files_limit
+  - port
   - plugin_dir
   - protocol_version
   - sha256_password_private_key_path
@@ -285,6 +298,11 @@ immutableParameters:
   - lower_case_file_system
   - lower_case_table_names
 staticParameters:
+  - relay_log
+  - relay_log_index
+  - relay_log_recovery
+  - performance_schema
+  - log_slave_updates
   - default_time_zone
   - back_log
   - bind_address
@@ -344,7 +362,6 @@ staticParameters:
   - ngram_token_size
   - old
   - pid_file
-  - port
   - proxy_user
   - sha256_password_auto_generate_rsa_keys
   - sha256_password_public_key_path
@@ -357,9 +374,14 @@ staticParameters:
   - ssl_cipher
   - ssl_crl
   - ssl_crlpath
+  - slave_load_tmpdir
   - system_time_zone
   - secure_file_priv
   - table_open_cache_instances
   - thread_stack
   - version_comment
   - version_compile_os
+  - loose_audit_log_handler
+  - loose_audit_log_file
+  - loose_audit_log_buffer_size
+  - loose_audit_log_strategy

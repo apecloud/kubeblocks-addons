@@ -86,23 +86,18 @@ spec:
         command:
           - /bin/sh
           - -c
-          - |
-            /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
+          - /scripts/mongodb-member-leave.sh > /tmp/member-leave.log 2>&1
     switchover:
       exec:
         container: mongodb
         command:
           - /bin/sh
           - -c
-          - |
-
-            if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
-                echo "switchover not triggered for primary, nothing to do, exit 0."
-                exit 0
-            fi
-
-            /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
+          - /scripts/mongodb-switchover.sh > /tmp/switchover.log 2>&1
   runtime:
+    securityContext:
+      # percona-server-mongodb needs run as root to have privilege to access to keyfile
+      runAsUser: 0
     initContainers:
       - command:
           - cp
@@ -112,6 +107,31 @@ spec:
           - /tools/
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-syncer
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+      - command:
+          - sh
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/tmp/bin
+            cp -r /opt/bitnami/kubectl/bin/kubectl {{ .Values.dataMountPath }}/tmp/bin
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-kubectl
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+      - command:
+          - sh
+          - -c
+          - |
+            cp -r /usr/bin/pbm /tools
+            cp -r /usr/bin/pbm-agent /tools
+            cp -r /usr/bin/pbm-agent-entrypoint /tools
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-pbm-agent
         volumeMounts:
           - mountPath: /tools
             name: tools
@@ -160,6 +180,23 @@ spec:
             value: $(MONGODB_USER)
           - name: MONGODB_ROOT_PASSWORD
             value: $(MONGODB_PASSWORD)
+          - name: MONGODB_GRANT_ANYACTION_PRIVILEGE
+            value: "true"
+          - name: PBM_AGENT_MONGODB_USERNAME
+            value: $(MONGODB_USER)
+          - name: PBM_AGENT_MONGODB_PASSWORD
+            value: $(MONGODB_PASSWORD)
+          - name: PBM_MONGODB_REPLICA_SET
+            value: $(KB_CLUSTER_COMP_NAME)
+          - name: PBM_AGENT_SIDECAR
+            value: "true"
+          - name: PBM_AGENT_SIDECAR_SLEEP
+            value: "5"
+          - name: PBM_MONGODB_URI
+            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+          # syncer uses the env to wait dns ready
+          - name: KB_POD_FQDN
+            value: "$(POD_NAME).$(CLUSTER_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc"
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -173,8 +210,50 @@ spec:
             mountPath: /scripts
           - mountPath: /tools
             name: tools
+      - name: mongodb-backup-agent
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+            - /bin/bash
+            - -c
+            - |
+              while [ -f $PBM_DATA_MOUNT_POINT/tmp/mongodb_pbm.backup ]; do
+                echo "Waiting for restore...";
+                sleep 5;
+              done
+              exec pbm-agent-entrypoint
+        env:
+          - name: PATH
+            value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: PBM_AGENT_MONGODB_USERNAME
+            value: $(MONGODB_USER)
+          - name: PBM_AGENT_MONGODB_PASSWORD
+            value: $(MONGODB_PASSWORD)
+          - name: PBM_MONGODB_REPLICA_SET
+            value: $(KB_CLUSTER_COMP_NAME)
+          - name: PBM_AGENT_SIDECAR
+            value: "true"
+          - name: PBM_AGENT_SIDECAR_SLEEP
+            value: "5"
+          - name: PBM_MONGODB_URI
+            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+          - name: PBM_DATA_MOUNT_POINT
+            value: {{ .Values.dataMountPath }}
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - name: scripts
+            mountPath: /scripts
       - name: exporter
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /mongodb_exporter
+        args:
+          - --compatible-mode
+          - --discovering-mode
+          - --mongodb.direct-connect
+          - --mongodb.global-conn-pool
+          - --collect-all
         ports:
           - name: exporter
             protocol: TCP
@@ -212,6 +291,11 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: KB_CLUSTER_COMP_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     - name: MONGODB_USER
       valueFrom:
         credentialVarRef:
@@ -226,6 +310,16 @@ spec:
           name: root
           optional: false
           password: Required
+    - name: MONGODB_REPLICA_SET_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: MONGODB_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
     - name: KB_SERVICE_PORT
       valueFrom:
         hostNetworkVarRef:
@@ -235,7 +329,7 @@ spec:
             port:
               name: mongodb
               option: Optional
-      expression: {{ `{{if ne (index . "KB_SERVICE_PORT") ""}}{{.KB_SERVICE_PORT}}{{else}}27017{{end}}` | toYaml }}
+      expression: {{ `{{if index . "KB_SERVICE_PORT"}}{{.KB_SERVICE_PORT}}{{else}}27017{{end}}` | toYaml }}
     - name: SYNCER_SERVICE_PORT
       valueFrom:
         hostNetworkVarRef:
@@ -254,7 +348,7 @@ spec:
             port:
               name: exporter
               option: Optional
-      expression: {{ `{{if ne (index . "EXPORTER_SERVICE_PORT") ""}}{{.EXPORTER_SERVICE_PORT}}{{else}}9216{{end}}` | toYaml }}
+      expression: {{ `{{if index . "EXPORTER_SERVICE_PORT"}}{{.EXPORTER_SERVICE_PORT}}{{else}}9216{{end}}` | toYaml }}
   hostNetwork:
     containerPorts:
       - container: mongodb

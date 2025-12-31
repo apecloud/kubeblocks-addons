@@ -1,0 +1,64 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: falkordb-with-node-port
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: falkordb
+  topology: replication
+  componentSpecs:
+    - name: falkordb
+      replicas: 2
+      disableExporter: true
+      # Component-level services override services defined in referenced ComponentDefinition and expose
+      # endpoints that can be accessed by clients
+      # This example explicitly override the svc `falkordb-advertised` to use the NodePort
+      # This is a per-pod svc.
+      services:
+        - name: falkordb-advertised
+          serviceType: NodePort
+          podService: true
+      serviceVersion: 4.12.5
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+    - name: falkordb-sent
+      replicas: 3
+      # Component-level services override services defined in referenced ComponentDefinition and expose
+      # endpoints that can be accessed by clients
+      # This example explicitly override the svc `sentinel-advertised` to use the NodePort
+      # This is a per-pod svc.
+      services:
+        - name: sentinel-advertised
+          serviceType: NodePort
+          podService: true
+      serviceVersion: 4.12.5
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            storageClassName:
+            resources:
+              requests:
+                storage: 20Gi

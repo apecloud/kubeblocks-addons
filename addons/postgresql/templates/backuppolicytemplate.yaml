@@ -14,8 +14,8 @@ metadata:
           "wal-g-archive": [{"key": "archive_command","value": "'envdir {{ .Values.dataMountPath }}/wal-g/env {{ .Values.dataMountPath }}/wal-g/wal-g wal-push %p'"}]
         },
         "disable": {
-          "archive-wal": [{ "key": "archive_command","value": "'/bin/true'"}],
-          "wal-g-archive": [{ "key": "archive_command","value": "'/bin/true'"}]
+          "archive-wal": [{"key": "archive_command","value": "'/bin/true'"}],
+          "wal-g-archive": [{"key": "archive_command","value": "'/bin/true'"}]
         }
       }
 spec:
@@ -26,6 +26,7 @@ spec:
     role: primary
     fallbackRole: secondary
     account: postgres
+    useParentSelectedPods: true
   backupMethods:
     - name: pg-basebackup
       snapshotVolumes: false
@@ -38,21 +39,13 @@ spec:
         - name: IMAGE_TAG
           valueFrom:
             versionMapping:
+              {{- range .Values.versions }}
+              {{- range .minors }}
               - serviceVersions:
-                  - "12"
-                mappedValue: "12.15.0-pgvector-v0.6.1"
-              - serviceVersions:
-                  - "14"
-                mappedValue: "14.8.0-pgvector-v0.6.1"
-              - serviceVersions:
-                  - "15"
-                mappedValue: "15.7.0"
-              - serviceVersions:
-                  - "16"
-                mappedValue: "16.4.0"
-              - serviceVersions:
-                  - "17"
-                mappedValue: "17.5"
+                  - "{{ .version }}"
+                mappedValue: "{{ .tag }}"
+              {{- end }}
+              {{- end }}
       targetVolumes:
         volumeMounts:
           - name: data
@@ -62,16 +55,6 @@ spec:
       targetVolumes:
         volumes:
           - data
-    - name: config-wal-g
-      target:
-        role: ""
-        strategy: All
-      actionSetName: postgresql-config-wal-g
-      snapshotVolumes: false
-      targetVolumes:
-        volumeMounts:
-          - name: data
-            mountPath: {{ .Values.dataMountPath }}
     - name: wal-g
       actionSetName: postgresql-wal-g
       snapshotVolumes: false
@@ -109,6 +92,14 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+    - name: pgdump
+      snapshotVolumes: false
+      actionSetName: postgresql-pgdump
+      env: *compDefEnvMapping
+    - name: pgdumpall
+      snapshotVolumes: false
+      actionSetName: postgresql-pgdumpall
+      env: *compDefEnvMapping
   schedules:
     - backupMethod: pg-basebackup
       enabled: false
@@ -134,3 +125,11 @@ spec:
       enabled: false
       cronExpression: "*/5 * * * *"
       retentionPeriod: 8d
+    - backupMethod: pgdump
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: pgdumpall
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d

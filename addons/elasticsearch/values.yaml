@@ -8,6 +8,8 @@ fullnameOverride: ""
 
 clusterDomain: "cluster.local"
 
+## @param application images
+##
 image:
   # bitnami/elasticsearch
   # docker pull bitnami/elasticsearch
@@ -22,7 +24,7 @@ image:
   # refer: addons/elasticsearch/plugins/Dockerfile
   plugin:
     repository: apecloud/elasticsearch-plugins
-    tag: "8.8.2"
+    tag: "0.1.0"
   tools:
     repository: apecloud/curl-jq
     tag: 0.1.0
@@ -32,6 +34,77 @@ image:
   agent:
     repository: apecloud/elasticsearch-agent
     tag: "0.1.0"
+
+## @param supported elasticsearch versions with detailed information
+esVersions:
+  - major: "6"
+    componentDef: "^elasticsearch-6-"
+    masterComponentDef: "^elasticsearch-master-6-"
+    dataComponentDef: "^elasticsearch-data-6-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["6.8.23", "6.8.23", "6.8.23", false]
+  - major: "7"
+    componentDef: "^elasticsearch-7-"
+    masterComponentDef: "^elasticsearch-master-7-"
+    dataComponentDef: "^elasticsearch-data-7-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["7.7.1", "7.7.1", "7.7.1", false]
+      - ["7.8.1", "7.8.1", "7.8.1", false]
+      - ["7.10.1", "7.10.1", "7.10.1", false]
+      - ["7.10.2", "7.10.2", "7.10.2", false]
+  - major: "8"
+    componentDef: "^elasticsearch-8-"
+    masterComponentDef: "^elasticsearch-master-8-"
+    dataComponentDef: "^elasticsearch-data-8-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["8.1.3", "8.1.3", "8.1.3", false]
+      - ["8.8.2", "8.8.2", "8.8.2", false]
+      - ["8.15.5", "8.15.5", "8.15.5", false]
+
+## @param supported kibana versions with detailed information
+kibanaVersions:
+  - major: "6"
+    componentDef: "^kibana-6-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["6.8.23", "6.8.23", "6.8.23", false]
+  - major: "7"
+    componentDef: "^kibana-7-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["7.7.1", "7.7.1", "7.7.1", false]
+      - ["7.8.1", "7.8.1", "7.8.1", false]
+      - ["7.10.1", "7.10.1", "7.10.1", false]
+      - [ "7.10.2", "7.10.2", "7.10.2", false]
+  - major: "8"
+    componentDef: "^kibana-8-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["8.1.3", "8.1.3", "8.1.3", false]
+      - ["8.8.2", "8.8.2", "8.8.2", false]
+      - ["8.9.1", "8.9.1", "8.9.1", false]
+      - ["8.15.5", "8.15.5", "8.15.5", false]
+
+# @param zoneAware enable zone awareness
+# @param zoneAware.enabled enable zone awareness
+# @param zoneAware.configMap config map name for zone awareness mapping
+# The config map will be mounted as a volume at /mnt/zone-aware-mapping/mapping
+# The config map should have the following format:
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: elasticsearch-zone-aware-mapping
+# data:
+#   mapping: |
+#     zone1: node1,node2
+#     zone2: node3,node4,node5
+#     zone3:
+zoneAware:
+  enabled: false
+  configMap: elasticsearch-zone-aware-mapping
 
 exporter:
   service:

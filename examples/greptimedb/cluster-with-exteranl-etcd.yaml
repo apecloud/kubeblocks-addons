@@ -1,0 +1,91 @@
+---
+# create etcd cluster once
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: etcd-cluster
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: etcd
+      componentDef: etcd
+      serviceVersion: 3.6.1
+      disableExporter: false
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+---
+# create a greptimedb cluster refering an alreay creating etcd cluster
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: greptimedb-cluster-external-etcd
+  namespace: demo
+spec:
+  clusterDef: greptimedb
+  # Specifies the name of the ClusterTopology to be used when creating the Cluster.
+  # use external-etcd topology to reuse an existing etcd cluster
+  topology: external-etcd
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: frontend
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+    - name: datanode
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: datanode
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            storageClassName: ""
+            resources:
+              requests:
+                storage: 20Gi
+    - name: meta
+      serviceRefs:
+      - name: etcd
+        clusterServiceSelector:
+          cluster: etcd-cluster # set this to your ETCD Cluster Name
+          namesapce: demo
+          service:
+            component: etcd
+            service: headless
+            port: client
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+

@@ -10,6 +10,7 @@ spec:
   provider: kubeblocks
   description: tidb's metadata server
   updateStrategy: BestEffortParallel
+  minReadySeconds: 30
   vars:
     - name: PD_LEADER_POD_NAME
       valueFrom:
@@ -92,8 +93,6 @@ spec:
             {{- .Files.Get "scripts/pd_memberleave.sh" | nindent 14 }}
     switchover:
       exec:
-        targetPodSelector: Role
-        matchingKey: leader
         command:
           - bash
           - -c

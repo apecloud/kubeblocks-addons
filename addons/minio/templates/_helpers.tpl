@@ -93,3 +93,20 @@ Define minio config template name
 {{- define "minio.configTplName" -}}
 minio-config-template
 {{- end -}}
+
+{{/*
+Get MinIO default service version
+*/}}
+{{- define "minio.defaultServiceVersion" -}}
+{{- $defaultVersion := "" -}}
+{{- range .Values.versions -}}
+  {{- if .isDefault -}}
+    {{- $defaultVersion = .serviceVersion -}}
+    {{- break -}}
+  {{- end -}}
+{{- end -}}
+{{- if not $defaultVersion -}}
+  {{- $defaultVersion = (index .Values.versions 0).serviceVersion -}}
+{{- end -}}
+{{- $defaultVersion -}}
+{{- end -}}

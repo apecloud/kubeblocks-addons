@@ -105,14 +105,8 @@
 	// A fully qualified path to the public RSA key used for authentication.
 	caching_sha2_password_public_key_path?: string
 
-	// The character set for statements that arrive from the client.
-	character_set_client?: string & "big5" | "dec8" | "cp850" | "hp8" | "koi8r" | "latin1" | "latin2" | "swe7" | "ascii" | "ujis" | "sjis" | "hebrew" | "tis620" | "euckr" | "koi8u" | "gb2312" | "greek" | "cp1250" | "gbk" | "latin5" | "armscii8" | "utf8" | "cp866" | "keybcs2" | "macce" | "macroman" | "cp852" | "latin7" | "utf8mb4" | "cp1251" | "cp1256" | "cp1257" | "binary" | "geostd8" | "cp932" | "eucjpms"
-
 	// Don't ignore character set information sent by the client.
 	"character-set-client-handshake"?: string & "OFF" | "ON"
-
-	// The character set used for literals that do not have a character set introducer and for number-to-string conversion.
-	character_set_connection?: string & "big5" | "dec8" | "cp850" | "hp8" | "koi8r" | "latin1" | "latin2" | "swe7" | "ascii" | "ujis" | "sjis" | "hebrew" | "tis620" | "euckr" | "koi8u" | "gb2312" | "greek" | "cp1250" | "gbk" | "latin5" | "armscii8" | "utf8" | "ucs2" | "cp866" | "keybcs2" | "macce" | "macroman" | "cp852" | "latin7" | "utf8mb4" | "cp1251" | "utf16" | "cp1256" | "cp1257" | "utf32" | "binary" | "geostd8" | "cp932" | "eucjpms"
 
 	// The character set used by the default database.
 	character_set_database?: string & "big5" | "dec8" | "cp850" | "hp8" | "koi8r" | "latin1" | "latin2" | "swe7" | "ascii" | "ujis" | "sjis" | "hebrew" | "tis620" | "euckr" | "koi8u" | "gb2312" | "greek" | "cp1250" | "gbk" | "latin5" | "armscii8" | "utf8" | "ucs2" | "cp866" | "keybcs2" | "macce" | "macroman" | "cp852" | "latin7" | "utf8mb4" | "cp1251" | "utf16" | "cp1256" | "cp1257" | "utf32" | "binary" | "geostd8" | "cp932" | "eucjpms"
@@ -257,10 +251,8 @@
 	// Compress the mysql.gtid_executed table each time this many transactions have taken place.
 	gtid_executed_compression_period?: int & >=0 & <=4294967295
 
-	gtid_mode?: string & "OFF" | "ON"
-
 	// Controls whether GTID based logging is enabled and what type of transactions the logs can contain
-	"gtid-mode"?: string & "OFF" | "OFF_PERMISSIVE" | "ON_PERMISSIVE" | "ON"
+	"gtid_mode"?: string & "OFF" | "OFF_PERMISSIVE" | "ON_PERMISSIVE" | "ON"
 
 	gtid_owned?: string
 
@@ -417,7 +409,7 @@
 	innodb_flush_log_at_trx_commit?: int & >=0 & <=2
 
 	// Determines Innodb flush method
-	innodb_flush_method?: string & "O_DIRECT"
+	innodb_flush_method?: string & "O_DIRECT" | "O_DSYNC" | "littlesync" | "fsync" | "nosync" | "O_DIRECT_NO_FSYNC"
 
 	// Specifies whether flushing a page from the InnoDB buffer pool also flushes other dirty pages in the same extent.
 	innodb_flush_neighbors?: int & >=0 & <=2
@@ -748,7 +740,9 @@
 	log_queries_not_using_indexes?: string & "OFF" | "ON"
 
 	// Allow for chain replication - ingression
-	log_slave_updates: string & "OFF" | "ON" | *"ON"
+	log_slave_updates: string
+
+	log_replica_updates: string
 
 	// Include slow administrative statements in the statements written to the slow query log.
 	log_slow_admin_statements?: string & "OFF" | "ON"
@@ -839,7 +833,7 @@
 	max_points_in_geometry?: int & >=3 & <=3145728
 
 	// Used if the potential for denial-of-service attacks based on running the server out of memory by preparing huge numbers of statements.
-	max_prepared_stmt_count?: int & >=0 & <=1048576
+	max_prepared_stmt_count?: int & >=0 & <=4194304
 
 	max_relay_log_size: int & >=0 & <=1073741824 | *0
 
@@ -1310,6 +1304,8 @@
 	// slave_exec_mode controls how a replication thread resolves conflicts and errors during replication.
 	slave_exec_mode?: string & "IDEMPOTENT" | "STRICT"
 
+	replica_exec_mode?: string & "IDEMPOTENT" | "STRICT"
+
 	slave_load_tmpdir?: string
 
 	// The number of seconds to wait for more data from a master/slave connection before aborting the read.
@@ -1320,6 +1316,8 @@
 
 	// Sets the number of slave worker threads for executing replication events (transactions) in parallel. Setting this variable to 0 (the default) disables parallel execution.
 	slave_parallel_workers?: int & >=0 & <=1024
+
+	replica_parallel_workers?: int & >=0 & <=1024
 
 	// For multithreaded slaves, this option sets the maximum amount of memory (in bytes) available to slave worker queues holding events not yet applied.
 	slave_pending_jobs_size_max?: int & >=1024 & <=18446744073709547520
@@ -1363,7 +1361,7 @@
 	sql_log_off: string & "OFF" | "ON" | *"OFF"
 
 	// Current SQL Server Mode.
-	sql_mode?: string & "ALLOW_INVALID_DATES" | "ANSI_QUOTES" | "ERROR_FOR_DIVISION_BY_ZERO" | "HIGH_NOT_PRECEDENCE" | "IGNORE_SPACE" | "NO_AUTO_VALUE_ON_ZERO" | "NO_BACKSLASH_ESCAPES" | "NO_DIR_IN_CREATE" | "NO_ENGINE_SUBSTITUTION" | "NO_UNSIGNED_SUBTRACTION" | "NO_ZERO_DATE" | "NO_ZERO_IN_DATE" | "ONLY_FULL_GROUP_BY" | "PAD_CHAR_TO_FULL_LENGTH" | "PIPES_AS_CONCAT" | "REAL_AS_FLOAT" | "STRICT_ALL_TABLES" | "STRICT_TRANS_TABLES" | "ANSI" | "TRADITIONAL"
+	sql_mode?: string
 
 	sql_notes: string & "OFF" | "ON" | *"ON"
 
@@ -1517,6 +1515,30 @@
 
 	// For SQL window functions, determines whether to enable inversion optimization for moving window frames also for floating values.
 	windowing_use_high_precision: string & "OFF" | "ON" | *"ON"
+
+	// This variable is used to specify which events should be logged.
+	loose_audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
+
+	// Specifies the audit log plugin to use.
+	loose_audit_log_handler?: string & "FILE" | "SYSLOG" | *"FILE"
+
+	// The file name of the audit log.
+	loose_audit_log_file?: string
+
+	// The size at which the audit log file is rotated.
+	loose_audit_log_buffer_size?: string
+
+	// The strategy used to write audit log records.
+	loose_audit_log_strategy?: string & "ASYNCHRONOUS" | "PERFORMANCE" | "SEMISYNCHRONOUS" | "SYNCHRONOUS" | *"ASYNCHRONOUS"
+
+	// The size at which the audit log file is rotated.
+	loose_audit_log_rotate_on_size?: int | *0
+
+	// The number of rotated audit log files to keep.
+	loose_audit_log_rotations?: int | *0
+
+	// A comma-separated list of accounts that are not subject to audit logging.
+	loose_audit_log_exclude_accounts?: string
 
 	// other parameters
 	// reference mysql parameters

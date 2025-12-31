@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
   annotations:
-    dataprotection.kubeblocks.io/unify-full-and-continuous-restore: "true"
+    dataprotection.kubeblocks.io/skip-base-backup-restore-in-pitr: "true"
 spec:
   backupType: Continuous
   backup:

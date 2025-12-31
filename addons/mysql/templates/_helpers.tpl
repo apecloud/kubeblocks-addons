@@ -300,3 +300,23 @@ init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemal
 init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
 mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
 {{- end -}}
+
+{{/*
+Generate LD_PRELOAD environment variable - always set, but will be cleared at runtime for ARM64
+*/}}
+{{- define "mysql.spec.runtime.ldPreloadEnv" -}}
+{{- if ne (.Values.architecture | default "") "arm64" }}
+- name: LD_PRELOAD
+  value: /tools/lib/libjemalloc.so.2
+{{- end }}
+{{- end -}}
+
+{{/*
+Generate reloader scripts configmap
+*/}}
+{{- define "mysql.extend.reload.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "reloader/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}

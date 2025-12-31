@@ -26,6 +26,7 @@ spec:
   serviceKind: redis-cluster
   serviceVersion: {{ .serviceVersion }}
   minReadySeconds: 10
+  podUpgradePolicy: ReCreate
   services:
     - name: redis-advertised
       serviceName: redis-advertised
@@ -47,6 +48,7 @@ spec:
         ## the type can override in cluster componentSpec services, type can loadBalancer
         type: LoadBalancer
         # allocateLoadBalancerNodePorts: false
+        externalTrafficPolicy: Cluster
         ports:
           - name: redis-advertised
             port: 6379
@@ -83,11 +85,6 @@ spec:
       namespace: {{ $.Release.Namespace }}
       volumeName: redis-cluster-config
       externalManaged: true
-    - name: redis-metrics-config
-      template: {{ include "redis.metricsConfiguration" $ }}
-      namespace: {{ $.Release.Namespace }}
-      volumeName: redis-metrics-config
-      defaultMode: 0444
   scripts:
     - name: redis-cluster-scripts
       template: {{ include "redisCluster.scriptsTemplate" $ }}
@@ -131,6 +128,11 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
     ## the cluster domain without . prefix
     - name: CLUSTER_DOMAIN
       value: {{ $.Values.clusterDomain }}
@@ -332,7 +334,7 @@ spec:
               option: Required
     - name: SERVICE_PORT
       value: "6379"
-      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if index . "REDIS_CLUSTER_HOST_NETWORK_PORT"}}{{.REDIS_CLUSTER_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
     ## the env of redis server port for dbctl to connect to redis cluster server
     - name: DBCTL_REDIS_SERVICE_PORT
       value: $(SERVICE_PORT)
@@ -348,7 +350,7 @@ spec:
               option: Required
     - name: CLUSTER_BUS_PORT
       value: "16379"
-      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_BUS_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}}{{else}}{{.CLUSTER_BUS_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if index . "REDIS_CLUSTER_HOST_NETWORK_BUS_PORT"}}{{.REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}}{{else}}{{.CLUSTER_BUS_PORT}}{{end}}` | toYaml }}
   {{- if $.Values.enableMetrics }}
     ## the redis server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks
     - name: REDIS_METRICS_HOST_NETWORK_PORT
@@ -362,7 +364,7 @@ spec:
               option: Required
     - name: REDIS_METRICS_HTTP_PORT
       value: "9121"
-      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}{{.REDIS_METRICS_HTTP_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if index . "REDIS_METRICS_HOST_NETWORK_PORT"}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}{{.REDIS_METRICS_HTTP_PORT}}{{end}}` | toYaml }}
     ## the redis server metrics container host network server port when using host network mode, the port will be allocated automatically by KubeBlocks
     - name: REDIS_METRICS_HOST_NETWORK_SERVER_PORT
       valueFrom:
@@ -375,7 +377,7 @@ spec:
               option: Required
     - name: REDIS_METRICS_SERVER_PORT
       value: "8888"
-      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT"}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
     ## the redis cluster host network port list for all shard pods, the all pods in same shard has the same host network port allocated automatically by KubeBlocks.
     ## the value format is like "shard-chg:1057,shard-khh:1056,shard-mpg:1053"
     - name: REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT
@@ -498,6 +500,14 @@ spec:
           - /bin/bash
           - -c
           - /scripts/{{ $redisClusterSwitchoverScripts }}  > /tmp/switchover.log 2>&1
+    memberJoin:
+      exec:
+        container: redis-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/sync-acl.sh
+        targetPodSelector: Any
   runtime:
     initContainers:
       - name: init-dbctl
@@ -574,26 +584,20 @@ spec:
           runAsNonRoot: true
           runAsUser: 1001
         env:
-          - name: ENDPOINT
-            value: "localhost:$(SERVICE_PORT)"
-          - name: METRICS_HTTP_PORT
-            value: $(REDIS_METRICS_HTTP_PORT)
-          - name: METRICS_SERVER_PORT
-            value: $(REDIS_METRICS_SERVER_PORT)
+          - name: REDIS_ADDR
+            value: "redis://localhost:$(SERVICE_PORT)"
+          - name: REDIS_EXPORTER_WEB_LISTEN_ADDRESS
+            value: "0.0.0.0:$(REDIS_METRICS_HTTP_PORT)"
           - name: REDIS_USER
             value: $(REDIS_DEFAULT_USER)
           - name: REDIS_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
-        command:
-          - "/bin/agamotto"
-          - "--config=/opt/conf/metrics-config.yaml"
+          - name: REDIS_EXPORTER_IS_CLUSTER
+            value: true
         ports:
           - name: http-metrics
             containerPort: {{ $.Values.metrics.service.port }}
           - name: server-metrics
             containerPort: {{ $.Values.metrics.service.serverPort }}
-        volumeMounts:
-          - name: redis-metrics-config
-            mountPath: /opt/conf
   {{- end }}
 {{- end }}

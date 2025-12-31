@@ -27,12 +27,6 @@
 {{ $buffer_unit = "GB" }}
 {{- end }}
 
-{{- $pgVersion := "16.0" }}
-{{- range $i, $spec := $.cluster.spec.componentSpecs }}
-{{- if eq "postgresql" $spec.name }}
-{{- $pgVersion = $spec.serviceVersion }}
-{{- end }}
-{{- end }}
 
 listen_addresses = '*'
 port = '5432'
@@ -146,13 +140,13 @@ log_executor_stats = 'False'
 logging_collector = 'True'
 log_destination = 'csvlog'
 log_directory = 'log'
-log_filename = 'postgresql-%Y-%m-%d.log'
+log_filename = 'postgresql-%u.log'
 # log_lock_waits = 'True'
 log_min_duration_statement = '1000'
 log_parser_stats = 'False'
 log_planner_stats = 'False'
 log_replication_commands = 'False'
-log_statement = 'ddl'
+log_statement = 'none'
 log_statement_stats = 'False'
 log_temp_files = '128kB'
 log_transaction_sample_rate = '0'
@@ -204,7 +198,7 @@ pgaudit.log_client = 'False'
 pgaudit.log_parameter = 'False'
 pgaudit.log_relation = 'False'
 pgaudit.log_statement_once = 'False'
-pgaudit.log = 'ddl,read,write'
+pgaudit.log = 'ddl'
 # pgaudit.role = ''
 #extension: pglogical
 pglogical.batch_inserts = 'True'
@@ -221,12 +215,7 @@ session_replication_role = 'origin'
 # extension: sql_firewall
 sql_firewall.firewall = 'disable'
 shared_buffers = '{{ printf "%d%s" $shared_buffers $buffer_unit }}'
-
-{{- if semverCompare ">=16.9.0" $pgVersion }}
 shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit,pg_duckdb'
-{{- else }}
-shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit'
-{{- end }}
 
 {{- if eq (index $ "TLS_ENABLED") "true" }}
 ssl = 'True'

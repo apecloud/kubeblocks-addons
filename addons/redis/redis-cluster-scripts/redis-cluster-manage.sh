@@ -785,6 +785,19 @@ verify_secondary_in_all_primaries() {
   return 0
 }
 
+check_current_shard_other_nodes_are_joined() {
+  local current_primary_host="$1"
+  local service_port="$2"
+  cluster_nodes_info=$(get_cluster_nodes_info "$current_primary_host" "$service_port")
+  for secondary_pod_name in "${!scale_out_shard_default_other_nodes[@]}"; do
+    if ! contains "$cluster_nodes_info" "$secondary_pod_name"; then
+      echo "Secondary node $secondary_pod_name not found in primary $current_primary_host, need to joined" >&2
+      return 1
+    fi
+  done
+  return 0
+}
+
 scale_out_redis_cluster_shard() {
   if is_empty "$CURRENT_SHARD_COMPONENT_SHORT_NAME" || is_empty "$KB_CLUSTER_POD_NAME_LIST" || is_empty "$KB_CLUSTER_POD_HOST_IP_LIST" || is_empty "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" || is_empty "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST"; then
     echo "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, KB_CLUSTER_POD_NAME_LIST, KB_CLUSTER_POD_HOST_IP_LIST, KB_CLUSTER_COMPONENT_POD_NAME_LIST and KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set when scale out redis cluster shard" >&2
@@ -808,9 +821,13 @@ scale_out_redis_cluster_shard() {
   primary_node_fqdn=$(echo "$primary_node_with_port" | awk -F ':' '{print $1}')
   primary_node_port=$(echo "$primary_node_with_port" | awk -F ':' '{print $2}')
   mapping_primary_cluster_id=$(get_cluster_id "$primary_node_fqdn" "$primary_node_port")
+  current_primary_joined=false
   if check_slots_covered "$primary_node_with_port" "$SERVICE_PORT"; then
-    echo "The current component shard is already scaled out, no need to scale out again."
-    return 0
+    if check_current_shard_other_nodes_are_joined "$primary_node_fqdn" "$primary_node_port"; then
+      echo "The current component shard is already scaled out, no need to scale out again."
+      return 0
+    fi
+    current_primary_joined=true
   fi
 
   # find the exist available node which is not in the current component
@@ -821,16 +838,18 @@ scale_out_redis_cluster_shard() {
   fi
 
   # add the primary node for the current shard
-  local scale_out_shard_default_primary
-  for primary_pod_name in "${!scale_out_shard_default_primary_node[@]}"; do
-    scale_out_shard_default_primary="${scale_out_shard_default_primary_node[$primary_pod_name]}"
-    if scale_out_shard_primary_join_cluster "$scale_out_shard_default_primary" "$available_node"; then
-      echo "Redis cluster scale out shard primary node $primary_pod_name successfully"
-    else
-      echo "Failed to scale out shard primary node $primary_pod_name" >&2
-      return 1
-    fi
-  done
+  if [ "$current_primary_joined" = false ]; then
+    local scale_out_shard_default_primary
+    for primary_pod_name in "${!scale_out_shard_default_primary_node[@]}"; do
+      scale_out_shard_default_primary="${scale_out_shard_default_primary_node[$primary_pod_name]}"
+      if scale_out_shard_primary_join_cluster "$scale_out_shard_default_primary" "$available_node"; then
+        echo "Redis cluster scale out shard primary node $primary_pod_name successfully"
+      else
+        echo "Failed to scale out shard primary node $primary_pod_name" >&2
+        return 1
+      fi
+    done
+  fi
 
   # waiting for all nodes sync the information
   sleep_when_ut_mode_false 5
@@ -840,6 +859,10 @@ scale_out_redis_cluster_shard() {
   for secondary_pod_name in "${!scale_out_shard_default_other_nodes[@]}"; do
     scale_out_shard_secondary_node="${scale_out_shard_default_other_nodes[$secondary_pod_name]}"
     echo "primary_node_with_port: $primary_node_with_port, primary_node_fqdn: $primary_node_fqdn, mapping_primary_cluster_id: $mapping_primary_cluster_id"
+    if check_node_in_cluster "$primary_node_fqdn" "$primary_node_with_port" "$secondary_pod_name"; then
+      echo "Secondary node $secondary_pod_name already joined the cluster, skip replicating to primary"
+      continue
+    fi
     if secondary_replicated_to_primary "$scale_out_shard_secondary_node" "$primary_node_with_port" "$mapping_primary_cluster_id"; then
       echo "Redis cluster scale out shard secondary node $secondary_pod_name successfully"
     else
@@ -869,6 +892,69 @@ scale_out_redis_cluster_shard() {
 
   # TODO: rebalance the cluster
   return 0
+}
+
+sync_acl_for_redis_cluster_shard() {
+  echo "Sync ACL rules for redis cluster shard..."
+  set +ex
+  redis_base_cmd="redis-cli -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
+  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+     redis_base_cmd="redis-cli -p $SERVICE_PORT"
+  fi
+  is_ok=false
+  acl_list=""
+  # 1. get acl list from other pods
+  for pod_name in $(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' ' '); do
+    pod_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_IP_LIST")
+    if is_empty "$pod_ip"; then
+      echo "Failed to get the host ip of the pod $pod_name"
+      continue
+    fi
+
+    cluster_info=$(get_cluster_info_with_retry "$pod_ip" "$SERVICE_PORT")
+    status=$?
+    if [ $status -ne 0 ]; then
+      continue
+    fi
+    cluster_state=$(echo "$cluster_info" | awk -F: '/cluster_state/{print $2}' | tr -d '[:space:]')
+    if is_empty "$cluster_state" || equals "$cluster_state" "ok"; then
+       acl_list=$($redis_base_cmd -h "$pod_ip" ACL LIST)
+       is_ok=true
+       break
+    fi
+  done
+
+  if [ "$is_ok" = false ]; then
+      echo "Failed to get ACL LIST from other shard pods" >&2
+      exit 1
+  fi
+
+  if [ -z "$acl_list" ]; then
+      echo "No ACL rules found in other pods, skip synchronization" >&2
+      return
+  fi
+  # 2. apply acl list to current shard pods
+  set -e
+  while IFS= read -r user_rule; do
+      [[ -z "$user_rule" ]] && continue
+
+      if [[ "$user_rule" =~ ^user[[:space:]]+([^[:space:]]+) ]]; then
+          username="${BASH_REMATCH[1]}"
+      else
+        # skip invalid user rule
+        continue
+      fi
+
+      if [[ "$username" == "default" ]]; then
+          continue
+      fi
+      rule_part="${user_rule#user $username }"
+      for pod_fqdn in $(echo "$CURRENT_SHARD_POD_FQDN_LIST" | tr ',' '\n'); do
+         $redis_base_cmd -h $pod_fqdn ACL SETUSER "$username" $rule_part >&2
+         $redis_base_cmd -h $pod_fqdn ACL save >&2
+      done
+  done <<< "$acl_list"
+  set_xtrace_when_ut_mode_false
 }
 
 scale_in_redis_cluster_shard() {
@@ -952,6 +1038,7 @@ initialize_or_scale_out_redis_cluster() {
       return 1
     fi
   else
+    sync_acl_for_redis_cluster_shard
     echo "Redis Cluster already initialized, scaling out the shard..."
     if scale_out_redis_cluster_shard; then
       echo "Redis Cluster scale out shard successfully"

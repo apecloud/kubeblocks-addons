@@ -25,13 +25,11 @@ staticParameters:
   - default_time_zone
   - disabled_storage_engines
   - disconnect_on_expired_password
-  - enforce_gtid_consistency
   - explicit_defaults_for_timestamp
   - ft_max_word_len
   - ft_min_word_len
   - ft_query_expansion_limit
   - ft_stopword_file
-  - gtid-mode
   - gtid_owned
   - innodb_adaptive_hash_index_parts
   - innodb_autoinc_lock_mode
@@ -141,7 +139,6 @@ staticParameters:
   - performance_schema_users_size
   - persisted_globals_load
   - pid_file
-  - port
   - protocol_version
   - rds.optimized_writes
   - relay_log
@@ -149,7 +146,6 @@ staticParameters:
   - relay_log_basename
   - relay_log_index
   - relay_log_info_file
-  - relay_log_info_repository
   - relay_log_space_limit
   - report_host
   - report_password
@@ -166,7 +162,6 @@ staticParameters:
   - skip_show_database
   - skip-slave-start
   - slave_load_tmpdir
-  - slave_parallel_type
   - slave_type_conversions
   - socket
   - ssl_ca
@@ -190,6 +185,12 @@ staticParameters:
   - version_compile_machine
   - version_compile_os
   - version_compile_zlib
+  - log_replica_updates
+  - relay_log_recovery
+  - loose_audit_log_handler
+  - loose_audit_log_file
+  - loose_audit_log_buffer_size
+  - loose_audit_log_strategy
 
 dynamicParameters:
   - activate_all_roles_on_login
@@ -218,8 +219,6 @@ dynamicParameters:
   - binlog_transaction_dependency_tracking
   - block_encryption_mode
   - bulk_insert_buffer_size
-  - character_set_client
-  - character_set_connection
   - character_set_database
   - character_set_filesystem
   - character_set_results
@@ -254,7 +253,6 @@ dynamicParameters:
   - general_log_file
   - group_concat_max_len
   - gtid_executed_compression_period
-  - gtid_mode
   - gtid_purged
   - histogram_generation_max_mem_size
   - host_cache_size
@@ -354,6 +352,7 @@ dynamicParameters:
   - innodb_tmpdir
   - innodb_undo_log_encrypt
   - innodb_undo_log_truncate
+  - innodb_use_fdatasync
   - interactive_timeout
   - internal_tmp_mem_storage_engine
   - join_buffer_size
@@ -457,7 +456,6 @@ dynamicParameters:
   - regexp_stack_limit
   - regexp_time_limit
   - relay_log_purge
-  - relay_log_recovery
   - replicate-do-db
   - replicate-do-table
   - replicate-ignore-db
@@ -485,8 +483,11 @@ dynamicParameters:
   - slave_checkpoint_period
   - slave_compressed_protocol
   - slave_exec_mode
+  - replica_exec_mode
   - slave_net_timeout
+  - slave_parallel_type
   - slave_parallel_workers
+  - replica_parallel_workers
   - slave_pending_jobs_size_max
   - slave_preserve_commit_order
   - slave_rows_search_algorithms
@@ -538,6 +539,11 @@ dynamicParameters:
   - wait_timeout
   - windowing_use_high_precision
   - innodb_redo_log_capacity
+  - loose_audit_log_policy
+  - relay_log_info_repository
+  - loose_audit_log_exclude_accounts
+  - loose_audit_log_rotations
+  - loose_audit_log_rotate_on_size
 
 immutableParameters:
   - allow-suspicious-udfs
@@ -553,6 +559,8 @@ immutableParameters:
   - datadir
   - default_authentication_plugin
   - disabled_storage_engines
+  - gtid_mode
+  - enforce_gtid_consistency
   - init_file
   - innodb_data_file_path
   - innodb_data_home_dir
@@ -576,8 +584,8 @@ immutableParameters:
   - lower_case_file_system
   - lower_case_table_names
   - mecab_rc_file
+  - port
   - open_files_limit
-  - persisted_globals_load
   - protocol_version
   - plugin_dir
   - server_id

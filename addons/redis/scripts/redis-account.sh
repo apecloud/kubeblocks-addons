@@ -16,6 +16,9 @@ function do_acl_command() {
         # we need to remove the @1 or @2 and remove the port
         host=$(echo "$host" | sed 's/@[0-9]*//g' | sed 's/:[0-9]*/ /g')
         cmd="redis-cli -h $host -p $service_port --user $user -a $password"
+        if [ -z "$password" ]; then
+            cmd="redis-cli -h $host -p $service_port --user $user"
+        fi
         if [ -n "$ACL_COMMAND" ]; then
             echo "DO ACL COMMAND FOR HOST: $host"
             $cmd $ACL_COMMAND
@@ -54,21 +57,32 @@ function env_pre_check() {
         exit 1
     fi
 
-    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-        echo "REDIS_DEFAULT_PASSWORD is empty, skip ACL operation"
-        exit 1
-    fi
-
-    # cluster mode don't have KB_POD_LIST, but have REDIS_POD_FQDN_LIS and get hosts from redis-cli
+    # cluster mode don't have KB_POD_LIST, but have REDIS_POD_FQDN_LIST and get hosts from redis-cli
     if [ "$SHARD_MODE" != "TRUE" ] && [ -z "$REDIS_POD_FQDN_LIST" ]; then
-        echo "REDIS_POD_FQDN_LIS is empty, skip ACL operation"
+        echo "REDIS_POD_FQDN_LIST is empty, skip ACL operation"
         exit 0
     fi
 
-    if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$POD_FQDN" ]; then
-        echo "KB_POD_NAME is empty, skip ACL operation"
+    if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$CURRENT_POD_NAME" ]; then
+        echo "CURRENT_POD_NAME is empty, skip ACL operation"
         exit 0
     fi
+
+    if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$CURRENT_SHARD_COMPONENT_NAME" ]; then
+        echo "CURRENT_SHARD_COMPONENT_NAME is empty, skip ACL operation"
+        exit 0
+    fi
+    
+    if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$CLUSTER_NAMESPACE" ]; then
+        echo "CLUSTER_NAMESPACE is empty, skip ACL operation"
+        exit 0
+    fi
+
+    if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$CLUSTER_DOMAIN" ]; then
+        echo "CLUSTER_DOMAIN is empty, skip ACL operation"
+        exit 0
+    fi
+    
 }
 
 function create_post_check() {
@@ -83,16 +97,23 @@ function create_post_check() {
 }
 
 function get_cluster_host_list() {
-    host_list=$(redis-cli -c -h "$POD_FQDN" \
+    passwd_cmd="-a $REDIS_DEFAULT_PASSWORD"
+    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+        passwd_cmd=""
+    fi
+    host_list=$(redis-cli -c -h "$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN" \
         -p $SERVICE_PORT \
-        --user $REDIS_DEFAULT_USER \
-        -a $REDIS_DEFAULT_PASSWORD \
+        --user $REDIS_DEFAULT_USER $passwd_cmd \
         CLUSTER NODES |
         grep -v "fail" |
         grep -v "noaddr" |
         awk '{print $2}' |
         cut -d ',' -f2 |
         paste -sd,)
+    if [ -z "$host_list" ]; then
+        echo "GET CLUSTER HOST LIST FAILED, SKIP ACL OPERATION"
+        exit 1
+    fi
 }
 
 function main() {

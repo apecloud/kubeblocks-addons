@@ -8,7 +8,7 @@ MAX_RETRIES=3
 RETRY_INTERVAL=5
 retries=0
 broker_addrs=""
-namesrv_addrs=$(echo "${KB_MEMBER_ADDRESSES}" | tr ',' '\n')
+namesrv_addrs=${ALL_NAMESRV_FQDN//,/:${LISTEN_PORT};}:${LISTEN_PORT}
 while [[ $retries -lt $MAX_RETRIES ]]; do
     for addr in $namesrv_addrs; do
         if [[ -z $broker_addrs ]]; then

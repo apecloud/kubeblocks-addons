@@ -27,6 +27,7 @@ Apache Kafka is a distributed streaming platform designed to build real-time pip
 | Versions |
 |----------|
 | 3.3.2 |
+| 2.8.2 |
 
 ## Prerequisites
 
@@ -56,6 +57,14 @@ Create a Kafka cluster with separated controller and broker components:
 ```bash
 kubectl apply -f examples/kafka/cluster-separated.yaml
 ```
+
+We also maintain an 2.x version, which will rely on an external zookeeper cluster to work. Refer to `cluster-2x-ext-zk-svc-descriptor.yaml` to get an reference config.
+
+#### With authentication enabled
+We currently support SASL/SCRAM auth for 2.x version. If you want to enable it, set `KB_KAFKA_ENABLE_SASL_SCRAM` to `true`
+for both broker and exporter components.
+
+When the cluster creation is done, refer to a secret named `$(CLUSTER_NAME)$-kafka-broker-account-admin` to get the username/password.
 
 ### Horizontal scaling
 

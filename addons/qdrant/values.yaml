@@ -17,7 +17,7 @@ image:
   pullPolicy: IfNotPresent
   tag: "v1.8.4"
   tools:
-    repository: apecloud/curl-jq
+    repository: apecloud/qdrant-tools
     tag: 0.1.0
 
 ## @param supported versions with detailed information
@@ -31,6 +31,8 @@ versions:
       - ["1.8.1", "1.8.1", "v1.8.1", false]
       - ["1.8.4", "1.8.4", "v1.8.4", false]
       - ["1.10.0", "1.10.0", "v1.10.0", false]
+      - ["1.13.4", "1.13.4", "v1.13.4", false]
+      - ["1.15.4", "1.15.4", "v1.15.4", false]
 
 ## @param debugEnabled enables containers' debug logging
 ##

@@ -1,0 +1,30 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: falkordb-sent
+  labels:
+    {{- include "falkordb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "falkordb.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+  {{- range .Values.falkordbVersions }}
+  - compDefs:
+      - {{ .sentinelComponentDef }}
+    releases:
+    {{- range .mirrorVersions }}
+    - {{ .version }}
+    {{- end }}
+  {{- end }}
+  releases:
+  {{- range .Values.falkordbVersions }}
+  {{- $falkordbRepository := printf "%s/%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository }}
+  {{- range .mirrorVersions }}
+  - name: {{ .version }}
+    serviceVersion: {{ .version }}
+    images:
+      falkordb-sent: {{ $falkordbRepository }}:{{ .imageTag }}
+      accountProvision: {{ $falkordbRepository }}:{{ .imageTag }}
+      memberLeave: {{ $falkordbRepository }}:{{ .imageTag }}
+  {{- end }}
+  {{- end }}

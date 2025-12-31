@@ -3,6 +3,9 @@ export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 connect_url="redis-cli -h ${DP_DB_HOST} -p ${DP_DB_PORT} -a ${DP_DB_PASSWORD}"
+if [ -z ${DP_DB_PASSWORD} ]; then
+  connect_url="redis-cli -h ${DP_DB_HOST} -p ${DP_DB_PORT}"
+fi
 global_last_purge_time=$(date +%s)
 global_aof_last_modify_time=0
 global_acl_last_modify_time=0
@@ -20,8 +23,11 @@ function get_base_file_ctime() {
   local base_file=${1}
   if [ "$BASE_FILE_SUFFIX" = "base.rdb" ]; then
     # use the creation time of the base file as the start time
-    echo $(redis-check-rdb "$base_file" | grep 'ctime' | awk -F"'" '{print $2}')
-    return
+    ctime=$(redis-check-rdb "$base_file" | grep 'ctime' | awk -F"'" '{print $2}')
+    if [ -n "$ctime" ]; then
+      echo $ctime
+      return
+    fi
   fi
 
   # for aof base file
@@ -125,6 +131,7 @@ function update_aof_file() {
   fi
 
   # create a directory for backup files we are tracking, and after a aof rewrite, we will archive them in to a tar.zst file
+
   if [ $(get_base_file_ctime "$base_file") -gt ${global_aof_last_modify_time} ]; then
     datasafed push "${base_file}" "${backup_files_prefix}.dir/${AOF_DIR}/$(basename "${base_file}")"
     datasafed push "${backup_manifest}" "${backup_files_prefix}.dir/${backup_manifest}"

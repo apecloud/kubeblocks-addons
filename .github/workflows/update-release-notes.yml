@@ -1,0 +1,20 @@
+name: Update Release Notes
+
+on:
+  workflow_dispatch:
+    inputs:
+      VERSION:
+        description: 'The version of update release notes'
+        required: true
+        type: string
+        default: ''
+
+run-name: ref_name:${{ github.ref_name }} release_version:${{ inputs.VERSION }}
+
+jobs:
+  update-release-notes:
+    if: ${{ startsWith(github.ref_name, 'release-') }}
+    uses: apecloud/apecloud-cd/.github/workflows/update-release-notes.yml@v0.1.97
+    with:
+      VERSION: "${{ inputs.VERSION }}"
+    secrets: inherit

@@ -36,6 +36,10 @@ check_environment_exist() {
     "CURRENT_SHARD_POD_FQDN_LIST"
   )
 
+  if [[ ${COMPONENT_REPLICAS} -lt 2 ]]; then
+    exit 0
+  fi
+
   for var in "${required_vars[@]}"; do
     if is_empty "${!var}"; then
       echo "Error: Required environment variable $var is not set." >&2
@@ -102,9 +106,14 @@ get_all_shards_master() {
 do_switchover() {
   candidate_pod=$1
   candidate_pod_fqdn=$2
+  need_check=$3
 
   # check candidate pod is ready and has the role of secondary
   role=$(check_redis_role "$candidate_pod_fqdn" $service_port)
+  if [ "$role" = "primary" ]; then
+    echo "Info: Candidate pod $candidate_pod is already a primary"
+    exit 0
+  fi
   if ! equals "$role" "secondary"; then
     echo "Error: Candidate pod $candidate_pod is not a secondary" >&2
     return 1
@@ -147,6 +156,9 @@ do_switchover() {
     result=$(redis-cli -h "$candidate_pod_fqdn" -p $service_port cluster failover)
   else
     result=$(redis-cli -h "$candidate_pod_fqdn" -p $service_port -a "$REDIS_DEFAULT_PASSWORD" cluster failover)
+  fi
+  if [ "$need_check" != "true" ]; then
+    return 0
   fi
   set_xtrace_when_ut_mode_false
   if [ "$result" != "OK" ]; then
@@ -210,7 +222,7 @@ switchover_without_candidate() {
   fi
 
   # do switchover
-  do_switchover "$candidate_pod" "$candidate_pod_fqdn" || return 1
+  do_switchover "$candidate_pod" "$candidate_pod_fqdn" "false" || return 1
 }
 
 switchover_with_candidate() {
@@ -221,7 +233,7 @@ switchover_with_candidate() {
   fi
 
   # do switchover
-  do_switchover "$KB_SWITCHOVER_CANDIDATE_NAME" "$KB_SWITCHOVER_CANDIDATE_FQDN" || return 1
+  do_switchover "$KB_SWITCHOVER_CANDIDATE_NAME" "$KB_SWITCHOVER_CANDIDATE_FQDN" "true" || return 1
 }
 
 # This is magic for shellspec ut framework.

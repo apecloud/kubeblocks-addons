@@ -24,13 +24,36 @@ spec:
           - name: broker
             port: 9092
             targetPort: kafka-client
+  {{- include "kafka.tls.cmpdConfig" . | nindent 2 }}
   vars:
     - name: CLUSTER_UID
       valueFrom:
         clusterVarRef:
           clusterUID: Required
-    - name: SUPER_USER
-      value: admin
+    - name: KAFKA_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          username: Required
+    - name: KAFKA_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+    - name: KAFKA_CLIENT_USER
+      valueFrom:
+        credentialVarRef:
+          name: client
+          optional: false
+          username: Required
+    - name: KAFKA_CLIENT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: client
+          optional: false
+          password: Required
     - name: POD_FQDN_LIST
       valueFrom:
         componentVarRef:
@@ -61,6 +84,10 @@ spec:
           port:
             name: broker
             option: Optional
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
   configs:
@@ -68,7 +95,7 @@ spec:
       template: {{ include "kafka.configurationTplName" . }}
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
-      restartOnFileChange: true
+      externalManaged: true
     - name: kafka-jmx-configuration-tpl
       template: {{ include "kafka.jmxConfigurationTplName" . }}
       volumeName: jmx-config
@@ -79,16 +106,36 @@ spec:
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
-    - name: kafka-tools-scripts-tpl
-      template: {{ include "kafka.toolsScriptsTplName" . }}
-      volumeName: tools
-      namespace: {{ .Release.Namespace }}
-      defaultMode: 0755
+  systemAccounts:
+    - name: client
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        letterCase: MixedCases
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        letterCase: MixedCases    
   runtime:
     {{- if .Values.securityContext }}
     securityContext:
       {{- toYaml .Values.securityContext | nindent 6 }}
     {{- end }}
+    initContainers:
+      - name: kafkatool
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        command:
+          - sh
+          - -c
+          - |
+            cp -r /sasl /shared-tools/sasl
+            chmod +x /shared-tools/sasl
+        volumeMounts:
+          - name: shared-tools
+            mountPath: /shared-tools
     containers:
       - name: kafka
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
@@ -150,11 +197,9 @@ spec:
           - name: KAFKA_KRAFT_CLUSTER_ID
             value: $(CLUSTER_UID)
           - name: KAFKA_CFG_SUPER_USERS
-            value: "User:$(SUPER_USER)"
-          # - name: KB_KAFKA_ENABLE_SASL  # enable the SASL with plain mode
-          # value: "false"
-          - name: KB_KAFKA_SASL_CONFIG_PATH  # specify the SASL jaas users
-            value: /tools/server-jaas.properties
+            value: "User:$(KAFKA_ADMIN_USER)"
+          - name: KAFKA_DYNAMIC_CREDENTIAL_FILE
+            value: "/accounts/accounts-mount/accounts"
           {{- with .Values.extraEnvs.kafka }}
           {{- toYaml . | nindent 10}}
           {{- end }}
@@ -195,12 +240,10 @@ spec:
           - name: kafka-config
             mountPath: /scripts/server.properties
             subPath: server.properties
-          - name: tools
-            mountPath: /tools/client-ssl.properties
-            subPath: client-ssl.properties
-          - name: tools
-            mountPath: /tools/server-jaas.properties
-            subPath: server-jaas.properties
+          - name: shared-tools
+            mountPath: /shared-tools
+          - name: accounts
+            mountPath: /accounts/accounts-mount  
           {{- with .Values.extraVolumeMounts.kafka }}
           {{- toYaml . | nindent 10}}
           {{- end }}
@@ -231,3 +274,6 @@ spec:
         volumeMounts:
           - name: jmx-config
             mountPath: /etc/jmx-kafka
+    volumes:
+      - name: shared-tools
+        emptyDir: {}        

@@ -27,6 +27,6 @@ spec:
           - tikv
           - tidb-pd
         update:
-          - tidb
-          - tikv
           - tidb-pd
+          - tikv
+          - tidb

@@ -10,14 +10,17 @@ examples/ @ahjing99 @shanshanying @leon-inf @apecloud/kb-reviewers @apecloud/kb-
 addons/apecloud-mysql/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/apecloud-mysql/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/clickhouse/ @sophon-zt @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/clickhouse/ @sophon-zt @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/clickhouse/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/clickhouse/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/elasticsearch/ @iziang @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/elasticsearch/ @iziang @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/etcd/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/etcd/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+
+addons/falkordb/ @dudizimber @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/falkordb/ @dudizimber @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/greptimedb/ @GreptimeTeam @sh2 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/greptimedb/ @GreptimeTeam @sh2 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
@@ -40,8 +43,8 @@ addons-cluster/mariadb/ @yinmin @leon-inf @apecloud/kb-reviewers @apecloud/kb-ad
 addons/milvus/ @leon-inf @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/milvus/ @leon-inf @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/minio/ @fengluodb @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/minio/ @fengluodb @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/minio/ @ldming @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/minio/ @ldming @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/mogdb/ @yabinji @shanshanying @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/mogdb/ @yabinji @shanshanying @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
@@ -100,17 +103,14 @@ addons-cluster/rocketmq/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-rev
 addons/starrocks-ce/ @yandongxiao @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/starrocks-ce/ @yandongxiao @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/tdengine/ @leon-inf @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/tdengine/ @leon-inf @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-
 addons/tidb/ @csuzhangxc @cjc7373 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/tidb/ @csuzhangxc @cjc7373 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/vanilla-postgresql/ @kizuna-lek @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/vanilla-postgresql/ @kizuna-lek @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/victoria-metrics/ @sophon-zt @ButterBright @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/victoria-metrics/ @sophon-zt @ButterBright @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/victoria-metrics/ @ButterBright @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/victoria-metrics/ @ButterBright @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/weaviate/ @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/weaviate/ @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers

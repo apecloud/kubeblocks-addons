@@ -149,13 +149,13 @@
 	constraint_exclusion?: string & "partition" | "on" | "off"
 
 	// Sets the planners estimate of the cost of processing each index entry during an index scan.
-	cpu_index_tuple_cost?: float & >=0 & <=1.79769e+308
+	cpu_index_tuple_cost?: float & >=0
 
 	// Sets the planners estimate of the cost of processing each operator or function call.
-	cpu_operator_cost?: float & >=0 & <=1.79769e+308
+	cpu_operator_cost?: float & >=0
 
 	// Sets the planners estimate of the cost of processing each tuple (row).
-	cpu_tuple_cost?: float & >=0 & <=1.79769e+308
+	cpu_tuple_cost?: float & >=0
 
 	// Sets the database to store pg_cron metadata tables
 	"cron.database_name"?: string
@@ -368,13 +368,13 @@
 	jit: bool
 
 	// Perform JIT compilation if query is more expensive.
-	jit_above_cost?: float & >=-1 & <=1.79769e+308
+	jit_above_cost?: float & >=-1
 
 	// Perform JIT inlining if query is more expensive.
-	jit_inline_above_cost?: float & >=-1 & <=1.79769e+308
+	jit_inline_above_cost?: float & >=-1
 
 	// Optimize JITed functions if query is more expensive.
-	jit_optimize_above_cost?: float & >=-1 & <=1.79769e+308
+	jit_optimize_above_cost?: float & >=-1
 
 	// Sets the FROM-list size beyond which JOIN constructs are not flattened.
 	join_collapse_limit?: int & >=1 & <=2147483647
@@ -599,10 +599,10 @@
 	parallel_leader_participation?: bool & false | true
 
 	// Sets the planner's estimate of the cost of starting up worker processes for parallel query.
-	parallel_setup_cost?: float & >=0 & <=1.79769e+308
+	parallel_setup_cost?: float & >=0
 
 	// Sets the planner's estimate of the cost of passing each tuple (row) from worker to master backend.
-	parallel_tuple_cost?: float & >=0 & <=1.79769e+308
+	parallel_tuple_cost?: float & >=0
 
 	// Encrypt passwords.
 	password_encryption?: string & "md5" | "scram-sha-256"
@@ -777,7 +777,7 @@
 	"pg_similarity.mongeelkan_tokenizer"?: string & "alnum" | "gram" | "word" | "camelcase"
 
 	// Sets the gap penalty used by the Needleman-Wunsch similarity measure.
-	"pg_similarity.nw_gap_penalty"?: float & >=-9.22337e+18 & <=9.22337e+18
+	"pg_similarity.nw_gap_penalty"?: float
 
 	// Sets if the result value is normalized or not.
 	"pg_similarity.nw_is_normalized"?: bool & false | true
@@ -861,7 +861,7 @@
 	quote_all_identifiers?: bool & false | true
 
 	// Sets the planners estimate of the cost of a nonsequentially fetched disk page.
-	random_page_cost?: float & >=0 & <=1.79769e+308
+	random_page_cost?: float & >=0
 
 	// Lower threshold of Dice similarity. Molecules with similarity lower than threshold are not similar by # operation.
 	"rdkit.dice_threshold"?: float & >=0 & <=1
@@ -891,7 +891,7 @@
 	search_path?: string
 
 	// Sets the planners estimate of the cost of a sequentially fetched disk page.
-	seq_page_cost?: float & >=0 & <=1.79769e+308
+	seq_page_cost?: float & >=0
 
 	// Lists shared libraries to preload into each backend.
 	session_preload_libraries?: string & "auto_explain" | "orafce" | "pg_bigm" | "pg_hint_plan" | "pg_prewarm" | "pg_similarity" | "pg_stat_statements" | "pg_transport" | "plprofiler"
@@ -904,7 +904,7 @@
 
 	// Lists shared libraries to preload into server.
 	// TODO: support enum list, e.g. shared_preload_libraries = 'pg_stat_statements, auto_explain'
-	// shared_preload_libraries?: string & "auto_explain" | "orafce" | "pgaudit" | "pglogical" | "pg_bigm" | "pg_cron" | "pg_hint_plan" | "pg_prewarm" | "pg_similarity" | "pg_stat_statements" | "pg_tle" | "pg_transport" | "plprofiler"
+	shared_preload_libraries?: string
 
 	// Enables SSL connections.
 	ssl: bool & false | true | *true

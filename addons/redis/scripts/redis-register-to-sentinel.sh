@@ -136,7 +136,9 @@ construct_sentinel_sub_command() {
       echo "SENTINEL set $master_name auth-user $REDIS_SENTINEL_USER"
       ;;
     "auth-pass")
-      echo "SENTINEL set $master_name auth-pass $REDIS_SENTINEL_PASSWORD"
+      if ! is_empty "$REDIS_SENTINEL_PASSWORD"; then
+        echo "SENTINEL set $master_name auth-pass $REDIS_SENTINEL_PASSWORD"
+      fi
       ;;
     *)
       echo "Unknown command: $command" >&2
@@ -150,7 +152,12 @@ check_connectivity() {
   local port=$2
   local password=$3
   echo "Checking connectivity to $host on port $port using redis-cli..."
-  if redis-cli -h "$host" -p "$port" -a "$password" PING | grep -q "PONG"; then
+  if is_empty "$password"; then
+    redis-cli -h "$host" -p "$port" PING | grep -q "PONG"
+  else
+    redis-cli -h "$host" -p "$port" -a "$password" PING | grep -q "PONG"
+  fi
+  if [ $? -eq 0 ]; then
     echo "$host is reachable on port $port."
     return 0
   else
@@ -166,7 +173,11 @@ execute_sentinel_sub_command() {
   local command=$3
 
   local output
-  output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  if is_empty "$SENTINEL_PASSWORD"; then
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" $command)
+  else
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  fi
   local status=$?
   echo "$output"
 
@@ -184,7 +195,11 @@ get_master_addr_by_name(){
   local sentinel_port=$2
   local command=$3
   local output
-  output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  if is_empty "$SENTINEL_PASSWORD"; then
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" $command)
+  else
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  fi
   local status=$?
   if [ $status -ne 0 ]; then
     echo "Command failed with status $status." >&2
@@ -235,7 +250,9 @@ register_to_sentinel() {
   for cmd in "${sentinel_configure_commands[@]}"
   do
     sentinel_cli_cmd=$(construct_sentinel_sub_command "$cmd" "$master_name" "$redis_primary_host" "$redis_primary_port")
-    call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_cli_cmd" || exit 1
+    if [ -n "$sentinel_cli_cmd" ]; then
+       call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_cli_cmd" || exit 1
+    fi
   done
   set_xtrace_when_ut_mode_false
   echo "redis sentinel register to $sentinel_host succeeded!"

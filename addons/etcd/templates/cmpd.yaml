@@ -13,7 +13,7 @@ spec:
   runtime:
     initContainers:
       - name: inject-bash
-        imagePullPolicy: {{default .Values.bashBusyboxImage.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         volumeMounts:
           - name: scripts
             mountPath: /scripts
@@ -65,8 +65,8 @@ spec:
       value: {{ .Chart.AppVersion }}
     - name: DATA_DIR
       value: {{ .Values.dataDir }}
-    - name: RESTORE_DIR
-      value: {{ .Values.restoreDir }}
+    - name: BACKUP_DIR
+      value: {{ .Values.backupDir }}
     - name: BIN_DIR
       value: {{ .Values.binDir }}
     - name: CLUSTER_NAME
@@ -114,11 +114,25 @@ spec:
       valueFrom:
         tlsVarRef:
           enabled: Optional
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
   volumes:
     - name: data
       needSnapshot: true
   services:
+    - name: client
+      serviceName: client
+      spec:
+        ports:
+          - name: client
+            port: 2379
+            targetPort: client
+      disableAutoProvision: true
     - name: peer
+      serviceName:
       spec:
         ports:
           - name: peer

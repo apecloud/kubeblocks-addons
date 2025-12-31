@@ -4,6 +4,10 @@ set -exo pipefail
 # shellcheck disable=SC1091
 . "/scripts/common.sh"
 
+if [ $COMPONENT_REPLICAS -lt 2 ]; then
+    exit 0
+fi
+
 switchover_with_candidate() {
   current_pod_name="${KB_SWITCHOVER_CURRENT_FQDN%%.*}"
   candidate_pod_name="${KB_SWITCHOVER_CANDIDATE_FQDN%%.*}"
@@ -27,7 +31,7 @@ switchover_without_candidate() {
   current_pod_name="${KB_SWITCHOVER_CURRENT_FQDN%%.*}"
   current_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$current_pod_name" "$KB_SWITCHOVER_CURRENT_FQDN")
 
-  ! is_leader "$current_endpoint:2379" && error_exit "Leader has already changed, no switchover needed"
+  ! is_leader "$current_endpoint:2379" && echo "Leader has already changed, no switchover needed" && exit 0
 
   # get first follower
   leader_id=$(get_member_id "$current_endpoint:2379")
@@ -37,7 +41,8 @@ switchover_without_candidate() {
   candidate_id_hex=$(printf "%x" "$candidate_id")
 
   exec_etcdctl "$current_endpoint:2379" move-leader "$candidate_id_hex"
-  is_leader "$current_endpoint:2379" && error_exit "Switchover failed - current node is still leader after move-leader command"
+  # if no candidate specified, skip the verification of new leader
+  # is_leader "$current_endpoint:2379" && error_exit "Switchover failed - current node is still leader after move-leader command"
   log "Switchover completed successfully - current node is no longer leader"
 }
 

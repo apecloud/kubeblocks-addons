@@ -9,12 +9,19 @@ spec:
   # configmap reference
   # tplRef: mysql-3node-tpl-8.0
   reloadAction:
-    tplScriptTrigger:
+    shellTrigger:
       sync: true
-      # still share same reload scripts with 8.0
-      scriptConfigMapRef: mysql8.0-reload-script
-      namespace: {{ .Release.Namespace }}
-
+      command:
+        - "update-parameter.sh"
+      scriptConfig:
+        scriptConfigMapRef: mysql-reconfigure-script
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
+            asContainerImage: true
 
   fileName: my.cnf
   # ConfigurationSchema that impose restrictions on engine parameter's rule

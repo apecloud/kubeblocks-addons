@@ -9,6 +9,8 @@ data:
     {{- .Files.Get "scripts/broker-setup.sh" | nindent 4 }}
   get-role.sh: |-
     {{- .Files.Get "scripts/get-role.sh" | nindent 4 }}
+  util.sh: |-
+    {{- .Files.Get "scripts/util.sh" | nindent 4 }}
 
 ---
 apiVersion: v1
@@ -22,6 +24,8 @@ data:
     {{- .Files.Get "scripts/nameserver-setup.sh" | nindent 4 }}
   update-nameserver-addrs.sh: |-
     {{- .Files.Get "scripts/update-nameserver-addrs.sh" | nindent 4 }}
+  util.sh: |-
+    {{- .Files.Get "scripts/util.sh" | nindent 4 }}
 
 ---
 apiVersion: v1

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # shellcheck disable=SC2034
 ut_mode="false"
@@ -45,10 +46,12 @@ get_start_kafka_exporter_cmd() {
   fi
 
   saslArgs=""
-  if [[ $KB_KAFKA_ENABLE_SASL_SCRAM == "true" ]]; then
+  if [[ $(is_sasl_enabled "${KB_CLUSTER_WITH_ZK:-false}") == "true" ]]; then 
     echo "sasl is enabled, setting sasl args" >&2
-    saslArgs="--sasl.enabled --sasl.mechanism=scram-sha512 --sasl.username=$KAFKA_ADMIN_USER --sasl.password=$KAFKA_ADMIN_PASSWORD"
-  fi
+    local default_mechanism=$(get_client_default_mechanism "${KB_CLUSTER_WITH_ZK:-false}")
+    echo "sasl mechanism from config: $default_mechanism" >&2
+    saslArgs=$(get_kafka_exporter_sasl_args_by_mechanism "$default_mechanism")
+  fi 
 
   if [[ -n "$TLS_ENABLED" ]]; then
     echo "TLS_ENABLED is set to true, start kafka_exporter with tls enabled." >&2
@@ -59,6 +62,34 @@ get_start_kafka_exporter_cmd() {
   fi
   return 0
 }
+
+get_kafka_exporter_sasl_args_by_mechanism() {
+  local user_var_name=${KAFKA_ADMIN_USER_BROKER}
+  local password_var_name=${KAFKA_ADMIN_PASSWORD_BROKER}
+
+  if [[ -z "$user_var_name" ]]; then
+    user_var_name="$KAFKA_ADMIN_USER_COMBINE"
+    password_var_name="$KAFKA_ADMIN_PASSWORD_COMBINE"
+  fi
+  
+  local mechanism="$1"
+  case "${mechanism,,}" in
+    "scram-sha512")
+      echo "--sasl.enabled --sasl.mechanism=scram-sha512 --sasl.username=$user_var_name --sasl.password=$password_var_name"
+      ;;
+    "scram-sha256")
+      echo "--sasl.enabled --sasl.mechanism=scram-sha256 --sasl.username=$user_var_name --sasl.password=$password_var_name"
+      ;;
+    "plain")
+      echo "--sasl.enabled --sasl.mechanism=plain --sasl.username=$user_var_name --sasl.password=$password_var_name"
+      ;;
+    *)
+      echo "invalid or not supported sasl mechanism: $mechanism" >&2
+      return 1
+      ;;
+  esac
+}
+
 
 start_kafka_exporter() {
   local cmd

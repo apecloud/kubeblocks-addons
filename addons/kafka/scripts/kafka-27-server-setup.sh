@@ -19,10 +19,8 @@ load_common_library() {
 }
 
 set_tls_configuration_if_needed() {
-  ## check env TLS_ENABLED and TLS_CERT_PATH env variables
-  ## TODO: how to pass TLS_ENABLED and TLS_CERT_PATH to kafka-server-setup.sh？ currently, it is not supported.
-  if [[ -z "$TLS_ENABLED" ]] || [[ -z "$TLS_CERT_PATH" ]]; then
-    echo "TLS_ENABLED or TLS_CERT_PATH is not set, skipping TLS configuration"
+  if [[ -z "$TLS_ENABLED" ]] || [[ "$TLS_ENABLED" != "true" ]]; then
+    echo "tls is not enabled, skipping TLS configuration"
     return 0
   fi
 
@@ -37,7 +35,7 @@ set_tls_configuration_if_needed() {
   echo "[tls]KAFKA_TLS_CLIENT_AUTH=$KAFKA_TLS_CLIENT_AUTH"
 
   # override TLS protocol
-  export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,CLIENT:SSL
+  export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP="CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,CLIENT:SSL"
   echo "KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
   # Todo: enable encrypted transmission inside the service
   #export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:SSL,INTERNAL:SSL,CLIENT:SSL
@@ -45,6 +43,9 @@ set_tls_configuration_if_needed() {
   #echo "KAFKA_CFG_SECURITY_INTER_BROKER_PROTOCOL=SSL"
 
   mkdir -p "$kafka_config_certs_path"
+  if [[ -z "$TLS_CERT_PATH" ]]; then
+    TLS_CERT_PATH="/etc/pki/tls"
+  fi
   PEM_CA="$TLS_CERT_PATH/ca.crt"
   PEM_CERT="$TLS_CERT_PATH/tls.crt"
   PEM_KEY="$TLS_CERT_PATH/tls.key"
@@ -102,31 +103,19 @@ convert_server_properties_to_env_var() {
 }
 
 override_sasl_configuration() {
-  # override SASL settings
-  if [[ "true" == "$KB_KAFKA_ENABLE_SASL" ]]; then
-    # bitnami default jaas setting: /opt/bitnami/kafka/config/kafka_jaas.conf
-    if [[ "${KB_KAFKA_SASL_CONFIG_PATH}" ]]; then
-      cp ${KB_KAFKA_SASL_CONFIG_PATH} $kafka_config_path/kafka_jaas.conf 2>/dev/null
-      echo "[sasl]do: cp ${KB_KAFKA_SASL_CONFIG_PATH} $kafka_config_path/kafka_jaas.conf "
-    fi
-    export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:SASL_PLAINTEXT,CLIENT:SASL_PLAINTEXT
-    echo "[sasl]KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
-    export KAFKA_CFG_SASL_ENABLED_MECHANISMS="PLAIN"
-    echo "[sasl]export KAFKA_CFG_SASL_ENABLED_MECHANISMS=${KAFKA_CFG_SASL_ENABLED_MECHANISMS}"
-    export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL="PLAIN"
-    echo "[sasl]export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL=${KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL}"
+  local isZkOrNot="true"
+  local defaultLoginModule="org.apache.kafka.common.security.scram.ScramLoginModule required"
+  
+  if [[ $(is_sasl_enabled "${isZkOrNot}") == "false" ]]; then
+    echo "sasl is not enabled, skipping SASL configuration"
+    return 0
   fi
 
-  if [[ "true" == "$KB_KAFKA_ENABLE_SASL_SCRAM" ]]; then
-    # bitnami default jaas setting: /opt/bitnami/kafka/config/kafka_jaas.conf
-    cat << EOF > /opt/bitnami/kafka/config/kafka_jaas.conf
-KafkaServer {
-  org.apache.kafka.common.security.scram.ScramLoginModule required
-  username="$KAFKA_ADMIN_USER"
-  password="$KAFKA_ADMIN_PASSWORD";
-};
-EOF
-    echo "[sasl] write jaas config to /opt/bitnami/kafka/config/kafka_jaas.conf "
+  build_server_jaas_config "${defaultLoginModule}"
+  build_if_build_in_enabled
+  build_zk_server_sasl_properties
+
+  if [[ "$(is_sasl_build_in_enabled)" == "false" ]] && [[ "true" == "$KB_KAFKA_ENABLE_SASL_SCRAM" ]]; then
     # NB: use the endpoint with sub path
     first_zoopkeeper=${KAFKA_CFG_ZOOKEEPER_CONNECT%%,*}
     echo "[sasl] zookeeper address: $first_zoopkeeper"
@@ -139,13 +128,6 @@ EOF
       --add-config "SCRAM-SHA-256=[iterations=8192,password=$KAFKA_CLIENT_PASSWORD],SCRAM-SHA-512=[password=$KAFKA_CLIENT_PASSWORD]" \
       --entity-type users --entity-name "$KAFKA_CLIENT_USER"
     echo "[sasl] add user $KAFKA_CLIENT_USER to zookeeper"
-
-    export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:SASL_PLAINTEXT,CLIENT:SASL_PLAINTEXT
-    echo "[sasl]KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
-    export KAFKA_CFG_SASL_ENABLED_MECHANISMS="SCRAM-SHA-256,SCRAM-SHA-512"
-    echo "[sasl]export KAFKA_CFG_SASL_ENABLED_MECHANISMS=${KAFKA_CFG_SASL_ENABLED_MECHANISMS}"
-    export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL="SCRAM-SHA-512"
-    echo "[sasl]export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL=${KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL}"
   fi
 }
 

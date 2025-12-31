@@ -159,8 +159,8 @@ check_redis_server_ready() {
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     check_ready_cmd="redis-cli -h $host -p $port -a $REDIS_DEFAULT_PASSWORD ping"
   fi
-  set_xtrace_when_ut_mode_false
   output=$($check_ready_cmd)
+  set_xtrace_when_ut_mode_false
   status=$?
   if [ $status -ne 0 ] || [ "$output" != "PONG" ] ; then
     echo "Failed to execute the check ready command: $check_ready_cmd" >&2
@@ -253,8 +253,8 @@ get_cluster_info() {
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     command="redis-cli -h $cluster_node -p $cluster_node_port -a $REDIS_DEFAULT_PASSWORD cluster info"
   fi
-  set_xtrace_when_ut_mode_false
   cluster_info=$($command)
+  set_xtrace_when_ut_mode_false
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to execute the get cluster info command" >&2
@@ -272,8 +272,8 @@ get_cluster_nodes_info() {
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     command="redis-cli -h $cluster_node -p $cluster_node_port -a $REDIS_DEFAULT_PASSWORD cluster nodes"
   fi
-  set_xtrace_when_ut_mode_false
   cluster_nodes_info=$($command)
+  set_xtrace_when_ut_mode_false
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to execute the get cluster nodes info command" >&2
@@ -690,6 +690,7 @@ secondary_member_leave_del_node() {
 
 secondary_member_leave_del_node_with_retry() {
   local available_node="$1"
+  local node_to_del_cluster_id="$2"
   local do_forget_node="$3"
   check_result=$(call_func_with_retry $check_ready_times $retry_delay_second secondary_member_leave_del_node "$available_node" "$node_to_del_cluster_id" "$do_forget_node")
   status=$?

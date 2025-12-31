@@ -27,6 +27,7 @@ Apache Kafka is a distributed streaming platform designed to build real-time pip
 | Versions |
 |----------|
 | 3.3.2 |
+| 2.8.2 |
 
 ## Prerequisites
 
@@ -171,6 +172,11 @@ spec:
   componentSpecs:
     - name: kafka-broker
       replicas: 1
+      serviceVersion: 3.3.2
+      services:
+        - name: advertised-listener
+          serviceType: ClusterIP
+          podService: true
       resources:
         limits:
           cpu: "0.5"
@@ -179,12 +185,16 @@ spec:
           cpu: "0.5"
           memory: "0.5Gi"
       env:
-        - name: KB_KAFKA_BROKER_HEAP
+        - name: KB_KAFKA_BROKER_HEAP # use this ENV to set BROKER HEAP
           value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
-        - name: KB_KAFKA_CONTROLLER_HEAP
+        - name: KB_KAFKA_CONTROLLER_HEAP # use this ENV to set CONTOLLER_HEAP
           value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          # Whether to enable direct Pod IP address access mode.
+          # - If set to 'true', Kafka clients will connect to Brokers using the Pod IP address directly.
+          # - If set to 'false', Kafka clients will connect to Brokers using the Headless Service's FQDN
+          # and service `advertised-listener` must be set with "podService: true".
         - name: KB_BROKER_DIRECT_POD_ACCESS
-          value: "true"
+          value: "false"
       volumeClaimTemplates:
         - name: data
           spec:
@@ -203,6 +213,7 @@ spec:
               requests:
                 storage: 1Gi
     - name: kafka-controller
+      serviceVersion: 3.3.2
       replicas: 1
       resources:
         limits:
@@ -221,6 +232,7 @@ spec:
               requests:
                 storage: 1Gi
     - name: kafka-exporter
+      serviceVersion: 1.6.0
       replicas: 1
       resources:
         limits:
@@ -234,6 +246,14 @@ spec:
 ```bash
 kubectl apply -f examples/kafka/cluster-separated.yaml
 ```
+
+We also maintain an 2.x version, which will rely on an external zookeeper cluster to work. Refer to `cluster-2x-ext-zk-svc-descriptor.yaml` to get an reference config.
+
+#### With authentication enabled
+We currently support SASL/SCRAM auth for 2.x version. If you want to enable it, set `KB_KAFKA_ENABLE_SASL_SCRAM` to `true`
+for both broker and exporter components.
+
+When the cluster creation is done, refer to a secret named `$(CLUSTER_NAME)$-kafka-broker-account-admin` to get the username/password.
 
 ### Horizontal scaling
 
@@ -653,6 +673,11 @@ spec:
   componentSpecs:
     - name: kafka-broker
       replicas: 1
+      serviceVersion: 3.3.2
+      services:
+        - name: advertised-listener
+          serviceType: ClusterIP
+          podService: true
       resources:
         limits:
           cpu: "0.5"
@@ -661,12 +686,16 @@ spec:
           cpu: "0.5"
           memory: "0.5Gi"
       env:
-        - name: KB_KAFKA_BROKER_HEAP
+        - name: KB_KAFKA_BROKER_HEAP # use this ENV to set BROKER HEAP
           value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
-        - name: KB_KAFKA_CONTROLLER_HEAP
+        - name: KB_KAFKA_CONTROLLER_HEAP # use this ENV to set CONTOLLER_HEAP
           value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          # Whether to enable direct Pod IP address access mode.
+          # - If set to 'true', Kafka clients will connect to Brokers using the Pod IP address directly.
+          # - If set to 'false', Kafka clients will connect to Brokers using the Headless Service's FQDN
+          # and service `advertised-listener` must be set with "podService: true".
         - name: KB_BROKER_DIRECT_POD_ACCESS
-          value: "true"
+          value: "false"
       volumeClaimTemplates:
         - name: data
           spec:
@@ -685,6 +714,7 @@ spec:
               requests:
                 storage: 1Gi
     - name: kafka-controller
+      serviceVersion: 3.3.2
       replicas: 1
       resources:
         limits:
@@ -703,6 +733,7 @@ spec:
               requests:
                 storage: 1Gi
     - name: kafka-exporter
+      serviceVersion: 1.6.0
       replicas: 1
       resources:
         limits:

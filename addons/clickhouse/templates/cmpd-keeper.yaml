@@ -129,7 +129,7 @@ spec:
       template: {{ include "clickhouse-keeper.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
-      externalManaged: true
+      restartOnFileChange: false
     - name: clickhouse-client-tpl
       template: {{ include "clickhouse.clientTplName" . }}
       volumeName: client-config
@@ -169,6 +169,8 @@ spec:
       value: "9444"
     - name: CLICKHOUSE_METRICS_PORT
       value: "8001"
+    - name: SERVICE_PORT
+      value: "8001"
     - name: CLICKHOUSE_ADMIN_PASSWORD
       valueFrom:
         credentialVarRef:
@@ -184,6 +186,11 @@ spec:
       valueFrom:
         tlsVarRef:
           enabled: Optional
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
   updateStrategy: Serial
   podManagementPolicy: Parallel
   volumes:
@@ -223,7 +230,7 @@ spec:
           - bash
           - -c
           - |
-            /scripts/keeper-switchover.sh > /tmp/keeper-switchover.log 2>&1
+            /scripts/keeper-switchover.sh >> /bitnami/clickhouse/keeper-switchover.log 2>&1
     memberJoin:
       exec:
         container: clickhouse
@@ -235,6 +242,8 @@ spec:
     memberLeave:
       exec:
         container: clickhouse
+        targetPodSelector: Role
+        matchingKey: leader
         command:
           - bash
           - -c

@@ -51,9 +51,9 @@ switchover() {
 
   POSTGRES_PRIMARY_POD_NAME=$(curl -s http://localhost:8008/cluster | jq -r '.members[] | select (.role == "leader") | .name')
 
-  # CURRENT_POD_NAME defined in the switchover action env and POSTGRES_PRIMARY_POD_NAME defined in the cmpd.spec.vars
-  if is_empty "$CURRENT_POD_NAME" || is_empty "$POSTGRES_PRIMARY_POD_NAME"; then
-    echo "CURRENT_POD_NAME or POSTGRES_PRIMARY_POD_NAME is not set. Exiting..."
+  # CURRENT_POD_NAME defined in the switchover action env
+  if is_empty "$CURRENT_POD_NAME" ; then
+    echo "CURRENT_POD_NAME is not set. Exiting..."
     exit 1
   fi
 

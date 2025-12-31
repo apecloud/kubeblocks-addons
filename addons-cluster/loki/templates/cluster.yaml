@@ -5,8 +5,10 @@
   componentSpecs:
     - name: backend
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- include "loki-cluster.localstorage" . | indent 6 }}
+      {{- include "loki-cluster.storageConfig" . | indent 6 }}
       replicas: {{ .Values.backend.replicas }}
+      serviceRefs:
+        {{- include "loki.objectstorage.serviceRef" . | indent 8 }}
       {{- with  .Values.backend.resources }}
       resources:
         {{- with .limits }}
@@ -34,7 +36,9 @@
     - name: write
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.write.replicas }}
-      {{- include "loki-cluster.localstorage" . | indent 6 }}
+      {{- include "loki-cluster.storageConfig" . | indent 6 }}
+      serviceRefs:
+        {{- include "loki.objectstorage.serviceRef" . | indent 8 }}
       {{- with .Values.write.resources }}
       resources:
         {{- with .limits }}
@@ -48,10 +52,23 @@
           memory: {{ print .memory "Gi" | quote }}
         {{- end }}
       {{- end }}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ print .Values.write.storage "Gi" }}
+            {{- if .Values.write.storageClassName }}
+            storageClassName: {{ .Values.write.storageClassName | quote }}
+            {{- end }}
     - name: read
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.read.replicas | default 1 }}
-      {{- include "loki-cluster.localstorage" . | indent 6 }}
+      {{- include "loki-cluster.storageConfig" . | indent 6 }}
+      serviceRefs:
+        {{- include "loki.objectstorage.serviceRef" . | indent 8 }}
       {{- with  .Values.read.resources }}
       resources:
         {{- with .limits }}

@@ -19,6 +19,18 @@ spec:
       fsGroup: 0
       seccompProfile:
         type: RuntimeDefault
+    initContainers:
+      - name: copy-tools
+        imagePullPolicy: {{ .Values.busyboxImage.pullPolicy }}
+        command:
+          - sh
+          - -c
+          - |
+            cp /bin/wget /shared-tools/wget
+            chmod +x /shared-tools/wget
+        volumeMounts:
+          - name: shared-tools
+            mountPath: /shared-tools
     containers:
       - name: clickhouse
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
@@ -31,12 +43,15 @@ spec:
           privileged: true
           runAsUser: 0
         readinessProbe:
-          httpGet:
-            path: /ping
-            port: 8123
           initialDelaySeconds: 5
           periodSeconds: 2
           timeoutSeconds: 3
+          exec:
+            command:
+              - bash
+              - -c
+              - |
+                /scripts/clickhouse-ping.sh
         ports:
           - name: http-metrics
             containerPort: 8001
@@ -67,12 +82,17 @@ spec:
             mountPath: /etc/clickhouse-client
           - name: scripts
             mountPath: /scripts
+          - name: shared-tools
+            mountPath: /shared-tools
         env:
           - name: CURRENT_POD_NAME
             valueFrom:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+    volumes:
+      - name: shared-tools
+        emptyDir: {}
   updateStrategy: BestEffortParallel
   logConfigs:
     {{- range $name, $pattern := .Values.logConfigs }}
@@ -87,12 +107,12 @@ spec:
       template: {{ include "clickhouse.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
-      externalManaged: true
+      restartOnFileChange: false
     - name: clickhouse-user-tpl
       template: {{ include "clickhouse.userTplName" . }}
       volumeName: user-config
       namespace: {{ .Release.Namespace }}
-      externalManaged: true
+      restartOnFileChange: false
     - name: clickhouse-client-tpl
       template: {{ include "clickhouse.clientTplName" . }}
       volumeName: client-config
@@ -134,6 +154,8 @@ spec:
       value: "9440"
     - name: CLICKHOUSE_METRICS_PORT
       value: "8001"
+    - name: SERVICE_PORT
+      value: "8001"
     - name: CURRENT_SHARD_COMPONENT_SHORT_NAME
       valueFrom:
         componentVarRef:
@@ -170,7 +192,16 @@ spec:
           podFQDNs: Required
           multipleClusterObjectOption:
             strategy: individual
-    - name: CLUSTER_NAME
+    - name: ALL_COMBINED_SHARDS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "clickhouse.cmpdRegexpPattern" . }}
+          optional: false
+          podFQDNs: Required
+          multipleClusterObjectOption:
+            requireAllComponentObjects: true
+            strategy: combined
+    - name: KB_CLUSTER_NAME
       valueFrom:
         clusterVarRef:
           clusterName: Required

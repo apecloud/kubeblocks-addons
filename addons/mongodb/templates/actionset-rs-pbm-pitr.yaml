@@ -1,0 +1,78 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: mongodb-rs-pbm-pitr
+  labels:
+    clusterdefinition.kubeblocks.io/name: mongodb
+    {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    # used to merge full and pitr restore jobs
+    dataprotection.kubeblocks.io/skip-base-backup-restore-in-pitr: "true"
+spec:
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}/db
+    - name: MOUNT_DIR
+      value: {{ .Values.dataMountPath }}
+    - name: PBM_BACKUP_DIR_NAME
+      value: "pbm-backups"
+    - name: PBM_OPLOG_SPAN_MIN_MINUTES
+      value: "5"
+    - name: PBM_COMPRESSION
+      value: s2 # for big data, use s2 compression to reduce memory usage during restoration
+    - name: PBM_RESTORE_DOWNLOAD_WORKERS
+      value: "4"
+    - name: PBM_PURGE_INTERVAL_SECONDS
+      value: "86400"
+    - name: PBM_BACKUP_TYPE
+      value: continuous
+    - name: RETAIN_PITR_FILES
+      value: "false"
+    - name: PBM_IMAGE_TAG
+      value: {{ .Values.image.percona.backup.tag }}
+    - name: PSM_IMAGE_TAG
+      value: {{ .Values.image.tag }}
+    - name: PBM_DISABLE_PITR_WHEN_EXIT
+      value: "false"
+  backupType: Continuous
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/rs-pbm-pitr-backup.sh" | nindent 10 }}
+    preDelete:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/pbm-backup-delete.sh" | nindent 10 }}
+
+  restore:
+    prepareData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/rs-pbm-restore-prepare.sh" | nindent 8 }}
+    postReady:
+    - job:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
+        runOnTargetPodNode: true
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 12 }}
+            {{- .Files.Get "dataprotection/rs-pbm-pitr-restore.sh" | nindent 12 }}

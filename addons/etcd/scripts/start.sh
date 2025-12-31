@@ -32,28 +32,36 @@ setup_protocols_and_cluster() {
   if [ -n "$PEER_ENDPOINT" ]; then
     log "Using PEER_ENDPOINT for cluster configuration"
     IFS=',' read -ra endpoints <<<"$PEER_ENDPOINT"
-    for endpoint in "${endpoints[@]}"; do
-      local hostname target_endpoint
-      if [[ "$endpoint" == *":"* ]]; then
-        hostname="${endpoint%:*}"
-        target_endpoint="${endpoint#*:}"
-      else
-        hostname="$endpoint"
-        target_endpoint="$endpoint"
-      fi
-      target_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$hostname" "$target_endpoint")
-      cluster_config="${cluster_config:+$cluster_config,}$hostname=$peer_protocol://$target_endpoint:2380"
-    done
-  elif [ -n "$PEER_FQDNS" ]; then
+    if [ "${#endpoints[@]}" -ne "$COMPONENT_REPLICAS" ]; then
+      log "PEER_ENDPOINT cannot parse enough endpoints, fallback to use PEER_FQDNS"
+    else
+      for endpoint in "${endpoints[@]}"; do
+        local hostname target_endpoint
+        if [[ "$endpoint" == *":"* ]]; then
+          hostname="${endpoint%:*}"
+          target_endpoint="${endpoint#*:}"
+        else
+          hostname="$endpoint"
+          target_endpoint="$endpoint"
+        fi
+        target_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$hostname" "$target_endpoint")
+        cluster_config="${cluster_config:+$cluster_config,}$hostname=$peer_protocol://$target_endpoint:2380"
+      done
+      return
+    fi
+  fi
+
+  if [ -n "$PEER_FQDNS" ]; then
     log "Using PEER_FQDNS for cluster configuration"
     IFS=',' read -ra fqdns <<<"$PEER_FQDNS"
     for fqdn in "${fqdns[@]}"; do
       local hostname="${fqdn%%.*}"
       cluster_config="${cluster_config:+$cluster_config,}$hostname=$peer_protocol://$fqdn:2380"
     done
-  else
-    error_exit "Neither PEER_ENDPOINT nor PEER_FQDNS is available"
+    return
   fi
+
+  error_exit "Neither PEER_ENDPOINT nor PEER_FQDNS is available"
 }
 
 update_etcd_conf() {
@@ -88,7 +96,6 @@ update_etcd_conf() {
   trusted-ca-file: $TLS_MOUNT_PATH/ca.pem\\
   auto-tls: false" "$default_conf"
     fi
-    
     if [ "$peer_protocol" = "https" ]; then
       sed -i.bak "/^peer-transport-security:$/a\\
   cert-file: $TLS_MOUNT_PATH/cert.pem\\
@@ -108,25 +115,30 @@ update_etcd_conf() {
 }
 
 restore() {
-  files=("$RESTORE_DIR"/*)
-  [ ${#files[@]} -eq 0 ] || [ ! -e "${files[0]}" ] && error_exit "No backup file found in $RESTORE_DIR or directory is empty."
+  if [ -d "$DATA_DIR" ]; then
+    if [ -n "$(find "$DATA_DIR" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+      log "Existing data directory $DATA_DIR detected, skipping snapshot restore when restart etcd"
+      return 0
+    fi
+  fi
+
+  files=("$BACKUP_DIR"/*)
+  [ ${#files[@]} -eq 0 ] || [ ! -e "${files[0]}" ] && error_exit "No backup file found in $BACKUP_DIR or directory is empty."
 
   backup_file="${files[0]}"
   check_backup_file "$backup_file"
 
-  data_dir=$(parse_config_value "data-dir" "$default_conf")
   name=$(parse_config_value "name" "$default_conf")
   advertise_urls=$(parse_config_value "initial-advertise-peer-urls" "$default_conf")
   cluster=$(parse_config_value "initial-cluster" "$default_conf")
   cluster_token=$(parse_config_value "initial-cluster-token" "$default_conf")
-
   etcdutl snapshot restore "$backup_file" \
-    --data-dir="$data_dir" \
+    --data-dir="$DATA_DIR" \
     --name="$name" \
     --initial-advertise-peer-urls="$advertise_urls" \
     --initial-cluster="$cluster" \
     --initial-cluster-token="$cluster_token"
-  rm -rf "$RESTORE_DIR"
+  rm -rf "$BACKUP_DIR"
 }
 
 main() {
@@ -135,7 +147,7 @@ main() {
   log "Updated etcd.conf:"
   cat "$default_conf"
 
-  [ -d "$RESTORE_DIR" ] && restore
+  [ -d "$BACKUP_DIR" ] && restore
 
   log "Starting etcd with updated configuration..."
   exec etcd --config-file "$default_conf"

@@ -30,7 +30,9 @@
 {{- $pgVersion := "16.0" }}
 {{- range $i, $spec := $.cluster.spec.componentSpecs }}
 {{- if eq "postgresql" $spec.name }}
+{{- if $spec.serviceVersion }}
 {{- $pgVersion = $spec.serviceVersion }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -146,13 +148,13 @@ log_executor_stats = 'False'
 logging_collector = 'True'
 log_destination = 'csvlog'
 log_directory = 'log'
-log_filename = 'postgresql-%Y-%m-%d.log'
+log_filename = 'postgresql-%u.log'
 # log_lock_waits = 'True'
 log_min_duration_statement = '1000'
 log_parser_stats = 'False'
 log_planner_stats = 'False'
 log_replication_commands = 'False'
-log_statement = 'ddl'
+log_statement = 'none'
 log_statement_stats = 'False'
 log_temp_files = '128kB'
 log_transaction_sample_rate = '0'
@@ -205,7 +207,7 @@ pgaudit.log_client = 'False'
 pgaudit.log_parameter = 'False'
 pgaudit.log_relation = 'False'
 pgaudit.log_statement_once = 'False'
-pgaudit.log = 'ddl,read,write'
+pgaudit.log = 'ddl'
 # pgaudit.role = ''
 #extension: pglogical
 pglogical.batch_inserts = 'True'

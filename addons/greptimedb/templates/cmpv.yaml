@@ -25,7 +25,7 @@ spec:
       serviceVersion: 0.3.2
       images:
         datanode: {{ .Values.images.greptimedb.registry | default .Values.images.registry }}/{{ .Values.images.greptimedb.repository }}:0.3.2
-        wait-meta: {{ .Values.images.busybox.registry | default (.Values.images.registry | default "docker.io") }}/{{ .Values.images.busybox.repository }}:{{ .Values.images.busybox.tag }}
+        initializer: {{ .Values.images.initializer.registry | default (.Values.images.registry | default "docker.io") }}/{{ .Values.images.initializer.repository }}:{{ .Values.images.initializer.tag }}
     - name: frontend-0.3.2
       serviceVersion: 0.3.2
       images:

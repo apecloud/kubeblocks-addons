@@ -42,12 +42,14 @@ redisVersions:
         imageTag: "6.2.6-v10"
       - version: "6.2.17"
         imageTag: "6.2.6-v18"
+      - version: "6.2.18"
+        imageTag: "6.2.6-v19"
   - major: "7"
     componentDef: "redis-7"
-    serviceVersion: "7.2.10"
+    serviceVersion: "7.2.11"
     clusterComponentDef: "redis-cluster-7"
     sentinelComponentDef: "redis-sentinel-7"
-    defaultImageTag: "7.2.0-v18"
+    defaultImageTag: "7.2.0-v19"
     mirrorVersions:
       - version: "7.0.6"
         imageTag: "7.0.6-RC4"
@@ -59,19 +61,39 @@ redisVersions:
         imageTag: "7.4.0-v3"
       - version: "7.2.10"
         imageTag: "7.2.0-v18"
+      - version: "7.2.11"
+        imageTag: "7.2.0-v19"
+      - version: "7.2.12"
+        imageTag: "7.2.0-v20"
       - version: "7.4.5"
         imageTag: "7.4.0-v6"
+      - version: "7.4.6"
+        imageTag: "7.4.0-v7"
+      - version: "7.4.7"
+        imageTag: "7.4.0-v8"
   - major: "8"
     componentDef: "redis-8"
-    serviceVersion: "8.0.3"
+    serviceVersion: "8.2.2"
     clusterComponentDef: "redis-cluster-8"
     sentinelComponentDef: "redis-sentinel-8"
-    defaultImageTag: "8.0.3"
+    defaultImageTag: "8.2.2"
     mirrorVersions:
       - version: "8.0.1"
         imageTag: "8.0.1"
       - version: "8.0.3"
         imageTag: "8.0.3"
+      - version: "8.0.4"
+        imageTag: "8.0.4"
+      - version: "8.0.5"
+        imageTag: "8.0.5"
+      - version: "8.2.1"
+        imageTag: "8.2.1"
+      - version: "8.2.2"
+        imageTag: "8.2.2"
+      - version: "8.2.3"
+        imageTag: "8.2.3"
+      - version: "8.4.0"
+        imageTag: "8.4.0"
 
 image:
   # refer: https://redis.io/docs/stack/
@@ -84,10 +106,7 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag:
     major7:
-      minor70: 7.0.6-RC4
       minor72: 7.2.0-v18
-    major8:
-      minor80: 8.0.1
 
   apeDts:
     registry: ""
@@ -99,9 +118,6 @@ ceImage:
   registry:
   repository: redis
   pullPolicy: IfNotPresent
-  tag:
-    major8:
-      minor80: 8.0.1
 
 apeDtsImage:
   registry: ""
@@ -134,8 +150,9 @@ metrics:
   image:
     # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
-    repository: apecloud/agamotto
-    tag: 0.1.2-beta.1
+    # Supports Valkey and Redis 2.x, 3.x, 4.x, 5.x, 6.x, and 7.x
+    repository: oliver006/redis_exporter
+    tag: v1.80.1
     pullPolicy: IfNotPresent
   service:
     port: 9121
@@ -150,4 +167,4 @@ logConfigs:
 # cluster domain without . prefix
 clusterDomain: "cluster.local"
 
-enableMetrics: false
+enableMetrics: true

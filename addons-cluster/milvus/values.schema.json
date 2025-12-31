@@ -6,11 +6,11 @@
   "properties": {
     "mode": {
       "title": "Mode",
-      "description": "Mode of the cluster, optional: standalone, cluster",
+      "description": "Mode of the cluster, optional: standalone, distributed",
       "type": "string",
       "enum": [
         "standalone",
-        "cluster"
+        "distributed"
       ],
       "default": "standalone"
     },

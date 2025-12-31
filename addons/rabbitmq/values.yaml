@@ -7,28 +7,29 @@ image:
   repository: rabbitmq
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 3.13.2-management
+  tag: 3.13.7-management
 
 ## @param supported versions with detailed information
 versions:
   - major: "4"
-    componentDef: "^rabbitmq-"
+    componentDef: "^rabbitmq.*"
     minors:
       # [version, serviceVersion, tag, deprecated]
+      - ["4.2.1", "4.2.1", "4.2.1-management", false]
+      - ["4.1.6", "4.1.6", "4.1.6-management", false]
       - ["4.0.9", "4.0.9", "4.0.9-management", false]
   - major: "3"
-    componentDef: "^rabbitmq-"
+    componentDef: "^rabbitmq.*"
     minors:
       - ["3.13.7", "3.13.7", "3.13.7-management", false]
-      - ["3.13.2", "3.13.2", "3.13.2-management", false]
       - ["3.12.14", "3.12.14", "3.12.14-management", false]
       - ["3.11.28", "3.11.28", "3.11.28-management", false]
       - ["3.10.25", "3.10.25", "3.10.25-management", false]
       - ["3.9.29", "3.9.29", "3.9.29-management", false]
-      - ["3.8.14", "3.8.14", "3.8.14-management", false]
+      - ["3.8.34", "3.8.34", "3.8.34-management", false]
 
 componentServiceVersion:
-  rabbitmq: 3.13.2
+  rabbitmq: 3.13.7
 
 nameOverride: ""
 

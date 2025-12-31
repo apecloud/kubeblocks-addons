@@ -21,15 +21,14 @@ spec:
   {{- $major := .major }}
     {{- range .minors }}
     - name: {{ .version }}
-      changes: ""
       serviceVersion: {{ .version }}
       images:
-        init-dbctl: {{ include "postgresql.dbctlImage" $ }}
-        pg-init-container: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
+        pg-init-container: {{ include "postgresql.initImage" $ }}
         exporter: {{ include "postgresql.metricsImage" $ }}
         postgresql: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
         pgbouncer: {{ include "postgresql.pgbouncerImage" $ }}
         switchover: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
         accountProvision: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
+        dbctl: {{ include "postgresql.dbctlImage" $ }}
   {{- end }}
   {{- end }}

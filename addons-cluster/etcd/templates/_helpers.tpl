@@ -1,4 +1,22 @@
 {{/*
+etcd schedulingPolicy
+*/}}
+{{- define "etcd-cluster.schedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
+              app.kubernetes.io/managed-by: "kubeblocks"
+              apps.kubeblocks.io/component-name: "etcd"
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+{{- end -}}
+
+{{/*
 Define "etcd-cluster.componentPeerService" to override component peer service
 Primarily used for LoadBalancer service to enable multi-cluster communication
 */}}
@@ -22,7 +40,7 @@ Define "etcd-cluster.clientService" to configure client service for etcd.
 {{- if .Values.clientService.type }}
 services:
   - name: client
-    serviceName: client
+    serviceName: etcd-client
     {{- if and (eq .Values.clientService.type "LoadBalancer") (not (empty .Values.clientService.annotations)) }}
     annotations: {{ .Values.clientService.annotations | toYaml | nindent 8 }}
     {{- end }}

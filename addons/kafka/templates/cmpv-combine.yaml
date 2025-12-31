@@ -11,11 +11,15 @@ spec:
     - compDefs:
         - {{ include "kafka-combine.cmpdRegexpPattern" . }}
       releases:
-        - 3.3.2-debian-11-r54
+      {{- range .Values.images.kafka.versions.v3 }}
+        - {{ .tag }}
+      {{- end }}
   releases:
-    - name: 3.3.2-debian-11-r54
-      changes:
-      serviceVersion: 3.3.2
+  {{- range .Values.images.kafka.versions.v3 }}
+    - name: {{ .tag }}
+      serviceVersion: {{ .version }}
       images:
-        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag.v3_3_2 }}
-        jmx-exporter:  {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+        kafka: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.kafka.repository }}:{{ .tag }}
+        jmx-exporter: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.jmxExporter.repository }}:{{ $.Values.images.jmxExporter.tag }}
+        kafkatool: {{ $.Values.images.registry | default "docker.io" }}/{{ $.Values.images.kafkatool.repository }}:{{ $.Values.images.kafkatool.tag }}
+  {{- end }}

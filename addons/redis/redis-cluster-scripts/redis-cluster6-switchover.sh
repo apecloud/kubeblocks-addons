@@ -36,6 +36,10 @@ check_environment_exist() {
     "CURRENT_SHARD_POD_FQDN_LIST"
   )
 
+  if [[ ${COMPONENT_REPLICAS} -lt 2 ]]; then
+    exit 0
+  fi
+
   for var in "${required_vars[@]}"; do
     if is_empty "${!var}"; then
       echo "Error: Required environment variable $var is not set." >&2
@@ -106,6 +110,10 @@ do_switchover() {
 
   # check candidate pod is ready and has the role of secondary
   role=$(check_redis_role "$candidate_pod_fqdn" $service_port)
+  if [ "$role" = "primary" ]; then
+    echo "Info: Candidate pod $candidate_pod is already a primary"
+    exit 0
+  fi
   if ! equals "$role" "secondary"; then
     echo "Error: Candidate pod $candidate_pod is not a secondary" >&2
     return 1
@@ -131,16 +139,17 @@ do_switchover() {
     echo "Error: Could not determine current shard primary host and port" >&2
     return 1
   fi
-  primaries=$(get_all_shards_master "$current_shard_primary_host" $current_shard_primary_port)
-  for primary in $primaries; do
-    primary_host=$(echo "$primary" | cut -d':' -f1)
-    primary_port=$(echo "$primary" | cut -d':' -f2)
-    if ! check_node_in_cluster_with_retry "$primary_host" $primary_port "$candidate_pod_ip"; then
+  if [ -z "$CURRENT_SHARD_LB_ADVERTISED_HOST" ]; then
+    primaries=$(get_all_shards_master "$current_shard_primary_host" $current_shard_primary_port)
+    for primary in $primaries; do
+      primary_host=$(echo "$primary" | cut -d':' -f1)
+      primary_port=$(echo "$primary" | cut -d':' -f2)
+      if ! check_node_in_cluster_with_retry "$primary_host" $primary_port "$candidate_pod_ip"; then
       echo "Error: Candidate $candidate_pod is not known by shard $primary" >&2
       return 1
     fi
-  done
-
+    done
+  fi
   # do switchover
   echo "Starting switchover to $candidate_pod"
   unset_xtrace_when_ut_mode_false

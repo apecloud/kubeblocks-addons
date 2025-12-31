@@ -8,7 +8,7 @@ metadata:
     {{- include "mysql.annotations" . | nindent 4 }}
 spec:
   {{- include "mysql-orc.spec.common" . | nindent 2 }}
-  serviceVersion: 8.0.33
+
   lifecycleActions:
     {{- include "mysql-orc.spec.lifecycle.common" . | nindent 4 }}
 

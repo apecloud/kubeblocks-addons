@@ -100,6 +100,7 @@ Docker image name
 {{- if .Values.enterprise.enabled -}}{{- include "loki.enterpriseImage" . -}}{{- else -}}{{- include "loki.lokiImage" . -}}{{- end -}}
 {{- end -}}
 
+
 {{/*
 write fullname
 */}}
@@ -276,22 +277,53 @@ Define loki write component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define loki write parameter config renderer name
+Define loki scripts configMap template name
 */}}
-{{- define "loki.writePCRName" -}}
-loki-write-pcr-{{ .Chart.Version }}
+{{- define "loki.scriptsTemplate" -}}
+loki-scripts-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define loki backend parameter config renderer name
+Generate loki scripts configmap
 */}}
-{{- define "loki.backendPCRName" -}}
-loki-backend-pcr-{{ .Chart.Version }}
-{{- end -}}
+{{- define "loki.extend.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
 
 {{/*
-Define loki read parameter config renderer name
+object storage serviceRef declarations
 */}}
-{{- define "loki.readPCRName" -}}
-loki-read-pcr-{{ .Chart.Version }}
-{{- end -}}
+{{- define "loki.object.serviceRef" }}
+- name: loki-object-storage
+  serviceRefDeclarationSpecs:
+    - serviceKind: minio
+      serviceVersion: "^*"
+  optional: true
+{{- end }}
+
+{{/*
+object storage serviceRef vars
+*/}}
+{{- define "loki.object.serviceRefVars" }}
+- name: S3_ENDPOINT
+  valueFrom:
+    serviceRefVarRef:
+      name: loki-object-storage
+      optional: true
+      endpoint: Required
+- name: ACCESS_KEY_ID
+  valueFrom:
+    serviceRefVarRef:
+      name: loki-object-storage
+      optional: true
+      username: Required
+- name: SECRET_ACCESS_KEY
+  valueFrom:
+    serviceRefVarRef:
+      name: loki-object-storage
+      optional: true
+      password: Required
+{{- end }}

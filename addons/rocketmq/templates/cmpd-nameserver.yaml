@@ -24,13 +24,17 @@ spec:
       namespace: {{ .Release.Namespace }}
   lifecycleActions:
     memberJoin:
+      timeoutSeconds: 3
       exec:
+        container: rocketmq-namesrv
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         command:
           - bash
           - -c
           - |
             /scripts/update-nameserver-addrs.sh
     memberLeave:
+      timeoutSeconds: 3
       exec:
         command:
           - bash
@@ -52,6 +56,11 @@ spec:
       value: "{{ .Values.nameserver.port }}"
     - name: LOG_PATH
       value: {{ .Values.nameserver.logPath }}
+    - name: ALL_NAMESRV_FQDN
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
   services:
     - name: namesrv-internal
       spec:

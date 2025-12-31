@@ -105,6 +105,13 @@ Define zookeeper log config template name
 zookeeper-log-config-template
 {{- end -}}
 
+{{/*
+Define zookeeper dynamic config template name
+*/}}
+{{- define "zookeeper.dynamicConfigTplName" -}}
+zookeeper-dynamic-config-template
+{{- end -}}
+
 
 {{/*
 Define zookeeper parameter config renderer name
@@ -117,5 +124,5 @@ zookeeper-pcr
 Define zookeeper parameters definition name
 */}}
 {{- define "zookeeper.paramsDefName" -}}
-zookeeper-pd
+zookeeper-dynamic-pd
 {{- end -}}

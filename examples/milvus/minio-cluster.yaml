@@ -7,8 +7,11 @@ spec:
   terminationPolicy: WipeOut
   componentSpecs:
     - name: minio
-      componentDef: milvus-minio
-      replicas: 1
+      componentDef: minio  # Prefix Match Component Definition Name
+      env:
+        - name: MINIO_BUCKETS # specify buckets to be created when initializing the cluster
+          value: milvus
+      replicas: 2
       resources:
         limits:
           cpu: '0.5'

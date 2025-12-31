@@ -14,7 +14,7 @@ InfluxDB enables real-time analytics by serving as a purpose-built database that
 
 | Versions |
 |----------|
-| 2.7.4 |
+| 2.7.11   |
 
 ## Prerequisites
 
@@ -47,7 +47,7 @@ spec:
   componentSpecs:
     - name: influxdb
       componentDef: influxdb
-      serviceVersion: 2.7.4
+      serviceVersion: 2.7.11
       replicas: 1
       resources:
         limits:

@@ -21,16 +21,35 @@ function pending_restart_parameters_values() {
 function restart_for_pending_restart_flag() {
   while true; do
     sleep 5
-    pod_info=$(curl --connect-timeout 3 -s http://localhost:8008)
-    pending_restart=$(echo $pod_info | jq -r .pending_restart)
-    if [[ "$pending_restart" != "true" ]]; then
-       continue
+    pod_info_tmp_path="/tmp/pod_info.tmp"
+    curl --connect-timeout 3 -s http://localhost:8008 > ${pod_info_tmp_path}
+
+    if grep -q "pending_restart" ${pod_info_tmp_path}; then
+      pod_info=$(<${pod_info_tmp_path})
+      pending_restart=$(echo $pod_info | jq -r .pending_restart)
+      if [[ "$pending_restart" != "true" ]]; then
+        continue
+      fi
+    else
+        continue
     fi
-    state=$(echo $pod_info | jq -r .state)
-    if [[ "$state" != "running" && "$state" != "streaming" ]]; then
-       continue
+
+    if grep -q "state" ${pod_info_tmp_path}; then
+      pod_info=$(<${pod_info_tmp_path})
+      rm -f ${pod_info_tmp_path}
+      state=$(echo $pod_info | jq -r .state)
+      if [[ "$state" != "running" && "$state" != "streaming" ]]; then
+        continue
+      fi
+    else
+        continue
     fi
-    result=$(curl --connect-timeout 3 -s http://localhost:8008/cluster)
+
+    result_tmp_path="/tmp/cluster_result.tmp"
+    curl --connect-timeout 3 -s http://localhost:8008/cluster > ${result_tmp_path}
+    result=$(<${result_tmp_path})
+    rm -f ${result_tmp_path}
+
     leader_pending_restart_pod=$(echo ${result} | jq -r ".members[] | select(.role == \"leader\" and .pending_restart == true) | .name")
     if [[ -z "$leader_pending_restart_pod"  ]]; then
       # check if the pending_restart parameters are inconsistent
@@ -73,7 +92,11 @@ init_etcd_dcs_config_if_needed() {
     else
       export ETCD_HOSTS=$PATRONI_DCS_ETCD_SERVICE_ENDPOINT
     fi
+    SCOPE="${CLUSTER_NAME}-${POSTGRES_COMPONENT_NAME}-patroni${CLUSTER_UID: -8}"
+  else
+    SCOPE=${POSTGRES_COMPONENT_NAME}
   fi
+  export SCOPE
 }
 
 regenerate_spilo_configuration_and_start_postgres() {

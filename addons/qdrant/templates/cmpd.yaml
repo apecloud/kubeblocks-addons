@@ -5,6 +5,7 @@ metadata:
   labels:
     {{- include "qdrant.labels" . | nindent 4 }}
   annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "qdrant.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
@@ -40,7 +41,6 @@ spec:
   - name: data
     needSnapshot: true
   - name: log
-    emptyDir: {}
   vars:
     - name: QDRANT_POD_NAME_LIST
       valueFrom:
@@ -60,7 +60,7 @@ spec:
     memberLeave:
       exec:
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
           - /qdrant/scripts/member-leave.sh
         targetPodSelector: Any
@@ -153,7 +153,7 @@ spec:
         value: "6333"
       - name: CLUSTER_DOMAIN
         value: {{ .Values.clusterDomain | quote }}
-      - name: KB_POD_NAME
+      - name: CURRENT_POD_NAME
         valueFrom:
           fieldRef:
             apiVersion: v1

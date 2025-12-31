@@ -7,26 +7,26 @@ nameOverride: ""
 fullnameOverride: ""
 
 ## Set default image, imageTag, and imagePullPolicy. mode is used to indicate the
+## Note: from RELEASE.2025-10-15T17-29-55Z, minio changed to source code only distribution,
+## so we use the image hosted on coollabsio/minio. If you want to use the old version,
+## please set the image.repository to minio/minio.
+## Ref: https://github.com/minio/minio?tab=readme-ov-file#source-only-distribution
 ##
 image:
   registry: docker.io
-  repository: minio/minio
-  tag: RELEASE.2024-06-29T01-20-47Z
+  repository: coollabsio/minio
   pullPolicy: IfNotPresent
 
-## @param define default serviceVersion
-defaultServiceVersion:
-  minio: 2024.6.29
-
-## Set default image, imageTag, and imagePullPolicy for the `mc` (the minio
-## client used to create a default bucket).
-##
-mcImage:
-  # if the value of mcImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-  registry: ""
-  repository: minio/mc
-  tag: RELEASE.2024-04-18T16-45-29Z
-  pullPolicy: IfNotPresent
+## @param versions MinIO versions configuration
+## Array of versions with specific image tags and service versions
+versions:
+  - version: "2024.6.29"
+    tag: "RELEASE.2024-06-29T01-20-47Z"
+    serviceVersion: "2024.6.29"
+  - version: "2025.10.15"
+    tag: "RELEASE.2025-10-15T17-29-55Z"
+    serviceVersion: "2025.10.15"
+    isDefault: true
 
 ## Internal port number for MinIO S3 API container
 ## Change service.port to change external port number

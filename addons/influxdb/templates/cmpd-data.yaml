@@ -1,0 +1,147 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "influxdb.data.cmpdName" . }}
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "influxdb.annotations" . | nindent 4 }}
+spec:
+  provider: Apecloud
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  services:
+    - name: data
+      spec:
+        ports:
+          - name: api
+            port: 8086
+            targetPort: http
+  vars:
+    - name: POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    # don't use INFLUXDB_ADMIN_USER to avoid conflict with image's init script
+    - name: INFLUXDB_ADMIN_USER_POSTPROVISON
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          username: Required
+    - name: INFLUXDB_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: META_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "influxdb.meta.cmpdName" . }}
+          host: Required
+    - name: META_ADDRESS
+      value: "$(META_HOST).$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain }}:8091"
+    - name: SERVICE_PORT
+      value: "8086"
+  systemAccounts:
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 12
+        numDigits: 3
+        numSymbols: 3
+        letterCase: MixedCases
+  configs:
+    - name: config-data
+      template: {{ include "influxdb.data.configurationTemplate" . }}
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
+  runtime:
+    initContainers:
+      - name: copy-tools
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+          - |
+            cp /bin/jq /tools/
+        volumeMounts:
+          - name: tools
+            mountPath: /tools
+      - name: copy-client
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+          - |
+            cp /usr/bin/influx /tools/
+        volumeMounts:
+          - name: tools
+            mountPath: /tools
+    containers:
+      - name: influxdb-data
+        imagePullPolicy: IfNotPresent
+        command:
+          - /scripts/run.sh
+          - /entrypoint.sh
+          - influxd
+        env:
+          - name: INFLUXDB_HTTP_AUTH_ENABLED
+            value: "true"
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: NODE_TYPE
+            value: data
+        ports:
+          - name: http
+            containerPort: 8086
+            protocol: TCP
+          - name: internal
+            containerPort: 8088
+            protocol: TCP
+        startupProbe:
+          failureThreshold: 12
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            port: 8086
+            path: "/ping"
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/influxdb
+          - name: scripts
+            mountPath: /scripts
+          - name: tools
+            mountPath: /tools
+          # note: this volume will overwrite the default config in docker image
+          # (https://github.com/chengshiwen/influxdb-cluster/blob/master/docker/data/influxdb.conf)
+          - name: config
+            mountPath: /etc/influxdb
+    volumes:
+      - name: tools
+        emptyDir: {}
+  scripts:
+    - name: scripts
+      template: {{ include "influxdb.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0777
+  lifecycleActions:
+    postProvision:
+      preCondition: RuntimeReady
+      exec:
+        container: influxdb-data
+        command:
+          - /scripts/data_postprovision.sh
+  podManagementPolicy: Parallel

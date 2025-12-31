@@ -12,6 +12,7 @@ versions:
     componentDef: "^zookeeper-"
     minors:
       # [version, serviceVersion, tag, deprecated]
+      - ["3.9.4", "3.9.4", "3.9.4", false]
       - ["3.9.2", "3.9.2", "3.9.2", false]
       - ["3.8.4", "3.8.4", "3.8.4", false]
       - ["3.7.2", "3.7.2", "3.7.2", false]
@@ -20,7 +21,7 @@ versions:
 
 images:
   registry: docker.io
-  repository: bitnami/zookeeper
+  repository: apecloud/zookeeper
   pullPolicy: IfNotPresent
   tag: 3.7.2
 
@@ -36,6 +37,7 @@ metrics:
 zookeeper:
   dataDir: /bitnami/zookeeper/data
   dataLogDir: /bitnami/zookeeper/log
+  dynamicConfigDir: /opt/bitnami/zookeeper/dynamic
 
 extra:
   terminationPolicy: Delete

@@ -21,7 +21,7 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 | Major Versions | Description |
 |---------------|--------------|
 | 5.7 | 5.7.44  |
-| 8.0 | \[8.0.30 ~ 8.0.39\] |
+| 8.0 | \[8.0.33 ~ 8.0.44\] |
 | 8.4 | 8.4.0 ~ 8.4.2|
 
 ## Prerequisites
@@ -62,7 +62,7 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.30 to 8.0.39]
+      # Valid options are: [8.0.33 to 8.0.44]
       serviceVersion: 8.0.35
 ```
 
@@ -296,14 +296,6 @@ kubectl apply -f examples/mysql/backup.yaml
 ### [Restore](restore.yaml)
 
 To restore a new cluster from a Backup:
-
-1. Get the list of accounts and their passwords from the backup:
-
-```bash
-kubectl get backup -n demo mysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
-```
-
-1. Update `examples/mysql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
 
 ```bash
 kubectl apply -f examples/mysql/restore.yaml

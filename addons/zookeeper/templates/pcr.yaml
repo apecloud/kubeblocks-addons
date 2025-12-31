@@ -9,6 +9,9 @@ spec:
   parametersDefs:
     - {{ include "zookeeper.paramsDefName" . }}
   configs:
-    - name: zoo.cfg
+    - name: zoo.cfg.dynamic
       fileFormatConfig:
         format: props-plus
+      reRenderResourceTypes:
+        - hscale
+    
