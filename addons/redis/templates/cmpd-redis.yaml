@@ -73,6 +73,12 @@ spec:
     containerName: metrics
     scrapePath: /metrics
     scrapePort: http-metrics
+  tls:
+    volumeName: tls
+    mountPath: {{ $.Values.tlsMountPath }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
   configs:
     - name: redis-replication-config
       template: {{ printf "redis%s-config-template-%s" .major $.Chart.Version }}
@@ -304,6 +310,12 @@ spec:
       valueFrom:
         resourceVarRef:
           memory: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+    - name: TLS_MOUNT_PATH
+      value: {{ $.Values.tlsMountPath }}
   lifecycleActions:
     roleProbe:
       periodSeconds: 1

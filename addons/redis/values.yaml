@@ -168,3 +168,5 @@ logConfigs:
 clusterDomain: "cluster.local"
 
 enableMetrics: true
+
+tlsMountPath: /etc/pki/tls
