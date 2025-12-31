@@ -233,16 +233,26 @@ get_current_comp_nodes_for_scale_out_replica() {
   }
 
   # get current pod ip list from KB_POD_LIST
-  IFS=',' read -ra CURRENT_POD_LIST <<< "$CURRENT_SHARD_POD_NAME_LIST"
-  CURRENT_POD_IP_LIST=()
-  for pod_name in "${CURRENT_POD_LIST[@]}"; do
+  IFS=',' read -ra CURRENT_SHARD_ANNOUNCE_IP_LIST <<< "$CURRENT_SHARD_POD_NAME_LIST"
+  CURRENT_SHARD_ANNOUNCE_IP_LIST=()
+  for pod_name in "${CURRENT_SHARD_ANNOUNCE_IP_LIST[@]}"; do
     local pod_fqdn="$pod_name.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.cluster.local"
-    pod_mapping_ip=$(getent hosts "$pod_fqdn" | awk '{ print $1 }')
+    if [ "$network_mode" == "advertised_svc" ]; then
+      svc_and_port=$(parse_advertised_svc_and_port "$pod_name" "$CURRENT_SHARD_ADVERTISED_PORT" "true")
+      svc_name=${svc_and_port%:*}
+      pod_mapping_ip=$(extract_lb_host_by_svc_name "$svc_name")
+      if is_empty "$pod_mapping_ip"; then
+        echo "Error: Failed to extract lb host by svc name: $pod_name from CURRENT_SHARD_LB_ADVERTISED_HOST: $CURRENT_SHARD_LB_ADVERTISED_HOST"
+        return 1
+      fi
+    else
+      pod_mapping_ip=$(getent hosts "$pod_fqdn" | awk '{ print $1 }')
+    fi
     echo "pod_name: $pod_name, pod_fqdn: $pod_fqdn, pod_mapping_ip: $pod_mapping_ip"
-    CURRENT_POD_IP_LIST+=("$pod_mapping_ip")
+    CURRENT_SHARD_ANNOUNCE_IP_LIST+=("$pod_mapping_ip")
   done
-  # check length of CURRENT_POD_IP_LIST must equal to CURRENT_POD_LIST
-  if [ ${#CURRENT_POD_IP_LIST[@]} -ne ${#CURRENT_POD_LIST[@]} ]; then
+  # check length of CURRENT_SHARD_ANNOUNCE_IP_LIST must equal to CURRENT_POD_LIST
+  if [ ${#CURRENT_SHARD_ANNOUNCE_IP_LIST[@]} -ne ${#CURRENT_POD_LIST[@]} ]; then
     echo "Error: failed to get the pod ip list from KB_POD_LIST"
     return 1
   fi
@@ -255,7 +265,7 @@ get_current_comp_nodes_for_scale_out_replica() {
     read -r node_announce_ip node_port node_bus_port node_role <<< "$node_info"
 
     belong_current_comp=false
-    for i in "${CURRENT_POD_IP_LIST[@]}"; do
+    for i in "${CURRENT_SHARD_ANNOUNCE_IP_LIST[@]}"; do
       if [[ "$i" = "$node_announce_ip" ]]; then
         belong_current_comp=true
       fi
@@ -263,7 +273,7 @@ get_current_comp_nodes_for_scale_out_replica() {
 
     # build node entry based on network mode
     local node_entry
-    node_entry="$announce_ip#$announce_ip:$node_port@$node_bus_port"
+    node_entry="$node_announce_ip#$node_announce_ip:$node_port@$node_bus_port"
 
     # categorize nodes
     categorize_node "$node_entry" "$node_role" "$belong_current_comp"
@@ -308,7 +318,11 @@ remove_rebuild_instance_flag() {
 # scale out replica of redis cluster shard if needed
 scale_redis_cluster_replica() {
   # Waiting for redis-server to start
-  if check_redis_server_ready_with_retry "127.0.0.1" "$service_port"; then
+  check_current_ready_ip="127.0.0.1"
+  if [ -n "$redis_announce_host_value" ]; then
+      check_current_ready_ip=$redis_announce_host_value
+  fi
+  if check_redis_server_ready_with_retry "$check_current_ready_ip" "$service_port"; then
     echo "Redis server is ready, continue to scale out replica..."
   else
     echo "Redis server is not ready, exit scale out replica..." >&2
@@ -359,14 +373,14 @@ scale_redis_cluster_replica() {
   primary_node_endpoint=$(echo "$primary_node_endpoint_with_port" | awk -F ':' '{print $1}')
   primary_node_port=$(echo "$primary_node_endpoint_with_port" | awk -F ':' '{print $2}')
   primary_node_bus_port=$(echo "$primary_node_info" | awk -F '@' '{print $2}')
-  if contains "$primary_node_endpoint" "$CURRENT_POD_IP"; then
+  if contains "$primary_node_endpoint" "$redis_announce_host_value"; then
      echo "Current pod $CURRENT_POD_NAME is primary node, check and correct other primary nodes..."
      check_and_meet_other_primary_nodes "$primary_node_endpoint" "$primary_node_port"
      echo "Node $CURRENT_POD_NAME is already in the cluster, skipping scale out replica..."
      exit 0
   fi
   # if the current pod is not a rebuild-instance and is already in the cluster, skip scale out replica
-  if ! is_rebuild_instance && check_node_in_cluster_with_retry "$primary_node_endpoint" "$primary_node_port" "$CURRENT_POD_IP"; then
+  if ! is_rebuild_instance && check_node_in_cluster_with_retry "$primary_node_endpoint" "$primary_node_port" "$redis_announce_host_value"; then
     # if current pod is primary node, check the others primary info, if the others primary node info is expired, send cluster meet command again
     echo "Current pod $CURRENT_POD_NAME is a secondary node, check and meet current primary node..."
     check_and_meet_current_primary_node "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port"
@@ -386,14 +400,14 @@ scale_redis_cluster_replica() {
   # current_node_with_port do not use advertised svc and port, because advertised svc and port are not ready when Pod is not Ready.
   if is_rebuild_instance; then
     echo "Current instance is a rebuild-instance, forget node id in the cluster firstly."
-    node_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port" "$CURRENT_POD_IP")
+    node_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port" "$redis_announce_host_value")
     if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
       redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
     else
       redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
     fi
   fi
-  current_node_with_port="$CURRENT_POD_IP:$service_port"
+  current_node_with_port="$redis_announce_host_value:$service_port"
   replicated_output=$(secondary_replicated_to_primary "$current_node_with_port" "$primary_node_endpoint_with_port" "$primary_node_cluster_id")
   status=$?
   if [ $status -ne 0 ] ; then
@@ -409,14 +423,14 @@ scale_redis_cluster_replica() {
       shutdown_redis_server
       exit 1
     else
-      echo "Failed to add the node $CURRENT_POD_IP to the cluster in scale_redis_cluster_replica, Error message: $replicated_output, shutdown redis server" >&2
+      echo "Failed to add the node $redis_announce_host_value to the cluster in scale_redis_cluster_replica, Error message: $replicated_output, shutdown redis server" >&2
       shutdown_redis_server "$service_port"
       exit 1
     fi
   fi
 
   if is_rebuild_instance; then
-    echo "replicate the node $CURRENT_POD_IP to the primary node $primary_node_endpoint_with_port successfully in rebuild-instance, remove rebuild.flag file..."
+    echo "replicate the node $redis_announce_host_value to the primary node $primary_node_endpoint_with_port successfully in rebuild-instance, remove rebuild.flag file..."
     remove_rebuild_instance_flag
   fi
 
@@ -434,7 +448,7 @@ scale_redis_cluster_replica() {
 
     # meet current component primary node if not met yet
     if ! $current_primary_met; then
-      if scale_out_replica_send_meet "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port" "$CURRENT_POD_IP"; then
+      if scale_out_replica_send_meet "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port" "$redis_announce_host_value"; then
         echo "Successfully meet the primary node $primary_node_endpoint_with_port in scale_redis_cluster_replica"
         current_primary_met=true
       else
@@ -451,7 +465,7 @@ scale_redis_cluster_replica() {
         node_port=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $2}')
         node_bus_port=$(echo "$node_info" | awk -F '@' '{print $2}')
 
-        if scale_out_replica_send_meet "$node_endpoint" "$node_port" "$node_bus_port" "$CURRENT_POD_IP"; then
+        if scale_out_replica_send_meet "$node_endpoint" "$node_port" "$node_bus_port" "$redis_announce_host_value"; then
           echo "Successfully meet the primary node $node_endpoint_with_port in scale_redis_cluster_replica"
           other_primary_met["$node_info"]=true
         else
@@ -575,6 +589,8 @@ parse_redis_cluster_shard_announce_addr() {
       redis_announce_port_value="$REDIS_CLUSTER_HOST_NETWORK_PORT"
       redis_announce_bus_port_value="$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT"
       redis_announce_host_value="$CURRENT_POD_HOST_IP"
+    else
+      redis_announce_host_value=$CURRENT_POD_IP
     fi
     return 0
   fi
