@@ -282,6 +282,13 @@ get_current_comp_nodes_for_scale_out_replica() {
 # Note: During rebuild-instance, a new PVC is created without existing data and having the rebuild.flag file.
 # Therefore, we must rejoin this instance to the cluster as a secondary node.
 is_rebuild_instance() {
+
+  # Check if nodes.conf is corrupted
+  if [[ -f /data/nodeconfcorrupted.flag ]]; then
+    echo "Rebuild instance detected: nodes.conf is corrupted"
+    return 0
+  fi
+
   # Early return if rebuild flag doesn't exist
   [[ ! -f /data/rebuild.flag ]] && return 1
 
@@ -306,6 +313,13 @@ remove_rebuild_instance_flag() {
     echo "remove rebuild.flag file succeeded!"
   fi
 }
+
+remove_nodeconfcorrupted_flag() {
+  if [ -f /data/nodeconfcorrupted.flag ]; then
+    rm -f /data/nodeconfcorrupted.flag
+    echo "remove nodeconfcorrupted.flag file succeeded!"
+  fi
+}  
 
 # scale out replica of redis cluster shard if needed
 scale_redis_cluster_replica() {
@@ -388,13 +402,18 @@ scale_redis_cluster_replica() {
   # current_node_with_port do not use advertised svc and port, because advertised svc and port are not ready when Pod is not Ready.
   if is_rebuild_instance; then
     echo "Current instance is a rebuild-instance, forget node id in the cluster firstly."
-    node_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port" "$CURRENT_POD_IP")
+    #node_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port" "$CURRENT_POD_IP")
+    if [ -f /data/nodeconfcorrupted.flag ]; then
+      node_id=$(grep "$CURRENT_POD_IP" $(ls -t /data/nodes.conf.*.bak | head -1) | awk '{print $1}')
+    else
+      node_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port" "$CURRENT_POD_IP")
+    fi 
     if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
       redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
     else
       redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
     fi
-  fi
+  fi  
   current_node_with_port="$CURRENT_POD_IP:$service_port"
   replicated_output=$(secondary_replicated_to_primary "$current_node_with_port" "$primary_node_endpoint_with_port" "$primary_node_cluster_id")
   status=$?
@@ -420,6 +439,7 @@ scale_redis_cluster_replica() {
   if is_rebuild_instance; then
     echo "replicate the node $CURRENT_POD_IP to the primary node $primary_node_endpoint_with_port successfully in rebuild-instance, remove rebuild.flag file..."
     remove_rebuild_instance_flag
+    remove_nodeconfcorrupted_flag
   fi
 
   # Hacky: When the entire redis cluster is restarted, a hacky sleep is used to wait for all primaries to enter the restarting state
@@ -668,6 +688,31 @@ build_redis_conf() {
   build_redis_default_accounts
 }
 
+check_and_backup_nodes_conf() {
+    local LOG_FILE="/data/running.log"
+    local NODES_CONF="/data/nodes.conf"
+    local TIMESTAMP
+    local MATCH_COUNT
+
+    TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+
+    [ ! -f "$LOG_FILE" ] && return 0
+
+    MATCH_COUNT=$(tail -n 10 "$LOG_FILE" | grep -c "corrupted cluster config file")
+
+    # 已经备份过就不再处理
+    ls ${NODES_CONF}.${TIMESTAMP}.bak >/dev/null 2>&1 && return 0
+
+    if [ "$MATCH_COUNT" -ge 1 ] && [ -f "$NODES_CONF" ]; then
+        mv "$NODES_CONF" "${NODES_CONF}.${TIMESTAMP}.bak"
+        echo "[WARN] corrupted cluster config detected, backup nodes.conf"
+        touch /data/nodeconfcorrupted.flag
+        echo "[WARN] corrupted cluster config detected, touch /data/nodeconfcorrupted.flag"  
+        exit 0
+    fi
+}
+
+
 # This is magic for shellspec ut framework.
 # Sometime, functions are defined in a single shell script.
 # You will want to test it. but you do not want to run the script.
@@ -681,4 +726,5 @@ parse_redis_cluster_shard_announce_addr
 build_redis_conf
 # TODO: move to memberJoin action in the future
 scale_redis_cluster_replica &
+check_and_backup_nodes_conf &
 start_redis_server
