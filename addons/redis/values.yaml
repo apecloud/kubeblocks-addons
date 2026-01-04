@@ -128,7 +128,7 @@ dbctlImage:
   registry:
   repository: apecloud/dbctl
   pullPolicy: IfNotPresent
-  tag: 0.1.8
+  tag: 0.2.1
 
 redisTwemproxyImage:
   # if the value of redisTwemproxyImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
@@ -168,3 +168,5 @@ logConfigs:
 clusterDomain: "cluster.local"
 
 enableMetrics: true
+
+tlsMountPath: /etc/pki/tls

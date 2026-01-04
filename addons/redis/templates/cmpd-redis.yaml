@@ -20,6 +20,12 @@ spec:
   podManagementPolicy: OrderedReady
   podUpgradePolicy: ReCreate
   minReadySeconds: 10
+  tls:
+    volumeName: tls
+    mountPath: {{ $.Values.tlsMountPath }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
   services:
     - name: redis
       serviceName: redis
@@ -99,6 +105,7 @@ spec:
       - container: redis
         ports:
           - redis
+          - non-tls
   {{- if $.Values.enableMetrics }}
       - container: metrics
         ports:
@@ -210,12 +217,21 @@ spec:
             port:
               name: redis
               option: Required
+    - name: REDIS_HOST_NETWORK_NON_TLS_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: redis
+            port:
+              name: non-tls
+              option: Required
     - name: SERVICE_PORT
       value: "6379"
       expression: {{ `{{if index . "REDIS_HOST_NETWORK_PORT"}}{{.REDIS_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
-    ## the env of redis server port for dbctl to connect to redis server
-    - name: DBCTL_REDIS_SERVICE_PORT
-      value: $(SERVICE_PORT)
+    - name: NON_TLS_SERVICE_PORT
+      value: "6380"
+      expression: {{ `{{if index . "REDIS_HOST_NETWORK_NON_TLS_PORT"}}{{.REDIS_HOST_NETWORK_NON_TLS_PORT}}{{else}}{{.NON_TLS_SERVICE_PORT}}{{end}}` | toYaml }}
   {{- if $.Values.enableMetrics }}
     ## the redis server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 9121
     - name: REDIS_METRICS_HOST_NETWORK_PORT
@@ -300,10 +316,28 @@ spec:
               name: redis-sentinel
               option: Required
       expression: {{ `{{if index . "SENTINEL_SERVICE_PORT"}}{{.SENTINEL_SERVICE_PORT}}{{else}}26379{{end}}` | toYaml }}
+    - name: SENTINEL_NON_TLS_SERVICE_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          optional: true
+          container:
+            name: redis-sentinel
+            port:
+              name: non-tls
+              option: Required
+      expression: {{ `{{if index . "SENTINEL_NON_TLS_SERVICE_PORT"}}{{.SENTINEL_NON_TLS_SERVICE_PORT}}{{else}}26380{{end}}` | toYaml }}
     - name: PHY_MEMORY
       valueFrom:
         resourceVarRef:
           memory: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+          optional: true
+    - name: TLS_MOUNT_PATH
+      value: {{ $.Values.tlsMountPath }}
   lifecycleActions:
     roleProbe:
       periodSeconds: 1
@@ -327,8 +361,6 @@ spec:
         container: redis
         command:
           - /tools/dbctl
-          - --config-path
-          - /tools/config/dbctl/components
           - redis
           - getrole
     postProvision:
@@ -388,7 +420,6 @@ spec:
           - cp
           - -r
           - /bin/dbctl
-          - /config
           - /tools/
         imagePullPolicy: {{ default "IfNotPresent" $.Values.dbctlImage.pullPolicy }}
         volumeMounts:
@@ -399,8 +430,12 @@ spec:
         imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
         command: [ "/scripts/{{ $redisStartScripts }}" ]
         ports:
+          # if tls enabled, this port is tls-port. otherwise, this port is redis-port.
           - name: redis
             containerPort: 6379
+          # if tls enabled, this port is non-tls-port.
+          - name: non-tls
+            containerPort: 6380
         volumeMounts:
           - name: data
             mountPath: {{ $.Values.dataMountPath }}
