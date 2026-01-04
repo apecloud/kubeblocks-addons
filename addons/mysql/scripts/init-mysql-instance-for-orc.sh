@@ -77,7 +77,7 @@ register_cluster_in_orchestrator() {
   fi
 
   # Set alias via API
-  curl --silent -X GET "http://${orchestrator_url}/api/set-cluster-alias/${instance}?alias=${cluster_alias}"
+  curl --silent -X GET "http://${orchestrator_url}/api/set-cluster-alias/${cluster_info}?alias=${cluster_alias}"
   sleep 3
   result=""
   attempt=0
@@ -89,7 +89,7 @@ register_cluster_in_orchestrator() {
     fi
     mysql_note "Cluster alias not set yet, waiting... (attempt $((attempt + 1))/$max_attempts)"
     attempt=$((attempt + 1))
-    curl --silent -X GET "http://${orchestrator_url}/api/set-cluster-alias/${instance}?alias=${cluster_alias}"
+    curl --silent -X GET "http://${orchestrator_url}/api/set-cluster-alias/${cluster_info}?alias=${cluster_alias}"
     sleep 3
   done
   if [ $attempt -eq $max_attempts ]; then
