@@ -32,9 +32,19 @@ fi
 
 if [ "${var_int}" -ge 0 ]; then
     ret=$(mysql_exec "SET GLOBAL ${paramName} = ${var_int};" 2>&1)
+    status=$?
 else
     ret=$(mysql_exec "SET GLOBAL ${paramName} = '${paramValue}';" 2>&1)
+    status=$?
 fi
 
-echo "Set parameter ${paramName} to value ${paramValue}, result: ${ret}"
+if [ $status -ne 0 ]; then
+    if echo "${ret}" | grep -q "ERROR 1045 (28000)"; then
+        echo "Failed to set parameter ${paramName} to value ${paramValue}, result: ${ret}"
+        exit 1
+    fi
+    # Ignore other errors
+else
+    echo "Set parameter ${paramName} to value ${paramValue}, result: ${ret}"
+fi
 
