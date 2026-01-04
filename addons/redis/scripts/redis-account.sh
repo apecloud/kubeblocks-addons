@@ -1,13 +1,13 @@
 #!/bin/bash
 
 set -e
+service_port=$SERVICE_PORT
 
 function do_acl_command() {
     local hosts=$1
     IFS=',' read -ra HOSTS <<<"$hosts"
-    local service_port=$2
-    local user=$3
-    local password=$4
+    local user=$2
+    local password=$3
     local success_count=0
 
     for host in "${HOSTS[@]}"; do
@@ -82,6 +82,10 @@ function env_pre_check() {
         echo "CLUSTER_DOMAIN is empty, skip ACL operation"
         exit 0
     fi
+
+    if [ "$TLS_ENABLED" == "true" ]; then
+       service_port=$NON_TLS_SERVICE_PORT
+    fi
     
 }
 
@@ -102,7 +106,7 @@ function get_cluster_host_list() {
         passwd_cmd=""
     fi
     host_list=$(redis-cli -c -h "$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN" \
-        -p $SERVICE_PORT \
+        -p $service_port \
         --user $REDIS_DEFAULT_USER $passwd_cmd \
         CLUSTER NODES |
         grep -v "fail" |
@@ -124,7 +128,7 @@ function main() {
     else
         host_list="$REDIS_POD_FQDN_LIST"
     fi
-    do_acl_command "$host_list" "$SERVICE_PORT" "$REDIS_DEFAULT_USER" "$REDIS_DEFAULT_PASSWORD"
+    do_acl_command "$host_list""$REDIS_DEFAULT_USER" "$REDIS_DEFAULT_PASSWORD"
 }
 
 main

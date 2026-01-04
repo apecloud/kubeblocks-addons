@@ -335,9 +335,6 @@ spec:
     - name: SERVICE_PORT
       value: "6379"
       expression: {{ `{{if index . "REDIS_CLUSTER_HOST_NETWORK_PORT"}}{{.REDIS_CLUSTER_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
-    ## the env of redis server port for dbctl to connect to redis cluster server
-    - name: DBCTL_REDIS_SERVICE_PORT
-      value: $(SERVICE_PORT)
     ## the redis cluster server host network bus port when using host network mode, the port will be allocated automatically by KubeBlocks
     - name: REDIS_CLUSTER_HOST_NETWORK_BUS_PORT
       valueFrom:

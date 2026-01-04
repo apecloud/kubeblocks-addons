@@ -85,7 +85,10 @@ maxmemory {{ mulf $request_memory 0.8 | int }}
 
 
 
-{{- if $.TLS_ENABLED }}
-
-
+{{- if eq (index $ "TLS_ENABLED") "true"  }}
+tls-cert-file {{ $.TLS_MOUNT_PATH }}/tls.crt
+tls-key-file {{ $.TLS_MOUNT_PATH }}/tls.key
+tls-ca-cert-file {{ $.TLS_MOUNT_PATH }}/ca.crt
+tls-auth-clients no
+# tls-replication yes
 {{- end -}}

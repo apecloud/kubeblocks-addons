@@ -77,6 +77,10 @@ recover_registered_redis_servers() {
     echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
     return 1
   fi
+  sentinel_service_port=$SENTINEL_SERVICE_PORT
+  if [ "$TLS_ENABLED" = "true" ]; then
+    sentinel_service_port=$SENTINEL_NON_TLS_SERVICE_PORT
+  fi
 
   output=""
   local max_retries=5
@@ -86,7 +90,7 @@ recover_registered_redis_servers() {
   sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
   for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
     while [ $retry_count -lt $max_retries ]; do
-      redis_sentinel_get_masters "$sentinel_pod_fqdn" "$SENTINEL_SERVICE_PORT"
+      redis_sentinel_get_masters "$sentinel_pod_fqdn" "$sentinel_service_port"
       if [ -n "$temp_output" ]; then
         disconnected=false
         while read -r line; do

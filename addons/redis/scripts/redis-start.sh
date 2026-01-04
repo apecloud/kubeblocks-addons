@@ -103,7 +103,13 @@ build_redis_service_port() {
   if env_exist SERVICE_PORT; then
     service_port=$SERVICE_PORT
   fi
-  echo "port $service_port" >> $redis_real_conf
+  # TODO: tls announce port for nodePort Service
+  if [ "$TLS_ENABLED" == "true" ]; then
+    echo "port ${NON_TLS_SERVICE_PORT}" >> $redis_real_conf
+    echo "tls-port $service_port" >> $redis_real_conf
+  else
+    echo "port $service_port" >> $redis_real_conf
+  fi
 }
 
 build_replicaof_config() {

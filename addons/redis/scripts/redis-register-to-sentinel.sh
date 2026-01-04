@@ -45,6 +45,9 @@ init_redis_service_port() {
   if env_exist SERVICE_PORT; then
     redis_default_service_port=$SERVICE_PORT
   fi
+  if [ "$TLS_ENABLED" == "true" ]; then
+    redis_default_service_port=$NON_TLS_SERVICE_PORT
+  fi
 }
 
 extract_lb_host_by_svc_name() {

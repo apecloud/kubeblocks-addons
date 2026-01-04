@@ -27,6 +27,9 @@ load_common_library() {
 }
 
 declare -g redis_default_service_port=${SENTINEL_SERVICE_PORT:-26379}
+if [ "$TLS_ENABLED" = "true" ]; then
+  redis_default_service_port=$SENTINEL_NON_TLS_SERVICE_PORT
+fi
 declare -A master_slave_counts
 declare -g sentinel_leave_member_name
 declare -g sentinel_leave_member_fqdn
