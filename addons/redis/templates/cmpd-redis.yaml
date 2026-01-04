@@ -316,6 +316,17 @@ spec:
               name: redis-sentinel
               option: Required
       expression: {{ `{{if index . "SENTINEL_SERVICE_PORT"}}{{.SENTINEL_SERVICE_PORT}}{{else}}26379{{end}}` | toYaml }}
+    - name: SENTINEL_NON_TLS_SERVICE_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          optional: true
+          container:
+            name: redis-sentinel
+            port:
+              name: non-tls
+              option: Required
+      expression: {{ `{{if index . "SENTINEL_NON_TLS_SERVICE_PORT"}}{{.SENTINEL_NON_TLS_SERVICE_PORT}}{{else}}26380{{end}}` | toYaml }}
     - name: PHY_MEMORY
       valueFrom:
         resourceVarRef:
@@ -350,8 +361,6 @@ spec:
         container: redis
         command:
           - /tools/dbctl
-          - --config-path
-          - /tools/config/dbctl/components
           - redis
           - getrole
     postProvision:
@@ -411,7 +420,6 @@ spec:
           - cp
           - -r
           - /bin/dbctl
-          - /config
           - /tools/
         imagePullPolicy: {{ default "IfNotPresent" $.Values.dbctlImage.pullPolicy }}
         volumeMounts:

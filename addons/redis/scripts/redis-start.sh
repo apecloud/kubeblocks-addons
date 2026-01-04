@@ -29,6 +29,16 @@ redis_acl_file_bak="/data/users.acl.bak"
 retry_times=3
 retry_delay_second=2
 
+function init_redis_service_port() {
+  service_port=6379
+  if env_exist SERVICE_PORT; then
+    service_port=$SERVICE_PORT
+  fi
+  if [ "$TLS_ENABLED" == "true" ]; then
+    service_port=$NON_TLS_SERVICE_PORT
+  fi
+}
+
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
   common_library_file="/scripts/common.sh"
@@ -99,14 +109,10 @@ build_announce_ip_and_port() {
 }
 
 build_redis_service_port() {
-  service_port=6379
-  if env_exist SERVICE_PORT; then
-    service_port=$SERVICE_PORT
-  fi
   # TODO: tls announce port for nodePort Service
   if [ "$TLS_ENABLED" == "true" ]; then
     echo "port ${NON_TLS_SERVICE_PORT}" >> $redis_real_conf
-    echo "tls-port $service_port" >> $redis_real_conf
+    echo "tls-port $SERVICE_PORT" >> $redis_real_conf
   else
     echo "port $service_port" >> $redis_real_conf
   fi
@@ -201,10 +207,14 @@ build_sentinel_get_master_addr_by_name_command() {
   local sentinel_pod_fqdn="$1"
   local timeout_value=5
   # TODO: replace $SENTINEL_SERVICE_PORT with each sentinel pod's port when sentinel service port is not the same, for example in HostNetwork mode
+  sentinel_service_port=$SENTINEL_SERVICE_PORT
+  if [ "$TLS_ENABLED" == "true" ]; then
+    sentinel_service_port=$SENTINEL_NON_TLS_SERVICE_PORT
+  fi
   if is_empty "$SENTINEL_PASSWORD"; then
-    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
+    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $sentinel_service_port sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
   else
-    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
+    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $sentinel_service_port -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
   fi
 }
 
@@ -385,6 +395,7 @@ ${__SOURCED__:+false} : || return 0
 
 # main
 load_common_library
+init_redis_service_port
 parse_redis_announce_addr "$CURRENT_POD_NAME"
 build_redis_conf
 start_redis_server

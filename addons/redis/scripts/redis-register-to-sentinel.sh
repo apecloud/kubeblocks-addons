@@ -226,6 +226,9 @@ register_to_sentinel() {
   local sentinel_port=${SENTINEL_SERVICE_PORT:-26379}
   local redis_primary_host=$3
   local redis_primary_port=$4
+  if [ -n "$SENTINEL_NON_TLS_SERVICE_PORT" ]; then
+    sentinel_port=$SENTINEL_NON_TLS_SERVICE_PORT
+  fi
 
   unset_xtrace_when_ut_mode_false
   # Check connectivity to sentinel host and redis primary host
