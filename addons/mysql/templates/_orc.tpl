@@ -45,6 +45,14 @@ systemAccounts:
       numDigits: 5
       numSymbols: 0
       letterCase: MixedCases
+  - name: kbadmin
+    statement:
+      create: CREATE USER IF NOT EXISTS ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT ALL PRIVILEGES ON ${ALL_DB} TO ${KB_ACCOUNT_NAME} WITH GRANT OPTION;
+    passwordGenerationPolicy:
+      length: 16
+      numDigits: 8
+      numSymbols: 0
+      letterCase: MixedCases
   - name: proxysql
     statement:
       create: CREATE USER IF NOT EXISTS ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
@@ -99,6 +107,16 @@ vars:
     valueFrom:
       credentialVarRef:
         name: root
+        password: Required
+  - name: MYSQL_ADMIN_USER
+    valueFrom:
+      credentialVarRef:
+        name: kbadmin
+        username: Required
+  - name: MYSQL_ADMIN_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        name: kbadmin
         password: Required
   - name: ORC_ENDPOINTS
     valueFrom:
@@ -244,6 +262,18 @@ command:
     if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
       export skip_slave_start="ON"
     fi
+
+    # Trap SIGTERM and SIGINT to shut down MySQL
+    terminate() {
+      echo "Received terminate signal, shutting down MySQL"
+      if kill -0 "${MYSQL_PID}" 2>/dev/null; then
+        kill "${MYSQL_PID}"
+        wait "${MYSQL_PID}"
+      fi
+      exit 0
+    }
+    trap terminate SIGTERM SIGINT
+
     # Start MySQL in the background using the original entrypoint script.
     /scripts/mysql-entrypoint.sh &
     MYSQL_PID=$!
