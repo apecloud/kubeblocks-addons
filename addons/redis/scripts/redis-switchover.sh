@@ -21,6 +21,10 @@ test || __() {
 }
 
 declare -A ORIGINAL_PRIORITIES
+redis_service_port=$SERVICE_PORT
+if [ "$TLS_ENABLED" == "true" ]; then
+  redis_service_port=$NON_TLS_SERVICE_PORT
+fi
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
@@ -87,7 +91,7 @@ check_redis_kernel_status() {
   local -a redis_pod_fqdn_list
   IFS=',' read -ra redis_pod_fqdn_list <<< "${REDIS_POD_FQDN_LIST}"
   for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
-    role=$(check_redis_role "$redis_pod_fqdn" "$SERVICE_PORT") || continue
+    role=$(check_redis_role "$redis_pod_fqdn" "$redis_service_port") || continue
     if [[ "$role" == "primary" ]]; then
       if [[ -n "$current_master" ]]; then
         echo "Error: Multiple primaries detected" >&2
@@ -256,12 +260,12 @@ set_redis_priorities() {
   local -a redis_pod_fqdn_list
   IFS=',' read -ra redis_pod_fqdn_list <<< "${REDIS_POD_FQDN_LIST}"
   for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
-    call_func_with_retry 3 5 check_connectivity "$redis_pod_fqdn" "$SERVICE_PORT" "$REDIS_DEFAULT_PASSWORD" || return 1
+    call_func_with_retry 3 5 check_connectivity "$redis_pod_fqdn" "$redis_service_port" "$REDIS_DEFAULT_PASSWORD" || return 1
 
     # Get original priority
     local redis_get_cmd="CONFIG GET replica-priority"
     local original_priority
-    original_priority=$(redis_config_get "$redis_pod_fqdn" "$SERVICE_PORT" "$REDIS_DEFAULT_PASSWORD" "$redis_get_cmd" | sed -n '2p')
+    original_priority=$(redis_config_get "$redis_pod_fqdn" "$redis_service_port" "$REDIS_DEFAULT_PASSWORD" "$redis_get_cmd" | sed -n '2p')
     status=$?
     if [ $status -ne 0 ]; then
       echo "Error: Failed to get replica-priority for $redis_pod_fqdn" >&2
@@ -278,7 +282,7 @@ set_redis_priorities() {
       redis_set_cmd="CONFIG SET replica-priority 100"
     fi
 
-    call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "$SERVICE_PORT" "$REDIS_DEFAULT_PASSWORD" "$redis_set_cmd" || return 1
+    call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "$redis_service_port" "$REDIS_DEFAULT_PASSWORD" "$redis_set_cmd" || return 1
   done
   return 0
 }
@@ -291,7 +295,7 @@ recover_redis_priorities() {
   echo "Recovering all Redis replica-priority..."
   for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
     local redis_set_recover_cmd="CONFIG SET replica-priority ${ORIGINAL_PRIORITIES[$redis_pod_fqdn]}"
-    call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "$SERVICE_PORT" "$REDIS_DEFAULT_PASSWORD" "$redis_set_recover_cmd" || return 1
+    call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "$redis_service_port" "$REDIS_DEFAULT_PASSWORD" "$redis_set_recover_cmd" || return 1
   done
   echo "All Redis config set replica-priority recovered."
   return 0
@@ -300,7 +304,7 @@ recover_redis_priorities() {
 switchover_with_candidate() {
   # check the role of candidate before switchover
   local candidate_role
-  candidate_role=$(check_redis_role "$KB_SWITCHOVER_CANDIDATE_FQDN" "$SERVICE_PORT")
+  candidate_role=$(check_redis_role "$KB_SWITCHOVER_CANDIDATE_FQDN" "$redis_service_port")
   if [[ "$candidate_role" != "secondary" ]]; then
     echo "Error: Candidate node $KB_SWITCHOVER_CANDIDATE_FQDN is not in secondary role" >&2
     return 1

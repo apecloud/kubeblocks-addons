@@ -78,7 +78,21 @@ spec:
       - container: redis-sentinel
         ports:
           - redis-sentinel
+          - non-tls
+  tls:
+    volumeName: tls
+    mountPath: {{ $.Values.tlsMountPath }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
   vars:
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+          optional: true
+    - name: TLS_MOUNT_PATH
+      value: {{ $.Values.tlsMountPath }}
     ## the name of current cluster instance
     - name: CLUSTER_NAME
       valueFrom:
@@ -155,12 +169,21 @@ spec:
             port:
               name: redis-sentinel
               option: Required
+    - name: REDIS_SENTINEL_HOST_NETWORK_NON_TLS_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: redis-sentinel
+            port:
+              name: non-tls
+              option: Required
     - name: SENTINEL_SERVICE_PORT
       value: "26379"
       expression: {{ `{{if index . "REDIS_SENTINEL_HOST_NETWORK_PORT"}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}{{.SENTINEL_SERVICE_PORT}}{{end}}` | toYaml }}
-    ## the env of redis sentinel server port for dbctl to connect to redis cluster server
-    - name: DBCTL_REDIS_SENTINEL_SERVICE_PORT
-      value: $(SENTINEL_SERVICE_PORT)
+    - name: SENTINEL_NON_TLS_SERVICE_PORT
+      value: "26380"
+      expression: {{ `{{if index . "REDIS_SENTINEL_HOST_NETWORK_NON_TLS_PORT"}}{{.REDIS_SENTINEL_HOST_NETWORK_NON_TLS_PORT}}{{else}}{{.SENTINEL_NON_TLS_SERVICE_PORT}}{{end}}` | toYaml }}
     ## the username of redis for redis sentinel connection which is only used to recover redis servers when scale-out redis sentinel.
     - name: REDIS_SENTINEL_USER
       value: "kbreplicator-sentinel"
@@ -216,6 +239,8 @@ spec:
       ports:
         - containerPort: 26379
           name: redis-sentinel
+        - containerPort: 26380
+          name: non-tls
       volumeMounts:
         - name: data
           mountPath: /data
