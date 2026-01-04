@@ -24,6 +24,14 @@ spec:
           valueFrom:
             envRef:
               envName: SERVICE_PORT
+        - name: NON_TLS_SERVICE_PORT
+          valueFrom:
+            envRef:
+              envName: NON_TLS_SERVICE_PORT
+        - name: TLS_ENABLED
+          valueFrom:
+            envRef:
+              envName: TLS_ENABLED
         - name: REDIS_DEFAULT_USER
           valueFrom:
             envRef:
@@ -89,6 +97,14 @@ spec:
           valueFrom:
             envRef:
               envName: SENTINEL_SERVICE_PORT
+        - name: NON_TLS_SERVICE_PORT
+          valueFrom:
+            envRef:
+              envName: SENTINEL_NON_TLS_SERVICE_PORT
+        - name: TLS_ENABLED
+          valueFrom:
+            envRef:
+              envName: TLS_ENABLED
         - name: REDIS_DEFAULT_USER
           valueFrom:
             envRef:
@@ -162,6 +178,14 @@ spec:
           valueFrom:
             envRef:
               envName: SERVICE_PORT
+        - name: NON_TLS_SERVICE_PORT
+          valueFrom:
+            envRef:
+              envName: NON_TLS_SERVICE_PORT
+        - name: TLS_ENABLED
+          valueFrom:
+            envRef:
+              envName: TLS_ENABLED
         - name: REDIS_DEFAULT_USER
           valueFrom:
             envRef:
