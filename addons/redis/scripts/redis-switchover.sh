@@ -21,10 +21,7 @@ test || __() {
 }
 
 declare -A ORIGINAL_PRIORITIES
-redis_service_port=$SERVICE_PORT
-if [ "$TLS_ENABLED" == "true" ]; then
-  redis_service_port=$NON_TLS_SERVICE_PORT
-fi
+redis_service_port=${INNER_SERVICE_PORT:-6379}
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts

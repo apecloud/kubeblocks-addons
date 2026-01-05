@@ -77,10 +77,7 @@ recover_registered_redis_servers() {
     echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
     return 1
   fi
-  sentinel_service_port=$SENTINEL_SERVICE_PORT
-  if [ "$TLS_ENABLED" = "true" ]; then
-    sentinel_service_port=$SENTINEL_NON_TLS_SERVICE_PORT
-  fi
+  sentinel_service_port=${SENTINEL_INNER_SERVICE_PORT:-26379}
 
   output=""
   local max_retries=5

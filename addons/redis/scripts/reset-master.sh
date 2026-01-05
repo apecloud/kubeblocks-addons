@@ -2,10 +2,7 @@
 if [ -z "${SENTINEL_POD_NAME_LIST}" ]; then
    exit 0
 fi
-sentinel_service_port=$SENTINEL_SERVICE_PORT
-if [ "$TLS_ENABLED" == "true" ]; then
-    sentinel_service_port=$SENTINEL_NON_TLS_SERVICE_PORT
-fi
+sentinel_service_port=${SENTINEL_INNER_SERVICE_PORT:-26379}
 for sentinel_pod in $(echo ${SENTINEL_POD_NAME_LIST} | tr ',' '\n'); do
     echo "reset master in sentinel ${pod}..."
     fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME.$CLUSTER_NAMESPACE.svc.cluster.local"

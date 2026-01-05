@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-service_port=$SERVICE_PORT
+service_port=${INNER_SERVICE_PORT:-6379}
 
 function do_acl_command() {
     local hosts=$1
@@ -47,11 +47,6 @@ function env_pre_check() {
         exit 1
     fi
 
-    if [ -z "$SERVICE_PORT" ]; then
-        echo "SERVICE_PORT is empty, skip ACL operation"
-        exit 1
-    fi
-
     if [ -z "$REDIS_DEFAULT_USER" ]; then
         echo "REDIS_DEFAULT_USER is empty, skip ACL operation"
         exit 1
@@ -81,10 +76,6 @@ function env_pre_check() {
     if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$CLUSTER_DOMAIN" ]; then
         echo "CLUSTER_DOMAIN is empty, skip ACL operation"
         exit 0
-    fi
-
-    if [ "$TLS_ENABLED" == "true" ]; then
-       service_port=$NON_TLS_SERVICE_PORT
     fi
     
 }

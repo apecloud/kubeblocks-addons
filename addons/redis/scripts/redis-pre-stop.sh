@@ -27,10 +27,7 @@ load_common_library() {
 }
 
 acl_save_before_stop() {
-  service_port=$SERVICE_PORT
-  if [ "$TLS_ENABLED" == "true" ]; then
-    service_port=$NON_TLS_SERVICE_PORT
-  fi
+  service_port=${INNER_SERVICE_PORT:-6379}
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     acl_save_command="redis-cli -h localhost -p $service_port -a $REDIS_DEFAULT_PASSWORD acl save"
     logging_mask_acl_save_command="${acl_save_command/$REDIS_DEFAULT_PASSWORD/********}"

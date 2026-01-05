@@ -21,10 +21,7 @@ fi
 if [ "$paramValue" = "\"\"" ]; then
   paramValue=""
 fi
-service_port=$SERVICE_PORT
-if [ "$TLS_ENABLED" == "true" ]; then
-  service_port=$NON_TLS_SERVICE_PORT
-fi
+service_port=${INNER_SERVICE_PORT:-6379}
 if [ -z $REDIS_DEFAULT_PASSWORD ]; then
   redis-cli -p $service_portCONFIG SET ${paramName} "${paramValue}"
 else

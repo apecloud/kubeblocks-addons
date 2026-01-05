@@ -590,7 +590,7 @@ spec:
           - name: REDIS_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
           - name: REDIS_EXPORTER_IS_CLUSTER
-            value: true
+            value: "true"
         ports:
           - name: http-metrics
             containerPort: {{ $.Values.metrics.service.port }}

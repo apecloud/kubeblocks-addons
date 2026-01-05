@@ -28,10 +28,7 @@ load_common_library() {
 
 check_redis_ok() {
   unset_xtrace_when_ut_mode_false
-  service_port=$SERVICE_PORT
-  if [ "$TLS_ENABLED" == "true" ]; then
-    service_port=$NON_TLS_SERVICE_PORT
-  fi
+  service_port=${INNER_SERVICE_PORT:-6379}
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     cmd="redis-cli -h localhost -p $service_port -a $REDIS_DEFAULT_PASSWORD ping"
   else

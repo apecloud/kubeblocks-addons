@@ -20,18 +20,10 @@ spec:
           valueFrom:
             envRef:
               envName: REDIS_POD_FQDN_LIST
-        - name: SERVICE_PORT
+        - name: INNER_SERVICE_PORT
           valueFrom:
             envRef:
-              envName: SERVICE_PORT
-        - name: NON_TLS_SERVICE_PORT
-          valueFrom:
-            envRef:
-              envName: NON_TLS_SERVICE_PORT
-        - name: TLS_ENABLED
-          valueFrom:
-            envRef:
-              envName: TLS_ENABLED
+              envName: INNER_SERVICE_PORT
         - name: REDIS_DEFAULT_USER
           valueFrom:
             envRef:
@@ -93,18 +85,10 @@ spec:
           valueFrom:
             envRef:
               envName: SENTINEL_POD_FQDN_LIST
-        - name: SERVICE_PORT
+        - name: INNER_SERVICE_PORT
           valueFrom:
             envRef:
-              envName: SENTINEL_SERVICE_PORT
-        - name: NON_TLS_SERVICE_PORT
-          valueFrom:
-            envRef:
-              envName: SENTINEL_NON_TLS_SERVICE_PORT
-        - name: TLS_ENABLED
-          valueFrom:
-            envRef:
-              envName: TLS_ENABLED
+              envName: SENTINEL_INNER_SERVICE_PORT
         - name: REDIS_DEFAULT_USER
           valueFrom:
             envRef:
@@ -174,18 +158,10 @@ spec:
           valueFrom:
             envRef:
               envName: CURRENT_SHARD_COMPONENT_NAME
-        - name: SERVICE_PORT
+        - name: INNER_SERVICE_PORT
           valueFrom:
             envRef:
-              envName: SERVICE_PORT
-        - name: NON_TLS_SERVICE_PORT
-          valueFrom:
-            envRef:
-              envName: NON_TLS_SERVICE_PORT
-        - name: TLS_ENABLED
-          valueFrom:
-            envRef:
-              envName: TLS_ENABLED
+              envName: INNER_SERVICE_PORT
         - name: REDIS_DEFAULT_USER
           valueFrom:
             envRef:

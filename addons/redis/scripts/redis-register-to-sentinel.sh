@@ -26,7 +26,7 @@ test || __() {
 
 redis_announce_host_value=""
 redis_announce_port_value=""
-redis_default_service_port=6379
+redis_default_service_port=${INNER_SERVICE_PORT:-6379}
 if [ -f /data/.fixed_pod_ip_enabled ]; then
   # if the file /data/.fixed_pod_ip_enabled exists, it means that the redis pod is running in fixed pod ip mode.
   FIXED_POD_IP_ENABLED=true
@@ -39,15 +39,6 @@ load_common_library() {
   common_library_file="/scripts/common.sh"
   # shellcheck disable=SC1090
   source "${common_library_file}"
-}
-
-init_redis_service_port() {
-  if env_exist SERVICE_PORT; then
-    redis_default_service_port=$SERVICE_PORT
-  fi
-  if [ "$TLS_ENABLED" == "true" ]; then
-    redis_default_service_port=$NON_TLS_SERVICE_PORT
-  fi
 }
 
 extract_lb_host_by_svc_name() {
@@ -223,12 +214,9 @@ get_master_addr_by_name(){
 register_to_sentinel() {
   local sentinel_host=$1
   local master_name=$2
-  local sentinel_port=${SENTINEL_SERVICE_PORT:-26379}
+  local sentinel_port=${SENTINEL_INNER_SERVICE_PORT:-26379}
   local redis_primary_host=$3
   local redis_primary_port=$4
-  if [ -n "$SENTINEL_NON_TLS_SERVICE_PORT" ]; then
-    sentinel_port=$SENTINEL_NON_TLS_SERVICE_PORT
-  fi
 
   unset_xtrace_when_ut_mode_false
   # Check connectivity to sentinel host and redis primary host
@@ -316,7 +304,6 @@ register_to_sentinel_wrapper() {
   # get minimum lexicographical order pod name as default primary node (the same logic as redis initialize primary node selection)
   redis_default_primary_pod_name=$(min_lexicographical_order_pod "$REDIS_POD_NAME_LIST")
   redis_default_primary_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$redis_default_primary_pod_name")
-  init_redis_service_port
   parse_redis_primary_announce_addr "$redis_default_primary_pod_name"
   if is_empty "$CUSTOM_SENTINEL_MASTER_NAME"; then
     master_name=$REDIS_COMPONENT_NAME

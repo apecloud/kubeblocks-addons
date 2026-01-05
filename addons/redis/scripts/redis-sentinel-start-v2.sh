@@ -149,10 +149,7 @@ build_redis_sentinel_conf() {
     exit 1
   fi
 
-  sentinel_port=26379
-  if env_exist SENTINEL_SERVICE_PORT; then
-    sentinel_port=$SENTINEL_SERVICE_PORT
-  fi
+  sentinel_port=${SENTINEL_SERVICE_PORT:-26379}
   # build announce ip and port according to whether the announce addr is enabled
   if ! is_empty "$redis_sentinel_announce_host_value" && ! is_empty "$redis_sentinel_announce_port_value"; then
     echo "redis sentinel use nodeport $redis_sentinel_announce_host_value:$redis_sentinel_announce_port_value to announce"
