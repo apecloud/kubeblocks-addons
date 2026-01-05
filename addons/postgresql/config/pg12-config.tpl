@@ -180,15 +180,18 @@ min_parallel_table_scan_size = '8MB'
 
 {{- $max_wal_size := min ( max ( div $phy_memory 2097152 ) 4096 ) 32768 }}
 {{- $min_wal_size := min ( max ( div $phy_memory 8388608 ) 2048 ) 8192 }}
+{{- $wal_keep_segments := 64 }}
 {{- $data_disk_size := getComponentPVCSizeByName $.component "data" }}
-{{/* if data disk lt 5G , set max_wal_size to 256MB */}}
+{{/* if data disk lt 5G , set max_wal_size to 256MB and wal_keep_segments to 8 (128MB) */}}
 {{- $disk_min_limit := mul 5 1024 1024 1024 }}
 {{- if and ( gt $data_disk_size 0 ) ( lt $data_disk_size $disk_min_limit ) }}
 {{- $max_wal_size = 256 }}
 {{- $min_wal_size = 64 }}
+{{- $wal_keep_segments = 8 }}
 {{- end }}
 max_wal_size = '{{- printf "%dMB" $max_wal_size }}'
 min_wal_size = '{{- printf "%dMB" $min_wal_size }}'
+wal_keep_segments = '{{ $wal_keep_segments }}'
 
 old_snapshot_threshold = '-1'
 parallel_leader_participation = 'True'
@@ -283,4 +286,3 @@ xmloption = 'content'
 ## the following parameters have been deprecated in postgresql 14
 operator_precedence_warning = 'off'
 vacuum_cleanup_index_scale_factor = '0.1'
-wal_keep_segments = '96'

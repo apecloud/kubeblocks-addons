@@ -179,15 +179,18 @@ min_parallel_table_scan_size = '8MB'
 
 {{- $max_wal_size := min ( max ( div $phy_memory 2097152 ) 4096 ) 32768 }}
 {{- $min_wal_size := min ( max ( div $phy_memory 8388608 ) 2048 ) 8192 }}
+{{- $wal_keep_size := 1024 }}
 {{- $data_disk_size := getComponentPVCSizeByName $.component "data" }}
-{{/* if data disk lt 5G , set max_wal_size to 256MB */}}
+{{/* if data disk lt 5G , set max_wal_size to 256MB and wal_keep_size to 128MB */}}
 {{- $disk_min_limit := mul 5 1024 1024 1024 }}
 {{- if and ( gt $data_disk_size 0 ) ( lt $data_disk_size $disk_min_limit ) }}
 {{- $max_wal_size = 256 }}
 {{- $min_wal_size = 64 }}
+{{- $wal_keep_size = 128 }}
 {{- end }}
 max_wal_size = '{{- printf "%dMB" $max_wal_size }}'
 min_wal_size = '{{- printf "%dMB" $min_wal_size }}'
+wal_keep_size = '{{- printf "%dMB" $wal_keep_size }}'
 
 parallel_leader_participation = 'True'
 password_encryption = 'md5'
@@ -302,5 +305,4 @@ remove_temp_files_after_crash = 'on'
 track_wal_io_timing = 'False'
 vacuum_failsafe_age = '1600000000'
 vacuum_multixact_failsafe_age = '1600000000'
-wal_keep_size = '1536MB'
 wal_skip_threshold = '2048'
