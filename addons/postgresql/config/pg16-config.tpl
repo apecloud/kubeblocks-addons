@@ -182,7 +182,7 @@ min_parallel_table_scan_size = '8MB'
 
 {{- $max_wal_size := min ( max ( div $phy_memory 2097152 ) 4096 ) 32768 }}
 {{- $min_wal_size := min ( max ( div $phy_memory 8388608 ) 2048 ) 8192 }}
-{{- $wal_keep_size := 1536 }}
+{{- $wal_keep_size := 1024 }}
 {{- $data_disk_size := getComponentPVCSizeByName $.component "data" }}
 {{/* if data disk lt 5G , set max_wal_size to 256MB and wal_keep_size to 128MB */}}
 {{- $disk_min_limit := mul 5 1024 1024 1024 }}
