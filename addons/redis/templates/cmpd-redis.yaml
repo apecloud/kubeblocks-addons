@@ -44,6 +44,9 @@ spec:
           - name: redis-advertised
             port: 6379
             targetPort: redis
+          - name: non-tls
+            port: 6380
+            targetPort: non-tls
       podService: true
       disableAutoProvision: true
     - name: redis-lb-advertised
@@ -57,6 +60,9 @@ spec:
           - name: redis-advertised
             port: 6379
             targetPort: redis
+          - name: non-tls
+            port: 6380
+            targetPort: non-tls
       podService: true
       disableAutoProvision: true
   updateStrategy: BestEffortParallel
@@ -173,6 +179,14 @@ spec:
           port:
             name: redis-advertised
             option: Required
+    - name: REDIS_NON_TLS_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          name: redis-advertised
+          optional: true
+          port:
+            name: non-tls
+            option: Required
     - name: REDIS_LB_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
@@ -180,6 +194,14 @@ spec:
           optional: true
           port:
             name: redis-advertised
+            option: Required
+    - name: REDIS_LB_NON_TLS_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          name: redis-lb-advertised
+          optional: true
+          port:
+            name: non-tls
             option: Required
     ## the redis advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
     - name: REDIS_LB_ADVERTISED_HOST

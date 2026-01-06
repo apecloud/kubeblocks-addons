@@ -110,7 +110,6 @@ reset_redis_sentinel_conf() {
     -e "/sentinel resolve-hostnames/d" \
     -e "/sentinel announce-hostnames/d" \
     -e "/port /d" \
-    # backward compatible for previous versions without ACL
     -e "/user default on/d" \
     -e "/tls-cert-file /d" \
     -e "/tls-key-file /d" \
