@@ -8,6 +8,7 @@ metadata:
     {{- include "orchestrator.annotations" . | nindent 4 }}
 spec:
   {{- include "orchestrator.cmpd.spec.common" . | nindent 2 }}
+  podManagementPolicy: Parallel
   roles:
     - name: primary
       updatePriority: 2
@@ -52,12 +53,13 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterUID: Required
-    - name: ORC_POD_FQDN_LIST
+    - name: ORC_PER_POD_SVC
       valueFrom:
-        componentVarRef:
-          compDef: {{ include "orchestrator.componentDefName" . }}
+        serviceVarRef:
+          name: advertise
           optional: false
-          podFQDNs: Required
+          host: Required
+
   lifecycleActions:
     roleProbe:
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
@@ -83,6 +85,19 @@ spec:
           - name: orc-http
             port: 80
             targetPort: orc-http
+    - name: advertise
+      serviceName: advertise
+      spec:
+        type: ClusterIP
+        ports:
+        - name: orc-http
+          port: 80
+          targetPort: orc-http
+        - name: raft
+          port: 10008
+          targetPort: raft
+      podService: true
+      disableAutoProvision: false
   runtime:
     containers:
       - name: orchestrator
