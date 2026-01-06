@@ -408,8 +408,7 @@ spec:
         command:
           - sh
           - -c
-        args:
-          - "redis-cli -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -a $REDIS_DEFAULT_PASSWORD acl save "
+          - /scripts/redis-account-provision.sh
     switchover:
       exec:
         container: redis

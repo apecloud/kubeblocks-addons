@@ -191,7 +191,7 @@ build_redis_sentinel_conf() {
       echo "tls-cert-file ${TLS_MOUNT_PATH}/tls.crt"
       echo "tls-key-file ${TLS_MOUNT_PATH}/tls.key"
       echo "tls-ca-cert-file ${TLS_MOUNT_PATH}/ca.crt"
-      echo "port $SENTINEL_NON_TLS_SERVICE_PORT"
+      echo "port 0"
       echo "tls-port $sentinel_port"
       echo "tls-auth-clients no"
       echo "tls-replication yes"

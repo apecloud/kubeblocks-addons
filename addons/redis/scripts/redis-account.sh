@@ -1,7 +1,11 @@
 #!/bin/bash
 
 set -e
-service_port=${INNER_SERVICE_PORT:-6379}
+service_port=${SERVICE_PORT:-6379}
+tls_cmd=""
+if [ "$TLS_ENABLED" == "true" ]; then
+    tls_cmd="--tls --insecure"
+fi
 
 function do_acl_command() {
     local hosts=$1
@@ -15,9 +19,9 @@ function do_acl_command() {
         # in case of fixed ip mode, the host is like this: 10.96.180.100:6379@1 10.96.180.100:6379@2
         # we need to remove the @1 or @2 and remove the port
         host=$(echo "$host" | sed 's/@[0-9]*//g' | sed 's/:[0-9]*/ /g')
-        cmd="redis-cli -h $host -p $service_port --user $user -a $password"
+        cmd="redis-cli -h $host -p $service_port --user $user -a $password $tls_cmd"
         if [ -z "$password" ]; then
-            cmd="redis-cli -h $host -p $service_port --user $user"
+            cmd="redis-cli -h $host -p $service_port --user $user $tls_cmd"
         fi
         if [ -n "$ACL_COMMAND" ]; then
             echo "DO ACL COMMAND FOR HOST: $host"
@@ -98,7 +102,7 @@ function get_cluster_host_list() {
     fi
     host_list=$(redis-cli -c -h "$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN" \
         -p $service_port \
-        --user $REDIS_DEFAULT_USER $passwd_cmd \
+        --user $REDIS_DEFAULT_USER $passwd_cmd $tls_cmd \
         CLUSTER NODES |
         grep -v "fail" |
         grep -v "noaddr" |

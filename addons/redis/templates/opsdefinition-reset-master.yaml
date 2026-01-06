@@ -28,6 +28,10 @@ spec:
           valueFrom:
             envRef:
               envName: SENTINEL_POD_NAME_LIST
+        - name: TLS_ENABLED
+          valueFrom:
+            envRef:
+              envName: TLS_ENABLED
   actions:
     - name: reset-master
       workload:

@@ -20,10 +20,10 @@ spec:
           valueFrom:
             envRef:
               envName: REDIS_POD_FQDN_LIST
-        - name: INNER_SERVICE_PORT
+        - name: SERVICE_PORT
           valueFrom:
             envRef:
-              envName: INNER_SERVICE_PORT
+              envName: SERVICE_PORT
         - name: REDIS_DEFAULT_USER
           valueFrom:
             envRef:
@@ -32,6 +32,10 @@ spec:
           valueFrom:
             envRef:
               envName: REDIS_DEFAULT_PASSWORD
+        - name: TLS_ENABLED
+          valueFrom:
+            envRef:
+              envName: TLS_ENABLED
   parametersSchema:
     openAPIV3Schema:
       properties:
@@ -85,10 +89,10 @@ spec:
           valueFrom:
             envRef:
               envName: SENTINEL_POD_FQDN_LIST
-        - name: INNER_SERVICE_PORT
+        - name: SERVICE_PORT
           valueFrom:
             envRef:
-              envName: SENTINEL_INNER_SERVICE_PORT
+              envName: SENTINEL_SERVICE_PORT
         - name: REDIS_DEFAULT_USER
           valueFrom:
             envRef:
@@ -97,6 +101,10 @@ spec:
           valueFrom:
             envRef:
               envName: SENTINEL_PASSWORD
+        - name: TLS_ENABLED
+          valueFrom:
+            envRef:
+              envName: TLS_ENABLED
   parametersSchema:
     openAPIV3Schema:
       properties:
@@ -158,10 +166,10 @@ spec:
           valueFrom:
             envRef:
               envName: CURRENT_SHARD_COMPONENT_NAME
-        - name: INNER_SERVICE_PORT
+        - name: SERVICE_PORT
           valueFrom:
             envRef:
-              envName: INNER_SERVICE_PORT
+              envName: SERVICE_PORT
         - name: REDIS_DEFAULT_USER
           valueFrom:
             envRef:
@@ -174,6 +182,10 @@ spec:
           valueFrom:
             envRef:
               envName: CLUSTER_DOMAIN
+        - name: TLS_ENABLED
+          valueFrom:
+            envRef:
+              envName: TLS_ENABLED
   parametersSchema:
     openAPIV3Schema:
       properties:
