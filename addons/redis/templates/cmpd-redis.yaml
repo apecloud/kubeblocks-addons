@@ -315,12 +315,6 @@ spec:
         tlsVarRef:
           enabled: Optional
           optional: true
-    - name: SENTINEL_TLS_ENABLED
-      valueFrom:
-        tlsVarRef:
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
-          enabled: Optional
-          optional: true
     - name: TLS_MOUNT_PATH
       value: {{ $.Values.tlsMountPath }}
   lifecycleActions:
@@ -414,7 +408,6 @@ spec:
         imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
         command: [ "/scripts/{{ $redisStartScripts }}" ]
         ports:
-          # if tls enabled, this port is tls-port. otherwise, this port is redis-port.
           - name: redis
             containerPort: 6379
         volumeMounts:
