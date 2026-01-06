@@ -105,7 +105,6 @@ build_announce_ip_and_port() {
 
 build_redis_service_port() {
   if [ "$TLS_ENABLED" == "true" ]; then
-    echo "port ${NON_TLS_SERVICE_PORT}" >> $redis_real_conf
     echo "tls-port $SERVICE_PORT" >> $redis_real_conf
   else
     echo "port $service_port" >> $redis_real_conf

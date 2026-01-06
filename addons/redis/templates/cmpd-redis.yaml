@@ -105,7 +105,6 @@ spec:
       - container: redis
         ports:
           - redis
-          - non-tls
   {{- if $.Values.enableMetrics }}
       - container: metrics
         ports:
@@ -217,24 +216,9 @@ spec:
             port:
               name: redis
               option: Required
-    - name: REDIS_HOST_NETWORK_NON_TLS_PORT
-      valueFrom:
-        hostNetworkVarRef:
-          optional: true
-          container:
-            name: redis
-            port:
-              name: non-tls
-              option: Required
     - name: SERVICE_PORT
       value: "6379"
       expression: {{ `{{if index . "REDIS_HOST_NETWORK_PORT"}}{{.REDIS_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
-    - name: NON_TLS_SERVICE_PORT
-      value: "6380"
-      expression: {{ `{{if index . "REDIS_HOST_NETWORK_NON_TLS_PORT"}}{{.REDIS_HOST_NETWORK_NON_TLS_PORT}}{{else}}{{.NON_TLS_SERVICE_PORT}}{{end}}` | toYaml }}
-    - name: INNER_SERVICE_PORT
-      value: "6379"
-      expression: {{ `{{if .TLS_ENABLED}}{{.NON_TLS_SERVICE_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | quote }}
   {{- if $.Values.enableMetrics }}
     ## the redis server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 9121
     - name: REDIS_METRICS_HOST_NETWORK_PORT
@@ -262,6 +246,9 @@ spec:
     - name: REDIS_METRICS_SERVER_PORT
       value: "8888"
       expression: {{ `{{if index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT"}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
+    - name: REDIS_METRICS_ADDR
+      value: "redis://localhost:$(SERVICE_PORT)"
+      expression: {{ `{{if .TLS_ENABLED}}rediss://localhost:{{.SERVICE_PORT}}{{else}}redis://localhost:{{.SERVICE_PORT}}{{end}}` | toYaml }}
   {{- end }}
     ## the component name of redis sentinel when redis sentinel is enabled, it's the fullname of redis-sentinel component
     - name: SENTINEL_COMPONENT_NAME
@@ -319,20 +306,6 @@ spec:
               name: redis-sentinel
               option: Required
       expression: {{ `{{if index . "SENTINEL_SERVICE_PORT"}}{{.SENTINEL_SERVICE_PORT}}{{else}}26379{{end}}` | toYaml }}
-    - name: SENTINEL_NON_TLS_SERVICE_PORT
-      valueFrom:
-        hostNetworkVarRef:
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
-          optional: true
-          container:
-            name: redis-sentinel
-            port:
-              name: non-tls
-              option: Required
-      expression: {{ `{{if index . "SENTINEL_NON_TLS_SERVICE_PORT"}}{{.SENTINEL_NON_TLS_SERVICE_PORT}}{{else}}26380{{end}}` | toYaml }}
-    - name: SENTINEL_INNER_SERVICE_PORT
-      value: "26379"
-      expression: {{ `{{if .SENTINEL_TLS_ENABLED}}{{.SENTINEL_NON_TLS_SERVICE_PORT}}{{else}}{{.SENTINEL_SERVICE_PORT}}{{end}}` | quote }}
     - name: PHY_MEMORY
       valueFrom:
         resourceVarRef:
@@ -444,9 +417,6 @@ spec:
           # if tls enabled, this port is tls-port. otherwise, this port is redis-port.
           - name: redis
             containerPort: 6379
-          # if tls enabled, this port is non-tls-port.
-          - name: non-tls
-            containerPort: 6380
         volumeMounts:
           - name: data
             mountPath: {{ $.Values.dataMountPath }}
@@ -502,7 +472,7 @@ spec:
           runAsUser: 1001
         env:
           - name: REDIS_ADDR
-            value: "redis://localhost:$(INNER_SERVICE_PORT)"
+            value: "$(REDIS_METRICS_ADDR)"
           - name: REDIS_EXPORTER_WEB_LISTEN_ADDRESS
             value: "0.0.0.0:$(REDIS_METRICS_HTTP_PORT)"
           - name: REDIS_USER
@@ -511,6 +481,8 @@ spec:
             value: $(REDIS_DEFAULT_PASSWORD)
           - name: REDIS_EXPORTER_IS_CLUSTER
             value: "false"
+          - name: REDIS_EXPORTER_SKIP_TLS_VERIFICATION
+            value: "true"
         ports:
           - name: http-metrics
             containerPort: {{ $.Values.metrics.service.port }}
