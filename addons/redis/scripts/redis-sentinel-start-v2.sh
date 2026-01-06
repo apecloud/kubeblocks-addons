@@ -186,7 +186,6 @@ build_redis_sentinel_conf() {
   set_xtrace_when_ut_mode_false
   echo "aclfile /data/users.acl">> $redis_sentinel_real_conf
   echo "ignore-warnings ARM64-COW-BUG" >> $redis_sentinel_real_conf
-  # TODO: tls enabled
   if [ "$TLS_ENABLED" == "true" ]; then
     {
       echo "tls-cert-file ${TLS_MOUNT_PATH}/tls.crt"
@@ -195,7 +194,7 @@ build_redis_sentinel_conf() {
       echo "port $SENTINEL_NON_TLS_SERVICE_PORT"
       echo "tls-port $sentinel_port"
       echo "tls-auth-clients no"
-      #echo "tls-replication yes"
+      echo "tls-replication yes"
     } >> $redis_sentinel_real_conf
   else
     echo "port $sentinel_port" >> $redis_sentinel_real_conf

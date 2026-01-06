@@ -19,6 +19,11 @@ test || __() {
   set -e;
 }
 
+tls_cmd=""
+if [ "$TLS_ENABLED" == "true" ]; then
+  tls_cmd="--tls --cacert ${TLS_MOUNT_PATH}/ca.crt"
+fi
+
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
   common_library_file="/scripts/common.sh"
@@ -27,12 +32,16 @@ load_common_library() {
 }
 
 acl_save_before_stop() {
-  service_port=${INNER_SERVICE_PORT:-6379}
+  service_port=${SERVICE_PORT:-6379}
+  tls_cmd=""
+  if [ "$TLS_ENABLED" == "true" ]; then
+    tls_cmd="--tls --cacert ${TLS_MOUNT_PATH}/ca.crt"
+  fi
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    acl_save_command="redis-cli -h localhost -p $service_port -a $REDIS_DEFAULT_PASSWORD acl save"
+    acl_save_command="redis-cli -h localhost -p $service_port -a $REDIS_DEFAULT_PASSWORD $tls_cmd acl save"
     logging_mask_acl_save_command="${acl_save_command/$REDIS_DEFAULT_PASSWORD/********}"
   else
-    acl_save_command="redis-cli -h localhost -p $service_port acl save"
+    acl_save_command="redis-cli -h localhost -p $service_port $tls_cmd acl save"
     logging_mask_acl_save_command="$acl_save_command"
   fi
   echo "acl save command: $logging_mask_acl_save_command"

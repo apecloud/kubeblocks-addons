@@ -26,12 +26,17 @@ test || __() {
 
 redis_announce_host_value=""
 redis_announce_port_value=""
-redis_default_service_port=${INNER_SERVICE_PORT:-6379}
+redis_default_service_port=${SERVICE_PORT:-6379}
 if [ -f /data/.fixed_pod_ip_enabled ]; then
   # if the file /data/.fixed_pod_ip_enabled exists, it means that the redis pod is running in fixed pod ip mode.
   FIXED_POD_IP_ENABLED=true
 else
   FIXED_POD_IP_ENABLED=false
+fi
+
+tls_cmd=""
+if [ "$TLS_ENABLED" == "true" ]; then
+  tls_cmd="--tls --cacert ${TLS_MOUNT_PATH}/ca.crt"
 fi
 
 load_common_library() {
@@ -60,15 +65,12 @@ extract_lb_host_by_svc_name() {
 parse_redis_primary_announce_addr() {
   if is_empty "$REDIS_ADVERTISED_PORT"; then
      REDIS_ADVERTISED_PORT="$REDIS_LB_ADVERTISED_PORT"
-  elif [ "$TLS_ENABLED" == "true" ]; then
-    # when TLS is enabled, use REDIS_TLS_LB_ADVERTISED_PORT to override REDIS_ADVERTISED_PORT
-    REDIS_ADVERTISED_PORT="$REDIS_NON_TLS_ADVERTISED_PORT"
   fi
   if is_empty "$REDIS_ADVERTISED_PORT"; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
     # if redis primary is in host network mode, use the host ip and port as the announce ip and port first
     if ! is_empty "${REDIS_HOST_NETWORK_PORT}"; then
-      redis_announce_port_value="$INNER_SERVICE_PORT"
+      redis_announce_port_value="$REDIS_HOST_NETWORK_PORT"
       # the post provision action is executed in the primary pod, so we can get the host ip from the env defined in the action context.
       redis_announce_host_value="$CURRENT_POD_HOST_IP"
       echo "redis is in host network mode, use the host ip:$CURRENT_POD_HOST_IP and port:$REDIS_HOST_NETWORK_PORT as the announce ip and port."
@@ -96,7 +98,7 @@ parse_redis_primary_announce_addr() {
       if [ -n "$lb_host" ]; then
         echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
         redis_announce_host_value="$lb_host"
-        redis_announce_port_value=$INNER_SERVICE_PORT
+        redis_announce_port_value="6379"
       else
         redis_announce_host_value="$CURRENT_POD_HOST_IP"
       fi
@@ -151,9 +153,9 @@ check_connectivity() {
   local password=$3
   echo "Checking connectivity to $host on port $port using redis-cli..."
   if is_empty "$password"; then
-    redis-cli -h "$host" -p "$port" PING | grep -q "PONG"
+    redis-cli -h "$host" -p "$port" $tls_cmd PING | grep -q "PONG"
   else
-    redis-cli -h "$host" -p "$port" -a "$password" PING | grep -q "PONG"
+    redis-cli -h "$host" -p "$port" -a "$password" $tls_cmd PING | grep -q "PONG"
   fi
   if [ $? -eq 0 ]; then
     echo "$host is reachable on port $port."
@@ -172,9 +174,9 @@ execute_sentinel_sub_command() {
 
   local output
   if is_empty "$SENTINEL_PASSWORD"; then
-    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" $command)
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" $tls_cmd $command)
   else
-    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $tls_cmd $command)
   fi
   local status=$?
   echo "$output"
@@ -194,9 +196,9 @@ get_master_addr_by_name(){
   local command=$3
   local output
   if is_empty "$SENTINEL_PASSWORD"; then
-    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" $command)
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" $tls_cmd $command)
   else
-    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $tls_cmd $command)
   fi
   local status=$?
   if [ $status -ne 0 ]; then
@@ -218,7 +220,7 @@ get_master_addr_by_name(){
 register_to_sentinel() {
   local sentinel_host=$1
   local master_name=$2
-  local sentinel_port=${SENTINEL_INNER_SERVICE_PORT:-26379}
+  local sentinel_port=${SENTINEL_SERVICE_PORT:-26379}
   local redis_primary_host=$3
   local redis_primary_port=$4
 
@@ -236,7 +238,6 @@ register_to_sentinel() {
     echo "Sentinel is not monitoring $master_name. Registering it..."
     # Register the Redis primary with Sentinel
     sentinel_monitor_cmd="SENTINEL monitor $master_name $redis_primary_host $redis_primary_port 2"
-    echo "Executing sentinel monitor command: $sentinel_monitor_cmd"
     call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_monitor_cmd" || exit 1
   else
     echo "Sentinel is already monitoring $master_name at $master_addr. Skipping monitor registration."

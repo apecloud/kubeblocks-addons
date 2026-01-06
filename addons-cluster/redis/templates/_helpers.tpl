@@ -2,7 +2,13 @@
 tls: {{ .Values.tlsEnable }}
 {{- if .Values.tlsEnable }}
 issuer:
-  name: KubeBlocks
+  name: UserProvided
+  secretRef:
+    name: {{ include "kblib.clusterName" . }}-tls
+    namespace: {{ .Release.Namespace }}
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
 {{- end }}
 {{- end }}
 

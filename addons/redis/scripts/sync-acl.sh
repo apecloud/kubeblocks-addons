@@ -1,9 +1,12 @@
 #!/bin/bash
 
-service_port=${INNER_SERVICE_PORT:-6379}
+service_port=${SERVICE_PORT:-6379}
 redis_base_cmd="redis-cli -p $service_port -a $REDIS_DEFAULT_PASSWORD"
 if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
    redis_base_cmd="redis-cli -p $service_port"
+fi
+if [ "$TLS_ENABLED" == "true" ]; then
+  redis_base_cmd="$redis_base_cmd --tls --cacert ${TLS_MOUNT_PATH}/ca.crt"
 fi
 
 is_ok=false

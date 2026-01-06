@@ -90,5 +90,5 @@ tls-cert-file {{ $.TLS_MOUNT_PATH }}/tls.crt
 tls-key-file {{ $.TLS_MOUNT_PATH }}/tls.key
 tls-ca-cert-file {{ $.TLS_MOUNT_PATH }}/ca.crt
 tls-auth-clients no
-# tls-replication yes
+tls-replication yes
 {{- end -}}

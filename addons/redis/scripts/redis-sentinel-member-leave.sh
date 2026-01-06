@@ -26,11 +26,15 @@ load_common_library() {
   source "${common_library_file}"
 }
 
-declare -g redis_default_service_port=${SENTINEL_INNER_SERVICE_PORT:-26379}
+declare -g redis_default_service_port=${SENTINEL_SERVICE_PORT:-26379}
 declare -A master_slave_counts
 declare -g sentinel_leave_member_name
 declare -g sentinel_leave_member_fqdn
 declare -a sentinel_pod_list
+tls_cmd=""
+if [ "$TLS_ENABLED" == "true" ]; then
+  tls_cmd="--tls --cacert ${TLS_MOUNT_PATH}/ca.crt"
+fi
 
 redis_sentinel_member_get() {
   if [ -z "$KB_LEAVE_MEMBER_POD_FQDN" ]; then
@@ -58,9 +62,9 @@ redis_sentinel_get_masters() {
   local host="$1"
   local port="$2"
   if [ -n "$SENTINEL_PASSWORD" ]; then
-    temp_output=$(redis-cli -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" SENTINEL MASTERS 2>/dev/null || true)
+    temp_output=$(redis-cli -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" $tls_cmd SENTINEL MASTERS 2>/dev/null || true)
   else
-    temp_output=$(redis-cli -h "$host" -p "$port" SENTINEL MASTERS 2>/dev/null || true)
+    temp_output=$(redis-cli -h "$host" -p "$port" $tls_cmd SENTINEL MASTERS 2>/dev/null || true)
   fi
 }
 
@@ -120,9 +124,9 @@ redis_sentinel_remove_monitor() {
       if [[ -n "$master_name" ]]; then
         echo "master name: $master_name"
         if [ -z "$SENTINEL_PASSWORD" ]; then
-          redis-cli -h "$sentinel_leave_member_fqdn" -p "$redis_default_service_port" SENTINEL REMOVE "$master_name"
+          redis-cli -h "$sentinel_leave_member_fqdn" -p "$redis_default_service_port" $tls_cmd SENTINEL REMOVE "$master_name"
         else
-          redis-cli -h "$sentinel_leave_member_fqdn" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" SENTINEL REMOVE "$master_name"
+          redis-cli -h "$sentinel_leave_member_fqdn" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" $tls_cmd SENTINEL REMOVE "$master_name"
         fi
         echo "sentinel no longer monitors $master_name"
         master_name=""
@@ -144,13 +148,13 @@ redis_sentinel_reset_all() {
       success=false
       while [ $retry_count -lt $max_retries ]; do
         if [ -n "$SENTINEL_PASSWORD" ]; then
-          if redis-cli -h "$host" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" SENTINEL RESET "*"; then
+          if redis-cli -h "$host" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" $tls_cmd SENTINEL RESET "*"; then
             echo "sentinel is resetting at $host on port $redis_default_service_port."
             success=true
             break
           fi
         else
-          if redis-cli -h "$host" -p "$redis_default_service_port" SENTINEL RESET "*" ; then
+          if redis-cli -h "$host" -p "$redis_default_service_port" $tls_cmd SENTINEL RESET "*" ; then
             echo "sentinel is resetting at $host on port $redis_default_service_port."
             success=true
             break

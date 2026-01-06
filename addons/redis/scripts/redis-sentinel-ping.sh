@@ -28,11 +28,15 @@ load_common_library() {
 
 check_redis_sentinel_ok() {
   unset_xtrace_when_ut_mode_false
-  sentinel_service_port=${SENTINEL_INNER_SERVICE_PORT:-26379}
+  sentinel_service_port=${SENTINEL_SERVICE_PORT:-26379}
+  tls_cmd=""
+  if [ "$TLS_ENABLED" == "true" ]; then
+    tls_cmd="--tls --cacert ${TLS_MOUNT_PATH}/ca.crt"
+  fi
   if ! is_empty "$SENTINEL_PASSWORD"; then
-    cmd="redis-cli -h localhost -p $sentinel_service_port -a $SENTINEL_PASSWORD ping"
+    cmd="redis-cli -h localhost -p $sentinel_service_port -a $SENTINEL_PASSWORD $tls_cmd ping"
   else
-    cmd="redis-cli -h localhost -p $sentinel_service_port ping"
+    cmd="redis-cli -h localhost -p $sentinel_service_port $tls_cmd ping"
   fi
   response=$($cmd)
   status=$?

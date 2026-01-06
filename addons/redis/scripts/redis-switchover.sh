@@ -21,7 +21,11 @@ test || __() {
 }
 
 declare -A ORIGINAL_PRIORITIES
-redis_service_port=${INNER_SERVICE_PORT:-6379}
+redis_service_port=${SERVICE_PORT:-6379}
+tls_cmd=""
+if [ "$TLS_ENABLED" == "true" ]; then
+  tls_cmd="--tls --cacert ${TLS_MOUNT_PATH}/ca.crt"
+fi
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
@@ -60,9 +64,9 @@ check_redis_role() {
   unset_xtrace_when_ut_mode_false
   local role_info
   if [[ -z "$REDIS_DEFAULT_PASSWORD" ]]; then
-    role_info=$(redis-cli -h "$host" -p "$port" info replication)
+    role_info=$(redis-cli -h "$host" -p "$port" $tls_cmd info replication)
   else
-    role_info=$(redis-cli -h "$host" -p "$port" -a "$REDIS_DEFAULT_PASSWORD" info replication)
+    role_info=$(redis-cli -h "$host" -p "$port" -a "$REDIS_DEFAULT_PASSWORD" $tls_cmd info replication)
   fi
   status=$?
   set_xtrace_when_ut_mode_false
@@ -154,9 +158,9 @@ check_connectivity() {
   local result
   unset_xtrace_when_ut_mode_false
   if ! is_empty "$password"; then
-    result=$(redis-cli -h "$host" -p "$port" -a "$password" PING)
+    result=$(redis-cli -h "$host" -p "$port" -a "$password" $tls_cmd PING)
   else
-    result=$(redis-cli -h "$host" -p "$port" PING)
+    result=$(redis-cli -h "$host" -p "$port" $tls_cmd PING)
   fi
   set_xtrace_when_ut_mode_false
   if [[ "$result" == "PONG" ]]; then
@@ -177,9 +181,9 @@ execute_sub_command() {
   local output
   unset_xtrace_when_ut_mode_false
   if ! is_empty "$password"; then
-    output=$(redis-cli -h "$host" -p "$port" -a "$password" $command)
+    output=$(redis-cli -h "$host" -p "$port" -a "$password" $tls_cmd $command)
   else
-    output=$(redis-cli -h "$host" -p "$port" $command)
+    output=$(redis-cli -h "$host" -p "$port" $tls_cmd $command)
   fi
   local status=$?
   set_xtrace_when_ut_mode_false
@@ -202,9 +206,9 @@ redis_config_get() {
   local output
   unset_xtrace_when_ut_mode_false
   if ! is_empty "$password"; then
-    output=$(redis-cli -h "$host" -p "$port" -a "$password" $command)
+    output=$(redis-cli -h "$host" -p "$port" -a "$password" $tls_cmd $command)
   else
-    output=$(redis-cli -h "$host" -p "$port" $command)
+    output=$(redis-cli -h "$host" -p "$port" $tls_cmd $command)
   fi
   local status=$?
   set_xtrace_when_ut_mode_false

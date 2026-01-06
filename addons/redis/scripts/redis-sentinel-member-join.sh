@@ -65,10 +65,14 @@ temp_output=""
 redis_sentinel_get_masters() {
   local host=$1
   local port=$2
+  tls_cmd=""
+  if [ "$TLS_ENABLED" == "true" ]; then
+    tls_cmd="--tls --cacert ${TLS_MOUNT_PATH}/ca.crt"
+  fi
   if [ -n "$SENTINEL_PASSWORD" ]; then
-    temp_output=$(redis-cli -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" sentinel masters 2>/dev/null || true)
+    temp_output=$(redis-cli -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" $tls_cmd sentinel masters 2>/dev/null || true)
   else
-    temp_output=$(redis-cli -h "$host" -p "$port" sentinel masters 2>/dev/null || true)
+    temp_output=$(redis-cli -h "$host" -p "$port" $tls_cmd sentinel masters 2>/dev/null || true)
   fi
 }
 
@@ -77,7 +81,6 @@ recover_registered_redis_servers() {
     echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
     return 1
   fi
-  sentinel_service_port=${SENTINEL_INNER_SERVICE_PORT:-26379}
 
   output=""
   local max_retries=5
@@ -87,7 +90,7 @@ recover_registered_redis_servers() {
   sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
   for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
     while [ $retry_count -lt $max_retries ]; do
-      redis_sentinel_get_masters "$sentinel_pod_fqdn" "$sentinel_service_port"
+      redis_sentinel_get_masters "$sentinel_pod_fqdn" "$SENTINEL_SERVICE_PORT"
       if [ -n "$temp_output" ]; then
         disconnected=false
         while read -r line; do
