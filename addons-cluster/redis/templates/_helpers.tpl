@@ -20,6 +20,7 @@ Define redis cluster shardingSpec with ComponentDefinition.
   shards: {{ .Values.redisCluster.shardCount }}
   template:
     name: redis
+    {{- include "redis-cluster.tls" . | indent 4 }}
     componentDef: redis-cluster
     replicas: {{ .Values.replicas }}
     {{- if .Values.podAntiAffinityEnabled }}

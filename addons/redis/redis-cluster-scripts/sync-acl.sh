@@ -1,8 +1,8 @@
 #!/bin/bash
 
-redis_base_cmd="redis-cli -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
+redis_base_cmd="redis-cli -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD $REDIS_CLI_TLS_CMD"
 if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-   redis_base_cmd="redis-cli -p $SERVICE_PORT"
+   redis_base_cmd="redis-cli -p $SERVICE_PORT $REDIS_CLI_TLS_CMD"
 fi
 
 is_ok=false
