@@ -1,13 +1,13 @@
 #!/bin/bash
 
 set -e
+service_port=${SERVICE_PORT:-6379}
 
 function do_acl_command() {
     local hosts=$1
     IFS=',' read -ra HOSTS <<<"$hosts"
-    local service_port=$2
-    local user=$3
-    local password=$4
+    local user=$2
+    local password=$3
     local success_count=0
 
     for host in "${HOSTS[@]}"; do
@@ -15,9 +15,9 @@ function do_acl_command() {
         # in case of fixed ip mode, the host is like this: 10.96.180.100:6379@1 10.96.180.100:6379@2
         # we need to remove the @1 or @2 and remove the port
         host=$(echo "$host" | sed 's/@[0-9]*//g' | sed 's/:[0-9]*/ /g')
-        cmd="redis-cli -h $host -p $service_port --user $user -a $password"
+        cmd="redis-cli $REDIS_CLI_TLS_CMD -h $host -p $service_port --user $user -a $password"
         if [ -z "$password" ]; then
-            cmd="redis-cli -h $host -p $service_port --user $user"
+            cmd="redis-cli $REDIS_CLI_TLS_CMD -h $host -p $service_port --user $user"
         fi
         if [ -n "$ACL_COMMAND" ]; then
             echo "DO ACL COMMAND FOR HOST: $host"
@@ -44,11 +44,6 @@ function do_acl_command() {
 function env_pre_check() {
     if [ -z "$ACL_COMMAND" ]; then
         echo "ACL_COMMAND is empty, skip ACL operation"
-        exit 1
-    fi
-
-    if [ -z "$SERVICE_PORT" ]; then
-        echo "SERVICE_PORT is empty, skip ACL operation"
         exit 1
     fi
 
@@ -101,8 +96,8 @@ function get_cluster_host_list() {
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
         passwd_cmd=""
     fi
-    host_list=$(redis-cli -c -h "$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN" \
-        -p $SERVICE_PORT \
+    host_list=$(redis-cli $REDIS_CLI_TLS_CMD -c -h "$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN" \
+        -p $service_port \
         --user $REDIS_DEFAULT_USER $passwd_cmd \
         CLUSTER NODES |
         grep -v "fail" |
@@ -124,7 +119,7 @@ function main() {
     else
         host_list="$REDIS_POD_FQDN_LIST"
     fi
-    do_acl_command "$host_list" "$SERVICE_PORT" "$REDIS_DEFAULT_USER" "$REDIS_DEFAULT_PASSWORD"
+    do_acl_command "$host_list" "$REDIS_DEFAULT_USER" "$REDIS_DEFAULT_PASSWORD"
 }
 
 main

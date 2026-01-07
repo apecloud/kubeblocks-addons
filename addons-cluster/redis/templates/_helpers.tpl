@@ -1,3 +1,17 @@
+{{- define "redis-cluster.tls" }}
+tls: {{ .Values.tlsEnable }}
+{{- if .Values.tlsEnable }}
+issuer:
+  name: UserProvided
+  secretRef:
+    name: {{ include "kblib.clusterName" . }}-tls
+    namespace: {{ .Release.Namespace }}
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+{{- end }}
+{{- end }}
+
 {{/*
 Define redis cluster shardingSpec with ComponentDefinition.
 */}}
@@ -6,6 +20,7 @@ Define redis cluster shardingSpec with ComponentDefinition.
   shards: {{ .Values.redisCluster.shardCount }}
   template:
     name: redis
+    {{- include "redis-cluster.tls" . | indent 4 }}
     componentDef: redis-cluster
     replicas: {{ .Values.replicas }}
     {{- if .Values.podAntiAffinityEnabled }}
@@ -111,6 +126,7 @@ Define redis ComponentSpec with ComponentDefinition.
   {{- end }}
   {{- include "kblib.componentResources" . | indent 2 }}
   {{- include "kblib.componentStorages" . | indent 2 }}
+  {{- include "redis-cluster.tls" . | indent 2 }}
 {{- end }}
 
 {{/*
@@ -118,6 +134,7 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.sentinelComponentSpec" }}
 - name: redis-sentinel
+  {{- include "redis-cluster.tls" . | indent 2 }}
   replicas: {{ .Values.sentinel.replicas }}
   {{- if .Values.podAntiAffinityEnabled }}
   {{- include "redis-cluster.sentinelschedulingPolicy" . | indent 2 }}
