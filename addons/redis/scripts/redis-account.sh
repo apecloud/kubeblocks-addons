@@ -119,7 +119,7 @@ function main() {
     else
         host_list="$REDIS_POD_FQDN_LIST"
     fi
-    do_acl_command "$host_list""$REDIS_DEFAULT_USER" "$REDIS_DEFAULT_PASSWORD"
+    do_acl_command "$host_list" "$REDIS_DEFAULT_USER" "$REDIS_DEFAULT_PASSWORD"
 }
 
 main
