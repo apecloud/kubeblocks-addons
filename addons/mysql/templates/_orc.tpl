@@ -182,20 +182,21 @@ roleProbe:
       - /bin/bash
       - -c
       - |
-        master_info=$(/kubeblocks/orchestrator-client -c which-cluster-master -i "${KB_AGENT_POD_NAME}") || true
+        SUBDOMAIN=${CLUSTER_COMPONENT_NAME}-headless
+        master_info=$(/kubeblocks/orchestrator-client -c which-cluster-master -i "${KB_AGENT_POD_NAME}.${SUBDOMAIN}") || true
         if [[ -z "$master_info" ]]; then
           echo -n ""
           exit 0
         fi
         master_from_orc="${master_info%%:*}"
-        if [ "$master_from_orc" == "${KB_AGENT_POD_NAME}" ]; then
+        if [ "$master_from_orc" == "${KB_AGENT_POD_NAME}.${SUBDOMAIN}" ]; then
           echo -n "primary"
         else
           # get list of replicas
           replicas=$(/kubeblocks/orchestrator-client -c which-cluster-instances -i "${master_from_orc}")
           # for each replica, check if it is a secondary
           for replica in $replicas; do
-            if [ "${replica%%:*}" == "${KB_AGENT_POD_NAME}" ]; then
+            if [ "${replica%%:*}" == "${KB_AGENT_POD_NAME}.${SUBDOMAIN}" ]; then
               echo -n "secondary"
             else
               echo -n ""
@@ -327,4 +328,17 @@ env:
       fieldRef:
         apiVersion: v1
         fieldPath: status.podIP
+# write a readiness probe to check if mysql is ready
+readinessProbe:
+  exec:
+    command:
+      - /bin/bash
+      - -c
+      - |
+        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "SELECT 1;"
+  initialDelaySeconds: 30
+  periodSeconds: 5
+  timeoutSeconds: 2
+  successThreshold: 1
+  failureThreshold: 3
 {{- end -}}

@@ -1,5 +1,6 @@
 #!/bin/bash
 CONNECTION_TIMEOUT=${CONNECTION_TIMEOUT:-600}
+SUBDOMAIN=${CLUSTER_COMPONENT_NAME}-headless
 
 # logging functions
 mysql_log() {
@@ -27,6 +28,7 @@ create_mysql_user() {
   mysql -P 3306 -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
 set SQL_LOG_BIN=off;
 CREATE USER IF NOT EXISTS '$ORC_TOPOLOGY_USER'@'%' IDENTIFIED BY '$ORC_TOPOLOGY_PASSWORD';
+ALTER USER '$ORC_TOPOLOGY_USER'@'%' IDENTIFIED BY '$ORC_TOPOLOGY_PASSWORD';
 GRANT SUPER, PROCESS, REPLICATION SLAVE, REPLICATION CLIENT, RELOAD ON *.* TO '$ORC_TOPOLOGY_USER'@'%';
 GRANT SELECT ON mysql.slave_master_info TO '$ORC_TOPOLOGY_USER'@'%';
 GRANT DROP ON _pseudo_gtid_.* to '$ORC_TOPOLOGY_USER'@'%';
@@ -39,7 +41,13 @@ EOF
 
 # Register cluster with alias via HTTP API for MASTER node only
 register_cluster_in_orchestrator() {
-  local instance="${POD_NAME}:3306"
+  # reset slave info if any
+  mysql -P 3306 -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
+RESET SLAVE;
+RESET SLAVE ALL;
+EOF
+
+  local instance="${POD_NAME}.${SUBDOMAIN}"
   local cluster_alias="${CLUSTER_NAME}"
   local orchestrator_url="${ORC_ENDPOINTS}" # for example, http://orchestrator:3000
 
@@ -70,6 +78,12 @@ register_cluster_in_orchestrator() {
     mysql_note "Instance not yet discovered, waiting... (attempt $((attempt + 1))/$max_attempts)"
     sleep 3
     attempt=$((attempt + 1))
+
+    # if attempt mod 10 is 0, then discover the instance
+    if [ $((attempt % 10)) -eq 0 ]; then
+      /scripts/orchestrator-client -c discover -i "$instance" 2>/dev/null || true
+      mysql_note "Discovering instance..."
+    fi
   done
 
   if [ -z "$cluster_info" ]; then
@@ -218,24 +232,18 @@ setup_master_slave() {
 
   mysql_note "  Master info: $master_info"
   master_from_orc="${master_info%%:*}"
-  if [ "$master_from_orc" == "${POD_NAME}" ]; then
+  if [ "$master_from_orc" == "${POD_NAME}.${SUBDOMAIN}" ]; then
     mysql_note "This instance is the master"
     return 0
   fi
 
   # get all instances from the same cluster as master
-  replicas=$(/scripts/orchestrator-client -c which-cluster-instances -i "${master_from_orc}")
+  # replicas=$(/scripts/orchestrator-client -c which-cluster-instances -i "${master_info}")
 
-  for replica in $replicas; do
-    if [ "$replica" == "${POD_NAME}" ]; then
-      mysql_note "This instance is already a replica of the master"
-      return 0
-    fi
-  done
 
   create_mysql_user
   # init_semi_sync_config
-  change_master "$master_from_orc.${CLUSTER_COMPONENT_NAME}-headless"
+  change_master "$master_from_orc"
   # discover the instance
   attempt=0
   max_attempts=30
@@ -243,7 +251,7 @@ setup_master_slave() {
     if [ $attempt -gt $max_attempts ]; then
       mysql_error "Timeout waiting for instance to be discovered."
     fi
-    cluster_info=$(/scripts/orchestrator-client -c which-cluster -i "${POD_NAME}:3306" 2>/dev/null)
+    cluster_info=$(/scripts/orchestrator-client -c which-cluster -i "${POD_NAME}.${SUBDOMAIN}" 2>/dev/null)
     if [ -n "$cluster_info" ]; then
       break
     fi

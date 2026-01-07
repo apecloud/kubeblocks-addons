@@ -36,7 +36,7 @@
   "MySQLOrchestratorRejectReadOnly": true,
 
   "HostnameResolveMethod": "none",
-  "MySQLHostnameResolveMethod": "@@hostname",
+  "MySQLHostnameResolveMethod": "@@report_host",
   "InstancePollSeconds": 5,
 
   "MasterFailoverLostInstancesDowntimeMinutes": 10,
