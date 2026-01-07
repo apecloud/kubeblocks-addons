@@ -30,9 +30,9 @@ check_redis_sentinel_ok() {
   unset_xtrace_when_ut_mode_false
   sentinel_service_port=${SENTINEL_SERVICE_PORT:-26379}
   if ! is_empty "$SENTINEL_PASSWORD"; then
-    cmd="redis-cli -h localhost -p $sentinel_service_port -a $SENTINEL_PASSWORD $REDIS_CLI_TLS_CMD ping"
+    cmd="redis-cli $REDIS_CLI_TLS_CMD -h localhost -p $sentinel_service_port -a $SENTINEL_PASSWORD ping"
   else
-    cmd="redis-cli -h localhost -p $sentinel_service_port $REDIS_CLI_TLS_CMD ping"
+    cmd="redis-cli $REDIS_CLI_TLS_CMD -h localhost -p $sentinel_service_port ping"
   fi
   response=$($cmd)
   status=$?

@@ -60,9 +60,9 @@ check_redis_role() {
   unset_xtrace_when_ut_mode_false
   local role_info
   if [[ -z "$REDIS_DEFAULT_PASSWORD" ]]; then
-    role_info=$(redis-cli -h "$host" -p "$port" $REDIS_CLI_TLS_CMD info replication)
+    role_info=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" info replication)
   else
-    role_info=$(redis-cli -h "$host" -p "$port" -a "$REDIS_DEFAULT_PASSWORD" $REDIS_CLI_TLS_CMD info replication)
+    role_info=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" -a "$REDIS_DEFAULT_PASSWORD" info replication)
   fi
   status=$?
   set_xtrace_when_ut_mode_false
@@ -154,9 +154,9 @@ check_connectivity() {
   local result
   unset_xtrace_when_ut_mode_false
   if ! is_empty "$password"; then
-    result=$(redis-cli -h "$host" -p "$port" -a "$password" $REDIS_CLI_TLS_CMD PING)
+    result=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" -a "$password" PING)
   else
-    result=$(redis-cli -h "$host" -p "$port" $REDIS_CLI_TLS_CMD PING)
+    result=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" PING)
   fi
   set_xtrace_when_ut_mode_false
   if [[ "$result" == "PONG" ]]; then
@@ -177,9 +177,9 @@ execute_sub_command() {
   local output
   unset_xtrace_when_ut_mode_false
   if ! is_empty "$password"; then
-    output=$(redis-cli -h "$host" -p "$port" -a "$password" $REDIS_CLI_TLS_CMD $command)
+    output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" -a "$password" $command)
   else
-    output=$(redis-cli -h "$host" -p "$port" $REDIS_CLI_TLS_CMD $command)
+    output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" $command)
   fi
   local status=$?
   set_xtrace_when_ut_mode_false
@@ -202,9 +202,9 @@ redis_config_get() {
   local output
   unset_xtrace_when_ut_mode_false
   if ! is_empty "$password"; then
-    output=$(redis-cli -h "$host" -p "$port" -a "$password" $REDIS_CLI_TLS_CMD $command)
+    output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" -a "$password" $command)
   else
-    output=$(redis-cli -h "$host" -p "$port" $REDIS_CLI_TLS_CMD $command)
+    output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" $command)
   fi
   local status=$?
   set_xtrace_when_ut_mode_false

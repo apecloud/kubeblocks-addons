@@ -30,9 +30,9 @@ check_redis_ok() {
   unset_xtrace_when_ut_mode_false
   service_port=${SERVICE_PORT:-6379}
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    cmd="redis-cli -h localhost -p $service_port -a $REDIS_DEFAULT_PASSWORD $REDIS_CLI_TLS_CMD ping"
+    cmd="redis-cli $REDIS_CLI_TLS_CMD -h localhost -p $service_port -a $REDIS_DEFAULT_PASSWORD ping"
   else
-    cmd="redis-cli -h localhost -p $service_port $REDIS_CLI_TLS_CMD ping"
+    cmd="redis-cli $REDIS_CLI_TLS_CMD -h localhost -p $service_port ping"
   fi
   response=$($cmd)
   status=$?

@@ -403,9 +403,9 @@ scale_redis_cluster_replica() {
     echo "Current instance is a rebuild-instance, forget node id in the cluster firstly."
     node_id=$(get_cluster_id_with_retry "$primary_node_endpoint_for_meet" "$primary_node_port" "$current_pod_fqdn")
     if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
-      redis-cli -p $service_port $REDIS_CLI_TLS_CMD --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
+      redis-cli $REDIS_CLI_TLS_CMD -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
     else
-      redis-cli -p $service_port $REDIS_CLI_TLS_CMD --cluster call $primary_node_endpoint_with_port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
+      redis-cli $REDIS_CLI_TLS_CMD -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
     fi
   fi
   current_node_with_port="$current_pod_fqdn:$service_port"

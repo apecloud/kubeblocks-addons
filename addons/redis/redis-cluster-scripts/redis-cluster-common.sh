@@ -141,9 +141,9 @@ shutdown_redis_server() {
   local service_port="$1"
   unset_xtrace_when_ut_mode_false
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" $REDIS_CLI_TLS_CMD shutdown
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" shutdown
   else
-    redis-cli -h 127.0.0.1 -p "$service_port" $REDIS_CLI_TLS_CMD shutdown
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" shutdown
   fi
   set_xtrace_when_ut_mode_false
   echo "shutdown redis server succeeded!"
@@ -155,9 +155,9 @@ check_redis_server_ready() {
   local port="$2"
   local max_retry=10
   local retry_interval=5
-  check_ready_cmd="redis-cli -h $host -p $port $REDIS_CLI_TLS_CMD ping"
+  check_ready_cmd="redis-cli $REDIS_CLI_TLS_CMD -h $host -p $port ping"
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    check_ready_cmd="redis-cli -h $host -p $port -a $REDIS_DEFAULT_PASSWORD $REDIS_CLI_TLS_CMD ping"
+    check_ready_cmd="redis-cli $REDIS_CLI_TLS_CMD -h $host -p $port -a $REDIS_DEFAULT_PASSWORD ping"
   fi
   output=$($check_ready_cmd)
   set_xtrace_when_ut_mode_false
@@ -227,10 +227,10 @@ send_cluster_meet() {
 
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    meet_command="redis-cli -h $primary_endpoint -p $primary_port $REDIS_CLI_TLS_CMD cluster meet $announce_ip $announce_port $announce_bus_port"
+    meet_command="redis-cli $REDIS_CLI_TLS_CMD -h $primary_endpoint -p $primary_port cluster meet $announce_ip $announce_port $announce_bus_port"
     logging_mask_meet_command="$meet_command"
   else
-    meet_command="redis-cli -h $primary_endpoint -p $primary_port -a $REDIS_DEFAULT_PASSWORD $REDIS_CLI_TLS_CMD cluster meet $announce_ip $announce_port $announce_bus_port"
+    meet_command="redis-cli $REDIS_CLI_TLS_CMD -h $primary_endpoint -p $primary_port -a $REDIS_DEFAULT_PASSWORD cluster meet $announce_ip $announce_port $announce_bus_port"
     logging_mask_meet_command="${meet_command/$REDIS_DEFAULT_PASSWORD/********}"
   fi
   echo "check and correct other primary nodes meet command: $logging_mask_meet_command"
@@ -249,9 +249,9 @@ get_cluster_info() {
   local cluster_node="$1"
   local cluster_node_port="$2"
   unset_xtrace_when_ut_mode_false
-  local command="redis-cli -h $cluster_node -p $cluster_node_port $REDIS_CLI_TLS_CMD cluster info"
+  local command="redis-cli $REDIS_CLI_TLS_CMD -h $cluster_node -p $cluster_node_port cluster info"
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    command="redis-cli -h $cluster_node -p $cluster_node_port -a $REDIS_DEFAULT_PASSWORD $REDIS_CLI_TLS_CMD cluster info"
+    command="redis-cli $REDIS_CLI_TLS_CMD -h $cluster_node -p $cluster_node_port -a $REDIS_DEFAULT_PASSWORD cluster info"
   fi
   cluster_info=$($command)
   set_xtrace_when_ut_mode_false
@@ -268,9 +268,9 @@ get_cluster_nodes_info() {
   local cluster_node="$1"
   local cluster_node_port="$2"
   unset_xtrace_when_ut_mode_false
-  local command="redis-cli -h $cluster_node -p $cluster_node_port $REDIS_CLI_TLS_CMD cluster nodes"
+  local command="redis-cli $REDIS_CLI_TLS_CMD -h $cluster_node -p $cluster_node_port cluster nodes"
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    command="redis-cli -h $cluster_node -p $cluster_node_port -a $REDIS_DEFAULT_PASSWORD $REDIS_CLI_TLS_CMD cluster nodes"
+    command="redis-cli $REDIS_CLI_TLS_CMD -h $cluster_node -p $cluster_node_port -a $REDIS_DEFAULT_PASSWORD cluster nodes"
   fi
   cluster_nodes_info=$($command)
   set_xtrace_when_ut_mode_false
@@ -491,10 +491,10 @@ build_redis_cluster_create_command() {
   local primary_nodes="$1"
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    initialize_command="redis-cli --cluster create $primary_nodes --cluster-yes $REDIS_CLI_TLS_CMD"
+    initialize_command="redis-cli $REDIS_CLI_TLS_CMD --cluster create $primary_nodes --cluster-yes"
     logging_mask_initialize_command="$initialize_command"
   else
-    initialize_command="redis-cli --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD $REDIS_CLI_TLS_CMD --cluster-yes"
+    initialize_command="redis-cli $REDIS_CLI_TLS_CMD --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
     logging_mask_initialize_command="${initialize_command/$REDIS_DEFAULT_PASSWORD/********}"
   fi
   echo "initialize cluster command: $logging_mask_initialize_command" >&2

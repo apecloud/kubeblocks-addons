@@ -198,9 +198,9 @@ build_sentinel_get_master_addr_by_name_command() {
   # TODO: replace $SENTINEL_SERVICE_PORT with each sentinel pod's port when sentinel service port is not the same, for example in HostNetwork mode
   sentinel_service_port=${SENTINEL_SERVICE_PORT:-26379}
   if is_empty "$SENTINEL_PASSWORD"; then
-    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $sentinel_service_port $REDIS_CLI_TLS_CMD sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
+    echo "timeout $timeout_value redis-cli $REDIS_CLI_TLS_CMD -h $sentinel_pod_fqdn -p $sentinel_service_port sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
   else
-    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $sentinel_service_port -a $SENTINEL_PASSWORD $REDIS_CLI_TLS_CMD sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
+    echo "timeout $timeout_value redis-cli $REDIS_CLI_TLS_CMD -h $sentinel_pod_fqdn -p $sentinel_service_port -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
   fi
 }
 

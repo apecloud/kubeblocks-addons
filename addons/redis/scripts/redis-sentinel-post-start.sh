@@ -30,9 +30,9 @@ acl_set_user_for_redis_sentinel() {
   # set default user password and replication user password
   if [ -n "$SENTINEL_PASSWORD" ]; then
     sentinel_service_port=${SENTINEL_SERVICE_PORT:-26379}
-    until redis-cli -h localhost -p $sentinel_service_port -a $SENTINEL_PASSWORD $REDIS_CLI_TLS_CMD ping; do sleep 1; done
-    redis-cli -h localhost -p $sentinel_service_port -a $SENTINEL_PASSWORD $REDIS_CLI_TLS_CMD ACL SETUSER $SENTINEL_USER ON \>$SENTINEL_PASSWORD allchannels +@all
-    redis-cli -h localhost -p $sentinel_service_port -a $SENTINEL_PASSWORD $REDIS_CLI_TLS_CMD ACL SAVE
+    until redis-cli $REDIS_CLI_TLS_CMD -h localhost -p $sentinel_service_port -a $SENTINEL_PASSWORD ping; do sleep 1; done
+    redis-cli $REDIS_CLI_TLS_CMD -h localhost -p $sentinel_service_port -a $SENTINEL_PASSWORD ACL SETUSER $SENTINEL_USER ON \>$SENTINEL_PASSWORD allchannels +@all
+    redis-cli $REDIS_CLI_TLS_CMD -h localhost -p $sentinel_service_port -a $SENTINEL_PASSWORD ACL SAVE
     echo "redis sentinel user and password set successfully."
   fi
 }
