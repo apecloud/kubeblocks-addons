@@ -1,53 +1,91 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# copy the orchestrator configuration file
-WORKDIR=${WORKDIR:-/opt/orchestrator}
-ORC_RAFT_ENABLED=${ORC_RAFT_ENABLED:-"true"}
-ORC_BACKEND_DB=${ORC_BACKEND_DB:-sqlite}
+#######################################
+# Signal handling
+#######################################
+ORC_PID=""
 
-META_MYSQL_PORT=${META_MYSQL_PORT:-3306}
-META_MYSQL_ENDPOINT=${META_MYSQL_ENDPOINT:-""}
-ORC_META_DATABASE=${ORC_META_DATABASE:-orchestrator}
+shutdown() {
+  echo "Received termination signal. Shutting down orchestrator..."
+  if [[ -n "${ORC_PID}" ]] && kill -0 "${ORC_PID}" 2>/dev/null; then
+    kill -TERM "${ORC_PID}"
+    wait "${ORC_PID}" || true
+  fi
+}
 
-mkdir -p $WORKDIR
-mkdir -p $WORKDIR/raft $WORKDIR/sqlite
+trap shutdown TERM INT EXIT
 
-SUBDOMAIN=${COMPONENT_NAME}-headless.${CLUSTER_NAMESPACE}.svc.cluster.local
-replicas=$(eval echo ${ORC_POD_FQDN_LIST} | tr ',' '\n')
+#######################################
+# Defaults & required envs
+#######################################
+WORKDIR="${WORKDIR:-/opt/orchestrator}"
+ORC_RAFT_ENABLED="${ORC_RAFT_ENABLED:-true}"
+ORC_BACKEND_DB="${ORC_BACKEND_DB:-sqlite}"
+
+META_MYSQL_PORT="${META_MYSQL_PORT:-3306}"
+META_MYSQL_ENDPOINT="${META_MYSQL_ENDPOINT:-}"
+ORC_META_DATABASE="${ORC_META_DATABASE:-orchestrator}"
+
+: "${CURRENT_POD_NAME:?CURRENT_POD_NAME is required}"
+: "${COMPONENT_NAME:?COMPONENT_NAME is required}"
+: "${CLUSTER_NAMESPACE:?CLUSTER_NAMESPACE is required}"
+: "${ORC_PER_POD_SVC:?ORC_PER_POD_SVC is required}"
+
+META_MYSQL_HOST="${META_MYSQL_ENDPOINT%%:*}"
+
+#######################################
+# Directories
+#######################################
+mkdir -p "${WORKDIR}/raft" "${WORKDIR}/sqlite"
+
+#######################################
+# Pod / raft metadata
+#######################################
+POD_SUFFIX="${CURRENT_POD_NAME##*-}"
+ORC_ADVERTISE_SVC="${COMPONENT_NAME}-advertise-${POD_SUFFIX}.${CLUSTER_NAMESPACE}.svc"
+SUBDOMAIN="${COMPONENT_NAME}-headless.${CLUSTER_NAMESPACE}.svc"
+
 PEERS=""
-for replica in ${replicas}; do
-    host=${replica}
-    PEERS="${PEERS},\"${host}\""
+IFS=',' read -ra REPLICA_ARRAY <<< "${ORC_PER_POD_SVC}"
+for replica in "${REPLICA_ARRAY[@]}"; do
+  host="${replica}.${CLUSTER_NAMESPACE}.svc"
+  PEERS+=",\"${host}\""
 done
-# remove the first comma
-PEERS=${PEERS#,}
+PEERS="${PEERS#,}"
 
-if [ $ORC_RAFT_ENABLED == 'true' ]; then
-  ORC_PEERS=$PEERS
-  ORC_POD_NAME=${CURRENT_POD_NAME}.${SUBDOMAIN}
+if [[ "${ORC_RAFT_ENABLED}" == "true" ]]; then
+  ORC_PEERS="${PEERS}"
+  ORC_POD_NAME="${CURRENT_POD_NAME}.${SUBDOMAIN}"
 else
   ORC_PEERS=""
   ORC_POD_NAME=""
 fi
 
-cat /configs/orchestrator.tpl > $WORKDIR/orchestrator.conf.json
-# set backend db
-sed -i "s|\${ORC_BACKEND_DB}|${ORC_BACKEND_DB}|g" $WORKDIR/orchestrator.conf.json
-# set workdir
-sed -i "s|\${ORC_WORKDIR}|${WORKDIR}|g" $WORKDIR/orchestrator.conf.json
-# set orch backed db info
-sed -i "s/\${META_MYSQL_ENDPOINT}/${META_MYSQL_ENDPOINT%%:*}/g" $WORKDIR/orchestrator.conf.json
-sed -i "s/\${META_MYSQL_PORT}/$META_MYSQL_PORT/g" $WORKDIR/orchestrator.conf.json
-sed -i "s/\${ORC_META_DATABASE}/$ORC_META_DATABASE/g" $WORKDIR/orchestrator.conf.json
+#######################################
+# Render config (single sed pass)
+#######################################
+CONFIG_FILE="${WORKDIR}/orchestrator.conf.json"
 
-# set raft mode
-sed -i "s|\${ORC_RAFT_ENABLED}|${ORC_RAFT_ENABLED}|g" $WORKDIR/orchestrator.conf.json
+sed \
+  -e "s|\${ORC_BACKEND_DB}|${ORC_BACKEND_DB}|g" \
+  -e "s|\${ORC_WORKDIR}|${WORKDIR}|g" \
+  -e "s|\${META_MYSQL_ENDPOINT}|${META_MYSQL_HOST}|g" \
+  -e "s|\${META_MYSQL_PORT}|${META_MYSQL_PORT}|g" \
+  -e "s|\${ORC_META_DATABASE}|${ORC_META_DATABASE}|g" \
+  -e "s|\${ORC_RAFT_ENABLED}|${ORC_RAFT_ENABLED}|g" \
+  -e "s|\${ORC_PEERS}|${ORC_PEERS}|g" \
+  -e "s|\${ORC_POD_NAME}|${ORC_POD_NAME}|g" \
+  -e "s|\${ORC_ADVERTISE_SVC}|${ORC_ADVERTISE_SVC}|g" \
+  /configs/orchestrator.tpl > "${CONFIG_FILE}"
 
-# set peers
-sed -i "s|\${ORC_PEERS}|${ORC_PEERS}|g" $WORKDIR/orchestrator.conf.json
-sed -i "s|\${ORC_POD_NAME}|${ORC_POD_NAME}|g" $WORKDIR/orchestrator.conf.json
+#######################################
+# Start orchestrator
+#######################################
+/usr/local/orchestrator/orchestrator \
+  -quiet \
+  -config "${CONFIG_FILE}" \
+  http &
 
-# set meta host
-sed -i "s|\${META_MYSQL_ENDPOINT}|${META_MYSQL_ENDPOINT%%:*}|g" $WORKDIR/orchestrator.conf.json
-
-/usr/local/orchestrator/orchestrator -quiet -config $WORKDIR/orchestrator.conf.json http
+ORC_PID=$!
+wait "${ORC_PID}"

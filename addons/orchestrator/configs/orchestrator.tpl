@@ -27,6 +27,8 @@
   "RaftBind": "${ORC_POD_NAME}",
   "DefaultRaftPort": 10008,
   "RaftNodes": [ ${ORC_PEERS} ],
+  "RaftAdvertise" : "${ORC_ADVERTISE_SVC}",
+  "HTTPAdvertise" : "http://${ORC_ADVERTISE_SVC}:80",
 
   "ApplyMySQLPromotionAfterMasterFailover": true,
   "DetachLostReplicasAfterMasterFailover": true,
