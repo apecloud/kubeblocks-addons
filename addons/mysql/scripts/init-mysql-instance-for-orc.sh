@@ -1,6 +1,5 @@
 #!/bin/bash
 CONNECTION_TIMEOUT=${CONNECTION_TIMEOUT:-600}
-SUBDOMAIN=${CLUSTER_COMPONENT_NAME}-headless
 
 # logging functions
 mysql_log() {
@@ -47,7 +46,7 @@ RESET SLAVE;
 RESET SLAVE ALL;
 EOF
 
-  local instance="${POD_NAME}.${SUBDOMAIN}"
+  local instance="${POD_NAME}"
   local cluster_alias="${CLUSTER_NAME}"
   local orchestrator_url="${ORC_ENDPOINTS}" # for example, http://orchestrator:3000
 
@@ -76,7 +75,7 @@ EOF
     fi
 
     mysql_note "Instance not yet discovered, waiting... (attempt $((attempt + 1))/$max_attempts)"
-    sleep 3
+    sleep 5
     attempt=$((attempt + 1))
 
     # if attempt mod 10 is 0, then discover the instance
@@ -92,7 +91,7 @@ EOF
 
   # Set alias via API
   curl --silent -X GET "http://${orchestrator_url}/api/set-cluster-alias/${cluster_info}?alias=${cluster_alias}"
-  sleep 3
+  sleep 5
   result=""
   attempt=0
   while [ "$result" != "$cluster_alias" ] && [ $attempt -lt $max_attempts ]; do
@@ -104,7 +103,7 @@ EOF
     mysql_note "Cluster alias not set yet, waiting... (attempt $((attempt + 1))/$max_attempts)"
     attempt=$((attempt + 1))
     curl --silent -X GET "http://${orchestrator_url}/api/set-cluster-alias/${cluster_info}?alias=${cluster_alias}"
-    sleep 3
+    sleep 5
   done
   if [ $attempt -eq $max_attempts ]; then
     mysql_error "Failed to set cluster alias via API"
@@ -232,14 +231,13 @@ setup_master_slave() {
 
   mysql_note "  Master info: $master_info"
   master_from_orc="${master_info%%:*}"
-  if [ "$master_from_orc" == "${POD_NAME}.${SUBDOMAIN}" ]; then
+  if [ "$master_from_orc" == "${POD_NAME}" ]; then
     mysql_note "This instance is the master"
     return 0
   fi
 
   # get all instances from the same cluster as master
   # replicas=$(/scripts/orchestrator-client -c which-cluster-instances -i "${master_info}")
-
 
   create_mysql_user
   # init_semi_sync_config
@@ -251,7 +249,7 @@ setup_master_slave() {
     if [ $attempt -gt $max_attempts ]; then
       mysql_error "Timeout waiting for instance to be discovered."
     fi
-    cluster_info=$(/scripts/orchestrator-client -c which-cluster -i "${POD_NAME}.${SUBDOMAIN}" 2>/dev/null)
+    cluster_info=$(/scripts/orchestrator-client -c which-cluster -i "${POD_NAME}" 2>/dev/null)
     if [ -n "$cluster_info" ]; then
       break
     fi

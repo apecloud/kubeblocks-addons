@@ -182,21 +182,20 @@ roleProbe:
       - /bin/bash
       - -c
       - |
-        SUBDOMAIN=${CLUSTER_COMPONENT_NAME}-headless
-        master_info=$(/kubeblocks/orchestrator-client -c which-cluster-master -i "${KB_AGENT_POD_NAME}.${SUBDOMAIN}") || true
+        master_info=$(/kubeblocks/orchestrator-client -c which-cluster-master -i "${KB_AGENT_POD_NAME}") || true
         if [[ -z "$master_info" ]]; then
           echo -n ""
           exit 0
         fi
         master_from_orc="${master_info%%:*}"
-        if [ "$master_from_orc" == "${KB_AGENT_POD_NAME}.${SUBDOMAIN}" ]; then
+        if [ "$master_from_orc" == "${KB_AGENT_POD_NAME}" ]; then
           echo -n "primary"
         else
           # get list of replicas
           replicas=$(/kubeblocks/orchestrator-client -c which-cluster-instances -i "${master_from_orc}")
           # for each replica, check if it is a secondary
           for replica in $replicas; do
-            if [ "${replica%%:*}" == "${KB_AGENT_POD_NAME}.${SUBDOMAIN}" ]; then
+            if [ "${replica%%:*}" == "${KB_AGENT_POD_NAME}" ]; then
               echo -n "secondary"
             else
               echo -n ""
