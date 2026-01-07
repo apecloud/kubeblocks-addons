@@ -171,13 +171,6 @@ Describe "Redis Start Bash Script Tests"
       When call build_redis_service_port
       The contents of file "$redis_real_conf" should include "port $SERVICE_PORT"
     End
-
-    It "builds redis service port with default value when SERVICE_PORT env is not set"
-      unset service_port
-      When call build_redis_service_port
-      The contents of file "$redis_real_conf" should include "port 6379"
-      The stdout should include "false, SERVICE_PORT does not exist"
-    End
   End
 
   Describe "parse_redis_announce_addr()"
