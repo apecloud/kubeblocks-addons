@@ -78,7 +78,20 @@ spec:
       - container: redis-sentinel
         ports:
           - redis-sentinel
+  tls:
+    volumeName: tls
+    mountPath: {{ $.Values.tlsMountPath }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
   vars:
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+          optional: true
+    - name: TLS_MOUNT_PATH
+      value: {{ $.Values.tlsMountPath }}
     ## the name of current cluster instance
     - name: CLUSTER_NAME
       valueFrom:
@@ -158,9 +171,9 @@ spec:
     - name: SENTINEL_SERVICE_PORT
       value: "26379"
       expression: {{ `{{if index . "REDIS_SENTINEL_HOST_NETWORK_PORT"}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}{{.SENTINEL_SERVICE_PORT}}{{end}}` | toYaml }}
-    ## the env of redis sentinel server port for dbctl to connect to redis cluster server
-    - name: DBCTL_REDIS_SENTINEL_SERVICE_PORT
-      value: $(SENTINEL_SERVICE_PORT)
+    - name: REDIS_CLI_TLS_CMD
+      value: ""
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else}}{{end}}` | toYaml }}
     ## the username of redis for redis sentinel connection which is only used to recover redis servers when scale-out redis sentinel.
     - name: REDIS_SENTINEL_USER
       value: "kbreplicator-sentinel"
@@ -182,8 +195,7 @@ spec:
         command:
           - sh
           - -c
-        args:
-          - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD acl save "
+          - /scripts/redis-sentinel-account-provision.sh
     memberLeave:
       exec:
         container: redis-sentinel

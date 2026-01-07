@@ -27,6 +27,12 @@ spec:
   serviceVersion: {{ .serviceVersion }}
   minReadySeconds: 10
   podUpgradePolicy: ReCreate
+  tls:
+    volumeName: tls
+    mountPath: {{ $.Values.tlsMountPath }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
   services:
     - name: redis-advertised
       serviceName: redis-advertised
@@ -118,6 +124,13 @@ spec:
     - name: IS_REDIS8
       value: "true"
   {{- end }}
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+          optional: true
+    - name: TLS_MOUNT_PATH
+      value: {{ $.Values.tlsMountPath }}
     ## the name of current cluster instance
     - name: CLUSTER_NAME
       valueFrom:
@@ -335,9 +348,12 @@ spec:
     - name: SERVICE_PORT
       value: "6379"
       expression: {{ `{{if index . "REDIS_CLUSTER_HOST_NETWORK_PORT"}}{{.REDIS_CLUSTER_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
-    ## the env of redis server port for dbctl to connect to redis cluster server
-    - name: DBCTL_REDIS_SERVICE_PORT
-      value: $(SERVICE_PORT)
+    - name: REDIS_METRICS_ADDR
+      value: "redis://localhost:$(SERVICE_PORT)"
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}rediss://localhost: {{.SERVICE_PORT }}{{else}}redis://localhost:{{.SERVICE_PORT}}{{end}}` | toYaml }}
+    - name: REDIS_CLI_TLS_CMD
+      value: ""
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else }}{{end}}` | toYaml }}
     ## the redis cluster server host network bus port when using host network mode, the port will be allocated automatically by KubeBlocks
     - name: REDIS_CLUSTER_HOST_NETWORK_BUS_PORT
       valueFrom:
@@ -444,8 +460,6 @@ spec:
           value: $(CURRENT_SHARD_LB_ADVERTISED_HOST)
         command:
           - /tools/dbctl
-          - --config-path
-          - /tools/config/dbctl/components
           - redis
           - getrole
     postProvision:
@@ -515,7 +529,6 @@ spec:
           - cp
           - -r
           - /bin/dbctl
-          - /config
           - /tools/
         imagePullPolicy: {{ default "IfNotPresent" $.Values.dbctlImage.pullPolicy }}
         volumeMounts:
@@ -585,7 +598,7 @@ spec:
           runAsUser: 1001
         env:
           - name: REDIS_ADDR
-            value: "redis://localhost:$(SERVICE_PORT)"
+            value: "$(REDIS_METRICS_ADDR)"
           - name: REDIS_EXPORTER_WEB_LISTEN_ADDRESS
             value: "0.0.0.0:$(REDIS_METRICS_HTTP_PORT)"
           - name: REDIS_USER
@@ -593,7 +606,9 @@ spec:
           - name: REDIS_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
           - name: REDIS_EXPORTER_IS_CLUSTER
-            value: true
+            value: "true"
+          - name: REDIS_EXPORTER_SKIP_TLS_VERIFICATION
+            value: "true"
         ports:
           - name: http-metrics
             containerPort: {{ $.Values.metrics.service.port }}

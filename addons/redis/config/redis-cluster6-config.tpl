@@ -86,3 +86,13 @@ cluster-replica-validity-factor 0
 cluster-require-full-coverage yes
 cluster-allow-reads-when-down no
 
+{{- if eq (index $ "TLS_ENABLED") "true"  }}
+tls-cert-file {{ $.TLS_MOUNT_PATH }}/tls.crt
+tls-key-file {{ $.TLS_MOUNT_PATH }}/tls.key
+tls-ca-cert-file {{ $.TLS_MOUNT_PATH }}/ca.crt
+tls-auth-clients no
+tls-replication yes
+tls-cluster yes
+port 0
+{{- end -}}
+
