@@ -171,6 +171,9 @@ spec:
     - name: SENTINEL_SERVICE_PORT
       value: "26379"
       expression: {{ `{{if index . "REDIS_SENTINEL_HOST_NETWORK_PORT"}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}{{.SENTINEL_SERVICE_PORT}}{{end}}` | toYaml }}
+    - name: REDIS_CLI_TLS_CMD
+      value: ""
+      expression: {{ `{{if .TLS_ENABLED}}--tls --insecure{{else}}{{end}}` | toYaml }}
     ## the username of redis for redis sentinel connection which is only used to recover redis servers when scale-out redis sentinel.
     - name: REDIS_SENTINEL_USER
       value: "kbreplicator-sentinel"

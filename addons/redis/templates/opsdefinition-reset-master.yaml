@@ -28,10 +28,10 @@ spec:
           valueFrom:
             envRef:
               envName: SENTINEL_POD_NAME_LIST
-        - name: TLS_ENABLED
+        - name: REDIS_CLI_TLS_CMD
           valueFrom:
             envRef:
-              envName: TLS_ENABLED
+              envName: REDIS_CLI_TLS_CMD
   actions:
     - name: reset-master
       workload:

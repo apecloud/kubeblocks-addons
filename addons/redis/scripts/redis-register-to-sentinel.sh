@@ -34,11 +34,6 @@ else
   FIXED_POD_IP_ENABLED=false
 fi
 
-tls_cmd=""
-if [ "$TLS_ENABLED" == "true" ]; then
-  tls_cmd="--tls --cacert ${TLS_MOUNT_PATH}/ca.crt"
-fi
-
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
   common_library_file="/scripts/common.sh"
@@ -153,9 +148,9 @@ check_connectivity() {
   local password=$3
   echo "Checking connectivity to $host on port $port using redis-cli..."
   if is_empty "$password"; then
-    redis-cli -h "$host" -p "$port" $tls_cmd PING | grep -q "PONG"
+    redis-cli -h "$host" -p "$port" $REDIS_CLI_TLS_CMD PING | grep -q "PONG"
   else
-    redis-cli -h "$host" -p "$port" -a "$password" $tls_cmd PING | grep -q "PONG"
+    redis-cli -h "$host" -p "$port" -a "$password" $REDIS_CLI_TLS_CMD PING | grep -q "PONG"
   fi
   if [ $? -eq 0 ]; then
     echo "$host is reachable on port $port."
@@ -174,9 +169,9 @@ execute_sentinel_sub_command() {
 
   local output
   if is_empty "$SENTINEL_PASSWORD"; then
-    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" $tls_cmd $command)
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" $REDIS_CLI_TLS_CMD $command)
   else
-    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $tls_cmd $command)
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $REDIS_CLI_TLS_CMD $command)
   fi
   local status=$?
   echo "$output"
@@ -196,9 +191,9 @@ get_master_addr_by_name(){
   local command=$3
   local output
   if is_empty "$SENTINEL_PASSWORD"; then
-    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" $tls_cmd $command)
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" $REDIS_CLI_TLS_CMD $command)
   else
-    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $tls_cmd $command)
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $REDIS_CLI_TLS_CMD $command)
   fi
   local status=$?
   if [ $status -ne 0 ]; then

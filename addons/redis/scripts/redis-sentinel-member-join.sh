@@ -65,14 +65,10 @@ temp_output=""
 redis_sentinel_get_masters() {
   local host=$1
   local port=$2
-  tls_cmd=""
-  if [ "$TLS_ENABLED" == "true" ]; then
-    tls_cmd="--tls --cacert ${TLS_MOUNT_PATH}/ca.crt"
-  fi
   if [ -n "$SENTINEL_PASSWORD" ]; then
-    temp_output=$(redis-cli -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" $tls_cmd sentinel masters 2>/dev/null || true)
+    temp_output=$(redis-cli -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" $REDIS_CLI_TLS_CMD sentinel masters 2>/dev/null || true)
   else
-    temp_output=$(redis-cli -h "$host" -p "$port" $tls_cmd sentinel masters 2>/dev/null || true)
+    temp_output=$(redis-cli -h "$host" -p "$port" $REDIS_CLI_TLS_CMD sentinel masters 2>/dev/null || true)
   fi
 }
 
