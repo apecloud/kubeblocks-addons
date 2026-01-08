@@ -327,4 +327,17 @@ env:
       fieldRef:
         apiVersion: v1
         fieldPath: status.podIP
+# write a readiness probe to check if mysql is ready
+readinessProbe:
+  exec:
+    command:
+      - /bin/bash
+      - -c
+      - |
+        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "SELECT 1;"
+  initialDelaySeconds: 30
+  periodSeconds: 5
+  timeoutSeconds: 2
+  successThreshold: 1
+  failureThreshold: 3
 {{- end -}}
