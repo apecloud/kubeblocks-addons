@@ -12,6 +12,7 @@ spec:
   serviceVersion: "8.0.8"
   services:
     - name: everypod
+      podService: true
       spec:
         ports:
           - name: mongos
