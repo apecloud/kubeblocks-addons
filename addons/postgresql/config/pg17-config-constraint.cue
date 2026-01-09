@@ -601,8 +601,7 @@
 	// Encrypt passwords.
 	password_encryption?: string & "md5" | "scram-sha-256"
 
-	// Specifies which classes of statements will be logged by session audit logging.
-	//	"pgaudit.log"?: string & "ddl" | "function" | "misc" | "read" | "role" | "write" | "none" | "all" | "-ddl" | "-function" | "-misc" | "-read" | "-role" | "-write"
+	// Specifies which classes of statements will be logged by session audit logging. Multiple classes can be provided using a comma-separated list and classes can be subtracted by prefacing the class with a - sign. Supported classes are: ddl, function, misc, read, role, write, none, all, -ddl, -function, -misc, -read, -role, -write.
 	"pgaudit.log"?: string
 
 	// Specifies that session logging should be enabled in the case where all relations in a statement are in pg_catalog.
@@ -887,8 +886,8 @@
 	// Sets the planners estimate of the cost of a sequentially fetched disk page.
 	seq_page_cost?: float & >=0
 
-	// Lists shared libraries to preload into each backend.
-	session_preload_libraries?: string & "auto_explain" | "orafce" | "pg_bigm" | "pg_hint_plan" | "pg_prewarm" | "pg_similarity" | "pg_stat_statements" | "pg_transport" | "plprofiler"
+	// Lists shared libraries to preload into each backend. Multiple libraries can be provided using a comma-separated list, e.g. 'pg_stat_statements, auto_explain'.
+	session_preload_libraries?: string
 
 	// Sets the sessions behavior for triggers and rewrite rules.
 	session_replication_role?: string & "origin" | "replica" | "local"
@@ -896,8 +895,7 @@
 	// (8kB) Sets the number of shared memory buffers used by the server.
 	shared_buffers?: int & >=16 & <=1073741823 @storeResource(8KB)
 
-	// Lists shared libraries to preload into server.
-	// TODO: support enum list, e.g. shared_preload_libraries = 'pg_stat_statements, auto_explain'
+	// Lists shared libraries to preload into server. Multiple libraries can be provided using a comma-separated list, e.g. 'pg_stat_statements, auto_explain'.
 	shared_preload_libraries?: string
 
 	// Enables SSL connections.
