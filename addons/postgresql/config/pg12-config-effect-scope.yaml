@@ -21,7 +21,6 @@ staticParameters:
   - extwlist.custom_path
 
 immutableParameters:
-  - archive_timeout
   - backtrace_functions
   - config_file
   - cron.use_background_workers
