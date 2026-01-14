@@ -123,6 +123,9 @@ spec:
   {{- if eq .major "8" }}
     - name: IS_REDIS8
       value: "true"
+  {{- else if or (eq .major "6") (eq .major "5") }}
+    - name: LEGACY_REDIS
+      value: "true"
   {{- end }}
     - name: TLS_ENABLED
       valueFrom:

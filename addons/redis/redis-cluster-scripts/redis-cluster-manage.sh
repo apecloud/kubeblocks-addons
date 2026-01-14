@@ -587,7 +587,6 @@ gen_initialize_redis_cluster_secondary_nodes() {
 }
 
 initialize_redis_cluster() {
-
   # generate primary and secondary nodes
   gen_initialize_redis_cluster_primary_node
   gen_initialize_redis_cluster_secondary_nodes
