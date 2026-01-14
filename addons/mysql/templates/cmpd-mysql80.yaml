@@ -61,6 +61,11 @@ spec:
           - bash
           - -c
           - |
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "arm64" || "$ARCH" == "aarch64" ]]; then
+              echo "ARM system detected. Skipping jemalloc configuration."
+              export LD_PRELOAD=""
+            fi
             {{- include "mysql.spec.runtime.entrypoint" . | nindent 12 }}
             docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
                --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
