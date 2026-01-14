@@ -65,11 +65,11 @@ Define redis cluster shardingSpec with ComponentDefinition.
       {{- end }}
     resources:
       limits:
-        cpu: "0.2"
-        memory: 0.4Gi
+        cpu: {{ .Values.cpu | quote }}
+        memory:  {{ print .Values.memory "Gi" | quote }}
       requests:
-        cpu: "0.2"
-        memory: 0.4Gi
+        cpu: {{ .Values.cpu | quote }}
+        memory:  {{ print .Values.memory "Gi" | quote }}
     volumeClaimTemplates:
       - name: data
         spec:
