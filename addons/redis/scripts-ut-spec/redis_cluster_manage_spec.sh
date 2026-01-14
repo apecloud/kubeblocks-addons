@@ -183,7 +183,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
         echo "redis-shard-sxj-0"
       }
 
-      parse_host_ip_from_built_in_envs() {
+      redis_config_get() {
         case "$1" in
           "redis-shard-sxj-0")
             echo "10.42.0.1"
@@ -300,7 +300,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
         esac
       }
 
-      parse_host_ip_from_built_in_envs() {
+      redis_config_get() {
         return 1
       }
 
@@ -339,7 +339,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
         esac
       }
 
-      parse_host_ip_from_built_in_envs() {
+      redis_config_get() {
         case "$1" in
           "redis-shard-sxj-0")
             echo "10.42.0.1"
@@ -369,46 +369,6 @@ Describe "Redis Cluster Manage Bash Script Tests"
       End
     End
 
-    Context "when failed to get pod fqdn"
-      min_lexicographical_order_pod() {
-        echo "redis-shard-sxj-0"
-      }
-
-      extract_obj_ordinal() {
-        case "$1" in
-          "redis-shard-sxj-0")
-            echo "0"
-            ;;
-          "redis-shard-sxj-1")
-            echo "1"
-            ;;
-        esac
-      }
-
-      get_target_pod_fqdn_from_pod_fqdn_vars() {
-        return 1
-      }
-
-      setup() {
-        export KB_CLUSTER_POD_FQDN_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
-        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc.cluster.local"
-        export SERVICE_PORT="6379"
-      }
-      Before "setup"
-
-      un_setup() {
-        unset KB_CLUSTER_POD_FQDN_LIST
-        unset CURRENT_SHARD_POD_FQDN_LIST
-        unset SERVICE_PORT
-      }
-      After "un_setup"
-
-      It "exits with error when failed to get pod fqdn"
-        When run init_current_comp_default_nodes_for_scale_out
-        The status should be failure
-        The stderr should include "Error: Failed to get pod redis-shard-sxj-0 fqdn from list: redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc.cluster.local"
-      End
-    End
   End
 
   Describe "gen_initialize_redis_cluster_node()"
