@@ -9,7 +9,7 @@ metadata:
 spec:
   provider: kubeblocks.io
   serviceKind: mongodb
-  serviceVersion: "8.0.8"
+  serviceVersion: "8.0.17"
   configs:
     - name: mongodb-config
       template: {{ include "mongodbShard.configTplName" . }}
