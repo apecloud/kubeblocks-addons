@@ -489,15 +489,6 @@ spec:
       preCondition: RuntimeReady
       retryPolicy:
         maxRetries: 10
-    preTerminate:
-      exec:
-        container: redis-cluster
-        command:
-          - /bin/bash
-          - -c
-          - /scripts/{{ $redisClusterManageScripts }} --pre-terminate > /tmp/pre-terminate.log 2>&1
-      retryPolicy:
-        maxRetries: 10
     memberLeave:
       exec:
         container: redis-cluster
