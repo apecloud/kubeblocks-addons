@@ -33,7 +33,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
 
   Describe "init_other_components_and_pods_info()"
     It "initializes other components and pods info correctly"
-      export KB_CLUSTER_COMPONENT_LIST="component1,component3,component3"
+      export KB_CLUSTER_COMPONENT_LIST="component1,component2,component3"
       export KB_CLUSTER_POD_FQDN_LIST="component1-0.component1-headless.kb-system.svc.cluster.local,component2-0.component2-headless.kb-system.svc.cluster.local,component3-0.component3-headless.kb-system.svc.cluster.local,component3-1.component3-headless.kb-system.svc.cluster.local"
       export CLUSTER_NAMESPACE="kb-system"
       export CLUSTER_DOMAIN="cluster.local"
@@ -43,7 +43,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       The status should be success
       The output should include "other_components: component2 component3"
       The output should include "other_component_pod_names: component2-0 component3-0 component3-1"
-      The output should include "other_component_nodes: component2-0.component2-headless.kb-system.svc.cluster.local component3-0.component3-headless.kb-system.svc.cluster.local:6379 component3-1.component3-headless.kb-system.svc.cluster.local:6379"
+      The output should include "other_component_nodes: component2-0.component2-headless.kb-system.svc.cluster.local:6379 component3-0.component3-headless.kb-system.svc.cluster.local:6379 component3-1.component3-headless.kb-system.svc.cluster.local:6379"
     End
   End
 
@@ -184,6 +184,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       }
 
       redis_config_get() {
+        echo $1 # for 2p
         case "$1" in
           "redis-shard-sxj-0")
             echo "10.42.0.1"
@@ -203,7 +204,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       Before "setup"
 
       un_setup() {
-        unset $CURRENT_SHARD_POD_FQDN_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
         unset CURRENT_SHARD_ADVERTISED_PORT
       }
       After "un_setup"
@@ -301,17 +302,17 @@ Describe "Redis Cluster Manage Bash Script Tests"
       }
 
       redis_config_get() {
-        return 1
+        echo $1
       }
 
       setup() {
-        export KB_CLUSTER_POD_FQDN_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
         export CURRENT_SHARD_ADVERTISED_PORT="redis-shard-sxj-0:31000,redis-shard-sxj-1:31001"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_FQDN_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
         unset CURRENT_SHARD_ADVERTISED_PORT
       }
       After "un_setup"
@@ -340,6 +341,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       }
 
       redis_config_get() {
+        echo $1
         case "$1" in
           "redis-shard-sxj-0")
             echo "10.42.0.1"
@@ -351,13 +353,13 @@ Describe "Redis Cluster Manage Bash Script Tests"
       }
 
       setup() {
-        export KB_CLUSTER_POD_FQDN_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
         export CURRENT_SHARD_ADVERTISED_PORT="redis-shard-sxj-0:31000"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_FQDN_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
         unset CURRENT_SHARD_ADVERTISED_PORT
       }
       After "un_setup"
@@ -372,9 +374,33 @@ Describe "Redis Cluster Manage Bash Script Tests"
   End
 
   Describe "gen_initialize_redis_cluster_node()"
+    redis_config_get() {
+      echo $1
+      case "$1" in
+        "redis-shard-98x-0")
+          echo "10.42.0.1"
+          ;;
+        "redis-shard-7hy-0")
+          echo "10.42.0.3"
+          ;;
+        "redis-shard-jwl-0")
+          echo "10.42.0.5"
+          ;;
+        "redis-shard-98x-1")
+          echo "10.42.0.2"
+          ;;
+        "redis-shard-7hy-1")
+          echo "10.42.0.4"
+          ;;
+        "redis-shard-jwl-1")
+          echo "10.42.0.6"
+          ;;
+      esac
+    }
     Context "when is_primary is true and using advertised ports"
       setup() {
         export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
         export ALL_SHARDS_ADVERTISED_PORT="shard-98x@redis-shard-98x-redis-advertised-0:32024,redis-shard-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:32025,redis-shard-7hy-redis-advertised-1:31319.shard-jwl@redis-shard-jwl-redis-advertised-0:32026,redis-shard-jwl-redis-advertised-1:31320"
         declare -gA initialize_redis_cluster_primary_nodes
         declare -gA initialize_redis_cluster_secondary_nodes
@@ -385,6 +411,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       un_setup() {
         unset KB_CLUSTER_POD_FQDN_LIST
         unset ALL_SHARDS_ADVERTISED_PORT
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 
@@ -406,6 +433,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
     Context "when is_primary is false and using advertised ports"
       setup() {
         export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
         export ALL_SHARDS_ADVERTISED_PORT="shard-98x@redis-shard-98x-redis-advertised-0:32024,redis-shard-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:32025,redis-shard-7hy-redis-advertised-1:31319.shard-jwl@redis-shard-jwl-redis-advertised-0:32026,redis-shard-jwl-redis-advertised-1:31320"
         declare -gA initialize_redis_cluster_primary_nodes
         declare -gA initialize_redis_cluster_secondary_nodes
@@ -416,6 +444,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       un_setup() {
         unset KB_CLUSTER_POD_FQDN_LIST
         unset ALL_SHARDS_ADVERTISED_PORT
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 
@@ -440,7 +469,8 @@ Describe "Redis Cluster Manage Bash Script Tests"
       }
 
       setup() {
-        export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local,redis-shard-7hy-0.namespace.svc.cluster.local,redis-shard-7hy-1.namespace.svc.cluster.local,redis-shard-jwl-0.namespace.svc.cluster.local,redis-shard-jwl-1.namespace.svc.cluster.local"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
         export SERVICE_PORT="6379"
         declare -gA initialize_redis_cluster_primary_nodes
         declare -gA initialize_redis_cluster_secondary_nodes
@@ -450,6 +480,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
 
       un_setup() {
         unset KB_CLUSTER_POD_FQDN_LIST
+        unset KB_CLUSTER_POD_NAME_LIST
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -475,7 +506,8 @@ Describe "Redis Cluster Manage Bash Script Tests"
       }
 
       setup() {
-        export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local,redis-shard-7hy-0.namespace.svc.cluster.local,redis-shard-7hy-1.namespace.svc.cluster.local,redis-shard-jwl-0.namespace.svc.cluster.local,redis-shard-jwl-1.namespace.svc.cluster.local"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
         export SERVICE_PORT="6379"
         declare -gA initialize_redis_cluster_primary_nodes
         declare -gA initialize_redis_cluster_secondary_nodes
@@ -511,11 +543,13 @@ Describe "Redis Cluster Manage Bash Script Tests"
 
       setup() {
         export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_POD_FQDN_LIST
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 
@@ -527,16 +561,20 @@ Describe "Redis Cluster Manage Bash Script Tests"
     End
 
     Context "when failed to get host ip of pod"
+      redis_config_get() {
+        echo "127.0.0.1"
+      }
 
       setup() {
         export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
-        export ALL_SHARDS_ADVERTISED_PORT="shard-98x@redis-shard-98x-redis-advertised-0:32024,redis-shar
-d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:32025,redis-shard-7hy-redis-advertised-1:31319.shard-jwl@redis-shard-jwl-redis-advertised-0:32026,redis-shard-jwl-redis-advertised-1:31320"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export ALL_SHARDS_ADVERTISED_PORT="shard-98x@redis-shard-98x-redis-advertised-0:32024,redis-shard-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:32025,redis-shard-7hy-redis-advertised-1:31319.shard-jwl@redis-shard-jwl-redis-advertised-0:32026,redis-shard-jwl-redis-advertised-1:31320"
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_POD_FQDN_LIST
+        unset KB_CLUSTER_POD_NAME_LIST
         unset ALL_SHARDS_ADVERTISED_PORT
       }
       After "un_setup"
@@ -547,59 +585,6 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         The stderr should include "Failed to get host IP for pod: redis-shard-98x-0"
       End
     End
-
-    Context "when failed to get all shard pod fqdns"
-      get_all_shards_pod_fqdns() {
-        echo ""
-      }
-
-      setup() {
-        export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
-        export SERVICE_PORT="6379"
-      }
-      Before "setup"
-
-      un_setup() {
-        unset KB_CLUSTER_POD_FQDN_LIST
-        unset SERVICE_PORT
-      }
-      After "un_setup"
-
-      It "returns error when failed to get all shard pod fqdns"
-        When call gen_initialize_redis_cluster_node "true"
-        The status should be failure
-        The error should include "Failed to get all shard pod FQDNs"
-      End
-    End
-
-    Context "when failed to get target pod fqdn"
-      get_all_shards_pod_fqdns() {
-        echo "redis-shard-98x-1.namespace.svc.cluster.local,redis-shard-98x-2.namespace.svc.cluster.local,redis-shard-7hy-0.namespace.svc.cluster.local,redis-shard-7hy-1.namespace.svc.cluster.local,redis-shard-jwl-0.namespace.svc.cluster.local,redis-shard-jwl-1.namespace.svc.cluster.local"
-      }
-
-      get_target_pod_fqdn_from_pod_fqdn_vars() {
-        echo ""
-      }
-
-      setup() {
-        export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
-        export SERVICE_PORT="6379"
-      }
-      Before "setup"
-
-      un_setup() {
-        unset KB_CLUSTER_POD_FQDN_LIST
-        unset SERVICE_PORT
-      }
-      After "un_setup"
-
-      It "returns error when failed to get target pod fqdn"
-        When call gen_initialize_redis_cluster_node "true"
-        The status should be failure
-        The stderr should include "Failed to get pod redis-shard-98x-0 fqdn from list: redis-shard-98x-1.namespace.svc.cluster.local,redis-shard-98x-2.namespace.svc.cluster.local,redis-shard-7hy-0.namespace.svc.cluster.local,redis-shard-7hy-1.namespace.svc.cluster.local,redis-shard-jwl-0.namespace.svc.cluster.local,redis-shard-jwl-1.namespace.svc.cluster.local"
-      End
-    End
-  End
 
   Describe "gen_initialize_redis_cluster_primary_node()"
     It "calls gen_initialize_redis_cluster_node with 'true'"
@@ -1201,8 +1186,16 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         return 1
       }
 
+      get_cluster_nodes_info() {
+         cluster_nodes_info="4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-98x-0.redis-shard-98x-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287"$'\n'"7381c6dca033cd1b321922508553fab869a29e 10.42.0.228:6379@16379,redis-shard-7hy-1.redis-shard-7hy-headless.default.svc slave 4958e6dca033cd1b321922508553fab869a29d 0 1711958289570 4 connected"
+         echo "$cluster_nodes_info"
+      }
+
       setup() {
-        export CURRENT_SHARD_COMPONENT_SHORT_NAME="redis-shard-98x"
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1"
         export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1"
         export SERVICE_PORT="6379"
       }
@@ -1210,7 +1203,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
 
       un_setup() {
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_FQDN_LIST
+        unset KB_CLUSTER_POD_NAME_LIST
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -1227,6 +1220,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
   Describe "scale_in_redis_cluster_shard()"
 
     Context "when required environment variables are not set"
+      redis_config_get() {
+        echo "127.0.0.1"
+      }
+
       setup() {
         export CURRENT_SHARD_COMPONENT_SHORT_NAME=""
         export KB_CLUSTER_POD_FQDN_LIST=""
@@ -1246,36 +1243,6 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         The error should include "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, KB_CLUSTER_POD_FQDN_LIST are not set when scale in redis cluster shard"
       End
     End
-
-    Context "when the number of shards in the cluster is less than 3 after scaling down"
-      find_exist_available_node() {
-        echo "redis-shard-98x-0.namespace.svc.cluster.local:6379"
-      }
-
-      get_current_comp_nodes_for_scale_in() {
-        current_comp_primary_node=("redis-shard-98x-0.namespace.svc.cluster.local:6379")
-        current_comp_other_nodes=("redis-shard-98x-1.namespace.svc.cluster.local:6379")
-      }
-
-      setup() {
-        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
-        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
-        export SERVICE_PORT="6379"
-      }
-      Before "setup"
-
-      un_setup() {
-        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_FQDN_LIST
-      }
-      After "un_setup"
-
-      It "returns 1 when the number of shards in the cluster is less than 3 after scaling down"
-        When call scale_in_redis_cluster_shard
-        The status should be failure
-        The error should include "The number of shards in the cluster is less than 3 after scaling in, please check."
-        The stdout should include "other_undeleted_component_nodes: redis-shard-7hy-0.redis-shard-7hy-headless.kb-system.svc.cluster.local:6379 redis-shard-7hy-1.redis-shard-7hy-headless.kb-system.svc.cluster.local:6379 redis-shard-jwl-0.redis-shard-jwl-headless.kb-system.svc.cluster.local:6379"
-      End
     End
 
     Context "when scaling in redis cluster shard successfully"
@@ -1347,7 +1314,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
         export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
-        export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1,redis-shard-kpl-0,redis-shard-kpl-1"
+        export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0.redis-shard-98x-headless.kb-system.svc.cluster.local,redis-shard-98x-1.redis-shard-98x-headless.kb-system.svc.cluster.local,redis-shard-7hy-0.redis-shard-7hy-headless.kb-system.svc.cluster.local,redis-shard-7hy-1.redis-shard-7hy-headless.kb-system.svc.cluster.local,redis-shard-jwl-0.redis-shard-jwl-headless.kb-system.svc.cluster.local,redis-shard-jwl-1.redis-shard-jwl-headless.kb-system.svc.cluster.local,redis-shard-kpl-0.redis-shard-kpl-headless.kb-system.svc.cluster.local,redis-shard-kpl-1.redis-shard-kpl-headless.kb-system.svc.cluster.local"
         export SERVICE_PORT="6379"
       }
       Before "setup"
@@ -1363,7 +1330,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         When call scale_in_redis_cluster_shard
         The status should be failure
         The error should include "Failed to rebalance the cluster for the current component when scaling in"
-        The stdout should include "other_undeleted_component_nodes: redis-shard-7hy-0.redis-shard-7hy-headless.kb-system.svc.cluster.local:6379 redis-shard-7hy-1.redis-shard-7hy-headless.kb-system.svc.cluster.local:6379 redis-shard-jwl-0.redis-shard-jwl-headless.kb-system.svc.cluster.local:6379 redis-shard-jwl-1.redis-shard-jwl-headless.kb-system.svc.cluster.local:6379 redis-shard-kpl-0.redis-shard-kpl-headless.kb-system.svc.cluster.local:6379 redis-shard-kpl-1.redis-shard-kpl-headless.kb-system.svc.cluster.local:6379"
+        The stdout should include "other_component_nodes: redis-shard-7hy-0.redis-shard-7hy-headless.kb-system.svc.cluster.local:6379 redis-shard-7hy-1.redis-shard-7hy-headless.kb-system.svc.cluster.local:6379 redis-shard-jwl-0.redis-shard-jwl-headless.kb-system.svc.cluster.local:6379 redis-shard-jwl-1.redis-shard-jwl-headless.kb-system.svc.cluster.local:6379 redis-shard-kpl-0.redis-shard-kpl-headless.kb-system.svc.cluster.local:6379 redis-shard-kpl-1.redis-shard-kpl-headless.kb-system.svc.cluster.local:6379"
       End
     End
 
@@ -1415,25 +1382,6 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
   End
 
   Describe "initialize_or_scale_out_redis_cluster()"
-    Context "when required environment variables are not set"
-      setup() {
-        export KB_CLUSTER_POD_IP_LIST=""
-        export KB_CLUSTER_POD_NAME_LIST=""
-      }
-      Before "setup"
-
-      un_setup() {
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_POD_NAME_LIST
-      }
-      After "un_setup"
-
-      It "exits with status 1 when required environment variables are not set"
-        When run initialize_or_scale_out_redis_cluster
-        The status should be failure
-        The stderr should include "Error: Required environment variable KB_CLUSTER_POD_IP_LIST and KB_CLUSTER_POD_NAME_LIST and SERVICE_PORT is not set."
-      End
-    End
 
     Context "when Redis Cluster is not initialized"
       check_cluster_initialized() {

@@ -484,7 +484,10 @@ gen_initialize_redis_cluster_node() {
           return 1
     }
     pod_host_ip=$(redis_config_get "$pod_fqdn" "$pod_service_port" "$REDIS_DEFAULT_PASSWORD" "config get cluster-announce-ip" | sed -n '2p')
-
+    if is_empty "$pod_host_ip"; then
+      echo "Failed to get host IP for pod: $pod_name" >&2
+      return 1
+    fi
     ## the value format of ALL_SHARDS_ADVERTISED_PORT is "shard-98x@redis-shard-98x-redis-advertised-0:32024,redis-shard-98x-redis-advertised-1:31318.shard-cq7@redis-shard-cq7-redis-advertised-0:31828,redis-shard-cq7-redis-advertised-1:32000"
     local old_ifs="$IFS"
     IFS='.'
@@ -549,7 +552,10 @@ gen_initialize_redis_cluster_node() {
         return 1
     }
     pod_host_ip=$(redis_config_get "$pod_fqdn" "$pod_service_port" "$REDIS_DEFAULT_PASSWORD" "config get cluster-announce-ip" | sed -n '2p')
-
+    if is_empty "$pod_host_ip"; then
+      echo "Failed to get host IP for pod: $pod_name" >&2
+      return 1
+    fi
     categorize_node_maps "$pod_name" "$pod_host_ip" "$pod_service_port" "$is_primary"
     return 0
   }
