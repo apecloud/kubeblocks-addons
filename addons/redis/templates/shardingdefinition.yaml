@@ -14,3 +14,18 @@ spec:
     maxShards: 64
   provisionStrategy: Parallel
   updateStrategy: Parallel
+  lifecycleActions:
+    shardRemove:
+      exec:
+        container: redis-cluster
+        command:
+          - /bin/bash
+          - -c
+          - |
+            if [ "$LEGACY_REDIS" == "true" ]; then
+               /scripts/redis-cluster6-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
+            else
+               /scripts/redis-cluster-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
+            fi
+      retryPolicy:
+        maxRetries: 10
