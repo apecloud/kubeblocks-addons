@@ -74,8 +74,8 @@ spec:
     - name: mongodb
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [8.0.8,7.0.18,6.0.21,5.0.29,4.4.29]
-      serviceVersion: "6.0.21"
+      # Valid options are: [8.0.17,7.0.28,6.0.27,5.0.29,4.4.29]
+      serviceVersion: "6.0.27"
       # Specifies the desired number of replicas in the Component
       replicas: 3
       # Specifies the resources required by the Component.
