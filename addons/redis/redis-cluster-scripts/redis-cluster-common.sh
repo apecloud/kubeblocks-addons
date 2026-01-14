@@ -35,42 +35,6 @@ sleep_random_second_when_ut_mode_false() {
   fi
 }
 
-# usage: parse_host_ip_from_built_in_envs <pod_name>
-# $KB_CLUSTER_COMPONENT_POD_NAME_LIST and $KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are built-in envs in KubeBlocks postProvision lifecycle action.
-# TODO: the built-in envs will be removed in the future.
-parse_host_ip_from_built_in_envs() {
-  local given_pod_name="$1"
-  local all_pod_name_list="$2"
-  local all_pod_host_ip_list="$3"
-
-  if is_empty "$all_pod_name_list" || is_empty "$all_pod_host_ip_list"; then
-    echo "Error: Required environment variables all_pod_name_list or all_pod_host_ip_list are not set." >&2
-    return 1
-  fi
-
-  pod_name_list=($(split "$all_pod_name_list" ","))
-  pod_ip_list=($(split "$all_pod_host_ip_list" ","))
-  while [ -n "${pod_name_list[0]}" ]; do
-    pod_name="${pod_name_list[0]}"
-    host_ip="${pod_ip_list[0]}"
-    if equals "$pod_name" "$given_pod_name"; then
-      echo "$host_ip"
-      return 0
-    fi
-
-    if equals "${pod_name_list[-1]}" "$pod_name"; then
-      pod_name_list=()
-      pod_ip_list=()
-    else
-      pod_name_list=("${pod_name_list[@]:1}")
-      pod_ip_list=("${pod_ip_list[@]:1}")
-    fi
-  done
-
-  echo "parse_host_ip_from_built_in_envs the given pod name $given_pod_name not found." >&2
-  return 1
-}
-
 ## the component names of all shard
 ## the value format of ALL_SHARDS_COMPONENT_SHORT_NAMES is like "shard-98x:shard-98x,shard-cq7:shard-cq7,shard-hy7:shard-hy7"
 ## return the component names of all shards with the format "shard-98x,shard-cq7,shard-hy7"
@@ -454,24 +418,17 @@ check_slots_covered() {
 
 # check if the cluster has been initialized
 check_cluster_initialized() {
-  local cluster_pod_ip_list="$1"
-  local cluster_pod_name_list="$2"
-  if is_empty "$cluster_pod_ip_list" || is_empty "$cluster_pod_name_list"; then
-    echo "Error: Required environment variable cluster_pod_ip_list or cluster_pod_name_list is not set." >&2
+  local cluster_pod_fqdn_list="$1"
+  if is_empty "$cluster_pod_fqdn_list"; then
+    echo "Error: Required environment variable cluster_pod_fqdn_list is not set." >&2
     return 1
   fi
 
-  local pod_ip
   local service_port
-  for pod_name in $(echo "$cluster_pod_name_list" | tr ',' ' '); do
-    pod_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$cluster_pod_name_list" "$cluster_pod_ip_list")
-    if is_empty "$pod_ip"; then
-      echo "Failed to get the host ip of the pod $pod_name in check_cluster_initialized"
-      continue
-    fi
-
+  for pod_fqdn in $(echo "$cluster_pod_fqdn_list" | tr ',' ' '); do
+    pod_name=${pod_fqdn%%.*}
     service_port=$(get_pod_service_port_by_network_mode "${pod_name}")
-    cluster_info=$(get_cluster_info_with_retry "$pod_ip" "$service_port")
+    cluster_info=$(get_cluster_info_with_retry "$pod_fqdn" "$service_port")
     status=$?
     if [ $status -ne 0 ]; then
       echo "Failed to get cluster info in check_cluster_initialized" >&2
@@ -740,4 +697,34 @@ check_redis_role() {
   else
     echo "unknown"
   fi
+}
+
+redis_config_get() {
+  local host=$1
+  local port=$2
+  local password=$3
+  local command=$4
+
+  local output
+  unset_xtrace_when_ut_mode_false
+  if ! is_empty "$password"; then
+    output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" -a "$password" $command)
+  else
+    output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" $command)
+  fi
+  local status=$?
+  set_xtrace_when_ut_mode_false
+
+  if [[ $status -ne 0 ]]; then
+    echo "Command failed with status $status." >&2
+    return 1
+  fi
+
+  if [[ -z "$output" ]]; then
+    echo "Command returned no output." >&2
+    return 1
+  fi
+
+  echo "$output"
+  return 0
 }
