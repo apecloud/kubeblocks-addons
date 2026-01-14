@@ -123,6 +123,9 @@ spec:
   {{- if eq .major "8" }}
     - name: IS_REDIS8
       value: "true"
+  {{- else if or (eq .major "6") (eq .major "5") }}
+    - name: LEGACY_REDIS
+      value: "true"
   {{- end }}
     - name: TLS_ENABLED
       valueFrom:
@@ -487,15 +490,6 @@ spec:
                 apiVersion: v1
                 fieldPath: status.hostIP
       preCondition: RuntimeReady
-      retryPolicy:
-        maxRetries: 10
-    preTerminate:
-      exec:
-        container: redis-cluster
-        command:
-          - /bin/bash
-          - -c
-          - /scripts/{{ $redisClusterManageScripts }} --pre-terminate > /tmp/pre-terminate.log 2>&1
       retryPolicy:
         maxRetries: 10
     memberLeave:

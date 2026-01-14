@@ -249,21 +249,19 @@ Describe "Redis Cluster Common Bash Script Tests"
 
     Context "returns 1 when cluster_node_list or cluster_pod_name_list is empty"
       setup() {
-        export KB_CLUSTER_POD_IP_LIST=""
-        export KB_CLUSTER_POD_NAME_LIST=""
+        export KB_CLUSTER_POD_FQDN_LIST=""
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_FQDN_LIST
       }
       After "un_setup"
 
       It "returns 1 when cluster_node_list or cluster_pod_name_list is empty"
-        When run check_cluster_initialized "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST"
+        When run check_cluster_initialized "$KB_CLUSTER_POD_FQDN_LIST"
         The status should be failure
-        The stderr should include "Error: Required environment variable cluster_pod_ip_list or cluster_pod_name_list is not set."
+        The stderr should include "Error: Required environment variable cluster_pod_fqdn_list is not set."
       End
     End
   End
