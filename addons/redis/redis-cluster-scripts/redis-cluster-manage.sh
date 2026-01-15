@@ -897,9 +897,9 @@ scale_out_redis_cluster_shard() {
 sync_acl_for_redis_cluster_shard() {
   echo "Sync ACL rules for redis cluster shard..."
   set +ex
-  redis_base_cmd="redis-cli -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
+  redis_base_cmd="redis-cli -a $REDIS_DEFAULT_PASSWORD"
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-     redis_base_cmd="redis-cli -p $SERVICE_PORT"
+     redis_base_cmd="redis-cli"
   fi
   is_ok=false
   acl_list=""
@@ -910,15 +910,15 @@ sync_acl_for_redis_cluster_shard() {
       echo "Failed to get the host ip of the pod $pod_name"
       continue
     fi
-
-    cluster_info=$(get_cluster_info_with_retry "$pod_ip" "$SERVICE_PORT")
+    pod_service_port=$(get_pod_service_port_by_network_mode "$pod_name")
+    cluster_info=$(get_cluster_info_with_retry "$pod_ip" "$pod_service_port")
     status=$?
     if [ $status -ne 0 ]; then
       continue
     fi
     cluster_state=$(echo "$cluster_info" | awk -F: '/cluster_state/{print $2}' | tr -d '[:space:]')
     if is_empty "$cluster_state" || equals "$cluster_state" "ok"; then
-       acl_list=$($redis_base_cmd -h "$pod_ip" ACL LIST)
+       acl_list=$($redis_base_cmd -h "$pod_ip" -p $pod_service_port ACL LIST)
        is_ok=true
        break
     fi
@@ -950,8 +950,8 @@ sync_acl_for_redis_cluster_shard() {
       fi
       rule_part="${user_rule#user $username }"
       for pod_fqdn in $(echo "$CURRENT_SHARD_POD_FQDN_LIST" | tr ',' '\n'); do
-         $redis_base_cmd -h $pod_fqdn ACL SETUSER "$username" $rule_part >&2
-         $redis_base_cmd -h $pod_fqdn ACL save >&2
+         $redis_base_cmd -h $pod_fqdn -p $SERVICE_PORT ACL SETUSER "$username" $rule_part >&2
+         $redis_base_cmd -h $pod_fqdn -p $SERVICE_PORT ACL save >&2
       done
   done <<< "$acl_list"
   set_xtrace_when_ut_mode_false
