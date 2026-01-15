@@ -55,19 +55,47 @@ extract_lb_host_by_svc_name() {
   done
 }
 
+
+# Ensure password exists in user entry, preserving any extra passwords added by user
+# This allows users to add passwords via ACL SETUSER + ACL SAVE and have them persist
+ensure_password_in_user() {
+  local username="$1"
+  local password="$2"
+  local permissions="$3"
+  
+  if [ -f "$redis_acl_file" ] && grep -q "^user $username " "$redis_acl_file"; then
+    # User exists in acl file, check if this password is already present
+    if grep "^user $username " "$redis_acl_file" | grep -q ">$password"; then
+      echo "Password from Secret already exists for user $username, preserving existing entry"
+    else
+      # Password not present, need to add it to existing user
+      # Delete old entry and create new one with Secret password prepended
+      local existing_entry=$(grep "^user $username " "$redis_acl_file")
+      sed -i "/^user $username /d" "$redis_acl_file"
+      # Insert the Secret password after 'on' keyword, preserving other passwords
+      echo "$existing_entry" | sed "s/^user $username on/user $username on >$password/" >> "$redis_acl_file"
+      echo "Added Secret password to existing user $username, preserved other passwords"
+    fi
+  else
+    # User doesn't exist, create new entry
+    echo "user $username on >$password $permissions" >> "$redis_acl_file"
+    echo "Created new user $username with password from Secret"
+  fi
+}
+
 build_redis_default_accounts() {
   unset_xtrace_when_ut_mode_false
   if ! is_empty "$REDIS_REPL_PASSWORD"; then
     echo "masteruser $REDIS_REPL_USER" >> $redis_real_conf
     echo "masterauth $REDIS_REPL_PASSWORD" >> $redis_real_conf
-    echo "user $REDIS_REPL_USER on +psync +replconf +ping >$REDIS_REPL_PASSWORD" >> $redis_acl_file
+    ensure_password_in_user "$REDIS_REPL_USER" "$REDIS_REPL_PASSWORD" "+psync +replconf +ping"
   fi
   if ! is_empty "$REDIS_SENTINEL_PASSWORD"; then
-    echo "user $REDIS_SENTINEL_USER on allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill >$REDIS_SENTINEL_PASSWORD" >> $redis_acl_file
+    ensure_password_in_user "$REDIS_SENTINEL_USER" "$REDIS_SENTINEL_PASSWORD" "allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill"
   fi
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     echo "protected-mode yes" >> $redis_real_conf
-    echo "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all " >> $redis_acl_file
+    ensure_password_in_user "default" "$REDIS_DEFAULT_PASSWORD" "~* &* +@all"
   else
     echo "protected-mode no" >> $redis_real_conf
   fi
@@ -117,12 +145,13 @@ build_replicaof_config() {
 }
 
 rebuild_redis_acl_file() {
+  # Preserve existing acl file to keep user-added passwords
+  # The ensure_password_in_user function will handle adding/updating passwords
   if [ -f $redis_acl_file ]; then
-    sed "/user default on/d" $redis_acl_file > $redis_acl_file_bak && mv $redis_acl_file_bak $redis_acl_file
-    sed "/user $REDIS_REPL_USER on/d" $redis_acl_file > $redis_acl_file_bak && mv $redis_acl_file_bak $redis_acl_file
-    sed "/user $REDIS_SENTINEL_USER on/d" $redis_acl_file > $redis_acl_file_bak && mv $redis_acl_file_bak $redis_acl_file
+    echo "rebuild_redis_acl_file: preserving existing acl file with user passwords"
   else
     touch $redis_acl_file
+    echo "rebuild_redis_acl_file: created new acl file"
   fi
 }
 
