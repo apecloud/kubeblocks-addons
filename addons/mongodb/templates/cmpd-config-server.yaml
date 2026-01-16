@@ -331,12 +331,14 @@ spec:
     - name: MONGOS_INTERNAL_SVC_NAME
       valueFrom:
         serviceVarRef:
+          name: internal
           compDef: {{ include "mongos.compDefName" . }}
           optional: false
           host: Required
     - name: MONGOS_INTERNAL_PORT 
       valueFrom:
         serviceVarRef:
+          name: internal
           compDef: {{ include "mongos.compDefName" . }}
           optional: false
           port:

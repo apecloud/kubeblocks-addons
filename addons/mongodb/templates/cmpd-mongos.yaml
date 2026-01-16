@@ -12,11 +12,19 @@ spec:
   serviceVersion: "8.0.17"
   services:
     - name: everypod
+      serviceName: mongos
       podService: true
       spec:
         ports:
           - name: mongos
             port: 27017
+            targetPort: mongos
+    - name: internal
+      serviceName: internal
+      spec:
+        ports:
+          - name: mongos
+            port: 27018
             targetPort: mongos
   configs:
     - name: mongodb-config
@@ -113,9 +121,9 @@ spec:
           - mountPath: /kubeblocks
             name: kubeblocks
         readinessProbe:
-          initialDelaySeconds: 5
-          periodSeconds: 2
-          timeoutSeconds: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
           exec:
             command:
               - bash
