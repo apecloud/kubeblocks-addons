@@ -4,6 +4,9 @@ source /scripts/common.sh
 
 new_member_fqdn="${KB_POD_FQDN}.cluster.local"
 keeper_raft_port=${CLICKHOUSE_KEEPER_RAFT_PORT:-9234}
+if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
+	keeper_raft_port=${CLICKHOUSE_KEEPER_RAFT_TLS_PORT:-9444}
+fi
 
 function check_is_leader() {
 	local mode=$(get_mode 127.0.0.1)

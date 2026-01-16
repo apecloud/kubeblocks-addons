@@ -80,7 +80,7 @@ function wait_instance_serviceable() {
 	done
 }
 
-if [[ $CLICKHOUSE_COMP_REPLICAS -eq 1 ]]; then
+if [[ ${KB_COMP_REPLICAS:-0} -le 1 ]]; then
 	echo "You need to rebuild instance by backup"
 	exit 1
 fi
@@ -89,7 +89,7 @@ fi
 # sleep 10
 wait_instance_serviceable
 
-for ((i = 0; i < $CLICKHOUSE_COMP_REPLICAS; i++)); do
+for ((i = 0; i < ${KB_COMP_REPLICAS:-0}; i++)); do
 	pod_name="${component_name}-${i}"
 	if [[ "${pod_name}" == ${instanceName} ]]; then
 		echo "Skip the rebuild instance: ${instanceName}"

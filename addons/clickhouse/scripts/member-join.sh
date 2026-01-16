@@ -14,7 +14,7 @@ function create_databases() {
 	ch_query "$pod_fqdn" "select name from system.databases WHERE name NOT IN ('system', 'INFORMATION_SCHEMA','information_schema')" | while read -r db; do
 		create_query=$(ch_query "$pod_fqdn" "SHOW CREATE DATABASE ${db} FORMAT TabSeparatedRaw")
 		echo "create database sql: $create_query"
-		ch_query "${KB_JOIN_MEMBER_POD_FQDN}" "$create_query;"
+		ch_query "${KB_NEW_MEMBER_POD_IP}" "$create_query;"
 	done
 }
 
@@ -45,25 +45,26 @@ function create_tables() {
 			query=$(echo "$query" | sed "s/{uuid}/${uuid}/")
 		fi
 		echo "create table sql: $query"
-		ch_query "${KB_JOIN_MEMBER_POD_FQDN}" "$query;"
+		ch_query "${KB_NEW_MEMBER_POD_IP}" "$query;"
 		if [[ $? -eq 253 ]]; then
 			echo "Replicas already exists, will drop the replica"
-			ch_query "$pod_fqdn" "SYSTEM DROP REPLICA '${KB_JOIN_MEMBER_POD_NAME}' FROM TABLE ${database}.${table}"
-			ch_query "${KB_JOIN_MEMBER_POD_FQDN}" "$query;"
+			ch_query "$pod_fqdn" "SYSTEM DROP REPLICA '${KB_NEW_MEMBER_POD_NAME}' FROM TABLE ${database}.${table}"
+			ch_query "${KB_NEW_MEMBER_POD_IP}" "$query;"
 		fi
 	done
 }
 
-if server_is_ok "${KB_JOIN_MEMBER_POD_FQDN}"; then
-	echo "Server ${KB_JOIN_MEMBER_POD_NAME} is OK"
+if server_is_ok "${KB_NEW_MEMBER_POD_IP}"; then
+	echo "Server ${KB_NEW_MEMBER_POD_NAME} is OK"
 else
-	echo "Server ${KB_JOIN_MEMBER_POD_NAME} is not OK"
+	echo "Server ${KB_NEW_MEMBER_POD_NAME} is not OK"
 	exit 1
 fi
 
+join_member_name="${KB_NEW_MEMBER_POD_NAME}"
 for pod_fqdn in $(echo "$CLICKHOUSE_POD_FQDN_LIST" | tr ',' '\n'); do
 	pod_fqdn=${pod_fqdn%:*}
-	if [ "$pod_fqdn" == "${KB_JOIN_MEMBER_POD_NAME}*" ]; then
+	if [[ "$pod_fqdn" == "$join_member_name"* ]]; then
 		echo "Skipping new member pod: $pod_fqdn"
 		continue
 	fi
