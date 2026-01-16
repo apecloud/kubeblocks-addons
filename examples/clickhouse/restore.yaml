@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: clickhouse-cluster-restore
+  name: ch-cluster-restore
   namespace: demo
   annotations:
     # clickhouse-cluster-backup is the Backup CR name.
@@ -10,7 +10,7 @@ spec:
   terminationPolicy: Delete
   componentSpecs:
     - name: ch-keeper
-      componentDef: ch-keeper
+      componentDef: ch-keeper-25
       replicas: 1
       resources:
         limits:
@@ -37,7 +37,7 @@ spec:
       shards: 3
       template:
         name: clickhouse
-        componentDef: clickhouse
+        componentDef: clickhouse-25
         replicas: 2
         systemAccounts:
           - name: admin

@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: ch-cluster-standalone
+  name: ch-cluster-single-node
   namespace: default
 spec:
   # Specifies the behavior when a Cluster is deleted.
@@ -32,7 +32,7 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
     - name: clickhouse
-      componentDef: clickhouse
+      componentDef: clickhouse-25
       replicas: 1
       resources:
         limits:

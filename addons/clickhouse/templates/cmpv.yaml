@@ -1,4 +1,5 @@
 {{- $root := . -}}
+{{- $releases := default (list) .Values.clickhouseVersions -}}
 {{- $repo := include "clickhouse.repository" $root -}}
 {{- $busybox := include "busybox.image" $root -}}
 
@@ -10,20 +11,20 @@ metadata:
       {{- include "clickhouse.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
-    - compDefs:
-        - clickhouse
-      releases:
-    {{- range $root.Values.clickhouseVersions }}
+    - releases:
+{{- range $releases }}
         - {{ .version }}
-    {{- end }}
+{{- end }}
+      compDefs:
+        - clickhouse-25
   releases:
-  {{- range $root.Values.clickhouseVersions }}
-    - name: {{ .version }}
-      serviceVersion: {{ .version }}
+{{- range $idx, $release := $releases }}
+    - name: {{ $release.version }}
+      serviceVersion: {{ $release.version }}
       images:
-        clickhouse: {{ $repo }}:{{ .imageTag }}
+        clickhouse: {{ $repo }}:{{ $release.imageTag }}
         copy-tools: {{ $busybox }}
-  {{- end }}
+{{- end }}
 
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
@@ -34,17 +35,17 @@ metadata:
       {{- include "clickhouse.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
-    - compDefs:
-        - ch-keeper
-      releases:
-    {{- range $root.Values.clickhouseVersions }}
+    - releases:
+{{- range $releases }}
         - {{ .version }}
-    {{- end }}
+{{- end }}
+      compDefs:
+        - ch-keeper-25
   releases:
-  {{- range $root.Values.clickhouseVersions }}
-    - name: {{ .version }}
-      serviceVersion: {{ .version }}
+{{- range $release := $releases }}
+    - name: {{ $release.version }}
+      serviceVersion: {{ $release.version }}
       images:
-        clickhouse: {{ $repo }}:{{ .imageTag }}
+        clickhouse: {{ $repo }}:{{ $release.imageTag }}
         copy-tools: {{ $busybox }}
-  {{- end }}
+{{- end }}

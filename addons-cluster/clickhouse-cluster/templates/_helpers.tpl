@@ -88,7 +88,7 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
 */}}
 {{- define "ch-keeper-component" -}}
 - name: ch-keeper
-  componentDef: ch-keeper
+  componentDef: ch-keeper-25
   replicas: {{ .Values.keeper.replicas }}
   serviceVersion: {{ $.Values.version }}
   {{- if .Values.nodePortEnabled }}
@@ -137,7 +137,7 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
   shards: {{ .Values.shards }}
   template:
     name: clickhouse
-    componentDef: clickhouse
+    componentDef: clickhouse-25
     env:
     - name: "INIT_CLUSTER_NAME"
       value: "{{ .Values.clickhouse.initClusterName }}"

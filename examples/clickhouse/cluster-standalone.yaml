@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: clickhouse-standalone
+  name: ch-cluster-standalone
   namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
@@ -15,7 +15,7 @@ spec:
       shards: 1
       template:
         name: clickhouse
-        componentDef: clickhouse
+        componentDef: clickhouse-25
         replicas: 1
         systemAccounts:
           - name: admin

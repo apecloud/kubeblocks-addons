@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: clickhouse-tls
+  name: ch-cluster-tls
   namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
@@ -14,7 +14,7 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
     - name: ch-keeper
-      componentDef: ch-keeper
+      componentDef: ch-keeper-25
       replicas: 1
       resources:
         limits:
@@ -50,7 +50,7 @@ spec:
       shards: 1
       template:
         name: clickhouse
-        componentDef: clickhouse
+        componentDef: clickhouse-25
         replicas: 2
         systemAccounts:
           - name: admin

@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: clickhouse
+  name: clickhouse-25
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
@@ -232,7 +232,6 @@ spec:
       builtinHandler: custom
       customHandler:
         preCondition: RuntimeReady
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:25.9.7
         container: clickhouse
         exec:
           command:
