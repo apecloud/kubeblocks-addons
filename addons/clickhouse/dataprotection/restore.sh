@@ -1,37 +1,34 @@
 #!/bin/bash
 set -exo pipefail
 
-# ClickHouse Cluster Restore Strategy:
-# - Jobs run on first replica per shard, restore schema to all replicas in shard
-# - Cannot use 'ON CLUSTER' DDL (which will execute across all shards)
-# - Only supports original topology: ordinal-0 pods in different shards, all replicas in same cluster
-# - Partial replica usage not supported (e.g., shard0: ch-0-1, shard1: ch-1-0 from total ch-0-0,ch-0-1,ch-1-0,ch-1-1)
+# Supports: standalone (single node) and sharded (multi-shard) layouts
+# Strategy: first shard restores schema with ON CLUSTER, others wait for sync
 
-# TODO tls
 trap handle_exit EXIT
 generate_backup_config
 set_clickhouse_backup_config_env
 
-fqdns=$(get_shard_fqdn_list)
-IFS=',' read -r -a fqdn_array <<<"$fqdns"
-for fqdn in "${fqdn_array[@]}"; do
-  export CLICKHOUSE_HOST="$fqdn"
-  clickhouse-backup restore_remote "${DP_BACKUP_NAME}" --schema || {
-    DP_error_log "Clickhouse-backup restore_remote backup $DP_BACKUP_NAME FAILED"
-    exit 1
-  }
-done
+if [[ "${CLICKHOUSE_SECURE}" = "true" ]]; then
+	DP_error_log "ClickHouse restore does not support TLS"
+	exit 1
+fi
 
-# https://github.com/Altinity/clickhouse-backup/issues/948 sync rbac by keeper
-export CLICKHOUSE_HOST="${DP_DB_HOST}"
-clickhouse-backup restore_remote "${DP_BACKUP_NAME}" --data --rbac || {
-  DP_error_log "Clickhouse-backup restore_remote backup $DP_BACKUP_NAME FAILED"
-  exit 1
-}
+# 1. Detect layout mode: standalone (no ':' in FQDN) or sharded
+first_entry="${ALL_COMBINED_SHARDS_POD_FQDN_LIST%%,*}"
+first_component="${first_entry%%:*}"
+if [[ -z "$first_component" ]]; then
+	DP_error_log "Invalid ALL_COMBINED_SHARDS_POD_FQDN_LIST"
+	exit 1
+fi
+if [[ "$first_component" == "$first_entry" ]]; then
+	mode_info="standalone"
+	DP_log "Standalone mode detected"
+else
+	mode_info="cluster:$first_component"
+fi
 
-clickhouse-backup delete local "${DP_BACKUP_NAME}" || {
-  DP_error_log "Clickhouse-backup delete local backup $DP_BACKUP_NAME FAILED"
-  exit 1
-}
+# 2. Restore schema + data + marker
+do_restore "${DP_BACKUP_NAME}" "$mode_info" || exit 1
 
-exit 0
+# 3. Cleanup local backups
+delete_backups_except ""

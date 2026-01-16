@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: clickhouse-24
+  name: clickhouse-25
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
@@ -10,7 +10,7 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: "24.8.3"
+  serviceVersion: {{ .Chart.AppVersion }}
   minReadySeconds: 10
   runtime:
     securityContext:
@@ -173,13 +173,13 @@ spec:
     - name: CH_KEEPER_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: ch-keeper-24
+          compDef: ch-keeper
           optional: true
           podFQDNs: Required
     - name: ALL_SHARDS_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: clickhouse-24
+          compDef: clickhouse
           optional: false
           podFQDNs: Required
           multipleClusterObjectOption:
@@ -188,7 +188,7 @@ spec:
     - name: ALL_COMBINED_SHARDS_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: clickhouse-24
+          compDef: clickhouse
           optional: false
           podFQDNs: Required
           multipleClusterObjectOption:

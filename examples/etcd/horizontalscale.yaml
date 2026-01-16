@@ -1,0 +1,15 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: etcd-horizontalscaling
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: etcd-cluster
+  type: HorizontalScaling
+  # Note: For etcd, the node change per hscale operation must not exceed 1.
+  horizontalScaling:
+    # Specifies the name of the Component.
+  - componentName: etcd
+    # Adjust replicas by at most 1 each time.
+    replicas: 4

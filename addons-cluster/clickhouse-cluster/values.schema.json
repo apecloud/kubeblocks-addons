@@ -11,8 +11,8 @@
       "default": "24.8.3"
     },
     "mode": {
-      "title": "Cluster Topology Mode",
-      "description": "Define the ClickHouse cluster topology mode.",
+      "title": "Cluster Mode",
+      "description": "Define the ClickHouse chart mode. \"cluster\" enables ClickHouse Keeper.",
       "type": "string",
       "default": "cluster",
       "enum": [
@@ -26,12 +26,6 @@
       "type": "integer",
       "default": 1,
       "minimum": 1
-    },
-    "sharding": {
-      "title": "Sharding Configuration",
-      "description": "Enable or disable sharding within the ClickHouse cluster.",
-      "type": "boolean",
-      "default": true
     },
     "replicas": {
       "title": "Replica Count",

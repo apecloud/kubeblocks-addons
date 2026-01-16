@@ -51,6 +51,12 @@ Vertical scaling up or down specified components requests and limits cpu or memo
 kubectl apply -f examples/etcd/verticalscale.yaml
 ```
 
+### [Horizontal scaling](horizontalscale.yaml)
+Scale out or in etcd nodes. Note: the node change per hscale operation must not exceed 1.
+```bash
+kubectl apply -f examples/etcd/horizontalscale.yaml
+```
+
 ### [Expand volume](volumeexpand.yaml)
 Increase size of volume storage with the specified components in the cluster
 ```bash

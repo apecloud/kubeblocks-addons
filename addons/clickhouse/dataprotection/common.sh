@@ -1,64 +1,64 @@
 #!/bin/bash
 # log info file
 function DP_log() {
-  msg=$1
-  local curr_date=$(date -u '+%Y-%m-%d %H:%M:%S')
-  echo "${curr_date} INFO: $msg"
+	msg=$1
+	local curr_date=$(date -u '+%Y-%m-%d %H:%M:%S')
+	echo "${curr_date} INFO: $msg"
 }
 
 # log error info
 function DP_error_log() {
-  msg=$1
-  local curr_date=$(date -u '+%Y-%m-%d %H:%M:%S')
-  echo "${curr_date} ERROR: $msg"
+	msg=$1
+	local curr_date=$(date -u '+%Y-%m-%d %H:%M:%S')
+	echo "${curr_date} ERROR: $msg"
 }
 
 # Get file names without extensions based on the incoming file path
 function DP_get_file_name_without_ext() {
-  local fileName=$1
-  local file_without_ext=${fileName%.*}
-  echo $(basename ${file_without_ext})
+	local fileName=$1
+	local file_without_ext=${fileName%.*}
+	echo $(basename ${file_without_ext})
 }
 
 # Save backup status info file for syncing progress.
 # timeFormat: %Y-%m-%dT%H:%M:%SZ
 function DP_save_backup_status_info() {
-  local totalSize=$1
-  local startTime=$2
-  local stopTime=$3
-  local timeZone=$4
-  local extras=$5
-  local timeZoneStr=""
-  if [ ! -z ${timeZone} ]; then
-    timeZoneStr=",\"timeZone\":\"${timeZone}\""
-  fi
-  if [ -z "${stopTime}" ]; then
-    echo "{\"totalSize\":\"${totalSize}\"}" >${DP_BACKUP_INFO_FILE}
-  elif [ -z "${startTime}" ]; then
-    echo "{\"totalSize\":\"${totalSize}\",\"extras\":[${extras}],\"timeRange\":{\"end\":\"${stopTime}\"${timeZoneStr}}}" >${DP_BACKUP_INFO_FILE}
-  else
-    echo "{\"totalSize\":\"${totalSize}\",\"extras\":[${extras}],\"timeRange\":{\"start\":\"${startTime}\",\"end\":\"${stopTime}\"${timeZoneStr}}}" >${DP_BACKUP_INFO_FILE}
-  fi
+	local totalSize=$1
+	local startTime=$2
+	local stopTime=$3
+	local timeZone=$4
+	local extras=$5
+	local timeZoneStr=""
+	if [ ! -z ${timeZone} ]; then
+		timeZoneStr=",\"timeZone\":\"${timeZone}\""
+	fi
+	if [ -z "${stopTime}" ]; then
+		echo "{\"totalSize\":\"${totalSize}\"}" >${DP_BACKUP_INFO_FILE}
+	elif [ -z "${startTime}" ]; then
+		echo "{\"totalSize\":\"${totalSize}\",\"extras\":[${extras}],\"timeRange\":{\"end\":\"${stopTime}\"${timeZoneStr}}}" >${DP_BACKUP_INFO_FILE}
+	else
+		echo "{\"totalSize\":\"${totalSize}\",\"extras\":[${extras}],\"timeRange\":{\"start\":\"${startTime}\",\"end\":\"${stopTime}\"${timeZoneStr}}}" >${DP_BACKUP_INFO_FILE}
+	fi
 }
 
 # Clean up expired logfiles.
 # Default interval is 60s
 # Default rootPath is /
 function DP_purge_expired_files() {
-  local currentUnix="${1:?missing current unix}"
-  local last_purge_time="${2:?missing last_purge_time}"
-  local root_path=${3:-"/"}
-  local interval_seconds=${4:-60}
-  local diff_time=$((${currentUnix} - ${last_purge_time}))
-  if [[ -z ${DP_TTL_SECONDS} || ${diff_time} -lt ${interval_seconds} ]]; then
-    return
-  fi
-  expiredUnix=$((${currentUnix} - ${DP_TTL_SECONDS}))
-  files=$(datasafed list -f --recursive --older-than ${expiredUnix} ${root_path})
-  for file in "${files[@]}"; do
-    datasafed rm "$file"
-    echo "$file"
-  done
+	local currentUnix="${1:?missing current unix}"
+	local last_purge_time="${2:?missing last_purge_time}"
+	local root_path=${3:-"/"}
+	local interval_seconds=${4:-60}
+	local diff_time=$((${currentUnix} - ${last_purge_time}))
+	if [[ -z ${DP_TTL_SECONDS} || ${diff_time} -lt ${interval_seconds} ]]; then
+		return
+	fi
+	expiredUnix=$((${currentUnix} - ${DP_TTL_SECONDS}))
+	files=$(datasafed list -f --recursive --older-than ${expiredUnix} ${root_path})
+	for file in "${files[@]}"; do
+		datasafed rm "$file"
+		echo "$file"
+	done
 }
 
 # analyze the start time of the earliest file from the datasafed backend.
@@ -66,74 +66,74 @@ function DP_purge_expired_files() {
 # If the oldest file is no changed, exit the process.
 # This can save traffic consumption.
 function DP_analyze_start_time_from_datasafed() {
-  local oldest_file="${1:?missing oldest file}"
-  local get_start_time_from_file="${2:?missing get_start_time_from_file function}"
-  local datasafed_pull="${3:?missing datasafed_pull function}"
-  local info_file="${KB_BACKUP_WORKDIR}/dp_oldest_file.info"
-  mkdir -p ${KB_BACKUP_WORKDIR} && cd ${KB_BACKUP_WORKDIR}
-  if [ -f ${info_file} ]; then
-    last_oldest_file=$(cat ${info_file})
-    last_oldest_file_name=$(DP_get_file_name_without_ext ${last_oldest_file})
-    if [ "$last_oldest_file" == "${oldest_file}" ]; then
-      # oldest file no changed.
-      ${get_start_time_from_file} $last_oldest_file_name
-      return
-    fi
-    # remove last oldest file
-    if [ -f ${last_oldest_file_name} ]; then
-      rm -rf ${last_oldest_file_name}
-    fi
-  fi
-  # pull file
-  ${datasafed_pull} ${oldest_file}
-  # record last oldest file
-  echo ${oldest_file} >${info_file}
-  oldest_file_name=$(DP_get_file_name_without_ext ${oldest_file})
-  ${get_start_time_from_file} ${oldest_file_name}
+	local oldest_file="${1:?missing oldest file}"
+	local get_start_time_from_file="${2:?missing get_start_time_from_file function}"
+	local datasafed_pull="${3:?missing datasafed_pull function}"
+	local info_file="${KB_BACKUP_WORKDIR}/dp_oldest_file.info"
+	mkdir -p ${KB_BACKUP_WORKDIR} && cd ${KB_BACKUP_WORKDIR}
+	if [ -f ${info_file} ]; then
+		last_oldest_file=$(cat ${info_file})
+		last_oldest_file_name=$(DP_get_file_name_without_ext ${last_oldest_file})
+		if [ "$last_oldest_file" == "${oldest_file}" ]; then
+			# oldest file no changed.
+			${get_start_time_from_file} $last_oldest_file_name
+			return
+		fi
+		# remove last oldest file
+		if [ -f ${last_oldest_file_name} ]; then
+			rm -rf ${last_oldest_file_name}
+		fi
+	fi
+	# pull file
+	${datasafed_pull} ${oldest_file}
+	# record last oldest file
+	echo ${oldest_file} >${info_file}
+	oldest_file_name=$(DP_get_file_name_without_ext ${oldest_file})
+	${get_start_time_from_file} ${oldest_file_name}
 }
 
 # get the timeZone offset for location, such as Asia/Shanghai
 function getTimeZoneOffset() {
-  local timeZone=${1:?missing time zone}
-  if [[ $timeZone == "+"* ]] || [[ $timeZone == "-"* ]]; then
-    echo ${timeZone}
-    return
-  fi
-  local currTime=$(TZ=UTC date)
-  local utcHour=$(TZ=UTC date -d "${currTime}" +"%H")
-  local zoneHour=$(TZ=${timeZone} date -d "${currTime}" +"%H")
-  local offset=$((${zoneHour} - ${utcHour}))
-  if [ $offset -eq 0 ]; then
-    return
-  fi
-  symbol="+"
-  if [ $offset -lt 0 ]; then
-    symbol="-" && offset=${offset:1}
-  fi
-  if [ $offset -lt 10 ]; then
-    offset="0${offset}"
-  fi
-  echo "${symbol}${offset}:00"
+	local timeZone=${1:?missing time zone}
+	if [[ $timeZone == "+"* ]] || [[ $timeZone == "-"* ]]; then
+		echo ${timeZone}
+		return
+	fi
+	local currTime=$(TZ=UTC date)
+	local utcHour=$(TZ=UTC date -d "${currTime}" +"%H")
+	local zoneHour=$(TZ=${timeZone} date -d "${currTime}" +"%H")
+	local offset=$((${zoneHour} - ${utcHour}))
+	if [ $offset -eq 0 ]; then
+		return
+	fi
+	symbol="+"
+	if [ $offset -lt 0 ]; then
+		symbol="-" && offset=${offset:1}
+	fi
+	if [ $offset -lt 10 ]; then
+		offset="0${offset}"
+	fi
+	echo "${symbol}${offset}:00"
 }
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
 # the sync progress container will check this file and exit if it exists
 function handle_exit() {
-  exit_code=$?
-  if [ "$exit_code" -ne 0 ]; then
-    DP_error_log "Backup failed with exit code $exit_code"
-    touch "${DP_BACKUP_INFO_FILE}.exit"
-    exit 1
-  fi
+	exit_code=$?
+	if [ "$exit_code" -ne 0 ]; then
+		DP_error_log "Backup failed with exit code $exit_code"
+		touch "${DP_BACKUP_INFO_FILE}.exit"
+		exit 1
+	fi
 }
 
 function generate_backup_config() {
-  clickhouse_backup_config=$(mktemp) || {
-    DP_error_log "Failed to create temporary file"
-    return 1
-  }
-  # whole config see https://github.com/Altinity/clickhouse-backup
-  cat >"$clickhouse_backup_config" <<'EOF'
+	clickhouse_backup_config=$(mktemp) || {
+		DP_error_log "Failed to create temporary file"
+		return 1
+	}
+	# whole config see https://github.com/Altinity/clickhouse-backup
+	cat >"$clickhouse_backup_config" <<'EOF'
 general:
   remote_storage: s3 # REMOTE_STORAGE, choice from: `azblob`,`gcs`,`s3`, etc; if `none` then `upload` and `download` commands will fail.
   max_file_size: 1125899906842624 # MAX_FILE_SIZE, 1PB by default, useless when upload_by_part is true, use to split data parts files by archives
@@ -147,7 +147,7 @@ general:
   upload_max_bytes_per_second: 0 # UPLOAD_MAX_BYTES_PER_SECOND, 0 means no throttling
   object_disk_server_side_copy_concurrency: 32
   allow_object_disk_streaming: false
-  # restore schema on cluster is not support by kb sharding backup and restore strategy right now
+  # restore schema on cluster is alway run by `INIT_CLUSTER_NAME` cluster of clickhouse, when schema restore, the ddl only runs on first pod of first shard
   restore_schema_on_cluster: "" # RESTORE_SCHEMA_ON_CLUSTER, execute all schema related SQL queries with `ON CLUSTER` clause as Distributed DDL. This isn't applicable when `use_embedded_backup_restore: true`
   upload_by_part: true # UPLOAD_BY_PART
   download_by_part: true # DOWNLOAD_BY_PART
@@ -232,134 +232,230 @@ s3:
   request_payer: "" # S3_REQUEST_PAYER, define who will pay to request, look https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html for details, possible values requester, if empty then bucket owner
   debug: false # S3_DEBUG
 EOF
-  export CLICKHOUSE_BACKUP_CONFIG="$clickhouse_backup_config"
+	export CLICKHOUSE_BACKUP_CONFIG="$clickhouse_backup_config"
 }
 
 function getToolConfigValue() {
-  local var=$1
-  cat "$toolConfig" | grep "$var" | awk '{print $NF}'
+	local var=$1
+	cat "$toolConfig" | grep "$var" | awk '{print $NF}'
 }
 
 function set_clickhouse_backup_config_env() {
-  toolConfig=/etc/datasafed/datasafed.conf
-  if [ ! -f ${toolConfig} ]; then
-    DP_error_log "Config file not found: ${toolConfig}"
-    exit 1
-  fi
+	toolConfig=/etc/datasafed/datasafed.conf
+	if [ ! -f ${toolConfig} ]; then
+		DP_error_log "Config file not found: ${toolConfig}"
+		exit 1
+	fi
 
-  local provider=""
-  local access_key_id=""
-  local secret_access_key=""
-  local region=""
-  local endpoint=""
-  local bucket=""
+	local provider=""
+	local access_key_id=""
+	local secret_access_key=""
+	local region=""
+	local endpoint=""
+	local bucket=""
 
-  IFS=$'\n'
-  for line in $(cat ${toolConfig}); do
-    line=$(eval echo $line)
-    if [[ $line == "access_key_id"* ]]; then
-      access_key_id=$(getToolConfigValue "$line")
-    elif [[ $line == "secret_access_key"* ]]; then
-      secret_access_key=$(getToolConfigValue "$line")
-    elif [[ $line == "region"* ]]; then
-      region=$(getToolConfigValue "$line")
-    elif [[ $line == "endpoint"* ]]; then
-      endpoint=$(getToolConfigValue "$line")
-    elif [[ $line == "root"* ]]; then
-      bucket=$(getToolConfigValue "$line")
-    elif [[ $line == "chunk_size"* ]]; then
-      chunk_size=$(getToolConfigValue "$line")
-    elif [[ $line == "provider"* ]]; then
-      provider=$(getToolConfigValue "$line")
-    fi
-  done
+	IFS=$'\n'
+	for line in $(cat ${toolConfig}); do
+		line=$(eval echo $line)
+		if [[ $line == "access_key_id"* ]]; then
+			access_key_id=$(getToolConfigValue "$line")
+		elif [[ $line == "secret_access_key"* ]]; then
+			secret_access_key=$(getToolConfigValue "$line")
+		elif [[ $line == "region"* ]]; then
+			region=$(getToolConfigValue "$line")
+		elif [[ $line == "endpoint"* ]]; then
+			endpoint=$(getToolConfigValue "$line")
+		elif [[ $line == "root"* ]]; then
+			bucket=$(getToolConfigValue "$line")
+		elif [[ $line == "chunk_size"* ]]; then
+			chunk_size=$(getToolConfigValue "$line")
+		elif [[ $line == "provider"* ]]; then
+			provider=$(getToolConfigValue "$line")
+		fi
+	done
 
-  if [[ ! $endpoint =~ ^https?:// ]]; then
-    endpoint="https://${endpoint}"
-  fi
+	if [[ ! $endpoint =~ ^https?:// ]]; then
+		endpoint="https://${endpoint}"
+	fi
 
-  if [[ "$provider" == "Alibaba" ]]; then
-    regex='https?:\/\/oss-(.*?)\.aliyuncs\.com'
-    if [[ "$endpoint" =~ $regex ]]; then
-      region="${BASH_REMATCH[1]}"
-      DP_log "Extract region from $endpoint-> $region"
-    else
-      DP_log "Failed to extract region from endpoint: $endpoint"
-    fi
-  elif [[ "$provider" == "TencentCOS" ]]; then
-    regex='https?:\/\/cos\.(.*?)\.myqcloud\.com'
-    if [[ "$endpoint" =~ $regex ]]; then
-      region="${BASH_REMATCH[1]}"
-      DP_log "Extract region from $endpoint-> $region"
-    else
-      DP_log "Failed to extract region from endpoint: $endpoint"
-    fi
-  elif [[ "$provider" == "Minio" ]]; then
-    export S3_FORCE_PATH_STYLE=true
-  else
-    echo "Unsupported provider: $provider"
-  fi
+	if [[ "$provider" == "Alibaba" ]]; then
+		regex='https?:\/\/oss-(.*?)\.aliyuncs\.com'
+		if [[ "$endpoint" =~ $regex ]]; then
+			region="${BASH_REMATCH[1]}"
+			DP_log "Extract region from $endpoint-> $region"
+		else
+			DP_log "Failed to extract region from endpoint: $endpoint"
+		fi
+	elif [[ "$provider" == "TencentCOS" ]]; then
+		regex='https?:\/\/cos\.(.*?)\.myqcloud\.com'
+		if [[ "$endpoint" =~ $regex ]]; then
+			region="${BASH_REMATCH[1]}"
+			DP_log "Extract region from $endpoint-> $region"
+		else
+			DP_log "Failed to extract region from endpoint: $endpoint"
+		fi
+	elif [[ "$provider" == "Minio" || "$provider" == "RustFS" ]]; then
+		export S3_FORCE_PATH_STYLE=true
+	else
+		echo "Unsupported provider: $provider"
+	fi
 
-  export S3_ACCESS_KEY="${access_key_id}"
-  export S3_SECRET_KEY="${secret_access_key}"
-  export S3_REGION="${region}"
-  export S3_ENDPOINT="${endpoint}"
-  export S3_BUCKET="${bucket}"
-  export S3_PART_SIZE="${chunk_size}"
-  export S3_PATH="${DP_BACKUP_BASE_PATH}"
+	export S3_ACCESS_KEY="${access_key_id}"
+	export S3_SECRET_KEY="${secret_access_key}"
+	export S3_REGION="${region}"
+	export S3_ENDPOINT="${endpoint}"
+	export S3_BUCKET="${bucket}"
+	export S3_PART_SIZE="${chunk_size}"
+	export S3_PATH="${DP_BACKUP_BASE_PATH}"
 
-  export CLICKHOUSE_HOST="${DP_DB_HOST}"
-  export CLICKHOUSE_USERNAME="${CLICKHOUSE_ADMIN_USER}"
-  export CLICKHOUSE_PASSWORD="${CLICKHOUSE_ADMIN_PASSWORD}"
-  DP_log "Dynamic environment variables for clickhouse-backup have been set."
+	export RESTORE_SCHEMA_ON_CLUSTER="${INIT_CLUSTER_NAME}"
+	export CLICKHOUSE_HOST="${DP_DB_HOST}"
+	export CLICKHOUSE_USERNAME="${CLICKHOUSE_ADMIN_USER}"
+	export CLICKHOUSE_PASSWORD="${CLICKHOUSE_ADMIN_PASSWORD}"
+	if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
+		export CLICKHOUSE_SECURE=true
+		export CLICKHOUSE_PORT="${CLICKHOUSE_TCP_SECURE_PORT:-9440}"
+		export CLICKHOUSE_TLS_CA="/etc/pki/tls/ca.pem"
+		export CLICKHOUSE_TLS_CERT="/etc/pki/tls/cert.pem"
+		export CLICKHOUSE_TLS_KEY="/etc/pki/tls/key.pem"
+		export CLICKHOUSE_SKIP_VERIFY=true
+	fi
+	DP_log "Dynamic environment variables for clickhouse-backup have been set."
+}
+
+function ch_query() {
+	local query="$1"
+	local ch_port="${CLICKHOUSE_PORT:-9000}"
+	local ch_args=(--user "${CLICKHOUSE_USERNAME}" --password "${CLICKHOUSE_PASSWORD}" --host "${CLICKHOUSE_HOST}" --port "$ch_port" --connect_timeout=5)
+	clickhouse-client "${ch_args[@]}" --query "$query"
 }
 
 function download_backup() {
-  local backup_name="$1"
-  clickhouse-backup download "$backup_name" || {
-    DP_error_log "Failed to download backup '$backup_name'"
-    return 1
-  }
-  DP_log "Downloading backup '$backup_name' from remote storage..."
-  return 0
+	local backup_name="$1"
+	clickhouse-backup download "$backup_name" || {
+		DP_error_log "Failed to download backup '$backup_name'"
+		return 1
+	}
+	DP_log "Downloading backup '$backup_name' from remote storage..."
+	return 0
 }
 
 function fetch_backup() {
-  local backup_name=$1
-
-  if clickhouse-backup list local | grep -q "$backup_name"; then
-    DP_log "Local backup '$backup_name' found."
-  else
-    DP_log "Local backup '$backup_name' not found. Downloading..."
-    download_backup "$backup_name" || {
-      DP_error_log "Failed to download backup '$backup_name'. Exiting."
-      exit 1
-    }
-    clickhouse-backup list local | grep -q "$backup_name" || {
-      DP_error_log "Backup '$backup_name' not found after download. Exiting."
-      exit 1
-    }
-  fi
-
-  DP_log "Backup '$backup_name' is available locally."
-}
-
-function get_shard_fqdn_list() {
-  local pattern="ALL_SHARDS_POD_FQDN_LIST*"
-  fqdn_list=$(env | grep "^$pattern" | grep "$DP_DB_HOST")
-  fqdn_list=${fqdn_list#*=}
-  echo -e "$fqdn_list"
+	local backup_name=$1
+	if clickhouse-backup list local | grep -q "$backup_name"; then
+		DP_log "Local backup '$backup_name' found."
+	else
+		DP_log "Local backup '$backup_name' not found. Downloading..."
+		download_backup "$backup_name" || {
+			DP_error_log "Failed to download backup '$backup_name'. Exiting."
+			exit 1
+		}
+		clickhouse-backup list local | grep -q "$backup_name" || {
+			DP_error_log "Backup '$backup_name' not found after download. Exiting."
+			exit 1
+		}
+	fi
+	DP_log "Backup '$backup_name' is available locally."
 }
 
 function delete_backups_except() {
-  local latest_backup=$1
-  DP_log "delete backup except $latest_backup"
-  backup_list=$(clickhouse-backup list)
-  echo "$backup_list" | awk '/local/ {print $1}' | while IFS= read -r backup_name; do
-    if [ "$backup_name" != "$latest_backup" ]; then
-      clickhouse-backup delete local "$backup_name" || {
-        DP_error_log "Clickhouse-backup delete local backup $backup_name FAILED"
-      }
-    fi
-  done
+	local latest_backup=$1
+	DP_log "delete backup except $latest_backup"
+	backup_list=$(clickhouse-backup list)
+	echo "$backup_list" | awk '/local/ {print $1}' | while IFS= read -r backup_name; do
+		if [ "$backup_name" != "$latest_backup" ]; then
+			clickhouse-backup delete local "$backup_name" || {
+				DP_error_log "Clickhouse-backup delete local backup $backup_name FAILED"
+			}
+		fi
+	done
+}
+
+# Save backup size info for DP status reporting
+function save_backup_size() {
+	local shard_base_dir
+	shard_base_dir=$(dirname "${DP_BACKUP_BASE_PATH}")
+	export DATASAFED_BACKEND_BASE_PATH="$shard_base_dir"
+	export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
+	local backup_size
+	backup_size=$(datasafed stat / | grep TotalSize | awk '{print $2}')
+	DP_save_backup_status_info "$backup_size"
+}
+
+# Restore schema and wait for sync across shards
+function restore_schema_and_sync() {
+	local backup_name="$1"
+	local mode_info="$2"
+	local schema_db="kubeblocks"
+	local schema_table="__restore_ready__"
+	local timeout="${RESTORE_SCHEMA_READY_TIMEOUT_SECONDS:-1800}"
+	local interval="${RESTORE_SCHEMA_READY_CHECK_INTERVAL_SECONDS:-5}"
+
+	# Determine if this pod should execute schema restore
+	local should_restore_schema=false
+	if [[ "$mode_info" == "standalone" ]]; then
+		should_restore_schema=true
+	else
+		local first_component="${mode_info#cluster:}"
+		[[ "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" == "$first_component" ]] && should_restore_schema=true
+	fi
+
+	if [[ "$should_restore_schema" == "true" ]]; then
+		# Standalone: unset ON CLUSTER mode to avoid ZK requirement
+		[[ "$mode_info" == "standalone" ]] && unset RESTORE_SCHEMA_ON_CLUSTER
+		clickhouse-backup restore_remote "$backup_name" --schema --rbac || {
+			DP_error_log "Clickhouse-backup restore_remote backup $backup_name FAILED"
+			return 1
+		}
+		# Cluster mode: create marker table for cross-shard coordination
+		if [[ "$mode_info" != "standalone" ]]; then
+			ch_query "CREATE DATABASE IF NOT EXISTS \`${schema_db}\` ON CLUSTER \`${INIT_CLUSTER_NAME}\`" || {
+				DP_error_log "Failed to create database ${schema_db}"
+				return 1
+			}
+			ch_query "CREATE TABLE IF NOT EXISTS \`${schema_db}\`.\`${schema_table}\` ON CLUSTER \`${INIT_CLUSTER_NAME}\` (shard String, finished_at DateTime, backup_name String) ENGINE=TinyLog" || {
+				DP_error_log "Failed to create schema ready marker"
+				return 1
+			}
+		fi
+	else
+		DP_log "Waiting for schema ready table on ${CLICKHOUSE_HOST}..."
+		local start=$(date +%s)
+		while true; do
+			if [[ "$(ch_query "EXISTS TABLE \`${schema_db}\`.\`${schema_table}\`")" == "1" ]]; then
+				break
+			fi
+			local now=$(date +%s)
+			if [[ $((now - start)) -ge $timeout ]]; then
+				DP_error_log "Timeout waiting for schema ready table on ${CLICKHOUSE_HOST}"
+				return 1
+			fi
+			sleep "$interval"
+		done
+	fi
+}
+
+# Full restore: schema + data + marker
+function do_restore() {
+	local backup_name="$1"
+	local mode_info="$2"
+	local schema_db="kubeblocks"
+	local schema_table="__restore_ready__"
+
+	# Restore schema (first shard in cluster uses ON CLUSTER DDL)
+	restore_schema_and_sync "$backup_name" "$mode_info" || return 1
+
+	# Restore data
+	clickhouse-backup restore_remote "$backup_name" --data || {
+		DP_error_log "Clickhouse-backup restore_remote --data FAILED"
+		return 1
+	}
+
+	# Insert shard ready marker (cluster mode only)
+	if [[ "$mode_info" != "standalone" ]]; then
+		ch_query "INSERT INTO \`${schema_db}\`.\`${schema_table}\` (shard, finished_at, backup_name) VALUES ('${CURRENT_SHARD_COMPONENT_SHORT_NAME}', now(), '$backup_name')" || {
+			DP_error_log "Failed to insert shard ready marker"
+			return 1
+		}
+	fi
 }
