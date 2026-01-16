@@ -16,6 +16,11 @@ spec:
       targetVolumes:
         volumes:
         - data
+    schedules:
+    - backupMethod: volume-snapshot
+      enabled: false
+      retentionPeriod: 7d
+      cronExpression: "0 18 * * 0"
   - componentDefs:
     - milvus-proxy
     backupMethods:
@@ -29,8 +34,3 @@ spec:
           - mountPath: /milvus/configs/
             name: milvus-config
             readOnly: true
-    schedules:
-    - backupMethod: volume-snapshot
-      enabled: false
-      retentionPeriod: 7d
-      cronExpression: "0 18 * * 0"
