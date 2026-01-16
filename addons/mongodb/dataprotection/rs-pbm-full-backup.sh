@@ -21,7 +21,7 @@ sync_pbm_storage_config
 wait_for_other_operations
 
 echo "INFO: Starting $PBM_BACKUP_TYPE backup for MongoDB..."
-backup_result=$(pbm backup --type=$PBM_BACKUP_TYPE --mongodb-uri "$PBM_MONGODB_URI" --compression=$PBM_COMPRESSION -o json)
+backup_result=$(pbm backup --type=$PBM_BACKUP_TYPE --mongodb-uri "$PBM_MONGODB_URI" --compression=$PBM_COMPRESSION --wait -o json)
 backup_name=$(echo "$backup_result" | jq -r '.name')
 extras=$(buildJsonString "" "backup_name" "$backup_name")
 extras=$(buildJsonString $extras "backup_type" "$PBM_BACKUP_TYPE")
