@@ -340,19 +340,20 @@ function sync_pbm_config_from_storage() {
 }
 
 function wait_for_backup_completion() {
-  retry_interval=5
-  attempt=1
   describe_result=""
+  local retry_interval=5
+  local attempt=1
+  local max_retries=12
   set +e
   while true; do
     describe_result=$(pbm describe-backup --mongodb-uri "$PBM_MONGODB_URI" "$backup_name" -o json 2>&1)
     if [ $? -eq 0 ] && [ -n "$describe_result" ]; then
       backup_status=$(echo "$describe_result" | jq -r '.status')
-      if [ "$backup_status" = "" ] || [ "$backup_status" = "starting" ] || [ "$backup_status" = "running" ]; then
-        echo "INFO: Attempt $attempt: Backup status is $backup_status, retrying in ${retry_interval}s..."
-        sleep $retry_interval
-        ((attempt++))
-        continue
+      if [ "$backup_status" = "starting" ] || [ "$backup_status" = "running" ]; then
+        echo "INFO: Backup status is $backup_status, retrying in ${retry_interval}s..."
+      elif [ "$backup_status" = "" ]; then
+        echo "INFO: Backup status is $backup_status, retrying in ${retry_interval}s..."
+        attempt=$((attempt+1))
       elif [ "$backup_status" = "done" ]; then
         echo "INFO: Backup status is done."
         break
@@ -361,12 +362,15 @@ function wait_for_backup_completion() {
         exit 1
       fi
     elif echo "$describe_result" | grep -q "not found"; then
-      echo "INFO: Attempt $attempt: Backup metadata not found, retrying in ${retry_interval}s..."
-      sleep $retry_interval
-      ((attempt++))
-      continue
+      echo "INFO: Backup metadata not found, retrying in ${retry_interval}s..."
+      attempt=$((attempt+1))
     else
       echo "ERROR: Unexpected: $describe_result"
+      exit 1
+    fi
+    sleep $retry_interval
+    if [ $attempt -gt $max_retries ]; then
+      echo "ERROR: Failed to get backup status after $max_retries attempts"
       exit 1
     fi
   done
@@ -455,10 +459,10 @@ function process_restore_end_signal() {
 }
 
 function get_describe_backup_info() {
-  max_retries=60
-  retry_interval=5
-  attempt=1
   describe_result=""
+  local max_retries=60
+  local retry_interval=5
+  local attempt=1
   set +e
   while [ $attempt -le $max_retries ]; do
       describe_result=$(pbm describe-backup --mongodb-uri "$PBM_MONGODB_URI" "$backup_name" -o json 2>&1)
@@ -501,15 +505,25 @@ storage:
       access-key-id: ${S3_ACCESS_KEY}
       secret-access-key: ${S3_SECRET_KEY}
 EOF
-
+  local attempt=0
+  local max_retries=12
+  local try_interval=5
   while true; do
     restore_status=$(pbm describe-restore "$restore_name" -c $cnf_file -o json | jq -r '.status') 
-    echo "INFO: Restore $restore_name status: $restore_status"
+    echo "INFO: Restore $restore_name status: $restore_status, retrying in ${try_interval}s..."
     if [ "$restore_status" = "done" ]; then
       rm $cnf_file
       break
-    elif [ "$restore_status" = "" ] || [ "$restore_status" = "starting" ] || [ "$restore_status" = "running" ]; then
-      sleep 5
+    elif [ "$restore_status" = "starting" ] || [ "$restore_status" = "running" ]; then
+      sleep $try_interval
+    elif [ "$restore_status" = "" ]; then
+      sleep $try_interval
+      attempt=$((attempt+1))
+      if [ $attempt -gt $max_retries ]; then
+        echo "ERROR: Restore $restore_name status is still empty after $max_retries retries"
+        rm $cnf_file
+        exit 1
+      fi
     else
       rm $cnf_file
       exit 1
