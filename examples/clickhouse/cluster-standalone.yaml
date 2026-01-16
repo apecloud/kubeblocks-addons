@@ -4,24 +4,18 @@ metadata:
   name: clickhouse-standalone
   namespace: demo
 spec:
-  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  clusterDefinitionRef: clickhouse
-  # Specifies the clickhouse cluster topology defined in ClusterDefinition.Spec.topologies, support standalone, cluster
-  # - `standalone`: single clickhouse instance
-  # - `cluster`: clickhouse with ClickHouse Keeper as coordinator
-  topology: standalone
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
   # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
   terminationPolicy: Delete
-  # standalone topology also uses shardingSpecs in ClusterDefinition
+  # Standalone layout uses shardingSpecs with 1 shard.
   shardingSpecs:
     - name: clickhouse
       shards: 1
       template:
         name: clickhouse
-        componentDef: clickhouse-24
+        componentDef: clickhouse
         replicas: 1
         systemAccounts:
           - name: admin

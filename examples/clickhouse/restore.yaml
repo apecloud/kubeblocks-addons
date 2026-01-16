@@ -7,12 +7,10 @@ metadata:
     # clickhouse-cluster-backup is the Backup CR name.
     kubeblocks.io/restore-from-backup: '{"clickhouse":{"name":"clickhouse-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
-  clusterDefinitionRef: clickhouse
-  topology: cluster
   terminationPolicy: Delete
   componentSpecs:
     - name: ch-keeper
-      componentDef: ch-keeper-24
+      componentDef: ch-keeper
       replicas: 1
       resources:
         limits:
@@ -39,7 +37,7 @@ spec:
       shards: 3
       template:
         name: clickhouse
-        componentDef: clickhouse-24
+        componentDef: clickhouse
         replicas: 2
         systemAccounts:
           - name: admin

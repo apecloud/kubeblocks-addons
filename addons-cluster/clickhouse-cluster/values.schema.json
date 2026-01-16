@@ -11,8 +11,8 @@
       "default": "24.8.3"
     },
     "mode": {
-      "title": "Cluster Topology Mode",
-      "description": "Define the ClickHouse cluster topology mode.",
+      "title": "Cluster Mode",
+      "description": "Define the ClickHouse chart mode. \"cluster\" enables ClickHouse Keeper.",
       "type": "string",
       "default": "cluster",
       "enum": [

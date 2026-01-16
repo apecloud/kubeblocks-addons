@@ -406,7 +406,7 @@ You can choose the appropriate method based on your needs and operational prefer
 - Backups are created per shard.
 - Schema and RBAC restore runs once on the first shard and uses `ON CLUSTER INIT_CLUSTER_NAME` to apply DDL across all shards.
 - Data is restored from each shard's backup.
-- **Important**: Standalone and cluster backups are NOT interchangeable. A backup from standalone can only be restored to standalone, and a cluster backup can only be restored to a cluster with compatible topology.
+- **Important**: Standalone and cluster backups are NOT interchangeable. A backup from standalone can only be restored to standalone, and a cluster backup can only be restored to a cluster with compatible layout.
 
 #### Prerequisites for Backup
 

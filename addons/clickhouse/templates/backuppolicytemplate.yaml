@@ -3,12 +3,10 @@ kind: BackupPolicyTemplate
 metadata:
   name: clickhouse-backup-policy-template
   labels:
-    clusterdefinition.kubeblocks.io/name: clickhouse
     service-kind/clickhouse: "true"
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
-  clusterDefinitionRef: clickhouse
   backupPolicies:
     - componentDefs:
         - clickhouse-24

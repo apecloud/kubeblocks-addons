@@ -1,15 +1,9 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: ch-cluster
+  name: clickhouse-cluster
   namespace: default
 spec:
-  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  clusterDefinitionRef: clickhouse
-  # Specifies the redis cluster topology defined in ClusterDefinition.Spec.topologies, support standalone, replication, and replication-twemproxy.
-  # - `standalone`: single clickhouse instance
-  # - `cluster`: clickhouse cluster with clickhouse and clickhouse-keeper
-  topology: cluster
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -37,26 +31,8 @@ spec:
   # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
-    - name: clickhouse
-      componentDef: clickhouse-24
-      replicas: 2
-      resources:
-        limits:
-          cpu: '0.5'
-          memory: 1Gi
-        requests:
-          cpu: '0.5'
-          memory: 1Gi
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
     - name: ch-keeper
-      componentDef: ch-keeper-24
+      componentDef: ch-keeper
       replicas: 1
       resources:
         limits:
@@ -73,3 +49,26 @@ spec:
             resources:
               requests:
                 storage: 20Gi
+  # Sharding configuration for ClickHouse nodes
+  shardingSpecs:
+    - name: clickhouse
+      shards: 2
+      template:
+        name: clickhouse
+        componentDef: clickhouse
+        replicas: 2
+        resources:
+          limits:
+            cpu: '0.5'
+            memory: 1Gi
+          requests:
+            cpu: '0.5'
+            memory: 1Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi

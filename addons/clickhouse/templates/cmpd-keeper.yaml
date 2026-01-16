@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: ch-keeper-24
+  name: ch-keeper
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
@@ -210,7 +210,7 @@ spec:
       builtinHandler: custom
       customHandler:
         container: clickhouse
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Chart.AppVersion }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:25.9.7
         exec:
           command:
             - bash
@@ -221,7 +221,7 @@ spec:
       scriptSpecSelectors:
         - name: clickhouse-scripts
       withCandidate:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Chart.AppVersion }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:25.9.7
         exec:
           command:
             - bash
@@ -229,7 +229,7 @@ spec:
             - |
               /scripts/keeper-switchover.sh
       withoutCandidate:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Chart.AppVersion }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:25.9.7
         exec:
           command:
             - bash
@@ -241,6 +241,7 @@ spec:
       customHandler:
         preCondition: RuntimeReady
         container: clickhouse
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:25.9.7
         exec:
           command:
             - bash
@@ -251,6 +252,7 @@ spec:
       builtinHandler: custom
       customHandler:
         container: clickhouse
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:25.9.7
         exec:
           command:
             - bash

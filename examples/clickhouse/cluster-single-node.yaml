@@ -4,12 +4,6 @@ metadata:
   name: ch-cluster-standalone
   namespace: default
 spec:
-  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  clusterDefinitionRef: clickhouse
-  # Specifies the clickhouse cluster topology defined in ClusterDefinition.Spec.topologies, support standalone, clickhouse-cluster
-  # - `standalone`: single clickhouse instance
-  # - `cluster`: clickhouse cluster with clickhouse-keeper
-  topology: standalone
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -38,7 +32,7 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
     - name: clickhouse
-      componentDef: clickhouse-24
+      componentDef: clickhouse
       replicas: 1
       resources:
         limits:

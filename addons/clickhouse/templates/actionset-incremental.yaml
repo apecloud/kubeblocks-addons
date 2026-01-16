@@ -2,8 +2,6 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
   name: clickhouse-incremental-backup
-  labels:
-    clusterdefinition.kubeblocks.io/name: clickhouse
 spec:
   backupType: Incremental
   env:

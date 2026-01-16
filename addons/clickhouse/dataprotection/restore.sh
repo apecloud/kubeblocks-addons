@@ -1,7 +1,7 @@
 #!/bin/bash
 set -exo pipefail
 
-# Supports: standalone (single node) and cluster (multi-shard) topologies
+# Supports: standalone (single node) and sharded (multi-shard) layouts
 # Strategy: first shard restores schema with ON CLUSTER, others wait for sync
 
 trap handle_exit EXIT
@@ -13,7 +13,7 @@ if [[ "${CLICKHOUSE_SECURE}" = "true" ]]; then
 	exit 1
 fi
 
-# 1. Detect topology mode: standalone (no ':' in FQDN) or cluster
+# 1. Detect layout mode: standalone (no ':' in FQDN) or sharded
 first_entry="${ALL_COMBINED_SHARDS_POD_FQDN_LIST%%,*}"
 first_component="${first_entry%%:*}"
 if [[ -z "$first_component" ]]; then

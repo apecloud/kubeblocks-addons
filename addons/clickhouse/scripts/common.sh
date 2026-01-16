@@ -106,7 +106,7 @@ function get_mode() {
 	local host="$1"
 
 	# Use TLS port if TLS is enabled
-	if [[ "$TLS_ENABLED" == "true" ]]; then
+	if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
 		# For TLS connections, use openssl s_client for 4LW commands
 		local mode
 		mode=$(printf "srvr\n" | timeout 2 openssl s_client \

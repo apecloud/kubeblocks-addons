@@ -10,8 +10,8 @@ spec:
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-    # -  clickhouse
-    # -  clickhouse-24
-  - componentName: clickhouse
+    # - clickhouse
+    # - ch-keeper
+  - componentName: ch-keeper
     # Specifies the number of total replicas.
-    replicas: 2
+    replicas: 3

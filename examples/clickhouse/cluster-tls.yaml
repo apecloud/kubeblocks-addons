@@ -4,12 +4,6 @@ metadata:
   name: clickhouse-tls
   namespace: demo
 spec:
-  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  clusterDefinitionRef: clickhouse
-  # Specifies the clickhouse cluster topology defined in ClusterDefinition.Spec.topologies.
-  # - `standalone`: single clickhouse instance
-  # - `cluster`: clickhouse with ClickHouse Keeper as coordinator
-  topology: cluster
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
@@ -20,7 +14,7 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
     - name: ch-keeper
-      componentDef: ch-keeper-24
+      componentDef: ch-keeper
       replicas: 1
       resources:
         limits:
@@ -44,7 +38,7 @@ spec:
                 storage: 10Gi
       tls: true   # set TLS to true for keeper
       issuer:     # if TLS is True, this filed is required.
-        name: UserProvided  # set Issuer to UserProvided, P.S. KubeBlocks Issuer is unable for sharding typology.
+        name: UserProvided  # set Issuer to UserProvided, P.S. KubeBlocks Issuer is unable for sharded layout.
         secretRef:
           name: clickhouse-cluster-tls
           namespace: demo
@@ -56,7 +50,7 @@ spec:
       shards: 1
       template:
         name: clickhouse
-        componentDef: clickhouse-24
+        componentDef: clickhouse
         replicas: 2
         systemAccounts:
           - name: admin
@@ -80,7 +74,7 @@ spec:
                   storage: 20Gi
         tls: true # set TLS to true
         issuer: # if TLS is True, this filed is required.
-          name: UserProvided  # set Issuer to UserProvided, P.S. KubeBlocks Issuer is unable for sharding typology.
+          name: UserProvided  # set Issuer to UserProvided, P.S. KubeBlocks Issuer is unable for sharded layout.
           secretRef:
             name: clickhouse-cluster-tls
             namespace: demo

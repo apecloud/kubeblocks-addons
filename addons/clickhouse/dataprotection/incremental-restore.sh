@@ -2,7 +2,7 @@
 set -exo pipefail
 
 # Downloads full backup + ancestor incremental backups before restore
-# Supports: standalone (single node) and cluster (multi-shard) topologies, each typology only can use its backup
+# Supports: standalone (single node) and sharded (multi-shard) layouts; each layout can only use its own backups
 
 trap handle_exit EXIT
 generate_backup_config
@@ -24,7 +24,7 @@ for parent_name in "${ancestors[@]}"; do
 	fetch_backup "$parent_name"
 done
 
-# 3. Detect topology mode: standalone (no ':' in FQDN) or cluster
+# 3. Detect layout mode: standalone (no ':' in FQDN) or sharded
 export S3_PATH="${DP_BACKUP_BASE_PATH}"
 first_entry="${ALL_COMBINED_SHARDS_POD_FQDN_LIST%%,*}"
 first_component="${first_entry%%:*}"

@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: clickhouse-24
+  name: clickhouse
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
@@ -173,13 +173,13 @@ spec:
     - name: CH_KEEPER_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: ch-keeper-24
+          compDef: ch-keeper
           optional: true
           podFQDNs: Required
     - name: ALL_SHARDS_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: clickhouse-24
+          compDef: clickhouse
           optional: false
           podFQDNs: Required
           multipleClusterObjectOption:
@@ -188,7 +188,7 @@ spec:
     - name: ALL_COMBINED_SHARDS_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: clickhouse-24
+          compDef: clickhouse
           optional: false
           podFQDNs: Required
           multipleClusterObjectOption:
@@ -232,6 +232,7 @@ spec:
       builtinHandler: custom
       customHandler:
         preCondition: RuntimeReady
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:25.9.7
         container: clickhouse
         exec:
           command:
