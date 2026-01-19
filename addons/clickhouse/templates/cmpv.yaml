@@ -16,7 +16,7 @@ spec:
         - {{ .version }}
 {{- end }}
       compDefs:
-        - clickhouse-24
+        - clickhouse-25
   releases:
 {{- range $idx, $release := $releases }}
     - name: {{ $release.version }}
@@ -40,7 +40,7 @@ spec:
         - {{ .version }}
 {{- end }}
       compDefs:
-        - ch-keeper-24
+        - ch-keeper-25
   releases:
 {{- range $release := $releases }}
     - name: {{ $release.version }}

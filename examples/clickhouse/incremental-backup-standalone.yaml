@@ -1,0 +1,10 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: clickhouse-incremental-backup
+  namespace: default
+spec:
+  backupMethod: incremental
+  backupPolicyName: ch-cluster-standalone-clickhouse-backup-policy
+  parentBackupName: clickhouse-full-backup
+  deletionPolicy: Delete

@@ -1,0 +1,11 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: clickhouse-keeper-switchover
+  namespace: default
+spec:
+  clusterName: ch-cluster
+  type: Switchover
+  switchover:
+    - componentName: ch-keeper
+      instanceName: "*"

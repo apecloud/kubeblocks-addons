@@ -19,7 +19,7 @@ KubeBlocks add-ons.
 | apecloud-mysql | mysql-8.0.30 | ApeCloud MySQL is a database that is compatible with MySQL syntax and achieves high availability through the utilization of the RAFT consensus protocol. | ApeCloud |
 | apecloud-postgresql | apecloud-postgres-14.11-0.7.3 | ApeCloud PostgreSQL is a database that is compatible with PostgreSQL syntax and achieves high availability through the utilization of the RAFT consensus protocol. | ApeCloud |
 | camellia-redis-proxy | camellia-redis-proxy-1.2.26 | camellia-redis-proxy is a high-performance redis proxy developed using Netty4. | ApeCloud |
-| clickhouse | clickhouse-24.3.10<br>clickhouse-keeper-24.3.10 | ClickHouse is an open-source column-oriented OLAP database management system. Use it to boost your database performance while providing linear scalability and hardware efficiency. | Nash Tsai |
+| clickhouse | clickhouse-25.9.7<br>clickhouse-keeper-25.9.7 | ClickHouse is an open-source column-oriented OLAP database management system. Use it to boost your database performance while providing linear scalability and hardware efficiency. | Nash Tsai |
 | dmdb | dm8_single-0.1.0<br>dmdb_exporter-0.1.0 | A Helm chart for Kubernetes |  |
 | elasticsearch | elasticsearch-7.10.1<br>elasticsearch-7.7.1<br>elasticsearch-7.8.1<br>elasticsearch-8.1.3<br>elasticsearch-8.8.2 | Elasticsearch is a distributed, RESTful search engine optimized for speed and relevance on production-scale workloads. |  |
 | etcd | etcd-v3.5.6 | etcd is a strongly consistent, distributed key-value store that provides a reliable way to store data that needs to be accessed by a distributed system or cluster of machines. | free6om |

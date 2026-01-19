@@ -5,13 +5,13 @@ metadata:
   namespace: default
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: clickhouse-cluster
+  clusterName: ch-cluster
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-    # -  clickhouse
-    # -  clickhouse-1
-  - componentName: clickhouse
+    # - clickhouse
+    # - ch-keeper
+  - componentName: ch-keeper
     # Specifies the number of total replicas.
-    replicas: 2
+    replicas: 3

@@ -1,0 +1,70 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: ch-cluster-restore
+  namespace: default
+  annotations:
+    # clickhouse-full-backup is the Backup CR name.
+    kubeblocks.io/restore-from-backup: '{"clickhouse":{"name":"clickhouse-full-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: ch-keeper
+      componentDef: ch-keeper-25
+      replicas: 1
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 1Gi
+        requests:
+          cpu: '0.5'
+          memory: 1Gi
+      systemAccounts:
+        - name: admin
+          secretRef:
+            name: udf-restore-account-info
+            namespace: default
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+  shardingSpecs:
+    - name: clickhouse
+      shards: 3
+      template:
+        name: clickhouse
+        componentDef: clickhouse-25
+        replicas: 2
+        systemAccounts:
+          - name: admin
+            secretRef:
+              name: udf-restore-account-info
+              namespace: default
+        resources:
+          limits:
+            cpu: "1"
+            memory: 2Gi
+          requests:
+            cpu: "1"
+            memory: 2Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: udf-restore-account-info
+  namespace: default
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=  # 'password123' in base64
