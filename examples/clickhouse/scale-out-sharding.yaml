@@ -1,0 +1,11 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: clickhouse-scale-out-sharding
+  namespace: default
+spec:
+  clusterName: ch-cluster
+  type: HorizontalScaling
+  horizontalScaling:
+    - componentName: clickhouse
+      shards: 3

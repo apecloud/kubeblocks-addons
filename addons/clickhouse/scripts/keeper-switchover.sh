@@ -5,20 +5,6 @@ source /scripts/common.sh
 leader_fqdn="$KB_LEADER_POD_FQDN"
 candidate_fqdn="${KB_SWITCHOVER_CANDIDATE_FQDN:-}"
 
-if [ $COMPONENT_REPLICAS -lt 2 ]; then
-	exit 0
-fi
-
-if [ -z $candidate_fqdn ]; then
-	echo "No candidate specified, exit."
-	exit 0
-fi
-
-if [ "$KB_SWITCHOVER_ROLE" != "leader" ]; then
-	echo "switchover not triggered for primary, nothing to do, exit 0."
-	exit 0
-fi
-
 # 1. Get current config
 config=$(get_config "$leader_fqdn")
 
@@ -59,24 +45,14 @@ done <<<"$config"
 # 4. remove the leader from the config, only remove one time, because only the leader can remove itself
 keeper_run "$leader_fqdn" "reconfig remove '$pre_leader_config_id'"
 
-# 5. ensure candidate become leader
+# 5. Check if the candidate is the leader
 retry_keeper_operation \
-  "mode=\$(get_mode_by_keeper '$candidate_fqdn')" \
-  "[[ \"\$mode\" == \"leader\" || \"\$mode\" == \"standalone\" ]]"
-
-if [[ "$READD" == "false" ]]; then
-  echo "INFO: Skipping re-adding pre-leader"
-  exit 0
-fi
+	"mode=\$(get_mode_by_keeper '$candidate_fqdn')" \
+	"[[ \"\$mode\" == \"leader\" || \"\$mode\" == \"standalone\" ]]"
 
 # 6. re-add after pre leader reboot
 retry_keeper_operation \
 	"keeper_run '$candidate_fqdn' 'reconfig add \"$pre_leader\"'" \
 	"get_config '$candidate_fqdn' | grep -q '$pre_leader'"
-
-# 5. Check if the candidate is the leader
-retry_keeper_operation \
-	"mode=\$(get_mode_by_keeper '$candidate_fqdn')" \
-	"[[ \"\$mode\" == \"leader\" ]]"
 
 echo "Switchover completed successfully"

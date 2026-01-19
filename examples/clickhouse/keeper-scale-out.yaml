@@ -1,0 +1,11 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: clickhouse-keeper-scale-out
+  namespace: default
+spec:
+  clusterName: ch-cluster
+  type: HorizontalScaling
+  horizontalScaling:
+    - componentName: ch-keeper
+      replicas: 3

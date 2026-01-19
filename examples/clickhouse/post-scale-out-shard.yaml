@@ -1,0 +1,12 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: clickhouse-post-scale-out-shard
+  namespace: default
+spec:
+  clusterName: ch-cluster
+  type: Custom
+  custom:
+    opsDefinitionName: post-scale-out-shard-for-clickhouse
+    components:
+      - componentName: clickhouse

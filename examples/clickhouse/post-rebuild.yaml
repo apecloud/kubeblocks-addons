@@ -1,0 +1,15 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: clickhouse-post-rebuild
+  namespace: default
+spec:
+  clusterName: ch-cluster
+  type: Custom
+  custom:
+    opsDefinitionName: post-rebuild-for-clickhouse
+    components:
+      - componentName: clickhouse
+        parameters:
+          - name: instanceName
+            value: "__REPLACE_INSTANCE__"

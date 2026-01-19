@@ -397,7 +397,7 @@ function restore_schema_and_sync() {
 		should_restore_schema=true
 	else
 		local first_component="${mode_info#cluster:}"
-		[[ "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" == "$first_component" ]] && should_restore_schema=true
+		[[ "${KB_COMP_NAME}" == "$first_component" ]] && should_restore_schema=true
 	fi
 
 	if [[ "$should_restore_schema" == "true" ]]; then
@@ -453,7 +453,7 @@ function do_restore() {
 
 	# Insert shard ready marker (cluster mode only)
 	if [[ "$mode_info" != "standalone" ]]; then
-		ch_query "INSERT INTO \`${schema_db}\`.\`${schema_table}\` (shard, finished_at, backup_name) VALUES ('${CURRENT_SHARD_COMPONENT_SHORT_NAME}', now(), '$backup_name')" || {
+		  ch_query "INSERT INTO \`${schema_db}\`.\`${schema_table}\` (shard, finished_at, backup_name) VALUES ('${KB_COMP_NAME}', now(), '$backup_name')" || {
 			DP_error_log "Failed to insert shard ready marker"
 			return 1
 		}

@@ -1,0 +1,10 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: clickhouse-full-backup
+  namespace: default
+spec:
+  # backupMethod names come from clickhouse BackupPolicy
+  backupMethod: full
+  backupPolicyName: ch-cluster-clickhouse-backup-policy
+  deletionPolicy: Delete

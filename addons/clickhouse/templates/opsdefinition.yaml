@@ -49,6 +49,7 @@ spec:
                 - bash
                 - -c
                 - |
+                  {{- .Files.Get "scripts/common.sh" | nindent 18 }}
                   {{- .Files.Get "scripts/post-for-rebuild.sh" | nindent 18 }}
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
@@ -97,4 +98,5 @@ spec:
                 - bash
                 - -c
                 - |
+                  {{- .Files.Get "scripts/common.sh" | nindent 18 }}
                   {{- .Files.Get "scripts/post-for-scale-out-shard.sh" | nindent 18 }}

@@ -9,7 +9,7 @@ metadata:
 spec:
   backupPolicies:
     - componentDefs:
-        - clickhouse-24
+        - clickhouse-25
       target:
         account: admin
         role: ""

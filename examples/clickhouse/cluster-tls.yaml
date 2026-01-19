@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
   name: ch-cluster-tls
-  namespace: demo
+  namespace: default
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
@@ -27,7 +27,7 @@ spec:
         - name: admin
           secretRef:
             name: udf-tls-account-info
-            namespace: demo
+            namespace: default
       volumeClaimTemplates:
         - name: data
           spec:
@@ -41,7 +41,7 @@ spec:
         name: UserProvided  # set Issuer to UserProvided, P.S. KubeBlocks Issuer is unable for sharded layout.
         secretRef:
           name: clickhouse-cluster-tls
-          namespace: demo
+          namespace: default
           ca: ca.crt
           cert: tls.crt
           key: tls.key
@@ -56,7 +56,7 @@ spec:
           - name: admin
             secretRef:
               name: udf-tls-account-info
-              namespace: demo
+              namespace: default
         resources:
           limits:
             cpu: '1'
@@ -77,7 +77,7 @@ spec:
           name: UserProvided  # set Issuer to UserProvided, P.S. KubeBlocks Issuer is unable for sharded layout.
           secretRef:
             name: clickhouse-cluster-tls
-            namespace: demo
+            namespace: default
             ca: ca.crt
             cert: tls.crt
             key: tls.key
@@ -86,7 +86,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: udf-tls-account-info
-  namespace: demo
+  namespace: default
 type: Opaque
 data:
   password: cGFzc3dvcmQxMjM= # 'password123' in base64
@@ -96,7 +96,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: clickhouse-cluster-tls
-  namespace: demo
+  namespace: default
 type: Opaque
 stringData:
   ca.crt: |

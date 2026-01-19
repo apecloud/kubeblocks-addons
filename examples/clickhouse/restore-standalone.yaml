@@ -1,44 +1,21 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: ch-cluster-restore
+  name: ch-cluster-restore-standalone
   namespace: default
   annotations:
     # clickhouse-full-backup is the Backup CR name.
     kubeblocks.io/restore-from-backup: '{"clickhouse":{"name":"clickhouse-full-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
-  componentSpecs:
-    - name: ch-keeper
-      componentDef: ch-keeper-25
-      replicas: 1
-      resources:
-        limits:
-          cpu: '0.5'
-          memory: 1Gi
-        requests:
-          cpu: '0.5'
-          memory: 1Gi
-      systemAccounts:
-        - name: admin
-          secretRef:
-            name: udf-restore-account-info
-            namespace: default
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 10Gi
+  # Standalone layout uses shardingSpecs with 1 shard.
   shardingSpecs:
     - name: clickhouse
-      shards: 3
+      shards: 1
       template:
         name: clickhouse
         componentDef: clickhouse-25
-        replicas: 2
+        replicas: 1
         systemAccounts:
           - name: admin
             secretRef:
@@ -46,11 +23,11 @@ spec:
               namespace: default
         resources:
           limits:
-            cpu: "1"
-            memory: 2Gi
+            cpu: '0.5'
+            memory: 1Gi
           requests:
-            cpu: "1"
-            memory: 2Gi
+            cpu: '0.5'
+            memory: 1Gi
         volumeClaimTemplates:
           - name: data
             spec:
