@@ -84,6 +84,8 @@
 
 	"maxmemory-samples": int | *3
 
+	"maxmemory"?: int
+
 	"min-replicas-max-lag": int | *10
 
 	"min-replicas-to-write": int | *0
