@@ -87,6 +87,8 @@
 
 	maxmemory?: int
 
+	"maxmemory-policy"?: string & "volatile-lru" | "allkeys-lru" | "volatile-lfu" | "allkeys-lfu" | "volatile-random" | "allkeys-random" | "volatile-ttl" | "noeviction"
+
 	"min-replicas-max-lag": int | *10
 
 	"min-replicas-to-write": int | *0
