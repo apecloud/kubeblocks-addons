@@ -65,7 +65,7 @@ ensure_password_in_user() {
   
   if [ -f "$redis_acl_file" ] && grep -q "^user $username " "$redis_acl_file"; then
     # User exists in acl file, check if this password is already present
-    if grep "^user $username " "$redis_acl_file" | grep -q ">$password"; then
+    if grep "^user $username " "$redis_acl_file" | grep -F -q ">$password"; then
       echo "Password from Secret already exists for user $username, preserving existing entry"
     else
       # Password not present, need to add it to existing user
