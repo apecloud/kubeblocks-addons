@@ -62,19 +62,73 @@ ensure_password_in_user() {
   local username="$1"
   local password="$2"
   local permissions="$3"
-  
+
   if [ -f "$redis_acl_file" ] && grep -q "^user $username " "$redis_acl_file"; then
     # User exists in acl file, check if this password is already present
-    if grep "^user $username " "$redis_acl_file" | grep -F -q ">$password"; then
+    local existing_entry
+    existing_entry=$(grep "^user $username " "$redis_acl_file")
+    if echo "$existing_entry" | grep -q ">$password"; then
       echo "Password from Secret already exists for user $username, preserving existing entry"
+      # Update permissions if they differ from the configured ones
+      if [ -n "$permissions" ]; then
+        # Rebuild entry: keep all fields up to the last password (tokens starting with '>'),
+        # then append the configured permissions.
+        local entry_prefix
+        entry_prefix=$(echo "$existing_entry" | awk '{
+          last = 0;
+          for (i = 1; i <= NF; i++) {
+            if ($i ~ /^>/) {
+              last = i;
+            }
+          }
+          if (last == 0) {
+            print $0;
+          } else {
+            for (i = 1; i <= last; i++) {
+              printf "%s%s", $i, (i < last ? " " : "");
+            }
+          }
+        }')
+        if [ -n "$entry_prefix" ]; then
+          sed -i "/^user $username /d" "$redis_acl_file"
+          echo "$entry_prefix $permissions" >> "$redis_acl_file"
+          echo "Updated permissions for existing user $username from Secret"
+        fi
+      fi
     else
       # Password not present, need to add it to existing user
-      # Delete old entry and create new one with Secret password prepended
-      local existing_entry=$(grep "^user $username " "$redis_acl_file")
+      # Delete old entry and create new one with Secret password prepended,
+      # and ensure permissions are updated to the configured ones.
       sed -i "/^user $username /d" "$redis_acl_file"
       # Insert the Secret password after 'on' keyword, preserving other passwords
-      echo "$existing_entry" | sed "s/^user $username on/user $username on >$password/" >> "$redis_acl_file"
-      echo "Added Secret password to existing user $username, preserved other passwords"
+      local updated_entry
+      updated_entry=$(echo "$existing_entry" | sed "s/^user $username on/user $username on >$password/")
+      local entry_prefix
+      if [ -n "$permissions" ]; then
+        entry_prefix=$(echo "$updated_entry" | awk '{
+          last = 0;
+          for (i = 1; i <= NF; i++) {
+            if ($i ~ /^>/) {
+              last = i;
+            }
+          }
+          if (last == 0) {
+            print $0;
+          } else {
+            for (i = 1; i <= last; i++) {
+              printf "%s%s", $i, (i < last ? " " : "");
+            }
+          }
+        }')
+        if [ -n "$entry_prefix" ]; then
+          echo "$entry_prefix $permissions" >> "$redis_acl_file"
+        else
+          echo "$updated_entry" >> "$redis_acl_file"
+        fi
+      else
+        echo "$updated_entry" >> "$redis_acl_file"
+      fi
+      echo "Added Secret password to existing user $username, preserved other passwords and updated permissions"
     fi
   else
     # User doesn't exist, create new entry
