@@ -225,6 +225,9 @@
     //   0 = minimum latency, 10 = default, 100 = process without regard to latency
     "maxmemory-eviction-tenacity": int & >=0 & <=100 | *10
 
+
+    "maxmemory-policy"?: string & "volatile-lru" | "allkeys-lru" | "volatile-lfu" | "allkeys-lfu" | "volatile-random" | "allkeys-random" | "volatile-ttl" | "noeviction"
+
     // Starting from Redis 5, by default a replica will ignore its maxmemory setting
     // (unless it is promoted to master after a failover or manually). It means
     // that the eviction of keys will be just handled by the master, sending the
