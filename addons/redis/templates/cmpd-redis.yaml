@@ -340,6 +340,8 @@ spec:
             value: "$(CURRENT_POD_NAME).$(REDIS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
           - name: KB_CLUSTER_COMP_NAME
             value: $(REDIS_COMPONENT_NAME)
+          - name: KB_SERVICE_PORT
+            value: "$(SERVICE_PORT)"
         container: redis
         command:
           - /tools/dbctl
