@@ -239,7 +239,7 @@ Describe "Redis Cluster Replica Member Leave Bash Script Tests"
 
     Context "when current node is a master"
       get_cluster_nodes_info_with_retry() {
-        echo "f7ed4469f3b90c790e0b482ce3843b3ee9fe4523 172.42.0.5:6379@16379,redis-shard-98x-1.redis-shard-98x-headless.default.svc myself,slave 172.42.0.4:6379 0 1681966481000 1 connected"$'\n'"c1ed4469f3b90c790e0b482ce3843b3ee9fe4524 172.42.0.4:6379@16379,redis-shard-98x-0.redis-shard-98x-headless.default.svc master - 0 1681966481000 2 connected 5461-10922"
+        echo "f7ed4469f3b90c790e0b482ce3843b3ee9fe4523 172.42.0.5:6379@16379,redis-shard-98x-1.redis-shard-98x-headless.default.svc slave 172.42.0.4:6379 0 1681966481000 1 connected"$'\n'"c1ed4469f3b90c790e0b482ce3843b3ee9fe4524 172.42.0.4:6379@16379,redis-shard-98x-0.redis-shard-98x-headless.default.svc myself,master - 0 1681966481000 2 connected 5461-10922"
         return 0
       }
 
