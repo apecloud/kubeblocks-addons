@@ -589,10 +589,8 @@ rebuild_redis_acl_file() {
 
 build_announce_ip_and_port() {
   # used to determine the identifier of the current pod from cluster nodes
-  current_node_host_info="$current_pod_fqdn"
   # build announce ip and port according to whether the advertised svc is enabled
   if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value"; then
-    current_node_host_info="$redis_announce_host_value:$redis_announce_port_value"
     echo "redis use advertised svc $redis_announce_host_value:$redis_announce_port_value to announce"
     {
       echo "replica-announce-port $redis_announce_port_value"
@@ -618,8 +616,10 @@ build_cluster_announce_info() {
     echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting."
     exit 1
   fi
+  current_node_host_info="$current_pod_fqdn"
   # build announce ip and port according to whether the advertised svc is enabled
   if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value" && ! is_empty "$redis_announce_bus_port_value"; then
+    current_node_host_info="$redis_announce_host_value:$redis_announce_port_value"
     echo "redis cluster use advertised svc $redis_announce_host_value:$redis_announce_port_value@$redis_announce_bus_port_value to announce"
     {
       echo "cluster-announce-ip $redis_announce_host_value"
