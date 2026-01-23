@@ -249,11 +249,24 @@ get_current_comp_nodes_for_scale_in() {
   local network_mode="default"
   if ! is_empty "$CURRENT_SHARD_ADVERTISED_PORT"; then
     network_mode="advertised_svc"
-    IFS=',' read -ra ADDR <<< "$CURRENT_SHARD_ADVERTISED_PORT"
-    for i in "${ADDR[@]}"; do
-      port=$(echo $i | cut -d':' -f2)
-      advertised_ports[$port]=1
+    IFS=',' read -ra CURRENT_POD_LIST <<< "$CURRENT_SHARD_POD_NAME_LIST"
+    for pod_name in "${CURRENT_POD_LIST[@]}"; do
+      svc_and_port=$(parse_advertised_svc_and_port "$pod_name" "$CURRENT_SHARD_ADVERTISED_PORT" "true")
+      svc_name=${svc_and_port%:*}
+      lb_host=$(extract_lb_host_by_svc_name "${svc_name}")
+      if [ -n "$lb_host" ]; then
+          CURRENT_SHARD_HOST_OR_PORT_LIST+=("${lb_host}:6379")
+      else
+          svc_port="${svc_and_port#*:}"
+          CURRENT_SHARD_HOST_OR_PORT_LIST+=(":${svc_port}")
+      fi
+      echo "pod_name: $pod_name, svc_and_port: $svc_and_port"
     done
+    # check length of CURRENT_SHARD_ANNOUNCE_IP_LIST must equal to CURRENT_POD_LIST
+    if [ ${#CURRENT_SHARD_HOST_OR_PORT_LIST[@]} -ne ${#CURRENT_POD_LIST[@]} ]; then
+      echo "Error: failed to get the pod ip list from KB_POD_LIST"
+      return 1
+    fi
   elif ! is_empty "$REDIS_CLUSTER_HOST_NETWORK_PORT"; then
     network_mode="host_network"
   fi
@@ -280,9 +293,16 @@ get_current_comp_nodes_for_scale_in() {
 
     belong_current_comp=false
     if [[ "$network_mode" == "advertised_svc" ]]; then
-      if [[ ${advertised_ports[$node_port]+_} ]]; then
-        belong_current_comp=true
-      fi
+      for i in "${CURRENT_SHARD_HOST_OR_PORT_LIST[@]}"; do
+        node_announce_info=":$node_port"
+        if ! is_empty "$CURRENT_SHARD_LB_ADVERTISED_PORT"; then
+          node_announce_info="$node_ip:$node_port"
+        fi
+        if [[ "$i" == "$node_announce_info" ]]; then
+          belong_current_comp=true
+          break
+        fi
+      done
     else
       if [[ -n "${curren_comp_ip_map[$node_ip]}" ]]; then
         belong_current_comp=true
