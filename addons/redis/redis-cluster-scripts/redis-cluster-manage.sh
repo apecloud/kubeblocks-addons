@@ -746,7 +746,11 @@ initialize_redis_cluster() {
     sleep_when_ut_mode_false 5
 
     # verify secondary node is already in all primary nodes
-    if ! verify_secondary_in_all_primaries "$secondary_pod_name" "${primary_node_list[@]}"; then
+    secondary_node="$secondary_pod_name"
+    if [ "$network_mode" != "default" ]; then
+      secondary_node="${initialize_redis_cluster_secondary_nodes["$secondary_pod_name"]}"
+    fi
+    if ! verify_secondary_in_all_primaries "$secondary_node" "${primary_node_list[@]}"; then
       echo "Failed to verify secondary node $secondary_pod_name in all primary nodes" >&2
       all_secondaries_ready=false
       continue
@@ -772,6 +776,7 @@ verify_secondary_in_all_primaries() {
     primary_host=$(echo "$primary_node" | cut -d':' -f1)
     primary_port=$(echo "$primary_node" | cut -d':' -f2)
     retry_count=0
+    # TODO:
     while ! check_node_in_cluster "$primary_host" "$primary_port" "$secondary_pod_name" && [ $retry_count -lt 30 ]; do
       sleep_when_ut_mode_false 3
       ((retry_count++))
@@ -790,7 +795,11 @@ check_current_shard_other_nodes_are_joined() {
   local service_port="$2"
   cluster_nodes_info=$(get_cluster_nodes_info "$current_primary_host" "$service_port")
   for secondary_pod_name in "${!scale_out_shard_default_other_nodes[@]}"; do
-    if ! contains "$cluster_nodes_info" "$secondary_pod_name"; then
+    secondary_node="$secondary_pod_name"
+    if [ "$network_mode" != "default" ]; then
+      secondary_node="${scale_out_shard_default_other_nodes["$secondary_pod_name"]}"
+    fi
+    if ! contains "$cluster_nodes_info" "$secondary_node"; then
       echo "Secondary node $secondary_pod_name not found in primary $current_primary_host, need to joined" >&2
       return 1
     fi
@@ -857,9 +866,12 @@ scale_out_redis_cluster_shard() {
   # add the secondary nodes to replicate the primary node
   local scale_out_shard_secondary_node
   for secondary_pod_name in "${!scale_out_shard_default_other_nodes[@]}"; do
-    scale_out_shard_secondary_node="${scale_out_shard_default_other_nodes[$secondary_pod_name]}"
+    scale_out_shard_secondary_node="${secondary_pod_name}"
+    if [ "$network_mode" != "default" ]; then
+      scale_out_shard_secondary_node="${scale_out_shard_default_other_nodes[$secondary_pod_name]}"
+    fi
     echo "primary_node_with_port: $primary_node_with_port, primary_node_fqdn: $primary_node_fqdn, mapping_primary_cluster_id: $mapping_primary_cluster_id"
-    if check_node_in_cluster "$primary_node_fqdn" "$primary_node_with_port" "$secondary_pod_name"; then
+    if check_node_in_cluster "$primary_node_fqdn" "$primary_node_with_port" "$scale_out_shard_secondary_node"; then
       echo "Secondary node $secondary_pod_name already joined the cluster, skip replicating to primary"
       continue
     fi
