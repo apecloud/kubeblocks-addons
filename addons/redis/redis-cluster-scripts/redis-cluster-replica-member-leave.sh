@@ -52,9 +52,8 @@ remove_replica_from_shard_if_need() {
     echo "Cluster nodes info contains only one line or is empty, returning..."
     return 0
   fi
-
   # get the current node role, if the current node is a slave, remove it from the cluster
-  current_node_role=$(echo "$cluster_nodes_info" | grep "$CURRENT_POD_NAME" | awk '{print $3}')
+  current_node_role=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $3}')
   if contains "$current_node_role" "slave"; then
     echo "Current node $CURRENT_POD_NAME is a slave, removing it from the cluster..."
     current_node_cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')

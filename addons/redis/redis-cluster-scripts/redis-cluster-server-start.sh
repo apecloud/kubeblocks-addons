@@ -204,7 +204,7 @@ get_current_comp_nodes_for_scale_out_replica() {
     local node_role
     node_role=$(echo "$line" | awk '{print $3}')
 
-    printf "%s %s %s %s %s" "$node_announce_ip" "$node_fqdn" "$node_port" "$node_bus_port" "$node_role"
+    printf "%s %s %s %s %s" "$node_announce_ip" "$node_port" "$node_bus_port" "$node_role" "$node_fqdn"
   }
 
   build_node_entry() {
@@ -233,10 +233,10 @@ get_current_comp_nodes_for_scale_out_replica() {
   # categorize node into appropriate array
   categorize_node() {
     local node_entry="$1"
-    local node_fqdn="$2"
-    local node_role="$3"
+    local node_role="$2"
+    local belong_current_comp="$3"
 
-    if contains "$node_fqdn" "$CURRENT_SHARD_COMPONENT_NAME"; then
+    if [[ "$belong_current_comp" == "true" ]]; then
       if contains "$node_role" "master"; then
         if contains "$node_role" "fail"; then
           current_comp_primary_fail_node+=("$node_entry")
@@ -258,20 +258,62 @@ get_current_comp_nodes_for_scale_out_replica() {
       fi
     fi
   }
+  # prepare CURRENT_SHARD_SVC_LIST for advertised_svc mode
+  CURRENT_SHARD_HOST_OR_PORT_LIST=()
+  if [ "$network_mode" == "advertised_svc" ]; then
+    IFS=',' read -ra CURRENT_POD_LIST <<< "$CURRENT_SHARD_POD_NAME_LIST"
+    for pod_name in "${CURRENT_POD_LIST[@]}"; do
+      svc_and_port=$(parse_advertised_svc_and_port "$pod_name" "$CURRENT_SHARD_ADVERTISED_PORT" "true")
+      svc_name=${svc_and_port%:*}
+      svc_port="${svc_and_port#*:}"
+      lb_host=$(extract_lb_host_by_svc_name "${svc_name}")
+      if [ -n "$lb_host" ]; then
+          CURRENT_SHARD_HOST_OR_PORT_LIST+=("${lb_host}:${svc_port}")
+      else
+          CURRENT_SHARD_HOST_OR_PORT_LIST+=(":${svc_port}")
+      fi
+      echo "pod_name: $pod_name, svc_and_port: $svc_and_port"
+    done
+    # check length of CURRENT_SHARD_ANNOUNCE_IP_LIST must equal to CURRENT_POD_LIST
+    if [ ${#CURRENT_SHARD_HOST_OR_PORT_LIST[@]} -ne ${#CURRENT_POD_LIST[@]} ]; then
+      echo "Error: failed to get the pod ip list from KB_POD_LIST"
+      return 1
+    fi
+  fi
 
   # process each node
   while read -r line; do
     local node_info
     node_info=$(parse_node_line_info "$line")
     local node_announce_ip node_fqdn node_port node_bus_port node_role
-    read -r node_announce_ip node_fqdn node_port node_bus_port node_role <<< "$node_info"
+    read -r node_announce_ip node_port node_bus_port node_role node_fqdn <<< "$node_info"
+    # determine if the node belongs to the current component
+    belong_current_comp=false
+    if [ "$network_mode" == "advertised_svc" ]; then
+      for i in "${CURRENT_SHARD_HOST_OR_PORT_LIST[@]}"; do
+        node_announce_info=":$node_port"
+        if ! is_empty "$CURRENT_SHARD_LB_ADVERTISED_PORT"; then
+          node_announce_info="$node_announce_ip:$node_port"
+        fi
+        if [[ "$i" == "$node_announce_info" ]]; then
+          belong_current_comp=true
+          break
+        fi
+      done
+    elif [ "$network_mode" == "host_network" ]; then
+      if contains "$node_port" "$SERVICE_PORT"; then
+        belong_current_comp=true
+      fi
+    elif contains "$node_fqdn" "$CURRENT_SHARD_COMPONENT_NAME"; then
+      belong_current_comp=true
+    fi
 
     # build node entry based on network mode
     local node_entry
     node_entry=$(build_node_entry "$network_mode" "$node_announce_ip" "$node_fqdn" "$node_port" "$node_bus_port")
 
     # categorize nodes
-    categorize_node "$node_entry" "$node_fqdn" "$node_role"
+    categorize_node "$node_entry" "$node_role" "$belong_current_comp"
   done <<< "$cluster_nodes_info"
 
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"
@@ -373,14 +415,14 @@ scale_redis_cluster_replica() {
   if [ "$network_mode" == "default" ]; then
      primary_node_endpoint_for_meet="$primary_node_fqdn"
   fi
-  if contains "$primary_node_fqdn" "$CURRENT_POD_NAME"; then
+  if contains "$primary_node_fqdn" "$CURRENT_POD_NAME" || contains "$primary_node_info" "$current_node_host_info"; then
      echo "Current pod $CURRENT_POD_NAME is primary node, check and correct other primary nodes..."
      check_and_meet_other_primary_nodes "$primary_node_endpoint_for_meet" "$primary_node_port"
      echo "Node $CURRENT_POD_NAME is already in the cluster, skipping scale out replica..."
      exit 0
   fi
   # if the current pod is not a rebuild-instance and is already in the cluster, skip scale out replica
-  if ! is_rebuild_instance && check_node_in_cluster_with_retry "$primary_node_endpoint_for_meet" "$primary_node_port" "$CURRENT_POD_NAME"; then
+  if ! is_rebuild_instance && check_node_in_cluster_with_retry "$primary_node_endpoint_for_meet" "$primary_node_port" "$current_node_host_info"; then
     # if current pod is primary node, check the others primary info, if the others primary node info is expired, send cluster meet command again
     echo "Current pod $CURRENT_POD_NAME is a secondary node, check and meet current primary node..."
     check_and_meet_current_primary_node "$primary_node_endpoint_for_meet" "$primary_node_port" "$primary_node_bus_port"
@@ -401,7 +443,7 @@ scale_redis_cluster_replica() {
   current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$CURRENT_POD_NAME")
   if is_rebuild_instance; then
     echo "Current instance is a rebuild-instance, forget node id in the cluster firstly."
-    node_id=$(get_cluster_id_with_retry "$primary_node_endpoint_for_meet" "$primary_node_port" "$current_pod_fqdn")
+    node_id=$(get_cluster_id_with_retry "$primary_node_endpoint_for_meet" "$primary_node_port" "$current_node_host_info")
     if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
       redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
     else
@@ -449,7 +491,7 @@ scale_redis_cluster_replica() {
 
     # meet current component primary node if not met yet
     if ! $current_primary_met; then
-      if scale_out_replica_send_meet "$primary_node_endpoint_for_meet" "$primary_node_port" "$primary_node_bus_port" "$CURRENT_POD_NAME"; then
+      if scale_out_replica_send_meet "$primary_node_endpoint_for_meet" "$primary_node_port" "$primary_node_bus_port" "$current_node_host_info"; then
         echo "Successfully meet the primary node $primary_node_endpoint_with_port in scale_redis_cluster_replica"
         current_primary_met=true
       else
@@ -470,7 +512,7 @@ scale_redis_cluster_replica() {
         if [ "$network_mode" == "default" ]; then
           node_endpoint_for_meet="$node_fqdn"
         fi
-        if scale_out_replica_send_meet "$node_endpoint_for_meet" "$node_port" "$node_bus_port" "$CURRENT_POD_NAME"; then
+        if scale_out_replica_send_meet "$node_endpoint_for_meet" "$node_port" "$node_bus_port" "$current_node_host_info"; then
           echo "Successfully meet the primary node $node_endpoint_with_port in scale_redis_cluster_replica"
           other_primary_met["$node_info"]=true
         else
@@ -546,6 +588,7 @@ rebuild_redis_acl_file() {
 }
 
 build_announce_ip_and_port() {
+  # used to determine the identifier of the current pod from cluster nodes
   # build announce ip and port according to whether the advertised svc is enabled
   if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value"; then
     echo "redis use advertised svc $redis_announce_host_value:$redis_announce_port_value to announce"
@@ -573,14 +616,16 @@ build_cluster_announce_info() {
     echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting."
     exit 1
   fi
+  current_node_host_info="$current_pod_fqdn"
   # build announce ip and port according to whether the advertised svc is enabled
   if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value" && ! is_empty "$redis_announce_bus_port_value"; then
+    current_node_host_info="$redis_announce_host_value:$redis_announce_port_value"
     echo "redis cluster use advertised svc $redis_announce_host_value:$redis_announce_port_value@$redis_announce_bus_port_value to announce"
     {
       echo "cluster-announce-ip $redis_announce_host_value"
       echo "cluster-announce-port $redis_announce_port_value"
       echo "cluster-announce-bus-port $redis_announce_bus_port_value"
-      echo "cluster-announce-hostname $current_pod_fqdn"
+     # echo "cluster-announce-hostname $current_pod_fqdn"
       echo "cluster-preferred-endpoint-type ip"
     } >> $redis_real_conf
   elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then

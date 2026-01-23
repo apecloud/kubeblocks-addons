@@ -149,12 +149,12 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       redis_announce_port_value="31000"
       redis_announce_bus_port_value="31000"
       export CURRENT_POD_NAME="redis-redis-0"
+      export network_mode="advertised_svc"
       export CURRENT_SHARD_POD_FQDN_LIST="redis-redis-0.redis-redis.default.svc.cluster.local,redis-redis-1.redis-redis.default.svc.cluster.local"
       When call build_cluster_announce_info
       The contents of file "$redis_real_conf" should include "cluster-announce-port $redis_announce_port_value"
       The contents of file "$redis_real_conf" should include "cluster-announce-ip $redis_announce_host_value"
       The contents of file "$redis_real_conf" should include "cluster-announce-bus-port $redis_announce_bus_port_value"
-      The contents of file "$redis_real_conf" should include "cluster-announce-hostname redis-redis-0.redis-redis.default.svc.cluster.local"
       The contents of file "$redis_real_conf" should include "cluster-preferred-endpoint-type ip"
       The stdout should include "redis cluster use advertised svc $redis_announce_host_value:$redis_announce_port_value@$redis_announce_bus_port_value to announce"
 
@@ -166,6 +166,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       unset redis_announce_bus_port_value
       export CURRENT_POD_IP="172.0.0.5"
       export CURRENT_POD_NAME="redis-redis-0"
+      export network_mode="advertised_svc"
       export CURRENT_SHARD_POD_FQDN_LIST="redis-redis-0.redis-redis.default.svc.cluster.local,redis-redis-1.redis-redis.default.svc.cluster.local"
       When call build_cluster_announce_info
       The contents of file "$redis_real_conf" should include "cluster-announce-ip $CURRENT_POD_IP"
@@ -297,7 +298,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
 
     Context "when using advertised ports"
       get_cluster_nodes_info() {
-        cluster_nodes_info="4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:31000@32000,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287"$'\n'"7381c6dca033cd1b321922508553fab869a29e 10.42.0.228:31001@32001,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc slave 4958e6dca033cd1b321922508553fab869a29d 0 1711958289570 4 connected"$'\n'"8492e6dca033cd1b321922508553fab869a29f 10.42.0.229:32222@32223,redis-shard-abc-0.redis-shard-abc-headless.default.svc master - 0 1711958289570 5 connected 1365-2729 6827-8191 12288-13652"
+        cluster_nodes_info="4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:31000@32000, master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287"$'\n'"7381c6dca033cd1b321922508553fab869a29e 10.42.0.228:31001@32001, slave 4958e6dca033cd1b321922508553fab869a29d 0 1711958289570 4 connected"$'\n'"8492e6dca033cd1b321922508553fab869a29f 10.42.0.229:32222@32223, master - 0 1711958289570 5 connected 1365-2729 6827-8191 12288-13652"
         echo "$cluster_nodes_info"
       }
 
@@ -305,6 +306,8 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         export CURRENT_SHARD_ADVERTISED_PORT="redis-shard-sxj-0:31000,redis-shard-sxj-1:31001"
         export CURRENT_SHARD_ADVERTISED_BUS_PORT="redis-shard-sxj-0:32000,redis-shard-sxj-1:32001"
         export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export network_mode="advertised_svc"
         export current_comp_primary_node=()
         export current_comp_other_nodes=()
         export other_comp_primary_nodes=()
@@ -321,9 +324,9 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       It "parses current component nodes correctly when using advertised ports"
         When call get_current_comp_nodes_for_scale_out_replica "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc" "6379"
         The status should be success
-        The variable current_comp_primary_node should equal "10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#10.42.0.227:31000@32000"
-        The variable current_comp_other_nodes should equal "10.42.0.228#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc#10.42.0.228:31001@32001"
-        The variable other_comp_primary_nodes should equal "10.42.0.229#redis-shard-abc-0.redis-shard-abc-headless.default.svc#10.42.0.229:32222@32223"
+        The variable current_comp_primary_node should equal "10.42.0.227##10.42.0.227:31000@32000"
+        The variable current_comp_other_nodes should equal "10.42.0.228##10.42.0.228:31001@32001"
+        The variable other_comp_primary_nodes should equal "10.42.0.229##10.42.0.229:32222@32223"
         The stdout should include "other_comp_other_nodes: "
       End
     End
@@ -570,7 +573,9 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
         export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
         export CURRENT_POD_NAME="redis-shard-sxj-1"
+        export network_mode="default"
         export service_port="6379"
+        export current_node_host_info="redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
         ut_mode="true"
       }
       Before "setup"
@@ -624,7 +629,9 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
         export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
         export CURRENT_POD_NAME="redis-shard-sxj-1"
+        export network_mode="default"
         export service_port="6379"
+        export current_node_host_info="redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
       }
       Before "setup"
 
@@ -682,7 +689,9 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
         export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
         export CURRENT_POD_NAME="redis-shard-sxj-1"
+        export network_mode="default"
         export service_port="6379"
+        export current_node_host_info="redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
       }
       Before "setup"
 
