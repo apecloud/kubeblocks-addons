@@ -31,6 +31,7 @@ declare -gA initialize_pod_name_to_advertise_host_port_map
 # declare the global variables for scale out redis cluster shard
 declare -gA scale_out_shard_default_primary_node
 declare -gA scale_out_shard_default_other_nodes
+network_mode="default"
 
 init_environment(){
   if [[ -z "${CURRENT_SHARD_ADVERTISED_PORT}" ]]; then
@@ -44,6 +45,12 @@ init_environment(){
   fi
   if [[ -z "${ALL_SHARDS_ADVERTISED_BUS_PORT}" ]]; then
     ALL_SHARDS_ADVERTISED_BUS_PORT="${ALL_SHARDS_LB_ADVERTISED_BUS_PORT}"
+  fi
+  # determine cluster network mode
+  if [[ -n "$ALL_SHARDS_ADVERTISED_PORT" ]]; then
+    network_mode="advertised_svc"
+  elif [[ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ]]; then
+    network_mode="host_network"
   fi
   KB_CLUSTER_POD_NAME_LIST=$(get_all_shards_pods)
   KB_CLUSTER_POD_FQDN_LIST=$(get_all_shards_pod_fqdns)
@@ -185,14 +192,13 @@ get_current_comp_nodes_for_scale_in() {
     local node_role
     node_role=$(echo "$line" | awk '{print $3}')
 
-    echo "$node_ip $node_port $node_fqdn $node_role"
+    echo "$node_ip $node_port $node_role $node_fqdn"
   }
 
   get_node_address_by_network_mode() {
-    local network_mode="$1"
-    local node_ip="$2"
-    local node_port="$3"
-    local node_fqdn="$4"
+    local node_ip="$1"
+    local node_port="$2"
+    local node_fqdn="$3"
 
     case "$network_mode" in
       "advertised_svc")
@@ -210,10 +216,10 @@ get_current_comp_nodes_for_scale_in() {
 
   categorize_node() {
     local node_address="$1"
-    local node_fqdn="$2"
-    local node_role="$3"
+    local node_role="$2"
+    local belong_current_comp="$3"
 
-    if [[ "$node_fqdn" =~ "$CURRENT_SHARD_COMPONENT_NAME"* ]]; then
+    if [[ "$belong_current_comp" == "true" ]]; then
       if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
         current_comp_primary_node+=("$node_address")
       else
@@ -240,14 +246,28 @@ get_current_comp_nodes_for_scale_in() {
     return
   fi
 
-  # determine network mode
-  local network_mode="default"
-  if ! is_empty "$CURRENT_SHARD_ADVERTISED_PORT"; then
-    network_mode="advertised_svc"
-  elif ! is_empty "$REDIS_CLUSTER_HOST_NETWORK_PORT"; then
-    network_mode="host_network"
+  # prepare CURRENT_SHARD_HOST_OR_PORT_LIST for advertised_svc mode
+  CURRENT_SHARD_HOST_OR_PORT_LIST=()
+  if [ "$network_mode" == "advertised_svc" ]; then
+    IFS=',' read -ra CURRENT_POD_LIST <<< "$CURRENT_SHARD_POD_NAME_LIST"
+    for pod_name in "${CURRENT_POD_LIST[@]}"; do
+      svc_and_port=$(parse_advertised_svc_and_port "$pod_name" "$CURRENT_SHARD_ADVERTISED_PORT" "true")
+      svc_name=${svc_and_port%:*}
+      svc_port="${svc_and_port#*:}"
+      lb_host=$(extract_lb_host_by_svc_name "${svc_name}")
+      if [ -n "$lb_host" ]; then
+          CURRENT_SHARD_HOST_OR_PORT_LIST+=("${lb_host}:${svc_port}")
+      else
+          CURRENT_SHARD_HOST_OR_PORT_LIST+=(":${svc_port}")
+      fi
+      echo "pod_name: $pod_name, svc_and_port: $svc_and_port"
+    done
+    # check length of CURRENT_SHARD_ANNOUNCE_IP_LIST must equal to CURRENT_POD_LIST
+    if [ ${#CURRENT_SHARD_HOST_OR_PORT_LIST[@]} -ne ${#CURRENT_POD_LIST[@]} ]; then
+      echo "Error: failed to get the pod ip list from KB_POD_LIST"
+      return 1
+    fi
   fi
-
   # the output of line is like:
   # 1. using the pod fqdn as the nodeAddr
   # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
@@ -258,11 +278,30 @@ get_current_comp_nodes_for_scale_in() {
   while read -r line; do
     local node_info
     node_info=$(parse_node_line_info "$line")
-    read -r node_ip node_port node_fqdn node_role <<< "$node_info"
+    read -r node_ip node_port node_role node_fqdn <<< "$node_info"
 
+    belong_current_comp=false
+    if [ "$network_mode" == "advertised_svc" ]; then
+      for i in "${CURRENT_SHARD_HOST_OR_PORT_LIST[@]}"; do
+        node_announce_info=":$node_port"
+        if ! is_empty "$CURRENT_SHARD_LB_ADVERTISED_PORT"; then
+          node_announce_info="$node_ip:$node_port"
+        fi
+        if [[ "$i" == "$node_announce_info" ]]; then
+          belong_current_comp=true
+          break
+        fi
+      done
+    elif [ "$network_mode" == "host_network" ]; then
+      if contains "$node_port" "$SERVICE_PORT"; then
+        belong_current_comp=true
+      fi
+    elif contains "$node_fqdn" "$CURRENT_SHARD_COMPONENT_NAME"; then
+      belong_current_comp=true
+    fi
     local node_address
-    node_address=$(get_node_address_by_network_mode "$network_mode" "$node_ip" "$node_port" "$node_fqdn")
-    categorize_node "$node_address" "$node_fqdn" "$node_role"
+    node_address=$(get_node_address_by_network_mode "$node_ip" "$node_port" "$node_fqdn")
+    categorize_node "$node_address" "$node_role" "$belong_current_comp"
   done <<< "$cluster_nodes_info"
 
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"
@@ -359,9 +398,8 @@ init_current_comp_default_nodes_for_scale_out() {
   }
 
   process_pod_by_network_mode() {
-    local network_mode="$1"
-    local pod_fqdn="$2"
-    local pod_name_ordinal="$3"
+    local pod_fqdn="$1"
+    local pod_name_ordinal="$2"
 
     case "$network_mode" in
       "advertised_svc")
@@ -386,19 +424,11 @@ init_current_comp_default_nodes_for_scale_out() {
     return 1
   fi
 
-  # determine network mode
-  local network_mode="default"
-  if ! is_empty "$CURRENT_SHARD_ADVERTISED_PORT"; then
-    network_mode="advertised_svc"
-  elif ! is_empty "$REDIS_CLUSTER_HOST_NETWORK_PORT"; then
-    network_mode="host_network"
-  fi
-
   for pod_fqdn in $(echo "$CURRENT_SHARD_POD_FQDN_LIST" | tr ',' ' '); do
     local pod_name_ordinal
     pod_name=${pod_fqdn%%.*}
     pod_name_ordinal=$(extract_obj_ordinal "$pod_name")
-    process_pod_by_network_mode "$network_mode" "$pod_fqdn" "$pod_name_ordinal" || return 1
+    process_pod_by_network_mode "$pod_fqdn" "$pod_name_ordinal" || return 1
   done
   return 0
 }
@@ -676,10 +706,13 @@ initialize_redis_cluster() {
     echo "Redis cluster initialized secondary node $secondary_pod_name successfully"
     # waiting for all nodes sync the information
     sleep_when_ut_mode_false 5
-
+    secondary_node="$secondary_pod_name"
+    if [ "$network_mode" != "default" ]; then
+      secondary_node="${initialize_redis_cluster_secondary_nodes["$secondary_pod_name"]}"
+    fi
     # verify secondary node is already in all primary nodes
-    if ! verify_secondary_in_all_primaries "$secondary_pod_name" "${primary_node_list[@]}"; then
-      echo "Failed to verify secondary node $secondary_pod_name in all primary nodes" >&2
+    if ! verify_secondary_in_all_primaries "$secondary_node" "${primary_node_list[@]}"; then
+      echo "Failed to verify secondary node $secondary_node in all primary nodes" >&2
       all_secondaries_ready=false
       continue
     fi
@@ -695,7 +728,7 @@ initialize_redis_cluster() {
 }
 
 verify_secondary_in_all_primaries() {
-  local secondary_pod_name="$1"
+  local secondary_node="$1"
   local primary_nodes=("$@")
   # Skip the first argument
   shift
@@ -704,13 +737,13 @@ verify_secondary_in_all_primaries() {
     primary_host=$(echo "$primary_node" | cut -d':' -f1)
     primary_port=$(echo "$primary_node" | cut -d':' -f2)
     retry_count=0
-    while ! check_node_in_cluster "$primary_host" "$primary_port" "$secondary_pod_name" && [ $retry_count -lt 30 ]; do
+    while ! check_node_in_cluster "$primary_host" "$primary_port" "$secondary_node" && [ $retry_count -lt 30 ]; do
       sleep_when_ut_mode_false 3
       ((retry_count++))
     done
     # shellcheck disable=SC2086
     if [ $retry_count -eq 30 ]; then
-      echo "Secondary node $secondary_pod_name not found in primary $primary_node after retry" >&2
+      echo "Secondary node $secondary_node not found in primary $primary_node after retry" >&2
       return 1
     fi
   done
@@ -722,8 +755,12 @@ check_current_shard_other_nodes_are_joined() {
   local service_port="$2"
   cluster_nodes_info=$(get_cluster_nodes_info "$current_primary_host" "$service_port")
   for secondary_pod_name in "${!scale_out_shard_default_other_nodes[@]}"; do
-    if ! contains "$cluster_nodes_info" "$secondary_pod_name"; then
-      echo "Secondary node $secondary_pod_name not found in primary $current_primary_host, need to joined" >&2
+    secondary_node="$secondary_pod_name"
+    if [ "$network_mode" != "default" ]; then
+      secondary_node="${scale_out_shard_default_other_nodes["$secondary_pod_name"]}"
+    fi
+    if ! contains "$cluster_nodes_info" "$secondary_node"; then
+      echo "Secondary node $secondary_node not found in primary $current_primary_host, need to joined" >&2
       return 1
     fi
   done
@@ -788,14 +825,19 @@ scale_out_redis_cluster_shard() {
 
   # add the secondary nodes to replicate the primary node
   local scale_out_shard_secondary_node
+  local scale_out_shard_secondary_node_with_port
   for secondary_pod_name in "${!scale_out_shard_default_other_nodes[@]}"; do
-    scale_out_shard_secondary_node="${scale_out_shard_default_other_nodes[$secondary_pod_name]}"
+    scale_out_shard_secondary_node_with_port="${scale_out_shard_default_other_nodes[$secondary_pod_name]}"
+    scale_out_shard_secondary_node="${secondary_pod_name}"
+    if [ "$network_mode" != "default" ]; then
+      scale_out_shard_secondary_node=$scale_out_shard_secondary_node_with_port
+    fi
     echo "primary_node_with_port: $primary_node_with_port, primary_node_fqdn: $primary_node_fqdn, mapping_primary_cluster_id: $mapping_primary_cluster_id"
-    if check_node_in_cluster "$primary_node_fqdn" "$primary_node_with_port" "$secondary_pod_name"; then
+    if check_node_in_cluster "$primary_node_fqdn" "$primary_node_with_port" "$scale_out_shard_secondary_node"; then
       echo "Secondary node $secondary_pod_name already joined the cluster, skip replicating to primary"
       continue
     fi
-    if secondary_replicated_to_primary "$scale_out_shard_secondary_node" "$primary_node_with_port" "$mapping_primary_cluster_id"; then
+    if secondary_replicated_to_primary "$scale_out_shard_secondary_node_with_port" "$primary_node_with_port" "$mapping_primary_cluster_id"; then
       echo "Redis cluster scale out shard secondary node $secondary_pod_name successfully"
     else
       echo "Failed to scale out shard secondary node $secondary_pod_name" >&2
