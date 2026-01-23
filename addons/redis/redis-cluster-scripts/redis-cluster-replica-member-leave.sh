@@ -52,7 +52,6 @@ remove_replica_from_shard_if_need() {
     echo "Cluster nodes info contains only one line or is empty, returning..."
     return 0
   fi
-  # TODO: member leave for redis6/7
   # get the current node role, if the current node is a slave, remove it from the cluster
   current_node_role=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $3}')
   if contains "$current_node_role" "slave"; then

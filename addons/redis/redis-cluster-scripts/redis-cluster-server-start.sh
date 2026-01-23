@@ -491,7 +491,7 @@ scale_redis_cluster_replica() {
 
     # meet current component primary node if not met yet
     if ! $current_primary_met; then
-      if scale_out_replica_send_meet "$primary_node_endpoint_for_meet" "$primary_node_port" "$primary_node_bus_port" "$CURRENT_POD_NAME"; then
+      if scale_out_replica_send_meet "$primary_node_endpoint_for_meet" "$primary_node_port" "$primary_node_bus_port" "$current_node_host_info"; then
         echo "Successfully meet the primary node $primary_node_endpoint_with_port in scale_redis_cluster_replica"
         current_primary_met=true
       else
@@ -512,7 +512,7 @@ scale_redis_cluster_replica() {
         if [ "$network_mode" == "default" ]; then
           node_endpoint_for_meet="$node_fqdn"
         fi
-        if scale_out_replica_send_meet "$node_endpoint_for_meet" "$node_port" "$node_bus_port" "$CURRENT_POD_NAME"; then
+        if scale_out_replica_send_meet "$node_endpoint_for_meet" "$node_port" "$node_bus_port" "$current_node_host_info"; then
           echo "Successfully meet the primary node $node_endpoint_with_port in scale_redis_cluster_replica"
           other_primary_met["$node_info"]=true
         else

@@ -767,7 +767,7 @@ initialize_redis_cluster() {
 }
 
 verify_secondary_in_all_primaries() {
-  local secondary_pod_name="$1"
+  local secondary_node="$1"
   local primary_nodes=("$@")
   # Skip the first argument
   shift
@@ -776,14 +776,13 @@ verify_secondary_in_all_primaries() {
     primary_host=$(echo "$primary_node" | cut -d':' -f1)
     primary_port=$(echo "$primary_node" | cut -d':' -f2)
     retry_count=0
-    # TODO:
-    while ! check_node_in_cluster "$primary_host" "$primary_port" "$secondary_pod_name" && [ $retry_count -lt 30 ]; do
+    while ! check_node_in_cluster "$primary_host" "$primary_port" "$secondary_node" && [ $retry_count -lt 30 ]; do
       sleep_when_ut_mode_false 3
       ((retry_count++))
     done
     # shellcheck disable=SC2086
     if [ $retry_count -eq 30 ]; then
-      echo "Secondary node $secondary_pod_name not found in primary $primary_node after retry" >&2
+      echo "Secondary node $secondary_node not found in primary $primary_node after retry" >&2
       return 1
     fi
   done
