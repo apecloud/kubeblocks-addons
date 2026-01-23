@@ -229,7 +229,7 @@ get_current_comp_nodes_for_scale_in() {
     local node_role
     node_role=$(echo "$line" | awk '{print $3}')
 
-    echo "$node_ip $node_port $node_fqdn $node_role"
+    echo "$node_ip $node_port $node_role $node_fqdn"
   }
 
   get_node_address_by_network_mode() {
@@ -253,10 +253,10 @@ get_current_comp_nodes_for_scale_in() {
 
   categorize_node() {
     local node_address="$1"
-    local node_fqdn="$2"
-    local node_role="$3"
+    local node_role="$2"
+    local belong_current_comp="$3"
 
-    if [[ "$node_fqdn" =~ "$CURRENT_SHARD_COMPONENT_NAME"* ]]; then
+    if [[ "$belong_current_comp" == "true" ]]; then
       if [[ "$node_role" =~ "master" && ! "$node_role" =~ "fail" ]]; then
         current_comp_primary_node+=("$node_address")
       else
@@ -283,6 +283,29 @@ get_current_comp_nodes_for_scale_in() {
     return
   fi
 
+  # prepare CURRENT_SHARD_SVC_LIST for advertised_svc mode
+  CURRENT_SHARD_HOST_OR_PORT_LIST=()
+  if [ "$network_mode" == "advertised_svc" ]; then
+    IFS=',' read -ra CURRENT_POD_LIST <<< "$CURRENT_SHARD_POD_NAME_LIST"
+    for pod_name in "${CURRENT_POD_LIST[@]}"; do
+      svc_and_port=$(parse_advertised_svc_and_port "$pod_name" "$CURRENT_SHARD_ADVERTISED_PORT" "true")
+      svc_name=${svc_and_port%:*}
+      svc_port="${svc_and_port#*:}"
+      lb_host=$(extract_lb_host_by_svc_name "${svc_name}")
+      if [ -n "$lb_host" ]; then
+          CURRENT_SHARD_HOST_OR_PORT_LIST+=("${lb_host}:${svc_port}")
+      else
+          CURRENT_SHARD_HOST_OR_PORT_LIST+=(":${svc_port}")
+      fi
+      echo "pod_name: $pod_name, svc_and_port: $svc_and_port"
+    done
+    # check length of CURRENT_SHARD_ANNOUNCE_IP_LIST must equal to CURRENT_POD_LIST
+    if [ ${#CURRENT_SHARD_HOST_OR_PORT_LIST[@]} -ne ${#CURRENT_POD_LIST[@]} ]; then
+      echo "Error: failed to get the pod ip list from KB_POD_LIST"
+      return 1
+    fi
+  fi
+
   # the output of line is like:
   # 1. using the pod fqdn as the nodeAddr
   # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
@@ -293,11 +316,31 @@ get_current_comp_nodes_for_scale_in() {
   while read -r line; do
     local node_info
     node_info=$(parse_node_line_info "$line")
-    read -r node_ip node_port node_fqdn node_role <<< "$node_info"
+    read -r node_ip node_port node_role node_fqdn <<< "$node_info"
+
+    belong_current_comp=false
+    if [ "$network_mode" == "advertised_svc" ]; then
+      for i in "${CURRENT_SHARD_HOST_OR_PORT_LIST[@]}"; do
+        node_announce_info=":$node_port"
+        if ! is_empty "$CURRENT_SHARD_LB_ADVERTISED_PORT"; then
+          node_announce_info="$node_ip:$node_port"
+        fi
+        if [[ "$i" == "$node_announce_info" ]]; then
+          belong_current_comp=true
+          break
+        fi
+      done
+    elif [ "$network_mode" == "host_network" ]; then
+      if contains "$node_port" "$SERVICE_PORT"; then
+        belong_current_comp=true
+      fi
+    elif contains "$node_fqdn" "$CURRENT_SHARD_COMPONENT_NAME"; then
+      belong_current_comp=true
+    fi
 
     local node_address
     node_address=$(get_node_address_by_network_mode "$node_ip" "$node_port" "$node_fqdn")
-    categorize_node "$node_address" "$node_fqdn" "$node_role"
+    categorize_node "$node_address" "$node_role" "$belong_current_comp"
   done <<< "$cluster_nodes_info"
 
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"
