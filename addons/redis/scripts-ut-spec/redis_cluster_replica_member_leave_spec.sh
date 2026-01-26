@@ -118,7 +118,8 @@ Describe "Redis Cluster Replica Member Leave Bash Script Tests"
 
       setup() {
         export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local"
-        export CURRENT_POD_NAME="redis-shard-98x-1"
+        export KB_LEAVE_MEMBER_POD_NAME="redis-shard-98x-1"
+        export KB_LEAVE_MEMBER_POD_FQDN="redis-shard-98x-1.namespace.svc.cluster.local"
       }
       Before "setup"
 
@@ -148,7 +149,8 @@ Describe "Redis Cluster Replica Member Leave Bash Script Tests"
 
       setup() {
         export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local"
-        export CURRENT_POD_NAME="redis-shard-98x-1"
+        export KB_LEAVE_MEMBER_POD_NAME="redis-shard-98x-1"
+        export KB_LEAVE_MEMBER_POD_FQDN="redis-shard-98x-1.namespace.svc.cluster.local"
       }
       Before "setup"
 
@@ -182,7 +184,8 @@ Describe "Redis Cluster Replica Member Leave Bash Script Tests"
 
       setup() {
         export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local"
-        export CURRENT_POD_NAME="redis-shard-98x-1"
+        export KB_LEAVE_MEMBER_POD_NAME="redis-shard-98x-1"
+        export KB_LEAVE_MEMBER_POD_FQDN="redis-shard-98x-1.namespace.svc.cluster.local"
       }
       Before "setup"
 
@@ -218,7 +221,8 @@ Describe "Redis Cluster Replica Member Leave Bash Script Tests"
 
       setup() {
         export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local"
-        export CURRENT_POD_NAME="redis-shard-98x-1"
+        export KB_LEAVE_MEMBER_POD_NAME="redis-shard-98x-1"
+        export KB_LEAVE_MEMBER_POD_FQDN="redis-shard-98x-1.namespace.svc.cluster.local"
       }
       Before "setup"
 
@@ -245,7 +249,8 @@ Describe "Redis Cluster Replica Member Leave Bash Script Tests"
 
       setup() {
         export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local"
-        export CURRENT_POD_NAME="redis-shard-98x-0"
+        export KB_LEAVE_MEMBER_POD_NAME="redis-shard-98x-0"
+        export KB_LEAVE_MEMBER_POD_FQDN="redis-shard-98x-0.namespace.svc.cluster.local"
       }
       Before "setup"
 

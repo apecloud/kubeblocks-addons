@@ -35,11 +35,8 @@ load_redis_cluster_common_utils() {
 # remove_replica_from_shard_if_need removes the current pod from the cluster if it is a replica
 # TODO: remove it from preStop hook and it should be implemented in memberLeave lifecycleAction in KubeBlocks
 remove_replica_from_shard_if_need() {
-  # initialize the current pod info
-  current_pod_fqdn="$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN"
-
   # get the cluster nodes info
-  cluster_nodes_info=$(get_cluster_nodes_info_with_retry "$current_pod_fqdn" "$service_port")
+  cluster_nodes_info=$(get_cluster_nodes_info_with_retry "$KB_LEAVE_MEMBER_POD_FQDN" "$service_port")
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to get cluster nodes info in remove_replica_from_shard_if_need" >&2
@@ -56,7 +53,7 @@ remove_replica_from_shard_if_need() {
   # get the current node role, if the current node is a slave, remove it from the cluster
   current_node_role=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $3}')
   if contains "$current_node_role" "slave"; then
-    echo "Current node $CURRENT_POD_NAME is a slave, removing it from the cluster..."
+    echo "Current node $KB_LEAVE_MEMBER_POD_NAME is a slave, removing it from the cluster..."
     current_node_cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
     current_node_ip_and_port="127.0.0.1:$service_port"
     do_forget_node=false
@@ -72,7 +69,7 @@ remove_replica_from_shard_if_need() {
     fi
 
     # check if the current node is removed from the cluster
-    cluster_nodes_info=$(get_cluster_nodes_info "$current_pod_fqdn" "$service_port")
+    cluster_nodes_info=$(get_cluster_nodes_info "$KB_LEAVE_MEMBER_POD_FQDN" "$service_port")
     status=$?
     if [ $status -ne 0 ]; then
       echo "Failed to get cluster nodes info in remove_replica_from_shard_if_need" >&2
@@ -87,7 +84,7 @@ remove_replica_from_shard_if_need() {
       return 1
     fi
   else
-    echo "Current node $CURRENT_POD_NAME is a master, no need to remove it from the cluster."
+    echo "Current node $KB_LEAVE_MEMBER_POD_NAME is a master, no need to remove it from the cluster."
   fi
   return 0
 }
@@ -107,4 +104,6 @@ else
   echo "failed to execute acl save command." >&2
   return 1
 fi
+# Forget fail node when cluster is ok
+forget_fail_node_when_cluster_is_ok "127.0.0.1" "$service_port"
 remove_replica_from_shard_if_need

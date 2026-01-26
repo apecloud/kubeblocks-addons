@@ -390,6 +390,9 @@ scale_redis_cluster_replica() {
     exit 0
   fi
 
+  # Forget fail node when cluster is ok
+  forget_fail_node_when_cluster_is_ok "127.0.0.1" "$SERVICE_PORT"
+
   # add the current node as a replica of the primary node
   primary_node_cluster_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port")
   status=$?
