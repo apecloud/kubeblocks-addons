@@ -26,9 +26,12 @@ function do_acl_command() {
         fi
         if [ -n "$ACL_COMMAND" ]; then
             echo "DO ACL COMMAND FOR HOST: $host"
-            $cmd $ACL_COMMAND
-            if [ $? -ne 0 ]; then
+            output=$($cmd $ACL_COMMAND 2>&1)
+            exit_code=$?
+            if [ $exit_code -ne 0 ] || echo "$output" | grep -q "^ERR"; then
                 echo "DO ACL COMMAND FOR HOST: $host FAILED"
+                echo "Exit Code: $exit_code"
+                echo "Output: $output"
                 exit 1
             fi
         else
