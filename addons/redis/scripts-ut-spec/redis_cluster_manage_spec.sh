@@ -1274,6 +1274,10 @@ Describe "Redis Cluster Manage Bash Script Tests"
         return 0
       }
 
+      forget_fail_node_when_cluster_is_ok() {
+        return 0
+      }
+
       setup() {
         export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
