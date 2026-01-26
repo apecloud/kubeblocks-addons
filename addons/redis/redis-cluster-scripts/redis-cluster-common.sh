@@ -758,7 +758,7 @@ forget_fail_node_when_cluster_is_ok() {
     node_id=$(echo "$line" | awk '{print $1}')
     node_role=$(echo "$line" | awk '{print $3}')
     if [[ "$node_role" == "fail" ]]; then
-      f [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
+      if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
         redis-cli -h $host -p $port --cluster call $host:$port cluster forget ${node_id}
       else
         redis-cli -h $host -p $port --cluster call $host:$port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
