@@ -430,6 +430,9 @@ scale_redis_cluster_replica() {
     exit 0
   fi
 
+  # Forget fail node when cluster is ok
+  forget_fail_node_when_cluster_is_ok "$primary_node_endpoint_for_meet" "$primary_node_port"
+
   # add the current node as a replica of the primary node
   primary_node_cluster_id=$(get_cluster_id_with_retry "$primary_node_endpoint_for_meet" "$primary_node_port")
   status=$?
