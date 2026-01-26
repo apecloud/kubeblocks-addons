@@ -569,6 +569,10 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         return 0
       }
 
+      forget_fail_node_when_cluster_is_ok() {
+        return 0
+      }
+
       setup() {
         export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
         export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"

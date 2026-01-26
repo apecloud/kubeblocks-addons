@@ -741,3 +741,29 @@ check_redis_role() {
     echo "unknown"
   fi
 }
+
+forget_fail_node_when_cluster_is_ok() {
+  local host=$1
+  local port=$2
+  unset_xtrace_when_ut_mode_false
+  cluster_info=$(get_cluster_info_with_retry "$host" "$port")
+  cluster_state=$(echo "$cluster_info" | awk -F: '/cluster_state/{print $2}' | tr -d '[:space:]')
+  if [[ "$cluster_state" != "ok" ]]; then
+    echo "Cluster state is not ok, skip forget fail node"
+    set_xtrace_when_ut_mode_false
+    return 0
+  fi
+  cluster_nodes_info=$(get_cluster_nodes_info "$host" "$port")
+  while read -r line; do
+    node_id=$(echo "$line" | awk '{print $1}')
+    node_role=$(echo "$line" | awk '{print $3}')
+    if [[ "$node_role" == "fail" ]]; then
+      if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
+        redis-cli -h $host -p $port --cluster call $host:$port cluster forget ${node_id}
+      else
+        redis-cli -h $host -p $port --cluster call $host:$port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
+      fi
+    fi
+  done <<< "$cluster_nodes_info"
+  set_xtrace_when_ut_mode_false
+}
