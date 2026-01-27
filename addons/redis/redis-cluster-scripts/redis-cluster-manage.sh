@@ -807,7 +807,7 @@ scale_out_redis_cluster_shard() {
   fi
 
   # Forget fail node when cluster is ok
-  forget_fail_node_when_cluster_is_ok "${available_node%%:*}" "${available_node##*:}"
+  # forget_fail_node_when_cluster_is_ok "${available_node%%:*}" "${available_node##*:}"
 
   # add the primary node for the current shard
   if [ "$current_primary_joined" = false ]; then
@@ -938,7 +938,7 @@ scale_in_redis_cluster_shard() {
   fi
 
   # Forget fail node when cluster is ok
-  forget_fail_node_when_cluster_is_ok "127.0.0.1" "$SERVICE_PORT"
+  # forget_fail_node_when_cluster_is_ok "127.0.0.1" "$SERVICE_PORT"
 
   # init information for the other components and pods
   init_other_components_and_pods_info "$CURRENT_SHARD_COMPONENT_SHORT_NAME" "$KB_CLUSTER_POD_FQDN_LIST" "$KB_CLUSTER_COMPONENT_LIST"
