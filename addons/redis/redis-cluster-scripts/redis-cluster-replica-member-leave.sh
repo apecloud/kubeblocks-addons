@@ -104,6 +104,8 @@ else
   echo "failed to execute acl save command." >&2
   return 1
 fi
-# Forget fail node when cluster is ok
-forget_fail_node_when_cluster_is_ok "127.0.0.1" "$service_port"
+if [ "$LEGACY_REDIS" = "true" ]; then
+  # Forget fail node when cluster is ok
+  forget_fail_node_when_cluster_is_ok "127.0.0.1" "$service_port"
+fi
 remove_replica_from_shard_if_need
