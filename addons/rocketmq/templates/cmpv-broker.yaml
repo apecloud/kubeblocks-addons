@@ -13,6 +13,7 @@ spec:
       images:
         rocketmq-broker: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         jmx-exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.jmxExporter.repository }}:{{ .Values.image.jmxExporter.tag }}
+        agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.agent.repository }}:{{ .Values.image.agent.tag }}
 
   compatibilityRules:
     - releases:

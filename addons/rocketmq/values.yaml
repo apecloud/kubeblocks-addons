@@ -24,6 +24,10 @@ image:
     repository: apecloud/jmx-exporter
     tag: 0.18.0-debian-11-r20
 
+  agent:
+    repository: apecloud/rocketmq-agent
+    tag: 1.0.0
+
 ## @param compDefinitionVersion for each ComponentDefinition resources name created by this chart, that can avoid name conflict
 componentDefinitionVersion:
   rocketMQ4: "4"
@@ -40,6 +44,7 @@ broker:
   port: 10911
   jxmPort: 5555
   dledgerPort: 40911
+  agentPort: 8999
 
 dashboard:
   dataPath: /configs
