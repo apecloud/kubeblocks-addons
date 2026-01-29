@@ -734,7 +734,7 @@
 	log_error_verbosity?: int & >=1 & <=3
 
 	// Controls where to store query logs
-	log_output?: string & "TABLE" | "FILE" | "NONE"
+	log_output?: string
 
 	// Logs queries that are expected to retrieve all rows to slow query log
 	log_queries_not_using_indexes?: string & "OFF" | "ON"
