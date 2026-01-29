@@ -672,7 +672,7 @@
 	log_error_verbosity?: int & >= 1 & <= 3 | *3
 
 	// TABLEFILENONEThe destination or destinations for general query log and slow query log output.
-	log_output?: string & "TABLE" | "FILE" | "NONE" | *"FILE"
+	log_output?: string
 
 	// If you enable this variable with the slow query log enabled, queries that are expected to retrieve all rows are logged.
 	log_queries_not_using_indexes?: string & "OFF" | "ON" | *"OFF"
