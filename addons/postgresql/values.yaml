@@ -122,13 +122,13 @@ versions:
     minors:
       - version: "17.5.0"
         tag: "17.5"
+        isDefault: true
   - major: "18"
     componentDef: "postgresql-18"
     serviceVersion: "18.1.0"
     minors:
       - version: "18.1.0"
         tag: "18.1"
-        isDefault: true
 
 ## @section pgbouncer Parameters
 pgbouncer:

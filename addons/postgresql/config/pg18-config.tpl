@@ -188,7 +188,7 @@ min_wal_size = '{{- printf "%dMB" $min_wal_size }}'
 wal_keep_size = '{{- printf "%dMB" $wal_keep_size }}'
 
 parallel_leader_participation = 'True'
-password_encryption = 'md5'
+password_encryption = 'scram-sha-256'
 pg_stat_statements.max = '5000'
 pg_stat_statements.save = 'False'
 pg_stat_statements.track = 'top'
