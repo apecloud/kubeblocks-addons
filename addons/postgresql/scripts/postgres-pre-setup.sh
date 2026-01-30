@@ -9,10 +9,10 @@ postgres_walg_dir="/home/postgres/pgdata/wal-g"
 
 build_real_postgres_conf() {
   mkdir -p "$postgres_conf_dir"
-  
+
   # Copy the template config file first
   cp "$postgres_template_conf_file" "$postgres_conf_dir"
-  
+
   # Try to set ownership using username first
   # Note: This may fail in init containers that don't have postgres user
   if ! chown -R postgres:postgres "$postgres_conf_dir" 2>/dev/null; then
@@ -20,17 +20,17 @@ build_real_postgres_conf() {
     # Get postgres user UID and GID using id command
     POSTGRES_UID=$(id -u postgres 2>/dev/null)
     POSTGRES_GID=$(id -g postgres 2>/dev/null)
-    
+
     # Fallback to common defaults if id command fails
     POSTGRES_UID=${POSTGRES_UID:-101}
     POSTGRES_GID=${POSTGRES_GID:-103}
-    
+
     chown -R ${POSTGRES_UID}:${POSTGRES_GID} "$postgres_conf_dir"
   fi
-  
+
   # Set directory permissions
   chmod 755 "$postgres_conf_dir"
-  
+
   # Set config file permissions - use 666 to allow Patroni to modify it
   chmod 666 "$postgres_conf_file"
 }
