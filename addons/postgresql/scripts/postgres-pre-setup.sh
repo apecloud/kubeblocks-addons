@@ -15,9 +15,7 @@ build_real_postgres_conf() {
   
   # Try to set ownership using username first
   # Note: This may fail in init containers that don't have postgres user
-  if chown -R postgres:postgres "$postgres_conf_dir" 2>/dev/null; then
-    echo "Set ownership using username 'postgres:postgres'"
-  else
+  if ! chown -R postgres:postgres "$postgres_conf_dir" 2>/dev/null; then
     # Fallback to numeric UID/GID
     # Get postgres user UID and GID using id command
     POSTGRES_UID=$(id -u postgres 2>/dev/null)
@@ -27,7 +25,6 @@ build_real_postgres_conf() {
     POSTGRES_UID=${POSTGRES_UID:-101}
     POSTGRES_GID=${POSTGRES_GID:-103}
     
-    echo "Set ownership using numeric UID:GID = ${POSTGRES_UID}:${POSTGRES_GID}"
     chown -R ${POSTGRES_UID}:${POSTGRES_GID} "$postgres_conf_dir"
   fi
   
