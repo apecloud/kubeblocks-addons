@@ -118,6 +118,9 @@ spec:
           compDef: {{ $compDefName }}
           optional: false
           shortName: Required
+    ## the spilo provider
+    - name: SPILO_PROVIDER
+      value: "local"
     ## the etcd version if postgres patroni use etcd as DCS
     - name: PATRONI_DCS_ETCD_VERSION
       value: "3"
