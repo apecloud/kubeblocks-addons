@@ -39,6 +39,8 @@ Describe "PostgreSQL Configuration Script Tests"
       The contents of file "$postgres_conf_file" should include "listen_addresses = '*'"
       The contents of file "$postgres_conf_file" should include "port = '5432'"
       The contents of file "$postgres_conf_file" should include "archive_command = '/bin/true'"
+      # chown may fail in test environment due to lack of privileges, which is expected
+      The stderr should be present
     End
   End
 End
