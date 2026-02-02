@@ -1,0 +1,4 @@
+pymilvus>=2.4.0
+numpy>=1.20.0
+# Pinned to avoid Protobuf major version mismatch warnings with pymilvus
+protobuf>=5.27.2,<6.0.0
