@@ -154,15 +154,15 @@ elasticsearch-scripts-tpl
 {{- end -}}
 
 {{- define "elasticsearch6.configTplName" -}}
-elasticsearch-6-config-tpl
+elasticsearch-6-config-tpl-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "elasticsearch7.configTplName" -}}
-elasticsearch-7-config-tpl
+elasticsearch-7-config-tpl-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "elasticsearch8.configTplName" -}}
-elasticsearch-8-config-tpl
+elasticsearch-8-config-tpl-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "elasticsearch7.pcrName" -}}
@@ -198,15 +198,15 @@ kibana-8-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "kibana6.configTplName" -}}
-kibana-6-config-tpl
+kibana-6-config-tpl-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "kibana7.configTplName" -}}
-kibana-7-config-tpl
+kibana-7-config-tpl-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "kibana8.configTplName" -}}
-kibana-8-config-tpl
+kibana-8-config-tpl-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "kibana.probe" -}}
