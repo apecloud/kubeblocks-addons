@@ -15,6 +15,8 @@ init_meta_databases() {
   echo "Create MySQL User and Grant Permissions..."
   mysql -h $meta_mysql_host -P $meta_mysql_port -u $meta_mysql_user -p$meta_mysql_password << EOF
 CREATE USER IF NOT EXISTS '$meta_user'@'%' IDENTIFIED BY '$meta_password';
+ALTER USER '$meta_user'@'%' IDENTIFIED BY '$meta_password';
+
 EOF
 
   mysql -h $meta_mysql_host -P $meta_mysql_port -u $meta_mysql_user -p$meta_mysql_password << EOF

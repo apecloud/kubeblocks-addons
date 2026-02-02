@@ -98,3 +98,8 @@ spec:
             value: "false"
           - name: ORC_BACKEND_DB
             value: mysql
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
