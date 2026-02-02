@@ -4,7 +4,6 @@
 ## @param image.repository PostgreSQL image repository
 ## @param image.pullPolicy PostgreSQL image pull policy
 ## @param image.pullSecrets Specify image pull secrets
-## @param image.debug Specify if debug values should be set
 ##
 image:
   # refer: https://github.com/apecloud-inc/spilo/blob/main/postgres-appliance/Dockerfile
@@ -25,7 +24,6 @@ image:
   ##
   pullPolicy: IfNotPresent
   pullSecrets: [ ]
-  debug: false
 
 ## Start PostgreSQL pod(s) without limitations on shm memory.
 ## By default, docker and containerd (and possibly other container runtimes) limit `/dev/shm` to `64M`
@@ -112,6 +110,13 @@ versions:
     minors:
       - version: "17.5.0"
         tag: "17.5"
+  - major: "18"
+    componentDef: "postgresql-18"
+    serviceVersion: "18.1.0"
+    actionImageTag: "18.1"
+    minors:
+      - version: "18.1.0"
+        tag: "18.1"
         isDefault: true
 
 ## @section pgbouncer Parameters

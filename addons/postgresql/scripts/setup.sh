@@ -128,6 +128,8 @@ if [ "$PG_MODE" == "standby" ]; then
 fi
 restart_for_pending_restart_flag 2>&1 >> /home/postgres/.kb_set_up.log &
 echo "$(date) restart_for_pending_restart_flag PID=$!" >> /home/postgres/.kb_set_up.log
+# Ensure postgres user owns the entire config directory (Patroni needs to write pg_hba.conf, etc.)
+chown -R postgres:postgres /home/postgres/pgdata/conf
 python3 /kb-scripts/generate_patroni_yaml.py tmp_patroni.yaml
 export SPILO_CONFIGURATION=$(cat tmp_patroni.yaml)
 

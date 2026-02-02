@@ -375,6 +375,8 @@ spec:
           name: remote-instances
           optional: true
           password: Optional
+    - name: SPILO_PROVIDER
+      value: "local"
   serviceRefDeclarations:
     - name: remote-instances
       optional: true
