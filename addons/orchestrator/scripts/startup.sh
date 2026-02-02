@@ -30,7 +30,9 @@ ORC_META_DATABASE="${ORC_META_DATABASE:-orchestrator}"
 : "${CURRENT_POD_NAME:?CURRENT_POD_NAME is required}"
 : "${COMPONENT_NAME:?COMPONENT_NAME is required}"
 : "${CLUSTER_NAMESPACE:?CLUSTER_NAMESPACE is required}"
-: "${ORC_PER_POD_SVC:?ORC_PER_POD_SVC is required}"
+if [[ "${ORC_RAFT_ENABLED}" == "true" ]]; then
+  : "${ORC_PER_POD_SVC:?ORC_PER_POD_SVC is required if ORC_RAFT_ENABLED is true}"
+fi
 
 META_MYSQL_HOST="${META_MYSQL_ENDPOINT%%:*}"
 
@@ -39,22 +41,18 @@ META_MYSQL_HOST="${META_MYSQL_ENDPOINT%%:*}"
 #######################################
 mkdir -p "${WORKDIR}/raft" "${WORKDIR}/sqlite"
 
-#######################################
-# Pod / raft metadata
-#######################################
 POD_SUFFIX="${CURRENT_POD_NAME##*-}"
 ORC_ADVERTISE_SVC="${COMPONENT_NAME}-advertise-${POD_SUFFIX}.${CLUSTER_NAMESPACE}.svc"
 SUBDOMAIN="${COMPONENT_NAME}-headless.${CLUSTER_NAMESPACE}.svc"
 
-PEERS=""
-IFS=',' read -ra REPLICA_ARRAY <<< "${ORC_PER_POD_SVC}"
-for replica in "${REPLICA_ARRAY[@]}"; do
-  host="${replica}.${CLUSTER_NAMESPACE}.svc"
-  PEERS+=",\"${host}\""
-done
-PEERS="${PEERS#,}"
-
 if [[ "${ORC_RAFT_ENABLED}" == "true" ]]; then
+  PEERS=""
+  IFS=',' read -ra REPLICA_ARRAY <<< "${ORC_PER_POD_SVC}"
+  for replica in "${REPLICA_ARRAY[@]}"; do
+    host="${replica}.${CLUSTER_NAMESPACE}.svc"
+    PEERS+=",\"${host}\""
+  done
+  PEERS="${PEERS#,}"
   ORC_PEERS="${PEERS}"
   ORC_POD_NAME="${CURRENT_POD_NAME}.${SUBDOMAIN}"
 else
@@ -83,7 +81,6 @@ sed \
 # Start orchestrator
 #######################################
 /usr/local/orchestrator/orchestrator \
-  -quiet \
   -config "${CONFIG_FILE}" \
   http &
 
