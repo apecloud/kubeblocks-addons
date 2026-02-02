@@ -34,13 +34,13 @@ spec:
     - name: pg-basebackup
       snapshotVolumes: false
       actionSetName: postgres-basebackup
-      envMapping: &clusterVersionEnvMapping
+      envMapping: &serviceVersionEnvMapping
       - key: IMAGE_TAG
         valueFrom:
-          clusterVersionRef:
+          serviceVersion:
           {{- range .Values.versions }}
           {{- range .minors }}
-          - names: [postgresql-{{ .version }}]
+          - names: [{{ .version }}]
             mappingValue: "{{ .tag }}"
           {{- end }}
           {{- end }}
@@ -68,7 +68,7 @@ spec:
         role: primary
       actionSetName: postgres-wal-g-pitr
       snapshotVolumes: false
-      envMapping: *clusterVersionEnvMapping
+      envMapping: *serviceVersionEnvMapping
       targetVolumes:
         volumeMounts:
           - name: data
@@ -78,7 +78,7 @@ spec:
         role: primary
       actionSetName: postgresql-pitr
       snapshotVolumes: false
-      envMapping: *clusterVersionEnvMapping
+      envMapping: *serviceVersionEnvMapping
       targetVolumes:
         volumeMounts:
           - name: data
@@ -131,22 +131,16 @@ spec:
           account: postgres
         snapshotVolumes: false
         actionSetName: postgres-basebackup
-        envMapping: &compDefEnvMapping
-          - key: IMAGE_TAG
-            valueFrom:
-              componentDef:
-                - names: [postgresql-12]
-                  mappingValue: "12.15.0-pgvector-v0.6.1"
-                - names: [postgresql-14]
-                  mappingValue: "14.8.0-pgvector-v0.6.1"
-                - names: [postgresql-15]
-                  mappingValue: "15.7.0"
-                - names: [postgresql-16]
-                  mappingValue: "16.4.0"
-                - names: [postgresql-17]
-                  mappingValue: "17.5"
-                - names: [postgresql-18]
-                  mappingValue: "18.1"
+        envMapping: &serviceVersionEnvMapping
+        - key: IMAGE_TAG
+          valueFrom:
+            serviceVersion:
+            {{- range .Values.versions }}
+            {{- range .minors }}
+            - names: [{{ .version }}]
+              mappingValue: "{{ .tag }}"
+            {{- end }}
+            {{- end }}
         targetVolumes:
           volumeMounts:
             - name: data
@@ -168,7 +162,7 @@ spec:
           role: primary
           account: postgres
         actionSetName: postgres-wal-g-pitr
-        envMapping: *compDefEnvMapping
+        envMapping: *serviceVersionEnvMapping
         snapshotVolumes: false
         targetVolumes:
           volumeMounts:
@@ -188,7 +182,7 @@ spec:
           account: postgres
         actionSetName: postgresql-pitr
         snapshotVolumes: false
-        envMapping: *compDefEnvMapping
+        envMapping: *serviceVersionEnvMapping
         targetVolumes:
           volumeMounts:
             - name: data
