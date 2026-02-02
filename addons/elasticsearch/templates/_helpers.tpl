@@ -198,15 +198,15 @@ kibana-8-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "kibana6.configTplName" -}}
-kibana-6-config-tpl-{{ .Chart.Version }}
+kibana-6-config-tpl
 {{- end -}}
 
 {{- define "kibana7.configTplName" -}}
-kibana-7-config-tpl-{{ .Chart.Version }}
+kibana-7-config-tpl
 {{- end -}}
 
 {{- define "kibana8.configTplName" -}}
-kibana-8-config-tpl-{{ .Chart.Version }}
+kibana-8-config-tpl
 {{- end -}}
 
 {{- define "kibana.probe" -}}
