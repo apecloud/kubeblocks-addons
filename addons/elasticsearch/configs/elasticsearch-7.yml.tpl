@@ -1,7 +1,7 @@
 {{- $clusterName := .CLUSTER_NAME }}
 {{- $defaultRoles := .ELASTICSEARCH_ROLES }}
 {{- $namespace := .CLUSTER_NAMESPACE }}
-{{- $zoneAwareEnabled := .ZONE_AWARE_ENABLED }}
+{{- $zoneAwareEnabled := index . "ZONE_AWARE_ENABLED" }}
 
 {{- $mode := "multi-node" }}
 {{- if index . "mode" }}
