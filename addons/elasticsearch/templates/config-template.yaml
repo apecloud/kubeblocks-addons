@@ -5,6 +5,8 @@ metadata:
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "elasticsearch.labels" . | nindent 4 }}
+  annotation:
+  {{ include "kblib.helm.resourcePolicy" . }}
 data:
   elasticsearch.yml: |-
     {{- .Files.Get "configs/elasticsearch-6.yml.tpl" | nindent 4 }}
@@ -19,6 +21,8 @@ metadata:
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "elasticsearch.labels" . | nindent 4 }}
+  annotation:
+  {{ include "kblib.helm.resourcePolicy" . }}
 data:
   elasticsearch.yml: |-
     {{- .Files.Get "configs/elasticsearch-7.yml.tpl" | nindent 4 }}
@@ -34,6 +38,8 @@ metadata:
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "elasticsearch.labels" . | nindent 4 }}
+  annotation:
+  {{ include "kblib.helm.resourcePolicy" . }}
 data:
   elasticsearch.yml: |-
     {{- .Files.Get "configs/elasticsearch-8.yml.tpl" | nindent 4 }}
