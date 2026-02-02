@@ -105,6 +105,8 @@ regenerate_spilo_configuration_and_start_postgres() {
   if [ -f "${RESTORE_DATA_DIR}"/kb_restore.signal ]; then
       chown -R postgres "${RESTORE_DATA_DIR}"
   fi
+  # Ensure postgres user owns the entire config directory (Patroni needs to write pg_hba.conf, etc.)
+  chown -R postgres:postgres /home/postgres/pgdata/conf
   python3 /kb-scripts/generate_patroni_yaml.py $tmp_patroni_yaml
   # SPILO_CONFIGURATION is defined by spilo image
   SPILO_CONFIGURATION=$(cat $tmp_patroni_yaml)
