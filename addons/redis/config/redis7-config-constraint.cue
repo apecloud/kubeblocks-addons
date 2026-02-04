@@ -400,7 +400,7 @@
 
     "daemonize": string & "yes" | "no" | *"no"
 
-    "always-show-logo": string & "yes" | "no" | *yes
+    "always-show-logo": string & "yes" | "no" | *"yes"
 
     "set-proc-title": string & "yes" | "no" | *"yes"
 
