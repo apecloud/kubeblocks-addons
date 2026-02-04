@@ -288,7 +288,7 @@ spec:
     - name: PHY_MEMORY
       valueFrom:
         resourceVarRef:
-          memory: Required
+          memoryLimit: Required
     - name: TLS_ENABLED
       valueFrom:
         tlsVarRef:

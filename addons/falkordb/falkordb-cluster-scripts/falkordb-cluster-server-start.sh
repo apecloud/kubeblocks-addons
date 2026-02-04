@@ -395,9 +395,9 @@ scale_redis_cluster_replica() {
     echo "Current instance is a rebuild-instance, forget node id in the cluster firstly."
     node_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port" "$current_pod_fqdn")
     if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
-      redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
+      redis-cli $REDIS_CLI_TLS_CMD -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
     else
-      redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
+      redis-cli $REDIS_CLI_TLS_CMD -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
     fi
   fi
   current_node_with_port="$current_pod_fqdn:$service_port"
@@ -570,10 +570,15 @@ build_cluster_announce_info() {
     echo "redis cluster use advertised svc $redis_announce_host_value:$redis_announce_port_value@$redis_announce_bus_port_value to announce"
     {
       echo "cluster-announce-ip $redis_announce_host_value"
-      echo "cluster-announce-port $redis_announce_port_value"
       echo "cluster-announce-bus-port $redis_announce_bus_port_value"
       echo "cluster-announce-hostname $current_pod_fqdn"
       echo "cluster-preferred-endpoint-type ip"
+      if [ "$TLS_ENABLED" == "true" ]; then
+        echo "cluster-announce-tls-port $redis_announce_port_value"
+        echo "cluster-announce-port 0"
+      else
+        echo "cluster-announce-port $redis_announce_port_value"
+      fi
     } >> $redis_real_conf
   elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
     echo "redis cluster use fixed pod ip: $CURRENT_POD_IP to announce"
@@ -599,10 +604,12 @@ build_redis_cluster_service_port() {
   if ! is_empty "$CLUSTER_BUS_PORT"; then
     cluster_bus_port=$CLUSTER_BUS_PORT
   fi
-  {
-    echo "port $service_port"
-    echo "cluster-port $cluster_bus_port"
-  } >> $redis_real_conf
+  if [ "$TLS_ENABLED" == "true" ]; then
+    echo "tls-port $service_port" >> $redis_real_conf
+  else
+    echo "port $service_port" >> $redis_real_conf
+  fi
+  echo "cluster-port $cluster_bus_port" >> $redis_real_conf
 }
 
 parse_redis_cluster_shard_announce_addr() {

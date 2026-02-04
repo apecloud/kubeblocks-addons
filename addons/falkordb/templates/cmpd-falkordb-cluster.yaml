@@ -407,7 +407,7 @@ spec:
     - name: PHY_MEMORY
       valueFrom:
         resourceVarRef:
-          memory: Required
+          memoryLimit: Required
   lifecycleActions:
     roleProbe:
       periodSeconds: 1

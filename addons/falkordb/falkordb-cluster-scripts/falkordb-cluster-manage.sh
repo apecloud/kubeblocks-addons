@@ -897,9 +897,9 @@ scale_out_redis_cluster_shard() {
 sync_acl_for_redis_cluster_shard() {
   echo "Sync ACL rules for redis cluster shard..."
   set +ex
-  redis_base_cmd="redis-cli -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
+  redis_base_cmd="redis-cli $REDIS_CLI_TLS_CMD -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-     redis_base_cmd="redis-cli -p $SERVICE_PORT"
+     redis_base_cmd="redis-cli $REDIS_CLI_TLS_CMD -p $SERVICE_PORT"
   fi
   is_ok=false
   acl_list=""
