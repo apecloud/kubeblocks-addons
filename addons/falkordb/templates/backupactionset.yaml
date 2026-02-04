@@ -87,6 +87,15 @@ spec:
     postReady:
     - job:
         command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "dataprotection/wait-for-cluster-ready.sh" | nindent 10 }}
+        image: {{ include "redis7.image" . }}
+        onError: Fail
+        runOnTargetPodNode: true
+    - job:
+        command:
         - sh
         - -c
         - |

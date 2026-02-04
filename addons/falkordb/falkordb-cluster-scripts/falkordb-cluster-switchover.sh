@@ -97,7 +97,7 @@ get_all_shards_master() {
   fi
   set_xtrace_when_ut_mode_false
 
-  echo "$cluster_nodes_info" | grep "master" | while read -r line; do
+  echo "$cluster_nodes_info" | grep "master" | grep -v "fail" | while read -r line; do
     node_addr=$(echo "$line" | cut -d' ' -f2 | cut -d'@' -f1)
     echo "$node_addr"
   done

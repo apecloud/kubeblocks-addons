@@ -431,6 +431,8 @@ spec:
           value: $(CURRENT_SHARD_COMPONENT_NAME)
         - name: REDIS_LB_ADVERTISED_HOST
           value: $(CURRENT_SHARD_LB_ADVERTISED_HOST)
+        - name: KB_SERVICE_PORT
+          value: "$(SERVICE_PORT)"
         command:
           - /tools/dbctl
           - redis
