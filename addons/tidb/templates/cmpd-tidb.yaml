@@ -82,18 +82,6 @@ spec:
             mountPath: /var/log/tidb
           - name: config
             mountPath: /etc/tidb
-      - name: slowlog
-        imagePullPolicy: IfNotPresent
-        command:
-          - bin/sh
-          - -c
-          - |
-            echo "start slowlog..."
-            touch /var/log/tidb/slowlog
-            tail -n0 -F /var/log/tidb/slowlog;
-        volumeMounts:
-          - name: slowlog
-            mountPath: /var/log/tidb
     volumes:
       - name: slowlog
         emptyDir: {}
