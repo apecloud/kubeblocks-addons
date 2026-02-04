@@ -249,7 +249,7 @@ spec:
     - name: REDIS_METRICS_ADDR
       value: "redis://localhost:$(SERVICE_PORT)"
       expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}rediss://localhost:{{.SERVICE_PORT}}{{else}}redis://localhost:{{.SERVICE_PORT}}{{end}}` | toYaml }}
-    {{- end }}
+  {{- end }}
     - name: REDIS_CLI_TLS_CMD
       value: ""
       expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else}}{{end}}` | toYaml }}
