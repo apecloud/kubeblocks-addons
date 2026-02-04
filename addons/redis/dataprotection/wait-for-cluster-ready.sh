@@ -1,6 +1,6 @@
 #!/bin/bash
 
-redis_cmd="redis-cli -h ${DP_DB_HOST} -p ${DP_DB_PORT}"
+redis_cmd="redis-cli $REDIS_CLI_TLS_CMD -h ${DP_DB_HOST} -p ${DP_DB_PORT}"
 if [ -n "${REDIS_DEFAULT_PASSWORD}" ]; then
     redis_cmd="${redis_cmd} -a ${REDIS_DEFAULT_PASSWORD}"
 fi
