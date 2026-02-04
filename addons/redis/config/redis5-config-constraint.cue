@@ -233,7 +233,7 @@
 
     "replica-priority": int | *100
 
-    "tcp-backlog": int & >=0 & <=511 | *511
+    "tcp-backlog": int & >=0 | *511
 
     "daemonize": string & "yes" | "no" | *"no"
 
