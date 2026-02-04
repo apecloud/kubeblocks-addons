@@ -224,11 +224,11 @@ spec:
       expression: {{ `{{if index . "REDIS_METRICS_HOST_NETWORK_PORT"}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}{{.REDIS_METRICS_HTTP_PORT}}{{end}}` | toYaml }}
     - name: REDIS_METRICS_ADDR
       value: "redis://localhost:$(SERVICE_PORT)"
-      expression: { { `{{if eq (index . "TLS_ENABLED") "true"}}rediss://localhost: {{.SERVICE_PORT } }{{else}}redis://localhost:{{.SERVICE_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}rediss://localhost: {{.SERVICE_PORT }}{{else}}redis://localhost:{{.SERVICE_PORT}}{{end}}` | toYaml }}
   {{- end }}
     - name: REDIS_CLI_TLS_CMD
       value: ""
-      expression: { { `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else } }{{end}}` | toYaml }}
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else }}{{end}}` | toYaml }}
     ## the component name of falkordb sentinel when falkordb sentinel is enabled, it's the fullname of falkordb-sent component
     - name: SENTINEL_COMPONENT_NAME
       valueFrom:
