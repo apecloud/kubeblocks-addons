@@ -642,6 +642,84 @@
     // integer, Valid range: [1 .. 65536], default: 32
     "cf-max-expansions": int & >=1 & <=65536 | *32
 
+    // By default, TLS/SSL is disabled. To enable it, the "tls-port" configuration
+    // directive can be used to define TLS-listening ports. To enable TLS on the
+    // default port, use 7379 and set port to 0
+    "tls-port": int | *0
+
+    // Configure a X.509 certificate and private key to use for authenticating the server to connected clients, masters or cluster peers.  These files should be PEM formatted.
+    "tls-cert-file": string | *"redis.crt"
+
+    "tls-key-file": string | *"redis.key"
+
+    "tls-ca-cert-file": string | *""
+
+    "tls-ca-cert-dir": string | *""
+
+    "tls-auth-clients": string & "optional" | "no" | *""
+
+    "tls-replication": string & "yes" | "no" | *"no"
+
+    // By default, TLS session caching is enabled to allow faster and less expensive
+    // reconnections by clients that support it. Use the following directive to disable
+    // caching.
+    "tls-session-caching": string & "yes" | "no" | *"yes"
+
+    // Change the default number of TLS sessions cached. A zero value sets the cache
+    // to unlimited size. The default size is 20480.
+    "tls-session-cache-size": int | *20480
+
+    // Change the default timeout of cached TLS sessions. The default timeout is 300
+    // seconds.
+    "tls-session-cache-timeout": int | *300
+
+    "tls-cluster": string & "yes" | "no" | *"no"
+
+    "cluster-announce-tls-port": int | *0
+
+    "maxmemory-policy"?: string & "volatile-lru" | "allkeys-lru" | "volatile-lfu" | "allkeys-lfu" | "volatile-random" | "allkeys-random" | "volatile-ttl" | "noeviction"
+
+    "tcp-backlog": int & >=0 | *511
+
+    "daemonize": string & "yes" | "no" | *"no"
+
+    "always-show-logo": string & "yes" | "no" | *"yes"
+
+    "set-proc-title": string & "yes" | "no" | *"yes"
+
+    "proc-title-template": string | *"{title} {listen-addr} {server-mode}"
+
+    "rdbcompression": string & "yes" | "no" | *"yes"
+
+    "rdbchecksum": string & "yes" | "no" | *"yes"
+
+    "rdb-del-sync-files": string & "yes" | "no" | *"no"
+
+    "replica-serve-stale-data": string & "yes" | "no" | *"yes"
+
+    "replica-read-only": string & "yes" | "no" | *"yes"
+
+    "repl-diskless-sync ":string & "yes" | "no" | *"yes"
+
+    "repl-diskless-sync-delay": int | *5
+
+    "repl-diskless-sync-max-replicas": int | *0
+
+    "repl-diskless-load": string & "disabled" | "disabled" | "on-empty-db" | *"disabled"
+
+    "oom-score-adj": string & "yes" | "no" | "absolute" | "relative" | *"no"
+
+    "oom-score-adj-values": string | *"0 200 800"
+
+    "disable-thp": string & "yes" | "no" | *"yes"
+
+    "no-appendfsync-on-rewrite": string & "yes" | "no" | *"no"
+
+    "aof-load-truncated": string & "yes" | "no" | *"yes"
+
+    "aof-use-rdb-preamble": string & "yes" | "no" | *"yes"
+
+    "activerehashing": string & "yes" | "no" | *"yes"
 	...
 }
 

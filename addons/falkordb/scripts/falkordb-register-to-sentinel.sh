@@ -26,7 +26,7 @@ test || __() {
 
 redis_announce_host_value=""
 redis_announce_port_value=""
-redis_default_service_port=6379
+redis_default_service_port=${SERVICE_PORT:-6379}
 if [ -f /data/.fixed_pod_ip_enabled ]; then
   # if the file /data/.fixed_pod_ip_enabled exists, it means that the redis pod is running in fixed pod ip mode.
   FIXED_POD_IP_ENABLED=true
@@ -39,12 +39,6 @@ load_common_library() {
   common_library_file="/scripts/common.sh"
   # shellcheck disable=SC1090
   source "${common_library_file}"
-}
-
-init_redis_service_port() {
-  if env_exist SERVICE_PORT; then
-    redis_default_service_port=$SERVICE_PORT
-  fi
 }
 
 extract_lb_host_by_svc_name() {
@@ -136,7 +130,9 @@ construct_sentinel_sub_command() {
       echo "SENTINEL set $master_name auth-user $REDIS_SENTINEL_USER"
       ;;
     "auth-pass")
-      echo "SENTINEL set $master_name auth-pass $REDIS_SENTINEL_PASSWORD"
+      if ! is_empty "$REDIS_SENTINEL_PASSWORD"; then
+        echo "SENTINEL set $master_name auth-pass $REDIS_SENTINEL_PASSWORD"
+      fi
       ;;
     *)
       echo "Unknown command: $command" >&2
@@ -150,7 +146,12 @@ check_connectivity() {
   local port=$2
   local password=$3
   echo "Checking connectivity to $host on port $port using redis-cli..."
-  if redis-cli -h "$host" -p "$port" -a "$password" PING | grep -q "PONG"; then
+  if is_empty "$password"; then
+    redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" PING | grep -q "PONG"
+  else
+    redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" -a "$password" PING | grep -q "PONG"
+  fi
+  if [ $? -eq 0 ]; then
     echo "$host is reachable on port $port."
     return 0
   else
@@ -166,7 +167,11 @@ execute_sentinel_sub_command() {
   local command=$3
 
   local output
-  output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  if is_empty "$SENTINEL_PASSWORD"; then
+    output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$sentinel_host" -p "$sentinel_port" $command)
+  else
+    output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  fi
   local status=$?
   echo "$output"
 
@@ -184,7 +189,11 @@ get_master_addr_by_name(){
   local sentinel_port=$2
   local command=$3
   local output
-  output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  if is_empty "$SENTINEL_PASSWORD"; then
+    output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$sentinel_host" -p "$sentinel_port" $command)
+  else
+    output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  fi
   local status=$?
   if [ $status -ne 0 ]; then
     echo "Command failed with status $status." >&2
@@ -235,7 +244,9 @@ register_to_sentinel() {
   for cmd in "${sentinel_configure_commands[@]}"
   do
     sentinel_cli_cmd=$(construct_sentinel_sub_command "$cmd" "$master_name" "$redis_primary_host" "$redis_primary_port")
-    call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_cli_cmd" || exit 1
+    if [ -n "$sentinel_cli_cmd" ]; then
+       call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_cli_cmd" || exit 1
+    fi
   done
   set_xtrace_when_ut_mode_false
   echo "redis sentinel register to $sentinel_host succeeded!"
@@ -293,7 +304,6 @@ register_to_sentinel_wrapper() {
   # get minimum lexicographical order pod name as default primary node (the same logic as redis initialize primary node selection)
   redis_default_primary_pod_name=$(min_lexicographical_order_pod "$REDIS_POD_NAME_LIST")
   redis_default_primary_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$redis_default_primary_pod_name")
-  init_redis_service_port
   parse_redis_primary_announce_addr "$redis_default_primary_pod_name"
   if is_empty "$CUSTOM_SENTINEL_MASTER_NAME"; then
     master_name=$REDIS_COMPONENT_NAME

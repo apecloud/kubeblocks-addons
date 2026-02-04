@@ -29,5 +29,6 @@ spec:
       postProvision: {{ $falkordbRepository }}:{{ .imageTag }}
       accountProvision: {{ $falkordbRepository }}:{{ .imageTag }}
       switchover: {{ $falkordbRepository }}:{{ .imageTag }}
+      memberJoin: {{ $falkordbRepository }}:{{ .imageTag }}
   {{- end }}
   {{- end }}

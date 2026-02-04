@@ -68,14 +68,14 @@ EOF
 # start local redis instance
 LOCAL_DATA_DIR="${DATA_DIR}/.restore_keys"
 redis-stack-server --dir "$LOCAL_DATA_DIR"  --appendonly "yes" &
-while ! redis-cli ping | grep -q "PONG"; do
+while ! redis-cli $REDIS_CLI_TLS_CMD ping | grep -q "PONG"; do
     echo "Waiting for FalkorDB to start..."
     sleep 1
 done
 
 # use comma  as delimiter to split patterns
 IFS=',' read -r -a patterns_array <<< "$DP_RESTORE_KEY_PATTERNS"
-DB_COUNT=$(redis-cli -h ${DP_DB_HOST} -p ${DP_DB_PORT} -a ${REDIS_DEFAULT_PASSWORD} CONFIG GET databases | awk 'NR==2')
+DB_COUNT=$(redis-cli $REDIS_CLI_TLS_CMD -h ${DP_DB_HOST} -p ${DP_DB_PORT} -a ${REDIS_DEFAULT_PASSWORD} CONFIG GET databases | awk 'NR==2')
 pids=()
 
 echo "start migration for all databases and patterns..."
@@ -84,7 +84,7 @@ for db in $(seq 0 $((DB_COUNT - 1))); do
     for pattern in "${patterns_array[@]}"; do
         (
             #echo "Migrating pattern '$pattern' from database '$db'"
-            output=$(redis-cli  --eval <(echo "$LUA_SCRIPT") , "$pattern" "$DP_DB_HOST" "$DP_DB_PORT" "$db" "$REDIS_DEFAULT_USER" "$REDIS_DEFAULT_PASSWORD")
+            output=$(redis-cli $REDIS_CLI_TLS_CMD --eval <(echo "$LUA_SCRIPT") , "$pattern" "$DP_DB_HOST" "$DP_DB_PORT" "$db" "$REDIS_DEFAULT_USER" "$REDIS_DEFAULT_PASSWORD")
             echo "$output"
             # Check the output for errors
             if [[ "$output" == *"errors"* ]] && [[ "$DP_RESTORE_KEY_IGNORE_ERRORS" != "true" ]]; then
@@ -104,7 +104,7 @@ for pid in "${pids[@]}"; do
 done
 
 # as the MIGRATE command transform data in binary format, which will corrupt aof file, we need to trigger BGREWRITEAOF after migration.
-redis-cli -h ${DP_DB_HOST} -p ${DP_DB_PORT} -a ${REDIS_DEFAULT_PASSWORD} BGREWRITEAOF
+redis-cli $REDIS_CLI_TLS_CMD -h ${DP_DB_HOST} -p ${DP_DB_PORT} -a ${REDIS_DEFAULT_PASSWORD} BGREWRITEAOF
 mv "${LOCAL_DATA_DIR}/users.acl" "$DATA_DIR"
 rm -rf "$LOCAL_DATA_DIR"
 echo "Migration completed for all databases and patterns!"

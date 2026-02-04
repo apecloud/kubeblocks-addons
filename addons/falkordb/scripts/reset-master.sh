@@ -2,10 +2,15 @@
 if [ -z "${SENTINEL_POD_NAME_LIST}" ]; then
    exit 0
 fi
+sentinel_service_port=${SENTINEL_SERVICE_PORT:-26379}
 for sentinel_pod in $(echo ${SENTINEL_POD_NAME_LIST} | tr ',' '\n'); do
     echo "reset master in sentinel ${pod}..."
     fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME.$CLUSTER_NAMESPACE.svc.cluster.local"
-    redis-cli -h $fqdn -p 26379 -a ${SENTINEL_PASSWORD} sentinel reset ${REDIS_COMPONENT_NAME}
+    if [ -n "${SENTINEL_PASSWORD}" ]; then
+        redis-cli $REDIS_CLI_TLS_CMD -h $fqdn -p $sentinel_service_port -a ${SENTINEL_PASSWORD} sentinel reset ${REDIS_COMPONENT_NAME}
+    else
+        redis-cli $REDIS_CLI_TLS_CMD -h $fqdn -p $sentinel_service_port sentinel reset ${REDIS_COMPONENT_NAME}
+    fi
     if [ $? -eq 0 ]; then
         echo "reset master in sentinel ${pod} succeeded"
         exit 0

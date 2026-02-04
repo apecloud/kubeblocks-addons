@@ -1,3 +1,17 @@
+{{- define "redis-cluster.tls" }}
+tls: {{ .Values.tlsEnable }}
+{{- if .Values.tlsEnable }}
+issuer:
+  name: UserProvided
+  secretRef:
+    name: {{ include "kblib.clusterName" . }}-tls
+    namespace: {{ .Release.Namespace }}
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+{{- end }}
+{{- end }}
+
 {{/*
 Define falkordb cluster shardingSpec with ComponentDefinition.
 */}}
@@ -6,6 +20,7 @@ Define falkordb cluster shardingSpec with ComponentDefinition.
   shards: {{ .Values.falkordbCluster.shardCount }}
   template:
     name: falkordb
+    {{- include "redis-cluster.tls" . | indent 4 }}
     componentDef: falkordb-cluster
     replicas: {{ .Values.replicas }}
     {{- if .Values.podAntiAffinityEnabled }}
@@ -111,6 +126,7 @@ Define falkordb ComponentSpec with ComponentDefinition.
   {{- end }}
   {{- include "kblib.componentResources" . | indent 2 }}
   {{- include "kblib.componentStorages" . | indent 2 }}
+  {{- include "redis-cluster.tls" . | indent 2 }}
 {{- end }}
 
 {{/*

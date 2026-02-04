@@ -1,3 +1,4 @@
+#!/bin/bash
 set -o pipefail
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
@@ -14,7 +15,10 @@ trap handle_exit EXIT
 
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
-connect_url="redis-cli -h ${DP_DB_HOST} -p ${DP_DB_PORT} -a ${DP_DB_PASSWORD}"
+connect_url="redis-cli $REDIS_CLI_TLS_CMD -h ${DP_DB_HOST} -p ${DP_DB_PORT} -a ${DP_DB_PASSWORD}"
+if [ -z ${DP_DB_PASSWORD} ]; then
+  connect_url="redis-cli $REDIS_CLI_TLS_CMD -h ${DP_DB_HOST} -p ${DP_DB_PORT}"
+fi
 last_save=$(${connect_url} LASTSAVE)
 echo "INFO: start BGSAVE"
 ${connect_url} BGSAVE
