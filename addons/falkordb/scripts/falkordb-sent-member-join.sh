@@ -66,9 +66,9 @@ redis_sentinel_get_masters() {
   local host=$1
   local port=$2
   if [ -n "$SENTINEL_PASSWORD" ]; then
-    temp_output=$(redis-cli -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" sentinel masters 2>/dev/null || true)
+    temp_output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" sentinel masters 2>/dev/null || true)
   else
-    temp_output=$(redis-cli -h "$host" -p "$port" sentinel masters 2>/dev/null || true)
+    temp_output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" sentinel masters 2>/dev/null || true)
   fi
 }
 

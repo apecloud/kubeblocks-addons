@@ -309,6 +309,10 @@ remove_rebuild_instance_flag() {
 # scale out replica of redis cluster shard if needed
 scale_redis_cluster_replica() {
   # Waiting for redis-server to start
+  check_current_ready_ip="127.0.0.1"
+  if [ -n "$redis_announce_host_value" ]; then
+    check_current_ready_ip=$redis_announce_host_value
+  fi
   if check_redis_server_ready_with_retry "127.0.0.1" "$service_port"; then
     echo "FalkorDB server is ready, continue to scale out replica..."
   else

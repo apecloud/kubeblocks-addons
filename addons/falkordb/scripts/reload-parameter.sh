@@ -20,8 +20,9 @@ fi
 if [ "$paramValue" = "\"\"" ]; then
   paramValue=""
 fi
+service_port=${SERVICE_PORT:-6379}
 if [ -z $REDIS_DEFAULT_PASSWORD ]; then
-  redis-cli CONFIG SET ${paramName} "${paramValue}"
+  redis-cli $REDIS_CLI_TLS_CMD -p $service_port CONFIG SET ${paramName} "${paramValue}"
 else
-  redis-cli -a ${REDIS_DEFAULT_PASSWORD} CONFIG SET ${paramName} "${paramValue}"
+  redis-cli $REDIS_CLI_TLS_CMD -p $service_port -a ${REDIS_DEFAULT_PASSWORD} CONFIG SET ${paramName} "${paramValue}"
 fi
