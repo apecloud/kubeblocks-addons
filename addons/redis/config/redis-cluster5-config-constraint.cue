@@ -231,6 +231,47 @@
 
     "replica-priority": int | *100
 
+    "tcp-backlog": int & >=0 | *511
+
+    "daemonize": string & "yes" | "no" | *"no"
+
+    "always-show-logo": string & "yes" | "no" | *yes
+
+    "set-proc-title": string & "yes" | "no" | *"yes"
+
+    "proc-title-template": string | *"{title} {listen-addr} {server-mode}"
+
+    "rdbcompression": string & "yes" | "no" | *"yes"
+
+    "rdbchecksum": string & "yes" | "no" | *"yes"
+
+    "rdb-del-sync-files": string & "yes" | "no" | *"no"
+
+    "replica-serve-stale-data": string & "yes" | "no" | *"yes"
+
+    "replica-read-only": string & "yes" | "no" | *"yes"
+
+    "repl-diskless-sync ":string & "yes" | "no" | *"yes"
+
+    "repl-diskless-sync-delay": int | *5
+
+    "repl-diskless-sync-max-replicas": int | *0
+
+    "repl-diskless-load": string & "disabled" | "disabled" | "on-empty-db" | *"disabled"
+
+    "oom-score-adj": string & "yes" | "no" | "absolute" | "relative" | *"no"
+
+    "oom-score-adj-values": string | *"0 200 800"
+
+    "disable-thp": string & "yes" | "no" | *"yes"
+
+    "no-appendfsync-on-rewrite": string & "yes" | "no" | *"no"
+
+    "aof-load-truncated": string & "yes" | "no" | *"yes"
+
+    "aof-use-rdb-preamble": string & "yes" | "no" | *"yes"
+
+    "activerehashing": string & "yes" | "no" | *"yes"
 	...
 }
 
