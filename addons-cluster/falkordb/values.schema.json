@@ -72,6 +72,12 @@
       "title": "nodePortEnabled",
       "description":"Whether NodePort service is enabled, default is true"
     },
+    "tlsEnable":{
+      "type": "boolean",
+      "default": false,
+      "title": "tlsEnable",
+      "description":"Whether TLS is enabled, default is false"
+    },
     "customSecretName": {
       "title": "the secret name for FalkorDB default user's password",
       "description": "the secret must contain keys named 'username' and 'password'",

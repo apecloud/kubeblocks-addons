@@ -15,6 +15,13 @@ spec:
   serviceKind: falkordb-sent
   serviceVersion: {{ .serviceVersion }}
   podManagementPolicy: Parallel
+  podUpgradePolicy: ReCreate
+  tls:
+    volumeName: tls
+    mountPath: {{ $.Values.tlsMountPath }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
   services:
     - name: falkordb-sent
       serviceName: falkordb-sent
@@ -75,6 +82,13 @@ spec:
         ports:
           - falkordb-sent
   vars:
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+          optional: true
+    - name: TLS_MOUNT_PATH
+      value: {{ $.Values.tlsMountPath }}
     ## the name of current cluster instance
     - name: CLUSTER_NAME
       valueFrom:
@@ -154,9 +168,9 @@ spec:
     - name: SENTINEL_SERVICE_PORT
       value: "26379"
       expression: {{ `{{if index . "REDIS_SENTINEL_HOST_NETWORK_PORT"}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}{{.SENTINEL_SERVICE_PORT}}{{end}}` | toYaml }}
-    ## the env of falkordb sentinel server port for dbctl to connect to falkordb cluster server
-    - name: DBCTL_REDIS_SENTINEL_SERVICE_PORT
-      value: $(SENTINEL_SERVICE_PORT)
+    - name: REDIS_CLI_TLS_CMD
+      value: ""
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else}}{{end}}` | toYaml }}
     ## the username of falkordb for falkordb sentinel connection which is only used to recover falkordb servers when scale-out falkordb sentinel.
     - name: REDIS_SENTINEL_USER
       value: "kbreplicator-sentinel"
@@ -179,7 +193,7 @@ spec:
           - sh
           - -c
         args:
-          - "falkordb-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD $(KB_ACCOUNT_STATEMENT) && falkordb-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD acl save "
+          - /scripts/redis-sentinel-account-provision.sh
     memberLeave:
       exec:
         container: falkordb-sent

@@ -29,6 +29,7 @@ spec:
       switchover: {{ $falkordbRepository }}:{{ .imageTag }}
       preTerminate: {{ $falkordbRepository }}:{{ .imageTag }}
       memberLeave: {{ $falkordbRepository }}:{{ .imageTag }}
+      memberJoin: {{ $falkordbRepository }}:{{ .imageTag }}
       metrics: {{ include "metrics.repository" $ }}:{{ $.Values.metrics.image.tag }}
       init-dbctl: {{ $.Values.dbctlImage.registry | default ( $.Values.image.registry | default "docker.io" ) }}/{{ $.Values.dbctlImage.repository }}:{{ $.Values.dbctlImage.tag }}
   {{- end }}

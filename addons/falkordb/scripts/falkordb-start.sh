@@ -29,6 +29,7 @@ redis_acl_file="/data/users.acl"
 redis_acl_file_bak="/data/users.acl.bak"
 retry_times=3
 retry_delay_second=2
+service_port=${SERVICE_PORT:-6379}
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
@@ -104,11 +105,11 @@ build_announce_ip_and_port() {
 }
 
 build_redis_service_port() {
-  service_port=6379
-  if env_exist SERVICE_PORT; then
-    service_port=$SERVICE_PORT
+  if [ "$TLS_ENABLED" == "true" ]; then
+    echo "tls-port $service_port" >> $redis_real_conf
+  else
+    echo "port $service_port" >> $redis_real_conf
   fi
-  echo "port $service_port" >> $redis_real_conf
 }
 
 build_replicaof_config() {
@@ -199,11 +200,12 @@ init_or_get_primary_from_redis_sentinel() {
 build_sentinel_get_master_addr_by_name_command() {
   local sentinel_pod_fqdn="$1"
   local timeout_value=5
+  sentinel_service_port=${SENTINEL_SERVICE_PORT:-26379}
   # TODO: replace $SENTINEL_SERVICE_PORT with each sentinel pod's port when sentinel service port is not the same, for example in HostNetwork mode
   if is_empty "$SENTINEL_PASSWORD"; then
-    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
+    echo "timeout $timeout_value redis-cli $REDIS_CLI_TLS_CMD -h $sentinel_pod_fqdn -p $sentinel_service_port sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
   else
-    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
+    echo "timeout $timeout_value redis-cli $REDIS_CLI_TLS_CMD -h $sentinel_pod_fqdn -p $sentinel_service_port -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
   fi
 }
 

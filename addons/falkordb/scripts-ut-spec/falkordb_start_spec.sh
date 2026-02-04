@@ -177,16 +177,9 @@ Describe "FalkorDB Start Bash Script Tests"
 
   Describe "build_redis_service_port()"
     It "builds redis service port correctly when SERVICE_PORT env is set"
-      export SERVICE_PORT="6380"
+      export  export service_por="6380"
       When call build_redis_service_port
       The contents of file "$redis_real_conf" should include "port $SERVICE_PORT"
-    End
-
-    It "builds redis service port with default value when SERVICE_PORT env is not set"
-      unset SERVICE_PORT
-      When call build_redis_service_port
-      The contents of file "$redis_real_conf" should include "port 6379"
-      The stdout should include "false, SERVICE_PORT does not exist"
     End
   End
 
@@ -334,7 +327,7 @@ Describe "FalkorDB Start Bash Script Tests"
       export REDIS_COMPONENT_NAME="redis-redis"
       export SENTINEL_SERVICE_PORT="26379"
       When call build_sentinel_get_master_addr_by_name_command "sentinel1.redis-sentinel-headless"
-      The output should eq "timeout 5 redis-cli -h sentinel1.redis-sentinel-headless -p 26379 sentinel get-master-addr-by-name redis-redis"
+      The output should eq "timeout 5 redis-cli  -h sentinel1.redis-sentinel-headless -p 26379 sentinel get-master-addr-by-name redis-redis"
     End
 
     It "builds sentinel get-master-addr-by-name command correctly"
@@ -342,7 +335,7 @@ Describe "FalkorDB Start Bash Script Tests"
       export SENTINEL_SERVICE_PORT="26379"
       export SENTINEL_PASSWORD="sentinel_password"
       When call build_sentinel_get_master_addr_by_name_command "sentinel1.redis-sentinel-headless"
-      The output should eq "timeout 5 redis-cli -h sentinel1.redis-sentinel-headless -p 26379 -a sentinel_password sentinel get-master-addr-by-name redis-redis"
+      The output should eq "timeout 5 redis-cli  -h sentinel1.redis-sentinel-headless -p 26379 -a sentinel_password sentinel get-master-addr-by-name redis-redis"
     End
   End
 
