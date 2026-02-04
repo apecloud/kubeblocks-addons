@@ -214,8 +214,10 @@ recover_registered_redis_servers() {
         echo "sentinel failover-timeout $master_name $master_failover_timeout"
         echo "sentinel parallel-syncs $master_name $master_parallel_syncs"
         echo "sentinel auth-user $master_name $REDIS_SENTINEL_USER"
-        echo "sentinel auth-pass $master_name $auth_pass"
       } >> $redis_sentinel_real_conf
+      if ! is_empty "$auth_pass"; then
+        echo "sentinel auth-pass $master_name $auth_pass" >> $redis_sentinel_real_conf
+      fi
       set_xtrace_when_ut_mode_false
       sleep_when_ut_mode_false 30
       master_name="" master_ip="" master_port="" master_down_after_milliseconds=""
