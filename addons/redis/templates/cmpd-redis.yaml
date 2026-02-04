@@ -249,10 +249,10 @@ spec:
     - name: REDIS_METRICS_ADDR
       value: "redis://localhost:$(SERVICE_PORT)"
       expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}rediss://localhost:{{.SERVICE_PORT}}{{else}}redis://localhost:{{.SERVICE_PORT}}{{end}}` | toYaml }}
+  {{- end }}
     - name: REDIS_CLI_TLS_CMD
       value: ""
       expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else}}{{end}}` | toYaml }}
-  {{- end }}
     ## the component name of redis sentinel when redis sentinel is enabled, it's the fullname of redis-sentinel component
     - name: SENTINEL_COMPONENT_NAME
       valueFrom:
