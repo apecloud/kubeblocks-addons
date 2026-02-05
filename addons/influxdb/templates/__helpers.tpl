@@ -90,7 +90,7 @@ influxdb-data-configuration-tpl
 {{- end -}}
 
 {{- define "influxdb.prcName" -}}
-influxdb-pcr
+influxdb-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "influxdb.pdName" -}}
