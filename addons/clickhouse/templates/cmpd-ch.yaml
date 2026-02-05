@@ -128,8 +128,6 @@ spec:
     - name: admin
       initAccount: true
   vars:
-    - name: INIT_CLUSTER_NAME
-      value: "default"
     - name: BITNAMI_DEBUG
       value: "false"
     - name: CLICKHOUSE_HTTP_PORT

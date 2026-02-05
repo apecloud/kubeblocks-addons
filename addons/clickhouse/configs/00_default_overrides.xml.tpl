@@ -1,3 +1,8 @@
+{{- $clusterName := "default" }}
+{{- if index . "INIT_CLUSTER_NAME" }}
+{{- $clusterName = $.INIT_CLUSTER_NAME }}
+{{- end }}
+
 <clickhouse>
   <listen_host replace="replace">::</listen_host>
   {{- if eq (index $ "TLS_ENABLED") "true" }}
@@ -30,7 +35,7 @@
   </logger>
   <!-- Cluster configuration - Any update of the shards and replicas requires helm upgrade -->
   <remote_servers>
-    <{{ .INIT_CLUSTER_NAME }}>
+    <{{ $clusterName }}>
       {{- range $key, $value := . }}
       {{- if and (hasPrefix "ALL_SHARDS_POD_FQDN_LIST" $key) (ne $value "") }}
       <shard>
@@ -51,7 +56,7 @@
       </shard>
       {{- end }}
       {{- end }}
-    </{{ .INIT_CLUSTER_NAME }}>
+    </{{ $clusterName }}>
   </remote_servers>
   {{- if (index . "CH_KEEPER_POD_FQDN_LIST") }}
   <!-- Zookeeper configuration -->
