@@ -104,7 +104,10 @@
     <server>
       <certificateFile>{{$CERT_FILE}}</certificateFile>
       <privateKeyFile>{{$KEY_FILE}}</privateKeyFile>
-      <verificationMode>strict</verificationMode>
+      <!-- 
+        Use relaxed verification for ClickHouse to skip hostname check, while still supporting TLS encryption.
+      -->
+      <verificationMode>relaxed</verificationMode>
       <caConfig>{{$CA_FILE}}</caConfig>
       <cacheSessions>true</cacheSessions>
       <disableProtocols>sslv2,sslv3</disableProtocols>
