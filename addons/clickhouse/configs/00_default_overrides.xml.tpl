@@ -104,7 +104,7 @@
     <server>
       <certificateFile>{{$CERT_FILE}}</certificateFile>
       <privateKeyFile>{{$KEY_FILE}}</privateKeyFile>
-      <verificationMode>relaxed</verificationMode>
+      <verificationMode>strict</verificationMode>
       <caConfig>{{$CA_FILE}}</caConfig>
       <cacheSessions>true</cacheSessions>
       <disableProtocols>sslv2,sslv3</disableProtocols>
@@ -118,7 +118,7 @@
       <cacheSessions>true</cacheSessions>
       <disableProtocols>sslv2,sslv3</disableProtocols>
       <preferServerCiphers>true</preferServerCiphers>
-      <verificationMode>relaxed</verificationMode>
+      <verificationMode>strict</verificationMode>
       <invalidCertificateHandler>
         <name>RejectCertificateHandler</name>
       </invalidCertificateHandler>
