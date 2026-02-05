@@ -33,7 +33,7 @@
       "title": "Replicas",
       "description": "The number of replicas, for standalone mode, the replicas is 1, for replicaset mode, the default replicas is 3.",
       "type": "integer",
-      "default": 1,
+      "default": 3,
       "minimum": 1,
       "maximum": 5
     },
