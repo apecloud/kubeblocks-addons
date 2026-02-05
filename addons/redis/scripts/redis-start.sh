@@ -55,6 +55,36 @@ extract_lb_host_by_svc_name() {
   done
 }
 
+replace_user_entry_in_acl() {
+  local username="$1"
+  local new_entry="$2"
+  local tmp_acl_file
+
+  tmp_acl_file="$(mktemp "${redis_acl_file}.XXXXXX")" || {
+    echo "Failed to create temporary ACL file when updating user $username" >&2
+    return 1
+  }
+  if ! sed "/^user $username /d" "$redis_acl_file" > "$tmp_acl_file"; then
+    echo "Failed to rewrite ACL file for user $username" >&2
+    rm -f "$tmp_acl_file"
+    return 1
+  fi
+  if ! printf '%s\n' "$new_entry" >> "$tmp_acl_file"; then
+    echo "Failed to append updated ACL entry for user $username" >&2
+    rm -f "$tmp_acl_file"
+    return 1
+  fi
+  if ! cp "$redis_acl_file" "$redis_acl_file_bak"; then
+    echo "Failed to backup ACL file to $redis_acl_file_bak for user $username" >&2
+    rm -f "$tmp_acl_file"
+    return 1
+  fi
+  if ! mv "$tmp_acl_file" "$redis_acl_file"; then
+    echo "Failed to replace ACL file for user $username, original backup kept at $redis_acl_file_bak" >&2
+    rm -f "$tmp_acl_file"
+    return 1
+  fi
+}
 
 # Ensure password exists in user entry, preserving any extra passwords added by user
 # This allows users to add passwords via ACL SETUSER + ACL SAVE and have them persist
@@ -66,15 +96,15 @@ ensure_password_in_user() {
   if [ -f "$redis_acl_file" ] && grep -q "^user $username " "$redis_acl_file"; then
     # User exists in acl file, check if this password is already present
     local existing_entry
-    existing_entry=$(grep "^user $username " "$redis_acl_file")
-    if echo "$existing_entry" | grep -q ">$password"; then
+    existing_entry="$(grep "^user $username " "$redis_acl_file")"
+    if printf '%s\n' "$existing_entry" | grep -F -q -- ">$password"; then
       echo "Password from Secret already exists for user $username, preserving existing entry"
       # Update permissions if they differ from the configured ones
       if [ -n "$permissions" ]; then
         # Rebuild entry: keep all fields up to the last password (tokens starting with '>'),
         # then append the configured permissions.
         local entry_prefix
-        entry_prefix=$(echo "$existing_entry" | awk '{
+        entry_prefix=$(printf '%s\n' "$existing_entry" | awk '{
           last = 0;
           for (i = 1; i <= NF; i++) {
             if ($i ~ /^>/) {
@@ -90,49 +120,68 @@ ensure_password_in_user() {
           }
         }')
         if [ -n "$entry_prefix" ]; then
-          sed -i "/^user $username /d" "$redis_acl_file"
-          echo "$entry_prefix $permissions" >> "$redis_acl_file"
-          echo "Updated permissions for existing user $username from Secret"
+          local new_entry="$entry_prefix"
+          if [ -n "$permissions" ]; then
+            new_entry="$entry_prefix $permissions"
+          fi
+          if replace_user_entry_in_acl "$username" "$new_entry"; then
+            echo "Updated permissions for existing user $username from Secret"
+          else
+            return 1
+          fi
         fi
       fi
     else
       # Password not present, need to add it to existing user
-      # Delete old entry and create new one with Secret password prepended,
-      # and ensure permissions are updated to the configured ones.
-      sed -i "/^user $username /d" "$redis_acl_file"
-      # Insert the Secret password after 'on' keyword, preserving other passwords
-      local updated_entry
-      updated_entry=$(echo "$existing_entry" | sed "s/^user $username on/user $username on >$password/")
       local entry_prefix
-      if [ -n "$permissions" ]; then
-        entry_prefix=$(echo "$updated_entry" | awk '{
-          last = 0;
+      entry_prefix=$(printf '%s\n' "$existing_entry" | awk -v username="$username" -v password="$password" '{
+        on_idx = 0;
+        for (i = 1; i <= NF; i++) {
+          if ($i == "on" || $i == "off") {
+            on_idx = i;
+            break;
+          }
+        }
+        if (on_idx == 0) {
+          printf "user %s on >%s", username, password;
           for (i = 1; i <= NF; i++) {
             if ($i ~ /^>/) {
-              last = i;
+              printf " %s", $i;
             }
           }
-          if (last == 0) {
-            print $0;
-          } else {
-            for (i = 1; i <= last; i++) {
-              printf "%s%s", $i, (i < last ? " " : "");
-            }
+          printf "\n";
+          next;
+        }
+        for (i = 1; i <= on_idx; i++) {
+          printf "%s%s", $i, (i < on_idx ? " " : "");
+        }
+        printf " >%s", password;
+        for (i = on_idx + 1; i <= NF; i++) {
+          if ($i ~ /^>/) {
+            printf " %s", $i;
           }
-        }')
-        if [ -n "$entry_prefix" ]; then
-          echo "$entry_prefix $permissions" >> "$redis_acl_file"
-        else
-          echo "$updated_entry" >> "$redis_acl_file"
+        }
+        printf "\n";
+      }')
+      if [ -n "$entry_prefix" ]; then
+        local new_entry="$entry_prefix"
+        if [ -n "$permissions" ]; then
+          new_entry="$entry_prefix $permissions"
         fi
-      else
-        echo "$updated_entry" >> "$redis_acl_file"
+        if replace_user_entry_in_acl "$username" "$new_entry"; then
+          echo "Added Secret password to existing user $username, preserved other passwords and updated permissions"
+        else
+          return 1
+        fi
       fi
-      echo "Added Secret password to existing user $username, preserved other passwords and updated permissions"
     fi
   else
     # User doesn't exist, create new entry
-    echo "user $username on >$password $permissions" >> "$redis_acl_file"
+    local new_entry="user $username on >$password"
+    if [ -n "$permissions" ]; then
+      new_entry="$new_entry $permissions"
+    fi
+    printf '%s\n' "$new_entry" >> "$redis_acl_file"
     echo "Created new user $username with password from Secret"
   fi
 }
@@ -201,10 +250,10 @@ build_replicaof_config() {
 rebuild_redis_acl_file() {
   # Preserve existing acl file to keep user-added passwords
   # The ensure_password_in_user function will handle adding/updating passwords
-  if [ -f $redis_acl_file ]; then
+  if [ -f "$redis_acl_file" ]; then
     echo "rebuild_redis_acl_file: preserving existing acl file with user passwords"
   else
-    touch $redis_acl_file
+    touch "$redis_acl_file"
     echo "rebuild_redis_acl_file: created new acl file"
   fi
 }
@@ -217,7 +266,6 @@ init_or_get_primary_from_redis_sentinel() {
     get_default_initialize_primary_node
     return
   fi
-
   # parse redis sentinel pod fqdn list from $SENTINEL_POD_FQDN_LIST env
   if ! env_exist SENTINEL_POD_FQDN_LIST; then
     echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
