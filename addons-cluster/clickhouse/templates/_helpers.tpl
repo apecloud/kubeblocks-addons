@@ -143,6 +143,10 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
     env:
     - name: "INIT_CLUSTER_NAME"
       value: "{{ .Values.clickhouse.initClusterName }}"
+    configs:
+    - name: clickhouse-tpl
+      variables:
+        INIT_CLUSTER_NAME: "{{ .Values.clickhouse.initClusterName }}"
     replicas: {{ $.Values.replicas | default 2 }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
     serviceVersion: {{ $.Values.version }}
