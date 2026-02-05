@@ -307,7 +307,7 @@ function set_clickhouse_backup_config_env() {
 	export S3_BUCKET="${bucket}"
 	export S3_PART_SIZE="${chunk_size}"
 	export S3_PATH="${DP_BACKUP_BASE_PATH}"
-
+  export INIT_CLUSTER_NAME="${INIT_CLUSTER_NAME:-default}"
 	export RESTORE_SCHEMA_ON_CLUSTER="${INIT_CLUSTER_NAME}"
 	export CLICKHOUSE_HOST="${DP_DB_HOST}"
 	export CLICKHOUSE_USERNAME="${CLICKHOUSE_ADMIN_USER}"
