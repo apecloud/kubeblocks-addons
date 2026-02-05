@@ -537,17 +537,17 @@ metadata:
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: clickhouse-tls
+  clusterName: clickhouse-cluster
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-  - componentName: ch-keeper
+  - componentName: clickhouse
     # Specifies the replica changes for scaling out components
     scaleOut:
       # Specifies the replica changes for the component.
       # add one more replica to current component
-      replicaChanges: 2
+      replicaChanges: 1
 ```
 
 ```bash
