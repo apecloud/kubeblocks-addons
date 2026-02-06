@@ -42,16 +42,16 @@ roleProbe:
 
 busyboxImage:
   registry: ""
-  repository: busybox
+  repository: apecloud/bash-busybox
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 1.37.0-musl
+  tag: 1.37.0-musl-curl
 
 backupImage:
   registry: ""
   repository: apecloud/clickhouse-backup-full
   pullPolicy: IfNotPresent
-  tag: 2.6.14
+  tag: 2.6.42
 
 restore:
   schemaReadyTimeoutSeconds: 1800
