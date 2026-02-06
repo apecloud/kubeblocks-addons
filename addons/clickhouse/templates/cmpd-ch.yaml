@@ -27,7 +27,9 @@ spec:
           - -c
           - |
             cp /bin/curl /shared-tools/curl
+            cp /bin/wget /shared-tools/wget
             chmod +x /shared-tools/curl
+            chmod +x /shared-tools/wget
         volumeMounts:
           - name: shared-tools
             mountPath: /shared-tools
