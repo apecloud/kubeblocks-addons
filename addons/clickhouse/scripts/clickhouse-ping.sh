@@ -1,26 +1,26 @@
 #!/bin/bash
 set -euo pipefail
 
-HOST="127.0.0.1"
-SCHEME="http"
 PORT="${CLICKHOUSE_HTTP_PORT:-8123}"
-
-wget_args=(
-	-O /dev/null
-	-q
-	-T 3
-	--tries=1
+CURL_ARGS=(
+	-sf
+	--max-time 3
+	"http://127.0.0.1:${PORT}/ping"
 )
 
 if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
-	SCHEME="https"
 	PORT="${CLICKHOUSE_HTTPS_PORT:-8443}"
-	wget_args+=(--no-check-certificate)
+	CURL_ARGS=(
+		-sf
+		--max-time 3
+		--cacert /etc/pki/tls/ca.pem
+		--cert /etc/pki/tls/cert.pem
+		--key /etc/pki/tls/key.pem
+		"https://127.0.0.1:${PORT}/ping"
+	)
 fi
 
-endpoint="${SCHEME}://${HOST}:${PORT}/ping"
-
-if ! /shared-tools/wget "${wget_args[@]}" "${endpoint}"; then
-	echo "Readiness probe failed accessing ${endpoint}" >&2
+if ! /shared-tools/curl "${CURL_ARGS[@]}" >/dev/null; then
+	echo "Readiness probe failed" >&2
 	exit 1
 fi
