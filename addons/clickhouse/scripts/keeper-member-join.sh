@@ -8,21 +8,11 @@ if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
 	keeper_raft_port=${CLICKHOUSE_KEEPER_RAFT_TLS_PORT:-9444}
 fi
 
-function check_is_leader() {
-	local mode=$(get_mode 127.0.0.1)
-	if [[ "$mode" == "leader" ]]; then
-		echo "INFO: This member is the leader, no need to join."
-		return 0
-	fi
-}
-
 # 1. Find leader from existing members
 leader_fqdn=$(find_leader "$KB_MEMBER_ADDRESSES")
 if [[ -z "$leader_fqdn" ]]; then
-	if ! check_is_leader; then
-		echo "ERROR: Could not find cluster leader."
-		exit 1
-	fi
+	echo "ERROR: Could not find keeper leader"
+	exit 1
 fi
 
 # 2. Extract ordinal from pod name and calculate server ID

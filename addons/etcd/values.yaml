@@ -49,4 +49,4 @@ images:
   pullPolicy: IfNotPresent
   bashBusybox:
     repository: apecloud/bash-busybox
-    tag: 1.37.0-musl
+    tag: 1.37.0-musl-curl
