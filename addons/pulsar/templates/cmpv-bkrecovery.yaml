@@ -9,15 +9,19 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        ## regex pattern for bookies recovery component definition match pulsar 2.X and 3.X
+        ## regex pattern for bookies recovery component definition match pulsar 2.X
         - {{ include "pulsar2.bkRecoveryCmpdRegexPattern" . }}
       releases:
         - 2.11.2
     - compDefs:
-        ## regex pattern for bookies recovery component definition match pulsar 2.X and 3.X
+        ## regex pattern for bookies recovery component definition match pulsar 3.X
         - {{ include "pulsar3.bkRecoveryCmpdRegexPattern" . }}
       releases:
         - 3.0.2
+    - compDefs:
+        - {{ include "pulsar4.bkRecoveryCmpdRegexPattern" . }}
+      releases:
+        - 4.0.6
   releases:
     - name: 2.11.2
       serviceVersion: 2.11.2
@@ -29,3 +33,8 @@ spec:
       images:
         bookies-recovery: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v3_0_2.bookie.repository }}:3.0.2
         check-bookies: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v3_0_2.bookie.repository }}:3.0.2
+    - name: 4.0.6
+      serviceVersion: 4.0.6
+      images:
+        bookies-recovery: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_6.bookie.repository }}:4.0.6
+        check-bookies: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_6.bookie.repository }}:4.0.6

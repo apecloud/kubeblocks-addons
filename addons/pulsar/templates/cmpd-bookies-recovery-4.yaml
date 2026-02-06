@@ -1,0 +1,129 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "pulsar4.bkRecoveryCmpdName" . }}
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pulsar.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Pulsar bookies recovery component definition
+  serviceKind: pulsar
+  serviceVersion: {{ .Values.defaultServiceVersion.recovery.major3 }}
+  serviceRefDeclarations:
+    - name: pulsarZookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: ^3.8.\d{1,2}$
+      optional: true
+  updateStrategy: BestEffortParallel
+  configs:
+    - name: bkrecovery-config
+      template:  {{ include "pulsar4.bkRecoveryTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: bkrecovery-config
+      externalManaged: true
+  scripts:
+    - name: pulsar-scripts
+      template: {{ include "pulsar.scriptsTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  exporter:
+    scrapePath: /metrics
+    scrapePort: http
+  vars:
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: ZOOKEEPER_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "pulsar4.zookeeperCmpdName" . }}
+          name: zookeeper
+          optional: true
+          port:
+            name: client
+            option: Required
+    - name: ZOOKEEPER_SERVERS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "pulsar4.zookeeperCmpdName" . }}
+          name: zookeeper
+          host: Required
+          optional: true
+      expression: {{ `{{ .ZOOKEEPER_SERVERS }}.{{ .CLUSTER_NAMESPACE }}.svc:{{ .ZOOKEEPER_PORT }}` | toYaml }}
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required
+  runtime:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 10000
+      fsGroup: 0
+      runAsGroup: 0
+    initContainers:
+      - name: check-bookies
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /kb-scripts/check-bookies.sh
+        env:
+        {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+        {{- end }}
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: bkrecovery-config
+            mountPath: /opt/pulsar/conf
+        securityContext:
+          privileged: true
+          runAsNonRoot: false
+          runAsUser: 0
+    containers:
+      - name: bookies-recovery
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 10000
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsGroup: 0
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /kb-scripts/start-bookies-recovery.sh
+        env:
+        {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+        {{- end }}
+          - name: SERVICE_PORT
+            value: "8000"
+          - name: httpServerEnabled
+            value: "true"
+          - name: httpServerPort
+            value: "8000"
+          - name: prometheusStatsHttpPort
+            value: "8000"
+          - name: useHostNameAsBookieID
+            value: "true"
+        ports:
+          - name: http
+            containerPort: 8000
+          - name: bookie
+            containerPort: 3181
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: bkrecovery-config
+            mountPath: /opt/pulsar/conf
