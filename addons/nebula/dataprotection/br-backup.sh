@@ -30,6 +30,7 @@ if [ -n "$region" ]; then
 fi
 
 meta_ep=$(echo $NEBULA_METAD_SVC | cut -d',' -f1)
+set -eo pipefail
 br backup full --meta ${meta_ep}  --s3.endpoint "${endpoint}" \
   --storage="s3://${bucket}${DP_BACKUP_BASE_PATH}" --s3.access_key="${access_key_id}" \
   --s3.secret_key="${secret_access_key}" ${region_flag}
