@@ -43,10 +43,9 @@ function keeper_run() {
 			--query "$query"
 		)
 		if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
-			keeper_args+=(--secure --tls-ca-file "$CLICKHOUSE_TLS_CA" --tls-cert-file "$CLICKHOUSE_TLS_CERT" --tls-key-file "$CLICKHOUSE_TLS_KEY")
+			keeper_args+=(--tls-ca-file "$CLICKHOUSE_TLS_CA" --tls-cert-file "$CLICKHOUSE_TLS_CERT" --tls-key-file "$CLICKHOUSE_TLS_KEY")
 		fi
 		if output=$(clickhouse-keeper-client "${keeper_args[@]}" 2>&1); then
-
 			if [[ "$output" != *"Coordination error"* ]] &&
 				[[ "$output" != *"Connection refused"* ]] &&
 				[[ "$output" != *"Timeout"* ]]; then
@@ -130,7 +129,21 @@ function get_mode_by_keeper() {
 	echo "$mode" | awk '{print $2}'
 }
 
-# Find leader node from member addresses
+# Get mode with retry to tolerate some network failures
+function get_mode_with_retry() {
+	local host="$1"
+	for _ in {1..5}; do
+		local mode
+		if mode=$(get_mode "$host") && [[ -n "$mode" ]]; then
+			echo "$mode"
+			return 0
+		fi
+		sleep 6
+	done
+	return 1
+}
+
+# Find leader node from member addresses with retry mechanism
 function find_leader() {
 	local member_addresses="$1"
 	[[ -z "$member_addresses" ]] && return 1
@@ -138,7 +151,7 @@ function find_leader() {
 	while IFS=',' read -ra members; do
 		for member_addr in "${members[@]}"; do
 			local member_fqdn="${member_addr%:*}"
-			mode=$(get_mode "$member_fqdn")
+			local mode=$(get_mode_with_retry "$member_fqdn")
 			if [[ "$mode" == "leader" || "$mode" == "standalone" ]]; then
 				echo "$member_fqdn"
 				return 0
