@@ -20,6 +20,7 @@ if [ -f "${root_dir}/logs/.kb_restore" ]; then
       end_restore graphd
       break
     fi
+    check_agent
     echo "$(date): Waiting for Nebula restoration to complete..."
   done
 fi

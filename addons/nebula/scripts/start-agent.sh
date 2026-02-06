@@ -18,6 +18,11 @@ if [ -f "/usr/local/nebula/logs/.kb_restore" ]; then
       echo "$(date): Nebula restoration completed."
       break
     fi
+    pid=`ps -eo pid,args | grep -F "restore-agent" | grep -v "grep" | tail -1 | awk '{print $1}'`
+    if [ -z "$pid" ]; then
+      echo "restore-agent is not running, exit..."
+      exit 1
+    fi
     echo "$(date): Waiting for Nebula restoration to complete..."
   done
   # kill restore-agent if it is still running
