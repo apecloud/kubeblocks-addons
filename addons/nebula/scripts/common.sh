@@ -36,6 +36,26 @@ function nebula_service_start() {
   cp ${root_dir}/config/nebula-$1.conf ${root_dir}/etc/nebula-$1.conf
   printf "\n--local_ip=${POD_FQDN}" >> ${root_dir}/etc/nebula-$1.conf
   ${root_dir}/scripts/nebula.service -c ${root_dir}/etc/nebula-$1.conf start $1
+  wait_service_ready
+}
+
+function wait_service_ready() {
+  count=0
+  set +e
+  while true; do
+      if [ $count -gt 10 ]; then
+          echo "Service is not ready after waiting for a long time"
+          exit 1
+      fi
+      count=$((count+1))
+      response=$(curl -s http://127.0.0.1:${HTTP_PORT}/status)
+      if echo "$response" | grep "running"; then
+          echo "Service is ready"
+          break
+      fi
+      sleep 3
+  done
+  set -e
 }
 
 function start_nebula_agent() {
@@ -51,4 +71,12 @@ function end_restore() {
   ${root_dir}/scripts/nebula.service stop $1
   check_service_is_stopped $1
   rm -f ${root_dir}/logs/.kb_agent
+}
+
+function check_agent() {
+  pid=`ps -eo pid,args | grep -F "/usr/local/nebula/console/agent" | grep -v "grep" | tail -1 | awk '{print $1}'`
+  if [ -z "$pid" ]; then
+    echo "$(date): Nebula agent process is not running, exit..."
+    exit 1
+  fi
 }
