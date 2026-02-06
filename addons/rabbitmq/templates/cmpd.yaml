@@ -21,9 +21,9 @@ spec:
           - name: management
             port: 15672
             targetPort: management
-          - name: web_stomp
+          - name: web-stomp
             port: 15674
-            targetPort: web_stomp
+            targetPort: web-stomp
   configs:
     - name: config
       template: {{ include "rabbitmq.configTplName" . }}
@@ -147,7 +147,7 @@ spec:
           name: management
           protocol: TCP
         - containerPort: 15674
-          name: web_stomp
+          name: web-stomp
           protocol: TCP
         - containerPort: 25672
           name: communication
