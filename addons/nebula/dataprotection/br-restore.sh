@@ -1,5 +1,4 @@
 #!/bin/bash
-set -eo pipefail
 
 toolConfig=/etc/datasafed/datasafed.conf
 
@@ -29,6 +28,7 @@ backup_name=$(datasafed list -d / | sort -Vr | head -n 1)
 backup_name=$(basename $backup_name)
 
 meta_ep=$(echo $NEBULA_METAD_SVC | cut -d',' -f1)
+set -eo pipefail
 br restore full --meta ${meta_ep} --s3.endpoint "${endpoint}" \
   --storage="s3://${bucket}/${DP_BACKUP_BASE_PATH}" --s3.access_key="${access_key_id}" \
   --s3.secret_key="${secret_access_key}" --name ${backup_name} ${region_flag}
