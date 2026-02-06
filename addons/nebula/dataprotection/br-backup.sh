@@ -1,5 +1,4 @@
 #!/bin/bash
-set -eo pipefail
 
 toolConfig=/etc/datasafed/datasafed.conf
 
