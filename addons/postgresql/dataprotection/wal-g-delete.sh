@@ -43,6 +43,9 @@ base_backup_list=$(datasafed list /basebackups_005 -d)
 if [[ ! -z ${base_backup_list} ]]; then
   echo "INFO: delete outdated WAL archive."
   wal-g delete garbage ARCHIVES --confirm
+else
+  echo "INFO: no other full backup, delete all wal archives."
+  datasafed rm -r /wal_005
 fi
 
 
