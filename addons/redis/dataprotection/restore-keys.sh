@@ -1,5 +1,51 @@
 #!/bin/bash
 
+function restore_sentinel_acl() {
+  export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
+  export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
+
+  if [ -z "$SENTINEL_POD_FQDN_LIST" ]; then
+     echo "INFO: no sentinel found, skip restore sentinel ACL file"
+     return
+  fi
+
+  sentinel_acl_file="sentinel.acl"
+  if [ "$(datasafed list $sentinel_acl_file)" == "${sentinel_acl_file}" ]; then
+    datasafed pull "${sentinel_acl_file}" /tmp/sentinel.acl
+  fi
+
+  for sentinel_fqdn in $(echo "$SENTINEL_POD_FQDN_LIST" | tr "," "\n"); do
+      echo "INFO: restore sentinel ${sentinel_fqdn} ACL file"
+      sentinel_cmd="redis-cli $REDIS_CLI_TLS_CMD -h $sentinel_fqdn -p ${SENTINEL_SERVICE_PORT}"
+      if [ -n "$SENTINEL_PASSWORD" ]; then
+          sentinel_cmd="$sentinel_cmd -a $SENTINEL_PASSWORD"
+      fi
+      if [ "$($sentinel_cmd ping)" != "PONG" ]; then
+          echo "Waring: failed to connect sentinel ${sentinel_fqdn}, skip"
+          continue
+      fi
+      while IFS= read -r user_rule; do
+          [[ -z "$user_rule" ]] && continue
+
+          if [[ "$user_rule" =~ ^user[[:space:]]+([^[:space:]]+) ]]; then
+              username="${BASH_REMATCH[1]}"
+          else
+            # skip invalid user rule
+            continue
+          fi
+
+          if [[ "$username" == "default" ]]; then
+              continue
+          fi
+          rule_part="${user_rule#user $username }"
+          echo "$username" $rule_part
+          $sentinel_cmd ACL SETUSER "$username" $rule_part >&2
+      done < /tmp/sentinel.acl
+      break
+  done
+}
+# restore sentinel acl
+restore_sentinel_acl
 if [ -z "$DP_RESTORE_KEY_PATTERNS" ]; then
     echo "DP_RESTORE_KEY_PATTERNS is not set. Exiting..."
     exit 0
