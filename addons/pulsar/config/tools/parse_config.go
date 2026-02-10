@@ -23,6 +23,7 @@ type Field struct {
 	Doc          string `json:"doc,omitempty"`
 	Dynamic      string `json:"dynamic,omitempty"`
 	Category     string `json:"category,omitempty"`
+	Deprecated   bool   `json:"deprecated,omitempty"`
 }
 
 type ConfigParser struct {
@@ -33,6 +34,7 @@ type ConfigParser struct {
 
 func main() {
 	debug := flag.Bool("debug", false, "Enable debug mode to print node types")
+	cue := flag.Bool("cue", false, "Output cue file")
 	flag.Parse()
 
 	source, err := os.ReadFile("ServiceConfiguration.java")
@@ -60,10 +62,16 @@ func main() {
 
 	fields := cp.extractFields(root)
 
-	if !*debug {
-		out, _ := json.Marshal(fields)
-		fmt.Println(string(out))
+	if *debug {
+		return
 	}
+
+	if *cue {
+		// TODO: write cue files
+	}
+
+	out, _ := json.Marshal(fields)
+	fmt.Println(string(out))
 }
 
 func (cp *ConfigParser) nodeText(n *sitter.Node) string {
@@ -105,13 +113,13 @@ func (cp *ConfigParser) parseField(n *sitter.Node) *Field {
 
 		switch kind {
 		case "modifiers":
-			field.Doc, field.Dynamic, field.Category = cp.extractFieldContextAnnotation(&child)
+			cp.extractModifiers(&child, field)
 		case "variable_declarator":
 			if nameNode := child.ChildByFieldName("name"); nameNode != nil {
 				field.Name = cp.nodeText(nameNode)
 			}
 			if valueNode := child.ChildByFieldName("value"); valueNode != nil {
-				field.DefaultValue = trimQuotes(cp.nodeText(valueNode))
+				field.DefaultValue = cp.extractStringValue(valueNode)
 			}
 		default:
 			if isTypeIdentifier(kind) {
@@ -126,46 +134,54 @@ func (cp *ConfigParser) parseField(n *sitter.Node) *Field {
 	return field
 }
 
-func (cp *ConfigParser) extractFieldContextAnnotation(modifiers *sitter.Node) (string, string, string) {
-	var doc, dynamic, category string
-
-	for _, ann := range modifiers.NamedChildren(cp.cursor) {
-		if ann.Kind() != "annotation" {
-			continue
-		}
-
-		nameNode := ann.ChildByFieldName("name")
-		if nameNode == nil || cp.nodeText(nameNode) != "FieldContext" {
-			continue
-		}
-
-		args := ann.ChildByFieldName("arguments")
-		if args == nil {
-			continue
-		}
-
-		for _, pair := range args.NamedChildren(cp.cursor) {
-			if pair.Kind() != "element_value_pair" {
+func (cp *ConfigParser) extractModifiers(modifiers *sitter.Node, field *Field) {
+	for _, child := range modifiers.NamedChildren(cp.cursor) {
+		switch child.Kind() {
+		case "annotation":
+			nameNode := child.ChildByFieldName("name")
+			if nameNode == nil || cp.nodeText(nameNode) != "FieldContext" {
 				continue
 			}
-
-			key := pair.ChildByFieldName("key")
-			val := pair.ChildByFieldName("value")
-			if key == nil || val == nil {
+			field.Doc, field.Dynamic, field.Category = cp.extractFieldContextAnnotation(&child)
+		case "marker_annotation":
+			nameNode := child.ChildByFieldName("name")
+			if nameNode == nil || cp.nodeText(nameNode) != "Deprecated" {
 				continue
 			}
+			// it has Deprecated marker
+			field.Deprecated = true
+		default:
+			continue
+		}
+	}
+}
 
-			keyStr := cp.nodeText(key)
-			valStr := cp.nodeText(val)
+func (cp *ConfigParser) extractFieldContextAnnotation(ann *sitter.Node) (doc, dynamic, category string) {
+	args := ann.ChildByFieldName("arguments")
+	if args == nil {
+		return
+	}
 
-			switch keyStr {
-			case "doc":
-				doc = trimQuotes(valStr)
-			case "dynamic":
-				dynamic = valStr
-			case "category":
-				category = valStr
-			}
+	for _, pair := range args.NamedChildren(cp.cursor) {
+		if pair.Kind() != "element_value_pair" {
+			return
+		}
+
+		key := pair.ChildByFieldName("key")
+		val := pair.ChildByFieldName("value")
+		if key == nil || val == nil {
+			return
+		}
+
+		keyStr := cp.nodeText(key)
+
+		switch keyStr {
+		case "doc":
+			doc = cp.extractStringValue(val)
+		case "dynamic":
+			dynamic = cp.nodeText(val)
+		case "category":
+			category = cp.nodeText(val)
 		}
 	}
 
@@ -181,22 +197,22 @@ func isTypeIdentifier(kind string) bool {
 	return false
 }
 
-func trimQuotes(s string) string {
-	s = strings.ReplaceAll(s, "\\n", "\n")
-	lines := strings.Split(s, "\n")
-	var result []string
-
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		trimmed = strings.TrimPrefix(trimmed, "+")
-		trimmed = strings.TrimSpace(trimmed)
-		trimmed = strings.Trim(trimmed, `"`)
-		if trimmed != "" {
-			result = append(result, trimmed)
-		}
+func (cp *ConfigParser) extractStringValue(n *sitter.Node) string {
+	if n == nil {
+		return ""
 	}
 
-	return strings.Join(result, " ")
+	if n.Kind() == "string_literal" {
+		text := cp.nodeText(n)
+		return strings.Trim(text, `"`)
+	}
+
+	var res strings.Builder
+	for _, child := range n.NamedChildren(cp.cursor) {
+		res.WriteString(cp.extractStringValue(&child))
+	}
+
+	return res.String()
 }
 
 func (cp *ConfigParser) debugPrintNode(n *sitter.Node, depth int) {
@@ -205,7 +221,7 @@ func (cp *ConfigParser) debugPrintNode(n *sitter.Node, depth int) {
 	if len(text) > 60 {
 		text = text[:60] + "..."
 	}
-	text = strings.ReplaceAll(text, "\n", "\\n")
+	// text = strings.ReplaceAll(text, "\n", "\\n")
 	fmt.Fprintf(os.Stdout, "%sType: %-30s Text: %q\n", indent, n.Kind(), text)
 
 	for _, child := range n.NamedChildren(cp.cursor) {
