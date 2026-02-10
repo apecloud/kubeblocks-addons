@@ -20,6 +20,7 @@ spec:
     - name: clickhouse
       shards: 1
       template:
+        name: clickhouse
         replicas: 1
         systemAccounts:
           - name: admin
