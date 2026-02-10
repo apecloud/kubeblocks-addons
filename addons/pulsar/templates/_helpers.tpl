@@ -246,6 +246,12 @@ Define pulsar zookeeper component definition regex pattern
 ^pulsar-zookeeper-3-
 {{- end -}}
 
+{{/*
+Define zookeeper (kb's addon) component definition regex pattern
+*/}}
+{{- define "pulsar.kbZookeeperCmpdRegexPattern" -}}
+^zookeeper-
+{{- end -}}
 
 {{/*
 Define pulsar v3.X zookeeper component definition name
