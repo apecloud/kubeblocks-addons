@@ -1,0 +1,35 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: elasticsearch-es-dump
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: ES_DUMP_IMAGE_TAG
+      value: {{ .Values.image.esDump.tag | default "latest" }}
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.esDump.repository }}:{{ .Values.image.esDump.tag }}
+      runOnTargetPodNode: false
+      command:
+      - sh
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/es-dump-backup.sh" | nindent 8 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    postReady:
+    - job:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.esDump.repository }}:{{ .Values.image.esDump.tag }}
+        runOnTargetPodNode: false
+        command:
+        - sh
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/es-dump-restore.sh" | nindent 10 }}
