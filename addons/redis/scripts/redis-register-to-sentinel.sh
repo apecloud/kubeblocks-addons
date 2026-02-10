@@ -124,7 +124,7 @@ construct_sentinel_sub_command() {
       echo "SENTINEL monitor $master_name $redis_primary_host $redis_primary_port 2"
       ;;
     "down-after-milliseconds")
-      echo "SENTINEL set $master_name down-after-milliseconds 5000"
+      echo "SENTINEL set $master_name down-after-milliseconds 20000"
       ;;
     "failover-timeout")
       echo "SENTINEL set $master_name failover-timeout 60000"

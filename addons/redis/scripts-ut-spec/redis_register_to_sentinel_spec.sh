@@ -134,7 +134,7 @@ Describe 'register_to_sentinel.sh'
     It 'constructs the sentinel down-after-milliseconds sub command correctly'
       When call construct_sentinel_sub_command "down-after-milliseconds" "redis-redis" "redis-redis-0.redis-redis.default.svc.cluster.local" "6379"
       The status should be success
-      The output should eq "SENTINEL set redis-redis down-after-milliseconds 5000"
+      The output should eq "SENTINEL set redis-redis down-after-milliseconds 20000"
     End
 
     It 'constructs the sentinel failover-timeout sub command correctly'
@@ -192,7 +192,7 @@ Describe 'register_to_sentinel.sh'
       When call register_to_sentinel $sentinel_host $master_name $redis_primary_host $redis_primary_port
       The status should be success
       The output should include "host:redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local, port:26379 Command:SENTINEL monitor redis-redis redis-redis-0.redis-redis.default.svc.cluster.local 6379 2"
-      The output should include "host:redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local, port:26379 Command:SENTINEL set redis-redis down-after-milliseconds 5000 executed successfully."
+      The output should include "host:redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local, port:26379 Command:SENTINEL set redis-redis down-after-milliseconds 20000 executed successfully."
       The output should include "host:redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local, port:26379 Command:SENTINEL set redis-redis failover-timeout 60000"
       The output should include "host:redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local, port:26379 Command:SENTINEL set redis-redis parallel-syncs 1"
       The output should include "host:redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local, port:26379 Command:SENTINEL set redis-redis auth-user"
