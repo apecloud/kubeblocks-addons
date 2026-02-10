@@ -38,16 +38,16 @@ brokerInterceptors=
 # - https://github.com/streamnative/kop/blob/master/docs/kop.md
 # - https://github.com/streamnative/kop/blob/master/docs/configuration.md
 # List of messaging protocols to load, which is a list of protocol names
-messagingProtocols=kafka
+#messagingProtocols=kafka
 #protocolHandlerDirectory=./protocols
 #narExtractionDirectory=/tmp/pulsar-nar
 #kafkaListeners=kafka_external://0.0.0.0:9092
 #kafkaProtocolMap=kafka_external:PLAINTEXT
-allowAutoTopicCreationType=partitioned
+#allowAutoTopicCreationType=partitioned
 
 # Set offset management as below, since offset management for KoP depeocalnds on Pulsar "Broker Entry Metadata".
 # It’s required for KoP 2.8.0 or higher version.
-brokerEntryMetadataInterceptors=org.apache.pulsar.common.intercept.AppendIndexMetadataInterceptor
+#brokerEntryMetadataInterceptors=org.apache.pulsar.common.intercept.AppendIndexMetadataInterceptor
 # Disable the deletion of inactive topics. It’s not required but very important in KoP. Currently,
 # Pulsar deletes inactive partitions of a partitioned topic while the metadata of the partitioned topic is not deleted.
 # KoP cannot create missed partitions in this case.
@@ -55,8 +55,8 @@ brokerDeleteInactiveTopicsEnabled=false
 
 # KoP is compatible with Kafka clients 0.9 or higher. For Kafka clients 3.2.0 or higher, you have to add the following
 # configurations in KoP because of KIP-679.
-kafkaTransactionCoordinatorEnabled=true
-brokerDeduplicationEnabled=true
+#kafkaTransactionCoordinatorEnabled=true
+#brokerDeduplicationEnabled=true
 
 zookeeperServers={{ .ZOOKEEPER_SERVERS }}
 configurationStoreServers={{ .ZOOKEEPER_SERVERS }}
