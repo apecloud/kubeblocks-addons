@@ -14,6 +14,32 @@ trap handle_exit EXIT
 
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
+
+function save_sentinel_acl() {
+  if [ -z "$SENTINEL_POD_FQDN_LIST" ]; then
+     return
+  fi
+  for sentinel_fqdn in $(echo "$SENTINEL_POD_FQDN_LIST" | tr "," "\n"); do
+      echo "INFO: save sentinel ${sentinel_fqdn} ACL file"
+      sentinel_cmd="redis-cli $REDIS_CLI_TLS_CMD -h $sentinel_fqdn -p ${SENTINEL_SERVICE_PORT}"
+      if [ -n "$SENTINEL_PASSWORD" ]; then
+          sentinel_cmd="$sentinel_cmd -a $SENTINEL_PASSWORD"
+      fi
+      acl_list=$($sentinel_cmd ACL LIST)
+      if [ $? -eq 0 ]; then
+          break
+      fi
+  done
+  if [ -z "$acl_list" ]; then
+     return
+  fi
+  echo -n > /tmp/sentinel.acl
+  while IFS= read -r user_rule; do
+      echo "$user_rule" >> /tmp/sentinel.acl
+  done <<< "$acl_list"
+  datasafed push /tmp/sentinel.acl "sentinel.acl"
+}
+
 connect_url="redis-cli -h ${DP_DB_HOST} -p ${DP_DB_PORT} -a ${DP_DB_PASSWORD}"
 if [ -z ${DP_DB_PASSWORD} ]; then
   connect_url="redis-cli -h ${DP_DB_HOST} -p ${DP_DB_PORT}"
@@ -41,6 +67,7 @@ else
   # NOTE: if files changed during taring, the exit code will be 1 when it ends.
   # and will archive the aof file together.
   tar -cvf - ./ | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst"
+  save_sentinel_acl
 fi
 echo "INFO: save data file successfully"
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
