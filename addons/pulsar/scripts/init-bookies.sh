@@ -12,7 +12,6 @@ wait_for_zookeeper() {
   local zk_domain="${zk_servers%%:*}"
   local zk_port="2181"
 
-
   echo "Waiting for Zookeeper at ${zk_servers} to be ready..."
   until zkURL=${zk_servers} python3 /kb-scripts/zookeeper.py get /; do
     sleep 1

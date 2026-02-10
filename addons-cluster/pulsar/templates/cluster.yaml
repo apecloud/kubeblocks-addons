@@ -63,7 +63,7 @@ spec:
             targetPort: 2181
     {{- end }}
   componentSpecs:
-  {{- if or (eq .Values.mode "pulsar-enhanced-cluster") (and (not $topologyEnable) .Values.proxy.enabled) }}
+  {{- if or (hasPrefix .Values.mode "pulsar-enhanced") (and (not $topologyEnable) .Values.proxy.enabled) }}
     - name: proxy
     {{- if not  $topologyEnable }}
       componentDef: pulsar-proxy
@@ -85,7 +85,7 @@ spec:
       {{- end }}
       {{- end }}
     {{- end }}
-  {{- if or (eq .Values.mode "pulsar-enhanced-cluster") ( and (not $topologyEnable) .Values.bookiesRecovery.enabled) }}
+  {{- if or (hasPrefix .Values.mode "pulsar-enhanced") ( and (not $topologyEnable) .Values.bookiesRecovery.enabled) }}
     - name: bookies-recovery
     {{- if not $topologyEnable }}
       componentDef: pulsar-bookies-recovery

@@ -215,7 +215,7 @@ spec:
         livenessProbe:
           failureThreshold: 30
           httpGet:
-            path: /status.html
+            path: /admin/v2/brokers/health
             port: http
             scheme: HTTP
           initialDelaySeconds: 5
@@ -225,7 +225,7 @@ spec:
         readinessProbe:
           failureThreshold: 3
           httpGet:
-            path: /status.html
+            path: /admin/v2/brokers/health
             port: http
             scheme: HTTP
           initialDelaySeconds: 30
@@ -235,7 +235,7 @@ spec:
         startupProbe:
           failureThreshold: 30
           httpGet:
-            path: /status.html
+            path: /admin/v2/brokers/health
             port: http
             scheme: HTTP
           initialDelaySeconds: 5
