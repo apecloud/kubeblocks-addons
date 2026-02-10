@@ -267,6 +267,27 @@ Define pulsar v2.X zookeeper component definition name
 pulsar-zookeeper-2-{{ .Chart.Version }}
 {{- end -}}
 
+{{- define "pulsar4.kbZookeeperServiceVarRef" -}}
+- name: ZOOKEEPER_PORT
+  valueFrom:
+    serviceVarRef:
+      compDef: {{ include "pulsar.kbZookeeperCmpdRegexPattern" . }}
+      name: default
+      optional: true
+      port:
+        name: client
+        option: Required
+- name: ZOOKEEPER_SERVERS
+  valueFrom:
+    serviceVarRef:
+      compDef: {{ include "pulsar.kbZookeeperCmpdRegexPattern" . }}
+      name: default
+      host: Required
+      optional: true
+  expression: {{ `{{ .ZOOKEEPER_SERVERS }}.{{ .CLUSTER_NAMESPACE }}.svc:{{ .ZOOKEEPER_PORT }}` | toYaml }}
+
+{{- end -}}
+
 {{/*
 Define pulsar scripts tpl name
 */}}

@@ -38,23 +38,7 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
-    - name: ZOOKEEPER_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "pulsar.kbZookeeperCmpdRegexPattern" . }}
-          name: zookeeper
-          optional: true
-          port:
-            name: client
-            option: Required
-    - name: ZOOKEEPER_SERVERS
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "pulsar.kbZookeeperCmpdRegexPattern" . }}
-          name: zookeeper
-          host: Required
-          optional: true
-      expression: {{ `{{ .ZOOKEEPER_SERVERS }}.{{ .CLUSTER_NAMESPACE }}.svc:{{ .ZOOKEEPER_PORT }}` | toYaml }}
+    {{- include "pulsar4.kbZookeeperServiceVarRef" . | nindent 4 }}
     - name: PHY_MEMORY
       valueFrom:
         resourceVarRef:

@@ -76,12 +76,12 @@ spec:
       {{- if .limits }}
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
       {{- end }}
       {{- if .requests }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
       {{- end }}
     {{- end }}
@@ -98,12 +98,12 @@ spec:
       {{- if .limits }}
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
       {{- end }}
       {{- if .requests }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
       {{- end }}
   {{- end }}
@@ -130,12 +130,12 @@ spec:
       {{- if .limits }}
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
       {{- end }}
       {{- if .requests }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
       {{- end }}
     - name: bookies
@@ -154,12 +154,12 @@ spec:
         {{- if .limits }}
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi"  | quote }}
         {{- end }}
         {{- if .requests }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       {{- if .Values.bookies.persistence.enabled }}
