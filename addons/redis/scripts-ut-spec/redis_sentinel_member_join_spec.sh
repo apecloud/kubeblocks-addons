@@ -75,7 +75,7 @@ Describe "Redis Sentinel Member Join Script Tests"
           flags
           master
           down-after-milliseconds
-          5000
+          20000
           quorum
           2
           failover-timeout
@@ -87,7 +87,7 @@ Describe "Redis Sentinel Member Join Script Tests"
         The status should be success
         The stdout should include "all masters are reachable"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel monitor mymaster 172.20.0.1 30746 2"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel down-after-milliseconds mymaster 5000"
+        The contents of file "$redis_sentinel_real_conf" should include "sentinel down-after-milliseconds mymaster 20000"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel failover-timeout mymaster 60000"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel parallel-syncs mymaster 1"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel auth-user mymaster $REDIS_SENTINEL_USER"
@@ -138,7 +138,7 @@ Describe "Redis Sentinel Member Join Script Tests"
           flags
           master
           down-after-milliseconds
-          5000
+          20000
           quorum
           2
           failover-timeout
@@ -154,7 +154,7 @@ Describe "Redis Sentinel Member Join Script Tests"
           flags
           master
           down-after-milliseconds
-          5000
+          20000
           quorum
           2
           failover-timeout
@@ -166,13 +166,13 @@ Describe "Redis Sentinel Member Join Script Tests"
         The status should be success
         The stdout should include "all masters are reachable"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel monitor redis-redis0 172.20.0.1 30746 2"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel down-after-milliseconds redis-redis0 5000"
+        The contents of file "$redis_sentinel_real_conf" should include "sentinel down-after-milliseconds redis-redis0 20000"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel failover-timeout redis-redis0 60000"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel parallel-syncs redis-redis0 1"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel auth-user redis-redis0 $REDIS_SENTINEL_USER"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel auth-pass redis-redis0 $REDIS_SENTINEL_PASSWORD_REDIS0"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel monitor redis-redis1 172.20.0.2 30747 2"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel down-after-milliseconds redis-redis1 5000"
+        The contents of file "$redis_sentinel_real_conf" should include "sentinel down-after-milliseconds redis-redis1 20000"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel failover-timeout redis-redis1 60000"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel parallel-syncs redis-redis1 1"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel auth-user redis-redis1 $REDIS_SENTINEL_USER"
