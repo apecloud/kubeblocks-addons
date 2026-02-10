@@ -21,7 +21,7 @@ function save_sentinel_acl() {
   fi
   for sentinel_fqdn in $(echo "$SENTINEL_POD_FQDN_LIST" | tr "," "\n"); do
       echo "INFO: save sentinel ${sentinel_fqdn} ACL file"
-      sentinel_cmd="redis-cli -h $sentinel_fqdn -p ${SENTINEL_SERVICE_PORT}"
+      sentinel_cmd="redis-cli $REDIS_CLI_TLS_CMD -h $sentinel_fqdn -p ${SENTINEL_SERVICE_PORT}"
       if [ -n "$SENTINEL_PASSWORD" ]; then
           sentinel_cmd="$sentinel_cmd -a $SENTINEL_PASSWORD"
       fi
