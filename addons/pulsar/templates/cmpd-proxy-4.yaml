@@ -11,6 +11,7 @@ spec:
   description: Pulsar proxy component definition
   serviceKind: pulsar
   serviceVersion: {{ .Values.defaultServiceVersion.proxy.major3 }}
+  podManagementPolicy: Parallel
   serviceRefDeclarations:
     - name: pulsarZookeeper
       serviceRefDeclarationSpecs:

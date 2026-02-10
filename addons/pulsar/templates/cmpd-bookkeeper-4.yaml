@@ -18,6 +18,7 @@ spec:
           serviceVersion: ^3.8.\d{1,2}$
       optional: true
   updateStrategy: BestEffortParallel
+  podManagementPolicy: Parallel
   configs:
     - name: bookies-config
       template: {{ include "pulsar4.bookiesConfigTplName" . }}

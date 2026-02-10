@@ -103,7 +103,7 @@ start_broker() {
   load_env_file
   merge_configuration_files
 
-  echo 'OK' > status
+  echo 'OK' > data/status
   exec bin/pulsar broker
 }
 
