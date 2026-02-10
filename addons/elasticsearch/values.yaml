@@ -34,6 +34,10 @@ image:
   agent:
     repository: apecloud/elasticsearch-agent
     tag: "0.1.0"
+  # elasticsearch-dump: https://github.com/elasticsearch-dump/elasticsearch-dump
+  esDump:
+    repository: elasticdump/elasticsearch-dump
+    tag: "v6.124.2"
 
 ## @param supported elasticsearch versions with detailed information
 esVersions:
