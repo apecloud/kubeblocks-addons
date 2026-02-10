@@ -16,8 +16,18 @@ spec:
         strategy: Any
       snapshotVolumes: false
       actionSetName: elasticsearch-physical-br
+    - name: es-dump
+      target:
+        role: ""
+        strategy: Any
+      snapshotVolumes: false
+      actionSetName: elasticsearch-es-dump
   schedules:
     - backupMethod: full-backup
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: es-dump
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
