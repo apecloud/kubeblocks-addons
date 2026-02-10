@@ -20,7 +20,7 @@ vminsert:
   ## Prefix VM_ will be added automatically. Example: replicationFactor -> VM_replicationFactor
   ## See https://docs.victoriametrics.com/cluster-victoriametrics/cluster-setup/#vminsert-flags
   env:
-    replicationFactor: 1
+    replicationFactor: 2
     maxConcurrentInserts: # Defaults to number of CPU cores
     disableRerouting: true
     maxInsertRequestSize: "32MiB" # 33554432
@@ -39,7 +39,7 @@ vmselect:
   ## Prefix VM_ will be added automatically. Example: dedup.minScrapeInterval -> VM_dedup_minScrapeInterval
   ## See https://docs.victoriametrics.com/cluster-victoriametrics/cluster-setup/#vmselect-flags
   env:
-    dedup.minScrapeInterval: "0ms" # Set > 0 only if replicationFactor > 1 for vminsert
+    dedup.minScrapeInterval: "30s" # Set > 0 only if replicationFactor > 1 for vminsert
     search.maxConcurrentRequests: 16 # Defaults to 16
     search.maxQueryDuration: "30s"
     search.maxMemoryPerQuery: "0" # Defaults to 0 (unlimited)
@@ -56,14 +56,14 @@ vmstorage:
   ##
   storageClassName: ""
   storage: 20
-  replicas: 1
+  replicas: 3
   resources: {}
   ## @param env, additional environment variables for vmstorage
   ## Prefix VM_ will be added automatically. Example: retentionPeriod -> VM_retentionPeriod
   ## See https://docs.victoriametrics.com/cluster-victoriametrics/cluster-setup/#vmstorage-flags
   env:
     retentionPeriod: "1" # Overrides the global retentionPeriod if set, unit is months by default
-    dedup.minScrapeInterval: "0ms" # Should match vmselect's setting if deduplication is enabled
+    dedup.minScrapeInterval: "30s" # Should match vmselect's setting if deduplication is enabled
     forceMergeAuthKey: ""
     storage.minFreeDiskSpaceBytes: "10MB" # 10000000
     inmemoryDataFlushInterval: "5s"
