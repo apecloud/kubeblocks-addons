@@ -99,6 +99,7 @@ node:
   {{- else }}
   {{ $e }}: true 
   {{- end }}
+  {{- end }}
   {{- else }}
   roles:
   {{- range $i, $e := $myRoles }}
