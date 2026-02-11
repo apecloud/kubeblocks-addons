@@ -109,15 +109,20 @@ defaultServiceVersion:
   recovery:
     major2: "2.11.2"
     major3: "3.0.2"
+    major4: "4.0.6"
   bookkeeper:
     major2: "2.11.2"
     major3: "3.0.2"
+    major4: "4.0.6"
   broker:
     major2: "2.11.2"
     major3: "3.0.2"
+    major4: "4.0.6"
   proxy:
     major2: "2.11.2"
     major3: "3.0.2"
+    major4: "4.0.6"
   zookeeper:
     major2: "2.11.2"
     major3: "3.0.2"
+    major4: "4.0.6"

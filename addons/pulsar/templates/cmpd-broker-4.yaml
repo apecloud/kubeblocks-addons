@@ -10,7 +10,7 @@ spec:
   provider: kubeblocks
   description: Pulsar broker component definition
   serviceKind: pulsar
-  serviceVersion: {{ .Values.defaultServiceVersion.broker.major3 }}
+  serviceVersion: {{ .Values.defaultServiceVersion.broker.major4 }}
   podManagementPolicy: Parallel
   vars:
     - name: CLUSTER_NAMESPACE

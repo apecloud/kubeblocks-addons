@@ -10,7 +10,7 @@ spec:
   provider: kubeblocks
   description: Pulsar bookkeeper component definition
   serviceKind: pulsar
-  serviceVersion: {{ .Values.defaultServiceVersion.bookkeeper.major3 }}
+  serviceVersion: {{ .Values.defaultServiceVersion.bookkeeper.major4 }}
   serviceRefDeclarations:
     - name: pulsarZookeeper
       serviceRefDeclarationSpecs:
