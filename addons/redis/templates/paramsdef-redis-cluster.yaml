@@ -1,8 +1,11 @@
+{{- $redisCeRepo := include "redis.ceRepository" . -}}
 {{- range .Values.redisVersions }}
 {{- $version := .major }}
 {{- $redisImage := printf "%s/%s:%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository .defaultImageTag }}
+{{- $redisRepository := printf "%s/%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository }}
 {{- if or (eq .major "8") (eq .major "5") }}
-{{- $redisImage = printf "%s/%s:%s" ( $.Values.ceImage.registry | default ( $.Values.image.registry | default "docker.io" ) )  $.Values.ceImage.repository .defaultImageTag }}
+{{- $redisImage = printf "%s/%s:%s" ( $.Values.ceImage.registry | default ( $.Values.image.registry | default "docker.io" ) ) $redisCeRepo .defaultImageTag }}
+{{- $redisRepository = printf "%s/%s" ( $.Values.ceImage.registry | default ( $.Values.image.registry | default "docker.io" ) ) $redisCeRepo }}
 {{- end }}
 {{- $pd := $.Files.Get "config/redis-config-effect-scope.yaml" | fromYaml }}
 ---
@@ -27,6 +30,12 @@ spec:
           - name: kb-tools
             asContainerImage: true
             image: {{ $redisImage }}
+            imageMappings:
+            {{- range .mirrorVersions }}
+            - serviceVersions:
+                - {{ .version }}
+              image: {{ $redisRepository }}:{{ .imageTag }}
+            {{- end }}
 
   fileName: redis.conf
   # ConfigurationSchema that impose restrictions on engine parameter's rule

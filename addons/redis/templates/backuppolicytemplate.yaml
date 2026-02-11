@@ -43,28 +43,18 @@ spec:
         - name: IMAGE
           valueFrom:
             versionMapping:
-              - serviceVersions:
-                  - "6.2.18"
-                mappedValue: "{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.2.6-v19"
-              - serviceVersions:
-                  - "7.4.5"
-                  - "7.4.6"
-                  - "7.4.7"
-                mappedValue: "{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.4.0-v8"
-              - serviceVersions:
-                  - "8.0.1"
-                  - "8.0.2"
-                  - "8.0.3"
-                  - "8.0.4"
-                  - "8.0.5"
-                mappedValue: "{{ .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ceImage.repository }}:8.0.5"
-              - serviceVersions:
-                  - "8.2.1"
-                  - "8.2.3"
-                mappedValue: "{{ .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ceImage.repository }}:8.2.3"
-              - serviceVersions:
-                  - "8.4.0"
-                mappedValue: "{{ .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ceImage.repository }}:8.4.0"
+            {{- $redisCeRepo := include "redis.ceRepository" . -}}
+            {{- range .Values.redisVersions }}
+            {{- $redisRepository := printf "%s/%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository }}
+            {{- if or (eq .major "8") (eq .major "5") }}
+              {{- $redisRepository = printf "%s/%s" ( $.Values.ceImage.registry | default ( $.Values.image.registry | default "docker.io" ) ) $redisCeRepo }}
+            {{- end }}
+            {{- range .mirrorVersions }}
+             - serviceVersions:
+               - {{ .version }}
+               mappedValue: {{ $redisRepository }}:{{ .imageTag }}
+            {{- end }}
+            {{- end }}
     - name: volume-snapshot
       snapshotVolumes: true
       targetVolumes:

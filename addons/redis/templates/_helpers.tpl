@@ -150,19 +150,19 @@ redis-metrics-config
 
 {{- define "busybox.image" -}}
 {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository}}:{{ .Values.busyboxImage.tag }}
-{{- end }}}
+{{- end }}
 
 {{- define "metrics.repository" -}}
 {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository}}
-{{- end }}}
+{{- end }}
 
 {{- define "metrics.image" -}}
 {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository}}:{{ .Values.metrics.image.tag }}
-{{- end }}}
+{{- end }}
 
 {{- define "apeDts.image" -}}
 {{ .Values.apeDtsImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.apeDtsImage.repository}}:{{ .Values.apeDtsImage.tag }}
-{{- end }}}
+{{- end }}
 
 {{/*
 Generate scripts configmap
@@ -190,4 +190,13 @@ redis-account.sh: |-
 
 {{- define "apeDts.reshard.image" -}}
 {{ .Values.image.apeDts.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.apeDts.repository}}:{{ .Values.image.apeDts.reshardTag }}
-{{- end }}}
+{{- end }}
+
+{{- define "redis.ceRepository" -}}
+{{ $registry := .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" )}}
+{{- if eq $registry "docker.io" -}}
+{{- .Values.ceImage.repository -}}
+{{- else -}}
+apecloud/redis
+{{- end -}}
+{{- end -}}
