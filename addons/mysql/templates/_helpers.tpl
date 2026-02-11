@@ -242,6 +242,7 @@ roles:
   - name: primary
     updatePriority: 2
     participatesInQuorum: false
+    isExclusive: true
   - name: secondary
     updatePriority: 1
     participatesInQuorum: false
