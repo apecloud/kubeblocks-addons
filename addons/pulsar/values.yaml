@@ -81,17 +81,17 @@ images:
   
   v4_0_6:
     bookie:
-      repository: apachepulsar/pulsar
+      repository: apecloud/pulsar
       pullPolicy: IfNotPresent
       tag: 4.0.6
 
     broker:
-      repository: apachepulsar/pulsar
+      repository: apecloud/pulsar
       pullPolicy: IfNotPresent
       tag: 4.0.6
 
     proxy:
-      repository: apachepulsar/pulsar
+      repository: apecloud/pulsar
       pullPolicy: IfNotPresent
       tag: 4.0.6
 

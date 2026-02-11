@@ -149,3 +149,13 @@ spec:
 {{/*            mountPath: /opt/pulsar/none*/}}
           - name: pulsar-proxy-config
             mountPath: /opt/pulsar/conf
+  services:
+    - name: proxy
+      spec:
+        ports:
+          - name: client
+            port: 6650
+            targetPort: client
+          - name: http
+            port: 8080
+            targetPort: http

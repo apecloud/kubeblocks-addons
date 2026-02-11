@@ -32,15 +32,15 @@ spec:
           port:
             name: pulsar
             option: Optional
-    - name: ADVERTISED_PORT_KAFKA
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "pulsar4.brokerCmpdRegexPattern" . }}
-          name: advertised-listener
-          optional: true
-          port:
-            name: kafka-client
-            option: Optional
+    # - name: ADVERTISED_PORT_KAFKA
+    #   valueFrom:
+    #     serviceVarRef:
+    #       compDef: {{ include "pulsar4.brokerCmpdRegexPattern" . }}
+    #       name: advertised-listener
+    #       optional: true
+    #       port:
+    #         name: kafka-client
+    #         option: Optional
     - name: BROKER_COMPONENT_NAME
       valueFrom:
         componentVarRef:
@@ -63,9 +63,9 @@ spec:
           - name: pulsar
             port: 6650
             targetPort: pulsar
-          - name: kafka-client
-            port: 9092
-            targetPort: kafka-client
+          # - name: kafka-client
+          #   port: 9092
+          #   targetPort: kafka-client
   serviceRefDeclarations:
     - name: pulsarZookeeper
       serviceRefDeclarationSpecs:
@@ -198,21 +198,21 @@ spec:
             value: cluster:pulsar://$(POD_NAME).$(BROKER_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):6650
           # KoP configs:
           #   https://github.com/streamnative/kop/blob/branch-3.0.0.4/docs/configuration.md#configuration
-          - name: PULSAR_PREFIX_allowAutoTopicCreationType
-            value: partitioned
-          - name: PULSAR_PREFIX_kafkaProtocolMap
-            value: "CLIENT:PLAINTEXT"
-          - name: PULSAR_PREFIX_kafkaListeners
-            value: CLIENT://0.0.0.0:9092
-          - name: PULSAR_PREFIX_kafkaAdvertisedListeners
-            value: CLIENT://$(POD_NAME).$(BROKER_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):9092
+          # - name: PULSAR_PREFIX_allowAutoTopicCreationType
+          #   value: partitioned
+          # - name: PULSAR_PREFIX_kafkaProtocolMap
+          #   value: "CLIENT:PLAINTEXT"
+          # - name: PULSAR_PREFIX_kafkaListeners
+          #   value: CLIENT://0.0.0.0:9092
+          # - name: PULSAR_PREFIX_kafkaAdvertisedListeners
+          #   value: CLIENT://$(POD_NAME).$(BROKER_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):9092
         ports:
           - name: pulsar
             containerPort: 6650
           - name: http
             containerPort: 8080
-          - name: kafka-client
-            containerPort: 9092
+          # - name: kafka-client
+          #   containerPort: 9092
         livenessProbe:
           failureThreshold: 30
           httpGet:
