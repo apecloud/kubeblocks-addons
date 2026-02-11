@@ -87,8 +87,14 @@ node:
   {{- $myRoles := $roles | splitList "," }}
   {{- if semverCompare "<7.9" $esVersion }}
   {{- range $i, $e := $myRoles }}
-    {{- if ne $e "transform" }}
-  {{ $e }}: true
+    {{- if eq $e "master" }}
+  master: true
+  data: false
+    {{- else if eq $e "data" }}
+  master: false
+  data: true
+    {{- else }}
+  {{ $e }}: true  
     {{- end }}
   {{- end }}
   {{- else }}
