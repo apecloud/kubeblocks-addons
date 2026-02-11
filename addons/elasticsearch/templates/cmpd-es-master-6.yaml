@@ -66,7 +66,7 @@ spec:
         clusterVarRef:
           clusterName: Required
     - name: ELASTICSEARCH_ROLES
-      value: master
+      value: master,ingest
     {{/* ALL_CMP_REPLICA_LIST ='master:podName0,podName1,podName2;data:podName0,podName1'*/}}
     - name: ALL_CMP_REPLICA_LIST
       valueFrom:
