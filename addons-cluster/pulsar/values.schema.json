@@ -15,7 +15,8 @@
             "default": "pulsar-enhanced-cluster",
             "enum": [
                 "pulsar-basic-cluster",
-                "pulsar-enhanced-cluster"
+                "pulsar-enhanced-cluster",
+                "pulsar-enhanced-with-kb-zk"
             ]
         },
         "bookies": {

@@ -1,12 +1,12 @@
 #!/bin/bash
 
 wait_for_zookeeper() {
-  local zk_url="$1"
-  local zk_domain="${zk_url%%:*}"
+  local zk_servers="$1"
+  local zk_domain="${zk_servers%%:*}"
   local zk_port="2181"
 
-  echo "Waiting for Zookeeper at ${zk_url} to be ready..."
-  until echo ruok | nc -q 1 ${zk_domain} ${zk_port} | grep imok; do
+  echo "Waiting for Zookeeper at ${zk_servers} to be ready..."
+  until zkURL=${zk_servers} python3 /kb-scripts/zookeeper.py get /; do
     sleep 1
   done
   echo "Zookeeper is ready"

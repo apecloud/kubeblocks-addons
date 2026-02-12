@@ -90,6 +90,10 @@ Define pulsar bookies recovery component definition regex pattern
 ^pulsar-bookies-recovery-3-
 {{- end -}}
 
+{{- define "pulsar4.bkRecoveryCmpdRegexPattern" -}}
+^pulsar-bookies-recovery-4-
+{{- end -}}
+
 {{/*
 Define pulsar v3.X bookies recovery component definition name
 */}}
@@ -102,6 +106,10 @@ Define pulsar v2.X bookies recovery component definition name
 */}}
 {{- define "pulsar2.bkRecoveryCmpdName" -}}
 pulsar-bookies-recovery-2-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "pulsar4.bkRecoveryCmpdName" -}}
+pulsar-bookies-recovery-4-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -119,6 +127,10 @@ Define pulsar bookkeeper component definition regex pattern
 ^pulsar-bookkeeper-3-
 {{- end -}}
 
+{{- define "pulsar4.bookkeeperCmpdRegexPattern" -}}
+^pulsar-bookkeeper-4-
+{{- end -}}
+
 
 {{/*
 Define pulsar v3.X bookkeeper component definition name
@@ -132,6 +144,10 @@ Define pulsar v2.X bookkeeper component definition name
 */}}
 {{- define "pulsar2.bookkeeperCmpdName" -}}
 pulsar-bookkeeper-2-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "pulsar4.bookkeeperCmpdName" -}}
+pulsar-bookkeeper-4-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -169,6 +185,14 @@ Define pulsar v2.X broker component definition regex pattern
 ^pulsar-broker-2-
 {{- end -}}
 
+{{- define "pulsar4.brokerCmpdName" -}}
+pulsar-broker-4-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "pulsar4.brokerCmpdRegexPattern" -}}
+^pulsar-broker-4-
+{{- end -}}
+
 {{/*
 Define pulsar proxy component definition regex pattern
 */}}
@@ -184,6 +208,10 @@ Define pulsar proxy component definition regex pattern
 ^pulsar-proxy-3-
 {{- end -}}
 
+{{- define "pulsar4.proxyCmpdRegexPattern" -}}
+^pulsar-proxy-4-
+{{- end -}}
+
 {{/*
 Define pulsar v3.X proxy component definition name
 */}}
@@ -196,6 +224,10 @@ Define pulsar v2.X proxy component definition name
 */}}
 {{- define "pulsar2.proxyCmpdName" -}}
 pulsar-proxy-2-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "pulsar4.proxyCmpdName" -}}
+pulsar-proxy-4-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -214,6 +246,12 @@ Define pulsar zookeeper component definition regex pattern
 ^pulsar-zookeeper-3-
 {{- end -}}
 
+{{/*
+Define zookeeper (kb's addon) component definition regex pattern
+*/}}
+{{- define "pulsar.kbZookeeperCmpdRegexPattern" -}}
+^zookeeper-
+{{- end -}}
 
 {{/*
 Define pulsar v3.X zookeeper component definition name
@@ -227,6 +265,27 @@ Define pulsar v2.X zookeeper component definition name
 */}}
 {{- define "pulsar2.zookeeperCmpdName" -}}
 pulsar-zookeeper-2-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "pulsar4.kbZookeeperServiceVarRef" -}}
+- name: ZOOKEEPER_PORT
+  valueFrom:
+    serviceVarRef:
+      compDef: {{ include "pulsar.kbZookeeperCmpdRegexPattern" . }}
+      name: default
+      optional: true
+      port:
+        name: client
+        option: Required
+- name: ZOOKEEPER_SERVERS
+  valueFrom:
+    serviceVarRef:
+      compDef: {{ include "pulsar.kbZookeeperCmpdRegexPattern" . }}
+      name: default
+      host: Required
+      optional: true
+  expression: {{ `{{ .ZOOKEEPER_SERVERS }}.{{ .CLUSTER_NAMESPACE }}.svc:{{ .ZOOKEEPER_PORT }}` | toYaml }}
+
 {{- end -}}
 
 {{/*
@@ -255,6 +314,10 @@ Define pulsar bookies recovery env tpl name
 */}}
 {{- define "pulsar3.bkRecoveryTplName" -}}
 pulsar3-bkrecovery-conf-tpl
+{{- end -}}
+
+{{- define "pulsar4.bkRecoveryTplName" -}}
+pulsar4-bkrecovery-conf-tpl
 {{- end -}}
 
 {{/*
@@ -320,6 +383,10 @@ Define pulsar v2.X bookies config tpl name
 pulsar2-bookies-config-tpl
 {{- end -}}
 
+{{- define "pulsar4.bookiesConfigTplName" -}}
+pulsar4-bookies-config-tpl
+{{- end -}}
+
 {{/*
 Define pulsar v3.X bookies config constraint name
 */}}
@@ -332,6 +399,10 @@ Define pulsar v2.X bookies config constraint name
 */}}
 {{- define "pulsar2.bookiesConfigConstraintName" -}}
 pulsar2-bookies-config-constraint
+{{- end -}}
+
+{{- define "pulsar4.bookiesConfigConstraintName" -}}
+pulsar4-bookies-config-constraint
 {{- end -}}
 
 {{/*
@@ -348,6 +419,10 @@ Define pulsar v2.X broker config tpl name
 pulsar2-broker-config-tpl
 {{- end -}}
 
+{{- define "pulsar4.brokerConfigTplName" -}}
+pulsar4-broker-config-tpl
+{{- end -}}
+
 {{/*
 Define pulsar v3.X broker config constraint name
 */}}
@@ -360,6 +435,10 @@ Define pulsar v2.X broker config constraint name
 */}}
 {{- define "pulsar2.brokerConfigConstraintName" -}}
 pulsar2-broker-config-constraint
+{{- end -}}
+
+{{- define "pulsar4.brokerConfigConstraintName" -}}
+pulsar4-broker-config-constraint
 {{- end -}}
 
 {{/*
@@ -376,6 +455,10 @@ Define pulsar v2.X broker config tpl name
 pulsar2-proxy-config-tpl
 {{- end -}}
 
+{{- define "pulsar4.proxyConfigTplName" -}}
+pulsar4-proxy-config-tpl
+{{- end -}}
+
 {{/*
 Define pulsar v3.X proxy config constraint name
 */}}
@@ -390,61 +473,9 @@ Define pulsar v2.X proxy config constraint name
 pulsar2-proxy-config-constraint
 {{- end -}}
 
-{{/*
-Define pulsar v3.X bookies image
-*/}}
-{{- define "pulsar3.bookiesImage" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.images.v3_0_2.bookie.tag }}
-{{- end }}
-
-{{/*
-Define pulsar v2.X bookies image
-*/}}
-{{- define "pulsar2.bookiesImage" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.images.v2_11_2.bookie.tag }}
-{{- end }}
-
-{{/*
-Define pulsar v3.X broker image
-*/}}
-{{- define "pulsar3.brokerImage" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.images.v3_0_2.broker.tag }}
-{{- end }}
-
-{{/*
-Define pulsar v2.X broker image
-*/}}
-{{- define "pulsar2.brokerImage" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.images.v2_11_2.broker.tag }}
-{{- end }}
-
-{{/*
-Define pulsar v3.X proxy image
-*/}}
-{{- define "pulsar3.proxyImage" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.images.v3_0_2.proxy.tag }}
-{{- end }}
-
-{{/*
-Define pulsar v2.X proxy image
-*/}}
-{{- define "pulsar2.proxyImage" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.images.v2_11_2.proxy.tag }}
-{{- end }}
-
-{{/*
-Define pulsar v3.X zookeeper image
-*/}}
-{{- define "pulsar3.zookeeperImage" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.images.v3_0_2.zookeeper.tag }}
-{{- end }}
-
-{{/*
-Define pulsar v2.X zookeeper image
-*/}}
-{{- define "pulsar2.zookeeperImage" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.images.v2_11_2.zookeeper.tag }}
-{{- end }}
+{{- define "pulsar4.proxyConfigConstraintName" -}}
+pulsar4-proxy-config-constraint
+{{- end -}}
 
 {{/*
 Define pulsar tools image
@@ -467,6 +498,10 @@ Define pulsar v3.X bookies parameter config render name
 pulsar3-bookies-pcr
 {{- end -}}
 
+{{- define "pulsar4.bookiesPCRName" -}}
+pulsar4-bookies-pcr
+{{- end -}}
+
 {{/*
 Define pulsar v2.X bookies parameter config render name
 */}}
@@ -478,47 +513,59 @@ pulsar2-bkrecovery-pcr-{{ .Chart.Version }}
 Define pulsar v3.X bookies parameter config render name
 */}}
 {{- define "pulsar3.bkrecoveryPCRName" -}}
-pulsar3-bkrecovery-pc-{{ .Chart.Version }}r
+pulsar3-bkrecovery-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "pulsar4.bkrecoveryPCRName" -}}
+pulsar4-bkrecovery-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define pulsar v2.X bookies parameter config render name
 */}}
 {{- define "pulsar2.proxyPCRName" -}}
-pulsar2-proxy-pc-{{ .Chart.Version }}r
+pulsar2-proxy-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define pulsar v3.X bookies parameter config render name
 */}}
 {{- define "pulsar3.proxyPCRName" -}}
-pulsar3-proxy-pc-{{ .Chart.Version }}r
+pulsar3-proxy-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "pulsar4.proxyPCRName" -}}
+pulsar4-proxy-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define pulsar v2.X bookies parameter config render name
 */}}
 {{- define "pulsar2.brokerPCRName" -}}
-pulsar2-broker-pc-{{ .Chart.Version }}r
+pulsar2-broker-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define pulsar v3.X bookies parameter config render name
 */}}
 {{- define "pulsar3.brokerPCRName" -}}
-pulsar3-broker-pc-{{ .Chart.Version }}r
+pulsar3-broker-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "pulsar4.brokerPCRName" -}}
+pulsar4-broker-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define pulsar v2.X bookies parameter config render name
 */}}
 {{- define "pulsar2.zookeeperPCRName" -}}
-pulsar2-zookeeper-pc-{{ .Chart.Version }}r
+pulsar2-zookeeper-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define pulsar v3.X bookies parameter config render name
 */}}
 {{- define "pulsar3.zookeeperPCRName" -}}
-pulsar3-zookeeper-pc-{{ .Chart.Version }}r
+pulsar3-zookeeper-pcr-{{ .Chart.Version }}
 {{- end -}}
