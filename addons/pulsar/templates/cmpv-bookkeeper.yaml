@@ -9,15 +9,19 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        ## regex pattern for bookkeeper component definition match pulsar 2.X and 3.X
+        ## regex pattern for bookkeeper component definition match pulsar 2.X
         - {{ include "pulsar2.bookkeeperCmpdRegexPattern" . }}
       releases:
         - 2.11.2
     - compDefs:
-        ## regex pattern for bookkeeper component definition match pulsar 2.X and 3.X
+        ## regex pattern for bookkeeper component definition match pulsar 3.X
         - {{ include "pulsar3.bookkeeperCmpdRegexPattern" . }}
       releases:
         - 3.0.2
+    - compDefs:
+        - {{ include "pulsar4.bookkeeperCmpdRegexPattern" . }}
+      releases:
+        - 4.0.6
   releases:
     - name: 2.11.2
       serviceVersion: 2.11.2
@@ -31,3 +35,9 @@ spec:
         bookies: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v3_0_2.bookie.repository }}:3.0.2
         memberLeave: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v3_0_2.bookie.repository }}:3.0.2
         init-bookies: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v3_0_2.bookie.repository }}:3.0.2
+    - name: 4.0.6
+      serviceVersion: 4.0.6
+      images:
+        bookies: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_6.bookie.repository }}:4.0.6
+        memberLeave: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_6.bookie.repository }}:4.0.6
+        init-bookies: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_6.bookie.repository }}:4.0.6

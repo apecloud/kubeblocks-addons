@@ -21,19 +21,13 @@ image:
 ##
 ## Control what images to use for each component
 images:
+  # 2.x and 3.x images are packaged by apecloud to add arm64 support. 4.x images are mirrored from apachepulsar/pulsar
   pulsarTools:
     # if the value of images.pulsarTools.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
     repository: apecloud/pulsartools
     pullPolicy: ""
     tag: "2.11"
-
-  metrics:
-    # if the value of images.pulsarTools.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-    registry: ""
-    repository: apecloud/agamotto
-    pullPolicy: IfNotPresent
-    tag: 0.1.2-beta.2
 
   v2_11_2:
     bookie:
@@ -84,6 +78,22 @@ images:
       repository: apecloud/pulsar
       pullPolicy: IfNotPresent
       tag: 3.0.2
+  
+  v4_0_6:
+    bookie:
+      repository: apecloud/pulsar
+      pullPolicy: IfNotPresent
+      tag: 4.0.6
+
+    broker:
+      repository: apecloud/pulsar
+      pullPolicy: IfNotPresent
+      tag: 4.0.6
+
+    proxy:
+      repository: apecloud/pulsar
+      pullPolicy: IfNotPresent
+      tag: 4.0.6
 
 metrics:
   service:
@@ -99,15 +109,20 @@ defaultServiceVersion:
   recovery:
     major2: "2.11.2"
     major3: "3.0.2"
+    major4: "4.0.6"
   bookkeeper:
     major2: "2.11.2"
     major3: "3.0.2"
+    major4: "4.0.6"
   broker:
     major2: "2.11.2"
     major3: "3.0.2"
+    major4: "4.0.6"
   proxy:
     major2: "2.11.2"
     major3: "3.0.2"
+    major4: "4.0.6"
   zookeeper:
     major2: "2.11.2"
     major3: "3.0.2"
+    major4: "4.0.6"
