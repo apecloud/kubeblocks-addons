@@ -57,3 +57,28 @@ spec:
           - zookeeper
           - broker,bookies
           - proxy,bookies-recovery
+    - name: pulsar-enhanced-with-kb-zk
+      components:
+        - name: broker
+          compDef: {{ include "pulsar.brokerCmpdRegexPattern" . }}
+        - name: bookies
+          compDef: {{ include "pulsar.bookkeeperCmpdRegexPattern" . }}
+        - name: zookeeper
+          compDef: {{ include "pulsar.kbZookeeperCmpdRegexPattern" . }}
+        - name: proxy
+          compDef: {{ include "pulsar.proxyCmpdRegexPattern" . }}
+        - name: bookies-recovery
+          compDef: {{ include "pulsar.bkRecoveryCmpdRegexPattern" . }}
+      orders:
+        provision:
+          - zookeeper
+          - broker,bookies
+          - proxy,bookies-recovery
+        terminate:
+          - proxy,bookies-recovery
+          - broker,bookies
+          - zookeeper
+        update:
+          - zookeeper
+          - broker,bookies
+          - proxy,bookies-recovery

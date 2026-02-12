@@ -1,0 +1,22 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "pulsar4.bookiesPCRName" . }}
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pulsar.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "pulsar4.bookkeeperCmpdName" . }}
+  parametersDefs:
+    - {{ include "pulsar4.bookiesConfigConstraintName" . }}
+
+  configs:
+    - name: bookkeeper.conf
+      fileFormatConfig:
+        format: props-plus
+    - name: pulsar.env
+      fileFormatConfig:
+        format: dotenv
+      reRenderResourceTypes:
+        - vscale

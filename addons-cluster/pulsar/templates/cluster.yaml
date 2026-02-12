@@ -63,7 +63,7 @@ spec:
             targetPort: 2181
     {{- end }}
   componentSpecs:
-  {{- if or (eq .Values.mode "pulsar-enhanced-cluster") (and (not $topologyEnable) .Values.proxy.enabled) }}
+  {{- if or (hasPrefix "pulsar-enhanced" .Values.mode) (and (not $topologyEnable) .Values.proxy.enabled) }}
     - name: proxy
     {{- if not  $topologyEnable }}
       componentDef: pulsar-proxy
@@ -76,16 +76,16 @@ spec:
       {{- if .limits }}
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
       {{- end }}
       {{- if .requests }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
       {{- end }}
     {{- end }}
-  {{- if or (eq .Values.mode "pulsar-enhanced-cluster") ( and (not $topologyEnable) .Values.bookiesRecovery.enabled) }}
+  {{- if or (hasPrefix "pulsar-enhanced" .Values.mode) ( and (not $topologyEnable) .Values.bookiesRecovery.enabled) }}
     - name: bookies-recovery
     {{- if not $topologyEnable }}
       componentDef: pulsar-bookies-recovery
@@ -98,12 +98,12 @@ spec:
       {{- if .limits }}
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
       {{- end }}
       {{- if .requests }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
       {{- end }}
   {{- end }}
@@ -130,12 +130,12 @@ spec:
       {{- if .limits }}
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi" | quote }}
       {{- end }}
       {{- if .requests }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
       {{- end }}
     - name: bookies
@@ -154,12 +154,12 @@ spec:
         {{- if .limits }}
         limits:
           cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
+          memory: {{ print .limits.memory "Gi"  | quote }}
         {{- end }}
         {{- if .requests }}
         requests:
           cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+          memory: {{ print .requests.memory "Gi" | quote }}
         {{- end }}
       {{- end }}
       {{- if .Values.bookies.persistence.enabled }}

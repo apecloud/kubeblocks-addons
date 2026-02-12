@@ -18,10 +18,11 @@ Describe "Pulsar Init Proxy Bash Script Tests"
 
   Describe "wait_for_zookeeper()"
     It "waits for Zookeeper to be ready"
-      nc() {
-        if [ "$1" = "-q" ] && [ "$2" = "1" ] && [ "$3" = "zookeeper.example.com" ] && [ "$4" = "2181" ]; then
-          echo "imok"
+      python3() {
+        if [ "$1" = "/kb-scripts/zookeeper.py" ] && [ "$2" = "get" ] && [ "$3" = "/" ]; then
+          return 0
         fi
+        return 1
       }
 
       When call wait_for_zookeeper "zookeeper.example.com:2181"
