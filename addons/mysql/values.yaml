@@ -16,7 +16,7 @@ image:
     repository: apecloud/percona-xtrabackup
   syncer:
     repository: apecloud/syncer
-    tag: 0.6.5
+    tag: 0.6.8
   # refer: addons/mysql/orc-tools/Dockerfile
   orcTools:
     repository: apecloud/orc-tools
