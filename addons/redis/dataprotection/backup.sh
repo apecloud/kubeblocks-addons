@@ -15,7 +15,6 @@ trap handle_exit EXIT
 
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
-<<<<<<< HEAD
 
 function save_sentinel_acl() {
   if [ -z "$SENTINEL_POD_FQDN_LIST" ]; then

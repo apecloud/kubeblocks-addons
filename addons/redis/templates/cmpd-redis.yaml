@@ -251,13 +251,10 @@ spec:
     - name: REDIS_METRICS_SERVER_PORT
       value: "8888"
       expression: {{ `{{if index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT"}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
-    - name: REDIS_METRICS_ADDR
-      value: "redis://localhost:$(SERVICE_PORT)"
-      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}rediss://localhost:{{.SERVICE_PORT}}{{else}}redis://localhost:{{.SERVICE_PORT}}{{end}}` | toYaml }}
+  {{- end }}
     - name: REDIS_CLI_TLS_CMD
       value: ""
       expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else}}{{end}}` | toYaml }}
-  {{- end }}
     ## the component name of redis sentinel when redis sentinel is enabled, it's the fullname of redis-sentinel component
     - name: SENTINEL_COMPONENT_NAME
       valueFrom:
@@ -317,10 +314,7 @@ spec:
     - name: PHY_MEMORY
       valueFrom:
         resourceVarRef:
-<<<<<<< HEAD
           memoryLimit: Required
-=======
-          memory: Required
     - name: TLS_ENABLED
       valueFrom:
         tlsVarRef:
@@ -328,7 +322,6 @@ spec:
           optional: true
     - name: TLS_MOUNT_PATH
       value: {{ $.Values.tlsMountPath }}
->>>>>>> ce73cc39 (chore: redis support tls (#2368))
   lifecycleActions:
     roleProbe:
       periodSeconds: 1
@@ -484,6 +477,10 @@ spec:
             value: $(REDIS_METRICS_HTTP_PORT)
           - name: METRICS_SERVER_PORT
             value: $(REDIS_METRICS_SERVER_PORT)
+          - name: REDIS_USER
+            value: $(REDIS_DEFAULT_USER)
+          - name: REDIS_PASSWORD
+            value: $(REDIS_DEFAULT_PASSWORD)
         command:
           - "/bin/agamotto"
           - "--config=/opt/conf/metrics-config.yaml"
