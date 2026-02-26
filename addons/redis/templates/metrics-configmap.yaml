@@ -4,6 +4,8 @@ metadata:
   name: {{ include "redis.metricsConfiguration" . }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    {{- include "redis.annotations" $ | nindent 4 }}
 data:
   metrics-config.yaml: |-
     extensions:
