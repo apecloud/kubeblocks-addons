@@ -89,9 +89,12 @@ Describe "Redis Start Bash Script Tests"
         The contents of file "$redis_real_conf" should include "masterauth $REDIS_REPL_PASSWORD"
         The contents of file "$redis_real_conf" should include "protected-mode yes"
         The contents of file "$redis_real_conf" should include "aclfile /data/users.acl"
-        The contents of file "$redis_acl_file" should include "user $REDIS_REPL_USER on +psync +replconf +ping >$REDIS_REPL_PASSWORD"
-        The contents of file "$redis_acl_file" should include "user $REDIS_SENTINEL_USER on allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill >$REDIS_SENTINEL_PASSWORD"
-        The contents of file "$redis_acl_file" should include "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all"
+        redis_repl_sha256=$(echo -n "$REDIS_REPL_PASSWORD" | sha256sum | cut -d' ' -f1)
+        redis_password_sha256=$(echo -n "$REDIS_DEFAULT_PASSWORD" | sha256sum | cut -d' ' -f1)
+        redis_sentinel_password_sha256=$(echo -n "$REDIS_SENTINEL_PASSWORD" | sha256sum | cut -d' ' -f1)
+        The contents of file "$redis_acl_file" should include "user $REDIS_REPL_USER on +psync +replconf +ping #$redis_repl_sha256"
+        The contents of file "$redis_acl_file" should include "user $REDIS_SENTINEL_USER on allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill #$redis_sentinel_password_sha256"
+        The contents of file "$redis_acl_file" should include "user default on #$redis_password_sha256 ~* &* +@all"
       End
     End
 
@@ -114,7 +117,8 @@ Describe "Redis Start Bash Script Tests"
         The stdout should include "build default accounts succeeded!"
         The contents of file "$redis_real_conf" should include "protected-mode yes"
         The contents of file "$redis_real_conf" should include "aclfile /data/users.acl"
-        The contents of file "$redis_acl_file" should include "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all"
+        redis_password_sha256=$(echo -n "$REDIS_DEFAULT_PASSWORD" | sha256sum | cut -d' ' -f1)
+        The contents of file "$redis_acl_file" should include "user default on #$redis_password_sha256 ~* &* +@all"
       End
     End
 

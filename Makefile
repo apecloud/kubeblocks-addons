@@ -72,7 +72,7 @@ SCRIPT_FILES := $(shell find . -type f -name "*.sh")
 endif
 
 .PHONY: shellcheck
-shellcheck: install-shellcheck ##    Run shellcheck on all shell scripts if not specify `SHELLCHECK_FILE`.
+shellcheck: #install-shellcheck ##    Run shellcheck on all shell scripts if not specify `SHELLCHECK_FILE`.
 ifeq (, $(SHELLCHECK_FILE))
 	$(foreach scriptFile, $(SCRIPT_FILES), \
 		shellcheck $(SC_OPTIONS) $(scriptFile); \
@@ -80,6 +80,88 @@ ifeq (, $(SHELLCHECK_FILE))
 else
 	@shellcheck $(SC_OPTIONS) $(SHELLCHECK_FILE)
 endif
+
+SHELLSPEC_VERSION ?= 0.28.1
+SHELLSPEC_LOCAL_INSTALL_PATH := /usr/local/shellspec
+SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE := shellspec-dist.tar.gz
+SHELLSPEC_BIN_PATH := $(PREFIX)/bin
+SHELLSPEC_LOAD_PATH ?= ./shellspec
+SHELLSPEC_DEFAULT_PATH ?= "/Users/data/GoWorkSpace/kubeblocks-addons/addons/falkordb/scripts-ut-spec"
+SHELLSPEC_DEFAULT_SHELL ?= bash
+
+# shellspec is a full-featured BDD unit testing framework for all kinds of shells, details: https://github.com/shellspec/shellspec
+.PHONY: install-shellspec
+install-shellspec: ##  Download and Install shellspec ut framework if necessary.
+ifeq (, $(shell which shellspec))
+	@echo "Installing ShellSpec..."
+	@sudo mkdir -p $(SHELLSPEC_LOCAL_INSTALL_PATH)
+	@if [ ! -d "$(SHELLSPEC_LOCAL_INSTALL_PATH)/shellspec" ]; then \
+		echo "Downloading ShellSpec..."; \
+		sudo wget -P $(SHELLSPEC_LOCAL_INSTALL_PATH) https://github.com/shellspec/shellspec/releases/download/$(SHELLSPEC_VERSION)/$(SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE); \
+		sudo tar -xzf $(SHELLSPEC_LOCAL_INSTALL_PATH)/$(SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE) -C $(SHELLSPEC_LOCAL_INSTALL_PATH); \
+		echo "Downloaded ShellSpec and extracted successfully"; \
+	fi
+	@sudo ln -s $(SHELLSPEC_LOCAL_INSTALL_PATH)/shellspec/shellspec $(SHELLSPEC_BIN_PATH)/shellspec
+	@shellspec --version
+	@echo "ShellSpec installed successfully"
+else
+	@echo "ShellSpec is already installed in : "$(shell which shellspec)
+	@shellspec --version
+endif
+
+# run shellspec tests
+.PHONY: scripts-test
+scripts-test: #install-shellspec ##    Run shellspec unit test cases.
+	/usr/local/bin/shellspec --load-path $(SHELLSPEC_LOAD_PATH) --default-path $(SHELLSPEC_DEFAULT_PATH) --shell $(SHELLSPEC_DEFAULT_SHELL)
+
+
+SHELLSPEC_INCLUDE_PATH := $(shell ./utils/get_shellspec_include_path.sh)
+
+# run shellspec tests with coverage report
+.PHONY: scripts-test-kcov
+scripts-test-kcov: install-shellspec ##    Run shellspec unit test cases.
+	@shellspec --load-path $(SHELLSPEC_LOAD_PATH) --default-path $(SHELLSPEC_DEFAULT_PATH) --shell $(SHELLSPEC_DEFAULT_SHELL) --kcov --kcov-options "--include-path=$(SHELLSPEC_INCLUDE_PATH) --path-strip-level=1"
+
+SHELLSPEC_VERSION ?= 0.28.1
+SHELLSPEC_LOCAL_INSTALL_PATH := /usr/local/shellspec
+SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE := shellspec-dist.tar.gz
+SHELLSPEC_BIN_PATH := $(PREFIX)/bin
+SHELLSPEC_LOAD_PATH ?= ./shellspec
+SHELLSPEC_DEFAULT_PATH ?= "**/scripts-ut-spec"
+SHELLSPEC_DEFAULT_SHELL ?= bash
+
+# shellspec is a full-featured BDD unit testing framework for all kinds of shells, details: https://github.com/shellspec/shellspec
+.PHONY: install-shellspec
+install-shellspec: ##  Download and Install shellspec ut framework if necessary.
+ifeq (, $(shell which shellspec))
+	@echo "Installing ShellSpec..."
+	@sudo mkdir -p $(SHELLSPEC_LOCAL_INSTALL_PATH)
+	@if [ ! -d "$(SHELLSPEC_LOCAL_INSTALL_PATH)/shellspec" ]; then \
+		echo "Downloading ShellSpec..."; \
+		sudo wget -P $(SHELLSPEC_LOCAL_INSTALL_PATH) https://github.com/shellspec/shellspec/releases/download/$(SHELLSPEC_VERSION)/$(SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE); \
+		sudo tar -xzf $(SHELLSPEC_LOCAL_INSTALL_PATH)/$(SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE) -C $(SHELLSPEC_LOCAL_INSTALL_PATH); \
+		echo "Downloaded ShellSpec and extracted successfully"; \
+	fi
+	@sudo ln -s $(SHELLSPEC_LOCAL_INSTALL_PATH)/shellspec/shellspec $(SHELLSPEC_BIN_PATH)/shellspec
+	@shellspec --version
+	@echo "ShellSpec installed successfully"
+else
+	@echo "ShellSpec is already installed in : "$(shell which shellspec)
+	@shellspec --version
+endif
+
+# run shellspec tests
+.PHONY: scripts-test
+scripts-test: # install-shellspec ##    Run shellspec unit test cases.
+	@shellspec --load-path $(SHELLSPEC_LOAD_PATH) --default-path $(SHELLSPEC_DEFAULT_PATH) --shell $(SHELLSPEC_DEFAULT_SHELL)
+
+
+SHELLSPEC_INCLUDE_PATH := $(shell ./utils/get_shellspec_include_path.sh)
+
+# run shellspec tests with coverage report
+.PHONY: scripts-test-kcov
+scripts-test-kcov: install-shellspec ##    Run shellspec unit test cases.
+	@shellspec --load-path $(SHELLSPEC_LOAD_PATH) --default-path $(SHELLSPEC_DEFAULT_PATH) --shell $(SHELLSPEC_DEFAULT_SHELL) --kcov --kcov-options "--include-path=$(SHELLSPEC_INCLUDE_PATH) --path-strip-level=1"
 
 SHELLSPEC_VERSION ?= 0.28.1
 SHELLSPEC_LOCAL_INSTALL_PATH := /usr/local/shellspec
