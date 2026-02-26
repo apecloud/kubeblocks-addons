@@ -68,8 +68,10 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         The contents of file "$redis_real_conf" should include "masterauth $REDIS_REPL_PASSWORD"
         The contents of file "$redis_real_conf" should include "protected-mode yes"
         The contents of file "$redis_real_conf" should include "aclfile /data/users.acl"
-        The contents of file "$redis_acl_file" should include "user $REDIS_REPL_USER on +psync +replconf +ping >$REDIS_REPL_PASSWORD"
-        The contents of file "$redis_acl_file" should include "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all"
+        redis_repl_sha256=$(echo -n "$REDIS_REPL_PASSWORD" | sha256sum | cut -d' ' -f1)
+        redis_password_sha256=$(echo -n "$REDIS_DEFAULT_PASSWORD" | sha256sum | cut -d' ' -f1)
+        The contents of file "$redis_acl_file" should include "user $REDIS_REPL_USER on +psync +replconf +ping #$redis_repl_sha256"
+        The contents of file "$redis_acl_file" should include "user default on #$redis_password_sha256 ~* &* +@all"
       End
     End
 
@@ -92,7 +94,8 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         The stdout should include "build redis default accounts succeeded!"
         The contents of file "$redis_real_conf" should include "protected-mode yes"
         The contents of file "$redis_real_conf" should include "aclfile /data/users.acl"
-        The contents of file "$redis_acl_file" should include "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all"
+        redis_password_sha256=$(echo -n "$REDIS_DEFAULT_PASSWORD" | sha256sum | cut -d' ' -f1)
+        The contents of file "$redis_acl_file" should include "user default on #$redis_password_sha256 ~* &* +@all"
       End
     End
 
