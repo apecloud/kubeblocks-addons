@@ -29,9 +29,9 @@ load_common_library() {
 check_redis_ok() {
   unset_xtrace_when_ut_mode_false
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    cmd="redis-cli -h localhost -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD ping"
+    cmd="redis-cli $REDIS_CLI_TLS_CMD -h localhost -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD ping"
   else
-    cmd="redis-cli -h localhost -p $SERVICE_PORT ping"
+    cmd="redis-cli $REDIS_CLI_TLS_CMD -h localhost -p $SERVICE_PORT ping"
   fi
   response=$($cmd)
   status=$?

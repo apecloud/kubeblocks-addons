@@ -32,6 +32,10 @@ spec:
           valueFrom:
             envRef:
               envName: REDIS_DEFAULT_PASSWORD
+        - name: REDIS_CLI_TLS_CMD
+          valueFrom:
+            envRef:
+              envName: REDIS_CLI_TLS_CMD
   parametersSchema:
     openAPIV3Schema:
       properties:
@@ -97,6 +101,10 @@ spec:
           valueFrom:
             envRef:
               envName: SENTINEL_PASSWORD
+        - name: REDIS_CLI_TLS_CMD
+          valueFrom:
+            envRef:
+              envName: REDIS_CLI_TLS_CMD
   parametersSchema:
     openAPIV3Schema:
       properties:
@@ -174,6 +182,10 @@ spec:
           valueFrom:
             envRef:
               envName: CLUSTER_DOMAIN
+        - name: REDIS_CLI_TLS_CMD
+          valueFrom:
+            envRef:
+              envName: REDIS_CLI_TLS_CMD
   parametersSchema:
     openAPIV3Schema:
       properties:

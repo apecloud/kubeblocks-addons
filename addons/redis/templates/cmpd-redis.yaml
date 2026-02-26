@@ -20,6 +20,12 @@ spec:
   podManagementPolicy: OrderedReady
   podUpgradePolicy: ReCreate
   minReadySeconds: 10
+  tls:
+    volumeName: tls
+    mountPath: {{ $.Values.tlsMountPath }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
   services:
     - name: redis
       serviceName: redis
@@ -79,11 +85,6 @@ spec:
       namespace: {{ $.Release.Namespace }}
       volumeName: redis-config
       externalManaged: true
-    - name: redis-metrics-config
-      template: {{ include "redis.metricsConfiguration" $ }}
-      namespace: {{ $.Release.Namespace }}
-      volumeName: redis-metrics-config
-      defaultMode: 0444
   scripts:
     - name: redis-scripts
       template: {{ include "redis.scriptsTemplate" $ }}
@@ -218,9 +219,6 @@ spec:
     - name: SERVICE_PORT
       value: "6379"
       expression: {{ `{{if index . "REDIS_HOST_NETWORK_PORT"}}{{.REDIS_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
-    ## the env of redis server port for dbctl to connect to redis server
-    - name: DBCTL_REDIS_SERVICE_PORT
-      value: $(SERVICE_PORT)
   {{- if $.Values.enableMetrics }}
     ## the redis server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 9121
     - name: REDIS_METRICS_HOST_NETWORK_PORT
@@ -248,7 +246,13 @@ spec:
     - name: REDIS_METRICS_SERVER_PORT
       value: "8888"
       expression: {{ `{{if index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT"}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
+    - name: REDIS_METRICS_ADDR
+      value: "redis://localhost:$(SERVICE_PORT)"
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}rediss://localhost:{{.SERVICE_PORT}}{{else}}redis://localhost:{{.SERVICE_PORT}}{{end}}` | toYaml }}
   {{- end }}
+    - name: REDIS_CLI_TLS_CMD
+      value: ""
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else}}{{end}}` | toYaml }}
     ## the component name of redis sentinel when redis sentinel is enabled, it's the fullname of redis-sentinel component
     - name: SENTINEL_COMPONENT_NAME
       valueFrom:
@@ -309,6 +313,13 @@ spec:
       valueFrom:
         resourceVarRef:
           memoryLimit: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+          optional: true
+    - name: TLS_MOUNT_PATH
+      value: {{ $.Values.tlsMountPath }}
   lifecycleActions:
     roleProbe:
       periodSeconds: 1
@@ -334,8 +345,6 @@ spec:
         container: redis
         command:
           - /tools/dbctl
-          - --config-path
-          - /tools/config/dbctl/components
           - redis
           - getrole
     postProvision:
@@ -371,8 +380,7 @@ spec:
         command:
           - sh
           - -c
-        args:
-          - "redis-cli -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -a $REDIS_DEFAULT_PASSWORD acl save "
+          - /scripts/redis-account-provision.sh
     switchover:
       exec:
         container: redis
@@ -395,7 +403,6 @@ spec:
           - cp
           - -r
           - /bin/dbctl
-          - /config
           - /tools/
         imagePullPolicy: {{ default "IfNotPresent" $.Values.dbctlImage.pullPolicy }}
         volumeMounts:
@@ -462,26 +469,22 @@ spec:
           runAsNonRoot: true
           runAsUser: 1001
         env:
-          - name: ENDPOINT
-            value: "localhost:$(SERVICE_PORT)"
-          - name: METRICS_HTTP_PORT
-            value: $(REDIS_METRICS_HTTP_PORT)
-          - name: METRICS_SERVER_PORT
-            value: $(REDIS_METRICS_SERVER_PORT)
+          - name: REDIS_ADDR
+            value: "$(REDIS_METRICS_ADDR)"
+          - name: REDIS_EXPORTER_WEB_LISTEN_ADDRESS
+            value: "0.0.0.0:$(REDIS_METRICS_HTTP_PORT)"
           - name: REDIS_USER
             value: $(REDIS_DEFAULT_USER)
           - name: REDIS_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
-        command:
-          - "/bin/agamotto"
-          - "--config=/opt/conf/metrics-config.yaml"
+          - name: REDIS_EXPORTER_IS_CLUSTER
+            value: "false"
+          - name: REDIS_EXPORTER_SKIP_TLS_VERIFICATION
+            value: "true"
         ports:
           - name: http-metrics
             containerPort: {{ $.Values.metrics.service.port }}
           - name: server-metrics
             containerPort: {{ $.Values.metrics.service.serverPort }}
-        volumeMounts:
-          - name: redis-metrics-config
-            mountPath: /opt/conf
   {{- end }}
 {{- end }}
