@@ -149,7 +149,12 @@ redis-metrics-config
 {{- end }}
 
 {{- define "busybox.image" -}}
-{{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository}}:{{ .Values.busyboxImage.tag }}
+{{ $registry := .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" )}}
+{{- if eq $registry "docker.io" -}}
+{{ $registry }}/busybox:{{ .Values.busyboxImage.tag }}
+{{- else -}}
+{{ $registry }}/apecloud/busybox:{{ .Values.busyboxImage.tag }}
+{{- end -}}
 {{- end }}
 
 {{- define "metrics.repository" -}}
