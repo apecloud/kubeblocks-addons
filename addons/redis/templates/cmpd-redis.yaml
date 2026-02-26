@@ -246,6 +246,9 @@ spec:
     - name: REDIS_METRICS_SERVER_PORT
       value: "8888"
       expression: {{ `{{if index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT"}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
+    - name: REDIS_METRICS_ADDR
+      value: "redis://localhost:$(SERVICE_PORT)"
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}rediss://localhost:{{.SERVICE_PORT}}{{else}}redis://localhost:{{.SERVICE_PORT}}{{end}}` | toYaml }}
   {{- end }}
     - name: REDIS_CLI_TLS_CMD
       value: ""
@@ -467,7 +470,7 @@ spec:
           runAsUser: 1001
         env:
           - name: REDIS_ADDR
-            value: "redis://localhost:$(SERVICE_PORT)"
+            value: "$(REDIS_METRICS_ADDR)"
           - name: REDIS_EXPORTER_WEB_LISTEN_ADDRESS
             value: "0.0.0.0:$(REDIS_METRICS_HTTP_PORT)"
           - name: REDIS_USER
@@ -475,7 +478,9 @@ spec:
           - name: REDIS_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
           - name: REDIS_EXPORTER_IS_CLUSTER
-            value: false
+            value: "false"
+          - name: REDIS_EXPORTER_SKIP_TLS_VERIFICATION
+            value: "true"
         ports:
           - name: http-metrics
             containerPort: {{ $.Values.metrics.service.port }}
