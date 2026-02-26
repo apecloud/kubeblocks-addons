@@ -64,7 +64,8 @@ build_redis_default_accounts() {
     echo "user $REDIS_REPL_USER on +psync +replconf +ping #$redis_repl_password_sha256" >> $redis_acl_file
   fi
   if ! is_empty "$REDIS_SENTINEL_PASSWORD"; then
-    echo "user $REDIS_SENTINEL_USER on allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill >$REDIS_SENTINEL_PASSWORD" >> $redis_acl_file
+    redis_sentinel_password_sha256=$(echo -n "$REDIS_SENTINEL_PASSWORD" | sha256sum | cut -d' ' -f1)
+    echo "user $REDIS_SENTINEL_USER on allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill #$redis_sentinel_password_sha256" >> $redis_acl_file
   fi
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     echo "protected-mode yes" >> $redis_real_conf
