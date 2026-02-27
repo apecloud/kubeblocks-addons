@@ -20,6 +20,8 @@ cp "$postgres_template_conf_file" "$postgres_conf_dir"
 chmod 755 "$postgres_conf_dir"
 chmod 664 "$postgres_conf_file"
 
-# Copy wal-g binary
-mkdir -p "$postgres_walg_dir"
-cp /spilo-init/bin/wal-g ${postgres_walg_dir}/wal-g
+# Copy wal-g binary if it exists
+if [ -f /spilo-init/bin/wal-g ]; then
+    mkdir -p "$postgres_walg_dir"
+    cp /spilo-init/bin/wal-g ${postgres_walg_dir}/wal-g
+fi
