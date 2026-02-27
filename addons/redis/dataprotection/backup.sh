@@ -50,11 +50,18 @@ echo "INFO: start BGSAVE"
 ${connect_url} BGSAVE
 echo "INFO: wait for saving rdb successfully"
 while true; do
-  end_save=$(${connect_url} LASTSAVE)
-  if [ $end_save -ne $last_save ];then
-     break
+  persistence_info=$(${connect_url} INFO persistence)
+  bgsave_in_progress=$(echo "$persistence_info" | grep rdb_bgsave_in_progress | tr -d '\r' | cut -d: -f2)
+  if [ "$bgsave_in_progress" = "0" ]; then
+    bgsave_status=$(echo "$persistence_info" | grep rdb_last_bgsave_status | tr -d '\r' | cut -d: -f2)
+    if [ "$bgsave_status" = "err" ]; then
+      echo "ERROR: BGSAVE failed on target pod"
+      exit 1
+    fi
+    echo "INFO: BGSAVE completed (no changes since last save)"
+    break
   fi
-  sleep 1
+  sleep 3
 done
 echo "INFO: start to save data file..."
 cd ${DATA_DIR}
