@@ -153,9 +153,9 @@ spec:
     - name: proxy
       spec:
         ports:
-          - name: client
+          - name: pulsar
             port: 6650
-            targetPort: client
+            targetPort: pulsar
           - name: http
             port: 8080
             targetPort: http
