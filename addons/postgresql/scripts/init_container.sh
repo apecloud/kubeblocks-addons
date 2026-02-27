@@ -20,7 +20,10 @@ cp "$postgres_template_conf_file" "$postgres_conf_dir"
 chmod 755 "$postgres_conf_dir"
 chmod 664 "$postgres_conf_file"
 
-# Copy wal-g binary if it exists
+# Copy wal-g binary if it exists, the wal-g-archive backup use the spilo image,
+# so we need to copy the wal-g binary to the spilo image.
+# Why wal-g-archive backup use the spilo image instead of the walg image?
+# Because the wal-g-archive uses the pg_waldump binary, which is not in the walg image.
 if [ -f /spilo-init/bin/wal-g ]; then
     mkdir -p "$postgres_walg_dir"
     cp /spilo-init/bin/wal-g ${postgres_walg_dir}/wal-g
