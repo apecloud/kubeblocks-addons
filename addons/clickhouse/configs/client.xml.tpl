@@ -3,6 +3,8 @@
   <password from_env="CLICKHOUSE_ADMIN_PASSWORD"/>
   {{- if $.component.tlsConfig -}}
   {{- $CA_FILE := getCAFile -}}
+  {{- $CERT_FILE := getCertFile -}}
+  {{- $KEY_FILE := getKeyFile }}
   <secure>true</secure>
   <port from_env="CLICKHOUSE_TCP_SECURE_PORT"/>
   <openSSL>
