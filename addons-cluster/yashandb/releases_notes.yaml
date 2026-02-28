@@ -1,0 +1,7 @@
+releases:
+- version: 1.0.1
+  released_at: '2026-02-11'
+  status: stable
+  git_branch: release-1.0
+  git_tag: v1.0.2
+  commit_sha: ''

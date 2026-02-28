@@ -1,11 +1,17 @@
 releases:
-  - version: "1.0.1"
-    released_at: "2025-09-11"
-    status: "stable"
-    notes:
-    git_branch: "release-1.0"
-    git_tag: "1.0.1"
-    commit_sha: ""
-    breaking_changes:
-  - version: "0.9.2"
-    git_branch: "release-0.9"
+- version: 1.0.2
+  released_at: '2026-02-11'
+  status: stable
+  git_branch: release-1.0
+  git_tag: v1.0.2
+  commit_sha: ''
+- version: 1.0.1
+  released_at: '2025-09-11'
+  status: stable
+  notes: null
+  git_branch: release-1.0
+  git_tag: 1.0.1
+  commit_sha: ''
+  breaking_changes: null
+- version: 0.9.2
+  git_branch: release-0.9
