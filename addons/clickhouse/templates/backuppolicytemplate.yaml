@@ -3,6 +3,7 @@ kind: BackupPolicyTemplate
 metadata:
   name: clickhouse-backup-policy-template
   labels:
+   {{- include "clickhouse.labels" . | nindent 4 }}
     service-kind/clickhouse: "true"
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
