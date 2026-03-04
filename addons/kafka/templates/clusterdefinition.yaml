@@ -22,9 +22,6 @@ spec:
         terminate:
           - kafka-exporter
           - kafka-combine
-        update:
-          - kafka-combine
-          - kafka-exporter
     - name: combined
       components:
         - name: kafka-combine
@@ -46,10 +43,6 @@ spec:
           - kafka-broker
           - kafka-controller
           - kafka-exporter
-        update:
-          - kafka-broker
-          - kafka-controller
-          - kafka-exporter
     - name: separated
       components:
         - name: kafka-controller
@@ -61,9 +54,6 @@ spec:
           - kafka-controller
           - kafka-broker
         terminate:
-          - kafka-broker
-          - kafka-controller
-        update:
           - kafka-broker
           - kafka-controller
     - name: kafka2-external-zk
