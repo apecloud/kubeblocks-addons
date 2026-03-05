@@ -18,6 +18,7 @@ spec:
     shardRemove:
       exec:
         container: redis-cluster
+        timeoutSeconds: 600
         command:
           - /bin/bash
           - -c
