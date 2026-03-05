@@ -40,6 +40,7 @@ spec:
     - name: leader
       updatePriority: 2
       participatesInQuorum: true
+      isExclusive: true
     - name: follower
       updatePriority: 1
       participatesInQuorum: true

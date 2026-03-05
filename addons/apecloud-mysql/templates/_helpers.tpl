@@ -140,6 +140,7 @@ roles:
   - name: leader
     updatePriority: 3
     participatesInQuorum: true
+    isExclusive: true
   - name: follower
     updatePriority: 2
     participatesInQuorum: true
