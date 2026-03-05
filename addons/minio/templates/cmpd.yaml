@@ -95,10 +95,18 @@ spec:
       value: {{ .Values.minioAPIPort | quote }}
     - name: MINIO_CONSOLE_PORT
       value: {{ .Values.minioConsolePort | quote}}
-    - name: HTTP_PROTOCOL
-      value: {{ .Values.tls.enabled | ternary "https" "http" | quote }}
     - name: SERVICE_PORT
       value: "9000"
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+  tls:
+    volumeName: tls
+    mountPath: {{ .Values.certsPath | quote }}
+    caFile: ca.pem
+    certFile: public.crt
+    keyFile: private.key
   roles:
     - name: readwrite
       updatePriority: 1
@@ -123,8 +131,14 @@ spec:
           - -c
           - |
             # Set alias and check MinIO readiness using mc command
-            mc alias set local http://127.0.0.1:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD >/dev/null 2>&1
-            if mc admin info local >/dev/null 2>&1; then
+            PROTOCOL="http"
+            MC_INSECURE=""
+            if [ "$TLS_ENABLED" = "true" ]; then
+              PROTOCOL="https"
+              MC_INSECURE="--insecure"
+            fi
+            mc alias set local ${PROTOCOL}://127.0.0.1:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD ${MC_INSECURE} >/dev/null 2>&1
+            if mc admin info local ${MC_INSECURE} >/dev/null 2>&1; then
               echo -n "readwrite"
             else
               echo -n "notready"
