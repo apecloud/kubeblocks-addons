@@ -2,7 +2,7 @@ apiVersion: v2
 name: influxdb
 type: application
 
-version: 1.0.3
+version: 1.0.4
 
 appVersion: 2.7.11
 
