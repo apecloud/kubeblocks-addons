@@ -1,5 +1,4 @@
 #!/bin/bash
-source /scripts/common.sh
 
 declare -a new_shard_pod_fqdns=()
 declare -a old_shard_available_pod_fqdns=()
