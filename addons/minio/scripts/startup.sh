@@ -71,6 +71,13 @@ build_startup_cmd() {
 }
 
 startup() {
+  # Override HTTP_PROTOCOL based on TLS_ENABLED runtime variable
+  if [ "$TLS_ENABLED" = "true" ]; then
+    export HTTP_PROTOCOL="https"
+  else
+    export HTTP_PROTOCOL="http"
+  fi
+  
   setup_tls_certs
   
   cmd=$(build_startup_cmd)
