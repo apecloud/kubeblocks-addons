@@ -127,6 +127,7 @@ roles:
   - name: primary
     updatePriority: 3
     participatesInQuorum: true
+    isExclusive: true
   - name: secondary
     updatePriority: 2
     participatesInQuorum: true
