@@ -16,6 +16,7 @@ spec:
   updateStrategy: Parallel
   lifecycleActions:
     shardRemove:
+      timeoutSeconds: 600
       exec:
         container: redis-cluster
         command:
