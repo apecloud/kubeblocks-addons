@@ -1,5 +1,4 @@
 #!/bin/bash
-source /scripts/common.sh
 
 component_name=${instanceName%-*}
 instance_fqdn=${instanceName}.${component_name}-headless
