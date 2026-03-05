@@ -3,6 +3,15 @@
 replicas_history_file="/minio-config/MINIO_REPLICAS_HISTORY"
 bucket_dir="/data"
 
+setup_tls_certs() {
+  if [ "$TLS_ENABLED" = "true" ] && [ -f ${CERTS_PATH}/ca.pem ]; then
+    echo "Setting up TLS CA certificate for MinIO..."
+    mkdir -p ${CERTS_PATH}/CAs
+    cp -L ${CERTS_PATH}/ca.pem ${CERTS_PATH}/CAs/ca.crt
+    echo "TLS CA certificate setup completed"
+  fi
+}
+
 init_buckets() {
   local buckets=$1
   IFS=',' read -ra BUCKET_ARRAY <<< "$buckets"
@@ -62,6 +71,14 @@ build_startup_cmd() {
 }
 
 startup() {
+  if [ "$TLS_ENABLED" = "true" ]; then
+    export HTTP_PROTOCOL="https"
+  else
+    export HTTP_PROTOCOL="http"
+  fi
+
+  setup_tls_certs
+
   cmd=$(build_startup_cmd)
   status=$?
   if [ $status -ne 0 ]; then
