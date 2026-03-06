@@ -11,14 +11,14 @@ MAX_WAIT="${MAX_WAIT:-300}"  # 5 minutes default
 ELAPSED=0
 
 echo "Waiting for index gateway ring to be ready..."
-echo "Backend service: ${BACKEND_SVC}.${KB_NAMESPACE}.svc.${CLUSTER_DOMAIN}:${BACKEND_PORT}"
+echo "Backend service: ${BACKEND_SVC}.${KB_NAMESPACE}.svc.${CLUSTER_DOMAIN}.:${BACKEND_PORT}"
 echo "Max wait time: ${MAX_WAIT} seconds"
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
     # Check if backend service is accessible
-    if curl -sf "http://${BACKEND_SVC}.${KB_NAMESPACE}.svc.${CLUSTER_DOMAIN}:${BACKEND_PORT}/ready" > /dev/null 2>&1; then
+    if curl -sf "http://${BACKEND_SVC}.${KB_NAMESPACE}.svc.${CLUSTER_DOMAIN}.:${BACKEND_PORT}/ready" > /dev/null 2>&1; then
         # Check ring for ACTIVE instances (parse HTML)
-        RING_HTML=$(curl -sf "http://${BACKEND_SVC}.${KB_NAMESPACE}.svc.${CLUSTER_DOMAIN}:${BACKEND_PORT}/indexgateway/ring" 2>/dev/null || echo "")
+        RING_HTML=$(curl -sf "http://${BACKEND_SVC}.${KB_NAMESPACE}.svc.${CLUSTER_DOMAIN}.:${BACKEND_PORT}/indexgateway/ring" 2>/dev/null || echo "")
         if [ -n "$RING_HTML" ]; then
             ACTIVE_COUNT=$(echo "$RING_HTML" | grep -o '<td>ACTIVE</td>' | wc -l || echo "0")
             if [ "$ACTIVE_COUNT" -gt "0" ]; then
