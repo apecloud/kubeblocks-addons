@@ -83,6 +83,7 @@ provider: kubeblocks
 serviceKind: mysql
 description: mysql component definition for Kubernetes
 updateStrategy: BestEffortParallel
+podManagementPolicy: Parallel
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics

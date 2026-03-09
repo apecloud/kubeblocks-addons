@@ -47,6 +47,7 @@ spec:
     - name: master
       updatePriority: 2
       participatesInQuorum: false
+      isExclusive: true
     - name: slave
       updatePriority: 1
       participatesInQuorum: false
