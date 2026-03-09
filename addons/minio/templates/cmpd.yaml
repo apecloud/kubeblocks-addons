@@ -104,7 +104,7 @@ spec:
   tls:
     volumeName: tls
     mountPath: {{ .Values.certsPath | quote }}
-    caFile: ca.pem
+    caFile: ca.crt
     certFile: public.crt
     keyFile: private.key
   roles:

@@ -14,7 +14,7 @@ setup_tls_certs() {
     # Copy certificates from read-only mount to writable location
     cp -L ${CERTS_PATH}/public.crt ${writable_certs_path}/public.crt
     cp -L ${CERTS_PATH}/private.key ${writable_certs_path}/private.key
-    cp -L ${CERTS_PATH}/ca.pem ${writable_certs_path}/CAs/ca.crt
+    cp -L ${CERTS_PATH}/ca.crt ${writable_certs_path}/CAs/ca.crt
 
     # Set proper permissions
     chmod 600 ${writable_certs_path}/private.key
