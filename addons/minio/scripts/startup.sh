@@ -2,13 +2,27 @@
 
 replicas_history_file="/minio-config/MINIO_REPLICAS_HISTORY"
 bucket_dir="/data"
+writable_certs_path="/data/.minio/certs"
 
 setup_tls_certs() {
   if [ "$TLS_ENABLED" = "true" ] && [ -f ${CERTS_PATH}/ca.pem ]; then
-    echo "Setting up TLS CA certificate for MinIO..."
-    mkdir -p ${CERTS_PATH}/CAs
-    cp -L ${CERTS_PATH}/ca.pem ${CERTS_PATH}/CAs/ca.crt
-    echo "TLS CA certificate setup completed"
+    echo "Setting up TLS certificates for MinIO..."
+
+    # Create writable certs directory
+    mkdir -p ${writable_certs_path}/CAs
+
+    # Copy certificates from read-only mount to writable location
+    cp -L ${CERTS_PATH}/public.crt ${writable_certs_path}/public.crt
+    cp -L ${CERTS_PATH}/private.key ${writable_certs_path}/private.key
+    cp -L ${CERTS_PATH}/ca.pem ${writable_certs_path}/CAs/ca.crt
+
+    # Set proper permissions
+    chmod 600 ${writable_certs_path}/private.key
+
+    # Override CERTS_PATH to use writable location
+    export CERTS_PATH=${writable_certs_path}
+
+    echo "TLS certificates setup completed at ${writable_certs_path}"
   fi
 }
 
