@@ -5,7 +5,7 @@ bucket_dir="/data"
 writable_certs_path="/data/.minio/certs"
 
 setup_tls_certs() {
-  if [ "$TLS_ENABLED" = "true" ] && [ -f ${CERTS_PATH}/ca.pem ]; then
+  if [ "$TLS_ENABLED" = "true" ] && [ -f ${CERTS_PATH}/ca.crt ]; then
     echo "Setting up TLS certificates for MinIO..."
 
     # Create writable certs directory
