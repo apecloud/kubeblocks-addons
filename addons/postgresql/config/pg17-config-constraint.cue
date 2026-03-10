@@ -947,7 +947,7 @@
 	stats_temp_directory?: string
 
 	// Sets the number of connection slots reserved for superusers.
-	superuser_reserved_connections: int & >=0 & <=8388607 | *3
+	superuser_reserved_connections: int & >=0 & <=262143 | *3
 
 	// Enable synchronized sequential scans.
 	synchronize_seqscans?: bool & false | true
