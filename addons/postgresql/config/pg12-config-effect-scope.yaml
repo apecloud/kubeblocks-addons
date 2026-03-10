@@ -19,6 +19,7 @@ staticParameters:
   - pg_stat_statements.track_utility
   - extwlist.extensions
   - extwlist.custom_path
+  - superuser_reserved_connections
 
 immutableParameters:
   - backtrace_functions
@@ -50,7 +51,6 @@ immutableParameters:
   - ssl_ciphers
   - ssl_key_file
   - stats_temp_directory
-  - superuser_reserved_connections
   - unix_socket_directories
   - unix_socket_group
   - unix_socket_permissions
