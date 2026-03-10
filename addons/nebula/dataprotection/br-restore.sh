@@ -32,7 +32,7 @@ set -eo pipefail
 br restore full --meta ${meta_ep} --s3.endpoint "${endpoint}" \
   --storage="s3://${bucket}/${DP_BACKUP_BASE_PATH}" --s3.access_key="${access_key_id}" \
   --s3.secret_key="${secret_access_key}" --name ${backup_name} ${region_flag}
-
+  
 function deleteSignal() {
   while true; do
     echo "$(date): Deleting signal file on ${1}..."
@@ -43,7 +43,7 @@ function deleteSignal() {
     fi
     sleep 3
   done
-}
+}  
 
 sleep 10
 # delete signal file for graphd,metad, storaged pods
