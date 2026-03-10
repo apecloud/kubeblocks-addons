@@ -18,7 +18,7 @@ spec:
       volumeName: scripts
       defaultMode: 493
   services:
-    - name: model 
+    - name: model
       spec:
         ports:
           - name: model

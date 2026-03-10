@@ -123,7 +123,7 @@ spec:
               }
               AddCommandFlag producer "${producer}"
               AddCommandFlag consumer "${consumer}"
-  
+
               function addCommandArg(){
                  local key=$1
                  local value=$2
@@ -136,7 +136,7 @@ spec:
               addCommandArg group "${group}"
               addCommandArg transactional-id "${transactionalId}"
               addCommandArg resource-pattern-type "${patternType}"
-  
+
               function addMultiCommand(){
                  local value=$1
                  local key=$2

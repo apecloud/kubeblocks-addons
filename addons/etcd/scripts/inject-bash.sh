@@ -26,7 +26,7 @@ inject_bash() {
     echo "etcd-$version image build with distroless, injecting binaries to run scripts"
     mkdir -p "$target_dir"
     cp /bin/* "$target_dir/"
-    
+
     # Create /shared/bin directory and symlink all binaries for standard PATH
     mkdir -p /shared/bin
     for binary in "$target_dir"/*; do

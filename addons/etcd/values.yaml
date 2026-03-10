@@ -35,7 +35,7 @@ image:
   pullPolicy: IfNotPresent
 
 # used to inject static bash and other binaries to distroless etcd image
-# using 'images' as prefix for compatibility with different registry 
+# using 'images' as prefix for compatibility with different registry
 images:
   registry: docker.io
   pullPolicy: IfNotPresent

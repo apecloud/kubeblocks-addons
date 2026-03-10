@@ -88,26 +88,26 @@ function upload_continuous_backup_info() {
 
 function purge_pitr_chunks() {
   current_time=$(date +%s)
-  
+
   # Initialize last_global_purge_time if not set
   if [ -z "$last_global_purge_time" ]; then
     last_global_purge_time=0
   fi
-  
+
   time_diff=$((current_time - last_global_purge_time))
-  
+
   if [ $time_diff -lt $(( ${PBM_PURGE_INTERVAL_SECONDS:-86400} )) ]; then
     return
   fi
-  
+
   # Update last purge time
   last_global_purge_time=$current_time
-  
+
   echo "INFO: Purging PBM chunks..."
   wait_for_other_operations "backup"
 
   pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI"
-  
+
   # resync wait flag might don't work
   wait_for_other_operations "backup"
 

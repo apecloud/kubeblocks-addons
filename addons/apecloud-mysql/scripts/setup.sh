@@ -35,7 +35,7 @@ get_pod_index() {
         fi
         ((pod_index++))
     done
-    
+
     echo "$pod_index"
 }
 

@@ -14,4 +14,3 @@ spec:
         format: props-plus
       reRenderResourceTypes:
         - hscale
-    

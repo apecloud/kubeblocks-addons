@@ -96,7 +96,7 @@ storage:
       cluster:
         # -- Name of the etcd cluster
         # @required
-        name: 
+        name:
         # -- Component name for etcd
         # @default etcd
         component: etcd
@@ -116,7 +116,7 @@ storage:
     # -- Service mode type
     # @default serviceref
     mode: serviceref
-    # type can be kafka or pulsar 
+    # type can be kafka or pulsar
     type: kafka
     serviceRef:
       # -- Kubernetes namespace
@@ -125,7 +125,7 @@ storage:
       cluster:
         # -- Name of the Pulsar/kafka cluster
         # @required
-        name: 
+        name:
         # -- Component name for Pulsar/kafka broker
         # @default broker
         component: broker
@@ -152,7 +152,7 @@ storage:
       cluster:
         # -- Name of the MinIO cluster
         # @required
-        name: 
+        name:
         # -- Component name for MinIO
         # @default minio
         component: minio

@@ -10,7 +10,7 @@ not_found_pattern="Failed to delete member.*not found"
 # pd cluster may fail to create a new leader until the deleted members' pod is stopped.
 # See: https://github.com/apecloud/apecloud/issues/13893#issuecomment-3574029284
 # In the future, when scale in is implemented in instanceset controller, we can have a better
-# solution that does memberLeave one by one. 
+# solution that does memberLeave one by one.
 redirect_not_leader_pattern="redirect to not leader"
 if [[ $res != "Success!" && ! $res =~ $not_found_pattern && ! $res =~ $redirect_not_leader_pattern ]]; then
     exit 1

@@ -40,24 +40,24 @@ rabbit@rabbitmq-2"
   End
 
    Describe "get_target_node tests"
- 
+
      It "return the first node that is not the leave node"
        LEAVE_NODE="rabbit@rabbitmq-1"
        input="Running Nodes
  rabbit@rabbitmq-0
  rabbit@rabbitmq-1
  rabbit@rabbitmq-2"
- 
+
        When call get_target_node "$input"
        The output should be present
        The status should be success
      End
- 
+
      It "false when no target node found"
        LEAVE_NODE="rabbit@rabbitmq-0"
        input="Running Nodes
  rabbit@rabbitmq-0"
- 
+
        When call get_target_node "$input"
        The output should include "no target node found to execute forget_cluster_node."
        The status should be failure

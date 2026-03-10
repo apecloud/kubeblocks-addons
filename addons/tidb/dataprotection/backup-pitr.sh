@@ -19,7 +19,7 @@ function save_backup_status() {
 function handle_exit() {
   exit_code=$?
   save_backup_status
-  # FIXME: an unexpected pod restart will remove previous log backup progress 
+  # FIXME: an unexpected pod restart will remove previous log backup progress
   # shellcheck disable=SC2086
   /br log stop --task-name=pitr --pd "$PD_ADDRESS" --storage "s3://$BUCKET$DP_BACKUP_BASE_PATH?access-key=$ACCESS_KEY_ID&secret-access-key=$SECRET_ACCESS_KEY" --s3.endpoint "$ENDPOINT" $EXTRA_ARGS
   if [ $exit_code -ne 0 ]; then

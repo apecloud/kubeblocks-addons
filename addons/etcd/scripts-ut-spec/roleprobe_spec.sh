@@ -21,7 +21,7 @@ Describe "Etcd Role Probe Script Tests"
   init() {
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
-    
+
     # Mock exec_etcdctl function
     exec_etcdctl() {
       local endpoint="$1"
@@ -39,11 +39,11 @@ Describe "Etcd Role Probe Script Tests"
           ;;
       esac
     }
-    
+
     # Define get_etcd_role function based on real script logic
     get_etcd_role() {
       local status member_id leader_id is_learner
-      
+
       if ! status=$(exec_etcdctl 127.0.0.1:2379 endpoint status -w fields --command-timeout=300ms --dial-timeout=100ms); then
         echo "ERROR: Failed to get endpoint status" >&2
         return 1
@@ -96,7 +96,7 @@ Describe "Etcd Role Probe Script Tests"
             ;;
         esac
       }
-      
+
       When call get_etcd_role
       The status should be success
       The output should equal "follower"
@@ -114,7 +114,7 @@ Describe "Etcd Role Probe Script Tests"
             ;;
         esac
       }
-      
+
       When call get_etcd_role
       The status should be success
       The output should equal "learner"
@@ -123,7 +123,7 @@ Describe "Etcd Role Probe Script Tests"
     It "handles etcdctl failure"
       # Override exec_etcdctl to fail
       exec_etcdctl() { return 1; }
-      
+
       When call get_etcd_role
       The status should be failure
       The stderr should include "Failed to get endpoint status"

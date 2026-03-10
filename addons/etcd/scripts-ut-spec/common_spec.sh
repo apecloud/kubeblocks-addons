@@ -15,26 +15,26 @@ common_library_file="./common.sh"
 generate_common_library $common_library_file
 
 Describe "Common Script Functions Tests"
-  
+
   init() {
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
-    
+
     # Setup minimal test environment
     export CONFIG_FILE_PATH="/tmp/test_etcd.conf"
     export TLS_MOUNT_PATH="/tmp/test_certs"
     export config_file="$CONFIG_FILE_PATH"
-    
+
     # Create simple config file
     mkdir -p /tmp
     echo "advertise-client-urls: http://test:2379" > "$CONFIG_FILE_PATH"
-    
+
     # Create minimal TLS directory structure for tests
     mkdir -p "$TLS_MOUNT_PATH"
     touch "$TLS_MOUNT_PATH/ca.pem"
     touch "$TLS_MOUNT_PATH/cert.pem"
     touch "$TLS_MOUNT_PATH/key.pem"
-    
+
     # Mock etcdctl command
     etcdctl() {
       if [[ "$*" == *"endpoint status -w fields"* ]]; then
@@ -48,18 +48,18 @@ Describe "Common Script Functions Tests"
         return 0
       fi
     }
-    
+
     # Mock etcdutl
     etcdutl() {
       echo "MOCK: etcdutl $*"
       return 0
     }
-    
+
     # Mock log function
     log() {
       echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
     }
-    
+
     # Mock error_exit function for test environment
     error_exit() {
       echo "ERROR: $1" >&2
@@ -156,7 +156,7 @@ Describe "Common Script Functions Tests"
   Describe "get_protocol() function"
     It "returns https when config contains https"
       echo "advertise-client-urls: https://test:2379" > "$CONFIG_FILE_PATH"
-      
+
       When call get_protocol "advertise-client-urls"
       The status should be success
       The stdout should equal "https"
@@ -164,7 +164,7 @@ Describe "Common Script Functions Tests"
 
     It "returns http when config contains http"
       echo "advertise-client-urls: http://test:2379" > "$CONFIG_FILE_PATH"
-      
+
       When call get_protocol "advertise-client-urls"
       The status should be success
       The stdout should equal "http"
@@ -174,7 +174,7 @@ Describe "Common Script Functions Tests"
   Describe "exec_etcdctl() function"
     It "adds http prefix when no protocol specified"
       echo "advertise-client-urls: http://test:2379" > "$CONFIG_FILE_PATH"
-      
+
       When call exec_etcdctl "etcd-0:2379" "member" "list"
       The status should be success
       The stdout should include "MOCK: etcdctl --endpoints=http://etcd-0:2379 member list"

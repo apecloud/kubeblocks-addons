@@ -105,7 +105,7 @@ convert_server_properties_to_env_var() {
 override_sasl_configuration() {
   local isZkOrNot="true"
   local defaultLoginModule="org.apache.kafka.common.security.scram.ScramLoginModule required"
-  
+
   if [[ $(is_sasl_enabled "${isZkOrNot}") == "false" ]]; then
     echo "sasl is not enabled, skipping SASL configuration"
     return 0

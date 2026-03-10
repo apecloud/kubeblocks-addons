@@ -10,6 +10,6 @@
  * See the Mulan PubL v2 for more details.
  */
 
-Unlimited scalable distributed database for data-intensive transactional and real-time operational analytics workloads, with ultra-fast performance that has once achieved world records in the TPC-C benchmark test. 
+Unlimited scalable distributed database for data-intensive transactional and real-time operational analytics workloads, with ultra-fast performance that has once achieved world records in the TPC-C benchmark test.
 
 OceanBase has served over 400 customers across the globe and has been supporting all mission critical systems in Alipay.
