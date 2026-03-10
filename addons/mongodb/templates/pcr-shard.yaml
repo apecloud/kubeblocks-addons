@@ -4,6 +4,8 @@ metadata:
   name: {{ include "mongoShard.pcrName" . }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "mongodbShard.compDefName" . }}
   configs:
@@ -18,6 +20,8 @@ metadata:
   name: {{ include "cfgServer.pcrName" . }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "cfgServer.compDefName" . }}
   configs:
@@ -32,6 +36,8 @@ metadata:
   name: {{ include "mongos.pcrName" . }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "mongos.compDefName" . }}
   configs:
