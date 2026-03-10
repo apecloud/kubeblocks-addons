@@ -4,6 +4,8 @@ metadata:
   name: {{ include "mongodb.pcrName" . }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "mongodb.compDefName" . }}
   configs:
