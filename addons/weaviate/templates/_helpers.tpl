@@ -101,13 +101,6 @@ weaviate-env-pd
 {{- end -}}
 
 {{/*
-Define weaviate env config constraint name
-*/}}
-{{- define "weaviate.pcrName" -}}
-weaviate-pcr
-{{- end -}}
-
-{{/*
 Define image
 */}}
 {{- define "weaviate.image" -}}

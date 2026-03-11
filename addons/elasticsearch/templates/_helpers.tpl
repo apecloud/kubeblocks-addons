@@ -165,14 +165,6 @@ elasticsearch-7-config-tpl-{{ .Chart.Version }}
 elasticsearch-8-config-tpl-{{ .Chart.Version }}
 {{- end -}}
 
-{{- define "elasticsearch7.pcrName" -}}
-elasticsearch7-pcr
-{{- end }}
-
-{{- define "elasticsearch8.pcrName" -}}
-elasticsearch8-pcr
-{{- end }}
-
 {{- define "kibana6.cmpdName" -}}
 kibana-6-{{ .Chart.Version }}
 {{- end -}}
