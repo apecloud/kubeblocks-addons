@@ -26,13 +26,6 @@ Define neo4j component definition name
 {{/*
 Define neo4j pcr definition name
 */}}
-{{- define "neo4j.pcrName" -}}
-{{ include "neo4j.cmpdNamePrefix" . }}pcr
-{{- end -}}
-
-{{/*
-Define neo4j pcr definition name
-*/}}
 {{- define "neo4j.paramsDefName" -}}
 {{ include "neo4j.cmpdNamePrefix" . }}pd
 {{- end -}}

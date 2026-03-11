@@ -139,28 +139,28 @@ Define kafka-broker component definition regex pattern
 Define kafka parameter config renderer name
 */}}
 {{- define "kafka.brokerPCRName" -}}
-kafka-broker-pcr
+kafka-broker-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define kafka parameter config renderer name
 */}}
 {{- define "kafka.combinePCRName" -}}
-kafka-combine-pcr
+kafka-combine-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define kafka parameter config renderer name
 */}}
 {{- define "kafka.controllerPCRName" -}}
-kafka-controller-pcr
+kafka-controller-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define kafka parameter config renderer name
 */}}
 {{- define "kafka2.brokerPCRName" -}}
-kafka2-broker-pcr
+kafka2-broker-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 

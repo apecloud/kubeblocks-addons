@@ -126,7 +126,7 @@ rocketmq-broker4-pd
 {{- end -}}
 
 {{- define "rocketmq-broker4.prcName" -}}
-rocketmq-broker4-pcr
+rocketmq-broker4-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
