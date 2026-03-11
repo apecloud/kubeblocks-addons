@@ -32,9 +32,9 @@ spec:
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555
-  volumes:
   available:
     withPhases: "Running,Updating"
+  volumes:
   - name: data
     needSnapshot: true
   systemAccounts:
