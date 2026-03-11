@@ -61,7 +61,7 @@ delay-clean-table-lock = 0
 # Maximum number of the splitting region, which is used by the split region statement.
 split-region-max-num = 1000
 
-# alter-primary-key is used to control whether the primary keys are clustered. 
+# alter-primary-key is used to control whether the primary keys are clustered.
 # Note that this config is deprecated. Only valid when @@global.tidb_enable_clustered_index = 'int_only'.
 # Default is false, only the integer primary keys are clustered.
 # If it is true, all types of primary keys are nonclustered.

@@ -21,28 +21,28 @@ Describe "Etcd Member Leave Script Tests"
   init() {
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
-    
+
     # Setup test environment variables
     export KB_LEAVE_MEMBER_POD_NAME="etcd-1"
     export KB_LEAVE_MEMBER_POD_FQDN="etcd-1.etcd-headless.default.svc.cluster.local"
     export LEADER_POD_FQDN="etcd-0.etcd-headless.default.svc.cluster.local"
     export PEER_ENDPOINT=""
-    
+
     # Mock functions
     get_endpoint_adapt_lb() {
       local result_endpoint="$3"
       echo "$result_endpoint"
     }
-    
+
     log() {
       echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
     }
-    
+
     error_exit() {
       echo "ERROR: $1" >&2
       return 1
     }
-    
+
     exec_etcdctl() {
       local endpoint="$1"
       shift
@@ -69,43 +69,43 @@ Describe "Etcd Member Leave Script Tests"
           ;;
       esac
     }
-    
+
     # Define functions
     get_etcd_id() {
       local endpoint="$1"
       local decimal_id hex_id
-      
+
       if ! decimal_id=$(exec_etcdctl "$endpoint" endpoint status -w fields | grep -o '"MemberID" : [0-9]*' | awk '{print $3}'); then
         return 1
       fi
-      
+
       [ -z "$decimal_id" ] && return 1
-      
+
       hex_id=$(printf "%x" "$decimal_id")
       echo "$hex_id"
     }
-    
+
     remove_member() {
       local etcd_id="$1"
       local leader_pod_name leader_endpoint
-      
+
       leader_pod_name="${LEADER_POD_FQDN%%.*}"
       leader_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$leader_pod_name" "$LEADER_POD_FQDN")
-      
+
       log "Removing member $etcd_id via leader $leader_endpoint"
       exec_etcdctl "$leader_endpoint:2379" member remove "$etcd_id"
     }
-    
+
     member_leave() {
       local leaver_endpoint etcd_id
-      
+
       leaver_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$KB_LEAVE_MEMBER_POD_NAME" "$KB_LEAVE_MEMBER_POD_FQDN")
       [ -z "$leaver_endpoint" ] && { error_exit "Leave member pod endpoint is empty"; return 1; }
-      
+
       log "Getting etcd ID for leaving member: $leaver_endpoint"
       etcd_id=$(get_etcd_id "$leaver_endpoint:2379") || { error_exit "Failed to get etcd ID"; return 1; }
       [ -z "$etcd_id" ] && { error_exit "Failed to get etcd ID"; return 1; }
-      
+
       remove_member "$etcd_id" || { error_exit "Failed to remove member"; return 1; }
       log "Member $KB_LEAVE_MEMBER_POD_NAME left cluster"
     }
@@ -146,7 +146,7 @@ Describe "Etcd Member Leave Script Tests"
             ;;
         esac
       }
-      
+
       When call member_leave
       The status should be failure
       The stdout should include "Getting etcd ID for leaving member"

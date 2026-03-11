@@ -14,12 +14,12 @@ common_library_file="./common.sh"
 generate_common_library $common_library_file
 
 Describe "Inject Bash Script Tests"
-  
+
   init() {
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
     export ETCD_VERSION="3.4.22" # Version for "no injection needed" path
-    
+
     # Mock error_exit function
     error_exit() {
       echo "ERROR: $1" >&2
@@ -37,7 +37,7 @@ Describe "Inject Bash Script Tests"
 
   # Load the common library
   Include $common_library_file
-  
+
   # Define inject_bash function with proper validation
   inject_bash() {
     local version="$1"

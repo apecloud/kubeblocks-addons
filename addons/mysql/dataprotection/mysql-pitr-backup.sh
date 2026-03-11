@@ -156,7 +156,7 @@ function save_backup_status() {
 }
 
 cleanup_mysql_binlogs() {
-    
+
     # Get synced binlog files from all replicas
     function get_synced_binlogs() {
 
@@ -172,11 +172,11 @@ cleanup_mysql_binlogs() {
                 mysql -u"${DP_DB_USER}" -h"$host" -p"${DP_DB_PASSWORD}" -N -e "SHOW SLAVE STATUS\G"
             )
             local current_file=$(echo "$status_output" | grep -o "${DP_TARGET_POD_NAME}-bin\.[0-9]*" | tail -n1)
-            
+
             if [[ -z "$current_file" ]]; then
                 return 1
             fi
-            
+
             if [[ -z "$min_synced_file" ]] || [[ "$current_file" < "$min_synced_file" ]]; then
                 min_synced_file="$current_file"
             fi
@@ -194,7 +194,7 @@ cleanup_mysql_binlogs() {
             fi
             result_files="$result_files $basename_binlog"
         done
-        
+
         echo "${result_files# }"
     }
 
@@ -212,37 +212,37 @@ cleanup_mysql_binlogs() {
     function purge_master_binlogs() {
       local synced_files="$1"
       local uploaded_files="$2"
-      
+
       # Get all binlog files sorted by sequence number
       local all_binlogs=($(ls -1 "$LOG_DIR"/*[!.index] | sort -V))
       local total_files=${#all_binlogs[@]}
-      
+
       # If total files <= 5, no need to purge
       if [[ $total_files -le 5 ]]; then
           echo "Only $total_files binlog files, no need to purge"
           return
       fi
-      
+
       # Get the latest 5 binlog files
       local latest_binlogs=$(printf "%s\n" "${all_binlogs[@]: -4}" | xargs -n1 basename)
-      
+
       for binlog_file in "${all_binlogs[@]}"; do
           if [ ! -f "$binlog_file" ]; then
               continue
           fi
 
           local base_name=$(basename "$binlog_file")
-          
+
           # Skip if it's one of the latest 5 files
           if echo "$latest_binlogs" | grep -q "$base_name"; then
               echo "Keeping $base_name (one of latest 5 binlog files)"
               continue
           fi
-          
+
           # Original logic: check if synced and uploaded
           if echo "$synced_files" | grep -q "$base_name" && echo "$uploaded_files" | grep -q "$base_name"; then
               echo "Purging binary log: $base_name from master host"
-              
+
               if mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e \
                   "PURGE BINARY LOGS TO '$base_name'" &>/dev/null; then
                   echo "Successfully purged binary log: $base_name on master host ${DP_DB_HOST}"
@@ -261,29 +261,29 @@ cleanup_mysql_binlogs() {
 
         for host in "${REPLICA_HOSTS[@]}"; do
             echo "Processing replica host: $host"
-            
+
             # Get all binlog files on this replica, sorted by sequence number
             local binlog_files=$(mysql -u"${DP_DB_USER}" -h"$host" -p"${DP_DB_PASSWORD}" -N -e \
                 "SHOW BINARY LOGS" 2>/dev/null | awk '{print $1}' | sort -V)
-                
+
             if [[ -z "$binlog_files" ]]; then
                 echo "Failed to get binary logs from replica host $host, skipping..."
                 continue
             fi
-            
+
             # Count total number of binlog files
             local total_files=$(echo "$binlog_files" | wc -l)
-            
+
             # If total files <= 5, no need to purge
             if [[ $total_files -le 5 ]]; then
                 echo "Only $total_files binlog files on $host, no need to purge"
                 continue
             fi
-            
+
             # Get the target binlog (files to keep are after this one)
             local files_to_delete=$((total_files - 4))
             local target_binlog=$(echo "$binlog_files" | head -n $files_to_delete | tail -n 1)
-            
+
             # Execute PURGE BINARY LOGS command
             if mysql -u"${DP_DB_USER}" -h"$host" -p"${DP_DB_PASSWORD}" -N -e \
                 "PURGE BINARY LOGS TO '$target_binlog'" &>/dev/null; then
@@ -293,7 +293,7 @@ cleanup_mysql_binlogs() {
             fi
         done
     }
-    
+
     # Get list of synced binlogs
     local synced_binlogs=$(get_synced_binlogs)
     if [ $? -ne 0 ] || [ -z "$synced_binlogs" ]; then

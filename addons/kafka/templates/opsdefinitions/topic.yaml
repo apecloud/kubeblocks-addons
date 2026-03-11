@@ -78,7 +78,7 @@ spec:
                     $command
                     return
                   fi
-                  
+
                   function addCommandArg(){
                      local key=$1
                      local value=$2
@@ -89,7 +89,7 @@ spec:
                   addCommandArg replication-factor "${replicas}"
                   addCommandArg partitions "${partitions}"
                   addCommandArg config "${config}"
-                  
+
                   if [[ ${type} == "create" ]]; then
                      command="${command} --if-not-exists"
                   else

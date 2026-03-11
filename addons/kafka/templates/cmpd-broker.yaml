@@ -128,7 +128,7 @@ spec:
       passwordGenerationPolicy:
         length: 16
         numDigits: 8
-        letterCase: MixedCases       
+        letterCase: MixedCases
   runtime:
     {{- if .Values.securityContext }}
     securityContext:
@@ -211,7 +211,7 @@ spec:
           - name: BROKER_MIN_NODE_ID
             value: {{ .Values.kafkaBroker.minNodeId | quote }}
           - name: KAFKA_DYNAMIC_CREDENTIAL_FILE
-            value: "/accounts/accounts-mount/accounts"  
+            value: "/accounts/accounts-mount/accounts"
           {{- with .Values.extraEnvs.kafka }}
           {{- toYaml . | nindent 10}}
           {{- end }}
@@ -253,7 +253,7 @@ spec:
           - name: shared-tools
             mountPath: /shared-tools
           - name: accounts
-            mountPath: /accounts/accounts-mount 
+            mountPath: /accounts/accounts-mount
           {{- with .Values.extraVolumeMounts.kafka }}
           {{- toYaml . | nindent 10}}
           {{- end }}
@@ -286,4 +286,4 @@ spec:
             mountPath: /etc/jmx-kafka
     volumes:
       - name: shared-tools
-        emptyDir: {}           
+        emptyDir: {}

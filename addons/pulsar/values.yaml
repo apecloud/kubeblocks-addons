@@ -4,7 +4,7 @@ nameOverride: ""
 
 fullnameOverride: ""
 
-## @param debugEnabled 
+## @param debugEnabled
 #
 debugEnabled: false
 
@@ -78,7 +78,7 @@ images:
       repository: apecloud/pulsar
       pullPolicy: IfNotPresent
       tag: 3.0.2
-  
+
   v4_0_6:
     bookie:
       repository: apecloud/pulsar

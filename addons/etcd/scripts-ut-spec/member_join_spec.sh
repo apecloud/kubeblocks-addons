@@ -21,7 +21,7 @@ Describe "Etcd Member Join Script Tests"
   init() {
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
-    
+
     # Setup test environment variables
     export LEADER_POD_FQDN="etcd-0.etcd-headless.default.svc.cluster.local"
     export KB_JOIN_MEMBER_POD_NAME="etcd-1"
@@ -29,30 +29,30 @@ Describe "Etcd Member Join Script Tests"
     export PEER_ENDPOINT=""
     export CONFIG_FILE_PATH="/tmp/test_etcd.conf"
     export config_file="$CONFIG_FILE_PATH"
-    
+
     # Create mock config file
     mkdir -p /tmp
     echo "initial-advertise-peer-urls: http://test:2380" > "$CONFIG_FILE_PATH"
-    
+
     # Mock functions
     get_endpoint_adapt_lb() {
       local result_endpoint="$3"
       echo "$result_endpoint"
     }
-    
+
     get_protocol() {
       echo "http"
     }
-    
+
     log() {
       echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
     }
-    
+
     error_exit() {
       echo "ERROR: $1" >&2
       return 1
     }
-    
+
     exec_etcdctl() {
       local endpoint="$1"
       shift
@@ -69,7 +69,7 @@ Describe "Etcd Member Join Script Tests"
       echo "MOCK: exec_etcdctl $endpoint $*"
       return 0
     }
-    
+
     # Define add_member function
     add_member() {
       local leader_endpoint join_member_endpoint peer_protocol
@@ -90,7 +90,7 @@ Describe "Etcd Member Join Script Tests"
   cleanup() {
     rm -f $common_library_file
     rm -f "$CONFIG_FILE_PATH"
-    unset ut_mode LEADER_POD_FQDN KB_JOIN_MEMBER_POD_NAME KB_JOIN_MEMBER_POD_FQDN 
+    unset ut_mode LEADER_POD_FQDN KB_JOIN_MEMBER_POD_NAME KB_JOIN_MEMBER_POD_FQDN
     unset PEER_ENDPOINT CONFIG_FILE_PATH config_file
     unset -f get_endpoint_adapt_lb get_protocol log error_exit exec_etcdctl add_member
   }

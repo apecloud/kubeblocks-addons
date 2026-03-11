@@ -11,7 +11,7 @@ function set_config_variables(){
     if [[ $line =~ ^[a-zA-Z_][a-zA-Z0-9_]*=[a-zA-Z0-9_./-]*$ ]]; then
       echo $line
       eval "export $line"
-    elif ! [[ -z $line  || $line =~ ^[[:space:]]*# ]]; then 
+    elif ! [[ -z $line  || $line =~ ^[[:space:]]*# ]]; then
       echo "bad format: $line"
     fi
   done <<< "$(echo -e "$config_content")"

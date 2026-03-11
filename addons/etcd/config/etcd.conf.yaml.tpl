@@ -77,7 +77,7 @@ proxy-write-timeout: 5000
 proxy-read-timeout: 0
 
 # Enable runtime profiling data via HTTP server
-enable-pprof: false 
+enable-pprof: false
 
 # Comma-separated white list of origins for CORS (cross-origin resource sharing).
 cors:

@@ -20,7 +20,7 @@ test || __() {
   set -exuo pipefail;
 }
 
-# Default configurations 
+# Default configurations
 WORK_DIR=${WORK_DIR:-/home/yashan}
 YASDB_PASSWORD="yasdb_123"
 
@@ -34,13 +34,13 @@ START_LOG_FILE="${YASDB_DATA}/log/start.log"
 source_env_files() {
   # shellcheck disable=SC1090
   source "${YASDB_TEMP_FILE}"
-  
+
   YASDB_ENV_FILE="${YASDB_HOME}/conf/yasdb.bashrc"
   YASDB_HOME_BIN_PATH="${YASDB_HOME}/bin"
   YASDB_BIN="${YASDB_HOME_BIN_PATH}/yasdb"
   YASQL_BIN="${YASDB_HOME_BIN_PATH}/yasql"
   YASPWD_BIN="${YASDB_HOME_BIN_PATH}/yaspwd"
-  
+
   # shellcheck disable=SC1090
   source "${YASDB_ENV_FILE}"
 }
@@ -51,7 +51,7 @@ setup_install_files() {
   e_i=$(sed -n '$=' "$INSTALL_INI_FILE")
   s_i=$(sed -n -e '/\<instance\>/=' "$INSTALL_INI_FILE")
   n_i=$((s_i + 1))
-  
+
   sed -n "${n_i},${e_i} p" "$INSTALL_INI_FILE" >>"$YASDB_DATA"/config/yasdb.ini
 }
 
@@ -60,7 +60,7 @@ setup_password() {
   if [ -f "$YASDB_HOME/admin/yasdb.pwd" ]; then
     rm -f "$YASDB_HOME"/admin/yasdb.pwd
   fi
-  
+
   "$YASPWD_BIN" file="$YASDB_HOME"/admin/yasdb.pwd password="$YASDB_PASSWORD"
   cp "$YASDB_HOME"/admin/yasdb.pwd "$YASDB_DATA"/instance/yasdb.pwd
 }
@@ -82,7 +82,7 @@ generate_redo_config() {
 start_yasdb_process() {
   rm -rf "${START_LOG_FILE}"
   "${YASDB_BIN}" nomount -D "$YASDB_DATA" >"$START_LOG_FILE" 2>&1 &
-  
+
   local i=0
   while ((i < 5)); do
     sleep 2
@@ -92,7 +92,7 @@ start_yasdb_process() {
     fi
     ((i++))
   done
-  
+
   echo "start process failed. read $START_LOG_FILE"
   cat "$START_LOG_FILE"
   return 1
@@ -102,12 +102,12 @@ start_yasdb_process() {
 create_database() {
   local redo_file
   redo_file=$(generate_redo_config)
-  
+
   "${YASQL_BIN}" sys/"$YASDB_PASSWORD" >>"$START_LOG_FILE" <<EOF
 create database yasdb CHARACTER SET $NLS_CHARACTERSET logfile $redo_file;
 exit;
 EOF
-  
+
   local i=0
   while ((i < 60)); do
     sleep 1
@@ -117,7 +117,7 @@ EOF
     fi
     ((i++))
   done
-  
+
   echo "Failed! please check logfile $START_LOG_FILE."
   return 1
 }

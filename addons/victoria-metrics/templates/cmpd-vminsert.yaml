@@ -55,7 +55,7 @@ spec:
           {{- end }}
         env:
           - name: SERVICE_PORT
-            value: "{{ .Values.vminsert.servicePort }}"        
+            value: "{{ .Values.vminsert.servicePort }}"
         ports:
           - name: http
             containerPort: {{ .Values.vminsert.servicePort }}

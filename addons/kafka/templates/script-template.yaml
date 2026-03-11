@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: {{ include "kafka.serverScriptsTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
-  labels: 
+  labels:
     {{- include "kafka.labels" . | nindent 4 }}
 data:
   common.sh: |-
@@ -28,7 +28,7 @@ kind: ConfigMap
 metadata:
   name: {{ include "kafka2.serverScriptsTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
-  labels: 
+  labels:
     {{- include "kafka.labels" . | nindent 4 }}
 data:
   common.sh: |-

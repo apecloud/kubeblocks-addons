@@ -91,7 +91,7 @@ spec:
                   addQuota controller_mutation_rate "${controllerMutationRate}"
                   addQuota producer_byte_rate "${producerByteRate}"
                   addQuota request_percentage "${requestPercentage}"
-                  
+
                   function addCommandArg(){
                      local key=$1
                      local value=$2
