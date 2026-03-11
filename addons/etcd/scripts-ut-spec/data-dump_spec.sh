@@ -23,7 +23,7 @@ Describe "Etcd Data Dump Script Tests"
     ut_mode="true"
     # Mock the data_dump function for the test
     data_dump() {
-      sleep 1
+      echo "data_dump executed"
     }
   }
   BeforeAll "init"
@@ -36,12 +36,10 @@ Describe "Etcd Data Dump Script Tests"
   AfterAll 'cleanup'
 
   Describe "data_dump() function"
-    xIt "executes successfully"
-      start_time=$(date +%s)
-      data_dump
-      end_time=$(date +%s)
-      elapsed=$((end_time - start_time))
-      The variable elapsed should equal 1
+    It "executes successfully"
+      When call data_dump
+      The status should be success
+      The output should include "data_dump executed"
     End
   End
 End
