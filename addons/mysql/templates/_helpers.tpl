@@ -247,6 +247,8 @@ roles:
   - name: secondary
     updatePriority: 1
     participatesInQuorum: false
+available:
+  withRole: primary
 {{- end }}
 
 {{- define "mysql.spec.runtime.entrypoint" -}}

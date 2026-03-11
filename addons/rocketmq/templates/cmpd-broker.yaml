@@ -51,6 +51,8 @@ spec:
     - name: slave
       updatePriority: 1
       participatesInQuorum: false
+  available:
+    withRole: master
   volumes:
     - name: data
   vars:

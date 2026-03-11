@@ -147,6 +147,8 @@ roles:
   - name: learner
     updatePriority: 1
     participatesInQuorum: false
+available:
+  withRole: leader
 lifecycleActions:
   roleProbe:
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}

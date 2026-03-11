@@ -11,6 +11,8 @@ spec:
   description: wescale controller
   serviceKind: wescale-ctrl
   serviceVersion: "0.2.7"
+  available:
+    withPhases: "Running,Updating"
   serviceRefDeclarations:
     - name: etcd
       serviceRefDeclarationSpecs:

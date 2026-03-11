@@ -212,6 +212,8 @@ spec:
     - name: observer
       updatePriority: 1
       participatesInQuorum: false
+  available:
+    withRole: leader
   lifecycleActions:
     roleProbe:
       initialDelaySeconds: {{ .Values.roleProbe.initialDelaySeconds }}

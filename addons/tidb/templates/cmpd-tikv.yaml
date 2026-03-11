@@ -73,6 +73,8 @@ spec:
   volumes:
     - name: data
       needSnapshot: true
+  available:
+    withPhases: "Running,Updating"
   configs:
     - name: tikv-configuration
       template: {{ include "tidb.tikv.configTplName" . }}

@@ -42,6 +42,8 @@ spec:
     - name: observer
       updatePriority: 1
       participatesInQuorum: false
+  available:
+    withRole: leader
   updateStrategy: BestEffortParallel
   vars:
     - name: ZOOKEEPER_POD_FQDN_LIST

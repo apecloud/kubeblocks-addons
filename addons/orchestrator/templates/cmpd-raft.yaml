@@ -17,6 +17,8 @@ spec:
     - name: secondary
       updatePriority: 1
       participatesInQuorum: true
+  available:
+    withRole: primary
   vars:
     - name: ORC_META_DATABASE
       value: orchestrator

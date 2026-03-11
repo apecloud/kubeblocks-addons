@@ -26,6 +26,8 @@ spec:
             name: grpc
             targetPort: grpc
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   runtime:
     automountServiceAccountToken: true
     affinity:

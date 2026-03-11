@@ -90,6 +90,8 @@ spec:
           enabled: Optional
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   configs:
     - name: kafka-configuration-tpl
       template: {{ include "kafka.configurationTplName" . }}

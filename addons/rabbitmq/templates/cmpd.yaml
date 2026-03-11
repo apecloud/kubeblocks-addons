@@ -11,6 +11,8 @@ spec:
   description: RabbitMQ is a reliable and mature messaging and streaming broker.
   serviceKind: rabbitmq
   serviceVersion: {{ .Values.componentServiceVersion.rabbitmq }}
+  available:
+    withPhases: "Running,Updating"
   services:
     - name: default
       spec:

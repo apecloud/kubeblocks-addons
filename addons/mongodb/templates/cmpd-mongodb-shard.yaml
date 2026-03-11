@@ -36,6 +36,8 @@ spec:
     - name: secondary
       updatePriority: 1
       participatesInQuorum: true
+  available:
+    withRole: primary
   policyRules:
   - apiGroups:
     - ""

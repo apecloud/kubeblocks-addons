@@ -38,6 +38,8 @@ spec:
   volumes:
     - name: data
       needSnapshot: true
+  available:
+    withPhases: "Running,Updating"
   runtime:
     initContainers:
       {{- include "milvus.initContainer.setup" . | indent 6 }}

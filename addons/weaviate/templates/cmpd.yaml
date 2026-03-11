@@ -26,6 +26,8 @@ spec:
   volumes:
     - name: data
       needSnapshot: true
+  available:
+    withPhases: "Running,Updating"
   configs:
     - name: weaviate-config-template
       template: {{ include "weaviate.configTplName" . }}

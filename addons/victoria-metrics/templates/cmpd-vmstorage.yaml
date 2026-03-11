@@ -29,6 +29,8 @@ spec:
             name: vminsert
       podService: true
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   exporter:
     scrapePath: /metrics
     scrapePort: http

@@ -12,6 +12,8 @@ spec:
   serviceKind: pulsar
   serviceVersion: {{ .Values.defaultServiceVersion.zookeeper.major2 }}
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   services:
     - name: zookeeper
       serviceName: zookeeper

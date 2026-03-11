@@ -144,6 +144,8 @@ exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
   scrapePort: http-metrics
+available:
+  withRole: primary
 {{- end }}
 
 

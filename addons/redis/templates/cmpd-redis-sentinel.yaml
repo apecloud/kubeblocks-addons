@@ -53,6 +53,8 @@ spec:
   volumes:
     - name: data
       needSnapshot: true
+  available:
+    withPhases: "Running,Updating"
   logConfigs:
     {{- range $name,$pattern := $.Values.logConfigs }}
     - name: {{ $name }}

@@ -14,6 +14,8 @@ spec:
   podManagementPolicy: Parallel
   volumes:
     - name: logs
+  available:
+    withPhases: "Running,Updating"
   services:
     - name: thrift
       spec:

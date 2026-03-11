@@ -298,6 +298,8 @@ roles:
   - name: secondary
     updatePriority: 1
     participatesInQuorum: false
+available:
+  withRole: primary
 volumes:
   - name: data
     needSnapshot: true

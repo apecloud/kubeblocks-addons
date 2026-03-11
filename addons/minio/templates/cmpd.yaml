@@ -114,6 +114,8 @@ spec:
     - name: notready  # a special role to hack the update strategy of its
       updatePriority: 1
       participatesInQuorum: false
+  available:
+    withRole: readwrite
   policyRules:
     - apiGroups:
         - ""

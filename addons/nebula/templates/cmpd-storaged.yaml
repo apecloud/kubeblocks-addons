@@ -29,6 +29,8 @@ spec:
     - name: data
       needSnapshot: true
     - name: logs
+  available:
+    withPhases: "Running,Updating"
   vars:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}

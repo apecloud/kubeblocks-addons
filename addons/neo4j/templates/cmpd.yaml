@@ -11,6 +11,8 @@ spec:
   description: Neo4j is a highly scalable, robust native graph database.
   serviceKind: neo4j
   serviceVersion: {{ .Values.componentServiceVersion.neo4j }}
+  available:
+    withPhases: "Running,Updating"
   services:
     - name: default
       spec:

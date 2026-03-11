@@ -11,6 +11,8 @@ spec:
   provider: KubeBlocks
   serviceKind: neon-safekeeper
   serviceVersion: {{ .Values.defaultComponentServiceVersion }}
+  available:
+    withPhases: "Running,Updating"
   services:
     - name: neon-safekeeper
       serviceName: neon-safekeeper

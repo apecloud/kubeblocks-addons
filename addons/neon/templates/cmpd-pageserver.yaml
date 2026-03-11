@@ -11,6 +11,8 @@ spec:
   provider: KubeBlocks
   serviceKind: neon-pageserver
   serviceVersion: {{ .Values.defaultComponentServiceVersion }}
+  available:
+    withPhases: "Running,Updating"
   services:
     - name: neon-pageserver
       serviceName: neon-pageserver

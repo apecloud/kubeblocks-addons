@@ -33,6 +33,8 @@ spec:
     - name: follower
       updatePriority: 1
       participatesInQuorum: true
+  available:
+    withRole: leader
   volumes:
     - name: data
   vars:

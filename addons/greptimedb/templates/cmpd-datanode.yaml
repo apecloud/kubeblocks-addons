@@ -41,6 +41,8 @@ spec:
       expression: {{ `{{ .GREPTIMEDB_META_SVC }}.{{ .CLUSTER_NAMESPACE }}.svc.cluster.local` | toYaml }}
   volumes:
     - name: datanode
+  available:
+    withPhases: "Running,Updating"
   runtime:
     containers:
       - name: datanode

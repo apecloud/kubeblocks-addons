@@ -131,6 +131,8 @@ roles:
   - name: secondary
     updatePriority: 2
     participatesInQuorum: true
+available:
+  withRole: primary
 vars:
   ## the postgres leader pod name which is dynamically selected, caution to use it
   - name: POSTGRES_LEADER_POD_NAME

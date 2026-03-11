@@ -32,6 +32,8 @@ spec:
     volumeName: be-cm
     restartOnFileChange: true
   volumes:
+  available:
+    withPhases: "Running,Updating"
   - name: data
     needSnapshot: true
   vars:

@@ -11,6 +11,8 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Chart.AppVersion }}
+  available:
+    withPhases: "Running,Updating"
   configs:
     - name: influxdb-config
       template: {{ include "influxdb.standalone.configurationTemplate" . }}

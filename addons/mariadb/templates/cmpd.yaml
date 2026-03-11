@@ -49,6 +49,8 @@ spec:
   volumes:
     - name: data
       needSnapshot: true
+  available:
+    withPhases: "Running,Updating"
   systemAccounts:
     - name: root
       initAccount: true

@@ -50,6 +50,8 @@ spec:
     - name: secondary
       updatePriority: 1
       participatesInQuorum: false
+  available:
+    withRole: primary
   systemAccounts:
     - name: root
       initAccount: true

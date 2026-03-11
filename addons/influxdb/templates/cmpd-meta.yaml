@@ -106,6 +106,8 @@ spec:
     - name: follower
       updatePriority: 1
       participatesInQuorum: true
+  available:
+    withRole: leader
   lifecycleActions:
     roleProbe:
       exec:

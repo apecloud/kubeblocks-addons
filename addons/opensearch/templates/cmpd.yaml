@@ -107,6 +107,8 @@ spec:
             mountPath: /scripts
   volumes:
     - name: data
+  available:
+    withPhases: "Running,Updating"
   services:
     - name: default
       spec:

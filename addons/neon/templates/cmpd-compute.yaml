@@ -11,6 +11,8 @@ spec:
   provider: KubeBlocks
   serviceKind: neon-compute
   serviceVersion: {{ .Values.defaultComponentServiceVersion }}
+  available:
+    withPhases: "Running,Updating"
   services:
     - name: neon-compute
       serviceName: neon-compute

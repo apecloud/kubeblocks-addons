@@ -33,6 +33,8 @@ spec:
     volumeName: scripts
     defaultMode: 0555
   volumes:
+  available:
+    withPhases: "Running,Updating"
   - name: data
     needSnapshot: true
   systemAccounts:

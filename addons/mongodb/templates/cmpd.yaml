@@ -67,6 +67,8 @@ spec:
     - name: secondary
       updatePriority: 1
       participatesInQuorum: true
+  available:
+    withRole: primary
   {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   exporter:
     containerName: exporter
