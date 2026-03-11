@@ -65,7 +65,7 @@
       <show_named_collections>1</show_named_collections>
       <show_named_collections_secrets>1</show_named_collections_secrets>
 
-      <networks replace="replace"> 
+      <networks replace="replace">
         <ip>::/0</ip>
       </networks>
 

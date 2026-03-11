@@ -83,7 +83,7 @@
     <server>
       <certificateFile>{{$CERT_FILE}}</certificateFile>
       <privateKeyFile>{{$KEY_FILE}}</privateKeyFile>
-      <!-- 
+      <!--
         Use relaxed verification for Keeper to skip hostname check, while still supporting TLS encryption.
       -->
       <verificationMode>relaxed</verificationMode>
