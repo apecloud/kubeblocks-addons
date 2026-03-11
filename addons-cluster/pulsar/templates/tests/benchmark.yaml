@@ -11,16 +11,16 @@ data:
   kafka_to_pulsar.yaml: |-
     name: Kafka producer and Pulsar consumer
     driverClass: io.openmessaging.benchmark.driver.kop.KopBenchmarkDriver
-  
+
     producerType: kafka
     consumerType: pulsar
-  
+
     # Pulsar configs
     pulsarConfig:
       serviceUrl: pulsar://{{ include "pulsar-cluster.brokerFQDN" . }}:6650
       batchingMaxPublishDelayMs: 1
       batchingMaxBytes: 1048576
-  
+
     # Kafka configs
     kafkaConfig: |
       bootstrap.servers={{ include "pulsar-cluster.brokerFQDN" . }}:9092
@@ -31,10 +31,10 @@ data:
   kafka_to_kafka.yaml: |-
     name: Kafka producer and Pulsar consumer
     driverClass: io.openmessaging.benchmark.driver.kop.KopBenchmarkDriver
-    
+
     producerType: kafka
     consumerType: kafka
-    
+
     # Pulsar configs
     pulsarConfig:
       serviceUrl: pulsar://{{ include "pulsar-cluster.brokerFQDN" . }}:6650
@@ -48,26 +48,26 @@ data:
       # consumer configs
       maxTotalReceiverQueueSizeAcrossPartitions: 50000
       receiverQueueSize: 1000
-    
+
     # Kafka configs
     kafkaConfig: |
       bootstrap.servers={{ include "pulsar-cluster.brokerFQDN" . }}:9092
       linger.ms=1
       batch.size=1048576
-  
+
   pulsar_to_kafka.yaml: |-
     name: Pulsar producer and Kafka consumer
     driverClass: io.openmessaging.benchmark.driver.kop.KopBenchmarkDriver
-    
+
     producerType: pulsar
     consumerType: kafka
-    
+
     # Pulsar configs
     pulsarConfig:
       serviceUrl: pulsar://{{ include "pulsar-cluster.brokerFQDN" . }}:6650
       batchingMaxPublishDelayMs: 1
       batchingMaxBytes: 1048576
-    
+
     # Kafka configs
     kafkaConfig: |
       bootstrap.servers={{ include "pulsar-cluster.brokerFQDN" . }}:9092
@@ -87,8 +87,8 @@ spec:
     - name: omb-k2k
       image: {{.Values.image.registry}}/apecloud/omb:0.1
       command: ['bin/benchmark']
-      args: 
-        - --drivers 
+      args:
+        - --drivers
         - driver-kop/kafka_to_kafka.yaml
         - workloads/1-topic-16-partitions-1kb.yaml
       env:

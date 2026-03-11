@@ -118,7 +118,7 @@ spec:
       passwordGenerationPolicy:
         length: 16
         numDigits: 8
-        letterCase: MixedCases    
+        letterCase: MixedCases
   runtime:
     {{- if .Values.securityContext }}
     securityContext:
@@ -243,7 +243,7 @@ spec:
           - name: shared-tools
             mountPath: /shared-tools
           - name: accounts
-            mountPath: /accounts/accounts-mount  
+            mountPath: /accounts/accounts-mount
           {{- with .Values.extraVolumeMounts.kafka }}
           {{- toYaml . | nindent 10}}
           {{- end }}
@@ -276,4 +276,4 @@ spec:
             mountPath: /etc/jmx-kafka
     volumes:
       - name: shared-tools
-        emptyDir: {}        
+        emptyDir: {}

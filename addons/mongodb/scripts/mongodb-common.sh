@@ -59,7 +59,7 @@ function process_restore_signal() {
     local pbm_backupfile=$MONGODB_ROOT/tmp/mongodb_pbm.backup
     local last_annotation_value=""
     local last_state="0"
-    restore_signal_cm_name="$CLUSTER_NAME-restore-signal" 
+    restore_signal_cm_name="$CLUSTER_NAME-restore-signal"
     restore_signal_cm_namespace="$CLUSTER_NAMESPACE"
     while true; do
         kubectl_get_result=$(kubectl get configmap $restore_signal_cm_name -n $restore_signal_cm_namespace -o json 2>&1)

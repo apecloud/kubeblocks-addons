@@ -112,7 +112,7 @@ will deprecated:
 - name: KB_KAFKA_SASL_MECHANISMS
   value: "{{ .Values.sasl.mechanisms | join "," }}"
 - name: KB_KAFKA_SASL_INTER_BROKER_PROTOCOL
-  value: "{{ .Values.sasl.interBrokerProtocol }}"  
+  value: "{{ .Values.sasl.interBrokerProtocol }}"
 {{- end }}
 {{- end -}}
 

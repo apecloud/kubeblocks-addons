@@ -97,7 +97,7 @@ node:
   master: false
   data: true
   {{- else }}
-  {{ $e }}: true 
+  {{ $e }}: true
   {{- end }}
   {{- end }}
   {{- else }}

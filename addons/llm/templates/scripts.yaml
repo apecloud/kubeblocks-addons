@@ -29,11 +29,11 @@ data:
     else
       curl --max-time 10 https://huggingface.co/${MODEL_NAME} > /dev/null 2>&1
       code=$?
-      if [ "$code" -ne 0 ]; then 
+      if [ "$code" -ne 0 ]; then
         CLONE_MODEL_SCRIPT="git lfs install; git clone https://www.modelscope.cn/${MODEL_NAME}.git"
         export MODEL_NAME="./${MODEL_NAME##*/}"
       fi
-    fi 
+    fi
     echo "model=${MODEL_NAME}"
     if [ -n "$CLONE_MODEL_SCRIPT" ]; then
       bash -c "$CLONE_MODEL_SCRIPT"
@@ -44,7 +44,7 @@ data:
       /scripts/vllm-start.sh &
       /scripts/ray-health-checker.sh &
       ray start --head --block
-    else 
+    else
       first_pod_name=$(echo "${POD_NAMES}" | cut -d ',' -f 1)
       ray start --address="${first_pod_name}:6379" --block
     fi
@@ -54,12 +54,12 @@ data:
     echo "model=${MODEL_NAME}"
     echo "EXTRA_ARGS=${EXTRA_ARGS}"
     echo "model=${MODEL_NAME}" > log
-    # wait for ray start 
+    # wait for ray start
     sleep 3
     while true; do
       node_num=`ray status | grep "1 node" | wc -l`
       # continue waiting if ray status not ok
-      if [[ "$node_num" -ne "$REPLICAS" ]]; then 
+      if [[ "$node_num" -ne "$REPLICAS" ]]; then
         sleep 1
         continue
       fi
@@ -74,13 +74,13 @@ data:
   ray-health-checker.sh: |
     #!/bin/bash
     # wait ray to start when first run
-    sleep 10 
+    sleep 10
     while true; do
       node_num=`ray status | grep "1 node" | wc -l`
-      if [[ "$node_num" -ne "$REPLICAS" ]]; then 
+      if [[ "$node_num" -ne "$REPLICAS" ]]; then
         # if ray nodes not healthy, restart vllm
         vllm_pid=`ps aux | grep "python3 -m vllm.entrypoints.openai.api_server" | grep -v grep | awk '{print $2}'`
-        if [[ "$vllm_pid" ]]; then 
+        if [[ "$vllm_pid" ]]; then
           kill -9 "$vllm_pid"
         fi
       fi

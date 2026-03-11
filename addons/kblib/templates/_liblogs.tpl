@@ -22,7 +22,7 @@ format_log_content() {
 {{- end }}
 
 {{/*
-This function is used to setup the logging of the script, 
+This function is used to setup the logging of the script,
 so that the STDOUT/STDERR of the scripts can be recorded into a dedicated file.
 
 Usage:

@@ -17,7 +17,7 @@ nameOverride: ""
 ## Authentication parameters
 ##
 auth:
-  ## @param auth.password Password for the "neo4j" admin user, leave empty 
+  ## @param auth.password Password for the "neo4j" admin user, leave empty
   ## for random generated password.
   ##
   password:

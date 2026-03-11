@@ -25,7 +25,7 @@ Describe "ProxySQL Configuration Script Tests"
 
     It "executes MySQL command successfully"
       mysql() {
-        echo "MySQL command executed: $*" 
+        echo "MySQL command executed: $*"
         return 0
       }
       When call mysql_exec "root" "password" "localhost" "3306" "SELECT 1"

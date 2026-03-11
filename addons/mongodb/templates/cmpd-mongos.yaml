@@ -190,7 +190,7 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
-    - name: KB_SERVICE_PORT  
+    - name: KB_SERVICE_PORT
       value: "27017"
     - name: CFG_SERVER_REPLICA_SET_NAME
       valueFrom:
@@ -227,7 +227,7 @@ spec:
           name: root
           optional: false
           password: Required
-    - name: EXPORTER_SERVICE_PORT  
+    - name: EXPORTER_SERVICE_PORT
       value: "9216"
   hostNetwork:
     containerPorts:

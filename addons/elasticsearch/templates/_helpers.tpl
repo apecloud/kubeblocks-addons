@@ -290,7 +290,7 @@ services:
       ports:
       - name: agent
         port: 8080
-        targetPort: agent            
+        targetPort: agent
 systemAccounts:
 - name: elastic
   initAccount: true

@@ -75,7 +75,7 @@ function env_pre_check() {
         echo "CURRENT_SHARD_COMPONENT_NAME is empty, skip ACL operation"
         exit 0
     fi
-    
+
     if [ "$SHARD_MODE" == "TRUE" ] && [ -z "$CLUSTER_NAMESPACE" ]; then
         echo "CLUSTER_NAMESPACE is empty, skip ACL operation"
         exit 0
@@ -85,7 +85,7 @@ function env_pre_check() {
         echo "CLUSTER_DOMAIN is empty, skip ACL operation"
         exit 0
     fi
-    
+
 }
 
 function create_post_check() {

@@ -2,4 +2,3 @@
 
   kbcli cluster describe {{ .Release.Name }} -n {{ .Release.Namespace }}
 
-  

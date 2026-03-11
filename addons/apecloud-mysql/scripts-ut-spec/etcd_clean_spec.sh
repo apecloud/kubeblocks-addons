@@ -74,7 +74,7 @@ Describe "Etcd Clean Script Tests"
     Before "setup"
 
     etcdctl() {
-      echo "$*" 
+      echo "$*"
       return 0
     }
 

@@ -980,7 +980,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
         initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
       }
-      
+
       check_initialize_nodes_ready() {
         return 0
       }
