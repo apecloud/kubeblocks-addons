@@ -101,13 +101,6 @@ mogdb-pd
 {{- end -}}
 
 {{/*
-Define mogdb parameter config rendered name
-*/}}
-{{- define "mogdb.pcrName" -}}
-mogdb-pcr
-{{- end -}}
-
-{{/*
 Generate scripts configmap
 */}}
 {{- define "mogdb.extend.scripts" -}}
