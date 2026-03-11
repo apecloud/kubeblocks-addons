@@ -14,26 +14,43 @@ function remote_file_exists() {
 }
 
 function save_backup_end_lsn() {
-    local wal_dir="${DATA_DIR}/pg_wal"
     local backup_end_lsn=""
-    for wal in $(ls -t "${wal_dir}" 2>/dev/null | grep -E '^[0-9A-F]{24}$'); do
-        local wal_path="${wal_dir}/${wal}"
-        # pg_waldump may exit non-zero when it hits the end of a partial WAL file,
-        # which is normal for the last WAL segment in a backup.
-        # so we check whether any valid records were parsed instead of relying on exit code.
-        local last_record=$(pg_waldump "${wal_path}" 2>/dev/null | tail -1 || true)
-        if [ -n "${last_record}" ]; then
-            backup_end_lsn=$(echo "${last_record}" | awk '{print $10}' | tr -d ',')
-            echo "found backup_end_lsn: ${backup_end_lsn} in wal file: ${wal_path}" >> "${DATA_DIR}/.backup_log"
-            break
-        else
-            echo "skipping invalid wal file: ${wal_path}" >> "${DATA_DIR}/.backup_log"
+
+    # PG13+: backup_manifest contains the exact End-LSN in JSON format.
+    local manifest="${DATA_DIR}/backup_manifest"
+    if [[ -f "${manifest}" ]]; then
+        echo "find with backup_manifest" >> "${DATA_DIR}/.backup_log"
+        backup_end_lsn=$(grep -o '"End-LSN": *"[^"]*"' "${manifest}" | awk -F'"' '{print $4}')
+        if [[ -n "${backup_end_lsn}" ]]; then
+            echo "found backup_end_lsn: ${backup_end_lsn} from backup_manifest" >> "${DATA_DIR}/.backup_log"
         fi
-    done
-    if [ -n "${backup_end_lsn}" ]; then
+    fi
+
+    # Fallback for PG12 and older: scan WAL files with pg_waldump.
+    if [[ -z "${backup_end_lsn}" ]]; then
+        local wal_dir="${DATA_DIR}/pg_wal"
+        echo "find with pg_wal" >> "${DATA_DIR}/.backup_log"
+        for wal in $(ls -t "${wal_dir}" 2>/dev/null | grep -E '^[0-9A-F]{24}$'); do
+            local wal_path="${wal_dir}/${wal}"
+            # pg_waldump may exit non-zero when it hits the end of a partial WAL file,
+            # which is normal for the last WAL segment in a backup.
+            # so we check whether any valid records were parsed instead of relying on exit code.
+            local last_record
+            last_record=$(pg_waldump "${wal_path}" 2>/dev/null | tail -1 || true)
+            if [[ -n "${last_record}" ]]; then
+                backup_end_lsn=$(echo "${last_record}" | awk '{print $10}' | tr -d ',')
+                echo "found backup_end_lsn: ${backup_end_lsn} in wal file: ${wal_path}" >> "${DATA_DIR}/.backup_log"
+                break
+            else
+                echo "skipping invalid wal file: ${wal_path}" >> "${DATA_DIR}/.backup_log"
+            fi
+        done
+    fi
+
+    if [[ -n "${backup_end_lsn}" ]]; then
         echo "${backup_end_lsn}" > "${DATA_DIR}/.backup_end_lsn"
     else
-        echo "warning: could not extract backup_end_lsn from any wal file" >> "${DATA_DIR}/.backup_log"
+        echo "warning: could not extract backup_end_lsn" >> "${DATA_DIR}/.backup_log"
     fi
 }
 
