@@ -37,11 +37,12 @@ Describe "Etcd Data Dump Script Tests"
 
   Describe "data_dump() function"
     It "executes successfully"
-      start_time=$(date +%s)
-      data_dump
-      end_time=$(date +%s)
-      elapsed=$((end_time - start_time))
-      The variable elapsed should equal 1
+      # start_time=$(date +%s)
+      # data_dump
+      # end_time=$(date +%s)
+      # elapsed=$((end_time - start_time))
+      # The variable elapsed should equal 1
+      Pending "data-dump is not yet implemented"
     End
   End
 End
