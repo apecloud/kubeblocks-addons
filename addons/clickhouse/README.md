@@ -712,7 +712,7 @@ spec:
     scaleOut:
       # Specifies the replica changes for the component.
       # add one more replica to current component
-      replicaChanges: 2 
+      replicaChanges: 2
 ```
 
 ```bash
@@ -742,7 +742,7 @@ spec:
     scaleIn:
       # Specifies the replica changes for the component.
       # add one more replica to current component
-      replicaChanges: 2 
+      replicaChanges: 2
 ```
 
 ```bash

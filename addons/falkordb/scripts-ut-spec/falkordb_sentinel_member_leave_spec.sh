@@ -64,7 +64,7 @@ Describe "FalkorDB Sentinel Member Leave Script Tests"
       }
       When call redis_sentinel_remove_monitor
       The stdout should include "one or more masters are disconnected"
-    End 
+    End
   End
 
   Describe "check_all_sentinel_agreement function"
@@ -85,7 +85,7 @@ Describe "FalkorDB Sentinel Member Leave Script Tests"
         }
         When call check_all_sentinel_agreement
         The stdout should include "one or more masters are disconnected"
-      End 
+      End
 
       It "when the number of slaves are the same"
         redis_sentinel_get_masters() {

@@ -220,7 +220,7 @@ spec:
           - name: BROKER_MIN_NODE_ID
             value: {{ .Values.kafkaBroker.minNodeId | quote }}
           - name: KAFKA_DYNAMIC_CREDENTIAL_FILE
-            value: "/accounts/accounts-mount/accounts"    
+            value: "/accounts/accounts-mount/accounts"
           {{- with .Values.extraEnvs.kafka }}
           {{- toYaml . | nindent 10}}
           {{- end }}
@@ -260,9 +260,9 @@ spec:
             mountPath: /scripts/server.properties
             subPath: server.properties
           - name: shared-tools
-            mountPath: /shared-tools  
+            mountPath: /shared-tools
           - name: accounts
-            mountPath: /accounts/accounts-mount   
+            mountPath: /accounts/accounts-mount
           {{- with .Values.extraVolumeMounts.kafka }}
           {{- toYaml . | nindent 10}}
           {{- end }}
@@ -295,4 +295,4 @@ spec:
             mountPath: /etc/jmx-kafka
     volumes:
       - name: shared-tools
-        emptyDir: {}            
+        emptyDir: {}

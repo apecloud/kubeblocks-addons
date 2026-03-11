@@ -43,7 +43,7 @@ make: *** [scripts-test] Error 101
 
 You can also run specified unit test cases by executing the `shellspec` command in the root directory of the KubeBlocks Addons repository.
 
-First, you need to install shellspec. For installation instructions, please refer: [shellspec installation](https://github.com/shellspec/shellspec?tab=readme-ov-file#installation) 
+First, you need to install shellspec. For installation instructions, please refer: [shellspec installation](https://github.com/shellspec/shellspec?tab=readme-ov-file#installation)
 
 an example of the output:
 

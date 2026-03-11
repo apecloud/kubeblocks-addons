@@ -108,10 +108,10 @@ Describe "Etcd Start Bash Script Tests"
     test_conf_file="/tmp/test_config.conf"
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
-    
+
     # Create test directories
     mkdir -p /tmp
-    
+
     # Create a default template configuration
     cat > "$default_template_conf" << 'EOF'
 name: default
@@ -155,7 +155,7 @@ EOF
       export CURRENT_POD_NAME="etcd-0"
       export PEER_FQDNS="etcd-0.etcd-headless.default.svc.cluster.local,etcd-1.etcd-headless.default.svc.cluster.local"
       export PEER_ENDPOINT=""
-      
+
       When call get_my_endpoint
       The status should be success
       The stdout should include "etcd-0.etcd-headless.default.svc.cluster.local"
@@ -165,7 +165,7 @@ EOF
       export CURRENT_POD_NAME="etcd-2"
       export PEER_FQDNS="etcd-0.etcd-headless.default.svc.cluster.local,etcd-1.etcd-headless.default.svc.cluster.local"
       export PEER_ENDPOINT=""
-      
+
       When call get_my_endpoint
       The status should be failure
       The stderr should include "Failed to get current pod: etcd-2 fqdn from peer fqdn list:"

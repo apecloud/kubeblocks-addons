@@ -12,7 +12,7 @@ trap handle_exit EXIT
 # Construct pg_dump options string based on input parameters.
 construct_pg_dump_options() {
   PG_DUMP_OPTIONS=""
-  
+
   # schemas, comma-separated
   if [ -n "${schemas}" ]; then
     for schema in ${schemas//,/ }; do

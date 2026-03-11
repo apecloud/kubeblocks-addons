@@ -11,7 +11,7 @@ fi
 
 Describe "Opensearch Node Management Tests"
   Include ../scripts/monitor-master-node.sh
-  
+
   init() {
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"

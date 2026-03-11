@@ -7,7 +7,7 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
-    - componentDef: minio 
+    - componentDef: minio
       name: minio
       replicas: {{ .Values.replicas }}
       env:

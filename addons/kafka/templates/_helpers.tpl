@@ -216,7 +216,7 @@ kafka2-broker-env-tpl
 
 {{- define "kafka.tls.cmpdConfig" -}}
 tls:
-  volumeName: tls 
+  volumeName: tls
   mountPath: /etc/pki/tls
   caFile: ca.crt
   certFile: tls.crt

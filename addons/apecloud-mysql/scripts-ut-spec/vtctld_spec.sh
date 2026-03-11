@@ -45,7 +45,7 @@ Describe "vtctld.sh script tests"
     End
 
     It "fails when no endpoints are set"
-      unset LOCAL_ETCD_POD_FQDN 
+      unset LOCAL_ETCD_POD_FQDN
       unset SERVICE_ETCD_ENDPOINT
       When run source ../scripts/vtctld.sh
       The status should be failure

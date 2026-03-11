@@ -27,7 +27,7 @@ data-key-rotation-period = "168h"
 #     Plaintext as a master key means no master key is given and only applicable when
 #     encryption is not enabled, i.e. data-encryption-method = "plaintext". This type doesn't
 #     have sub-config items. Example:
-#     
+#
 #     [security.encryption.master-key]
 #     type = "plaintext"
 #
@@ -51,7 +51,7 @@ data-key-rotation-period = "168h"
 #
 #     Supply a custom encryption key stored in a file. It is recommended NOT to use in production,
 #     as it breaks the purpose of encryption at rest unless the file is stored in tempfs.
-#     The file must contain a 256-bits (32 bytes, regardless of key length implied by 
+#     The file must contain a 256-bits (32 bytes, regardless of key length implied by
 #     data-encryption-method) key encoded as a hex string and end with a newline ("\n"). Example:
 #
 #     [security.encryption.master-key]

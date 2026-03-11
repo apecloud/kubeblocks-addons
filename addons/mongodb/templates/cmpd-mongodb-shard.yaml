@@ -330,7 +330,7 @@ spec:
       value: $(MONGODB_ADMIN_PASSWORD)
     - name: KB_SERVICE_PORT
       value: "27017"
-    - name: SYNCER_SERVICE_PORT  
+    - name: SYNCER_SERVICE_PORT
       valueFrom:
         hostNetworkVarRef:
           optional: true
@@ -364,7 +364,7 @@ spec:
           compDef: {{ include "mongos.compDefName" . }}
           optional: false
           host: Required
-    - name: MONGOS_INTERNAL_PORT 
+    - name: MONGOS_INTERNAL_PORT
       valueFrom:
         serviceVarRef:
           name: internal
@@ -382,7 +382,7 @@ spec:
     - name: KUBERNETES_CLUSTER_DOMAIN
       # syncer will use this env to get the cluster domain to generate the pod FQDN to initialize the replica set
       value: "{{ .Values.clusterDomain }}"
-    - name: EXPORTER_SERVICE_PORT  
+    - name: EXPORTER_SERVICE_PORT
       value: "9216"
   hostNetwork:
     containerPorts:

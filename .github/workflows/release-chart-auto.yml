@@ -34,7 +34,7 @@ jobs:
               else
                   continue
               fi
-              
+
               if [[ -z "${RELEASE_REF}" ]]; then
                   RELEASE_REF="{\"ref-name\":\"$ref_name\"}"
               else
@@ -72,11 +72,11 @@ jobs:
                   echo "release $filePath chart"
                   addon_dir=${filePath%%/*}
                   addon_name=${filePath#*/}
-          
+
                   cmd="bash ${{ github.workspace }}/apecloud-cd/.github/utils/utils.sh --type 7 "
                   cmd=$cmd"--github-token \"${{ env.GH_TOKEN }}\" "
                   cmd=$cmd"--github-repo \"${{ github.repository }}\" "
-        
+
                   if [[ "$addon_dir" == "addons" ]]; then
                       cmd=$cmd"--workflow-id \"release-chart.yml\" "
                   elif [[ "$addon_dir" == "addons-cluster" ]]; then
@@ -85,13 +85,13 @@ jobs:
                       continue
                   fi
                   cmd=$cmd"--branch-name \"${{ matrix.ref-name }}\" "
-                 
+
                   if [[ -n "${addon_name}" ]]; then
                       cmd=$cmd"--extra-args \"custom_chart_dir=${addon_name}\" "
                   else
                       continue
                   fi
-        
+
                   echo "$cmd"
                   eval "$cmd"
               fi

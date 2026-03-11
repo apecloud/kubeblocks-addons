@@ -4,7 +4,7 @@ if [ -n "$SERVICE_ETCD_ENDPOINT" ]; then
   endpoints=$SERVICE_ETCD_ENDPOINT
 else
 # local etcd no need to clean
-  exit 0 
+  exit 0
 fi
 
 echo $endpoints
@@ -27,7 +27,7 @@ echo "Deleting all keys with prefix /vitess/${CLUSTER_NAMESPACE}/${CLUSTER_NAME}
 # Set different deletion methods according to different etcdctl versions.
 if [[ ${ETCDCTL_API} == "2" ]]; then
   etcdctl --endpoints $servers rm -r /vitess/${CLUSTER_NAMESPACE}/${CLUSTER_NAME}
-else 
+else
   etcdctl --endpoints $servers del /vitess/${CLUSTER_NAMESPACE}/${CLUSTER_NAME} --prefix
 fi
 

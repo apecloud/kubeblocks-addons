@@ -60,7 +60,7 @@ spec:
           {{- end }}
         env:
           - name: SERVICE_PORT
-            value: "{{ .Values.vmstorage.servicePort }}"          
+            value: "{{ .Values.vmstorage.servicePort }}"
         ports:
           - name: http
             containerPort: {{ .Values.vmstorage.servicePort }}
