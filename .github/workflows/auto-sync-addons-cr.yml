@@ -36,7 +36,7 @@ jobs:
               git config user.name "$GITHUB_ACTOR"
               git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
               block_index_sha=$(git rev-parse HEAD)
-                
+
               cp -r ${{ github.workspace }}/temp/* ${{ github.workspace }}/block-index/addons
               git add ${{ github.workspace }}/block-index/addons/*
               FILE_CHANGES=`git diff --name-only ${block_index_sha}`

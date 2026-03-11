@@ -195,9 +195,9 @@ switchover_without_candidate() {
   #if current pod has been removed from cluster by redis-cluster-replica-member-leave.sh, and become an primary by dbctl, cluster nodes command return one line
   if [ "$(echo "$cluster_nodes_info" | wc -l)" -le 1 ]; then
     echo "this pos has been successfully removed replica from shard,no need to perform switch over."
-    return 
+    return
   fi
-  
+
   # get the one of secondary pod of current shard
   # TODO: get the most suitable secondary pod which has the lowest latency
   IFS=',' read -ra PODS <<< "$CURRENT_SHARD_POD_NAME_LIST"

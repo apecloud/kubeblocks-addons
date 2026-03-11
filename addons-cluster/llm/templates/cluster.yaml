@@ -19,7 +19,7 @@ spec:
         - name: MODEL_URL
           value: {{ .Values.url }}
         - name: QUANTIZE
-          value: {{ .Values.quantize }} 
+          value: {{ .Values.quantize }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}

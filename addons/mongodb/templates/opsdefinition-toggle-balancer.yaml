@@ -14,7 +14,7 @@ spec:
       properties:
         enableBalancer:
           description: |
-            Enable or disable the balancer.         
+            Enable or disable the balancer.
           type: boolean
           default: true
   actions:
@@ -61,4 +61,3 @@ spec:
                 $CLUSTER_MONGO "sh.stopBalancer()"
                 echo "INFO: Balancer is disabled."
             fi
-                  

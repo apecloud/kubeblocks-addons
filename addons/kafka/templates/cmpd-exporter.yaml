@@ -58,7 +58,7 @@ spec:
           compDef: "^kafka\\d*-combine-"
           name: admin
           optional: true
-          password: Required      
+          password: Required
   scripts:
   - name: kafka-scripts-tpl
     template: {{ include "kafka.serverScriptsTplName" . }}

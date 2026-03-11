@@ -51,10 +51,10 @@ spec:
           type: integer
   actions:
     - name: master-account-ops
-      parameters: ["ACL_COMMAND","REPLICAS"] 
+      parameters: ["ACL_COMMAND","REPLICAS"]
       workload:
         type: Pod
-        podInfoExtractorName: master-connection 
+        podInfoExtractorName: master-connection
         backoffLimit: 0
         podSpec:
           containers:
@@ -120,10 +120,10 @@ spec:
           type: integer
   actions:
     - name: sentinel-account-ops
-      parameters: ["ACL_COMMAND","REPLICAS"] 
+      parameters: ["ACL_COMMAND","REPLICAS"]
       workload:
         type: Pod
-        podInfoExtractorName: sentinel-connection 
+        podInfoExtractorName: sentinel-connection
         backoffLimit: 0
         podSpec:
           containers:
@@ -205,10 +205,10 @@ spec:
           type: integer
   actions:
     - name: shard-account-ops
-      parameters: ["ACL_COMMAND","SHARD_MODE","REPLICAS"] 
+      parameters: ["ACL_COMMAND","SHARD_MODE","REPLICAS"]
       workload:
         type: Pod
-        podInfoExtractorName: shard-connection 
+        podInfoExtractorName: shard-connection
         backoffLimit: 0
         podSpec:
           containers:

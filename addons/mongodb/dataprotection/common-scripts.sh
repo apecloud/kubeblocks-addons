@@ -38,7 +38,7 @@ function buildJsonString() {
 function DP_save_backup_status_info() {
     export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
     export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
-  
+
     local totalSize=$1
     local startTime=$2
     local stopTime=$3
@@ -127,7 +127,7 @@ function set_backup_config_env() {
   export S3_ENDPOINT="${endpoint}"
   export S3_BUCKET="${bucket}"
   export S3_PREFIX="${backup_path#/}/$PBM_BACKUP_DIR_NAME"
-  
+
   DP_log "storage config have been extracted."
 }
 
@@ -157,7 +157,7 @@ generate_endpoints() {
 function export_pbm_env_vars() {
   export PBM_AGENT_MONGODB_USERNAME="$MONGODB_USER"
   export PBM_AGENT_MONGODB_PASSWORD="$MONGODB_PASSWORD"
-  
+
   cfg_server_endpoints="$(generate_endpoints "$CFG_SERVER_POD_FQDN_LIST" "$CFG_SERVER_INTERNAL_PORT")"
   export PBM_MONGODB_URI="mongodb://$PBM_AGENT_MONGODB_USERNAME:$PBM_AGENT_MONGODB_PASSWORD@$cfg_server_endpoints/?authSource=admin&replSetName=$CFG_SERVER_REPLICA_SET_NAME"
 }
@@ -311,7 +311,7 @@ function sync_pbm_config_from_storage() {
 
   pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI"
   # print_pbm_logs_by_event "resync"
-  
+
   # resync wait flag might don't work
   wait_for_other_operations
 
@@ -495,7 +495,7 @@ EOF
   local max_retries=12
   local try_interval=5
   while true; do
-    restore_status=$(pbm describe-restore "$restore_name" -c $cnf_file -o json | jq -r '.status') 
+    restore_status=$(pbm describe-restore "$restore_name" -c $cnf_file -o json | jq -r '.status')
     echo "INFO: Restore $restore_name status: $restore_status, retrying in ${try_interval}s..."
     if [ "$restore_status" = "done" ]; then
       rm $cnf_file

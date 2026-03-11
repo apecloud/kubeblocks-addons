@@ -976,7 +976,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
         initialize_redis_cluster_primary_nodes["falkordb-shard-7hy-0"]="10.42.0.3:6379"
         initialize_redis_cluster_primary_nodes["falkordb-shard-jwl-0"]="10.42.0.5:6379"
       }
-      
+
       check_initialize_nodes_ready() {
         return 0
       }

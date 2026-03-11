@@ -22,13 +22,13 @@ Describe "Etcd Switchover Script Tests"
   init() {
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
-    
+
     # Setup test environment variables
     export LEADER_POD_FQDN="etcd-0.etcd-headless.default.svc.cluster.local"
     export KB_SWITCHOVER_CURRENT_FQDN="etcd-0.etcd-headless.default.svc.cluster.local"
     export KB_SWITCHOVER_CANDIDATE_FQDN="etcd-1.etcd-headless.default.svc.cluster.local"
     export PEER_ENDPOINT=""
-    
+
     # Mock functions
     get_endpoint_adapt_lb() {
       local lb_endpoints="$1"
@@ -36,16 +36,16 @@ Describe "Etcd Switchover Script Tests"
       local result_endpoint="$3"
       echo "$result_endpoint"
     }
-    
+
     log() {
       echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
     }
-    
+
     error_exit() {
       echo "ERROR: $1" >&2
       return 1
     }
-    
+
     # Simple is_leader function
     is_leader() {
       case "$1" in
@@ -54,15 +54,15 @@ Describe "Etcd Switchover Script Tests"
         *) return 1 ;;
       esac
     }
-    
+
     get_member_id_hex() {
       echo "abc123"
     }
-    
+
     get_member_id() {
       echo "1001"
     }
-    
+
     exec_etcdctl() {
       local endpoint="$1"
       shift
@@ -86,7 +86,7 @@ Describe "Etcd Switchover Script Tests"
           ;;
       esac
     }
-    
+
     # Define switchover functions
     switchover_with_candidate() {
       local current_pod_name candidate_pod_name current_endpoint candidate_endpoint candidate_id
@@ -169,7 +169,7 @@ Describe "Etcd Switchover Script Tests"
 
     It "performs automatic switchover when no candidate specified"
       unset KB_SWITCHOVER_CANDIDATE_FQDN
-      
+
       When call switchover
       The status should be success
       The stdout should include "Leadership transferred"
@@ -178,7 +178,7 @@ Describe "Etcd Switchover Script Tests"
 
     It "skips switchover when not triggered for leader pod"
       export LEADER_POD_FQDN="etcd-1.etcd-headless.default.svc.cluster.local"
-      
+
       When call switchover
       The status should be success
       The stdout should include "switchover action not triggered for leader pod"
@@ -195,7 +195,7 @@ Describe "Etcd Switchover Script Tests"
         echo "MOCK: exec_etcdctl $endpoint $*"
         return 0
       }
-      
+
       When call switchover
       The status should be failure
       The stderr should include "ERROR: Failed to transfer leadership to candidate"

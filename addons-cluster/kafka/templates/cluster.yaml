@@ -86,6 +86,6 @@ spec:
       serviceVersion: {{ .Values.exporterVersion }}
       replicas: {{ .Values.monitor.replicas }}
       env:
-        {{- include "kafka-cluster.basicEnv" . | nindent 8 }}  
+        {{- include "kafka-cluster.basicEnv" . | nindent 8 }}
       {{- include "kafka-exporter.resources" . | nindent 6 }}
     {{- end }}

@@ -39,7 +39,7 @@ spec:
         numDigits: 8
         numSymbols: 0
         letterCase: MixedCases
-  lifecycleActions: 
+  lifecycleActions:
     memberLeave:
       exec:
         container: rabbitmq

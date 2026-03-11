@@ -10,7 +10,7 @@ test || __() {
 
 generate_kafka_servers() {
   local servers=""
-  
+
   if [[ -z "$BROKER_POD_FQDN_LIST" ]] && [[ -z "$COMBINE_POD_FQDN_LIST" ]]; then
     echo "Error: BROKER_POD_FQDN_LIST and COMBINE_POD_FQDN_LIST environment variable is not set, Please check and try again." >&2
     return 1
@@ -46,12 +46,12 @@ get_start_kafka_exporter_cmd() {
   fi
 
   saslArgs=""
-  if [[ $(is_sasl_enabled "${KB_CLUSTER_WITH_ZK:-false}") == "true" ]]; then 
+  if [[ $(is_sasl_enabled "${KB_CLUSTER_WITH_ZK:-false}") == "true" ]]; then
     echo "sasl is enabled, setting sasl args" >&2
     local default_mechanism=$(get_client_default_mechanism "${KB_CLUSTER_WITH_ZK:-false}")
     echo "sasl mechanism from config: $default_mechanism" >&2
     saslArgs=$(get_kafka_exporter_sasl_args_by_mechanism "$default_mechanism")
-  fi 
+  fi
 
   if [[ -n "$TLS_ENABLED" ]]; then
     echo "TLS_ENABLED is set to true, start kafka_exporter with tls enabled." >&2
@@ -71,7 +71,7 @@ get_kafka_exporter_sasl_args_by_mechanism() {
     user_var_name="$KAFKA_ADMIN_USER_COMBINE"
     password_var_name="$KAFKA_ADMIN_PASSWORD_COMBINE"
   fi
-  
+
   local mechanism="$1"
   case "${mechanism,,}" in
     "scram-sha512")

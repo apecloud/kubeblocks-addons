@@ -21,21 +21,21 @@ Describe "Etcd Data Load Script Tests"
   init() {
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
-    
+
     # Setup test environment variables
     export CONFIG_TEMPLATE_PATH="/tmp/test_etcd_template.conf"
     export CONFIG_FILE_PATH="/tmp/test_etcd_target.conf"
-    
+
     # Create test directories
     mkdir -p /tmp
-    
+
     # Define the data load function based on real script logic
     data_load() {
       local default_template_conf="$CONFIG_TEMPLATE_PATH"
       local default_conf="$CONFIG_FILE_PATH"
-      
+
       cp "$default_template_conf" "$default_conf" || return 1
-      
+
       sed -i.bak "s/^initial-cluster-state: 'new'/initial-cluster-state: 'existing'/g" "$default_conf"
       if [ -f "$default_conf.bak" ]; then
         rm "$default_conf.bak"
@@ -45,7 +45,7 @@ Describe "Etcd Data Load Script Tests"
   BeforeAll "init"
 
   BeforeEach 'setup_test_files'
-  
+
   setup_test_files() {
     rm -f "$CONFIG_FILE_PATH" "$CONFIG_FILE_PATH.bak" "$CONFIG_TEMPLATE_PATH"
     cat > "$CONFIG_TEMPLATE_PATH" << 'EOF'
@@ -80,7 +80,7 @@ EOF
 
     It "handles missing template file gracefully"
       rm -f "$CONFIG_TEMPLATE_PATH"
-      
+
       When call data_load
       The status should be failure
       # Explicitly check for the expected error message to resolve the warning.

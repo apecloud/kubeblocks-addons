@@ -16,4 +16,4 @@ metadata:
     {{- include "victoria-metrics.labels" . | nindent 4 }}
 data:
   config.yaml: |-
-    {{- .Files.Get "configs/vminsert-config.tpl" | nindent 4 }} 
+    {{- .Files.Get "configs/vminsert-config.tpl" | nindent 4 }}
