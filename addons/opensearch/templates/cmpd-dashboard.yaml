@@ -11,6 +11,8 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Values.defaultServiceVersion.opensearch }}
+  available:
+    withPhases: "Running,Updating"
   runtime:
     containers:
       - name: dashboard

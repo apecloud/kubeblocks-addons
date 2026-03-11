@@ -13,6 +13,8 @@ spec:
   serviceVersion: 0.0.2
   minReadySeconds: 10
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   scripts:
     - name: rocketmq-exporter-scripts
       template: {{ include "rocketmq-exporter.scriptsTemplate" . }}

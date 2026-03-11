@@ -73,6 +73,8 @@ spec:
           serviceVersion: ^3.8.\d{1,2}$
       optional: true
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   configs:
     - name: broker-config
       template: {{ include "pulsar4.brokerConfigTplName" . }}

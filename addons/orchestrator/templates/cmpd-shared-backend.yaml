@@ -7,6 +7,8 @@ metadata:
   annotations:
     {{- include "orchestrator.annotations" . | nindent 4 }}
 spec:
+  available:
+    withPhases: "Running,Updating"
   {{- include "orchestrator.cmpd.spec.common" . | nindent 2 }}
   services:
     - name: orchestrator

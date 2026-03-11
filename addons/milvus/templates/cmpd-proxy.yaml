@@ -10,6 +10,8 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  available:
+    withPhases: "Running,Updating"
   services:
     - name: milvus
       serviceName:  # use default name

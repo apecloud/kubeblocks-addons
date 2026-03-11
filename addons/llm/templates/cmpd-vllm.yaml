@@ -11,6 +11,8 @@ spec:
   provider: kubeblocks
   serviceKind: vllm
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   scripts:
     - name: scripts
       template: vllm-scripts

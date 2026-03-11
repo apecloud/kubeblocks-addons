@@ -11,6 +11,8 @@ spec:
   provider: KubeBlocks
   serviceKind: neon-storagebroker
   serviceVersion: {{ .Values.defaultComponentServiceVersion }}
+  available:
+    withPhases: "Running,Updating"
   services:
     - name: neon-storagebroker
       serviceName: neon-storagebroker

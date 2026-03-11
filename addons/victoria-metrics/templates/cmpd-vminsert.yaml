@@ -20,6 +20,8 @@ spec:
             protocol: TCP
             name: http
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   exporter:
     scrapePath: /metrics
     scrapePort: http

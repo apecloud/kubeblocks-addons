@@ -9,6 +9,8 @@ metadata:
     {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
   serviceVersion: 6.8.23
+  available:
+    withPhases: "Running,Updating"
   configs:
     - name: es-cm
       template: {{ include "elasticsearch6.configTplName" . }}

@@ -11,6 +11,8 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: risingwave
   serviceVersion: {{ .Chart.AppVersion }}
+  available:
+    withPhases: "Running,Updating"
   services:
     - name: default
       spec:

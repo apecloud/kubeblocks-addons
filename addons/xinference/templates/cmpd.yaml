@@ -11,6 +11,8 @@ spec:
   description: Xinference is a powerful and versatile library designed to serve language, speech recognition, and multimodal models.
   serviceKind: xinference
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   scripts:
   - name: scripts
     template: xinference-scripts

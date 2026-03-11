@@ -13,6 +13,8 @@ spec:
   serviceVersion: 2.0.0
   minReadySeconds: 10
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   scripts:
     - name: rocketmq-dashboard-scripts
       template: {{ include "rocketmq-dashboard.scriptsTemplate" . }}

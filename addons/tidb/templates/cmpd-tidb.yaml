@@ -11,6 +11,8 @@ spec:
   description: tidb's SQL layer
   serviceKind: MySQL
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   minReadySeconds: 30
   podManagementPolicy: Parallel
   vars:

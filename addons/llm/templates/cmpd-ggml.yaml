@@ -11,6 +11,8 @@ spec:
   provider: kubeblocks
   serviceKind: ggml
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   scripts:
     - name: scripts
       template: ggml-scripts

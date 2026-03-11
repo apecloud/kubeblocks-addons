@@ -12,6 +12,8 @@ spec:
   serviceKind: proxysql
   serviceVersion: 2.4.4
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   configs:
     - name: proxy-config
       template: proxysql-config

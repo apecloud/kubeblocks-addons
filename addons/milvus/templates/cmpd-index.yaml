@@ -10,6 +10,8 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  available:
+    withPhases: "Running,Updating"
   configs:
     {{- include "milvus.config.cluster" . | indent 4 }}
   serviceRefDeclarations:

@@ -9,6 +9,8 @@ metadata:
     {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
   serviceVersion: 7.10.1
+  available:
+    withPhases: "Running,Updating"
   replicasLimit:
     minReplicas: 2
     maxReplicas: 16384

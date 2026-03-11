@@ -11,6 +11,8 @@ spec:
   description: wescale
   serviceKind: wescale
   serviceVersion: "0.2.7"
+  available:
+    withPhases: "Running,Updating"
   serviceRefDeclarations:
     - name: etcd
       serviceRefDeclarationSpecs:

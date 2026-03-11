@@ -9,6 +9,8 @@ metadata:
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
   serviceVersion: 6.8.23
+  available:
+    withPhases: "Running,Updating"
   configs:
   - name: kibana-cm
     template: {{ include "kibana6.configTplName" . }}

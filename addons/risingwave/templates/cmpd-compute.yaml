@@ -24,6 +24,8 @@ spec:
   configs:
     {{- include "risingwave.conftpl.default" . | indent  4 }}
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   vars:
     {{- include "risingwave.vars.connector" . | indent 4 }}
     {{- include "risingwave.vars.meta" . | indent 4 }}

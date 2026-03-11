@@ -18,6 +18,8 @@ spec:
           serviceVersion: ^3.8.\d{1,2}$
       optional: true
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   configs:
     - name: bkrecovery-config
       template:  {{ include "pulsar2.bkRecoveryTplName" . }}

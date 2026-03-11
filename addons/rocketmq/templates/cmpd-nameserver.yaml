@@ -48,6 +48,8 @@ spec:
       volumeName: scripts
       defaultMode: 0555
   updateStrategy: BestEffortParallel
+  available:
+    withPhases: "Running,Updating"
   logConfigs:
     - name: namesrv
       filePathPattern: {{ .Values.broker.logPath }}/rocketmqlogs/namesrv*
