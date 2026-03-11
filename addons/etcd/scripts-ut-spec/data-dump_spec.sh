@@ -36,13 +36,12 @@ Describe "Etcd Data Dump Script Tests"
   AfterAll 'cleanup'
 
   Describe "data_dump() function"
-    It "executes successfully"
-      # start_time=$(date +%s)
-      # data_dump
-      # end_time=$(date +%s)
-      # elapsed=$((end_time - start_time))
-      # The variable elapsed should equal 1
-      Pending "data-dump is not yet implemented"
+    xIt "executes successfully"
+      start_time=$(date +%s)
+      data_dump
+      end_time=$(date +%s)
+      elapsed=$((end_time - start_time))
+      The variable elapsed should equal 1
     End
   End
 End
