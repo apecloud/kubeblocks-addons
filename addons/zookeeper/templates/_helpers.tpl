@@ -117,7 +117,7 @@ zookeeper-dynamic-config-template
 Define zookeeper parameter config renderer name
 */}}
 {{- define "zookeeper.pcrName" -}}
-zookeeper-pcr{{ .Chart.Version }}
+zookeeper-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
