@@ -68,7 +68,7 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 
 {{- define "zoocreeper.image" -}}
 {{ .Values.images.registry | default "docker.io" }}/{{ .Values.zoocreeperImage.repository }}:{{ .Values.zoocreeperImage.tag }}
-{{- end }}}
+{{- end }}
 
 {{/*
 Define zookeeper component definition name
@@ -117,7 +117,7 @@ zookeeper-dynamic-config-template
 Define zookeeper parameter config renderer name
 */}}
 {{- define "zookeeper.pcrName" -}}
-zookeeper-pcr
+zookeeper-pcr{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
