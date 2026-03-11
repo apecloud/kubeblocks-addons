@@ -28,7 +28,7 @@ trap handle_exit EXIT
 
 function getToolConfigValue() {
     local var=$1
-    cat $toolConfig | grep "$var[[:space:]]*=" | awk '{print $NF}'
+    cat $toolConfig | grep "${var}[[:space:]]*=" | awk '{print $NF}'
 }
 
 s3_endpoint=$(getToolConfigValue endpoint)
@@ -65,7 +65,7 @@ echo "INFO: Found nodes: $node_ips"
 # Set keystore for each node
 for node_ip in $node_ips; do
     echo "INFO: Setting keystore for node $node_ip"
-    
+
     keystore_request=$(cat <<EOF
 {
   "access_key_id": "${s3_access_key_id}",
@@ -73,21 +73,21 @@ for node_ip in $node_ips; do
 }
 EOF
 )
-    
+
     response=$(curl -s -w "\n%{http_code}" ${AGENT_AUTH} \
         -X POST "http://${node_ip}:8080/keystore" \
         -H "Content-Type: application/json" \
         -d "${keystore_request}")
-    
+
     http_code=$(echo "$response" | tail -n1)
     response_body=$(echo "$response" | head -n -1)
-    
+
     if [ "$http_code" != "200" ]; then
         echo "ERROR: Failed to set keystore for node $node_ip, status: $http_code"
         echo "ERROR: Response: $response_body"
         exit 1
     fi
-    
+
     echo "INFO: Successfully set keystore for node $node_ip"
 done
 
