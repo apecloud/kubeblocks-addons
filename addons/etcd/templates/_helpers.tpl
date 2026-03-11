@@ -97,12 +97,7 @@ Define etcd 3.X component parameters definition name
 etcd3-pd
 {{- end }}
 
-{{/*
-Define etcd 3.X component parameter config renderer name
-*/}}
-{{- define "etcd3.pcrName" -}}
-etcd3-pcr
-{{- end }}
+
 
 
 {{/*

@@ -488,18 +488,18 @@ Define pulsar tools image
 Define pulsar v2.X bookies parameter config render name
 */}}
 {{- define "pulsar2.bookiesPCRName" -}}
-pulsar2-bookies-pcr
+pulsar2-bookies-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define pulsar v3.X bookies parameter config render name
 */}}
 {{- define "pulsar3.bookiesPCRName" -}}
-pulsar3-bookies-pcr
+pulsar3-bookies-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "pulsar4.bookiesPCRName" -}}
-pulsar4-bookies-pcr
+pulsar4-bookies-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*

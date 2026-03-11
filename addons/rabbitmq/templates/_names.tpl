@@ -26,13 +26,6 @@ Define rabbitmq component definition name
 {{/*
 Define rabbitmq pcr definition name
 */}}
-{{- define "rabbitmq.pcrName" -}}
-{{ include "rabbitmq.cmpdNamePrefix" . }}pcr
-{{- end -}}
-
-{{/*
-Define rabbitmq pcr definition name
-*/}}
 {{- define "rabbitmq.paramsDefName" -}}
 {{ include "rabbitmq.cmpdNamePrefix" . }}pd
 {{- end -}}
