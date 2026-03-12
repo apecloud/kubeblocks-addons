@@ -19,7 +19,7 @@ spec:
         - 8.0.38
         - 8.0.39
     - compDefs:
-        - {{ include "mysql.componentDefName84" . }}
+        - {{ include "mysql.componentDefNameMGR84" . }}
       releases:
         - 8.4.0
         - 8.4.1
