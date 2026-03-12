@@ -49,20 +49,6 @@ Define redis cluster shardingSpec with ComponentDefinition.
         value: "true"
     {{- end }}
     serviceVersion: {{ .Values.version }}
-    systemAccounts:
-    - name: default
-      {{- if and .Values.redisCluster.customSecretName .Values.redisCluster.customSecretNamespace }}
-      secretRef:
-        name: {{ .Values.redisCluster.customSecretName }}
-        namespace: {{ .Values.redisCluster.customSecretNamespace }}
-      {{- else }}
-      passwordConfig:
-        length: 10
-        numDigits: 5
-        numSymbols: 0
-        letterCase: MixedCases
-        seed: {{ include "kblib.clusterName" . }}
-      {{- end }}
     resources:
       limits:
         cpu: {{ .Values.cpu | quote }}
