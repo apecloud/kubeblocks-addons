@@ -3,6 +3,16 @@
   {{- include "redis-cluster.clusterCommon" . }}
   clusterDef: redis
   topology: {{ .Values.mode }}
+  services:
+  - componentSelector: shard
+    name: secondary
+    serviceName:  shard-secondary
+    roleSelector: secondary
+    spec:
+      ports:
+        - name: redis-cluster
+          port: 6379
+          targetPort: redis-cluster
   shardings:
   {{- include "redis-cluster.shardingSpec" . | indent 2 }}
 {{- else }}

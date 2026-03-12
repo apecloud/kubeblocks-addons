@@ -14,6 +14,9 @@ spec:
     maxShards: 64
   provisionStrategy: Parallel
   updateStrategy: Parallel
+  systemAccounts:
+    - name: default
+      shared: true
   lifecycleActions:
     shardRemove:
       timeoutSeconds: 600
