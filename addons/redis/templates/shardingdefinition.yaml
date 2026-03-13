@@ -19,7 +19,6 @@ spec:
       shared: true
   lifecycleActions:
     shardRemove:
-      timeoutSeconds: 600
       exec:
         container: redis-cluster
         command:
