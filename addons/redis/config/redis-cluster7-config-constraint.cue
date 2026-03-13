@@ -84,7 +84,7 @@
 
 	"maxmemory-samples": int | *3
 
-	"maxmemory"?: int
+	"maxmemory"?: int @storeResource()
 
 	"min-replicas-max-lag": int | *10
 

@@ -68,7 +68,7 @@
 
 	maxclients: int & >=1 & <=65000 | *65000
 
-	maxmemory: int
+	maxmemory: int @storeResource()
 
 	"min-replicas-max-lag": int | *10
 
