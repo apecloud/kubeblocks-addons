@@ -340,7 +340,7 @@ send_cluster_meet_with_retry() {
   local announce_ip="$3"
   local announce_port="$4"
   local announce_bus_port="$5"
-  send_cluster_meet_result=$(call_func_with_retry $retry_times $retry_delay_second send_cluster_meet "$primary_endpoint" "$primary_port" "$announce_ip" "$announce_port" "$announce_bus_port")
+  send_cluster_meet_result=$(call_func_with_retry $retry_times 10 send_cluster_meet "$primary_endpoint" "$primary_port" "$announce_ip" "$announce_port" "$announce_bus_port")
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to meet the node $announce_ip:$announce_port in check_and_meet_other_primary_nodes after retry" >&2
