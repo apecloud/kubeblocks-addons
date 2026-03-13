@@ -465,6 +465,7 @@ spec:
           - redis
           - getrole
     postProvision:
+      timeoutSeconds: 900
       exec:
         container: redis-cluster
         command:
@@ -492,6 +493,7 @@ spec:
       retryPolicy:
         maxRetries: 10
     preTerminate:
+      timeoutSeconds: 900
       exec:
         container: redis-cluster
         command:
