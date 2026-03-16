@@ -60,7 +60,7 @@
 
 	maxclients: int & >=1 & <=65000 | *65000
 
-	maxmemory?: int
+	maxmemory?: int @storeResource()
 
 	"maxmemory-policy"?: string & "volatile-lru" | "allkeys-lru" | "volatile-lfu" | "allkeys-lfu" | "volatile-random" | "allkeys-random" | "volatile-ttl" | "noeviction"
 
