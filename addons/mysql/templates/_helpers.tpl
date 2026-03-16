@@ -326,3 +326,12 @@ Generate reloader scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{- define "mysql.mydumper.image" -}}
+{{ $registry := default ( .Values.image.registry | default "docker.io" )}}
+{{- if eq $registry "docker.io" -}}
+{{ $registry }}/mydumper/mydumper:{{ .Values.image.mydumper.tag }}
+{{- else -}}
+{{ $registry }}/apecloud/mydumper:{{ .Values.image.mydumper.tag }}
+{{- end -}}
+{{- end }}

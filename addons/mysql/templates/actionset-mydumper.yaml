@@ -1,0 +1,54 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: mysql-mydumper-br
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  backupType: Selective
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        trx_tables:
+          type: boolean
+          description: "The single-transaction of the backup. if set false, will using lock-tables"
+          default: true
+        tables:
+          type: string
+          description: "The tables to backup, separated by comma. Table name must include database name. For instance: test.t1,test.t2"
+        threads:
+          type: number
+          description: "The number of threads to use for the backup."
+          default: 4
+        no_data:
+          type: boolean
+          description: "Whether to backup table structure only without data."
+  backup:
+    preBackup: []
+    postBackup: []
+    withParameters:
+      - threads
+      - tables
+      - trx_tables
+      - no_data
+    backupData:
+      image: {{ include "mysql.mydumper.image" . }}
+      runOnTargetPodNode: true
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/mysql-mydumper.sh" | nindent 8 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    postReady:
+    - job:
+        image: {{ include "mysql.mydumper.image" . }}
+        runOnTargetPodNode: true
+        command:
+        - sh
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/mysql-myloader.sh" | nindent 10 }}
