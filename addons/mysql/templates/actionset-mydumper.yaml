@@ -23,6 +23,9 @@ spec:
         no_data:
           type: boolean
           description: "Whether to backup table structure only without data."
+        drop_table:
+          type: string
+          description: "-o, --drop-table Executes or simulates a DROP TABLE if the table already exists. The drop modes can be: FAIL, NONE, DROP, TRUNCATE and DELETE. If the option is not set, the default is set to: FAIL. If the option is used without a parameter, the default is: DROP."
   backup:
     preBackup: []
     postBackup: []
@@ -43,6 +46,11 @@ spec:
         enabled: true
         intervalSeconds: 5
   restore:
+    withParameters:
+      - threads
+      - tables
+      - trx_tables
+      - drop_table
     postReady:
     - job:
         image: {{ include "mysql.mydumper.image" . }}
