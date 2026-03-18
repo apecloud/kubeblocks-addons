@@ -10,6 +10,8 @@ mkdir -p ${TMP_DIR} && cd ${TMP_DIR}
 xbstreamFile="${DP_BACKUP_NAME}.xbstream.zst"
 if [ "$(datasafed list ${xbstreamFile})" == "${xbstreamFile}" ]; then
   datasafed pull -d zstd-fastest "${xbstreamFile}" - | xbstream -x
+elif [ "$(datasafed list mysql.xbstream)" == "mysql.xbstream" ]; then
+  datasafed pull "mysql.xbstream" - | xbstream -x
 else
   datasafed pull "${DP_BACKUP_NAME}.xbstream" - | xbstream -x
 fi
