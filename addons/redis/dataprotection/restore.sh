@@ -15,6 +15,8 @@ touch ${data_protection_file}
 backupFile="${DP_BACKUP_NAME}.tar.zst"
 if [ "$(datasafed list ${backupFile})" == "${backupFile}" ]; then
    datasafed pull -d zstd-fastest "${backupFile}" - | tar -xvf - -C ${DATA_DIR}
+elif [ "$(datasafed list redis-offline.tar)" == "redis-offline.tar" ]; then
+   datasafed pull redis-offline.tar - | tar -xvf - -C ${DATA_DIR}
 else
    datasafed pull "${DP_BACKUP_NAME}.tar.gz" - | tar -xzvf - -C ${DATA_DIR}
 fi

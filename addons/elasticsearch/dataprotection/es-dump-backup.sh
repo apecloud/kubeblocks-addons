@@ -20,9 +20,6 @@ handle_exit() {
     echo "failed with exit code $exit_code"
     touch "${DP_BACKUP_INFO_FILE}.exit"
     exit 1
-  else
-    echo "{}" >"${DP_BACKUP_INFO_FILE}"
-    exit 0
   fi
 }
 trap handle_exit EXIT
@@ -77,6 +74,7 @@ cd ${BACKUP_DIR}
 tar -cf - . | datasafed push -z zstd-fastest - "/${DP_BACKUP_NAME}.tar.zst"
 
 echo "INFO: Backup data pushed to storage successfully"
-
+TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
+echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
 # Cleanup
 rm -rf ${BACKUP_DIR}
