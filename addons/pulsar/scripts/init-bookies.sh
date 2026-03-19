@@ -46,6 +46,24 @@ init_bookkeeper_cluster() {
   fi
 }
 
+decommission_old_bookie() {
+  if [[ ! -d "/pulsar/data/bookkeeper/journal/" || ! -d "/pulsar/data/bookkeeper/ledgers/" ]]; then
+    echo "Journal or ledgers directory does not exist, skip decommission old bookie"
+    return
+  fi
+  
+  # when an bookie is rebuilt, it will keep crashing due to the old cookie in zookeeper
+  echo "checking if data dir is empty..."
+  if [[ -f "/pulsar/data/bookkeeper/journal/current/VERSION" || -f "/pulsar/data/bookkeeper/ledgers/current/VERSION" ]]; then
+    echo "Data dir is not empty, skip decommission old bookie"
+  else
+    echo "Data dir is empty"
+    fqdn=$(echo "$BOOKKEEPER_POD_FQDN_LIST" | tr ',' '\n' | grep "$CURRENT_POD_NAME")
+    echo "Decommissioning old bookie with id $fqdn"
+    bin/bookkeeper shell decommissionbookie -bookieid "$fqdn:3181"
+  fi
+}
+
 load_env_file() {
   local pulsar_env_config="/opt/pulsar/conf/pulsar.env"
 
@@ -65,6 +83,7 @@ init_bookies() {
   apply_config_from_env
   load_env_file
   init_bookkeeper_cluster
+  decommission_old_bookie
 }
 
 # This is magic for shellspec ut framework.
