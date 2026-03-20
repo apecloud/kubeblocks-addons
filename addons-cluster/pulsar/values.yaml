@@ -149,7 +149,7 @@ clusterDomain: ".cluster.local"
 # test suites
 tests:
   benchmark:
-    kafka2Kafka: true
+    kafka2Kafka: false
 
 # Service reference configuration, such as using an external ZooKeeper or a ZooKeeper service deployed in a separate cluster,
 # currently supports configuring the ZooKeeper service reference.
