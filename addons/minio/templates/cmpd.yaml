@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "minio.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks
   description: Minio is a High Performance Object Storage.
   serviceKind: minio

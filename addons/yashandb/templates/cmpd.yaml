@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "yashandb.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: Community
   description: YashanDB is a new database system completely independently designed and developed by SICS.
   serviceKind: {{ .Chart.Name }}

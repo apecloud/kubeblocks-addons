@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks.io
   description: MongoDB is a document database designed for ease of application development and scaling.
   serviceKind: mongodb

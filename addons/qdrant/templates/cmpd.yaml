@@ -8,6 +8,7 @@ metadata:
     apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "qdrant.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks
   description: High-performance, massive-scale Vector Database for the next generation of AI.
   serviceKind: qdrant
