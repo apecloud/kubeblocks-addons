@@ -18,6 +18,7 @@ server:
   grpc_listen_port: ${SERVER_GRPC_PORT}
   http_listen_port: ${SERVER_HTTP_PORT}
   grpc_server_max_recv_msg_size: 52428800
+  log_level: {{ default "info" .LOG_LEVEL }}
 
 memberlist:
    bind_addr:
