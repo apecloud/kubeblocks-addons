@@ -88,6 +88,10 @@ spec:
             mountPath: /kb-scripts
           - name: pulsar-bookies-config
             mountPath: /opt/pulsar/conf
+          - mountPath: /pulsar/data/bookkeeper/journal
+            name: journal
+          - mountPath: /pulsar/data/bookkeeper/ledgers
+            name: ledgers
         env:
           - name: CURRENT_POD_NAME
             valueFrom:
