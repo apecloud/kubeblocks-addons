@@ -100,6 +100,8 @@ spec:
       namespace: {{ .Release.Namespace }}
       restartOnFileChange: true
   vars:
+    - name: LOG_LEVEL
+      value: "info"
     - name: SERVER_HTTP_PORT
       value: {{ .Values.server.httpMetricsPort | quote }}
     - name: SERVER_GRPC_PORT
