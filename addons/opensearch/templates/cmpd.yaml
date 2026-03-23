@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "opensearch.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}

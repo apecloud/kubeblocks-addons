@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "kafka.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks
   description: Kafka controller that act as controllers (kraft) only server.
   serviceKind: kafka-controller

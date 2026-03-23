@@ -8,6 +8,7 @@ metadata:
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   serviceVersion: 6.8.23
   configs:
   - name: kibana-cm

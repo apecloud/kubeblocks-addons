@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "redis.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: KubeBlocks
   description: A Twemproxy component definition for Kubernetes
   serviceKind: redis-twemproxy

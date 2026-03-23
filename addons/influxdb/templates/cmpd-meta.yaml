@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "influxdb.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: Apecloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}

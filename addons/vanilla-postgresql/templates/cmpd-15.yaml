@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "vanilla-postgresql.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   {{- include "vanilla-postgresql.spec.common" . | nindent 2 }}
   serviceVersion: {{ .Values.defaultServiceVersion.major15 }}
   configs:
@@ -39,6 +40,7 @@ metadata:
   annotations:
     {{- include "vanilla-postgresql.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   {{- include "vanilla-postgresql.spec.common" (merge (dict "accountName" "supabase_admin") .)| nindent 2 }}
   serviceVersion: {{ .Values.defaultServiceVersion.supabaseMajor15 }}
   configs:

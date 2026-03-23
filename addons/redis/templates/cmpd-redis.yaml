@@ -13,6 +13,7 @@ metadata:
   annotations:
     {{- include "redis.annotations" $ | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks
   description: A Redis v{{ .major }}.0 component definition for Kubernetes
   serviceKind: redis

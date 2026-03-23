@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "mysql.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   {{- include "mysql.spec.common" . | nindent 2 }}
   serviceVersion: 5.7.44
   configs:
