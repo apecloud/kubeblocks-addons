@@ -5,6 +5,8 @@
 
 <clickhouse>
   <listen_host replace="replace">::</listen_host>
+  <listen_host>0.0.0.0</listen_host>
+  <listen_try replace="replace">1</listen_try>
   {{- if eq (index $ "TLS_ENABLED") "true" }}
   <https_port replace="replace" from_env="CLICKHOUSE_HTTPS_PORT"/>
   <tcp_port_secure replace="replace" from_env="CLICKHOUSE_TCP_SECURE_PORT"/>
