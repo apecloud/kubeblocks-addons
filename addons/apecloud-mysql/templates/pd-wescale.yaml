@@ -6,10 +6,6 @@ metadata:
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
-  reloadAction:
-    autoTrigger:
-      processName: vtgate
-
   fileName: vtgate.cnf
   parametersSchema:
     topLevelKey: VtGateParameter

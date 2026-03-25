@@ -6,21 +6,6 @@ metadata:
   labels:
     {{- include "nebula.labels" . | nindent 4 }}
 spec:
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - "update-parameter.sh"
-      scriptConfig:
-        scriptConfigMapRef: {{ include "nebula.scriptsTemplateName" . }}
-        namespace: {{ .Release.Namespace }}
-      toolsSetup:
-        mountPoint: /kb_tools
-        toolConfigs:
-          - name: kb-tools
-            image: {{ .Values.images.registry | default "docker.io" }}/apecloud/kubeblocks-tools:0.9.4
-            asContainerImage: true
-
   fileName: nebula-graphd.conf
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule

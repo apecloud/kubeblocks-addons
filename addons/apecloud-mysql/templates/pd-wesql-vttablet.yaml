@@ -7,10 +7,6 @@ metadata:
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
-  reloadAction:
-    autoTrigger:
-      processName: vttablet
-
   fileName: vttablet.cnf
   parametersSchema:
     topLevelKey: VtTabletParameter

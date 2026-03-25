@@ -19,6 +19,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-storaged
       externalManaged: true
+      {{- include "nebula.config.reconfigureAction" (dict "container" "storaged") | nindent 6 }}
   scripts:
     - name: nebula-scripts
       template: {{ include "nebula.scriptsTemplateName" . }}

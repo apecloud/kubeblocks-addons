@@ -5,10 +5,6 @@ metadata:
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
 spec:
-  reloadAction:
-    autoTrigger:
-      processName: ""
-
   fileName: ch_keeper_00_default_overrides.xml
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule

@@ -12,20 +12,6 @@ metadata:
 spec:
   fileName: postgresql.conf
 
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - "update-parameter.sh"
-      scriptConfig:
-        scriptConfigMapRef: {{ include "postgresql.patroniReloadScriptsTemplate" $ }}
-        namespace: {{ $.Release.Namespace }}
-
-    ## update patroni master
-    targetPodSelector:
-      matchLabels:
-        "kubeblocks.io/role": "primary"
-
   mergeReloadAndRestart: false
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule

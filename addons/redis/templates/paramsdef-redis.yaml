@@ -20,27 +20,6 @@ metadata:
   labels:
     {{- include "redis.labels" $ | nindent 4 }}
 spec:
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - "reload-parameter.sh"
-      scriptConfig:
-        scriptConfigMapRef: redis-reload-tools-script
-        namespace: {{ $.Release.Namespace }}
-      toolsSetup:
-        mountPoint: /kb_tools
-        toolConfigs:
-          - name: kb-tools
-            asContainerImage: true
-            image: {{ $redisImage }}
-            imageMappings:
-            {{- range .mirrorVersions }}
-            - serviceVersions:
-                - {{ .version }}
-              image: {{ $redisRepository }}:{{ .imageTag }}
-            {{- end }}
-
   fileName: redis.conf
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:

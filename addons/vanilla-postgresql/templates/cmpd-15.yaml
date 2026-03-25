@@ -16,6 +16,7 @@ spec:
       volumeName: postgresql-config
       defaultMode: 0444
       externalManaged: true
+      {{- include "vanilla-postgresql.config.reconfigureAction" . | nindent 6 }}
   scripts:
     - name: vanilla-postgresql-scripts
       template: {{ include "vanilla-postgresql.scriptsTemplate" . }}
@@ -48,6 +49,7 @@ spec:
       volumeName: postgresql-config
       defaultMode: 0444
       externalManaged: true
+      {{- include "vanilla-postgresql.config.reconfigureAction" . | nindent 6 }}
   scripts:
     - name: vanilla-postgresql-scripts
       template: {{ include "vanilla-postgresql.scriptsTemplate" . }}

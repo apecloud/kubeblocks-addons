@@ -10,21 +10,6 @@ metadata:
   labels:
     {{- include "falkordb.labels" $ | nindent 4 }}
 spec:
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - "reload-parameter.sh"
-      scriptConfig:
-        scriptConfigMapRef: falkordb-reload-tools-script
-        namespace: {{ $.Release.Namespace }}
-      toolsSetup:
-        mountPoint: /kb_tools
-        toolConfigs:
-          - name: kb-tools
-            asContainerImage: true
-            image: {{ $falkordbImage }}
-
   fileName: redis.conf
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:

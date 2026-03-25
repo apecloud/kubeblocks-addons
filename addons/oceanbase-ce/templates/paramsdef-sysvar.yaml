@@ -8,24 +8,6 @@ metadata:
 spec:
   fileName: oceanbase.sysvars
 
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - "update-sysvars.sh"
-      scriptConfig:
-        scriptConfigMapRef: {{ include "oceanbase-ce.scripts.reload" . }}
-        namespace: {{ .Release.Namespace }}
-      toolsSetup:
-        mountPoint: /kb_tools
-        toolConfigs:
-          - name: kb-tools
-            command:
-              - cp
-              - /bin/ob-tools
-              - /kb_tools/obtools
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.obtools.repository }}:{{ .Values.image.obtools.tag }}
-
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level mysql configuration type

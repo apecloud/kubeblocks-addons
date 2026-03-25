@@ -219,6 +219,24 @@ Generate reloader scripts configmap
 {{- end }}
 {{- end }}
 
+{{- define "postgresql.config.reconfigureAction" -}}
+reconfigure:
+  exec:
+    container: postgres
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+
+        env | cut -d= -f1 | grep -E '^[a-z0-9_.-][a-z0-9_.-]*$' | sort -u | while IFS= read -r param; do
+          [ -n "${param}" ] || continue
+          /scripts/update-parameter.sh "${param}" "$(printenv "${param}")"
+        done
+  targetPodSelector: Role
+  matchingKey: primary
+{{- end -}}
+
 {{/*
 Define pgbouncer configuration template name
 */}}
