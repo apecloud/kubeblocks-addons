@@ -20,7 +20,7 @@ Apache Zookeeper is a centralized service for maintaining configuration informat
 
 | Versions |
 |----------|
-| 3.4.14,3.6.4,3.7.2,3.8.4,3.9.2 |
+|3.6.4,3.7.2,3.8.4,3.9.2 |
 
 ## Prerequisites
 
