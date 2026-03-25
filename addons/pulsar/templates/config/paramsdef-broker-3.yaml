@@ -6,7 +6,11 @@ metadata:
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "pulsar3.brokerCmpdName" . }}
+  templateName: {{ include "pulsar3.brokerConfigTplName" . }}
   fileName: broker.conf
+  fileFormatConfig:
+    format: props-plus
   parametersSchema:
     cue: |-
       {{- .Files.Get "config/3.0.2/broker-config-constraint.cue" | nindent 6 }}

@@ -5,11 +5,15 @@ metadata:
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "zookeeper.cmpdName" . }}
+  templateName: {{ include "zookeeper.dynamicConfigTplName" . }}
+  fileName: zoo.cfg.dynamic
+  fileFormatConfig:
+    format: props-plus
   reloadAction:
     autoTrigger:
       processName: zookeeper
 
-  fileName: zoo.cfg.dynamic
   dynamicParameters:
     - server.1
     - server.2

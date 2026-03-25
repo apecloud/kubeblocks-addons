@@ -7,11 +7,16 @@ metadata:
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
+  templateName: {{ include "apecloud-mysql.configTplVttabletName" . }}
+  fileName: vttablet.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: vttablet
   reloadAction:
     autoTrigger:
       processName: vttablet
-
-  fileName: vttablet.cnf
   parametersSchema:
     topLevelKey: VtTabletParameter
     cue: |-

@@ -5,7 +5,11 @@ metadata:
   labels:
     {{- include "influxdb.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "influxdb.standalone.cmpdName" . }}
+  templateName: {{ include "influxdb.standalone.configurationTemplate" . }}
   fileName: config.toml
+  fileFormatConfig:
+    format: toml
   parametersSchema:
     # top level pg configuration type
     topLevelKey: InfluxdbParameter
