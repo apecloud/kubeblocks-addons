@@ -133,7 +133,6 @@ spec:
           podFQDNs: Required
 
   runtime:
-    volumes:
     containers:
       - name: proxysql
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
