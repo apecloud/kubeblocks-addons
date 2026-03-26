@@ -1,0 +1,20 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: dolt
+  labels:
+    {{- include "dolt.labels" . | nindent 4 }}
+  annotations:
+    {{- include "dolt.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "dolt.cmpdRegexpPattern" . }}
+      releases:
+        - 1.84.0
+  releases:
+    - name: 1.84.0
+      serviceVersion: 1.84.0
+      images:
+        dolt: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        roleProbe: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}

@@ -1,0 +1,22 @@
+# Default values for dolt-cluster.
+
+## @param componentDef ComponentDefinition name created by dolt addon chart.
+componentDef: dolt-0.1.0
+
+## @param version serviceVersion in ComponentVersion.
+version: 1.84.0
+
+## @param replicas number of dolt nodes.
+replicas: 2
+
+## @param cpu CPU cores.
+cpu: 0.5
+
+## @param memory Memory in Gi.
+memory: 0.5
+
+## @param storage storage size in Gi.
+storage: 10
+
+extra:
+  terminationPolicy: Delete

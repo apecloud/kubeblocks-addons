@@ -1,0 +1,14 @@
+nameOverride: ""
+
+image:
+  registry: docker.io
+  repository: dolthub/dolt-sql-server
+  tag: 1.84.0
+  pullPolicy: IfNotPresent
+
+dataDir: /var/lib/dolt
+
+remotesApiPort: 50051
+
+auth:
+  rootHost: "%"
