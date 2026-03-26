@@ -1,0 +1,25 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    release: prometheus
+  name: dolt-metrics
+  namespace: demo
+spec:
+  jobLabel: app.kubernetes.io/managed-by
+  namespaceSelector:
+    matchNames:
+    - demo
+  podMetricsEndpoints:
+  - path: /metrics
+    port: metrics
+    scheme: http
+  podTargetLabels:
+  - app.kubernetes.io/instance
+  - app.kubernetes.io/managed-by
+  - apps.kubeblocks.io/component-name
+  - apps.kubeblocks.io/pod-name
+  selector:
+    matchLabels:
+      app.kubernetes.io/managed-by: kubeblocks
+      apps.kubeblocks.io/component-name: dolt

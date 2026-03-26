@@ -1,0 +1,30 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: dolt
+  labels:
+    {{- include "dolt.labels" . | nindent 4 }}
+  annotations:
+    {{- include "dolt.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "dolt.cmpdRegexpPattern" . }}
+        - {{ include "dolt.standaloneCmpdRegexpPattern" . }}
+      releases:
+        - replica-1.84.0
+    - compDefs:
+        - {{ include "dolt.standaloneCmpdRegexpPattern" . }}
+      releases:
+        - standalone-1.84.0
+  releases:
+    - name: replica-1.84.0
+      serviceVersion: 1.84.0
+      images:
+        dolt: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        roleProbe: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        switchover: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+    - name: standalone-1.84.0
+      serviceVersion: 1.84.0
+      images:
+        dolt: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}

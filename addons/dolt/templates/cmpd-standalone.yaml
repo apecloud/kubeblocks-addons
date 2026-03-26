@@ -1,0 +1,108 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "dolt.standaloneCmpdName" . }}
+  labels:
+    {{- include "dolt.labels" . | nindent 4 }}
+  annotations:
+    {{- include "dolt.annotations" . | nindent 4 }}
+spec:
+  provider: community
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  replicasLimit:
+    minReplicas: 1
+    maxReplicas: 1
+  serviceRefDeclarations:
+    - name: mysql-source
+      serviceRefDeclarationSpecs:
+        - serviceKind: mysql
+          serviceVersion: "^*"
+      optional: true
+  vars:
+    - name: MYSQL_SOURCE_HOST
+      valueFrom:
+        serviceRefVarRef:
+          name: mysql-source
+          optional: true
+          host: Required
+    - name: MYSQL_SOURCE_PORT
+      valueFrom:
+        serviceRefVarRef:
+          name: mysql-source
+          optional: true
+          port: Required
+    - name: MYSQL_SOURCE_USER
+      valueFrom:
+        serviceRefVarRef:
+          name: mysql-source
+          optional: true
+          username: Optional
+    - name: MYSQL_SOURCE_PASSWORD
+      valueFrom:
+        serviceRefVarRef:
+          name: mysql-source
+          optional: true
+          password: Optional
+  runtime:
+    containers:
+      - name: dolt
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+          - /bin/sh
+          - -c
+          - /scripts/start-standalone.sh
+        ports:
+          - containerPort: 3306
+            name: mysql
+          - containerPort: {{ .Values.metricsPort }}
+            name: metrics
+        env:
+          - name: DOLT_ROOT_HOST
+            value: {{ .Values.auth.rootHost | quote}}
+        livenessProbe:
+          exec:
+            command: ["dolt", "--host", "127.0.0.1", "--port", "3306", "--no-tls", "sql", "-q", "select current_timestamp();"]
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command: ["dolt", "--host", "127.0.0.1", "--port", "3306", "--no-tls", "sql", "-q", "select current_timestamp();"]
+          initialDelaySeconds: 40
+          periodSeconds: 10
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataDir }}
+          - name: scripts
+            mountPath: /scripts
+          - name: config
+            mountPath: /config
+  volumes:
+    - name: data
+      needSnapshot: true
+  services:
+    - name: mysql
+      serviceName: dolt
+      spec:
+        ports:
+          - name: mysql
+            port: 3306
+            targetPort: mysql
+          - name: metrics
+            port: {{ .Values.metricsPort }}
+            targetPort: metrics
+      disableAutoProvision: false
+  configs:
+    - name: config
+      template: {{ include "dolt.standaloneConfigTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: config
+      defaultMode: 0644
+      restartOnFileChange: true
+  scripts:
+    - name: scripts
+      template: {{ include "dolt.scriptTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555

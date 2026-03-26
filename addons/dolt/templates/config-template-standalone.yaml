@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dolt.standaloneConfigTemplate" . }}
+  labels:
+    {{- include "dolt.labels" . | nindent 4 }}
+  annotations:
+    {{- include "dolt.annotations" . | nindent 4 }}
+data:
+  config.yaml: |
+    {{- .Files.Get "config/dolt-standalone.yaml.tpl" | nindent 4 }}

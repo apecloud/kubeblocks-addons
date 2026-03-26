@@ -1,0 +1,22 @@
+# Default values for dolt-cluster.
+
+## @param mode Dolt topology: `replication` (primary/standby) or `standalone` (single node).
+mode: replication
+
+## @param version serviceVersion in ComponentVersion.
+version: 1.84.0
+
+## @param replicas number of dolt nodes when `mode` is `replication` (ignored when `mode` is `standalone`, which is always one replica).
+replicas: 2
+
+## @param cpu CPU cores.
+cpu: 0.5
+
+## @param memory Memory in Gi.
+memory: 0.5
+
+## @param storage storage size in Gi.
+storage: 10
+
+extra:
+  terminationPolicy: Delete
