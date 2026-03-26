@@ -5,11 +5,14 @@ metadata:
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "clickhouse-keeper.cmpdName" . }}
+  templateName: {{ include "clickhouse-keeper.configurationTplName" . }}
+  fileName: ch_keeper_00_default_overrides.xml
+  fileFormatConfig:
+    format: xml
   reloadAction:
     autoTrigger:
       processName: ""
-
-  fileName: ch_keeper_00_default_overrides.xml
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
