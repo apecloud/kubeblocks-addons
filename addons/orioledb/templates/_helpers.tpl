@@ -106,6 +106,22 @@ Define postgresql scripts configMap template name
 orioledb-reload-tools-script
 {{- end -}}
 
+{{- define "orioledb.config.reconfigureAction" -}}
+reconfigure:
+  exec:
+    container: postgres
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+
+        env | cut -d= -f1 | grep -E '^[a-z0-9_.-][a-z0-9_.-]*$' | sort -u | while IFS= read -r param; do
+          [ -n "${param}" ] || continue
+          /scripts/update-parameter.sh "${param}" "$(printenv "${param}")"
+        done
+{{- end -}}
+
 
 {{- define "orioledb.spec.common" -}}
 provider: kubeblocks

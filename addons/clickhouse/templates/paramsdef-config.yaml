@@ -10,10 +10,6 @@ spec:
   fileName: 00_default_overrides.xml
   fileFormatConfig:
     format: xml
-  reloadAction:
-    autoTrigger:
-      processName: ""
-
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level clickhouse configuration type

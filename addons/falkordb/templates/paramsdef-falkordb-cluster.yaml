@@ -15,21 +15,6 @@ spec:
   fileName: redis.conf
   fileFormatConfig:
     format: redis
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - "reload-parameter.sh"
-      scriptConfig:
-        scriptConfigMapRef: falkordb-reload-tools-script
-        namespace: {{ $.Release.Namespace }}
-      toolsSetup:
-        mountPoint: /kb_tools
-        toolConfigs:
-          - name: kb-tools
-            asContainerImage: true
-            image: {{ $falkordbImage }}
-
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     topLevelKey: FalkorDBParameter

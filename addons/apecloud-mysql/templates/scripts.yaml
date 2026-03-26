@@ -6,3 +6,5 @@ metadata:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 data:
   {{- include "apecloud-mysql.extend.scripts" . | nindent 2 }}
+  update-parameter.sh: |-
+    {{- .Files.Get "reloader/update-parameter.sh" | nindent 4 }}

@@ -64,6 +64,21 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: config
       externalManaged: true
+      reconfigure:
+        exec:
+          container: pd
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+
+              env | cut -d= -f1 | grep -E '^[a-z0-9_.-][a-z0-9_.-]*$' | sort -u | while IFS= read -r param; do
+                [ -n "${param}" ] || continue
+                /pd-ctl config set "${param}" "$(printenv "${param}")"
+              done
+        targetPodSelector: Role
+        matchingKey: leader
   roles:
     - name: leader
       updatePriority: 2

@@ -14,9 +14,6 @@ spec:
     format: ini
     iniConfig:
       sectionName: vttablet
-  reloadAction:
-    autoTrigger:
-      processName: vttablet
   parametersSchema:
     topLevelKey: VtTabletParameter
     cue: |-

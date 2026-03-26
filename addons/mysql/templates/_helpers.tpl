@@ -317,15 +317,21 @@ Generate LD_PRELOAD environment variable - always set, but will be cleared at ru
 {{- end }}
 {{- end -}}
 
-{{/*
-Generate reloader scripts configmap
-*/}}
-{{- define "mysql.extend.reload.scripts" -}}
-{{- range $path, $_ :=  $.Files.Glob "reloader/**" }}
-{{ $path | base }}: |-
-{{- $.Files.Get $path | nindent 2 }}
-{{- end }}
-{{- end }}
+{{- define "mysql.config.reconfigureAction" -}}
+reconfigure:
+  exec:
+    container: mysql
+    command:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+
+        while IFS= read -r param; do
+          [ -n "${param}" ] || continue
+          /scripts/update-parameter.sh "${param}" "$(printenv "${param}")"
+        done < <(env | cut -d= -f1 | grep -E '^[a-z0-9_][a-z0-9_-]*$' | sort -u)
+{{- end -}}
 
 {{- define "mysql.mydumper.image" -}}
 {{ $registry := default ( .Values.image.registry | default "docker.io" )}}

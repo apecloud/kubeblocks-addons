@@ -83,6 +83,7 @@ spec:
       namespace: {{ $.Release.Namespace }}
       volumeName: falkordb-cluster-config
       externalManaged: true
+      {{- include "falkordb.config.reconfigureAction" $ | nindent 6 }}
   scripts:
     - name: falkordb-cluster-scripts
       template: {{ include "falkordbCluster.scriptsTemplate" $ }}

@@ -149,6 +149,22 @@ falkordb-account.sh: |-
 {{- end }}
 {{- end }}
 
+{{- define "falkordb.config.reconfigureAction" -}}
+reconfigure:
+  exec:
+    container: falkordb
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+
+        env | cut -d= -f1 | grep -E '^[a-z0-9_.-][a-z0-9_.-]*$' | sort -u | while IFS= read -r param; do
+          [ -n "${param}" ] || continue
+          /scripts/reload-parameter.sh "${param}" "$(printenv "${param}")"
+        done
+{{- end -}}
+
 {{- define "apeDts.reshard.image" -}}
 {{ .Values.image.apeDts.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.apeDts.repository}}:{{ .Values.image.apeDts.reshardTag }}
 {{- end }}}
@@ -188,4 +204,3 @@ policyRules:
   - get
   - list
 {{- end -}}
-

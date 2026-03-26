@@ -13,9 +13,6 @@ spec:
     format: ini
     iniConfig:
       sectionName: vtgate
-  reloadAction:
-    autoTrigger:
-      processName: vtgate
   parametersSchema:
     topLevelKey: VtGateParameter
 

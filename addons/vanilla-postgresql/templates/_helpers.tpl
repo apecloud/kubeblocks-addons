@@ -108,6 +108,22 @@ Define vanillap ostgresql scripts configMap template name
 vanilla-postgresql-reload-tools-script
 {{- end -}}
 
+{{- define "vanilla-postgresql.config.reconfigureAction" -}}
+reconfigure:
+  exec:
+    container: postgres
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+
+        env | cut -d= -f1 | grep -E '^[a-z0-9_.-][a-z0-9_.-]*$' | sort -u | while IFS= read -r param; do
+          [ -n "${param}" ] || continue
+          /scripts/update-parameter.sh "${param}" "$(printenv "${param}")"
+        done
+{{- end -}}
+
 {{/*
 Expand the name of the chart.
 */}}
