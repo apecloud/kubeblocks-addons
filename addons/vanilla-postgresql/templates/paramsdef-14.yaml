@@ -6,7 +6,11 @@ metadata:
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "vanilla-postgresql14.compDefName" . }}
+  templateName: vanilla-postgresql-configuration
   fileName: postgresql.conf
+  fileFormatConfig:
+    format: properties
 
   reloadAction:
     shellTrigger:
