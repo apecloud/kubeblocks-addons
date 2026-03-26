@@ -86,6 +86,7 @@ spec:
       namespace: {{ $.Release.Namespace }}
       volumeName: redis-config
       externalManaged: true
+      {{- include "redis.config.reconfigureAction" $ | nindent 6 }}
   scripts:
     - name: redis-scripts
       template: {{ include "redis.scriptsTemplate" $ }}

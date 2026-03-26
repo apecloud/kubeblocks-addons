@@ -493,3 +493,19 @@ Generate reloader scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{- define "apecloud-mysql.config.reconfigureAction" -}}
+reconfigure:
+  exec:
+    container: mysql
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+
+        env | cut -d= -f1 | grep -E '^[a-z0-9_.-][a-z0-9_.-]*$' | sort -u | while IFS= read -r param; do
+          [ -n "${param}" ] || continue
+          /scripts/update-parameter.sh "${param}" "$(printenv "${param}")"
+        done
+{{- end -}}

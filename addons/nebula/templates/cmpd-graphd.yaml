@@ -37,6 +37,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-graphd
       externalManaged: true
+      {{- include "nebula.config.reconfigureAction" (dict "container" "graphd") | nindent 6 }}
   scripts:
     - name: nebula-scripts
       template: {{ include "nebula.scriptsTemplateName" . }}

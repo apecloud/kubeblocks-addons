@@ -13,22 +13,6 @@ spec:
     format: ini
     iniConfig:
       sectionName: mysqld
-  # configmap reference
-  # tplRef: mysql-3node-tpl-8.0
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - "update-parameter.sh"
-      scriptConfig:
-        scriptConfigMapRef: {{ include "apecloud-mysql.cmReloadScriptName" . }}
-        namespace: {{ .Release.Namespace }}
-      toolsSetup:
-        mountPoint: /kb_tools
-        toolConfigs:
-          - name: kb-tools
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30
-            asContainerImage: true
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level mysql configuration type

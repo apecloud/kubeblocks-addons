@@ -84,6 +84,22 @@ Generate reloader scripts configmap
 {{- end }}
 {{- end }}
 
+{{- define "oceanbase-ce.config.reconfigureAction" -}}
+reconfigure:
+  exec:
+    container: metrics
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+
+        env | cut -d= -f1 | grep -E '^[a-z0-9_.-][a-z0-9_.-]*$' | sort -u | while IFS= read -r param; do
+          [ -n "${param}" ] || continue
+          /scripts/{{ .script }} "${param}" "$(printenv "${param}")"
+        done
+{{- end -}}
+
 
 {{- define "oceanbase-ce.compDefName" -}}
 oceanbase-ce-{{ .Chart.Version }}
@@ -222,12 +238,14 @@ configs:
     namespace: {{ .Release.Namespace }}
     defaultMode: 0555
     externalManaged: true
+    {{- include "oceanbase-ce.config.reconfigureAction" (dict "script" "update-sysvars.sh") | nindent 4 }}
   - name: oceanbase-config
     template: {{ include "oceanbase-ce.cm.config" .}}
     volumeName: oceanbase-config
     namespace: {{ .Release.Namespace }}
     defaultMode: 0555
     externalManaged: true
+    {{- include "oceanbase-ce.config.reconfigureAction" (dict "script" "update-parameters.sh") | nindent 4 }}
 scripts:
   - name: oceanbase-scripts
     template: {{ include "oceanbase-ce.scripts.bootscripts" .}}

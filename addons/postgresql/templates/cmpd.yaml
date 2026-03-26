@@ -65,6 +65,7 @@ spec:
       volumeName: postgresql-config
       defaultMode: 0777
       externalManaged: true
+      {{- include "postgresql.config.reconfigureAction" $ | nindent 6 }}
     - name: pgbouncer-configuration
       template: {{ include "pgbouncer.configurationTemplate" $ }}
       namespace: {{ $.Release.Namespace }}

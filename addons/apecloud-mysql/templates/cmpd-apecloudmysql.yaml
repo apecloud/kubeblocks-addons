@@ -14,6 +14,7 @@ spec:
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
       externalManaged: true
+      {{- include "apecloud-mysql.config.reconfigureAction" . | nindent 6 }}
     - name: vttablet-config
       template: {{ include "apecloud-mysql.configTplVttabletName" . }}
       volumeName: mysql-scale-config
