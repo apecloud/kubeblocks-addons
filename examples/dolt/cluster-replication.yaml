@@ -1,0 +1,32 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: dolt-repl
+  namespace: demo
+spec:
+  # Valid options are: [DoNotTerminate, Delete, WipeOut]
+  terminationPolicy: Delete
+  clusterDef: dolt
+  topology: replication
+  componentSpecs:
+    - name: dolt
+      # Must match a release in ComponentVersion `dolt` (e.g. replica-1.84.0).
+      serviceVersion: "1.84.0"
+      disableExporter: false
+      replicas: 2
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi

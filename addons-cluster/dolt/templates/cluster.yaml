@@ -1,0 +1,10 @@
+{{- include "kblib.clusterCommon" . }}
+  clusterDef: dolt
+  topology: {{ .Values.mode }}
+  componentSpecs:
+    - name: dolt
+      serviceVersion: {{ .Values.version | quote }}
+      replicas: {{ include "dolt-cluster.replicas" . }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}

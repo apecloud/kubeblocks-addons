@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dolt.scriptTemplate" . }}
+  labels:
+    {{- include "dolt.labels" . | nindent 4 }}
+  annotations:
+    {{- include "dolt.annotations" . | nindent 4 }}
+data:
+  {{- with include "dolt.extend.scripts" . }}
+  {{- . | nindent 2 }}
+  {{- end }}

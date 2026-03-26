@@ -1,0 +1,101 @@
+---
+# Step 1: Create a standalone MySQL cluster as the replication source.
+# Ensure GTID mode is enabled (default in MySQL 8.0+).
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: mysql-source
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: mysql
+  topology: semisync
+  componentSpecs:
+    - name: mysql
+      serviceVersion: "8.0.35"
+      disableExporter: true
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+---
+# Step 2: Set BINLOG_FORMAT to ROW
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: mysql-reconfiguring
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: mysql-source
+  force: false
+  reconfigures:
+  - componentName: mysql
+    parameters:
+      # Represents the name of the parameter that is to be updated.
+    - key: binlog_format
+      value: 'ROW'
+  preConditionDeadlineSeconds: 0
+  type: Reconfiguring
+---
+# Step 3: When MySQL is running, create a standalone Dolt cluster configured as a MySQL binlog replica.
+# The serviceRef "mysql-source" binds to the MySQL cluster above, injecting
+# MYSQL_SOURCE_HOST, MYSQL_SOURCE_PORT, MYSQL_SOURCE_USER, MYSQL_SOURCE_PASSWORD
+# into the Dolt container. The start script detects these and runs:
+#   SET @@PERSIST.server_id = 2;
+#   CHANGE REPLICATION SOURCE TO SOURCE_HOST=..., SOURCE_USER=..., SOURCE_PORT=...;
+#   START REPLICA;
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: dolt-mysql-replica
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: dolt
+  topology: standalone
+  componentSpecs:
+    - name: dolt
+      serviceVersion: "1.84.0"
+      disableExporter: true
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+      serviceRefs:
+        - name: mysql-source
+          namespace: demo
+          clusterServiceSelector:
+            cluster: mysql-source
+            credential:
+              name: root
+              component: mysql
+            service:
+              service: ""
+              component: mysql
