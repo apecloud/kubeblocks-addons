@@ -10,7 +10,12 @@ metadata:
   annotations:
     {{- include "postgresql.annotations" $ | nindent 4 }}
 spec:
+  componentDef: {{ include "postgresql.componentDefByMajor" (dict "major" .major "root" $) }}
+  serviceVersion: {{ .serviceVersion }}
+  templateName: {{ include "postgresql.parameterTemplate" (dict "major" .major "root" $) }}
   fileName: postgresql.conf
+  fileFormatConfig:
+    format: properties
 
   mergeReloadAndRestart: false
 

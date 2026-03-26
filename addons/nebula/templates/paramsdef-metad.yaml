@@ -6,8 +6,11 @@ metadata:
   labels:
     {{- include "nebula.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "nebula-metad.cmpdName" . }}
+  templateName: {{ include "nebula-metad.configTemplateName" . }}
   fileName: nebula-metad.conf
-
+  fileFormatConfig:
+    format: props-ultra
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level mysql configuration type

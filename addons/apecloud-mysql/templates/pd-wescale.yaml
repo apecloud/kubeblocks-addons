@@ -6,7 +6,13 @@ metadata:
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "apecloud-mysql.cmpdNameWescale" . }}
+  templateName: {{ include "apecloud-mysql.configTplVtgateName" . }}
   fileName: vtgate.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: vtgate
   parametersSchema:
     topLevelKey: VtGateParameter
 

@@ -39,7 +39,14 @@ mkdir -p ${RESTORE_DIR}
 echo "INFO: Pulling backup data from storage"
 
 # Pull and extract backup data
-datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.tar.zst" - | tar -xf - -C ${RESTORE_DIR}
+if [ "$(datasafed list ${DP_BACKUP_NAME}.tar.zst)" == "${DP_BACKUP_NAME}.tar.zst" ]; then
+   datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.tar.zst" - | tar -xf - -C ${RESTORE_DIR}
+else
+   for file in $(datasafed list / -r -f); do
+     echo "download ${file} to ${RESTORE_DIR}/${file}"
+     datasafed pull "${file}" "${RESTORE_DIR}/${file}"
+   done
+fi
 
 echo "INFO: Backup data extracted to ${RESTORE_DIR}"
 ls -la ${RESTORE_DIR}

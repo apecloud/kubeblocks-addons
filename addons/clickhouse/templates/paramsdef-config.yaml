@@ -5,8 +5,11 @@ metadata:
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "clickhouse.cmpdName" . }}
+  templateName: {{ include "clickhouse.configurationTplName" . }}
   fileName: 00_default_overrides.xml
-
+  fileFormatConfig:
+    format: xml
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level clickhouse configuration type

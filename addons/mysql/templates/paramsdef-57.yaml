@@ -6,7 +6,13 @@ metadata:
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ printf "^%s(?:-orc)?-5\\.7-%s$" (include "mysql.cmpdNamePrefix" .) .Chart.Version | quote }}
+  templateName: mysql-5.7-config-template
   fileName: my.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: mysqld
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level mysql configuration type

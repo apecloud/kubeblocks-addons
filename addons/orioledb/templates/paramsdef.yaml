@@ -8,7 +8,11 @@ metadata:
   annotations:
     {{- include "orioledb.annotations" . | nindent 4 }}
 spec:
+  componentDef: {{ include "orioledb.cmpdName" . }}
+  templateName: orioledb-configuration
   fileName: postgresql.conf
+  fileFormatConfig:
+    format: properties
 
   mergeReloadAndRestart: false
   reloadStaticParamsBeforeRestart: true

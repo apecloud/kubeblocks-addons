@@ -6,8 +6,56 @@ metadata:
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "vanilla-postgresql15.compDefName" . }}
+  templateName: vanilla-postgresql-configuration
   fileName: postgresql.conf
+  fileFormatConfig:
+    format: properties
+  mergeReloadAndRestart: false
+  reloadStaticParamsBeforeRestart: true
 
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # top level pg configuration type
+    topLevelKey: PGParameter
+
+    # schemaInJSON: auto generate from cue scripts
+    # example: ../../pkg/configuration/testdata/mysql_openapi.json
+    cue: |-
+      {{- .Files.Get "config/pg15-config-constraint.cue" | nindent 6 }}
+    # configuration file format
+
+  ##  require db instance restart
+  ## define static parameter list
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- $params := get $pd "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+      ## define dynamic parameter list
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+   {{- $params := get $pd "dynamicParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+  {{- end}}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: supabase-pg15-pd
+  labels:
+    {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "supabase15.compDefName" . }}
+  templateName: supabase-postgresql-configuration
+  fileName: postgresql.conf
+  fileFormatConfig:
+    format: properties
   mergeReloadAndRestart: false
   reloadStaticParamsBeforeRestart: true
 

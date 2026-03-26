@@ -5,7 +5,11 @@ metadata:
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "pulsar4.bookkeeperCmpdName" . }}
+  templateName: {{ include "pulsar4.bookiesConfigTplName" . }}
   fileName: bookkeeper.conf
+  fileFormatConfig:
+    format: props-plus
   parametersSchema:
     cue: |-
       {{- .Files.Get "config/3.0.2/bookkeeper-config-constraint.cue" | nindent 6 }}

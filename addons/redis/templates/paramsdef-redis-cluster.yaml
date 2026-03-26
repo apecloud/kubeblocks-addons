@@ -16,7 +16,11 @@ metadata:
   labels:
     {{- include "redis.labels" $ | nindent 4 }}
 spec:
+  componentDef: {{ printf "%s-%s" .clusterComponentDef  $.Chart.Version }}
+  templateName: {{ printf "redis-cluster%s-config-template-%s" .major $.Chart.Version }}
   fileName: redis.conf
+  fileFormatConfig:
+    format: redis
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     topLevelKey: RedisParameter
