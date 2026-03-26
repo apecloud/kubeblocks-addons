@@ -144,8 +144,7 @@ spec:
         containerPort: 6334
       - name: p2p
         containerPort: 6335
-      command: ["/bin/sh", "-c"]
-      args: ["/qdrant/scripts/setup.sh"]
+      command: ["/qdrant/scripts/setup.sh"]
       env:
       - name: QDRANT__TELEMETRY_DISABLED
         value: "true"
