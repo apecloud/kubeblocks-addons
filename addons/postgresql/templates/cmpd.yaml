@@ -374,6 +374,7 @@ spec:
                 initdb:
                   - auth-host: md5
                   - auth-local: trust
+                  - data-checksums
           - name: ALLOW_NOSSL
             value: "true"
           - name: PGROOT
