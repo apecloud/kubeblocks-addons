@@ -49,15 +49,21 @@ discovery:
   type: {{ $mode }}
 {{- end }}
 {{- if eq $mode "multi-node" }}
-  seed_hosts:
+  {{- $masterList := list }}
   {{- $parts := splitList ";" .ALL_CMP_REPLICA_FQDN }}
   {{- range $part := $parts }}
     {{- if hasPrefix "master:" $part }}
       {{- $masterPart := trimPrefix "master:" $part }}
       {{- $masters := splitList "," $masterPart }}
-     {{- range $master := $masters }}
-  - {{ $master }}
+      {{- range $master := $masters }}
+        {{- $masterList = append $masterList $master }}
       {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if $masterList }}
+  seed_hosts:
+    {{- range $master := $masterList }}
+  - {{ $master }}
     {{- end }}
   {{- end }}
 {{- end }}
