@@ -13,6 +13,9 @@ spec:
           type: boolean
           description: "The single-transaction of the backup. if set false, will using lock-tables"
           default: true
+        databases:
+          type: string
+          description: "The databases to backup, separated by comma. For instance: test,test2"
         tables:
           type: string
           description: "The tables to backup, separated by comma. Table name must include database name. For instance: test.t1,test.t2"
@@ -31,6 +34,7 @@ spec:
     postBackup: []
     withParameters:
       - threads
+      - databases
       - tables
       - trx_tables
       - no_data
@@ -49,6 +53,7 @@ spec:
     withParameters:
       - threads
       - tables
+      - databases
       - trx_tables
       - drop_table
     postReady:

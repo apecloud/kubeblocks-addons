@@ -31,9 +31,12 @@ fi
 if [ "${no_data}" == "true" ]; then
   params="${params} --no-data"
 fi
+#if [ -n "$databases" ]; then
+#  params="${params} -s $databases"
+#fi
 
 echo "parameters: $params"
 
 datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.mydumper.zst" - | myloader --stream  \
-  -h ${DP_DB_HOST} -u ${DP_DB_USER} -p ${DP_DB_PASSWORD} -P ${DP_DB_PORT} --regex '^(?!(kubeblocks\.kb_health_check$))' \
+  -h ${DP_DB_HOST} -u ${MYSQL_ADMIN_USER} -p ${MYSQL_ADMIN_PASSWORD} -P ${DP_DB_PORT} --regex '^(?!(kubeblocks\.kb_health_check$))' \
   ${params}

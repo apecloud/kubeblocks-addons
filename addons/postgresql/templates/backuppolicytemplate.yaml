@@ -54,10 +54,6 @@ spec:
       snapshotVolumes: false
       actionSetName: postgresql-pgdump
       env: *compDefEnvMapping
-      target:
-        role: primary
-        account: postgres
-        useParentSelectedPods: true
     - name: volume-snapshot
       snapshotVolumes: true
       targetVolumes:

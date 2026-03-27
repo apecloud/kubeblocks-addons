@@ -18,7 +18,7 @@ trap handle_exit EXIT
 if [ -z "$threads" ]; then
   threads=4
 fi
-params="--threads=$threads"
+params="--threads=$threads --triggers --routines"
 if [ -n "$tables" ]; then
   params="$params -T $tables"
 fi
@@ -27,6 +27,9 @@ if [ "$trx_tables" == "true" ]; then
 fi
 if [ "${no_data}" == "true" ]; then
   params="${params} --no-data"
+fi
+if [ -n "$databases" ]; then
+  params="${params} -B $databases"
 fi
 
 echo "parameters: $params"
