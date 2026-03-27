@@ -23,15 +23,21 @@ cluster:
         {{- end }}
 # INITIAL_MASTER_NODES_BLOCK_START
 {{- if eq $mode "multi-node" }}
-  initial_master_nodes:
+  {{- $masterList := list }}
   {{- $parts := splitList ";" .ALL_CMP_REPLICA_LIST }}
   {{- range $part := $parts }}
     {{- if hasPrefix "master:" $part }}
       {{- $masterPart := trimPrefix "master:" $part }}
       {{- $masters := splitList "," $masterPart }}
-     {{- range $master := $masters }}
-  - {{ $master }}
+      {{- range $master := $masters }}
+        {{- $masterList = append $masterList $master }}
       {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if $masterList }}
+  initial_master_nodes:
+    {{- range $master := $masterList }}
+  - {{ $master }}
     {{- end }}
   {{- end }}
 {{- end }}
