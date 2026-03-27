@@ -5,7 +5,11 @@
 
 {{- $mode := "multi-node" }}
 {{- if index . "mode" }}
-{{- $mode = $.mode }}
+  {{- $mode = $.mode }}
+{{- else }}
+  {{- if not (contains "master:" .ALL_CMP_REPLICA_LIST) }}
+    {{- $mode = "single-node" }}
+  {{- end }}
 {{- end }}
 
 cluster:
