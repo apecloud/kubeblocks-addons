@@ -771,3 +771,26 @@ runtime:
   securityContext:
     fsGroup: 1000
 {{- end }}
+{{- define "elasticsearch9.cmpdName" -}}
+elasticsearch-9-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "elasticsearch9.cmpdRegexPattern" -}}
+^elasticsearch-9-
+{{- end -}}
+
+{{- define "elasticsearch9.configTplName" -}}
+elasticsearch-9-config-tpl
+{{- end -}}
+
+{{- define "kibana9.cmpdName" -}}
+kibana-9-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "kibana9.cmpdRegexPattern" -}}
+^kibana-9-
+{{- end -}}
+
+{{- define "kibana9.configTplName" -}}
+kibana-9-config-tpl
+{{- end -}}
