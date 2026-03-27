@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-if [ -d /etc/pki/tls ] && [ "$(ls -A /etc/pki/tls)" ]; then
+if [ "${TLS_ENABLED}" = "true" ]; then
   cp /etc/pki/tls/* /usr/share/elasticsearch/config/
 fi
 # Parse zone from zone-aware-mapping file based on NODE_NAME
