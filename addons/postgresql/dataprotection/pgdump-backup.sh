@@ -34,6 +34,9 @@ params="-j $jobs -Fd -f $BACKUP_DIR -Z lz4 -v"
 # Handle database selection
 if [ -n "$database" ]; then
   params="$params -d $database"
+else
+  echo "database is required"
+  exit 1
 fi
 
 # Handle schema selection
