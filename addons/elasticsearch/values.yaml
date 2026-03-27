@@ -74,6 +74,7 @@ esVersions:
     minors:
       # [version, serviceVersion, tag, deprecated]
       - ["9.0.0", "9.0.0", "9.0.0", false]
+      - ["9.3.2", "9.3.2", "9.3.2", false]
 
 ## @param supported kibana versions with detailed information
 kibanaVersions:
@@ -103,6 +104,7 @@ kibanaVersions:
     minors:
       # [version, serviceVersion, tag, deprecated]
       - ["9.0.0", "9.0.0", "9.0.0", false]
+      - ["9.3.2", "9.3.2", "9.3.2", false]
 
 # @param zoneAware enable zone awareness
 # @param zoneAware.enabled enable zone awareness
