@@ -24,6 +24,9 @@ image:
   walgImage:
     repository: apecloud/wal-g-mysql
     tag: 3.0.0-ubuntu
+  mydumper:
+    repository: mydumper/mydumper
+    tag: v0.21.3-2
 
 ## MySQL Cluster parameters
 cluster:
