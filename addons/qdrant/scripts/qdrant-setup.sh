@@ -24,12 +24,12 @@ current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$QDRANT_POD_FQDN_LIST
 boostrap_node_fqdn=$(get_boostrap_node)
 
 if [ "$current_pod_fqdn" == "$boostrap_node_fqdn" ]; then
-  ./qdrant --uri "http://${current_pod_fqdn}:6335"
+  exec ./qdrant --uri "http://${current_pod_fqdn}:6335"
 else
   echo "BOOTSTRAP_HOSTNAME: ${boostrap_node_fqdn}"
   until ./tools/curl http://${boostrap_node_fqdn}:6333/cluster; do
     echo "INFO: wait for bootstrap node starting..."
     sleep 1;
   done
-  ./qdrant --bootstrap "http://${boostrap_node_fqdn}:6335" --uri "http://${current_pod_fqdn}:6335"
+  exec ./qdrant --bootstrap "http://${boostrap_node_fqdn}:6335" --uri "http://${current_pod_fqdn}:6335"
 fi
