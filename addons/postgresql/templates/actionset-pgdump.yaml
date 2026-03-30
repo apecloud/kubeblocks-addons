@@ -1,0 +1,77 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: postgresql-pgdump
+  labels:
+    clusterdefinition.kubeblocks.io/name: postgresql
+    {{- include "postgresql.labels" . | nindent 4 }}
+spec:
+  backupType: Selective
+  env:
+    - name: BACKUP_DIR
+      value: {{ .Values.dataMountPath }}/kb-selective-backup
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        database:
+          type: string
+          description: "The database to backup. If not specified, all databases will be backed up."
+        schemas:
+          type: string
+          description: "The schemas to backup. If not specified, all schemas will be backed up. comma separated list of schemas can be provided."
+        tables:
+          type: string
+          description: "The tables to backup, separated by comma. "
+        jobs:
+          type: number
+          description: "The number of parallel jobs for backup/restore."
+          default: 4
+        schema_only:
+          type: boolean
+          description: "Backup only the schema, no data."
+          default: false
+        conflict_policy:
+          type: string
+          description: "Conflict policy for restore. If not specified, the default is 'CONTINUE'."
+          default: CONTINUE
+          enum:
+            - CONTINUE
+            - FAIL
+            - DROP
+  backup:
+    preBackup: []
+    postBackup: []
+    withParameters:
+      - jobs
+      - database
+      - schemas
+      - tables
+      - schema_only
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
+      runOnTargetPodNode: true
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/backup-info-collector.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/pgdump-backup.sh" | nindent 8 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    withParameters:
+      - jobs
+      - database
+      - schemas
+      - tables
+      - schema_only
+    postReady:
+    - job:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
+        runOnTargetPodNode: true
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/pgdump-restore.sh" | nindent 10 }}
