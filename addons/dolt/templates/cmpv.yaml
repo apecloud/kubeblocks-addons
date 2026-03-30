@@ -10,11 +10,21 @@ spec:
   compatibilityRules:
     - compDefs:
         - {{ include "dolt.cmpdRegexpPattern" . }}
+        - {{ include "dolt.standaloneCmpdRegexpPattern" . }}
       releases:
-        - 1.84.0
+        - replica-1.84.0
+    - compDefs:
+        - {{ include "dolt.standaloneCmpdRegexpPattern" . }}
+      releases:
+        - standalone-1.84.0
   releases:
-    - name: 1.84.0
+    - name: replica-1.84.0
       serviceVersion: 1.84.0
       images:
         dolt: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         roleProbe: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        switchover: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+    - name: standalone-1.84.0
+      serviceVersion: 1.84.0
+      images:
+        dolt: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}

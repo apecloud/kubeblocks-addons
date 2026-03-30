@@ -1,0 +1,30 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: dolt-standalone
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: dolt
+      # Standalone ComponentDefinition (replicas fixed to 1 by the definition).
+      componentDef: dolt-standalone
+      serviceVersion: "1.84.0"
+      disableExporter: false
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi

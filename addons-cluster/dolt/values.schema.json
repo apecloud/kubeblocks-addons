@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "title": "Dolt cluster",
+  "description": "Values for the dolt-cluster Helm chart (KubeBlocks).",
+  "properties": {
+    "mode": {
+      "title": "Mode",
+      "description": "Topology: replication (primary/standby) or standalone (single node).",
+      "type": "string",
+      "default": "replication",
+      "enum": ["replication", "standalone"]
+    },
+    "version": {
+      "title": "Service version",
+      "description": "Dolt serviceVersion; must match a release in ComponentVersion `dolt`.",
+      "type": "string",
+      "default": "1.84.0"
+    },
+    "replicas": {
+      "title": "Replicas",
+      "description": "Replica count when mode is replication (standalone always uses 1).",
+      "type": "integer",
+      "default": 2,
+      "minimum": 1,
+      "maximum": 32
+    },
+    "cpu": {
+      "title": "CPU",
+      "description": "CPU cores per pod.",
+      "type": ["number", "string"],
+      "default": 0.5,
+      "minimum": 0.5,
+      "maximum": 64,
+      "multipleOf": 0.5
+    },
+    "memory": {
+      "title": "Memory (Gi)",
+      "description": "Memory limit/request in Gi.",
+      "type": ["number", "string"],
+      "default": 0.5,
+      "minimum": 0.5,
+      "maximum": 1000
+    },
+    "storage": {
+      "title": "Storage (Gi)",
+      "description": "Persistent volume size in Gi.",
+      "type": ["number", "string"],
+      "default": 10,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "extra": {
+      "type": "object",
+      "description": "KubeBlocks shared options (kblib).",
+      "properties": {
+        "terminationPolicy": {
+          "title": "Termination policy",
+          "description": "Cluster deletion behavior.",
+          "type": "string",
+          "default": "Delete",
+          "enum": ["DoNotTerminate", "Delete", "WipeOut"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "prometheus": {
+      "type": "object",
+      "description": "Prometheus Operator PodMonitor options.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, render a PodMonitor when the PodMonitor CRD exists."
+        },
+        "metricsPath": {
+          "type": "string",
+          "default": "/metrics",
+          "description": "HTTP path for metrics scrape."
+        },
+        "interval": {
+          "type": "string",
+          "default": "",
+          "description": "Optional scrape interval (empty uses Prometheus default)."
+        },
+        "scrapeTimeout": {
+          "type": "string",
+          "default": "",
+          "description": "Optional per-scrape timeout (empty uses Prometheus default)."
+        },
+        "additionalLabels": {
+          "type": "object",
+          "default": {},
+          "description": "Extra labels on the PodMonitor resource.",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

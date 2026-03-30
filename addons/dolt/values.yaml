@@ -10,5 +10,7 @@ dataDir: /var/lib/dolt
 
 remotesApiPort: 50051
 
+metricsPort: 11228
+
 auth:
   rootHost: "%"

@@ -47,17 +47,17 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*
-ComponentDefinition name.
+ComponentDefinition name (replication / primary-standby).
 */}}
 {{- define "dolt.cmpdName" -}}
-dolt-{{ .Chart.Version }}
+dolt-replication
 {{- end -}}
 
 {{/*
-ComponentDefinition regexp prefix.
+ComponentDefinition regexp for replication cmpd.
 */}}
 {{- define "dolt.cmpdRegexpPattern" -}}
-^dolt-
+^dolt-replication$
 {{- end -}}
 
 {{/*
@@ -72,6 +72,27 @@ Script template name.
 */}}
 {{- define "dolt.scriptTemplate" -}}
 dolt-script-template-{{ .Chart.Version }}
+{{- end }}
+
+{{/*
+Standalone ComponentDefinition name.
+*/}}
+{{- define "dolt.standaloneCmpdName" -}}
+dolt-standalone
+{{- end -}}
+
+{{/*
+Standalone ComponentDefinition regexp.
+*/}}
+{{- define "dolt.standaloneCmpdRegexpPattern" -}}
+^dolt-standalone$
+{{- end -}}
+
+{{/*
+Standalone config template name.
+*/}}
+{{- define "dolt.standaloneConfigTemplate" -}}
+dolt-standalone-config-template-{{ .Chart.Version }}
 {{- end }}
 
 {{/*

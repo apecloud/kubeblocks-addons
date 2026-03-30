@@ -1,9 +1,9 @@
 {{- include "kblib.clusterCommon" . }}
   componentSpecs:
     - name: dolt
-      componentDef: {{ .Values.componentDef }}
+      componentDef: {{ include "dolt-cluster.componentDef" . }}
       serviceVersion: {{ .Values.version | quote }}
-      replicas: {{ .Values.replicas }}
+      replicas: {{ include "dolt-cluster.replicas" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}

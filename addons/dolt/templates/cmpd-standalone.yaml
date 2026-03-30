@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "dolt.cmpdName" . }}
+  name: {{ include "dolt.standaloneCmpdName" . }}
   labels:
     {{- include "dolt.labels" . | nindent 4 }}
   annotations:
@@ -11,8 +11,9 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Chart.AppVersion }}
-  updateStrategy: Parallel
-  podManagementPolicy: Parallel
+  replicasLimit:
+    minReplicas: 1
+    maxReplicas: 1
   runtime:
     containers:
       - name: dolt
@@ -20,22 +21,13 @@ spec:
         command:
           - /bin/sh
           - -c
-          - /scripts/start.sh
+          - /scripts/start-standalone.sh
         ports:
           - containerPort: 3306
             name: mysql
-          - containerPort: {{ .Values.remotesApiPort }}
-            name: remotesapi
           - containerPort: {{ .Values.metricsPort }}
             name: metrics
         env:
-          - name: CURRENT_POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-          - name: REMOTES_API_PORT
-            value: {{ .Values.remotesApiPort | quote }}
           - name: DOLT_ROOT_HOST
             value: {{ .Values.auth.rootHost | quote}}
         livenessProbe:
@@ -66,16 +58,13 @@ spec:
           - name: mysql
             port: 3306
             targetPort: mysql
-          - name: remotesapi
-            port: {{ .Values.remotesApiPort }}
-            targetPort: remotesapi
           - name: metrics
             port: {{ .Values.metricsPort }}
             targetPort: metrics
       disableAutoProvision: false
   configs:
     - name: config
-      template: {{ include "dolt.configTemplate" . }}
+      template: {{ include "dolt.standaloneConfigTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0644
@@ -86,29 +75,3 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
-  roles:
-    - name: primary
-      updatePriority: 2
-      participatesInQuorum: false
-      isExclusive: true
-    - name: standby
-      updatePriority: 1
-      participatesInQuorum: false
-  lifecycleActions:
-    roleProbe:
-      exec:
-        container: dolt
-        command:
-          - /bin/sh
-          - -c
-          - |
-            role=$(dolt --host 127.0.0.1 --no-tls sql -q "select @@GLOBAL.dolt_cluster_role;" 2>/dev/null \
-              | awk '/^\|/{gsub(/^[ \t]*\|[ \t]*/,""); gsub(/[ \t]*\|[ \t]*$/,""); if($1 != "@@GLOBAL.dolt_cluster_role" && $1 != "") {print $1; exit}}')
-            echo -n "$role"
-    switchover:
-      exec:
-        container: dolt
-        command:
-          - /bin/sh
-          - -c
-          - /scripts/switchover.sh > /tmp/switchover.log 2>&1

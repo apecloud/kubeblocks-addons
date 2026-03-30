@@ -1,5 +1,5 @@
 log_level: info
-data_dir: /var/lib/dolt
+data_dir: ${DATA_DIR}
 
 listener:
   host: 0.0.0.0
@@ -7,6 +7,11 @@ listener:
 
 behavior:
   read_only: false
+
+metrics:
+  labels: {}
+  host: 0.0.0.0
+  port: 11228
 
 cluster:
   bootstrap_role: ${BOOTSTRAP_ROLE}
