@@ -317,6 +317,7 @@ Generate LD_PRELOAD environment variable - always set, but will be cleared at ru
 {{- end }}
 {{- end -}}
 
+
 {{- define "mysql.config.reconfigureAction" -}}
 reconfigure:
   exec:
@@ -332,3 +333,12 @@ reconfigure:
           /scripts/update-parameter.sh "${param}" "$(printenv "${param}")"
         done < <(env | cut -d= -f1 | grep -E '^[a-z0-9_][a-z0-9_-]*$' | sort -u)
 {{- end -}}
+
+{{- define "mysql.mydumper.image" -}}
+{{ $registry := default ( .Values.image.registry | default "docker.io" )}}
+{{- if eq $registry "docker.io" -}}
+{{ $registry }}/mydumper/mydumper:{{ .Values.image.mydumper.tag }}
+{{- else -}}
+{{ $registry }}/apecloud/mydumper:{{ .Values.image.mydumper.tag }}
+{{- end -}}
+{{- end }}

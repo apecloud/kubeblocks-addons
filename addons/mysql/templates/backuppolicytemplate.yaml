@@ -83,6 +83,9 @@ spec:
       volumeMounts:
         - name: data
           mountPath: {{ .Values.dataMountPath }}
+  - name: mydumper
+    snapshotVolumes: false
+    actionSetName: mysql-mydumper-br
   schedules:
   - backupMethod: xtrabackup
     enabled: false
