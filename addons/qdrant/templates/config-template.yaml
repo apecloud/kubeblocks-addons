@@ -6,21 +6,13 @@ metadata:
   labels:
   {{- include "qdrant.labels" . | nindent 4 }}
 data:
-  production.yaml: |-
-    debug: false
-    log_level: INFO
-
-    service:
-      host: 0.0.0.0
-      http_port: 6333
-      grpc_port: 6334
   config.yaml: |-
     storage:
       # Where to store all the data
       storage_path: ./storage
 
       # Where to store snapshots
-      snapshots_path: ./snapshots
+      snapshots_path: ./storage/snapshots
 
       # If true - point's payload will not be stored in memory.
       # It will be read from the disk every time it is requested.

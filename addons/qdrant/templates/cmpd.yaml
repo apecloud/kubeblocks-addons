@@ -116,12 +116,12 @@ spec:
         successThreshold: 1
         timeoutSeconds: 3
       startupProbe:
-        failureThreshold: 18
+        failureThreshold: 60
         httpGet:
           path: /
           port: tcp-qdrant
           scheme: HTTP
-        periodSeconds: 10
+        periodSeconds: 30
         successThreshold: 1
         timeoutSeconds: 3
       terminationMessagePath: /dev/termination-log
@@ -144,8 +144,7 @@ spec:
         containerPort: 6334
       - name: p2p
         containerPort: 6335
-      command: ["/bin/sh", "-c"]
-      args: ["/qdrant/scripts/setup.sh"]
+      command: ["/qdrant/scripts/setup.sh"]
       env:
       - name: QDRANT__TELEMETRY_DISABLED
         value: "true"
