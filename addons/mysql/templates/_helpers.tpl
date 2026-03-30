@@ -334,3 +334,4 @@ Generate reloader scripts configmap
 {{- else -}}
 {{ $registry }}/apecloud/mydumper:{{ .Values.image.mydumper.tag }}
 {{- end -}}
+{{- end -}}
