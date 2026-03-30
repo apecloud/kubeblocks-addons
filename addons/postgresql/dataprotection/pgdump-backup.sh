@@ -9,12 +9,12 @@ BACKUP_DIR=$BACKUP_DIR/${DP_BACKUP_NAME}
 
 function handle_exit_signal() {
   exit_code=$?
+  if [ -d "$BACKUP_DIR" ]; then
+    rm -rf "$BACKUP_DIR"
+  fi
   if [ $exit_code -ne 0 ]; then
     echo "failed with exit code $exit_code"
     touch "${DP_BACKUP_INFO_FILE}.exit"
-    if [ -d "$BACKUP_DIR" ]; then
-      rm -rf "$BACKUP_DIR"
-    fi
     exit 1
   fi
 }
