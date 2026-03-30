@@ -33,6 +33,7 @@ versions:
       - ["1.10.0", "1.10.0", "v1.10.0", false]
       - ["1.13.4", "1.13.4", "v1.13.4", false]
       - ["1.15.4", "1.15.4", "v1.15.4", false]
+      - ["1.16.3", "1.16.3", "v1.16.3", false]
 
 ## @param debugEnabled enables containers' debug logging
 ##
