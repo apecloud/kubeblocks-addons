@@ -90,14 +90,19 @@ function save_backup_status() {
     GLOBAL_OLD_SIZE=${TOTAL_SIZE}
     local wal_files=$(datasafed list -f --recursive / -o json | jq -s -r '.[] | sort_by(.mtime) |.[] |.path')
     local OLDEST_FILE=$(echo $wal_files | tr ' ' '\n' |head -n 1)
-    local LATEST_FILE=$(echo $wal_files | tr ' ' '\n' |tail -n 1)
     local START_TIME=
     local END_TIME=
     if [ ! -z ${OLDEST_FILE} ]; then
        START_TIME=$(DP_analyze_start_time_from_datasafed ${OLDEST_FILE} get_wal_log_start_time pull_wal_log)
     fi
-    if [ ! -z ${LATEST_FILE} ]; then
-       END_TIME=$(get_wal_log_end_time ${LATEST_FILE})
+    if [ -n "${wal_files}" ]; then
+      # get the end time from the latest 10 files
+      for file in $(echo $wal_files | tr ' ' '\n' | tail -n 10 | tac); do
+         END_TIME=$(get_wal_log_end_time ${file})
+         if [ -n "${END_TIME}" ];then
+             break
+         fi
+      done
     fi
     DP_log "start time of the oldest wal: ${START_TIME}, end time of the latest wal: ${END_TIME}, total size: ${TOTAL_SIZE}"
     DP_save_backup_status_info "${TOTAL_SIZE}" "${START_TIME}" "${END_TIME}"
