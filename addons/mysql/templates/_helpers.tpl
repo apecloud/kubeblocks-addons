@@ -317,7 +317,6 @@ Generate LD_PRELOAD environment variable - always set, but will be cleared at ru
 {{- end }}
 {{- end -}}
 
-
 {{- define "mysql.config.reconfigureAction" -}}
 reconfigure:
   exec:
