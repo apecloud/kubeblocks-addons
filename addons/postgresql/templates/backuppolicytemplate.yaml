@@ -96,10 +96,6 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
-    - name: pgdump
-      snapshotVolumes: false
-      actionSetName: postgresql-pgdump
-      env: *compDefEnvMapping
     - name: pgdumpall
       snapshotVolumes: false
       actionSetName: postgresql-pgdumpall
