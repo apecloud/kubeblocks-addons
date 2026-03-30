@@ -1,4 +1,3 @@
-/*******************    💫 Codegeex Inline Diff    *******************/
 #!/bin/bash
 set -e
 set -o pipefail

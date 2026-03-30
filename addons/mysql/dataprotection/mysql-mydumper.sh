@@ -40,4 +40,3 @@ mydumper -h ${DP_DB_HOST} -u ${DP_DB_USER} -p ${DP_DB_PASSWORD} -P ${DP_DB_PORT}
 
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
-rm -rf ${TMP_DIR}
