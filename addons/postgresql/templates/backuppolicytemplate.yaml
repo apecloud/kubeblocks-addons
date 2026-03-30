@@ -96,10 +96,6 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
-    - name: pgdump
-      snapshotVolumes: false
-      actionSetName: postgresql-pgdump
-      env: *compDefEnvMapping
     - name: pgdumpall
       snapshotVolumes: false
       actionSetName: postgresql-pgdumpall
@@ -129,10 +125,6 @@ spec:
       enabled: false
       cronExpression: "*/5 * * * *"
       retentionPeriod: 8d
-    - backupMethod: pgdump
-      enabled: false
-      cronExpression: "0 18 * * *"
-      retentionPeriod: 7d
     - backupMethod: pgdumpall
       enabled: false
       cronExpression: "0 18 * * *"
