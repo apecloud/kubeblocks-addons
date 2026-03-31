@@ -37,7 +37,7 @@ global:
 
 logLevel:
   backend: "info"
-  read: "info"
+  read: "warn"
   write: "info"
 
 enterprise:
