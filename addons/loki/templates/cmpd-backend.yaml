@@ -101,7 +101,7 @@ spec:
       restartOnFileChange: true
   vars:
     - name: LOG_LEVEL
-      value: "info"
+      value: {{ .Values.logLevel.backend | quote }}
     - name: SERVER_HTTP_PORT
       value: {{ .Values.server.httpMetricsPort | quote }}
     - name: SERVER_GRPC_PORT

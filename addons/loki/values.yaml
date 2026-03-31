@@ -35,6 +35,11 @@ global:
   # -- configures DNS service namespace
   dnsNamespace: "kube-system"
 
+logLevel:
+  backend: "info"
+  read: "info"
+  write: "info"
+
 enterprise:
   enabled: false
 
