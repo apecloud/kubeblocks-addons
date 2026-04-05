@@ -54,17 +54,17 @@ main() {
   local cluster_address
   cluster_address=$(build_cluster_address)
 
-  # wsrep_sst_auth is read from WSREP_SST_AUTH env var which is set from
-  # MARIADB_ROOT_USER/MARIADB_ROOT_PASSWORD injected by KubeBlocks credential vars.
-  # Passing it via --wsrep-sst-auth on the command line would expose it in ps output.
-  # Instead, write it to a temporary config snippet that is only root-readable.
-  local sst_conf="/etc/mysql/conf.d/galera-sst-auth.cnf"
-  mkdir -p "$(dirname "$sst_conf")"
+  # wsrep_sst_auth must not appear on the command line (visible in ps output).
+  # Write it to a file under DATA_DIR (the persistent volume, always writable)
+  # and load it via --defaults-extra-file so MariaDB picks it up at startup.
+  local sst_conf="${DATA_DIR}/.galera-sst-auth.cnf"
   printf '[mysqld]\nwsrep_sst_auth=%s:%s\n' \
     "${MARIADB_ROOT_USER}" "${MARIADB_ROOT_PASSWORD}" > "$sst_conf"
+  chown mysql:mysql "$sst_conf"
   chmod 600 "$sst_conf"
 
   local wsrep_args=(
+    "--defaults-extra-file=${sst_conf}"
     "--wsrep-cluster-address=${cluster_address}"
     "--wsrep-cluster-name=${CLUSTER_NAME:-mariadb-galera}"
     "--wsrep-node-name=${POD_NAME}"

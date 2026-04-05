@@ -96,7 +96,7 @@ spec:
       - name: mariadb
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
-          - syncer
+          - /tools/syncer
           - --port
           - "3601"
           - --
@@ -129,8 +129,6 @@ spec:
             value: mysql
           - name: MARIADB_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
-          - name: MARIADB_ROOT_PASSWORD
-            value: $(MARIADB_ROOT_PASSWORD)
           - name: SERVICE_PORT
             value: "3306"
           - name: POD_NAME

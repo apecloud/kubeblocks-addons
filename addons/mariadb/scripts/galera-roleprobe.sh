@@ -11,9 +11,9 @@
 
 set -eo pipefail
 
-MARIADB_CMD="mariadb -u${MARIADB_ROOT_USER} -p${MARIADB_ROOT_PASSWORD} -P3306 -h127.0.0.1 -N -s"
+MARIADB_CMD=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -N -s)
 
-state=$($MARIADB_CMD -e "SHOW STATUS LIKE 'wsrep_local_state';" 2>/dev/null | awk '{print $2}')
+state=$("${MARIADB_CMD[@]}" -e "SHOW STATUS LIKE 'wsrep_local_state';" 2>/dev/null | awk '{print $2}')
 
 if [ "$state" = "4" ]; then
   echo -n "primary"

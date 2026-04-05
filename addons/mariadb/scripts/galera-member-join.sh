@@ -12,10 +12,10 @@ elapsed=0
 
 echo "Waiting for Galera SST to complete on ${KB_JOIN_MEMBER_POD_NAME:-this node}..."
 
-MARIADB_CMD="mariadb -u${MARIADB_ROOT_USER} -p${MARIADB_ROOT_PASSWORD} -P3306 -h127.0.0.1 -N -s"
+MARIADB_CMD=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -N -s)
 
 while true; do
-  state=$($MARIADB_CMD -e "SHOW STATUS LIKE 'wsrep_local_state';" 2>/dev/null | awk '{print $2}' || echo "0")
+  state=$("${MARIADB_CMD[@]}" -e "SHOW STATUS LIKE 'wsrep_local_state';" 2>/dev/null | awk '{print $2}' || echo "0")
   if [ "$state" = "4" ]; then
     echo "Node synced (wsrep_local_state=4). Member join complete."
     exit 0

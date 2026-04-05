@@ -37,4 +37,5 @@ spec:
           && rm -rf ${DATA_DIR}/* \
           && rsync -avrP /tmp/data/ ${DATA_DIR}/ \
           && rm -rf /tmp/data/ \
-          && chmod -R 0777 ${DATA_DIR}
+          && chown -R mysql:mysql ${DATA_DIR} \
+          && chmod -R 750 ${DATA_DIR}
