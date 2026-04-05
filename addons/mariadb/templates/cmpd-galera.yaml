@@ -19,6 +19,7 @@ spec:
     scrapePort: metrics
   services:
     - name: default
+      roleSelector: primary
       spec:
         ports:
           - name: mariadb
