@@ -6,7 +6,7 @@
 
 set -eo pipefail
 
-MAX_WAIT=300
+MAX_WAIT=3600
 INTERVAL=5
 elapsed=0
 

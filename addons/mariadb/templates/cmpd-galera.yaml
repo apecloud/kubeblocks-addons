@@ -99,7 +99,7 @@ spec:
             mariadb -u${MARIADB_ROOT_USER} -p${MARIADB_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
     roleProbe:
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
-      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      timeoutSeconds: 5
       exec:
         container: mariadb
         command:
@@ -145,6 +145,8 @@ spec:
         env:
           - name: MARIADB_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: MARIADB_ROOT_PASSWORD
+            value: $(MARIADB_ROOT_PASSWORD)
           - name: POD_NAME
             valueFrom:
               fieldRef:

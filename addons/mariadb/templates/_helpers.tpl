@@ -116,7 +116,7 @@ Syncer image
 {{- end -}}
 
 {{/*
-Common spec for replication and galera: accounts, exporter, volumes
+System accounts for standalone
 */}}
 {{- define "mariadb.spec.systemAccounts" -}}
 systemAccounts:
@@ -126,6 +126,28 @@ systemAccounts:
       length: 10
       numDigits: 3
       numSymbols: 4
+      letterCase: MixedCases
+{{- end -}}
+
+{{/*
+System accounts for replication (adds kbreplicator for syncer)
+*/}}
+{{- define "mariadb.replication.spec.systemAccounts" -}}
+systemAccounts:
+  - name: root
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 3
+      numSymbols: 4
+      letterCase: MixedCases
+  - name: kbreplicator
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME}@'%' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION SLAVE ON *.* TO ${KB_ACCOUNT_NAME}@'%';
+    passwordGenerationPolicy:
+      length: 16
+      numDigits: 8
+      numSymbols: 0
       letterCase: MixedCases
 {{- end -}}
 

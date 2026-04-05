@@ -43,7 +43,7 @@ spec:
   volumes:
     - name: data
       needSnapshot: true
-  {{- include "mariadb.spec.systemAccounts" . | nindent 2 }}
+  {{- include "mariadb.replication.spec.systemAccounts" . | nindent 2 }}
   {{- include "mariadb.spec.vars" . | nindent 2 }}
   lifecycleActions:
     accountProvision:
@@ -106,12 +106,12 @@ spec:
             mkdir -p {{ .Values.dataMountPath }}/{log,binlog,tmp}
             chown -R mysql:mysql {{ .Values.dataMountPath }}
             SERVICE_ID=$((${POD_NAME##*-} + 1))
-            mariadbd \
+            exec docker-entrypoint.sh mariadbd \
               --server-id=${SERVICE_ID} \
               --plugin-load-add=semisync_master=semisync_master.so \
               --plugin-load-add=semisync_slave=semisync_slave.so \
               --log-bin={{ .Values.dataMountPath }}/binlog/${POD_NAME}-bin \
-              --skip-slave-start=1
+              --skip-slave-start=ON
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -129,6 +129,8 @@ spec:
             value: mysql
           - name: MARIADB_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: MARIADB_ROOT_PASSWORD
+            value: $(MARIADB_ROOT_PASSWORD)
           - name: SERVICE_PORT
             value: "3306"
           - name: POD_NAME

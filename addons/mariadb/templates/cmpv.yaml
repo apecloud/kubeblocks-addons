@@ -29,4 +29,4 @@ spec:
       images:
         mariadb: {{ include "mariadb.repository" . }}:11.4.5
         exporter: {{ include "exporter.repository" . }}:{{ .Values.image.prom.exporter.tag }}
-        syncer: {{ include "mariadb.syncer.image" . }}
+        init-syncer: {{ include "mariadb.syncer.image" . }}
