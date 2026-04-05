@@ -5,16 +5,28 @@ metadata:
   labels:
     {{- include "mariadb.labels" . | nindent 4 }}
   annotations:
-    {{- include "mariadb.apiVersion" . | nindent 4 }}
+    {{- include "mariadb.annotations" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:
         - {{ include "mariadb.cmpdRegexpPattern" . }}
+        - {{ include "mariadb.replication.cmpdRegexpPattern" . }}
       releases:
         - 10.6.15
+        - 11.4.5
+    - compDefs:
+        - {{ include "mariadb.galera.cmpdRegexpPattern" . }}
+      releases:
+        - 11.4.5
   releases:
     - name: 10.6.15
       serviceVersion: 10.6.15
       images:
         mariadb: {{ include "mariadb.repository" . }}:10.6.15
-        exporter: {{ include "exporter.repository" . }}:v0.14.0
+        exporter: {{ include "exporter.repository" . }}:{{ .Values.image.prom.exporter.tag }}
+    - name: 11.4.5
+      serviceVersion: 11.4.5
+      images:
+        mariadb: {{ include "mariadb.repository" . }}:11.4.5
+        exporter: {{ include "exporter.repository" . }}:{{ .Values.image.prom.exporter.tag }}
+        syncer: {{ include "mariadb.syncer.image" . }}

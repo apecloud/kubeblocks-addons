@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-galera-scripts
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+data:
+  galera-start.sh: |-
+    {{- .Files.Get "scripts/galera-start.sh" | nindent 4 }}
+  galera-roleprobe.sh: |-
+    {{- .Files.Get "scripts/galera-roleprobe.sh" | nindent 4 }}
+  galera-member-join.sh: |-
+    {{- .Files.Get "scripts/galera-member-join.sh" | nindent 4 }}
+  galera-member-leave.sh: |-
+    {{- .Files.Get "scripts/galera-member-leave.sh" | nindent 4 }}

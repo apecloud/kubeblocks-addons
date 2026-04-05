@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-replication-config-template
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+data:
+  my.cnf: |-
+    {{- .Files.Get "config/mariadb-replication.tpl" | nindent 4 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-galera-config-template
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+data:
+  my.cnf: |-
+    {{- .Files.Get "config/mariadb-galera.tpl" | nindent 4 }}

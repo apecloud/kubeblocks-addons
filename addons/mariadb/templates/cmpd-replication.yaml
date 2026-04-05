@@ -1,0 +1,152 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mariadb.replication.cmpdName" . }}
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  provider: Community
+  description: MariaDB replication component definition for Kubernetes (async/semi-sync)
+  serviceKind: mariadb
+  serviceVersion: {{ .Values.defaultServiceVersion.replication }}
+  updateStrategy: BestEffortParallel
+  podManagementPolicy: Parallel
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+    scrapePort: metrics
+  services:
+    - name: default
+      roleSelector: primary
+      spec:
+        ports:
+          - name: mariadb
+            port: 3306
+            targetPort: mariadb
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+      isExclusive: true
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
+  configs:
+    - name: mariadb-replication-config
+      template: mariadb-replication-config-template
+      volumeName: mariadb-config
+      namespace: {{ .Release.Namespace }}
+      externalManaged: true
+  volumes:
+    - name: data
+      needSnapshot: true
+  {{- include "mariadb.spec.systemAccounts" . | nindent 2 }}
+  {{- include "mariadb.spec.vars" . | nindent 2 }}
+  lifecycleActions:
+    accountProvision:
+      exec:
+        container: mariadb
+        command:
+          - bash
+          - -c
+          - |
+            set -ex
+            ALL_DB='*.*'
+            eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+            mariadb -u${MARIADB_ROOT_USER} -p${MARIADB_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+        targetPodSelector: Role
+        matchingKey: primary
+    roleProbe:
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      exec:
+        container: mariadb
+        command:
+          - /tools/syncerctl
+          - getrole
+    switchover:
+      exec:
+        command:
+          - /bin/sh
+          - -c
+          - |
+            if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
+              echo "switchover not triggered for primary, nothing to do, exit 0."
+              exit 0
+            fi
+            /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" \
+              ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
+  runtime:
+    initContainers:
+      - command:
+          - cp
+          - -r
+          - /bin/syncer
+          - /bin/syncerctl
+          - /tools/
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-syncer
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+    containers:
+      - name: mariadb
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - syncer
+          - --port
+          - "3601"
+          - --
+          - bash
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,tmp}
+            chown -R mysql:mysql {{ .Values.dataMountPath }}
+            SERVICE_ID=$((${POD_NAME##*-} + 1))
+            mariadbd \
+              --server-id=${SERVICE_ID} \
+              --plugin-load-add=semisync_master=semisync_master.so \
+              --plugin-load-add=semisync_slave=semisync_slave.so \
+              --log-bin={{ .Values.dataMountPath }}/binlog/${POD_NAME}-bin \
+              --skip-slave-start=1
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mariadb-config
+          - mountPath: /tools
+            name: tools
+        ports:
+          - containerPort: 3306
+            name: mariadb
+          - containerPort: 3601
+            name: ha
+        env:
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mysql
+          - name: MARIADB_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: SERVICE_PORT
+            value: "3306"
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+      {{- include "mariadb.container.exporter" . | nindent 6 }}
+    volumes:
+      - name: tools
+        emptyDir: {}

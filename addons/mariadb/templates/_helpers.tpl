@@ -74,8 +74,104 @@ mariadb-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
+Define mariadb-replication component definition name
+*/}}
+{{- define "mariadb.replication.cmpdName" -}}
+mariadb-replication-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define mariadb-galera component definition name
+*/}}
+{{- define "mariadb.galera.cmpdName" -}}
+mariadb-galera-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
 Define mariadb component definition regular expression name prefix
 */}}
 {{- define "mariadb.cmpdRegexpPattern" -}}
 ^mariadb-
+{{- end -}}
+
+{{/*
+Define mariadb-replication component definition regular expression name prefix
+*/}}
+{{- define "mariadb.replication.cmpdRegexpPattern" -}}
+^mariadb-replication-
+{{- end -}}
+
+{{/*
+Define mariadb-galera component definition regular expression name prefix
+*/}}
+{{- define "mariadb.galera.cmpdRegexpPattern" -}}
+^mariadb-galera-
+{{- end -}}
+
+{{/*
+Syncer image
+*/}}
+{{- define "mariadb.syncer.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+{{- end -}}
+
+{{/*
+Common spec for replication and galera: accounts, exporter, volumes
+*/}}
+{{- define "mariadb.spec.systemAccounts" -}}
+systemAccounts:
+  - name: root
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 3
+      numSymbols: 4
+      letterCase: MixedCases
+{{- end -}}
+
+{{/*
+Common vars for replication and galera
+*/}}
+{{- define "mariadb.spec.vars" -}}
+vars:
+  - name: MARIADB_ROOT_USER
+    valueFrom:
+      credentialVarRef:
+        name: root
+        optional: false
+        username: Required
+  - name: MARIADB_ROOT_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        name: root
+        optional: false
+        password: Required
+  - name: CLUSTER_NAME
+    valueFrom:
+      clusterVarRef:
+        clusterName: Required
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      clusterVarRef:
+        namespace: Required
+  - name: COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        shortName: Required
+{{- end -}}
+
+{{/*
+Exporter container
+*/}}
+{{- define "mariadb.container.exporter" -}}
+- name: exporter
+  imagePullPolicy: {{ default "IfNotPresent" .Values.image.prom.pullPolicy }}
+  ports:
+    - name: metrics
+      containerPort: 9104
+      protocol: TCP
+  env:
+    - name: DATA_SOURCE_NAME
+      value: "$(MARIADB_ROOT_USER):$(MARIADB_ROOT_PASSWORD)@(localhost:3306)/"
 {{- end -}}

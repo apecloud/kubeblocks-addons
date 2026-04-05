@@ -1,0 +1,165 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mariadb.galera.cmpdName" . }}
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  provider: Community
+  description: MariaDB Galera Cluster component definition for Kubernetes (multi-primary wsrep)
+  serviceKind: mariadb
+  serviceVersion: {{ .Values.defaultServiceVersion.galera }}
+  updateStrategy: Serial
+  podManagementPolicy: Parallel
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+    scrapePort: metrics
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: mariadb
+            port: 3306
+            targetPort: mariadb
+  roles:
+    # All synced Galera nodes are equal — all can accept writes.
+    # KubeBlocks roleProbe reports "primary" for synced nodes.
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: true
+      isExclusive: false
+    # Donor/Joiner nodes during SST — temporarily unavailable for writes.
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+  configs:
+    - name: mariadb-galera-config
+      template: mariadb-galera-config-template
+      volumeName: mariadb-config
+      namespace: {{ .Release.Namespace }}
+      externalManaged: true
+  scripts:
+    - name: mariadb-galera-scripts
+      template: mariadb-galera-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  volumes:
+    - name: data
+      needSnapshot: true
+  {{- include "mariadb.spec.systemAccounts" . | nindent 2 }}
+  vars:
+    - name: MARIADB_ROOT_USER
+      valueFrom:
+        credentialVarRef:
+          name: root
+          optional: false
+          username: Required
+    - name: MARIADB_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: root
+          optional: false
+          password: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: PEER_FQDNS
+      valueFrom:
+        componentVarRef:
+          podFQDNs: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          replicas: Required
+  lifecycleActions:
+    accountProvision:
+      exec:
+        container: mariadb
+        command:
+          - bash
+          - -c
+          - |
+            set -ex
+            ALL_DB='*.*'
+            eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+            mariadb -u${MARIADB_ROOT_USER} -p${MARIADB_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+    roleProbe:
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      exec:
+        container: mariadb
+        command:
+          - bash
+          - -c
+          - /scripts/galera-roleprobe.sh
+    memberJoin:
+      exec:
+        command:
+          - bash
+          - -c
+          - /scripts/galera-member-join.sh
+    memberLeave:
+      exec:
+        command:
+          - bash
+          - -c
+          - /scripts/galera-member-leave.sh
+  runtime:
+    containers:
+      - name: mariadb
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - bash
+          - -c
+          - /scripts/galera-start.sh
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mariadb-config
+          - name: scripts
+            mountPath: /scripts
+        ports:
+          - containerPort: 3306
+            name: mariadb
+          - containerPort: 4567
+            name: galera
+          - containerPort: 4568
+            name: ist
+          - containerPort: 4444
+            name: sst
+        env:
+          - name: MARIADB_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: DATA_DIR
+            value: {{ .Values.dataMountPath }}
+      {{- include "mariadb.container.exporter" . | nindent 6 }}

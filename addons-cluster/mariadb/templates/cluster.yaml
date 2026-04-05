@@ -5,10 +5,11 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
+  clusterDef: mariadb
+  topology: {{ .Values.topology }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
     - name: mariadb
-      componentDef: mariadb
       replicas: {{ include "mariadb-cluster.replicas" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
