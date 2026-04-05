@@ -9,7 +9,7 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "mariadb.cmpdRegexpPattern" . }}
+        - {{ include "mariadb.standalone.cmpdRegexpPattern" . }}
         - {{ include "mariadb.replication.cmpdRegexpPattern" . }}
       releases:
         - 10.6.15
@@ -24,6 +24,7 @@ spec:
       images:
         mariadb: {{ include "mariadb.repository" . }}:10.6.15
         exporter: {{ include "exporter.repository" . }}:{{ .Values.image.prom.exporter.tag }}
+        init-syncer: {{ include "mariadb.syncer.image" . }}
     - name: 11.4.5
       serviceVersion: 11.4.5
       images:

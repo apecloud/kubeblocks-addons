@@ -145,8 +145,6 @@ spec:
         env:
           - name: MARIADB_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
-          - name: MARIADB_ROOT_PASSWORD
-            value: $(MARIADB_ROOT_PASSWORD)
           - name: POD_NAME
             valueFrom:
               fieldRef:

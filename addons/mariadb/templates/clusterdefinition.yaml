@@ -11,7 +11,7 @@ spec:
     - name: standalone
       components:
         - name: mariadb
-          compDef: {{ include "mariadb.cmpdRegexpPattern" . }}
+          compDef: {{ include "mariadb.standalone.cmpdRegexpPattern" . }}
       default: true
     - name: async
       components:

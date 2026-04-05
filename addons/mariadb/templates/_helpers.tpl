@@ -95,6 +95,14 @@ Define mariadb component definition regular expression name prefix
 {{- end -}}
 
 {{/*
+Define mariadb standalone component definition regular expression name prefix
+(matches only standalone cmpd, not replication or galera)
+*/}}
+{{- define "mariadb.standalone.cmpdRegexpPattern" -}}
+^mariadb-[0-9]
+{{- end -}}
+
+{{/*
 Define mariadb-replication component definition regular expression name prefix
 */}}
 {{- define "mariadb.replication.cmpdRegexpPattern" -}}
