@@ -1,7 +1,7 @@
 apiVersion: v2
 name: dolt-cluster
 type: application
-version: 0.1.0
+version: 1.0.0
 description: A Dolt cluster Helm chart for KubeBlocks.
 
 dependencies:

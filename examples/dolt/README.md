@@ -4,10 +4,12 @@
 
 ## Prerequisites
 
-- Kubernetes >= v1.21
-- KubeBlocks installed
-- Dolt addon installed from `addons/dolt` (installs ComponentDefinitions `dolt-replication` and `dolt-standalone`)
-- Namespace `demo` (or change `metadata.namespace` in the manifests):
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- Dolt Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
   ```bash
   kubectl create ns demo
@@ -39,7 +41,7 @@ kubectl get cmpv dolt
 
 Match `spec.componentSpecs[].componentDef` to the addon (`dolt-replication` or `dolt-standalone`), and `serviceVersion` to a release in that ComponentVersion (for example `1.84.0`).
 
-### Switchover
+#### Switchover
 
 After the cluster is healthy, trigger a planned switchover so another replica becomes primary.
 
@@ -162,5 +164,5 @@ The `dolt_patch()` output gives you the exact SQL statements to run on the MySQL
 
 ```bash
 kubectl -n demo exec -it dolt-mysql-replica-dolt-0 -- \
-  dolt --host 127.0.0.1 --port 3306 --no-tls sql -q "SHOW REPLICA STATUS\G"
+  dolt --host 127.0.0.1 --port 3306 --no-tls sql -q "SHOW REPLICA STATUS"
 ```

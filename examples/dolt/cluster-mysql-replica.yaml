@@ -32,7 +32,7 @@ spec:
               requests:
                 storage: 20Gi
 ---
-# Step 2: Set BINLOG_FORMAT to ROW
+# Step 2: Set BINLOG_FORMAT to ROW when cluster is running
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
@@ -48,7 +48,8 @@ spec:
       # Represents the name of the parameter that is to be updated.
     - key: binlog_format
       value: 'ROW'
-  preConditionDeadlineSeconds: 0
+  # wait up to 2 min till cluster is running
+  preConditionDeadlineSeconds: 120
   type: Reconfiguring
 ---
 # Step 3: When MySQL is running, create a standalone Dolt cluster configured as a MySQL binlog replica.

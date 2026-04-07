@@ -20,16 +20,3 @@ storage: 10
 
 extra:
   terminationPolicy: Delete
-
-## Prometheus Operator PodMonitor (requires CRD monitoring.coreos.com/v1 PodMonitor)
-## @param prometheus.enabled If true, install a PodMonitor to scrape Dolt sql-server metrics
-## @param prometheus.metricsPath HTTP path for Prometheus metrics
-## @param prometheus.interval Scrape interval (omit for Prometheus default)
-## @param prometheus.scrapeTimeout Per-scrape timeout (omit for Prometheus default)
-## @param prometheus.additionalLabels Extra labels on the PodMonitor (e.g. release: prometheus for operator discovery)
-prometheus:
-  enabled: false
-  metricsPath: /metrics
-  interval: ""
-  scrapeTimeout: ""
-  additionalLabels: {}
