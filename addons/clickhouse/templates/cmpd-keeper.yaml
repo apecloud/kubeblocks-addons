@@ -18,6 +18,27 @@ spec:
       fsGroup: 0
       seccompProfile:
         type: RuntimeDefault
+    {{- if .Values.nodeSelector }}
+    nodeSelector:
+      {{- toYaml .Values.nodeSelector | nindent 6 }}
+    {{- end }}
+    {{- if .Values.priorityClassName }}
+    priorityClassName: {{ .Values.priorityClassName }}
+    {{- end }}
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: ch-keeper
+            topologyKey: kubernetes.io/hostname
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: ch-keeper
     initContainers:
       - name: copy-tools
         imagePullPolicy: {{ .Values.busyboxImage.pullPolicy }}
@@ -116,11 +137,13 @@ spec:
           - name: tcp-secure
             targetPort: tcp-secure
             port: 9440
+  {{- if .Values.logConfigs }}
   logConfigs:
     {{- range $name, $pattern := .Values.logConfigs }}
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
+  {{- end }}
   exporter:
     scrapePath: /metrics
     scrapePort: "8001"
@@ -144,6 +167,11 @@ spec:
   systemAccounts:
     - name: admin
       initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 4
+        numSymbols: 0
+        letterCase: MixedCases
   vars:
     - name: BITNAMI_DEBUG
       value: "false"
