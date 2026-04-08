@@ -222,7 +222,7 @@ Generate reloader scripts configmap
 {{- define "postgresql.config.reconfigureAction" -}}
 reconfigure:
   exec:
-    container: postgres
+    container: postgresql
     command:
       - /bin/sh
       - -c
