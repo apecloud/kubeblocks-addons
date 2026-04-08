@@ -1,6 +1,6 @@
 apiVersion: v2
 name: dolt
-description: A Helm chart for Kubernetes
+description: Dolt is a MySQL-compatible SQL database with Git-style versioning.
 
 # A chart can be either an 'application' or a 'library' chart.
 #
