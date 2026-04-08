@@ -335,7 +335,7 @@
 	listen_backlog: uint32 | *4096
 
 	// The server will not exit if IPv6 or IPv4 networks are unavailable while trying to listen
-	listen_try: bool & true | false | *false
+	listen_try: _
 
 	// Size of background pool for marks loading
 	load_marks_threadpool_pool_size: uint64 | *50
