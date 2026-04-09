@@ -24,3 +24,4 @@ temp
 
 # local debugging helm values
 values-override*.yaml
+.kb_agent_state.json
