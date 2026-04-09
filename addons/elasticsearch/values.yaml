@@ -17,7 +17,7 @@ image:
   repository: elasticsearch
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "8.8.2"
+  tag: "9.3.2"
   exporter:
     repository: prometheuscommunity/elasticsearch-exporter
     tag: "v1.7.0"
@@ -30,7 +30,7 @@ image:
     tag: 0.1.0
   kibana:
     repository: apecloud/kibana
-    tag: "8.8.2"
+    tag: "9.3.2"
   agent:
     repository: apecloud/elasticsearch-agent
     tag: "0.1.0"
@@ -52,6 +52,8 @@ esVersions:
     componentDef: "^elasticsearch-7-"
     masterComponentDef: "^elasticsearch-master-7-"
     dataComponentDef: "^elasticsearch-data-7-"
+    ingestComponentDef: "^elasticsearch-ingest-7-"
+    transformComponentDef: "^elasticsearch-transform-7-"
     minors:
       # [version, serviceVersion, tag, deprecated]
       - ["7.7.1", "7.7.1", "7.7.1", false]
@@ -62,6 +64,8 @@ esVersions:
     componentDef: "^elasticsearch-8-"
     masterComponentDef: "^elasticsearch-master-8-"
     dataComponentDef: "^elasticsearch-data-8-"
+    ingestComponentDef: "^elasticsearch-ingest-8-"
+    transformComponentDef: "^elasticsearch-transform-8-"
     minors:
       # [version, serviceVersion, tag, deprecated]
       - ["8.1.3", "8.1.3", "8.1.3", false]
@@ -71,9 +75,10 @@ esVersions:
     componentDef: "^elasticsearch-9-"
     masterComponentDef: "^elasticsearch-master-9-"
     dataComponentDef: "^elasticsearch-data-9-"
+    ingestComponentDef: "^elasticsearch-ingest-9-"
+    transformComponentDef: "^elasticsearch-transform-9-"
     minors:
       # [version, serviceVersion, tag, deprecated]
-      - ["9.0.0", "9.0.0", "9.0.0", false]
       - ["9.3.2", "9.3.2", "9.3.2", false]
 
 ## @param supported kibana versions with detailed information
@@ -103,7 +108,6 @@ kibanaVersions:
     componentDef: "^kibana-9-"
     minors:
       # [version, serviceVersion, tag, deprecated]
-      - ["9.0.0", "9.0.0", "9.0.0", false]
       - ["9.3.2", "9.3.2", "9.3.2", false]
 
 # @param zoneAware enable zone awareness

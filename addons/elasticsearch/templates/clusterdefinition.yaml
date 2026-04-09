@@ -5,37 +5,43 @@ metadata:
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
   annotations:
-    {{- include "elasticsearch.apiVersion" . | nindent 4 }}
+    {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
   topologies:
   - name: single-node
     components:
     - name: mdit
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: {{ include "elasticsearchMdit.cmpdRegexPattern" . }}
   - name: multi-node
+    default: true
     components:
     - name: master
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
-    - name: dit
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
-    default: true
+      compDef: {{ include "elasticsearchMaster.cmpdRegexPattern" . }}
+    - name: data
+      compDef: {{ include "elasticsearchData.cmpdRegexPattern" . }}
+    - name: kibana
+      compDef: {{ include "kibana.cmpdRegexPattern" . }}
   - name: m-dit
     components:
     - name: master
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: {{ include "elasticsearchMaster.cmpdRegexPattern" . }}
     - name: dit
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: {{ include "elasticsearchData.cmpdRegexPattern" . }}
+    - name: kibana
+      compDef: {{ include "kibana.cmpdRegexPattern" . }}
+  - name: m-d-i-t
+    components:
+    - name: master
+      compDef: {{ include "elasticsearchMaster.cmpdRegexPattern" . }}
+    - name: data
+      compDef: {{ include "elasticsearchData.cmpdRegexPattern" . }}
+    - name: ingest
+      compDef: {{ include "elasticsearchIngest.cmpdRegexPattern" . }}
+    - name: transform
+      compDef: {{ include "elasticsearchTransform.cmpdRegexPattern" . }}
+    - name: kibana
+      compDef: {{ include "kibana.cmpdRegexPattern" . }}
   - name: mdit
     components:
     - name: mdit
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
-  - name: m-d-i-t
-    components:
-    - name: m
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
-    - name: d
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
-    - name: i
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
-    - name: t
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: {{ include "elasticsearchMdit.cmpdRegexPattern" . }}

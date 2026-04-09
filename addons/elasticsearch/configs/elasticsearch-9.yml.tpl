@@ -2,12 +2,51 @@
 {{- $defaultRoles := .ELASTICSEARCH_ROLES }}
 {{- $namespace := .CLUSTER_NAMESPACE }}
 {{- $zoneAwareEnabled := index . "ZONE_AWARE_ENABLED" }}
+{{- $currentCompShortName := index . "ES_COMPONENT_SHORT_NAME" }}
+
+{{- /* Determine if current component is master-eligible */}}
+{{- $isMasterEligible := false }}
+{{- range $r := splitList "," $defaultRoles }}
+  {{- if eq (trim $r) "master" }}{{- $isMasterEligible = true }}{{- end }}
+{{- end }}
+
+{{- /* Parse ALL_CMP_REPLICA_LIST.
+     Formats:
+     - Single component (no comp prefix): "pod1" or "pod1,pod2"
+     - Multi-component (Flatten): "comp1:pod1,pod2;comp2:pod3,pod4"  */}}
+{{- $allPods := list }}
+{{- $currentCompPods := list }}
+{{- range $segment := splitList ";" .ALL_CMP_REPLICA_LIST }}
+  {{- if $segment }}
+    {{- $kv := splitList ":" $segment }}
+    {{- if gt (len $kv) 1 }}
+      {{- $compName := index $kv 0 }}
+      {{- $podsPart := index $kv 1 }}
+      {{- range $p := splitList "," $podsPart }}
+        {{- if $p }}
+          {{- $allPods = append $allPods $p }}
+          {{- if eq $compName $currentCompShortName }}
+            {{- $currentCompPods = append $currentCompPods $p }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- else }}
+      {{- /* Single component: no key prefix */}}
+      {{- range $p := splitList "," (index $kv 0) }}
+        {{- if $p }}
+          {{- $allPods = append $allPods $p }}
+          {{- $currentCompPods = append $currentCompPods $p }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
 
 {{- $mode := "multi-node" }}
 {{- if index . "mode" }}
   {{- $mode = $.mode }}
 {{- else }}
-  {{- if not (contains "master:" .ALL_CMP_REPLICA_LIST) }}
+  {{- if eq (len $allPods) 1 }}
     {{- $mode = "single-node" }}
   {{- end }}
 {{- end }}
@@ -26,48 +65,41 @@ cluster:
         attributes: k8s_node_name
         {{- end }}
 # INITIAL_MASTER_NODES_BLOCK_START
-{{- if eq $mode "multi-node" }}
-  {{- $masterList := list }}
-  {{- $parts := splitList ";" .ALL_CMP_REPLICA_LIST }}
-  {{- range $part := $parts }}
-    {{- if hasPrefix "master:" $part }}
-      {{- $masterPart := trimPrefix "master:" $part }}
-      {{- $masters := splitList "," $masterPart }}
-      {{- range $master := $masters }}
-        {{- $masterList = append $masterList $master }}
-      {{- end }}
-    {{- end }}
-  {{- end }}
-  {{- if $masterList }}
+{{- if and (eq $mode "multi-node") $isMasterEligible $currentCompPods }}
   initial_master_nodes:
-    {{- range $master := $masterList }}
+    {{- range $master := $currentCompPods }}
   - {{ $master }}
     {{- end }}
-  {{- end }}
 {{- end }}
 # INITIAL_MASTER_NODES_BLOCK_END
 
-discovery:
-# the default of discovery.type is multi-node, but can't set it to multi-node explicitly in 7.x version
-{{- if eq $mode "single-node" }}
-  type: {{ $mode }}
-{{- end }}
+{{- $seedHosts := list }}
 {{- if eq $mode "multi-node" }}
-  {{- $masterList := list }}
-  {{- $parts := splitList ";" .ALL_CMP_REPLICA_FQDN }}
-  {{- range $part := $parts }}
-    {{- if hasPrefix "master:" $part }}
-      {{- $masterPart := trimPrefix "master:" $part }}
-      {{- $masters := splitList "," $masterPart }}
-      {{- range $master := $masters }}
-        {{- $masterList = append $masterList $master }}
+  {{- /* Parse ALL_CMP_REPLICA_FQDN, same format as ALL_CMP_REPLICA_LIST */}}
+  {{- range $segment := splitList ";" .ALL_CMP_REPLICA_FQDN }}
+    {{- if $segment }}
+      {{- $kv := splitList ":" $segment }}
+      {{- $fqdnsPart := "" }}
+      {{- if gt (len $kv) 1 }}
+        {{- $fqdnsPart = index $kv 1 }}
+      {{- else }}
+        {{- $fqdnsPart = index $kv 0 }}
+      {{- end }}
+      {{- range $f := splitList "," $fqdnsPart }}
+        {{- if $f }}{{- $seedHosts = append $seedHosts $f }}{{- end }}
       {{- end }}
     {{- end }}
   {{- end }}
-  {{- if $masterList }}
+{{- end }}
+
+{{- if or (eq $mode "single-node") $seedHosts }}
+discovery:
+  {{- if eq $mode "single-node" }}
+  type: single-node
+  {{- else }}
   seed_hosts:
-    {{- range $master := $masterList }}
-  - {{ $master }}
+    {{- range $host := $seedHosts }}
+  - {{ $host }}
     {{- end }}
   {{- end }}
 {{- end }}
@@ -93,7 +125,7 @@ node:
   store:
     allow_mmap: false
 {{- if eq $mode "multi-node" }}
-# https://www.elastic.co/guide/en/elasticsearch/reference/7.7/modules-node.html
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html#node-roles
   roles:
   {{- $roles := $defaultRoles }}
   {{- if index . "roles" }}
@@ -143,5 +175,13 @@ xpack:
       enabled: true
 {{- else }}
   security:
-    enabled: "false"
+    enabled: false
+    enrollment:
+      enabled: false
+    transport:
+      ssl:
+        enabled: false
+    http:
+      ssl:
+        enabled: false
 {{- end }}

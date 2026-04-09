@@ -3,7 +3,6 @@ kind: ComponentDefinition
 metadata:
   name: {{ include "kibana6.cmpdName" . }}
   annotations:
-    apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "elasticsearch.annotations" . | nindent 4 }}
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}

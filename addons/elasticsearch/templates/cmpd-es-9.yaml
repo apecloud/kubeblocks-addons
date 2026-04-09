@@ -5,10 +5,9 @@ metadata:
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
   annotations:
-    apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
-  serviceVersion: 9.0.0
+  serviceVersion: 9.3.2
   configs:
     - name: es-cm
       template: {{ include "elasticsearch9.configTplName" . }}
@@ -64,12 +63,11 @@ spec:
         clusterVarRef:
           clusterName: Required
     - name: ELASTICSEARCH_ROLES
-      value: master,data
-    {{/* ALL_CMP_REPLICA_LIST ='master:podName0,podName1,podName2;data:podName0,podName1'*/}}
+      value: master,data,ingest,transform
     - name: ALL_CMP_REPLICA_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "elasticsearch9.cmpdRegexPattern" . }}
+          compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
           optional: false
           podNames: Required
           multipleClusterObjectOption:
@@ -78,11 +76,10 @@ spec:
               flattenFormat:
                 delimiter: ";"
                 keyValueDelimiter: ":"
-    {{/* ALL_CMP_REPLICA_FQDN ='master:podFQDN0,podFQDN1,podFQDN2;data:podFQDN0,podFQDN1'*/}}
     - name: ALL_CMP_REPLICA_FQDN
       valueFrom:
         componentVarRef:
-          compDef: {{ include "elasticsearch9.cmpdRegexPattern" . }}
+          compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
           optional: false
           podFQDNs: Required
           multipleClusterObjectOption:

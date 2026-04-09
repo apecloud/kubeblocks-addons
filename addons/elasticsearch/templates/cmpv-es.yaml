@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
   annotations:
-    {{- include "elasticsearch.apiVersion" . | nindent 4 }}
+    {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
   compatibilityRules:
 {{- range .Values.esVersions }}
@@ -14,6 +14,12 @@ spec:
     - {{ .componentDef }}
     - {{ .masterComponentDef }}
     - {{ .dataComponentDef }}
+{{- if .ingestComponentDef }}
+    - {{ .ingestComponentDef }}
+{{- end }}
+{{- if .transformComponentDef }}
+    - {{ .transformComponentDef }}
+{{- end }}
     releases:
 {{- range .minors }}
       - {{ index . 0 }}
@@ -21,18 +27,19 @@ spec:
 {{- end }}
   releases:
 {{- range .Values.esVersions }}
+{{- $esRegistry := .imageRegistry | default $imageRegistry }}
 {{- range .minors }}
 {{- if not (index . 3) }}
   - name: {{ index . 0 }}
     serviceVersion: {{ index . 1 }}
     images:
-      elasticsearch: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      elasticsearch: {{ $esRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
       prepare-plugins: {{ $imageRegistry }}/{{ $.Values.image.plugin.repository }}:{{ $.Values.image.plugin.tag }}
-      install-plugins: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      install-plugins: {{ $esRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      es-agent: {{ $imageRegistry }}/{{ $.Values.image.agent.repository }}:{{ $.Values.image.agent.tag }}
       exporter: {{ $imageRegistry }}/{{ $.Values.image.exporter.repository }}:{{ $.Values.image.exporter.tag }}
       memberleave: {{ $imageRegistry }}/{{ $.Values.image.tools.repository }}:{{ $.Values.image.tools.tag }}
       install-es-agent: {{ $imageRegistry }}/{{ $.Values.image.agent.repository }}:{{ $.Values.image.agent.tag }}
-      es-agent: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
 {{- end }}
 {{- end }}
 {{- end }}
