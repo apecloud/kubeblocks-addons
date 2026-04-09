@@ -109,7 +109,7 @@ orioledb-reload-tools-script
 {{- define "orioledb.config.reconfigureAction" -}}
 reconfigure:
   exec:
-    container: postgres
+    container: orioledb
     command:
       - /bin/sh
       - -c
