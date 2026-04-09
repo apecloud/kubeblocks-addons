@@ -35,11 +35,17 @@ common_options="-k --fail --max-time 30 --retry ${RETRY_COUNT} ${BASIC_AUTH}"
 
 echo "Starting safe removal of node $KB_LEAVE_MEMBER_POD_NAME"
 
-# Get Elasticsearch version
-version=$(curl ${common_options} -s ${endpoint} | jq -r .version.number)
-if [ $? != 0 ]; then
-  echo "ERROR: Failed to get Elasticsearch version"
-  exit 1
+# Get Elasticsearch version.
+# Exit 0 (no-op) if ES is unreachable: the node was terminated before it finished
+# starting up, so there is nothing to leave.  Exiting non-zero here would produce
+# a FailedPreStopHook event and can wedge the containerd runtime on the node.
+version=""
+if curl_out=$(curl -k -s --max-time 10 ${BASIC_AUTH} "${endpoint}" 2>/dev/null); then
+  version=$(echo "$curl_out" | jq -r '.version.number' 2>/dev/null || echo "")
+fi
+if [ -z "$version" ] || [ "$version" = "null" ]; then
+  echo "WARNING: Elasticsearch not reachable at ${endpoint} - node was not yet serving, skipping memberLeave"
+  exit 0
 fi
 major_version=${version%%.*}
 echo "Detected Elasticsearch version: $version (major: $major_version)"
