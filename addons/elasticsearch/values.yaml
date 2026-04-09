@@ -28,6 +28,9 @@ image:
   tools:
     repository: apecloud/curl-jq
     tag: 0.1.0
+  custom-plugins:
+    repository: apecloud/elasticsearch-custom-plugins
+    tag: 0.1.0
   kibana:
     repository: apecloud/kibana
     tag: "8.8.2"

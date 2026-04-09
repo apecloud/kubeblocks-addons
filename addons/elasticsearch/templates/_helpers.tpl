@@ -377,6 +377,24 @@ runtime:
       volumeMounts:
         - mountPath: /mnt/local-bin
           name: local-bin
+    - name: install-custom-plugins
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - sh
+        - -c
+        - |
+          /plugins/pick-plugins.sh all $ELASTICSEARCH_VERSION /mnt/local-plugins
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        privileged: false
+        runAsNonRoot: true
+        runAsUser: 1000
+      volumeMounts:
+        - mountPath: /mnt/local-plugins
+          name: local-plugins 
   containers:
     - name: elasticsearch
       imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -771,3 +789,45 @@ runtime:
   securityContext:
     fsGroup: 1000
 {{- end }}
+
+{{- define "elasticsearch.commonVars" -}}
+- name: ELASTICSEARCH_VERSION
+  valueFrom:
+    componentVarRef:
+      optional: false
+      serviceVersion: Required
+- name: REMOTE_PRIMARY_HOST
+  valueFrom:
+    serviceRefVarRef:
+      name: remote-instances
+      optional: true
+      host: Required
+- name: REMOTE_PRIMARY_PORT
+  valueFrom:
+    serviceRefVarRef:
+      name: remote-instances
+      optional: true
+      port: Required
+- name: REMOTE_PRIMARY_USER
+  valueFrom:
+    serviceRefVarRef:
+      name: remote-instances
+      optional: true
+      username: Optional
+- name: REMOTE_PRIMARY_PASSWORD
+  valueFrom:
+    serviceRefVarRef:
+      name: remote-instances
+      optional: true
+      password: Optional
+{{- end -}}
+
+{{- define "elasticsearch.remoteServiceRef" }}
+{{- if and .Values.remoteSetting.isStandby .Values.remoteSetting.primarySettings.host .Values.remoteSetting.primarySettings.port }}
+serviceRefDeclarations:
+- name: remote-instances
+  serviceRefDeclarationSpecs:
+    - serviceKind: elasticsearch
+      serviceVersion: "^*"
+{{- end }}
+{{- end -}}

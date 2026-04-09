@@ -22,6 +22,8 @@ spec:
       {{- include "kblib.componentStorages" $ | indent 6 }}
       {{- include "elasticsearch-cluster.tls" $ | indent 6 }}
       {{- include "elasticsearch-cluster.accounts" $ | indent 6 }}
+      {{- include "elasticsearch-cluster.remoteServiceRef" . | indent 6 }}
+      {{- include "elasticsearch-cluster.envs" . | indent 6 }}
     - name: data
       componentDef: elasticsearch-data-{{ include "elasticsearch.majorVersion" $ }}
       serviceVersion: {{ include "elasticsearch.version" $ }}
@@ -36,6 +38,8 @@ spec:
       {{- include "kblib.componentStorages" $ | indent 6 }}
       {{- include "elasticsearch-cluster.tls" $ | indent 6 }}
       {{- include "elasticsearch-cluster.accounts" $ | indent 6 }}
+      {{- include "elasticsearch-cluster.remoteServiceRef" . | indent 6 }}
+      {{- include "elasticsearch-cluster.envs" . | indent 6 }}
   {{- if .Values.enableKibana }}
     - name: kibana
       componentDef: kibana-{{ include "elasticsearch.majorVersion" . }}

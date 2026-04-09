@@ -69,6 +69,37 @@ fi
 if [ -f "${CLUSTER_FORMED_FILE}" ]; then
   sed -i '/# INITIAL_MASTER_NODES_BLOCK_START/,/# INITIAL_MASTER_NODES_BLOCK_END/d' config/elasticsearch.yml
 fi
+
+# keep replay config idempotent across restarts
+sed -i '/^node\.source_extract_start_time:/d' config/elasticsearch.yml
+sed -i '/^node\.source_extract_idx_host:/d' config/elasticsearch.yml
+sed -i '/^node\.source_extract_idx_user:/d' config/elasticsearch.yml
+sed -i '/^node\.source_extract_idx_password:/d' config/elasticsearch.yml
+sed -i '/^node\.source_extract_enabled:/d' config/elasticsearch.yml
+sed -i '/^node\.extract_idx_host:/d' config/elasticsearch.yml
+sed -i '/^node\.extract_idx_user:/d' config/elasticsearch.yml
+sed -i '/^node\.extract_idx_password:/d' config/elasticsearch.yml
+
+if [ "${ELASTICSEARCH_MODE}" = "standby" ] && [ -n "${REMOTE_PRIMARY_HOST}" ] && [ -n "${REMOTE_PRIMARY_PORT}" ] && [ -n "${ELASTICSEARCH_REPLAY_START_TIME_MS}" ]; then
+  {
+    printf '\nnode.source_extract_start_time: %s\n' "${ELASTICSEARCH_REPLAY_START_TIME_MS}"
+    printf 'node.source_extract_idx_host: "%s:%s"\n' "${REMOTE_PRIMARY_HOST}" "${REMOTE_PRIMARY_PORT}"
+    printf 'node.source_extract_idx_user: "%s"\n' "${REMOTE_PRIMARY_USER:-}"
+    printf 'node.source_extract_idx_password: "%s"\n' "${REMOTE_PRIMARY_PASSWORD:-}"
+    if [ "${ELASTICSEARCH_REPLAY_IS_START_AFTER_RUNNING}" = "true" ]; then
+      printf 'node.source_extract_enabled: true\n'
+    fi
+  } >> config/elasticsearch.yml
+fi
+
+if [ -d plugins ] && [ -n "$(find plugins -mindepth 1 -maxdepth 1 -type d -name 'es-extract-*' -print -quit)" ]; then
+  {
+    printf '\nnode.extract_idx_host: "%s:%s"\n' "${ELASTICSEARCH_HOST}" "${ELASTICSEARCH_PORT}"
+    printf 'node.extract_idx_user: "%s"\n' "${ELASTIC_USERNAME:-}"
+    printf 'node.extract_idx_password: "%s"\n' "${ELASTIC_PASSWORD:-}"
+  } >> config/elasticsearch.yml
+fi
+
 if [ -f /bin/tini ]; then
   /bin/tini -- /usr/local/bin/docker-entrypoint.sh
 elif [ -f /tini ]; then
