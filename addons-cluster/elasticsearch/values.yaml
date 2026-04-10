@@ -59,8 +59,8 @@ remoteSetting:
   primarySettings:
     serviceDescriptorNamespace: ""
     host: ""
-    port: ""
+    port: "9200"
     accountSecret:
       name: ""
-      userKey: ""
-      passwordKey: ""
+      userKey: "username"
+      passwordKey: "password"
