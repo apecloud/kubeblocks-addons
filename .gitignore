@@ -28,4 +28,5 @@ values-override*.yaml
 
 # local claude code files (not part of the shared repo)
 CLAUDE.md
+claude-docs/
 .claude/commands/
