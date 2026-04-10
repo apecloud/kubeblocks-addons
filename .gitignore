@@ -26,5 +26,6 @@ temp
 values-override*.yaml
 .kb_agent_state.json
 
-# local claude code commands (not part of the shared repo)
+# local claude code files (not part of the shared repo)
+CLAUDE.md
 .claude/commands/
