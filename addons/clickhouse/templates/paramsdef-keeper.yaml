@@ -6,7 +6,7 @@ metadata:
     {{- include "clickhouse.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "clickhouse-keeper.cmpdName" . }}
-  templateName: {{ include "clickhouse-keeper.configurationTplName" . }}
+  templateName: clickhouse-keeper-tpl
   fileName: ch_keeper_00_default_overrides.xml
   fileFormatConfig:
     format: xml

@@ -6,7 +6,7 @@ metadata:
     {{- include "influxdb.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "influxdb.standalone.cmpdName" . }}
-  templateName: {{ include "influxdb.standalone.configurationTemplate" . }}
+  templateName: influxdb-config
   fileName: config.toml
   fileFormatConfig:
     format: toml

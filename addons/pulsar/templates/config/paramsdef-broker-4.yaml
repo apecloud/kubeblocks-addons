@@ -7,7 +7,7 @@ metadata:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "pulsar4.brokerCmpdName" . }}
-  templateName: {{ include "pulsar4.brokerConfigTplName" . }}
+  templateName: broker-config
   fileName: broker.conf
   fileFormatConfig:
     format: props-plus
