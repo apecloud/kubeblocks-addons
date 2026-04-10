@@ -33,7 +33,7 @@ image:
     tag: "9.3.2"
   agent:
     repository: apecloud/elasticsearch-agent
-    tag: "0.1.0"
+    tag: "0.1.1"
   # elasticsearch-dump: https://github.com/elasticsearch-dump/elasticsearch-dump
   esDump:
     repository: elasticdump/elasticsearch-dump
