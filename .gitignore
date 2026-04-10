@@ -25,3 +25,6 @@ temp
 # local debugging helm values
 values-override*.yaml
 .kb_agent_state.json
+
+# local claude code commands (not part of the shared repo)
+.claude/commands/
