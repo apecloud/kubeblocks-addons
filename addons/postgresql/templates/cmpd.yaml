@@ -71,7 +71,6 @@ spec:
       namespace: {{ $.Release.Namespace }}
       volumeName: pgbouncer-config
       defaultMode: 0777
-      externalManaged: true
     - name: postgresql-custom-metrics
       template: {{ include "postgresql.metricsConfiguration" (dict "major" .major "root" $) }}
       namespace: {{ $.Release.Namespace }}
@@ -189,6 +188,10 @@ spec:
       valueFrom:
         tlsVarRef:
           enabled: Optional
+    - name: POSTGRESQL_MEMORY_LIMIT
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required
   systemAccounts:
     - name: postgres
       initAccount: true
