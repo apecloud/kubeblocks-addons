@@ -1,10 +1,10 @@
-{{- if and .Values.remoteSetting.isStandby .Values.remoteSetting.primaryHost .Values.remoteSetting.primaryPort }}
+{{- if and .Values.remoteSetting.isStandby .Values.remoteSetting.primarySettings.host .Values.remoteSetting.primarySettings.port }}
 apiVersion: apps.kubeblocks.io/v1
 kind: ServiceDescriptor
 metadata:
   name: {{ include "kblib.clusterName" . }}-remote-desc
-  {{- if .Values.remoteSetting.serviceDescriptorNamespace }}
-  namespace: {{ .Values.remoteSetting.serviceDescriptorNamespace }}
+  {{- if .Values.remoteSetting.primarySettings.serviceDescriptorNamespace }}
+  namespace: {{ .Values.remoteSetting.primarySettings.serviceDescriptorNamespace }}
   {{- else }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
@@ -13,22 +13,22 @@ spec:
   serviceKind: elasticsearch
   serviceVersion: {{ .Values.version }}
   host:
-    value: "{{ .Values.remoteSetting.primaryHost }}"
+    value: "{{ .Values.remoteSetting.primarySettings.host }}"
   port:
-    value: "{{ .Values.remoteSetting.primaryPort }}"
-  {{- if and .Values.remoteSetting.standbyAccountSecret.name .Values.remoteSetting.standbyAccountSecret.userKey .Values.remoteSetting.standbyAccountSecret.passwordKey }}
+    value: "{{ .Values.remoteSetting.primarySettings.port }}"
+  {{- if and .Values.remoteSetting.primarySettings.accountSecret.name .Values.remoteSetting.primarySettings.accountSecret.userKey .Values.remoteSetting.primarySettings.accountSecret.passwordKey }}
   auth:
     username:
       valueFrom:
         secretKeyRef:
-          key: {{ .Values.remoteSetting.standbyAccountSecret.userKey }}
-          name: {{ .Values.remoteSetting.standbyAccountSecret.name }}
+          key: {{ .Values.remoteSetting.primarySettings.accountSecret.userKey }}
+          name: {{ .Values.remoteSetting.primarySettings.accountSecret.name }}
           optional: false
     password:
       valueFrom:
         secretKeyRef:
-          key: {{ .Values.remoteSetting.standbyAccountSecret.passwordKey }}
-          name: {{ .Values.remoteSetting.standbyAccountSecret.name }}
+          key: {{ .Values.remoteSetting.primarySettings.accountSecret.passwordKey }}
+          name: {{ .Values.remoteSetting.primarySettings.accountSecret.name }}
           optional: false
   {{- end }}
 {{- end }}
