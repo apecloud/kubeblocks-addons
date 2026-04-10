@@ -7,7 +7,7 @@ metadata:
     {{- include "rocketmq.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "rocketmq.compDefRocketMQBroker4" . }}
-  templateName: {{ include "rocketmq-broker4.configurationTemplate" . }}
+  templateName: rocketmq-broker-config
   fileName: broker.conf
   fileFormatConfig:
     format: props-plus

@@ -6,7 +6,7 @@ metadata:
     {{- include "clickhouse.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "clickhouse.cmpdName" . }}
-  templateName: {{ include "clickhouse.configurationTplName" . }}
+  templateName: clickhouse-tpl
   fileName: 00_default_overrides.xml
   fileFormatConfig:
     format: xml

@@ -6,7 +6,7 @@ metadata:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "pulsar2.bookkeeperCmpdName" . }}
-  templateName: {{ include "pulsar2.bookiesConfigTplName" . }}
+  templateName: bookies-config
   fileName: bookkeeper.conf
   fileFormatConfig:
     format: props-plus

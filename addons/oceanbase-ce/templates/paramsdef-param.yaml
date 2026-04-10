@@ -7,7 +7,7 @@ metadata:
     {{- include "oceanbase-ce.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "oceanbase-ce.compDefName" . }}
-  templateName: {{ include "oceanbase-ce.cm.config" . }}
+  templateName: oceanbase-config
   fileName: oceanbase.conf
   fileFormatConfig:
     format: properties
