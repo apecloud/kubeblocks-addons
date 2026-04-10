@@ -36,10 +36,10 @@ spec:
       elasticsearch: {{ $esRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
       prepare-plugins: {{ $imageRegistry }}/{{ $.Values.image.plugin.repository }}:{{ $.Values.image.plugin.tag }}
       install-plugins: {{ $esRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
-      es-agent: {{ $imageRegistry }}/{{ $.Values.image.agent.repository }}:{{ $.Values.image.agent.tag }}
       exporter: {{ $imageRegistry }}/{{ $.Values.image.exporter.repository }}:{{ $.Values.image.exporter.tag }}
       memberleave: {{ $imageRegistry }}/{{ $.Values.image.tools.repository }}:{{ $.Values.image.tools.tag }}
       install-es-agent: {{ $imageRegistry }}/{{ $.Values.image.agent.repository }}:{{ $.Values.image.agent.tag }}
+      es-agent: {{ $esRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
 {{- end }}
 {{- end }}
 {{- end }}
