@@ -54,7 +54,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "qdrant.annotations" -}}
-{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "qdrant.apiVersion" . }}
 {{- end }}
 
