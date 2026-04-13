@@ -54,7 +54,9 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "elasticsearch.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "elasticsearch.apiVersion" . }}
+apps.kubeblocks.io/skip-immutable-check: "true"
 {{- end }}
 
 {{/*
