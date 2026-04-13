@@ -2,7 +2,7 @@
 
 IMAGE_REGISTRY ?= apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
 IMAGE_REPOSITORY ?= apecloud/elasticsearch-agent
-IMAGE_TAG ?= 0.1.0
+IMAGE_TAG ?= 0.1.1
 FULL_IMAGE_NAME = $(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY):$(IMAGE_TAG)
 PLATFORMS ?= linux/amd64,linux/arm64
 
