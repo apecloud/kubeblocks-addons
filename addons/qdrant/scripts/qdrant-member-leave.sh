@@ -15,20 +15,28 @@ load_common_library() {
 load_common_library
 current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$QDRANT_POD_FQDN_LIST" "$CURRENT_POD_NAME")
 
-curl http://${current_pod_fqdn}:6333/cluster | grep $KB_LEAVE_MEMBER_POD_NAME
+if [ "${TLS_ENABLED:-}" = "true" ]; then
+  SCHEME="https"
+  CURL_TLS="-k"
+else
+  SCHEME="http"
+  CURL_TLS=""
+fi
+
+curl $CURL_TLS ${SCHEME}://${current_pod_fqdn}:6333/cluster | grep $KB_LEAVE_MEMBER_POD_NAME
 # if the member is not in the cluster, exit directly
 if [ $? -ne 0 ]; then
   echo "member ${KB_LEAVE_MEMBER_POD_NAME} is not in the cluster"
   exit 0
 fi
 
-leave_peer_uri=http://${KB_LEAVE_MEMBER_POD_FQDN}:6333
-cluster_info=`curl -s ${leave_peer_uri}/cluster`
+leave_peer_uri=${SCHEME}://${KB_LEAVE_MEMBER_POD_FQDN}:6333
+cluster_info=`curl $CURL_TLS -s ${leave_peer_uri}/cluster`
 leave_peer_id=`echo "${cluster_info}"| jq -r .result.peer_id`
 leader_peer_id=`echo "${cluster_info}" | jq -r .result.raft_info.leader`
 
 move_shards() {
-    cols=`curl -s ${leave_peer_uri}/collections`
+    cols=`curl $CURL_TLS -s ${leave_peer_uri}/collections`
     col_count=`echo ${cols} | jq -r '.result.collections | length'`
     if [[ ${col_count} -eq 0 ]]; then
         echo "no collections found in the cluster"
@@ -36,7 +44,7 @@ move_shards() {
     fi
     col_names=`echo ${cols} | jq -r '.result.collections[].name'`
     for col_name in ${col_names}; do
-        col_cluster_info=`curl -s ${leave_peer_uri}/collections/${col_name}/cluster`
+        col_cluster_info=`curl $CURL_TLS -s ${leave_peer_uri}/collections/${col_name}/cluster`
         col_shard_count=`echo ${col_cluster_info} | jq -r '.result.local_shards[] | length'`
         if [[ ${col_shard_count} -eq 0 ]]; then
             echo "no shards found in collection ${col_name}"
@@ -46,13 +54,13 @@ move_shards() {
         leave_shard_ids=`echo ${col_cluster_info} | jq -r '.result.local_shards[].shard_id'`
         for shard_id in ${leave_shard_ids}; do
             echo "move shard ${shard_id} in col_name ${col_name} from ${leave_peer_id} to ${leader_peer_id}"
-            curl -s -X POST -H "Content-Type: application/json" \
+            curl $CURL_TLS -s -X POST -H "Content-Type: application/json" \
                 -d '{"move_shard":{"shard_id": '${shard_id}',"to_peer_id": '${leader_peer_id}',"from_peer_id": '${leave_peer_id}}}'' \
                 ${leave_peer_uri}/collections/${col_name}/cluster
         done
 
         while true; do
-            col_cluster_info=`curl -s ${leave_peer_uri}/collections/${col_name}/cluster`
+            col_cluster_info=`curl $CURL_TLS -s ${leave_peer_uri}/collections/${col_name}/cluster`
             leave_shard_ids=`echo ${col_cluster_info} | jq -r '.result.local_shards[].shard_id'`
             if [ -z "${leave_shard_ids}" ]; then
                 echo "all shards in collection ${col_name} has been moved"
@@ -65,7 +73,7 @@ move_shards() {
 
 remove_peer() {
     echo "remove peer ${leave_peer_id} from cluster"
-    curl -v -XDELETE ${leave_peer_uri}/cluster/peer/${leave_peer_id}
+    curl $CURL_TLS -v -XDELETE ${leave_peer_uri}/cluster/peer/${leave_peer_id}
 }
 
 leave_member() {
