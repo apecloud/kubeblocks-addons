@@ -12,7 +12,7 @@ auth_type = md5
 pool_mode = session
 ignore_startup_parameters = extra_float_digits
 {{- $max_client_conn := 10000 }}
-{{- $phy_memory := $POSTGRESQL_MEMORY_LIMIT }}
+{{- $phy_memory := int64 $.POSTGRESQL_MEMORY_LIMIT }}
 {{- if gt $phy_memory 0 }}
 {{- $max_client_conn = min ( div $phy_memory 9531392 ) 5000 }}
 {{- end }}
