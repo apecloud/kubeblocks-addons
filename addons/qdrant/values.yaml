@@ -42,4 +42,6 @@ debugEnabled: true
 
 dataMountPath: /qdrant/storage
 
+tlsMountPath: /qdrant/tls
+
 clusterDomain: "cluster.local"
