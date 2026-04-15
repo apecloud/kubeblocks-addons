@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "starrocks.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks
   description: A StarRocks FE component definition for Kubernetes
   # The FE can only perform leader election when the majority of members are active.

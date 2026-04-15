@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "neon.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   description: A neon safekeeper component definition for Kubernetes
   provider: KubeBlocks
   serviceKind: neon-safekeeper

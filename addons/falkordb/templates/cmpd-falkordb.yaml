@@ -10,6 +10,7 @@ metadata:
   annotations:
     {{- include "falkordb.annotations" $ | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks
   description: A falkordb v{{ .major }}.0 component definition for Kubernetes
   serviceKind: falkordb
