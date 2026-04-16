@@ -103,7 +103,7 @@ zookeeper:
       size: 8
     log:
       storageClassName:
-      size: 8
+      size: 2
 
   ## @param keeper.tolerations Tolerations for *Keeper pods assignment
   ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
