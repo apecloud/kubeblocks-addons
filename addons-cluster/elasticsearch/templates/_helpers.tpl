@@ -143,3 +143,24 @@ systemAccounts:
     namespace: {{ .Release.Namespace }}
 {{- end }}
 {{- end }}
+
+{{- define "elasticsearch-cluster.remoteServiceRef" }}
+{{- if and .Values.remoteSetting.isStandby .Values.remoteSetting.primarySettings.host .Values.remoteSetting.primarySettings.port }}
+serviceRefs:
+- name: remote-instances
+  {{- if .Values.remoteSetting.primarySettings.serviceDescriptorNamespace }}
+  namespace: {{ .Values.remoteSetting.primarySettings.serviceDescriptorNamespace }}
+  {{- end }}
+  serviceDescriptor: {{ include "kblib.clusterName" . }}-remote-desc
+{{- end }}
+{{- end -}}
+
+{{- define "elasticsearch-cluster.envs" }}
+env:
+  {{- if .Values.remoteSetting.isStandby }}
+  - name: ELASTICSEARCH_REPLAY_START_TIME_MS
+    value: "{{ .Values.remoteSetting.replaySettings.startTimeMs }}"
+  - name: ELASTICSEARCH_REPLAY_IS_START_AFTER_RUNNING
+    value: "{{ .Values.remoteSetting.replaySettings.isStartAfterRunning }}"
+  {{- end }}
+{{- end -}}

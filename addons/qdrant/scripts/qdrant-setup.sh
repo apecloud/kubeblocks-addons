@@ -23,13 +23,37 @@ load_common_library
 current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$QDRANT_POD_FQDN_LIST" "$CURRENT_POD_NAME")
 boostrap_node_fqdn=$(get_boostrap_node)
 
+# TLS setup
+if [ "${TLS_ENABLED:-}" = "true" ]; then
+  cat > /tmp/tls.yaml <<EOF
+service:
+  enable_tls: true
+
+tls:
+  cert: ${TLS_MOUNT_PATH}/tls.crt
+  key: ${TLS_MOUNT_PATH}/tls.key
+  ca_cert: ${TLS_MOUNT_PATH}/ca.crt
+
+cluster:
+  p2p:
+    enable_tls: true
+EOF
+  TLS_CONFIG_ARG="--config-path /tmp/tls.yaml"
+  SCHEME="https"
+  CURL_TLS="-k"
+else
+  TLS_CONFIG_ARG=""
+  SCHEME="http"
+  CURL_TLS=""
+fi
+
 if [ "$current_pod_fqdn" == "$boostrap_node_fqdn" ]; then
-  ./qdrant --uri "http://${current_pod_fqdn}:6335"
+  exec ./qdrant --uri "${SCHEME}://${current_pod_fqdn}:6335" $TLS_CONFIG_ARG
 else
   echo "BOOTSTRAP_HOSTNAME: ${boostrap_node_fqdn}"
-  until ./tools/curl http://${boostrap_node_fqdn}:6333/cluster; do
+  until ./tools/curl $CURL_TLS ${SCHEME}://${boostrap_node_fqdn}:6333/cluster; do
     echo "INFO: wait for bootstrap node starting..."
     sleep 1;
   done
-  ./qdrant --bootstrap "http://${boostrap_node_fqdn}:6335" --uri "http://${current_pod_fqdn}:6335"
+  exec ./qdrant --bootstrap "${SCHEME}://${boostrap_node_fqdn}:6335" --uri "${SCHEME}://${current_pod_fqdn}:6335" $TLS_CONFIG_ARG
 fi

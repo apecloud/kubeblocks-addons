@@ -111,7 +111,7 @@ vanilla-postgresql-reload-tools-script
 {{- define "vanilla-postgresql.config.reconfigureAction" -}}
 reconfigure:
   exec:
-    container: postgres
+    container: postgresql
     command:
       - /bin/sh
       - -c

@@ -23,8 +23,15 @@ function save_backup_size() {
     echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
 }
 
-endpoint=http://${DP_DB_HOST}:6333
-collectionRes=$(curl ${endpoint}/collections)
+if [ "${TLS_ENABLED:-}" = "true" ]; then
+  endpoint=https://${DP_DB_HOST}:6333
+  CURL_TLS="-k"
+else
+  endpoint=http://${DP_DB_HOST}:6333
+  CURL_TLS=""
+fi
+
+collectionRes=$(curl $CURL_TLS ${endpoint}/collections)
 collections=$(echo ${collectionRes}  | jq -r '.result.collections[].name')
 if [ -z $collections ]; then
    save_backup_size
@@ -33,15 +40,15 @@ fi
 # snapshot all collections
 for c in ${collections}; do
   echo "INFO: start to snapshot collection ${c}..."
-  snapshot=$(curl -XPOST ${endpoint}/collections/${c}/snapshots)
+  snapshot=$(curl $CURL_TLS -XPOST ${endpoint}/collections/${c}/snapshots)
   status=$(echo ${snapshot} | jq '.status')
   if [ "${status}" != "ok" ] && [ "${status}" != "\"ok\"" ]; then
     echo "backup failed, status: ${status}"
     exit 1
   fi
   name=$(echo ${snapshot} | jq -r '.result.name')
-  curl -v --fail-with-body ${endpoint}/collections/${c}/snapshots/${name} | datasafed push - "/${c}.snapshot"
-  curl -XDELETE ${endpoint}/collections/${c}/snapshots/${name}
+  curl $CURL_TLS -v --fail-with-body ${endpoint}/collections/${c}/snapshots/${name} | datasafed push - "/${c}.snapshot"
+  curl $CURL_TLS -XDELETE ${endpoint}/collections/${c}/snapshots/${name}
   echo "INFO: snapshot collection ${c} successfully."
 done
 save_backup_size

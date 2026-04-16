@@ -27,7 +27,6 @@ spec:
 {{- end }}
   releases:
 {{- range .Values.esVersions }}
-{{- $esRegistry := .imageRegistry | default $imageRegistry }}
 {{- range .minors }}
 {{- if not (index . 3) }}
   - name: {{ index . 0 }}
@@ -39,7 +38,7 @@ spec:
       exporter: {{ $imageRegistry }}/{{ $.Values.image.exporter.repository }}:{{ $.Values.image.exporter.tag }}
       memberleave: {{ $imageRegistry }}/{{ $.Values.image.tools.repository }}:{{ $.Values.image.tools.tag }}
       install-es-agent: {{ $imageRegistry }}/{{ $.Values.image.agent.repository }}:{{ $.Values.image.agent.tag }}
-      es-agent: {{ $esRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
-{{- end }}
+      es-agent: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      prepare-custom-plugins: {{ $imageRegistry }}/{{ $.Values.image.customPlugins.repository }}:{{ $.Values.image.customPlugins.tag }}
 {{- end }}
 {{- end }}

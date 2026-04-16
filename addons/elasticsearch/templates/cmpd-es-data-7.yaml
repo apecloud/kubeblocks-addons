@@ -17,12 +17,9 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
       restartOnFileChange: true
+  {{ include "elasticsearch.remoteServiceRef" . | nindent 2 }}
   vars:
-    - name: ELASTICSEARCH_VERSION
-      valueFrom:
-        componentVarRef:
-          optional: false
-          serviceVersion: Required
+    {{ include "elasticsearch.commonVars" . | nindent 4 }}  
     - name: ELASTIC_USER_PASSWORD
       valueFrom:
         credentialVarRef:

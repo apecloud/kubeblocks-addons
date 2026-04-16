@@ -88,6 +88,7 @@ network:
   publish_host: ${POD_IP}
 
 node:
+  #__CUSTOM_PLUGIN_EXTRA_CONFIGS__
   attr:
     k8s_node_name: ${NODE_NAME}
     {{- if eq $zoneAwareEnabled "true" }}

@@ -17,7 +17,7 @@ metadata:
     {{- include "redis.labels" $ | nindent 4 }}
 spec:
   componentDef: {{ printf "%s-%s" .clusterComponentDef  $.Chart.Version }}
-  templateName: {{ printf "redis-cluster%s-config-template-%s" .major $.Chart.Version }}
+  templateName: redis-cluster-config
   fileName: redis.conf
   fileFormatConfig:
     format: redis

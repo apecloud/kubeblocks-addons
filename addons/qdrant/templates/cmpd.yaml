@@ -13,6 +13,12 @@ spec:
   serviceKind: qdrant
   updateStrategy: BestEffortParallel
   minReadySeconds: 10
+  tls:
+    volumeName: tls
+    mountPath: {{ .Values.tlsMountPath }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
   services:
   - name: qdrant
     serviceName: qdrant
@@ -56,6 +62,13 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+          optional: true
+    - name: TLS_MOUNT_PATH
+      value: {{ .Values.tlsMountPath }}
   lifecycleActions:
     memberLeave:
       exec:
@@ -91,11 +104,15 @@ spec:
       securityContext:
         runAsUser: 0
       livenessProbe:
+        exec:
+          command:
+          - /bin/sh
+          - -c
+          - |
+            scheme=http; tlsArgs=""
+            [ "${TLS_ENABLED}" = "true" ] && scheme=https && tlsArgs="-k"
+            /qdrant/tools/curl -sf $tlsArgs ${scheme}://localhost:6333/ > /dev/null
         failureThreshold: 3
-        httpGet:
-          path: /
-          port: tcp-qdrant
-          scheme: HTTP
         periodSeconds: 15
         successThreshold: 1
         timeoutSeconds: 10
@@ -105,7 +122,9 @@ spec:
           - /bin/sh
           - -c
           - |
-            consensus_status=`/qdrant/tools/curl -s http://localhost:6333/cluster | /qdrant/tools/jq -r .result.consensus_thread_status.consensus_thread_status`
+            scheme=http; tlsArgs=""
+            [ "${TLS_ENABLED}" = "true" ] && scheme=https && tlsArgs="-k"
+            consensus_status=$(/qdrant/tools/curl -sf $tlsArgs ${scheme}://localhost:6333/cluster | /qdrant/tools/jq -r .result.consensus_thread_status.consensus_thread_status)
             if [ "$consensus_status" != "working" ]; then
               echo "consensus stopped"
               exit 1
@@ -116,12 +135,16 @@ spec:
         successThreshold: 1
         timeoutSeconds: 3
       startupProbe:
-        failureThreshold: 18
-        httpGet:
-          path: /
-          port: tcp-qdrant
-          scheme: HTTP
-        periodSeconds: 10
+        exec:
+          command:
+          - /bin/sh
+          - -c
+          - |
+            scheme=http; tlsArgs=""
+            [ "${TLS_ENABLED}" = "true" ] && scheme=https && tlsArgs="-k"
+            /qdrant/tools/curl -sf $tlsArgs ${scheme}://localhost:6333/ > /dev/null
+        failureThreshold: 60
+        periodSeconds: 30
         successThreshold: 1
         timeoutSeconds: 3
       terminationMessagePath: /dev/termination-log
@@ -144,8 +167,7 @@ spec:
         containerPort: 6334
       - name: p2p
         containerPort: 6335
-      command: ["/bin/sh", "-c"]
-      args: ["/qdrant/scripts/setup.sh"]
+      command: ["/qdrant/scripts/setup.sh"]
       env:
       - name: QDRANT__TELEMETRY_DISABLED
         value: "true"
@@ -158,6 +180,10 @@ spec:
           fieldRef:
             apiVersion: v1
             fieldPath: metadata.name
+      - name: TLS_ENABLED
+        value: "$(TLS_ENABLED)"
+      - name: TLS_MOUNT_PATH
+        value: {{ .Values.tlsMountPath | quote }}
     dnsPolicy: ClusterFirst
     enableServiceLinks: true
     volumes:
