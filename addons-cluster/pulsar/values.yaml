@@ -12,7 +12,6 @@ terminationPolicy: Delete
 
 ## Annotation configurations
 commonAnnotations:
-  resource.kubeblocks.io/ignore-constraint: "true"
 
 image:
   registry: docker.io
