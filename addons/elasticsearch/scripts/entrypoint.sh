@@ -73,7 +73,7 @@ fi
 TMP_NODE_EXTRA_CONFIG=$(mktemp /tmp/es-node-extra-config.XXXXXX)
 : > "${TMP_NODE_EXTRA_CONFIG}"
 
-if [ "${ELASTICSEARCH_MODE}" = "standby" ] && [ -n "${REMOTE_PRIMARY_HOST}" ] && [ -n "${REMOTE_PRIMARY_PORT}" ] && [ -n "${ELASTICSEARCH_REPLAY_START_TIME_MS}" ]; then
+if [ -n "${REMOTE_PRIMARY_HOST}" ] && [ -n "${REMOTE_PRIMARY_PORT}" ] && [ -n "${ELASTICSEARCH_REPLAY_START_TIME_MS}" ]; then
   {
     printf '  source_extract_start_time: %s\n' "${ELASTICSEARCH_REPLAY_START_TIME_MS}"
     printf '  source_extract_idx_host: "%s:%s"\n' "${REMOTE_PRIMARY_HOST}" "${REMOTE_PRIMARY_PORT}"

@@ -157,12 +157,6 @@ serviceRefs:
 
 {{- define "elasticsearch-cluster.envs" }}
 env:
-  - name: ELASTICSEARCH_MODE
-    {{- if .Values.remoteSetting.isStandby }}
-    value: "standby"
-    {{- else }}
-    value: "{{ .Values.mode }}"
-    {{- end }}
   {{- if .Values.remoteSetting.isStandby }}
   - name: ELASTICSEARCH_REPLAY_START_TIME_MS
     value: "{{ .Values.remoteSetting.replaySettings.startTimeMs }}"
