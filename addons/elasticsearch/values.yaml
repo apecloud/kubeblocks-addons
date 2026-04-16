@@ -30,7 +30,7 @@ image:
     tag: 0.1.0
   customPlugins:
     repository: apecloud/elasticsearch-custom-plugins
-    tag: 0.1.0
+    tag: 0.1.2
   kibana:
     repository: apecloud/kibana
     tag: "8.8.2"
