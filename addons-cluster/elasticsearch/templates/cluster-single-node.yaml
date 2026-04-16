@@ -24,6 +24,8 @@ spec:
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "elasticsearch-cluster.accounts" . | indent 6 }}
+      {{- include "elasticsearch-cluster.remoteServiceRef" . | indent 6 }}
+      {{- include "elasticsearch-cluster.envs" . | indent 6 }}
   {{- if .Values.enableKibana }}
     - name: kibana
       componentDef: kibana-{{ include "elasticsearch.majorVersion" . }}
