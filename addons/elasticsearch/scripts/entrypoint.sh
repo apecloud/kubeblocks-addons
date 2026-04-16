@@ -69,6 +69,44 @@ fi
 if [ -f "${CLUSTER_FORMED_FILE}" ]; then
   sed -i '/# INITIAL_MASTER_NODES_BLOCK_START/,/# INITIAL_MASTER_NODES_BLOCK_END/d' config/elasticsearch.yml
 fi
+
+TMP_NODE_EXTRA_CONFIG=$(mktemp /tmp/es-node-extra-config.XXXXXX)
+: > "${TMP_NODE_EXTRA_CONFIG}"
+
+if [ -n "${REMOTE_PRIMARY_HOST}" ] && [ -n "${REMOTE_PRIMARY_PORT}" ] && [ -n "${ELASTICSEARCH_REPLAY_START_TIME_MS}" ]; then
+  {
+    printf '  source_extract_start_time: %s\n' "${ELASTICSEARCH_REPLAY_START_TIME_MS}"
+    printf '  source_extract_idx_host: "%s:%s"\n' "${REMOTE_PRIMARY_HOST}" "${REMOTE_PRIMARY_PORT}"
+    printf '  source_extract_idx_user: "%s"\n' "${REMOTE_PRIMARY_USER:-}"
+    printf '  source_extract_idx_password: "%s"\n' "${REMOTE_PRIMARY_PASSWORD:-}"
+    if [ "${ELASTICSEARCH_REPLAY_IS_START_AFTER_RUNNING}" = "true" ]; then
+      printf '  source_extract_enabled: true\n'
+    fi
+  } >> "${TMP_NODE_EXTRA_CONFIG}"
+fi
+
+if [ -d /usr/share/elasticsearch/plugins ] && [ -n "$(find /usr/share/elasticsearch/plugins -mindepth 1 -maxdepth 1 -type d -name 'es-extract-*' -print -quit)" ]; then
+  {
+    printf '  extract_idx_host: "%s:%s"\n' "${ELASTICSEARCH_HOST}" "${ELASTICSEARCH_PORT:-9200}"
+    printf '  extract_idx_user: "%s"\n' "${ELASTIC_USERNAME:-elastic}"
+    printf '  extract_idx_password: "%s"\n' "${ELASTIC_PASSWORD:-}"
+  } >> "${TMP_NODE_EXTRA_CONFIG}"
+fi
+
+if [ -s "${TMP_NODE_EXTRA_CONFIG}" ]; then
+  TMP_NODE_EXTRA_SED_SCRIPT=$(mktemp /tmp/es-node-extra-sed.XXXXXX)
+  {
+    printf '/^  #__CUSTOM_PLUGIN_EXTRA_CONFIGS__$/c\\\n'
+    sed 's/[\\&]/\\&/g; s/$/\\/' "${TMP_NODE_EXTRA_CONFIG}"
+  } > "${TMP_NODE_EXTRA_SED_SCRIPT}"
+  sed -i -f "${TMP_NODE_EXTRA_SED_SCRIPT}" config/elasticsearch.yml
+  rm -f "${TMP_NODE_EXTRA_SED_SCRIPT}"
+else
+  sed -i '/^  #__CUSTOM_PLUGIN_EXTRA_CONFIGS__$/d' config/elasticsearch.yml
+fi
+
+rm -f "${TMP_NODE_EXTRA_CONFIG}"
+
 if [ -f /bin/tini ]; then
   /bin/tini -- /usr/local/bin/docker-entrypoint.sh
 elif [ -f /tini ]; then
