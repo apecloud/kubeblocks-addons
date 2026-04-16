@@ -1,29 +1,29 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "elasticsearchData7.cmpdName" . }}
+  name: {{ include "elasticsearch9.cmpdName" . }}
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
   annotations:
     {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
-  serviceVersion: 7.10.2
-  replicasLimit:
-    minReplicas: 2
-    maxReplicas: 16384
+  serviceVersion: 9.3.2
   configs:
     - name: es-cm
-      template: {{ include "elasticsearch7.configTplName" . }}
+      template: {{ include "elasticsearch9.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
       restartOnFileChange: true
-  {{ include "elasticsearch.remoteServiceRef" . | nindent 2 }}
   vars:
-    {{ include "elasticsearch.commonVars" . | nindent 4 }}  
+    - name: ELASTICSEARCH_VERSION
+      valueFrom:
+        componentVarRef:
+          optional: false
+          serviceVersion: Required
     - name: ELASTIC_USER_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "elasticsearchMaster7.cmpdName" . }}
+          compDef: {{ include "elasticsearch9.cmpdName" . }}
           name: elastic
           optional: false
           password: Required
@@ -32,14 +32,14 @@ spec:
     - name: KIBANA_SYSTEM_USER_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "elasticsearchMaster7.cmpdName" . }}
+          compDef: {{ include "elasticsearch9.cmpdName" . }}
           name: kibana_system
           optional: false
           password: Required
     - name: ELASTICSEARCH_HOST
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "elasticsearchData7.cmpdName" . }}
+          compDef: {{ include "elasticsearch9.cmpdName" . }}
           name: http
           host: Required
     - name: CLUSTER_DOMAIN
@@ -63,8 +63,7 @@ spec:
         clusterVarRef:
           clusterName: Required
     - name: ELASTICSEARCH_ROLES
-      value: data,ingest
-    {{/* ALL_CMP_REPLICA_LIST ='master:podName0,podName1,podName2;data:podName0,podName1'*/}}
+      value: master,data,ingest,transform
     - name: ALL_CMP_REPLICA_LIST
       valueFrom:
         componentVarRef:
@@ -77,7 +76,6 @@ spec:
               flattenFormat:
                 delimiter: ";"
                 keyValueDelimiter: ":"
-    {{/* ALL_CMP_REPLICA_FQDN ='master:podFQDN0,podFQDN1,podFQDN2;data:podFQDN0,podFQDN1'*/}}
     - name: ALL_CMP_REPLICA_FQDN
       valueFrom:
         componentVarRef:

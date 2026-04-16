@@ -5,7 +5,22 @@
 
 {{- $mode := "multi-node" }}
 {{- if index . "mode" }}
-{{- $mode = $.mode }}
+  {{- $mode = $.mode }}
+{{- else }}
+  {{- $totalPods := 0 }}
+  {{- $parts := splitList ";" .ALL_CMP_REPLICA_LIST }}
+  {{- range $part := $parts }}
+    {{- if $part }}
+      {{- $kv := splitList ":" $part }}
+      {{- if eq (len $kv) 2 }}
+        {{- $pods := splitList "," (index $kv 1) }}
+        {{- $totalPods = add $totalPods (len $pods) }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if eq $totalPods 1 }}
+    {{- $mode = "single-node" }}
+  {{- end }}
 {{- end }}
 
 {{- $esVersion := "0.1.0" }}
@@ -30,30 +45,33 @@ cluster:
 discovery:
 {{- if eq $mode "multi-node" }}
   zen:
-    {{- $masterCount := 0 }}
+    {{- $masterList := list }}
     {{- $parts := splitList ";" .ALL_CMP_REPLICA_FQDN }}
     {{- range $part := $parts }}
-      {{- if hasPrefix "master:" $part }}
-        {{- $masterPart := trimPrefix "master:" $part }}
-        {{- $masters := splitList "," $masterPart }}
-        {{- $masterCount = len $masters }}
+      {{- if $part }}
+        {{- $kv := splitList ":" $part }}
+        {{- if eq (len $kv) 2 }}
+          {{- $compName := index $kv 0 }}
+          {{- if or (eq $compName "master") (eq $compName "m") (eq $compName "mdit") (eq $compName "elasticsearch") }}
+            {{- $masters := splitList "," (index $kv 1) }}
+            {{- range $master := $masters }}
+              {{- $masterList = append $masterList $master }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
       {{- end }}
     {{- end }}
     # Calculate minimum_master_nodes as quorum: (master_count / 2) + 1
     # This ensures cluster stability and prevents data loss
-    minimum_master_nodes: {{ add (div $masterCount 2) 1 }}
+    minimum_master_nodes: {{ add (div (len $masterList) 2) 1 }}
     ping:
       unicast:
+        {{- if $masterList }}
         hosts:
-  {{- range $part := $parts }}
-    {{- if hasPrefix "master:" $part }}
-      {{- $masterPart := trimPrefix "master:" $part }}
-      {{- $masters := splitList "," $masterPart }}
-     {{- range $master := $masters }}
+          {{- range $master := $masterList }}
         - {{ $master }}
-      {{- end }}
-    {{- end }}
-  {{- end }}
+          {{- end }}
+        {{- end }}
 {{- else }}
   type: {{ $mode }}
 {{- end }}

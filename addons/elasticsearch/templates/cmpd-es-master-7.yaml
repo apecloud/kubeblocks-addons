@@ -5,10 +5,9 @@ metadata:
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
   annotations:
-    apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
-  serviceVersion: 7.10.1
+  serviceVersion: 7.10.2
   configs:
     - name: es-cm
       template: {{ include "elasticsearch7.configTplName" . }}

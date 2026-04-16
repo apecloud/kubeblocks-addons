@@ -2,10 +2,53 @@
 {{- $defaultRoles := .ELASTICSEARCH_ROLES }}
 {{- $namespace := .CLUSTER_NAMESPACE }}
 {{- $zoneAwareEnabled := index . "ZONE_AWARE_ENABLED" }}
+{{- $currentCompShortName := index . "ES_COMPONENT_SHORT_NAME" }}
+
+{{- /* Determine if current component is master-eligible */}}
+{{- $isMasterEligible := false }}
+{{- range $r := splitList "," $defaultRoles }}
+  {{- if eq (trim $r) "master" }}{{- $isMasterEligible = true }}{{- end }}
+{{- end }}
+
+{{- /* Parse ALL_CMP_REPLICA_LIST.
+     Formats:
+     - Single component (no comp prefix): "pod1" or "pod1,pod2"
+     - Multi-component (Flatten): "comp1:pod1,pod2;comp2:pod3,pod4"  */}}
+{{- $allPods := list }}
+{{- $currentCompPods := list }}
+{{- range $segment := splitList ";" .ALL_CMP_REPLICA_LIST }}
+  {{- if $segment }}
+    {{- $kv := splitList ":" $segment }}
+    {{- if gt (len $kv) 1 }}
+      {{- $compName := index $kv 0 }}
+      {{- $podsPart := index $kv 1 }}
+      {{- range $p := splitList "," $podsPart }}
+        {{- if $p }}
+          {{- $allPods = append $allPods $p }}
+          {{- if eq $compName $currentCompShortName }}
+            {{- $currentCompPods = append $currentCompPods $p }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- else }}
+      {{- /* Single component: no key prefix */}}
+      {{- range $p := splitList "," (index $kv 0) }}
+        {{- if $p }}
+          {{- $allPods = append $allPods $p }}
+          {{- $currentCompPods = append $currentCompPods $p }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
 
 {{- $mode := "multi-node" }}
 {{- if index . "mode" }}
-{{- $mode = $.mode }}
+  {{- $mode = $.mode }}
+{{- else }}
+  {{- if eq (len $allPods) 1 }}
+    {{- $mode = "single-node" }}
+  {{- end }}
 {{- end }}
 
 {{- $esVersion := "0.1.0" }}
@@ -27,36 +70,42 @@ cluster:
         attributes: k8s_node_name
         {{- end }}
 # INITIAL_MASTER_NODES_BLOCK_START
-{{- if eq $mode "multi-node" }}
+{{- if and (eq $mode "multi-node") $isMasterEligible $currentCompPods }}
   initial_master_nodes:
-  {{- $parts := splitList ";" .ALL_CMP_REPLICA_LIST }}
-  {{- range $part := $parts }}
-    {{- if hasPrefix "master:" $part }}
-      {{- $masterPart := trimPrefix "master:" $part }}
-      {{- $masters := splitList "," $masterPart }}
-     {{- range $master := $masters }}
+    {{- range $master := $currentCompPods }}
   - {{ $master }}
+    {{- end }}
+{{- end }}
+# INITIAL_MASTER_NODES_BLOCK_END
+
+{{- $seedHosts := list }}
+{{- if eq $mode "multi-node" }}
+  {{- /* Parse ALL_CMP_REPLICA_FQDN, same format as ALL_CMP_REPLICA_LIST */}}
+  {{- range $segment := splitList ";" .ALL_CMP_REPLICA_FQDN }}
+    {{- if $segment }}
+      {{- $kv := splitList ":" $segment }}
+      {{- $fqdnsPart := "" }}
+      {{- if gt (len $kv) 1 }}
+        {{- $fqdnsPart = index $kv 1 }}
+      {{- else }}
+        {{- $fqdnsPart = index $kv 0 }}
+      {{- end }}
+      {{- range $f := splitList "," $fqdnsPart }}
+        {{- if $f }}{{- $seedHosts = append $seedHosts $f }}{{- end }}
       {{- end }}
     {{- end }}
   {{- end }}
 {{- end }}
-# INITIAL_MASTER_NODES_BLOCK_END
 
+{{- if or (eq $mode "single-node") $seedHosts }}
 discovery:
-# the default of discovery.type is multi-node, but can't set it to multi-node explicitly in 7.x version
-{{- if eq $mode "single-node" }}
-  type: {{ $mode }}
-{{- end }}
-{{- if eq $mode "multi-node" }}
+  {{- if eq $mode "single-node" }}
+  type: single-node
+  {{- else }}
+  # the default of discovery.type is multi-node, but can't set it to multi-node explicitly in 7.x version
   seed_hosts:
-  {{- $parts := splitList ";" .ALL_CMP_REPLICA_FQDN }}
-  {{- range $part := $parts }}
-    {{- if hasPrefix "master:" $part }}
-      {{- $masterPart := trimPrefix "master:" $part }}
-      {{- $masters := splitList "," $masterPart }}
-     {{- range $master := $masters }}
-  - {{ $master }}
-      {{- end }}
+    {{- range $host := $seedHosts }}
+  - {{ $host }}
     {{- end }}
   {{- end }}
 {{- end }}

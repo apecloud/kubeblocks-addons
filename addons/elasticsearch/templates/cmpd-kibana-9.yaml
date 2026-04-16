@@ -1,16 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "kibana7.cmpdName" . }}
+  name: {{ include "kibana9.cmpdName" . }}
   annotations:
     {{- include "elasticsearch.annotations" . | nindent 4 }}
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
-  serviceVersion: 7.10.2
+  serviceVersion: 9.3.2
   configs:
   - name: kibana-cm
-    template: {{ include "kibana7.configTplName" . }}
+    template: {{ include "kibana9.configTplName" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: kibana-cm
     restartOnFileChange: true

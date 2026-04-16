@@ -1,25 +1,25 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "elasticsearchData7.cmpdName" . }}
+  name: {{ include "elasticsearchTransform7.cmpdName" . }}
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
   annotations:
     {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
   serviceVersion: 7.10.2
-  replicasLimit:
-    minReplicas: 2
-    maxReplicas: 16384
   configs:
     - name: es-cm
       template: {{ include "elasticsearch7.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
       restartOnFileChange: true
-  {{ include "elasticsearch.remoteServiceRef" . | nindent 2 }}
   vars:
-    {{ include "elasticsearch.commonVars" . | nindent 4 }}  
+    - name: ELASTICSEARCH_VERSION
+      valueFrom:
+        componentVarRef:
+          optional: false
+          serviceVersion: Required
     - name: ELASTIC_USER_PASSWORD
       valueFrom:
         credentialVarRef:
@@ -39,7 +39,7 @@ spec:
     - name: ELASTICSEARCH_HOST
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "elasticsearchData7.cmpdName" . }}
+          compDef: {{ include "elasticsearchTransform7.cmpdName" . }}
           name: http
           host: Required
     - name: CLUSTER_DOMAIN
@@ -63,7 +63,7 @@ spec:
         clusterVarRef:
           clusterName: Required
     - name: ELASTICSEARCH_ROLES
-      value: data,ingest
+      value: transform
     {{/* ALL_CMP_REPLICA_LIST ='master:podName0,podName1,podName2;data:podName0,podName1'*/}}
     - name: ALL_CMP_REPLICA_LIST
       valueFrom:

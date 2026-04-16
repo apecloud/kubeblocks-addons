@@ -97,7 +97,6 @@ discovery:
   {{- if eq $mode "single-node" }}
   type: single-node
   {{- else }}
-  # the default of discovery.type is multi-node, but can't set it to multi-node explicitly in 7.x version
   seed_hosts:
     {{- range $host := $seedHosts }}
   - {{ $host }}
@@ -117,7 +116,6 @@ network:
   publish_host: ${POD_IP}
 
 node:
-  #__CUSTOM_PLUGIN_EXTRA_CONFIGS__
   attr:
     k8s_node_name: ${NODE_NAME}
     {{- if eq $zoneAwareEnabled "true" }}
@@ -127,7 +125,7 @@ node:
   store:
     allow_mmap: false
 {{- if eq $mode "multi-node" }}
-# https://www.elastic.co/guide/en/elasticsearch/reference/7.7/modules-node.html
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html#node-roles
   roles:
   {{- $roles := $defaultRoles }}
   {{- if index . "roles" }}
@@ -177,7 +175,9 @@ xpack:
       enabled: true
 {{- else }}
   security:
-    enabled: "false"
+    enabled: false
+    enrollment:
+      enabled: false
     transport:
       ssl:
         enabled: false
