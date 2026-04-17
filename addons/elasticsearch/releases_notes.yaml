@@ -1,9 +1,4 @@
 releases:
-  - version: "1.1.0-alpha.0"
-    status: "alpha"
-    notes:
-      - "Support Elasticsearch 9.3.2"
-      - "Fix image registry for Elasticsearch 8.x and 9.x versions"
   - version: "1.0.1"
     released_at: "2025-09-11"
     status: "stable"

@@ -1,7 +1,5 @@
 #!/usr/bin/env sh
-if [ "${TLS_ENABLED}" = "true" ]; then
-  cp /etc/pki/tls/* /usr/share/elasticsearch/config/
-fi
+cp /etc/pki/tls/* /usr/share/elasticsearch/config/
 # Parse zone from zone-aware-mapping file based on NODE_NAME
 # Zone-aware-mapping file format: YAML format with zone name as key and comma-separated node names as value
 # Empty node list is allowed for a zone

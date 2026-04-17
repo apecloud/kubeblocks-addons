@@ -48,10 +48,8 @@ server.ssl.key: /etc/pki/tls/key.pem
 # the username and password that the Kibana server uses to perform maintenance on the Kibana
 # index at startup. Your Kibana users still need to authenticate with Elasticsearch, which
 # is proxied through the Kibana server.
-{{- if eq (index $ "TLS_ENABLED") "true" }}
 elasticsearch.username: "kibana_system"
 elasticsearch.password: "${KIBANA_SYSTEM_USER_PASSWORD}"
-{{- end }}
 
 # Kibana can also authenticate to Elasticsearch via "service account tokens".
 # Service account tokens are Bearer style tokens that replace the traditional username/password based configuration.

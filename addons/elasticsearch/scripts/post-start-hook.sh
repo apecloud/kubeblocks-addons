@@ -42,23 +42,14 @@ function reset_password()
 
 # Function to wait until cluster health becomes green
 # This indicates that all shards are allocated and cluster is fully operational
-# Optional first argument: timeout in seconds (default 600)
 function wait_for_cluster_health() {
-    local timeout=${1:-600}
-    local start_time
-    start_time=$(date +%s)
     while true; do
         result=$(curl ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/health?pretty" | grep 'green')
         if [ $? == 0 ]; then
             echo "cluster is formed"
             break
         fi
-        local elapsed=$(( $(date +%s) - start_time ))
-        if [ $elapsed -ge $timeout ]; then
-            echo "WARNING: timed out after ${timeout}s waiting for cluster to reach green health, skipping post-start initialization" >&2
-            return 1
-        fi
-        echo "waiting for cluster to be formed (${elapsed}s elapsed)"
+        echo "waiting for cluster to be formed"
         sleep 1
     done
 }
@@ -81,7 +72,7 @@ if grep '\- master\|master: true' config/elasticsearch.yml > /dev/null 2>&1; the
         #     add_local_user root ${ELASTIC_USER_PASSWORD}
         # fi
 
-        wait_for_cluster_health || exit 0
+        wait_for_cluster_health
         touch ${CLUSTER_FORMED_FILE}
     fi
 else
@@ -108,7 +99,7 @@ fi
 #major_minor_version=${version%.*}
 
 echo "wait for cluster ready"
-wait_for_cluster_health || exit 0
+wait_for_cluster_health
 
 # Reset built-in elastic user's password
 # echo "reset elastic password"
