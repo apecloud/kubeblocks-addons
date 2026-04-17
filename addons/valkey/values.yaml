@@ -1,0 +1,71 @@
+{
+  "clusterDomain": "cluster.local",
+  "dataMountPath": "/data",
+  "extra": {
+    "global": {},
+    "keepResource": false
+  },
+  "fullnameOverride": "",
+  "image": {
+    "pullPolicy": "IfNotPresent",
+    "registry": "docker.io",
+    "repository": "valkey/valkey"
+  },
+  "logConfigs": {
+    "running": "/data/running.log"
+  },
+  "metrics": {
+    "enabled": true,
+    "image": {
+      "pullPolicy": "IfNotPresent",
+      "registry": "docker.io",
+      "repository": "oliver006/redis_exporter",
+      "tag": "v1.80.1"
+    },
+    "service": {
+      "port": 9121
+    }
+  },
+  "nameOverride": "",
+  "tlsMountPath": "/etc/pki/tls",
+  "valkeyVersions": [
+    {
+      "componentDef": "valkey-8",
+      "defaultImageTag": "8.1.3",
+      "major": "8",
+      "mirrorVersions": [
+        {
+          "imageTag": "8.0.0",
+          "version": "8.0.0"
+        },
+        {
+          "imageTag": "8.0.1",
+          "version": "8.0.1"
+        },
+        {
+          "imageTag": "8.1.0",
+          "version": "8.1.0"
+        },
+        {
+          "imageTag": "8.1.3",
+          "version": "8.1.3"
+        }
+      ],
+      "sentinelComponentDef": "valkey-sentinel-8",
+      "serviceVersion": "8.1.3"
+    },
+    {
+      "componentDef": "valkey-9",
+      "defaultImageTag": "9.0.0",
+      "major": "9",
+      "mirrorVersions": [
+        {
+          "imageTag": "9.0.0",
+          "version": "9.0.0"
+        }
+      ],
+      "sentinelComponentDef": "valkey-sentinel-9",
+      "serviceVersion": "9.0.0"
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{{/*
+BackupPolicyTemplate for Valkey.
+
+Declares two backup methods:
+  datafile        — physical backup (BGSAVE → tar+zstd via datasafed)
+  volume-snapshot — CSI volume snapshot (zero-overhead, StorageClass-dependent)
+
+Backup always targets the secondary replica to avoid impacting the primary.
+If no secondary is available, it falls back to the primary.
+
+Per-version image override: since ActionSet carries a default image, the
+versionMapping env block here overrides it with the exact image for each
+serviceVersion, ensuring the backup job runs the same binary as the data pod.
+*/}}
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: valkey-backup-policy-template
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+spec:
+  # serviceKind must match cmpd.spec.serviceKind
+  serviceKind: redis
+  # Matches all valkey-* ComponentDefinitions (all major versions)
+  compDefs:
+    - {{ include "valkey.cmpdRegexpPattern" . }}
+
+  # Prefer secondary to avoid BGSAVE latency spikes on the primary
+  target:
+    role: secondary
+    fallbackRole: primary
+    account: default
+
+  backupMethods:
+    # ── Physical backup (universal) ──────────────────────────────────────────
+    - name: datafile
+      snapshotVolumes: false
+      actionSetName: valkey-physical-br
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+      env:
+        # Override the ActionSet default image with the version-specific image
+        - name: IMAGE
+          valueFrom:
+            versionMapping:
+              {{- $repo := printf "%s/%s" (.Values.image.registry | default "docker.io") .Values.image.repository }}
+              {{- range .Values.valkeyVersions }}
+              {{- range .mirrorVersions }}
+              - serviceVersions:
+                  - {{ .version }}
+                mappedValue: {{ $repo }}:{{ .imageTag }}
+              {{- end }}
+              {{- end }}
+        # Inject Sentinel connection info so backup.sh can save Sentinel ACL.
+        # These vars come from the data component's vars[] (cross-component refs).
+        - name: SENTINEL_POD_FQDN_LIST
+          valueFrom:
+            componentVarRef:
+              compDef: {{ include "valkeySentinel.cmpdRegexpPattern" . }}
+              optional: true
+              podFQDNs: Required
+        - name: SENTINEL_SERVICE_PORT
+          value: "26379"
+        - name: SENTINEL_PASSWORD
+          valueFrom:
+            credentialVarRef:
+              compDef: {{ include "valkeySentinel.cmpdRegexpPattern" . }}
+              name: default
+              optional: true
+              password: Required
+
+    # ── Volume snapshot (CSI-based, StorageClass must support it) ────────────
+    - name: volume-snapshot
+      snapshotVolumes: true
+      targetVolumes:
+        volumes:
+          - data
+
+  schedules:
+    - backupMethod: datafile
+      enabled: false
+      cronExpression: "0 2 * * *"
+      retentionPeriod: 7d
+    - backupMethod: volume-snapshot
+      enabled: false
+      cronExpression: "0 2 * * *"
+      retentionPeriod: 7d
