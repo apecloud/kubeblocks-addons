@@ -35,17 +35,11 @@ common_options="-k --fail --max-time 30 --retry ${RETRY_COUNT} ${BASIC_AUTH}"
 
 echo "Starting safe removal of node $KB_LEAVE_MEMBER_POD_NAME"
 
-# Get Elasticsearch version.
-# Exit 0 (no-op) if ES is unreachable: the node was terminated before it finished
-# starting up, so there is nothing to leave.  Exiting non-zero here would produce
-# a FailedPreStopHook event and can wedge the containerd runtime on the node.
-version=""
-if curl_out=$(curl -k -s --max-time 10 ${BASIC_AUTH} "${endpoint}" 2>/dev/null); then
-  version=$(echo "$curl_out" | jq -r '.version.number' 2>/dev/null || echo "")
-fi
-if [ -z "$version" ] || [ "$version" = "null" ]; then
-  echo "WARNING: Elasticsearch not reachable at ${endpoint} - node was not yet serving, skipping memberLeave"
-  exit 0
+# Get Elasticsearch version
+version=$(curl ${common_options} -s ${endpoint} | jq -r .version.number)
+if [ $? != 0 ]; then
+  echo "ERROR: Failed to get Elasticsearch version"
+  exit 1
 fi
 major_version=${version%%.*}
 echo "Detected Elasticsearch version: $version (major: $major_version)"
@@ -98,44 +92,6 @@ check_node_shards() {
   local node_name=$1
   local shard_count=$(curl ${common_options} -s "${endpoint}/_cat/shards?v" | grep "$node_name" | wc -l)
   echo "$shard_count"
-}
-
-# Return 0 if the drain is blocked solely by awareness + same_shard constraints,
-# meaning every remaining node already holds a copy — the leaving node's shards
-# are redundant and it is safe to proceed with removal.
-# Return 1 if there are other blocking reasons (genuine drain failure).
-is_drain_blocked_by_awareness_only() {
-  local node_name=$1
-
-  local explain_resp
-  explain_resp=$(curl ${common_options} -s "${endpoint}/_cluster/allocation/explain" \
-    -H 'Content-Type: application/json' \
-    -d "{\"current_node\": \"${node_name}\"}" 2>/dev/null)
-
-  # If the API returned an error (e.g. no shard found on node), treat as not awareness-blocked.
-  if [ -z "$explain_resp" ] || echo "$explain_resp" | jq -e '.error' >/dev/null 2>&1; then
-    return 1
-  fi
-
-  # A "no" decision is safe only when ALL its deciders are awareness or same_shard.
-  # If every "no" decision is safe, the shard is already replicated everywhere it can be.
-  local verdict
-  verdict=$(echo "$explain_resp" | jq -r '
-    ([ .node_allocation_decisions[]?
-       | select(.node_decision == "no") ] | length) as $total |
-    ([ .node_allocation_decisions[]?
-       | select(.node_decision == "no")
-       | select( (.deciders // []) | all(
-           .decider == "awareness" or .decider == "same_shard"
-         ))
-    ] | length) as $safe |
-    if $total > 0 and $total == $safe then "safe" else "unsafe" end
-  ' 2>/dev/null || echo "unknown")
-
-  if [ "$verdict" = "safe" ]; then
-    return 0
-  fi
-  return 1
 }
 
 # Set shard allocation exclusion for the node
@@ -265,16 +221,6 @@ safe_scale_down() {
     # Check if migration is complete
     if [ "$current_shard_count" -eq 0 ]; then
       log "All shards have been migrated from node $node_name"
-      break
-    fi
-
-    # Detect awareness-blocked drain: all remaining shards are already replicated
-    # on every eligible node (same_shard / awareness are the only blockers).
-    # In this case the leaving node's copies are redundant — safe to proceed.
-    if is_drain_blocked_by_awareness_only "$node_name"; then
-      log "WARNING: Shard relocation is blocked by awareness constraints (k8s_node_name)."
-      log "All copies of the blocked shard(s) already exist on the remaining data nodes."
-      log "The leaving node's shards are redundant — proceeding with removal."
       break
     fi
 

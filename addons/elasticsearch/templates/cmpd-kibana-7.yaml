@@ -3,11 +3,12 @@ kind: ComponentDefinition
 metadata:
   name: {{ include "kibana7.cmpdName" . }}
   annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "elasticsearch.annotations" . | nindent 4 }}
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
-  serviceVersion: 7.10.2
+  serviceVersion: 7.10.1
   configs:
   - name: kibana-cm
     template: {{ include "kibana7.configTplName" . }}

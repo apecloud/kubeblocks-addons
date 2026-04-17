@@ -56,7 +56,6 @@ Common annotations
 {{- define "elasticsearch.annotations" -}}
 {{ include "kblib.helm.resourcePolicy" . }}
 {{ include "elasticsearch.apiVersion" . }}
-apps.kubeblocks.io/skip-immutable-check: "true"
 {{- end }}
 
 {{/*
@@ -70,30 +69,12 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 ^elasticsearch-
 {{- end -}}
 
-{{/* Matches only the coordinating node: standalone mdit (elasticsearch-N-) OR master (elasticsearch-master-N-)
-     Does NOT match data/ingest/transform. Used by kibana.common to resolve a single ES HTTP endpoint. */}}
-{{- define "elasticsearch.coordinatorCmpdRegexPattern" -}}
-^elasticsearch(-master)?-[0-9]+
-{{- end -}}
-
 {{- define "elasticsearchMaster.cmpdRegexPattern" -}}
-^elasticsearch-master-[0-9]-
+^elasticsearch-master-
 {{- end -}}
 
 {{- define "elasticsearchData.cmpdRegexPattern" -}}
-^elasticsearch-data-[0-9]-
-{{- end -}}
-
-{{- define "elasticsearchMdit.cmpdRegexPattern" -}}
-^elasticsearch-[0-9]-
-{{- end -}}
-
-{{- define "elasticsearchIngest.cmpdRegexPattern" -}}
-^elasticsearch-ingest-
-{{- end -}}
-
-{{- define "elasticsearchTransform.cmpdRegexPattern" -}}
-^elasticsearch-transform-
+^elasticsearch-data-
 {{- end -}}
 
 {{- define "elasticsearch6.cmpdName" -}}
@@ -186,10 +167,6 @@ elasticsearch-8-config-tpl-{{ .Chart.Version }}
 
 {{- define "kibana6.cmpdName" -}}
 kibana-6-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "kibana.cmpdRegexPattern" -}}
-^kibana-[0-9]-
 {{- end -}}
 
 {{- define "kibana6.cmpdRegexPattern" -}}
@@ -420,9 +397,6 @@ runtime:
           name: local-bin
   containers:
     - name: elasticsearch
-      {{- if .esImage }}
-      image: {{ .esImage }}
-      {{- end }}
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       command:
         - sh
@@ -669,21 +643,29 @@ vars:
 - name: ELASTIC_USER_PASSWORD
   valueFrom:
     credentialVarRef:
-      compDef: {{ include "elasticsearch.coordinatorCmpdRegexPattern" . }}
+      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
       name: elastic
-      optional: true
+      optional: false
+      password: Required
+      multipleClusterObjectOption:
+        strategy: individual
 - name: KIBANA_SYSTEM_USER_PASSWORD
   valueFrom:
     credentialVarRef:
-      compDef: {{ include "elasticsearch.coordinatorCmpdRegexPattern" . }}
+      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
       name: kibana_system
-      optional: true
+      optional: false
+      password: Required
+      multipleClusterObjectOption:
+        strategy: individual
 - name: ELASTICSEARCH_HOST
   valueFrom:
     serviceVarRef:
-      compDef: {{ include "elasticsearch.coordinatorCmpdRegexPattern" . }}
+      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
       name: http
       host: Required
+      multipleClusterObjectOption:
+        strategy: individual
 - name: CLUSTER_NAMESPACE
   valueFrom:
     clusterVarRef:
@@ -703,9 +685,6 @@ runtime:
       valueFrom:
         fieldRef:
           fieldPath: status.podIP
-    {{- if .kibanaImage }}
-    image: {{ .kibanaImage }}
-    {{- end }}
     imagePullPolicy: {{ .Values.image.pullPolicy }}
     command:
     - bash
@@ -778,7 +757,7 @@ runtime:
       name: http
       protocol: TCP
     startupProbe:
-      failureThreshold: 30
+      failureThreshold: 5
       initialDelaySeconds: 90
       periodSeconds: 10
       successThreshold: 1
@@ -810,54 +789,6 @@ runtime:
   securityContext:
     fsGroup: 1000
 {{- end }}
-
-{{- define "elasticsearch9.cmpdName" -}}
-elasticsearch-9-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearch9.configTplName" -}}
-elasticsearch-9-config-tpl-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "kibana9.cmpdName" -}}
-kibana-9-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "kibana9.configTplName" -}}
-kibana-9-config-tpl
-{{- end -}}
-
-{{- define "elasticsearchMaster9.cmpdName" -}}
-elasticsearch-master-9-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearchData9.cmpdName" -}}
-elasticsearch-data-9-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearchIngest7.cmpdName" -}}
-elasticsearch-ingest-7-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearchIngest8.cmpdName" -}}
-elasticsearch-ingest-8-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearchIngest9.cmpdName" -}}
-elasticsearch-ingest-9-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearchTransform7.cmpdName" -}}
-elasticsearch-transform-7-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearchTransform8.cmpdName" -}}
-elasticsearch-transform-8-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearchTransform9.cmpdName" -}}
-elasticsearch-transform-9-{{ .Chart.Version }}
-{{- end -}}
 
 {{- define "elasticsearch.commonVars" -}}
 - name: ELASTICSEARCH_VERSION
