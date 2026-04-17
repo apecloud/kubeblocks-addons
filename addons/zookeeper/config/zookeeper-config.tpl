@@ -41,11 +41,7 @@ autopurge.purgeInterval=12
 # whitelist
 4lw.commands.whitelist=srvr, mntr, ruok, conf, stat, sync
 
-{{ if hasKey . "ZOOKEEPER_STANDALONE_ENABLED" }}
-standaloneEnabled={{ .ZOOKEEPER_STANDALONE_ENABLED }}
-{{- else }}
 standaloneEnabled=false
-{{ end }}
 
 # dynamic config
 reconfigEnabled=true
