@@ -1,0 +1,13 @@
+apiVersion: v2
+name: valkey
+version: 0.1.0
+appVersion: "9.0.0"
+description: Valkey KubeBlocks addon
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/model: key-value
+  addon.kubeblocks.io/provider: community
+dependencies:
+- name: kblib
+  repository: file://../kblib
+  version: 0.1.0

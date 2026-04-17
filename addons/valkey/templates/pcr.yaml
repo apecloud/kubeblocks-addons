@@ -1,0 +1,23 @@
+{{- range .Values.valkeyVersions }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ printf "valkey%s-pcr-%s" .major $.Chart.Version }}
+  labels:
+    {{- include "valkey.labels" $ | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+    {{- include "valkey.annotations" $ | nindent 4 }}
+    apps.kubeblocks.io/skip-immutable-check: "true"
+spec:
+  componentDef: {{ printf "valkey%s-%s" (printf "-%s" .major) $.Chart.Version }}
+  parametersDefs:
+    - {{ printf "valkey%s-pd" .major }}
+  configs:
+    - name: valkey.conf
+      fileFormatConfig:
+        format: redis
+      reRenderResourceTypes:
+        - vscale
+{{- end }}
