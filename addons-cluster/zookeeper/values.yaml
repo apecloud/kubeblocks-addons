@@ -33,5 +33,3 @@ storage: 10
 
 ## @param log storage, the unit is Gi
 logStorage: 2
-
-standaloneEnabled: false
