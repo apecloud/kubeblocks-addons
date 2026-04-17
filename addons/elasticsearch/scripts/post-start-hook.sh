@@ -76,7 +76,11 @@ if grep '\- master\|master: true' config/elasticsearch.yml > /dev/null 2>&1; the
         touch ${CLUSTER_FORMED_FILE}
     fi
 else
-    exit 0
+	if grep 'type: single-node' config/elasticsearch.yml > /dev/null 2>&1; then
+		echo "single-node mode, skip cluster formation and user initialization"
+	else
+    	exit 0
+	fi
 fi
 
 # The following operations only need to be performed on master-0
