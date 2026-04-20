@@ -29,6 +29,8 @@ redis_acl_file_bak="/data/users.acl.bak"
 retry_times=3
 retry_delay_second=2
 service_port=${SERVICE_PORT:-6379}
+network_mode=""
+primary_host_from_sentinel=false
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
@@ -119,6 +121,69 @@ build_replicaof_config() {
   fi
 }
 
+need_reset_master_in_sentinel() {
+  if [[ "$network_mode" != "NodePort" ]]; then
+    return 1
+  fi
+  if [[ "$primary" == *"${REDIS_COMPONENT_NAME}"* ]] || is_empty "$SENTINEL_POD_FQDN_LIST"; then
+    return 1
+  fi
+  if [[ "$redis_announce_port_value" == "$primary_port" ]] && [[ "$primary" != "$primary_host_from_sentinel" ]]; then
+    return 0
+  fi
+  local sentinel_service_port=${SENTINEL_SERVICE_PORT:-26379}
+  sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
+  for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
+    local replicas_output
+    unset_xtrace_when_ut_mode_false
+    if is_empty "$SENTINEL_PASSWORD"; then
+      replicas_output=$(timeout 5 redis-cli $REDIS_CLI_TLS_CMD -h "$sentinel_pod_fqdn" -p "$sentinel_service_port" sentinel replicas ${REDIS_COMPONENT_NAME})
+    else
+      replicas_output=$(timeout 5 redis-cli $REDIS_CLI_TLS_CMD -h "$sentinel_pod_fqdn" -p "$sentinel_service_port" -a "$SENTINEL_PASSWORD" sentinel replicas ${REDIS_COMPONENT_NAME})
+    fi
+    if [[ $? -ne 0 ]]; then
+      echo "Error: Failed to get replicas from sentinel $sentinel_pod_fqdn. continue."
+      continue
+    fi
+    set_xtrace_when_ut_mode_false
+    echo "$replicas_output" | grep -q "$redis_announce_host_value:$redis_announce_port_value" || {
+        echo "current replica announce ip $redis_announce_host_value:$redis_announce_port_value is NOT found in sentinel $sentinel_pod_fqdn replicas list"
+        return 0
+    }
+  done
+  return 1
+}
+
+reset_master_in_sentinel() {
+  local sentinel_service_port=${SENTINEL_SERVICE_PORT:-26379}
+  sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
+  for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
+    unset_xtrace_when_ut_mode_false
+    if is_empty "$SENTINEL_PASSWORD"; then
+      redis-cli $REDIS_CLI_TLS_CMD -h "$sentinel_pod_fqdn" -p "$sentinel_service_port" sentinel reset "$REDIS_COMPONENT_NAME" >/dev/null 2>&1
+    else
+      redis-cli $REDIS_CLI_TLS_CMD -h "$sentinel_pod_fqdn" -p "$sentinel_service_port" -a "$SENTINEL_PASSWORD" sentinel reset "$REDIS_COMPONENT_NAME" >/dev/null 2>&1
+    fi
+    if [ $? -eq 0 ]; then
+      set_xtrace_when_ut_mode_false
+      echo "reset master in sentinel $sentinel_pod_fqdn succeeded"
+    fi
+    set_xtrace_when_ut_mode_false
+  done
+  echo "reset master in sentinel failed"
+  return 1
+}
+
+handle_nodeport_replica_change() {
+  set +e
+  # TODO: 如果主备2个节点的node ip都变了，然后同时删除pod，那么monitor 主可能还是老的node ip，这种情况可能需要重新monitor下，或者等重启redis secondary (不过这种需要改role probe了，不然会是双从)
+  if need_reset_master_in_sentinel; then
+    echo "replica ip changed (possibly node changed), resetting master in sentinel to re-discover replicas"
+    reset_master_in_sentinel
+  fi
+  set -e
+}
+
 rebuild_redis_acl_file() {
   if [ -f $redis_acl_file ]; then
     sed "/user default on/d" $redis_acl_file > $redis_acl_file_bak && mv $redis_acl_file_bak $redis_acl_file
@@ -189,8 +254,13 @@ init_or_get_primary_from_redis_sentinel() {
   for host_port in "${!master_count_map[@]}"; do
     if (( ${master_count_map[$host_port]} > max_count )); then
       max_count=${master_count_map[$host_port]}
-      primary=$(echo $host_port | cut -d: -f1)
       primary_port=$(echo $host_port | cut -d: -f2)
+      primary_host_from_sentinel=$(echo $host_port | cut -d: -f1)
+      if [[ "$network_mode" == "NodePort" ]] && [[ "$primary_port" == "$redis_announce_port_value" ]]; then
+        primary="$redis_announce_host_value"
+      else
+        primary=$primary_host_from_sentinel
+      fi
     fi
   done
 }
@@ -320,6 +390,8 @@ start_redis_server() {
 parse_redis_announce_addr() {
   if is_empty "$REDIS_ADVERTISED_PORT"; then
      REDIS_ADVERTISED_PORT="$REDIS_LB_ADVERTISED_PORT"
+  else
+    network_mode="NodePort"
   fi
   # try to get the announce ip and port from REDIS_ADVERTISED_PORT(support NodePort currently) first
   if is_empty "${REDIS_ADVERTISED_PORT}"; then
@@ -371,6 +443,7 @@ build_redis_conf() {
   build_announce_ip_and_port
   build_redis_service_port
   build_replicaof_config
+  handle_nodeport_replica_change
   rebuild_redis_acl_file
   build_redis_default_accounts
 }
