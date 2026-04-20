@@ -444,7 +444,13 @@ spec:
 
     # switchover: when Sentinel is present, delegates to SENTINEL FAILOVER.
     # When absent (standalone), performs a direct REPLICAOF NO ONE.
+    # timeoutSeconds: -1 disables the kbagent-layer exec timeout so that the
+    # Sentinel priority-cache polling (up to 30s) and the wait_for_new_master
+    # confirmation (up to 300s) are not cut short.
+    # The OpsRequest-layer 5-minute hard deadline in switchover.go provides the
+    # outer safety net — no action can hang indefinitely.
     switchover:
+      timeoutSeconds: -1
       exec:
         container: valkey
         command:
