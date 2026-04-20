@@ -177,6 +177,7 @@ reset_master_in_sentinel() {
 handle_nodeport_replica_change() {
   set +e
   # TODO: 如果主备2个节点的node ip都变了，然后同时删除pod，那么monitor 主可能还是老的node ip，这种情况可能需要重新monitor下，或者等重启redis secondary (不过这种需要改role probe了，不然会是双从)
+  # TODO: 支持sentinel 的 know sentinel 探测
   if need_reset_master_in_sentinel; then
     echo "replica ip changed (possibly node changed), resetting master in sentinel to re-discover replicas"
     reset_master_in_sentinel
