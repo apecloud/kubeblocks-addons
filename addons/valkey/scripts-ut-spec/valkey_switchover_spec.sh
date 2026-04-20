@@ -276,6 +276,18 @@ Describe "Valkey Switchover Bash Script Tests"
       End
     End
 
+    Context "when candidate role is an unexpected value (e.g. 'connecting') — neither master nor slave"
+      It "aborts with an ERROR and does not call execute_sentinel_failover"
+        get_role() { echo "connecting"; }
+        execute_sentinel_failover() { echo "SHOULD_NOT_BE_CALLED"; }
+        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
+        The status should be failure
+        The stderr should include "ERROR"
+        The stderr should include "expected 'slave'"
+        The stdout should not include "SHOULD_NOT_BE_CALLED"
+      End
+    End
+
     Context "when FAILOVER accepted but wrong candidate becomes master — priority restore deferred until after confirmation"
       It "restores priorities only after wait_for_new_master (not before), and returns failure"
         restore_order=""
