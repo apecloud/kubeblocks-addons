@@ -470,6 +470,31 @@ Describe "Valkey Switchover Bash Script Tests"
         The stdout should include "sentinel-1"
       End
     End
+
+    Context "when Sentinel returns OK\\r (TLS carriage-return)"
+      setup() {
+        export VALKEY_COMPONENT_NAME="mycluster-valkey"
+        export SENTINEL_POD_FQDN_LIST="sentinel-0.headless.default.svc.cluster.local"
+        export SENTINEL_SERVICE_PORT="26379"
+      }
+      Before "setup"
+
+      teardown() {
+        unset VALKEY_COMPONENT_NAME
+        unset SENTINEL_POD_FQDN_LIST
+        unset SENTINEL_SERVICE_PORT
+      }
+      After "teardown"
+
+      It "strips \\r and returns success"
+        valkey-cli() {
+          printf "OK\r"
+        }
+        When call execute_sentinel_failover
+        The status should be success
+        The stdout should include "FAILOVER accepted"
+      End
+    End
   End
 
   Describe "switchover_with_sentinel() — candidate role pre-check"
