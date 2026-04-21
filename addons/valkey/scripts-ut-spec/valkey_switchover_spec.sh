@@ -278,6 +278,17 @@ Describe "Valkey Switchover Bash Script Tests"
         The stdout should not include "Repointing valkey-1"
       End
     End
+
+    Context "when a replica fails to repoint"
+      It "logs a WARNING but still returns success (non-fatal)"
+        call_func_with_retry() { return 1; }
+        When call repoint_replicas "valkey-1.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include "Repointing"
+        The stderr should include "WARNING"
+        The stderr should include "failed to repoint"
+      End
+    End
   End
 
   Describe "repoint_one()"
