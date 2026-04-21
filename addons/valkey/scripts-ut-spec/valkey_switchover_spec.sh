@@ -361,6 +361,33 @@ Describe "Valkey Switchover Bash Script Tests"
         The stdout should eq ""
       End
     End
+
+    Context "when first pod is unreachable but second is a slave"
+      setup() {
+        export KB_SWITCHOVER_CURRENT_FQDN="valkey-0.headless.default.svc.cluster.local"
+        export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local,valkey-2.headless.default.svc.cluster.local"
+      }
+      Before "setup"
+
+      teardown() {
+        unset KB_SWITCHOVER_CURRENT_FQDN
+        unset VALKEY_POD_FQDN_LIST
+      }
+      After "teardown"
+
+      It "skips the unreachable pod and returns the next slave"
+        get_role() {
+          case "$1" in
+            *"valkey-1"*) return 1 ;;   # unreachable — get_role fails
+            *"valkey-2"*) echo "slave" ;;
+          esac
+        }
+        When call pick_any_secondary
+        The status should be success
+        The stdout should include "valkey-2"
+        The stdout should not include "valkey-1"
+      End
+    End
   End
 
   Describe "execute_sentinel_failover()"
