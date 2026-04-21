@@ -729,6 +729,15 @@ Describe "Valkey Switchover Bash Script Tests"
       The status should be success
       The stderr should eq ""
     End
+
+    It "succeeds when CONFIG SET returns OK\\r (carriage-return stripped)"
+      valkey-cli() {
+        printf "OK\r"
+      }
+      When call set_replica_priority "valkey-1.headless.default.svc.cluster.local" "1"
+      The status should be success
+      The stderr should eq ""
+    End
   End
 
   Describe "wait_until_master()"
