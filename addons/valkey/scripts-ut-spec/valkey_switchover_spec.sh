@@ -136,6 +136,28 @@ Describe "Valkey Switchover Bash Script Tests"
         The stdout should not include " -a "
       End
     End
+
+    Context "when both VALKEY_DEFAULT_PASSWORD and VALKEY_CLI_TLS_ARGS are set"
+      setup() {
+        export VALKEY_DEFAULT_PASSWORD="s3cr3t"
+        export VALKEY_CLI_TLS_ARGS="--tls --cacert /tls/ca.crt"
+      }
+      Before "setup"
+
+      teardown() {
+        unset VALKEY_DEFAULT_PASSWORD
+        unset VALKEY_CLI_TLS_ARGS
+      }
+      After "teardown"
+
+      It "includes both -a <password> and TLS args"
+        When call build_cli "valkey-0.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include " -a s3cr3t"
+        The stdout should include "--tls"
+        The stdout should include "--cacert /tls/ca.crt"
+      End
+    End
   End
 
   Describe "sentinel_cli_for()"
@@ -182,6 +204,29 @@ Describe "Valkey Switchover Bash Script Tests"
         When call sentinel_cli_for "sentinel-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include " -a sentinelpass"
+      End
+    End
+
+    Context "when SENTINEL_SERVICE_PORT is set to a custom value"
+      setup() {
+        export SENTINEL_PASSWORD=""
+        export VALKEY_CLI_TLS_ARGS=""
+        export SENTINEL_SERVICE_PORT="36379"
+      }
+      Before "setup"
+
+      teardown() {
+        unset SENTINEL_PASSWORD
+        unset VALKEY_CLI_TLS_ARGS
+        unset SENTINEL_SERVICE_PORT
+      }
+      After "teardown"
+
+      It "uses the custom port instead of the default 26379"
+        When call sentinel_cli_for "sentinel-0.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include "-p 36379"
+        The stdout should not include "-p 26379"
       End
     End
   End
