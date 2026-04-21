@@ -999,5 +999,17 @@ Describe "Valkey Switchover Bash Script Tests"
         The variable priority_set_called should eq ""
       End
     End
+
+    Context "when no candidate and execute_sentinel_failover fails — no priority restore, returns failure"
+      It "returns failure without calling set_replica_priority"
+        priority_set_called=""
+        set_replica_priority() { priority_set_called="yes"; return 0; }
+        execute_sentinel_failover() { return 1; }
+        wait_for_new_master() { return 0; }
+        When call switchover_with_sentinel ""
+        The status should be failure
+        The variable priority_set_called should eq ""
+      End
+    End
   End
 End
