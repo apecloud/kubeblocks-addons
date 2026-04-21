@@ -440,6 +440,36 @@ Describe "Valkey Switchover Bash Script Tests"
         The stderr should include "all Sentinel FAILOVER attempts failed"
       End
     End
+
+    Context "when first Sentinel fails but second accepts"
+      setup() {
+        export VALKEY_COMPONENT_NAME="mycluster-valkey"
+        export SENTINEL_POD_FQDN_LIST="sentinel-0.headless.default.svc.cluster.local,sentinel-1.headless.default.svc.cluster.local"
+        export SENTINEL_SERVICE_PORT="26379"
+      }
+      Before "setup"
+
+      teardown() {
+        unset VALKEY_COMPONENT_NAME
+        unset SENTINEL_POD_FQDN_LIST
+        unset SENTINEL_SERVICE_PORT
+      }
+      After "teardown"
+
+      It "skips the failed Sentinel and returns success from the second"
+        valkey-cli() {
+          local args="$*"
+          case "${args}" in
+            *"sentinel-0"*) return 1 ;;   # sentinel-0 unreachable
+            *"sentinel-1"*) echo "OK" ;;
+          esac
+        }
+        When call execute_sentinel_failover
+        The status should be success
+        The stdout should include "FAILOVER accepted"
+        The stdout should include "sentinel-1"
+      End
+    End
   End
 
   Describe "switchover_with_sentinel() — candidate role pre-check"
