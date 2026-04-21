@@ -11,6 +11,7 @@ spec:
   description: Kafka 2.x broker component definition
   serviceKind: kafka
   serviceVersion: {{ .Values.defaultKafka2ServiceVersion.broker }}
+  podManagementPolicy: Parallel
   services:
     - name: advertised-listener
       serviceName: advertised-listener
@@ -26,7 +27,7 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: zookeeper
           serviceVersion: ^3\.[5-9]\.\d{1,2}$
-      optional: false
+      optional: true
   {{- include "kafka.tls.cmpdConfig" . | nindent 2 }}
   vars:
     - name: CLUSTER_UID
@@ -81,12 +82,30 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
-    - name: KB_KAFKA_ZOOKEEPER_CONN
+    - name: KB_KAFKA_ZOOKEEPER_CONN_SERVICE_REF
       valueFrom:
         serviceRefVarRef:
           name: kafkaZookeeper
           endpoint: Required
-          optional: false
+          optional: true
+    - name: KB_KAFKA_ZOOKEEPER_CONN_COMPONENT_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "kafka-zookeeper.cmpdRegexpPattern" . }}
+          name: default
+          optional: true
+          host: Required
+    - name: KB_KAFKA_ZOOKEEPER_CONN_COMPONENT_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "kafka-zookeeper.cmpdRegexpPattern" . }}
+          name: default
+          optional: true
+          port:
+            name: client
+            option: Required
+    - name: KB_KAFKA_ZOOKEEPER_CONN
+      expression: {{ `{{if index . "KB_KAFKA_ZOOKEEPER_CONN_SERVICE_REF"}}{{.KB_KAFKA_ZOOKEEPER_CONN_SERVICE_REF}}{{else}}{{.KB_KAFKA_ZOOKEEPER_CONN_COMPONENT_HOST}}:{{.KB_KAFKA_ZOOKEEPER_CONN_COMPONENT_PORT}}{{end}}` | toYaml }}
     ## Todo: currently only nodeport and clusterIp network modes are supported. LoadBalance is not supported yet and needs future support.
     - name: BROKER_ADVERTISED_PORT
       valueFrom:

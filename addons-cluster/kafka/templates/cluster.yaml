@@ -53,7 +53,7 @@ spec:
         {{- include "kafka-cluster.brokerCommonEnv" . | nindent 8 }}
       {{- include "kafka-cluster.brokerVCT" . | indent 6 }}
       {{- include "kafka-broker-volumes" . | indent 6 }}
-      {{- if eq "withZookeeper-10" $.Values.mode }}
+      {{- if and (eq "withZookeeper-10" $.Values.mode) (eq "serviceRef" $.Values.zookeeper.mode) }}
       serviceRefs:
         - name: kafkaZookeeper
           namespace: {{ .Values.zookeeper.serviceRef.namespace }}
@@ -67,6 +67,31 @@ spec:
           {{- else }}
           serviceDescriptor: {{ .Values.zookeeper.serviceRef.serviceDescriptor }}
           {{- end }}
+      {{- end }}
+      {{- if and (eq "withZookeeper-10" $.Values.mode) (not (eq "serviceRef" $.Values.zookeeper.mode)) }}
+    - name: kafka-zookeeper
+        {{- if .Values.zookeeper.component.serviceVersion }}
+      serviceVersion: {{ .Values.zookeeper.component.serviceVersion }}
+        {{- end }}
+      replicas: {{ .Values.zookeeper.component.replicas }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+        {{- if .Values.storageEnable }}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: {{ .Values.zookeeper.component.storage.storageClassName }}
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: {{ .Values.zookeeper.component.storage.data }}Gi
+        - name: snapshot-log
+          spec:
+            storageClassName: {{ .Values.zookeeper.component.storage.storageClassName }}
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: {{ .Values.zookeeper.component.storage.log }}Gi
+        {{- end }}
       {{- end }}
       {{- if eq "separated" $.Values.mode }}
     - name: kafka-controller
