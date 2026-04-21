@@ -71,6 +71,121 @@ Describe "Valkey Switchover Bash Script Tests"
     End
   End
 
+  Describe "build_cli()"
+    Context "when no password and no TLS args are set"
+      setup() {
+        export VALKEY_DEFAULT_PASSWORD=""
+        export VALKEY_CLI_TLS_ARGS=""
+      }
+      Before "setup"
+
+      teardown() {
+        unset VALKEY_DEFAULT_PASSWORD
+        unset VALKEY_CLI_TLS_ARGS
+      }
+      After "teardown"
+
+      It "returns basic valkey-cli command without -a or TLS flags"
+        When call build_cli "valkey-0.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include "valkey-cli"
+        The stdout should include "-h valkey-0.headless.default.svc.cluster.local"
+        The stdout should include "-p 6379"
+        The stdout should not include " -a "
+      End
+    End
+
+    Context "when VALKEY_DEFAULT_PASSWORD is set"
+      setup() {
+        export VALKEY_DEFAULT_PASSWORD="s3cr3t"
+        export VALKEY_CLI_TLS_ARGS=""
+      }
+      Before "setup"
+
+      teardown() {
+        unset VALKEY_DEFAULT_PASSWORD
+        unset VALKEY_CLI_TLS_ARGS
+      }
+      After "teardown"
+
+      It "appends -a <password> to the command"
+        When call build_cli "valkey-0.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include " -a s3cr3t"
+      End
+    End
+
+    Context "when VALKEY_CLI_TLS_ARGS is set"
+      setup() {
+        export VALKEY_DEFAULT_PASSWORD=""
+        export VALKEY_CLI_TLS_ARGS="--tls --cacert /tls/ca.crt"
+      }
+      Before "setup"
+
+      teardown() {
+        unset VALKEY_DEFAULT_PASSWORD
+        unset VALKEY_CLI_TLS_ARGS
+      }
+      After "teardown"
+
+      It "appends TLS args to the command"
+        When call build_cli "valkey-0.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include "--tls"
+        The stdout should include "--cacert /tls/ca.crt"
+        The stdout should not include " -a "
+      End
+    End
+  End
+
+  Describe "sentinel_cli_for()"
+    Context "when no sentinel password and no TLS args"
+      setup() {
+        export SENTINEL_PASSWORD=""
+        export VALKEY_CLI_TLS_ARGS=""
+        export SENTINEL_SERVICE_PORT="26379"
+      }
+      Before "setup"
+
+      teardown() {
+        unset SENTINEL_PASSWORD
+        unset VALKEY_CLI_TLS_ARGS
+        unset SENTINEL_SERVICE_PORT
+      }
+      After "teardown"
+
+      It "returns valkey-cli command targeting sentinel port 26379 without -a"
+        When call sentinel_cli_for "sentinel-0.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include "-h sentinel-0.headless.default.svc.cluster.local"
+        The stdout should include "-p 26379"
+        The stdout should not include " -a "
+      End
+    End
+
+    Context "when SENTINEL_PASSWORD is set"
+      setup() {
+        export SENTINEL_PASSWORD="sentinelpass"
+        export VALKEY_CLI_TLS_ARGS=""
+        export SENTINEL_SERVICE_PORT="26379"
+      }
+      Before "setup"
+
+      teardown() {
+        unset SENTINEL_PASSWORD
+        unset VALKEY_CLI_TLS_ARGS
+        unset SENTINEL_SERVICE_PORT
+      }
+      After "teardown"
+
+      It "appends -a <sentinel-password> to the command"
+        When call sentinel_cli_for "sentinel-0.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include " -a sentinelpass"
+      End
+    End
+  End
+
   Describe "promote_replica()"
     Context "when REPLICAOF NO ONE succeeds"
       It "returns success"
