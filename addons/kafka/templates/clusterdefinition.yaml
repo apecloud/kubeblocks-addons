@@ -62,3 +62,11 @@ spec:
           compDef: {{ include "kafka2-broker.cmpdRegexpPattern" . }}
         - name: kafka-exporter
           compDef: {{ include "kafka-exporter.cmpdRegexpPattern" . }}
+    - name: kafka2-internal-zk
+      components:
+        - name: kafka-broker
+          compDef: {{ include "kafka2-broker.cmpdRegexpPattern" . }}
+        - name: kafka-exporter
+          compDef: {{ include "kafka-exporter.cmpdRegexpPattern" . }}
+        - name: kafka-zookeeper
+          compDef: {{ include "kafka-zookeeper.cmpdRegexpPattern" . }}
