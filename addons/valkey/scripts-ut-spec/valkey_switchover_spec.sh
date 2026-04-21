@@ -697,6 +697,18 @@ Describe "Valkey Switchover Bash Script Tests"
         The stderr should include "aborting targeted switchover"
       End
     End
+
+    Context "when Sentinel output has valkey-10 and candidate is valkey-1 (substring false-positive guard)"
+      It "does not match valkey-10 as valkey-1 — returns failure (priority not found for exact candidate)"
+        valkey-cli() {
+          # Only valkey-10 is in the list, NOT valkey-1
+          printf 'name\nvalkey-10.headless.default.svc.cluster.local:6379\nslave-priority\n1\n'
+        }
+        When call wait_sentinel_sees_priority "valkey-1.headless.default.svc.cluster.local" "1"
+        The status should be failure
+        The stderr should include "ERROR"
+      End
+    End
   End
 
   Describe "set_replica_priority()"
