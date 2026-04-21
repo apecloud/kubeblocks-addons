@@ -26,6 +26,8 @@ set -o pipefail
 
 sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
 data_port="${DP_DB_PORT:-6379}"
+primary_discovery_retries="${POST_RESTORE_PRIMARY_DISCOVERY_RETRIES:-24}"
+primary_discovery_interval="${POST_RESTORE_PRIMARY_DISCOVERY_INTERVAL_SECONDS:-5}"
 
 # Detect TLS via connection probe on the data pod.
 # Restore jobs do not mount the TLS volume (it may not exist in non-TLS clusters).
@@ -54,13 +56,32 @@ else
 fi
 
 # ── derive naming convention ─────────────────────────────────────────────────
-# DP_TARGET_POD_NAME = "<cluster>-<component>-<ordinal>"
-# Strip trailing "-<digits>" to get "<cluster>-<component>"
+# DP_TARGET_POD_NAME / DP_TARGET_NAMESPACE are not guaranteed in postReady jobs.
+# Fall back to parsing DP_DB_HOST:
+#   <pod>.<headless>.<namespace>.svc.<cluster-domain>
 pod_name="${DP_TARGET_POD_NAME}"
+namespace="${DP_TARGET_NAMESPACE}"
+if [ -z "${pod_name}" ] || [ -z "${namespace}" ]; then
+  host_parts=$(echo "${DP_DB_HOST}" | tr '.' '\n')
+  [ -z "${pod_name}" ] && pod_name=$(echo "${host_parts}" | sed -n '1p')
+  [ -z "${namespace}" ] && namespace=$(echo "${host_parts}" | sed -n '3p')
+fi
+
+if [ -z "${namespace}" ] && [ -r /var/run/secrets/kubernetes.io/serviceaccount/namespace ]; then
+  namespace=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+fi
+
+if [ -z "${pod_name}" ] || [ -z "${namespace}" ]; then
+  echo "ERROR: could not derive target pod naming context from DP_TARGET_* or DP_DB_HOST='${DP_DB_HOST}'" >&2
+  exit 1
+fi
+
+# Strip trailing "-<digits>" to get "<cluster>-<component>"
 comp_prefix="${pod_name%-*}"           # e.g. mycluster-valkey
 cluster_prefix="${comp_prefix%-*}"     # e.g. mycluster
-namespace="${DP_TARGET_NAMESPACE}"
 cluster_domain="${CLUSTER_DOMAIN:-cluster.local}"
+
+echo "INFO: resolved target context pod=${pod_name} namespace=${namespace} comp=${comp_prefix}"
 
 # Sentinel component name follows the ClusterDefinition topology:
 # component name "valkey-sentinel" → pod name "<cluster>-valkey-sentinel-<n>"
@@ -70,22 +91,47 @@ sentinel_headless="${sentinel_comp}-headless.${namespace}.svc.${cluster_domain}"
 master_name="${comp_prefix}"
 
 # ── find current primary ─────────────────────────────────────────────────────
-primary_fqdn=""
 comp_headless="${comp_prefix}-headless.${namespace}.svc.${cluster_domain}"
 
-for ordinal in 0 1 2 3 4; do
-  fqdn="${comp_prefix}-${ordinal}.${comp_headless}"
-  role=$(${data_cli_base} -h "${fqdn}" INFO replication 2>/dev/null \
-           | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || continue
-  if [ "${role}" = "master" ]; then
-    primary_fqdn="${fqdn}"
+find_primary_fqdn() {
+  local ordinal fqdn role
+  for ordinal in 0 1 2 3 4; do
+    fqdn="${comp_prefix}-${ordinal}.${comp_headless}"
+
+    role=$(${data_cli_base} -h "${fqdn}" ROLE 2>/dev/null | head -1 | tr -d '\r\n') || true
+    if [ "${role}" = "master" ]; then
+      echo "${fqdn}"
+      return 0
+    fi
+
+    role=$(${data_cli_base} -h "${fqdn}" INFO replication 2>/dev/null \
+             | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
+    if [ "${role}" = "master" ]; then
+      echo "${fqdn}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+primary_fqdn=""
+attempt=1
+while [ "${attempt}" -le "${primary_discovery_retries}" ]; do
+  primary_fqdn=$(find_primary_fqdn) || true
+  if [ -n "${primary_fqdn}" ]; then
     echo "INFO: current primary is ${primary_fqdn}"
     break
   fi
+
+  if [ "${attempt}" -lt "${primary_discovery_retries}" ]; then
+    echo "INFO: primary not discoverable yet, retrying (${attempt}/${primary_discovery_retries}) after ${primary_discovery_interval}s"
+    sleep "${primary_discovery_interval}"
+  fi
+  attempt=$((attempt + 1))
 done
 
 if [ -z "${primary_fqdn}" ]; then
-  echo "ERROR: could not find primary among data pods — Sentinel registration failed." >&2
+  echo "ERROR: could not find primary among data pods after ${primary_discovery_retries} attempts — Sentinel registration failed." >&2
   exit 1
 fi
 
