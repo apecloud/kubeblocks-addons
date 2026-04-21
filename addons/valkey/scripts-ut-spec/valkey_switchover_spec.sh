@@ -813,6 +813,22 @@ Describe "Valkey Switchover Bash Script Tests"
         The stdout should include "New primary confirmed"
       End
     End
+
+    Context "when the wrong pod becomes master (not the expected candidate)"
+      It "does not return success for the wrong master — keeps waiting, returns success only for expected"
+        get_role() {
+          case "$1" in
+            *"valkey-2"*) echo "master" ;;   # wrong pod is master
+            *"valkey-1"*) echo "master" ;;   # expected pod also master (will match)
+            *) echo "slave" ;;
+          esac
+        }
+        # valkey-1 is expected; valkey-2 is also master but should be skipped
+        When call wait_for_new_master "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include "valkey-1"
+      End
+    End
   End
 
   Describe "switchover_with_sentinel() — success path restore ordering"
