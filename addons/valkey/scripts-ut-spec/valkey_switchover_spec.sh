@@ -254,6 +254,20 @@ Describe "Valkey Switchover Bash Script Tests"
         The stderr should include "returned unexpected response"
       End
     End
+
+    Context "when valkey-cli exits non-zero (connection refused)"
+      It "returns failure with an error message"
+        valkey-cli() {
+          echo "Could not connect to Redis at valkey-1:6379: Connection refused" >&2
+          return 1
+        }
+        When call promote_replica "valkey-1.headless.default.svc.cluster.local"
+        The status should be failure
+        The stdout should include "Promoting"
+        The stderr should include "ERROR"
+        The stderr should include "failed on"
+      End
+    End
   End
 
   Describe "repoint_replicas()"
