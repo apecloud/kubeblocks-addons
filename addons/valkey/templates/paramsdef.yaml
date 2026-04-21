@@ -17,9 +17,95 @@ spec:
     - port
     - tls-port
     - daemonize
+    - databases
     - dir
     - logfile
     - aclfile
+    - tcp-backlog
+  dynamicParameters:
+    - acllog-max-len
+    - activedefrag
+    - active-defrag-cycle-max
+    - active-defrag-cycle-min
+    - active-defrag-ignore-bytes
+    - active-expire-effort
+    - appendfsync
+    - appendonly
+    - auto-aof-rewrite-min-size
+    - auto-aof-rewrite-percentage
+    - hash-max-listpack-entries
+    - hash-max-listpack-value
+    - hll-sparse-max-bytes
+    - lazyfree-lazy-eviction
+    - lazyfree-lazy-expire
+    - lazyfree-lazy-server-del
+    - lazyfree-lazy-user-del
+    - lfu-decay-time
+    - lfu-log-factor
+    - list-compress-depth
+    - list-max-listpack-size
+    - loglevel
+    - maxclients
+    - maxmemory
+    - maxmemory-policy
+    - maxmemory-samples
+    - min-replicas-max-lag
+    - min-replicas-to-write
+    - notify-keyspace-events
+    - proto-max-bulk-len
+    - rdb-del-sync-files
+    - rdbchecksum
+    - rdbcompression
+    - replica-lazy-flush
+    - replica-priority
+    - replica-read-only
+    - replica-serve-stale-data
+    - repl-backlog-size
+    - repl-backlog-ttl
+    - repl-diskless-load
+    - repl-diskless-sync
+    - repl-diskless-sync-delay
+    - repl-disable-tcp-nodelay
+    - repl-timeout
+    - save
+    - set-max-intset-entries
+    - set-max-listpack-entries
+    - set-max-listpack-value
+    - slowlog-log-slower-than
+    - slowlog-max-len
+    - stop-writes-on-bgsave-error
+    - tcp-keepalive
+    - timeout
+    - zset-max-listpack-entries
+    - zset-max-listpack-value
+  reloadAction:
+    shellTrigger:
+      sync: true
+      command:
+        - /bin/sh
+        - -c
+        - |
+          # KB passes changed param as: $0=PARAM_NAME $1=param_value
+          # config-manager has no valkey-cli (glibc/musl mismatch) but has nc.
+          # Params arrive as argv: $0=key (UPPER_UNDERSCORE), $1=value.
+          key="$0"
+          value="$1"
+          port="${SERVICE_PORT:-6379}"
+          redis_key=$(echo "${key}" | tr '[:upper:]_' '[:lower:]-')
+          if [ -n "${VALKEY_DEFAULT_PASSWORD}" ]; then
+            result=$(printf "AUTH %s\r\nCONFIG SET %s %s\r\n" \
+              "${VALKEY_DEFAULT_PASSWORD}" "${redis_key}" "${value}" \
+              | timeout 5 nc 127.0.0.1 "${port}" 2>/dev/null)
+          else
+            result=$(printf "CONFIG SET %s %s\r\n" "${redis_key}" "${value}" \
+              | timeout 5 nc 127.0.0.1 "${port}" 2>/dev/null)
+          fi
+          case "${result}" in
+            *"+OK"*) exit 0 ;;
+            *"ERR Unknown option"*|*"not allowed"*|*"can't set"*)
+              echo "WARN: CONFIG SET ${redis_key} skipped: ${result}" >&2; exit 0 ;;
+            *) echo "ERROR: CONFIG SET ${redis_key} failed: ${result}" >&2; exit 1 ;;
+          esac
   parametersSchema:
     topLevelKey: ValkeyParameter
     cue: |-

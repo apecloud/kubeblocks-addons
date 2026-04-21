@@ -123,9 +123,10 @@ spec:
   # ── Configuration files ────────────────────────────────────────────────
   # configs mounts a ConfigMap as files inside the container.
   # template: points to a ConfigMap whose keys become filenames.
-  # externalManaged: true means KubeBlocks will copy the ConfigMap to
-  # the component's namespace and manage lifecycle updates.
-  # The reconfigure action is called when parameters change at runtime.
+  # externalManaged: true tells KB's config controller to manage this
+  # configuration: create ComponentParameters, watch for parameter changes,
+  # and invoke the reloadAction.shellTrigger (in paramsdef.yaml) for
+  # dynamic parameters. Without it, KB skips the whole config lifecycle.
   configs:
     - name: valkey-replication-config
       template: {{ printf "valkey%s-config-template-%s" .major $.Chart.Version }}
