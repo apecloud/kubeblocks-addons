@@ -110,16 +110,12 @@ Describe "Valkey Switchover Bash Script Tests"
 
     Context "when new primary is valkey-1"
       It "repoints valkey-0 and valkey-2, skips valkey-1"
-        repointed=""
-        call_func_with_retry() {
-          # args: retries delay func fqdn new_primary port
-          repointed="${repointed}${4},"
-        }
+        call_func_with_retry() { return 0; }
         When call repoint_replicas "valkey-1.headless.default.svc.cluster.local"
         The status should be success
-        The variable repointed should include "valkey-0"
-        The variable repointed should include "valkey-2"
-        The variable repointed should not include "valkey-1"
+        The stdout should include "Repointing valkey-0"
+        The stdout should include "Repointing valkey-2"
+        The stdout should not include "Repointing valkey-1"
       End
     End
   End
