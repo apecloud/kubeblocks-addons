@@ -96,12 +96,50 @@ Describe "Valkey Switchover Bash Script Tests"
     End
   End
 
+  Describe "repoint_replicas()"
+    setup() {
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local,valkey-2.headless.default.svc.cluster.local"
+      export SERVICE_PORT="6379"
+    }
+    Before "setup"
+
+    teardown() {
+      unset VALKEY_POD_FQDN_LIST
+    }
+    After "teardown"
+
+    Context "when new primary is valkey-1"
+      It "repoints valkey-0 and valkey-2, skips valkey-1"
+        repointed=""
+        call_func_with_retry() {
+          # args: retries delay func fqdn new_primary port
+          repointed="${repointed}${4},"
+        }
+        When call repoint_replicas "valkey-1.headless.default.svc.cluster.local"
+        The status should be success
+        The variable repointed should include "valkey-0"
+        The variable repointed should include "valkey-2"
+        The variable repointed should not include "valkey-1"
+      End
+    End
+  End
+
   Describe "repoint_one()"
     Context "when REPLICAOF returns OK"
       It "returns success"
         valkey-cli() { echo "OK"; }
         When call repoint_one "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local" "6379"
         The status should be success
+      End
+    End
+
+    Context "when REPLICAOF returns an unexpected response"
+      It "returns failure with an error message"
+        valkey-cli() { echo "ERR unknown command"; }
+        When call repoint_one "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local" "6379"
+        The status should be failure
+        The stderr should include "ERROR"
+        The stderr should include "returned:"
       End
     End
   End
