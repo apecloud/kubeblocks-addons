@@ -96,6 +96,16 @@ Describe "Valkey Switchover Bash Script Tests"
     End
   End
 
+  Describe "repoint_one()"
+    Context "when REPLICAOF returns OK"
+      It "returns success"
+        valkey-cli() { echo "OK"; }
+        When call repoint_one "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local" "6379"
+        The status should be success
+      End
+    End
+  End
+
   Describe "pick_any_secondary()"
     Context "when a secondary exists"
       setup() {
@@ -444,6 +454,26 @@ Describe "Valkey Switchover Bash Script Tests"
       When call set_replica_priority "valkey-1.headless.default.svc.cluster.local" "100"
       The status should be success
       The stderr should eq ""
+    End
+  End
+
+  Describe "wait_until_master()"
+    Context "when the target becomes master before max_wait"
+      It "returns success"
+        get_role() { echo "master"; }
+        When call wait_until_master "valkey-1.headless.default.svc.cluster.local" 10
+        The status should be success
+      End
+    End
+
+    Context "when the target never becomes master (max_wait=0 to exit immediately)"
+      It "returns failure with a WARNING"
+        get_role() { echo "slave"; }
+        When call wait_until_master "valkey-1.headless.default.svc.cluster.local" 0
+        The status should be failure
+        The stderr should include "WARNING"
+        The stderr should include "did not confirm master role"
+      End
     End
   End
 
