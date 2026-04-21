@@ -93,6 +93,10 @@ Define kafka-exporter component definition regex pattern
 ^kafka-exporter-
 {{- end -}}
 
+{{- define "kafka-zookeeper.cmpdRegexpPattern" -}}
+^zookeeper-
+{{- end -}}
+
 {{/*
 Define kafka-controller component definition name
 */}}

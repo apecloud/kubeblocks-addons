@@ -86,7 +86,11 @@ resources:
     separated
   {{- end -}}
 {{- else -}}
-kafka2-external-zk
+  {{- if and (eq "withZookeeper-10" $.Values.mode) (eq "serviceRef" $.Values.zookeeper.mode) -}}
+    kafka2-external-zk
+  {{- else -}}
+    kafka2-internal-zk
+  {{- end -}}
 {{- end -}}
 {{- end -}}
 
