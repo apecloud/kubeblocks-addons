@@ -39,7 +39,7 @@ spec:
 
   # Wait 10 s after a pod becomes Ready before considering it stable.
   # This dampens false positives during cluster formation.
-  minReadySeconds: 10
+  minReadySeconds: 0
 
   # ── TLS ────────────────────────────────────────────────────────────────
   tls:
