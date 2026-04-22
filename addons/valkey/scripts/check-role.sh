@@ -156,9 +156,9 @@ role_line=$(${cli_cmd} info replication 2>/dev/null \
 set_xtrace_when_ut_mode_false
 
 case "${role_line}" in
-  "role:master") echo "primary"   ;;
+  "role:master") printf %s "primary"   ;;
   "role:slave")
-    echo "secondary"
+    printf %s "secondary"
     check_cascade_topology || true
     check_sync_stall || true
     ;;

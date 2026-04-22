@@ -94,13 +94,19 @@ Describe "Valkey Check-Role Bash Script Tests"
         role_line=$(${cli_cmd} info replication 2>/dev/null | grep "^role:" | tr -d '\r\n')
         When call bash -c "
           case \"${role_line}\" in
-            \"role:master\") echo \"primary\" ;;
-            \"role:slave\")  echo \"secondary\" ;;
+            \"role:master\") printf %s \"primary\" ;;
+            \"role:slave\")  printf %s \"secondary\" ;;
             *) echo \"unknown\" >&2; exit 1 ;;
           esac
         "
         The status should be success
         The stdout should eq "primary"
+      End
+
+      It "does not include a trailing newline byte"
+        When call bash -c "printf %s 'primary' | od -An -t x1 | tr -s ' ' | sed 's/^ //;s/ $//'"
+        The status should be success
+        The stdout should eq "70 72 69 6d 61 72 79"
       End
     End
 
@@ -113,13 +119,19 @@ Describe "Valkey Check-Role Bash Script Tests"
         role_line=$(${cli_cmd} info replication 2>/dev/null | grep "^role:" | tr -d '\r\n')
         When call bash -c "
           case \"${role_line}\" in
-            \"role:master\") echo \"primary\" ;;
-            \"role:slave\")  echo \"secondary\" ;;
+            \"role:master\") printf %s \"primary\" ;;
+            \"role:slave\")  printf %s \"secondary\" ;;
             *) echo \"unknown\" >&2; exit 1 ;;
           esac
         "
         The status should be success
         The stdout should eq "secondary"
+      End
+
+      It "does not include a trailing newline byte"
+        When call bash -c "printf %s 'secondary' | od -An -t x1 | tr -s ' ' | sed 's/^ //;s/ $//'"
+        The status should be success
+        The stdout should eq "73 65 63 6f 6e 64 61 72 79"
       End
     End
   End
