@@ -101,6 +101,7 @@ spec:
             option: Required
   lifecycleActions:
     memberLeave:
+      timeoutSeconds: 120
       exec:
         image: {{ $.Values.images.registry | default "docker.io"  }}/{{ $.Values.images.nebula.tool }}
         command:
