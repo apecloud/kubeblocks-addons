@@ -125,8 +125,8 @@ spec:
   # template: points to a ConfigMap whose keys become filenames.
   # externalManaged: true tells KB's config controller to manage this
   # configuration: create ComponentParameters, watch for parameter changes,
-  # and invoke the reloadAction.shellTrigger (in paramsdef.yaml) for
-  # dynamic parameters. Without it, KB skips the whole config lifecycle.
+  # and invoke the ComponentDefinition reconfigure action for dynamic
+  # parameters. Without it, KB skips the whole config lifecycle.
   configs:
     - name: valkey-replication-config
       template: {{ printf "valkey%s-config-template-%s" .major $.Chart.Version }}

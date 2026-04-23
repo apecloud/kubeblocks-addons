@@ -78,34 +78,6 @@ spec:
     - timeout
     - zset-max-listpack-entries
     - zset-max-listpack-value
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - /bin/sh
-        - -c
-        - |
-          # KB passes changed param as: $0=PARAM_NAME $1=param_value
-          # config-manager has no valkey-cli (glibc/musl mismatch) but has nc.
-          # Params arrive as argv: $0=key (UPPER_UNDERSCORE), $1=value.
-          key="$0"
-          value="$1"
-          port="${SERVICE_PORT:-6379}"
-          redis_key=$(echo "${key}" | tr '[:upper:]_' '[:lower:]-')
-          if [ -n "${VALKEY_DEFAULT_PASSWORD}" ]; then
-            result=$(printf "AUTH %s\r\nCONFIG SET %s %s\r\n" \
-              "${VALKEY_DEFAULT_PASSWORD}" "${redis_key}" "${value}" \
-              | timeout 5 nc 127.0.0.1 "${port}" 2>/dev/null)
-          else
-            result=$(printf "CONFIG SET %s %s\r\n" "${redis_key}" "${value}" \
-              | timeout 5 nc 127.0.0.1 "${port}" 2>/dev/null)
-          fi
-          case "${result}" in
-            *"+OK"*) exit 0 ;;
-            *"ERR Unknown option"*|*"not allowed"*|*"can't set"*)
-              echo "WARN: CONFIG SET ${redis_key} skipped: ${result}" >&2; exit 0 ;;
-            *) echo "ERROR: CONFIG SET ${redis_key} failed: ${result}" >&2; exit 1 ;;
-          esac
   parametersSchema:
     topLevelKey: ValkeyParameter
     cue: |-

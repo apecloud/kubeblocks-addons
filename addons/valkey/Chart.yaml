@@ -1,6 +1,6 @@
 apiVersion: v2
 name: valkey
-version: 0.1.0
+version: 0.1.1
 appVersion: "9.0.0"
 description: Valkey KubeBlocks addon
 annotations:
