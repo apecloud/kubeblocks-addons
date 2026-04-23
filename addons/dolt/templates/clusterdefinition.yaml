@@ -1,0 +1,19 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: dolt
+  labels:
+    {{- include "dolt.labels" . | nindent 4 }}
+  annotations:
+    {{- include "dolt.annotations" . | nindent 4 }}
+spec:
+  topologies:
+    - name: standalone
+      default: true
+      components:
+        - name: dolt
+          compDef: {{ include "dolt.standaloneCmpdRegexpPattern" . }}
+    - name: replication
+      components:
+        - name: dolt
+          compDef: {{ include "dolt.cmpdRegexpPattern" . }}

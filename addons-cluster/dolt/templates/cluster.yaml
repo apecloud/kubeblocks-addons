@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  clusterDef: dolt
+  topology: {{ .Values.mode }}
+  componentSpecs:
+    - name: dolt
+      serviceVersion: {{ .Values.version | quote }}
+      replicas: {{ include "dolt-cluster.replicas" . }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}

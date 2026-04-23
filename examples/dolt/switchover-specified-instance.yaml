@@ -1,0 +1,15 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: dolt-switchover
+  namespace: demo
+spec:
+  clusterName: dolt-repl
+  type: Switchover
+  switchover:
+    - componentName: dolt
+      # Instance whose role is transferred (typically the current primary).
+      instanceName: dolt-repl-dolt-0
+      # Optional: explicitly choose which pod becomes the new primary.
+      # The name must match a pod in the `dolt` component.
+      candidateName: dolt-repl-dolt-1
