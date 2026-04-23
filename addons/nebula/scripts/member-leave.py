@@ -65,7 +65,7 @@ def get_member_leave_info(cli,pod_fqdn):
 def get_job_info(member_leave_info, space):
     if not member_leave_info:
         return {}
-    return member_leave_info.get(space)
+    return member_leave_info.get(space) or {}
 
 def get_spaces(nebula_client):
     stmt = "SHOW SPACES"
