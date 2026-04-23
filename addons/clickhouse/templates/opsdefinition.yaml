@@ -55,6 +55,273 @@ spec:
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsDefinition
 metadata:
+  name: pre-scale-in-shard-clickhouse
+spec:
+  podInfoExtractors:
+    - name: availablePod
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: CLICKHOUSE_TCP_PORT
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_TCP_PORT
+        - name: CLICKHOUSE_TCP_SECURE_PORT
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_TCP_SECURE_PORT
+        - name: CLICKHOUSE_ADMIN_USER
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_ADMIN_USER
+        - name: CLICKHOUSE_ADMIN_PASSWORD
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_ADMIN_PASSWORD
+        - name: ALL_COMBINED_SHARDS_POD_FQDN_LIST
+          valueFrom:
+            envRef:
+              envName: ALL_COMBINED_SHARDS_POD_FQDN_LIST
+  parametersSchema:
+    openAPIV3Schema:
+      required: ["scaleInShardPodFqdn"]
+      properties:
+        scaleInShardPodFqdn:
+          description: "FQDN of one pod on the shard being removed (e.g. mycluster-ch-0.mycluster-ch-headless.default.svc.cluster.local)"
+          type: string
+        clusterName:
+          description: "ClickHouse cluster name configured in remote_servers (default: 'default')"
+          type: string
+          default: "default"
+        dryRun:
+          description: "Print migration plan without executing (default: false)"
+          type: string
+          enum: ["true", "false"]
+          default: "false"
+      type: object
+  actions:
+    - name: pre-scale-in-shard
+      failurePolicy: Fail
+      workload:
+        podInfoExtractorName: availablePod
+        type: Pod
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: pre-scale-in-shard
+              image: {{ include "clickhouse.repository" . }}:{{ (index .Values.clickhouseVersions 0).imageTag }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/common.sh" | nindent 18 }}
+                  {{- .Files.Get "scripts/pre-scale-in-shard.sh" | nindent 18 }}
+---
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: rotate-password-clickhouse
+spec:
+  podInfoExtractors:
+    - name: availablePod
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: CLICKHOUSE_TCP_PORT
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_TCP_PORT
+        - name: CLICKHOUSE_TCP_SECURE_PORT
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_TCP_SECURE_PORT
+        - name: CLICKHOUSE_ADMIN_USER
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_ADMIN_USER
+        - name: CLICKHOUSE_ADMIN_PASSWORD
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_ADMIN_PASSWORD
+        - name: CLICKHOUSE_POD_FQDN_LIST
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_POD_FQDN_LIST
+  parametersSchema:
+    openAPIV3Schema:
+      required: ["username", "newPassword"]
+      properties:
+        username:
+          description: "ClickHouse user to rotate password for (e.g. 'admin')"
+          type: string
+        newPassword:
+          description: "New password for the user"
+          type: string
+        secretName:
+          description: "Kubernetes Secret name to patch with the new password"
+          type: string
+        secretNamespace:
+          description: "Namespace of the Kubernetes Secret (defaults to cluster namespace)"
+          type: string
+      type: object
+  actions:
+    - name: rotate-password
+      failurePolicy: Fail
+      workload:
+        podInfoExtractorName: availablePod
+        type: Pod
+        backoffLimit: 0
+        podSpec:
+          initContainers:
+            - name: copy-tools
+              image: {{ include "busybox.image" . }}
+              imagePullPolicy: {{ .Values.busyboxImage.pullPolicy }}
+              command:
+                - sh
+                - -c
+                - cp /bin/curl /shared-tools/curl && chmod +x /shared-tools/curl
+              volumeMounts:
+                - name: shared-tools
+                  mountPath: /shared-tools
+          volumes:
+            - name: shared-tools
+              emptyDir: {}
+          containers:
+            - name: rotate-password
+              image: {{ include "clickhouse.repository" . }}:{{ (index .Values.clickhouseVersions 0).imageTag }}
+              imagePullPolicy: IfNotPresent
+              volumeMounts:
+                - name: shared-tools
+                  mountPath: /shared-tools
+              command:
+                - bash
+                - -c
+                - |
+                  export PATH="/shared-tools:$PATH"
+                  {{- .Files.Get "scripts/common.sh" | nindent 18 }}
+                  {{- .Files.Get "scripts/rotate-password.sh" | nindent 18 }}
+---
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: vscale-check-clickhouse
+spec:
+  podInfoExtractors:
+    - name: availablePod
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: CLICKHOUSE_TCP_PORT
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_TCP_PORT
+        - name: CLICKHOUSE_TCP_SECURE_PORT
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_TCP_SECURE_PORT
+        - name: CLICKHOUSE_ADMIN_USER
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_ADMIN_USER
+        - name: CLICKHOUSE_ADMIN_PASSWORD
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_ADMIN_PASSWORD
+        - name: CLICKHOUSE_POD_FQDN_LIST
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_POD_FQDN_LIST
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        mode:
+          description: "Check phase: 'pre' (before scale) or 'post' (after scale)"
+          type: string
+          enum: ["pre", "post"]
+          default: "pre"
+        newMemoryBytes:
+          description: "Target memory limit in bytes; used for scale-down safety check in pre mode"
+          type: integer
+          default: 0
+        shrinkThresholdPct:
+          description: "Refuse scale-down if MemoryTracking exceeds this % of new limit (default 80)"
+          type: integer
+          default: 80
+      type: object
+  actions:
+    - name: vscale-check
+      failurePolicy: Fail
+      workload:
+        podInfoExtractorName: availablePod
+        type: Pod
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: vscale-check
+              image: {{ include "clickhouse.repository" . }}:{{ (index .Values.clickhouseVersions 0).imageTag }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/common.sh" | nindent 18 }}
+                  {{- .Files.Get "scripts/vscale-check.sh" | nindent 18 }}
+---
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: diagnose-clickhouse
+  annotations:
+    ops.kubeblocks.io/description: "Run ClickHouse cluster diagnostics: replica sync, merge queue, Keeper health, slow queries Top-10"
+spec:
+  podInfoExtractors:
+    - name: availablePod
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: CLICKHOUSE_TCP_PORT
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_TCP_PORT
+        - name: CLICKHOUSE_TCP_SECURE_PORT
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_TCP_SECURE_PORT
+        - name: CLICKHOUSE_ADMIN_USER
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_ADMIN_USER
+        - name: CLICKHOUSE_ADMIN_PASSWORD
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_ADMIN_PASSWORD
+        - name: CLICKHOUSE_POD_FQDN_LIST
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_POD_FQDN_LIST
+  actions:
+    - name: diagnose
+      failurePolicy: Ignore
+      workload:
+        podInfoExtractorName: availablePod
+        type: Pod
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: diagnose
+              image: {{ include "clickhouse.repository" . }}:{{ (index .Values.clickhouseVersions 0).imageTag }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/common.sh" | nindent 18 }}
+                  {{- .Files.Get "scripts/diagnose.sh" | nindent 18 }}
+---
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
   name: post-scale-out-shard-for-clickhouse
 spec:
   podInfoExtractors:

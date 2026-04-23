@@ -34,6 +34,21 @@ clickhouseVersions:
   - version: 22.6.1
     imageTag: 22.6.1
 
+## @param nodeSelector Node labels for pods assignment
+nodeSelector: {}
+
+## @param priorityClassName Pods' priorityClassName
+priorityClassName: ""
+
+## PodDisruptionBudget configuration
+pdb:
+  ## @param pdb.create Enable PodDisruptionBudget for CH Server and Keeper
+  create: true
+  ## @param pdb.minAvailable Minimum available pods for CH Server
+  minAvailable: 1
+  ## @param pdb.keeperMinAvailable Minimum available pods for CH Keeper (should be majority of quorum)
+  keeperMinAvailable: 2
+
 roleProbe:
   initialDelaySeconds: 15
   failureThreshold: 3
@@ -53,6 +68,44 @@ backupImage:
   pullPolicy: IfNotPresent
   tag: 2.6.42
 
+## @param allowedNetworks List of CIDR ranges allowed to connect to ClickHouse.
+## Defaults to cluster-internal access only. Set to "::/0" to allow all.
+## Example: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+allowedNetworks:
+  - "10.0.0.0/8"
+  - "172.16.0.0/12"
+  - "192.168.0.0/16"
+
+## PrometheusRule configuration
+prometheusRule:
+  ## @param prometheusRule.enabled Create a PrometheusRule resource for ClickHouse alerts
+  enabled: false
+  ## @param prometheusRule.additionalLabels Additional labels to add to the PrometheusRule (e.g., for Prometheus selector)
+  additionalLabels: {}
+
+## Transparent Data Encryption (TDE) configuration
+## Requires ClickHouse >= 22.4. Encrypts data at rest using AES-256-CTR.
+## When enabled, a Kubernetes Secret named <release>-tde-key must exist with key 'tde-key-hex'
+## containing a 64-character hex-encoded 256-bit key (e.g. openssl rand -hex 32).
+tde:
+  ## @param tde.enabled Enable Transparent Data Encryption for data at rest
+  enabled: false
+
 restore:
   schemaReadyTimeoutSeconds: 1800
   schemaReadyCheckIntervalSeconds: 5
+
+## Backup schedule configuration.
+## Schedules are enabled by default. Requires a BackupRepo (object storage) to be configured.
+## Set backup.enabled=false to disable all scheduled backups (e.g. dev environments with no repo).
+backup:
+  ## @param backup.enabled Enable scheduled backups. Set to false to disable all schedules.
+  enabled: true
+  ## @param backup.fullSchedule Cron expression for full backup (default: weekly on Sunday at 02:00)
+  fullSchedule: "0 2 * * 0"
+  ## @param backup.fullRetentionPeriod Retention period for full backups (e.g. 30d, 4w)
+  fullRetentionPeriod: "30d"
+  ## @param backup.incrementalSchedule Cron expression for incremental backup (default: Mon–Sat at 02:00)
+  incrementalSchedule: "0 2 * * 1-6"
+  ## @param backup.incrementalRetentionPeriod Retention period for incremental backups
+  incrementalRetentionPeriod: "7d"

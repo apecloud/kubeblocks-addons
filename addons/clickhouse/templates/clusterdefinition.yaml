@@ -23,3 +23,28 @@ spec:
         provision:
           - ch-keeper
           - clickhouse
+    - name: standalone-with-readonly
+      components:
+        - name: clickhouse-ro
+          compDef: {{ include "clickhouse-readonly.cmpdRegexpPattern" .}}
+      shardings:
+        - name: clickhouse
+          shardingDef: clickhouse
+      orders:
+        provision:
+          - clickhouse
+          - clickhouse-ro
+    - name: cluster-with-readonly
+      components:
+        - name: ch-keeper
+          compDef: {{ include "clickhouse-keeper.cmpdRegexpPattern" .}}
+        - name: clickhouse-ro
+          compDef: {{ include "clickhouse-readonly.cmpdRegexpPattern" .}}
+      shardings:
+        - name: clickhouse
+          shardingDef: clickhouse
+      orders:
+        provision:
+          - ch-keeper
+          - clickhouse
+          - clickhouse-ro

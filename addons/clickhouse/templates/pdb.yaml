@@ -1,0 +1,30 @@
+{{- if .Values.pdb.create }}
+---
+# PodDisruptionBudget for ClickHouse Server (per shard)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "clickhouse.fullname" . }}-ch-pdb
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "clickhouse.name" . }}
+      app.kubernetes.io/component: clickhouse
+---
+# PodDisruptionBudget for ClickHouse Keeper
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "clickhouse.fullname" . }}-keeper-pdb
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.pdb.keeperMinAvailable }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "clickhouse.name" . }}
+      app.kubernetes.io/component: ch-keeper
+{{- end }}

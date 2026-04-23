@@ -1799,7 +1799,7 @@
       "yaxes": [
         {
           "$$hashKey": "object:176",
-          "format": "µs",
+          "format": "\u00b5s",
           "label": "",
           "logBase": 1,
           "show": true
@@ -1894,7 +1894,7 @@
       "yaxes": [
         {
           "$$hashKey": "object:176",
-          "format": "µs",
+          "format": "\u00b5s",
           "label": "",
           "logBase": 1,
           "show": true
@@ -1988,7 +1988,7 @@
       "yaxes": [
         {
           "$$hashKey": "object:176",
-          "format": "µs",
+          "format": "\u00b5s",
           "label": "",
           "logBase": 1,
           "show": true
@@ -2540,7 +2540,7 @@
           "yaxes": [
             {
               "$$hashKey": "object:176",
-              "format": "µs",
+              "format": "\u00b5s",
               "label": "",
               "logBase": 1,
               "show": true
@@ -5485,7 +5485,7 @@
           "yaxes": [
             {
               "$$hashKey": "object:176",
-              "format": "µs",
+              "format": "\u00b5s",
               "label": "",
               "logBase": 1,
               "show": true
@@ -7843,7 +7843,7 @@
           "yaxes": [
             {
               "$$hashKey": "object:176",
-              "format": "µs",
+              "format": "\u00b5s",
               "label": "",
               "logBase": 1,
               "show": true
@@ -11204,6 +11204,644 @@
       ],
       "title": "Zookeeper",
       "type": "row"
+    },
+    {
+      "collapsed": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 77
+      },
+      "id": 200,
+      "panels": [],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Query Insights",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 78
+      },
+      "id": 201,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "increase(ClickHouseProfileEvents_SlowQuery{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}[5m])",
+          "legendFormat": "{{{{pod}}}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Slow Queries (>1s) \u2014 5m rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 78
+      },
+      "id": 202,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum by (pod, le) (rate(ClickHouseProfileEvents_QueryTimeMicroseconds_bucket{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}[5m]))) / 1000",
+          "legendFormat": "p99 {{{{pod}}}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum by (pod, le) (rate(ClickHouseProfileEvents_QueryTimeMicroseconds_bucket{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}[5m]))) / 1000",
+          "legendFormat": "p95 {{{{pod}}}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Query Latency P99 / P95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 86
+      },
+      "id": 203,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "ClickHouseMetrics_MemoryTracking{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
+          "legendFormat": "query mem tracking {{{{pod}}}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "ClickHouseAsyncMetrics_MemoryResident{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
+          "legendFormat": "resident mem {{{{pod}}}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Query Memory Tracking vs Resident Memory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 86
+      },
+      "id": 204,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "increase(ClickHouseProfileEvents_FailedQuery{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}[5m])",
+          "legendFormat": "failed {{{{pod}}}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "increase(ClickHouseProfileEvents_FailedSelectQuery{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}[5m])",
+          "legendFormat": "failed SELECT {{{{pod}}}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Failed Queries \u2014 5m rate",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 94
+      },
+      "id": 210,
+      "panels": [],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Keeper Health",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 95
+      },
+      "id": 211,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "increase(ClickHouseProfileEvents_KeeperLeaderElections{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}[5m])",
+          "legendFormat": "leader elections {{{{pod}}}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Keeper Leader Elections \u2014 5m",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 95
+      },
+      "id": 212,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "ClickHouseAsyncMetrics_KeeperAvgLatency{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
+          "legendFormat": "avg latency {{{{pod}}}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "ClickHouseAsyncMetrics_KeeperMaxLatency{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
+          "legendFormat": "max latency {{{{pod}}}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Keeper Request Latency (avg/max)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 95
+      },
+      "id": 213,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "ClickHouseMetrics_KeeperAliveConnections{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
+          "legendFormat": "alive connections {{{{pod}}}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "ClickHouseMetrics_KeeperOutstandingRequests{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
+          "legendFormat": "outstanding requests {{{{pod}}}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Keeper Connections & Outstanding Requests",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 103
+      },
+      "id": 220,
+      "title": "System Resources (AsyncMetrics)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 104
+      },
+      "id": 221,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "ClickHouseAsyncMetrics_MemoryResident{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
+          "legendFormat": "RSS {{pod}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "ClickHouseAsyncMetrics_MemoryVirtual{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
+          "legendFormat": "Virtual {{pod}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Resident Memory (Physical RSS)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 104
+      },
+      "id": 222,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "ClickHouseAsyncMetrics_DiskUsed_default{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
+          "legendFormat": "Used {{{{pod}}}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "ClickHouseAsyncMetrics_DiskTotal_default{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
+          "legendFormat": "Total {{{{pod}}}}",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "ClickHouseAsyncMetrics_DiskAvailable_default{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
+          "legendFormat": "Available {{{{pod}}}}",
+          "refId": "C"
+        }
+      ],
+      "title": "Disk Usage (default disk)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 112
+      },
+      "id": 223,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(ClickHouseAsyncMetrics_OSUserTime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}[5m])",
+          "legendFormat": "User CPU {{{{pod}}}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(ClickHouseAsyncMetrics_OSSystemTime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}[5m])",
+          "legendFormat": "System CPU {{{{pod}}}}",
+          "refId": "B"
+        }
+      ],
+      "title": "CPU Usage (User + System Time rate)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 112
+      },
+      "id": 224,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "ClickHouseAsyncMetrics_TotalBytesOfMergeTreeTables{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
+          "legendFormat": "Data bytes {{{{pod}}}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "ClickHouseAsyncMetrics_TotalPrimaryKeyBytesInMemory{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\", apps_kubeblocks_io_component_name=~\"$component\", pod=~\"$instance\"}",
+          "legendFormat": "PK in memory {{{{pod}}}}",
+          "refId": "B"
+        }
+      ],
+      "title": "MergeTree Tables \u2014 Bytes on Disk",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",
