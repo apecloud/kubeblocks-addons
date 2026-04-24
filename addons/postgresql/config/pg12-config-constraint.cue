@@ -782,7 +782,7 @@
 	"pgtle.enable_password_check"?: string & "on" | "off" | "require"
 
 	// Enables index adviser logging.
-	"index_adviser.enable_log"?: bool & false | true
+	"index_adviser.enable_log"?: string & "on" | "off"
 
 	// Maximum number of aggregation columns considered by index adviser.
 	"index_adviser.max_aggregation_column_count"?: int & >=0 & <=32
