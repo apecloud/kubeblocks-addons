@@ -361,6 +361,9 @@
 	// Sets the locale for formatting date and time values.
 	lc_time?: string
 
+	// Sets the maximum allowed duration of any wait for a lock.
+	lock_timeout?: int & >=0 & <=2147483647 @timeDurationResource()
+
 	// Sets the host name or IP address(es) to listen to.
 	listen_addresses?: string
 
@@ -531,6 +534,9 @@
 
 	// (min) Time before a snapshot is too old to read pages changed after the snapshot was taken.
 	old_snapshot_threshold?: int & >=-1 & <=86400 @timeDurationResource(1min)
+
+	// Emit a warning for constructs that changed meaning since PostgreSQL 9.4.
+	operator_precedence_warning?: string & "on" | "off"
 
 	// Emulate oracle's date output behaviour.
 	"orafce.nls_date_format"?: string
@@ -775,6 +781,15 @@
 	// Sets the behavior for interacting with passcheck feature.
 	"pgtle.enable_password_check"?: string & "on" | "off" | "require"
 
+	// Enables index adviser logging.
+	"index_adviser.enable_log"?: string & "on" | "off"
+
+	// Maximum number of aggregation columns considered by index adviser.
+	"index_adviser.max_aggregation_column_count"?: int & >=0 & <=32
+
+	// Maximum number of candidate indexes considered by index adviser.
+	"index_adviser.max_candidate_index_count"?: int & >=0 & <=1000
+
 	// Number of workers to use for a physical transport.
 	"pg_transport.num_workers"?: int & >=1 & <=32
 
@@ -843,6 +858,9 @@
 
 	// Lists shared libraries to preload into server. Multiple libraries can be provided using a comma-separated list, e.g. 'pg_stat_statements, auto_explain'.
 	shared_preload_libraries?: string
+
+	// sql_firewall operating mode.
+	"sql_firewall.firewall"?: string & "disable" | "learning" | "permissive" | "enforcing"
 
 	// Enables SSL connections.
 	ssl: bool & false | true | *true
@@ -958,6 +976,9 @@
 	// Number of transactions by which VACUUM and HOT cleanup should be deferred, if any.
 	vacuum_defer_cleanup_age?: int & >=0 & <=1000000
 
+	// Number of tuple updates or deletes prior to index cleanup as a fraction of reltuples.
+	vacuum_cleanup_index_scale_factor?: float & >= 0 & <= 1e+10 | *0.1
+
 	// Minimum age at which VACUUM should freeze a table row.
 	vacuum_freeze_min_age?: int & >=0 & <=1000000000
 
@@ -981,6 +1002,12 @@
 
 	// Buffer size for reading ahead in the WAL during recovery.
 	wal_decode_buffer_size: int & >=65536 & <=1073741823 | *524288 @storeResource()
+
+	// Sets the number of WAL files held for standby servers.
+	wal_keep_segments?: int & >=0 & <=2147483647
+
+	// Writes full pages to WAL when first modified after a checkpoint.
+	wal_log_hints?: bool & false | true
 
 	// Sets whether a WAL receiver should create a temporary replication slot if no permanent slot is configured.
 	wal_receiver_create_temp_slot: bool & false | true | *false
