@@ -20,6 +20,7 @@ staticParameters:
   - extwlist.extensions
   - extwlist.custom_path
   - superuser_reserved_connections
+  - wal_log_hints
 
 immutableParameters:
   - archive_timeout
