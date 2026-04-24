@@ -839,10 +839,10 @@
 	"index_adviser.enable_log"?: bool & false | true
 
 	// Maximum number of aggregation columns considered by index adviser.
-	index_adviser.max_aggregation_column_count?: int & >=0 & <=32
+	"index_adviser.max_aggregation_column_count"?: int & >=0 & <=32
 
 	// Maximum number of candidate indexes considered by index adviser.
-	"index_adviser.max_candidate_index_count"?: int & >=0 & <=2147483647
+	"index_adviser.max_candidate_index_count"?: int & >=0 & <=1000
 
 	// Number of workers to use for a physical transport.
 	"pg_transport.num_workers"?: int & >=1 & <=32
@@ -917,7 +917,7 @@
 	shared_preload_libraries?: string
 
 	// sql_firewall operating mode.
-	sql_firewall.firewall?: string & "disable" | "learning" | "permissive" | "enforcing"
+	"sql_firewall.firewall"?: string & "disable" | "learning" | "permissive" | "enforcing"
 
 	// Enables SSL connections.
 	ssl: bool & false | true | *true
