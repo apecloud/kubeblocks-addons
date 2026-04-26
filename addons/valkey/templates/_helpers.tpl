@@ -97,6 +97,7 @@ any future versions can include it identically.
 reconfigure:
   exec:
     container: valkey
+    targetPodSelector: All
     command:
       - /bin/sh
       - -c
