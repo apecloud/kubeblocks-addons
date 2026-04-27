@@ -160,4 +160,4 @@ echo "fill elastic ca into index ${index_name}"
 # the cluster may have only one node, so set the replicas to 0
 curl ${COMMON_OPTIONS} -X PUT "${ENDPOINT}/${index_name}" -H "Content-Type: application/json" -d '{"settings":{"number_of_replicas":0}}'
 
-curl ${COMMON_OPTIONS} -X POST -H "Content-Type: application/json" -d "{\"ca_crt\": \"${ca_crt}\"}" "${ENDPOINT}/${index_name}/_doc/1"
+curl ${COMMON_OPTIONS} -X POST -H "Content-Type: application/json" -d "{\"ca.crt\": \"${ca_crt}\"}" "${ENDPOINT}/${index_name}/_doc/1"
