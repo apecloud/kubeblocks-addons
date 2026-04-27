@@ -49,7 +49,16 @@ server.ssl.key: /etc/pki/tls/key.pem
 # index at startup. Your Kibana users still need to authenticate with Elasticsearch, which
 # is proxied through the Kibana server.
 elasticsearch.username: "kibana_system"
-elasticsearch.password: "${KIBANA_SYSTEM_USER_PASSWORD}"
+{{- $kibanaSystemUserPasswordEnv := "KIBANA_SYSTEM_USER_PASSWORD" }}
+{{- $foundElasticsearchHostEnv := false }}
+{{- range $key, $_ := . }}
+{{- if and (not $foundElasticsearchHostEnv) (hasPrefix "ELASTICSEARCH_HOST_" $key) }}
+{{- $elasticsearchHostDataSuffix := trimPrefix "ELASTICSEARCH_HOST_" $key }}
+{{- $kibanaSystemUserPasswordEnv = printf "KIBANA_SYSTEM_USER_PASSWORD_%s" $elasticsearchHostDataSuffix }}
+{{- $foundElasticsearchHostEnv = true }}
+{{- end }}
+{{- end }}
+elasticsearch.password: "{{ printf "${%s}" $kibanaSystemUserPasswordEnv }}"
 
 # Kibana can also authenticate to Elasticsearch via "service account tokens".
 # Service account tokens are Bearer style tokens that replace the traditional username/password based configuration.
