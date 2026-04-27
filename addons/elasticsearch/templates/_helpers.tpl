@@ -730,9 +730,9 @@ runtime:
       common_options="-s -u elastic:${ELASTIC_AUTH_PASSWORD} --fail --connect-timeout 3 -k"
       while true; do
         if [ "${TLS_ENABLED}" == "true" ]; then
-          out=$(curl ${common_options} -X GET "${endpoint}/kubeblocks_ca_pem/_doc/1?pretty")
+          out=$(curl ${common_options} -X GET "${endpoint}/kubeblocks_ca_crt/_doc/1?pretty")
           if [ $? == 0 ]; then
-            echo "$out" | grep '"ca.pem" :' | awk -F: '{print $2}' | tr -d '",' | xargs | base64 -d > /tmp/elastic.ca.pem
+            echo "$out" | grep '"ca.crt" :' | awk -F: '{print $2}' | tr -d '",' | xargs | base64 -d > /tmp/elastic.ca.crt
             info "elasticsearch is ready"
             break
           fi

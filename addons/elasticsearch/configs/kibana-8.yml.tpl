@@ -101,7 +101,7 @@ elasticsearch.ssl.key: /etc/pki/tls/key.pem
 
 # Enables you to specify a path to the PEM file for the certificate
 # authority for your Elasticsearch instance.
-elasticsearch.ssl.certificateAuthorities: [ "/tmp/elastic.ca.pem" ]
+elasticsearch.ssl.certificateAuthorities: [ "/tmp/elastic.ca.crt" ]
 
 # To disregard the validity of SSL certificates, change this setting's value to 'none'.
 elasticsearch.ssl.verificationMode: certificate
