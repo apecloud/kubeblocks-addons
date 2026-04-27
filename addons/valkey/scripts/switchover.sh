@@ -125,6 +125,31 @@ pick_any_secondary() {
   echo ""
 }
 
+pod_fqdns_with_candidate() {
+  # VALKEY_POD_FQDN_LIST is rendered into pod environment at pod creation time.
+  # After scale-out, old primary pods can still have a stale list that does not
+  # include the fresh candidate. KB_SWITCHOVER_CANDIDATE_FQDN is injected at
+  # action time, so append it here for targeted switchover bookkeeping.
+  local candidate_fqdn="${1}"
+  local result="${VALKEY_POD_FQDN_LIST:-}"
+  if is_empty "${candidate_fqdn}"; then
+    echo "${result}"
+    return 0
+  fi
+
+  local candidate_pod="${candidate_fqdn%%.*}"
+  IFS=',' read -ra pod_fqdns <<< "${result}"
+  for fqdn in "${pod_fqdns[@]}"; do
+    [ "${fqdn%%.*}" = "${candidate_pod}" ] && echo "${result}" && return 0
+  done
+
+  if is_empty "${result}"; then
+    echo "${candidate_fqdn}"
+  else
+    echo "${result},${candidate_fqdn}"
+  fi
+}
+
 # ── Sentinel-based switchover ────────────────────────────────────────────────
 
 sentinel_cli_for() {
@@ -238,7 +263,7 @@ wait_for_new_master() {
   local max_wait=300 elapsed=0
 
   while [ "${elapsed}" -lt "${max_wait}" ]; do
-    IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
+    IFS=',' read -ra pod_fqdns <<< "$(pod_fqdns_with_candidate "${expected_fqdn}")"
     for fqdn in "${pod_fqdns[@]}"; do
       local role
       role=$(get_role "${fqdn}") || continue
@@ -299,7 +324,7 @@ switchover_with_sentinel() {
     # Set candidate priority to 1 (best), all others to 100 (lowest).
     # If priority cannot be set (e.g. transient TLS connection failure), log a
     # warning and continue without bias — Sentinel will still elect a new primary.
-    IFS=',' read -ra all_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
+    IFS=',' read -ra all_fqdns <<< "$(pod_fqdns_with_candidate "${candidate_fqdn}")"
     for fqdn in "${all_fqdns[@]}"; do
       # Append "." so "valkey-1." is not a substring of "valkey-11.headless..." (substring false positive).
       if contains "${fqdn}" "${candidate_fqdn%%.*}."; then
@@ -320,7 +345,7 @@ switchover_with_sentinel() {
     if ! wait_sentinel_sees_priority "${candidate_fqdn}" "1"; then
       # Sentinel did not reflect the priority in time — restore before aborting
       # so the bias is never left in place after a failed switchover attempt.
-      IFS=',' read -ra all_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
+      IFS=',' read -ra all_fqdns <<< "$(pod_fqdns_with_candidate "${candidate_fqdn}")"
       for fqdn in "${all_fqdns[@]}"; do
         set_replica_priority "${fqdn}" 100 || true
       done
@@ -331,7 +356,7 @@ switchover_with_sentinel() {
   if ! execute_sentinel_failover; then
     # Restore priorities before failing so future Sentinel failovers are not biased.
     if ! is_empty "${candidate_fqdn}"; then
-      IFS=',' read -ra all_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
+      IFS=',' read -ra all_fqdns <<< "$(pod_fqdns_with_candidate "${candidate_fqdn}")"
       for fqdn in "${all_fqdns[@]}"; do
         set_replica_priority "${fqdn}" 100 || true
       done
@@ -348,7 +373,7 @@ switchover_with_sentinel() {
     wait_for_new_master "${candidate_fqdn}" "${KB_SWITCHOVER_CURRENT_FQDN}" || wfnm_rc=$?
     # Restore priorities on both success and failure paths — Sentinel has now
     # committed +switch-master (or timed out), so the bias is no longer needed.
-    IFS=',' read -ra all_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
+    IFS=',' read -ra all_fqdns <<< "$(pod_fqdns_with_candidate "${candidate_fqdn}")"
     for fqdn in "${all_fqdns[@]}"; do
       set_replica_priority "${fqdn}" 100 || true
     done

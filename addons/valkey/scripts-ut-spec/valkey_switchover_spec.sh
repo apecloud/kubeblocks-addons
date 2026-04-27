@@ -571,6 +571,21 @@ Describe "Valkey Switchover Bash Script Tests"
       End
     End
 
+    Context "when fresh scale-out candidate is absent from stale VALKEY_POD_FQDN_LIST"
+      It "still biases and restores the requested candidate"
+        export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+        get_role() { echo "slave"; }
+        set_replica_priority() { echo "SET_PRIO:${1}:${2}"; return 0; }
+        wait_sentinel_sees_priority() { return 1; }
+        execute_sentinel_failover() { echo "SHOULD_NOT_BE_CALLED"; }
+        When call switchover_with_sentinel "valkey-3.headless.default.svc.cluster.local"
+        The status should be failure
+        The stdout should include "SET_PRIO:valkey-3.headless.default.svc.cluster.local:1"
+        The stdout should include "SET_PRIO:valkey-3.headless.default.svc.cluster.local:100"
+        The stdout should not include "SHOULD_NOT_BE_CALLED"
+      End
+    End
+
     Context "when candidate role is unknown (get_role returns empty — transient network issue)"
       It "logs a warning and proceeds to call Sentinel (does not abort)"
         get_role() { echo ""; }
@@ -597,6 +612,28 @@ Describe "Valkey Switchover Bash Script Tests"
         The status should be success
         The stdout should include "Biasing"
         The stderr should eq ""
+      End
+    End
+
+    Context "when get_role returns empty on first try but slave on second (transient — retry succeeds)"
+      It "proceeds without the unknown-role warning"
+        _get_role_calls_file="${SHELLSPEC_TMPBASE}/get-role-calls"
+        printf '0' > "${_get_role_calls_file}"
+        get_role() {
+          local calls
+          calls=$(cat "${_get_role_calls_file}")
+          calls=$((calls + 1))
+          printf '%s' "${calls}" > "${_get_role_calls_file}"
+          [ "${calls}" -ge 2 ] && echo "slave" || echo ""
+        }
+        set_replica_priority() { return 0; }
+        wait_sentinel_sees_priority() { return 0; }
+        execute_sentinel_failover() { echo "OK"; return 0; }
+        wait_for_new_master() { return 0; }
+        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include "Biasing"
+        The stderr should not include "WARNING"
       End
     End
 
@@ -838,6 +875,22 @@ Describe "Valkey Switchover Bash Script Tests"
       End
     End
 
+    Context "when fresh expected candidate is absent from stale VALKEY_POD_FQDN_LIST"
+      It "still confirms the candidate by appending the action-time FQDN"
+        export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local,valkey-2.headless.default.svc.cluster.local"
+        get_role() {
+          case "$1" in
+            *"valkey-3"*) echo "master" ;;
+            *) echo "slave" ;;
+          esac
+        }
+        When call wait_for_new_master "valkey-3.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include "New primary confirmed"
+        The stdout should include "valkey-3"
+      End
+    End
+
     Context "when no new master appears within max_wait (simulated via small limit)"
       It "returns failure with a WARNING"
         get_role() { echo "slave"; }
@@ -964,6 +1017,35 @@ Describe "Valkey Switchover Bash Script Tests"
         The stdout should include "SET_PRIO:valkey-0.headless.default.svc.cluster.local:100"
         The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:100"
         The stdout should not include "SHOULD_NOT_BE_CALLED"
+      End
+    End
+
+    Context "when successful candidate is absent from stale VALKEY_POD_FQDN_LIST"
+      It "restores the requested candidate after wait_for_new_master"
+        restore_order=""
+        export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+        get_role() { echo "slave"; }
+        set_replica_priority() {
+          if [ -z "${wfnm_done:-}" ]; then
+            restore_order="${restore_order}bias:${1}:${2}|"
+          else
+            restore_order="${restore_order}restore:${1}:${2}|"
+          fi
+          echo "SET_PRIO:${1}:${2}"
+          return 0
+        }
+        wait_sentinel_sees_priority() { return 0; }
+        execute_sentinel_failover() { echo "OK"; return 0; }
+        wait_for_new_master() {
+          wfnm_done=1
+          restore_order="${restore_order}wfnm|"
+          return 0
+        }
+        When call switchover_with_sentinel "valkey-3.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include "SET_PRIO:valkey-3.headless.default.svc.cluster.local:1"
+        The variable restore_order should include "restore:valkey-3.headless.default.svc.cluster.local:100|"
+        The variable restore_order should include "wfnm|restore:valkey-0.headless.default.svc.cluster.local:100|"
       End
     End
   End
