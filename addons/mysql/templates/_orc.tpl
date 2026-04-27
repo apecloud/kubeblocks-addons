@@ -305,8 +305,6 @@ ports:
 env:
   - name: PATH
     value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/kubeblocks-tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-  - name: MYSQL_INITDB_SKIP_TZINFO
-    value: "1"
   - name: MYSQL_ROOT_HOST
     value: {{ .Values.auth.rootHost | default "%" | quote }}
   - name: HA_COMPNENT

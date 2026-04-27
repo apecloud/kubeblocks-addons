@@ -83,7 +83,7 @@ provider: kubeblocks
 serviceKind: mysql
 description: mysql component definition for Kubernetes
 updateStrategy: BestEffortParallel
-podManagementPolicy: Parallel
+podManagementPolicy: OrderedReady
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
@@ -261,6 +261,9 @@ if [ -d /etc/pki/tls ]; then
 fi
 chown -R mysql:root {{ .Values.dataMountPath }}
 SERVICE_ID=$((${POD_NAME##*-} + 1))
+if [ "$SERVICE_ID" -ne 1 ]; then
+  export MYSQL_INITDB_SKIP_TZINFO=1
+fi
 {{ end }}
 
 {{- define "mysql.spec.runtime.common" -}}

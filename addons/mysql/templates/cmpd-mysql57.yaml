@@ -95,8 +95,6 @@ spec:
           {{- include "mysql.spec.runtime.ldPreloadEnv" . | nindent 10 }}
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mysql
-          - name: MYSQL_INITDB_SKIP_TZINFO
-            value: "1"
           - name: MYSQL_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
           - name: SERVICE_PORT
