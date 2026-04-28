@@ -213,8 +213,9 @@
     "--num_io_threads": int & >=1 & <=256 | *16
 
     // Maximum number of active connections across all network threads.
-    // 0 means no limit. Per thread limit = max_connections / num_netio_threads
-    "--num_max_connections": int & >=0 | *0
+    // 0 means no limit; otherwise, the minimum value is 100.
+    // Per thread limit = max_connections / num_netio_threads
+    "--num_max_connections": int & >=100 | 0 | *0
 
     // Number of worker threads for Storage's RPC service.
     "--num_worker_threads": int & >=1 & <=256 | *32
