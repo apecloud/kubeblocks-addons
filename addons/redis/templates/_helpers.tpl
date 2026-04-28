@@ -190,6 +190,7 @@ redis-account.sh: |-
 reconfigure:
   exec:
     container: redis
+    targetPodSelector: All
     command:
       - /bin/sh
       - -c

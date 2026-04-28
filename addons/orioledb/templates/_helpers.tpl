@@ -110,6 +110,7 @@ orioledb-reload-tools-script
 reconfigure:
   exec:
     container: orioledb
+    targetPodSelector: All
     command:
       - /bin/sh
       - -c

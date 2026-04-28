@@ -223,6 +223,8 @@ Generate reloader scripts configmap
 reconfigure:
   exec:
     container: postgresql
+    targetPodSelector: Role
+    matchingKey: primary
     command:
       - /bin/sh
       - -c
@@ -233,8 +235,6 @@ reconfigure:
           [ -n "${param}" ] || continue
           /scripts/update-parameter.sh "${param}" "$(printenv "${param}")"
         done
-  targetPodSelector: Role
-  matchingKey: primary
 {{- end -}}
 
 {{/*
