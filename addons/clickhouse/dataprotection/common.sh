@@ -327,6 +327,9 @@ function ch_query() {
 	local query="$1"
 	local ch_port="${CLICKHOUSE_PORT:-9000}"
 	local ch_args=(--user "${CLICKHOUSE_USERNAME}" --password "${CLICKHOUSE_PASSWORD}" --host "${CLICKHOUSE_HOST}" --port "$ch_port" --connect_timeout=5)
+	if [[ "${CLICKHOUSE_SECURE:-false}" == "true" ]]; then
+		ch_args+=(--secure --accept-invalid-certificate)
+	fi
 	clickhouse-client "${ch_args[@]}" --query "$query"
 }
 

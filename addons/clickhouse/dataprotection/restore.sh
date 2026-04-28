@@ -8,11 +8,6 @@ trap handle_exit EXIT
 generate_backup_config
 set_clickhouse_backup_config_env
 
-if [[ "${CLICKHOUSE_SECURE}" = "true" ]]; then
-	DP_error_log "ClickHouse restore does not support TLS"
-	exit 1
-fi
-
 # 1. Detect topology mode: standalone (no ':' in FQDN) or cluster
 first_entry="${ALL_COMBINED_SHARDS_POD_FQDN_LIST%%,*}"
 first_component="${first_entry%%:*}"
