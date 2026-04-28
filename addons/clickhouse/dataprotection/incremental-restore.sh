@@ -8,11 +8,6 @@ trap handle_exit EXIT
 generate_backup_config
 set_clickhouse_backup_config_env
 
-if [[ "${CLICKHOUSE_SECURE}" = "true" ]]; then
-	DP_error_log "ClickHouse restore does not support TLS"
-	exit 1
-fi
-
 # 1. Download full (base) backup
 export S3_PATH="$DP_BACKUP_ROOT_PATH/$DP_BASE_BACKUP_NAME/$DP_TARGET_RELATIVE_PATH"
 fetch_backup "$DP_BASE_BACKUP_NAME"
