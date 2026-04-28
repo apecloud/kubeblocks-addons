@@ -656,9 +656,9 @@ The incremental backup's `parentBackupName` must refer to an existing backup cre
 #### Restore Settings
 
 > [!NOTE]
-> Restoring a TLS-enabled cluster directly from backup is NOT supported. You should restore the cluster with TLS disabled first, and then enable TLS manually after the restore process is complete.
+> When the restore target has TLS enabled, the restore job mounts the ClickHouse TLS files and connects through the secure TCP port.
 
-Restore process will restore schema and rbac first, then restore data. You can tune schema-ready waiting behavior for restore jobs via Helm values:
+Restore process will restore schema first, then restore data. Non-TLS restores also restore RBAC metadata; TLS restores focus on schema and data because replicated RBAC backup requires a direct Keeper TLS connection. You can tune schema-ready waiting behavior for restore jobs via Helm values:
 
 ```yaml
 restore:
