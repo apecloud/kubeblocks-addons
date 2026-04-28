@@ -36,7 +36,7 @@ There are two key components in the ClickHouse cluster:
 | Major Versions | Description               |
 | -------------- | ------------------------- |
 | 22             | 22.3.18, 22.3.20, 22.8.21 |
-| 24             | 24.8.3                    |
+| 24             | 24.7.2, 24.8.3, 24.12.2 |
 | 25             | 25.4.4, 25.9.7            |
 
 ## Prerequisites
@@ -1403,9 +1403,9 @@ spec:
 #### Restore Settings
 
 > [!NOTE]
-> Restoring a TLS-enabled cluster directly from backup is NOT supported. You should restore the cluster with TLS disabled first, and then enable TLS manually after the restore process is complete.
+> When the restore target has TLS enabled, the restore job mounts the ClickHouse TLS files and connects through the secure TCP port.
 
-Restore process will restore schema and rbac first, then restore data. You can tune schema-ready waiting behavior for restore jobs via Helm values:
+Restore process will restore schema first, then restore data. Non-TLS restores also restore RBAC metadata; TLS restores focus on schema and data because replicated RBAC backup requires a direct Keeper TLS connection. You can tune schema-ready waiting behavior for restore jobs via Helm values:
 
 ```yaml
 restore:

@@ -20,6 +20,28 @@ function ch_query() {
 	clickhouse-client "${ch_args[@]}" --query "$query"
 }
 
+function send_4lw() {
+	local host="$1"
+	local cmd="$2"
+
+	if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
+		timeout 2 openssl s_client \
+			-connect "$host:$CLICKHOUSE_KEEPER_PORT" \
+			-CAfile "$CLICKHOUSE_TLS_CA" \
+			-cert "$CLICKHOUSE_TLS_CERT" \
+			-key "$CLICKHOUSE_TLS_KEY" \
+			-quiet \
+			-ign_eof 2>/dev/null <<<"$cmd"
+	else
+		printf "%s" "$cmd" | /shared-tools/nc -w 2 "$host" "$CLICKHOUSE_KEEPER_PORT"
+	fi
+}
+
+function get_srvr() {
+	local host="$1"
+	send_4lw "$host" "srvr"
+}
+
 # Low-level keeper client execution with connection retry
 # Handles connection issues, timeouts, and transient network problems
 function keeper_run() {
@@ -45,7 +67,7 @@ function keeper_run() {
 		if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
 			keeper_args+=(--tls-ca-file "$CLICKHOUSE_TLS_CA" --tls-cert-file "$CLICKHOUSE_TLS_CERT" --tls-key-file "$CLICKHOUSE_TLS_KEY")
 		fi
-		if output=$(clickhouse-keeper-client "${keeper_args[@]}" 2>&1); then
+		if output=$(/opt/bitnami/clickhouse/bin/clickhouse-keeper-client "${keeper_args[@]}" 2>&1); then
 			if [[ "$output" != *"Coordination error"* ]] &&
 				[[ "$output" != *"Connection refused"* ]] &&
 				[[ "$output" != *"Timeout"* ]]; then
@@ -103,24 +125,16 @@ function get_config() {
 # Get keeper node mode (leader/follower/observer)
 function get_mode() {
 	local host="$1"
+	local mode
+	mode=$(get_srvr "$host" 2>/dev/null | awk '/^Mode:/ {print $2; exit}')
+	echo "$mode"
+}
 
-	# Use TLS port if TLS is enabled
-	if [[ "$TLS_ENABLED" == "true" ]]; then
-		# For TLS connections, use openssl s_client for 4LW commands
-		local mode
-		mode=$(printf "srvr\n" | timeout 2 openssl s_client \
-			-connect "$host:$CLICKHOUSE_KEEPER_PORT" \
-			-CAfile "$CLICKHOUSE_TLS_CA" \
-			-cert "$CLICKHOUSE_TLS_CERT" \
-			-key "$CLICKHOUSE_TLS_KEY" \
-			-quiet \
-			-ign_eof 2>/dev/null | grep Mode)
-		echo "$mode" | awk '{print $2}'
-	else
-		local mode
-		mode=$(echo srvr | /shared-tools/nc -w 1 "$host" "$CLICKHOUSE_KEEPER_PORT" | grep Mode)
-		echo "$mode" | awk '{print $2}'
-	fi
+function get_zxid() {
+	local host="$1"
+	local zxid
+	zxid=$(get_srvr "$host" 2>/dev/null | awk '/^Zxid:/ {print $2; exit}')
+	echo "$zxid"
 }
 
 # Get keeper node mode by keeper

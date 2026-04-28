@@ -23,8 +23,12 @@ clickhouseVersions:
     imageTag: 25.9.7
   - version: 25.4.4
     imageTag: 25.4.4-debian-12-r1
+  - version: 24.12.2
+    imageTag: 24.12.2.29
   - version: 24.8.3
     imageTag: 24.8.3-debian-12-r1
+  - version: 24.7.2
+    imageTag: 24.7.2.13
   - version: 22.8.21
     imageTag: 22.8.21-debian-11-r33
   - version: 22.3.20
@@ -38,7 +42,7 @@ roleProbe:
   initialDelaySeconds: 15
   failureThreshold: 3
   periodSeconds: 3
-  timeoutSeconds: 3
+  timeoutSeconds: 10
 
 busyboxImage:
   registry: ""
