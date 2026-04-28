@@ -124,9 +124,9 @@
     "--num_netio_threads": int & >=0 & <=100 | *0
 
     // Maximum number of active connections across all network threads.
-    // 0 means no limit.
+    // 0 means no limit; otherwise, the minimum value is 100.
     // Per-thread limit = num_max_connections / num_netio_threads
-    "--num_max_connections": int & >=0 | *0
+    "--num_max_connections": int & >=100 | 0 | *0
 
     // Number of threads to execute user queries.
     // 0 means use number of CPU cores.
