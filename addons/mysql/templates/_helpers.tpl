@@ -321,6 +321,7 @@ Generate LD_PRELOAD environment variable - always set, but will be cleared at ru
 reconfigure:
   exec:
     container: mysql
+    targetPodSelector: All
     command:
       - bash
       - -c

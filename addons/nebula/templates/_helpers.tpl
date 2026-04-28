@@ -146,6 +146,7 @@ nebula-scripts-template
 reconfigure:
   exec:
     container: {{ .container }}
+    targetPodSelector: All
     command:
       - /bin/sh
       - -c

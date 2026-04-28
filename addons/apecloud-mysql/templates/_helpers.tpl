@@ -498,6 +498,7 @@ Generate reloader scripts configmap
 reconfigure:
   exec:
     container: mysql
+    targetPodSelector: All
     command:
       - /bin/sh
       - -c

@@ -88,6 +88,7 @@ Generate reloader scripts configmap
 reconfigure:
   exec:
     container: metrics
+    targetPodSelector: All
     command:
       - /bin/sh
       - -c
