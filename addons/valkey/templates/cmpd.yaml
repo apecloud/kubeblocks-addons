@@ -1,0 +1,613 @@
+{{/*
+One ComponentDefinition per major version.
+Each CMPD is immutable after creation — we version the name with Chart.Version
+so upgrades create new resources rather than patching existing ones.
+In-use clusters keep pointing at the old CMPD; new clusters use the new one.
+*/}}
+{{- range .Values.valkeyVersions }}
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ printf "%s-%s" .componentDef $.Chart.Version }}
+  labels:
+    {{- include "valkey.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" $ | nindent 4 }}
+spec:
+  provider: community
+  description: Valkey v{{ .major }}.x component definition for KubeBlocks
+  # serviceKind tells KubeBlocks the protocol family so it can expose
+  # compatible service bindings to consumers.  Valkey is wire-compatible
+  # with Redis, so we reuse the "redis" kind.
+  serviceKind: redis
+  serviceVersion: {{ .serviceVersion }}
+
+  # OrderedReady ensures pod-0 is Running before pod-1 starts.
+  # This matters for replication: the first pod becomes primary and
+  # later pods replicate from it.
+  podManagementPolicy: OrderedReady
+
+  # BestEffortParallel: update secondaries in parallel, primary last.
+  # This minimises downtime while still guaranteeing the primary is the
+  # last to restart (it has the highest updatePriority).
+  updateStrategy: BestEffortParallel
+
+  # ReCreate policy is safer than PreferInPlace for stateful processes:
+  # a new pod gets a clean start rather than patching a running container.
+  podUpgradePolicy: ReCreate
+
+  # Wait 10 s after a pod becomes Ready before considering it stable.
+  # This dampens false positives during cluster formation.
+  minReadySeconds: 10
+
+  # ── TLS ────────────────────────────────────────────────────────────────
+  tls:
+    volumeName: tls
+    mountPath: {{ $.Values.tlsMountPath }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
+
+  # ── Roles ──────────────────────────────────────────────────────────────
+  # Roles drive two things:
+  #   1. roleSelector on Services — only route to the right replicas
+  #   2. updatePriority — KubeBlocks updates lower-priority pods first
+  # isExclusive: true means at most one pod may hold the "primary" role.
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+      isExclusive: true
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+
+  # ── Storage volumes ────────────────────────────────────────────────────
+  volumes:
+    - name: data
+      needSnapshot: true   # include this volume in backup snapshots
+
+  # ── Services ───────────────────────────────────────────────────────────
+  services:
+    # Default ClusterIP service — routes only to the current primary.
+    - name: valkey
+      serviceName: valkey
+      spec:
+        ports:
+          - name: valkey
+            port: 6379
+            targetPort: valkey
+      roleSelector: primary
+
+    # Per-pod NodePort service (opt-in).  Clients outside the cluster
+    # can reach individual replicas.  disableAutoProvision means KubeBlocks
+    # won't create it automatically — the user must opt in via the Cluster spec.
+    - name: valkey-advertised
+      serviceName: valkey-advertised
+      spec:
+        type: NodePort
+        ports:
+          - name: valkey-advertised
+            port: 6379
+            targetPort: valkey
+      podService: true
+      disableAutoProvision: true
+
+    # Per-pod LoadBalancer service (opt-in).
+    - name: valkey-lb-advertised
+      serviceName: valkey-lb-advertised
+      spec:
+        type: LoadBalancer
+        externalTrafficPolicy: Cluster
+        ports:
+          - name: valkey-advertised
+            port: 6379
+            targetPort: valkey
+      podService: true
+      disableAutoProvision: true
+
+  # ── Exporter ───────────────────────────────────────────────────────────
+  exporter:
+    containerName: metrics
+    scrapePath: /metrics
+    scrapePort: http-metrics
+
+  # ── Log collection ─────────────────────────────────────────────────────
+  logConfigs:
+    {{- range $name, $pattern := $.Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+
+  # ── Configuration files ────────────────────────────────────────────────
+  # configs mounts a ConfigMap as files inside the container.
+  # template: points to a ConfigMap whose keys become filenames.
+  # externalManaged: true tells KB's config controller to manage this
+  # configuration: create ComponentParameters, watch for parameter changes,
+  # and invoke the ComponentDefinition reconfigure action for dynamic
+  # parameters. Without it, KB skips the whole config lifecycle.
+  configs:
+    - name: valkey-replication-config
+      template: {{ printf "valkey%s-config-template-%s" .major $.Chart.Version }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: valkey-config
+      externalManaged: true
+      {{- include "valkey.reconfigureAction" $ | nindent 6 }}
+
+  # ── Scripts ────────────────────────────────────────────────────────────
+  # defaultMode: 0555 — the files must be executable.
+  # volumeName here must match the volumeMount name in runtime.containers.
+  scripts:
+    - name: valkey-scripts
+      template: {{ include "valkey.scriptsTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+
+  # ── System accounts ────────────────────────────────────────────────────
+  # KubeBlocks generates a random password and stores it in a Secret.
+  # initAccount: true means the account is created during cluster init
+  # via the accountProvision lifecycleAction.
+  # For Redis/Valkey there is no SQL; the provision script uses ACL SETUSER.
+  systemAccounts:
+    - name: default
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+
+  # ── Host network port allocation ───────────────────────────────────────
+  # When hostNetwork: true is set on the Pod, KubeBlocks allocates ports
+  # dynamically.  Declaring them here lets the vars system expose the
+  # allocated port via VALKEY_HOST_NETWORK_PORT.
+  hostNetwork:
+    containerPorts:
+      - container: valkey
+        ports:
+          - valkey
+      {{- if $.Values.metrics.enabled }}
+      - container: metrics
+        ports:
+          - http-metrics
+      {{- end }}
+
+  # ── Variables ──────────────────────────────────────────────────────────
+  # vars are resolved at reconcile time and injected as environment
+  # variables into every container AND into lifecycleAction exec commands.
+  # The $(VAR_NAME) syntax references them in the env[] list below.
+  vars:
+    # ── Static flags set per major version ──
+    {{- if eq .major "8" }}
+    - name: IS_VALKEY8
+      value: "true"
+    {{- else if eq .major "9" }}
+    - name: IS_VALKEY9
+      value: "true"
+    {{- end }}
+
+    # ── Cluster-scoped ──
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+
+    # ── Credentials ──
+    # credentialVarRef resolves to the Secret KubeBlocks created for the
+    # systemAccount named "default".
+    - name: VALKEY_DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          name: default
+          username: Required
+    - name: VALKEY_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: default
+          password: Required
+
+    # ── Component topology ──
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+    - name: VALKEY_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: VALKEY_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    - name: VALKEY_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+
+    # ── Advertised service ports (NodePort / LoadBalancer) ──
+    # serviceVarRef with optional: true means the var is empty when the
+    # service doesn't exist (i.e., user didn't opt in to NodePort).
+    - name: VALKEY_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          name: valkey-advertised
+          optional: true
+          port:
+            name: valkey-advertised
+            option: Required
+    - name: VALKEY_LB_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          name: valkey-lb-advertised
+          optional: true
+          port:
+            name: valkey-advertised
+            option: Required
+    - name: VALKEY_LB_ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          name: valkey-lb-advertised
+          optional: true
+          loadBalancer: Required
+          host: Required
+
+    # ── Host-network port (dynamic allocation) ──
+    # expression: Go template that falls back to the static default when
+    # the host-network port is not allocated.
+    - name: VALKEY_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: valkey
+            port:
+              name: valkey
+              option: Required
+    - name: SERVICE_PORT
+      value: "6379"
+      expression: {{ `{{if index . "VALKEY_HOST_NETWORK_PORT"}}{{.VALKEY_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
+
+    # ── Resource limits (used in valkey.conf to set maxmemory / io-threads) ──
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required
+    - name: PHY_CPU
+      valueFrom:
+        resourceVarRef:
+          cpuLimit: Required
+
+    # ── TLS flag ──
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+          optional: true
+    - name: TLS_MOUNT_PATH
+      value: {{ $.Values.tlsMountPath }}
+
+    # ── Metrics port (host-network aware) ──
+    {{- if $.Values.metrics.enabled }}
+    - name: VALKEY_METRICS_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: metrics
+            port:
+              name: http-metrics
+              option: Required
+    - name: VALKEY_METRICS_HTTP_PORT
+      value: "9121"
+      expression: {{ `{{if index . "VALKEY_METRICS_HOST_NETWORK_PORT"}}{{.VALKEY_METRICS_HOST_NETWORK_PORT}}{{else}}{{.VALKEY_METRICS_HTTP_PORT}}{{end}}` | toYaml }}
+    - name: VALKEY_METRICS_ADDR
+      value: "redis://localhost:$(SERVICE_PORT)"
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}rediss://localhost:{{.SERVICE_PORT}}{{else}}redis://localhost:{{.SERVICE_PORT}}{{end}}` | toYaml }}
+    {{- end }}
+
+    # ── TLS CLI flag (empty when TLS is off) ──
+    - name: VALKEY_CLI_TLS_ARGS
+      value: ""
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else}}{{end}}` | toYaml }}
+
+    # ── Sentinel cross-component references (optional — absent in standalone) ──
+    # compDef uses a regexp prefix; KubeBlocks resolves the concrete name at runtime.
+    # optional: true means the var is empty (not an error) when sentinel is absent.
+    - name: SENTINEL_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          optional: true
+          componentName: Required
+    - name: SENTINEL_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          optional: true
+          podFQDNs: Required
+    - name: SENTINEL_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          optional: true
+          podNames: Required
+    # Sentinel credentials (used by valkey-start.sh to authenticate SENTINEL commands)
+    - name: SENTINEL_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          name: default
+          optional: true
+          username: Required
+    - name: SENTINEL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          name: default
+          optional: true
+          password: Required
+    # Sentinel headless service host (used for FQDN-based connections)
+    - name: SENTINEL_HEADLESS_SVC_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          name: headless
+          optional: true
+          host: Optional
+    # Sentinel port (static default; overridden in host-network mode by the sentinel component)
+    - name: SENTINEL_SERVICE_PORT
+      value: "26379"
+
+  # ── Lifecycle actions ──────────────────────────────────────────────────
+  lifecycleActions:
+    # roleProbe: KubeBlocks calls this every periodSeconds to learn the
+    # role of each pod.  The script must print exactly the role name
+    # (matching one of the roles[] names above) to stdout.
+    roleProbe:
+      periodSeconds: 5
+      timeoutSeconds: 3
+      exec:
+        container: valkey
+        # Extra env only needed by roleProbe — not worth polluting the
+        # global vars list.
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: KB_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+          - name: KB_POD_FQDN
+            value: "$(CURRENT_POD_NAME).$(VALKEY_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
+          - name: KB_CLUSTER_COMP_NAME
+            value: $(VALKEY_COMPONENT_NAME)
+          - name: KB_SERVICE_PORT
+            value: "$(SERVICE_PORT)"
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/check-role.sh
+
+    # postProvision: register the initial primary with all Sentinel pods.
+    # Runs only on the primary pod (targetPodSelector: Role).
+    # preCondition: RuntimeReady ensures sentinel is already up before we try to register.
+    postProvision:
+      exec:
+        container: valkey
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-register-to-sentinel.sh > /tmp/post-provision.log 2>&1
+        targetPodSelector: Role
+        matchingKey: primary
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+      preCondition: RuntimeReady
+
+    # accountProvision: KubeBlocks injects KB_ACCOUNT_NAME, KB_ACCOUNT_PASSWORD,
+    # and KB_ACCOUNT_STATEMENT before calling this action.
+    # For Valkey the statement is an ACL SETUSER command built by KubeBlocks.
+    accountProvision:
+      exec:
+        container: valkey
+        command:
+          - sh
+          - -c
+          - /scripts/account-provision.sh
+
+    # switchover: when Sentinel is present, delegates to SENTINEL FAILOVER.
+    # When absent (standalone), performs a direct REPLICAOF NO ONE.
+    # timeoutSeconds: -1 disables the kbagent-layer exec timeout so that the
+    # Sentinel priority-cache polling (up to 30s) and the wait_for_new_master
+    # confirmation (up to 300s) are not cut short.
+    # The OpsRequest-layer 5-minute hard deadline in switchover.go provides the
+    # outer safety net — no action can hang indefinitely.
+    switchover:
+      timeoutSeconds: -1
+      exec:
+        container: valkey
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/switchover.sh > /tmp/switchover.log 2>&1
+
+    # memberJoin: KB injects KB_JOIN_MEMBER_POD_FQDN and KB_JOIN_MEMBER_POD_NAME.
+    # For standalone replication we use this to sync the ACL file to new replicas.
+    memberJoin:
+      exec:
+        container: valkey
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/sync-acl.sh
+        targetPodSelector: Any
+
+    # memberLeave: called when a pod is being removed (scale-in / eviction).
+    # Triggers a Sentinel failover if the leaving pod is the primary, then
+    # issues SENTINEL RESET to clean up stale replica entries.
+    memberLeave:
+      exec:
+        container: valkey
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-member-leave.sh
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+
+  # ── Runtime (PodSpec) ──────────────────────────────────────────────────
+  runtime:
+    containers:
+      - name: valkey
+        imagePullPolicy: IfNotPresent
+        # The startup script is responsible for:
+        #   1. Writing the dynamic parts of valkey.conf (passwords, replicaof, port)
+        #   2. exec-ing valkey-server
+        command: ["/scripts/valkey-start.sh"]
+        ports:
+          - name: valkey
+            containerPort: 6379
+        volumeMounts:
+          - name: data
+            mountPath: {{ $.Values.dataMountPath }}
+          - name: valkey-config    # mounted config template (read-only)
+            mountPath: /etc/conf
+          - name: scripts
+            mountPath: /scripts
+          - name: valkey-conf      # writable dir for the final rendered conf
+            mountPath: /etc/valkey
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+          # KB_POD_FQDN lets scripts refer to the FQDN of this specific pod.
+          - name: POD_FQDN
+            value: "$(CURRENT_POD_NAME).$(VALKEY_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
+        livenessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+          exec:
+            command:
+              - sh
+              - -c
+              - /scripts/valkey-ping.sh
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+              - sh
+              - -c
+              - /scripts/valkey-ping.sh
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - /scripts/pre-stop.sh
+
+      {{- if $.Values.metrics.enabled }}
+      - name: metrics
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        env:
+          # redis_exporter understands the Valkey INFO protocol natively.
+          - name: REDIS_ADDR
+            value: "$(VALKEY_METRICS_ADDR)"
+          - name: REDIS_EXPORTER_WEB_LISTEN_ADDRESS
+            value: "0.0.0.0:$(VALKEY_METRICS_HTTP_PORT)"
+          - name: REDIS_USER
+            value: $(VALKEY_DEFAULT_USER)
+          - name: REDIS_PASSWORD
+            value: $(VALKEY_DEFAULT_PASSWORD)
+          - name: REDIS_EXPORTER_IS_CLUSTER
+            value: "false"
+          - name: REDIS_EXPORTER_SKIP_TLS_VERIFICATION
+            value: "true"
+        ports:
+          - name: http-metrics
+            containerPort: {{ $.Values.metrics.service.port }}
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          httpGet:
+            path: /metrics
+            port: http-metrics
+        livenessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+          httpGet:
+            path: /metrics
+            port: http-metrics
+      {{- end }}
+
+    # emptyDir volume to hold the rendered valkey.conf at runtime.
+    # We separate the template (read-only ConfigMap) from the runtime conf
+    # (writable emptyDir) so the startup script can append dynamic settings.
+    volumes:
+      - name: valkey-conf
+        emptyDir: {}
+{{- end }}
