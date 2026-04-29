@@ -212,7 +212,9 @@ Describe "Valkey Start Bash Script Tests"
       It "writes no replicaof directive (this pod is primary)"
         When call build_replicaof_config
         The status should be success
-        The stdout should include "no replicaof directive needed"
+        # build_replicaof_config logs decisions to stderr (info-level), not stdout —
+        # stdout is reserved for any captured command output (none in this path).
+        The stderr should include "no replicaof directive needed"
         The contents of file "${CONF_RUNTIME}" should not include "replicaof"
       End
     End
@@ -240,7 +242,8 @@ Describe "Valkey Start Bash Script Tests"
       It "writes replicaof directive pointing to primary"
         When call build_replicaof_config
         The status should be success
-        The stdout should include "lexicographic"
+        # Path B (no sentinel) info-logs the lexicographic election to stderr.
+        The stderr should include "lexicographic"
         The contents of file "${CONF_RUNTIME}" should include "replicaof valkey-0.valkey-headless.default.svc.cluster.local 6379"
       End
     End
@@ -270,13 +273,30 @@ Describe "Valkey Start Bash Script Tests"
       After "teardown"
 
       It "uses Sentinel-reported master as replicaof target"
-        # Mock valkey-cli: Sentinel returns valkey-0's FQDN
+        # Mock valkey-cli for the sentinel query path; production code dispatches
+        # to two different commands so the mock dispatches by argv:
+        #   - SENTINEL get-master-addr-by-name  → return master FQDN + port
+        #   - other (CONFIG SET / fallbacks)   → no-op
         valkey-cli() {
-          echo "valkey-0.valkey-headless.default.svc.cluster.local"$'\n'"6379"
+          case "$*" in
+            *"SENTINEL get-master-addr-by-name"*)
+              echo "valkey-0.valkey-headless.default.svc.cluster.local"
+              echo "6379"
+              ;;
+            *) return 0 ;;
+          esac
+        }
+        # Mock verify_pod_role directly: production code wraps the role probe in
+        # `timeout 3 valkey-cli ... info replication`, but `timeout` shell-execs
+        # the binary path and bypasses test-scope shell functions. Mocking the
+        # surrounding helper is more robust for unit tests than hooking timeout.
+        verify_pod_role() {
+          echo "master"
         }
         When call build_replicaof_config
         The status should be success
-        The stdout should include "Sentinel reports current master"
+        # Sentinel quorum + role-verified path emits this exact info line to stderr.
+        The stderr should include "sentinel quorum + role verified"
         The contents of file "${CONF_RUNTIME}" should include "replicaof valkey-0.valkey-headless.default.svc.cluster.local 6379"
       End
     End
