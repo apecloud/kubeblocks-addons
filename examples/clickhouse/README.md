@@ -36,7 +36,7 @@ There are two key components in the ClickHouse cluster:
 | Major Versions | Description               |
 | -------------- | ------------------------- |
 | 22             | 22.3.18, 22.3.20, 22.8.21 |
-| 24             | 24.8.3                    |
+| 24             | 24.7.2, 24.8.3, 24.12.2   |
 | 25             | 25.4.4, 25.9.7            |
 
 ## Prerequisites
