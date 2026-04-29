@@ -47,6 +47,38 @@ build_cli_cmd() {
   echo "${cmd}"
 }
 
+# is_self_host — returns 0 if the given host resolves to the current pod.
+# Used as a guard before issuing REPLICAOF so cascade-repair never points us
+# at ourselves when the chain happens to fold back (A → B → A).
+is_self_host() {
+  local host="${1%.}"
+  local current_pod="${CURRENT_POD_NAME:-}"
+  local current_fqdn="${KB_POD_FQDN%.}"
+
+  case "${host}" in
+    "127.0.0.1"|"localhost"|"::1")
+      return 0
+      ;;
+  esac
+
+  if [ -n "${current_pod}" ]; then
+    [ "${host}" = "${current_pod}" ] && return 0
+    contains "${host}" "${current_pod}." && return 0
+  fi
+  [ -n "${current_fqdn}" ] && [ "${host}" = "${current_fqdn}" ] && return 0
+
+  if command -v getent >/dev/null 2>&1 && [ -n "${current_fqdn}" ]; then
+    local host_ips current_ips ip
+    host_ips=$(getent hosts "${host}" 2>/dev/null | awk '{print $1}' | sort -u) || true
+    current_ips=$(getent hosts "${current_fqdn}" 2>/dev/null | awk '{print $1}' | sort -u) || true
+    for ip in ${host_ips}; do
+      echo "${current_ips}" | grep -qx "${ip}" && return 0
+    done
+  fi
+
+  return 1
+}
+
 # check_cascade_topology — called when this pod is a slave.
 # Detects cascading replication (slave of slave) and self-corrects by issuing
 # REPLICAOF directly to the real master.  This handles the window after a
@@ -87,6 +119,26 @@ check_cascade_topology() {
   real_master_port=$(echo "${master_repl_info}" | grep "^master_port:" | tr -d '\r\n' | cut -d: -f2)
 
   is_empty "${real_master_host}" && return 0
+
+  # Guard 1 — stale-role race: between the time we read role:slave at the start
+  # of the probe and now, Sentinel may have promoted this pod to master. Issuing
+  # REPLICAOF on a fresh master would demote it. Re-read local role and skip if
+  # we are no longer a slave.
+  local current_repl_info current_role
+  current_repl_info=$(${cli_cmd} info replication 2>/dev/null) || return 0
+  current_role=$(echo "${current_repl_info}" | grep "^role:" | tr -d '\r\n' | cut -d: -f2)
+  if [ "${current_role}" != "slave" ]; then
+    echo "INFO: skip cascade repair (skip-stale-role): local role is '${current_role:-unknown}', not slave." >&2
+    return 0
+  fi
+
+  # Guard 2 — self-target: the chain may fold back to ourselves (A → B → A
+  # during overlapping promotions). Issuing REPLICAOF self is a no-op the
+  # server rejects, but emitting it is misleading and pollutes the log.
+  if is_self_host "${real_master_host}"; then
+    echo "WARNING: skip cascade repair (skip-self-target): target ${real_master_host}:${real_master_port:-${port}} resolves to current pod ${CURRENT_POD_NAME:-unknown}." >&2
+    return 0
+  fi
 
   echo "WARNING: cascading topology — our master ${master_host} is a slave of ${real_master_host}. Issuing REPLICAOF to reconnect directly to real master." >&2
   ${cli_cmd} REPLICAOF "${real_master_host}" "${real_master_port:-${port}}" 2>/dev/null || true
