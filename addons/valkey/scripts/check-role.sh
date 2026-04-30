@@ -59,12 +59,35 @@ build_cli_cmd() {
 # Detects the diskless full-sync stall described in Bug 5:
 #   master_sync_in_progress=1 AND master_sync_read_bytes=0 for > STALL_THRESHOLD_SECONDS
 # Action: send SIGTERM to PID 1 to trigger a container restart.
+#
+# Implementation note (Pattern B avoidance):
+#   The previous version parsed INFO output with two 4-stage pipelines
+#   (`echo|grep|tr|cut`). When the kbagent-driven roleProbe SIGKILLs this
+#   script for exceeding timeoutSeconds (e.g. under upgrade or reconfigure
+#   load), each pipeline's child processes are reparented to kbagent (PID 1,
+#   Go binary, non-reaper) and accumulate as zombies (~8 children leaked
+#   per timeout event). See addon-probe-script-fork-and-zombie-guide.md
+#   Pattern B + 4D audit checklist; this function previously sat in cell
+#   (kbagent-scheduled, B, high-freq, non-reaper) = LEAK.
+#
+#   The implementation below uses a single bash builtin loop with a
+#   here-string, no external processes, so no children can be left
+#   parentless when SIGKILL fires.
 check_sync_stall() {
-  local repl_info sync_in_progress read_bytes
+  local repl_info sync_in_progress read_bytes line key val
   repl_info=$(${cli_cmd} info replication 2>/dev/null) || return 0
 
-  sync_in_progress=$(echo "${repl_info}" | grep "^master_sync_in_progress:" | tr -d '\r\n' | cut -d: -f2)
-  read_bytes=$(echo "${repl_info}" | grep "^master_sync_read_bytes:" | tr -d '\r\n' | cut -d: -f2)
+  # Single-process parse: bash builtins only, no pipeline / cmd-substitution
+  # children that could be orphaned by a kbagent SIGKILL on script timeout.
+  sync_in_progress=""
+  read_bytes=""
+  while IFS= read -r line; do
+    line="${line%$'\r'}"
+    case "${line}" in
+      master_sync_in_progress:*) sync_in_progress="${line#master_sync_in_progress:}" ;;
+      master_sync_read_bytes:*) read_bytes="${line#master_sync_read_bytes:}" ;;
+    esac
+  done <<<"${repl_info}"
 
   if [ "${sync_in_progress}" = "1" ] && [ "${read_bytes}" = "0" ]; then
     if [ ! -f "${STALL_MARKER_FILE}" ]; then
@@ -119,9 +142,13 @@ role_line=$(${cli_cmd} info replication 2>/dev/null \
 set_xtrace_when_ut_mode_false
 
 case "${role_line}" in
-  "role:master") echo "primary"   ;;
+  "role:master") printf %s "primary"   ;;
   "role:slave")
-    echo "secondary"
+    # printf %s avoids the trailing newline that `echo` adds — KubeBlocks
+    # roleProbe rejects label values containing '\n' (Kubernetes label
+    # validation), surfacing as transient `RoleProbeNotDone` and
+    # `invalid label value primary\n` events under load.
+    printf %s "secondary"
     # check_sync_stall is sync-inline (1 local INFO call, no remote, no
     # blocking risk). cascade detection lives in valkey-cascade-self-heal.sh
     # as a daemon spawned from valkey-start.sh — no roleProbe latency
