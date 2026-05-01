@@ -67,10 +67,26 @@ load_common_library
 cli_cmd=$(build_cli_cmd)
 
 unset_xtrace_when_ut_mode_false
-# Strip \r\n — valkey-cli INFO output uses CRLF line endings per Redis protocol.
-# Without tr, "role:master\r" would never match the case patterns below.
-role_line=$(${cli_cmd} info replication 2>/dev/null \
-  | grep "^role:" | tr -d '\r\n')
+# Capture the full INFO replication output once via a single command
+# substitution (one valkey-cli child process), then parse it with bash
+# builtins. Pipelines like `... | grep | tr` would spawn additional
+# children (one per stage). When kbagent SIGKILLs this script for
+# exceeding probe timeoutSeconds, those pipeline children become
+# orphans and are reparented to kbagent's PID 1, which is a Go binary
+# that does not reap unrelated children — they accumulate as zombies.
+# Refer to docs/addon-probe-script-fork-and-zombie-guide.md.
+#
+# valkey-cli INFO output uses CRLF line endings per the Redis protocol;
+# the parameter expansion `${line%$'\r'}` trims the trailing CR before
+# the case match.
+repl_info=$(${cli_cmd} info replication 2>/dev/null) || repl_info=""
+role_line=""
+while IFS= read -r line; do
+  line="${line%$'\r'}"
+  case "${line}" in
+    role:*) role_line="${line}"; break ;;
+  esac
+done <<<"${repl_info}"
 set_xtrace_when_ut_mode_false
 
 # printf %s avoids the trailing newline that `echo` adds — KubeBlocks roleProbe
