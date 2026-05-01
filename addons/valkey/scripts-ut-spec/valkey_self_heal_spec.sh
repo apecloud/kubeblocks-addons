@@ -2,7 +2,7 @@
 # shellcheck disable=SC2034
 
 if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
-  echo "valkey_cascade_self_heal_spec.sh skip all cases because dependency bash version 4 or higher is not installed."
+  echo "valkey_self_heal_spec.sh skip all cases because dependency bash version 4 or higher is not installed."
   exit 0
 fi
 
@@ -11,12 +11,13 @@ source ./utils.sh
 common_library_file="./common.sh"
 generate_common_library $common_library_file
 
-Describe "Valkey Cascade Self-Heal Daemon"
+Describe "Valkey Self-Heal Daemon"
   Include $common_library_file
-  Include ../scripts/valkey-cascade-self-heal.sh
+  Include ../scripts/valkey-self-heal.sh
 
   init() {
     ut_mode="true"
+    SELF_HEAL_UT_MODE="true"
     export SERVICE_PORT="6379"
     # Treat any timeout as immediate so info_replication_with_timeout
     # falls through to direct call (deterministic for unit tests).
@@ -224,6 +225,119 @@ Describe "Valkey Cascade Self-Heal Daemon"
       The status should be success
       The stderr should include "cascading topology"
       The contents of file "${replicaof_calls_file}" should include "real-primary 6379"
+    End
+  End
+
+  Describe "stall_check_one_round() — full-sync stall detector"
+    setup() {
+      stall_marker_dir="$(mktemp -d)"
+      export STALL_MARKER_FILE="${stall_marker_dir}/sync_stall_since"
+      export STALL_THRESHOLD_SECONDS="60"
+      restart_calls_file="$(mktemp)"
+
+      # Stub valkey-cli to return INFO output controlled by STALL_SCENARIO.
+      valkey-cli() {
+        case "${STALL_SCENARIO}" in
+          not_slave)
+            printf "# Replication\r\nrole:master\r\n"
+            ;;
+          stalled)
+            printf "# Replication\r\nrole:slave\r\nmaster_sync_in_progress:1\r\nmaster_sync_read_bytes:0\r\n"
+            ;;
+          progressing)
+            printf "# Replication\r\nrole:slave\r\nmaster_sync_in_progress:1\r\nmaster_sync_read_bytes:1048576\r\n"
+            ;;
+          recovered)
+            printf "# Replication\r\nrole:slave\r\nmaster_sync_in_progress:0\r\nmaster_sync_read_bytes:0\r\n"
+            ;;
+          *)
+            return 1
+            ;;
+        esac
+      }
+
+      # Stub the restart action to record invocation rather than actually
+      # SIGTERMing PID 1 (which would kill shellspec).
+      stall_restart_server_for_recovery() {
+        printf "called\n" >> "${restart_calls_file}"
+      }
+    }
+    Before "setup"
+
+    teardown() {
+      rm -rf "${stall_marker_dir}"
+      rm -f "${restart_calls_file}"
+      unset STALL_MARKER_FILE
+      unset STALL_THRESHOLD_SECONDS
+      unset STALL_SCENARIO
+    }
+    After "teardown"
+
+    It "early-exits when this pod is not slave"
+      export STALL_SCENARIO="not_slave"
+      When call stall_check_one_round
+      The status should be success
+      The path "${STALL_MARKER_FILE}" should not be exist
+      The contents of file "${restart_calls_file}" should eq ""
+    End
+
+    It "creates a marker on first stalled observation"
+      export STALL_SCENARIO="stalled"
+      When call stall_check_one_round
+      The status should be success
+      The stderr should include "full-sync stall detected"
+      The path "${STALL_MARKER_FILE}" should be exist
+      The contents of file "${restart_calls_file}" should eq ""
+    End
+
+    It "does not restart while elapsed < threshold"
+      export STALL_SCENARIO="stalled"
+      # Marker was set just now (current time → elapsed=0).
+      date +%s > "${STALL_MARKER_FILE}"
+      When call stall_check_one_round
+      The status should be success
+      The stderr should include "stall ongoing"
+      The contents of file "${restart_calls_file}" should eq ""
+    End
+
+    It "triggers restart once elapsed >= threshold"
+      export STALL_SCENARIO="stalled"
+      # Marker timestamp 120s in the past (> 60s threshold).
+      echo "$(( $(date +%s) - 120 ))" > "${STALL_MARKER_FILE}"
+      When call stall_check_one_round
+      The status should be success
+      The stderr should include "restarting server"
+      The contents of file "${restart_calls_file}" should include "called"
+      The path "${STALL_MARKER_FILE}" should not be exist
+    End
+
+    It "removes marker when sync resumes (read_bytes > 0)"
+      export STALL_SCENARIO="progressing"
+      date +%s > "${STALL_MARKER_FILE}"
+      When call stall_check_one_round
+      The status should be success
+      The stderr should include "stall resolved"
+      The path "${STALL_MARKER_FILE}" should not be exist
+      The contents of file "${restart_calls_file}" should eq ""
+    End
+
+    It "removes marker when full-sync completes (sync_in_progress=0)"
+      export STALL_SCENARIO="recovered"
+      date +%s > "${STALL_MARKER_FILE}"
+      When call stall_check_one_round
+      The status should be success
+      The stderr should include "stall resolved"
+      The path "${STALL_MARKER_FILE}" should not be exist
+      The contents of file "${restart_calls_file}" should eq ""
+    End
+  End
+
+  Describe "stall_restart_server_for_recovery() — ut-mode safety"
+    It "is a no-op when SELF_HEAL_UT_MODE=true"
+      SELF_HEAL_UT_MODE="true"
+      When call stall_restart_server_for_recovery
+      The status should be success
+      The stderr should include "ut_mode"
     End
   End
 End

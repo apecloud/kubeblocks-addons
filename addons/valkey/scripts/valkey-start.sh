@@ -505,18 +505,21 @@ start_valkey_server() {
   exec valkey-server "${CONF_RUNTIME}"
 }
 
-start_cascade_maintenance_daemon() {
-  # Spawn the cascade self-heal daemon as a long-lived background process.
+start_self_heal_daemon() {
+  # Spawn the self-heal daemon as a long-lived background process.
   # After `exec valkey-server`, this daemon is reparented to valkey-server
   # (PID 1).  valkey-server does not actively reap unrelated children, but
   # this is a single long-lived process — it does NOT accumulate.  Same
   # idiom as clickhouse `sync_user_xml`, mariadb-galera wsrep monitor, and
   # postgresql `restart_for_pending_restart_flag`.
-  # See addons/valkey/scripts/valkey-cascade-self-heal.sh for rationale.
+  #
+  # The daemon performs both cascade-topology repair and full-sync stall
+  # recovery (Bug 5) per iteration. See addons/valkey/scripts/valkey-self-heal.sh
+  # for rationale.
   # shellcheck source=/dev/null
-  source /scripts/valkey-cascade-self-heal.sh
-  cascade_maintenance_loop &
-  echo "Started cascade maintenance daemon PID=$!"
+  source /scripts/valkey-self-heal.sh
+  self_heal_maintenance_loop &
+  echo "Started self-heal daemon PID=$!"
 }
 
 # This is magic for shellspec ut framework, do not modify!
@@ -525,5 +528,5 @@ ${__SOURCED__:+false} : || return 0
 # ── main ────────────────────────────────────────────────────────────────
 load_common_library
 build_valkey_conf
-start_cascade_maintenance_daemon
+start_self_heal_daemon
 start_valkey_server
