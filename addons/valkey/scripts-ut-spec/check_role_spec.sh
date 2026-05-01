@@ -86,16 +86,18 @@ Describe "Valkey Check-Role Bash Script Tests"
 
   Describe "role probe output"
     Context "when server reports master"
-      It "outputs 'primary'"
+      It "outputs 'primary' with no trailing newline"
         valkey-cli() {
           printf "# Replication\r\nrole:master\r\nconnected_slaves:2\r\n"
         }
         cli_cmd=$(build_cli_cmd)
         role_line=$(${cli_cmd} info replication 2>/dev/null | grep "^role:" | tr -d '\r\n')
+        # Mirror production: printf %s, no trailing byte. KubeBlocks roleProbe
+        # rejects label values containing '\n'.
         When call bash -c "
           case \"${role_line}\" in
-            \"role:master\") echo \"primary\" ;;
-            \"role:slave\")  echo \"secondary\" ;;
+            \"role:master\") printf %s \"primary\" ;;
+            \"role:slave\")  printf %s \"secondary\" ;;
             *) echo \"unknown\" >&2; exit 1 ;;
           esac
         "
@@ -105,7 +107,7 @@ Describe "Valkey Check-Role Bash Script Tests"
     End
 
     Context "when server reports slave"
-      It "outputs 'secondary'"
+      It "outputs 'secondary' with no trailing newline"
         valkey-cli() {
           printf "# Replication\r\nrole:slave\r\nmaster_host:valkey-0\r\n"
         }
@@ -113,8 +115,8 @@ Describe "Valkey Check-Role Bash Script Tests"
         role_line=$(${cli_cmd} info replication 2>/dev/null | grep "^role:" | tr -d '\r\n')
         When call bash -c "
           case \"${role_line}\" in
-            \"role:master\") echo \"primary\" ;;
-            \"role:slave\")  echo \"secondary\" ;;
+            \"role:master\") printf %s \"primary\" ;;
+            \"role:slave\")  printf %s \"secondary\" ;;
             *) echo \"unknown\" >&2; exit 1 ;;
           esac
         "
