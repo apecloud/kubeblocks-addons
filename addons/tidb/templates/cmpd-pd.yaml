@@ -7,6 +7,7 @@ metadata:
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks
   description: tidb's metadata server
   updateStrategy: BestEffortParallel

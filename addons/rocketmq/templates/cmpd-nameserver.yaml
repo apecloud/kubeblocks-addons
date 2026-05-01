@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "rocketmq.annotations" . | nindent 4}}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: community
   serviceKind: {{ .Chart.Name }}-namesrv
   description: RocketMQ NameServer

@@ -8,6 +8,7 @@ metadata:
     {{- include "clickhouse.annotations" . | nindent 4 }}
     apps.kubeblocks.io/skip-immutable-check: "true"
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: clickhouse-keeper

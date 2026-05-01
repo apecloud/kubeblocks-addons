@@ -8,6 +8,7 @@ metadata:
     apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   serviceVersion: 8.8.2
   configs:
     - name: es-cm
