@@ -7,12 +7,16 @@
 #   KB_LEAVE_MEMBER_POD_FQDN — FQDN of the pod being removed
 #
 # When Sentinel is present:
-#   - If the leaving pod is a secondary: call SENTINEL RESET to clean up
-#     stale replica entries so Sentinel doesn't wait on a dead pod.
+#   - If the leaving pod is a secondary: no Sentinel action is needed.
+#     Sentinel auto-detects the pod going down and excludes it from quorum
+#     and election decisions via down-after-milliseconds + replica-timeout.
 #   - If the leaving pod is the current primary: trigger SENTINEL FAILOVER
 #     first so Sentinel promotes a new primary before this pod goes away.
 #
 # When Sentinel is absent (standalone): nothing to do.
+#
+# Note: SENTINEL RESET is intentionally NOT called from this script. See the
+# detailed comment above the master-leave block for rationale.
 
 # shellcheck disable=SC2034
 ut_mode="false"
@@ -119,32 +123,63 @@ _sentinel_master_is_leaving() {
   return 1
 }
 
-# do_sentinel_reset tracks whether to call SENTINEL RESET after memberLeave.
-# SENTINEL RESET tells sentinel to drop its known-replica list and rediscover
-# the topology.  It MUST NOT be called before the pod is actually removed
-# (i.e. never call it as a side-effect of the "sentinel already moved on" fast
-# path) because it temporarily zeros num-slaves — any pod that restarts during
-# that window may fail quorum and fall through to the heuristic path, which can
-# create a second standalone master.
+# Policy: never call SENTINEL RESET on member leave.
 #
-# Policy:
-#  - leaving_role == "master" AND sentinel still points at leaving pod:
-#      call FAILOVER, wait for new master, then call RESET (so sentinel cleans
-#      up the newly-demoted master).
-#  - leaving_role == "master" AND sentinel already moved on (fast-path):
-#      skip FAILOVER AND skip RESET.  KubeBlocks removes the pod next;
-#      sentinel will naturally mark it as s_down/o_down and prune it.
-#  - leaving_role == "slave" (non-master):
-#      skip FAILOVER AND skip RESET.  Same reasoning — premature RESET
-#      disrupts quorum for remaining pods.  Sentinel will self-clean once
-#      the pod is gone (within down-after-milliseconds + replica-timeout).
-do_sentinel_reset=false
+# SENTINEL RESET tells a sentinel to drop its known-replica AND known-sentinel
+# lists and rediscover the topology via INFO replication and SENTINEL HELLO.
+# The previous version of this script called RESET on every sentinel after a
+# FAILOVER to "clean up the demoted master" entry from the slaves list. Two
+# problems were observed in 12h smoke testing:
+#
+#   1) RESET temporarily zeros num-other-sentinels. Pub/sub HELLO normally
+#      re-discovers other sentinels within seconds, but in roughly 17 percent
+#      of master-removal scale-in runs the re-discovery did not complete in
+#      time. The stuck sentinel kept reporting the deleted (pre-failover)
+#      master. A slave that queried the stuck sentinel got a stale "master
+#      is the deleted pod" answer and bound to a non-existent address,
+#      leaving the cluster in a 1-master + 1-good-slave + 1-stuck-slave
+#      topology that the cascade self-heal daemon could not repair: the
+#      stuck slave's master_host pointed to a DNS-NXDOMAIN host, so the
+#      daemon's remote-master-unreachable guard correctly skipped the
+#      repair attempt. (Issuing REPLICAOF on stale data is the failure
+#      mode the guard exists to prevent.)
+#
+#   2) RESET temporarily zeros num-slaves. Any pod that restarts during this
+#      window may fail quorum and fall through to the heuristic bootstrap
+#      path, which can create a second standalone master.
+#
+# The benefit RESET was buying — synchronous removal of the demoted master
+# from sentinel's slaves list — is unnecessary. Sentinel naturally marks the
+# deleted pod as s_down after down-after-milliseconds and excludes it from
+# all quorum and election decisions. The s_down ghost entry stays visible in
+# `SENTINEL slaves <master>` output (cosmetic only) until the next sentinel
+# restart, which is the standard behaviour of any production Redis sentinel
+# deployment.
+#
+# Trade-off summary:
+#   - Skip RESET (this version): cosmetic ghost slave entry until sentinel
+#     restart, no functional impact on failover, client routing, scale-out,
+#     scale-in, or self-heal.
+#   - Call RESET (previous behaviour): roughly 17 percent chance of stuck
+#     slave bound to deleted master via stale sentinel answer (real
+#     functional break observed in 12h smoke run R6).
+#
+# Behaviour for each leave path:
+#   - leaving_role == "master" AND sentinel still points at leaving pod:
+#       call FAILOVER, wait for new master to be confirmed, then return.
+#       Sentinel itself transitions the demoted master to s_down via
+#       down-after-milliseconds.
+#   - leaving_role == "master" AND sentinel already moved on (fast-path):
+#       skip FAILOVER. KubeBlocks removes the pod next; sentinel naturally
+#       marks it s_down and excludes it from decisions.
+#   - leaving_role == "slave" (non-master):
+#       no sentinel action needed. Sentinel self-cleans once the pod is gone.
 
 if [ "${leaving_role}" = "master" ]; then
   # Double-check sentinel's current opinion before issuing FAILOVER.
   # KubeBlocks calls switchover before memberLeave; if the chosen sentinel
-  # already reports a different master the failover is done — skip both
-  # FAILOVER and RESET (sentinel auto-cleans when the pod actually goes away).
+  # already reports a different master the failover is done — skip FAILOVER
+  # (sentinel auto-cleans when the pod actually goes away).
   if _sentinel_master_is_leaving; then
     echo "Leaving pod is the primary per sentinel — triggering SENTINEL FAILOVER first..."
     # valkey-cli exits 0 even for protocol errors; capture output and log it.
@@ -169,28 +204,15 @@ if [ "${leaving_role}" = "master" ]; then
          { is_empty "${leaving_ip}" || [ "${new_master}" != "${leaving_ip}" ]; }; then
         echo "New primary elected: ${new_master}"
         failover_done=true
-        do_sentinel_reset=true
         break
       fi
     done
     if [ "${failover_done}" = "false" ]; then
-      echo "WARNING: failover still in progress after 30s — skipping SENTINEL RESET to avoid interfering." >&2
+      echo "WARNING: failover still in progress after 30s — KubeBlocks pod removal will proceed; sentinel will reach consistency via natural pod-down detection." >&2
     fi
   else
-    echo "Sentinel already reports a different master — skipping SENTINEL FAILOVER and SENTINEL RESET."
-    # Sentinel will self-clean when the pod is deleted by KubeBlocks.
+    echo "Sentinel already reports a different master — skipping SENTINEL FAILOVER. Sentinel will self-clean when the pod is deleted by KubeBlocks."
   fi
-fi
-
-# Ask Sentinel to refresh its knowledge of replicas only after a FAILOVER has
-# been confirmed.  See policy comment above for why RESET is skipped otherwise.
-if [ "${do_sentinel_reset}" = "true" ]; then
-  echo "Issuing SENTINEL RESET ${master_name} on all Sentinels..."
-  for s in "${sentinel_fqdns[@]}"; do
-    _r_cli=$(build_sentinel_cli "${s}")
-    reset_out=$(${_r_cli} SENTINEL RESET "${master_name}" 2>/dev/null) || true
-    echo "SENTINEL RESET ${master_name} on ${s}: ${reset_out}"
-  done
 fi
 
 echo "Member leave handling complete."
