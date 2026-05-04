@@ -11,17 +11,17 @@ spec:
     - name: standalone
       components:
         - name: mariadb
-          compDef: {{ include "mariadb.standalone.cmpdRegexpPattern" . }}
+          compDef: {{ include "mariadb.cmpdName" . }}
       default: true
     - name: async
       components:
         - name: mariadb
-          compDef: {{ include "mariadb.replication.cmpdRegexpPattern" . }}
+          compDef: {{ include "mariadb.replication.cmpdName" . }}
     - name: semisync
       components:
         - name: mariadb
-          compDef: {{ include "mariadb.replication.cmpdRegexpPattern" . }}
+          compDef: {{ include "mariadb.semisync.cmpdName" . }}
     - name: galera
       components:
         - name: mariadb
-          compDef: {{ include "mariadb.galera.cmpdRegexpPattern" . }}
+          compDef: {{ include "mariadb.galera.cmpdName" . }}

@@ -71,6 +71,54 @@ main() {
     "--wsrep-node-address=${POD_IP:-127.0.0.1}"
   )
 
+  # Background watcher: persistently write current Galera role/state to files
+  # under DATA_DIR. The kbagent sidecar (kubeblocks-tools image) has no mariadb
+  # client binary, so it cannot query wsrep_local_state directly. The new KB
+  # main API also dropped ExecAction.container, which means probe/action scripts
+  # always run inside kbagent — never inside the mariadb container. Therefore
+  # the only working pattern is: data plane writes role to a shared file, and
+  # the kbagent-side probe reads that file.
+  #
+  # Files written:
+  #   ${DATA_DIR}/.galera-role    — "primary" when wsrep_local_state=4, otherwise "secondary"
+  #   ${DATA_DIR}/.galera-synced  — touched once after first time state reaches 4
+  #
+  # The watcher must be tolerant of failures (mariadbd not yet listening,
+  # transient socket errors, SST in progress). Disable set -e inside the
+  # subshell so a single failed query never kills the loop. Run forever
+  # so role flapping (state transitions Synced → Donor/Joining → Synced)
+  # is reflected in the file in near real time.
+  (
+    set +e
+    rm -f "${DATA_DIR}/.galera-synced" "${DATA_DIR}/.galera-role"
+    SOCK=/run/mysqld/mysqld.sock
+    SYNCED_ONCE=0
+    while true; do
+      STATE=""
+      if [ -S "${SOCK}" ]; then
+        STATE=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+          -S "${SOCK}" -N -s \
+          -e "SHOW STATUS LIKE 'wsrep_local_state';" 2>/dev/null \
+          | awk '{print $2}')
+      fi
+      if [ "${STATE}" = "4" ]; then
+        printf "primary" > "${DATA_DIR}/.galera-role.tmp" \
+          && chown mysql:mysql "${DATA_DIR}/.galera-role.tmp" 2>/dev/null \
+          ; mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
+        if [ "${SYNCED_ONCE}" = "0" ]; then
+          touch "${DATA_DIR}/.galera-synced"
+          chown mysql:mysql "${DATA_DIR}/.galera-synced" 2>/dev/null || true
+          SYNCED_ONCE=1
+        fi
+      else
+        printf "secondary" > "${DATA_DIR}/.galera-role.tmp" \
+          && chown mysql:mysql "${DATA_DIR}/.galera-role.tmp" 2>/dev/null \
+          ; mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
+      fi
+      sleep 3
+    done
+  ) &
+
   if should_bootstrap; then
     echo "Starting Galera cluster bootstrap (--wsrep-new-cluster)..."
     exec docker-entrypoint.sh mariadbd "${wsrep_args[@]}" --wsrep-new-cluster

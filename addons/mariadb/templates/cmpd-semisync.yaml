@@ -1,0 +1,337 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mariadb.semisync.cmpdName" . }}
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  provider: Community
+  description: MariaDB replication component definition for Kubernetes (semi-sync)
+  serviceKind: mariadb
+  serviceVersion: {{ .Values.defaultServiceVersion.replication }}
+  updateStrategy: BestEffortParallel
+  podManagementPolicy: OrderedReady
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+    scrapePort: metrics
+  services:
+    - name: default
+      roleSelector: primary
+      spec:
+        ports:
+          - name: mariadb
+            port: 3306
+            targetPort: mariadb
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+      isExclusive: true
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+  configs:
+    - name: mariadb-semisync-config
+      template: mariadb-semisync-config-template
+      volumeName: mariadb-config
+      namespace: {{ .Release.Namespace }}
+      externalManaged: true
+      {{- include "mariadb.config.reconfigureAction" . | nindent 6 }}
+  scripts:
+    - name: mariadb-replication-scripts
+      template: mariadb-replication-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  volumes:
+    - name: data
+      needSnapshot: true
+  {{- include "mariadb.replication.spec.systemAccounts" . | nindent 2 }}
+  {{- include "mariadb.spec.vars" . | nindent 2 }}
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - /scripts/replication-roleprobe.sh
+    switchover:
+      timeoutSeconds: 120
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - /scripts/replication-switchover.sh
+  runtime:
+    containers:
+      - name: mariadb
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - bash
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,tmp}
+            chown -R mysql:mysql {{ .Values.dataMountPath }}
+            MYSQL_CLIENT_DIR=/tools/mysql-client
+            MARIADB_BIN="$(command -v mariadb)"
+            MARIADB_LOADER="$(ldd "${MARIADB_BIN}" | awk '{for (i = 1; i <= NF; i++) if ($i ~ /^\// && ($i ~ /ld-linux/ || $i ~ /ld-musl/)) { print $i; exit }}')"
+            mkdir -p "${MYSQL_CLIENT_DIR}/bin" "${MYSQL_CLIENT_DIR}/lib"
+            cp -L "${MARIADB_BIN}" "${MYSQL_CLIENT_DIR}/bin/mariadb.bin"
+            ldd "${MARIADB_BIN}" | awk '{for (i = 1; i <= NF; i++) if ($i ~ /^\//) print $i}' | sort -u | while IFS= read -r lib; do
+              [ -n "${lib}" ] || continue
+              cp -L "${lib}" "${MYSQL_CLIENT_DIR}/lib/"
+            done
+            cat > "${MYSQL_CLIENT_DIR}/bin/mariadb" <<EOF
+            #!/bin/sh
+            set -eu
+            ROOT="\$(CDPATH= cd -- "\$(dirname -- "\$0")"/.. && pwd)"
+            exec "\${ROOT}/lib/${MARIADB_LOADER##*/}" --library-path "\${ROOT}/lib" "\${ROOT}/bin/mariadb.bin" "\$@"
+            EOF
+            chmod 0555 "${MYSQL_CLIENT_DIR}/bin/mariadb"
+            # Set data dir group to kbagent's GID (1000) and grant group write so that
+            # kbagent can write switchover trigger files. Files inside remain mysql-owned.
+            chgrp 1000 {{ .Values.dataMountPath }} && chmod g+w {{ .Values.dataMountPath }}
+            # Signal to roleProbe that this pod is initializing — prevents spurious "primary"
+            # reports that would cause KubeBlocks to auto-trigger a switchover.
+            rm -f {{ .Values.dataMountPath }}/.replication-ready
+            touch {{ .Values.dataMountPath }}/.replication-pending
+
+            POD_INDEX="${POD_NAME##*-}"
+            SERVICE_ID=$((POD_INDEX + 1))
+            PRIMARY_HOST="${CLUSTER_NAME}-${COMPONENT_NAME}.${CLUSTER_NAMESPACE}.svc.cluster.local"
+            LOCAL=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -N -s)
+
+            # Start MariaDB in the background
+            docker-entrypoint.sh mariadbd \
+              --server-id=${SERVICE_ID} \
+              --log-bin={{ .Values.dataMountPath }}/binlog/${POD_NAME}-bin \
+              --skip-slave-start=ON \
+              --thread-cache-size=100 &
+            MARIADB_PID=$!
+
+            # Wait for MariaDB to accept connections
+            until mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -e "SELECT 1" >/dev/null 2>&1; do
+              sleep 2
+            done
+
+            # Determine role by querying the primary service VIP.
+            # timeout 10 prevents an indefinite hang if the primary is temporarily unresponsive
+            # (e.g. its semi-sync ACK receiver is stalled) — treat it as "no primary".
+            PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+              -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || echo "")
+
+            # Check for existing slave config.
+            # Use tabular SHOW SLAVE STATUS (not \G) because -N suppresses field names in \G format.
+            SLAVE_STATUS=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null)
+
+            if [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
+              # Primary service routes to us — we are the current primary.
+              # Clear any stale slave config and mark initialization as complete.
+              "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+              # Toggle semi-sync master to reset ACK receiver state (avoids stale ACK
+              # receiver connections from a previous secondary role causing unresponsiveness).
+              "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+              "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null || true
+              touch {{ .Values.dataMountPath }}/.replication-ready
+              rm -f {{ .Values.dataMountPath }}/.replication-pending
+              echo "Starting as primary (server_id=${SERVICE_ID})"
+            elif [ -n "${SLAVE_STATUS}" ]; then
+              # We have existing slave config from a previous run.
+              # For pod-0: if VIP is unreachable (no primary exists), self-elect as primary
+              # to break the deadlock where all pods have slave configs after a switchover.
+              if [ "${POD_INDEX}" = "0" ] && [ -z "${PRIMARY_SID}" ]; then
+                "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+                "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+                "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null || true
+                touch {{ .Values.dataMountPath }}/.replication-ready
+                rm -f {{ .Values.dataMountPath }}/.replication-pending
+                echo "Starting as primary (pod-0 with stale slave config, no primary found)"
+              else
+                "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true
+                "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
+                touch {{ .Values.dataMountPath }}/.replication-ready
+                rm -f {{ .Values.dataMountPath }}/.replication-pending
+                echo "Resumed replication from existing slave config"
+              fi
+            elif [ -n "${PRIMARY_SID}" ] || [ "${POD_INDEX}" -gt 0 ]; then
+              # No slave config; we need to configure replication from the primary.
+              # Loop until replication is successfully configured:
+              #   1. Find the primary (a server_id different from ours)
+              #   2. Run CHANGE MASTER TO; START SLAVE
+              #   3. Verify SHOW SLAVE STATUS is non-empty (config stored)
+              # .replication-pending stays set throughout so roleProbe does not publish a
+              # role, preventing a spurious "primary" report and the resulting split-brain race.
+              #
+              # Self-elect paths:
+              #   A) Any pod, no slave config, no primary for >60s → self-elect (original C1 fix).
+              #   B) Non-pod-0 with existing data dir, no slave config, no primary for >30s →
+              #      self-elect faster. This handles rolling-restart when pod-1 was the primary:
+              #      it restarts with no master.info, the VIP is briefly unreachable while pod-0
+              #      is also restarting, and waiting 60s would make T9 take >75s to recover.
+              _no_primary_iters=0
+              # Detect whether data dir already has database files (restart vs fresh pod).
+              _has_data=false
+              if ls {{ .Values.dataMountPath }}/mysql >/dev/null 2>&1 || \
+                 ls {{ .Values.dataMountPath }}/binlog/*.bin* >/dev/null 2>&1; then
+                _has_data=true
+              fi
+              while true; do
+                # Step 1: find primary (timeout prevents hang if primary is unresponsive)
+                PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                  -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || echo "")
+                if [ -z "${PRIMARY_SID}" ] || [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
+                  _no_primary_iters=$((_no_primary_iters + 1))
+                  # Path A: 60s with no primary and no slave config → self-elect.
+                  if [ "${_no_primary_iters}" -ge 20 ] && [ -z "${SLAVE_STATUS}" ]; then
+                    "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+                    "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+                    "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null || true
+                    touch {{ .Values.dataMountPath }}/.replication-ready
+                    rm -f {{ .Values.dataMountPath }}/.replication-pending
+                    echo "Self-electing as primary: no primary found for 60s, no slave config"
+                    break
+                  fi
+                  # Path B: 30s, non-pod-0, has existing data, no slave config → self-elect faster.
+                  # This pod was the previous primary; it's restarting and the VIP is transiently
+                  # unavailable. Self-electing avoids a 60s+ recovery window during rolling restart.
+                  if [ "${_no_primary_iters}" -ge 10 ] && [ "${POD_INDEX}" -gt 0 ] && \
+                     [ "$_has_data" = "true" ] && [ -z "${SLAVE_STATUS}" ]; then
+                    "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+                    "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+                    "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null || true
+                    touch {{ .Values.dataMountPath }}/.replication-ready
+                    rm -f {{ .Values.dataMountPath }}/.replication-pending
+                    echo "Self-electing as primary: no primary for 30s, existing data, no slave config (pod-${POD_INDEX})"
+                    break
+                  fi
+                  sleep 3; continue
+                fi
+                _no_primary_iters=0
+                # Step 2: configure replication
+                MASTER_GTID=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                  -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@global.gtid_binlog_pos;" 2>/dev/null)
+                LOCAL_GTID=$("${LOCAL[@]}" -e "SELECT @@global.gtid_slave_pos;" 2>/dev/null)
+                if [ -n "${LOCAL_GTID}" ]; then
+                  # Existing pod rejoining: align GTID to avoid replication conflicts.
+                  "${LOCAL[@]}" -e "SET GLOBAL gtid_slave_pos='${MASTER_GTID}';" 2>/dev/null || true
+                fi
+                "${LOCAL[@]}" -e "
+                  STOP SLAVE;
+                  CHANGE MASTER TO
+                    MASTER_HOST='${PRIMARY_HOST}',
+                    MASTER_USER='${MARIADB_ROOT_USER}',
+                    MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+                    MASTER_USE_GTID=slave_pos,
+                    MASTER_CONNECT_RETRY=10;
+                  START SLAVE;
+                " 2>/dev/null || true
+                # Step 3: verify CHANGE MASTER TO actually stored config.
+                # If it failed (e.g. auth error), slave config is empty; retry.
+                # Only remove .replication-pending once slave config is confirmed.
+                SLAVE_STATUS_CHECK=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null)
+                if [ -n "${SLAVE_STATUS_CHECK}" ]; then
+                  "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
+                  echo "Replication configured from primary ${PRIMARY_HOST} at GTID ${MASTER_GTID}"
+                  touch {{ .Values.dataMountPath }}/.replication-ready
+                  rm -f {{ .Values.dataMountPath }}/.replication-pending
+                  break
+                fi
+                echo "CHANGE MASTER TO did not store config; retrying in 5s"
+                sleep 5
+              done
+            else
+              # Pod-0, primary unreachable, no slave config: start as primary by default.
+              "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+              "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+              "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null || true
+              touch {{ .Values.dataMountPath }}/.replication-ready
+              rm -f {{ .Values.dataMountPath }}/.replication-pending
+              echo "Starting as primary by default (index=0)"
+            fi
+
+            # Background: clear the semi-sync ACK receiver deadlock when detected.
+            # When a secondary is RST-killed, MariaDB's ACK receiver thread can deadlock for
+            # ~150s (TCP retransmit timeout), blocking ALL new TCP connections to the primary.
+            # Detection: Unix socket shows clients=0 AND TCP connection to port 3306 fails.
+            # (Unix socket bypasses TCP; if TCP is blocked, it's the deadlock — not just a
+            #  transient state where the secondary is reconnecting.)
+            # Toggling rpl_semi_sync_master_enabled=0→1 stops and restarts the ACK receiver.
+            SOCK="/run/mysqld/mysqld.sock"
+            SOCK_CLI=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
+            TCP_CLI=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -N -s)
+            (while kill -0 ${MARIADB_PID} 2>/dev/null; do
+              sleep 10
+              # Deadlock check: Unix socket works even during ACK receiver deadlock;
+              # TCP fails when deadlocked. Do NOT gate on clients=0: a force-killed
+              # slave leaves a CLOSE-WAIT connection that keeps clients=1, masking the
+              # deadlock. Check TCP directly — if it fails, toggle to restart ACK receiver.
+              if ! timeout 3 "${TCP_CLI[@]}" -e "SELECT 1;" >/dev/null 2>&1; then
+                if kill -0 ${MARIADB_PID} 2>/dev/null; then
+                  "${SOCK_CLI[@]}" \
+                    -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" \
+                    2>/dev/null || true
+                fi
+              fi
+            done) &
+
+            # Switchover is coordinated by /scripts/replication-switchover.sh
+            # through syncerctl, which creates the DCS switchover record. Remove
+            # stale raw-SQL trigger files from older script versions so they cannot
+            # race with syncer's HA loop.
+            rm -f {{ .Values.dataMountPath }}/.switchover-request \
+              {{ .Values.dataMountPath }}/.switchover-done \
+              {{ .Values.dataMountPath }}/.switchover-error
+
+            wait ${MARIADB_PID}
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mariadb-config
+          - mountPath: /tools
+            name: tools
+          - name: scripts
+            mountPath: /scripts
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  # Gracefully stop the semi-sync replication IO thread before shutdown.
+                  # This closes the TCP connection to the primary with FIN instead of RST,
+                  # preventing the MDEV-36934 semi-sync ACK receiver deadlock on the primary.
+                  mariadb -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
+                    -S /run/mysqld/mysqld.sock \
+                    -e "STOP SLAVE IO_THREAD;" 2>/dev/null || true
+        ports:
+          - containerPort: 3306
+            name: mariadb
+        env:
+          - name: MARIADB_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+      {{- include "mariadb.container.exporter" . | nindent 6 }}
+    volumes:
+      - name: tools
+        emptyDir: {}

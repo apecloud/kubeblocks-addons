@@ -11,13 +11,42 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Values.defaultServiceVersion.mariadb }}
+  configs:
+    - name: mariadb-standalone-config
+      template: mariadb-standalone-config-template
+      volumeName: mariadb-config
+      namespace: {{ .Release.Namespace }}
+      externalManaged: true
+      {{- include "mariadb.config.reconfigureAction" . | nindent 6 }}
   runtime:
     containers:
       - name: mariadb
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - bash
+          - -c
+          - |
+            # Copy TLS certs to data dir (root:root 600 mounts are unreadable by mysql user)
+            if [ "${TLS_ENABLED:-false}" = "true" ] && [ -d /etc/pki/mariadb-ssl ]; then
+              mkdir -p /var/lib/mysql/tls
+              cp -L /etc/pki/mariadb-ssl/ca.crt  /var/lib/mysql/tls/
+              cp -L /etc/pki/mariadb-ssl/tls.crt /var/lib/mysql/tls/
+              cp -L /etc/pki/mariadb-ssl/tls.key /var/lib/mysql/tls/
+              chown -R mysql:mysql /var/lib/mysql/tls 2>/dev/null || true
+              chmod 644 /var/lib/mysql/tls/ca.crt /var/lib/mysql/tls/tls.crt
+              chmod 600 /var/lib/mysql/tls/tls.key
+              exec /usr/local/bin/docker-entrypoint.sh mariadbd \
+                "--ssl-ca=/var/lib/mysql/tls/ca.crt" \
+                "--ssl-cert=/var/lib/mysql/tls/tls.crt" \
+                "--ssl-key=/var/lib/mysql/tls/tls.key"
+            else
+              exec /usr/local/bin/docker-entrypoint.sh mariadbd
+            fi
         volumeMounts:
           - mountPath: /var/lib/mysql
             name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mariadb-config
         ports:
           - containerPort: 3306
             name: mariadb
@@ -33,6 +62,13 @@ spec:
         env:
           - name: "DATA_SOURCE_NAME"
             value: "$(MARIADB_MONITOR_USER):$(MARIADB_MONITOR_PASSWORD)@(localhost:3306)/"
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: mariadb
+            port: 3306
+            targetPort: mariadb
   vars:
     - name: MARIADB_ROOT_USER
       value: root
@@ -46,6 +82,16 @@ spec:
       value: $(MARIADB_ROOT_USER)
     - name: MARIADB_MONITOR_PASSWORD
       value: $(MARIADB_ROOT_PASSWORD)
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+  tls:
+    volumeName: tls
+    mountPath: /etc/pki/mariadb-ssl
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
   volumes:
     - name: data
       needSnapshot: true

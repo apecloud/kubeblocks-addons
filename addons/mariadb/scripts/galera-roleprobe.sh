@@ -1,22 +1,42 @@
-#!/bin/bash
-# Probe Galera node state and report KubeBlocks role.
+#!/bin/sh
+# Probe Galera node role for KubeBlocks.
 #
-# wsrep_local_state values:
-#   1 = Joining        (SST in progress, not ready)
-#   2 = Donor/Desynced (sending SST to joiner, can serve reads in some configs)
-#   3 = Joined         (catching up via IST)
-#   4 = Synced         (fully operational, safe for reads+writes)
+# Shebang is #!/bin/sh because kbagent (kubeblocks-tools image) only ships
+# busybox sh; #!/bin/bash causes silent exit=1 with empty output. Script
+# body must remain POSIX-compatible.
 #
-# We map: 4 -> "primary", anything else -> "secondary"
+# IMPORTANT: kbagent has no mariadb client binary. KubeBlocks main API also
+# dropped ExecAction.container, so even if cmpd-galera.yaml declares
+# `roleProbe.exec.container: mariadb`, the action still runs inside kbagent.
+# Therefore we cannot query mariadb from inside this script.
+#
+# Instead, the data plane (galera-start.sh background watcher inside the
+# mariadb container) writes the current role to ${DATA_DIR}/.galera-role
+# every few seconds based on wsrep_local_state. This script just reads it.
+#
+# Mapping from wsrep_local_state to KubeBlocks role:
+#   4 (Synced) -> "primary"   (writable, full Galera member)
+#   anything else -> "secondary" (Joining/Donor/Joined — not writable)
+#
+# When the role file does not yet exist (early bootstrap, before mariadbd
+# binds the local socket), publish "secondary" so KubeBlocks does not elect
+# the node primary prematurely. The file appears within a few seconds after
+# bootstrap completes.
 
-set -eo pipefail
+set -eu
 
-MARIADB_CMD=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -N -s)
+DATA_DIR="${DATA_DIR:-/var/lib/mysql}"
+ROLE_FILE="${DATA_DIR}/.galera-role"
 
-state=$("${MARIADB_CMD[@]}" -e "SHOW STATUS LIKE 'wsrep_local_state';" 2>/dev/null | awk '{print $2}')
-
-if [ "$state" = "4" ]; then
-  echo -n "primary"
-else
-  echo -n "secondary"
+if [ -f "${ROLE_FILE}" ]; then
+  role=$(cat "${ROLE_FILE}" 2>/dev/null || true)
+  case "${role}" in
+    primary|secondary)
+      printf "%s" "${role}"
+      exit 0
+      ;;
+  esac
 fi
+
+printf "secondary"
+exit 0

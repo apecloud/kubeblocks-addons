@@ -1,0 +1,86 @@
+# ParamConfigRenderer for standalone MariaDB
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "mariadb.cmpdName" . }}-pcr
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.cmpdName" . }}
+  configs:
+    - name: my.cnf
+      templateName: mariadb-standalone-config
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: mysqld
+      reRenderResourceTypes:
+        - vscale
+  parametersDefs:
+    - mariadb-standalone-pd
+
+---
+# ParamConfigRenderer for replication MariaDB
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "mariadb.replication.cmpdName" . }}-pcr
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.replication.cmpdName" . }}
+  configs:
+    - name: my.cnf
+      templateName: mariadb-replication-config
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: mysqld
+      reRenderResourceTypes:
+        - vscale
+  parametersDefs:
+    - mariadb-replication-pd
+
+---
+# ParamConfigRenderer for semisync MariaDB
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "mariadb.semisync.cmpdName" . }}-pcr
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.semisync.cmpdName" . }}
+  configs:
+    - name: my.cnf
+      templateName: mariadb-semisync-config
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: mysqld
+      reRenderResourceTypes:
+        - vscale
+  parametersDefs:
+    - mariadb-replication-pd
+
+---
+# ParamConfigRenderer for Galera MariaDB
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "mariadb.galera.cmpdName" . }}-pcr
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.galera.cmpdName" . }}
+  configs:
+    - name: my.cnf
+      templateName: mariadb-galera-config
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: mysqld
+      reRenderResourceTypes:
+        - vscale
+  parametersDefs:
+    - mariadb-galera-pd

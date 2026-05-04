@@ -1,0 +1,92 @@
+{{- $pd := .Files.Get "config/mariadb-config-effect-scope.yaml" | fromYaml }}
+# ParametersDefinition for standalone MariaDB
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: mariadb-standalone-pd
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.standalone.cmpdRegexpPattern" . | quote }}
+  templateName: mariadb-standalone-config
+  fileName: my.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: mysqld
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- range (get $pd "staticParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- range (get $pd "dynamicParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+
+---
+# ParametersDefinition for replication MariaDB
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: mariadb-replication-pd
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.replication.cmpdRegexpPattern" . | quote }}
+  templateName: mariadb-replication-config
+  fileName: my.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: mysqld
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- range (get $pd "staticParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- range (get $pd "dynamicParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+
+---
+# ParametersDefinition for Galera MariaDB
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: mariadb-galera-pd
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.galera.cmpdRegexpPattern" . | quote }}
+  # NOTE: must match galera CmpD configspec name (cmpd-galera.yaml configs[0].name = "mariadb-galera-config"),
+  # NOT the ConfigMap name (which is "mariadb-galera-config-template").
+  # Pre-alpha.13 had typo "mariadb-galera-config-template" → ComponentParameter never resolved →
+  # per-cluster ConfigMap never created → comp.Spec.Configs[].configMap nil → synthesize merge wiped Template →
+  # precheck failed → cluster stuck Creating. See Galera C2 N=10 first-blocker evidence pack
+  # mariadb-galera-c2-n10-20260504-031318 (sha256 2461e99b...).
+  templateName: mariadb-galera-config
+  fileName: my.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: mysqld
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- range (get $pd "staticParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- range (get $pd "dynamicParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
