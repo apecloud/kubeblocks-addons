@@ -5,16 +5,27 @@ image:
   registry: docker.io
   repository: mariadb
   pullPolicy: IfNotPresent
-  tag: 10.6.15
+  tag: 11.4
   prom:
     pullPolicy: IfNotPresent
     exporter:
       repository: prom/mysqld-exporter
       tag: v0.14.0
+  syncer:
+    repository: apecloud/syncer
+    # alpha.13 P4: bump to fresh build from current syncer source main HEAD with
+    # MariaDB-customized changes (engines/mariadb/, ha.go +26 lines, ha_test.go +57 lines)
+    # Built linux/amd64 sideloaded to IDC nodes containerd cache.
+    tag: mariadb-local-20260504-123616-amd64
 
 ## @param componentServiceVersion define default serviceVersion of each Component
 defaultServiceVersion:
   mariadb: 10.6.15
+  replication: 11.4.10
+  galera: 11.4.10
+
+etcd:
+  etcdCmpdName: etcd
 
 ## MySQL Authentication parameters
 auth:
@@ -26,6 +37,22 @@ auth:
   ## @param auth.database Name for a custom database to create
   ## MYSQL_DATABASE
   database: "mydb"
+
+dataMountPath: /var/lib/mysql
+clusterDomain: cluster.local
+
+roleProbe:
+  # Cadence tightened from 5s to 3s per #397 (Route B follow-up).
+  # 5s contributed ~20% of observation gap latency in #396 R1 attribution.
+  # 3s reduces tail latency by ~40% with ~67% CPU/log overhead increase.
+  # Tested under cell-3/cell-4 baseline conditions; deeper reduction (2s)
+  # may be considered after cross-engine validation.
+  periodSeconds: 3
+  # alpha.13 P1: bumped 1 → 2 per #402 zombie redline mitigation.
+  # SHOW SLAVE STATUS occasional >1s spike → kbagent SIGKILL probe script →
+  # grep orphan reparent to PID 1 (kbagent Go non-reaper) → zombie accumulation.
+  # 2s gives margin while staying < 3s cadence. Pattern B mitigation joint with P2.
+  timeoutSeconds: 2
 
 nameOverride: ""
 fullnameOverride: ""

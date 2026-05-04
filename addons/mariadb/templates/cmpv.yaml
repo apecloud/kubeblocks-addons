@@ -5,16 +5,62 @@ metadata:
   labels:
     {{- include "mariadb.labels" . | nindent 4 }}
   annotations:
-    {{- include "mariadb.apiVersion" . | nindent 4 }}
+    {{- include "mariadb.annotations" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "mariadb.cmpdRegexpPattern" . }}
+        - {{ include "mariadb.standalone.cmpdRegexpPattern" . }}
+        - {{ include "mariadb.replication.cmpdRegexpPattern" . }}
+        - {{ include "mariadb.semisync.cmpdRegexpPattern" . }}
       releases:
         - 10.6.15
+        - 11.4.5
+        - 11.4.8
+        - 11.4.10
+        - 11.8.4
+        - 12.0.2
+    - compDefs:
+        - {{ include "mariadb.galera.cmpdRegexpPattern" . }}
+      releases:
+        - 11.4.5
+        - 11.4.8
+        - 11.4.10
+        - 11.8.4
+        - 12.0.2
   releases:
     - name: 10.6.15
       serviceVersion: 10.6.15
       images:
         mariadb: {{ include "mariadb.repository" . }}:10.6.15
-        exporter: {{ include "exporter.repository" . }}:v0.14.0
+        exporter: {{ include "exporter.repository" . }}:{{ .Values.image.prom.exporter.tag }}
+        init-syncer: {{ include "mariadb.syncer.image" . }}
+    - name: 11.4.5
+      serviceVersion: 11.4.5
+      images:
+        mariadb: {{ include "mariadb.repository" . }}:11.4.5
+        exporter: {{ include "exporter.repository" . }}:{{ .Values.image.prom.exporter.tag }}
+        init-syncer: {{ include "mariadb.syncer.image" . }}
+    - name: 11.4.8
+      serviceVersion: 11.4.8
+      images:
+        mariadb: {{ include "mariadb.repository" . }}:11.4.8
+        exporter: {{ include "exporter.repository" . }}:{{ .Values.image.prom.exporter.tag }}
+        init-syncer: {{ include "mariadb.syncer.image" . }}
+    - name: 11.4.10
+      serviceVersion: 11.4.10
+      images:
+        mariadb: {{ include "mariadb.repository" . }}:11.4
+        exporter: {{ include "exporter.repository" . }}:{{ .Values.image.prom.exporter.tag }}
+        init-syncer: {{ include "mariadb.syncer.image" . }}
+    - name: 11.8.4
+      serviceVersion: 11.8.4
+      images:
+        mariadb: {{ include "mariadb.repository" . }}:11.8.4
+        exporter: {{ include "exporter.repository" . }}:{{ .Values.image.prom.exporter.tag }}
+        init-syncer: {{ include "mariadb.syncer.image" . }}
+    - name: 12.0.2
+      serviceVersion: 12.0.2
+      images:
+        mariadb: {{ include "mariadb.repository" . }}:12.0.2
+        exporter: {{ include "exporter.repository" . }}:{{ .Values.image.prom.exporter.tag }}
+        init-syncer: {{ include "mariadb.syncer.image" . }}

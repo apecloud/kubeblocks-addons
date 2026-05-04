@@ -1,0 +1,201 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mariadb.galera.cmpdName" . }}
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  provider: Community
+  description: MariaDB Galera Cluster component definition for Kubernetes (multi-primary wsrep)
+  serviceKind: mariadb
+  serviceVersion: {{ .Values.defaultServiceVersion.galera }}
+  updateStrategy: Serial
+  podManagementPolicy: Parallel
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+    scrapePort: metrics
+  services:
+    - name: default
+      roleSelector: primary
+      spec:
+        ports:
+          - name: mariadb
+            port: 3306
+            targetPort: mariadb
+  roles:
+    # All synced Galera nodes are equal — all can accept writes.
+    # KubeBlocks roleProbe reports "primary" for synced nodes.
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: true
+      isExclusive: false
+    # Donor/Joiner nodes during SST — temporarily unavailable for writes.
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+  configs:
+    - name: mariadb-galera-config
+      template: mariadb-galera-config-template
+      volumeName: mariadb-config
+      namespace: {{ .Release.Namespace }}
+      externalManaged: true
+      {{- include "mariadb.config.reconfigureAction" . | nindent 6 }}
+  scripts:
+    - name: mariadb-galera-scripts
+      template: mariadb-galera-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  volumes:
+    - name: data
+      needSnapshot: true
+  {{- include "mariadb.galera.spec.systemAccounts" . | nindent 2 }}
+  vars:
+    - name: MARIADB_ROOT_USER
+      valueFrom:
+        credentialVarRef:
+          name: root
+          optional: false
+          username: Required
+    - name: MARIADB_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: root
+          optional: false
+          password: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: PEER_FQDNS
+      valueFrom:
+        componentVarRef:
+          podFQDNs: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          replicas: Required
+  lifecycleActions:
+    accountProvision:
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - -c
+          - |
+            set -ex
+            ALL_DB='*.*'
+            eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+            mariadb -u${MARIADB_ROOT_USER} -p${MARIADB_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+    roleProbe:
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: 5
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - /scripts/galera-roleprobe.sh
+    memberJoin:
+      timeoutSeconds: 3660
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - /scripts/galera-member-join.sh
+    memberLeave:
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - /scripts/galera-member-leave.sh
+  runtime:
+    # Allow enough time for Galera to write grastate.dat on clean shutdown.
+    # 30s (default) is insufficient when InnoDB has dirty pages to flush.
+    # preStop hook below triggers graceful shutdown; this grace period gives
+    # it time to complete before SIGKILL.
+    terminationGracePeriodSeconds: 120
+    containers:
+      - name: mariadb
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        # NOTE: SST joiner uses `wsrep_sst_method = rsync` (set in
+        # config/mariadb-galera.tpl) instead of mariabackup. rsync SST does
+        # not invoke chown(2) on extracted files, which avoided the EPERM
+        # signal-11 crash that affected the mariabackup `--move-back` path
+        # under the default mysql-uid-999 / CapEff=0 runtime.
+        #
+        # We tried adding CAP_CHOWN/CAP_FOWNER to keep mariabackup as the SST
+        # method (least disruptive change), but the caps only land in the
+        # bounding set; setuid-to-mysql clears the effective set, and k8s
+        # does not currently expose ambient caps. The cap-add was therefore
+        # ineffective and intentionally NOT carried in the final chart so we
+        # preserve least-privilege.
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - bash
+                - -c
+                - |
+                  # Gracefully leave the Galera cluster before the container stops.
+                  # SET wsrep_on=OFF causes Galera to write the final seqno to
+                  # grastate.dat and set safe_to_bootstrap on the last clean node.
+                  # This prevents the all-nodes-crashed deadlock after KB Stop OpsRequest.
+                  mariadb -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
+                    -P3306 -h127.0.0.1 \
+                    -e "SET GLOBAL wsrep_on=OFF;" 2>/dev/null || true
+                  # Trigger a clean MariaDB shutdown so InnoDB flushes all pages.
+                  mysqladmin -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
+                    -h127.0.0.1 shutdown 2>/dev/null || true
+        command:
+          - bash
+          - -c
+          - /scripts/galera-start.sh
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mariadb-config
+          - name: scripts
+            mountPath: /scripts
+        ports:
+          - containerPort: 3306
+            name: mariadb
+          - containerPort: 4567
+            name: galera
+          - containerPort: 4568
+            name: ist
+          - containerPort: 4444
+            name: sst
+        env:
+          - name: MARIADB_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: DATA_DIR
+            value: {{ .Values.dataMountPath }}
+      {{- include "mariadb.container.exporter" . | nindent 6 }}

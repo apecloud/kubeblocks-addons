@@ -1,0 +1,871 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mariadb.replication.cmpdName" . }}
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  provider: Community
+  description: MariaDB replication component definition for Kubernetes (async GTID)
+  serviceKind: mariadb
+  serviceVersion: {{ .Values.defaultServiceVersion.replication }}
+  updateStrategy: BestEffortParallel
+  podManagementPolicy: OrderedReady
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+    scrapePort: metrics
+  services:
+    - name: default
+      roleSelector: primary
+      spec:
+        ports:
+          - name: mariadb
+            port: 3306
+            targetPort: mariadb
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+      isExclusive: true
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
+  configs:
+    - name: mariadb-replication-config
+      template: mariadb-replication-config-template
+      volumeName: mariadb-config
+      namespace: {{ .Release.Namespace }}
+      externalManaged: true
+      {{- include "mariadb.config.reconfigureAction" . | nindent 6 }}
+  scripts:
+    - name: mariadb-replication-scripts
+      template: mariadb-replication-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^*"
+      optional: true
+  volumes:
+    - name: data
+      needSnapshot: true
+  {{- include "mariadb.replication.spec.systemAccounts" . | nindent 2 }}
+  {{- include "mariadb.spec.vars" . | nindent 2 }}
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - /scripts/replication-roleprobe.sh
+    memberJoin:
+      timeoutSeconds: 180
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - /scripts/replication-member-join.sh
+    memberLeave:
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - -c
+          - /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
+    switchover:
+      timeoutSeconds: 120
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - /scripts/replication-switchover.sh
+  runtime:
+    # Allow MariaDB enough time to flush dirty InnoDB pages before termination
+    # so version upgrade does not reopen the datadir in a crash-recovery state.
+    terminationGracePeriodSeconds: 120
+    initContainers:
+      - command:
+          - /bin/sh
+          - -c
+          - |
+            cp -r /bin/syncer /bin/syncerctl /tools/
+            mkdir -p {{ .Values.dataMountPath }}
+            rm -f {{ .Values.dataMountPath }}/.replication-ready {{ .Values.dataMountPath }}/.replication-divergence-pending
+            touch {{ .Values.dataMountPath }}/.replication-pending
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-syncer
+        securityContext:
+          runAsGroup: 0
+          runAsUser: 0
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+    containers:
+      - name: mariadb
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - bash
+                - -c
+                - |
+                  TRACE_FILE="{{ .Values.dataMountPath }}/log/termination-trace.log"
+                  TERMINATION_GUARD="/tmp/mariadb-termination-guard"
+                  ts() {
+                    date -u +"%Y-%m-%dT%H:%M:%SZ"
+                  }
+                  emit() {
+                    local line
+                    line="$(ts) PRESTOP $*"
+                    printf '%s\n' "${line}" >> "${TRACE_FILE}" 2>/dev/null || true
+                    printf '%s\n' "${line}" > /proc/1/fd/1 2>/dev/null || true
+                  }
+                  wait_for_mysqld_exit() {
+                    local pid="$1"
+                    local timeout_secs=110
+                    local deadline=$((SECONDS + timeout_secs))
+                    if [ -z "${pid}" ]; then
+                      emit "shutdown-wait pid-missing"
+                      return 0
+                    fi
+                    emit "shutdown-wait begin pid=${pid} timeout=${timeout_secs}s"
+                    while kill -0 "${pid}" 2>/dev/null; do
+                      if [ "${SECONDS}" -ge "${deadline}" ]; then
+                        emit "shutdown-wait timeout pid=${pid}"
+                        return 1
+                      fi
+                      sleep 1
+                    done
+                    emit "shutdown-wait child-exit pid=${pid}"
+                    return 0
+                  }
+                  resolve_admin_cli() {
+                    if command -v mysqladmin >/dev/null 2>&1; then
+                      command -v mysqladmin
+                      return 0
+                    fi
+                    if command -v mariadb-admin >/dev/null 2>&1; then
+                      command -v mariadb-admin
+                      return 0
+                    fi
+                    return 1
+                  }
+                  TMP_DIR="$(mktemp -d /tmp/mariadb-prestop.XXXXXX)"
+                  emit "enter pid=$$"
+                  : > "${TERMINATION_GUARD}" 2>/dev/null || true
+                  emit "guard-created path=${TERMINATION_GUARD}"
+                  MYSQLD_PID="$(pgrep -xo mariadbd || true)"
+                  ADMIN_CLI="$(resolve_admin_cli || true)"
+                  emit "admin-cli path=${ADMIN_CLI:-missing}"
+                  emit "admin-cli target-pid=${MYSQLD_PID:-missing}"
+                  if [ -n "${ADMIN_CLI}" ]; then
+                    "${ADMIN_CLI}" -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
+                      -P3306 -h127.0.0.1 shutdown >"${TMP_DIR}/stdout" 2>"${TMP_DIR}/stderr"
+                    ADMIN_CLI_RC=$?
+                  else
+                    printf '%s\n' "admin CLI not found (tried mysqladmin, mariadb-admin)" >"${TMP_DIR}/stderr"
+                    ADMIN_CLI_RC=127
+                  fi
+                  emit "admin-cli rc=${ADMIN_CLI_RC}"
+                  if [ -s "${TMP_DIR}/stdout" ]; then
+                    while IFS= read -r line; do
+                      emit "stdout ${line}"
+                    done < "${TMP_DIR}/stdout"
+                  fi
+                  if [ -s "${TMP_DIR}/stderr" ]; then
+                    while IFS= read -r line; do
+                      emit "stderr ${line}"
+                    done < "${TMP_DIR}/stderr"
+                  fi
+                  wait_for_mysqld_exit "${MYSQLD_PID}" || true
+                  emit "exit rc=${ADMIN_CLI_RC}"
+                  exit 0
+        command:
+          - /tools/syncer
+          - --port
+          - "3601"
+          - --
+          - bash
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,tmp}
+            chown -R mysql:mysql {{ .Values.dataMountPath }}
+            MYSQL_CLIENT_DIR=/tools/mysql-client
+            MARIADB_BIN="$(command -v mariadb)"
+            MARIADB_LOADER="$(ldd "${MARIADB_BIN}" | awk '{for (i = 1; i <= NF; i++) if ($i ~ /^\// && ($i ~ /ld-linux/ || $i ~ /ld-musl/)) { print $i; exit }}')"
+            mkdir -p "${MYSQL_CLIENT_DIR}/bin" "${MYSQL_CLIENT_DIR}/lib"
+            cp -L "${MARIADB_BIN}" "${MYSQL_CLIENT_DIR}/bin/mariadb.bin"
+            ldd "${MARIADB_BIN}" | awk '{for (i = 1; i <= NF; i++) if ($i ~ /^\//) print $i}' | sort -u | while IFS= read -r lib; do
+              [ -n "${lib}" ] || continue
+              cp -L "${lib}" "${MYSQL_CLIENT_DIR}/lib/"
+            done
+            cat > "${MYSQL_CLIENT_DIR}/bin/mariadb" <<EOF
+            #!/bin/sh
+            set -eu
+            ROOT="\$(CDPATH= cd -- "\$(dirname -- "\$0")"/.. && pwd)"
+            exec "\${ROOT}/lib/${MARIADB_LOADER##*/}" --library-path "\${ROOT}/lib" "\${ROOT}/bin/mariadb.bin" "\$@"
+            EOF
+            chmod 0555 "${MYSQL_CLIENT_DIR}/bin/mariadb"
+            # Set data dir group to kbagent's GID (1000) and grant group write so that
+            # kbagent can write switchover trigger files. Files inside remain mysql-owned.
+            chgrp 1000 {{ .Values.dataMountPath }} && chmod g+w {{ .Values.dataMountPath }}
+            # Signal to roleProbe that this pod is initializing — prevents spurious "primary"
+            # reports that would cause KubeBlocks to auto-trigger a switchover.
+            rm -f {{ .Values.dataMountPath }}/.replication-ready {{ .Values.dataMountPath }}/.replication-divergence-pending
+            touch {{ .Values.dataMountPath }}/.replication-pending
+            TERMINATION_TRACE="{{ .Values.dataMountPath }}/log/termination-trace.log"
+            TERMINATION_GUARD="/tmp/mariadb-termination-guard"
+            ts() {
+              date -u +"%Y-%m-%dT%H:%M:%SZ"
+            }
+            trace_log() {
+              local line
+              line="$(ts) WRAPPER $*"
+              printf '%s\n' "${line}" >> "${TERMINATION_TRACE}" 2>/dev/null || true
+              printf '%s\n' "${line}" >&2
+            }
+            wait_on_termination_guard() {
+              if [ ! -f "${TERMINATION_GUARD}" ]; then
+                return 1
+              fi
+              trace_log "termination-guard active signal=${TERMINATION_SIGNAL} mariadb_pid=${MARIADB_PID:-unset}"
+              while [ "${TERMINATION_SIGNAL}" = "none" ]; do
+                sleep 1
+              done
+              trace_log "termination-guard release signal=${TERMINATION_SIGNAL} mariadb_pid=${MARIADB_PID:-unset}"
+              return 0
+            }
+            TERMINATION_SIGNAL=none
+            trap 'TERMINATION_SIGNAL=TERM; trace_log "trap signal=TERM pid=$$ mariadb_pid=${MARIADB_PID:-unset}"' TERM
+            trap 'TERMINATION_SIGNAL=INT; trace_log "trap signal=INT pid=$$ mariadb_pid=${MARIADB_PID:-unset}"' INT
+            trap 'TERMINATION_SIGNAL=QUIT; trace_log "trap signal=QUIT pid=$$ mariadb_pid=${MARIADB_PID:-unset}"' QUIT
+            trap 'trace_log "wrapper-exit rc=$? signal=${TERMINATION_SIGNAL} mariadb_pid=${MARIADB_PID:-unset}"' EXIT
+
+            POD_INDEX="${POD_NAME##*-}"
+            SERVICE_ID=$((POD_INDEX + 1))
+            PRIMARY_HOST="${CLUSTER_NAME}-${COMPONENT_NAME}.${CLUSTER_NAMESPACE}.svc.${CLUSTER_DOMAIN}"
+            HEADLESS_HOST="${CLUSTER_NAME}-${COMPONENT_NAME}-headless.${CLUSTER_NAMESPACE}.svc.${CLUSTER_DOMAIN}"
+            BOOTSTRAP_PRIMARY_HOST="${CLUSTER_NAME}-${COMPONENT_NAME}-0.${HEADLESS_HOST}"
+            ACTIVE_PRIMARY_HOST="${PRIMARY_HOST}"
+            PRIMARY_SAMPLE_RETRIES="${PRIMARY_SAMPLE_RETRIES:-3}"
+            PRIMARY_SAMPLE_SLEEP_SECONDS="${PRIMARY_SAMPLE_SLEEP_SECONDS:-1}"
+            PRIMARY_SAMPLE_HOST=""
+            PRIMARY_SAMPLE_SERVER_ID=""
+            PRIMARY_SAMPLE_RESOLVED_ENDPOINT=""
+            PRIMARY_SAMPLE_READ_ONLY=""
+            PRIMARY_SAMPLE_GTID=""
+            PRIMARY_SAMPLE_STABLE="unknown"
+            PRIMARY_SAMPLE_LOG=""
+            LOCAL=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -N -s)
+            query_server_id() {
+              local host="$1"
+              mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                -P3306 -h"${host}" -N -s -e "SELECT @@server_id;" 2>/dev/null || echo ""
+            }
+            query_read_only() {
+              local host="$1"
+              mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                -P3306 -h"${host}" -N -s -e "SELECT @@global.read_only;" 2>/dev/null || echo ""
+            }
+            append_primary_sample_log() {
+              if [ -n "${PRIMARY_SAMPLE_LOG}" ]; then
+                PRIMARY_SAMPLE_LOG="${PRIMARY_SAMPLE_LOG}
+            $1"
+              else
+                PRIMARY_SAMPLE_LOG="$1"
+              fi
+            }
+            query_primary_sample_once() {
+              local host="$1"
+              mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                -P3306 -h"${host}" -N -s \
+                -e "SELECT @@server_id, @@hostname, @@global.read_only, @@global.gtid_binlog_state;" 2>/dev/null
+            }
+            sample_primary_for_divergence() {
+              local host="${ACTIVE_PRIMARY_HOST:-${PRIMARY_HOST}}"
+              local attempts="${PRIMARY_SAMPLE_RETRIES:-3}"
+              local sleep_seconds="${PRIMARY_SAMPLE_SLEEP_SECONDS:-1}"
+              local i sample sid endpoint read_only gtid identity prev_identity="" prev_gtid=""
+
+              PRIMARY_SAMPLE_HOST="${host}"
+              PRIMARY_SAMPLE_SERVER_ID=""
+              PRIMARY_SAMPLE_RESOLVED_ENDPOINT=""
+              PRIMARY_SAMPLE_READ_ONLY=""
+              PRIMARY_SAMPLE_GTID=""
+              PRIMARY_SAMPLE_STABLE="false"
+              PRIMARY_SAMPLE_LOG=""
+
+              for i in $(seq 1 "${attempts}"); do
+                sample=$(query_primary_sample_once "${host}" || true)
+                sid=""
+                endpoint=""
+                read_only=""
+                gtid=""
+                if [ -n "${sample}" ]; then
+                  IFS=$'\t' read -r sid endpoint read_only gtid <<< "${sample}"
+                fi
+                append_primary_sample_log "attempt=${i} host=${host} server_id=${sid:-<empty>} resolved_endpoint=${endpoint:-<empty>} read_only=${read_only:-<empty>} gtid=${gtid:-<empty>}"
+                if [ -n "${sid}" ] && [ -n "${gtid}" ]; then
+                  identity="${sid}/${endpoint:-unknown}"
+                  if [ -n "${prev_identity}" ]; then
+                    if [ "${identity}" != "${prev_identity}" ] || ! gtid_state_is_covered_by "${prev_gtid}" "${gtid}"; then
+                      PRIMARY_SAMPLE_STABLE="false"
+                      return 1
+                    fi
+                  fi
+                  prev_identity="${identity}"
+                  prev_gtid="${gtid}"
+                  PRIMARY_SAMPLE_SERVER_ID="${sid}"
+                  PRIMARY_SAMPLE_RESOLVED_ENDPOINT="${endpoint:-unknown}"
+                  PRIMARY_SAMPLE_READ_ONLY="${read_only:-unknown}"
+                  PRIMARY_SAMPLE_GTID="${gtid}"
+                fi
+                if [ "${i}" -lt "${attempts}" ]; then
+                  sleep "${sleep_seconds}"
+                fi
+              done
+
+              if [ -n "${PRIMARY_SAMPLE_GTID}" ]; then
+                PRIMARY_SAMPLE_STABLE="true"
+                return 0
+              fi
+              PRIMARY_SAMPLE_STABLE="false"
+              return 1
+            }
+            resolve_primary_for_replication() {
+              PRIMARY_SID=$(query_server_id "${PRIMARY_HOST}")
+              ACTIVE_PRIMARY_HOST="${PRIMARY_HOST}"
+              if [ -n "${PRIMARY_SID}" ] && [ "${PRIMARY_SID}" != "${SERVICE_ID}" ]; then
+                return 0
+              fi
+              DIRECT_PRIMARY_HOST=""
+              if [ "${POD_INDEX}" = "0" ]; then
+                DIRECT_PRIMARY_HOST="${CLUSTER_NAME}-${COMPONENT_NAME}-1.${HEADLESS_HOST}"
+              elif [ "${POD_INDEX}" -gt 0 ]; then
+                DIRECT_PRIMARY_HOST="${BOOTSTRAP_PRIMARY_HOST}"
+              fi
+              if [ -n "${DIRECT_PRIMARY_HOST}" ]; then
+                DIRECT_SID=$(query_server_id "${DIRECT_PRIMARY_HOST}")
+                DIRECT_READ_ONLY=$(query_read_only "${DIRECT_PRIMARY_HOST}")
+                if [ -n "${DIRECT_SID}" ] && [ "${DIRECT_SID}" != "${SERVICE_ID}" ] && [ "${DIRECT_READ_ONLY}" = "0" ]; then
+                  PRIMARY_SID="${DIRECT_SID}"
+                  ACTIVE_PRIMARY_HOST="${DIRECT_PRIMARY_HOST}"
+                  return 0
+                fi
+              fi
+              return 1
+            }
+            mark_replication_pending() {
+              rm -f "{{ .Values.dataMountPath }}/.replication-ready" "{{ .Values.dataMountPath }}/.replication-divergence-pending"
+              touch "{{ .Values.dataMountPath }}/.replication-pending"
+            }
+            mark_replication_ready() {
+              touch "{{ .Values.dataMountPath }}/.replication-ready"
+              rm -f "{{ .Values.dataMountPath }}/.replication-pending" "{{ .Values.dataMountPath }}/.replication-divergence-pending"
+            }
+            mark_replication_divergence_pending() {
+              mark_replication_pending
+              touch "{{ .Values.dataMountPath }}/.replication-divergence-pending"
+            }
+            replication_marker_state() {
+              local state="" marker
+              for marker in .replication-ready .replication-pending .replication-divergence-pending; do
+                if [ -f "{{ .Values.dataMountPath }}/${marker}" ]; then
+                  state="${state}${marker} "
+                fi
+              done
+              if [ -n "${state}" ]; then
+                printf "%s" "${state% }"
+              else
+                printf "%s" "<none>"
+              fi
+            }
+            persist_gtid_divergence_evidence() {
+              local branch="$1" local_state="$2" primary_state="$3" slave_status="$4"
+              local ts marker_state evidence_file marker_file
+              ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+              marker_state=$(replication_marker_state)
+              evidence_file="{{ .Values.dataMountPath }}/log/replication-divergence.log"
+              marker_file="{{ .Values.dataMountPath }}/.replication-divergence-pending"
+              mkdir -p "{{ .Values.dataMountPath }}/log" 2>/dev/null || true
+              {
+                printf 'timestamp=%s\n' "${ts}"
+                printf 'branch=%s\n' "${branch}"
+                printf 'decision=divergence-pending\n'
+                printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
+                printf 'cluster_name=%s\n' "${CLUSTER_NAME:-unknown}"
+                printf 'component_name=%s\n' "${COMPONENT_NAME:-unknown}"
+                printf 'service_id=%s\n' "${SERVICE_ID:-unknown}"
+                printf 'primary_sid=%s\n' "${PRIMARY_SID:-unknown}"
+                printf 'active_primary_host=%s\n' "${ACTIVE_PRIMARY_HOST:-unknown}"
+                printf 'primary_host=%s\n' "${PRIMARY_HOST:-unknown}"
+                printf 'primary_sample_host=%s\n' "${PRIMARY_SAMPLE_HOST:-unknown}"
+                printf 'primary_sample_stable=%s\n' "${PRIMARY_SAMPLE_STABLE:-unknown}"
+                printf 'primary_resolved_endpoint=%s\n' "${PRIMARY_SAMPLE_RESOLVED_ENDPOINT:-unknown}"
+                printf 'primary_server_id=%s\n' "${PRIMARY_SAMPLE_SERVER_ID:-unknown}"
+                printf 'primary_read_only=%s\n' "${PRIMARY_SAMPLE_READ_ONLY:-unknown}"
+                printf 'has_existing_data=%s\n' "${HAS_EXISTING_DATA:-unknown}"
+                printf 'local_gtid_binlog_state=%s\n' "${local_state:-<empty>}"
+                printf 'primary_gtid_binlog_state=%s\n' "${primary_state:-<empty>}"
+                printf 'marker_state=%s\n' "${marker_state}"
+                printf 'primary_sample_attempts_begin\n'
+                if [ -n "${PRIMARY_SAMPLE_LOG}" ]; then
+                  printf '%s\n' "${PRIMARY_SAMPLE_LOG}"
+                else
+                  printf '<empty>\n'
+                fi
+                printf 'primary_sample_attempts_end\n'
+                printf 'slave_status_begin\n'
+                if [ -n "${slave_status}" ]; then
+                  printf '%s\n' "${slave_status}"
+                else
+                  printf '<empty>\n'
+                fi
+                printf 'slave_status_end\n'
+                printf '\n'
+              } >> "${evidence_file}" 2>/dev/null || true
+              {
+                printf 'timestamp=%s\n' "${ts}"
+                printf 'branch=%s\n' "${branch}"
+                printf 'decision=divergence-pending\n'
+                printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
+                printf 'active_primary_host=%s\n' "${ACTIVE_PRIMARY_HOST:-unknown}"
+                printf 'primary_sample_host=%s\n' "${PRIMARY_SAMPLE_HOST:-unknown}"
+                printf 'primary_sample_stable=%s\n' "${PRIMARY_SAMPLE_STABLE:-unknown}"
+                printf 'primary_resolved_endpoint=%s\n' "${PRIMARY_SAMPLE_RESOLVED_ENDPOINT:-unknown}"
+                printf 'primary_server_id=%s\n' "${PRIMARY_SAMPLE_SERVER_ID:-unknown}"
+                printf 'local_gtid_binlog_state=%s\n' "${local_state:-<empty>}"
+                printf 'primary_gtid_binlog_state=%s\n' "${primary_state:-<empty>}"
+                printf 'marker_state=%s\n' "${marker_state}"
+              } > "${marker_file}" 2>/dev/null || true
+            }
+            persist_gtid_sampling_evidence() {
+              local branch="$1" local_state="$2" slave_status="$3"
+              local ts marker_state evidence_file
+              ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+              marker_state=$(replication_marker_state)
+              evidence_file="{{ .Values.dataMountPath }}/log/replication-divergence.log"
+              mkdir -p "{{ .Values.dataMountPath }}/log" 2>/dev/null || true
+              {
+                printf 'timestamp=%s\n' "${ts}"
+                printf 'branch=%s\n' "${branch}"
+                printf 'decision=sampling-instability\n'
+                printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
+                printf 'cluster_name=%s\n' "${CLUSTER_NAME:-unknown}"
+                printf 'component_name=%s\n' "${COMPONENT_NAME:-unknown}"
+                printf 'service_id=%s\n' "${SERVICE_ID:-unknown}"
+                printf 'primary_sid=%s\n' "${PRIMARY_SID:-unknown}"
+                printf 'active_primary_host=%s\n' "${ACTIVE_PRIMARY_HOST:-unknown}"
+                printf 'primary_host=%s\n' "${PRIMARY_HOST:-unknown}"
+                printf 'primary_sample_host=%s\n' "${PRIMARY_SAMPLE_HOST:-unknown}"
+                printf 'primary_sample_stable=%s\n' "${PRIMARY_SAMPLE_STABLE:-unknown}"
+                printf 'primary_resolved_endpoint=%s\n' "${PRIMARY_SAMPLE_RESOLVED_ENDPOINT:-unknown}"
+                printf 'primary_server_id=%s\n' "${PRIMARY_SAMPLE_SERVER_ID:-unknown}"
+                printf 'primary_read_only=%s\n' "${PRIMARY_SAMPLE_READ_ONLY:-unknown}"
+                printf 'has_existing_data=%s\n' "${HAS_EXISTING_DATA:-unknown}"
+                printf 'local_gtid_binlog_state=%s\n' "${local_state:-<empty>}"
+                printf 'primary_gtid_binlog_state=%s\n' "${PRIMARY_SAMPLE_GTID:-<empty>}"
+                printf 'marker_state=%s\n' "${marker_state}"
+                printf 'primary_sample_attempts_begin\n'
+                if [ -n "${PRIMARY_SAMPLE_LOG}" ]; then
+                  printf '%s\n' "${PRIMARY_SAMPLE_LOG}"
+                else
+                  printf '<empty>\n'
+                fi
+                printf 'primary_sample_attempts_end\n'
+                printf 'slave_status_begin\n'
+                if [ -n "${slave_status}" ]; then
+                  printf '%s\n' "${slave_status}"
+                else
+                  printf '<empty>\n'
+                fi
+                printf 'slave_status_end\n'
+                printf '\n'
+              } >> "${evidence_file}" 2>/dev/null || true
+            }
+            is_gtid_strict_mode_enabled() {
+              local strict_mode
+              strict_mode=$("${LOCAL[@]}" -e "SELECT @@global.gtid_strict_mode;" 2>/dev/null | tr '[:lower:]' '[:upper:]')
+              [ "${strict_mode}" = "ON" ] || [ "${strict_mode}" = "1" ]
+            }
+            gtid_state_is_covered_by() {
+              local local_state="$1"
+              local primary_state="$2"
+              local token ptoken domain server seq pdom pserver pseq found
+              [ -z "${local_state}" ] && return 0
+              IFS=',' read -r -a local_tokens <<< "${local_state}"
+              IFS=',' read -r -a primary_tokens <<< "${primary_state}"
+              for token in "${local_tokens[@]}"; do
+                token="${token//[[:space:]]/}"
+                [ -n "${token}" ] || continue
+                IFS='-' read -r domain server seq <<< "${token}"
+                [ -n "${domain}" ] && [ -n "${server}" ] && [ -n "${seq}" ] || return 1
+                found=false
+                for ptoken in "${primary_tokens[@]}"; do
+                  ptoken="${ptoken//[[:space:]]/}"
+                  [ -n "${ptoken}" ] || continue
+                  IFS='-' read -r pdom pserver pseq <<< "${ptoken}"
+                  if [ "${pdom}" = "${domain}" ] && [ "${pserver}" = "${server}" ]; then
+                    if [ "${pseq}" -ge "${seq}" ] 2>/dev/null; then
+                      found=true
+                      break
+                    fi
+                    return 1
+                  fi
+                done
+                [ "${found}" = "true" ] || return 1
+              done
+              return 0
+            }
+            fail_closed_for_gtid_divergence() {
+              local primary_state local_state slave_status
+              [ "${HAS_EXISTING_DATA}" = "true" ] || return 1
+              is_gtid_strict_mode_enabled || return 1
+              local_state=$("${LOCAL[@]}" -e "SELECT @@global.gtid_binlog_state;" 2>/dev/null)
+              [ -n "${local_state}" ] || return 1
+              slave_status=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null || true)
+              if ! sample_primary_for_divergence; then
+                persist_gtid_sampling_evidence "sample_primary_for_gtid_divergence" "${local_state}" "${slave_status}"
+                return 1
+              fi
+              primary_state="${PRIMARY_SAMPLE_GTID}"
+              [ -n "${primary_state}" ] || return 1
+              if gtid_state_is_covered_by "${local_state}" "${primary_state}"; then
+                return 1
+              fi
+              "${LOCAL[@]}" -e "STOP SLAVE; SET GLOBAL read_only = 1;" 2>/dev/null || true
+              rm -f "${BOOTSTRAP_PRIMARY_GUARD}"
+              mark_replication_divergence_pending
+              persist_gtid_divergence_evidence "fail_closed_for_gtid_divergence" "${local_state}" "${primary_state}" "${slave_status}"
+              echo "GTID divergence detected for existing datadir rejoin: local binlog state ${local_state}, primary binlog state ${primary_state}. Keeping replication pending for rebuild/resync."
+              return 0
+            }
+            query_slave_status_verbose() {
+              mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                -P3306 -h127.0.0.1 -e "SHOW SLAVE STATUS\\G" 2>/dev/null || true
+            }
+            slave_status_is_ready_for_rejoin() {
+              local slave_status="$1"
+              [ -n "${slave_status}" ] || return 1
+              printf "%s" "${slave_status}" | grep -q "Slave_IO_Running: Yes" || return 1
+              printf "%s" "${slave_status}" | grep -q "Slave_SQL_Running: Yes" || return 1
+              printf "%s" "${slave_status}" | grep -q "Last_IO_Errno: 0" || return 1
+              printf "%s" "${slave_status}" | grep -q "Last_SQL_Errno: 0" || return 1
+            }
+            slave_status_has_gtid_out_of_order() {
+              local slave_status="$1"
+              [ -n "${slave_status}" ] || return 1
+              printf "%s" "${slave_status}" | grep -q "Last_SQL_Errno: 1950" || return 1
+              printf "%s" "${slave_status}" | grep -qi "out-of-order" || return 1
+            }
+            finalize_replication_rejoin_ready_gate() {
+              local slave_status="$1" success_message="$2"
+              REJOIN_FAILURE_RESTART="false"
+              REJOIN_FAILURE_REASON=""
+              "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
+              rm -f "${BOOTSTRAP_PRIMARY_GUARD}"
+              # Bounded eventual convergence: after START SLAVE the IO thread
+              # takes a few seconds to connect and SQL thread a bit longer to
+              # apply relay log. A single immediate check often catches the
+              # mid-Connecting state and would force mark_replication_pending,
+              # leaving roleProbe stuck on "initializing" even after replication
+              # actually becomes healthy. Wait up to 30s polling every 3s for
+              # the gate to flip ready, but stop early if GTID divergence is
+              # detected (no point waiting on that). Re-query slave_status each
+              # iteration since the caller's snapshot is from before this gate.
+              local rejoin_deadline=$((SECONDS + 30))
+              while [ $SECONDS -lt $rejoin_deadline ]; do
+                if slave_status_is_ready_for_rejoin "${slave_status}"; then
+                  mark_replication_ready
+                  echo "${success_message}"
+                  return 0
+                fi
+                if slave_status_has_gtid_out_of_order "${slave_status}"; then
+                  break
+                fi
+                sleep 3
+                slave_status=$(query_slave_status_verbose)
+              done
+              if slave_status_is_ready_for_rejoin "${slave_status}"; then
+                mark_replication_ready
+                echo "${success_message}"
+                return 0
+              fi
+              if slave_status_has_gtid_out_of_order "${slave_status}"; then
+                REJOIN_FAILURE_RESTART="true"
+                if fail_closed_for_gtid_divergence; then
+                  REJOIN_FAILURE_REASON="divergence-confirmed"
+                  echo "WARNING: replication rejoin confirmed GTID divergence (1950); failing startup to avoid indefinite role_not_ready"
+                else
+                  REJOIN_FAILURE_REASON="gtid-out-of-order-retry"
+                  mark_replication_pending
+                  echo "WARNING: replication rejoin hit GTID out-of-order (1950) before primary truth stabilized; failing startup so container retries rejoin"
+                fi
+              else
+                mark_replication_pending
+                echo "WARNING: replication rejoin not yet healthy; staying read-only pending recovery until Slave_IO/Slave_SQL are Yes and Last_IO/Last_SQL_Errno are 0"
+              fi
+              return 1
+            }
+
+            HAS_EXISTING_DATA=false
+            if [ -d "{{ .Values.dataMountPath }}/mysql" ] || \
+               ls {{ .Values.dataMountPath }}/binlog/*.bin* >/dev/null 2>&1; then
+              HAS_EXISTING_DATA=true
+            fi
+
+            if wait_on_termination_guard; then
+              trace_log "dbservice-start skipped because termination-guard is present"
+              exit 143
+            fi
+
+            # Start MariaDB in the background
+            trace_log "dbservice-start pod=${POD_NAME} pod_index=${POD_INDEX} existing_data=${HAS_EXISTING_DATA}"
+            docker-entrypoint.sh mariadbd \
+              --server-id=${SERVICE_ID} \
+              --log-bin={{ .Values.dataMountPath }}/binlog/${POD_NAME}-bin \
+              --skip-slave-start=ON &
+            MARIADB_PID=$!
+            trace_log "dbservice-spawned mariadb_pid=${MARIADB_PID}"
+
+            wait_for_local_db_ready() {
+              local wait_rc=0
+              while ! mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -e "SELECT 1" >/dev/null 2>&1; do
+                if ! kill -0 "${MARIADB_PID}" 2>/dev/null; then
+                  wait "${MARIADB_PID}" || wait_rc=$?
+                  if [ "${wait_rc}" -eq 0 ] && wait_on_termination_guard; then
+                    trace_log "dbservice-exit-before-ready overridden to avoid restart during termination"
+                    return 143
+                  fi
+                  if [ "${wait_rc}" -eq 0 ]; then
+                    wait_rc=1
+                  fi
+                  trace_log "dbservice-exit-before-ready rc=${wait_rc} signal=${TERMINATION_SIGNAL} mariadb_pid=${MARIADB_PID}"
+                  return "${wait_rc}"
+                fi
+                sleep 2
+              done
+              return 0
+            }
+
+            # Wait for MariaDB to accept connections. If mariadbd exits before
+            # local TCP is ready, fail fast so the container can restart instead
+            # of hanging forever in "DB refused / roleProbe=-1 / role_not_ready".
+            wait_for_local_db_ready || exit $?
+            trace_log "dbservice-ready mariadb_pid=${MARIADB_PID}"
+
+            # Determine role by querying the primary service VIP
+            PRIMARY_SID=$(query_server_id "${PRIMARY_HOST}")
+            BOOTSTRAP_PRIMARY_GUARD="{{ .Values.dataMountPath }}/.bootstrap-primary-guard"
+
+            # Check for existing slave config.
+            # Use tabular SHOW SLAVE STATUS (not \G) because -N suppresses field names in \G format.
+            SLAVE_STATUS=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null)
+
+            if [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
+              # Primary service routes to us — we are the current primary.
+              # Clear any stale slave config and mark initialization as complete.
+              "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+              "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null || true
+              rm -f "${BOOTSTRAP_PRIMARY_GUARD}"
+              mark_replication_ready
+              echo "Starting as primary (server_id=${SERVICE_ID})"
+            elif [ -n "${SLAVE_STATUS}" ]; then
+              # We have existing slave config from a previous run.
+              # For pod-0: if VIP is unreachable (no primary exists), self-elect as primary
+              # to break the deadlock where all pods have slave configs after a switchover.
+              if fail_closed_for_gtid_divergence; then
+                trace_log "replication-rejoin-exit reason=divergence-confirmed-preflight mariadb_pid=${MARIADB_PID}"
+                exit 1
+              elif [ "${POD_INDEX}" = "0" ] && [ -z "${PRIMARY_SID}" ]; then
+                if resolve_primary_for_replication; then
+                  "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true
+                  SLAVE_STATUS_CHECK=$(query_slave_status_verbose)
+                  if ! finalize_replication_rejoin_ready_gate \
+                    "${SLAVE_STATUS_CHECK}" \
+                    "Resumed replication from existing slave config via direct primary ${ACTIVE_PRIMARY_HOST}"; then
+                    if [ "${REJOIN_FAILURE_RESTART}" = "true" ]; then
+                      trace_log "replication-rejoin-exit reason=${REJOIN_FAILURE_REASON} mariadb_pid=${MARIADB_PID}"
+                      exit 1
+                    fi
+                  fi
+                else
+                  "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+                  "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null || true
+                  touch "${BOOTSTRAP_PRIMARY_GUARD}"
+                  mark_replication_ready
+                  echo "Starting as primary (pod-0 with stale slave config, no primary found)"
+                fi
+              else
+                "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true
+                SLAVE_STATUS_CHECK=$(query_slave_status_verbose)
+                if ! finalize_replication_rejoin_ready_gate \
+                  "${SLAVE_STATUS_CHECK}" \
+                  "Resumed replication from existing slave config"; then
+                  if [ "${REJOIN_FAILURE_RESTART}" = "true" ]; then
+                    trace_log "replication-rejoin-exit reason=${REJOIN_FAILURE_REASON} mariadb_pid=${MARIADB_PID}"
+                    exit 1
+                  fi
+                fi
+              fi
+            elif [ -n "${PRIMARY_SID}" ] || [ "${POD_INDEX}" -gt 0 ] || [ "${HAS_EXISTING_DATA}" = "true" ]; then
+              # No slave config; we need to configure replication from the primary.
+              # Wait until the role-selected primary service routes to a different server.
+              # During first bootstrap, that service may have no endpoints yet because
+              # pod labels depend on roleProbe. In that window, use pod-0's headless DNS
+              # only if it is reachable and read_only=0, then clear pending after
+              # CHANGE MASTER TO is confirmed.
+              SELF_ELECTED=false
+              _no_primary_iters=0
+              for i in $(seq 1 20); do
+                if resolve_primary_for_replication; then
+                  break
+                fi
+                _no_primary_iters=$((_no_primary_iters + 1))
+                if [ "${_no_primary_iters}" -ge 20 ] && [ -z "${SLAVE_STATUS}" ]; then
+                  "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+                  "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null || true
+                  touch "${BOOTSTRAP_PRIMARY_GUARD}"
+                  mark_replication_ready
+                  SELF_ELECTED=true
+                  echo "Self-electing as primary: no primary found for 60s, no slave config"
+                  break
+                fi
+                sleep 3
+              done
+              if [ "${SELF_ELECTED}" = "true" ]; then
+                :
+              elif [ -n "${PRIMARY_SID}" ] && [ "${PRIMARY_SID}" != "${SERVICE_ID}" ]; then
+                if fail_closed_for_gtid_divergence; then
+                  trace_log "replication-rejoin-exit reason=divergence-confirmed-preflight mariadb_pid=${MARIADB_PID}"
+                  exit 1
+                else
+                MASTER_GTID=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                  -P3306 -h"${ACTIVE_PRIMARY_HOST}" -N -s -e "SELECT @@global.gtid_binlog_pos;" 2>/dev/null)
+                # Fresh pod (empty local gtid_slave_pos): replicate from beginning to get full schema+data.
+                # Rejoining pod with existing datadir: preserve local gtid_slave_pos so missing transactions
+                # are replayed from the local recovery point instead of being skipped.
+                "${LOCAL[@]}" -e "
+                  STOP SLAVE;
+                  CHANGE MASTER TO
+                    MASTER_HOST='${ACTIVE_PRIMARY_HOST}',
+                    MASTER_USER='${MARIADB_ROOT_USER}',
+                    MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+                    MASTER_USE_GTID=slave_pos;
+                  START SLAVE;
+                " 2>/dev/null || true
+                SLAVE_STATUS_CHECK=$(query_slave_status_verbose)
+                if [ -n "${SLAVE_STATUS_CHECK}" ]; then
+                  if ! finalize_replication_rejoin_ready_gate \
+                    "${SLAVE_STATUS_CHECK}" \
+                    "Replication configured from primary ${ACTIVE_PRIMARY_HOST} at GTID ${MASTER_GTID}"; then
+                    if [ "${REJOIN_FAILURE_RESTART}" = "true" ]; then
+                      trace_log "replication-rejoin-exit reason=${REJOIN_FAILURE_REASON} mariadb_pid=${MARIADB_PID}"
+                      exit 1
+                    fi
+                  fi
+                else
+                  "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
+                  rm -f "${BOOTSTRAP_PRIMARY_GUARD}"
+                  mark_replication_pending
+                  echo "WARNING: CHANGE MASTER TO did not store config; staying read-only pending recovery"
+                fi
+                fi
+              else
+                # Primary not reachable after retries. Keep .replication-pending so roleProbe
+                # does not publish a role — prevents this pod from being elected primary.
+                # Set read_only=1 to block writes until replication is properly established.
+                # The pod will retry on next container restart.
+                "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
+                echo "WARNING: primary not found after retries; staying read-only pending recovery (replication-pending retained)"
+              fi
+            else
+              # Pod-0, primary unreachable, no slave config: start as primary by default.
+              "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+              "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null || true
+              touch "${BOOTSTRAP_PRIMARY_GUARD}"
+              mark_replication_ready
+              echo "Starting as primary by default (index=0)"
+            fi
+            # Switchover is coordinated by /scripts/replication-switchover.sh
+            # through syncerctl, which creates the DCS switchover record. Remove
+            # stale raw-SQL trigger files from older script versions so they cannot
+            # race with syncer's HA loop.
+            rm -f {{ .Values.dataMountPath }}/.switchover-request \
+              {{ .Values.dataMountPath }}/.switchover-done \
+              {{ .Values.dataMountPath }}/.switchover-error
+
+            wait ${MARIADB_PID}
+            WAIT_RC=$?
+            trace_log "wait-return rc=${WAIT_RC} signal=${TERMINATION_SIGNAL} mariadb_pid=${MARIADB_PID}"
+            if [ "${WAIT_RC}" -eq 0 ] && wait_on_termination_guard; then
+              trace_log "wrapper-exit overridden to avoid restart during termination"
+              exit 143
+            fi
+            exit ${WAIT_RC}
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mariadb-config
+          - name: scripts
+            mountPath: /scripts
+          - name: tools
+            mountPath: /tools
+        ports:
+          - containerPort: 3306
+            name: mariadb
+          - containerPort: 3601
+            name: ha
+        env:
+          # syncer DB engine reads KB_SERVICE_* for local DB credentials.
+          - name: KB_SERVICE_USER
+            value: "$(MARIADB_ROOT_USER)"
+          - name: KB_SERVICE_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mariadb
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain | quote }}
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          # syncer uses this pod FQDN to wait for DNS readiness before control-plane actions.
+          - name: KB_POD_FQDN
+            value: "$(POD_NAME).$(CLUSTER_NAME)-$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+          - name: MARIADB_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: SERVICE_PORT
+            value: "3306"
+          - name: PATH
+            value: /tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: MARIADB_AUTO_UPGRADE
+            value: "1"
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+      {{- include "mariadb.container.exporter" . | nindent 6 }}
+    volumes:
+      - name: tools
+        emptyDir: {}

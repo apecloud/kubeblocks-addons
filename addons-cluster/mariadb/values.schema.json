@@ -2,30 +2,25 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
+    "topology": {
+      "title": "Topology",
+      "description": "Cluster topology: standalone, async, semisync, or galera.",
       "type": "string",
       "default": "standalone",
-      "enum": [
-        "standalone"
-      ]
+      "enum": ["standalone", "async", "semisync", "galera"]
     },
     "replicas": {
       "title": "Replicas",
-      "description": "The number of replicas, for standalone mode, the replicas is 1.",
+      "description": "The number of replicas. For standalone topology, replicas is always 1.",
       "type": "integer",
-      "default": 1,
+      "default": 2,
       "minimum": 1,
-      "maximum": 1
+      "maximum": 32
     },
     "cpu": {
       "title": "CPU",
       "description": "CPU cores.",
-      "type": [
-        "number",
-        "string"
-      ],
+      "type": ["number", "string"],
       "default": 0.5,
       "minimum": 0.5,
       "maximum": 64,
@@ -34,10 +29,7 @@
     "memory": {
       "title": "Memory(Gi)",
       "description": "Memory, the unit is Gi.",
-      "type": [
-        "number",
-        "string"
-      ],
+      "type": ["number", "string"],
       "default": 0.5,
       "minimum": 0.5,
       "maximum": 1000
@@ -45,14 +37,10 @@
     "storage": {
       "title": "Storage(Gi)",
       "description": "Storage size, the unit is Gi.",
-      "type": [
-        "number",
-        "string"
-      ],
+      "type": ["number", "string"],
       "default": 20,
       "minimum": 1,
       "maximum": 10000
     }
-
   }
 }

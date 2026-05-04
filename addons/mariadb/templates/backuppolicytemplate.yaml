@@ -8,6 +8,9 @@ spec:
   serviceKind: Mariadb
   compDefs:
     - {{ include "mariadb.cmpdRegexpPattern" . }}
+  target:
+    role: ""
+    account: root
   backupMethods:
     - name: mariadb-backup
       snapshotVolumes: false
