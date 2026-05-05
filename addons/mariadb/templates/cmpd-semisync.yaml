@@ -91,6 +91,10 @@ spec:
       - name: mariadb
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
+          - /tools/syncer
+          - --port
+          - "3601"
+          - --
           - bash
           - -c
           - |
@@ -322,7 +326,18 @@ spec:
         ports:
           - containerPort: 3306
             name: mariadb
+          - containerPort: 3601
+            name: ha
         env:
+          # syncer DB engine reads KB_SERVICE_* for local DB credentials.
+          - name: KB_SERVICE_USER
+            value: "$(MARIADB_ROOT_USER)"
+          - name: KB_SERVICE_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mariadb
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain | quote }}
           - name: MARIADB_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
           - name: POD_NAME
@@ -330,6 +345,15 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          # syncer uses this pod FQDN to wait for DNS readiness before control-plane actions.
+          - name: KB_POD_FQDN
+            value: "$(POD_NAME).$(CLUSTER_NAME)-$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+          - name: SERVICE_PORT
+            value: "3306"
+          - name: PATH
+            value: /tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: MARIADB_AUTO_UPGRADE
+            value: "1"
           - name: POD_NAMESPACE
             valueFrom:
               fieldRef:
