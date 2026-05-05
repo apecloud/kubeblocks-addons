@@ -735,13 +735,22 @@ spec:
               #   - Fresh bootstrap entry point: pod-0 default-primary by index (else branch below)
               #   - Failover: syncer IsHealthiestMember fence (apecloud/syncer PR #142) +
               #     AttemptAcquireLease + Promote()
-              # If primary is not reachable after 60s, the existing fallback at the bottom
-              # of this branch (line "Primary not reachable after retries...") keeps this
-              # pod read_only=1 with .replication-pending retained — letting syncer/DCS
-              # election proceed without racing against a chart-side self-elect.
-              for i in $(seq 1 20); do
+              # The loop never gives up on its own — chart waits indefinitely for primary,
+              # never self-elects. If pod-0 never comes (broken image), this pod stays in
+              # the loop and the cluster waits for kbagent restart / operator intervention.
+              # That is the intended trade-off of "primary election belongs to syncer/DCS".
+              # Cycle 5 evidence (2026-05-05): a bounded 60s loop here left non-pod-0 pods
+              # in a permanent .replication-pending state when primary endpoints came up
+              # late, so the loop was reverted to indefinite retry.
+              _no_primary_iters=0
+              while true; do
                 if resolve_primary_for_replication; then
                   break
+                fi
+                _no_primary_iters=$((_no_primary_iters + 1))
+                # Observability: log every 30s so external watchers see we are still waiting.
+                if [ $((_no_primary_iters % 10)) -eq 0 ]; then
+                  trace_log "replication-rejoin-waiting iter=${_no_primary_iters} elapsed=$((_no_primary_iters * 3))s primary_host=${PRIMARY_HOST:-unset} active_primary_host=${ACTIVE_PRIMARY_HOST:-unset}"
                 fi
                 sleep 3
               done
@@ -782,12 +791,12 @@ spec:
                 fi
                 fi
               else
-                # Primary not reachable after retries. Keep .replication-pending so roleProbe
-                # does not publish a role — prevents this pod from being elected primary.
-                # Set read_only=1 to block writes until replication is properly established.
-                # The pod will retry on next container restart.
+                # resolve_primary_for_replication returned true but PRIMARY_SID is empty or
+                # equals SERVICE_ID — should not happen with the indefinite loop above. Keep
+                # this branch as defensive fallback: stay read_only=1 + replication-pending,
+                # let the next container restart retry. Do NOT self-elect.
                 "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
-                echo "WARNING: primary not found after retries; staying read-only pending recovery (replication-pending retained)"
+                echo "WARNING: primary resolution returned inconsistent state (PRIMARY_SID=${PRIMARY_SID:-empty}); staying read-only pending recovery"
               fi
             else
               # Pod-0, primary unreachable, no slave config: start as primary by default.
