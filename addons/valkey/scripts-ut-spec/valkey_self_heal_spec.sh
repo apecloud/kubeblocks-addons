@@ -351,7 +351,12 @@ Describe "Valkey Self-Heal Daemon"
       dm_info_call_index_file="$(mktemp)"
       printf "0" > "${dm_info_call_index_file}"
 
-      # Stub valkey-cli: records REPLICAOF target; returns role:master for INFO queries.
+      # Stub valkey-cli: differentiates local (127.0.0.1) and remote (quorum
+      # target FQDN) calls so the data-plane verification guard can be tested.
+      #   - REPLICAOF calls: recorded to replicaof_calls_file.
+      #   - Local INFO calls  (host=127.0.0.1): always return role:master.
+      #   - Remote INFO calls (host=other):     return role driven by
+      #       DM_REMOTE_ROLE (default "master"); "unreachable" → exit 1.
       valkey-cli() {
         local cmdline="$*"
         if echo "${cmdline}" | grep -q "REPLICAOF"; then
@@ -361,10 +366,18 @@ Describe "Valkey Self-Heal Daemon"
           printf "%s %s\n" "${host}" "${port}" >> "${replicaof_calls_file}"
           return 0
         fi
+        local target_host
+        target_host=$(echo "${cmdline}" | awk '{ for (i=1; i<=NF; i++) if ($i=="-h") { print $(i+1); exit } }')
         local idx
         idx=$(( $(cat "${dm_info_call_index_file}") + 1 ))
         printf "%s" "${idx}" > "${dm_info_call_index_file}"
-        printf "# Replication\r\nrole:master\r\n"
+        if [ "${target_host}" = "127.0.0.1" ]; then
+          printf "# Replication\r\nrole:master\r\n"
+        else
+          local remote_role="${DM_REMOTE_ROLE:-master}"
+          [ "${remote_role}" = "unreachable" ] && return 1
+          printf "# Replication\r\nrole:%s\r\n" "${remote_role}"
+        fi
       }
 
       # Stub query_sentinel_quorum_for_master; return value driven by DM_QUORUM_RESULT.
@@ -384,7 +397,7 @@ Describe "Valkey Self-Heal Daemon"
       rm -f "${replicaof_calls_file}" "${dm_info_call_index_file}"
       unset SENTINEL_COMPONENT_NAME SENTINEL_POD_FQDN_LIST
       unset CURRENT_POD_NAME POD_FQDN
-      unset DM_QUORUM_RESULT DM_CONFIRM_RESULT
+      unset DM_QUORUM_RESULT DM_REMOTE_ROLE DM_CONFIRM_RESULT
       unset -f query_sentinel_quorum_for_master
     }
     After "teardown"
@@ -404,8 +417,18 @@ Describe "Valkey Self-Heal Daemon"
       The contents of file "${replicaof_calls_file}" should eq ""
     End
 
-    It "issues REPLICAOF and confirms demote when quorum identifies a different master"
+    It "skips demote when quorum target is foreign but remote data-plane is not master (skip-quorum-target-not-master guard)"
       export DM_QUORUM_RESULT="vlk-0.vlk-headless.ns.svc.cluster.local"
+      export DM_REMOTE_ROLE="slave"
+      When call dual_master_check_one_round
+      The status should be success
+      The stderr should include "skip-quorum-target-not-master"
+      The contents of file "${replicaof_calls_file}" should eq ""
+    End
+
+    It "issues REPLICAOF and confirms demote when quorum identifies a verified foreign master"
+      export DM_QUORUM_RESULT="vlk-0.vlk-headless.ns.svc.cluster.local"
+      export DM_REMOTE_ROLE="master"
       export DM_CONFIRM_RESULT="0"
       When call dual_master_check_one_round
       The status should be success
@@ -416,6 +439,7 @@ Describe "Valkey Self-Heal Daemon"
 
     It "logs NOT-confirmed warning when REPLICAOF does not converge within timeout"
       export DM_QUORUM_RESULT="vlk-0.vlk-headless.ns.svc.cluster.local"
+      export DM_REMOTE_ROLE="master"
       export DM_CONFIRM_RESULT="1"
       When call dual_master_check_one_round
       The status should be success

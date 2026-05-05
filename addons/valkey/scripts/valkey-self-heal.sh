@@ -271,7 +271,6 @@ dual_master_confirm_demote() {
     post_master_host=$(cascade_extract_replication_field "${repl_info}" "master_host")
     if [ "${post_role}" = "slave" ] && [ -n "${post_master_host}" ]; then
       if [ "${post_master_host}" = "${expected_master_host}" ] \
-         || cascade_is_self_host "${post_master_host}" 2>/dev/null && false \
          || _dm_hosts_resolve_same "${post_master_host}" "${expected_master_host}"; then
         return 0
       fi
@@ -356,6 +355,24 @@ dual_master_check_one_round() {
 
   if cascade_is_self_host "${quorum_master_fqdn}"; then
     # Sentinel-quorum agrees we are the legitimate master.
+    return 0
+  fi
+
+  # Data-plane verification: confirm the quorum-elected master actually
+  # reports role:master in its engine state.  Sentinel quorum may lag or
+  # point to a pod that was itself just demoted / restarted.  Issuing
+  # REPLICAOF to a non-master would create a cascade slave chain (the
+  # exact class of failure this daemon is designed to repair).  If the
+  # remote is unreachable or not yet master, skip this round and retry.
+  local remote_cli remote_info remote_role
+  remote_cli=$(cascade_build_remote_cli_cmd "${quorum_master_fqdn}")
+  remote_info=$(cascade_info_replication_with_timeout "${remote_cli}") || {
+    echo "INFO: skip dual-master demote (skip-quorum-target-unreachable): cannot query ${quorum_master_fqdn} within ${CASCADE_REMOTE_TIMEOUT_SECONDS}s." >&2
+    return 0
+  }
+  remote_role=$(cascade_extract_replication_field "${remote_info}" "role")
+  if [ "${remote_role}" != "master" ]; then
+    echo "INFO: skip dual-master demote (skip-quorum-target-not-master): ${quorum_master_fqdn} reports role='${remote_role:-unknown}', not yet master." >&2
     return 0
   fi
 
