@@ -160,58 +160,40 @@ spec:
               fi
             elif [ -n "${PRIMARY_SID}" ] || [ "${POD_INDEX}" -gt 0 ]; then
               # No slave config; we need to configure replication from the primary.
-              # Loop until replication is successfully configured:
+              # Bounded loop (60s total = 20 iters * 3s sleep):
               #   1. Find the primary (a server_id different from ours)
               #   2. Run CHANGE MASTER TO; START SLAVE
               #   3. Verify SHOW SLAVE STATUS is non-empty (config stored)
               # .replication-pending stays set throughout so roleProbe does not publish a
               # role, preventing a spurious "primary" report and the resulting split-brain race.
               #
-              # Self-elect paths:
-              #   A) Any pod, no slave config, no primary for >60s → self-elect (original C1 fix).
-              #   B) Non-pod-0 with existing data dir, no slave config, no primary for >30s →
-              #      self-elect faster. This handles rolling-restart when pod-1 was the primary:
-              #      it restarts with no master.info, the VIP is briefly unreachable while pod-0
-              #      is also restarting, and waiting 60s would make T9 take >75s to recover.
-              _no_primary_iters=0
-              # Detect whether data dir already has database files (restart vs fresh pod).
-              _has_data=false
-              if ls {{ .Values.dataMountPath }}/mysql >/dev/null 2>&1 || \
-                 ls {{ .Values.dataMountPath }}/binlog/*.bin* >/dev/null 2>&1; then
-                _has_data=true
-              fi
-              while true; do
-                # Step 1: find primary (timeout prevents hang if primary is unresponsive)
+              # Chart-side self-election paths (Path A 60s any-pod / Path B 30s non-pod-0)
+              # were removed 2026-05-05 to fix cycle 4 semisync n01 double-primary race
+              # (pod-0 default-primary by index + pod-1 self-elect after 30s both firing).
+              # Primary election now belongs entirely to syncer/DCS:
+              #   - Fresh bootstrap entry point: pod-0 default-primary by index (else branch below)
+              #   - Failover: syncer IsHealthiestMember fence (apecloud/syncer PR #142) +
+              #     AttemptAcquireLease + Promote()
+              # If primary is not reachable after 60s, this pod stays read_only=1 with
+              # .replication-pending retained — letting syncer/DCS election proceed without
+              # racing against a chart-side self-elect.
+              _primary_found=false
+              for _iter in $(seq 1 20); do
+                # Step 1: find primary (timeout 10 prevents hang if primary unresponsive)
                 PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
                   -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || echo "")
-                if [ -z "${PRIMARY_SID}" ] || [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
-                  _no_primary_iters=$((_no_primary_iters + 1))
-                  # Path A: 60s with no primary and no slave config → self-elect.
-                  if [ "${_no_primary_iters}" -ge 20 ] && [ -z "${SLAVE_STATUS}" ]; then
-                    "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
-                    "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
-                    "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null || true
-                    touch {{ .Values.dataMountPath }}/.replication-ready
-                    rm -f {{ .Values.dataMountPath }}/.replication-pending
-                    echo "Self-electing as primary: no primary found for 60s, no slave config"
-                    break
-                  fi
-                  # Path B: 30s, non-pod-0, has existing data, no slave config → self-elect faster.
-                  # This pod was the previous primary; it's restarting and the VIP is transiently
-                  # unavailable. Self-electing avoids a 60s+ recovery window during rolling restart.
-                  if [ "${_no_primary_iters}" -ge 10 ] && [ "${POD_INDEX}" -gt 0 ] && \
-                     [ "$_has_data" = "true" ] && [ -z "${SLAVE_STATUS}" ]; then
-                    "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
-                    "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
-                    "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null || true
-                    touch {{ .Values.dataMountPath }}/.replication-ready
-                    rm -f {{ .Values.dataMountPath }}/.replication-pending
-                    echo "Self-electing as primary: no primary for 30s, existing data, no slave config (pod-${POD_INDEX})"
-                    break
-                  fi
-                  sleep 3; continue
+                if [ -n "${PRIMARY_SID}" ] && [ "${PRIMARY_SID}" != "${SERVICE_ID}" ]; then
+                  _primary_found=true
+                  break
                 fi
-                _no_primary_iters=0
+                sleep 3
+              done
+              if [ "${_primary_found}" != "true" ]; then
+                # Primary not found after 60s. Stay read_only=1, retain .replication-pending,
+                # let syncer/DCS elect. Do NOT self-elect from chart side.
+                "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
+                echo "WARNING: primary not found after 60s; staying read-only pending syncer/DCS election (.replication-pending retained)"
+              else
                 # Step 2: configure replication
                 MASTER_GTID=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
                   -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@global.gtid_binlog_pos;" 2>/dev/null)
@@ -231,19 +213,19 @@ spec:
                   START SLAVE;
                 " 2>/dev/null || true
                 # Step 3: verify CHANGE MASTER TO actually stored config.
-                # If it failed (e.g. auth error), slave config is empty; retry.
-                # Only remove .replication-pending once slave config is confirmed.
+                # If it failed (e.g. auth error), keep .replication-pending; the pod stays
+                # read_only=1 and retries on next container restart. Do NOT self-elect.
                 SLAVE_STATUS_CHECK=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null)
                 if [ -n "${SLAVE_STATUS_CHECK}" ]; then
                   "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
                   echo "Replication configured from primary ${PRIMARY_HOST} at GTID ${MASTER_GTID}"
                   touch {{ .Values.dataMountPath }}/.replication-ready
                   rm -f {{ .Values.dataMountPath }}/.replication-pending
-                  break
+                else
+                  "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
+                  echo "WARNING: CHANGE MASTER TO did not store config; staying read-only pending recovery (.replication-pending retained)"
                 fi
-                echo "CHANGE MASTER TO did not store config; retrying in 5s"
-                sleep 5
-              done
+              fi
             else
               # Pod-0, primary unreachable, no slave config: start as primary by default.
               "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true

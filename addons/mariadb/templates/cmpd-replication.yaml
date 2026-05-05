@@ -727,27 +727,25 @@ spec:
               # pod labels depend on roleProbe. In that window, use pod-0's headless DNS
               # only if it is reachable and read_only=0, then clear pending after
               # CHANGE MASTER TO is confirmed.
-              SELF_ELECTED=false
-              _no_primary_iters=0
+              #
+              # Chart-side self-election (60s any-pod no-primary path) was removed
+              # 2026-05-05 to fix cycle 4 semisync n01 double-primary race (the symmetric
+              # path in cmpd-semisync.yaml). Primary election now belongs entirely to
+              # syncer/DCS:
+              #   - Fresh bootstrap entry point: pod-0 default-primary by index (else branch below)
+              #   - Failover: syncer IsHealthiestMember fence (apecloud/syncer PR #142) +
+              #     AttemptAcquireLease + Promote()
+              # If primary is not reachable after 60s, the existing fallback at the bottom
+              # of this branch (line "Primary not reachable after retries...") keeps this
+              # pod read_only=1 with .replication-pending retained — letting syncer/DCS
+              # election proceed without racing against a chart-side self-elect.
               for i in $(seq 1 20); do
                 if resolve_primary_for_replication; then
                   break
                 fi
-                _no_primary_iters=$((_no_primary_iters + 1))
-                if [ "${_no_primary_iters}" -ge 20 ] && [ -z "${SLAVE_STATUS}" ]; then
-                  "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
-                  "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null || true
-                  touch "${BOOTSTRAP_PRIMARY_GUARD}"
-                  mark_replication_ready
-                  SELF_ELECTED=true
-                  echo "Self-electing as primary: no primary found for 60s, no slave config"
-                  break
-                fi
                 sleep 3
               done
-              if [ "${SELF_ELECTED}" = "true" ]; then
-                :
-              elif [ -n "${PRIMARY_SID}" ] && [ "${PRIMARY_SID}" != "${SERVICE_ID}" ]; then
+              if [ -n "${PRIMARY_SID}" ] && [ "${PRIMARY_SID}" != "${SERVICE_ID}" ]; then
                 if fail_closed_for_gtid_divergence; then
                   trace_log "replication-rejoin-exit reason=divergence-confirmed-preflight mariadb_pid=${MARIADB_PID}"
                   exit 1
