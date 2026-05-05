@@ -68,6 +68,25 @@ spec:
           - /bin/sh
           - /scripts/replication-switchover.sh
   runtime:
+    initContainers:
+      - command:
+          - /bin/sh
+          - -c
+          - |
+            cp -r /bin/syncer /bin/syncerctl /tools/
+            mkdir -p {{ .Values.dataMountPath }}
+            rm -f {{ .Values.dataMountPath }}/.replication-ready
+            touch {{ .Values.dataMountPath }}/.replication-pending
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-syncer
+        securityContext:
+          runAsGroup: 0
+          runAsUser: 0
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
     containers:
       - name: mariadb
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
