@@ -742,6 +742,14 @@ spec:
               # Cycle 5 evidence (2026-05-05): a bounded 60s loop here left non-pod-0 pods
               # in a permanent .replication-pending state when primary endpoints came up
               # late, so the loop was reverted to indefinite retry.
+              #
+              # Set read_only=1 BEFORE entering the wait loop. mariadbd starts with default
+              # read_only=0, so without this explicit set, this pod is writable for the
+              # entire wait window. Cycle 6 (alpha.18 v2) caught the symmetric semisync bug
+              # as a SQL invariant double-primary failure (pod-0 default-primary
+              # read_only=0 plus secondary waiting in the loop with default read_only=0 =
+              # two writable instances).
+              "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
               _no_primary_iters=0
               while true; do
                 if resolve_primary_for_replication; then

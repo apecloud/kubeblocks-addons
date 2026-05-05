@@ -179,6 +179,13 @@ spec:
               # never self-elects. If pod-0 never comes (broken image), this pod stays in
               # the loop and the cluster waits for kbagent restart / operator intervention.
               # That is the intended trade-off of "primary election belongs to syncer/DCS".
+              #
+              # Set read_only=1 BEFORE entering the wait loop. mariadbd starts with default
+              # read_only=0, so without this explicit set, this pod is writable for the
+              # entire wait window. Cycle 6 (alpha.18) caught this as a SQL invariant
+              # double-primary failure: pod-0 default-primary read_only=0 plus pod-1
+              # waiting in the loop with default read_only=0 = two writable instances.
+              "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
               _no_primary_iters=0
               while true; do
                 # Step 1: find primary (timeout 10 prevents hang if primary unresponsive)
