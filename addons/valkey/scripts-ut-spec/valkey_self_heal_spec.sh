@@ -341,6 +341,61 @@ Describe "Valkey Self-Heal Daemon"
     End
   End
 
+  Describe "dual_master_confirm_demote() — bounded confirmation after REPLICAOF"
+    setup() {
+      export DUAL_MASTER_CONFIRM_POLL_INTERVAL_SECONDS="0"
+      # Stub valkey-cli for confirm tests; behavior driven by CONFIRM_SCENARIO.
+      valkey-cli() {
+        case "${CONFIRM_SCENARIO}" in
+          ok)
+            printf "# Replication\r\nrole:slave\r\nmaster_host:vlk-0.vlk-headless.ns.svc.cluster.local\r\n"
+            ;;
+          wrong_host)
+            printf "# Replication\r\nrole:slave\r\nmaster_host:vlk-99.wrong.ns.svc.cluster.local\r\n"
+            ;;
+          unreachable)
+            return 1
+            ;;
+        esac
+      }
+    }
+    Before "setup"
+
+    teardown() {
+      unset DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS
+      unset DUAL_MASTER_CONFIRM_POLL_INTERVAL_SECONDS
+      unset CONFIRM_SCENARIO
+    }
+    After "teardown"
+
+    It "returns success when role is slave and master_host matches expected"
+      export DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS="5"
+      export CONFIRM_SCENARIO="ok"
+      When call dual_master_confirm_demote \
+        "valkey-cli --no-auth-warning -h 127.0.0.1 -p 6379" \
+        "vlk-0.vlk-headless.ns.svc.cluster.local"
+      The status should be success
+    End
+
+    It "returns failure when role is slave but master_host points to a different host"
+      export DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS="1"
+      export CONFIRM_SCENARIO="wrong_host"
+      When call dual_master_confirm_demote \
+        "valkey-cli --no-auth-warning -h 127.0.0.1 -p 6379" \
+        "vlk-0.vlk-headless.ns.svc.cluster.local"
+      The status should be failure
+    End
+
+    It "returns failure when cli is unreachable throughout the timeout window"
+      export DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS="1"
+      export CONFIRM_SCENARIO="unreachable"
+      When call dual_master_confirm_demote \
+        "valkey-cli --no-auth-warning -h 127.0.0.1 -p 6379" \
+        "vlk-0.vlk-headless.ns.svc.cluster.local"
+      The status should be failure
+    End
+  End
+
   Describe "dual_master_check_one_round() — rogue-master demotion"
     setup() {
       export SENTINEL_COMPONENT_NAME="valkey-sentinel"

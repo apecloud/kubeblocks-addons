@@ -286,7 +286,7 @@ dual_master_confirm_demote() {
 # 1 otherwise.  Failure to resolve = no match (passive / safe default).
 _dm_hosts_resolve_same() {
   local a="${1%.}" b="${2%.}"
-  [ -z "${a}" ] || [ -z "${b}" ] && return 1
+  if [ -z "${a}" ] || [ -z "${b}" ]; then return 1; fi
   [ "${a}" = "${b}" ] && return 0
   if command -v getent >/dev/null 2>&1; then
     local a_ips b_ips ip
