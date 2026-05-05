@@ -340,4 +340,167 @@ Describe "Valkey Self-Heal Daemon"
       The stderr should include "ut_mode"
     End
   End
+
+  Describe "dual_master_confirm_demote() — bounded confirmation after REPLICAOF"
+    setup() {
+      export DUAL_MASTER_CONFIRM_POLL_INTERVAL_SECONDS="0"
+      # Stub valkey-cli for confirm tests; behavior driven by CONFIRM_SCENARIO.
+      valkey-cli() {
+        case "${CONFIRM_SCENARIO}" in
+          ok)
+            printf "# Replication\r\nrole:slave\r\nmaster_host:vlk-0.vlk-headless.ns.svc.cluster.local\r\n"
+            ;;
+          wrong_host)
+            printf "# Replication\r\nrole:slave\r\nmaster_host:vlk-99.wrong.ns.svc.cluster.local\r\n"
+            ;;
+          unreachable)
+            return 1
+            ;;
+        esac
+      }
+    }
+    Before "setup"
+
+    teardown() {
+      unset DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS
+      unset DUAL_MASTER_CONFIRM_POLL_INTERVAL_SECONDS
+      unset CONFIRM_SCENARIO
+    }
+    After "teardown"
+
+    It "returns success when role is slave and master_host matches expected"
+      export DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS="5"
+      export CONFIRM_SCENARIO="ok"
+      When call dual_master_confirm_demote \
+        "valkey-cli --no-auth-warning -h 127.0.0.1 -p 6379" \
+        "vlk-0.vlk-headless.ns.svc.cluster.local"
+      The status should be success
+    End
+
+    It "returns failure when role is slave but master_host points to a different host"
+      export DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS="1"
+      export CONFIRM_SCENARIO="wrong_host"
+      When call dual_master_confirm_demote \
+        "valkey-cli --no-auth-warning -h 127.0.0.1 -p 6379" \
+        "vlk-0.vlk-headless.ns.svc.cluster.local"
+      The status should be failure
+    End
+
+    It "returns failure when cli is unreachable throughout the timeout window"
+      export DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS="1"
+      export CONFIRM_SCENARIO="unreachable"
+      When call dual_master_confirm_demote \
+        "valkey-cli --no-auth-warning -h 127.0.0.1 -p 6379" \
+        "vlk-0.vlk-headless.ns.svc.cluster.local"
+      The status should be failure
+    End
+  End
+
+  Describe "dual_master_check_one_round() — rogue-master demotion"
+    setup() {
+      export SENTINEL_COMPONENT_NAME="valkey-sentinel"
+      export SENTINEL_POD_FQDN_LIST="sentinel-0.sentinel-headless.ns.svc.cluster.local"
+      export CURRENT_POD_NAME="vlk-2"
+      export POD_FQDN="vlk-2.vlk-headless.ns.svc.cluster.local"
+      replicaof_calls_file="$(mktemp)"
+      dm_info_call_index_file="$(mktemp)"
+      printf "0" > "${dm_info_call_index_file}"
+
+      # Stub valkey-cli: differentiates local (127.0.0.1) and remote (quorum
+      # target FQDN) calls so the data-plane verification guard can be tested.
+      #   - REPLICAOF calls: recorded to replicaof_calls_file.
+      #   - Local INFO calls  (host=127.0.0.1): always return role:master.
+      #   - Remote INFO calls (host=other):     return role driven by
+      #       DM_REMOTE_ROLE (default "master"); "unreachable" → exit 1.
+      valkey-cli() {
+        local cmdline="$*"
+        if echo "${cmdline}" | grep -q "REPLICAOF"; then
+          local host port
+          host=$(echo "${cmdline}" | awk '{ for (i=1; i<=NF; i++) if ($i=="REPLICAOF") { print $(i+1); exit } }')
+          port=$(echo "${cmdline}" | awk '{ for (i=1; i<=NF; i++) if ($i=="REPLICAOF") { print $(i+2); exit } }')
+          printf "%s %s\n" "${host}" "${port}" >> "${replicaof_calls_file}"
+          return 0
+        fi
+        local target_host
+        target_host=$(echo "${cmdline}" | awk '{ for (i=1; i<=NF; i++) if ($i=="-h") { print $(i+1); exit } }')
+        local idx
+        idx=$(( $(cat "${dm_info_call_index_file}") + 1 ))
+        printf "%s" "${idx}" > "${dm_info_call_index_file}"
+        if [ "${target_host}" = "127.0.0.1" ]; then
+          printf "# Replication\r\nrole:master\r\n"
+        else
+          local remote_role="${DM_REMOTE_ROLE:-master}"
+          [ "${remote_role}" = "unreachable" ] && return 1
+          printf "# Replication\r\nrole:%s\r\n" "${remote_role}"
+        fi
+      }
+
+      # Stub query_sentinel_quorum_for_master; return value driven by DM_QUORUM_RESULT.
+      query_sentinel_quorum_for_master() {
+        echo "${DM_QUORUM_RESULT:-}"
+      }
+
+      # Stub dual_master_confirm_demote to avoid live sleep/poll loops.
+      # Return code driven by DM_CONFIRM_RESULT (default 0 = success).
+      dual_master_confirm_demote() {
+        return "${DM_CONFIRM_RESULT:-0}"
+      }
+    }
+    Before "setup"
+
+    teardown() {
+      rm -f "${replicaof_calls_file}" "${dm_info_call_index_file}"
+      unset SENTINEL_COMPONENT_NAME SENTINEL_POD_FQDN_LIST
+      unset CURRENT_POD_NAME POD_FQDN
+      unset DM_QUORUM_RESULT DM_REMOTE_ROLE DM_CONFIRM_RESULT
+      unset -f query_sentinel_quorum_for_master
+    }
+    After "teardown"
+
+    It "skips demote when sentinel quorum returns no master (quorum-unclear gate)"
+      export DM_QUORUM_RESULT=""
+      When call dual_master_check_one_round
+      The status should be success
+      The stderr should include "quorum-unclear"
+      The contents of file "${replicaof_calls_file}" should eq ""
+    End
+
+    It "skips demote when quorum master resolves to self (skip-self-target guard)"
+      export DM_QUORUM_RESULT="vlk-2"
+      When call dual_master_check_one_round
+      The status should be success
+      The contents of file "${replicaof_calls_file}" should eq ""
+    End
+
+    It "skips demote when quorum target is foreign but remote data-plane is not master (skip-quorum-target-not-master guard)"
+      export DM_QUORUM_RESULT="vlk-0.vlk-headless.ns.svc.cluster.local"
+      export DM_REMOTE_ROLE="slave"
+      When call dual_master_check_one_round
+      The status should be success
+      The stderr should include "skip-quorum-target-not-master"
+      The contents of file "${replicaof_calls_file}" should eq ""
+    End
+
+    It "issues REPLICAOF and confirms demote when quorum identifies a verified foreign master"
+      export DM_QUORUM_RESULT="vlk-0.vlk-headless.ns.svc.cluster.local"
+      export DM_REMOTE_ROLE="master"
+      export DM_CONFIRM_RESULT="0"
+      When call dual_master_check_one_round
+      The status should be success
+      The stderr should include "rogue master detected"
+      The stderr should include "demote confirmed"
+      The contents of file "${replicaof_calls_file}" should include "vlk-0.vlk-headless.ns.svc.cluster.local"
+    End
+
+    It "logs NOT-confirmed warning when REPLICAOF does not converge within timeout"
+      export DM_QUORUM_RESULT="vlk-0.vlk-headless.ns.svc.cluster.local"
+      export DM_REMOTE_ROLE="master"
+      export DM_CONFIRM_RESULT="1"
+      When call dual_master_check_one_round
+      The status should be success
+      The stderr should include "rogue master detected"
+      The stderr should include "NOT confirmed"
+      The contents of file "${replicaof_calls_file}" should include "vlk-0.vlk-headless.ns.svc.cluster.local"
+    End
+  End
 End
