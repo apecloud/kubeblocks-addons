@@ -340,4 +340,88 @@ Describe "Valkey Self-Heal Daemon"
       The stderr should include "ut_mode"
     End
   End
+
+  Describe "dual_master_check_one_round() — rogue-master demotion"
+    setup() {
+      export SENTINEL_COMPONENT_NAME="valkey-sentinel"
+      export SENTINEL_POD_FQDN_LIST="sentinel-0.sentinel-headless.ns.svc.cluster.local"
+      export CURRENT_POD_NAME="vlk-2"
+      export POD_FQDN="vlk-2.vlk-headless.ns.svc.cluster.local"
+      replicaof_calls_file="$(mktemp)"
+      dm_info_call_index_file="$(mktemp)"
+      printf "0" > "${dm_info_call_index_file}"
+
+      # Stub valkey-cli: records REPLICAOF target; returns role:master for INFO queries.
+      valkey-cli() {
+        local cmdline="$*"
+        if echo "${cmdline}" | grep -q "REPLICAOF"; then
+          local host port
+          host=$(echo "${cmdline}" | awk '{ for (i=1; i<=NF; i++) if ($i=="REPLICAOF") { print $(i+1); exit } }')
+          port=$(echo "${cmdline}" | awk '{ for (i=1; i<=NF; i++) if ($i=="REPLICAOF") { print $(i+2); exit } }')
+          printf "%s %s\n" "${host}" "${port}" >> "${replicaof_calls_file}"
+          return 0
+        fi
+        local idx
+        idx=$(( $(cat "${dm_info_call_index_file}") + 1 ))
+        printf "%s" "${idx}" > "${dm_info_call_index_file}"
+        printf "# Replication\r\nrole:master\r\n"
+      }
+
+      # Stub query_sentinel_quorum_for_master; return value driven by DM_QUORUM_RESULT.
+      query_sentinel_quorum_for_master() {
+        echo "${DM_QUORUM_RESULT:-}"
+      }
+
+      # Stub dual_master_confirm_demote to avoid live sleep/poll loops.
+      # Return code driven by DM_CONFIRM_RESULT (default 0 = success).
+      dual_master_confirm_demote() {
+        return "${DM_CONFIRM_RESULT:-0}"
+      }
+    }
+    Before "setup"
+
+    teardown() {
+      rm -f "${replicaof_calls_file}" "${dm_info_call_index_file}"
+      unset SENTINEL_COMPONENT_NAME SENTINEL_POD_FQDN_LIST
+      unset CURRENT_POD_NAME POD_FQDN
+      unset DM_QUORUM_RESULT DM_CONFIRM_RESULT
+      unset -f query_sentinel_quorum_for_master
+    }
+    After "teardown"
+
+    It "skips demote when sentinel quorum returns no master (quorum-unclear gate)"
+      export DM_QUORUM_RESULT=""
+      When call dual_master_check_one_round
+      The status should be success
+      The stderr should include "quorum-unclear"
+      The contents of file "${replicaof_calls_file}" should eq ""
+    End
+
+    It "skips demote when quorum master resolves to self (skip-self-target guard)"
+      export DM_QUORUM_RESULT="vlk-2"
+      When call dual_master_check_one_round
+      The status should be success
+      The contents of file "${replicaof_calls_file}" should eq ""
+    End
+
+    It "issues REPLICAOF and confirms demote when quorum identifies a different master"
+      export DM_QUORUM_RESULT="vlk-0.vlk-headless.ns.svc.cluster.local"
+      export DM_CONFIRM_RESULT="0"
+      When call dual_master_check_one_round
+      The status should be success
+      The stderr should include "rogue master detected"
+      The stderr should include "demote confirmed"
+      The contents of file "${replicaof_calls_file}" should include "vlk-0.vlk-headless.ns.svc.cluster.local"
+    End
+
+    It "logs NOT-confirmed warning when REPLICAOF does not converge within timeout"
+      export DM_QUORUM_RESULT="vlk-0.vlk-headless.ns.svc.cluster.local"
+      export DM_CONFIRM_RESULT="1"
+      When call dual_master_check_one_round
+      The status should be success
+      The stderr should include "rogue master detected"
+      The stderr should include "NOT confirmed"
+      The contents of file "${replicaof_calls_file}" should include "vlk-0.vlk-headless.ns.svc.cluster.local"
+    End
+  End
 End
