@@ -251,13 +251,143 @@ stall_restart_server_for_recovery() {
   kill -SIGTERM 1
 }
 
+# dual_master_confirm_demote — bounded poll after issuing REPLICAOF, with
+# the strict success criterion required by Bob2 review angle #2 (sub-detail
+# 2): both role transitions to slave AND master_host points to the
+# quorum-elected master. Anything else is reported as a partial / stuck
+# state for the next round to retry.
+DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS="${DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS:-10}"
+DUAL_MASTER_CONFIRM_POLL_INTERVAL_SECONDS="${DUAL_MASTER_CONFIRM_POLL_INTERVAL_SECONDS:-1}"
+
+dual_master_confirm_demote() {
+  local cli_cmd="$1"
+  local expected_master_host="$2"
+  local deadline=$((SECONDS + DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    sleep "${DUAL_MASTER_CONFIRM_POLL_INTERVAL_SECONDS}"
+    local repl_info post_role post_master_host
+    repl_info=$(${cli_cmd} info replication 2>/dev/null) || continue
+    post_role=$(cascade_extract_replication_field "${repl_info}" "role")
+    post_master_host=$(cascade_extract_replication_field "${repl_info}" "master_host")
+    if [ "${post_role}" = "slave" ] && [ -n "${post_master_host}" ]; then
+      if [ "${post_master_host}" = "${expected_master_host}" ] \
+         || cascade_is_self_host "${post_master_host}" 2>/dev/null && false \
+         || _dm_hosts_resolve_same "${post_master_host}" "${expected_master_host}"; then
+        return 0
+      fi
+    fi
+  done
+  return 1
+}
+
+# _dm_hosts_resolve_same — best-effort same-host comparison for the
+# bounded-confirmation step. Sentinel may report the master as a pod FQDN
+# while INFO replication's master_host may be an IP (or vice-versa).  We
+# DNS-resolve both sides and check for any common IP.  Returns 0 on match,
+# 1 otherwise.  Failure to resolve = no match (passive / safe default).
+_dm_hosts_resolve_same() {
+  local a="${1%.}" b="${2%.}"
+  [ -z "${a}" ] || [ -z "${b}" ] && return 1
+  [ "${a}" = "${b}" ] && return 0
+  if command -v getent >/dev/null 2>&1; then
+    local a_ips b_ips ip
+    a_ips=$(getent hosts "${a}" 2>/dev/null | awk '{print $1}' | sort -u) || true
+    b_ips=$(getent hosts "${b}" 2>/dev/null | awk '{print $1}' | sort -u) || true
+    for ip in ${a_ips}; do
+      echo "${b_ips}" | grep -qx "${ip}" && return 0
+    done
+  fi
+  return 1
+}
+
+# dual_master_check_one_round — detect rogue-master state and demote.
+#
+# Evidence anchor: KB-10196 — when KB controller's isExclusive enforcement
+# clears the K8s role label on a duplicate-primary pod, sentinel correctly
+# elects a single master via quorum, but Sentinel protocol only reconfigures
+# slaves; it does NOT issue REPLICAOF to demote a self-claimed master that
+# was not the elected one.  This function fills that gap from the addon
+# side: each pod periodically asks sentinel-quorum "who is master?" and,
+# if it sees itself running as master while quorum says someone else is
+# master, issues REPLICAOF against itself to demote.
+#
+# Guards (Bob2 review angles + reviewer feedback):
+#   - skip-no-sentinel: SENTINEL_COMPONENT_NAME / SENTINEL_POD_FQDN_LIST
+#     unset → no truth source available → return without action.
+#   - skip-not-master: local INFO replication says role != master → nothing
+#     to demote.
+#   - skip-no-helper: query_sentinel_quorum_for_master is sourced from
+#     valkey-start.sh in production but absent under shellspec when the
+#     spec sources only valkey-self-heal.sh.  Use declare -F guard so the
+#     daemon stays passive in test environments without a real sentinel.
+#   - quorum-clear gate: only act when query_sentinel_quorum_for_master
+#     returns a non-empty FQDN (it already implements >= floor(N/2)+1
+#     majority); empty return = "uncertain" → return without action
+#     (passive-when-uncertain).
+#   - skip-self-target: if quorum master resolves to self, sentinel agrees
+#     we are the legitimate master → nothing to do.
+#   - skip-stale-role: re-read local role just before issuing REPLICAOF
+#     (between initial read and decision, sentinel may have re-elected us).
+#   - bounded confirmation: see dual_master_confirm_demote above.
+dual_master_check_one_round() {
+  is_empty "${SENTINEL_COMPONENT_NAME}" && return 0
+  is_empty "${SENTINEL_POD_FQDN_LIST}" && return 0
+
+  local local_port="${KB_SERVICE_PORT:-${SERVICE_PORT:-6379}}"
+  local cli_cmd
+  cli_cmd=$(cascade_build_local_cli_cmd)
+
+  local repl_info role_line
+  repl_info=$(${cli_cmd} info replication 2>/dev/null) || return 0
+  role_line=$(cascade_extract_replication_field "${repl_info}" "role")
+  [ "${role_line}" != "master" ] && return 0
+
+  if ! declare -F query_sentinel_quorum_for_master >/dev/null 2>&1; then
+    # Helper not sourced (e.g. shellspec single-file mode).  Stay passive.
+    return 0
+  fi
+
+  local quorum_master_fqdn
+  quorum_master_fqdn=$(query_sentinel_quorum_for_master 2>/dev/null) || true
+  if is_empty "${quorum_master_fqdn}"; then
+    echo "INFO: skip dual-master demote (quorum-unclear): query_sentinel_quorum_for_master returned empty (no majority consensus yet)." >&2
+    return 0
+  fi
+
+  if cascade_is_self_host "${quorum_master_fqdn}"; then
+    # Sentinel-quorum agrees we are the legitimate master.
+    return 0
+  fi
+
+  # Skip-stale-role: re-read just before REPLICAOF.
+  local current_repl_info current_role
+  current_repl_info=$(${cli_cmd} info replication 2>/dev/null) || return 0
+  current_role=$(cascade_extract_replication_field "${current_repl_info}" "role")
+  if [ "${current_role}" != "master" ]; then
+    echo "INFO: skip dual-master demote (skip-stale-role): local role is '${current_role:-unknown}', no longer master." >&2
+    return 0
+  fi
+
+  echo "WARNING: rogue master detected — sentinel-quorum reports real master is '${quorum_master_fqdn}'; demoting self via REPLICAOF." >&2
+  ${cli_cmd} REPLICAOF "${quorum_master_fqdn}" "${local_port}" 2>/dev/null || true
+
+  if dual_master_confirm_demote "${cli_cmd}" "${quorum_master_fqdn}"; then
+    echo "INFO: dual-master demote confirmed: now role:slave attached to '${quorum_master_fqdn}'." >&2
+    return 0
+  fi
+
+  echo "WARNING: dual-master demote NOT confirmed within ${DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS}s — local role may still be 'master' or master_host may not match. Will retry next round." >&2
+  return 0
+}
+
 self_heal_maintenance_loop() {
   echo "INFO: self-heal daemon starting (interval=${CHECK_INTERVAL_SECONDS}s, remote-timeout=${CASCADE_REMOTE_TIMEOUT_SECONDS}s, stall-threshold=${STALL_THRESHOLD_SECONDS}s)" >&2
   # Initial delay lets valkey-server come up before we start probing.
   sleep "${INITIAL_DELAY_SECONDS}"
   while true; do
-    cascade_check_one_round || true
-    stall_check_one_round   || true
+    cascade_check_one_round     || true
+    stall_check_one_round       || true
+    dual_master_check_one_round || true
     sleep "${CHECK_INTERVAL_SECONDS}"
   done
 }
