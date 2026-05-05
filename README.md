@@ -16,7 +16,7 @@ KubeBlocks add-ons.
 | kafka | kafka-broker-2.7.0<br>kafka-broker-2.8.2<br>kafka-broker-3.3.2<br>kafka-broker-3.7.1<br>kafka-broker-3.8.1<br>kafka-broker-3.9.0<br>kafka-combine-3.3.2<br>kafka-combine-3.7.1<br>kafka-combine-3.8.1<br>kafka-combine-3.9.0<br>kafka-controller-3.3.2<br>kafka-controller-3.7.1<br>kafka-controller-3.8.1<br>kafka-controller-3.9.0<br>kafka-exporter-1.6.0 | Apache Kafka is a distributed streaming platform designed to build real-time pipelines and can be used as a message broker or as a replacement for a log aggregation solution for big data applications. | caiq1nyu vipshop |
 | llm | llm-ggml-20241115-latest<br>llm-vllm-0.11.2 | Large language models. | ApeCloud |
 | loki | loki-1.0.0 | Loki is a horizontally-scalable, highly-available, multi-tenant log aggregation system inspired by Prometheus. It is designed to be very cost effective and easy to operate. | Chen-speculation |
-| mariadb | mariadb-10.6.15<br>mariadb-11.4.5 | MariaDB is a high performance open source relational database management system that is widely used for web and application servers | yinmin |
+| mariadb | mariadb-10.6.15<br>mariadb-11.4.10<br>mariadb-11.4.5<br>mariadb-11.4.8<br>mariadb-11.8.4<br>mariadb-12.0.2 | MariaDB is a high performance open source relational database management system that is widely used for web and application servers | yinmin |
 | milvus | milvus-2.5.13<br>milvus-v2.3.2 | A cloud-native vector database, storage for next generation AI applications. | leon-inf |
 | minio | minio-2024.6.29<br>minio-2025.10.15 | High Performance, Kubernetes Native Object Storage | ldming |
 | mogdb | mogdb-5.0.5 | A Helm chart for Kubernetes | yabinji shanshanying |
