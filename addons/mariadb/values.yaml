@@ -13,10 +13,9 @@ image:
       tag: v0.14.0
   syncer:
     repository: apecloud/syncer
-    # alpha.13 P4: bump to fresh build from current syncer source main HEAD with
-    # MariaDB-customized changes (engines/mariadb/, ha.go +26 lines, ha_test.go +57 lines)
-    # Built linux/amd64 sideloaded to IDC nodes containerd cache.
-    tag: mariadb-local-20260504-123616-amd64
+    # alpha.23: patched syncer for semisync switchover old-primary rejoin.
+    # Built linux/amd64 and distributed by sideload with IfNotPresent.
+    tag: mariadb-switchover-follow-alpha23-20260506-1005-amd64
 
 ## @param componentServiceVersion define default serviceVersion of each Component
 defaultServiceVersion:
