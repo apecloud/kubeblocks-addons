@@ -33,6 +33,7 @@ spec:
     - name: secondary
       updatePriority: 1
       participatesInQuorum: false
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   configs:
     - name: mariadb-semisync-config
       template: mariadb-semisync-config-template
@@ -46,6 +47,12 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^*"
+      optional: true
   volumes:
     - name: data
       needSnapshot: true
