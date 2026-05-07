@@ -1,0 +1,73 @@
+{{/*
+ActionSet for Valkey physical (RDB+AOF) backup and restore.
+
+Backup flow:
+  1. backupData: run BGSAVE on the target pod (secondary preferred), wait for
+     completion, tar the entire /data directory and push with zstd compression.
+
+Restore flow:
+  1. prepareData: pull the archive and extract it into DATA_DIR before the pod starts.
+  2. postReady: once Valkey pods are Running+Ready, restore any Sentinel ACL rules
+     that were saved during backup.
+
+KubeBlocks DataProtection passes standard DP_* variables into all job containers;
+additional variables (DATA_DIR, SENTINEL_*) are injected from the ActionSet env
+and from the BackupPolicyTemplate.
+*/}}
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: valkey-physical-br
+  labels:
+    clusterdefinition.kubeblocks.io/name: valkey
+    {{- include "valkey.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}
+    - name: TLS_MOUNT_PATH
+      value: {{ .Values.tlsMountPath }}
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ include "valkey.defaultImage" . }}
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/backup.sh" | nindent 10 }}
+  restore:
+    prepareData:
+      image: {{ include "valkey.defaultImage" . }}
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore.sh" | nindent 10 }}
+    postReady:
+      # Step 1: restore Sentinel ACL rules (non-default accounts)
+      - job:
+          image: {{ include "valkey.defaultImage" . }}
+          onError: Fail
+          runOnTargetPodNode: true
+          command:
+            - bash
+            - -c
+            - |
+              {{- .Files.Get "dataprotection/restore-sentinel-acl.sh" | nindent 14 }}
+      # Step 2: re-register the primary with Sentinel (Sentinel's own PVC is not backed up)
+      - job:
+          image: {{ include "valkey.defaultImage" . }}
+          onError: Continue
+          runOnTargetPodNode: false
+          command:
+            - bash
+            - -c
+            - |
+              {{- .Files.Get "dataprotection/post-restore-sentinel.sh" | nindent 14 }}

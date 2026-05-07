@@ -1,0 +1,143 @@
+{{- range .Values.valkeyVersions }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ printf "valkey%s-pd" .major }}
+  labels:
+    {{- include "valkey.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" $ | nindent 4 }}
+spec:
+  fileName: valkey.conf
+  fileFormatConfig:
+    format: redis
+  staticParameters:
+    - bind
+    - port
+    - tls-port
+    - daemonize
+    - databases
+    - dir
+    - logfile
+    - aclfile
+    - tcp-backlog
+  dynamicParameters:
+    - acllog-max-len
+    - activedefrag
+    - active-defrag-cycle-max
+    - active-defrag-cycle-min
+    - active-defrag-ignore-bytes
+    - active-expire-effort
+    - appendfsync
+    - appendonly
+    - auto-aof-rewrite-min-size
+    - auto-aof-rewrite-percentage
+    - hash-max-listpack-entries
+    - hash-max-listpack-value
+    - hll-sparse-max-bytes
+    - lazyfree-lazy-eviction
+    - lazyfree-lazy-expire
+    - lazyfree-lazy-server-del
+    - lazyfree-lazy-user-del
+    - lfu-decay-time
+    - lfu-log-factor
+    - list-compress-depth
+    - list-max-listpack-size
+    - loglevel
+    - maxclients
+    - maxmemory
+    - maxmemory-policy
+    - maxmemory-samples
+    - min-replicas-max-lag
+    - min-replicas-to-write
+    - notify-keyspace-events
+    - proto-max-bulk-len
+    - rdb-del-sync-files
+    - rdbchecksum
+    - rdbcompression
+    - replica-lazy-flush
+    - replica-priority
+    - replica-read-only
+    - replica-serve-stale-data
+    - repl-backlog-size
+    - repl-backlog-ttl
+    - repl-diskless-load
+    - repl-diskless-sync
+    - repl-diskless-sync-delay
+    - repl-disable-tcp-nodelay
+    - repl-timeout
+    - save
+    - set-max-intset-entries
+    - set-max-listpack-entries
+    - set-max-listpack-value
+    - slowlog-log-slower-than
+    - slowlog-max-len
+    - stop-writes-on-bgsave-error
+    - tcp-keepalive
+    - timeout
+    - zset-max-listpack-entries
+    - zset-max-listpack-value
+  parametersSchema:
+    topLevelKey: ValkeyParameter
+    cue: |-
+      #ValkeyParameter: {
+        "acllog-max-len"?: int & >=1 & <=10000
+        "activedefrag"?: string & "yes" | "no"
+        "active-defrag-cycle-max"?: int & >=1 & <=75
+        "active-defrag-cycle-min"?: int & >=1 & <=75
+        "active-defrag-ignore-bytes"?: int
+        "active-expire-effort"?: int & >=1 & <=10
+        "appendfsync"?: string & "always" | "everysec" | "no"
+        "appendonly"?: string & "yes" | "no"
+        "auto-aof-rewrite-min-size"?: string
+        "auto-aof-rewrite-percentage"?: int & >=0 & <=100
+        "databases"?: int & >=1 & <=10000
+        "hash-max-listpack-entries"?: int
+        "hash-max-listpack-value"?: int
+        "hll-sparse-max-bytes"?: int & >=1 & <=16000
+        "lazyfree-lazy-eviction"?: string & "yes" | "no"
+        "lazyfree-lazy-expire"?: string & "yes" | "no"
+        "lazyfree-lazy-server-del"?: string & "yes" | "no"
+        "lazyfree-lazy-user-del"?: string & "yes" | "no"
+        "lfu-decay-time"?: int
+        "lfu-log-factor"?: int
+        "list-compress-depth"?: int
+        "list-max-listpack-size"?: int
+        "loglevel"?: string & "debug" | "verbose" | "notice" | "warning"
+        "maxclients"?: int & >=1 & <=65000
+        "maxmemory"?: int
+        "maxmemory-policy"?: string & "noeviction" | "allkeys-lru" | "volatile-lru" | "allkeys-random" | "volatile-random" | "volatile-ttl" | "volatile-lfu" | "allkeys-lfu"
+        "maxmemory-samples"?: int & >=1 & <=10
+        "min-replicas-max-lag"?: int
+        "min-replicas-to-write"?: int
+        "notify-keyspace-events"?: string
+        "proto-max-bulk-len"?: int
+        "rdb-del-sync-files"?: string & "yes" | "no"
+        "rdbchecksum"?: string & "yes" | "no"
+        "rdbcompression"?: string & "yes" | "no"
+        "replica-lazy-flush"?: string & "yes" | "no"
+        "replica-priority"?: int & >=0 & <=100
+        "replica-read-only"?: string & "yes" | "no"
+        "replica-serve-stale-data"?: string & "yes" | "no"
+        "repl-backlog-size"?: int
+        "repl-backlog-ttl"?: int
+        "repl-diskless-load"?: string & "disabled" | "on-empty-db" | "swapdb"
+        "repl-diskless-sync"?: string & "yes" | "no"
+        "repl-diskless-sync-delay"?: int & >=0
+        "repl-disable-tcp-nodelay"?: string & "yes" | "no"
+        "repl-timeout"?: int
+        "save"?: string
+        "set-max-intset-entries"?: int
+        "set-max-listpack-entries"?: int
+        "set-max-listpack-value"?: int
+        "slowlog-log-slower-than"?: int
+        "slowlog-max-len"?: int
+        "stop-writes-on-bgsave-error"?: string & "yes" | "no"
+        "tcp-backlog"?: int
+        "tcp-keepalive"?: int
+        "timeout"?: int
+        "zset-max-listpack-entries"?: int
+        "zset-max-listpack-value"?: int
+      }
+{{- end }}

@@ -1,0 +1,49 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: valkey
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+  annotations:
+    kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+spec:
+  topologies:
+    # ── Standalone ────────────────────────────────────────────────────────────
+    # Single data node.  No replication, no HA.  Dev/test use only.
+    - name: standalone
+      default: true
+      components:
+        - name: valkey
+          compDef: {{ include "valkey.cmpdRegexpPattern" . }}
+
+    # ── Replication (with Sentinel HA) ───────────────────────────────────────
+    # 1 primary + N-1 secondaries, monitored by 3 Sentinel pods (quorum = 2).
+    #
+    # Startup sequence:
+    #   1. sentinel pods start first (Parallel policy, all three at once)
+    #   2. valkey data pods start after sentinel is Ready
+    #   3. postProvision on the primary pod registers it with all sentinels
+    #
+    # Failover sequence (automatic, no human action needed):
+    #   1. Sentinel detects primary unreachable (down-after-milliseconds = 20 s)
+    #   2. 2/3 sentinels reach quorum and elect a sentinel leader
+    #   3. Leader promotes the best replica: SLAVEOF NO ONE
+    #   4. Leader reconfigures other replicas to point to new primary
+    #   5. Leader updates its own conf + broadcasts to peer sentinels
+    #   6. roleProbe in KubeBlocks detects new roles, updates Service routing
+    - name: replication
+      components:
+        - name: valkey-sentinel
+          compDef: {{ include "valkeySentinel.cmpdRegexpPattern" . }}
+        - name: valkey
+          compDef: {{ include "valkey.cmpdRegexpPattern" . }}
+      orders:
+        provision:
+          - valkey-sentinel   # sentinel must be ready before data nodes connect to it
+          - valkey
+        terminate:
+          - valkey            # drain data nodes first so sentinel doesn't trigger spurious failover
+          - valkey-sentinel
+        update:
+          - valkey-sentinel
+          - valkey
