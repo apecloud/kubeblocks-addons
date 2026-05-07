@@ -272,8 +272,10 @@ function list_local_disks() {
 
 function upload_backup() {
 	local backup_name="${1:?missing backup name}"
+	local diff_from_remote="${2:-}"
 	local uploaded_files=0
 	local disk
+	[[ -n "$diff_from_remote" ]] && echo "datasafed custom storage uploads backup '$backup_name' without remote link-dest '$diff_from_remote'" >&2
 	init_datasafed
 	while IFS= read -r disk; do
 		[[ -z "$disk" ]] && continue
@@ -296,6 +298,24 @@ function upload_backup() {
 		echo "No local files found for backup '$backup_name'" >&2
 		exit 1
 	fi
+}
+
+function list_backups() {
+	local backup_name
+	local metadata_file
+	init_datasafed
+	while IFS= read -r backup_name; do
+		[[ -z "$backup_name" ]] && continue
+		backup_name="${backup_name#./}"
+		backup_name="${backup_name#/}"
+		backup_name="${backup_name%%/*}"
+		[[ -z "$backup_name" ]] && continue
+		metadata_file="$(mktemp)" || exit 1
+		if datasafed pull "/${backup_name}/metadata.json" "$metadata_file" >/dev/null 2>&1; then
+			clickhouse-local --input-format JSONEachRow --output-format JSONEachRow --query "SELECT *, creation_date AS upload_date FROM table" <"$metadata_file"
+		fi
+		rm -f "$metadata_file"
+	done < <(datasafed list -d / 2>/dev/null | sort -u || true)
 }
 
 function download_backup() {
@@ -342,6 +362,7 @@ action="${1:?missing action}"
 shift
 case "$action" in
 upload) upload_backup "$@" ;;
+list) list_backups ;;
 download) download_backup "$@" ;;
 delete) delete_backup "$@" ;;
 *)
@@ -355,9 +376,10 @@ EOF
 	export PATH="$PATH:${DP_DATASAFED_BIN_PATH:-}"
 	export REMOTE_STORAGE=custom
 	export USE_RESUMABLE_STATE=false
-	export CUSTOM_UPLOAD_COMMAND="$custom_storage_script upload {{ .backupName }}"
+	export CUSTOM_UPLOAD_COMMAND="$custom_storage_script upload {{ .backupName }} {{ .diffFromRemote }}"
 	export CUSTOM_DOWNLOAD_COMMAND="$custom_storage_script download {{ .backupName }}"
 	export CUSTOM_DELETE_COMMAND="$custom_storage_script delete {{ .backupName }}"
+	export CUSTOM_LIST_COMMAND="$custom_storage_script list"
 	DP_log "ClickHouse backup encryption detected; using datasafed custom remote storage."
 }
 
