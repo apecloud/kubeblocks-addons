@@ -25,10 +25,8 @@ keywords:
   - redis cluster
 
 maintainers:
-  - name: ApeCloud
-    url: https://github.com/apecloud/kubeblocks/
   - name: wangyelei
-    url: https://github.com/apecloud/kubeblocks/
+    url: https://github.com/wangyelei
 
 
 annotations:

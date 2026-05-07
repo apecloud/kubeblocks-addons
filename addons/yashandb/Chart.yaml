@@ -9,10 +9,10 @@ version: 1.1.0-alpha.0
 appVersion: "23.1.1-100"
 
 maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/
   - name: JesseAtSZ
     url: https://github.com/JesseAtSZ
-  - name: shanshanying
-    url: https://github.com/apecloud/kubeblocks/
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"

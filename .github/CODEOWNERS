@@ -10,14 +10,14 @@ examples/ @ahjing99 @shanshanying @leon-inf @apecloud/kb-reviewers @apecloud/kb-
 addons/apecloud-mysql/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/apecloud-mysql/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/clickhouse/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/clickhouse/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/clickhouse/ @loomt @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/clickhouse/ @loomt @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/elasticsearch/ @iziang @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/elasticsearch/ @iziang @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/elasticsearch/ @kizuna-lek @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/elasticsearch/ @kizuna-lek @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/etcd/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/etcd/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/etcd/ @loomt @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/etcd/ @loomt @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/falkordb/ @dudizimber @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/falkordb/ @dudizimber @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
@@ -25,38 +25,38 @@ addons-cluster/falkordb/ @dudizimber @leon-inf @apecloud/kb-reviewers @apecloud/
 addons/greptimedb/ @GreptimeTeam @sh2 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/greptimedb/ @GreptimeTeam @sh2 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/influxdb/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/influxdb/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/influxdb/ @cjc7373 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/influxdb/ @cjc7373 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/kafka/ @caiq1nyu @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/kafka/ @caiq1nyu @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/kafka/ @cjc7373 @caiq1nyu @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/kafka/ @cjc7373 @caiq1nyu @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/llm/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/llm/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/loki/ @Chen-speculation @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/loki/ @Chen-speculation @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/loki/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/loki/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/mariadb/ @yinmin @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/mariadb/ @yinmin @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/milvus/ @leon-inf @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/milvus/ @leon-inf @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/milvus/ @cjc7373 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/milvus/ @cjc7373 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/minio/ @ldming @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/minio/ @ldming @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/mogdb/ @yabinji @shanshanying @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/mogdb/ @yabinji @shanshanying @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/mogdb/ @yabinji @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/mogdb/ @yabinji @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/mongodb/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/mongodb/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/mongodb/ @xuriwuyun @wanglong @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/mongodb/ @xuriwuyun @wanglong @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/mysql/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/mysql/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/nebula/ @shanshanying @Xuntao_Cheng @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/nebula/ @shanshanying @Xuntao_Cheng @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/nebula/ @wangyelei @shanshanying @Xuntao_Cheng @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/nebula/ @wangyelei @shanshanying @Xuntao_Cheng @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/neo4j/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/neo4j/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
@@ -67,14 +67,14 @@ addons-cluster/neon/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewe
 addons/oceanbase-ce/ @Powerfooi @shanshanying @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/oceanbase-ce/ @Powerfooi @shanshanying @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/opensearch/ @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/opensearch/ @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/opensearch/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/opensearch/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/orchestrator/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/orchestrator/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/orioledb/ @1aal @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/orioledb/ @1aal @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/orioledb/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/orioledb/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/polardbx/ @Vettal_Wu @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/polardbx/ @Vettal_Wu @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
@@ -82,11 +82,11 @@ addons-cluster/polardbx/ @Vettal_Wu @leon-inf @apecloud/kb-reviewers @apecloud/k
 addons/postgresql/ @ldming @dingshun-cmss @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/postgresql/ @ldming @dingshun-cmss @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/pulsar/ @caiq1nyu @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/pulsar/ @caiq1nyu @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/pulsar/ @cjc7373 @caiq1nyu @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/pulsar/ @cjc7373 @caiq1nyu @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/qdrant/ @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/qdrant/ @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/qdrant/ @cjc7373 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/qdrant/ @cjc7373 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/rabbitmq/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/rabbitmq/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
@@ -97,29 +97,29 @@ addons-cluster/redis/ @wangyelei @leon-inf @apecloud/kb-reviewers @apecloud/kb-a
 addons/risingwave/ @RisingWave_Labs @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/risingwave/ @RisingWave_Labs @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/rocketmq/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/rocketmq/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/rocketmq/ @kizuna-lek @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/rocketmq/ @kizuna-lek @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/starrocks-ce/ @yandongxiao @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/starrocks-ce/ @yandongxiao @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/starrocks-ce/ @yandongxiao @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/starrocks-ce/ @yandongxiao @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/tidb/ @csuzhangxc @cjc7373 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/tidb/ @csuzhangxc @cjc7373 @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/tidb/ @cjc7373 @csuzhangxc @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/tidb/ @cjc7373 @csuzhangxc @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/vanilla-postgresql/ @kizuna-lek @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/vanilla-postgresql/ @kizuna-lek @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/victoria-metrics/ @ButterBright @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/victoria-metrics/ @ButterBright @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/victoria-metrics/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/victoria-metrics/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/weaviate/ @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/weaviate/ @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/weaviate/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/weaviate/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/xinference/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/xinference/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/yashandb/ @JesseAtSZ @shanshanying @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/yashandb/ @JesseAtSZ @shanshanying @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/yashandb/ @JesseAtSZ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/yashandb/ @JesseAtSZ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/zookeeper/ @kissycn @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/zookeeper/ @kissycn @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/zookeeper/ @kizuna-lek @kissycn @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/zookeeper/ @kizuna-lek @kissycn @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers

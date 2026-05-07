@@ -17,8 +17,8 @@ keywords:
 - sharding
 
 maintainers:
-  - name: ApeCloud
-    url: https://kubeblocks.io/
+  - name: loomt
+    url: https://github.com/loomt
 
 dependencies:
   - name: kblib

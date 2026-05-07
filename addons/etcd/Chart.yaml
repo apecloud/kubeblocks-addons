@@ -40,8 +40,8 @@ keywords:
   - key-value
 
 maintainers:
-  - name: ApeCloud
-    url: https://github.com/apecloud/kubeblocks/
+  - name: loomt
+    url: https://github.com/loomts
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"

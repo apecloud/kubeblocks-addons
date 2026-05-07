@@ -24,8 +24,8 @@ version: 1.1.0-alpha.0
 appVersion: "8.8.2"   # helm search repo bitnami/elasticsearch
 
 maintainers:
-  - name: iziang
-    url: https://github.com/apecloud/kubeblocks/
+  - name: kizuna-lek
+    url: https://github.com/kizuna-lek
   - name: vipshop
     url: https://github.com/vipshop
 

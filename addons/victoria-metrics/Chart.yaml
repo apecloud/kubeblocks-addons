@@ -10,8 +10,6 @@ appVersion: "1.100.1"
 
 maintainers:
   - name: ApeCloud
-    url: https://kubeblocks.io/
-  - name: ButterBright
     url: https://github.com/apecloud/kubeblocks/
 
 annotations:

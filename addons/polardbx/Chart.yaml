@@ -15,8 +15,11 @@ keywords:
 home: https://polardbx.com/home
 
 maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/
   - name: Vettal Wu
     email: vettal.wd@alibaba-inc.com
+
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"

@@ -20,7 +20,9 @@ keywords:
 
 maintainers:
   - name: xuriwuyun
-    url: https://github.com/apecloud/kubeblocks/
+    url: https://github.com/xuriwuyun
+  - name: wanglong
+    url: https://github.com/gnolong
 
 dependencies:
   - name: kblib
