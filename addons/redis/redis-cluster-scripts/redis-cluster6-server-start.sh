@@ -78,6 +78,11 @@ check_and_meet_node() {
   local target_port="$4"
   local target_bus_port="$5"
 
+  if [ "$TLS_ENABLED" == "true" ] && [ "$target_port" -eq 0 ]; then
+    echo "Primary node $primary_node_endpoint_for_meet is using TLS but the port is 0, cannot meet primary node, exit scale out replica..." >&2
+    exit 0
+  fi
+
   # Check for invalid port numbers and exit immediately if found
   if [ "$target_port" -eq 0 ] || [ "$target_bus_port" -eq 0 ]; then
     echo "Error: target_port ($target_port) or target_bus_port ($target_bus_port) is 0. Exiting..."
@@ -608,6 +613,21 @@ build_redis_cluster_service_port() {
   fi
 }
 
+build_redis_tls_config() {
+  if [ "$TLS_ENABLED" == "true" ]; then
+    TLS_MOUNT_PATH=${TLS_MOUNT_PATH:-/etc/pki/tls}
+    {
+      echo "tls-cert-file $TLS_MOUNT_PATH/tls.crt"
+      echo "tls-key-file $TLS_MOUNT_PATH/tls.key"
+      echo "tls-ca-cert-file $TLS_MOUNT_PATH/ca.crt"
+      echo "tls-auth-clients no"
+      echo "tls-replication yes"
+      echo "tls-cluster yes"
+      echo "port 0"
+    } >> $redis_real_conf
+  fi
+}
+
 parse_redis_cluster_shard_announce_addr() {
   # The value format of CURRENT_SHARD_ADVERTISED_PORT and CURRENT_SHARD_ADVERTISED_BUS_PORT are "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   if is_empty "$CURRENT_SHARD_ADVERTISED_PORT" || is_empty "$CURRENT_SHARD_ADVERTISED_BUS_PORT"; then
@@ -690,6 +710,7 @@ start_redis_server() {
 build_redis_conf() {
   load_redis_template_conf
   build_redis_cluster_service_port
+  build_redis_tls_config
   build_announce_ip_and_port
   build_cluster_announce_info
   rebuild_redis_acl_file
