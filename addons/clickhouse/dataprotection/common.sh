@@ -505,37 +505,6 @@ function fetch_backup() {
 	DP_log "Backup '$backup_name' is available locally."
 }
 
-function stage_required_backup_metadata() {
-	local target_base_path="$1"
-	shift
-	local backup_name
-	local metadata_file
-
-	# clickhouse-backup expects incremental parents under the same S3_PATH.
-	# KubeBlocks stores each Backup under its own path, so stage parent metadata only.
-	export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
-	for backup_name in "$@"; do
-		[[ -z "$backup_name" ]] && continue
-		metadata_file=$(mktemp) || {
-			DP_error_log "Failed to create temporary metadata file"
-			return 1
-		}
-		export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_ROOT_PATH/$backup_name/$DP_TARGET_RELATIVE_PATH"
-		if ! datasafed pull "$backup_name/metadata.json" "$metadata_file"; then
-			rm -f "$metadata_file"
-			DP_error_log "Failed to pull metadata for backup '$backup_name'"
-			return 1
-		fi
-		export DATASAFED_BACKEND_BASE_PATH="$target_base_path"
-		if ! datasafed push "$metadata_file" "$backup_name/metadata.json"; then
-			rm -f "$metadata_file"
-			DP_error_log "Failed to stage metadata for backup '$backup_name'"
-			return 1
-		fi
-		rm -f "$metadata_file"
-	done
-}
-
 function delete_backups_except() {
 	local latest_backup=$1
 	DP_log "delete backup except $latest_backup"
@@ -558,25 +527,6 @@ function save_backup_size() {
 	local backup_size
 	backup_size=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 	DP_save_backup_status_info "$backup_size"
-}
-
-function detect_restore_mode() {
-	local first_entry="${ALL_COMBINED_SHARDS_POD_FQDN_LIST%%,*}"
-	local first_component="${first_entry%%:*}"
-	if [[ -z "$first_component" ]]; then
-		DP_error_log "Invalid ALL_COMBINED_SHARDS_POD_FQDN_LIST" >&2
-		return 1
-	fi
-
-	if [[ -z "${CH_KEEPER_POD_FQDN_LIST:-}" ]]; then
-		echo "standalone"
-		return 0
-	fi
-
-	if [[ "$first_component" == "$first_entry" ]]; then
-		first_component="${CURRENT_SHARD_COMPONENT_SHORT_NAME}"
-	fi
-	echo "cluster:$first_component"
 }
 
 # Restore schema and wait for sync across shards
@@ -651,8 +601,8 @@ function do_restore() {
 	restore_schema_and_sync "$backup_name" "$mode_info" || return 1
 
 	# Restore data
-	clickhouse-backup restore "$backup_name" --data || {
-		DP_error_log "Clickhouse-backup restore --data FAILED"
+	clickhouse-backup restore_remote "$backup_name" --data || {
+		DP_error_log "Clickhouse-backup restore_remote --data FAILED"
 		return 1
 	}
 
