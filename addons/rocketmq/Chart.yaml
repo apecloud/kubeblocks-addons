@@ -23,8 +23,8 @@ keywords:
   - consumer
 
 maintainers:
-  - name: ApeCloud
-    url: https://github.com/apecloud/kubeblocks/
+  - name: kizuna-lek
+    url: https://github.com/kizuna-lek
 
 sources:
   - https://github.com/apecloud/kubeblocks/
