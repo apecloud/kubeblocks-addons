@@ -21,8 +21,9 @@ home: https://qdrant.tech/
 icon: https://qdrant.tech/images/logo_with_text.svg
 
 maintainers:
-  - name: iziang
-    url: https://github.com/apecloud/kubeblocks/
+  - name: cjc7373
+    url: https://github.com/cjc7373
+
 
 sources:
   - https://github.com/apecloud/kubeblocks/

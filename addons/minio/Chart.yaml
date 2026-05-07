@@ -18,7 +18,7 @@ sources:
 
 maintainers:
   - name: ldming
-    url: https://github.com/apecloud/kubeblocks/
+    url: https://github.com/ldming
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"

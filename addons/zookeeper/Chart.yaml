@@ -16,8 +16,8 @@ keywords:
   - middleware
 
 maintainers:
-  - name: ApeCloud
-    url: https://github.com/apecloud/kubeblocks/
+  - name: kizuna-lek
+    url: https://github.com/kizuna-lek
   - name: kissycn
     url: https://github.com/kissycn
 
