@@ -802,58 +802,9 @@ kubectl apply -f examples/clickhouse/verticalscale.yaml
 
 ### Switchover for Clickhouse Keeper
 
-#### Switchover without preferred candidates
+#### Switchover with specified candidate
 
-Switchover a specified instance as the new primary or leader of the cluster
-
-```yaml
-# cat examples/clickhouse/keeper-switchover.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: keeper-switchover
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: clickhouse-cluster
-  type: Switchover
-  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
-  switchover:
-    # Specifies the name of the Component.
-  - componentName: ch-keeper
-    # Specifies the instance whose role will be transferred.
-    # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: "clickhouse-cluster-ch-keeper-0"
-
-```
-
-```yaml
-# cat examples/clickhouse/keeper-switchover.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: keeper-switchover
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: clickhouse-cluster
-  type: Switchover
-  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
-  switchover:
-    # Specifies the name of the Component.
-  - componentName: ch-keeper
-    # Specifies the instance whose role will be transferred.
-    # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: "clickhouse-cluster-ch-keeper-0"
-```
-
-```bash
-kubectl apply -f examples/clickhouse/keeper-switchover.yaml
-```
-
-#### Switchover-specified-instance
-
-Switchover a specified instance as the new primary or leader of the cluster
+Switchover the current leader to a selected candidate instance. ClickHouse Keeper switchover currently requires `candidateName`.
 
 ```yaml
 # cat examples/clickhouse/keeper-switchover-specified-instance.yaml
@@ -873,40 +824,17 @@ spec:
     # Specifies the instance whose role will be transferred.
     # A typical usage is to transfer the leader role in a consensus system.
     instanceName: "clickhouse-cluster-ch-keeper-0"
-    # Specifies the instance that will become the new leader, if not specify, the first non leader instance will become candidate.
-    # Need to ensure the candidate instance is catch up logs of the quorum, otherwise the switchover will transfer the leader to other instance.
+    # ClickHouse Keeper switchover currently requires candidateName.
+    # Need to ensure the candidate instance has caught up with quorum logs.
     candidateName: "clickhouse-cluster-ch-keeper-1"
 
-```
-
-```yaml
-# cat examples/clickhouse/keeper-switchover-specified-instance.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: keeper-switchover
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: clickhouse-cluster
-  type: Switchover
-  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
-  switchover:
-    # Specifies the name of the Component.
-  - componentName: ch-keeper
-    # Specifies the instance whose role will be transferred.
-    # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: "clickhouse-cluster-ch-keeper-0"
-    # Specifies the instance that will become the new leader, if not specify, the first non leader instance will become candidate.
-    # Need to ensure the candidate instance is catch up logs of the quorum, otherwise the switchover will transfer the leader to other instance.
-    candidateName: "clickhouse-cluster-ch-keeper-1"
 ```
 
 ```bash
 kubectl apply -f examples/clickhouse/keeper-switchover-specified-instance.yaml
 ```
 
-You may need to update the `opsrequest.spec.switchover.instanceName` field to your desired instance name.
+You may need to update the `opsrequest.spec.switchover.instanceName` and `opsrequest.spec.switchover.candidateName` fields to your desired instance names.
 
 ### Expand volume
 
@@ -1101,7 +1029,7 @@ spec:
           configMap:
             name: custom-user-configuration-tpl # refers to the configmap with your customized configuration info.
           variables:
-            max_threads: "16"
+            udf_max_threads: "16"
         systemAccounts:
           - name: admin
             secretRef:
@@ -1531,7 +1459,7 @@ spec:
                 storage: 10Gi
   shardings:
     - name: clickhouse
-      shards: 3
+      shards: 2
       template:
         name: clickhouse
         componentDef: clickhouse-1
@@ -1833,10 +1761,10 @@ spec:
   services:
     # Exposes ClickHouse service using NodePort
     - name: clickhouse-nodeport
+      # Sharding associated with this service
+      componentSelector: clickhouse
       # Type of the exposed service. Valid options are 'ClusterIP', 'NodePort', and 'LoadBalancer'.
       serviceType: NodePort
-      # Sharding associated with this service
-      shardingSelector: clickhouse
       # Role selector for the component service.
       # In a ClickHouse cluster, we only expose nodes without specifying roles
       # since all nodes can handle read/write requests
