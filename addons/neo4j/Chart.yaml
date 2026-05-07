@@ -17,7 +17,7 @@ keywords:
 
 maintainers:
   - name: xuriwuyun
-    url: https://github.com/apecloud/kubeblocks/deploy
+    url: https://github.com/xuriwuyun
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"

@@ -17,8 +17,8 @@ keywords:
 - real-time
 
 maintainers:
-- name: RisingWave Labs
-  url: https://www.risingwave-labs.com
+  - name: RisingWave Labs
+    url: https://www.risingwave-labs.com
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"

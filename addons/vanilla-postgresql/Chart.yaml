@@ -24,7 +24,7 @@ icon: https://kubeblocks.io/img/logo.png
 
 maintainers:
   - name: kizuna-lek
-    url: https://github.com/apecloud/kubeblocks/
+    url: https://github.com/kizuna-lek
 
 sources:
   - https://github.com/apecloud/kubeblocks/

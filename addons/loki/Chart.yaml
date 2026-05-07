@@ -9,7 +9,7 @@ version: 1.1.0-alpha.0
 appVersion: "3.0.0"
 
 maintainers:
-  - name: Chen-speculation
+  - name: ApeCloud
     url: https://github.com/apecloud/kubeblocks/
 
 annotations:

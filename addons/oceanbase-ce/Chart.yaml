@@ -12,7 +12,7 @@ maintainers:
   - name: Powerfooi
     url: https://github.com/powerfooI
   - name: shanshanying
-    url: https://github.com/apecloud/kubeblocks/
+    url: https://github.com/shanshanying
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"

@@ -33,8 +33,10 @@ keywords:
   - consumer
 
 maintainers:
+  - name: cjc7373
+    url: https://github.com/cjc7373
   - name: caiq1nyu
-    url: https://github.com/apecloud/kubeblocks/
+    url: https://github.com/caiq1nyu
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"

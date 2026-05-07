@@ -19,9 +19,10 @@ dependencies:
 
 home: https://kubeblocks.io/
 icon: https://www.postgresql.org/media/img/about/press/elephant.png
+
 maintainers:
   - name: ldming
-    url: https://github.com/apecloud/kubeblocks/
+    url: https://github.com/ldming
   - name: dingshun-cmss
     url: https://github.com/dingshun-cmss
 

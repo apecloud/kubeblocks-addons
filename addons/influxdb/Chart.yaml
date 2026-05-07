@@ -17,6 +17,11 @@ keywords:
   - database
   - timeseries
 
+maintainers:
+  - name: cjc7373
+    url: https://github.com/cjc7373
+
+
 annotations:
   category: Database
   licenses: Apache-2.0

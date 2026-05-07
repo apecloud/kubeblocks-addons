@@ -24,7 +24,7 @@ version: 1.1.0-alpha.0
 appVersion: "2.7.0"
 
 maintainers:
-  - name: iziang
+  - name: ApeCloud
     url: https://github.com/apecloud/kubeblocks/
 
 annotations:
