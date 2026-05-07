@@ -113,6 +113,9 @@ image:
     repository: apecloud/ape-dts
     tag: 2.0.26-alpha.14
     reshardTag: 2.0.26-alpha.14
+  syncer:
+    repository: apecloud/syncer
+    tag: redis-fake-sentinel-409608d-ha1
 
 ceImage:
   registry:

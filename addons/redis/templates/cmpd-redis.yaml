@@ -35,6 +35,13 @@ spec:
             port: 6379
             targetPort: redis
       roleSelector: primary
+    - name: redis-syncer-sentinel
+      serviceName: redis-syncer-sentinel
+      spec:
+        ports:
+          - name: redis-sentinel
+            port: 26379
+            targetPort: redis-sentinel
     - name: redis-advertised
       serviceName: redis-advertised
       spec:
@@ -388,7 +395,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-switchover.sh > /tmp/switchover.log 2>&1
+          - /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"} > /tmp/switchover.log 2>&1
     memberJoin:
       exec:
         container: redis
@@ -399,6 +406,17 @@ spec:
         targetPodSelector: Any
   runtime:
     initContainers:
+      - name: init-syncer
+        command:
+          - cp
+          - -r
+          - /bin/syncer
+          - /bin/syncerctl
+          - /tools/
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
       - name: init-dbctl
         command:
           - cp
@@ -412,10 +430,19 @@ spec:
     containers:
       - name: redis
         imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
-        command: [ "/scripts/{{ $redisStartScripts }}" ]
+        command:
+          - syncer
+          - --port
+          - "3601"
+          - --
+          - /scripts/{{ $redisStartScripts }}
         ports:
           - name: redis
             containerPort: 6379
+          - name: redis-sentinel
+            containerPort: 26379
+          - name: ha
+            containerPort: 3601
         volumeMounts:
           - name: data
             mountPath: {{ $.Values.dataMountPath }}
@@ -428,6 +455,22 @@ spec:
           - mountPath: /tools
             name: tools
         env:
+          - name: PATH
+            value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: redis
+          - name: KB_ENGINE_TYPE
+            value: redis
+          - name: KB_SERVICE_PORT
+            value: "$(SERVICE_PORT)"
+          - name: KB_SERVICE_PASSWORD
+            value: "$(REDIS_DEFAULT_PASSWORD)"
+          - name: SENTINEL_ENABLED
+            value: "true"
+          - name: SENTINEL_PORT
+            value: "26379"
+          - name: SENTINEL_MASTER_NAME
+            value: "$(REDIS_COMPONENT_NAME)"
           - name: CURRENT_POD_NAME
             valueFrom:
               fieldRef:
