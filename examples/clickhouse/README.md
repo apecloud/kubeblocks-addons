@@ -598,6 +598,61 @@ spec:
   backupMethod: incremental  # Change from 'full' to 'incremental'
 ```
 
+#### Create Encrypted Backup
+
+To encrypt ClickHouse backup objects in the BackupRepo, configure `encryptionConfig` on the ClickHouse `BackupPolicy` before creating the `Backup`.
+
+Create the passphrase secret with a random value:
+
+```bash
+kubectl create secret generic clickhouse-backup-encryption-passphrase \
+  -n demo \
+  --from-literal=passphrase="$(openssl rand -base64 32)"
+```
+
+Patch the backup policy to enable encryption. Replace `backupRepoName` if your BackupRepo name is different:
+
+```bash
+kubectl patch backuppolicy clickhouse-cluster-clickhouse-backup-policy \
+  -n demo \
+  --type merge \
+  -p '{
+    "spec": {
+      "backupRepoName": "<test-backuprepo>",
+      "encryptionConfig": {
+        "algorithm": "AES-256-CFB",
+        "passPhraseSecretKeyRef": {
+          "name": "clickhouse-backup-encryption-passphrase",
+          "key": "passphrase"
+        }
+      }
+    }
+  }'
+```
+
+Create an encrypted full backup:
+
+```bash
+kubectl apply -f examples/clickhouse/backup.yaml
+```
+
+To create an encrypted incremental backup after the full backup completes, create another `Backup` with `backupMethod: incremental` and set `parentBackupName` to the completed full backup:
+
+```yaml
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: clickhouse-cluster-backup-incremental
+  namespace: demo
+spec:
+  backupMethod: incremental
+  backupPolicyName: clickhouse-cluster-clickhouse-backup-policy
+  parentBackupName: clickhouse-cluster-backup
+  deletionPolicy: Delete
+```
+
+The incremental backup's `parentBackupName` must refer to an existing backup created with the same encryption settings. Keep the passphrase secret; it is required for restore. Existing backups created before `encryptionConfig` was set are not retroactively encrypted.
+
 #### Restore Settings
 
 > [!NOTE]
@@ -618,6 +673,14 @@ kubectl apply -f examples/clickhouse/restore.yaml
 ```
 This will create a new cluster named `clickhouse-cluster-restore` with the data restored from the specified backup.
 It also creates the necessary system account secret `udf-restore-account-info`.
+
+To restore from an encrypted backup, use the same restore flow and reference the encrypted `Backup` name:
+
+```bash
+kubectl apply -f examples/clickhouse/restore.yaml
+```
+
+Restore uses the encryption configuration recorded on the referenced `Backup`; no extra encryption field is required in the restore cluster manifest. The passphrase secret referenced by the `Backup` must still exist in the backup namespace.
 
 ### [Restart](restart.yaml)
 
