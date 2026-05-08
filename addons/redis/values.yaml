@@ -37,7 +37,7 @@ redisVersions:
     serviceVersion: "6.2.17"
     clusterComponentDef: "redis-cluster-6"
     sentinelComponentDef: "redis-sentinel-6"
-    defaultImageTag: "6.2.6-v18"
+    defaultImageTag: "6.2.6-v20"
     repository: "redis/redis-stack-server"
     mirrorVersions:
       - version: "6.2.14"
@@ -56,7 +56,7 @@ redisVersions:
     serviceVersion: "7.2.11"
     clusterComponentDef: "redis-cluster-7"
     sentinelComponentDef: "redis-sentinel-7"
-    defaultImageTag: "7.2.0-v19"
+    defaultImageTag: "7.2.0-v20"
     repository: "redis/redis-stack-server"
     mirrorVersions:
       - version: "7.0.6"
@@ -90,7 +90,7 @@ redisVersions:
     serviceVersion: "8.2.2"
     clusterComponentDef: "redis-cluster-8"
     sentinelComponentDef: "redis-sentinel-8"
-    defaultImageTag: "8.2.2"
+    defaultImageTag: "8.6.3"
     repository: "redis"
     mirrorVersions:
       - version: "8.0.1"
