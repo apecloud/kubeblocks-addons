@@ -1400,6 +1400,82 @@ spec:
   backupMethod: incremental  # Change from 'full' to 'incremental'
 ```
 
+#### Create Encrypted Backup
+
+To encrypt ClickHouse backup objects in the BackupRepo, configure `encryptionConfig` on the ClickHouse `BackupPolicy` before creating the `Backup`.
+
+Create the passphrase secret with a random value:
+
+```bash
+kubectl create secret generic clickhouse-backup-encryption-passphrase \
+  -n demo \
+  --from-literal=passphrase="$(openssl rand -base64 32)"
+```
+
+Patch the backup policy to enable encryption. Replace `backupRepoName` if your BackupRepo name is different:
+
+```bash
+kubectl patch backuppolicy clickhouse-cluster-clickhouse-backup-policy \
+  -n demo \
+  --type merge \
+  -p '{
+    "spec": {
+      "backupRepoName": "<test-backuprepo>",
+      "encryptionConfig": {
+        "algorithm": "AES-256-CFB",
+        "passPhraseSecretKeyRef": {
+          "name": "clickhouse-backup-encryption-passphrase",
+          "key": "passphrase"
+        }
+      }
+    }
+  }'
+```
+
+Create an encrypted full backup:
+
+```yaml
+# cat examples/clickhouse/backup.yaml
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: clickhouse-cluster-backup
+  namespace: demo
+spec:
+  # Specifies the backup method name that is defined in the backup policy.
+  # - full
+  # - incremental
+  backupMethod: full
+  # Specifies the backup policy to be applied for this backup.
+  backupPolicyName: clickhouse-cluster-clickhouse-backup-policy
+  # Determines whether the backup contents stored in the backup repository should be deleted when the backup custom resource(CR) is deleted. Supported values are `Retain` and `Delete`.
+  # - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
+  # - `Delete` means that the backup content and its physical snapshot on backup repository are deleted.
+  deletionPolicy: Delete
+
+```
+
+```bash
+kubectl apply -f examples/clickhouse/backup.yaml
+```
+
+To create an encrypted incremental backup after the full backup completes, create another `Backup` with `backupMethod: incremental` and set `parentBackupName` to the completed full backup:
+
+```yaml
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: clickhouse-cluster-backup-incremental
+  namespace: demo
+spec:
+  backupMethod: incremental
+  backupPolicyName: clickhouse-cluster-clickhouse-backup-policy
+  parentBackupName: clickhouse-cluster-backup
+  deletionPolicy: Delete
+```
+
+The incremental backup's `parentBackupName` must refer to an existing backup created with the same encryption settings. Keep the passphrase secret; it is required for restore. Existing backups created before `encryptionConfig` was set are not retroactively encrypted.
+
 #### Restore Settings
 
 > [!NOTE]
@@ -1497,6 +1573,91 @@ kubectl apply -f examples/clickhouse/restore.yaml
 ```
 This will create a new cluster named `clickhouse-cluster-restore` with the data restored from the specified backup.
 It also creates the necessary system account secret `udf-restore-account-info`.
+
+To restore from an encrypted backup, use the same restore flow and reference the encrypted `Backup` name:
+
+```yaml
+# cat examples/clickhouse/restore.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: clickhouse-cluster-restore
+  namespace: demo
+  annotations:
+    # clickhouse-cluster-backup is the Backup CR name.
+    kubeblocks.io/restore-from-backup: '{"clickhouse":{"name":"clickhouse-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+spec:
+  clusterDef: clickhouse
+  topology: cluster
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: ch-keeper
+      componentDef: clickhouse-keeper-1
+      replicas: 1
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 1Gi
+        requests:
+          cpu: '0.5'
+          memory: 1Gi
+      systemAccounts:
+        - name: admin
+          secretRef:
+            name: udf-restore-account-info
+            namespace: demo
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+  shardings:
+    - name: clickhouse
+      shards: 3
+      template:
+        name: clickhouse
+        componentDef: clickhouse-1
+        replicas: 2
+        systemAccounts:
+          - name: admin
+            secretRef:
+              name: udf-restore-account-info
+              namespace: demo
+        resources:
+          limits:
+            cpu: "1"
+            memory: 2Gi
+          requests:
+            cpu: "1"
+            memory: 2Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: udf-restore-account-info
+  namespace: demo
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=  # 'password123' in base64
+
+```
+
+```bash
+kubectl apply -f examples/clickhouse/restore.yaml
+```
+
+Restore uses the encryption configuration recorded on the referenced `Backup`; no extra encryption field is required in the restore cluster manifest. The passphrase secret referenced by the `Backup` must still exist in the backup namespace.
 
 ### Restart
 
