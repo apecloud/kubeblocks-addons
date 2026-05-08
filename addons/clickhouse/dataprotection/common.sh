@@ -597,14 +597,14 @@ function restore_schema_and_sync() {
 	if [[ "$should_restore_schema" == "true" ]]; then
 		# No-keeper restore: unset ON CLUSTER because distributed DDL requires Keeper/ZooKeeper.
 		[[ "$mode_info" == "standalone" ]] && unset RESTORE_SCHEMA_ON_CLUSTER
-		local restore_args=(restore "$backup_name" --schema)
+		local restore_args=(restore_remote "$backup_name" --schema)
 		if [[ -n "${CH_KEEPER_POD_FQDN_LIST:-}" ]]; then
 			restore_args+=(--rbac)
 		else
 			DP_log "Skip RBAC restore because ClickHouse keeper is not configured"
 		fi
 		clickhouse-backup "${restore_args[@]}" || {
-			DP_error_log "Clickhouse-backup restore backup $backup_name FAILED"
+			DP_error_log "Clickhouse-backup restore_remote backup $backup_name FAILED"
 			return 1
 		}
 		# Cluster mode: create marker table for cross-shard coordination
@@ -642,14 +642,12 @@ function do_restore() {
 	local schema_db="kubeblocks"
 	local schema_table="__restore_ready__"
 
-	fetch_backup "$backup_name" || return 1
-
 	# Restore schema (first shard in cluster uses ON CLUSTER DDL)
 	restore_schema_and_sync "$backup_name" "$mode_info" || return 1
 
 	# Restore data
-	clickhouse-backup restore "$backup_name" --data || {
-		DP_error_log "Clickhouse-backup restore --data FAILED"
+	clickhouse-backup restore_remote "$backup_name" --data || {
+		DP_error_log "Clickhouse-backup restore_remote --data FAILED"
 		return 1
 	}
 
