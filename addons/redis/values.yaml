@@ -127,7 +127,7 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag:
     major7:
-      minor72: 7.2.0-v18
+      minor72: 7.2.0-v20
 
   apeDts:
     registry: ""
