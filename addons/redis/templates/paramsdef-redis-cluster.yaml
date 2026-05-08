@@ -1,6 +1,4 @@
 {{- range .Values.redisVersions }}
-{{- $defaultRepository := .repository -}}
-{{- $redisImage := printf "%s/%s:%s" ( $.Values.image.registry | default "docker.io" ) ( .repository | default $defaultRepository ) .defaultImageTag }}
 {{- $pd := $.Files.Get "config/redis-config-effect-scope.yaml" | fromYaml }}
 ---
 apiVersion: parameters.kubeblocks.io/v1alpha1
