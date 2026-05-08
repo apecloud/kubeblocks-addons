@@ -28,6 +28,7 @@ redisVersions:
     serviceVersion: "5.0.12"
     sentinelComponentDef: "redis-sentinel-5"
     defaultImageTag: "5.0.12"
+    repository: "redis"
     mirrorVersions:
       - version: "5.0.12"
         imageTag: "5.0.12"
@@ -37,6 +38,7 @@ redisVersions:
     clusterComponentDef: "redis-cluster-6"
     sentinelComponentDef: "redis-sentinel-6"
     defaultImageTag: "6.2.6-v18"
+    repository: "redis/redis-stack-server"
     mirrorVersions:
       - version: "6.2.14"
         imageTag: "6.2.6-v10"
@@ -44,12 +46,16 @@ redisVersions:
         imageTag: "6.2.6-v18"
       - version: "6.2.18"
         imageTag: "6.2.6-v19"
+      - version: "6.2.22"
+        imageTag: "6.2.22"
+        repository: "redis"
   - major: "7"
     componentDef: "redis-7"
     serviceVersion: "7.2.11"
     clusterComponentDef: "redis-cluster-7"
     sentinelComponentDef: "redis-sentinel-7"
     defaultImageTag: "7.2.0-v19"
+    repository: "redis/redis-stack-server"
     mirrorVersions:
       - version: "7.0.6"
         imageTag: "7.0.6-RC4"
@@ -65,18 +71,25 @@ redisVersions:
         imageTag: "7.2.0-v19"
       - version: "7.2.12"
         imageTag: "7.2.0-v20"
+      - version: "7.2.14"
+        imageTag: "7.2.14"
+        repository: "redis"
       - version: "7.4.5"
         imageTag: "7.4.0-v6"
       - version: "7.4.6"
         imageTag: "7.4.0-v7"
       - version: "7.4.7"
         imageTag: "7.4.0-v8"
+      - version: "7.4.9"
+        imageTag: "7.4.9"
+        repository: "redis"
   - major: "8"
     componentDef: "redis-8"
     serviceVersion: "8.2.2"
     clusterComponentDef: "redis-cluster-8"
     sentinelComponentDef: "redis-sentinel-8"
     defaultImageTag: "8.2.2"
+    repository: "redis"
     mirrorVersions:
       - version: "8.0.1"
         imageTag: "8.0.1"
@@ -92,8 +105,14 @@ redisVersions:
         imageTag: "8.2.2"
       - version: "8.2.3"
         imageTag: "8.2.3"
+      - version: "8.2.6"
+        imageTag: "8.2.6"
       - version: "8.4.0"
         imageTag: "8.4.0"
+      - version: "8.4.3"
+        imageTag: "8.4.3"
+      - version: "8.6.3"
+        imageTag: "8.6.3"
 
 image:
   # refer: https://redis.io/docs/stack/
@@ -128,7 +147,7 @@ dbctlImage:
   registry:
   repository: apecloud/dbctl
   pullPolicy: IfNotPresent
-  tag: 0.2.1
+  tag: 0.2.2
 
 redisTwemproxyImage:
   # if the value of redisTwemproxyImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
