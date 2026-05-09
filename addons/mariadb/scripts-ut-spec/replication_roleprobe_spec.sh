@@ -19,9 +19,10 @@ Describe "replication-roleprobe.sh"
   cleanup() {
     rm -rf "$TEST_DIR"
     export PATH="$TEST_ORIG_PATH"
-    unset MARIADB_DATADIR DATA_DIR SYNCERCTL_BIN MOCK_SYNCERCTL_ROLE MARIADB_ROLEPROBE_SKIP_DB_READY TEST_ORIG_PATH MARIADB_ROOT_HOST
+    unset MARIADB_DATADIR DATA_DIR SYNCERCTL_BIN MOCK_SYNCERCTL_ROLE MARIADB_ROLEPROBE_SKIP_DB_READY MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY TEST_ORIG_PATH MARIADB_ROOT_HOST
     unset MOCK_MARIADB_SELECT1_RC MOCK_MARIADB_SELECT1_STDOUT
     unset MOCK_MARIADB_SHOW_SLAVE_STATUS_RC MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT
+    unset MOCK_MARIADB_BIND_ADDRESS MOCK_MARIADB_BIND_ADDRESS_RC
     unset MOCK_MARIADB_SQL_RC MOCK_MARIADB_CAPTURE_FILE
   }
   AfterEach "cleanup"
@@ -51,6 +52,10 @@ case "$*" in
       printf "%s\n" "${MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT}"
     fi
     exit "${MOCK_MARIADB_SHOW_SLAVE_STATUS_RC:-0}"
+    ;;
+  *"SHOW VARIABLES LIKE 'bind_address'"*)
+    printf "bind_address\t%s\n" "${MOCK_MARIADB_BIND_ADDRESS:-0.0.0.0}"
+    exit "${MOCK_MARIADB_BIND_ADDRESS_RC:-0}"
     ;;
 esac
 if [ -n "${MOCK_MARIADB_CAPTURE_FILE:-}" ]; then
@@ -246,6 +251,60 @@ Last_SQL_Errno: 0"
       Before "setup_primary"
 
       It "returns 'primary' (RESET SLAVE ALL was run or never configured)"
+        When call check_role
+        The status should be success
+        The output should eq "primary"
+      End
+    End
+
+    Context "when sql listener readiness is required but marker is missing"
+      setup_primary_without_listener_marker() {
+        export MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY="true"
+        touch "${TEST_DIR}/.replication-ready"
+      }
+      Before "setup_primary_without_listener_marker"
+
+      It "does not publish primary before SQL listener is exposed"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+      End
+    End
+
+    Context "when sql listener readiness is required but bind_address is local only"
+      setup_primary_local_listener_only() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY="true"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_BIND_ADDRESS="127.0.0.1"
+        touch "${TEST_DIR}/.replication-ready"
+        touch "${TEST_DIR}/.sql-listener-ready"
+        make_mariadb_cli
+      }
+      Before "setup_primary_local_listener_only"
+
+      It "does not publish primary while SQL listener is still local-only"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+      End
+    End
+
+    Context "when sql listener readiness is required and bind_address is reachable by peers"
+      setup_primary_peer_reachable_listener() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY="true"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_BIND_ADDRESS="0.0.0.0"
+        touch "${TEST_DIR}/.replication-ready"
+        touch "${TEST_DIR}/.sql-listener-ready"
+        make_mariadb_cli
+      }
+      Before "setup_primary_peer_reachable_listener"
+
+      It "publishes primary only after SQL listener is peer-reachable"
         When call check_role
         The status should be success
         The output should eq "primary"
