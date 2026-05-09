@@ -1,0 +1,882 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mariadb.semisync.cmpdName" . }}
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  provider: Community
+  description: MariaDB replication component definition for Kubernetes (semi-sync)
+  serviceKind: mariadb
+  serviceVersion: {{ .Values.defaultServiceVersion.replication }}
+  updateStrategy: BestEffortParallel
+  podManagementPolicy: OrderedReady
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+    scrapePort: metrics
+  services:
+    - name: default
+      roleSelector: primary
+      spec:
+        ports:
+          - name: mariadb
+            port: 3306
+            targetPort: mariadb
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+      isExclusive: true
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
+  configs:
+    - name: mariadb-semisync-config
+      template: mariadb-semisync-config-template
+      volumeName: mariadb-config
+      namespace: {{ .Release.Namespace }}
+      externalManaged: true
+      {{- include "mariadb.config.reconfigureAction" . | nindent 6 }}
+  scripts:
+    - name: {{ include "mariadb.replication.scriptConfigMapName" . }}
+      template: {{ include "mariadb.replication.scriptConfigMapName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^*"
+      optional: true
+  volumes:
+    - name: data
+      needSnapshot: true
+  {{- include "mariadb.replication.spec.systemAccounts" . | nindent 2 }}
+  {{- include "mariadb.spec.vars" . | nindent 2 }}
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - /scripts/replication-roleprobe.sh
+    switchover:
+      timeoutSeconds: 120
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - /scripts/replication-switchover.sh
+  runtime:
+    # Give preStop enough time to fence the old primary and stop mariadbd before
+    # syncer releases the HA lease.
+    terminationGracePeriodSeconds: 120
+    initContainers:
+      - command:
+          - /bin/sh
+          - -c
+          - |
+            cp -r /bin/syncer /bin/syncerctl /tools/
+            mkdir -p {{ .Values.dataMountPath }}
+            rm -f {{ .Values.dataMountPath }}/.replication-ready {{ .Values.dataMountPath }}/.replication-divergence-pending
+            rm -f {{ .Values.dataMountPath }}/.prestop-fence-started \
+              {{ .Values.dataMountPath }}/.prestop-fence-complete \
+              {{ .Values.dataMountPath }}/.prestop-fence-failed
+            rm -f {{ .Values.dataMountPath }}/.sql-listener-ready \
+              {{ .Values.dataMountPath }}/.remote-root-fence-role
+            touch {{ .Values.dataMountPath }}/.replication-pending
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-syncer
+        securityContext:
+          runAsGroup: 0
+          runAsUser: 0
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+    containers:
+      - name: mariadb
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /tools/syncer
+          - --port
+          - "3601"
+          - --
+          - bash
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,tmp}
+            chown -R mysql:mysql {{ .Values.dataMountPath }}
+            MYSQL_CLIENT_DIR=/tools/mysql-client
+            MARIADB_BIN="$(command -v mariadb)"
+            MARIADB_LOADER="$(ldd "${MARIADB_BIN}" | awk '{for (i = 1; i <= NF; i++) if ($i ~ /^\// && ($i ~ /ld-linux/ || $i ~ /ld-musl/)) { print $i; exit }}')"
+            mkdir -p "${MYSQL_CLIENT_DIR}/bin" "${MYSQL_CLIENT_DIR}/lib"
+            cp -L "${MARIADB_BIN}" "${MYSQL_CLIENT_DIR}/bin/mariadb.bin"
+            ldd "${MARIADB_BIN}" | awk '{for (i = 1; i <= NF; i++) if ($i ~ /^\//) print $i}' | sort -u | while IFS= read -r lib; do
+              [ -n "${lib}" ] || continue
+              cp -L "${lib}" "${MYSQL_CLIENT_DIR}/lib/"
+            done
+            cat > "${MYSQL_CLIENT_DIR}/bin/mariadb" <<EOF
+            #!/bin/sh
+            set -eu
+            ROOT="\$(CDPATH= cd -- "\$(dirname -- "\$0")"/.. && pwd)"
+            exec "\${ROOT}/lib/${MARIADB_LOADER##*/}" --library-path "\${ROOT}/lib" "\${ROOT}/bin/mariadb.bin" "\$@"
+            EOF
+            chmod 0555 "${MYSQL_CLIENT_DIR}/bin/mariadb"
+            # Set data dir group to kbagent's GID (1000) and grant group write so that
+            # kbagent can write switchover trigger files. Files inside remain mysql-owned.
+            chgrp 1000 {{ .Values.dataMountPath }} && chmod g+w {{ .Values.dataMountPath }}
+            # Signal to roleProbe that this pod is initializing — prevents spurious "primary"
+            # reports that would cause KubeBlocks to auto-trigger a switchover.
+            rm -f {{ .Values.dataMountPath }}/.replication-ready
+            touch {{ .Values.dataMountPath }}/.replication-pending
+
+            POD_INDEX="${POD_NAME##*-}"
+            SERVICE_ID=$((POD_INDEX + 1))
+            PRIMARY_HOST="${CLUSTER_NAME}-${COMPONENT_NAME}.${CLUSTER_NAMESPACE}.svc.cluster.local"
+            SOCK="/run/mysqld/mysqld.sock"
+            LOCAL=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
+            if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              {
+                printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
+                printf 'decision=refuse-restart-after-prestop\n'
+                printf 'reason=prestop-fence-started marker exists in this container lifecycle\n'
+                printf '\n'
+              } >> {{ .Values.dataMountPath }}/log/startup-fence.log 2>/dev/null || true
+              rm -f {{ .Values.dataMountPath }}/.replication-ready
+              touch {{ .Values.dataMountPath }}/.replication-pending
+              echo "preStop fence marker exists; refusing to restart mariadbd in terminating pod"
+              while true; do
+                sleep 3600
+              done
+            fi
+            HAS_EXISTING_DATA=false
+            if [ -d "{{ .Values.dataMountPath }}/mysql" ] || \
+               ls {{ .Values.dataMountPath }}/binlog/*.bin* >/dev/null 2>&1; then
+              HAS_EXISTING_DATA=true
+            fi
+            set_fail_closed_read_only() {
+              local label="${1:-fail-closed}"
+              if "${LOCAL[@]}" -e "SET GLOBAL read_only = 'NO_LOCK_NO_ADMIN';" 2>/dev/null; then
+                echo "Set fail-closed read_only=NO_LOCK_NO_ADMIN (${label})"
+                return 0
+              fi
+              if "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null; then
+                echo "Set fail-closed read_only fallback=1 (${label})"
+                return 0
+              fi
+              echo "WARNING: failed to set fail-closed read_only (${label})"
+              return 1
+            }
+            set_replica_read_only() {
+              lock_remote_root_writes "replica-read-only" || true
+              if "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null; then
+                return 0
+              fi
+              "${LOCAL[@]}" -e "SET GLOBAL read_only = 'ON';" 2>/dev/null
+            }
+            set_primary_read_write() {
+              if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+                prestop_watchdog_log "skip-primary-read-write reason=prestop-fence-started"
+                mark_replication_pending
+                return 1
+              fi
+              unlock_remote_root_writes "primary-read-write" || true
+              if "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null; then
+                return 0
+              fi
+              "${LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null
+            }
+            mark_replication_pending() {
+              rm -f {{ .Values.dataMountPath }}/.replication-ready
+              rm -f {{ .Values.dataMountPath }}/.sql-listener-ready
+              touch {{ .Values.dataMountPath }}/.replication-pending
+            }
+            mark_replication_ready() {
+              touch {{ .Values.dataMountPath }}/.replication-ready
+              touch {{ .Values.dataMountPath }}/.sql-listener-ready
+              rm -f {{ .Values.dataMountPath }}/.replication-pending {{ .Values.dataMountPath }}/.replication-divergence-pending
+            }
+            mark_replication_divergence_pending() {
+              mark_replication_pending
+              touch {{ .Values.dataMountPath }}/.replication-divergence-pending
+            }
+            gtid_state_is_covered_by() {
+              local local_state="$1"
+              local primary_state="$2"
+              local token ptoken domain server seq pdom pserver pseq found
+              [ -z "${local_state}" ] && return 0
+              IFS=',' read -r -a local_tokens <<< "${local_state}"
+              IFS=',' read -r -a primary_tokens <<< "${primary_state}"
+              for token in "${local_tokens[@]}"; do
+                token="${token//[[:space:]]/}"
+                [ -n "${token}" ] || continue
+                IFS='-' read -r domain server seq <<< "${token}"
+                [ -n "${domain}" ] && [ -n "${server}" ] && [ -n "${seq}" ] || return 1
+                found=false
+                for ptoken in "${primary_tokens[@]}"; do
+                  ptoken="${ptoken//[[:space:]]/}"
+                  [ -n "${ptoken}" ] || continue
+                  IFS='-' read -r pdom pserver pseq <<< "${ptoken}"
+                  if [ "${pdom}" = "${domain}" ] && [ "${pserver}" = "${server}" ]; then
+                    if [ "${pseq}" -ge "${seq}" ] 2>/dev/null; then
+                      found=true
+                      break
+                    fi
+                    return 1
+                  fi
+                done
+                [ "${found}" = "true" ] || return 1
+              done
+              return 0
+            }
+            persist_gtid_divergence_evidence() {
+              local branch="$1" local_state="$2" primary_state="$3" slave_status="$4"
+              local evidence_file="{{ .Values.dataMountPath }}/log/replication-divergence.log"
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              {
+                printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                printf 'branch=%s\n' "${branch}"
+                printf 'decision=divergence-pending\n'
+                printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
+                printf 'primary_host=%s\n' "${PRIMARY_HOST:-unknown}"
+                printf 'service_id=%s\n' "${SERVICE_ID:-unknown}"
+                printf 'has_existing_data=%s\n' "${HAS_EXISTING_DATA:-unknown}"
+                printf 'local_gtid_binlog_state=%s\n' "${local_state:-<empty>}"
+                printf 'primary_gtid_binlog_state=%s\n' "${primary_state:-<empty>}"
+                printf 'slave_status_begin\n'
+                if [ -n "${slave_status}" ]; then
+                  printf '%s\n' "${slave_status}"
+                else
+                  printf '<empty>\n'
+                fi
+                printf 'slave_status_end\n'
+                printf '\n'
+              } >> "${evidence_file}" 2>/dev/null || true
+            }
+            block_existing_datadir_self_election_without_primary() {
+              local local_state slave_status evidence_file
+              [ "${HAS_EXISTING_DATA}" = "true" ] || return 1
+              local_state=$("${LOCAL[@]}" -e "SELECT @@global.gtid_binlog_state;" 2>/dev/null || echo "")
+              slave_status=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null || true)
+              "${LOCAL[@]}" -e "STOP SLAVE;" 2>/dev/null || true
+              set_fail_closed_read_only "no-primary-existing-datadir" || true
+              mark_replication_pending
+              evidence_file="{{ .Values.dataMountPath }}/log/replication-no-primary-pending.log"
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              {
+                printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                printf 'decision=no-primary-pending\n'
+                printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
+                printf 'service_id=%s\n' "${SERVICE_ID:-unknown}"
+                printf 'has_existing_data=%s\n' "${HAS_EXISTING_DATA:-unknown}"
+                printf 'local_gtid_binlog_state=%s\n' "${local_state:-<empty>}"
+                printf 'slave_status_begin\n'
+                if [ -n "${slave_status}" ]; then
+                  printf '%s\n' "${slave_status}"
+                else
+                  printf '<empty>\n'
+                fi
+                printf 'slave_status_end\n'
+                printf '\n'
+              } >> "${evidence_file}" 2>/dev/null || true
+              echo "Existing datadir with stale slave config but no primary found. Keeping read_only and replication pending instead of self-electing."
+              return 0
+            }
+            fail_closed_for_gtid_divergence() {
+              local primary_state local_state slave_status
+              [ "${HAS_EXISTING_DATA}" = "true" ] || return 1
+              local_state=$("${LOCAL[@]}" -e "SELECT @@global.gtid_binlog_state;" 2>/dev/null)
+              [ -n "${local_state}" ] || return 1
+              primary_state=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@global.gtid_binlog_state;" 2>/dev/null || echo "")
+              [ -n "${primary_state}" ] || return 1
+              if gtid_state_is_covered_by "${local_state}" "${primary_state}"; then
+                return 1
+              fi
+              slave_status=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null || true)
+              "${LOCAL[@]}" -e "STOP SLAVE;" 2>/dev/null || true
+              set_fail_closed_read_only "gtid-divergence" || true
+              mark_replication_divergence_pending
+              persist_gtid_divergence_evidence "fail_closed_for_gtid_divergence" "${local_state}" "${primary_state}" "${slave_status}"
+              echo "GTID divergence detected for existing datadir rejoin: local binlog state ${local_state}, primary binlog state ${primary_state}. Keeping replication pending for rebuild/resync."
+              return 0
+            }
+            prestop_watchdog_log() {
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              printf '%s prestop-watchdog %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$*" \
+                >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>/dev/null || true
+            }
+            sql_quote() {
+              printf "%s" "$1" | sed "s/'/''/g"
+            }
+            ensure_local_root_accounts() {
+              local label="${1:-local-root}"
+              local user password
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              user="$(sql_quote "${MARIADB_ROOT_USER}")"
+              password="$(sql_quote "${MARIADB_ROOT_PASSWORD}")"
+              if "${LOCAL[@]}" -e "
+                SET SESSION sql_log_bin=0;
+                CREATE USER IF NOT EXISTS '${user}'@'localhost' IDENTIFIED BY '${password}';
+                ALTER USER '${user}'@'localhost' IDENTIFIED BY '${password}';
+                ALTER USER '${user}'@'localhost' ACCOUNT UNLOCK;
+                GRANT ALL PRIVILEGES ON *.* TO '${user}'@'localhost' WITH GRANT OPTION;
+                CREATE USER IF NOT EXISTS '${user}'@'127.0.0.1' IDENTIFIED BY '${password}';
+                ALTER USER '${user}'@'127.0.0.1' IDENTIFIED BY '${password}';
+                ALTER USER '${user}'@'127.0.0.1' ACCOUNT UNLOCK;
+                GRANT ALL PRIVILEGES ON *.* TO '${user}'@'127.0.0.1' WITH GRANT OPTION;
+                FLUSH PRIVILEGES;
+                SET SESSION sql_log_bin=1;
+              " >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                prestop_watchdog_log "local-root-accounts label=${label} rc=0"
+                return 0
+              fi
+              prestop_watchdog_log "local-root-accounts label=${label} rc=1"
+              return 1
+            }
+            set_remote_root_account_state() {
+              local state="$1"
+              local label="$2"
+              local user host password mode sql
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              user="$(sql_quote "${MARIADB_ROOT_USER}")"
+              host="$(sql_quote "${MARIADB_ROOT_HOST:-%}")"
+              password="$(sql_quote "${MARIADB_ROOT_PASSWORD}")"
+              case "${MARIADB_ROOT_HOST:-%}" in
+                localhost|127.0.0.1|::1)
+                  prestop_watchdog_log "remote-root-account-${state} label=${label} host=${host} rc=0 decision=skip-local-host"
+                  return 0
+                  ;;
+              esac
+              ensure_local_root_accounts "before-remote-root-${state}-${label}" || true
+              if [ "${state}" = "LOCK" ]; then
+                mode="read-replication-only"
+                sql="
+                  SET SESSION sql_log_bin=0;
+                  CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
+                  ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
+                  ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
+                  REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
+                  GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${user}'@'${host}';
+                  FLUSH PRIVILEGES;
+                  SET SESSION sql_log_bin=1;
+                "
+              else
+                mode="full-access"
+                sql="
+                  SET SESSION sql_log_bin=0;
+                  CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
+                  ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
+                  ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
+                  GRANT ALL PRIVILEGES ON *.* TO '${user}'@'${host}' WITH GRANT OPTION;
+                  FLUSH PRIVILEGES;
+                  SET SESSION sql_log_bin=1;
+                "
+              fi
+              if "${LOCAL[@]}" -e "${sql}" \
+                >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                prestop_watchdog_log "remote-root-account-${state} mode=${mode} label=${label} host=${host} rc=0"
+                return 0
+              fi
+              prestop_watchdog_log "remote-root-account-${state} mode=${mode} label=${label} host=${host} rc=1"
+              return 1
+            }
+            lock_remote_root_writes() {
+              set_remote_root_account_state "LOCK" "$1"
+            }
+            unlock_remote_root_writes() {
+              set_remote_root_account_state "UNLOCK" "$1"
+            }
+            mariadbd_pids() {
+              if command -v pidof >/dev/null 2>&1; then
+                pidof mariadbd 2>/dev/null || true
+                return
+              fi
+              ps 2>/dev/null | awk '$NF ~ /mariadbd$/ {print $1}'
+            }
+            pause_syncer_for_prestop() {
+              local rc
+              [ -x /tools/syncerctl ] || return 0
+              timeout 3 /tools/syncerctl pause >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>&1
+              rc=$?
+              prestop_watchdog_log "syncerctl-pause rc=${rc}"
+              return 0
+            }
+            fence_read_only_for_prestop() {
+              timeout 2 "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" \
+                >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>&1 || true
+              timeout 2 "${LOCAL[@]}" \
+                -e "SELECT NOW(), @@global.read_only, @@global.gtid_binlog_state, @@global.gtid_binlog_pos;" \
+                >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>&1 || true
+            }
+            stop_mariadbd_for_prestop() {
+              local pids
+              pids="$(mariadbd_pids | tr '\n' ' ')"
+              if [ -z "${pids}" ]; then
+                prestop_watchdog_log "mariadbd pid not found"
+                return 0
+              fi
+              prestop_watchdog_log "term mariadbd pids=${pids}"
+              kill -TERM ${pids} 2>/dev/null || true
+              sleep 1
+              pids="$(mariadbd_pids | tr '\n' ' ')"
+              if [ -n "${pids}" ]; then
+                prestop_watchdog_log "kill mariadbd pids=${pids}"
+                kill -KILL ${pids} 2>/dev/null || true
+              fi
+            }
+            wait_for_mariadb_local() {
+              until "${LOCAL[@]}" -e "SELECT 1" >/dev/null 2>&1; do
+                if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+                  prestop_watchdog_log "connection-wait-exit reason=prestop-fence-started"
+                  return 1
+                fi
+                if ! kill -0 ${MARIADB_PID} 2>/dev/null; then
+                  prestop_watchdog_log "connection-wait-exit reason=mariadbd-exited"
+                  return 1
+                fi
+                sleep 2
+              done
+            }
+            start_mariadbd_process() {
+              local bind_address="$1"
+              local label="$2"
+              prestop_watchdog_log "start-mariadbd label=${label} bind_address=${bind_address}"
+              docker-entrypoint.sh mariadbd \
+                --server-id=${SERVICE_ID} \
+                --log-bin={{ .Values.dataMountPath }}/binlog/${POD_NAME}-bin \
+                --skip-slave-start=ON \
+                --read-only=NO_LOCK_NO_ADMIN \
+                --thread-cache-size=100 \
+                --bind-address="${bind_address}" &
+              MARIADB_PID=$!
+              prestop_fence_watchdog &
+              PRESTOP_WATCHDOG_PID=$!
+            }
+            stop_mariadbd_process() {
+              local label="$1"
+              local i pids
+              pids="$(mariadbd_pids | tr '\n' ' ')"
+              if [ -z "${pids}" ]; then
+                prestop_watchdog_log "stop-mariadbd label=${label} pid-not-found"
+                return 0
+              fi
+              prestop_watchdog_log "stop-mariadbd label=${label} term pids=${pids}"
+              kill -TERM ${pids} 2>/dev/null || true
+              i=0
+              while [ "${i}" -lt 15 ]; do
+                pids="$(mariadbd_pids | tr '\n' ' ')"
+                [ -z "${pids}" ] && break
+                sleep 1
+                i=$((i + 1))
+              done
+              pids="$(mariadbd_pids | tr '\n' ' ')"
+              if [ -n "${pids}" ]; then
+                prestop_watchdog_log "stop-mariadbd label=${label} kill pids=${pids}"
+                kill -KILL ${pids} 2>/dev/null || true
+              fi
+              wait ${MARIADB_PID} 2>/dev/null || true
+            }
+            expose_sql_listener_for_safe_role() {
+              local label="$1"
+              if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+                prestop_watchdog_log "skip-sql-listener-expose label=${label} reason=prestop-fence-started"
+                mark_replication_pending
+                return 1
+              fi
+              if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+                return 0
+              fi
+              mark_replication_pending
+              prestop_watchdog_log "sql-listener-expose-begin label=${label}"
+              stop_mariadbd_process "sql-listener-${label}"
+              start_mariadbd_process "0.0.0.0" "sql-listener-${label}"
+              if ! wait_for_mariadb_local; then
+                wait ${MARIADB_PID}
+                exit $?
+              fi
+              set_fail_closed_read_only "sql-listener-${label}" || true
+              touch {{ .Values.dataMountPath }}/.sql-listener-ready
+              prestop_watchdog_log "sql-listener-expose-complete label=${label}"
+            }
+            prestop_fence_watchdog() {
+              local fired=false
+              local iter=0
+              while true; do
+                if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+                  iter=$((iter + 1))
+                  if [ "${fired}" = "false" ]; then
+                    fired=true
+                    prestop_watchdog_log "marker-detected pod=${POD_NAME:-unknown} mariadb_pid=${MARIADB_PID:-unknown}"
+                    touch {{ .Values.dataMountPath }}/.prestop-fence-watchdog-active 2>/dev/null || true
+                  fi
+                  mark_replication_pending
+                  if [ $((iter % 5)) -eq 1 ]; then
+                    pause_syncer_for_prestop
+                  fi
+                  fence_read_only_for_prestop
+                  stop_mariadbd_for_prestop
+                  sleep 1
+                  continue
+                fi
+                kill -0 "${MARIADB_PID}" 2>/dev/null || break
+                sleep 0.2
+              done
+              if [ "${fired}" = "true" ]; then
+                prestop_watchdog_log "exit"
+              fi
+            }
+
+            # Start local-only until the pod has a safe role. During replacement
+            # startup, read_only does not block privileged root writes in MariaDB,
+            # so the pod must not expose port 3306 to peer pods until it is either
+            # the confirmed primary or a configured replica.
+            start_mariadbd_process "127.0.0.1" "bootstrap-local-only"
+
+            # Wait for MariaDB to accept connections
+            if ! wait_for_mariadb_local; then
+              wait ${MARIADB_PID}
+              exit $?
+            fi
+            ensure_local_root_accounts "startup-before-role-decision" || true
+            lock_remote_root_writes "startup-before-role-decision" || true
+            set_fail_closed_read_only "startup-before-role-decision" || true
+
+            # Determine role by querying the primary service VIP.
+            # timeout 10 prevents an indefinite hang if the primary is temporarily unresponsive
+            # (e.g. its semi-sync ACK receiver is stalled) — treat it as "no primary".
+            PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+              -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || echo "")
+
+            # Check for existing slave config.
+            # Use tabular SHOW SLAVE STATUS (not \G) because -N suppresses field names in \G format.
+            SLAVE_STATUS=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null)
+
+            if [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
+              # Primary service routes to us — we are the current primary.
+              # Clear any stale slave config and mark initialization as complete.
+              expose_sql_listener_for_safe_role "primary-service-route"
+              "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+              # Toggle semi-sync master to reset ACK receiver state (avoids stale ACK
+              # receiver connections from a previous secondary role causing unresponsiveness).
+              "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+              set_primary_read_write || true
+              mark_replication_ready
+              echo "Starting as primary (server_id=${SERVICE_ID})"
+            elif [ -n "${SLAVE_STATUS}" ]; then
+              # We have existing slave config from a previous run.
+              # Do not let an existing datadir self-elect while the primary service is
+              # temporarily empty. A terminating old primary can otherwise publish stale
+              # local transactions as the new source of truth.
+              if fail_closed_for_gtid_divergence; then
+                wait ${MARIADB_PID}
+                exit 1
+              fi
+              if [ "${POD_INDEX}" = "0" ] && [ -z "${PRIMARY_SID}" ]; then
+                if block_existing_datadir_self_election_without_primary; then
+                  wait ${MARIADB_PID}
+                  exit 1
+                fi
+                expose_sql_listener_for_safe_role "stale-slave-no-primary"
+                "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+                "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+                set_primary_read_write || true
+                mark_replication_ready
+                echo "Starting as primary (pod-0 with stale slave config, no primary found)"
+              else
+                expose_sql_listener_for_safe_role "existing-slave-config"
+                "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true
+                set_replica_read_only || true
+                mark_replication_ready
+                echo "Resumed replication from existing slave config"
+              fi
+            elif [ -n "${PRIMARY_SID}" ] || [ "${POD_INDEX}" -gt 0 ]; then
+              # No slave config; we need to configure replication from the primary.
+              # Loop indefinitely until replication is successfully configured:
+              #   1. Find the primary (a server_id different from ours) — retry every 3s
+              #   2. Run CHANGE MASTER TO; START SLAVE
+              #   3. Verify SHOW SLAVE STATUS is non-empty (config stored); on failure,
+              #      sleep 5s and retry from step 1.
+              # .replication-pending stays set throughout so roleProbe does not publish a
+              # role, preventing a spurious "primary" report and the resulting split-brain race.
+              #
+              # Chart-side self-election paths (Path A 60s any-pod / Path B 30s non-pod-0)
+              # were removed 2026-05-05 to fix cycle 4 semisync n01 double-primary race
+              # (pod-0 default-primary by index + pod-1 self-elect after 30s both firing).
+              # Primary election now belongs entirely to syncer/DCS:
+              #   - Fresh bootstrap entry point: pod-0 default-primary by index (else branch below)
+              #   - Failover: syncer IsHealthiestMember fence (apecloud/syncer PR #142) +
+              #     AttemptAcquireLease + Promote()
+              # The loop never gives up on its own — chart waits for primary to appear,
+              # never self-elects. If pod-0 never comes (broken image), this pod stays in
+              # the loop and the cluster waits for kbagent restart / operator intervention.
+              # That is the intended trade-off of "primary election belongs to syncer/DCS".
+              #
+              # Set fail-closed read_only BEFORE entering the wait loop. mariadbd starts
+              # read-only from the command line, and this explicit set keeps the pod
+              # unwritable even for privileged maintenance users while role is unresolved.
+              # Cycle 6 (alpha.18) caught the previous default-writable behavior as a SQL
+              # invariant failure: pod-0 default-primary read_only=0 plus pod-1 waiting in
+              # the loop with default read_only=0 = two writable instances.
+              set_fail_closed_read_only "wait-primary-loop-entry" || true
+              _no_primary_iters=0
+              while true; do
+                # Step 1: find primary (timeout 10 prevents hang if primary unresponsive)
+                PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                  -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || echo "")
+                if [ -z "${PRIMARY_SID}" ] || [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
+                  _no_primary_iters=$((_no_primary_iters + 1))
+                  # Observability: log every 30s so external watchers see we are still waiting
+                  # for primary, not silently stuck. Does not change behavior.
+                  if [ $((_no_primary_iters % 10)) -eq 0 ]; then
+                    echo "INFO: primary not found at iter=${_no_primary_iters} (~$((_no_primary_iters * 3))s elapsed); still waiting for syncer/DCS to elect a primary"
+                  fi
+                  sleep 3
+                  continue
+                fi
+                # Step 2: configure replication
+                if fail_closed_for_gtid_divergence; then
+                  wait ${MARIADB_PID}
+                  exit 1
+                fi
+                MASTER_GTID=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                  -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@global.gtid_binlog_pos;" 2>/dev/null)
+                "${LOCAL[@]}" -e "
+                  STOP SLAVE;
+                  CHANGE MASTER TO
+                    MASTER_HOST='${PRIMARY_HOST}',
+                    MASTER_USER='${MARIADB_ROOT_USER}',
+                    MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+                    MASTER_USE_GTID=slave_pos,
+                    MASTER_CONNECT_RETRY=10;
+                  START SLAVE;
+                " 2>/dev/null || true
+                # Step 3: verify CHANGE MASTER TO actually stored config.
+                # If it failed (e.g. auth error, primary briefly unreachable), retry from step 1
+                # after a short backoff. Only remove .replication-pending once slave config is
+                # confirmed. Do NOT self-elect on failure.
+                SLAVE_STATUS_CHECK=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null)
+                if [ -n "${SLAVE_STATUS_CHECK}" ]; then
+                  expose_sql_listener_for_safe_role "new-slave-config"
+                  "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true
+                  set_replica_read_only || true
+                  echo "Replication configured from primary ${PRIMARY_HOST} at GTID ${MASTER_GTID}"
+                  mark_replication_ready
+                  break
+                fi
+                echo "CHANGE MASTER TO did not store config; retrying in 5s"
+                sleep 5
+              done
+            else
+              # Pod-0, primary unreachable, no slave config: start as primary by default.
+              expose_sql_listener_for_safe_role "default-pod0-primary"
+              "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+              "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+              set_primary_read_write || true
+              mark_replication_ready
+              echo "Starting as primary by default (index=0)"
+            fi
+
+            # Background: clear the semi-sync ACK receiver deadlock when detected.
+            # When a secondary is RST-killed, MariaDB's ACK receiver thread can deadlock for
+            # ~150s (TCP retransmit timeout), blocking ALL new TCP connections to the primary.
+            # Detection: Unix socket shows clients=0 AND TCP connection to port 3306 fails.
+            # (Unix socket bypasses TCP; if TCP is blocked, it's the deadlock — not just a
+            #  transient state where the secondary is reconnecting.)
+            # Toggling rpl_semi_sync_master_enabled=0→1 stops and restarts the ACK receiver.
+            SOCK="/run/mysqld/mysqld.sock"
+            SOCK_CLI=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
+            TCP_CLI=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -N -s)
+            (while kill -0 ${MARIADB_PID} 2>/dev/null; do
+              sleep 10
+              # Deadlock check: Unix socket works even during ACK receiver deadlock;
+              # TCP fails when deadlocked. Do NOT gate on clients=0: a force-killed
+              # slave leaves a CLOSE-WAIT connection that keeps clients=1, masking the
+              # deadlock. Check TCP directly — if it fails, toggle to restart ACK receiver.
+              if ! timeout 3 "${TCP_CLI[@]}" -e "SELECT 1;" >/dev/null 2>&1; then
+                if kill -0 ${MARIADB_PID} 2>/dev/null; then
+                  "${SOCK_CLI[@]}" \
+                    -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" \
+                    2>/dev/null || true
+                fi
+              fi
+            done) &
+
+            # Switchover is coordinated by /scripts/replication-switchover.sh
+            # through syncerctl, which creates the DCS switchover record. Remove
+            # stale raw-SQL trigger files from older script versions so they cannot
+            # race with syncer's HA loop.
+            rm -f {{ .Values.dataMountPath }}/.switchover-request \
+              {{ .Values.dataMountPath }}/.switchover-done \
+              {{ .Values.dataMountPath }}/.switchover-error
+
+            wait ${MARIADB_PID}
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mariadb-config
+          - mountPath: /tools
+            name: tools
+          - name: scripts
+            mountPath: /scripts
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  DATA_DIR="{{ .Values.dataMountPath }}"
+                  LOG_DIR="${DATA_DIR}/log"
+                  LOG_FILE="${LOG_DIR}/prestop-fence.log"
+                  mkdir -p "${LOG_DIR}" 2>/dev/null || true
+                  prestop_log() {
+                    line="$(date -u +"%Y-%m-%dT%H:%M:%SZ") prestop-fence $*"
+                    echo "${line}"
+                    printf '%s\n' "${line}" >> "${LOG_FILE}" 2>/dev/null || true
+                  }
+                  run_sql() {
+                    label="$1"
+                    mode="$2"
+                    sql="$3"
+                    if [ "${mode}" = "socket" ]; then
+                      timeout 3 mariadb -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
+                        -S /run/mysqld/mysqld.sock -e "${sql}" >> "${LOG_FILE}" 2>&1
+                    else
+                      timeout 3 mariadb -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
+                        -h127.0.0.1 -P3306 -e "${sql}" >> "${LOG_FILE}" 2>&1
+                    fi
+                    rc=$?
+                    prestop_log "${label} rc=${rc}"
+                    return "${rc}"
+                  }
+                  fence_read_only() {
+                    label="$1"
+                    mode="$2"
+                    run_sql "${label}-no-lock-no-admin" "${mode}" "SET GLOBAL read_only = 'NO_LOCK_NO_ADMIN';" \
+                      || run_sql "${label}-fallback-on" "${mode}" "SET GLOBAL read_only = 'ON';" \
+                      || run_sql "${label}-fallback-1" "${mode}" "SET GLOBAL read_only = 1;" \
+                      || true
+                  }
+                  mariadbd_pids() {
+                    if command -v pidof >/dev/null 2>&1; then
+                      pidof mariadbd 2>/dev/null || true
+                      return
+                    fi
+                    ps 2>/dev/null | awk '$NF ~ /mariadbd$/ {print $1}'
+                  }
+                  wait_mariadbd_exit() {
+                    limit="$1"
+                    i=0
+                    while [ "${i}" -lt "${limit}" ]; do
+                      pids="$(mariadbd_pids | tr '\n' ' ')"
+                      if [ -z "${pids}" ]; then
+                        prestop_log "mariadbd exited after ${i}s"
+                        return 0
+                      fi
+                      sleep 1
+                      i=$((i + 1))
+                    done
+                    prestop_log "mariadbd still running after ${limit}s pids=${pids}"
+                    return 1
+                  }
+
+                  prestop_log "begin pod=${POD_NAME:-unknown}"
+                  touch "${DATA_DIR}/.prestop-fence-started" "${DATA_DIR}/.replication-pending" 2>/dev/null || true
+                  rm -f "${DATA_DIR}/.replication-ready" 2>/dev/null || true
+                  if [ -x /tools/syncerctl ]; then
+                    timeout 3 /tools/syncerctl pause >> "${LOG_FILE}" 2>&1
+                    prestop_log "syncerctl-pause rc=$?"
+                  else
+                    prestop_log "syncerctl-pause skipped: /tools/syncerctl missing"
+                  fi
+
+                  run_sql "socket-state-before" "socket" "SELECT NOW(), @@global.read_only, @@global.gtid_binlog_state, @@global.gtid_binlog_pos;" || true
+                  fence_read_only "socket-read-only" "socket"
+                  fence_read_only "tcp-read-only" "tcp"
+                  # This closes secondary IO with FIN instead of RST and avoids the
+                  # semi-sync ACK receiver deadlock on the primary. It is harmless on a primary.
+                  run_sql "socket-stop-slave-io" "socket" "STOP SLAVE IO_THREAD;" || true
+                  run_sql "tcp-stop-slave-io" "tcp" "STOP SLAVE IO_THREAD;" || true
+                  run_sql "socket-state-after-fence" "socket" "SELECT NOW(), @@global.read_only, @@global.gtid_binlog_state, @@global.gtid_binlog_pos;" || true
+
+                  pids="$(mariadbd_pids | tr '\n' ' ')"
+                  if [ -n "${pids}" ]; then
+                    prestop_log "term mariadbd pids=${pids}"
+                    kill -TERM ${pids} 2>/dev/null || true
+                  else
+                    prestop_log "mariadbd pid not found before term"
+                  fi
+
+                  if ! wait_mariadbd_exit 15; then
+                    pids="$(mariadbd_pids | tr '\n' ' ')"
+                    if [ -n "${pids}" ]; then
+                      prestop_log "kill mariadbd pids=${pids}"
+                      kill -KILL ${pids} 2>/dev/null || true
+                    fi
+                    if ! wait_mariadbd_exit 5; then
+                      touch "${DATA_DIR}/.prestop-fence-failed" 2>/dev/null || true
+                      prestop_log "end status=failed"
+                      exit 0
+                    fi
+                  fi
+
+                  touch "${DATA_DIR}/.prestop-fence-complete" 2>/dev/null || true
+                  prestop_log "end status=complete"
+        ports:
+          - containerPort: 3306
+            name: mariadb
+          - containerPort: 3601
+            name: ha
+        env:
+          # syncer DB engine reads KB_SERVICE_* for local DB credentials.
+          - name: KB_SERVICE_USER
+            value: "$(MARIADB_ROOT_USER)"
+          - name: KB_SERVICE_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mariadb
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain | quote }}
+          - name: MARIADB_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          # syncer uses this pod FQDN to wait for DNS readiness before control-plane actions.
+          - name: KB_POD_FQDN
+            value: "$(POD_NAME).$(CLUSTER_NAME)-$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+          - name: SERVICE_PORT
+            value: "3306"
+          - name: PATH
+            value: /tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: MARIADB_AUTO_UPGRADE
+            value: "1"
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+      {{- include "mariadb.container.exporter" . | nindent 6 }}
+    volumes:
+      - name: tools
+        emptyDir: {}
