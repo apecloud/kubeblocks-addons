@@ -66,7 +66,8 @@ spec:
         container: mariadb
         command:
           - /bin/sh
-          - /scripts/replication-roleprobe.sh
+          - -c
+          - MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY=true /scripts/replication-roleprobe.sh
     switchover:
       timeoutSeconds: 120
       exec:
@@ -510,6 +511,33 @@ spec:
               touch {{ .Values.dataMountPath }}/.sql-listener-ready
               prestop_watchdog_log "sql-listener-expose-complete label=${label}"
             }
+            query_local_syncer_role() {
+              [ -x /tools/syncerctl ] || return 1
+              timeout 3 /tools/syncerctl --host 127.0.0.1 --port 3601 getrole 2>/dev/null | tr -d '\r\n'
+            }
+            reconcile_sql_listener_for_syncer_primary_once() {
+              local role
+              [ ! -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ] || return 0
+              [ ! -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] || return 0
+              role="$(query_local_syncer_role || true)"
+              [ "${role}" = "primary" ] || return 0
+              prestop_watchdog_log "runtime-primary-listener-reconcile-begin role=${role}"
+              expose_sql_listener_for_safe_role "syncer-promoted-primary" || return 1
+              "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+              "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+              set_primary_read_write || return 1
+              mark_replication_ready
+              prestop_watchdog_log "runtime-primary-listener-reconcile-complete role=${role}"
+            }
+            wait_for_mariadbd_with_role_reconcile() {
+              local rc=0
+              while kill -0 "${MARIADB_PID}" 2>/dev/null; do
+                reconcile_sql_listener_for_syncer_primary_once || true
+                sleep 1
+              done
+              wait "${MARIADB_PID}" || rc=$?
+              return "${rc}"
+            }
             prestop_fence_watchdog() {
               local fired=false
               local iter=0
@@ -632,6 +660,13 @@ spec:
               set_fail_closed_read_only "wait-primary-loop-entry" || true
               _no_primary_iters=0
               while true; do
+                if [ ! -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+                  reconcile_sql_listener_for_syncer_primary_once || true
+                  if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] && [ ! -f "{{ .Values.dataMountPath }}/master.info" ]; then
+                    echo "Starting as primary after syncer promoted this pod"
+                    break
+                  fi
+                fi
                 # Step 1: find primary (timeout 10 prevents hang if primary unresponsive)
                 PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
                   -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || echo "")
@@ -721,7 +756,7 @@ spec:
               {{ .Values.dataMountPath }}/.switchover-done \
               {{ .Values.dataMountPath }}/.switchover-error
 
-            wait ${MARIADB_PID}
+            wait_for_mariadbd_with_role_reconcile
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -852,6 +887,8 @@ spec:
             value: {{ .Values.clusterDomain | quote }}
           - name: MARIADB_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY
+            value: "true"
           - name: POD_NAME
             valueFrom:
               fieldRef:

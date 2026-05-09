@@ -38,6 +38,10 @@ ready_file() {
   printf "%s/.replication-ready" "$(data_dir)"
 }
 
+sql_listener_ready_file() {
+  printf "%s/.sql-listener-ready" "$(data_dir)"
+}
+
 pending_file() {
   printf "%s/.replication-pending" "$(data_dir)"
 }
@@ -183,6 +187,30 @@ secondary_replication_ready() {
   esac
 }
 
+primary_listener_ready() {
+  local bind_line bind_address old_ifs
+  [ "${MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY:-}" = "true" ] || return 0
+  [ -f "$(sql_listener_ready_file)" ] || return 1
+  if [ "${MARIADB_ROLEPROBE_SKIP_DB_READY:-}" = "true" ]; then
+    return 0
+  fi
+  db_ready || return 1
+  bind_line=$(local_sql -e "SHOW VARIABLES LIKE 'bind_address';" 2>/dev/null || true)
+  [ -n "${bind_line}" ] || return 1
+  old_ifs="${IFS}"
+  # MariaDB returns "bind_address<TAB>value" with -N -s. Split on shell
+  # whitespace so either tab or spaces from a mocked client work.
+  IFS=" 	"
+  set -- ${bind_line}
+  IFS="${old_ifs}"
+  bind_address="${2:-}"
+  case "${bind_address}" in
+    ""|127.*|localhost|::1)
+      return 1
+      ;;
+  esac
+}
+
 check_role() {
   # Before the startup command finishes role selection, do not publish a role.
   # Publishing "secondary" here causes secondary -> primary label flips for
@@ -206,6 +234,7 @@ check_role() {
     apply_remote_root_fence "secondary" || { not_ready; return $?; }
     echo -n "secondary"
   else
+    primary_listener_ready || { not_ready; return $?; }
     apply_remote_root_fence "primary" || { not_ready; return $?; }
     echo -n "primary"
   fi
