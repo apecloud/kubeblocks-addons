@@ -436,10 +436,6 @@ spec:
                 return 1
               done
             }
-            ensure_local_root_accounts() {
-              local label="${1:-local-root}"
-              set_local_root_account_state "UNLOCK" "${label}"
-            }
             set_remote_root_account_state() {
               local state="$1"
               local label="$2"
@@ -454,7 +450,6 @@ spec:
                   return 0
                   ;;
               esac
-              ensure_local_root_accounts "before-remote-root-${state}-${label}" || true
               if [ "${state}" = "LOCK" ]; then
                 mode="read-replication-only"
                 sql="
@@ -776,7 +771,7 @@ spec:
             fi
             ensure_internal_local_admin "startup-before-role-decision" || true
             LOCAL=("${INTERNAL_LOCAL[@]}")
-            ensure_local_root_accounts "startup-before-role-decision" || true
+            lock_local_root_writes "startup-before-role-decision-pre-remote" || true
             lock_remote_root_writes "startup-before-role-decision" || true
             set_fail_closed_read_only "startup-before-role-decision" || true
             lock_local_root_writes "startup-before-role-decision" || true
@@ -1019,6 +1014,33 @@ spec:
                       || run_sql "${label}-fallback-1" "${mode}" "SET GLOBAL read_only = 1;" \
                       || true
                   }
+                  prestop_sql_quote() {
+                    printf "%s" "$1" | sed "s/'/''/g"
+                  }
+                  lock_local_root_for_prestop() {
+                    label="$1"
+                    mode="$2"
+                    user="$(prestop_sql_quote "${MARIADB_ROOT_USER}")"
+                    password="$(prestop_sql_quote "${MARIADB_ROOT_PASSWORD}")"
+                    for host in localhost 127.0.0.1; do
+                      sql="
+                        SET SESSION sql_log_bin=0;
+                        CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
+                        ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
+                        ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
+                        REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
+                        GRANT SELECT, PROCESS, RELOAD, SUPER, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${user}'@'${host}';
+                        FLUSH PRIVILEGES;
+                        SET SESSION sql_log_bin=1;
+                      "
+                      if run_sql "${label}-local-root-lock-${host}" "${mode}" "${sql}"; then
+                        prestop_log "local-root-lock label=${label} host=${host} mode=${mode} rc=0"
+                        continue
+                      fi
+                      prestop_log "local-root-lock label=${label} host=${host} mode=${mode} rc=1"
+                      return 1
+                    done
+                  }
                   mariadbd_pids() {
                     if command -v pidof >/dev/null 2>&1; then
                       pidof mariadbd 2>/dev/null || true
@@ -1045,6 +1067,8 @@ spec:
                   prestop_log "begin pod=${POD_NAME:-unknown}"
                   touch "${DATA_DIR}/.prestop-fence-started" "${DATA_DIR}/.replication-pending" 2>/dev/null || true
                   rm -f "${DATA_DIR}/.replication-ready" 2>/dev/null || true
+                  lock_local_root_for_prestop "prestop" "socket" || \
+                    lock_local_root_for_prestop "prestop" "tcp" || true
                   if [ -x /tools/syncerctl ]; then
                     timeout 3 /tools/syncerctl pause >> "${LOG_FILE}" 2>&1
                     prestop_log "syncerctl-pause rc=$?"
