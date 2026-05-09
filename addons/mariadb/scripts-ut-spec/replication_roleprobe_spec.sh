@@ -19,12 +19,12 @@ Describe "replication-roleprobe.sh"
   cleanup() {
     rm -rf "$TEST_DIR"
     export PATH="$TEST_ORIG_PATH"
-    unset MARIADB_DATADIR DATA_DIR SYNCERCTL_BIN MOCK_SYNCERCTL_ROLE MARIADB_ROLEPROBE_SKIP_DB_READY MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY TEST_ORIG_PATH MARIADB_ROOT_HOST
+    unset MARIADB_DATADIR DATA_DIR SYNCERCTL_BIN MOCK_SYNCERCTL_ROLE MARIADB_ROLEPROBE_SKIP_DB_READY MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY TEST_ORIG_PATH MARIADB_ROOT_HOST MARIADB_INTERNAL_ROOT_USER
     unset MOCK_MARIADB_SELECT1_RC MOCK_MARIADB_SELECT1_STDOUT
     unset MOCK_MARIADB_SHOW_SLAVE_STATUS_RC MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT
     unset MOCK_MARIADB_BIND_ADDRESS MOCK_MARIADB_BIND_ADDRESS_RC
     unset MOCK_MARIADB_READ_ONLY MOCK_MARIADB_READ_ONLY_RC
-    unset MOCK_MARIADB_SQL_RC MOCK_MARIADB_CAPTURE_FILE
+    unset MOCK_MARIADB_SQL_RC MOCK_MARIADB_CAPTURE_FILE MOCK_MARIADB_ROOT_SHOW_SLAVE_STATUS_RC MOCK_MARIADB_ROOT_SELECT1_RC
   }
   AfterEach "cleanup"
 
@@ -43,12 +43,26 @@ EOF
 #!/bin/sh
 case "$*" in
   *"SELECT 1"*)
+    case "$*" in
+      *"-uroot"*)
+        if [ "${MOCK_MARIADB_ROOT_SELECT1_RC+x}" = "x" ]; then
+          exit "${MOCK_MARIADB_ROOT_SELECT1_RC}"
+        fi
+        ;;
+    esac
     if [ -n "${MOCK_MARIADB_SELECT1_STDOUT:-}" ]; then
       printf "%s\n" "${MOCK_MARIADB_SELECT1_STDOUT}"
     fi
     exit "${MOCK_MARIADB_SELECT1_RC:-0}"
     ;;
   *"SHOW SLAVE STATUS\\G"*)
+    case "$*" in
+      *"-uroot"*)
+        if [ "${MOCK_MARIADB_ROOT_SHOW_SLAVE_STATUS_RC+x}" = "x" ]; then
+          exit "${MOCK_MARIADB_ROOT_SHOW_SLAVE_STATUS_RC}"
+        fi
+        ;;
+    esac
     if [ "${MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT+x}" = "x" ]; then
       printf "%s\n" "${MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT}"
     fi
@@ -243,6 +257,30 @@ Last_SQL_Errno: 0"
       Before "setup_secondary_live_and_healthy"
 
       It "publishes secondary only after current replication truth closes"
+        When call check_role
+        The status should be success
+        The output should eq "secondary"
+      End
+    End
+
+    Context "when user-facing root cannot read slave status but internal admin can"
+      setup_secondary_internal_admin_probe() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        touch "${TEST_DIR}/.replication-ready"
+        touch "${TEST_DIR}/master.info"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_ROOT_SHOW_SLAVE_STATUS_RC=1
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT="Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Last_IO_Errno: 0
+Last_SQL_Errno: 0"
+        make_mariadb_cli
+      }
+      Before "setup_secondary_internal_admin_probe"
+
+      It "uses internal admin as a local probe fallback and publishes secondary"
         When call check_role
         The status should be success
         The output should eq "secondary"

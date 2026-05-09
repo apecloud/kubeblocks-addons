@@ -33,6 +33,7 @@ data_dir() {
 }
 
 MYSQL_CLIENT_DIR="${MYSQL_CLIENT_DIR:-/tools/mysql-client}"
+MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
 
 ready_file() {
   printf "%s/.replication-ready" "$(data_dir)"
@@ -66,11 +67,17 @@ resolve_mariadb_cli() {
   return 1
 }
 
-local_sql() {
+local_sql_as() {
+  local user="$1"
   local mariadb_cli
+  shift
   mariadb_cli=$(resolve_mariadb_cli) || return 1
-  "${mariadb_cli}" "-u${MARIADB_ROOT_USER:-root}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
+  "${mariadb_cli}" "-u${user}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
     -P3306 -h127.0.0.1 --connect-timeout=5 -N -s "$@" 2>/dev/null
+}
+
+local_sql() {
+  local_sql_as "${MARIADB_ROOT_USER:-root}" "$@" || local_sql_as "${MARIADB_INTERNAL_ROOT_USER}" "$@"
 }
 
 local_sql_best_effort() {
@@ -141,7 +148,9 @@ query_slave_status() {
   # SHOW SLAVE STATUS\G must keep field labels; local_sql intentionally uses
   # -N -s for scalar probes and collapses \G output into unlabeled values.
   "${mariadb_cli}" "-u${MARIADB_ROOT_USER:-root}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
-    -P3306 -h127.0.0.1 --connect-timeout=5 -e "SHOW SLAVE STATUS\\G" 2>/dev/null || true
+    -P3306 -h127.0.0.1 --connect-timeout=5 -e "SHOW SLAVE STATUS\\G" 2>/dev/null || \
+    "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
+      -P3306 -h127.0.0.1 --connect-timeout=5 -e "SHOW SLAVE STATUS\\G" 2>/dev/null || true
 }
 
 not_ready() {
