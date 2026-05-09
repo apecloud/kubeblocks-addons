@@ -899,6 +899,25 @@ spec:
               timeout 3 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
                 -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || true
             }
+            local_user_table_count() {
+              "${LOCAL[@]}" -e "
+                SELECT COUNT(*)
+                FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys', 'kubeblocks');
+              " 2>/dev/null | tr -d '\r' | awk 'NF {print $1; exit}'
+            }
+            local_has_user_tables() {
+              local table_count
+              table_count="$(local_user_table_count || echo unknown)"
+              case "${table_count}" in
+                ''|*[!0-9]*)
+                  prestop_watchdog_log "runtime-secondary-follow-user-table-count rc=1 value=${table_count:-<empty>}"
+                  return 0
+                  ;;
+              esac
+              prestop_watchdog_log "runtime-secondary-follow-user-table-count rc=0 value=${table_count}"
+              [ "${table_count}" -gt 0 ]
+            }
             reconcile_sql_listener_for_syncer_primary_once() {
               local now primary_sid role
               [ ! -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ] || return 0
@@ -925,6 +944,80 @@ spec:
               mark_replication_ready
               prestop_watchdog_log "runtime-primary-listener-reconcile-complete role=${role}"
             }
+            configure_replication_from_primary_service_once() {
+              local label="${1:-runtime-secondary-follow}"
+              local primary_sid master_gtid local_gtid slave_status
+              mark_replication_pending
+              set_replica_read_only || true
+              primary_sid="$(query_primary_service_server_id || true)"
+              if [ -z "${primary_sid}" ] || [ "${primary_sid}" = "${SERVICE_ID}" ]; then
+                prestop_watchdog_log "runtime-secondary-follow-configure-defer label=${label} reason=primary-service-not-peer primary_sid=${primary_sid:-<empty>} service_id=${SERVICE_ID}"
+                return 1
+              fi
+              if local_has_user_tables && fail_closed_for_gtid_divergence; then
+                prestop_watchdog_log "runtime-secondary-follow-configure-blocked label=${label} reason=gtid-divergence"
+                return 1
+              fi
+              master_gtid=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@global.gtid_binlog_pos;" 2>/dev/null || echo "")
+              local_gtid=$("${LOCAL[@]}" -e "SELECT @@global.gtid_slave_pos;" 2>/dev/null || echo "")
+              prestop_watchdog_log "runtime-secondary-follow-configure-begin label=${label} primary_sid=${primary_sid} service_id=${SERVICE_ID} local_gtid=${local_gtid:-<empty>} primary_gtid=${master_gtid:-<empty>}"
+              if [ -z "${local_gtid}" ]; then
+                if ! "${LOCAL[@]}" -e "
+                  STOP SLAVE;
+                  CHANGE MASTER TO
+                    MASTER_HOST='${PRIMARY_HOST}',
+                    MASTER_USER='${MARIADB_ROOT_USER}',
+                    MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+                    MASTER_USE_GTID=slave_pos,
+                    MASTER_CONNECT_RETRY=10;
+                  START SLAVE IO_THREAD;
+                " 2>/dev/null; then
+                  prestop_watchdog_log "runtime-secondary-follow-configure-io-failed label=${label}"
+                  return 1
+                fi
+                if ! prepare_fresh_replica_for_sql_thread_start "${local_gtid}"; then
+                  prestop_watchdog_log "runtime-secondary-follow-configure-pre-sql-failed label=${label}"
+                  return 1
+                fi
+                if ! "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
+                  mark_replication_pending
+                  set_fail_closed_read_only "runtime-secondary-follow-sql-thread-start-failed" || true
+                  lock_local_root_writes "runtime-secondary-follow-sql-thread-start-failed" || true
+                  prestop_watchdog_log "runtime-secondary-follow-configure-sql-failed label=${label}"
+                  return 1
+                fi
+              else
+                if ! "${LOCAL[@]}" -e "
+                  STOP SLAVE;
+                  CHANGE MASTER TO
+                    MASTER_HOST='${PRIMARY_HOST}',
+                    MASTER_USER='${MARIADB_ROOT_USER}',
+                    MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+                    MASTER_USE_GTID=slave_pos,
+                    MASTER_CONNECT_RETRY=10;
+                  START SLAVE;
+                " 2>/dev/null; then
+                  prestop_watchdog_log "runtime-secondary-follow-configure-start-failed label=${label}"
+                  return 1
+                fi
+              fi
+              slave_status="$(query_slave_status_verbose || true)"
+              if [ -z "${slave_status}" ]; then
+                prestop_watchdog_log "runtime-secondary-follow-configure-no-slave-status label=${label}"
+                return 1
+              fi
+              if publish_replica_after_rejoin_ready "${label}"; then
+                prestop_watchdog_log "runtime-secondary-follow-configure-complete label=${label} primary_sid=${primary_sid}"
+                return 0
+              fi
+              if local_has_user_tables && fail_closed_for_gtid_divergence; then
+                prestop_watchdog_log "runtime-secondary-follow-configure-blocked label=${label} reason=gtid-divergence-after-configure"
+                return 1
+              fi
+              prestop_watchdog_log "runtime-secondary-follow-configure-not-healthy label=${label}"
+              return 1
+            }
             reconcile_sql_listener_for_syncer_secondary_once() {
               local role slave_status
               [ ! -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ] || return 0
@@ -935,6 +1028,10 @@ spec:
               if slave_status_is_healthy "${slave_status}"; then
                 mark_replication_ready
                 prestop_watchdog_log "runtime-secondary-listener-reconcile-ready role=${role}"
+                return 0
+              fi
+              if configure_replication_from_primary_service_once "runtime-secondary-follow"; then
+                prestop_watchdog_log "runtime-secondary-listener-reconcile-ready-after-configure role=${role}"
                 return 0
               fi
               mark_replication_pending

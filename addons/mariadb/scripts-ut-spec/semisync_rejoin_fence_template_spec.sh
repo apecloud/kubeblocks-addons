@@ -28,6 +28,14 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     [ "${primary_query_line}" -lt "${reconcile_line}" ]
   }
 
+  runtime_secondary_follow_starts_io_before_health_cleanup() {
+    begin_line="$(grep -n 'runtime-secondary-follow-configure-begin' "$(template_file)" | head -1 | cut -d: -f1)"
+    io_line="$(awk -v begin="${begin_line}" 'NR > begin && index($0, "START SLAVE IO_THREAD;") { print NR; exit }' "$(template_file)")"
+    cleanup_line="$(awk -v begin="${begin_line}" 'NR > begin && index($0, "prepare_fresh_replica_for_sql_thread_start") { print NR; exit }' "$(template_file)")"
+    [ -n "${begin_line}" ] && [ -n "${io_line}" ] && [ -n "${cleanup_line}" ] || return 1
+    [ "${begin_line}" -lt "${io_line}" ] && [ "${io_line}" -lt "${cleanup_line}" ]
+  }
+
   It "declares an internal local admin before fencing user-facing root"
     When call template_contains 'MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"'
     The status should be success
@@ -163,6 +171,29 @@ Describe "cmpd-semisync.yaml rejoin fence template"
   It "keeps syncer secondary unpublished until replication is healthy"
     When call function_contains "reconcile_sql_listener_for_syncer_secondary_once" "mark_replication_pending"
     The status should be success
+  End
+
+  It "lets syncer secondary actively configure replication to the Primary Service"
+    When call template_contains "runtime-secondary-follow-configure-begin"
+    The status should be success
+    The output should include "runtime-secondary-follow-configure-begin"
+  End
+
+  It "starts runtime secondary IO before local health cleanup"
+    When call runtime_secondary_follow_starts_io_before_health_cleanup
+    The status should be success
+  End
+
+  It "publishes syncer secondary only after runtime follow becomes healthy"
+    When call template_contains "runtime-secondary-listener-reconcile-ready-after-configure"
+    The status should be success
+    The output should include "runtime-secondary-listener-reconcile-ready-after-configure"
+  End
+
+  It "keeps runtime secondary follow blocked on user-table GTID divergence"
+    When call template_contains "runtime-secondary-follow-configure-blocked label=\${label} reason=gtid-divergence"
+    The status should be success
+    The output should include "runtime-secondary-follow-configure-blocked"
   End
 
   It "runs secondary reconciliation in the runtime wait loop"
