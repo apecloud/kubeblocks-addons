@@ -73,6 +73,11 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The status should be success
   End
 
+  It "requires internal admin read-only dynamic privilege before role publishing"
+    When call function_contains "internal_local_admin_has_required_privileges" "READ_ONLY_ADMIN"
+    The status should be success
+  End
+
   It "keeps role publishing pending while internal admin is unavailable"
     When call function_contains "wait_for_internal_local_admin" "mark_replication_pending"
     The status should be success
@@ -114,6 +119,21 @@ Describe "cmpd-semisync.yaml rejoin fence template"
 
   It "unlocks local root before publishing a primary as writable"
     When call function_contains "set_primary_read_write" "unlock_local_root_writes \"primary-read-write\""
+    The status should be success
+  End
+
+  It "requires local root unlock before publishing a primary as writable"
+    When call function_contains "set_primary_read_write" "primary-read-write local-root-unlock rc=1"
+    The status should be success
+  End
+
+  It "marks primary read-write readiness after local root and read_only are fixed"
+    When call function_contains "set_primary_read_write" ".primary-read-write-ready"
+    The status should be success
+  End
+
+  It "clears primary read-write readiness when replication becomes pending"
+    When call function_contains "mark_replication_pending" ".primary-read-write-ready"
     The status should be success
   End
 
@@ -161,6 +181,11 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     When call template_contains "runtime-primary-listener-reconcile-defer reason=primary-service-routes-to-peer"
     The status should be success
     The output should include "primary-service-routes-to-peer"
+  End
+
+  It "repairs a syncer primary whose SQL listener is exposed before local write access is ready"
+    When call function_contains "reconcile_sql_listener_for_syncer_primary_once" "missing-primary-read-write-ready"
+    The status should be success
   End
 
   It "reconciles syncer secondary into fail-closed local SQL state"
