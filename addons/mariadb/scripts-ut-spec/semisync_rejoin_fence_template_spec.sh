@@ -60,6 +60,11 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The status should be success
   End
 
+  It "requires internal admin primary semisync dynamic privilege before role publishing"
+    When call function_contains "internal_local_admin_has_required_privileges" "REPLICATION_MASTER_ADMIN"
+    The status should be success
+  End
+
   It "keeps role publishing pending while internal admin is unavailable"
     When call function_contains "wait_for_internal_local_admin" "mark_replication_pending"
     The status should be success
@@ -87,6 +92,11 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     When call template_contains "GRANT SELECT, PROCESS, RELOAD, SUPER, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '\${user}'@'\${host}';"
     The status should be success
     The output should include "GRANT SELECT, PROCESS, RELOAD, SUPER"
+  End
+
+  It "keeps syncer local root semisync dynamic privileges while table writes are fenced"
+    When call function_contains "grant_optional_local_root_privileges" "REPLICATION MASTER ADMIN"
+    The status should be success
   End
 
   It "locks local root after putting a replica into read-only"

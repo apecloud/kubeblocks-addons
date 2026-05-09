@@ -416,23 +416,44 @@ spec:
               return 1
             }
             internal_local_admin_has_required_privileges() {
-              local semisync_value
-              semisync_value=$("${INTERNAL_LOCAL[@]}" -e "SELECT @@global.rpl_semi_sync_slave_enabled;" 2>/dev/null | tr -d '\r' | awk 'NF {print $1; exit}')
-              case "${semisync_value}" in
+              local semisync_master_value semisync_slave_value
+              semisync_master_value=$("${INTERNAL_LOCAL[@]}" -e "SELECT @@global.rpl_semi_sync_master_enabled;" 2>/dev/null | tr -d '\r' | awk 'NF {print $1; exit}')
+              case "${semisync_master_value}" in
                 ON|on)
-                  semisync_value=1
+                  semisync_master_value=1
                   ;;
                 OFF|off)
-                  semisync_value=0
+                  semisync_master_value=0
                   ;;
                 0|1)
                   ;;
                 *)
-                  prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_SLAVE_ADMIN probe=read-semisync-value rc=1 value=${semisync_value:-<empty>}"
+                  prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_MASTER_ADMIN probe=read-semisync-value rc=1 value=${semisync_master_value:-<empty>}"
                   return 1
                   ;;
               esac
-              if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_slave_enabled=${semisync_value};" >/dev/null 2>&1; then
+              if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=${semisync_master_value};" >/dev/null 2>&1; then
+                prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_MASTER_ADMIN probe=set-semisync-same-value rc=0"
+              else
+                prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_MASTER_ADMIN probe=set-semisync-same-value rc=1"
+                return 1
+              fi
+              semisync_slave_value=$("${INTERNAL_LOCAL[@]}" -e "SELECT @@global.rpl_semi_sync_slave_enabled;" 2>/dev/null | tr -d '\r' | awk 'NF {print $1; exit}')
+              case "${semisync_slave_value}" in
+                ON|on)
+                  semisync_slave_value=1
+                  ;;
+                OFF|off)
+                  semisync_slave_value=0
+                  ;;
+                0|1)
+                  ;;
+                *)
+                  prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_SLAVE_ADMIN probe=read-semisync-value rc=1 value=${semisync_slave_value:-<empty>}"
+                  return 1
+                  ;;
+              esac
+              if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_slave_enabled=${semisync_slave_value};" >/dev/null 2>&1; then
                 prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_SLAVE_ADMIN probe=set-semisync-same-value rc=0"
                 return 0
               fi
@@ -471,7 +492,7 @@ spec:
               local host="$2"
               local label="$3"
               local privilege
-              for privilege in "BINLOG MONITOR" "SLAVE MONITOR" "CONNECTION ADMIN" "READ_ONLY ADMIN"; do
+              for privilege in "REPLICATION SLAVE ADMIN" "REPLICATION MASTER ADMIN" "BINLOG ADMIN" "BINLOG MONITOR" "SLAVE MONITOR" "CONNECTION ADMIN" "READ_ONLY ADMIN"; do
                 "${LOCAL[@]}" -e "
                   SET SESSION sql_log_bin=0;
                   GRANT ${privilege} ON *.* TO '${user}'@'${host}';
@@ -516,9 +537,7 @@ spec:
                 fi
                 if "${LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
                   prestop_watchdog_log "local-root-account-${state} mode=${mode} label=${label} host=${host} rc=0"
-                  if [ "${state}" = "LOCK" ]; then
-                    grant_optional_local_root_privileges "${user}" "${host}" "${label}"
-                  fi
+                  grant_optional_local_root_privileges "${user}" "${host}" "${label}"
                   continue
                 fi
                 prestop_watchdog_log "local-root-account-${state} mode=${mode} label=${label} host=${host} rc=1"
