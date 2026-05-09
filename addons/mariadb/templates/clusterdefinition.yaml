@@ -1,0 +1,27 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: mariadb
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  topologies:
+    - name: standalone
+      components:
+        - name: mariadb
+          compDef: {{ include "mariadb.cmpdName" . }}
+      default: true
+    - name: async
+      components:
+        - name: mariadb
+          compDef: {{ include "mariadb.replication.cmpdName" . }}
+    - name: semisync
+      components:
+        - name: mariadb
+          compDef: {{ include "mariadb.semisync.cmpdName" . }}
+    - name: galera
+      components:
+        - name: mariadb
+          compDef: {{ include "mariadb.galera.cmpdName" . }}

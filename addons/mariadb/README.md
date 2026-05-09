@@ -221,3 +221,21 @@ kubectl patch cluster -n demo mariadb-cluster -p '{"spec":{"terminationPolicy":"
 
 kubectl delete cluster -n demo mariadb-cluster
 ```
+
+## Known Issues
+
+### Semi-sync Replication: `rpl_semi_sync_master_wait_no_slave` Should Be Set to `ON`
+
+**Affected versions**: 11.4.5, 11.4.8, 11.4.9, 11.4.10 (all tested versions)
+
+**Upstream bug**: [MDEV-36934](https://jira.mariadb.org/browse/MDEV-36934)
+
+When `rpl_semi_sync_master_wait_no_slave=OFF` (MariaDB default) and the secondary is killed via SIGKILL, the primary enters a permanent deadlock after the secondary reconnects. All new connections to the primary time out indefinitely, requiring a manual restart.
+
+**Root cause**: `commit_trx()` returns early when no slave is connected, leaving a THD entry in the `Active_tranx` list. When the secondary reconnects and sends a TCP RST, `clear_active_tranx_nodes()` signals the dangling THD via `pthread_cond_signal()` while holding `LOCK_binlog`, deadlocking all subsequent commits.
+
+**Recommendation**: Use MariaDB **11.8.4 or later** for semi-sync replication. MDEV-36934 is fixed in 11.8.4 — T5 scenario (kill secondary, write during downtime, rejoin) passes cleanly with `master_status=ON` resuming immediately after rejoin.
+
+Additionally, the KubeBlocks MariaDB addon sets `rpl_semi_sync_master_wait_no_slave=ON` in `config/mariadb-semisync.tpl`. This causes writes to block (up to `rpl_semi_sync_master_timeout`, default 5s) when no semi-sync slave is connected, then fall back to async mode.
+
+If you must use 11.4.x for semi-sync replication, be aware that a secondary SIGKILL will cause the primary to deadlock permanently after the secondary reconnects. Manual restart of the primary is required to recover.
