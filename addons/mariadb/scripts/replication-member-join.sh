@@ -324,17 +324,12 @@ fail_closed_for_gtid_divergence() {
 }
 
 clear_local_kb_health_check_table() {
-  local decision="$1" evidence_file table_count
+  local decision="$1" evidence_file table_count row_count
   if local_sql -e "
 SET SESSION sql_log_bin=0;
-SET @kb_health_check_cleanup_sql = IF(
-  (SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = 'kubeblocks') > 0,
-  'DROP TABLE IF EXISTS kubeblocks.kb_health_check',
-  'SELECT 1'
-);
-PREPARE kb_health_check_cleanup FROM @kb_health_check_cleanup_sql;
-EXECUTE kb_health_check_cleanup;
-DEALLOCATE PREPARE kb_health_check_cleanup;
+CREATE DATABASE IF NOT EXISTS kubeblocks;
+CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
+DELETE FROM kubeblocks.kb_health_check;
 SET SESSION sql_log_bin=1;
 " 2>/dev/null; then
     mkdir -p "${DATA_DIR}/log" 2>/dev/null || true
@@ -345,15 +340,17 @@ FROM information_schema.TABLES
 WHERE TABLE_SCHEMA = 'kubeblocks'
   AND TABLE_NAME = 'kb_health_check';
 " 2>/dev/null || echo "unknown")
+    row_count=$(local_sql -e "SELECT COUNT(*) FROM kubeblocks.kb_health_check;" 2>/dev/null || echo "unknown")
     {
       printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
       printf 'decision=%s\n' "${decision}"
       printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
       printf 'active_primary_host=%s\n' "${ACTIVE_PRIMARY_HOST:-unknown}"
       printf 'health_table_after_cleanup=%s\n' "${table_count}"
+      printf 'health_rows_after_cleanup=%s\n' "${row_count}"
       printf '\n'
     } >> "${evidence_file}" 2>/dev/null || true
-    echo "Cleared local kubeblocks health check table (${decision})."
+    echo "Prepared local kubeblocks health check table (${decision})."
     return 0
   fi
   return 1
@@ -395,22 +392,22 @@ slave_status_has_gtid_out_of_order() {
   printf "%s" "${slave_status}" | grep -qi "out-of-order" || return 1
 }
 
-slave_status_has_kb_health_check_duplicate() {
+slave_status_has_kb_health_check_repairable_error() {
   local slave_status="$1"
   [ -n "${slave_status}" ] || return 1
-  printf "%s" "${slave_status}" | grep -qE "Last_SQL_Errno: 1062|Last_Errno: 1062" || return 1
+  printf "%s" "${slave_status}" | grep -qE "Last_SQL_Errno: 1062|Last_Errno: 1062|Last_SQL_Errno: 1146|Last_Errno: 1146" || return 1
   printf "%s" "${slave_status}" | grep -q "kubeblocks.kb_health_check" || return 1
 }
 
-repair_kb_health_check_duplicate() {
+repair_kb_health_check_replication_error() {
   local slave_status="$1"
-  if ! slave_status_has_kb_health_check_duplicate "${slave_status}"; then
+  if ! slave_status_has_kb_health_check_repairable_error "${slave_status}"; then
     return 1
   fi
   local_sql -e "STOP SLAVE SQL_THREAD;" 2>/dev/null || true
-  if ! clear_local_kb_health_check_table "cleared-local-kb-health-check-after-duplicate"; then
+  if ! clear_local_kb_health_check_table "prepared-local-kb-health-check-after-replication-error"; then
     mark_replication_pending
-    echo "WARNING: failed to repair kubeblocks health check duplicate; keeping roleProbe pending."
+    echo "WARNING: failed to repair kubeblocks health check replication error; keeping roleProbe pending."
     return 1
   fi
   local_sql -e "START SLAVE SQL_THREAD;" 2>/dev/null || true
@@ -531,11 +528,11 @@ START SLAVE;
     echo "Replication started via ${ACTIVE_PRIMARY_HOST}."
     return 0
   fi
-  if repair_kb_health_check_duplicate "${slave_status_verbose}"; then
+  if repair_kb_health_check_replication_error "${slave_status_verbose}"; then
     slave_status_verbose=$(query_slave_status_verbose)
     if slave_status_is_ready_for_rejoin "${slave_status_verbose}"; then
       mark_replication_ready
-      echo "Replication started via ${ACTIVE_PRIMARY_HOST} after repairing kubeblocks health check duplicate."
+      echo "Replication started via ${ACTIVE_PRIMARY_HOST} after repairing kubeblocks health check replication error."
       return 0
     fi
   fi

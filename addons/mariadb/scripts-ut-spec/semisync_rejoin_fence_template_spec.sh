@@ -211,8 +211,8 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The status should be success
   End
 
-  It "defines fresh replica health check cleanup before SQL-thread replication"
-    When call function_contains "clear_local_kb_health_check_table" "DROP TABLE IF EXISTS kubeblocks.kb_health_check"
+  It "defines fresh replica health check table preparation before SQL-thread replication"
+    When call function_contains "clear_local_kb_health_check_table" "CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check"
     The status should be success
   End
 
@@ -228,8 +228,13 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The output should include "START SLAVE SQL_THREAD"
   End
 
-  It "repairs kubeblocks health check duplicate before publishing replica readiness"
-    When call function_contains "repair_kb_health_check_duplicate" "cleared-local-kb-health-check-after-duplicate"
+  It "repairs kubeblocks health check replication errors before publishing replica readiness"
+    When call function_contains "repair_kb_health_check_replication_error" "prepared-local-kb-health-check-after-replication-error"
+    The status should be success
+  End
+
+  It "treats missing kubeblocks health table as repairable during fresh follow"
+    When call function_contains "slave_status_has_kb_health_check_repairable_error" "Last_SQL_Errno: 1146"
     The status should be success
   End
 
