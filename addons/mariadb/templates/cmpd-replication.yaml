@@ -570,10 +570,10 @@ spec:
               printf "%s" "${slave_status}" | grep -q "Last_SQL_Errno: 1950" || return 1
               printf "%s" "${slave_status}" | grep -qi "out-of-order" || return 1
             }
-            slave_status_has_kb_health_check_duplicate() {
+            slave_status_has_kb_health_check_repairable_error() {
               local slave_status="$1"
               [ -n "${slave_status}" ] || return 1
-              printf "%s" "${slave_status}" | grep -qE "Last_SQL_Errno: 1062|Last_Errno: 1062" || return 1
+              printf "%s" "${slave_status}" | grep -qE "Last_SQL_Errno: 1062|Last_Errno: 1062|Last_SQL_Errno: 1146|Last_Errno: 1146" || return 1
               printf "%s" "${slave_status}" | grep -q "kubeblocks.kb_health_check" || return 1
             }
             finalize_replication_rejoin_ready_gate() {
@@ -601,7 +601,7 @@ spec:
                 if slave_status_has_gtid_out_of_order "${slave_status}"; then
                   break
                 fi
-                if repair_kb_health_check_duplicate "${slave_status}"; then
+                if repair_kb_health_check_replication_error "${slave_status}"; then
                   sleep 3
                   slave_status=$(query_slave_status_verbose)
                   continue
@@ -631,17 +631,12 @@ spec:
               return 1
             }
             clear_local_kb_health_check_table() {
-              local decision="$1" evidence_file table_count
+              local decision="$1" evidence_file table_count row_count
               if "${LOCAL[@]}" -e "
                 SET SESSION sql_log_bin=0;
-                SET @kb_health_check_cleanup_sql = IF(
-                  (SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = 'kubeblocks') > 0,
-                  'DROP TABLE IF EXISTS kubeblocks.kb_health_check',
-                  'SELECT 1'
-                );
-                PREPARE kb_health_check_cleanup FROM @kb_health_check_cleanup_sql;
-                EXECUTE kb_health_check_cleanup;
-                DEALLOCATE PREPARE kb_health_check_cleanup;
+                CREATE DATABASE IF NOT EXISTS kubeblocks;
+                CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
+                DELETE FROM kubeblocks.kb_health_check;
                 SET SESSION sql_log_bin=1;
               " 2>/dev/null; then
                 evidence_file="{{ .Values.dataMountPath }}/log/fresh-replica-health-check-cleanup.log"
@@ -652,15 +647,17 @@ spec:
                   WHERE TABLE_SCHEMA = 'kubeblocks'
                     AND TABLE_NAME = 'kb_health_check';
                 " 2>/dev/null || echo "unknown")
+                row_count=$("${LOCAL[@]}" -N -s -e "SELECT COUNT(*) FROM kubeblocks.kb_health_check;" 2>/dev/null || echo "unknown")
                 {
                   printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
                   printf 'decision=%s\n' "${decision}"
                   printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
                   printf 'active_primary_host=%s\n' "${ACTIVE_PRIMARY_HOST:-unknown}"
                   printf 'health_table_after_cleanup=%s\n' "${table_count}"
+                  printf 'health_rows_after_cleanup=%s\n' "${row_count}"
                   printf '\n'
                 } >> "${evidence_file}" 2>/dev/null || true
-                echo "Cleared local kubeblocks health check table (${decision})."
+                echo "Prepared local kubeblocks health check table (${decision})."
                 return 0
               fi
               return 1
@@ -676,17 +673,17 @@ spec:
               echo "WARNING: failed to clear local kubeblocks health check table before fresh SQL thread starts; staying read-only pending recovery."
               return 1
             }
-            repair_kb_health_check_duplicate() {
+            repair_kb_health_check_replication_error() {
               local slave_status="$1"
-              if ! slave_status_has_kb_health_check_duplicate "${slave_status}"; then
+              if ! slave_status_has_kb_health_check_repairable_error "${slave_status}"; then
                 return 1
               fi
-              trace_log "fresh-kb-health-check-duplicate-repair"
+              trace_log "fresh-kb-health-check-repair"
               "${LOCAL[@]}" -e "STOP SLAVE SQL_THREAD;" 2>/dev/null || true
-              if ! clear_local_kb_health_check_table "cleared-local-kb-health-check-after-duplicate"; then
+              if ! clear_local_kb_health_check_table "prepared-local-kb-health-check-after-replication-error"; then
                 mark_replication_pending
                 "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
-                echo "WARNING: failed to repair kubeblocks health check duplicate; staying read-only pending recovery."
+                echo "WARNING: failed to repair kubeblocks health check replication error; staying read-only pending recovery."
                 return 1
               fi
               "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null || true
