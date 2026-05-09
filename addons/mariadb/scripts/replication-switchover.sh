@@ -29,7 +29,10 @@ append_switchover_trace() {
   if [ -n "${trace_dir}" ]; then
     mkdir -p "${trace_dir}" 2>/dev/null || true
   fi
-  [ -d "${trace_dir}" ] && [ -w "${trace_dir}" ] || return 0
+  if ! [ -d "${trace_dir}" ] || ! [ -w "${trace_dir}" ]; then
+    trace_file="/tmp/switchover-action.log"
+    trace_dir="/tmp"
+  fi
   printf "%s %s\n" "$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date)" "${message}" >>"${trace_file}" 2>/dev/null || true
 }
 
@@ -128,6 +131,18 @@ run_sql() {
     -P3306 -h"${host}" -N -s -e "${sql}" >/dev/null 2>&1
 }
 
+run_local_sql_best_effort() {
+  local sql="$1"
+  "${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    -P3306 -h127.0.0.1 -N -s -e "${sql}" >/dev/null 2>&1 || true
+}
+
+query_local_value() {
+  local sql="$1"
+  "${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    -P3306 -h127.0.0.1 -N -s -e "${sql}" 2>/dev/null
+}
+
 sql_quote() {
   printf "%s" "$1" | sed "s/'/''/g"
 }
@@ -188,7 +203,42 @@ fence_local_remote_root_for_secondary() {
     FLUSH PRIVILEGES;
     SET SESSION sql_log_bin=1;
   "
-  run_sql "127.0.0.1" "${sql}"
+  run_sql "127.0.0.1" "${sql}" || return 1
+  run_local_sql_best_effort "SET SESSION sql_log_bin=0; GRANT BINLOG MONITOR ON *.* TO '${user}'@'${root_host}'; SET SESSION sql_log_bin=1;"
+  run_local_sql_best_effort "SET SESSION sql_log_bin=0; GRANT SLAVE MONITOR ON *.* TO '${user}'@'${root_host}'; SET SESSION sql_log_bin=1;"
+  return 0
+}
+
+disconnect_local_remote_root_sessions_for_secondary() {
+  local user ids id killed=0 skipped=0
+  remote_root_host_is_local && return 0
+  user=$(sql_quote "${MARIADB_ROOT_USER}")
+  ids=$(query_local_value "
+    SELECT IFNULL(GROUP_CONCAT(ID SEPARATOR ' '), '')
+      FROM information_schema.PROCESSLIST
+     WHERE USER='${user}'
+       AND ID <> CONNECTION_ID()
+       AND HOST NOT LIKE 'localhost%'
+       AND HOST NOT LIKE '127.0.0.1%'
+       AND HOST NOT LIKE '::1%';
+  ") || return 1
+  if [ -z "${ids}" ]; then
+    log_switchover_info "Switchover pre-DCS guard: no active remote root sessions to disconnect"
+    return 0
+  fi
+  log_switchover_info "Switchover pre-DCS guard: disconnecting active remote root sessions ${ids}"
+  for id in ${ids}; do
+    case "${id}" in
+      ''|*[!0-9]*)
+        skipped=$((skipped + 1))
+        continue
+        ;;
+    esac
+    run_local_sql_best_effort "KILL CONNECTION ${id};"
+    killed=$((killed + 1))
+  done
+  log_switchover_info "Switchover pre-DCS guard: remote root session disconnect issued killed=${killed} skipped=${skipped}"
+  return 0
 }
 
 local_remote_root_is_fenced_for_secondary() {
@@ -263,8 +313,18 @@ prepare_current_primary_for_switchover() {
   local current_name
   current_name=$(resolve_current_name)
   log_switchover_info "Switchover pre-DCS guard: fencing remote root on current primary ${current_name}"
+  if ! disconnect_local_remote_root_sessions_for_secondary; then
+    log_switchover_error "Switchover failed: could not disconnect current primary remote root sessions before fencing"
+    rollback_current_primary_switchover_guard || true
+    return 1
+  fi
   if ! fence_local_remote_root_for_secondary; then
     log_switchover_error "Switchover failed: could not fence current primary remote root before DCS switchover"
+    rollback_current_primary_switchover_guard || true
+    return 1
+  fi
+  if ! disconnect_local_remote_root_sessions_for_secondary; then
+    log_switchover_error "Switchover failed: could not disconnect current primary remote root sessions after fencing"
     rollback_current_primary_switchover_guard || true
     return 1
   fi
@@ -274,6 +334,22 @@ prepare_current_primary_for_switchover() {
     return 1
   fi
   log_switchover_info "Switchover pre-DCS guard passed for current primary ${current_name}; read_only is left unchanged until syncer accepts the DCS switchover"
+  return 0
+}
+
+fence_current_primary_local_writes_after_dcs() {
+  local current_name
+  current_name=$(resolve_current_name)
+  log_switchover_info "Switchover post-DCS guard: setting current primary ${current_name} read_only=ON before candidate can accept writes"
+  if ! set_local_read_only "ON"; then
+    log_switchover_error "Switchover failed: could not set current primary read_only=ON after DCS switchover was accepted"
+    return 1
+  fi
+  if ! local_read_only_is "1"; then
+    log_switchover_error "Switchover failed: current primary read_only=ON was not verified after DCS switchover was accepted"
+    return 1
+  fi
+  log_switchover_info "Switchover post-DCS guard passed for current primary ${current_name}"
   return 0
 }
 
@@ -457,6 +533,10 @@ run_switchover() {
   if ! syncerctl_switchover "${current_name}" "${candidate_name}"; then
     rollback_current_primary_switchover_guard || true
     log_switchover_error "Switchover failed: syncerctl could not create DCS switchover"
+    return 1
+  fi
+  if ! fence_current_primary_local_writes_after_dcs; then
+    log_switchover_error "Switchover failed: current primary local write fence did not close after DCS switchover"
     return 1
   fi
 

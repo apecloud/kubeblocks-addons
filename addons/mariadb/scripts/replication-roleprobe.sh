@@ -69,6 +69,10 @@ local_sql() {
     -P3306 -h127.0.0.1 --connect-timeout=5 -N -s "$@" 2>/dev/null
 }
 
+local_sql_best_effort() {
+  local_sql "$@" >/dev/null 2>&1 || true
+}
+
 sql_quote() {
   printf "%s" "$1" | sed "s/'/''/g"
 }
@@ -116,6 +120,10 @@ apply_remote_root_fence() {
   fi
 
   if local_sql -e "${sql}" >/dev/null; then
+    if [ "${role}" = "secondary" ]; then
+      local_sql_best_effort -e "SET SESSION sql_log_bin=0; GRANT BINLOG MONITOR ON *.* TO '${user}'@'${host}'; SET SESSION sql_log_bin=1;"
+      local_sql_best_effort -e "SET SESSION sql_log_bin=0; GRANT SLAVE MONITOR ON *.* TO '${user}'@'${host}'; SET SESSION sql_log_bin=1;"
+    fi
     printf "%s" "${role}" > "${marker}" 2>/dev/null || true
     return 0
   fi

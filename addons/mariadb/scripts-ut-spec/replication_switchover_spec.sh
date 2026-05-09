@@ -346,14 +346,68 @@ EOF
     End
 
     Context "when guarding the old primary before DCS switchover"
-      It "fences remote root without setting read_only before syncerctl is called"
-        make_syncerctl
+      It "disconnects active remote root sessions around the grant fence"
+        query_local_value() {
+          record_call "query_sessions"
+          echo "88 89"
+        }
+        run_local_sql_best_effort() {
+          record_call "best_effort=$1"
+          return 0
+        }
         fence_local_remote_root_for_secondary() {
           record_call "fence"
           return 0
         }
         local_remote_root_is_fenced_for_secondary() {
           record_call "verify_fence"
+          return 0
+        }
+        syncerctl_switchover() {
+          record_call "syncerctl"
+          return 0
+        }
+        set_local_read_only() {
+          record_call "set_read_only=$1"
+          return 0
+        }
+        local_read_only_is() {
+          record_call "verify_read_only=$1"
+          [ "$1" = "1" ]
+        }
+        candidate_is_primary() {
+          return 0
+        }
+        current_follows_candidate() {
+          return 0
+        }
+        wait_post_switchover_stabilization() {
+          return 0
+        }
+        wait_current_secondary_remote_root_fenced() {
+          return 0
+        }
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        The status should be success
+        The output should include "Switchover pre-DCS guard: disconnecting active remote root sessions 88 89"
+        The output should include "remote root session disconnect issued killed=2 skipped=0"
+        The contents of file "${TEST_DIR}/calls" should include "best_effort=KILL CONNECTION 88;"
+        The contents of file "${TEST_DIR}/calls" should include "best_effort=KILL CONNECTION 89;"
+        The contents of file "${TEST_DIR}/calls" should include "fence"
+        The contents of file "${TEST_DIR}/calls" should include "syncerctl"
+      End
+
+      It "fences remote root before DCS and local writes immediately after DCS is accepted"
+        fence_local_remote_root_for_secondary() {
+          record_call "fence"
+          return 0
+        }
+        local_remote_root_is_fenced_for_secondary() {
+          record_call "verify_fence"
+          return 0
+        }
+        syncerctl_switchover() {
+          record_call "syncerctl"
           return 0
         }
         set_local_read_only() {
@@ -380,10 +434,39 @@ EOF
         The status should be success
         The output should include "Switchover pre-DCS guard passed"
         The output should include "Switchover: creating syncer DCS switchover"
+        The output should include "Switchover post-DCS guard passed"
         The contents of file "${TEST_DIR}/calls" should include "fence"
         The contents of file "${TEST_DIR}/calls" should include "verify_fence"
-        The contents of file "${TEST_DIR}/calls" should not include "set_read_only=ON"
-        The contents of file "${TEST_DIR}/calls" should not include "verify_read_only=1"
+        The contents of file "${TEST_DIR}/calls" should include "syncerctl"
+        The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
+        The contents of file "${TEST_DIR}/calls" should include "verify_read_only=1"
+      End
+
+      It "fails closed when post-DCS local write fence does not close"
+        prepare_current_primary_for_switchover() {
+          record_call "prepare"
+          return 0
+        }
+        syncerctl_switchover() {
+          record_call "syncerctl"
+          return 0
+        }
+        set_local_read_only() {
+          record_call "set_read_only=$1"
+          return 1
+        }
+        rollback_current_primary_switchover_guard() {
+          record_call "rollback"
+          return 0
+        }
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        The status should be failure
+        The output should include "Switchover post-DCS guard"
+        The stderr should include "Switchover failed: current primary local write fence did not close after DCS switchover"
+        The contents of file "${TEST_DIR}/calls" should include "prepare"
+        The contents of file "${TEST_DIR}/calls" should include "syncerctl"
+        The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
+        The contents of file "${TEST_DIR}/calls" should not include "rollback"
       End
 
       It "does not create DCS switchover when the old-primary guard fails"
