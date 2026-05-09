@@ -382,6 +382,40 @@ spec:
               prestop_watchdog_log "internal-local-admin label=${label} rc=1"
               return 1
             }
+            probe_internal_local_admin() {
+              if "${INTERNAL_LOCAL[@]}" -e "SELECT 1;" >/dev/null 2>&1; then
+                return 0
+              fi
+              prestop_watchdog_log "internal-local-admin-probe rc=1"
+              return 1
+            }
+            wait_for_internal_local_admin() {
+              local label="${1:-internal-local-admin-ready}"
+              local sleep_seconds="${2:-2}"
+              local log_every_seconds="${3:-30}"
+              local start now elapsed next_log
+              start="$(date +%s)"
+              next_log=0
+              while true; do
+                if ensure_internal_local_admin "${label}" && probe_internal_local_admin; then
+                  LOCAL=("${INTERNAL_LOCAL[@]}")
+                  now="$(date +%s)"
+                  elapsed=$((now - start))
+                  prestop_watchdog_log "internal-local-admin-ready label=${label} elapsed=${elapsed}s"
+                  return 0
+                fi
+                LOCAL=("${ROOT_LOCAL[@]}")
+                mark_replication_pending
+                now="$(date +%s)"
+                elapsed=$((now - start))
+                if [ "${elapsed}" -ge "${next_log}" ]; then
+                  set_fail_closed_read_only "${label}-wait-internal-admin" || true
+                  prestop_watchdog_log "internal-local-admin-wait label=${label} elapsed=${elapsed}s"
+                  next_log=$((elapsed + log_every_seconds))
+                fi
+                sleep "${sleep_seconds}"
+              done
+            }
             grant_optional_local_root_privileges() {
               local user="$1"
               local host="$2"
@@ -870,8 +904,7 @@ spec:
               wait ${MARIADB_PID}
               exit $?
             fi
-            ensure_internal_local_admin "startup-before-role-decision" || true
-            LOCAL=("${INTERNAL_LOCAL[@]}")
+            wait_for_internal_local_admin "startup-before-role-decision"
             lock_local_root_writes "startup-before-role-decision-pre-remote" || true
             lock_remote_root_writes "startup-before-role-decision" || true
             set_fail_closed_read_only "startup-before-role-decision" || true
