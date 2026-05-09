@@ -124,6 +124,17 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The status should be success
   End
 
+  It "defines fresh replica health check cleanup before binlog-start replication"
+    When call function_contains "prepare_fresh_replica_for_binlog_start" "DROP TABLE IF EXISTS kubeblocks.kb_health_check"
+    The status should be success
+  End
+
+  It "keeps failed fresh health cleanup locally fenced"
+    When call template_contains "lock_local_root_writes \"fresh-health-check-cleanup-failed\""
+    The status should be success
+    The output should include "fresh-health-check-cleanup-failed"
+  End
+
   It "uses the internal admin for preStop SQL so root can stay fenced"
     When call template_contains "mariadb -u\"\${INTERNAL_ROOT_USER}\" -p\"\${MARIADB_ROOT_PASSWORD}\""
     The status should be success

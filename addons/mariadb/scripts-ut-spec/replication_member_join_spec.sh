@@ -178,6 +178,37 @@ EOF
         The output should include "Replication started"
       End
 
+      It "clears the local KubeBlocks health check table before starting replication"
+        echo "" > "${TEST_DIR}/call-log"
+        primary_sql() {
+          case "$*" in
+            *"gtid_binlog_pos"*) echo "0-1-100" ;;
+          esac
+        }
+        local_sql() {
+          case "$*" in
+            *"DROP TABLE IF EXISTS kubeblocks.kb_health_check"*) echo "cleanup" >> "${TEST_DIR}/call-log" ;;
+            *"CHANGE MASTER TO"*) echo "change-master" >> "${TEST_DIR}/call-log" ;;
+            *"gtid_slave_pos;"*) echo "" ;;
+            *"SHOW SLAVE STATUS"*) echo "some-slave-status-row" ;;
+            *) : ;;
+          esac
+        }
+        query_slave_status_verbose() {
+          cat <<'EOF'
+Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Last_IO_Errno: 0
+Last_SQL_Errno: 0
+EOF
+        }
+        When call setup_replication
+        The contents of file "${TEST_DIR}/call-log" should include "cleanup"
+        The contents of file "${TEST_DIR}/call-log" should include "change-master"
+        The file "${TEST_DIR}/log/fresh-replica-health-check-cleanup.log" should be file
+        The output should include "Cleared local kubeblocks health check table"
+      End
+
       It "removes the .replication-pending flag"
         primary_sql() {
           case "$*" in
@@ -257,6 +288,34 @@ EOF
         }
         When call setup_replication
         The variable GTID_SET_CALLED should eq ""
+        The output should include "Replication started"
+      End
+
+      It "does not clear the local health table on an existing GTID rejoin"
+        CLEANUP_CALLED=""
+        primary_sql() {
+          case "$*" in
+            *"gtid_binlog_pos"*) echo "0-1-200" ;;
+          esac
+        }
+        local_sql() {
+          case "$*" in
+            *"DROP TABLE IF EXISTS kubeblocks.kb_health_check"*) CLEANUP_CALLED="yes" ;;
+            *"gtid_slave_pos;"*) echo "0-1-150" ;;
+            *"SHOW SLAVE STATUS"*) echo "some-slave-status-row" ;;
+            *) : ;;
+          esac
+        }
+        query_slave_status_verbose() {
+          cat <<'EOF'
+Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Last_IO_Errno: 0
+Last_SQL_Errno: 0
+EOF
+        }
+        When call setup_replication
+        The variable CLEANUP_CALLED should eq ""
         The output should include "Replication started"
       End
     End

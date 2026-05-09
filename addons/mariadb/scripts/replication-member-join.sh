@@ -323,6 +323,41 @@ fail_closed_for_gtid_divergence() {
   return 0
 }
 
+prepare_fresh_replica_for_binlog_start() {
+  local local_gtid="$1" evidence_file
+  [ -z "${local_gtid}" ] || return 0
+
+  if local_sql -e "
+SET SESSION sql_log_bin=0;
+SET @kb_health_check_cleanup_sql = IF(
+  (SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = 'kubeblocks') > 0,
+  'DROP TABLE IF EXISTS kubeblocks.kb_health_check',
+  'SELECT 1'
+);
+PREPARE kb_health_check_cleanup FROM @kb_health_check_cleanup_sql;
+EXECUTE kb_health_check_cleanup;
+DEALLOCATE PREPARE kb_health_check_cleanup;
+SET SESSION sql_log_bin=1;
+" 2>/dev/null; then
+    mkdir -p "${DATA_DIR}/log" 2>/dev/null || true
+    evidence_file="${DATA_DIR}/log/fresh-replica-health-check-cleanup.log"
+    {
+      printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+      printf 'decision=cleared-local-kb-health-check-before-fresh-replication\n'
+      printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
+      printf 'active_primary_host=%s\n' "${ACTIVE_PRIMARY_HOST:-unknown}"
+      printf 'local_gtid_slave_pos=<empty>\n'
+      printf '\n'
+    } >> "${evidence_file}" 2>/dev/null || true
+    echo "Cleared local kubeblocks health check table before fresh replica starts replication."
+    return 0
+  fi
+
+  mark_replication_pending
+  echo "WARNING: failed to clear local kubeblocks health check table before fresh replication; keeping roleProbe pending."
+  return 1
+}
+
 query_slave_status_verbose() {
   local mariadb_cli
   mariadb_cli=$(resolve_mariadb_cli) || return 1
@@ -404,6 +439,10 @@ setup_replication() {
   # Rejoining pod: preserve local gtid_slave_pos and catch up from the local replay point.
 
   if fail_closed_for_gtid_divergence; then
+    return 1
+  fi
+
+  if ! prepare_fresh_replica_for_binlog_start "${local_gtid}"; then
     return 1
   fi
 
