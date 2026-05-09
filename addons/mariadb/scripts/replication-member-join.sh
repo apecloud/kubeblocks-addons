@@ -323,10 +323,8 @@ fail_closed_for_gtid_divergence() {
   return 0
 }
 
-prepare_fresh_replica_for_binlog_start() {
-  local local_gtid="$1" evidence_file
-  [ -z "${local_gtid}" ] || return 0
-
+clear_local_kb_health_check_table() {
+  local decision="$1" evidence_file table_count
   if local_sql -e "
 SET SESSION sql_log_bin=0;
 SET @kb_health_check_cleanup_sql = IF(
@@ -341,20 +339,36 @@ SET SESSION sql_log_bin=1;
 " 2>/dev/null; then
     mkdir -p "${DATA_DIR}/log" 2>/dev/null || true
     evidence_file="${DATA_DIR}/log/fresh-replica-health-check-cleanup.log"
+    table_count=$(local_sql -e "
+SELECT COUNT(*)
+FROM information_schema.TABLES
+WHERE TABLE_SCHEMA = 'kubeblocks'
+  AND TABLE_NAME = 'kb_health_check';
+" 2>/dev/null || echo "unknown")
     {
       printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-      printf 'decision=cleared-local-kb-health-check-before-fresh-replication\n'
+      printf 'decision=%s\n' "${decision}"
       printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
       printf 'active_primary_host=%s\n' "${ACTIVE_PRIMARY_HOST:-unknown}"
-      printf 'local_gtid_slave_pos=<empty>\n'
+      printf 'health_table_after_cleanup=%s\n' "${table_count}"
       printf '\n'
     } >> "${evidence_file}" 2>/dev/null || true
-    echo "Cleared local kubeblocks health check table before fresh replica starts replication."
+    echo "Cleared local kubeblocks health check table (${decision})."
+    return 0
+  fi
+  return 1
+}
+
+prepare_fresh_replica_for_sql_thread_start() {
+  local local_gtid="$1"
+  [ -z "${local_gtid}" ] || return 0
+
+  if clear_local_kb_health_check_table "cleared-local-kb-health-check-before-fresh-sql-thread"; then
     return 0
   fi
 
   mark_replication_pending
-  echo "WARNING: failed to clear local kubeblocks health check table before fresh replication; keeping roleProbe pending."
+  echo "WARNING: failed to clear local kubeblocks health check table before fresh SQL thread starts; keeping roleProbe pending."
   return 1
 }
 
@@ -379,6 +393,28 @@ slave_status_has_gtid_out_of_order() {
   [ -n "${slave_status}" ] || return 1
   printf "%s" "${slave_status}" | grep -q "Last_SQL_Errno: 1950" || return 1
   printf "%s" "${slave_status}" | grep -qi "out-of-order" || return 1
+}
+
+slave_status_has_kb_health_check_duplicate() {
+  local slave_status="$1"
+  [ -n "${slave_status}" ] || return 1
+  printf "%s" "${slave_status}" | grep -qE "Last_SQL_Errno: 1062|Last_Errno: 1062" || return 1
+  printf "%s" "${slave_status}" | grep -q "kubeblocks.kb_health_check" || return 1
+}
+
+repair_kb_health_check_duplicate() {
+  local slave_status="$1"
+  if ! slave_status_has_kb_health_check_duplicate "${slave_status}"; then
+    return 1
+  fi
+  local_sql -e "STOP SLAVE SQL_THREAD;" 2>/dev/null || true
+  if ! clear_local_kb_health_check_table "cleared-local-kb-health-check-after-duplicate"; then
+    mark_replication_pending
+    echo "WARNING: failed to repair kubeblocks health check duplicate; keeping roleProbe pending."
+    return 1
+  fi
+  local_sql -e "START SLAVE SQL_THREAD;" 2>/dev/null || true
+  return 0
 }
 
 # Wait for the primary service endpoint to accept connections.
@@ -442,11 +478,30 @@ setup_replication() {
     return 1
   fi
 
-  if ! prepare_fresh_replica_for_binlog_start "${local_gtid}"; then
-    return 1
-  fi
-
-  if ! local_sql -e "
+  if [ -z "${local_gtid}" ]; then
+    if ! local_sql -e "
+STOP SLAVE;
+CHANGE MASTER TO
+  MASTER_HOST='${PRIMARY_HOST}',
+  MASTER_USER='${MARIADB_ROOT_USER}',
+  MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+  MASTER_USE_GTID=slave_pos,
+  MASTER_CONNECT_RETRY=10;
+START SLAVE IO_THREAD;
+"; then
+      echo "CHANGE MASTER TO or START SLAVE IO_THREAD failed. Keeping roleProbe pending."
+      return 1
+    fi
+    if ! prepare_fresh_replica_for_sql_thread_start "${local_gtid}"; then
+      return 1
+    fi
+    if ! local_sql -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
+      mark_replication_pending
+      echo "START SLAVE SQL_THREAD failed. Keeping roleProbe pending."
+      return 1
+    fi
+  else
+    if ! local_sql -e "
 STOP SLAVE;
 CHANGE MASTER TO
   MASTER_HOST='${PRIMARY_HOST}',
@@ -456,8 +511,9 @@ CHANGE MASTER TO
   MASTER_CONNECT_RETRY=10;
 START SLAVE;
 "; then
-    echo "CHANGE MASTER TO failed. Keeping roleProbe pending."
-    return 1
+      echo "CHANGE MASTER TO failed. Keeping roleProbe pending."
+      return 1
+    fi
   fi
   if [ -z "$(local_sql -e "SHOW SLAVE STATUS;" 2>/dev/null)" ]; then
     echo "CHANGE MASTER TO did not store slave config. Keeping roleProbe pending."
@@ -474,6 +530,14 @@ START SLAVE;
     mark_replication_ready
     echo "Replication started via ${ACTIVE_PRIMARY_HOST}."
     return 0
+  fi
+  if repair_kb_health_check_duplicate "${slave_status_verbose}"; then
+    slave_status_verbose=$(query_slave_status_verbose)
+    if slave_status_is_ready_for_rejoin "${slave_status_verbose}"; then
+      mark_replication_ready
+      echo "Replication started via ${ACTIVE_PRIMARY_HOST} after repairing kubeblocks health check duplicate."
+      return 0
+    fi
   fi
   if slave_status_has_gtid_out_of_order "${slave_status_verbose}"; then
     if fail_closed_for_gtid_divergence; then
