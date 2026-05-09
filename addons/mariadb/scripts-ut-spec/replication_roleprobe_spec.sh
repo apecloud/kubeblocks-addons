@@ -294,6 +294,8 @@ Last_SQL_Errno: 0"
         The output should eq "secondary"
         The contents of file "${TEST_DIR}/mariadb-sql.log" should include "REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'root'@'%'"
         The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'root'@'%'"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT BINLOG MONITOR ON *.* TO 'root'@'%'"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT SLAVE MONITOR ON *.* TO 'root'@'%'"
         The contents of file "${TEST_DIR}/.remote-root-fence-role" should eq "secondary"
       End
     End
