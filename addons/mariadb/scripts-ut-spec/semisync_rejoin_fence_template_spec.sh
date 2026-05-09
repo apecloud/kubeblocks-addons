@@ -21,6 +21,13 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     ' "$(template_file)"
   }
 
+  wait_loop_queries_primary_before_reconcile() {
+    primary_query_line="$(grep -n 'PRIMARY_SID=$(timeout 10 mariadb' "$(template_file)" | tail -1 | cut -d: -f1)"
+    reconcile_line="$(grep -n 'reconcile_sql_listener_for_syncer_primary_once || true' "$(template_file)" | tail -1 | cut -d: -f1)"
+    [ -n "${primary_query_line}" ] && [ -n "${reconcile_line}" ] || return 1
+    [ "${primary_query_line}" -lt "${reconcile_line}" ]
+  }
+
   It "declares an internal local admin before fencing user-facing root"
     When call template_contains 'MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"'
     The status should be success
@@ -88,6 +95,23 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     When call template_contains "lock_local_root_writes \"wait-primary-loop-entry\""
     The status should be success
     The output should include "wait-primary-loop-entry"
+  End
+
+  It "queries the Primary Service before accepting syncer primary in the wait loop"
+    When call wait_loop_queries_primary_before_reconcile
+    The status should be success
+  End
+
+  It "defers fresh non-pod0 syncer primary promotion during bootstrap grace"
+    When call template_contains "runtime-primary-listener-reconcile-defer reason=fresh-bootstrap-grace"
+    The status should be success
+    The output should include "fresh-bootstrap-grace"
+  End
+
+  It "defers syncer primary promotion when the Primary Service already reaches a peer"
+    When call template_contains "runtime-primary-listener-reconcile-defer reason=primary-service-routes-to-peer"
+    The status should be success
+    The output should include "primary-service-routes-to-peer"
   End
 
   It "keeps no-primary paths locally fenced"
