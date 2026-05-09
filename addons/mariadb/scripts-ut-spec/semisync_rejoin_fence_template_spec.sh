@@ -124,8 +124,25 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The status should be success
   End
 
-  It "defines fresh replica health check cleanup before binlog-start replication"
-    When call function_contains "prepare_fresh_replica_for_binlog_start" "DROP TABLE IF EXISTS kubeblocks.kb_health_check"
+  It "defines fresh replica health check cleanup before SQL-thread replication"
+    When call function_contains "clear_local_kb_health_check_table" "DROP TABLE IF EXISTS kubeblocks.kb_health_check"
+    The status should be success
+  End
+
+  It "starts fresh replica IO before local health cleanup"
+    When call template_contains "START SLAVE IO_THREAD;"
+    The status should be success
+    The output should include "START SLAVE IO_THREAD"
+  End
+
+  It "starts fresh replica SQL after local health cleanup"
+    When call template_contains "START SLAVE SQL_THREAD;"
+    The status should be success
+    The output should include "START SLAVE SQL_THREAD"
+  End
+
+  It "repairs kubeblocks health check duplicate before publishing replica readiness"
+    When call function_contains "repair_kb_health_check_duplicate" "cleared-local-kb-health-check-after-duplicate"
     The status should be success
   End
 

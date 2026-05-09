@@ -178,8 +178,8 @@ EOF
         The output should include "Replication started"
       End
 
-      It "clears the local KubeBlocks health check table before starting replication"
-        echo "" > "${TEST_DIR}/call-log"
+      It "clears the local KubeBlocks health check table after starting IO and before starting SQL"
+        : > "${TEST_DIR}/call-log"
         primary_sql() {
           case "$*" in
             *"gtid_binlog_pos"*) echo "0-1-100" ;;
@@ -187,8 +187,9 @@ EOF
         }
         local_sql() {
           case "$*" in
+            *"START SLAVE IO_THREAD"*) echo "change-master" >> "${TEST_DIR}/call-log"; echo "start-io" >> "${TEST_DIR}/call-log" ;;
             *"DROP TABLE IF EXISTS kubeblocks.kb_health_check"*) echo "cleanup" >> "${TEST_DIR}/call-log" ;;
-            *"CHANGE MASTER TO"*) echo "change-master" >> "${TEST_DIR}/call-log" ;;
+            *"START SLAVE SQL_THREAD"*) echo "start-sql" >> "${TEST_DIR}/call-log" ;;
             *"gtid_slave_pos;"*) echo "" ;;
             *"SHOW SLAVE STATUS"*) echo "some-slave-status-row" ;;
             *) : ;;
@@ -203,10 +204,59 @@ Last_SQL_Errno: 0
 EOF
         }
         When call setup_replication
-        The contents of file "${TEST_DIR}/call-log" should include "cleanup"
-        The contents of file "${TEST_DIR}/call-log" should include "change-master"
+        The contents of file "${TEST_DIR}/call-log" should eq "change-master
+start-io
+cleanup
+start-sql"
         The file "${TEST_DIR}/log/fresh-replica-health-check-cleanup.log" should be file
         The output should include "Cleared local kubeblocks health check table"
+      End
+
+      It "repairs a local health check duplicate and restarts the SQL thread once"
+        : > "${TEST_DIR}/call-log"
+        query_count=0
+        primary_sql() {
+          case "$*" in
+            *"gtid_binlog_pos"*) echo "0-1-100" ;;
+          esac
+        }
+        local_sql() {
+          case "$*" in
+            *"START SLAVE IO_THREAD"*) echo "start-io" >> "${TEST_DIR}/call-log" ;;
+            *"DROP TABLE IF EXISTS kubeblocks.kb_health_check"*) echo "cleanup" >> "${TEST_DIR}/call-log" ;;
+            *"STOP SLAVE SQL_THREAD"*) echo "stop-sql" >> "${TEST_DIR}/call-log" ;;
+            *"START SLAVE SQL_THREAD"*) echo "start-sql" >> "${TEST_DIR}/call-log" ;;
+            *"gtid_slave_pos;"*) echo "" ;;
+            *"SHOW SLAVE STATUS"*) echo "some-slave-status-row" ;;
+            *) : ;;
+          esac
+        }
+        query_slave_status_verbose() {
+          query_count=$(cat "${TEST_DIR}/query-count" 2>/dev/null || echo 0)
+          query_count=$((query_count + 1))
+          printf "%s" "${query_count}" > "${TEST_DIR}/query-count"
+          if [ "${query_count}" -eq 1 ]; then
+            cat <<'EOF'
+Slave_IO_Running: Yes
+Slave_SQL_Running: No
+Last_IO_Errno: 0
+Last_SQL_Errno: 1062
+Last_SQL_Error: Error 'Duplicate entry' on table 'kubeblocks.kb_health_check'
+EOF
+          else
+            cat <<'EOF'
+Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Last_IO_Errno: 0
+Last_SQL_Errno: 0
+EOF
+          fi
+        }
+        When call setup_replication
+        The contents of file "${TEST_DIR}/call-log" should include "stop-sql"
+        The contents of file "${TEST_DIR}/call-log" should include "cleanup"
+        The contents of file "${TEST_DIR}/call-log" should include "start-sql"
+        The output should include "after repairing kubeblocks health check duplicate"
       End
 
       It "removes the .replication-pending flag"

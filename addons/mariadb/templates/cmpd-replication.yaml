@@ -570,6 +570,12 @@ spec:
               printf "%s" "${slave_status}" | grep -q "Last_SQL_Errno: 1950" || return 1
               printf "%s" "${slave_status}" | grep -qi "out-of-order" || return 1
             }
+            slave_status_has_kb_health_check_duplicate() {
+              local slave_status="$1"
+              [ -n "${slave_status}" ] || return 1
+              printf "%s" "${slave_status}" | grep -qE "Last_SQL_Errno: 1062|Last_Errno: 1062" || return 1
+              printf "%s" "${slave_status}" | grep -q "kubeblocks.kb_health_check" || return 1
+            }
             finalize_replication_rejoin_ready_gate() {
               local slave_status="$1" success_message="$2"
               REJOIN_FAILURE_RESTART="false"
@@ -595,6 +601,11 @@ spec:
                 if slave_status_has_gtid_out_of_order "${slave_status}"; then
                   break
                 fi
+                if repair_kb_health_check_duplicate "${slave_status}"; then
+                  sleep 3
+                  slave_status=$(query_slave_status_verbose)
+                  continue
+                fi
                 sleep 3
                 slave_status=$(query_slave_status_verbose)
               done
@@ -619,10 +630,8 @@ spec:
               fi
               return 1
             }
-            prepare_fresh_replica_for_binlog_start() {
-              local local_gtid evidence_file
-              local_gtid=$("${LOCAL[@]}" -e "SELECT @@global.gtid_slave_pos;" 2>/dev/null || echo "")
-              [ -z "${local_gtid}" ] || return 0
+            clear_local_kb_health_check_table() {
+              local decision="$1" evidence_file table_count
               if "${LOCAL[@]}" -e "
                 SET SESSION sql_log_bin=0;
                 SET @kb_health_check_cleanup_sql = IF(
@@ -637,21 +646,51 @@ spec:
               " 2>/dev/null; then
                 evidence_file="{{ .Values.dataMountPath }}/log/fresh-replica-health-check-cleanup.log"
                 mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+                table_count=$("${LOCAL[@]}" -N -s -e "
+                  SELECT COUNT(*)
+                  FROM information_schema.TABLES
+                  WHERE TABLE_SCHEMA = 'kubeblocks'
+                    AND TABLE_NAME = 'kb_health_check';
+                " 2>/dev/null || echo "unknown")
                 {
                   printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-                  printf 'decision=cleared-local-kb-health-check-before-fresh-replication\n'
+                  printf 'decision=%s\n' "${decision}"
                   printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
                   printf 'active_primary_host=%s\n' "${ACTIVE_PRIMARY_HOST:-unknown}"
-                  printf 'local_gtid_slave_pos=<empty>\n'
+                  printf 'health_table_after_cleanup=%s\n' "${table_count}"
                   printf '\n'
                 } >> "${evidence_file}" 2>/dev/null || true
-                echo "Cleared local kubeblocks health check table before fresh replica starts replication."
+                echo "Cleared local kubeblocks health check table (${decision})."
+                return 0
+              fi
+              return 1
+            }
+            prepare_fresh_replica_for_sql_thread_start() {
+              local local_gtid="${1:-}"
+              [ -z "${local_gtid}" ] || return 0
+              if clear_local_kb_health_check_table "cleared-local-kb-health-check-before-fresh-sql-thread"; then
                 return 0
               fi
               mark_replication_pending
               "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
-              echo "WARNING: failed to clear local kubeblocks health check table before fresh replication; staying read-only pending recovery."
+              echo "WARNING: failed to clear local kubeblocks health check table before fresh SQL thread starts; staying read-only pending recovery."
               return 1
+            }
+            repair_kb_health_check_duplicate() {
+              local slave_status="$1"
+              if ! slave_status_has_kb_health_check_duplicate "${slave_status}"; then
+                return 1
+              fi
+              trace_log "fresh-kb-health-check-duplicate-repair"
+              "${LOCAL[@]}" -e "STOP SLAVE SQL_THREAD;" 2>/dev/null || true
+              if ! clear_local_kb_health_check_table "cleared-local-kb-health-check-after-duplicate"; then
+                mark_replication_pending
+                "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
+                echo "WARNING: failed to repair kubeblocks health check duplicate; staying read-only pending recovery."
+                return 1
+              fi
+              "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null || true
+              return 0
             }
 
             HAS_EXISTING_DATA=false
@@ -806,19 +845,41 @@ spec:
                 # Fresh pod (empty local gtid_slave_pos): replicate from beginning to get full schema+data.
                 # Rejoining pod with existing datadir: preserve local gtid_slave_pos so missing transactions
                 # are replayed from the local recovery point instead of being skipped.
-                if ! prepare_fresh_replica_for_binlog_start; then
-                  trace_log "replication-rejoin-waiting reason=fresh-health-check-cleanup-failed"
-                  exit 1
+                LOCAL_GTID=$("${LOCAL[@]}" -e "SELECT @@global.gtid_slave_pos;" 2>/dev/null || echo "")
+                if [ -z "${LOCAL_GTID}" ]; then
+                  if ! "${LOCAL[@]}" -e "
+                    STOP SLAVE;
+                    CHANGE MASTER TO
+                      MASTER_HOST='${ACTIVE_PRIMARY_HOST}',
+                      MASTER_USER='${MARIADB_ROOT_USER}',
+                      MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+                      MASTER_USE_GTID=slave_pos;
+                    START SLAVE IO_THREAD;
+                  " 2>/dev/null; then
+                    trace_log "replication-rejoin-waiting reason=start-io-thread-failed"
+                    exit 1
+                  fi
+                  if ! prepare_fresh_replica_for_sql_thread_start "${LOCAL_GTID}"; then
+                    trace_log "replication-rejoin-waiting reason=fresh-health-check-cleanup-failed"
+                    exit 1
+                  fi
+                  if ! "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
+                    "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null || true
+                    mark_replication_pending
+                    trace_log "replication-rejoin-waiting reason=start-sql-thread-failed"
+                    exit 1
+                  fi
+                else
+                  "${LOCAL[@]}" -e "
+                    STOP SLAVE;
+                    CHANGE MASTER TO
+                      MASTER_HOST='${ACTIVE_PRIMARY_HOST}',
+                      MASTER_USER='${MARIADB_ROOT_USER}',
+                      MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+                      MASTER_USE_GTID=slave_pos;
+                    START SLAVE;
+                  " 2>/dev/null || true
                 fi
-                "${LOCAL[@]}" -e "
-                  STOP SLAVE;
-                  CHANGE MASTER TO
-                    MASTER_HOST='${ACTIVE_PRIMARY_HOST}',
-                    MASTER_USER='${MARIADB_ROOT_USER}',
-                    MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
-                    MASTER_USE_GTID=slave_pos;
-                  START SLAVE;
-                " 2>/dev/null || true
                 SLAVE_STATUS_CHECK=$(query_slave_status_verbose)
                 if [ -n "${SLAVE_STATUS_CHECK}" ]; then
                   if ! finalize_replication_rejoin_ready_gate \

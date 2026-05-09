@@ -523,6 +523,18 @@ spec:
                 *) return 1 ;;
               esac
             }
+            slave_status_has_kb_health_check_duplicate() {
+              local slave_status="$1"
+              [ -n "${slave_status}" ] || return 1
+              case "${slave_status}" in
+                *"Last_SQL_Errno: 1062"* | *"Last_Errno: 1062"*) ;;
+                *) return 1 ;;
+              esac
+              case "${slave_status}" in
+                *"kubeblocks.kb_health_check"*) ;;
+                *) return 1 ;;
+              esac
+            }
             wait_for_replication_healthy() {
               local label="$1"
               local timeout_seconds="${2:-120}"
@@ -537,6 +549,10 @@ spec:
                   elapsed=$(($(date +%s) - start))
                   prestop_watchdog_log "rejoin-replication-healthy label=${label} elapsed=${elapsed}s"
                   return 0
+                fi
+                if repair_kb_health_check_duplicate "${label}" "${slave_status}"; then
+                  sleep "${sleep_seconds}"
+                  continue
                 fi
                 now="$(date +%s)"
                 elapsed=$((now - start))
@@ -590,10 +606,8 @@ spec:
               mark_replication_ready
               return 0
             }
-            prepare_fresh_replica_for_binlog_start() {
-              local local_gtid evidence_file
-              local_gtid=$("${LOCAL[@]}" -e "SELECT @@global.gtid_slave_pos;" 2>/dev/null || echo "")
-              [ -z "${local_gtid}" ] || return 0
+            clear_local_kb_health_check_table() {
+              local decision="$1" evidence_file table_count
               if "${LOCAL[@]}" -e "
                 SET SESSION sql_log_bin=0;
                 SET @kb_health_check_cleanup_sql = IF(
@@ -608,22 +622,53 @@ spec:
               " 2>/dev/null; then
                 evidence_file="{{ .Values.dataMountPath }}/log/fresh-replica-health-check-cleanup.log"
                 mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+                table_count=$("${LOCAL[@]}" -N -s -e "
+                  SELECT COUNT(*)
+                  FROM information_schema.TABLES
+                  WHERE TABLE_SCHEMA = 'kubeblocks'
+                    AND TABLE_NAME = 'kb_health_check';
+                " 2>/dev/null || echo "unknown")
                 {
                   printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-                  printf 'decision=cleared-local-kb-health-check-before-fresh-replication\n'
+                  printf 'decision=%s\n' "${decision}"
                   printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
                   printf 'primary_host=%s\n' "${PRIMARY_HOST:-unknown}"
-                  printf 'local_gtid_slave_pos=<empty>\n'
+                  printf 'health_table_after_cleanup=%s\n' "${table_count}"
                   printf '\n'
                 } >> "${evidence_file}" 2>/dev/null || true
-                echo "Cleared local kubeblocks health check table before fresh replica starts replication."
+                echo "Cleared local kubeblocks health check table (${decision})."
+                return 0
+              fi
+              return 1
+            }
+            prepare_fresh_replica_for_sql_thread_start() {
+              local local_gtid="${1:-}"
+              [ -z "${local_gtid}" ] || return 0
+              if clear_local_kb_health_check_table "cleared-local-kb-health-check-before-fresh-sql-thread"; then
                 return 0
               fi
               mark_replication_pending
               set_fail_closed_read_only "fresh-health-check-cleanup-failed" || true
               lock_local_root_writes "fresh-health-check-cleanup-failed" || true
-              echo "WARNING: failed to clear local kubeblocks health check table before fresh replication; keeping roleProbe pending."
+              echo "WARNING: failed to clear local kubeblocks health check table before fresh SQL thread starts; keeping roleProbe pending."
               return 1
+            }
+            repair_kb_health_check_duplicate() {
+              local label="$1" slave_status="$2"
+              if ! slave_status_has_kb_health_check_duplicate "${slave_status}"; then
+                return 1
+              fi
+              prestop_watchdog_log "fresh-kb-health-check-duplicate-repair label=${label}"
+              "${LOCAL[@]}" -e "STOP SLAVE SQL_THREAD;" 2>/dev/null || true
+              if ! clear_local_kb_health_check_table "cleared-local-kb-health-check-after-duplicate"; then
+                mark_replication_pending
+                set_fail_closed_read_only "fresh-health-check-duplicate-repair-failed" || true
+                lock_local_root_writes "fresh-health-check-duplicate-repair-failed" || true
+                echo "WARNING: failed to repair kubeblocks health check duplicate; keeping roleProbe pending."
+                return 1
+              fi
+              "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null || true
+              return 0
             }
             mariadbd_pids() {
               if command -v pidof >/dev/null 2>&1; then
@@ -946,20 +991,46 @@ spec:
                 fi
                 MASTER_GTID=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
                   -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@global.gtid_binlog_pos;" 2>/dev/null)
-                if ! prepare_fresh_replica_for_binlog_start; then
-                  sleep 5
-                  continue
+                LOCAL_GTID=$("${LOCAL[@]}" -e "SELECT @@global.gtid_slave_pos;" 2>/dev/null || echo "")
+                if [ -z "${LOCAL_GTID}" ]; then
+                  if ! "${LOCAL[@]}" -e "
+                    STOP SLAVE;
+                    CHANGE MASTER TO
+                      MASTER_HOST='${PRIMARY_HOST}',
+                      MASTER_USER='${MARIADB_ROOT_USER}',
+                      MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+                      MASTER_USE_GTID=slave_pos,
+                      MASTER_CONNECT_RETRY=10;
+                    START SLAVE IO_THREAD;
+                  " 2>/dev/null; then
+                    echo "CHANGE MASTER TO or START SLAVE IO_THREAD failed; retrying in 5s"
+                    sleep 5
+                    continue
+                  fi
+                  if ! prepare_fresh_replica_for_sql_thread_start "${LOCAL_GTID}"; then
+                    sleep 5
+                    continue
+                  fi
+                  if ! "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
+                    mark_replication_pending
+                    set_fail_closed_read_only "fresh-sql-thread-start-failed" || true
+                    lock_local_root_writes "fresh-sql-thread-start-failed" || true
+                    echo "START SLAVE SQL_THREAD failed; keeping roleProbe pending."
+                    sleep 5
+                    continue
+                  fi
+                else
+                  "${LOCAL[@]}" -e "
+                    STOP SLAVE;
+                    CHANGE MASTER TO
+                      MASTER_HOST='${PRIMARY_HOST}',
+                      MASTER_USER='${MARIADB_ROOT_USER}',
+                      MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+                      MASTER_USE_GTID=slave_pos,
+                      MASTER_CONNECT_RETRY=10;
+                    START SLAVE;
+                  " 2>/dev/null || true
                 fi
-                "${LOCAL[@]}" -e "
-                  STOP SLAVE;
-                  CHANGE MASTER TO
-                    MASTER_HOST='${PRIMARY_HOST}',
-                    MASTER_USER='${MARIADB_ROOT_USER}',
-                    MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
-                    MASTER_USE_GTID=slave_pos,
-                    MASTER_CONNECT_RETRY=10;
-                  START SLAVE;
-                " 2>/dev/null || true
                 # Step 3: verify CHANGE MASTER TO actually stored config.
                 # If it failed (e.g. auth error, primary briefly unreachable), retry from step 1
                 # after a short backoff. Only remove .replication-pending once slave config is
