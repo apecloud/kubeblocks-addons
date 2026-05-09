@@ -34,6 +34,27 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The output should include "MARIADB_INTERNAL_ROOT_USER"
   End
 
+  It "waits for internal admin readiness before startup role decision"
+    When call template_contains 'wait_for_internal_local_admin "startup-before-role-decision"'
+    The status should be success
+    The output should include "startup-before-role-decision"
+  End
+
+  It "does not ignore startup internal admin setup failure"
+    When call template_contains 'ensure_internal_local_admin "startup-before-role-decision" || true'
+    The status should be failure
+  End
+
+  It "selects internal admin only after a successful probe"
+    When call function_contains "wait_for_internal_local_admin" "probe_internal_local_admin"
+    The status should be success
+  End
+
+  It "keeps role publishing pending while internal admin is unavailable"
+    When call function_contains "wait_for_internal_local_admin" "mark_replication_pending"
+    The status should be success
+  End
+
   It "defines the local root state helper"
     When call template_contains "set_local_root_account_state()"
     The status should be success
