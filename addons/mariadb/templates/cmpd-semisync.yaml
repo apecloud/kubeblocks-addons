@@ -590,6 +590,41 @@ spec:
               mark_replication_ready
               return 0
             }
+            prepare_fresh_replica_for_binlog_start() {
+              local local_gtid evidence_file
+              local_gtid=$("${LOCAL[@]}" -e "SELECT @@global.gtid_slave_pos;" 2>/dev/null || echo "")
+              [ -z "${local_gtid}" ] || return 0
+              if "${LOCAL[@]}" -e "
+                SET SESSION sql_log_bin=0;
+                SET @kb_health_check_cleanup_sql = IF(
+                  (SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = 'kubeblocks') > 0,
+                  'DROP TABLE IF EXISTS kubeblocks.kb_health_check',
+                  'SELECT 1'
+                );
+                PREPARE kb_health_check_cleanup FROM @kb_health_check_cleanup_sql;
+                EXECUTE kb_health_check_cleanup;
+                DEALLOCATE PREPARE kb_health_check_cleanup;
+                SET SESSION sql_log_bin=1;
+              " 2>/dev/null; then
+                evidence_file="{{ .Values.dataMountPath }}/log/fresh-replica-health-check-cleanup.log"
+                mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+                {
+                  printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                  printf 'decision=cleared-local-kb-health-check-before-fresh-replication\n'
+                  printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
+                  printf 'primary_host=%s\n' "${PRIMARY_HOST:-unknown}"
+                  printf 'local_gtid_slave_pos=<empty>\n'
+                  printf '\n'
+                } >> "${evidence_file}" 2>/dev/null || true
+                echo "Cleared local kubeblocks health check table before fresh replica starts replication."
+                return 0
+              fi
+              mark_replication_pending
+              set_fail_closed_read_only "fresh-health-check-cleanup-failed" || true
+              lock_local_root_writes "fresh-health-check-cleanup-failed" || true
+              echo "WARNING: failed to clear local kubeblocks health check table before fresh replication; keeping roleProbe pending."
+              return 1
+            }
             mariadbd_pids() {
               if command -v pidof >/dev/null 2>&1; then
                 pidof mariadbd 2>/dev/null || true
@@ -911,6 +946,10 @@ spec:
                 fi
                 MASTER_GTID=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
                   -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@global.gtid_binlog_pos;" 2>/dev/null)
+                if ! prepare_fresh_replica_for_binlog_start; then
+                  sleep 5
+                  continue
+                fi
                 "${LOCAL[@]}" -e "
                   STOP SLAVE;
                   CHANGE MASTER TO
