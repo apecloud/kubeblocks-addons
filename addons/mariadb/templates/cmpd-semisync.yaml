@@ -209,6 +209,7 @@ spec:
               return 1
             }
             set_replica_read_only() {
+              rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
               lock_remote_root_writes "replica-read-only" || true
               set_fail_closed_read_only "replica-read-only"
               lock_local_root_writes "replica-read-only" || true
@@ -1175,6 +1176,13 @@ spec:
                 echo "Starting as primary (pod-0 with stale slave config, no primary found)"
               else
                 while true; do
+                  reconcile_sql_listener_for_syncer_primary_once || true
+                  if [ ! -f "{{ .Values.dataMountPath }}/master.info" ] && \
+                     [ -f "{{ .Values.dataMountPath }}/.primary-read-write-ready" ] && \
+                     [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+                    echo "Existing slave config accepted syncer primary promotion"
+                    break
+                  fi
                   if publish_replica_after_rejoin_ready "existing-slave-config"; then
                     echo "Resumed replication from existing slave config"
                     break

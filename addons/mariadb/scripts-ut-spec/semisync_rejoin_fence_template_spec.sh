@@ -117,6 +117,11 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The status should be success
   End
 
+  It "clears stale primary readiness before publishing a replica"
+    When call function_contains "set_replica_read_only" ".primary-read-write-ready"
+    The status should be success
+  End
+
   It "unlocks local root before publishing a primary as writable"
     When call function_contains "set_primary_read_write" "unlock_local_root_writes \"primary-read-write\""
     The status should be success
@@ -186,6 +191,12 @@ Describe "cmpd-semisync.yaml rejoin fence template"
   It "repairs a syncer primary whose SQL listener is exposed before local write access is ready"
     When call function_contains "reconcile_sql_listener_for_syncer_primary_once" "missing-primary-read-write-ready"
     The status should be success
+  End
+
+  It "lets an existing slave config accept syncer primary promotion before retrying replica recovery"
+    When call template_contains "Existing slave config accepted syncer primary promotion"
+    The status should be success
+    The output should include "Existing slave config accepted syncer primary promotion"
   End
 
   It "reconciles syncer secondary into fail-closed local SQL state"
