@@ -47,8 +47,9 @@ services:
     spec:
       type: {{ .Values.clientService.type }}
       ports:
-        - port: {{ .Values.clientService.port }}
-          targetPort: 2379
+        - name: client
+          port: {{ .Values.clientService.port }}
+          targetPort: client
           {{- if .Values.clientService.nodePort }}
           nodePort: {{ .Values.clientService.nodePort }}
           {{- end }}
