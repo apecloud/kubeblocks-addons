@@ -352,6 +352,30 @@ spec:
             sql_quote() {
               printf "%s" "$1" | sed "s/'/''/g"
             }
+            grant_internal_admin_runtime_privileges() {
+              local label="${1:-internal-local-admin-runtime-privileges}"
+              local user host privilege sql
+              user="$(sql_quote "${MARIADB_INTERNAL_ROOT_USER}")"
+              for host in localhost 127.0.0.1; do
+                for privilege in "REPLICATION SLAVE ADMIN" "REPLICATION MASTER ADMIN" "BINLOG ADMIN" "BINLOG MONITOR" "SLAVE MONITOR" "CONNECTION ADMIN" "READ_ONLY ADMIN"; do
+                  sql="
+                    SET SESSION sql_log_bin=0;
+                    GRANT ${privilege} ON *.* TO '${user}'@'${host}';
+                    FLUSH PRIVILEGES;
+                    SET SESSION sql_log_bin=1;
+                  "
+                  if "${ROOT_LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                    prestop_watchdog_log "internal-local-admin-runtime-privilege privilege=${privilege} label=${label} host=${host} via=root rc=0"
+                    continue
+                  fi
+                  if "${INTERNAL_LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                    prestop_watchdog_log "internal-local-admin-runtime-privilege privilege=${privilege} label=${label} host=${host} via=internal rc=0"
+                    continue
+                  fi
+                  prestop_watchdog_log "internal-local-admin-runtime-privilege privilege=${privilege} label=${label} host=${host} rc=1"
+                done
+              done
+            }
             ensure_internal_local_admin() {
               local label="${1:-internal-local-admin}"
               local user password sql
@@ -372,10 +396,12 @@ spec:
                 SET SESSION sql_log_bin=1;
               "
               if "${ROOT_LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                grant_internal_admin_runtime_privileges "${label}"
                 prestop_watchdog_log "internal-local-admin label=${label} via=root rc=0"
                 return 0
               fi
               if "${INTERNAL_LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                grant_internal_admin_runtime_privileges "${label}"
                 prestop_watchdog_log "internal-local-admin label=${label} via=internal rc=0"
                 return 0
               fi
@@ -389,6 +415,30 @@ spec:
               prestop_watchdog_log "internal-local-admin-probe rc=1"
               return 1
             }
+            internal_local_admin_has_required_privileges() {
+              local semisync_value
+              semisync_value=$("${INTERNAL_LOCAL[@]}" -e "SELECT @@global.rpl_semi_sync_slave_enabled;" 2>/dev/null | tr -d '\r' | awk 'NF {print $1; exit}')
+              case "${semisync_value}" in
+                ON|on)
+                  semisync_value=1
+                  ;;
+                OFF|off)
+                  semisync_value=0
+                  ;;
+                0|1)
+                  ;;
+                *)
+                  prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_SLAVE_ADMIN probe=read-semisync-value rc=1 value=${semisync_value:-<empty>}"
+                  return 1
+                  ;;
+              esac
+              if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_slave_enabled=${semisync_value};" >/dev/null 2>&1; then
+                prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_SLAVE_ADMIN probe=set-semisync-same-value rc=0"
+                return 0
+              fi
+              prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_SLAVE_ADMIN probe=set-semisync-same-value rc=1"
+              return 1
+            }
             wait_for_internal_local_admin() {
               local label="${1:-internal-local-admin-ready}"
               local sleep_seconds="${2:-2}"
@@ -397,7 +447,7 @@ spec:
               start="$(date +%s)"
               next_log=0
               while true; do
-                if ensure_internal_local_admin "${label}" && probe_internal_local_admin; then
+                if ensure_internal_local_admin "${label}" && probe_internal_local_admin && internal_local_admin_has_required_privileges; then
                   LOCAL=("${INTERNAL_LOCAL[@]}")
                   now="$(date +%s)"
                   elapsed=$((now - start))
@@ -856,9 +906,25 @@ spec:
               mark_replication_ready
               prestop_watchdog_log "runtime-primary-listener-reconcile-complete role=${role}"
             }
+            reconcile_sql_listener_for_syncer_secondary_once() {
+              local role slave_status
+              [ ! -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ] || return 0
+              role="$(query_local_syncer_role || true)"
+              [ "${role}" = "secondary" ] || return 0
+              set_replica_read_only || true
+              slave_status="$(query_slave_status_verbose || true)"
+              if slave_status_is_healthy "${slave_status}"; then
+                mark_replication_ready
+                prestop_watchdog_log "runtime-secondary-listener-reconcile-ready role=${role}"
+                return 0
+              fi
+              mark_replication_pending
+              prestop_watchdog_log "runtime-secondary-listener-reconcile-pending role=${role}"
+            }
             wait_for_mariadbd_with_role_reconcile() {
               local rc=0
               while kill -0 "${MARIADB_PID}" 2>/dev/null; do
+                reconcile_sql_listener_for_syncer_secondary_once || true
                 reconcile_sql_listener_for_syncer_primary_once || true
                 sleep 1
               done

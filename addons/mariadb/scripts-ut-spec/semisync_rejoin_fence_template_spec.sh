@@ -50,6 +50,16 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The status should be success
   End
 
+  It "grants internal admin the semisync promote dynamic privilege"
+    When call function_contains "grant_internal_admin_runtime_privileges" "REPLICATION SLAVE ADMIN"
+    The status should be success
+  End
+
+  It "requires internal admin promote privilege before role publishing"
+    When call function_contains "wait_for_internal_local_admin" "internal_local_admin_has_required_privileges"
+    The status should be success
+  End
+
   It "keeps role publishing pending while internal admin is unavailable"
     When call function_contains "wait_for_internal_local_admin" "mark_replication_pending"
     The status should be success
@@ -133,6 +143,21 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     When call template_contains "runtime-primary-listener-reconcile-defer reason=primary-service-routes-to-peer"
     The status should be success
     The output should include "primary-service-routes-to-peer"
+  End
+
+  It "reconciles syncer secondary into fail-closed local SQL state"
+    When call function_contains "reconcile_sql_listener_for_syncer_secondary_once" "set_replica_read_only"
+    The status should be success
+  End
+
+  It "keeps syncer secondary unpublished until replication is healthy"
+    When call function_contains "reconcile_sql_listener_for_syncer_secondary_once" "mark_replication_pending"
+    The status should be success
+  End
+
+  It "runs secondary reconciliation in the runtime wait loop"
+    When call function_contains "wait_for_mariadbd_with_role_reconcile" "reconcile_sql_listener_for_syncer_secondary_once"
+    The status should be success
   End
 
   It "keeps no-primary paths locally fenced"
