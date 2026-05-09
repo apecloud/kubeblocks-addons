@@ -67,6 +67,23 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The output should include "startup-before-role-decision"
   End
 
+  It "pre-locks local root before remote-root startup fencing"
+    When call template_contains "lock_local_root_writes \"startup-before-role-decision-pre-remote\""
+    The status should be success
+    The output should include "startup-before-role-decision-pre-remote"
+  End
+
+  It "does not unlock local root as a remote-root helper side effect"
+    When call template_contains "ensure_local_root_accounts"
+    The status should be failure
+  End
+
+  It "locks local root persistently in preStop"
+    When call template_contains "lock_local_root_for_prestop \"prestop\" \"socket\""
+    The status should be success
+    The output should include "lock_local_root_for_prestop"
+  End
+
   It "keeps unresolved wait-loop roles locally fenced"
     When call template_contains "lock_local_root_writes \"wait-primary-loop-entry\""
     The status should be success
