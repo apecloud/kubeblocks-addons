@@ -91,7 +91,8 @@ spec:
               {{ .Values.dataMountPath }}/.prestop-fence-complete \
               {{ .Values.dataMountPath }}/.prestop-fence-failed
             rm -f {{ .Values.dataMountPath }}/.sql-listener-ready \
-              {{ .Values.dataMountPath }}/.remote-root-fence-role
+              {{ .Values.dataMountPath }}/.remote-root-fence-role \
+              {{ .Values.dataMountPath }}/.primary-read-write-ready
             touch {{ .Values.dataMountPath }}/.replication-pending
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-syncer
@@ -218,15 +219,29 @@ spec:
                 mark_replication_pending
                 return 1
               fi
-              unlock_local_root_writes "primary-read-write" || true
+              if ! unlock_local_root_writes "primary-read-write"; then
+                rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
+                prestop_watchdog_log "primary-read-write local-root-unlock rc=1"
+                return 1
+              fi
               unlock_remote_root_writes "primary-read-write" || true
               if "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null; then
+                touch {{ .Values.dataMountPath }}/.primary-read-write-ready
+                prestop_watchdog_log "primary-read-write rc=0"
                 return 0
               fi
-              "${LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null
+              if "${LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null; then
+                touch {{ .Values.dataMountPath }}/.primary-read-write-ready
+                prestop_watchdog_log "primary-read-write rc=0"
+                return 0
+              fi
+              rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
+              prestop_watchdog_log "primary-read-write rc=1"
+              return 1
             }
             mark_replication_pending() {
               rm -f {{ .Values.dataMountPath }}/.replication-ready
+              rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
               rm -f {{ .Values.dataMountPath }}/.sql-listener-ready
               touch {{ .Values.dataMountPath }}/.replication-pending
             }
@@ -416,7 +431,7 @@ spec:
               return 1
             }
             internal_local_admin_has_required_privileges() {
-              local semisync_master_value semisync_slave_value
+              local semisync_master_value semisync_slave_value read_only_value
               semisync_master_value=$("${INTERNAL_LOCAL[@]}" -e "SELECT @@global.rpl_semi_sync_master_enabled;" 2>/dev/null | tr -d '\r' | awk 'NF {print $1; exit}')
               case "${semisync_master_value}" in
                 ON|on)
@@ -455,9 +470,24 @@ spec:
               esac
               if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_slave_enabled=${semisync_slave_value};" >/dev/null 2>&1; then
                 prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_SLAVE_ADMIN probe=set-semisync-same-value rc=0"
+              else
+                prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_SLAVE_ADMIN probe=set-semisync-same-value rc=1"
+                return 1
+              fi
+              read_only_value=$("${INTERNAL_LOCAL[@]}" -e "SELECT UPPER(CAST(@@global.read_only AS CHAR));" 2>/dev/null | tr -d '\r' | awk 'NF {print $1; exit}')
+              case "${read_only_value}" in
+                0|1|ON|OFF|NO_LOCK|NO_LOCK_NO_ADMIN)
+                  ;;
+                *)
+                  prestop_watchdog_log "internal-local-admin-required-privilege privilege=READ_ONLY_ADMIN probe=read-read-only-value rc=1 value=${read_only_value:-<empty>}"
+                  return 1
+                  ;;
+              esac
+              if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = ${read_only_value};" >/dev/null 2>&1; then
+                prestop_watchdog_log "internal-local-admin-required-privilege privilege=READ_ONLY_ADMIN probe=set-read-only-same-value rc=0"
                 return 0
               fi
-              prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_SLAVE_ADMIN probe=set-semisync-same-value rc=1"
+              prestop_watchdog_log "internal-local-admin-required-privilege privilege=READ_ONLY_ADMIN probe=set-read-only-same-value rc=1"
               return 1
             }
             wait_for_internal_local_admin() {
@@ -536,6 +566,9 @@ spec:
                   "
                 fi
                 if "${LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                  if [ "${state}" = "LOCK" ]; then
+                    rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
+                  fi
                   prestop_watchdog_log "local-root-account-${state} mode=${mode} label=${label} host=${host} rc=0"
                   grant_optional_local_root_privileges "${user}" "${host}" "${label}"
                   continue
@@ -919,7 +952,16 @@ spec:
             reconcile_sql_listener_for_syncer_primary_once() {
               local now primary_sid role
               [ ! -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ] || return 0
-              [ ! -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] || return 0
+              if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+                role="$(query_local_syncer_role || true)"
+                [ "${role}" = "primary" ] || return 0
+                [ ! -f "{{ .Values.dataMountPath }}/.primary-read-write-ready" ] || return 0
+                prestop_watchdog_log "runtime-primary-listener-reconcile-repair-begin reason=missing-primary-read-write-ready role=${role}"
+                set_primary_read_write || return 1
+                mark_replication_ready
+                prestop_watchdog_log "runtime-primary-listener-reconcile-repair-complete role=${role}"
+                return 0
+              fi
               if [ "${POD_INDEX}" -gt 0 ] && [ ! -f "{{ .Values.dataMountPath }}/master.info" ]; then
                 now="$(date +%s)"
                 if [ "${now}" -lt "${SYNCER_PRIMARY_BOOTSTRAP_GRACE_UNTIL}" ]; then
