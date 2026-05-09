@@ -16,9 +16,9 @@
 # The local datadir state is authoritative for KubeBlocks pod role labels during
 # bootstrap. syncerctl/DCS role can lag or be empty before HA lease convergence,
 # which can transiently mark every pod secondary and empty the primary Service.
-# Primary selection still stays file-based; only secondary publication adds a
-# local MariaDB / replication truth gate so stale ready markers cannot keep a
-# broken replica published.
+# Primary selection still stays file-based. Semisync primary publication also
+# checks the local SQL listener and read_only state so a stale marker cannot keep
+# a fenced old primary in the Primary Service.
 #
 # NOTE: KubeBlocks roleProbe exec runs in the kbagent execution context. The
 # configured `container: mariadb` shares the target container's volume mounts,
@@ -211,6 +211,21 @@ primary_listener_ready() {
   esac
 }
 
+primary_read_write_ready() {
+  local read_only
+  [ "${MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY:-}" = "true" ] || return 0
+  if [ "${MARIADB_ROLEPROBE_SKIP_DB_READY:-}" = "true" ]; then
+    return 0
+  fi
+  read_only=$(local_sql -e "SELECT UPPER(CAST(@@global.read_only AS CHAR));" 2>/dev/null || true)
+  case "${read_only}" in
+    0|OFF)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 check_role() {
   # Before the startup command finishes role selection, do not publish a role.
   # Publishing "secondary" here causes secondary -> primary label flips for
@@ -235,6 +250,7 @@ check_role() {
     echo -n "secondary"
   else
     primary_listener_ready || { not_ready; return $?; }
+    primary_read_write_ready || { not_ready; return $?; }
     apply_remote_root_fence "primary" || { not_ready; return $?; }
     echo -n "primary"
   fi

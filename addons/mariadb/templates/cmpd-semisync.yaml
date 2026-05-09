@@ -145,6 +145,11 @@ spec:
             PRIMARY_HOST="${CLUSTER_NAME}-${COMPONENT_NAME}.${CLUSTER_NAMESPACE}.svc.cluster.local"
             SOCK="/run/mysqld/mysqld.sock"
             MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
+            # Fresh bootstrap keeps pod-0 as the deterministic first primary.
+            # Give its roleProbe/Endpoint publish path a bounded window before a
+            # later pod accepts a local syncer primary role.
+            SYNCER_PRIMARY_BOOTSTRAP_GRACE_SECONDS="${MARIADB_SYNCER_PRIMARY_BOOTSTRAP_GRACE_SECONDS:-45}"
+            SYNCER_PRIMARY_BOOTSTRAP_GRACE_UNTIL="$(($(date +%s) + SYNCER_PRIMARY_BOOTSTRAP_GRACE_SECONDS))"
             ROOT_LOCAL=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
             INTERNAL_LOCAL=(mariadb "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
             LOCAL=("${ROOT_LOCAL[@]}")
@@ -707,10 +712,26 @@ spec:
               [ -x /tools/syncerctl ] || return 1
               timeout 3 /tools/syncerctl --host 127.0.0.1 --port 3601 getrole 2>/dev/null | tr -d '\r\n'
             }
+            query_primary_service_server_id() {
+              timeout 3 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || true
+            }
             reconcile_sql_listener_for_syncer_primary_once() {
-              local role
+              local now primary_sid role
               [ ! -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ] || return 0
               [ ! -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] || return 0
+              if [ "${POD_INDEX}" -gt 0 ] && [ ! -f "{{ .Values.dataMountPath }}/master.info" ]; then
+                now="$(date +%s)"
+                if [ "${now}" -lt "${SYNCER_PRIMARY_BOOTSTRAP_GRACE_UNTIL}" ]; then
+                  prestop_watchdog_log "runtime-primary-listener-reconcile-defer reason=fresh-bootstrap-grace pod_index=${POD_INDEX}"
+                  return 0
+                fi
+              fi
+              primary_sid="$(query_primary_service_server_id || true)"
+              if [ -n "${primary_sid}" ] && [ "${primary_sid}" != "${SERVICE_ID}" ]; then
+                prestop_watchdog_log "runtime-primary-listener-reconcile-defer reason=primary-service-routes-to-peer primary_sid=${primary_sid} service_id=${SERVICE_ID}"
+                return 0
+              fi
               role="$(query_local_syncer_role || true)"
               [ "${role}" = "primary" ] || return 0
               prestop_watchdog_log "runtime-primary-listener-reconcile-begin role=${role}"
@@ -863,17 +884,17 @@ spec:
               lock_local_root_writes "wait-primary-loop-entry" || true
               _no_primary_iters=0
               while true; do
-                if [ ! -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
-                  reconcile_sql_listener_for_syncer_primary_once || true
-                  if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] && [ ! -f "{{ .Values.dataMountPath }}/master.info" ]; then
-                    echo "Starting as primary after syncer promoted this pod"
-                    break
-                  fi
-                fi
                 # Step 1: find primary (timeout 10 prevents hang if primary unresponsive)
                 PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
                   -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || echo "")
                 if [ -z "${PRIMARY_SID}" ] || [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
+                  if [ ! -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+                    reconcile_sql_listener_for_syncer_primary_once || true
+                    if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] && [ ! -f "{{ .Values.dataMountPath }}/master.info" ]; then
+                      echo "Starting as primary after syncer promoted this pod"
+                      break
+                    fi
+                  fi
                   _no_primary_iters=$((_no_primary_iters + 1))
                   # Observability: log every 30s so external watchers see we are still waiting
                   # for primary, not silently stuck. Does not change behavior.

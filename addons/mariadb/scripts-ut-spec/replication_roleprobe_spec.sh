@@ -23,6 +23,7 @@ Describe "replication-roleprobe.sh"
     unset MOCK_MARIADB_SELECT1_RC MOCK_MARIADB_SELECT1_STDOUT
     unset MOCK_MARIADB_SHOW_SLAVE_STATUS_RC MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT
     unset MOCK_MARIADB_BIND_ADDRESS MOCK_MARIADB_BIND_ADDRESS_RC
+    unset MOCK_MARIADB_READ_ONLY MOCK_MARIADB_READ_ONLY_RC
     unset MOCK_MARIADB_SQL_RC MOCK_MARIADB_CAPTURE_FILE
   }
   AfterEach "cleanup"
@@ -56,6 +57,10 @@ case "$*" in
   *"SHOW VARIABLES LIKE 'bind_address'"*)
     printf "bind_address\t%s\n" "${MOCK_MARIADB_BIND_ADDRESS:-0.0.0.0}"
     exit "${MOCK_MARIADB_BIND_ADDRESS_RC:-0}"
+    ;;
+  *"SELECT UPPER(CAST(@@global.read_only AS CHAR));"*)
+    printf "%s\n" "${MOCK_MARIADB_READ_ONLY:-0}"
+    exit "${MOCK_MARIADB_READ_ONLY_RC:-0}"
     ;;
 esac
 if [ -n "${MOCK_MARIADB_CAPTURE_FILE:-}" ]; then
@@ -298,6 +303,7 @@ Last_SQL_Errno: 0"
         export MOCK_MARIADB_SELECT1_RC=0
         export MOCK_MARIADB_SELECT1_STDOUT="1"
         export MOCK_MARIADB_BIND_ADDRESS="0.0.0.0"
+        export MOCK_MARIADB_READ_ONLY="0"
         touch "${TEST_DIR}/.replication-ready"
         touch "${TEST_DIR}/.sql-listener-ready"
         make_mariadb_cli
@@ -308,6 +314,27 @@ Last_SQL_Errno: 0"
         When call check_role
         The status should be success
         The output should eq "primary"
+      End
+    End
+
+    Context "when SQL listener is peer-reachable but local server is still read-only"
+      setup_primary_read_only() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY="true"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_BIND_ADDRESS="0.0.0.0"
+        export MOCK_MARIADB_READ_ONLY="1"
+        touch "${TEST_DIR}/.replication-ready"
+        touch "${TEST_DIR}/.sql-listener-ready"
+        make_mariadb_cli
+      }
+      Before "setup_primary_read_only"
+
+      It "does not publish primary until local read_only is off"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
       End
     End
 
