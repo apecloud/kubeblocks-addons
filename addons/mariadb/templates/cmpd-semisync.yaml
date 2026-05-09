@@ -166,25 +166,42 @@ spec:
                ls {{ .Values.dataMountPath }}/binlog/*.bin* >/dev/null 2>&1; then
               HAS_EXISTING_DATA=true
             fi
+            read_only_value() {
+              "${LOCAL[@]}" -e "SELECT UPPER(CAST(@@global.read_only AS CHAR));" 2>/dev/null \
+                | tr -d '\r' \
+                | awk 'NF {print $1; exit}'
+            }
+            read_only_is_fail_closed() {
+              local value
+              value="$(read_only_value || true)"
+              case "${value}" in
+                1|ON|NO_LOCK|NO_LOCK_NO_ADMIN)
+                  return 0
+                  ;;
+              esac
+              return 1
+            }
             set_fail_closed_read_only() {
               local label="${1:-fail-closed}"
-              if "${LOCAL[@]}" -e "SET GLOBAL read_only = 'NO_LOCK_NO_ADMIN';" 2>/dev/null; then
+              if "${LOCAL[@]}" -e "SET GLOBAL read_only = NO_LOCK_NO_ADMIN;" 2>/dev/null && read_only_is_fail_closed; then
                 echo "Set fail-closed read_only=NO_LOCK_NO_ADMIN (${label})"
                 return 0
               fi
-              if "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null; then
+              if "${LOCAL[@]}" -e "SET GLOBAL read_only = ON;" 2>/dev/null && read_only_is_fail_closed; then
+                echo "Set fail-closed read_only=ON (${label})"
+                return 0
+              fi
+              if "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null && read_only_is_fail_closed; then
                 echo "Set fail-closed read_only fallback=1 (${label})"
                 return 0
               fi
+              echo "WARNING: read_only still OFF after fail-closed attempts (${label})"
               echo "WARNING: failed to set fail-closed read_only (${label})"
               return 1
             }
             set_replica_read_only() {
               lock_remote_root_writes "replica-read-only" || true
-              if "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null; then
-                return 0
-              fi
-              "${LOCAL[@]}" -e "SET GLOBAL read_only = 'ON';" 2>/dev/null
+              set_fail_closed_read_only "replica-read-only"
             }
             set_primary_read_write() {
               if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
@@ -399,6 +416,95 @@ spec:
             unlock_remote_root_writes() {
               set_remote_root_account_state "UNLOCK" "$1"
             }
+            query_slave_status_verbose() {
+              timeout 5 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                -S "${SOCK}" -e "SHOW SLAVE STATUS\\G" 2>/dev/null || true
+            }
+            slave_status_is_healthy() {
+              local slave_status="$1"
+              [ -n "${slave_status}" ] || return 1
+              case "${slave_status}" in
+                *"Slave_IO_Running: Yes"*) ;;
+                *) return 1 ;;
+              esac
+              case "${slave_status}" in
+                *"Slave_SQL_Running: Yes"*) ;;
+                *) return 1 ;;
+              esac
+              case "${slave_status}" in
+                *"Last_IO_Errno: 0"*) ;;
+                *) return 1 ;;
+              esac
+              case "${slave_status}" in
+                *"Last_SQL_Errno: 0"*) ;;
+                *) return 1 ;;
+              esac
+            }
+            wait_for_replication_healthy() {
+              local label="$1"
+              local timeout_seconds="${2:-120}"
+              local sleep_seconds="${3:-2}"
+              local start now elapsed slave_status evidence_file
+              start="$(date +%s)"
+              evidence_file="{{ .Values.dataMountPath }}/log/rejoin-replication-wait.log"
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              while true; do
+                slave_status="$(query_slave_status_verbose || true)"
+                if slave_status_is_healthy "${slave_status}"; then
+                  elapsed=$(($(date +%s) - start))
+                  prestop_watchdog_log "rejoin-replication-healthy label=${label} elapsed=${elapsed}s"
+                  return 0
+                fi
+                now="$(date +%s)"
+                elapsed=$((now - start))
+                if [ "${elapsed}" -ge "${timeout_seconds}" ]; then
+                  {
+                    printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                    printf 'label=%s\n' "${label}"
+                    printf 'decision=replication-not-healthy\n'
+                    printf 'elapsed_seconds=%s\n' "${elapsed}"
+                    printf 'slave_status_begin\n'
+                    if [ -n "${slave_status}" ]; then
+                      printf '%s\n' "${slave_status}"
+                    else
+                      printf '<empty>\n'
+                    fi
+                    printf 'slave_status_end\n\n'
+                  } >> "${evidence_file}" 2>/dev/null || true
+                  prestop_watchdog_log "rejoin-replication-not-healthy label=${label} elapsed=${elapsed}s"
+                  return 1
+                fi
+                sleep "${sleep_seconds}"
+              done
+            }
+            keep_replica_pending_until_healthy() {
+              local label="$1"
+              mark_replication_pending
+              lock_remote_root_writes "${label}-pending" || true
+              set_fail_closed_read_only "${label}-pending" || true
+              "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true
+              wait_for_replication_healthy "${label}" 120 2
+            }
+            publish_replica_after_rejoin_ready() {
+              local label="$1"
+              if ! keep_replica_pending_until_healthy "${label}-before-expose"; then
+                return 1
+              fi
+              set_replica_read_only || true
+              if ! expose_sql_listener_for_safe_role "${label}"; then
+                return 1
+              fi
+              "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true
+              set_replica_read_only || true
+              if ! wait_for_replication_healthy "${label}-after-expose" 120 2; then
+                mark_replication_pending
+                lock_remote_root_writes "${label}-after-expose-not-healthy" || true
+                set_fail_closed_read_only "${label}-after-expose-not-healthy" || true
+                return 1
+              fi
+              mark_replication_ready
+              return 0
+            }
             mariadbd_pids() {
               if command -v pidof >/dev/null 2>&1; then
                 pidof mariadbd 2>/dev/null || true
@@ -415,8 +521,13 @@ spec:
               return 0
             }
             fence_read_only_for_prestop() {
-              timeout 2 "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" \
-                >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>&1 || true
+              timeout 2 "${LOCAL[@]}" -e "SET GLOBAL read_only = NO_LOCK_NO_ADMIN;" \
+                >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>&1 \
+                || timeout 2 "${LOCAL[@]}" -e "SET GLOBAL read_only = ON;" \
+                >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>&1 \
+                || timeout 2 "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" \
+                >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>&1 \
+                || true
               timeout 2 "${LOCAL[@]}" \
                 -e "SELECT NOW(), @@global.read_only, @@global.gtid_binlog_state, @@global.gtid_binlog_pos;" \
                 >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>&1 || true
@@ -623,11 +734,18 @@ spec:
                 mark_replication_ready
                 echo "Starting as primary (pod-0 with stale slave config, no primary found)"
               else
-                expose_sql_listener_for_safe_role "existing-slave-config"
-                "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true
-                set_replica_read_only || true
-                mark_replication_ready
-                echo "Resumed replication from existing slave config"
+                while true; do
+                  if publish_replica_after_rejoin_ready "existing-slave-config"; then
+                    echo "Resumed replication from existing slave config"
+                    break
+                  fi
+                  if fail_closed_for_gtid_divergence; then
+                    wait ${MARIADB_PID}
+                    exit 1
+                  fi
+                  echo "Existing slave config is not healthy yet; keeping replication pending and read-only, retrying in 5s."
+                  sleep 5
+                done
               fi
             elif [ -n "${PRIMARY_SID}" ] || [ "${POD_INDEX}" -gt 0 ]; then
               # No slave config; we need to configure replication from the primary.
@@ -703,12 +821,17 @@ spec:
                 # confirmed. Do NOT self-elect on failure.
                 SLAVE_STATUS_CHECK=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null)
                 if [ -n "${SLAVE_STATUS_CHECK}" ]; then
-                  expose_sql_listener_for_safe_role "new-slave-config"
-                  "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true
-                  set_replica_read_only || true
-                  echo "Replication configured from primary ${PRIMARY_HOST} at GTID ${MASTER_GTID}"
-                  mark_replication_ready
-                  break
+                  if publish_replica_after_rejoin_ready "new-slave-config"; then
+                    echo "Replication configured from primary ${PRIMARY_HOST} at GTID ${MASTER_GTID}"
+                    break
+                  fi
+                  if fail_closed_for_gtid_divergence; then
+                    wait ${MARIADB_PID}
+                    exit 1
+                  fi
+                  echo "Replication stored but not healthy yet; retrying in 5s"
+                  sleep 5
+                  continue
                 fi
                 echo "CHANGE MASTER TO did not store config; retrying in 5s"
                 sleep 5
@@ -800,8 +923,8 @@ spec:
                   fence_read_only() {
                     label="$1"
                     mode="$2"
-                    run_sql "${label}-no-lock-no-admin" "${mode}" "SET GLOBAL read_only = 'NO_LOCK_NO_ADMIN';" \
-                      || run_sql "${label}-fallback-on" "${mode}" "SET GLOBAL read_only = 'ON';" \
+                    run_sql "${label}-no-lock-no-admin" "${mode}" "SET GLOBAL read_only = NO_LOCK_NO_ADMIN;" \
+                      || run_sql "${label}-fallback-on" "${mode}" "SET GLOBAL read_only = ON;" \
                       || run_sql "${label}-fallback-1" "${mode}" "SET GLOBAL read_only = 1;" \
                       || true
                   }
