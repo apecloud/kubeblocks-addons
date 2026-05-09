@@ -33,6 +33,11 @@ function disable_pitr() {
 function upload_continuous_backup_info() {
   local status_result=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json)
   echo "INFO: Uploading continuous backup info..."
+  local pitr_is_running=$(echo "$status_result" | jq -r '.pitr.run')
+  if [ "$pitr_is_running" != "true" ]; then
+    echo "INFO: Pitr is not running, no continuous backup info to upload."
+    return
+  fi
   local pitr_chunks_result=$(echo "$status_result" | jq -r '.backups.pitrChunks')
   echo "INFO: Continuous backup result:"
   echo "$(echo $pitr_chunks_result | jq)"
@@ -77,6 +82,22 @@ function upload_continuous_backup_info() {
   if [ -z "$shardsvr" ]; then
     shardsvr=$(echo "$status_result" | jq -r '[.cluster[].rs | select(contains("config-server") | not)] | join(",")')
   fi
+
+  local -a expected_shardsvr_array
+  IFS="." read -r -a expected_shardsvr_array <<< "$MONGODB_SHARD_REPLICA_SET_NAME_LIST"
+  local expected_shardsvr_count=${#expected_shardsvr_array[@]}
+  local -a shardsvr_array
+  IFS="," read -r -a shardsvr_array <<< "$shardsvr"
+  local shardsvr_count=${#shardsvr_array[@]}
+  
+  # During the agent-nomination stage, all agents in a shard may suddenly become not ready, which can block PITR indefinitely; resetting PITR is a workaround.
+  if [ "$expected_shardsvr_count" != "$shardsvr_count" ]; then
+    echo "ERROR: The number of shards in PBM status ($shardsvr_count) does not match the number of shards in MONGODB_SHARD_REPLICA_SET_NAME_LIST ($expected_shardsvr_count)."
+    echo "INFO: Restart PITR Process"
+    disable_pitr
+    exit 1
+  fi
+
   if [ -z "$configsvr" ]; then
     configsvr=$(echo "$status_result" | jq -r '[.cluster[].rs | select(contains("config-server"))] | join(",")')
   fi
