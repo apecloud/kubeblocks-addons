@@ -1097,6 +1097,33 @@ EOF
       The status should be failure
       The stderr should include "Switchover failed: post-DCS root revoke cannot run without MARIADB_CLIENT_BIN"
     End
+
+    It "alpha.60 v3: fails closed when host enumeration query itself returns rc!=0 (no silent root_account_not_found)"
+      # Per Jack 00:08 v3 review: a failed `SELECT Host FROM mysql.user`
+      # query (permission denied, connection error, etc.) must NOT be
+      # silently treated as 'root account does not exist'. The function
+      # must fail-closed without entering REVOKE / FLUSH / verify.
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "$@" >> "${MOCK_REVOKE_CALLS}"
+case "$*" in
+  *"SELECT Host FROM mysql.user"*)
+    echo "ERROR 1142 (42000): SELECT command denied to user 'kb_internal_root' for table 'user'" >&2
+    exit 1
+    ;;
+esac
+exit 0
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call revoke_user_facing_root_admin_privileges_for_secondary
+      The status should be failure
+      The stderr should include "reason=root_host_query_failed"
+      The stderr should include "fail-closed"
+      The contents of file "${MOCK_REVOKE_CALLS}" should not include "REVOKE READ_ONLY ADMIN"
+      The contents of file "${MOCK_REVOKE_CALLS}" should not include "REVOKE SUPER"
+      The contents of file "${MOCK_REVOKE_CALLS}" should not include "REVOKE BINLOG ADMIN"
+      The contents of file "${MOCK_REVOKE_CALLS}" should not include "FLUSH PRIVILEGES"
+    End
   End
 
   # alpha.60: ensure fence_current_primary_local_writes_after_dcs fails closed
