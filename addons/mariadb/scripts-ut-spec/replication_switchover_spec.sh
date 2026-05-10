@@ -474,28 +474,36 @@ EOF
     End
 
     Context "when guarding the old primary before DCS switchover"
-      It "keeps follow-time admin privileges when fencing remote root DML"
+      It "alpha.62 v1: fence_local_remote_root_for_secondary grants explicit non-bypass list per host (no SUPER/READ_ONLY ADMIN/BINLOG ADMIN/CONNECTION ADMIN)"
         export MARIADB_ROOT_USER="root"
         export MARIADB_ROOT_PASSWORD="pw"
         export MARIADB_ROOT_HOST="%"
-        run_sql() {
-          record_call "run_sql=$2"
-          return 0
-        }
-        run_local_sql_best_effort() {
-          record_call "best_effort=$1"
-          return 0
-        }
-        When call fence_local_remote_root_for_secondary
+        export MARIADB_CONNECT_TIMEOUT_SECONDS="5"
+        export MARIADB_CLIENT_BIN="${TEST_DIR}/mariadb-fence"
+        export MOCK_FENCE_CALLS="${TEST_DIR}/fence-calls"
+        : > "${MOCK_FENCE_CALLS}"
+        cat > "${MARIADB_CLIENT_BIN}" <<EOF_MOCK
+#!/bin/sh
+echo "\$@" >> "${MOCK_FENCE_CALLS}"
+# Verifier reads SHOW GRANTS — return alpha.62 expected secondary-fence grants
+# so post-fence verifier passes (no bypass priv, has GRANT SELECT, ...).
+echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO \\\`root\\\`@\\\`%\\\`"
+exit 0
+EOF_MOCK
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call fence_local_remote_root_for_secondary "%"
         The status should be success
-        The output should include "optional REPLICATION MASTER ADMIN granted"
-        The contents of file "${TEST_DIR}/calls" should include "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT"
-        The contents of file "${TEST_DIR}/calls" should include "GRANT REPLICATION MASTER ADMIN"
-        The contents of file "${TEST_DIR}/calls" should include "GRANT READ_ONLY ADMIN"
-        The contents of file "${TEST_DIR}/calls" should include "best_effort=FLUSH PRIVILEGES;"
+        The contents of file "${MOCK_FENCE_CALLS}" should include "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN"
+        The contents of file "${MOCK_FENCE_CALLS}" should not include "GRANT READ_ONLY ADMIN"
+        The contents of file "${MOCK_FENCE_CALLS}" should not include "GRANT SUPER"
+        The contents of file "${MOCK_FENCE_CALLS}" should not include "GRANT BINLOG ADMIN"
+        The contents of file "${MOCK_FENCE_CALLS}" should not include "GRANT CONNECTION ADMIN"
+        The contents of file "${MOCK_FENCE_CALLS}" should not include "GRANT ALL PRIVILEGES"
+        The output should include "fence_local_remote_root_for_secondary: host=% fence_apply_rc=0"
       End
 
       It "disconnects active remote root sessions around the grant fence"
+        enumerate_user_facing_root_hosts() { echo "%"; return 0; }
         query_local_value() {
           record_call "query_sessions"
           echo "88 89"
@@ -562,6 +570,7 @@ EOF
       End
 
       It "fences remote root before DCS and local writes immediately after DCS is accepted"
+        enumerate_user_facing_root_hosts() { echo "%"; return 0; }
         fence_local_remote_root_for_secondary() {
           record_call "fence"
           return 0
@@ -650,6 +659,7 @@ EOF
 
       It "does not create DCS switchover when the old-primary guard fails"
         make_syncerctl
+        enumerate_user_facing_root_hosts() { echo "%"; return 0; }
         fence_local_remote_root_for_secondary() {
           record_call "fence"
           return 1
@@ -1187,20 +1197,34 @@ EOF
     }
     Before "setup_unfence_env"
 
-    It "alpha.60 v2: grants explicit non-bypass privilege list, never GRANT ALL PRIVILEGES"
-      run_sql() {
-        record_call "run_sql=$2"
-        return 0
-      }
-      When call unfence_local_remote_root_for_primary
+    It "alpha.60 v2 + alpha.62 v1: grants explicit non-bypass primary list per host, never GRANT ALL PRIVILEGES, no admin bypass"
+      When call unfence_local_remote_root_for_primary "%"
       The status should be success
-      The contents of file "${TEST_DIR}/calls" should include "REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'root'@'%'"
-      The contents of file "${TEST_DIR}/calls" should include "ON *.* TO 'root'@'%' WITH GRANT OPTION"
-      The contents of file "${TEST_DIR}/calls" should not include "GRANT ALL PRIVILEGES ON *.*"
-      The contents of file "${TEST_DIR}/calls" should not include "SUPER"
-      The contents of file "${TEST_DIR}/calls" should not include "READ_ONLY ADMIN"
-      The contents of file "${TEST_DIR}/calls" should not include "BINLOG ADMIN"
-      The contents of file "${TEST_DIR}/calls" should not include ", GRANT OPTION,"
+      The contents of file "${MOCK_UNFENCE_CALLS}" should include "REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'root'@'%'"
+      The contents of file "${MOCK_UNFENCE_CALLS}" should include "ON *.* TO 'root'@'%' WITH GRANT OPTION"
+      The contents of file "${MOCK_UNFENCE_CALLS}" should include "INSERT"
+      The contents of file "${MOCK_UNFENCE_CALLS}" should include "UPDATE"
+      The contents of file "${MOCK_UNFENCE_CALLS}" should include "DELETE"
+      The contents of file "${MOCK_UNFENCE_CALLS}" should include "CREATE"
+      The contents of file "${MOCK_UNFENCE_CALLS}" should include "DROP"
+      The contents of file "${MOCK_UNFENCE_CALLS}" should not include "GRANT ALL PRIVILEGES ON *.*"
+      The contents of file "${MOCK_UNFENCE_CALLS}" should not include "GRANT SUPER"
+      The contents of file "${MOCK_UNFENCE_CALLS}" should not include "GRANT READ_ONLY ADMIN"
+      The contents of file "${MOCK_UNFENCE_CALLS}" should not include "GRANT BINLOG ADMIN"
+      The contents of file "${MOCK_UNFENCE_CALLS}" should not include "GRANT CONNECTION ADMIN"
+      The output should include "unfence_local_remote_root_for_primary: host=% unfence_apply_rc=0"
+    End
+
+    It "alpha.62 v1 grant body invariant: SWITCHOVER_EXPLICIT_PRIMARY_GRANT_BODY contains all 5 core write privs (strong-bind with verifier)"
+      # Verifier remote_root_has_explicit_primary_grant requires INSERT/UPDATE/DELETE/CREATE/DROP
+      # to be present. This test asserts the grant body itself contains them, locking the
+      # invariant: grant write site and grant read site share the same source of truth.
+      When call printf '%s' "${SWITCHOVER_EXPLICIT_PRIMARY_GRANT_BODY}"
+      The output should include "INSERT"
+      The output should include "UPDATE"
+      The output should include "DELETE"
+      The output should include "CREATE"
+      The output should include "DROP"
     End
   End
 
@@ -1694,6 +1718,279 @@ EOF
       When call syncerctl_switchover "mdb-mariadb-0" "mdb-mariadb-1"
       The status should be success
       The output should include "switchover success"
+    End
+  End
+
+  # alpha.62 v1 (Jack 04:08 review): contract drift fix between switchover-side
+  # pre-DCS fence and roleProbe-side secondary fence + verifier口径漂移. Tests
+  # cover the new helpers (now POSIX 时基 + per-host enumeration), the
+  # observable verifier (structured log + grants_sha + probe_host attribution),
+  # and the renamed rollback verifier remote_root_has_explicit_primary_grant.
+  Describe "alpha.62 v1 helpers and verifiers"
+    setup_alpha62_env() {
+      export MARIADB_ROOT_USER="root"
+      export MARIADB_ROOT_PASSWORD="pw"
+      export MARIADB_INTERNAL_ROOT_USER="kb_internal_root"
+      export MARIADB_CONNECT_TIMEOUT_SECONDS="5"
+      export MARIADB_CLIENT_BIN="${TEST_DIR}/mariadb-a62"
+    }
+    Before "setup_alpha62_env"
+
+    Context "compute_grants_sha()"
+      It "returns sha256 hex when sha256sum is available"
+        When call compute_grants_sha "hello world"
+        The status should be success
+        The output should match pattern "[0-9a-f]*"
+        The output should not include "unavailable"
+      End
+
+      It "returns 'unavailable:hash_tool_unavailable' when no hash tool exists"
+        command() {
+          case "$1 $2" in
+            "-v sha256sum"|"-v sha1sum"|"-v md5sum") return 1 ;;
+            *) builtin command "$@" ;;
+          esac
+        }
+        When call compute_grants_sha "anything"
+        The status should be success
+        The output should equal "unavailable:hash_tool_unavailable"
+      End
+    End
+
+    Context "enumerate_user_facing_root_hosts()"
+      It "returns newline-separated host list on rc=0"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+printf "%%\n127.0.0.1\nlocalhost\n"
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call enumerate_user_facing_root_hosts
+        The status should be success
+        The output should include "127.0.0.1"
+        The output should include "localhost"
+      End
+
+      It "fails closed with reason=root_host_query_failed when query rc!=0 (NOT silent root_account_not_found)"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+echo "ERROR 1045 (28000): Access denied for user" >&2
+echo "ERROR 1045 (28000): Access denied for user"
+exit 1
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call enumerate_user_facing_root_hosts
+        The status should be failure
+        The stderr should include "reason=root_host_query_failed"
+        The stderr should include "fail-closed"
+      End
+    End
+
+    Context "_verify_host_is_fenced() per-host structured verifier"
+      It "alpha.62 v1: 127.0.0.1 with non-bypass grants + write probe rc=1 errno=1044 → ok_by_local_probe:1044 with structured log"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+# Internal SHOW GRANTS reads return clean fence; root probe returns 1044.
+case "$*" in
+  *"-ukb_internal_root"*"SHOW GRANTS"*)
+    echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'127.0.0.1'"
+    exit 0
+    ;;
+  *"-uroot"*"INSERT"*)
+    echo "ERROR 1044 (42000): Access denied for user 'root'@'127.0.0.1' to database 'kubeblocks'"
+    exit 1
+    ;;
+esac
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_is_fenced "127.0.0.1"
+        The status should be success
+        The output should include "remote_root_fence_verify host=127.0.0.1"
+        The output should include "verified_host=127.0.0.1"
+        The output should include "probe_host=127.0.0.1"
+        The output should include "write_probe_attempted=true"
+        The output should include "write_probe_errno=1044"
+        The output should include "reason=ok_by_local_probe:1044"
+      End
+
+      It "alpha.62 v1: localhost host → grants-only path (no socket probe), reason=ok_by_grants_only:localhost_socket_not_attempted"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'localhost'"
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_is_fenced "localhost"
+        The status should be success
+        The output should include "probe_host=none:localhost_socket_not_attempted"
+        The output should include "write_probe_attempted=false"
+        The output should include "reason=ok_by_grants_only:localhost_socket_not_attempted"
+      End
+
+      It "alpha.62 v1: % wildcard host → grants-only, reason=ok_by_grants_only:wildcard_or_remote_not_locally_probable"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'%'"
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_is_fenced "%"
+        The status should be success
+        The output should include "probe_host=none:wildcard_or_remote_not_locally_probable"
+        The output should include "write_probe_attempted=false"
+        The output should include "reason=ok_by_grants_only:wildcard_or_remote_not_locally_probable"
+      End
+
+      It "alpha.62 v1: grants contain READ_ONLY ADMIN → fail-closed bypass_priv_residual:READ_ONLY ADMIN with grants dump"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'%'"
+echo "GRANT READ_ONLY ADMIN ON *.* TO 'root'@'%'"
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_is_fenced "%"
+        The status should be failure
+        The stderr should include "reason=bypass_priv_residual:READ_ONLY ADMIN"
+        The stderr should include "grants_dump_begin"
+        The stderr should include "grants_dump_end"
+      End
+
+      It "alpha.62 v1: grants contain INSERT (user-facing write) → fail-closed bypass_priv_residual:INSERT"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+echo "GRANT SELECT, INSERT, PROCESS, RELOAD ON *.* TO 'root'@'127.0.0.1'"
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_is_fenced "127.0.0.1"
+        The status should be failure
+        The stderr should include "reason=bypass_priv_residual:INSERT"
+      End
+
+      It "alpha.62 v1: 127.0.0.1 write probe rc=0 (writable_unexpected) → fail-closed (fence not applied)"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+case "$*" in
+  *"-ukb_internal_root"*"SHOW GRANTS"*)
+    echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'127.0.0.1'"
+    exit 0
+    ;;
+  *"-uroot"*"INSERT"*)
+    exit 0
+    ;;
+esac
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_is_fenced "127.0.0.1"
+        The status should be failure
+        The stderr should include "reason=writable_unexpected"
+        The stderr should include "write_probe_rc=0"
+      End
+
+      It "alpha.62 v1: grants_query_failed (unrelated stderr) → fail-closed (NOT silent treat as account_absent)"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+echo "ERROR 2003 (HY000): Can't connect to MySQL server" >&2
+echo "ERROR 2003 (HY000): Can't connect to MySQL server"
+exit 1
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_is_fenced "%"
+        The status should be failure
+        The stderr should include "reason=grants_query_failed"
+      End
+    End
+
+    Context "_verify_host_has_explicit_primary_grant() per-host rollback verifier"
+      It "alpha.62 v1: grants contain INSERT/UPDATE/DELETE/CREATE/DROP + no admin bypass → ok"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+echo "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'%' WITH GRANT OPTION"
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_has_explicit_primary_grant "%"
+        The status should be success
+        The output should include "remote_root_explicit_primary_grant_verify host=%"
+        The output should include "core_priv_present="
+        The output should include "INSERT"
+        The output should include "UPDATE"
+        The output should include "DELETE"
+        The output should include "CREATE"
+        The output should include "DROP"
+        The output should include "reason=ok"
+      End
+
+      It "alpha.62 v1: grants contain GRANT ALL PRIVILEGES → fail-closed all_privileges_residual"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+echo "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION"
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_has_explicit_primary_grant "%"
+        The status should be failure
+        The stderr should include "reason=all_privileges_residual"
+      End
+
+      It "alpha.62 v1: grants missing core write subset → fail-closed core_write_priv_missing"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+echo "GRANT SELECT, PROCESS, RELOAD ON *.* TO 'root'@'%'"
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_has_explicit_primary_grant "%"
+        The status should be failure
+        The stderr should include "reason=core_write_priv_missing"
+      End
+
+      It "alpha.62 v1: grants contain admin bypass priv (READ_ONLY ADMIN) → fail-closed admin_bypass_residual"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+echo "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, READ_ONLY ADMIN ON *.* TO 'root'@'%'"
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_has_explicit_primary_grant "%"
+        The status should be failure
+        The stderr should include "reason=admin_bypass_residual:READ_ONLY ADMIN"
+      End
+    End
+
+    Context "fence_local_remote_root_for_secondary() drift detection"
+      It "alpha.62 v1: fence detects root_host_list_drift between two enumerations and fail-closes"
+        # Mock: first enumeration returns "%", second returns "% 127.0.0.1" → drift
+        export DRIFT_COUNTER="${TEST_DIR}/drift-counter"
+        : > "${DRIFT_COUNTER}"
+        cat > "${MARIADB_CLIENT_BIN}" <<EOF_MOCK
+#!/bin/sh
+case "\$*" in
+  *"SELECT Host FROM mysql.user"*)
+    n=\$(cat "${DRIFT_COUNTER}" 2>/dev/null || echo 0)
+    n=\$((n+1))
+    echo "\$n" > "${DRIFT_COUNTER}"
+    if [ "\$n" = "1" ]; then
+      printf "%%\n"
+    else
+      printf "%%\n127.0.0.1\n"
+    fi
+    exit 0
+    ;;
+esac
+exit 0
+EOF_MOCK
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call fence_local_remote_root_for_secondary
+        The status should be failure
+        The output should include "fence_local_remote_root_for_secondary: enumerated host list sha="
+        The stderr should include "reason=root_host_list_drift"
+        The stderr should include "sha_initial="
+        The stderr should include "sha_current="
+      End
     End
   End
 
