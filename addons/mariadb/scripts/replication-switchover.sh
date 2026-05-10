@@ -56,6 +56,29 @@ MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
 SWITCHOVER_TRACE_FILE="${SWITCHOVER_TRACE_FILE:-}"
 SWITCHOVER_REMOTE_ROOT_PROBE_TABLE="${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE:-kubeblocks.kb_root_write_probe}"
 
+# alpha.62 v1 (Jack 04:08 review): contract drift between switchover-side
+# pre-DCS fence and roleProbe-side secondary fence + verifier口径漂移. Single
+# source of truth constants below are referenced by both fence/grant write
+# sites AND verifier read sites — keep them in sync; ShellSpec strong-binds.
+#
+# Privileges that bypass `read_only=ON` and must NEVER appear on user-facing
+# root after fence (alpha.61 secondary fence semantics).
+SWITCHOVER_BYPASS_PRIVILEGES_PATTERN='READ_ONLY ADMIN|SUPER|BINLOG ADMIN|CONNECTION ADMIN|ALL PRIVILEGES'
+# user-facing write privileges that must NEVER appear on user-facing root
+# during secondary fence state. Verifier rejects any of these.
+SWITCHOVER_USER_FACING_WRITE_PATTERN='INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|GRANT OPTION|CREATE USER'
+# Secondary fence GRANT clause body (excludes admin bypass and user-facing
+# writes; aligned with roleProbe secondary fence post-alpha.61).
+SWITCHOVER_SECONDARY_FENCE_GRANT_BODY='SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN'
+# Explicit primary GRANT clause body used by `unfence_local_remote_root_for_primary`
+# (rollback path) AND read by `remote_root_has_explicit_primary_grant` verifier.
+# Verifier checks the "core write" subset (INSERT/UPDATE/DELETE/CREATE/DROP)
+# is present; this body MUST contain that subset.
+SWITCHOVER_EXPLICIT_PRIMARY_GRANT_BODY='SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER, CREATE USER'
+# Core write privileges that MUST be present in primary grant for verifier to
+# accept. Subset of SWITCHOVER_EXPLICIT_PRIMARY_GRANT_BODY (alpha.62 invariant).
+SWITCHOVER_PRIMARY_CORE_WRITE_PRIVS='INSERT|UPDATE|DELETE|CREATE|DROP'
+
 append_switchover_trace() {
   local message="$*"
   local trace_file
@@ -225,17 +248,306 @@ remote_root_host_is_local() {
   esac
 }
 
-remote_root_has_full_access() {
+compute_grants_sha() {
+  # alpha.62 v1 (Jack 04:08 tightening 1): hash tool fallback chain. Returns
+  # `<hash>` (sha256), `<hash>:sha1`, `<hash>:md5`, or
+  # `unavailable:hash_tool_unavailable`. Hash failure NEVER influences fence
+  # judgment; this field is for evidence trace only. Empty field is forbidden.
+  local input="$1"
+  local out
+  if command -v sha256sum >/dev/null 2>&1; then
+    out=$(printf '%s' "${input}" | sha256sum 2>/dev/null | awk '{print $1}')
+    if [ -n "${out}" ]; then printf '%s' "${out}"; return 0; fi
+  fi
+  if command -v sha1sum >/dev/null 2>&1; then
+    out=$(printf '%s' "${input}" | sha1sum 2>/dev/null | awk '{print $1}')
+    if [ -n "${out}" ]; then printf '%s:sha1' "${out}"; return 0; fi
+  fi
+  if command -v md5sum >/dev/null 2>&1; then
+    out=$(printf '%s' "${input}" | md5sum 2>/dev/null | awk '{print $1}')
+    if [ -n "${out}" ]; then printf '%s:md5' "${out}"; return 0; fi
+  fi
+  printf 'unavailable:hash_tool_unavailable'
+  return 0
+}
+
+enumerate_user_facing_root_hosts() {
+  # alpha.62 v1 (Jack 04:08 Blocker 1): single-source per-host enumeration of
+  # user-facing root accounts via kb_internal_root view. Reuses alpha.60 v3
+  # pattern: rc!=0 → fail-closed `root_host_query_failed` (NOT silent
+  # root_account_not_found). Returns newline-separated host list to stdout
+  # (may be empty if no root account exists). Caller must treat rc!=0 as
+  # fatal — do NOT proceed with empty fallback.
+  local root_user="${MARIADB_ROOT_USER:-root}"
+  local hosts rc
+  if [ -z "${MARIADB_CLIENT_BIN}" ] || [ ! -x "${MARIADB_CLIENT_BIN}" ]; then
+    log_switchover_error "Switchover failed: enumerate_user_facing_root_hosts cannot run without MARIADB_CLIENT_BIN"
+    return 1
+  fi
+  hosts=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+    -P3306 -h127.0.0.1 -N -B -s -e "SELECT Host FROM mysql.user WHERE User='${root_user}';" 2>&1)
+  rc=$?
+  if [ "${rc}" -ne 0 ]; then
+    log_switchover_error "Switchover failed: enumerate_user_facing_root_hosts reason=root_host_query_failed user=${root_user} rc=${rc} stderr=${hosts}; fail-closed"
+    return 1
+  fi
+  printf '%s' "${hosts}"
+  return 0
+}
+
+_grants_for_host_via_internal() {
+  # Read SHOW GRANTS FOR root@host via kb_internal_root view (avoids root
+  # self-query loops where root may have lost SELECT on mysql).
+  # Echoes grants stdout (may include 1141 stderr if no such grant). Sets caller
+  # variable __GRANTS_RC via printf-on-stderr trick: instead, use 2>&1 + check rc.
+  local root_user="${MARIADB_ROOT_USER:-root}"
   local host="$1"
-  local user root_host grants
-  remote_root_host_is_local && return 0
-  user=$(sql_quote "${MARIADB_ROOT_USER}")
-  root_host=$(sql_quote "${MARIADB_ROOT_HOST:-%}")
-  grants=$(query_value "${host}" "SHOW GRANTS FOR '${user}'@'${root_host}';")
-  case "${grants}" in
-    *"GRANT ALL PRIVILEGES ON *.*"*) return 0 ;;
-    *) return 1 ;;
+  "${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+    -P3306 -h127.0.0.1 -N -s -e "SHOW GRANTS FOR '${root_user}'@'${host}';" 2>&1
+}
+
+_local_root_write_probe_127() {
+  # alpha.62 v1: TCP probe to 127.0.0.1 expecting fail (1044 priv-based or
+  # 1290 read_only-based). Used only for the root@127.0.0.1 host since it
+  # is the only host where the local probe attribution is deterministic.
+  local out rc errno=""
+  out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+    -P3306 -h127.0.0.1 -N -s -e "
+      CREATE DATABASE IF NOT EXISTS kubeblocks;
+      CREATE TABLE IF NOT EXISTS ${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE}(probe_id VARCHAR(128) PRIMARY KEY, check_ts BIGINT);
+      INSERT INTO ${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE}(probe_id, check_ts)
+        VALUES ('switchover_local_root_probe', UNIX_TIMESTAMP());
+      DELETE FROM ${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE} WHERE probe_id='switchover_local_root_probe';
+    " 2>&1)
+  rc=$?
+  case "${out}" in
+    *1044*) errno=1044 ;;
+    *1290*) errno=1290 ;;
+    *1142*) errno=1142 ;;  # Permission for table itself; accepted as fenced
+    *) errno=other ;;
   esac
+  printf '%s|%s|%s' "${rc}" "${errno}" "${out}"
+}
+
+_verify_host_is_fenced() {
+  # alpha.62 v1 (Jack 04:08 Blocker 2 + Tightening 1): per-host verifier with
+  # structured single-line log + grants_sha + probe_host attribution. Caller:
+  # local_remote_root_is_fenced_for_secondary.
+  local host="$1"
+  local root_user="${MARIADB_ROOT_USER:-root}"
+  local grants rc grants_sha bypass_residual="none" probe_host write_rc="skipped" write_errno="skipped" write_attempted="false"
+  local reason=""
+  grants=$(_grants_for_host_via_internal "${host}")
+  rc=$?
+  grants_sha=$(compute_grants_sha "${grants}")
+  if [ "${rc}" -ne 0 ]; then
+    case "${grants}" in
+      *1141*|*"no such grant"*|*"There is no such grant"*)
+        reason="account_grants_empty_or_1141"
+        ;;
+      *)
+        reason="grants_query_failed"
+        log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:grants_unavailable grants_query_rc=${rc} grants_sha=${grants_sha} grants_bypass=unknown write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+        log_switchover_error "remote_root_fence_verify host=${host} grants_dump_begin"
+        log_switchover_error "${grants}"
+        log_switchover_error "remote_root_fence_verify host=${host} grants_dump_end"
+        return 1
+        ;;
+    esac
+    log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:account_absent grants_query_rc=${rc} grants_sha=${grants_sha} grants_bypass=none write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+    return 0
+  fi
+  # Detect any bypass priv residual.
+  bypass_residual=$(printf '%s' "${grants}" | grep -oE "${SWITCHOVER_BYPASS_PRIVILEGES_PATTERN}" | sort -u | tr '\n' ',' | sed 's/,$//')
+  [ -z "${bypass_residual}" ] && bypass_residual="none"
+  if [ "${bypass_residual}" != "none" ]; then
+    reason="bypass_priv_residual:${bypass_residual}"
+    log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:bypass_residual_short_circuit grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=${bypass_residual} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+    log_switchover_error "remote_root_fence_verify host=${host} grants_dump_begin"
+    log_switchover_error "${grants}"
+    log_switchover_error "remote_root_fence_verify host=${host} grants_dump_end"
+    return 1
+  fi
+  # Detect any user-facing write priv residual.
+  local write_residual
+  write_residual=$(printf '%s' "${grants}" | grep -oE "${SWITCHOVER_USER_FACING_WRITE_PATTERN}" | sort -u | tr '\n' ',' | sed 's/,$//')
+  if [ -n "${write_residual}" ]; then
+    reason="bypass_priv_residual:${write_residual}"
+    log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:write_priv_residual_short_circuit grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=${write_residual} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+    log_switchover_error "remote_root_fence_verify host=${host} grants_dump_begin"
+    log_switchover_error "${grants}"
+    log_switchover_error "remote_root_fence_verify host=${host} grants_dump_end"
+    return 1
+  fi
+  # Probe scope: only deterministic for root@127.0.0.1.
+  case "${host}" in
+    "127.0.0.1")
+      probe_host="127.0.0.1"
+      write_attempted="true"
+      local probe_result probe_out
+      probe_result=$(_local_root_write_probe_127)
+      write_rc=$(printf '%s' "${probe_result}" | cut -d'|' -f1)
+      write_errno=$(printf '%s' "${probe_result}" | cut -d'|' -f2)
+      probe_out=$(printf '%s' "${probe_result}" | cut -d'|' -f3-)
+      case "${write_rc}" in
+        0)
+          reason="writable_unexpected"
+          log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=none write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
+          log_switchover_error "remote_root_fence_verify host=${host} probe_dump_begin"
+          log_switchover_error "${probe_out}"
+          log_switchover_error "remote_root_fence_verify host=${host} probe_dump_end"
+          return 1
+          ;;
+        *)
+          case "${write_errno}" in
+            1044|1290|1142)
+              reason="ok_by_local_probe:${write_errno}"
+              log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=none write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
+              return 0
+              ;;
+            *)
+              reason="probe_account_mismatch"
+              log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=none write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
+              log_switchover_error "remote_root_fence_verify host=${host} probe_dump_begin"
+              log_switchover_error "${probe_out}"
+              log_switchover_error "remote_root_fence_verify host=${host} probe_dump_end"
+              return 1
+              ;;
+          esac
+          ;;
+      esac
+      ;;
+    "localhost")
+      probe_host="none:localhost_socket_not_attempted"
+      reason="ok_by_grants_only:localhost_socket_not_attempted"
+      log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=none write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+      return 0
+      ;;
+    *)
+      probe_host="none:wildcard_or_remote_not_locally_probable"
+      reason="ok_by_grants_only:wildcard_or_remote_not_locally_probable"
+      log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=none write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+      return 0
+      ;;
+  esac
+}
+
+_verify_host_has_explicit_primary_grant() {
+  # alpha.62 v1 (Jack 04:08 DRIFT B + Tightening 3): per-host verifier for
+  # rollback. Required: contains core write subset (INSERT/UPDATE/DELETE/
+  # CREATE/DROP); rejects ALL PRIVILEGES; rejects admin bypass privileges.
+  # Reads grants via kb_internal_root view. Structured single-line log.
+  local host="$1"
+  local root_user="${MARIADB_ROOT_USER:-root}"
+  local grants rc grants_sha core_priv_present="none" bypass_residual="none" reason=""
+  grants=$(_grants_for_host_via_internal "${host}")
+  rc=$?
+  grants_sha=$(compute_grants_sha "${grants}")
+  if [ "${rc}" -ne 0 ]; then
+    case "${grants}" in
+      *1141*|*"no such grant"*|*"There is no such grant"*)
+        reason="account_grants_empty_or_1141"
+        log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=${rc} grants_sha=${grants_sha} core_priv_present=none reason=${reason}"
+        return 1
+        ;;
+      *)
+        reason="grants_query_failed"
+        log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=${rc} grants_sha=${grants_sha} core_priv_present=unknown reason=${reason}"
+        log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_begin"
+        log_switchover_error "${grants}"
+        log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_end"
+        return 1
+        ;;
+    esac
+  fi
+  # Reject ALL PRIVILEGES (legacy alpha.59-and-earlier residual).
+  case "${grants}" in
+    *"GRANT ALL PRIVILEGES ON *.*"*|*"ALL PRIVILEGES"*)
+      reason="all_privileges_residual"
+      log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=0 grants_sha=${grants_sha} core_priv_present=unknown reason=${reason}"
+      log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_begin"
+      log_switchover_error "${grants}"
+      log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_end"
+      return 1
+      ;;
+  esac
+  # Reject admin bypass priv (excluding ALL PRIVILEGES which was caught above).
+  bypass_residual=$(printf '%s' "${grants}" | grep -oE "READ_ONLY ADMIN|SUPER|BINLOG ADMIN|CONNECTION ADMIN" | sort -u | tr '\n' ',' | sed 's/,$//')
+  if [ -n "${bypass_residual}" ]; then
+    reason="admin_bypass_residual:${bypass_residual}"
+    log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=0 grants_sha=${grants_sha} core_priv_present=unknown reason=${reason}"
+    log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_begin"
+    log_switchover_error "${grants}"
+    log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_end"
+    return 1
+  fi
+  # Verify core write subset is present.
+  core_priv_present=$(printf '%s' "${grants}" | grep -oE "${SWITCHOVER_PRIMARY_CORE_WRITE_PRIVS}" | sort -u | tr '\n' ',' | sed 's/,$//')
+  [ -z "${core_priv_present}" ] && core_priv_present="none"
+  # Count distinct core privs found.
+  local core_count
+  core_count=$(printf '%s\n' "${core_priv_present}" | tr ',' '\n' | grep -cE "^(INSERT|UPDATE|DELETE|CREATE|DROP)$" || true)
+  if [ "${core_count}" -lt 5 ]; then
+    reason="core_write_priv_missing:expected=INSERT,UPDATE,DELETE,CREATE,DROP got=${core_priv_present}"
+    log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=0 grants_sha=${grants_sha} core_priv_present=${core_priv_present} reason=${reason}"
+    log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_begin"
+    log_switchover_error "${grants}"
+    log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_end"
+    return 1
+  fi
+  reason="ok"
+  log_switchover_info "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=0 grants_sha=${grants_sha} core_priv_present=${core_priv_present} reason=${reason}"
+  return 0
+}
+
+remote_root_has_explicit_primary_grant() {
+  # alpha.62 v1 (Jack 04:08 review DRIFT B): replaced legacy
+  # remote_root_has_full_access (which required GRANT ALL PRIVILEGES). Since
+  # alpha.60 v2 unfence_local_remote_root_for_primary no longer grants ALL
+  # PRIVILEGES — it grants the explicit non-bypass primary list — the legacy
+  # verifier was guaranteed to fail-close any rollback. The new verifier:
+  #   * iterates over per-host enumeration (kb_internal_root view)
+  #   * for each host: SHOW GRANTS, must contain the core-write subset
+  #     (INSERT/UPDATE/DELETE/CREATE/DROP), must NOT contain GRANT ALL
+  #     PRIVILEGES, must NOT contain admin bypass privileges
+  #   * structured per-host log; full grants dump after sentinel line
+  # Caller pattern: rollback_current_primary_switchover_guard.
+  local host_list_arg="${1:-}"
+  local host_list_source host_list_sha
+  local host total_hosts=0 ok_hosts=0 failed_hosts=0
+  if [ -z "${MARIADB_CLIENT_BIN}" ] || [ ! -x "${MARIADB_CLIENT_BIN}" ]; then
+    log_switchover_error "Switchover failed: rollback verifier remote_root_has_explicit_primary_grant cannot run without MARIADB_CLIENT_BIN"
+    return 1
+  fi
+  if [ -n "${host_list_arg}" ]; then
+    host_list_source="${host_list_arg}"
+    host_list_sha=$(compute_grants_sha "${host_list_arg}")
+    log_switchover_info "Rollback verifier remote_root_has_explicit_primary_grant: using caller-provided host list sha=${host_list_sha} hosts_count=$(printf '%s\n' "${host_list_arg}" | wc -l | tr -d ' ')"
+  else
+    host_list_source=$(enumerate_user_facing_root_hosts) || return 1
+    if [ -z "${host_list_source}" ]; then
+      log_switchover_error "Rollback verifier remote_root_has_explicit_primary_grant: reason=root_account_not_found user=${MARIADB_ROOT_USER}; fail-closed (rollback expects user-facing root to exist)"
+      return 1
+    fi
+    host_list_sha=$(compute_grants_sha "${host_list_source}")
+    log_switchover_info "Rollback verifier remote_root_has_explicit_primary_grant: enumerated host list sha=${host_list_sha} hosts_count=$(printf '%s\n' "${host_list_source}" | wc -l | tr -d ' ')"
+  fi
+  while IFS= read -r host; do
+    [ -z "${host}" ] && continue
+    total_hosts=$((total_hosts + 1))
+    if _verify_host_has_explicit_primary_grant "${host}"; then
+      ok_hosts=$((ok_hosts + 1))
+    else
+      failed_hosts=$((failed_hosts + 1))
+    fi
+  done <<EOF_HOSTS
+${host_list_source}
+EOF_HOSTS
+  log_switchover_info "Rollback verifier remote_root_has_explicit_primary_grant summary total=${total_hosts} ok=${ok_hosts} failed=${failed_hosts}"
+  [ "${failed_hosts}" -eq 0 ] && [ "${total_hosts}" -gt 0 ]
 }
 
 remote_root_write_ready() {
@@ -274,42 +586,86 @@ syncer_role_is() {
   [ "${role}" = "${expected}" ]
 }
 
-grant_remote_root_optional_admin_privileges_for_secondary() {
-  local user root_host privilege sql
-  remote_root_host_is_local && return 0
-  user=$(sql_quote "${MARIADB_ROOT_USER}")
-  root_host=$(sql_quote "${MARIADB_ROOT_HOST:-%}")
-  for privilege in "REPLICATION SLAVE ADMIN" "REPLICATION MASTER ADMIN" "BINLOG ADMIN" "BINLOG MONITOR" "SLAVE MONITOR" "CONNECTION ADMIN" "READ_ONLY ADMIN"; do
-    sql="SET SESSION sql_log_bin=0; GRANT ${privilege} ON *.* TO '${user}'@'${root_host}'; SET SESSION sql_log_bin=1;"
-    if run_sql "127.0.0.1" "${sql}"; then
-      log_switchover_info "Switchover secondary remote root fence: optional ${privilege} granted for follow/monitoring"
-    else
-      log_switchover_info "Switchover secondary remote root fence: optional ${privilege} grant skipped or unsupported"
-    fi
-  done
-  run_local_sql_best_effort "FLUSH PRIVILEGES;"
-  return 0
-}
-
 fence_local_remote_root_for_secondary() {
-  local user root_host password sql
-  remote_root_host_is_local && return 0
+  # alpha.62 v1 (Jack 04:08 DRIFT A + Blocker 1): per-host enumeration replaces
+  # the legacy single-host (root@%) fence. Removes
+  # grant_remote_root_optional_admin_privileges_for_secondary entirely (it was
+  # granting BINLOG ADMIN/CONNECTION ADMIN/READ_ONLY ADMIN immediately after
+  # fence, defeating alpha.61's tightening on the same callsite).
+  #
+  # Single-source GRANT body: SWITCHOVER_SECONDARY_FENCE_GRANT_BODY (top of
+  # file). Per-host: REVOKE ALL + GRANT body + post-revoke residual check
+  # (rejects bypass + user-facing write privs). Aligned with alpha.60 v3
+  # post-DCS revoke pattern.
+  #
+  # Caller passes host_list (preferred); if not, query and detect drift.
+  local host_list_arg="${1:-}"
+  local host_list_source host_list_sha
+  local user host password sql out rc
+  local total_hosts=0 ok_hosts=0 failed_hosts=0
+  if [ -z "${MARIADB_CLIENT_BIN}" ] || [ ! -x "${MARIADB_CLIENT_BIN}" ]; then
+    log_switchover_error "Switchover failed: fence_local_remote_root_for_secondary cannot run without MARIADB_CLIENT_BIN"
+    return 1
+  fi
   user=$(sql_quote "${MARIADB_ROOT_USER}")
-  root_host=$(sql_quote "${MARIADB_ROOT_HOST:-%}")
   password=$(sql_quote "${MARIADB_ROOT_PASSWORD}")
-  sql="
-    SET SESSION sql_log_bin=0;
-    CREATE USER IF NOT EXISTS '${user}'@'${root_host}' IDENTIFIED BY '${password}';
-    ALTER USER '${user}'@'${root_host}' IDENTIFIED BY '${password}';
-    ALTER USER '${user}'@'${root_host}' ACCOUNT UNLOCK;
-    REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${root_host}';
-    GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO '${user}'@'${root_host}';
-    FLUSH PRIVILEGES;
-    SET SESSION sql_log_bin=1;
-  "
-  run_sql "127.0.0.1" "${sql}" || return 1
-  grant_remote_root_optional_admin_privileges_for_secondary || true
-  return 0
+  if [ -n "${host_list_arg}" ]; then
+    host_list_source="${host_list_arg}"
+    host_list_sha=$(compute_grants_sha "${host_list_arg}")
+    log_switchover_info "fence_local_remote_root_for_secondary: using caller-provided host list sha=${host_list_sha} hosts_count=$(printf '%s\n' "${host_list_arg}" | wc -l | tr -d ' ')"
+  else
+    host_list_source=$(enumerate_user_facing_root_hosts) || return 1
+    host_list_sha=$(compute_grants_sha "${host_list_source}")
+    log_switchover_info "fence_local_remote_root_for_secondary: enumerated host list sha=${host_list_sha} hosts_count=$(printf '%s\n' "${host_list_source}" | wc -l | tr -d ' ')"
+    # Defensive drift detection: re-query and compare sha.
+    local host_list_recheck recheck_sha
+    host_list_recheck=$(enumerate_user_facing_root_hosts) || return 1
+    recheck_sha=$(compute_grants_sha "${host_list_recheck}")
+    if [ "${host_list_sha}" != "${recheck_sha}" ]; then
+      log_switchover_error "Switchover failed: fence_local_remote_root_for_secondary reason=root_host_list_drift sha_initial=${host_list_sha} sha_current=${recheck_sha}; fail-closed"
+      return 1
+    fi
+  fi
+  while IFS= read -r host; do
+    [ -z "${host}" ] && continue
+    total_hosts=$((total_hosts + 1))
+    local quoted_host
+    quoted_host=$(sql_quote "${host}")
+    sql="
+      SET SESSION sql_log_bin=0;
+      CREATE USER IF NOT EXISTS '${user}'@'${quoted_host}' IDENTIFIED BY '${password}';
+      ALTER USER '${user}'@'${quoted_host}' IDENTIFIED BY '${password}';
+      ALTER USER '${user}'@'${quoted_host}' ACCOUNT UNLOCK;
+      REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${quoted_host}';
+      GRANT ${SWITCHOVER_SECONDARY_FENCE_GRANT_BODY} ON *.* TO '${user}'@'${quoted_host}';
+      FLUSH PRIVILEGES;
+      SET SESSION sql_log_bin=1;
+    "
+    out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+      --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+      -P3306 -h127.0.0.1 -N -s -e "${sql}" 2>&1)
+    rc=$?
+    if [ "${rc}" -ne 0 ]; then
+      log_switchover_error "fence_local_remote_root_for_secondary: host=${host} fence_apply_rc=${rc} stderr=${out}; fail-closed"
+      failed_hosts=$((failed_hosts + 1))
+      continue
+    fi
+    log_switchover_info "fence_local_remote_root_for_secondary: host=${host} fence_apply_rc=0"
+    # Post-fence residual check via per-host verifier.
+    if _verify_host_is_fenced "${host}"; then
+      ok_hosts=$((ok_hosts + 1))
+    else
+      failed_hosts=$((failed_hosts + 1))
+    fi
+  done <<EOF_HOSTS
+${host_list_source}
+EOF_HOSTS
+  log_switchover_info "fence_local_remote_root_for_secondary summary total=${total_hosts} ok=${ok_hosts} failed=${failed_hosts}"
+  if [ "${total_hosts}" -eq 0 ]; then
+    log_switchover_error "fence_local_remote_root_for_secondary: reason=root_account_not_found user=${MARIADB_ROOT_USER}; fail-closed"
+    return 1
+  fi
+  [ "${failed_hosts}" -eq 0 ]
 }
 
 disconnect_local_remote_root_sessions_for_secondary() {
@@ -345,19 +701,50 @@ disconnect_local_remote_root_sessions_for_secondary() {
 }
 
 local_remote_root_is_fenced_for_secondary() {
-  local user root_host grants
-  remote_root_host_is_local && return 0
-  user=$(sql_quote "${MARIADB_ROOT_USER}")
-  root_host=$(sql_quote "${MARIADB_ROOT_HOST:-%}")
-  grants=$(query_value "127.0.0.1" "SHOW GRANTS FOR '${user}'@'${root_host}';")
-  [ -n "${grants}" ] || return 1
-  case "${grants}" in
-    *"GRANT ALL PRIVILEGES ON *.*"*) return 1 ;;
-  esac
-  case "${grants}" in
-    *"GRANT SELECT"*) return 0 ;;
-    *) return 1 ;;
-  esac
+  # alpha.62 v1 (Jack 04:08 DRIFT C + Blocker 1+2 + Tightening 1): per-host
+  # iteration via kb_internal_root view + structured single-line log per host
+  # + probe_host attribution. Caller passes host_list (preferred); fallback
+  # query path detects drift.
+  local host_list_arg="${1:-}"
+  local host_list_source host_list_sha
+  local host total_hosts=0 ok_hosts=0 failed_hosts=0
+  if [ -z "${MARIADB_CLIENT_BIN}" ] || [ ! -x "${MARIADB_CLIENT_BIN}" ]; then
+    log_switchover_error "Switchover failed: local_remote_root_is_fenced_for_secondary cannot run without MARIADB_CLIENT_BIN"
+    return 1
+  fi
+  if [ -n "${host_list_arg}" ]; then
+    host_list_source="${host_list_arg}"
+    host_list_sha=$(compute_grants_sha "${host_list_arg}")
+    log_switchover_info "local_remote_root_is_fenced_for_secondary: using caller-provided host list sha=${host_list_sha} hosts_count=$(printf '%s\n' "${host_list_arg}" | wc -l | tr -d ' ')"
+  else
+    host_list_source=$(enumerate_user_facing_root_hosts) || return 1
+    host_list_sha=$(compute_grants_sha "${host_list_source}")
+    log_switchover_info "local_remote_root_is_fenced_for_secondary: enumerated host list sha=${host_list_sha} hosts_count=$(printf '%s\n' "${host_list_source}" | wc -l | tr -d ' ')"
+    local host_list_recheck recheck_sha
+    host_list_recheck=$(enumerate_user_facing_root_hosts) || return 1
+    recheck_sha=$(compute_grants_sha "${host_list_recheck}")
+    if [ "${host_list_sha}" != "${recheck_sha}" ]; then
+      log_switchover_error "Switchover failed: local_remote_root_is_fenced_for_secondary reason=root_host_list_drift sha_initial=${host_list_sha} sha_current=${recheck_sha}; fail-closed"
+      return 1
+    fi
+  fi
+  while IFS= read -r host; do
+    [ -z "${host}" ] && continue
+    total_hosts=$((total_hosts + 1))
+    if _verify_host_is_fenced "${host}"; then
+      ok_hosts=$((ok_hosts + 1))
+    else
+      failed_hosts=$((failed_hosts + 1))
+    fi
+  done <<EOF_HOSTS
+${host_list_source}
+EOF_HOSTS
+  log_switchover_info "local_remote_root_is_fenced_for_secondary summary total=${total_hosts} ok=${ok_hosts} failed=${failed_hosts}"
+  if [ "${total_hosts}" -eq 0 ]; then
+    log_switchover_error "local_remote_root_is_fenced_for_secondary: reason=root_account_not_found user=${MARIADB_ROOT_USER}; fail-closed"
+    return 1
+  fi
+  [ "${failed_hosts}" -eq 0 ]
 }
 
 unfence_local_remote_root_for_primary() {
@@ -366,22 +753,66 @@ unfence_local_remote_root_for_primary() {
   # facing root. Grant the same explicit non-bypass privilege list that the
   # roleProbe primary path uses, so a future switchover's post-DCS fence still
   # works after rollback. GRANT OPTION is in the trailing WITH clause only.
-  local user root_host password sql
-  remote_root_host_is_local && return 0
+  #
+  # alpha.62 v1 (Jack 04:08 Tightening 3): GRANT body now sourced from the
+  # shared constant SWITCHOVER_EXPLICIT_PRIMARY_GRANT_BODY (top of file). The
+  # rollback verifier remote_root_has_explicit_primary_grant reads from the
+  # same constant via SWITCHOVER_PRIMARY_CORE_WRITE_PRIVS subset; ShellSpec
+  # strong-binds to prevent drift. Per-host enumeration applied (Blocker 1).
+  local host_list_arg="${1:-}"
+  local host_list_source host_list_sha
+  local user host password sql out rc
+  local total_hosts=0 ok_hosts=0 failed_hosts=0
+  if [ -z "${MARIADB_CLIENT_BIN}" ] || [ ! -x "${MARIADB_CLIENT_BIN}" ]; then
+    log_switchover_error "Switchover failed: unfence_local_remote_root_for_primary cannot run without MARIADB_CLIENT_BIN"
+    return 1
+  fi
   user=$(sql_quote "${MARIADB_ROOT_USER}")
-  root_host=$(sql_quote "${MARIADB_ROOT_HOST:-%}")
   password=$(sql_quote "${MARIADB_ROOT_PASSWORD}")
-  sql="
-    SET SESSION sql_log_bin=0;
-    CREATE USER IF NOT EXISTS '${user}'@'${root_host}' IDENTIFIED BY '${password}';
-    ALTER USER '${user}'@'${root_host}' IDENTIFIED BY '${password}';
-    ALTER USER '${user}'@'${root_host}' ACCOUNT UNLOCK;
-    REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${root_host}';
-    GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER, CREATE USER ON *.* TO '${user}'@'${root_host}' WITH GRANT OPTION;
-    FLUSH PRIVILEGES;
-    SET SESSION sql_log_bin=1;
-  "
-  run_sql "127.0.0.1" "${sql}"
+  if [ -n "${host_list_arg}" ]; then
+    host_list_source="${host_list_arg}"
+    host_list_sha=$(compute_grants_sha "${host_list_arg}")
+    log_switchover_info "unfence_local_remote_root_for_primary: using caller-provided host list sha=${host_list_sha} hosts_count=$(printf '%s\n' "${host_list_arg}" | wc -l | tr -d ' ')"
+  else
+    host_list_source=$(enumerate_user_facing_root_hosts) || return 1
+    host_list_sha=$(compute_grants_sha "${host_list_source}")
+    log_switchover_info "unfence_local_remote_root_for_primary: enumerated host list sha=${host_list_sha} hosts_count=$(printf '%s\n' "${host_list_source}" | wc -l | tr -d ' ')"
+  fi
+  while IFS= read -r host; do
+    [ -z "${host}" ] && continue
+    total_hosts=$((total_hosts + 1))
+    local quoted_host
+    quoted_host=$(sql_quote "${host}")
+    sql="
+      SET SESSION sql_log_bin=0;
+      CREATE USER IF NOT EXISTS '${user}'@'${quoted_host}' IDENTIFIED BY '${password}';
+      ALTER USER '${user}'@'${quoted_host}' IDENTIFIED BY '${password}';
+      ALTER USER '${user}'@'${quoted_host}' ACCOUNT UNLOCK;
+      REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${quoted_host}';
+      GRANT ${SWITCHOVER_EXPLICIT_PRIMARY_GRANT_BODY} ON *.* TO '${user}'@'${quoted_host}' WITH GRANT OPTION;
+      FLUSH PRIVILEGES;
+      SET SESSION sql_log_bin=1;
+    "
+    out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+      --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+      -P3306 -h127.0.0.1 -N -s -e "${sql}" 2>&1)
+    rc=$?
+    if [ "${rc}" -ne 0 ]; then
+      log_switchover_error "unfence_local_remote_root_for_primary: host=${host} unfence_apply_rc=${rc} stderr=${out}; fail-closed"
+      failed_hosts=$((failed_hosts + 1))
+      continue
+    fi
+    log_switchover_info "unfence_local_remote_root_for_primary: host=${host} unfence_apply_rc=0"
+    ok_hosts=$((ok_hosts + 1))
+  done <<EOF_HOSTS
+${host_list_source}
+EOF_HOSTS
+  log_switchover_info "unfence_local_remote_root_for_primary summary total=${total_hosts} ok=${ok_hosts} failed=${failed_hosts}"
+  if [ "${total_hosts}" -eq 0 ]; then
+    log_switchover_error "unfence_local_remote_root_for_primary: reason=root_account_not_found user=${MARIADB_ROOT_USER}; fail-closed"
+    return 1
+  fi
+  [ "${failed_hosts}" -eq 0 ]
 }
 
 set_local_read_only() {
@@ -397,13 +828,22 @@ local_read_only_is() {
 }
 
 rollback_current_primary_switchover_guard() {
+  # alpha.62 v1 (Jack 04:08 DRIFT B + Blocker 1): rollback path now passes
+  # host_list to unfence + verifier, both read same per-host enumeration.
+  # Verifier renamed remote_root_has_full_access → remote_root_has_explicit_primary_grant.
   local failed=0
+  local host_list=""
   log_switchover_info "Switchover rollback: restoring current primary write access after pre-DCS failure"
+  # Best-effort host list capture; if enumeration fails here we still attempt
+  # rollback (rollback fails via unfence/verifier rather than blocking on
+  # enumeration). Empty host_list means downstream functions fall back to
+  # their own enumeration with drift detection.
+  host_list=$(enumerate_user_facing_root_hosts 2>/dev/null) || host_list=""
   if ! set_local_read_only "OFF"; then
     log_switchover_error "Switchover rollback failed: could not set current primary read_only=OFF"
     failed=1
   fi
-  if ! unfence_local_remote_root_for_primary; then
+  if ! unfence_local_remote_root_for_primary "${host_list}"; then
     log_switchover_error "Switchover rollback failed: could not restore current primary remote root grants"
     failed=1
   fi
@@ -411,23 +851,38 @@ rollback_current_primary_switchover_guard() {
     log_switchover_error "Switchover rollback failed: current primary read_only did not return to 0"
     failed=1
   fi
-  if ! remote_root_has_full_access "127.0.0.1"; then
-    log_switchover_error "Switchover rollback failed: current primary remote root grants are not full access"
+  if ! remote_root_has_explicit_primary_grant "${host_list}"; then
+    log_switchover_error "Switchover rollback failed: current primary remote root grants do not match explicit primary grant contract"
     failed=1
   fi
   [ "${failed}" -eq 0 ]
 }
 
 prepare_current_primary_for_switchover() {
-  local current_name
+  # alpha.62 v1 (Jack 04:08 Blocker 1 + tightening 1): host list is enumerated
+  # ONCE at the top of prepare and passed by parameter to fence + verifier.
+  # This eliminates the source of root_host_list_drift between fence and
+  # verifier callsites. Defensive drift detection still lives inside both
+  # callees as fallback when called externally without host_list.
+  local current_name host_list host_list_sha
   current_name=$(resolve_current_name)
   log_switchover_info "Switchover pre-DCS guard: fencing remote root on current primary ${current_name}"
+  host_list=$(enumerate_user_facing_root_hosts) || {
+    log_switchover_error "Switchover failed: prepare_current_primary_for_switchover could not enumerate user-facing root hosts; fail-closed"
+    return 1
+  }
+  if [ -z "${host_list}" ]; then
+    log_switchover_error "Switchover failed: prepare_current_primary_for_switchover reason=root_account_not_found user=${MARIADB_ROOT_USER}; fail-closed"
+    return 1
+  fi
+  host_list_sha=$(compute_grants_sha "${host_list}")
+  log_switchover_info "Switchover pre-DCS guard: enumerated user-facing root host list sha=${host_list_sha} hosts_count=$(printf '%s\n' "${host_list}" | wc -l | tr -d ' ')"
   if ! disconnect_local_remote_root_sessions_for_secondary; then
     log_switchover_error "Switchover failed: could not disconnect current primary remote root sessions before fencing"
     rollback_current_primary_switchover_guard || true
     return 1
   fi
-  if ! fence_local_remote_root_for_secondary; then
+  if ! fence_local_remote_root_for_secondary "${host_list}"; then
     log_switchover_error "Switchover failed: could not fence current primary remote root before DCS switchover"
     rollback_current_primary_switchover_guard || true
     return 1
@@ -437,7 +892,7 @@ prepare_current_primary_for_switchover() {
     rollback_current_primary_switchover_guard || true
     return 1
   fi
-  if ! local_remote_root_is_fenced_for_secondary; then
+  if ! local_remote_root_is_fenced_for_secondary "${host_list}"; then
     log_switchover_error "Switchover failed: current primary remote root fence was not verified before DCS switchover"
     rollback_current_primary_switchover_guard || true
     return 1
@@ -725,7 +1180,16 @@ candidate_is_primary() {
 
   [ "${read_only}" = "0" ] || return 1
   [ -z "${slave_status}" ] || return 1
-  remote_root_has_full_access "${candidate_fqdn}" || return 1
+  # alpha.62 v1 (Jack 04:08 DRIFT B fold-out): legacy grants check
+  # `remote_root_has_full_access "${candidate_fqdn}"` removed. After alpha.60
+  # v2 unfence + alpha.61 v3 roleProbe primary fence, the candidate's
+  # user-facing root grants no longer match the legacy `GRANT ALL PRIVILEGES`
+  # signature; the explicit-primary-grant check now lives at the local-fence
+  # callsite (rollback verifier). For candidate primary state, the remaining
+  # 4 signals (read_only=0 + no slave_status + remote_root_write_ready +
+  # syncer role=primary) are sufficient — the write_ready INSERT probe on
+  # the candidate is itself the strongest signal that root@<candidate-fqdn>
+  # actually has primary-write privileges.
   remote_root_write_ready "${candidate_fqdn}" "candidate-primary" || return 1
   syncer_role_is "${candidate_fqdn}" "primary"
 }
