@@ -249,26 +249,48 @@ remote_root_host_is_local() {
 }
 
 compute_grants_sha() {
-  # alpha.62 v1 (Jack 04:08 tightening 1): hash tool fallback chain. Returns
-  # `<hash>` (sha256), `<hash>:sha1`, `<hash>:md5`, or
-  # `unavailable:hash_tool_unavailable`. Hash failure NEVER influences fence
-  # judgment; this field is for evidence trace only. Empty field is forbidden.
+  # alpha.62 v1 (Jack 04:08 tightening 1) / v2 (Jack 04:38 tightening): hash
+  # tool fallback chain. Returns `<hash>|<algo>` where algo is one of
+  # `sha256` / `sha1` / `md5` / `hash_tool_unavailable`. Caller MUST split
+  # on `|` and emit two structured log fields:
+  #   grants_sha=<hash|unavailable> reason_hash=<algo>
+  # Hash failure NEVER influences fence judgment; field is for evidence
+  # trace only. Empty value or single-token output is forbidden.
   local input="$1"
   local out
   if command -v sha256sum >/dev/null 2>&1; then
     out=$(printf '%s' "${input}" | sha256sum 2>/dev/null | awk '{print $1}')
-    if [ -n "${out}" ]; then printf '%s' "${out}"; return 0; fi
+    if [ -n "${out}" ]; then printf '%s|sha256' "${out}"; return 0; fi
   fi
   if command -v sha1sum >/dev/null 2>&1; then
     out=$(printf '%s' "${input}" | sha1sum 2>/dev/null | awk '{print $1}')
-    if [ -n "${out}" ]; then printf '%s:sha1' "${out}"; return 0; fi
+    if [ -n "${out}" ]; then printf '%s|sha1' "${out}"; return 0; fi
   fi
   if command -v md5sum >/dev/null 2>&1; then
     out=$(printf '%s' "${input}" | md5sum 2>/dev/null | awk '{print $1}')
-    if [ -n "${out}" ]; then printf '%s:md5' "${out}"; return 0; fi
+    if [ -n "${out}" ]; then printf '%s|md5' "${out}"; return 0; fi
   fi
-  printf 'unavailable:hash_tool_unavailable'
+  printf 'unavailable|hash_tool_unavailable'
   return 0
+}
+
+split_grants_sha_field() {
+  # Helper: given the raw `compute_grants_sha` output `<hash>|<algo>`, echo
+  # `grants_sha=<hash> reason_hash=<algo>` on stdout. Caller pastes into
+  # structured log line. Defensive: if input lacks `|`, echo
+  # `grants_sha=unavailable reason_hash=hash_split_failed`.
+  local raw="$1"
+  case "${raw}" in
+    *"|"*)
+      local hash algo
+      hash=$(printf '%s' "${raw}" | cut -d'|' -f1)
+      algo=$(printf '%s' "${raw}" | cut -d'|' -f2)
+      printf 'grants_sha=%s reason_hash=%s' "${hash}" "${algo}"
+      ;;
+    *)
+      printf 'grants_sha=unavailable reason_hash=hash_split_failed'
+      ;;
+  esac
 }
 
 enumerate_user_facing_root_hosts() {
@@ -338,11 +360,11 @@ _verify_host_is_fenced() {
   # local_remote_root_is_fenced_for_secondary.
   local host="$1"
   local root_user="${MARIADB_ROOT_USER:-root}"
-  local grants rc grants_sha bypass_residual="none" probe_host write_rc="skipped" write_errno="skipped" write_attempted="false"
+  local grants rc grants_sha_field bypass_residual="none" probe_host write_rc="skipped" write_errno="skipped" write_attempted="false"
   local reason=""
   grants=$(_grants_for_host_via_internal "${host}")
   rc=$?
-  grants_sha=$(compute_grants_sha "${grants}")
+  grants_sha_field=$(split_grants_sha_field "$(compute_grants_sha "${grants}")")
   if [ "${rc}" -ne 0 ]; then
     case "${grants}" in
       *1141*|*"no such grant"*|*"There is no such grant"*)
@@ -350,14 +372,14 @@ _verify_host_is_fenced() {
         ;;
       *)
         reason="grants_query_failed"
-        log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:grants_unavailable grants_query_rc=${rc} grants_sha=${grants_sha} grants_bypass=unknown write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+        log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:grants_unavailable grants_query_rc=${rc} ${grants_sha_field} grants_bypass=unknown write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
         log_switchover_error "remote_root_fence_verify host=${host} grants_dump_begin"
         log_switchover_error "${grants}"
         log_switchover_error "remote_root_fence_verify host=${host} grants_dump_end"
         return 1
         ;;
     esac
-    log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:account_absent grants_query_rc=${rc} grants_sha=${grants_sha} grants_bypass=none write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+    log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:account_absent grants_query_rc=${rc} ${grants_sha_field} grants_bypass=none write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
     return 0
   fi
   # Detect any bypass priv residual.
@@ -365,7 +387,7 @@ _verify_host_is_fenced() {
   [ -z "${bypass_residual}" ] && bypass_residual="none"
   if [ "${bypass_residual}" != "none" ]; then
     reason="bypass_priv_residual:${bypass_residual}"
-    log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:bypass_residual_short_circuit grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=${bypass_residual} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+    log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:bypass_residual_short_circuit grants_query_rc=0 ${grants_sha_field} grants_bypass=${bypass_residual} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
     log_switchover_error "remote_root_fence_verify host=${host} grants_dump_begin"
     log_switchover_error "${grants}"
     log_switchover_error "remote_root_fence_verify host=${host} grants_dump_end"
@@ -376,7 +398,7 @@ _verify_host_is_fenced() {
   write_residual=$(printf '%s' "${grants}" | grep -oE "${SWITCHOVER_USER_FACING_WRITE_PATTERN}" | sort -u | tr '\n' ',' | sed 's/,$//')
   if [ -n "${write_residual}" ]; then
     reason="bypass_priv_residual:${write_residual}"
-    log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:write_priv_residual_short_circuit grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=${write_residual} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+    log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:write_priv_residual_short_circuit grants_query_rc=0 ${grants_sha_field} grants_bypass=${write_residual} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
     log_switchover_error "remote_root_fence_verify host=${host} grants_dump_begin"
     log_switchover_error "${grants}"
     log_switchover_error "remote_root_fence_verify host=${host} grants_dump_end"
@@ -395,7 +417,7 @@ _verify_host_is_fenced() {
       case "${write_rc}" in
         0)
           reason="writable_unexpected"
-          log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=none write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
+          log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
           log_switchover_error "remote_root_fence_verify host=${host} probe_dump_begin"
           log_switchover_error "${probe_out}"
           log_switchover_error "remote_root_fence_verify host=${host} probe_dump_end"
@@ -405,12 +427,12 @@ _verify_host_is_fenced() {
           case "${write_errno}" in
             1044|1290|1142)
               reason="ok_by_local_probe:${write_errno}"
-              log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=none write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
+              log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
               return 0
               ;;
             *)
               reason="probe_account_mismatch"
-              log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=none write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
+              log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
               log_switchover_error "remote_root_fence_verify host=${host} probe_dump_begin"
               log_switchover_error "${probe_out}"
               log_switchover_error "remote_root_fence_verify host=${host} probe_dump_end"
@@ -423,13 +445,13 @@ _verify_host_is_fenced() {
     "localhost")
       probe_host="none:localhost_socket_not_attempted"
       reason="ok_by_grants_only:localhost_socket_not_attempted"
-      log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=none write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+      log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
       return 0
       ;;
     *)
       probe_host="none:wildcard_or_remote_not_locally_probable"
       reason="ok_by_grants_only:wildcard_or_remote_not_locally_probable"
-      log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 grants_sha=${grants_sha} grants_bypass=none write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+      log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
       return 0
       ;;
   esac
@@ -442,20 +464,20 @@ _verify_host_has_explicit_primary_grant() {
   # Reads grants via kb_internal_root view. Structured single-line log.
   local host="$1"
   local root_user="${MARIADB_ROOT_USER:-root}"
-  local grants rc grants_sha core_priv_present="none" bypass_residual="none" reason=""
+  local grants rc grants_sha_field core_priv_present="none" bypass_residual="none" reason=""
   grants=$(_grants_for_host_via_internal "${host}")
   rc=$?
-  grants_sha=$(compute_grants_sha "${grants}")
+  grants_sha_field=$(split_grants_sha_field "$(compute_grants_sha "${grants}")")
   if [ "${rc}" -ne 0 ]; then
     case "${grants}" in
       *1141*|*"no such grant"*|*"There is no such grant"*)
         reason="account_grants_empty_or_1141"
-        log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=${rc} grants_sha=${grants_sha} core_priv_present=none reason=${reason}"
+        log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=${rc} ${grants_sha_field} core_priv_present=none reason=${reason}"
         return 1
         ;;
       *)
         reason="grants_query_failed"
-        log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=${rc} grants_sha=${grants_sha} core_priv_present=unknown reason=${reason}"
+        log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=${rc} ${grants_sha_field} core_priv_present=unknown reason=${reason}"
         log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_begin"
         log_switchover_error "${grants}"
         log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_end"
@@ -467,7 +489,7 @@ _verify_host_has_explicit_primary_grant() {
   case "${grants}" in
     *"GRANT ALL PRIVILEGES ON *.*"*|*"ALL PRIVILEGES"*)
       reason="all_privileges_residual"
-      log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=0 grants_sha=${grants_sha} core_priv_present=unknown reason=${reason}"
+      log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=0 ${grants_sha_field} core_priv_present=unknown reason=${reason}"
       log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_begin"
       log_switchover_error "${grants}"
       log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_end"
@@ -478,7 +500,7 @@ _verify_host_has_explicit_primary_grant() {
   bypass_residual=$(printf '%s' "${grants}" | grep -oE "READ_ONLY ADMIN|SUPER|BINLOG ADMIN|CONNECTION ADMIN" | sort -u | tr '\n' ',' | sed 's/,$//')
   if [ -n "${bypass_residual}" ]; then
     reason="admin_bypass_residual:${bypass_residual}"
-    log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=0 grants_sha=${grants_sha} core_priv_present=unknown reason=${reason}"
+    log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=0 ${grants_sha_field} core_priv_present=unknown reason=${reason}"
     log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_begin"
     log_switchover_error "${grants}"
     log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_end"
@@ -492,23 +514,23 @@ _verify_host_has_explicit_primary_grant() {
   core_count=$(printf '%s\n' "${core_priv_present}" | tr ',' '\n' | grep -cE "^(INSERT|UPDATE|DELETE|CREATE|DROP)$" || true)
   if [ "${core_count}" -lt 5 ]; then
     reason="core_write_priv_missing:expected=INSERT,UPDATE,DELETE,CREATE,DROP got=${core_priv_present}"
-    log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=0 grants_sha=${grants_sha} core_priv_present=${core_priv_present} reason=${reason}"
+    log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=0 ${grants_sha_field} core_priv_present=${core_priv_present} reason=${reason}"
     log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_begin"
     log_switchover_error "${grants}"
     log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_dump_end"
     return 1
   fi
   reason="ok"
-  log_switchover_info "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=0 grants_sha=${grants_sha} core_priv_present=${core_priv_present} reason=${reason}"
+  log_switchover_info "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=0 ${grants_sha_field} core_priv_present=${core_priv_present} reason=${reason}"
   return 0
 }
 
 remote_root_has_explicit_primary_grant() {
-  # alpha.62 v1 (Jack 04:08 review DRIFT B): replaced legacy
-  # remote_root_has_full_access (which required GRANT ALL PRIVILEGES). Since
-  # alpha.60 v2 unfence_local_remote_root_for_primary no longer grants ALL
-  # PRIVILEGES — it grants the explicit non-bypass primary list — the legacy
-  # verifier was guaranteed to fail-close any rollback. The new verifier:
+  # alpha.62 v1 (Jack 04:08 review DRIFT B): replaced legacy full-access
+  # rollback verifier (which required GRANT ALL PRIVILEGES). Since alpha.60
+  # v2 unfence_local_remote_root_for_primary no longer grants ALL PRIVILEGES
+  # — it grants the explicit non-bypass primary list — the legacy verifier
+  # was guaranteed to fail-close any rollback. The new verifier:
   #   * iterates over per-host enumeration (kb_internal_root view)
   #   * for each host: SHOW GRANTS, must contain the core-write subset
   #     (INSERT/UPDATE/DELETE/CREATE/DROP), must NOT contain GRANT ALL
@@ -588,10 +610,10 @@ syncer_role_is() {
 
 fence_local_remote_root_for_secondary() {
   # alpha.62 v1 (Jack 04:08 DRIFT A + Blocker 1): per-host enumeration replaces
-  # the legacy single-host (root@%) fence. Removes
-  # grant_remote_root_optional_admin_privileges_for_secondary entirely (it was
-  # granting BINLOG ADMIN/CONNECTION ADMIN/READ_ONLY ADMIN immediately after
-  # fence, defeating alpha.61's tightening on the same callsite).
+  # the legacy single-host (root@%) fence. Removes the legacy optional
+  # secondary admin grant helper entirely (it was granting BINLOG ADMIN /
+  # CONNECTION ADMIN / READ_ONLY ADMIN immediately after fence, defeating
+  # alpha.61's tightening on the same callsite).
   #
   # Single-source GRANT body: SWITCHOVER_SECONDARY_FENCE_GRANT_BODY (top of
   # file). Per-host: REVOKE ALL + GRANT body + post-revoke residual check
@@ -830,7 +852,8 @@ local_read_only_is() {
 rollback_current_primary_switchover_guard() {
   # alpha.62 v1 (Jack 04:08 DRIFT B + Blocker 1): rollback path now passes
   # host_list to unfence + verifier, both read same per-host enumeration.
-  # Verifier renamed remote_root_has_full_access → remote_root_has_explicit_primary_grant.
+  # Legacy full-access rollback verifier renamed to
+  # remote_root_has_explicit_primary_grant — see that function's comment.
   local failed=0
   local host_list=""
   log_switchover_info "Switchover rollback: restoring current primary write access after pre-DCS failure"
@@ -1180,12 +1203,12 @@ candidate_is_primary() {
 
   [ "${read_only}" = "0" ] || return 1
   [ -z "${slave_status}" ] || return 1
-  # alpha.62 v1 (Jack 04:08 DRIFT B fold-out): legacy grants check
-  # `remote_root_has_full_access "${candidate_fqdn}"` removed. After alpha.60
-  # v2 unfence + alpha.61 v3 roleProbe primary fence, the candidate's
-  # user-facing root grants no longer match the legacy `GRANT ALL PRIVILEGES`
-  # signature; the explicit-primary-grant check now lives at the local-fence
-  # callsite (rollback verifier). For candidate primary state, the remaining
+  # alpha.62 v1 (Jack 04:08 DRIFT B fold-out): legacy candidate full-access
+  # grants check removed. After alpha.60 v2 unfence + alpha.61 v3 roleProbe
+  # primary fence, the candidate's user-facing root grants no longer match
+  # the legacy `GRANT ALL PRIVILEGES` signature; the explicit-primary-grant
+  # check now lives at the local-fence callsite (rollback verifier — see
+  # remote_root_has_explicit_primary_grant). For candidate primary state, the remaining
   # 4 signals (read_only=0 + no slave_status + remote_root_write_ready +
   # syncer role=primary) are sufficient — the write_ready INSERT probe on
   # the candidate is itself the strongest signal that root@<candidate-fqdn>

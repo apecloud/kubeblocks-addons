@@ -1736,15 +1736,15 @@ EOF
     }
     Before "setup_alpha62_env"
 
-    Context "compute_grants_sha()"
-      It "returns sha256 hex when sha256sum is available"
+    Context "compute_grants_sha() / split_grants_sha_field()"
+      It "alpha.62 v2: compute_grants_sha returns '<hash>|sha256' when sha256sum is available"
         When call compute_grants_sha "hello world"
         The status should be success
-        The output should match pattern "[0-9a-f]*"
+        The output should match pattern "*|sha256"
         The output should not include "unavailable"
       End
 
-      It "returns 'unavailable:hash_tool_unavailable' when no hash tool exists"
+      It "alpha.62 v2: compute_grants_sha returns 'unavailable|hash_tool_unavailable' when no hash tool exists (NOT colon-separated; field-split-friendly)"
         command() {
           case "$1 $2" in
             "-v sha256sum"|"-v sha1sum"|"-v md5sum") return 1 ;;
@@ -1753,7 +1753,25 @@ EOF
         }
         When call compute_grants_sha "anything"
         The status should be success
-        The output should equal "unavailable:hash_tool_unavailable"
+        The output should equal "unavailable|hash_tool_unavailable"
+      End
+
+      It "alpha.62 v2: split_grants_sha_field emits 'grants_sha=<h> reason_hash=<algo>' two-field structured form"
+        When call split_grants_sha_field "deadbeef|sha256"
+        The status should be success
+        The output should equal "grants_sha=deadbeef reason_hash=sha256"
+      End
+
+      It "alpha.62 v2: split_grants_sha_field on unavailable emits 'grants_sha=unavailable reason_hash=hash_tool_unavailable' (NOT colon-joined)"
+        When call split_grants_sha_field "unavailable|hash_tool_unavailable"
+        The status should be success
+        The output should equal "grants_sha=unavailable reason_hash=hash_tool_unavailable"
+      End
+
+      It "alpha.62 v2: split_grants_sha_field defends against unexpected single-token input → grants_sha=unavailable reason_hash=hash_split_failed"
+        When call split_grants_sha_field "no_pipe_here"
+        The status should be success
+        The output should equal "grants_sha=unavailable reason_hash=hash_split_failed"
       End
     End
 
@@ -1812,6 +1830,11 @@ EOF
         The output should include "write_probe_attempted=true"
         The output should include "write_probe_errno=1044"
         The output should include "reason=ok_by_local_probe:1044"
+        # alpha.62 v2 (Jack 04:38 tightening): grants_sha + reason_hash MUST appear
+        # as TWO separate fields in the structured log (NOT colon-joined like
+        # alpha.62 v1 emitted "grants_sha=unavailable:hash_tool_unavailable").
+        The output should include "grants_sha="
+        The output should include "reason_hash=sha256"
       End
 
       It "alpha.62 v1: localhost host → grants-only path (no socket probe), reason=ok_by_grants_only:localhost_socket_not_attempted"
