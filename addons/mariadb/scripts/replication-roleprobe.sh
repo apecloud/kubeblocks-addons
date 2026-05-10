@@ -112,13 +112,25 @@ apply_remote_root_fence() {
   host="$(sql_quote "${host}")"
   password="$(sql_quote "${MARIADB_ROOT_PASSWORD:-}")"
   if [ "${role}" = "secondary" ]; then
+    # alpha.61 (Jack 01:40 review): user-facing root on secondary must NOT
+    # carry SUPER / READ_ONLY ADMIN / BINLOG ADMIN / CONNECTION ADMIN, since
+    # those bypass `@@global.read_only` and would re-introduce the alpha.59
+    # false-PASS race when this pod is later promoted again. The legitimate
+    # need for read_only-bypass on secondary (kb_health_check 1062 repair) is
+    # served by `kb_internal_root` in `secondary_kb_health_check_repair_attempt`,
+    # which keeps READ_ONLY ADMIN. SUPER is removed from this grant; the
+    # best-effort `READ_ONLY ADMIN` and `CONNECTION ADMIN` for user-facing
+    # root below are also removed (CONNECTION ADMIN is dropped by minimum-priv
+    # principle without dependence on read_only-bypass behavior).
+    # `REPLICATION MASTER ADMIN` is kept so the secondary can run
+    # `CHANGE MASTER` / `START SLAVE` etc. for follow-time maintenance.
     sql="
       SET SESSION sql_log_bin=0;
       CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
       ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
       ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
       REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
-      GRANT SELECT, PROCESS, RELOAD, SUPER, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO '${user}'@'${host}';
+      GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO '${user}'@'${host}';
       FLUSH PRIVILEGES;
       SET SESSION sql_log_bin=1;
     "
@@ -145,10 +157,13 @@ apply_remote_root_fence() {
 
   if local_sql -e "${sql}" >/dev/null; then
     if [ "${role}" = "secondary" ]; then
+      # alpha.61: only grant monitoring privileges that DO NOT bypass read_only.
+      # READ_ONLY ADMIN and CONNECTION ADMIN are intentionally removed; the
+      # 1062 repair path uses kb_internal_root (which retains READ_ONLY ADMIN
+      # via its own grant chain) instead of relying on user-facing root having
+      # bypass.
       local_sql_best_effort -e "SET SESSION sql_log_bin=0; GRANT BINLOG MONITOR ON *.* TO '${user}'@'${host}'; SET SESSION sql_log_bin=1;"
       local_sql_best_effort -e "SET SESSION sql_log_bin=0; GRANT SLAVE MONITOR ON *.* TO '${user}'@'${host}'; SET SESSION sql_log_bin=1;"
-      local_sql_best_effort -e "SET SESSION sql_log_bin=0; GRANT READ_ONLY ADMIN ON *.* TO '${user}'@'${host}'; SET SESSION sql_log_bin=1;"
-      local_sql_best_effort -e "SET SESSION sql_log_bin=0; GRANT CONNECTION ADMIN ON *.* TO '${user}'@'${host}'; SET SESSION sql_log_bin=1;"
     fi
     printf "%s" "${role}" > "${marker}" 2>/dev/null || true
     return 0
