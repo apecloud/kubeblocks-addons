@@ -66,7 +66,24 @@ SWITCHOVER_REMOTE_ROOT_PROBE_TABLE="${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE:-kubebl
 SWITCHOVER_BYPASS_PRIVILEGES_PATTERN='READ_ONLY ADMIN|SUPER|BINLOG ADMIN|CONNECTION ADMIN|ALL PRIVILEGES'
 # user-facing write privileges that must NEVER appear on user-facing root
 # during secondary fence state. Verifier rejects any of these.
-SWITCHOVER_USER_FACING_WRITE_PATTERN='INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|GRANT OPTION|CREATE USER'
+#
+# alpha.63 v1 (Jack 05:22 RED closeout I-1): `GRANT OPTION` REMOVED from the
+# pattern. It was a trailing-modifier token that over-matched the default
+# `GRANT PROXY ... WITH GRANT OPTION` row that mariadb auto-creates and
+# is unrelated to write privileges. The remaining priv tokens (INSERT/
+# UPDATE/DELETE/CREATE/DROP/ALTER/CREATE USER) are unambiguous priv names
+# that mean actual write access. Defense-in-depth: a line-anchored
+# SWITCHOVER_GRANTS_IGNORED_LINE_PATTERN whitelist is also applied
+# BEFORE the priv scan, with grants_ignored_count + dump for audit.
+SWITCHOVER_USER_FACING_WRITE_PATTERN='INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|CREATE USER'
+
+# alpha.63 v1 (Jack 05:24 instrumentation tightening 2): line-anchored
+# whitelist of grant lines to be filtered out BEFORE bypass/write-residual
+# scan. Today only the default GRANT PROXY row is whitelisted. The pattern
+# is line-start + line-end anchored so that surprise variants like
+# `GRANT INSERT ... WITH GRANT OPTION` are NOT silently filtered. The
+# verifier counts and dumps ignored lines for audit.
+SWITCHOVER_GRANTS_IGNORED_LINE_PATTERN='^GRANT PROXY ON .* TO .* WITH GRANT OPTION$'
 # Secondary fence GRANT clause body (excludes admin bypass and user-facing
 # writes; aligned with roleProbe secondary fence post-alpha.61).
 SWITCHOVER_SECONDARY_FENCE_GRANT_BODY='SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN'
@@ -334,8 +351,21 @@ _local_root_write_probe_127() {
   # alpha.62 v1: TCP probe to 127.0.0.1 expecting fail (1044 priv-based or
   # 1290 read_only-based). Used only for the root@127.0.0.1 host since it
   # is the only host where the local probe attribution is deterministic.
-  local out rc errno=""
-  out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+  #
+  # alpha.63 v1 (Jack 05:22 RED closeout I-2 + 05:24 instrumentation 1):
+  # the legacy `printf '%s|%s|%s' rc|errno|out` returns broke when `out`
+  # was multi-line (mariadb client wraps SQL stderr across lines). The
+  # caller's `cut -d'|' -f2` then returned `errno\nfirst-line-of-stderr`
+  # which never matched the `1044|1290|1142` case patterns, so a real
+  # priv-based fence was misclassified as `probe_account_mismatch`.
+  # Fix: write the three fields into module-scope global variables
+  # __PROBE_RC / __PROBE_ERRNO / __PROBE_OUT instead of joining with `|`.
+  # Caller MUST pre-clear the three globals before calling and post-
+  # validate that __PROBE_RC is non-empty numeric and __PROBE_ERRNO is
+  # one of the 5 valid values (1044/1290/1142/0/other) — fail-closed
+  # `probe_result_malformed` / `probe_result_malformed_errno` otherwise
+  # (Jack 05:24 instrumentation 1).
+  __PROBE_OUT=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
     --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
     -P3306 -h127.0.0.1 -N -s -e "
       CREATE DATABASE IF NOT EXISTS kubeblocks;
@@ -344,14 +374,48 @@ _local_root_write_probe_127() {
         VALUES ('switchover_local_root_probe', UNIX_TIMESTAMP());
       DELETE FROM ${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE} WHERE probe_id='switchover_local_root_probe';
     " 2>&1)
-  rc=$?
-  case "${out}" in
-    *1044*) errno=1044 ;;
-    *1290*) errno=1290 ;;
-    *1142*) errno=1142 ;;  # Permission for table itself; accepted as fenced
-    *) errno=other ;;
+  __PROBE_RC=$?
+  case "${__PROBE_OUT}" in
+    *1044*) __PROBE_ERRNO=1044 ;;
+    *1290*) __PROBE_ERRNO=1290 ;;
+    *1142*) __PROBE_ERRNO=1142 ;;  # Permission for table itself; accepted as fenced
+    *)
+      if [ "${__PROBE_RC}" -eq 0 ]; then
+        __PROBE_ERRNO=0
+      else
+        __PROBE_ERRNO=other
+      fi
+      ;;
   esac
-  printf '%s|%s|%s' "${rc}" "${errno}" "${out}"
+}
+
+_filter_grants_keep_unmatched() {
+  # alpha.63 v1 (Jack 05:24 instrumentation 2): emit only the grants lines
+  # that do NOT match the line-anchored whitelist
+  # SWITCHOVER_GRANTS_IGNORED_LINE_PATTERN. Caller assigns the result via
+  # `$(...)` command substitution. Audit-side count + dump are computed
+  # by separate _count_grants_matched_whitelist / _dump_grants_matched_whitelist
+  # callers — each its own subshell — to avoid the "globals do not survive
+  # command substitution" pitfall.
+  printf '%s\n' "$1" | awk -v pat="${SWITCHOVER_GRANTS_IGNORED_LINE_PATTERN}" '!match($0, pat) { print }'
+}
+
+_count_grants_matched_whitelist() {
+  # Counts how many lines of the input grants match the whitelist
+  # (i.e., would be filtered out by _filter_grants_keep_unmatched). Echoes
+  # an integer (always 0 or higher).
+  local count
+  count=$(printf '%s\n' "$1" | awk -v pat="${SWITCHOVER_GRANTS_IGNORED_LINE_PATTERN}" 'match($0, pat){c++} END{print c+0}')
+  case "${count}" in
+    ''|*[!0-9]*) printf '0' ;;
+    *) printf '%s' "${count}" ;;
+  esac
+}
+
+_dump_grants_matched_whitelist() {
+  # Echoes the lines of the input grants that match the whitelist (newline-
+  # separated; no trailing newline guarantee).
+  printf '%s\n' "$1" | awk -v pat="${SWITCHOVER_GRANTS_IGNORED_LINE_PATTERN}" 'match($0, pat){print}'
 }
 
 _verify_host_is_fenced() {
@@ -362,6 +426,11 @@ _verify_host_is_fenced() {
   local root_user="${MARIADB_ROOT_USER:-root}"
   local grants rc grants_sha_field bypass_residual="none" probe_host write_rc="skipped" write_errno="skipped" write_attempted="false"
   local reason=""
+  # alpha.63 v1: initialize ignored-grants accounting at function entry so
+  # all log lines (including the early grants-query-failed branch) include
+  # the field. Set 0 here; _filter_grants_for_residual_scan re-sets later.
+  __GRANTS_IGNORED_COUNT=0
+  __GRANTS_IGNORED_LINES=""
   grants=$(_grants_for_host_via_internal "${host}")
   rc=$?
   grants_sha_field=$(split_grants_sha_field "$(compute_grants_sha "${grants}")")
@@ -372,36 +441,56 @@ _verify_host_is_fenced() {
         ;;
       *)
         reason="grants_query_failed"
-        log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:grants_unavailable grants_query_rc=${rc} ${grants_sha_field} grants_bypass=unknown write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+        log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:grants_unavailable grants_query_rc=${rc} ${grants_sha_field} grants_bypass=unknown grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
         log_switchover_error "remote_root_fence_verify host=${host} grants_dump_begin"
         log_switchover_error "${grants}"
         log_switchover_error "remote_root_fence_verify host=${host} grants_dump_end"
         return 1
         ;;
     esac
-    log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:account_absent grants_query_rc=${rc} ${grants_sha_field} grants_bypass=none write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+    log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:account_absent grants_query_rc=${rc} ${grants_sha_field} grants_bypass=none grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
     return 0
   fi
-  # Detect any bypass priv residual.
-  bypass_residual=$(printf '%s' "${grants}" | grep -oE "${SWITCHOVER_BYPASS_PRIVILEGES_PATTERN}" | sort -u | tr '\n' ',' | sed 's/,$//')
+  # alpha.63 v1 (Jack 05:24 instrumentation 2): filter out the default
+  # GRANT PROXY ... WITH GRANT OPTION row BEFORE the bypass / user-facing-
+  # write residual scan. The whitelist pattern is line-anchored
+  # (SWITCHOVER_GRANTS_IGNORED_LINE_PATTERN). Three independent subshell
+  # helpers (each in its own `$(...)`) so the count + dump aren't lost to
+  # the subshell-globals problem.
+  local grants_filtered
+  grants_filtered=$(_filter_grants_keep_unmatched "${grants}")
+  __GRANTS_IGNORED_COUNT=$(_count_grants_matched_whitelist "${grants}")
+  __GRANTS_IGNORED_LINES=$(_dump_grants_matched_whitelist "${grants}")
+  # Detect any bypass priv residual (against filtered grants).
+  bypass_residual=$(printf '%s' "${grants_filtered}" | grep -oE "${SWITCHOVER_BYPASS_PRIVILEGES_PATTERN}" | sort -u | tr '\n' ',' | sed 's/,$//')
   [ -z "${bypass_residual}" ] && bypass_residual="none"
   if [ "${bypass_residual}" != "none" ]; then
     reason="bypass_priv_residual:${bypass_residual}"
-    log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:bypass_residual_short_circuit grants_query_rc=0 ${grants_sha_field} grants_bypass=${bypass_residual} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+    log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:bypass_residual_short_circuit grants_query_rc=0 ${grants_sha_field} grants_bypass=${bypass_residual} grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
     log_switchover_error "remote_root_fence_verify host=${host} grants_dump_begin"
     log_switchover_error "${grants}"
     log_switchover_error "remote_root_fence_verify host=${host} grants_dump_end"
+    if [ "${__GRANTS_IGNORED_COUNT}" -gt 0 ]; then
+      log_switchover_error "remote_root_fence_verify host=${host} grants_ignored_dump_begin"
+      log_switchover_error "${__GRANTS_IGNORED_LINES}"
+      log_switchover_error "remote_root_fence_verify host=${host} grants_ignored_dump_end"
+    fi
     return 1
   fi
-  # Detect any user-facing write priv residual.
+  # Detect any user-facing write priv residual (against filtered grants).
   local write_residual
-  write_residual=$(printf '%s' "${grants}" | grep -oE "${SWITCHOVER_USER_FACING_WRITE_PATTERN}" | sort -u | tr '\n' ',' | sed 's/,$//')
+  write_residual=$(printf '%s' "${grants_filtered}" | grep -oE "${SWITCHOVER_USER_FACING_WRITE_PATTERN}" | sort -u | tr '\n' ',' | sed 's/,$//')
   if [ -n "${write_residual}" ]; then
     reason="bypass_priv_residual:${write_residual}"
-    log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:write_priv_residual_short_circuit grants_query_rc=0 ${grants_sha_field} grants_bypass=${write_residual} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+    log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:write_priv_residual_short_circuit grants_query_rc=0 ${grants_sha_field} grants_bypass=${write_residual} grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
     log_switchover_error "remote_root_fence_verify host=${host} grants_dump_begin"
     log_switchover_error "${grants}"
     log_switchover_error "remote_root_fence_verify host=${host} grants_dump_end"
+    if [ "${__GRANTS_IGNORED_COUNT}" -gt 0 ]; then
+      log_switchover_error "remote_root_fence_verify host=${host} grants_ignored_dump_begin"
+      log_switchover_error "${__GRANTS_IGNORED_LINES}"
+      log_switchover_error "remote_root_fence_verify host=${host} grants_ignored_dump_end"
+    fi
     return 1
   fi
   # Probe scope: only deterministic for root@127.0.0.1.
@@ -409,17 +498,46 @@ _verify_host_is_fenced() {
     "127.0.0.1")
       probe_host="127.0.0.1"
       write_attempted="true"
-      local probe_result probe_out
-      probe_result=$(_local_root_write_probe_127)
-      write_rc=$(printf '%s' "${probe_result}" | cut -d'|' -f1)
-      write_errno=$(printf '%s' "${probe_result}" | cut -d'|' -f2)
-      probe_out=$(printf '%s' "${probe_result}" | cut -d'|' -f3-)
+      # alpha.63 v1 (Jack 05:22 RED I-2 + 05:24 instrumentation 1):
+      # pre-clear globals BEFORE the call (defends against stale value
+      # reuse across multiple verifier invocations); call the probe
+      # (which sets __PROBE_RC/__PROBE_ERRNO/__PROBE_OUT directly,
+      # no pipe-separated parsing); post-validate the globals.
+      __PROBE_RC=""
+      __PROBE_ERRNO=""
+      __PROBE_OUT=""
+      _local_root_write_probe_127
+      # Post-validate __PROBE_RC must be non-empty numeric.
+      case "${__PROBE_RC}" in
+        ''|*[!0-9]*)
+          reason="probe_result_malformed"
+          log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=true write_probe_rc=<malformed:${__PROBE_RC}> write_probe_errno=skipped reason=${reason}"
+          log_switchover_error "remote_root_fence_verify host=${host} probe_dump_begin"
+          log_switchover_error "${__PROBE_OUT}"
+          log_switchover_error "remote_root_fence_verify host=${host} probe_dump_end"
+          return 1
+          ;;
+      esac
+      # Post-validate __PROBE_ERRNO must be in the 5-value valid set.
+      case "${__PROBE_ERRNO}" in
+        1044|1290|1142|0|other) ;;
+        *)
+          reason="probe_result_malformed_errno"
+          log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=true write_probe_rc=${__PROBE_RC} write_probe_errno=<malformed:${__PROBE_ERRNO}> reason=${reason}"
+          log_switchover_error "remote_root_fence_verify host=${host} probe_dump_begin"
+          log_switchover_error "${__PROBE_OUT}"
+          log_switchover_error "remote_root_fence_verify host=${host} probe_dump_end"
+          return 1
+          ;;
+      esac
+      write_rc="${__PROBE_RC}"
+      write_errno="${__PROBE_ERRNO}"
       case "${write_rc}" in
         0)
           reason="writable_unexpected"
-          log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
+          log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
           log_switchover_error "remote_root_fence_verify host=${host} probe_dump_begin"
-          log_switchover_error "${probe_out}"
+          log_switchover_error "${__PROBE_OUT}"
           log_switchover_error "remote_root_fence_verify host=${host} probe_dump_end"
           return 1
           ;;
@@ -427,14 +545,14 @@ _verify_host_is_fenced() {
           case "${write_errno}" in
             1044|1290|1142)
               reason="ok_by_local_probe:${write_errno}"
-              log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
+              log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
               return 0
               ;;
             *)
               reason="probe_account_mismatch"
-              log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
+              log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
               log_switchover_error "remote_root_fence_verify host=${host} probe_dump_begin"
-              log_switchover_error "${probe_out}"
+              log_switchover_error "${__PROBE_OUT}"
               log_switchover_error "remote_root_fence_verify host=${host} probe_dump_end"
               return 1
               ;;
@@ -445,13 +563,13 @@ _verify_host_is_fenced() {
     "localhost")
       probe_host="none:localhost_socket_not_attempted"
       reason="ok_by_grants_only:localhost_socket_not_attempted"
-      log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+      log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
       return 0
       ;;
     *)
       probe_host="none:wildcard_or_remote_not_locally_probable"
       reason="ok_by_grants_only:wildcard_or_remote_not_locally_probable"
-      log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+      log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
       return 0
       ;;
   esac
