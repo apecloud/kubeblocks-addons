@@ -408,11 +408,23 @@ Last_SQL_Errno: 0"
       }
       Before "setup_primary_remote_root"
 
-      It "restores remote root full grants and records the primary fence marker"
+      It "alpha.60: restores remote root grants WITHOUT admin bypass privileges and records primary fence marker"
+        # alpha.60 (Jack 23:28 review): primary grant must NOT include
+        # SUPER / READ_ONLY ADMIN / BINLOG ADMIN, because those let user-facing
+        # root bypass @@global.read_only=ON during a future switchover and
+        # break post-DCS local-root fence. GRANT OPTION is only via the
+        # trailing WITH GRANT OPTION clause, never inside the privilege list
+        # (the latter is a syntax error in some MariaDB versions).
         When call check_role
         The status should be success
         The output should eq "primary"
-        The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should include "REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'root'@'%'"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should include "ON *.* TO 'root'@'%' WITH GRANT OPTION"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should not include "GRANT ALL PRIVILEGES ON *.*"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should not include "SUPER"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should not include "READ_ONLY ADMIN"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should not include "BINLOG ADMIN"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should not include ", GRANT OPTION,"
         The contents of file "${TEST_DIR}/.remote-root-fence-role" should eq "primary"
       End
     End

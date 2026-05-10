@@ -223,6 +223,9 @@ EOF
         verify_post_dcs_local_root_write_fenced() {
           return 0
         }
+        revoke_user_facing_root_admin_privileges_for_secondary() {
+          return 0
+        }
         fence_local_remote_root_for_secondary() {
           return 0
         }
@@ -267,6 +270,9 @@ EOF
           return 0
         }
         verify_post_dcs_local_root_write_fenced() {
+          return 0
+        }
+        revoke_user_facing_root_admin_privileges_for_secondary() {
           return 0
         }
         fence_local_remote_root_for_secondary() {
@@ -329,6 +335,9 @@ EOF
         verify_post_dcs_local_root_write_fenced() {
           return 0
         }
+        revoke_user_facing_root_admin_privileges_for_secondary() {
+          return 0
+        }
         fence_local_remote_root_for_secondary() {
           return 0
         }
@@ -372,6 +381,7 @@ EOF
         local_remote_root_is_fenced_for_secondary() { return 0; }
         remote_root_write_ready() { return 0; }
         verify_post_dcs_local_root_write_fenced() { return 0; }
+        revoke_user_facing_root_admin_privileges_for_secondary() { return 0; }
         query_value() {
           case "$1:$2" in
             "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
@@ -403,6 +413,7 @@ EOF
         local_remote_root_is_fenced_for_secondary() { return 0; }
         remote_root_write_ready() { return 1; }
         verify_post_dcs_local_root_write_fenced() { return 0; }
+        revoke_user_facing_root_admin_privileges_for_secondary() { return 0; }
         query_value() {
           case "$1:$2" in
             "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
@@ -522,6 +533,9 @@ EOF
         verify_post_dcs_local_root_write_fenced() {
           return 0
         }
+        revoke_user_facing_root_admin_privileges_for_secondary() {
+          return 0
+        }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be success
         The output should include "Switchover pre-DCS guard: disconnecting active remote root sessions 88 89"
@@ -572,6 +586,9 @@ EOF
           return 0
         }
         verify_post_dcs_local_root_write_fenced() {
+          return 0
+        }
+        revoke_user_facing_root_admin_privileges_for_secondary() {
           return 0
         }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
@@ -838,6 +855,191 @@ EOF
       When call verify_post_dcs_local_root_write_fenced
       The status should be failure
       The stderr should include "Switchover failed: post-DCS local-root write fence verification cannot run without MARIADB_CLIENT_BIN"
+    End
+  End
+
+  # alpha.60 (Jack 23:28 8-class review): post-DCS read_only=ON does not fence
+  # user-facing root if root holds READ_ONLY ADMIN / SUPER / BINLOG ADMIN.
+  # This describe block exercises the synchronous revoke that closes that gap.
+  Describe "revoke_user_facing_root_admin_privileges_for_secondary()"
+    setup_revoke_env() {
+      export MARIADB_ROOT_USER="root"
+      export MARIADB_ROOT_PASSWORD="pw"
+      export MARIADB_INTERNAL_ROOT_USER="kb_internal_root"
+      export MARIADB_CONNECT_TIMEOUT_SECONDS="5"
+      export MARIADB_CLIENT_BIN="${TEST_DIR}/mariadb"
+      export MOCK_REVOKE_CALLS="${TEST_DIR}/revoke-calls"
+      : > "${MOCK_REVOKE_CALLS}"
+    }
+    Before "setup_revoke_env"
+
+    It "skips with reason=root_account_not_found when mysql.user has no rows"
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "$@" >> "${MOCK_REVOKE_CALLS}"
+case "$*" in
+  *"SELECT Host FROM mysql.user"*) exit 0 ;;
+esac
+exit 0
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call revoke_user_facing_root_admin_privileges_for_secondary
+      The status should be success
+      The output should include "Switchover post-DCS root revoke: reason=root_account_not_found"
+      The contents of file "${MOCK_REVOKE_CALLS}" should not include "REVOKE READ_ONLY ADMIN"
+    End
+
+    It "revokes bypass priv from every root host present in mysql.user"
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "$@" >> "${MOCK_REVOKE_CALLS}"
+case "$*" in
+  *"SELECT Host FROM mysql.user"*)
+    printf "%%\n127.0.0.1\nlocalhost\n"
+    exit 0
+    ;;
+  *"SHOW GRANTS FOR 'root'@"*)
+    printf "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%%' WITH GRANT OPTION\n"
+    exit 0
+    ;;
+  *"REVOKE READ_ONLY ADMIN"*|*"FLUSH PRIVILEGES"*|*"SELECT CONCAT"*)
+    exit 0
+    ;;
+esac
+exit 0
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call revoke_user_facing_root_admin_privileges_for_secondary
+      The status should be success
+      The output should include "reason=revoked root@%"
+      The output should include "reason=revoked root@127.0.0.1"
+      The output should include "reason=revoked root@localhost"
+      The output should include "Switchover post-DCS root revoke summary revoked=3"
+      The contents of file "${MOCK_REVOKE_CALLS}" should include "REVOKE READ_ONLY ADMIN"
+      The contents of file "${MOCK_REVOKE_CALLS}" should include "REVOKE SUPER"
+      The contents of file "${MOCK_REVOKE_CALLS}" should include "REVOKE BINLOG ADMIN"
+      The contents of file "${MOCK_REVOKE_CALLS}" should include "FLUSH PRIVILEGES"
+    End
+
+    It "fails closed when even one host still has bypass priv that REVOKE refuses (non-1141)"
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "$@" >> "${MOCK_REVOKE_CALLS}"
+case "$*" in
+  *"SELECT Host FROM mysql.user"*)
+    printf "%%\nlocalhost\n"
+    exit 0
+    ;;
+  *"SHOW GRANTS FOR 'root'@'%'"*)
+    printf "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%%' WITH GRANT OPTION\n"
+    exit 0
+    ;;
+  *"SHOW GRANTS FOR 'root'@'localhost'"*)
+    printf "GRANT READ_ONLY ADMIN ON *.* TO 'root'@'localhost'\n"
+    exit 0
+    ;;
+  *"REVOKE READ_ONLY ADMIN"*"'root'@'localhost'"*)
+    echo "ERROR 1227 (42000) at line 2: Access denied" >&2
+    exit 1
+    ;;
+  *"REVOKE READ_ONLY ADMIN"*)
+    exit 0
+    ;;
+esac
+exit 0
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call revoke_user_facing_root_admin_privileges_for_secondary
+      The status should be failure
+      The output should include "reason=revoked root@%"
+      The stderr should include "reason=revoke_failed root@localhost"
+      The stderr should include "fail-closed"
+    End
+
+    It "treats 1141 (no such grant) on REVOKE as already-fenced, not as failure"
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "$@" >> "${MOCK_REVOKE_CALLS}"
+case "$*" in
+  *"SELECT Host FROM mysql.user"*)
+    printf "%%\n"
+    exit 0
+    ;;
+  *"SHOW GRANTS FOR 'root'@"*)
+    printf "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%%' WITH GRANT OPTION\n"
+    exit 0
+    ;;
+  *"REVOKE READ_ONLY ADMIN"*)
+    echo "ERROR 1141 (42000): There is no such grant defined for user 'root' on host '%'" >&2
+    exit 1
+    ;;
+  *"FLUSH PRIVILEGES"*|*"SELECT CONCAT"*)
+    exit 0
+    ;;
+esac
+exit 0
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call revoke_user_facing_root_admin_privileges_for_secondary
+      The status should be success
+      The output should include "reason=privilege_absent_already_fenced root@%"
+      The output should include "(1141 from REVOKE)"
+    End
+
+    It "skips host with reason=privilege_absent_already_fenced when SHOW GRANTS shows no bypass priv"
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "$@" >> "${MOCK_REVOKE_CALLS}"
+case "$*" in
+  *"SELECT Host FROM mysql.user"*)
+    printf "%%\n"
+    exit 0
+    ;;
+  *"SHOW GRANTS FOR 'root'@"*)
+    printf "GRANT SELECT ON *.* TO 'root'@'%%'\n"
+    exit 0
+    ;;
+  *"FLUSH PRIVILEGES"*|*"SELECT CONCAT"*)
+    exit 0
+    ;;
+esac
+exit 0
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call revoke_user_facing_root_admin_privileges_for_secondary
+      The status should be success
+      The output should include "reason=privilege_absent_already_fenced root@%"
+      The output should include "(no bypass priv in SHOW GRANTS)"
+      The contents of file "${MOCK_REVOKE_CALLS}" should not include "REVOKE READ_ONLY ADMIN"
+    End
+
+    It "fails closed when MARIADB_CLIENT_BIN is unavailable"
+      rm -f "${TEST_DIR}/mariadb"
+      When call revoke_user_facing_root_admin_privileges_for_secondary
+      The status should be failure
+      The stderr should include "Switchover failed: post-DCS root revoke cannot run without MARIADB_CLIENT_BIN"
+    End
+  End
+
+  # alpha.60: ensure fence_current_primary_local_writes_after_dcs fails closed
+  # when revoke_user_facing_root_admin_privileges_for_secondary returns 1.
+  Describe "fence_current_primary_local_writes_after_dcs() revoke fail-closed"
+    It "fails closed when revoke step fails (does not call verify probe)"
+      set_local_read_only() { return 0; }
+      local_read_only_is() { [ "$1" = "1" ]; }
+      revoke_user_facing_root_admin_privileges_for_secondary() {
+        record_call "revoke_called"
+        return 1
+      }
+      verify_post_dcs_local_root_write_fenced() {
+        record_call "BUG_verify_called_after_revoke_failure"
+        return 0
+      }
+      When call fence_current_primary_local_writes_after_dcs
+      The status should be failure
+      The output should include "Switchover post-DCS guard"
+      The contents of file "${TEST_DIR}/calls" should include "revoke_called"
+      The contents of file "${TEST_DIR}/calls" should not include "BUG_verify_called_after_revoke_failure"
     End
   End
 End
