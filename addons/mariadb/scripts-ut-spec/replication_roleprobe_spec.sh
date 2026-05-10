@@ -344,6 +344,7 @@ Last_SQL_Errno: 0"
         export MOCK_MARIADB_READ_ONLY="0"
         touch "${TEST_DIR}/.replication-ready"
         touch "${TEST_DIR}/.sql-listener-ready"
+        touch "${TEST_DIR}/.primary-read-write-ready"
         make_mariadb_cli
       }
       Before "setup_primary_peer_reachable_listener"
@@ -352,6 +353,27 @@ Last_SQL_Errno: 0"
         When call check_role
         The status should be success
         The output should eq "primary"
+      End
+    End
+
+    Context "when primary read-write readiness marker is missing"
+      setup_primary_missing_read_write_marker() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY="true"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_BIND_ADDRESS="0.0.0.0"
+        export MOCK_MARIADB_READ_ONLY="0"
+        touch "${TEST_DIR}/.replication-ready"
+        touch "${TEST_DIR}/.sql-listener-ready"
+        make_mariadb_cli
+      }
+      Before "setup_primary_missing_read_write_marker"
+
+      It "does not publish primary until runtime proves local root writes are ready"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
       End
     End
 
@@ -365,6 +387,7 @@ Last_SQL_Errno: 0"
         export MOCK_MARIADB_READ_ONLY="1"
         touch "${TEST_DIR}/.replication-ready"
         touch "${TEST_DIR}/.sql-listener-ready"
+        touch "${TEST_DIR}/.primary-read-write-ready"
         make_mariadb_cli
       }
       Before "setup_primary_read_only"
@@ -417,9 +440,10 @@ Last_SQL_Errno: 0"
         The status should be success
         The output should eq "secondary"
         The contents of file "${TEST_DIR}/mariadb-sql.log" should include "REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'root'@'%'"
-        The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'root'@'%'"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT SELECT, PROCESS, RELOAD, SUPER, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'%'"
         The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT BINLOG MONITOR ON *.* TO 'root'@'%'"
         The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT SLAVE MONITOR ON *.* TO 'root'@'%'"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT READ_ONLY ADMIN ON *.* TO 'root'@'%'"
         The contents of file "${TEST_DIR}/.remote-root-fence-role" should eq "secondary"
       End
     End

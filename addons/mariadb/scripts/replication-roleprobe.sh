@@ -51,6 +51,10 @@ remote_root_fence_file() {
   printf "%s/.remote-root-fence-role" "$(data_dir)"
 }
 
+primary_read_write_ready_file() {
+  printf "%s/.primary-read-write-ready" "$(data_dir)"
+}
+
 master_info_file() {
   printf "%s/master.info" "$(data_dir)"
 }
@@ -114,7 +118,7 @@ apply_remote_root_fence() {
       ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
       ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
       REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
-      GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${user}'@'${host}';
+      GRANT SELECT, PROCESS, RELOAD, SUPER, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO '${user}'@'${host}';
       FLUSH PRIVILEGES;
       SET SESSION sql_log_bin=1;
     "
@@ -134,6 +138,8 @@ apply_remote_root_fence() {
     if [ "${role}" = "secondary" ]; then
       local_sql_best_effort -e "SET SESSION sql_log_bin=0; GRANT BINLOG MONITOR ON *.* TO '${user}'@'${host}'; SET SESSION sql_log_bin=1;"
       local_sql_best_effort -e "SET SESSION sql_log_bin=0; GRANT SLAVE MONITOR ON *.* TO '${user}'@'${host}'; SET SESSION sql_log_bin=1;"
+      local_sql_best_effort -e "SET SESSION sql_log_bin=0; GRANT READ_ONLY ADMIN ON *.* TO '${user}'@'${host}'; SET SESSION sql_log_bin=1;"
+      local_sql_best_effort -e "SET SESSION sql_log_bin=0; GRANT CONNECTION ADMIN ON *.* TO '${user}'@'${host}'; SET SESSION sql_log_bin=1;"
     fi
     printf "%s" "${role}" > "${marker}" 2>/dev/null || true
     return 0
@@ -223,6 +229,7 @@ primary_listener_ready() {
 primary_read_write_ready() {
   local read_only
   [ "${MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY:-}" = "true" ] || return 0
+  [ -f "$(primary_read_write_ready_file)" ] || return 1
   if [ "${MARIADB_ROLEPROBE_SKIP_DB_READY:-}" = "true" ]; then
     return 0
   fi
