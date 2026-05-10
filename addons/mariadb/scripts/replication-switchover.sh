@@ -333,6 +333,11 @@ local_remote_root_is_fenced_for_secondary() {
 }
 
 unfence_local_remote_root_for_primary() {
+  # alpha.60 v2 (Jack 23:52 review point 2): rollback path must NOT re-grant
+  # admin bypass privileges (READ_ONLY ADMIN / SUPER / BINLOG ADMIN) to user-
+  # facing root. Grant the same explicit non-bypass privilege list that the
+  # roleProbe primary path uses, so a future switchover's post-DCS fence still
+  # works after rollback. GRANT OPTION is in the trailing WITH clause only.
   local user root_host password sql
   remote_root_host_is_local && return 0
   user=$(sql_quote "${MARIADB_ROOT_USER}")
@@ -343,7 +348,8 @@ unfence_local_remote_root_for_primary() {
     CREATE USER IF NOT EXISTS '${user}'@'${root_host}' IDENTIFIED BY '${password}';
     ALTER USER '${user}'@'${root_host}' IDENTIFIED BY '${password}';
     ALTER USER '${user}'@'${root_host}' ACCOUNT UNLOCK;
-    GRANT ALL PRIVILEGES ON *.* TO '${user}'@'${root_host}' WITH GRANT OPTION;
+    REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${root_host}';
+    GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER, CREATE USER ON *.* TO '${user}'@'${root_host}' WITH GRANT OPTION;
     FLUSH PRIVILEGES;
     SET SESSION sql_log_bin=1;
   "
@@ -413,23 +419,23 @@ prepare_current_primary_for_switchover() {
 }
 
 revoke_user_facing_root_admin_privileges_for_secondary() {
-  # alpha.60 hard contract (Jack 23:28 8-class review):
-  # post-DCS read_only=ON is not sufficient to fence user-facing root because
-  # MariaDB `READ_ONLY ADMIN` / `SUPER` / `BINLOG ADMIN` privileges bypass it.
-  # Before verify_post_dcs_local_root_write_fenced runs, this function must
-  # synchronously revoke those bypass privileges from EVERY user-facing root
-  # account that mysql.user actually has. kb_internal_root is intentionally
+  # alpha.60 v2 hard contract (Jack 23:52 v2 blocker review):
+  # Each bypass privilege MUST be revoked individually so 1141 on one cannot
+  # mask the continued presence of others. After all per-privilege REVOKEs for
+  # a host, we re-issue SHOW GRANTS and assert no bypass privilege remains;
+  # if one does, this host is fail-closed (`revoke_residual_bypass`). 1141
+  # on a single privilege only marks THAT privilege already-fenced - never
+  # the host as a whole.
+  #
+  # post-DCS read_only=ON does not fence user-facing root that holds
+  # READ_ONLY ADMIN / SUPER / BINLOG ADMIN. kb_internal_root is intentionally
   # OUT of scope (it must keep READ_ONLY ADMIN for secondary-side 1062 repair
   # in the alpha.59 secondary roleProbe path).
-  #
-  # Failure semantics per Jack class 1/4/6 review:
-  #   - root account row absent from mysql.user            -> reason=root_account_not_found, skip (rc=0)
-  #   - account exists, no bypass priv visible / 1141       -> reason=privilege_absent_already_fenced, skip (rc=0)
-  #   - account exists, bypass priv present, REVOKE rc=0    -> reason=revoked, count++ (rc=0)
-  #   - account exists, REVOKE returns non-1141 error       -> reason=revoke_failed, return 1 (fail-closed)
   local root_user="${MARIADB_ROOT_USER:-root}"
-  local hosts host grants out rc revoked=0 already_fenced=0 not_found=0 failed=0
+  local hosts host grants out rc
+  local total_revoked=0 total_already_fenced=0 total_failed_hosts=0
   local snapshot
+  local PRIVS="READ_ONLY ADMIN|SUPER|BINLOG ADMIN"
   if [ -z "${MARIADB_CLIENT_BIN}" ] || [ ! -x "${MARIADB_CLIENT_BIN}" ]; then
     log_switchover_error "Switchover failed: post-DCS root revoke cannot run without MARIADB_CLIENT_BIN"
     return 1
@@ -443,6 +449,7 @@ revoke_user_facing_root_admin_privileges_for_secondary() {
   fi
   while IFS= read -r host; do
     [ -z "${host}" ] && continue
+    local host_failed=0 host_revoked=0 host_already=0
     grants=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
       --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
       -P3306 -h127.0.0.1 -N -s -e "SHOW GRANTS FOR '${root_user}'@'${host}';" 2>&1)
@@ -451,54 +458,77 @@ revoke_user_facing_root_admin_privileges_for_secondary() {
       case "${grants}" in
         *1141*|*"no such grant"*|*"There is no such grant"*)
           log_switchover_info "Switchover post-DCS root revoke: reason=privilege_absent_already_fenced ${root_user}@${host} (1141 from SHOW GRANTS)"
-          already_fenced=$((already_fenced + 1))
+          total_already_fenced=$((total_already_fenced + 1))
           continue
           ;;
         *)
           log_switchover_error "Switchover failed: post-DCS root revoke: reason=show_grants_failed ${root_user}@${host} rc=${rc} out=${grants}"
-          failed=$((failed + 1))
+          total_failed_hosts=$((total_failed_hosts + 1))
           continue
           ;;
       esac
     fi
-    case "${grants}" in
-      *"READ_ONLY ADMIN"*|*"SUPER"*|*"BINLOG ADMIN"*|*"GRANT ALL PRIVILEGES"*|*"ALL PRIVILEGES"*)
-        out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
-          --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
-          -P3306 -h127.0.0.1 -N -s -e "
-            SET SESSION sql_log_bin=0;
-            REVOKE READ_ONLY ADMIN ON *.* FROM '${root_user}'@'${host}';
-            REVOKE SUPER ON *.* FROM '${root_user}'@'${host}';
-            REVOKE BINLOG ADMIN ON *.* FROM '${root_user}'@'${host}';
-            SET SESSION sql_log_bin=1;
-          " 2>&1)
-        rc=$?
-        if [ "${rc}" -eq 0 ]; then
-          log_switchover_info "Switchover post-DCS root revoke: reason=revoked ${root_user}@${host}"
-          revoked=$((revoked + 1))
-        else
-          case "${out}" in
-            *1141*|*"no such grant"*|*"There is no such grant"*)
-              log_switchover_info "Switchover post-DCS root revoke: reason=privilege_absent_already_fenced ${root_user}@${host} (1141 from REVOKE)"
-              already_fenced=$((already_fenced + 1))
-              ;;
-            *)
-              log_switchover_error "Switchover failed: post-DCS root revoke: reason=revoke_failed ${root_user}@${host} rc=${rc} out=${out}"
-              failed=$((failed + 1))
-              ;;
-          esac
-        fi
-        ;;
-      *)
-        log_switchover_info "Switchover post-DCS root revoke: reason=privilege_absent_already_fenced ${root_user}@${host} (no bypass priv in SHOW GRANTS)"
-        already_fenced=$((already_fenced + 1))
-        ;;
-    esac
+    # Per-privilege REVOKE. 1141 on one priv is local-skip, NEVER host-wide.
+    local priv
+    for priv in "READ_ONLY ADMIN" "SUPER" "BINLOG ADMIN"; do
+      out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+        --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+        -P3306 -h127.0.0.1 -N -s -e "
+          SET SESSION sql_log_bin=0;
+          REVOKE ${priv} ON *.* FROM '${root_user}'@'${host}';
+          SET SESSION sql_log_bin=1;
+        " 2>&1)
+      rc=$?
+      if [ "${rc}" -eq 0 ]; then
+        log_switchover_info "Switchover post-DCS root revoke: reason=revoked ${root_user}@${host} priv=${priv}"
+        host_revoked=$((host_revoked + 1))
+      else
+        case "${out}" in
+          *1141*|*"no such grant"*|*"There is no such grant"*)
+            log_switchover_info "Switchover post-DCS root revoke: reason=privilege_absent_already_fenced ${root_user}@${host} priv=${priv} (1141 on REVOKE)"
+            host_already=$((host_already + 1))
+            ;;
+          *)
+            log_switchover_error "Switchover failed: post-DCS root revoke: reason=revoke_failed ${root_user}@${host} priv=${priv} rc=${rc} out=${out}"
+            host_failed=$((host_failed + 1))
+            ;;
+        esac
+      fi
+    done
+    # Per-host post-revoke residual check. If any bypass priv survived,
+    # the host is fail-closed regardless of per-priv counts.
+    grants=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+      --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+      -P3306 -h127.0.0.1 -N -s -e "SHOW GRANTS FOR '${root_user}'@'${host}';" 2>&1)
+    rc=$?
+    if [ "${rc}" -ne 0 ]; then
+      case "${grants}" in
+        *1141*|*"no such grant"*|*"There is no such grant"*)
+          log_switchover_info "Switchover post-DCS root revoke: reason=privilege_absent_already_fenced ${root_user}@${host} (post-revoke SHOW GRANTS 1141)"
+          ;;
+        *)
+          log_switchover_error "Switchover failed: post-DCS root revoke: reason=post_revoke_show_grants_failed ${root_user}@${host} rc=${rc} out=${grants}"
+          host_failed=$((host_failed + 1))
+          ;;
+      esac
+    else
+      case "${grants}" in
+        *"READ_ONLY ADMIN"*|*"SUPER"*|*"BINLOG ADMIN"*|*"GRANT ALL PRIVILEGES"*|*"ALL PRIVILEGES ON \\*.\\*"*|*"ALL PRIVILEGES ON *.*"*)
+          log_switchover_error "Switchover failed: post-DCS root revoke: reason=revoke_residual_bypass ${root_user}@${host} grants=${grants}"
+          host_failed=$((host_failed + 1))
+          ;;
+      esac
+    fi
+    if [ "${host_failed}" -gt 0 ]; then
+      total_failed_hosts=$((total_failed_hosts + 1))
+    fi
+    total_revoked=$((total_revoked + host_revoked))
+    total_already_fenced=$((total_already_fenced + host_already))
   done <<EOF_HOSTS
 ${hosts}
 EOF_HOSTS
-  if [ "${failed}" -gt 0 ]; then
-    log_switchover_error "Switchover failed: post-DCS root revoke summary revoked=${revoked} already_fenced=${already_fenced} not_found=${not_found} failed=${failed}; fail-closed"
+  if [ "${total_failed_hosts}" -gt 0 ]; then
+    log_switchover_error "Switchover failed: post-DCS root revoke summary revoked=${total_revoked} already_fenced=${total_already_fenced} failed_hosts=${total_failed_hosts}; fail-closed"
     return 1
   fi
   out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
@@ -514,7 +544,7 @@ EOF_HOSTS
     -P3306 -h127.0.0.1 -N -B -s -e "
       SELECT CONCAT('user=', User, '@', Host) FROM mysql.user WHERE User='${root_user}';
     " 2>/dev/null | tr '\n' ' ' || true)
-  log_switchover_info "Switchover post-DCS root revoke summary revoked=${revoked} already_fenced=${already_fenced} failed=0; snapshot=[${snapshot}]"
+  log_switchover_info "Switchover post-DCS root revoke summary revoked=${total_revoked} already_fenced=${total_already_fenced} failed_hosts=0; snapshot=[${snapshot}]"
   return 0
 }
 

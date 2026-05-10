@@ -869,6 +869,7 @@ EOF
       export MARIADB_CONNECT_TIMEOUT_SECONDS="5"
       export MARIADB_CLIENT_BIN="${TEST_DIR}/mariadb"
       export MOCK_REVOKE_CALLS="${TEST_DIR}/revoke-calls"
+      export MOCK_TMP="${TEST_DIR}"
       : > "${MOCK_REVOKE_CALLS}"
     }
     Before "setup_revoke_env"
@@ -889,7 +890,12 @@ EOF
       The contents of file "${MOCK_REVOKE_CALLS}" should not include "REVOKE READ_ONLY ADMIN"
     End
 
-    It "revokes bypass priv from every root host present in mysql.user"
+    It "alpha.60 v2: revokes each bypass priv per-host and verifies post-revoke residual is clean"
+      # Per Jack 23:52 v2 review: REVOKE per-privilege; after all REVOKEs for a
+      # host, re-SHOW GRANTS and assert no bypass priv remains. Mock alternates
+      # SHOW GRANTS responses (odd-call = initial bypass, even-call = post-
+      # revoke clean) since the function calls SHOW GRANTS exactly twice per
+      # host in fixed order.
       cat > "${TEST_DIR}/mariadb" <<'EOF'
 #!/bin/sh
 echo "$@" >> "${MOCK_REVOKE_CALLS}"
@@ -899,10 +905,17 @@ case "$*" in
     exit 0
     ;;
   *"SHOW GRANTS FOR 'root'@"*)
-    printf "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%%' WITH GRANT OPTION\n"
+    n=$(cat "${MOCK_TMP}/show_count" 2>/dev/null || echo 0)
+    n=$((n+1))
+    echo "$n" > "${MOCK_TMP}/show_count"
+    if [ $((n % 2)) -eq 1 ]; then
+      printf "GRANT ALL PRIVILEGES ON *.* TO 'root'@'<host>' WITH GRANT OPTION\n"
+    else
+      printf "GRANT SELECT ON *.* TO 'root'@'<host>'\n"
+    fi
     exit 0
     ;;
-  *"REVOKE READ_ONLY ADMIN"*|*"FLUSH PRIVILEGES"*|*"SELECT CONCAT"*)
+  *"REVOKE READ_ONLY ADMIN"*|*"REVOKE SUPER"*|*"REVOKE BINLOG ADMIN"*|*"FLUSH PRIVILEGES"*|*"SELECT CONCAT"*)
     exit 0
     ;;
 esac
@@ -911,10 +924,12 @@ EOF
       chmod +x "${TEST_DIR}/mariadb"
       When call revoke_user_facing_root_admin_privileges_for_secondary
       The status should be success
-      The output should include "reason=revoked root@%"
-      The output should include "reason=revoked root@127.0.0.1"
-      The output should include "reason=revoked root@localhost"
-      The output should include "Switchover post-DCS root revoke summary revoked=3"
+      The output should include "reason=revoked root@% priv=READ_ONLY ADMIN"
+      The output should include "reason=revoked root@% priv=SUPER"
+      The output should include "reason=revoked root@% priv=BINLOG ADMIN"
+      The output should include "reason=revoked root@127.0.0.1 priv=READ_ONLY ADMIN"
+      The output should include "reason=revoked root@localhost priv=READ_ONLY ADMIN"
+      The output should include "Switchover post-DCS root revoke summary revoked=9"
       The contents of file "${MOCK_REVOKE_CALLS}" should include "REVOKE READ_ONLY ADMIN"
       The contents of file "${MOCK_REVOKE_CALLS}" should include "REVOKE SUPER"
       The contents of file "${MOCK_REVOKE_CALLS}" should include "REVOKE BINLOG ADMIN"
@@ -956,7 +971,12 @@ EOF
       The stderr should include "fail-closed"
     End
 
-    It "treats 1141 (no such grant) on REVOKE as already-fenced, not as failure"
+    It "alpha.60 v2: treats 1141 on a single REVOKE as priv-already-absent, not host-wide already-fenced"
+      # Per Jack v2: 1141 on READ_ONLY ADMIN means only that priv is absent;
+      # SUPER and BINLOG ADMIN must still be REVOKEd. Mock simulates the case
+      # where READ_ONLY ADMIN is missing from the start but SUPER and BINLOG
+      # ADMIN are present and revoked successfully. Post-revoke SHOW GRANTS
+      # returns clean (no bypass priv).
       cat > "${TEST_DIR}/mariadb" <<'EOF'
 #!/bin/sh
 echo "$@" >> "${MOCK_REVOKE_CALLS}"
@@ -966,14 +986,22 @@ case "$*" in
     exit 0
     ;;
   *"SHOW GRANTS FOR 'root'@"*)
-    printf "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%%' WITH GRANT OPTION\n"
+    if [ -f "${MOCK_TMP}/revoked" ]; then
+      printf "GRANT SELECT ON *.* TO 'root'@'%%'\n"
+    else
+      printf "GRANT SUPER, BINLOG ADMIN ON *.* TO 'root'@'%%'\n"
+    fi
     exit 0
     ;;
   *"REVOKE READ_ONLY ADMIN"*)
     echo "ERROR 1141 (42000): There is no such grant defined for user 'root' on host '%'" >&2
     exit 1
     ;;
-  *"FLUSH PRIVILEGES"*|*"SELECT CONCAT"*)
+  *"REVOKE BINLOG ADMIN"*)
+    touch "${MOCK_TMP}/revoked"
+    exit 0
+    ;;
+  *"REVOKE SUPER"*|*"FLUSH PRIVILEGES"*|*"SELECT CONCAT"*)
     exit 0
     ;;
 esac
@@ -982,11 +1010,57 @@ EOF
       chmod +x "${TEST_DIR}/mariadb"
       When call revoke_user_facing_root_admin_privileges_for_secondary
       The status should be success
-      The output should include "reason=privilege_absent_already_fenced root@%"
-      The output should include "(1141 from REVOKE)"
+      The output should include "reason=privilege_absent_already_fenced root@% priv=READ_ONLY ADMIN"
+      The output should include "(1141 on REVOKE)"
+      The output should include "reason=revoked root@% priv=SUPER"
+      The output should include "reason=revoked root@% priv=BINLOG ADMIN"
+      The contents of file "${MOCK_REVOKE_CALLS}" should include "REVOKE SUPER"
+      The contents of file "${MOCK_REVOKE_CALLS}" should include "REVOKE BINLOG ADMIN"
     End
 
-    It "skips host with reason=privilege_absent_already_fenced when SHOW GRANTS shows no bypass priv"
+    It "alpha.60 v2: fails closed when one priv 1141 but post-revoke SHOW GRANTS still has another bypass priv"
+      # The exact scenario Jack 23:52 flagged as "假安全窗口": READ_ONLY ADMIN
+      # already absent (1141), SUPER REVOKE returns success (mocked), but
+      # post-revoke SHOW GRANTS still contains SUPER / BINLOG ADMIN (because
+      # in reality the REVOKE didn't take effect for some reason). The
+      # post-revoke residual check must catch this and fail-closed.
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "$@" >> "${MOCK_REVOKE_CALLS}"
+case "$*" in
+  *"SELECT Host FROM mysql.user"*)
+    printf "%%\n"
+    exit 0
+    ;;
+  *"SHOW GRANTS FOR 'root'@"*)
+    # initial AND post-revoke both still show SUPER (residual bypass survives)
+    printf "GRANT SUPER ON *.* TO 'root'@'%%'\n"
+    exit 0
+    ;;
+  *"REVOKE READ_ONLY ADMIN"*)
+    echo "ERROR 1141 (42000): There is no such grant defined for user 'root' on host '%'" >&2
+    exit 1
+    ;;
+  *"REVOKE SUPER"*|*"REVOKE BINLOG ADMIN"*|*"FLUSH PRIVILEGES"*|*"SELECT CONCAT"*)
+    exit 0
+    ;;
+esac
+exit 0
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call revoke_user_facing_root_admin_privileges_for_secondary
+      The status should be failure
+      The output should include "reason=privilege_absent_already_fenced root@% priv=READ_ONLY ADMIN"
+      The stderr should include "reason=revoke_residual_bypass root@%"
+      The stderr should include "fail-closed"
+    End
+
+    It "alpha.60 v2: still calls per-priv REVOKE even when initial SHOW GRANTS shows no bypass priv (defense-in-depth)"
+      # alpha.60 v2 contract: even if initial SHOW GRANTS shows no bypass
+      # priv, we still attempt per-priv REVOKE (each will return 1141, treated
+      # as already-fenced). This is intentional defense-in-depth: the initial
+      # SHOW GRANTS could be stale, and the post-revoke SHOW GRANTS residual
+      # check is the authoritative gate.
       cat > "${TEST_DIR}/mariadb" <<'EOF'
 #!/bin/sh
 echo "$@" >> "${MOCK_REVOKE_CALLS}"
@@ -999,6 +1073,10 @@ case "$*" in
     printf "GRANT SELECT ON *.* TO 'root'@'%%'\n"
     exit 0
     ;;
+  *"REVOKE READ_ONLY ADMIN"*|*"REVOKE SUPER"*|*"REVOKE BINLOG ADMIN"*)
+    echo "ERROR 1141 (42000): There is no such grant defined for user 'root' on host '%'" >&2
+    exit 1
+    ;;
   *"FLUSH PRIVILEGES"*|*"SELECT CONCAT"*)
     exit 0
     ;;
@@ -1008,9 +1086,9 @@ EOF
       chmod +x "${TEST_DIR}/mariadb"
       When call revoke_user_facing_root_admin_privileges_for_secondary
       The status should be success
-      The output should include "reason=privilege_absent_already_fenced root@%"
-      The output should include "(no bypass priv in SHOW GRANTS)"
-      The contents of file "${MOCK_REVOKE_CALLS}" should not include "REVOKE READ_ONLY ADMIN"
+      The output should include "reason=privilege_absent_already_fenced root@% priv=READ_ONLY ADMIN"
+      The output should include "(1141 on REVOKE)"
+      The contents of file "${MOCK_REVOKE_CALLS}" should include "REVOKE READ_ONLY ADMIN"
     End
 
     It "fails closed when MARIADB_CLIENT_BIN is unavailable"
@@ -1040,6 +1118,44 @@ EOF
       The output should include "Switchover post-DCS guard"
       The contents of file "${TEST_DIR}/calls" should include "revoke_called"
       The contents of file "${TEST_DIR}/calls" should not include "BUG_verify_called_after_revoke_failure"
+    End
+  End
+
+  # alpha.60 v2 (Jack 23:52 review point 2): rollback path of switchover must
+  # NOT re-grant admin bypass privileges to user-facing root, otherwise the
+  # next switchover's post-DCS revoke would have to fight ALL PRIVILEGES.
+  Describe "unfence_local_remote_root_for_primary() (rollback path)"
+    setup_unfence_env() {
+      export MARIADB_ROOT_USER="root"
+      export MARIADB_ROOT_PASSWORD="pw"
+      export MARIADB_ROOT_HOST="%"
+      export MARIADB_CONNECT_TIMEOUT_SECONDS="5"
+      export MARIADB_CLIENT_BIN="${TEST_DIR}/mariadb"
+      export MOCK_UNFENCE_CALLS="${TEST_DIR}/unfence-calls"
+      : > "${MOCK_UNFENCE_CALLS}"
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "$@" >> "${MOCK_UNFENCE_CALLS}"
+exit 0
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+    }
+    Before "setup_unfence_env"
+
+    It "alpha.60 v2: grants explicit non-bypass privilege list, never GRANT ALL PRIVILEGES"
+      run_sql() {
+        record_call "run_sql=$2"
+        return 0
+      }
+      When call unfence_local_remote_root_for_primary
+      The status should be success
+      The contents of file "${TEST_DIR}/calls" should include "REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'root'@'%'"
+      The contents of file "${TEST_DIR}/calls" should include "ON *.* TO 'root'@'%' WITH GRANT OPTION"
+      The contents of file "${TEST_DIR}/calls" should not include "GRANT ALL PRIVILEGES ON *.*"
+      The contents of file "${TEST_DIR}/calls" should not include "SUPER"
+      The contents of file "${TEST_DIR}/calls" should not include "READ_ONLY ADMIN"
+      The contents of file "${TEST_DIR}/calls" should not include "BINLOG ADMIN"
+      The contents of file "${TEST_DIR}/calls" should not include ", GRANT OPTION,"
     End
   End
 End
