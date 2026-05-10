@@ -107,6 +107,12 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The output should include "GRANT SELECT, PROCESS, RELOAD, SUPER"
   End
 
+  It "keeps remote root follow privileges while table writes are fenced"
+    When call template_contains "GRANT SELECT, PROCESS, RELOAD, SUPER, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO '\${user}'@'\${host}';"
+    The status should be success
+    The output should include "REPLICATION MASTER ADMIN"
+  End
+
   It "keeps syncer local root semisync dynamic privileges while table writes are fenced"
     When call function_contains "grant_optional_local_root_privileges" "REPLICATION MASTER ADMIN"
     The status should be success
@@ -127,6 +133,11 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The status should be success
   End
 
+  It "probes local root table writes before publishing a primary as writable"
+    When call function_contains "set_primary_read_write" "primary_local_root_write_ready \"primary-read-write\""
+    The status should be success
+  End
+
   It "requires local root unlock before publishing a primary as writable"
     When call function_contains "set_primary_read_write" "primary-read-write local-root-unlock rc=1"
     The status should be success
@@ -139,6 +150,11 @@ Describe "cmpd-semisync.yaml rejoin fence template"
 
   It "clears primary read-write readiness when replication becomes pending"
     When call function_contains "mark_replication_pending" ".primary-read-write-ready"
+    The status should be success
+  End
+
+  It "clears stale remote-root fence markers when replication becomes pending"
+    When call function_contains "mark_replication_pending" ".remote-root-fence-role"
     The status should be success
   End
 
@@ -190,6 +206,16 @@ Describe "cmpd-semisync.yaml rejoin fence template"
 
   It "repairs a syncer primary whose SQL listener is exposed before local write access is ready"
     When call function_contains "reconcile_sql_listener_for_syncer_primary_once" "missing-primary-read-write-ready"
+    The status should be success
+  End
+
+  It "exposes syncer-promoted primary only after primary local write access is ready"
+    When call function_contains "reconcile_sql_listener_for_syncer_primary_once" "expose_sql_listener_for_primary_role \"syncer-promoted-primary\""
+    The status should be success
+  End
+
+  It "marks an already exposed syncer primary pending if local writes are not ready"
+    When call function_contains "expose_sql_listener_for_primary_role" "existing-listener-local-write-not-ready"
     The status should be success
   End
 

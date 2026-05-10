@@ -214,6 +214,24 @@ spec:
               set_fail_closed_read_only "replica-read-only"
               lock_local_root_writes "replica-read-only" || true
             }
+            primary_local_root_write_ready() {
+              local label="${1:-primary-local-root-write-ready}"
+              if "${ROOT_LOCAL[@]}" -e "
+                SET SESSION sql_log_bin=0;
+                CREATE DATABASE IF NOT EXISTS kubeblocks;
+                CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
+                INSERT INTO kubeblocks.kb_health_check(type, check_ts)
+                  VALUES (0, UNIX_TIMESTAMP())
+                  ON DUPLICATE KEY UPDATE check_ts=VALUES(check_ts);
+                DELETE FROM kubeblocks.kb_health_check WHERE type=0;
+                SET SESSION sql_log_bin=1;
+              " >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=0"
+                return 0
+              fi
+              prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1"
+              return 1
+            }
             set_primary_read_write() {
               if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
                 prestop_watchdog_log "skip-primary-read-write reason=prestop-fence-started"
@@ -227,11 +245,25 @@ spec:
               fi
               unlock_remote_root_writes "primary-read-write" || true
               if "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null; then
+                if ! primary_local_root_write_ready "primary-read-write"; then
+                  rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
+                  set_fail_closed_read_only "primary-read-write-local-root-write-failed" || true
+                  lock_local_root_writes "primary-read-write-local-root-write-failed" || true
+                  prestop_watchdog_log "primary-read-write local-root-write rc=1"
+                  return 1
+                fi
                 touch {{ .Values.dataMountPath }}/.primary-read-write-ready
                 prestop_watchdog_log "primary-read-write rc=0"
                 return 0
               fi
               if "${LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null; then
+                if ! primary_local_root_write_ready "primary-read-write"; then
+                  rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
+                  set_fail_closed_read_only "primary-read-write-local-root-write-failed" || true
+                  lock_local_root_writes "primary-read-write-local-root-write-failed" || true
+                  prestop_watchdog_log "primary-read-write local-root-write rc=1"
+                  return 1
+                fi
                 touch {{ .Values.dataMountPath }}/.primary-read-write-ready
                 prestop_watchdog_log "primary-read-write rc=0"
                 return 0
@@ -244,6 +276,7 @@ spec:
               rm -f {{ .Values.dataMountPath }}/.replication-ready
               rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
               rm -f {{ .Values.dataMountPath }}/.sql-listener-ready
+              rm -f {{ .Values.dataMountPath }}/.remote-root-fence-role
               touch {{ .Values.dataMountPath }}/.replication-pending
             }
             mark_replication_ready() {
@@ -600,7 +633,7 @@ spec:
                   ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
                   ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
                   REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
-                  GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${user}'@'${host}';
+                  GRANT SELECT, PROCESS, RELOAD, SUPER, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO '${user}'@'${host}';
                   FLUSH PRIVILEGES;
                   SET SESSION sql_log_bin=1;
                 "
@@ -624,8 +657,30 @@ spec:
               prestop_watchdog_log "remote-root-account-${state} mode=${mode} label=${label} host=${host} rc=1"
               return 1
             }
+            grant_optional_remote_root_privileges() {
+              local label="${1:-remote-root-optional-privileges}"
+              local user host privilege
+              case "${MARIADB_ROOT_HOST:-%}" in
+                localhost|127.0.0.1|::1)
+                  return 0
+                  ;;
+              esac
+              user="$(sql_quote "${MARIADB_ROOT_USER}")"
+              host="$(sql_quote "${MARIADB_ROOT_HOST:-%}")"
+              for privilege in "BINLOG ADMIN" "BINLOG MONITOR" "SLAVE MONITOR" "CONNECTION ADMIN" "READ_ONLY ADMIN"; do
+                "${LOCAL[@]}" -e "
+                  SET SESSION sql_log_bin=0;
+                  GRANT ${privilege} ON *.* TO '${user}'@'${host}';
+                  FLUSH PRIVILEGES;
+                  SET SESSION sql_log_bin=1;
+                " >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1 \
+                  && prestop_watchdog_log "remote-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=0" \
+                  || prestop_watchdog_log "remote-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=1"
+              done
+            }
             lock_remote_root_writes() {
-              set_remote_root_account_state "LOCK" "$1"
+              set_remote_root_account_state "LOCK" "$1" || return 1
+              grant_optional_remote_root_privileges "$1" || true
             }
             unlock_remote_root_writes() {
               set_remote_root_account_state "UNLOCK" "$1"
@@ -923,6 +978,39 @@ spec:
               touch {{ .Values.dataMountPath }}/.sql-listener-ready
               prestop_watchdog_log "sql-listener-expose-complete label=${label}"
             }
+            expose_sql_listener_for_primary_role() {
+              local label="$1"
+              if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+                prestop_watchdog_log "skip-sql-listener-primary-expose label=${label} reason=prestop-fence-started"
+                mark_replication_pending
+                return 1
+              fi
+              if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+                if set_primary_read_write; then
+                  return 0
+                fi
+                mark_replication_pending
+                prestop_watchdog_log "sql-listener-primary-expose-failed label=${label} reason=existing-listener-local-write-not-ready"
+                return 1
+              fi
+              mark_replication_pending
+              prestop_watchdog_log "sql-listener-primary-expose-begin label=${label}"
+              stop_mariadbd_process "sql-listener-primary-${label}"
+              start_mariadbd_process "0.0.0.0" "sql-listener-primary-${label}"
+              if ! wait_for_mariadb_local; then
+                wait ${MARIADB_PID}
+                exit $?
+              fi
+              "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+              "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+              if ! set_primary_read_write; then
+                mark_replication_pending
+                prestop_watchdog_log "sql-listener-primary-expose-failed label=${label}"
+                return 1
+              fi
+              touch {{ .Values.dataMountPath }}/.sql-listener-ready
+              prestop_watchdog_log "sql-listener-primary-expose-complete label=${label}"
+            }
             query_local_syncer_role() {
               [ -x /tools/syncerctl ] || return 1
               timeout 3 /tools/syncerctl --host 127.0.0.1 --port 3601 getrole 2>/dev/null | tr -d '\r\n'
@@ -978,10 +1066,7 @@ spec:
               role="$(query_local_syncer_role || true)"
               [ "${role}" = "primary" ] || return 0
               prestop_watchdog_log "runtime-primary-listener-reconcile-begin role=${role}"
-              expose_sql_listener_for_safe_role "syncer-promoted-primary" || return 1
-              "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
-              "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
-              set_primary_read_write || return 1
+              expose_sql_listener_for_primary_role "syncer-promoted-primary" || return 1
               mark_replication_ready
               prestop_watchdog_log "runtime-primary-listener-reconcile-complete role=${role}"
             }
@@ -1146,12 +1231,10 @@ spec:
             if [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
               # Primary service routes to us — we are the current primary.
               # Clear any stale slave config and mark initialization as complete.
-              expose_sql_listener_for_safe_role "primary-service-route"
-              "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
-              # Toggle semi-sync master to reset ACK receiver state (avoids stale ACK
-              # receiver connections from a previous secondary role causing unresponsiveness).
-              "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
-              set_primary_read_write || true
+              if ! expose_sql_listener_for_primary_role "primary-service-route"; then
+                wait ${MARIADB_PID}
+                exit 1
+              fi
               mark_replication_ready
               echo "Starting as primary (server_id=${SERVICE_ID})"
             elif [ -n "${SLAVE_STATUS}" ]; then
@@ -1168,10 +1251,10 @@ spec:
                   wait ${MARIADB_PID}
                   exit 1
                 fi
-                expose_sql_listener_for_safe_role "stale-slave-no-primary"
-                "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
-                "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
-                set_primary_read_write || true
+                if ! expose_sql_listener_for_primary_role "stale-slave-no-primary"; then
+                  wait ${MARIADB_PID}
+                  exit 1
+                fi
                 mark_replication_ready
                 echo "Starting as primary (pod-0 with stale slave config, no primary found)"
               else
@@ -1317,10 +1400,10 @@ spec:
               done
             else
               # Pod-0, primary unreachable, no slave config: start as primary by default.
-              expose_sql_listener_for_safe_role "default-pod0-primary"
-              "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
-              "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
-              set_primary_read_write || true
+              if ! expose_sql_listener_for_primary_role "default-pod0-primary"; then
+                wait ${MARIADB_PID}
+                exit 1
+              fi
               mark_replication_ready
               echo "Starting as primary by default (index=0)"
             fi
