@@ -15,10 +15,12 @@ SYNCERCTL_PORT="${SYNCERCTL_PORT:-3601}"
 SWITCHOVER_WAIT_SECONDS="${SWITCHOVER_WAIT_SECONDS:-120}"
 SWITCHOVER_POLL_SECONDS="${SWITCHOVER_POLL_SECONDS:-2}"
 SWITCHOVER_STABILIZATION_SECONDS="${SWITCHOVER_STABILIZATION_SECONDS:-10}"
+PRIMARY_SERVICE_ROUTE_WAIT_SECONDS="${PRIMARY_SERVICE_ROUTE_WAIT_SECONDS:-60}"
 REMOTE_ROOT_FENCE_WAIT_SECONDS="${REMOTE_ROOT_FENCE_WAIT_SECONDS:-30}"
 MARIADB_CONNECT_TIMEOUT_SECONDS="${MARIADB_CONNECT_TIMEOUT_SECONDS:-5}"
 MYSQL_CLIENT_DIR="${MYSQL_CLIENT_DIR:-/tools/mysql-client}"
 MARIADB_CLIENT_BIN="${MARIADB_CLIENT_BIN:-}"
+MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
 SWITCHOVER_TRACE_FILE="${SWITCHOVER_TRACE_FILE:-}"
 
 append_switchover_trace() {
@@ -134,11 +136,21 @@ run_sql() {
     -P3306 -h"${host}" -N -s -e "${sql}" >/dev/null 2>&1
 }
 
+run_local_internal_sql() {
+  local sql="$1"
+  "${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+    -P3306 -h127.0.0.1 -N -s -e "${sql}" >/dev/null 2>&1
+}
+
+run_local_maintenance_sql() {
+  local sql="$1"
+  run_local_internal_sql "${sql}" || run_sql "127.0.0.1" "${sql}"
+}
+
 run_local_sql_best_effort() {
   local sql="$1"
-  "${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
-    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
-    -P3306 -h127.0.0.1 -N -s -e "${sql}" >/dev/null 2>&1 || true
+  run_local_maintenance_sql "${sql}" || true
 }
 
 query_local_value() {
@@ -299,7 +311,7 @@ unfence_local_remote_root_for_primary() {
 
 set_local_read_only() {
   local value="$1"
-  run_sql "127.0.0.1" "SET GLOBAL read_only=${value};"
+  run_local_maintenance_sql "SET GLOBAL read_only=${value};"
 }
 
 local_read_only_is() {
@@ -441,7 +453,7 @@ slave_status_has_kb_health_check_repairable_error() {
 
 clear_local_kb_health_check_table() {
   local decision="$1"
-  if run_sql "127.0.0.1" "
+  if run_local_maintenance_sql "
     SET SESSION sql_log_bin=0;
     CREATE DATABASE IF NOT EXISTS kubeblocks;
     CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
@@ -542,6 +554,26 @@ wait_post_switchover_stabilization() {
   return 0
 }
 
+wait_primary_service_routes_candidate() {
+  local candidate_name="$1"
+  local candidate_fqdn="$2"
+  local waited=0
+
+  while [ "${waited}" -lt "${PRIMARY_SERVICE_ROUTE_WAIT_SECONDS}" ]; do
+    if primary_service_routes_candidate "${candidate_fqdn}"; then
+      log_primary_service_route_diagnostic "${candidate_name}" "${candidate_fqdn}"
+      log_switchover_info "Switchover primary service route converged for candidate ${candidate_name} after ${waited}s"
+      return 0
+    fi
+    log_primary_service_route_diagnostic "${candidate_name}" "${candidate_fqdn}"
+    sleep "${SWITCHOVER_POLL_SECONDS}"
+    waited=$((waited + SWITCHOVER_POLL_SECONDS))
+  done
+
+  log_switchover_error "Switchover timed out: primary service did not route to candidate ${candidate_name} within ${PRIMARY_SERVICE_ROUTE_WAIT_SECONDS}s"
+  return 1
+}
+
 wait_switchover_done() {
   local candidate_name="$1"
   local candidate_fqdn="$2"
@@ -553,7 +585,9 @@ wait_switchover_done() {
         log_switchover_error "Switchover timed out: post-switchover stabilization did not hold for candidate ${candidate_name}"
         return 1
       fi
-      log_primary_service_route_diagnostic "${candidate_name}" "${candidate_fqdn}"
+      if ! wait_primary_service_routes_candidate "${candidate_name}" "${candidate_fqdn}"; then
+        return 1
+      fi
       log_switchover_info "Switchover done: ${candidate_name} is primary and $(resolve_current_name) follows it"
       return 0
     fi

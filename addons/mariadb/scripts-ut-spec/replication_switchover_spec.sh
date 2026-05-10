@@ -30,6 +30,7 @@ Describe "replication-switchover.sh"
     unset CLUSTER_NAME COMPONENT_NAME CLUSTER_NAMESPACE
     unset KB_SWITCHOVER_ROLE KB_SWITCHOVER_CURRENT_NAME KB_SWITCHOVER_CANDIDATE_NAME
     unset SWITCHOVER_WAIT_SECONDS SWITCHOVER_STABILIZATION_SECONDS SWITCHOVER_POLL_SECONDS
+    unset PRIMARY_SERVICE_ROUTE_WAIT_SECONDS MARIADB_INTERNAL_ROOT_USER
     unset MARIADB_CONNECT_TIMEOUT_SECONDS
   }
   AfterEach "cleanup"
@@ -116,6 +117,7 @@ EOF
         export SWITCHOVER_WAIT_SECONDS="4"
         export SWITCHOVER_POLL_SECONDS="1"
         export SWITCHOVER_STABILIZATION_SECONDS="0"
+        export PRIMARY_SERVICE_ROUTE_WAIT_SECONDS="2"
         candidate_is_primary() {
           local count
           count=$(cat "${TEST_DIR}/candidate-count" 2>/dev/null || echo 0)
@@ -126,13 +128,69 @@ EOF
         current_follows_candidate() {
           return 0
         }
-        log_primary_service_route_diagnostic() {
+        primary_service_routes_candidate() {
           return 0
         }
         When call wait_switchover_done "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be success
         The output should include "Switchover done"
         The contents of file "${TEST_DIR}/candidate-count" should eq "3"
+      End
+
+      It "requires the Primary Service to route to the candidate before action success"
+        export SWITCHOVER_WAIT_SECONDS="3"
+        export SWITCHOVER_POLL_SECONDS="1"
+        export SWITCHOVER_STABILIZATION_SECONDS="0"
+        export PRIMARY_SERVICE_ROUTE_WAIT_SECONDS="3"
+        candidate_is_primary() {
+          return 0
+        }
+        current_follows_candidate() {
+          return 0
+        }
+        primary_service_routes_candidate() {
+          local count
+          count=$(cat "${TEST_DIR}/route-count" 2>/dev/null || echo 0)
+          count=$((count + 1))
+          printf "%s" "${count}" > "${TEST_DIR}/route-count"
+          [ "${count}" -ge 3 ]
+        }
+        query_server_id() {
+          case "$1" in
+            "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local") echo "2" ;;
+            "mdb-mariadb.demo.svc.cluster.local") echo "2" ;;
+          esac
+        }
+        When call wait_switchover_done "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        The status should be success
+        The output should include "primary service route converged for candidate mdb-mariadb-1 after 2s"
+        The contents of file "${TEST_DIR}/route-count" should eq "3"
+      End
+
+      It "fails when the Primary Service does not route to the candidate within the bounded window"
+        export SWITCHOVER_WAIT_SECONDS="2"
+        export SWITCHOVER_POLL_SECONDS="1"
+        export SWITCHOVER_STABILIZATION_SECONDS="0"
+        export PRIMARY_SERVICE_ROUTE_WAIT_SECONDS="2"
+        candidate_is_primary() {
+          return 0
+        }
+        current_follows_candidate() {
+          return 0
+        }
+        primary_service_routes_candidate() {
+          return 1
+        }
+        query_server_id() {
+          case "$1" in
+            "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local") echo "2" ;;
+            "mdb-mariadb.demo.svc.cluster.local") echo "1" ;;
+          esac
+        }
+        When call wait_switchover_done "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        The status should be failure
+        The output should include "route_status=pending"
+        The stderr should include "Switchover timed out: primary service did not route to candidate mdb-mariadb-1 within 2s"
       End
     End
 
@@ -230,7 +288,7 @@ EOF
           case "$1:$2" in
             "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local:SELECT @@server_id;"*) echo "2" ;;
             "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local:SELECT @@global.read_only;"*) echo "0" ;;
-            "mdb-mariadb.demo.svc.cluster.local:SELECT @@server_id;"*) echo "" ;;
+            "mdb-mariadb.demo.svc.cluster.local:SELECT @@server_id;"*) echo "2" ;;
             "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
           esac
         }
@@ -249,7 +307,7 @@ EOF
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be success
         The output should include "Switchover service-route diagnostic: candidate=mdb-mariadb-1"
-        The output should include "route_status=pending"
+        The output should include "route_status=matched"
         The output should include "Switchover done"
       End
 
@@ -271,7 +329,7 @@ EOF
           case "$1:$2" in
             "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local:SELECT @@server_id;"*) echo "2" ;;
             "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local:SELECT @@global.read_only;"*) echo "0" ;;
-            "mdb-mariadb.demo.svc.cluster.local:SELECT @@server_id;"*) echo "" ;;
+            "mdb-mariadb.demo.svc.cluster.local:SELECT @@server_id;"*) echo "2" ;;
             "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
           esac
         }
@@ -325,7 +383,7 @@ EOF
           case "$1:$2" in
             "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local:SELECT @@server_id;"*) echo "2" ;;
             "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local:SELECT @@global.read_only;"*) echo "0" ;;
-            "mdb-mariadb.demo.svc.cluster.local:SELECT @@server_id;"*) echo "" ;;
+            "mdb-mariadb.demo.svc.cluster.local:SELECT @@server_id;"*) echo "2" ;;
             "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
           esac
         }
@@ -443,6 +501,9 @@ EOF
         wait_post_switchover_stabilization() {
           return 0
         }
+        primary_service_routes_candidate() {
+          return 0
+        }
         wait_current_secondary_remote_root_fenced() {
           return 0
         }
@@ -484,6 +545,9 @@ EOF
           return 0
         }
         wait_post_switchover_stabilization() {
+          return 0
+        }
+        primary_service_routes_candidate() {
           return 0
         }
         wait_current_secondary_remote_root_fenced() {
@@ -582,8 +646,8 @@ Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
 EOF
         fi
       }
-      run_sql() {
-        record_call "run_sql=$2"
+      run_local_maintenance_sql() {
+        record_call "maintenance=$1"
         return 0
       }
       run_local_sql_best_effort() {
@@ -597,6 +661,42 @@ EOF
       The contents of file "${TEST_DIR}/calls" should include "CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check"
       The contents of file "${TEST_DIR}/calls" should include "best_effort=START SLAVE SQL_THREAD;"
       The contents of file "${TEST_DIR}/slave-status-count" should eq "2"
+    End
+
+    It "uses internal local maintenance SQL before falling back to user-facing root"
+      export MARIADB_ROOT_USER="root"
+      export MARIADB_ROOT_PASSWORD="pw"
+      export MARIADB_INTERNAL_ROOT_USER="kb_internal_root"
+      run_local_internal_sql() {
+        record_call "internal=$1"
+        return 0
+      }
+      run_sql() {
+        record_call "root=$2"
+        return 0
+      }
+      When call clear_local_kb_health_check_table "internal-maintenance"
+      The status should be success
+      The output should include "prepared local kubeblocks health check table"
+      The contents of file "${TEST_DIR}/calls" should include "internal="
+      The contents of file "${TEST_DIR}/calls" should not include "root="
+    End
+  End
+
+  Describe "run_local_maintenance_sql()"
+    It "falls back to user-facing root when internal admin is unavailable"
+      run_local_internal_sql() {
+        record_call "internal=$1"
+        return 1
+      }
+      run_sql() {
+        record_call "root=$2"
+        return 0
+      }
+      When call run_local_maintenance_sql "SELECT 1;"
+      The status should be success
+      The contents of file "${TEST_DIR}/calls" should include "internal=SELECT 1;"
+      The contents of file "${TEST_DIR}/calls" should include "root=SELECT 1;"
     End
   End
 
