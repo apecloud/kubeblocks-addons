@@ -40,8 +40,19 @@ Describe "replication-switchover.sh"
   make_syncerctl() {
     cat > "${SYNCERCTL_BIN}" <<'EOF'
 #!/bin/sh
-printf "%s" "$*" > "${SYNCERCTL_ARGS}"
-printf "switchover success\n"
+case "$*" in
+  *" getrole"*)
+    case "$*" in
+      *"--host mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"*) printf "primary" ;;
+      *"--host 127.0.0.1"*) printf "secondary" ;;
+      *) printf "unknown" ;;
+    esac
+    ;;
+  *)
+    printf "%s" "$*" > "${SYNCERCTL_ARGS}"
+    printf "switchover success\n"
+    ;;
+esac
 EOF
     chmod +x "${SYNCERCTL_BIN}"
   }
@@ -278,6 +289,9 @@ EOF
         remote_root_has_full_access() {
           return 0
         }
+        remote_root_write_ready() {
+          return 0
+        }
         fence_local_remote_root_for_secondary() {
           return 0
         }
@@ -317,6 +331,9 @@ EOF
           return 0
         }
         remote_root_has_full_access() {
+          return 0
+        }
+        remote_root_write_ready() {
           return 0
         }
         fence_local_remote_root_for_secondary() {
@@ -371,6 +388,9 @@ EOF
           return 0
         }
         remote_root_has_full_access() {
+          return 0
+        }
+        remote_root_write_ready() {
           return 0
         }
         fence_local_remote_root_for_secondary() {
@@ -654,13 +674,46 @@ EOF
         record_call "best_effort=$1"
         return 0
       }
+      set_local_read_only() {
+        record_call "set_read_only=$1"
+        return 0
+      }
+      syncer_role_is() {
+        record_call "syncer_role=$1:$2"
+        return 0
+      }
       When call current_follows_candidate "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
       The status should be success
       The output should include "detected repairable kubeblocks health check replication error"
       The contents of file "${TEST_DIR}/calls" should include "best_effort=STOP SLAVE SQL_THREAD;"
+      The contents of file "${TEST_DIR}/calls" should include "set_read_only=OFF"
       The contents of file "${TEST_DIR}/calls" should include "CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check"
+      The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
       The contents of file "${TEST_DIR}/calls" should include "best_effort=START SLAVE SQL_THREAD;"
       The contents of file "${TEST_DIR}/slave-status-count" should eq "2"
+    End
+
+    It "does not accept old-primary follow while syncer still sees it as primary"
+      query_value() {
+        case "$1:$2" in
+          "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
+        esac
+      }
+      syncer_role_is() {
+        [ "$1:$2" = "127.0.0.1:secondary" ] && return 1
+        return 0
+      }
+      query_slave_status() {
+        cat <<'EOF'
+Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Last_IO_Errno: 0
+Last_SQL_Errno: 0
+Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
+EOF
+      }
+      When call current_follows_candidate "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+      The status should be failure
     End
 
     It "uses internal local maintenance SQL before falling back to user-facing root"
