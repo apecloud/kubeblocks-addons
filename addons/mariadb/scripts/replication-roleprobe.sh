@@ -159,6 +159,83 @@ query_slave_status() {
       -P3306 -h127.0.0.1 --connect-timeout=5 -e "SHOW SLAVE STATUS\\G" 2>/dev/null || true
 }
 
+# Detect a slave SQL thread error caused by the addon's heartbeat table writing
+# a duplicate-key (1062) or missing-table (1146) row that the new primary later
+# replicates. We narrow strictly to that specific signature so the repair never
+# fires on unrelated SQL errors. See addon-test-runner-write-after-bounded-role-gate
+# guide and bootstrap-runner-preload-after-bounded-role-gate-case for context.
+slave_status_has_kb_health_check_repairable_error() {
+  local slave_status="$1"
+  [ -n "${slave_status}" ] || return 1
+  case ${slave_status} in
+    *"Last_SQL_Errno: 1062"*) ;;
+    *"Last_Errno: 1062"*) ;;
+    *"Last_SQL_Errno: 1146"*) ;;
+    *"Last_Errno: 1146"*) ;;
+    *) return 1 ;;
+  esac
+  case ${slave_status} in
+    *"kubeblocks.kb_health_check"*) return 0 ;;
+  esac
+  return 1
+}
+
+# Best-effort repair invoked from the secondary roleProbe path when slave
+# replication is broken specifically by the kb_health_check 1062/1146 signature.
+# Always returns 0 so the probe can re-evaluate replication health afterwards;
+# every attempt is logged with rc so closeout can observe whether repair fired.
+# Idempotent: if the table is already empty the DELETE is a no-op (0 rows
+# affected); if STOP/START SLAVE has already converged the next probe tick will
+# observe IO/SQL=Yes and skip this branch entirely.
+secondary_kb_health_check_repair_attempt() {
+  local slave_status read_only flip_back=0 mariadb_cli rc
+  slave_status=$(query_slave_status)
+  slave_status_has_kb_health_check_repairable_error "${slave_status}" || return 0
+  echo "secondary_kb_health_check_repair_attempt: detected 1062/1146 on kubeblocks.kb_health_check, attempting repair" >&2
+  mariadb_cli=$(resolve_mariadb_cli) || {
+    echo "secondary_kb_health_check_repair_attempt: rc=1 reason=no_mariadb_cli" >&2
+    return 0
+  }
+  # Stop SQL thread so the repair DELETE is not racing the failing apply loop.
+  "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
+    -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "STOP SLAVE SQL_THREAD;" >/dev/null 2>&1 || true
+  read_only=$(local_sql -e "SELECT UPPER(CAST(@@global.read_only AS CHAR));" 2>/dev/null || true)
+  case "${read_only}" in
+    1|ON)
+      if "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
+        -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "SET GLOBAL read_only=OFF;" >/dev/null 2>&1; then
+        flip_back=1
+      else
+        echo "secondary_kb_health_check_repair_attempt: rc=1 reason=set_read_only_off_failed" >&2
+        # Try to leave the world as we found it.
+        "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
+          -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "START SLAVE SQL_THREAD;" >/dev/null 2>&1 || true
+        return 0
+      fi
+      ;;
+  esac
+  # The repair is intentionally narrow: only the kb_health_check rows are
+  # cleared. We use kb_internal_root with sql_log_bin=0 so the DELETE does not
+  # propagate further (the new primary already has the canonical state).
+  "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
+    -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "
+      SET SESSION sql_log_bin=0;
+      CREATE DATABASE IF NOT EXISTS kubeblocks;
+      CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
+      DELETE FROM kubeblocks.kb_health_check;
+      SET SESSION sql_log_bin=1;
+    " >/dev/null 2>&1
+  rc=$?
+  if [ "${flip_back}" = "1" ]; then
+    "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
+      -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "SET GLOBAL read_only=ON;" >/dev/null 2>&1 || true
+  fi
+  "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
+    -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "START SLAVE SQL_THREAD;" >/dev/null 2>&1 || true
+  echo "secondary_kb_health_check_repair_attempt: rc=${rc}" >&2
+  return 0
+}
+
 not_ready() {
   echo -n "initializing"
   return 1
@@ -261,7 +338,15 @@ check_role() {
     # MariaDB is unreachable or SHOW SLAVE STATUS cannot prove healthy
     # replication, keep the pod unpublished until rejoin truth closes.
     db_ready || { not_ready; return $?; }
-    secondary_replication_ready || { not_ready; return $?; }
+    if ! secondary_replication_ready; then
+      # alpha.59: switchover action no longer waits for old-primary follow
+      # convergence (kbagent enforces a 60s action ceiling). When the new
+      # primary's replicated kb_health_check writes hit a duplicate-key on
+      # this pod's stale row, repair narrowly and re-evaluate. Other SQL
+      # errors are NOT swallowed: the next clause still fails not_ready.
+      secondary_kb_health_check_repair_attempt
+      secondary_replication_ready || { not_ready; return $?; }
+    fi
     apply_remote_root_fence "secondary" || { not_ready; return $?; }
     echo -n "secondary"
   else

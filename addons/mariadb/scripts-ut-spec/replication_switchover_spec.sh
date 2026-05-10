@@ -124,85 +124,13 @@ EOF
         The output should include "--connect-timeout=7"
       End
 
-      It "waits with bounded retry for delayed candidate convergence"
-        export SWITCHOVER_WAIT_SECONDS="4"
-        export SWITCHOVER_POLL_SECONDS="1"
-        export SWITCHOVER_STABILIZATION_SECONDS="0"
-        export PRIMARY_SERVICE_ROUTE_WAIT_SECONDS="2"
-        candidate_is_primary() {
-          local count
-          count=$(cat "${TEST_DIR}/candidate-count" 2>/dev/null || echo 0)
-          count=$((count + 1))
-          printf "%s" "${count}" > "${TEST_DIR}/candidate-count"
-          [ "${count}" -ge 3 ]
-        }
-        current_follows_candidate() {
-          return 0
-        }
-        primary_service_routes_candidate() {
-          return 0
-        }
-        When call wait_switchover_done "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
-        The status should be success
-        The output should include "Switchover done"
-        The contents of file "${TEST_DIR}/candidate-count" should eq "3"
-      End
-
-      It "requires the Primary Service to route to the candidate before action success"
-        export SWITCHOVER_WAIT_SECONDS="3"
-        export SWITCHOVER_POLL_SECONDS="1"
-        export SWITCHOVER_STABILIZATION_SECONDS="0"
-        export PRIMARY_SERVICE_ROUTE_WAIT_SECONDS="3"
-        candidate_is_primary() {
-          return 0
-        }
-        current_follows_candidate() {
-          return 0
-        }
-        primary_service_routes_candidate() {
-          local count
-          count=$(cat "${TEST_DIR}/route-count" 2>/dev/null || echo 0)
-          count=$((count + 1))
-          printf "%s" "${count}" > "${TEST_DIR}/route-count"
-          [ "${count}" -ge 3 ]
-        }
-        query_server_id() {
-          case "$1" in
-            "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local") echo "2" ;;
-            "mdb-mariadb.demo.svc.cluster.local") echo "2" ;;
-          esac
-        }
-        When call wait_switchover_done "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
-        The status should be success
-        The output should include "primary service route converged for candidate mdb-mariadb-1 after 2s"
-        The contents of file "${TEST_DIR}/route-count" should eq "3"
-      End
-
-      It "fails when the Primary Service does not route to the candidate within the bounded window"
-        export SWITCHOVER_WAIT_SECONDS="2"
-        export SWITCHOVER_POLL_SECONDS="1"
-        export SWITCHOVER_STABILIZATION_SECONDS="0"
-        export PRIMARY_SERVICE_ROUTE_WAIT_SECONDS="2"
-        candidate_is_primary() {
-          return 0
-        }
-        current_follows_candidate() {
-          return 0
-        }
-        primary_service_routes_candidate() {
-          return 1
-        }
-        query_server_id() {
-          case "$1" in
-            "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local") echo "2" ;;
-            "mdb-mariadb.demo.svc.cluster.local") echo "1" ;;
-          esac
-        }
-        When call wait_switchover_done "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
-        The status should be failure
-        The output should include "route_status=pending"
-        The stderr should include "Switchover timed out: primary service did not route to candidate mdb-mariadb-1 within 2s"
-      End
+      # alpha.59: tests for wait_switchover_done / wait_post_switchover_stabilization /
+      # wait_primary_service_routes_candidate / wait_current_secondary_remote_root_fenced
+      # were removed alongside the helpers themselves. The switchover action no longer
+      # waits for these convergences inside the kbagent action ceiling; see
+      # addon-test-runner-write-after-bounded-role-gate guide. The negative assertion
+      # that run_switchover never invokes these helpers lives in the run_switchover()
+      # describe block below.
     End
 
     Context "when no candidate name and current pod is pod-0"
@@ -320,9 +248,8 @@ EOF
         }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be success
-        The output should include "Switchover service-route diagnostic: candidate=mdb-mariadb-1"
-        The output should include "route_status=matched"
-        The output should include "Switchover done"
+        The output should include "Switchover candidate remote root write probe converged for mdb-mariadb-1"
+        The output should include "Switchover action returned: DCS recorded, current primary fenced, candidate writable. Post-DCS convergence delegated"
       End
 
       It "passes pod names to syncerctl instead of candidate FQDN"
@@ -422,7 +349,58 @@ EOF
         When call main
         The status should be success
         The output should include "Switchover using mariadb client: ${MYSQL_CLIENT_DIR}/bin/mariadb"
-        The output should include "Switchover done"
+        The output should include "Switchover action returned: DCS recorded, current primary fenced, candidate writable. Post-DCS convergence delegated"
+      End
+
+      It "alpha.59 contract: never invokes wait_switchover_done / wait_post_switchover_stabilization / wait_primary_service_routes_candidate / current_follows_candidate"
+        # Per addon-test-runner-write-after-bounded-role-gate guide: the
+        # switchover action MUST NOT block on post-DCS convergence helpers
+        # because kbagent enforces a 60s ceiling. Override each helper to record
+        # a BUG_ marker; the assertion at the end verifies none fired.
+        make_syncerctl
+        prepare_current_primary_for_switchover() { return 0; }
+        fence_local_remote_root_for_secondary() { return 0; }
+        local_remote_root_is_fenced_for_secondary() { return 0; }
+        remote_root_write_ready() { return 0; }
+        query_value() {
+          case "$1:$2" in
+            "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
+          esac
+        }
+        wait_switchover_done() { record_call "BUG_wait_switchover_done_called"; return 0; }
+        wait_post_switchover_stabilization() { record_call "BUG_wait_post_switchover_stabilization_called"; return 0; }
+        wait_primary_service_routes_candidate() { record_call "BUG_wait_primary_service_routes_candidate_called"; return 0; }
+        wait_current_secondary_remote_root_fenced() { record_call "BUG_wait_current_secondary_remote_root_fenced_called"; return 0; }
+        current_follows_candidate() { record_call "BUG_current_follows_candidate_called"; return 0; }
+        primary_service_routes_candidate() { record_call "BUG_primary_service_routes_candidate_called"; return 0; }
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        The status should be success
+        The output should include "Switchover action returned: DCS recorded, current primary fenced, candidate writable. Post-DCS convergence delegated"
+        The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_switchover_done_called"
+        The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_post_switchover_stabilization_called"
+        The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_primary_service_routes_candidate_called"
+        The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_current_secondary_remote_root_fenced_called"
+        The contents of file "${TEST_DIR}/calls" should not include "BUG_current_follows_candidate_called"
+        The contents of file "${TEST_DIR}/calls" should not include "BUG_primary_service_routes_candidate_called"
+      End
+
+      It "alpha.59 contract: fails closed when candidate remote root write probe does not close in budget"
+        export CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS=0
+        export SWITCHOVER_POLL_SECONDS=1
+        make_syncerctl
+        prepare_current_primary_for_switchover() { return 0; }
+        fence_local_remote_root_for_secondary() { return 0; }
+        local_remote_root_is_fenced_for_secondary() { return 0; }
+        remote_root_write_ready() { return 1; }
+        query_value() {
+          case "$1:$2" in
+            "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
+          esac
+        }
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        The status should be failure
+        The output should include "Switchover post-DCS guard passed"
+        The stderr should include "Switchover failed: candidate remote root write probe did not close for mdb-mariadb-1"
       End
     End
 
@@ -527,6 +505,9 @@ EOF
         wait_current_secondary_remote_root_fenced() {
           return 0
         }
+        remote_root_write_ready() {
+          return 0
+        }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be success
         The output should include "Switchover pre-DCS guard: disconnecting active remote root sessions 88 89"
@@ -571,6 +552,9 @@ EOF
           return 0
         }
         wait_current_secondary_remote_root_fenced() {
+          return 0
+        }
+        remote_root_write_ready() {
           return 0
         }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
