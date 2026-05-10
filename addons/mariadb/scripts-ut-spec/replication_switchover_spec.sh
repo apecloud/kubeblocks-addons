@@ -1215,6 +1215,13 @@ EOF
       export SWITCHOVER_POLL_SECONDS="0"
       export MOCK_SYNCERCTL_CALLS="${TEST_DIR}/syncerctl-calls"
       : > "${MOCK_SYNCERCTL_CALLS}"
+      # alpha.61 v2: HAS_TIMEOUT must be set; we stub
+      # run_syncerctl_getrole_with_timeout to call SYNCERCTL_BIN directly so
+      # the test does not depend on a system `timeout(1)` being on PATH.
+      export SWITCHOVER_HAS_TIMEOUT=1
+      run_syncerctl_getrole_with_timeout() {
+        "${SYNCERCTL_BIN}" --host "$1" --port "${SYNCERCTL_PORT}" getrole 2>&1
+      }
     }
     Before "setup_promoted_env"
 
@@ -1298,32 +1305,316 @@ EOF
     End
   End
 
-  # alpha.61: run_switchover global deadline contract
-  Describe "run_switchover() alpha.61 global deadline"
-    It "alpha.61 contract: shrinks candidate_promoted budget when earlier stages consumed deadline"
-      export SWITCHOVER_ACTION_DEADLINE_SECONDS=1
-      export CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS=30
-      export CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS=10
-      make_syncerctl
-      prepare_current_primary_for_switchover() {
-        # Burn the global deadline before reaching candidate_promoted stage.
-        sleep 2
+  # alpha.61 v2 (Jack 02:00 review): POSIX wall-clock helpers + 5-stage deadline.
+  # These Describes lock the runtime contract that v1 silently broke under
+  # /bin/sh: now_epoch must be a real wall clock, remaining_action_budget must
+  # fail-closed (NOT silently 0) on clock failure, and every stage entry must
+  # check remaining_action_budget before invoking the stage body.
+  Describe "alpha.61 v2 POSIX clock helpers"
+    Context "now_epoch()"
+      It "returns a numeric POSIX epoch on success"
+        When call now_epoch
+        The status should be success
+        The output should match pattern "[0-9]*"
+      End
+
+      It "returns rc=2 (NOT empty 0 fallback) when date itself fails"
+        date() { return 1; }
+        When call now_epoch
+        The status should equal 2
+        The output should equal ""
+      End
+
+      It "returns rc=2 when date emits non-numeric output"
+        date() { echo "not-a-number"; return 0; }
+        When call now_epoch
+        The status should equal 2
+        The output should equal ""
+      End
+    End
+
+    Context "remaining_action_budget()"
+      It "returns positive remaining when within budget"
+        export SWITCHOVER_ACTION_DEADLINE_SECONDS=55
+        action_started_epoch=$(date +%s)
+        When call remaining_action_budget
+        The status should be success
+        The output should match pattern "*[0-9]*"
+      End
+
+      It "fails closed (rc=2) when action_started_epoch is unset (NOT silent 0 fallback)"
+        export SWITCHOVER_ACTION_DEADLINE_SECONDS=55
+        action_started_epoch=""
+        When call remaining_action_budget
+        The status should equal 2
+        The output should equal "0"
+      End
+
+      It "fails closed (rc=2) when now_epoch fails (NOT silent 0 fallback)"
+        export SWITCHOVER_ACTION_DEADLINE_SECONDS=55
+        action_started_epoch=$(date +%s)
+        date() { return 1; }
+        When call remaining_action_budget
+        The status should equal 2
+        The output should equal "0"
+      End
+    End
+
+    Context "stage_budget_or_exit()"
+      It "clamps stage_max down to remaining_action_budget when remaining is smaller"
+        export SWITCHOVER_ACTION_DEADLINE_SECONDS=55
+        action_started_epoch=$(date +%s)
+        # Force remaining=3 by stubbing remaining_action_budget.
+        remaining_action_budget() { printf '3'; return 0; }
+        When call stage_budget_or_exit "promote" 30
+        The status should be success
+        The output should equal "3"
+      End
+
+      It "uses stage_max when stage_max < remaining_action_budget"
+        export SWITCHOVER_ACTION_DEADLINE_SECONDS=55
+        action_started_epoch=$(date +%s)
+        remaining_action_budget() { printf '50'; return 0; }
+        When call stage_budget_or_exit "promote" 30
+        The status should be success
+        The output should equal "30"
+      End
+
+      It "fails closed with reason=action_deadline_exhausted_<stage> when remaining<=0"
+        export SWITCHOVER_ACTION_DEADLINE_SECONDS=55
+        action_started_epoch=$(date +%s)
+        remaining_action_budget() { printf '0'; return 0; }
+        When call stage_budget_or_exit "promote" 30
+        The status should be failure
+        The stderr should include "reason=action_deadline_exhausted_promote"
+        The stderr should include "fail-closed"
+      End
+
+      It "fails closed with cause=action_clock_unavailable when remaining_action_budget rc=2"
+        export SWITCHOVER_ACTION_DEADLINE_SECONDS=55
+        action_started_epoch=""
+        remaining_action_budget() { printf '0'; return 2; }
+        When call stage_budget_or_exit "fence" 15
+        The status should be failure
+        The stderr should include "reason=action_deadline_exhausted_fence"
+        The stderr should include "cause=action_clock_unavailable"
+        The stderr should include "fail-closed"
+      End
+    End
+  End
+
+  Describe "alpha.61 v2 initialize_action_clock()"
+    It "sets action_started_epoch and SWITCHOVER_HAS_TIMEOUT=1 when timeout(1) exists"
+      command() {
+        if [ "$1" = "-v" ] && [ "$2" = "timeout" ]; then return 0; fi
+        builtin command "$@"
+      }
+      action_started_epoch=""
+      SWITCHOVER_HAS_TIMEOUT=""
+      When call initialize_action_clock
+      The status should be success
+      The variable action_started_epoch should match pattern "[0-9]*"
+      The variable SWITCHOVER_HAS_TIMEOUT should equal "1"
+    End
+
+    It "sets SWITCHOVER_HAS_TIMEOUT=0 when timeout(1) is absent (caller responsible for fail-closed)"
+      command() {
+        if [ "$1" = "-v" ] && [ "$2" = "timeout" ]; then return 1; fi
+        builtin command "$@"
+      }
+      action_started_epoch=""
+      SWITCHOVER_HAS_TIMEOUT=""
+      When call initialize_action_clock
+      The status should be success
+      The variable SWITCHOVER_HAS_TIMEOUT should equal "0"
+    End
+
+    It "fails closed with reason=action_clock_unavailable when date itself fails"
+      date() { return 1; }
+      When call initialize_action_clock
+      The status should be failure
+      The stderr should include "reason=action_clock_unavailable"
+      The stderr should include "cause=date_failed"
+      The stderr should include "fail-closed"
+    End
+  End
+
+  Describe "alpha.61 v2 extract_syncerctl_role()"
+    It "returns 'primary' when output is exactly the word primary"
+      When call extract_syncerctl_role "primary"
+      The output should equal "primary"
+    End
+
+    It "returns 'primary' from a multi-line output (POSIX awk parser, NOT bash \$'\\n' case)"
+      When call extract_syncerctl_role "DEBUG: connecting to syncer
+primary
+"
+      The output should equal "primary"
+    End
+
+    It "returns 'secondary' when output is exactly the word secondary"
+      When call extract_syncerctl_role "secondary"
+      The output should equal "secondary"
+    End
+
+    It "returns empty string for unrecognized output (does NOT confuse partial matches)"
+      When call extract_syncerctl_role "primary-something
+secondary-other"
+      The output should equal ""
+    End
+  End
+
+  Describe "alpha.61 v2 wait_candidate_promoted_via_syncerctl() timeout-availability gate"
+    It "fails closed with reason=external_timeout_unavailable when SWITCHOVER_HAS_TIMEOUT != 1"
+      export SWITCHOVER_HAS_TIMEOUT=0
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 30
+      The status should be failure
+      The stderr should include "reason=external_timeout_unavailable"
+      The stderr should include "stage=candidate_promoted"
+      The stderr should include "fail-closed"
+    End
+  End
+
+  # alpha.61 v2 (Jack 02:00 review): per-stage deadline enforcement matrix.
+  # Each stage entry MUST check remaining_action_budget BEFORE invoking the
+  # stage body. Sentinel reasons are distinct so closeout can attribute the
+  # exhausted stage. v1 only enforced this on the last 2 stages (promote,
+  # write); v2 enforces on all 5 (prepare, dcs, fence, promote, write).
+  Describe "run_switchover() alpha.61 v2 per-stage deadline enforcement"
+    setup_v2_stage_env() {
+      export SWITCHOVER_ACTION_DEADLINE_SECONDS=10
+      export SWITCHOVER_PREPARE_STAGE_BUDGET_SECONDS=5
+      export SWITCHOVER_DCS_STAGE_BUDGET_SECONDS=5
+      export SWITCHOVER_FENCE_STAGE_BUDGET_SECONDS=5
+      export CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS=5
+      export CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS=5
+      export SWITCHOVER_POLL_SECONDS=0
+      # Controlled clock: now_epoch reads from a file we manipulate.
+      echo "1000" > "${TEST_DIR}/clock_now"
+      now_epoch() {
+        local v
+        v=$(cat "${TEST_DIR}/clock_now" 2>/dev/null) || return 2
+        case "${v}" in
+          ''|*[!0-9]*) return 2 ;;
+        esac
+        printf '%s' "${v}"
+      }
+      # Bypass real timeout(1) detection so initialize_action_clock succeeds.
+      command() {
+        if [ "$1" = "-v" ] && [ "$2" = "timeout" ]; then return 0; fi
+        builtin command "$@"
+      }
+    }
+    Before "setup_v2_stage_env"
+
+    advance_clock() {
+      # Advance the controlled clock by the given number of seconds.
+      local now
+      now=$(cat "${TEST_DIR}/clock_now")
+      echo $(( now + $1 )) > "${TEST_DIR}/clock_now"
+    }
+
+    It "fails closed at prepare stage with action_deadline_exhausted_prepare when deadline already exhausted at entry"
+      # Pre-set started so initialize_action_clock captures t=1000, then push
+      # the clock to t=1100 BEFORE prepare's stage_budget_or_exit runs.
+      initialize_action_clock() {
+        action_started_epoch=$(now_epoch)
+        SWITCHOVER_HAS_TIMEOUT=1
+        # Push wall clock 100s past start so remaining=10-100=-90.
+        echo "1100" > "${TEST_DIR}/clock_now"
         return 0
       }
-      fence_local_remote_root_for_secondary() { return 0; }
-      local_remote_root_is_fenced_for_secondary() { return 0; }
-      verify_post_dcs_local_root_write_fenced() { return 0; }
-      revoke_user_facing_root_admin_privileges_for_secondary() { return 0; }
-      query_value() {
-        case "$1:$2" in
-          "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
-        esac
-      }
-      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
       The status should be failure
-      The output should include "Switchover post-DCS guard"
-      The stderr should include "reason=action_deadline_exhausted_before_candidate_promotion"
+      The output should include "global deadline"
+      The stderr should include "reason=action_deadline_exhausted_prepare"
       The stderr should include "fail-closed"
+    End
+
+    It "fails closed at dcs stage with action_deadline_exhausted_dcs when prepare consumes the deadline"
+      prepare_current_primary_for_switchover() {
+        # Burn 100s during prepare.
+        advance_clock 100
+        return 0
+      }
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      The status should be failure
+      The output should include "Switchover stage prepare"
+      The stderr should include "reason=action_deadline_exhausted_dcs"
+      The stderr should include "fail-closed"
+    End
+
+    It "fails closed at fence stage with action_deadline_exhausted_fence when dcs consumes the deadline"
+      prepare_current_primary_for_switchover() { return 0; }
+      syncerctl_switchover() {
+        advance_clock 100
+        return 0
+      }
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      The status should be failure
+      The output should include "Switchover stage dcs"
+      The stderr should include "reason=action_deadline_exhausted_fence"
+      The stderr should include "fail-closed"
+    End
+
+    It "fails closed at promote stage with action_deadline_exhausted_promote when fence consumes the deadline"
+      prepare_current_primary_for_switchover() { return 0; }
+      syncerctl_switchover() { return 0; }
+      fence_current_primary_local_writes_after_dcs() {
+        advance_clock 100
+        return 0
+      }
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      The status should be failure
+      The output should include "Switchover stage fence"
+      The stderr should include "reason=action_deadline_exhausted_promote"
+      The stderr should include "fail-closed"
+    End
+
+    It "fails closed at write stage with action_deadline_exhausted_write when promote consumes the deadline"
+      prepare_current_primary_for_switchover() { return 0; }
+      syncerctl_switchover() { return 0; }
+      fence_current_primary_local_writes_after_dcs() { return 0; }
+      wait_candidate_promoted_via_syncerctl() {
+        advance_clock 100
+        return 0
+      }
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      The status should be failure
+      The output should include "Switchover stage candidate_promoted"
+      The stderr should include "reason=action_deadline_exhausted_write"
+      The stderr should include "fail-closed"
+    End
+
+    It "fails closed at any stage with cause=action_clock_unavailable when wall clock fails mid-action"
+      prepare_current_primary_for_switchover() {
+        # Break the clock mid-action.
+        echo "not-a-number" > "${TEST_DIR}/clock_now"
+        return 0
+      }
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      The status should be failure
+      The output should include "Switchover stage prepare"
+      The stderr should include "reason=action_deadline_exhausted_dcs"
+      The stderr should include "cause=action_clock_unavailable"
+      The stderr should include "fail-closed"
+    End
+  End
+
+  # alpha.61 v2: ensure the runtime script remains POSIX-clean (Blocker 1
+  # surfaced because v1 had bash-only $SECONDS / $'\n' under #!/bin/sh).
+  # The spec runs with --execdir @specfile, so the script lives at
+  # ../scripts/replication-switchover.sh relative to scripts-ut-spec/.
+  Describe "alpha.61 v2 POSIX shell self-check"
+    It "addons/mariadb/scripts/replication-switchover.sh parses cleanly under dash -n"
+      Skip if "dash is not installed" ! command -v dash >/dev/null 2>&1
+      When run dash -n ../scripts/replication-switchover.sh
+      The status should be success
+    End
+
+    It "addons/mariadb/scripts/replication-switchover.sh parses cleanly under bash -n"
+      When run bash -n ../scripts/replication-switchover.sh
+      The status should be success
     End
   End
 End

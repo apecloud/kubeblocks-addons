@@ -24,13 +24,32 @@ SWITCHOVER_POLL_SECONDS="${SWITCHOVER_POLL_SECONDS:-1}"
 # alpha.61: action now uses a single global deadline rather than per-stage
 # fixed sleeps. This avoids the trap where the sum of per-stage sleep budgets
 # exceeds the kbagent 60s ceiling under unusual timing. SWITCHOVER_ACTION_DEADLINE_SECONDS
-# is the hard contract; CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS and
-# CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS are stage maximums but are
-# also clamped by the remaining global deadline at runtime.
+# is the hard contract; per-stage maxima are clamped by the remaining global
+# deadline at runtime.
+#
+# alpha.61 v2 (Jack 02:00 review): POSIX-portable wall clock + 5-stage
+# enforcement. The original v1 used bash-only $SECONDS / $'\n' case patterns
+# under #!/bin/sh shebang -- in dash $SECONDS is not auto-incrementing, so the
+# deadline expression evaluated to 0 forever and the stage loops would only be
+# bounded by the kbagent 60s ceiling, defeating the v1 fix. v2 uses
+# now_epoch()/initialize_action_clock()/remaining_action_budget()/
+# stage_budget_or_exit() helpers built on `date +%s`, `printf|awk`, and
+# `command -v timeout`; failures of these primitives are fatal so we never
+# silently run with a broken clock or unbounded external calls. Each of the 5
+# stages (prepare/dcs/fence/promote/write) checks the remaining global budget
+# at entry and emits action_deadline_exhausted_<stage> if exhausted.
 SWITCHOVER_ACTION_DEADLINE_SECONDS="${SWITCHOVER_ACTION_DEADLINE_SECONDS:-55}"
+SWITCHOVER_PREPARE_STAGE_BUDGET_SECONDS="${SWITCHOVER_PREPARE_STAGE_BUDGET_SECONDS:-10}"
+SWITCHOVER_DCS_STAGE_BUDGET_SECONDS="${SWITCHOVER_DCS_STAGE_BUDGET_SECONDS:-15}"
+SWITCHOVER_FENCE_STAGE_BUDGET_SECONDS="${SWITCHOVER_FENCE_STAGE_BUDGET_SECONDS:-15}"
 CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS="${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS:-30}"
 CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS="${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS:-10}"
 MARIADB_CONNECT_TIMEOUT_SECONDS="${MARIADB_CONNECT_TIMEOUT_SECONDS:-5}"
+SYNCERCTL_PER_CALL_TIMEOUT_SECONDS="${SYNCERCTL_PER_CALL_TIMEOUT_SECONDS:-5}"
+
+# Mutable globals set by initialize_action_clock(); consumed by stage helpers.
+action_started_epoch=""
+SWITCHOVER_HAS_TIMEOUT=""
 MYSQL_CLIENT_DIR="${MYSQL_CLIENT_DIR:-/tools/mysql-client}"
 MARIADB_CLIENT_BIN="${MARIADB_CLIENT_BIN:-}"
 MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
@@ -813,6 +832,123 @@ log_primary_service_route_diagnostic() {
   return 0
 }
 
+now_epoch() {
+  # POSIX wall-clock seconds. Returns rc=2 (NOT 0 with empty output) on date
+  # failure or non-numeric output so callers can distinguish "0 seconds since
+  # action start" from "clock unavailable". rc=2 propagates as fail-closed.
+  local ts
+  ts=$(date +%s 2>/dev/null) || return 2
+  case "${ts}" in
+    ''|*[!0-9]*) return 2 ;;
+  esac
+  printf '%s' "${ts}"
+}
+
+initialize_action_clock() {
+  # Called once at run_switchover entry. Captures the action start epoch and
+  # probes for `timeout(1)`. If the wall clock cannot be read OR `timeout` is
+  # absent, fail closed BEFORE we touch DCS so we never run with a silently
+  # broken clock or an unbounded external call.
+  local now
+  now=$(now_epoch)
+  if [ -z "${now}" ]; then
+    log_switchover_error "Switchover failed: reason=action_clock_unavailable cause=date_failed; fail-closed"
+    return 1
+  fi
+  action_started_epoch="${now}"
+  if command -v timeout >/dev/null 2>&1; then
+    SWITCHOVER_HAS_TIMEOUT=1
+  else
+    SWITCHOVER_HAS_TIMEOUT=0
+  fi
+  return 0
+}
+
+remaining_action_budget() {
+  # Echo the integer remaining budget in seconds (may be 0 or negative).
+  # Returns 2 on clock failure -- caller MUST treat as fail-closed, never as
+  # "0 seconds remaining" silent fallback (Jack 02:00 review #1).
+  local now
+  now=$(now_epoch)
+  if [ -z "${now}" ]; then
+    printf '0'
+    return 2
+  fi
+  case "${action_started_epoch}" in
+    ''|*[!0-9]*) printf '0'; return 2 ;;
+  esac
+  local elapsed=$(( now - action_started_epoch ))
+  local remaining=$(( SWITCHOVER_ACTION_DEADLINE_SECONDS - elapsed ))
+  printf '%s' "${remaining}"
+  return 0
+}
+
+action_elapsed_seconds() {
+  # Best-effort elapsed seconds for log messages. Returns "?" on clock failure
+  # so logs stay informative even when the deadline path itself failed closed.
+  local now
+  now=$(now_epoch)
+  if [ -z "${now}" ] || [ -z "${action_started_epoch}" ]; then
+    printf '?'
+    return 0
+  fi
+  printf '%s' "$(( now - action_started_epoch ))"
+}
+
+stage_budget_or_exit() {
+  # Compute min(stage_max, remaining_global). On clock failure or
+  # remaining<=0, log fail-closed with reason=action_deadline_exhausted_<stage>
+  # and return 1 so the caller exits before invoking the stage body. On
+  # success, prints the chosen budget so the caller can capture it.
+  local stage_name="$1"
+  local stage_max="$2"
+  local remaining
+  remaining=$(remaining_action_budget)
+  local rc=$?
+  if [ "${rc}" -ne 0 ]; then
+    log_switchover_error "Switchover failed: reason=action_deadline_exhausted_${stage_name} cause=action_clock_unavailable elapsed=$(action_elapsed_seconds)s deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}s; fail-closed"
+    return 1
+  fi
+  if [ "${remaining}" -le 0 ]; then
+    log_switchover_error "Switchover failed: reason=action_deadline_exhausted_${stage_name} elapsed=$(action_elapsed_seconds)s deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}s; fail-closed"
+    return 1
+  fi
+  local budget="${stage_max}"
+  if [ "${remaining}" -lt "${budget}" ]; then
+    budget="${remaining}"
+  fi
+  printf '%s' "${budget}"
+  return 0
+}
+
+extract_syncerctl_role() {
+  # Read syncerctl getrole output and return the role token if present.
+  # Looks for a line that, after trimming, equals exactly "primary" or
+  # "secondary". Echoes empty string if no match. POSIX-safe: no $'\n'
+  # case patterns, no bashism (Jack 02:00 review #1).
+  local out="$1"
+  printf '%s\n' "${out}" | awk '
+    { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, "");
+      if ($0 == "primary" || $0 == "secondary") { print $0; exit } }
+  '
+}
+
+run_syncerctl_getrole_with_timeout() {
+  # Wrap syncerctl getrole with `timeout <wall>` where wall=min(per_call,
+  # stage_budget). Caller MUST verify SWITCHOVER_HAS_TIMEOUT=1 before invoking
+  # this (we don't silently fall back to an unbounded call).
+  local fqdn="$1"
+  local stage_budget="$2"
+  local wall="${SYNCERCTL_PER_CALL_TIMEOUT_SECONDS}"
+  if [ "${stage_budget}" -lt "${wall}" ]; then
+    wall="${stage_budget}"
+  fi
+  if [ "${wall}" -lt 1 ]; then
+    wall=1
+  fi
+  timeout "${wall}" "${SYNCERCTL_BIN}" --host "${fqdn}" --port "${SYNCERCTL_PORT}" getrole 2>&1
+}
+
 wait_candidate_promoted_via_syncerctl() {
   # alpha.61 (Jack 01:40 review): before testing candidate writability, the
   # action MUST observe that DCS has actually promoted the candidate (i.e.,
@@ -826,32 +962,50 @@ wait_candidate_promoted_via_syncerctl() {
   # secondary), candidate_fqdn_not_found (DNS / pod missing). Stage budget is
   # clamped by the caller-provided remaining deadline so we never overshoot
   # the global 55s action ceiling.
+  #
+  # alpha.61 v2 (Jack 02:00 review): replaced bash-only $SECONDS with POSIX
+  # now_epoch(); replaced $'\n' case patterns with extract_syncerctl_role()
+  # awk parser; required SWITCHOVER_HAS_TIMEOUT=1 so syncerctl can never block
+  # longer than min(per_call, stage_budget) seconds.
   local candidate_name="$1"
   local candidate_fqdn="$2"
   local stage_deadline="${3:-${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS}}"
-  local attempt=0 last_role="" last_rc="" last_stderr=""
-  local started=${SECONDS}
+
   if [ -z "${candidate_fqdn}" ]; then
     log_switchover_error "Switchover failed: reason=candidate_fqdn_not_found candidate=${candidate_name}; fail-closed"
     return 1
   fi
-  while [ "$((SECONDS - started))" -lt "${stage_deadline}" ]; do
+  if [ "${SWITCHOVER_HAS_TIMEOUT}" != "1" ]; then
+    log_switchover_error "Switchover failed: reason=external_timeout_unavailable stage=candidate_promoted; fail-closed"
+    return 1
+  fi
+  local stage_started_epoch
+  stage_started_epoch=$(now_epoch)
+  if [ -z "${stage_started_epoch}" ]; then
+    log_switchover_error "Switchover failed: reason=action_clock_unavailable stage=candidate_promoted; fail-closed"
+    return 1
+  fi
+
+  local attempt=0 last_role="" last_rc="" last_stderr=""
+  local stage_elapsed=0
+  while :; do
+    local now
+    now=$(now_epoch)
+    if [ -z "${now}" ]; then
+      log_switchover_error "Switchover failed: reason=action_clock_unavailable stage=candidate_promoted; fail-closed"
+      return 1
+    fi
+    stage_elapsed=$(( now - stage_started_epoch ))
+    if [ "${stage_elapsed}" -ge "${stage_deadline}" ]; then
+      break
+    fi
     attempt=$((attempt + 1))
-    last_stderr=$("${SYNCERCTL_BIN}" --host "${candidate_fqdn}" --port "${SYNCERCTL_PORT}" getrole 2>&1)
+    local per_call_remaining=$(( stage_deadline - stage_elapsed ))
+    last_stderr=$(run_syncerctl_getrole_with_timeout "${candidate_fqdn}" "${per_call_remaining}")
     last_rc=$?
-    case "${last_stderr}" in
-      "primary"|*$'\n'"primary"*|"primary"$'\n'*)
-        last_role="primary"
-        ;;
-      "secondary"|*$'\n'"secondary"*|"secondary"$'\n'*)
-        last_role="secondary"
-        ;;
-      *)
-        last_role=""
-        ;;
-    esac
+    last_role=$(extract_syncerctl_role "${last_stderr}")
     if [ "${last_rc}" -eq 0 ] && [ "${last_role}" = "primary" ]; then
-      log_switchover_info "Switchover candidate promoted via DCS observed: candidate=${candidate_name} attempt=${attempt} role=primary rc=0 elapsed=$((SECONDS - started))s"
+      log_switchover_info "Switchover candidate promoted via DCS observed: candidate=${candidate_name} attempt=${attempt} role=primary rc=0 elapsed=${stage_elapsed}s"
       return 0
     fi
     if [ "${last_rc}" -ne 0 ]; then
@@ -875,15 +1029,38 @@ wait_candidate_remote_root_write_ready() {
   # role flip. SQL stderr is now captured per attempt (Jack 01:40 review)
   # so a non-rc=0 outcome can be attributed (probe_sql_stderr_<errno> /
   # probe_connection_failed) instead of opaque rc=1.
+  #
+  # alpha.61 v2 (Jack 02:00 review): replaced bash-only $SECONDS with POSIX
+  # now_epoch(); SQL probe inherits MARIADB_CONNECT_TIMEOUT_SECONDS and the
+  # stage budget bound through this polling loop. Clock failure mid-loop is
+  # fail-closed (no silent fallback).
   local candidate_name="$1"
   local candidate_fqdn="$2"
   local stage_deadline="${3:-${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}}"
+
+  local stage_started_epoch
+  stage_started_epoch=$(now_epoch)
+  if [ -z "${stage_started_epoch}" ]; then
+    log_switchover_error "Switchover failed: reason=action_clock_unavailable stage=candidate_write_probe; fail-closed"
+    return 1
+  fi
+
   local attempt=0 last_out="" last_rc=""
-  local started=${SECONDS}
-  while [ "$((SECONDS - started))" -lt "${stage_deadline}" ]; do
+  local stage_elapsed=0
+  while :; do
+    local now
+    now=$(now_epoch)
+    if [ -z "${now}" ]; then
+      log_switchover_error "Switchover failed: reason=action_clock_unavailable stage=candidate_write_probe; fail-closed"
+      return 1
+    fi
+    stage_elapsed=$(( now - stage_started_epoch ))
+    if [ "${stage_elapsed}" -ge "${stage_deadline}" ]; then
+      break
+    fi
     attempt=$((attempt + 1))
     if remote_root_write_ready "${candidate_fqdn}" "candidate-remote-root-write-ready"; then
-      log_switchover_info "Switchover candidate remote root write probe converged for ${candidate_name} attempt=${attempt} elapsed=$((SECONDS - started))s"
+      log_switchover_info "Switchover candidate remote root write probe converged for ${candidate_name} attempt=${attempt} elapsed=${stage_elapsed}s"
       return 0
     fi
     # Capture stderr explicitly for attribution: rerun the same probe SQL
@@ -909,18 +1086,30 @@ wait_candidate_remote_root_write_ready() {
 }
 
 run_switchover() {
-  # alpha.61 contract (Jack 01:40 review):
-  #   1. syncerctl switchover (DCS record)
-  #   2. old primary local fence + admin-bypass revoke + verify-1290 (alpha.60)
-  #   3. wait_candidate_promoted_via_syncerctl (NEW alpha.61)
-  #   4. wait_candidate_remote_root_write_ready (with stderr capture)
-  # All four steps share a single global deadline (default 55s, leaves a 5s
-  # buffer below kbagent's hardcoded 60s ceiling). Each step gets the smaller
-  # of its own configured maximum and the remaining global budget — so a slow
-  # earlier step shrinks the budget for later steps rather than overshooting.
+  # alpha.61 v2 contract (Jack 02:00 review): POSIX wall clock + 5-stage
+  # deadline enforcement. Each stage entry checks the remaining global budget
+  # FIRST via stage_budget_or_exit; if exhausted (or wall clock fails), emits
+  # action_deadline_exhausted_<stage> and returns 1 BEFORE invoking the stage
+  # body. Stage budget = min(stage_max, remaining_global_budget).
+  #
+  # Stages (each with its own action_deadline_exhausted_<stage> sentinel):
+  #   1. prepare       - prepare_current_primary_for_switchover
+  #   2. dcs           - syncerctl_switchover (DCS record)
+  #   3. fence         - fence_current_primary_local_writes_after_dcs
+  #                      (revoke admin-bypass + verify_post_dcs_local_root_write_fenced)
+  #   4. promote       - wait_candidate_promoted_via_syncerctl
+  #   5. write         - wait_candidate_remote_root_write_ready
+  #
+  # External tools that can block:
+  #   - syncerctl getrole: wrapped with timeout(1) (initialize_action_clock
+  #     verifies command existence; absence of `timeout` fails the action).
+  #   - mariadb client SQL probes: bounded by --connect-timeout=
+  #     ${MARIADB_CONNECT_TIMEOUT_SECONDS} on connect, and by stage budget
+  #     on the polling loop (so cumulative wall time per stage is bounded).
+  #
   # Post-DCS convergence (Primary Service endpoint route, old-primary follow,
-  # secondary fence, kb_health_check 1062 repair) is delegated to roleProbe +
-  # KB endpoint controller; runner side has its own bounded post-OpsRequest
+  # secondary fence, kb_health_check 1062 repair) is delegated to roleProbe
+  # + KB endpoint controller; runner side has its own bounded post-OpsRequest
   # gate.
   local candidate_name="$1"
   local candidate_fqdn="$2"
@@ -936,57 +1125,56 @@ run_switchover() {
     return 1
   fi
 
-  local action_started=${SECONDS}
-  local action_deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}
-  local remaining
+  if ! initialize_action_clock; then
+    return 1
+  fi
+  log_switchover_info "Switchover action global deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}s; per-stage budgets clamped by remaining wall-clock time. has_timeout=${SWITCHOVER_HAS_TIMEOUT}"
 
-  remaining=$((action_deadline - (SECONDS - action_started)))
-  log_switchover_info "Switchover action global deadline=${action_deadline}s; per-step budgets are clamped by remaining time."
-
+  # Stage 1: prepare
+  local prepare_budget
+  prepare_budget=$(stage_budget_or_exit "prepare" "${SWITCHOVER_PREPARE_STAGE_BUDGET_SECONDS}") || return 1
+  log_switchover_info "Switchover stage prepare budget=${prepare_budget}s remaining_before=$(remaining_action_budget)s"
   if ! prepare_current_primary_for_switchover; then
     return 1
   fi
 
+  # Stage 2: DCS switchover
+  local dcs_budget
+  dcs_budget=$(stage_budget_or_exit "dcs" "${SWITCHOVER_DCS_STAGE_BUDGET_SECONDS}") || return 1
+  log_switchover_info "Switchover stage dcs budget=${dcs_budget}s remaining_before=$(remaining_action_budget)s primary=${current_name} candidate=${candidate_name}"
   log_switchover_info "Switchover: creating syncer DCS switchover primary=${current_name} candidate=${candidate_name}"
   if ! syncerctl_switchover "${current_name}" "${candidate_name}"; then
     rollback_current_primary_switchover_guard || true
     log_switchover_error "Switchover failed: syncerctl could not create DCS switchover"
     return 1
   fi
+
+  # Stage 3: fence current primary local writes (revoke + verify)
+  local fence_budget
+  fence_budget=$(stage_budget_or_exit "fence" "${SWITCHOVER_FENCE_STAGE_BUDGET_SECONDS}") || return 1
+  log_switchover_info "Switchover stage fence budget=${fence_budget}s remaining_before=$(remaining_action_budget)s"
   if ! fence_current_primary_local_writes_after_dcs; then
     log_switchover_error "Switchover failed: current primary local write fence did not close after DCS switchover"
     return 1
   fi
 
-  remaining=$((action_deadline - (SECONDS - action_started)))
-  if [ "${remaining}" -le 0 ]; then
-    log_switchover_error "Switchover failed: reason=action_deadline_exhausted_before_candidate_promotion elapsed=$((SECONDS - action_started))s deadline=${action_deadline}s; fail-closed"
-    return 1
-  fi
-  local promoted_budget=${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS}
-  if [ "${remaining}" -lt "${promoted_budget}" ]; then
-    promoted_budget=${remaining}
-  fi
-  log_switchover_info "Switchover stage candidate_promoted budget=${promoted_budget}s (remaining=${remaining}s of ${action_deadline}s)"
+  # Stage 4: candidate promoted via syncerctl
+  local promoted_budget
+  promoted_budget=$(stage_budget_or_exit "promote" "${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS}") || return 1
+  log_switchover_info "Switchover stage candidate_promoted budget=${promoted_budget}s remaining_before=$(remaining_action_budget)s"
   if ! wait_candidate_promoted_via_syncerctl "${candidate_name}" "${candidate_fqdn}" "${promoted_budget}"; then
     return 1
   fi
 
-  remaining=$((action_deadline - (SECONDS - action_started)))
-  if [ "${remaining}" -le 0 ]; then
-    log_switchover_error "Switchover failed: reason=action_deadline_exhausted_before_write_probe elapsed=$((SECONDS - action_started))s deadline=${action_deadline}s; fail-closed"
-    return 1
-  fi
-  local write_budget=${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}
-  if [ "${remaining}" -lt "${write_budget}" ]; then
-    write_budget=${remaining}
-  fi
-  log_switchover_info "Switchover stage candidate_write_probe budget=${write_budget}s (remaining=${remaining}s of ${action_deadline}s)"
+  # Stage 5: candidate remote root write probe
+  local write_budget
+  write_budget=$(stage_budget_or_exit "write" "${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}") || return 1
+  log_switchover_info "Switchover stage candidate_write_probe budget=${write_budget}s remaining_before=$(remaining_action_budget)s"
   if ! wait_candidate_remote_root_write_ready "${candidate_name}" "${candidate_fqdn}" "${write_budget}"; then
     return 1
   fi
 
-  log_switchover_info "Switchover action returned: DCS recorded, current primary fenced, candidate promoted via DCS, candidate writable. Total elapsed=$((SECONDS - action_started))s of ${action_deadline}s deadline. Post-DCS convergence delegated to roleProbe + KB endpoint controller."
+  log_switchover_info "Switchover action returned: DCS recorded, current primary fenced, candidate promoted via DCS, candidate writable. Total elapsed=$(action_elapsed_seconds)s of ${SWITCHOVER_ACTION_DEADLINE_SECONDS}s deadline. Post-DCS convergence delegated to roleProbe + KB endpoint controller."
   return 0
 }
 
