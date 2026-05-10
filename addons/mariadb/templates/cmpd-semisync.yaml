@@ -69,7 +69,12 @@ spec:
           - -c
           - MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY=true /scripts/replication-roleprobe.sh
     switchover:
-      timeoutSeconds: 240
+      # KB kbagent enforces a hardcoded maxActionCallTimeout of 60s
+      # (pkg/kbagent/service/action_utils.go), so any value above 60 is silently
+      # truncated. We declare 60 here so the contract reflects what kbagent
+      # actually enforces. The switchover action is intentionally short and
+      # delegates post-DCS convergence to roleProbe + KB endpoint controller.
+      timeoutSeconds: 60
       exec:
         container: mariadb
         command:

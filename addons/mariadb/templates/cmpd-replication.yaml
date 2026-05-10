@@ -82,7 +82,12 @@ spec:
           - -c
           - /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
     switchover:
-      timeoutSeconds: 240
+      # KB kbagent enforces a hardcoded maxActionCallTimeout of 60s
+      # (pkg/kbagent/service/action_utils.go), so any value above 60 is silently
+      # truncated. We declare 60 here so the contract reflects what kbagent
+      # actually enforces. The switchover action is intentionally short and
+      # delegates post-DCS convergence to roleProbe + KB endpoint controller.
+      timeoutSeconds: 60
       exec:
         container: mariadb
         command:

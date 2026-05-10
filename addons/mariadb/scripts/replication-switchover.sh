@@ -12,11 +12,15 @@ CLUSTER_DOMAIN="${CLUSTER_DOMAIN:-cluster.local}"
 SYNCERCTL_BIN="${SYNCERCTL_BIN:-/tools/syncerctl}"
 SYNCERCTL_HOST="${SYNCERCTL_HOST:-127.0.0.1}"
 SYNCERCTL_PORT="${SYNCERCTL_PORT:-3601}"
-SWITCHOVER_WAIT_SECONDS="${SWITCHOVER_WAIT_SECONDS:-120}"
-SWITCHOVER_POLL_SECONDS="${SWITCHOVER_POLL_SECONDS:-2}"
-SWITCHOVER_STABILIZATION_SECONDS="${SWITCHOVER_STABILIZATION_SECONDS:-10}"
-PRIMARY_SERVICE_ROUTE_WAIT_SECONDS="${PRIMARY_SERVICE_ROUTE_WAIT_SECONDS:-60}"
-REMOTE_ROOT_FENCE_WAIT_SECONDS="${REMOTE_ROOT_FENCE_WAIT_SECONDS:-30}"
+SWITCHOVER_POLL_SECONDS="${SWITCHOVER_POLL_SECONDS:-1}"
+# alpha.59: kbagent enforces maxActionCallTimeout=60s
+# (pkg/kbagent/service/action_utils.go). The switchover action is intentionally
+# bounded to a small budget; post-DCS convergence (Primary Service endpoint,
+# old-primary follow, secondary remote root fence, kb_health_check 1062 repair)
+# is delegated to roleProbe + KB endpoint controller. The candidate write probe
+# is still synchronous because it is part of the action's success contract:
+# action returns 0 only after we have proven the candidate is actually writable.
+CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS="${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS:-8}"
 MARIADB_CONNECT_TIMEOUT_SECONDS="${MARIADB_CONNECT_TIMEOUT_SECONDS:-5}"
 MYSQL_CLIENT_DIR="${MYSQL_CLIENT_DIR:-/tools/mysql-client}"
 MARIADB_CLIENT_BIN="${MARIADB_CLIENT_BIN:-}"
@@ -606,88 +610,42 @@ log_primary_service_route_diagnostic() {
   return 0
 }
 
-wait_post_switchover_stabilization() {
+wait_candidate_remote_root_write_ready() {
+  # alpha.59: bounded synchronous probe of the candidate's writability. This is
+  # the third leg of the action-success contract (DCS recorded → old primary
+  # local writes fenced → candidate proven writable). We poll the candidate's
+  # remote root write path within a tight budget so the action stays well below
+  # the kbagent 60s ceiling. If the candidate is not writable inside the
+  # budget, action fails closed: never return 0 with a non-writable candidate.
   local candidate_name="$1"
   local candidate_fqdn="$2"
   local waited=0
 
-  while [ "${waited}" -lt "${SWITCHOVER_STABILIZATION_SECONDS}" ]; do
-    candidate_is_primary "${candidate_fqdn}" || return 1
-    current_follows_candidate "${candidate_name}" "${candidate_fqdn}" || return 1
-    sleep "${SWITCHOVER_POLL_SECONDS}"
-    waited=$((waited + SWITCHOVER_POLL_SECONDS))
-  done
-
-  echo "Switchover stabilization window passed for candidate ${candidate_name} using pod/headless DB truth"
-  return 0
-}
-
-wait_primary_service_routes_candidate() {
-  local candidate_name="$1"
-  local candidate_fqdn="$2"
-  local waited=0
-
-  while [ "${waited}" -lt "${PRIMARY_SERVICE_ROUTE_WAIT_SECONDS}" ]; do
-    if primary_service_routes_candidate "${candidate_fqdn}"; then
-      log_primary_service_route_diagnostic "${candidate_name}" "${candidate_fqdn}"
-      log_switchover_info "Switchover primary service route converged for candidate ${candidate_name} after ${waited}s"
-      return 0
-    fi
-    log_primary_service_route_diagnostic "${candidate_name}" "${candidate_fqdn}"
-    sleep "${SWITCHOVER_POLL_SECONDS}"
-    waited=$((waited + SWITCHOVER_POLL_SECONDS))
-  done
-
-  log_switchover_error "Switchover timed out: primary service did not route to candidate ${candidate_name} within ${PRIMARY_SERVICE_ROUTE_WAIT_SECONDS}s"
-  return 1
-}
-
-wait_switchover_done() {
-  local candidate_name="$1"
-  local candidate_fqdn="$2"
-  local waited=0
-
-  while [ "${waited}" -lt "${SWITCHOVER_WAIT_SECONDS}" ]; do
-    if candidate_is_primary "${candidate_fqdn}" && current_follows_candidate "${candidate_name}" "${candidate_fqdn}"; then
-      if ! wait_post_switchover_stabilization "${candidate_name}" "${candidate_fqdn}"; then
-        log_switchover_error "Switchover timed out: post-switchover stabilization did not hold for candidate ${candidate_name}"
-        return 1
-      fi
-      if ! wait_primary_service_routes_candidate "${candidate_name}" "${candidate_fqdn}"; then
-        return 1
-      fi
-      log_switchover_info "Switchover done: ${candidate_name} is primary and $(resolve_current_name) follows it"
+  while [ "${waited}" -lt "${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}" ]; do
+    if remote_root_write_ready "${candidate_fqdn}" "candidate-remote-root-write-ready"; then
+      log_switchover_info "Switchover candidate remote root write probe converged for ${candidate_name} after ${waited}s"
       return 0
     fi
     sleep "${SWITCHOVER_POLL_SECONDS}"
     waited=$((waited + SWITCHOVER_POLL_SECONDS))
   done
 
-  log_switchover_error "Switchover timed out: syncer DCS switchover did not converge for candidate ${candidate_name}"
-  return 1
-}
-
-wait_current_secondary_remote_root_fenced() {
-  local candidate_name="$1"
-  local candidate_fqdn="$2"
-  local waited=0
-
-  while [ "${waited}" -lt "${REMOTE_ROOT_FENCE_WAIT_SECONDS}" ]; do
-    if current_follows_candidate "${candidate_name}" "${candidate_fqdn}"; then
-      if fence_local_remote_root_for_secondary && local_remote_root_is_fenced_for_secondary; then
-        log_switchover_info "Switchover secondary remote root fence converged for $(resolve_current_name) after ${waited}s"
-        return 0
-      fi
-    fi
-    sleep "${SWITCHOVER_POLL_SECONDS}"
-    waited=$((waited + SWITCHOVER_POLL_SECONDS))
-  done
-
-  log_switchover_error "Switchover failed: current secondary remote root fence did not converge within ${REMOTE_ROOT_FENCE_WAIT_SECONDS}s"
+  log_switchover_error "Switchover failed: candidate remote root write probe did not close for ${candidate_name} within ${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}s"
   return 1
 }
 
 run_switchover() {
+  # alpha.59 contract: action MUST complete inside the kbagent 60s ceiling and
+  # is responsible for exactly the three steps that make up the action-success
+  # contract:
+  #   1. syncerctl switchover succeeds (DCS switchover record created)
+  #   2. old primary local writes fenced (read_only=1, root local write closed)
+  #   3. candidate remote root write probe rc=0 within bounded budget
+  # All post-DCS convergence (Primary Service endpoint route, old primary
+  # follow, secondary remote root fence, kb_health_check 1062 repair) is
+  # delegated to roleProbe + KB endpoint controller. The test runner is
+  # expected to evaluate post-OpsRequest convergence in its own bounded gate
+  # and classify it independently of the action result.
   local candidate_name="$1"
   local candidate_fqdn="$2"
   local current_name
@@ -716,13 +674,12 @@ run_switchover() {
     log_switchover_error "Switchover failed: current primary local write fence did not close after DCS switchover"
     return 1
   fi
+  if ! wait_candidate_remote_root_write_ready "${candidate_name}" "${candidate_fqdn}"; then
+    return 1
+  fi
 
-  if ! wait_switchover_done "${candidate_name}" "${candidate_fqdn}"; then
-    return 1
-  fi
-  if ! wait_current_secondary_remote_root_fenced "${candidate_name}" "${candidate_fqdn}"; then
-    return 1
-  fi
+  log_switchover_info "Switchover action returned: DCS recorded, current primary fenced, candidate writable. Post-DCS convergence delegated to roleProbe + KB endpoint controller."
+  return 0
 }
 
 main() {
