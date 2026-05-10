@@ -193,6 +193,23 @@ remote_root_has_full_access() {
   esac
 }
 
+grant_remote_root_optional_admin_privileges_for_secondary() {
+  local user root_host privilege sql
+  remote_root_host_is_local && return 0
+  user=$(sql_quote "${MARIADB_ROOT_USER}")
+  root_host=$(sql_quote "${MARIADB_ROOT_HOST:-%}")
+  for privilege in "REPLICATION SLAVE ADMIN" "REPLICATION MASTER ADMIN" "BINLOG ADMIN" "BINLOG MONITOR" "SLAVE MONITOR" "CONNECTION ADMIN" "READ_ONLY ADMIN"; do
+    sql="SET SESSION sql_log_bin=0; GRANT ${privilege} ON *.* TO '${user}'@'${root_host}'; SET SESSION sql_log_bin=1;"
+    if run_sql "127.0.0.1" "${sql}"; then
+      log_switchover_info "Switchover secondary remote root fence: optional ${privilege} granted for follow/monitoring"
+    else
+      log_switchover_info "Switchover secondary remote root fence: optional ${privilege} grant skipped or unsupported"
+    fi
+  done
+  run_local_sql_best_effort "FLUSH PRIVILEGES;"
+  return 0
+}
+
 fence_local_remote_root_for_secondary() {
   local user root_host password sql
   remote_root_host_is_local && return 0
@@ -205,13 +222,12 @@ fence_local_remote_root_for_secondary() {
     ALTER USER '${user}'@'${root_host}' IDENTIFIED BY '${password}';
     ALTER USER '${user}'@'${root_host}' ACCOUNT UNLOCK;
     REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${root_host}';
-    GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${user}'@'${root_host}';
+    GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO '${user}'@'${root_host}';
     FLUSH PRIVILEGES;
     SET SESSION sql_log_bin=1;
   "
   run_sql "127.0.0.1" "${sql}" || return 1
-  run_local_sql_best_effort "SET SESSION sql_log_bin=0; GRANT BINLOG MONITOR ON *.* TO '${user}'@'${root_host}'; SET SESSION sql_log_bin=1;"
-  run_local_sql_best_effort "SET SESSION sql_log_bin=0; GRANT SLAVE MONITOR ON *.* TO '${user}'@'${root_host}'; SET SESSION sql_log_bin=1;"
+  grant_remote_root_optional_admin_privileges_for_secondary || true
   return 0
 }
 
@@ -402,6 +418,57 @@ candidate_is_primary() {
   [ "${read_only}" = "0" ] && [ -z "${slave_status}" ] && remote_root_has_full_access "${candidate_fqdn}"
 }
 
+slave_status_is_ready_for_candidate() {
+  local slave_status="$1"
+  local candidate_name="$2"
+  local candidate_fqdn="$3"
+
+  [ -n "${slave_status}" ] || return 1
+  printf "%s" "${slave_status}" | grep -q "Slave_IO_Running: Yes" || return 1
+  printf "%s" "${slave_status}" | grep -q "Slave_SQL_Running: Yes" || return 1
+  printf "%s" "${slave_status}" | grep -q "Last_IO_Errno: 0" || return 1
+  printf "%s" "${slave_status}" | grep -q "Last_SQL_Errno: 0" || return 1
+  printf "%s" "${slave_status}" | grep -F "Master_Host: ${candidate_fqdn}" >/dev/null 2>&1 ||
+  printf "%s" "${slave_status}" | grep -F "Master_Host: ${candidate_name}" >/dev/null 2>&1
+}
+
+slave_status_has_kb_health_check_repairable_error() {
+  local slave_status="$1"
+  [ -n "${slave_status}" ] || return 1
+  printf "%s" "${slave_status}" | grep -qE "Last_SQL_Errno: 1062|Last_Errno: 1062|Last_SQL_Errno: 1146|Last_Errno: 1146" || return 1
+  printf "%s" "${slave_status}" | grep -q "kubeblocks.kb_health_check" || return 1
+}
+
+clear_local_kb_health_check_table() {
+  local decision="$1"
+  if run_sql "127.0.0.1" "
+    SET SESSION sql_log_bin=0;
+    CREATE DATABASE IF NOT EXISTS kubeblocks;
+    CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
+    DELETE FROM kubeblocks.kb_health_check;
+    SET SESSION sql_log_bin=1;
+  "; then
+    log_switchover_info "Switchover old-primary follow repair: prepared local kubeblocks health check table (${decision})"
+    return 0
+  fi
+  log_switchover_error "Switchover old-primary follow repair: failed to prepare local kubeblocks health check table (${decision})"
+  return 1
+}
+
+repair_kb_health_check_replication_error() {
+  local slave_status="$1"
+  if ! slave_status_has_kb_health_check_repairable_error "${slave_status}"; then
+    return 1
+  fi
+  log_switchover_info "Switchover old-primary follow repair: detected repairable kubeblocks health check replication error"
+  run_local_sql_best_effort "STOP SLAVE SQL_THREAD;"
+  if ! clear_local_kb_health_check_table "prepared-local-kb-health-check-after-switchover-replication-error"; then
+    return 1
+  fi
+  run_local_sql_best_effort "START SLAVE SQL_THREAD;"
+  return 0
+}
+
 current_follows_candidate() {
   local candidate_name="$1"
   local candidate_fqdn="$2"
@@ -417,12 +484,14 @@ current_follows_candidate() {
   [ "${read_only}" = "1" ] || return 1
 
   slave_status=$(query_slave_status "127.0.0.1")
-  printf "%s" "${slave_status}" | grep -q "Slave_IO_Running: Yes" || return 1
-  printf "%s" "${slave_status}" | grep -q "Slave_SQL_Running: Yes" || return 1
-  printf "%s" "${slave_status}" | grep -q "Last_IO_Errno: 0" || return 1
-  printf "%s" "${slave_status}" | grep -q "Last_SQL_Errno: 0" || return 1
-  printf "%s" "${slave_status}" | grep -F "Master_Host: ${candidate_fqdn}" >/dev/null 2>&1 ||
-  printf "%s" "${slave_status}" | grep -F "Master_Host: ${candidate_name}" >/dev/null 2>&1
+  if slave_status_is_ready_for_candidate "${slave_status}" "${candidate_name}" "${candidate_fqdn}"; then
+    return 0
+  fi
+  if repair_kb_health_check_replication_error "${slave_status}"; then
+    slave_status=$(query_slave_status "127.0.0.1")
+    slave_status_is_ready_for_candidate "${slave_status}" "${candidate_name}" "${candidate_fqdn}" && return 0
+  fi
+  return 1
 }
 
 primary_service_routes_candidate() {

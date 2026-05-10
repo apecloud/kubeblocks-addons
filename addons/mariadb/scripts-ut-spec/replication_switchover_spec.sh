@@ -384,6 +384,27 @@ EOF
     End
 
     Context "when guarding the old primary before DCS switchover"
+      It "keeps follow-time admin privileges when fencing remote root DML"
+        export MARIADB_ROOT_USER="root"
+        export MARIADB_ROOT_PASSWORD="pw"
+        export MARIADB_ROOT_HOST="%"
+        run_sql() {
+          record_call "run_sql=$2"
+          return 0
+        }
+        run_local_sql_best_effort() {
+          record_call "best_effort=$1"
+          return 0
+        }
+        When call fence_local_remote_root_for_secondary
+        The status should be success
+        The output should include "optional REPLICATION MASTER ADMIN granted"
+        The contents of file "${TEST_DIR}/calls" should include "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT"
+        The contents of file "${TEST_DIR}/calls" should include "GRANT REPLICATION MASTER ADMIN"
+        The contents of file "${TEST_DIR}/calls" should include "GRANT READ_ONLY ADMIN"
+        The contents of file "${TEST_DIR}/calls" should include "best_effort=FLUSH PRIVILEGES;"
+      End
+
       It "disconnects active remote root sessions around the grant fence"
         query_local_value() {
           record_call "query_sessions"
@@ -525,6 +546,57 @@ EOF
         The contents of file "${TEST_DIR}/calls" should include "fence"
         The contents of file "${TEST_DIR}/calls" should include "rollback"
       End
+    End
+  End
+
+  Describe "current_follows_candidate()"
+    It "repairs kubeblocks health check SQL-thread errors before deciding old-primary follow failed"
+      export MARIADB_ROOT_USER="root"
+      export MARIADB_ROOT_PASSWORD="pw"
+      query_value() {
+        case "$1:$2" in
+          "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
+        esac
+      }
+      query_slave_status() {
+        local count
+        count=$(cat "${TEST_DIR}/slave-status-count" 2>/dev/null || echo 0)
+        count=$((count + 1))
+        printf "%s" "${count}" > "${TEST_DIR}/slave-status-count"
+        if [ "${count}" -eq 1 ]; then
+          cat <<'EOF'
+Slave_IO_Running: Yes
+Slave_SQL_Running: No
+Last_IO_Errno: 0
+Last_SQL_Errno: 1062
+Last_SQL_Error: Error 'Duplicate entry' on table 'kubeblocks.kb_health_check'
+Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
+EOF
+        else
+          cat <<'EOF'
+Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Last_IO_Errno: 0
+Last_SQL_Errno: 0
+Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
+EOF
+        fi
+      }
+      run_sql() {
+        record_call "run_sql=$2"
+        return 0
+      }
+      run_local_sql_best_effort() {
+        record_call "best_effort=$1"
+        return 0
+      }
+      When call current_follows_candidate "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+      The status should be success
+      The output should include "detected repairable kubeblocks health check replication error"
+      The contents of file "${TEST_DIR}/calls" should include "best_effort=STOP SLAVE SQL_THREAD;"
+      The contents of file "${TEST_DIR}/calls" should include "CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check"
+      The contents of file "${TEST_DIR}/calls" should include "best_effort=START SLAVE SQL_THREAD;"
+      The contents of file "${TEST_DIR}/slave-status-count" should eq "2"
     End
   End
 
