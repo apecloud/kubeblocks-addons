@@ -447,15 +447,25 @@ Last_SQL_Errno: 0"
       }
       Before "setup_secondary_remote_root"
 
-      It "restricts remote root grants before publishing secondary"
+      It "alpha.61: restricts remote root grants on secondary WITHOUT admin bypass privileges"
+        # alpha.61 (Jack 01:40 review): user-facing root on secondary must
+        # NOT carry SUPER, READ_ONLY ADMIN, BINLOG ADMIN, or CONNECTION ADMIN.
+        # The legitimate bypass need (kb_health_check 1062 repair) uses
+        # kb_internal_root in roleProbe's secondary_kb_health_check_repair_attempt.
+        # REPLICATION MASTER ADMIN stays so the secondary can run CHANGE MASTER /
+        # START SLAVE for follow-time maintenance. BINLOG MONITOR / SLAVE
+        # MONITOR are read-only monitoring privileges and stay.
         When call check_role
         The status should be success
         The output should eq "secondary"
         The contents of file "${TEST_DIR}/mariadb-sql.log" should include "REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'root'@'%'"
-        The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT SELECT, PROCESS, RELOAD, SUPER, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'%'"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'%'"
         The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT BINLOG MONITOR ON *.* TO 'root'@'%'"
         The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT SLAVE MONITOR ON *.* TO 'root'@'%'"
-        The contents of file "${TEST_DIR}/mariadb-sql.log" should include "GRANT READ_ONLY ADMIN ON *.* TO 'root'@'%'"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should not include "SUPER"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should not include "READ_ONLY ADMIN"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should not include "BINLOG ADMIN"
+        The contents of file "${TEST_DIR}/mariadb-sql.log" should not include "CONNECTION ADMIN"
         The contents of file "${TEST_DIR}/.remote-root-fence-role" should eq "secondary"
       End
     End

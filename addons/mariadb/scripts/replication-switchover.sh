@@ -20,7 +20,16 @@ SWITCHOVER_POLL_SECONDS="${SWITCHOVER_POLL_SECONDS:-1}"
 # is delegated to roleProbe + KB endpoint controller. The candidate write probe
 # is still synchronous because it is part of the action's success contract:
 # action returns 0 only after we have proven the candidate is actually writable.
-CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS="${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS:-8}"
+#
+# alpha.61: action now uses a single global deadline rather than per-stage
+# fixed sleeps. This avoids the trap where the sum of per-stage sleep budgets
+# exceeds the kbagent 60s ceiling under unusual timing. SWITCHOVER_ACTION_DEADLINE_SECONDS
+# is the hard contract; CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS and
+# CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS are stage maximums but are
+# also clamped by the remaining global deadline at runtime.
+SWITCHOVER_ACTION_DEADLINE_SECONDS="${SWITCHOVER_ACTION_DEADLINE_SECONDS:-55}"
+CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS="${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS:-30}"
+CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS="${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS:-10}"
 MARIADB_CONNECT_TIMEOUT_SECONDS="${MARIADB_CONNECT_TIMEOUT_SECONDS:-5}"
 MYSQL_CLIENT_DIR="${MYSQL_CLIENT_DIR:-/tools/mysql-client}"
 MARIADB_CLIENT_BIN="${MARIADB_CLIENT_BIN:-}"
@@ -804,42 +813,115 @@ log_primary_service_route_diagnostic() {
   return 0
 }
 
-wait_candidate_remote_root_write_ready() {
-  # alpha.59: bounded synchronous probe of the candidate's writability. This is
-  # the third leg of the action-success contract (DCS recorded → old primary
-  # local writes fenced → candidate proven writable). We poll the candidate's
-  # remote root write path within a tight budget so the action stays well below
-  # the kbagent 60s ceiling. If the candidate is not writable inside the
-  # budget, action fails closed: never return 0 with a non-writable candidate.
+wait_candidate_promoted_via_syncerctl() {
+  # alpha.61 (Jack 01:40 review): before testing candidate writability, the
+  # action MUST observe that DCS has actually promoted the candidate (i.e.,
+  # syncerctl getrole on the candidate FQDN returns "primary"). alpha.59
+  # accidentally hid the missing-promotion case because user-facing root held
+  # READ_ONLY ADMIN and could INSERT through `read_only=1`. After alpha.60's
+  # revoke, root cannot bypass; we must wait for actual promotion.
+  #
+  # Sentinels per Jack class 4: role_unknown (empty/unrecognized output),
+  # role_query_failed (rc!=0 + stderr captured), role_not_primary (e.g. still
+  # secondary), candidate_fqdn_not_found (DNS / pod missing). Stage budget is
+  # clamped by the caller-provided remaining deadline so we never overshoot
+  # the global 55s action ceiling.
   local candidate_name="$1"
   local candidate_fqdn="$2"
-  local waited=0
-
-  while [ "${waited}" -lt "${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}" ]; do
-    if remote_root_write_ready "${candidate_fqdn}" "candidate-remote-root-write-ready"; then
-      log_switchover_info "Switchover candidate remote root write probe converged for ${candidate_name} after ${waited}s"
+  local stage_deadline="${3:-${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS}}"
+  local attempt=0 last_role="" last_rc="" last_stderr=""
+  local started=${SECONDS}
+  if [ -z "${candidate_fqdn}" ]; then
+    log_switchover_error "Switchover failed: reason=candidate_fqdn_not_found candidate=${candidate_name}; fail-closed"
+    return 1
+  fi
+  while [ "$((SECONDS - started))" -lt "${stage_deadline}" ]; do
+    attempt=$((attempt + 1))
+    last_stderr=$("${SYNCERCTL_BIN}" --host "${candidate_fqdn}" --port "${SYNCERCTL_PORT}" getrole 2>&1)
+    last_rc=$?
+    case "${last_stderr}" in
+      "primary"|*$'\n'"primary"*|"primary"$'\n'*)
+        last_role="primary"
+        ;;
+      "secondary"|*$'\n'"secondary"*|"secondary"$'\n'*)
+        last_role="secondary"
+        ;;
+      *)
+        last_role=""
+        ;;
+    esac
+    if [ "${last_rc}" -eq 0 ] && [ "${last_role}" = "primary" ]; then
+      log_switchover_info "Switchover candidate promoted via DCS observed: candidate=${candidate_name} attempt=${attempt} role=primary rc=0 elapsed=$((SECONDS - started))s"
       return 0
     fi
+    if [ "${last_rc}" -ne 0 ]; then
+      log_switchover_info "Switchover candidate promotion poll attempt=${attempt} reason=role_query_failed rc=${last_rc} stderr=${last_stderr}"
+    elif [ -z "${last_role}" ]; then
+      log_switchover_info "Switchover candidate promotion poll attempt=${attempt} reason=role_unknown rc=0 stderr=${last_stderr}"
+    else
+      log_switchover_info "Switchover candidate promotion poll attempt=${attempt} reason=role_not_primary role=${last_role} rc=0"
+    fi
     sleep "${SWITCHOVER_POLL_SECONDS}"
-    waited=$((waited + SWITCHOVER_POLL_SECONDS))
+  done
+  log_switchover_error "Switchover failed: reason=candidate_not_promoted_via_dcs_in_budget candidate=${candidate_name} attempts=${attempt} stage_budget=${stage_deadline}s last_role=${last_role:-<empty>} last_rc=${last_rc} last_stderr=${last_stderr}; fail-closed"
+  return 1
+}
+
+wait_candidate_remote_root_write_ready() {
+  # alpha.59: bounded synchronous probe of the candidate's writability. After
+  # alpha.61's wait_candidate_promoted_via_syncerctl precondition, this probe
+  # should converge in 1-2s under healthy conditions; the budget is kept
+  # because actual SQL write semantics may lag slightly even after syncerctl
+  # role flip. SQL stderr is now captured per attempt (Jack 01:40 review)
+  # so a non-rc=0 outcome can be attributed (probe_sql_stderr_<errno> /
+  # probe_connection_failed) instead of opaque rc=1.
+  local candidate_name="$1"
+  local candidate_fqdn="$2"
+  local stage_deadline="${3:-${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}}"
+  local attempt=0 last_out="" last_rc=""
+  local started=${SECONDS}
+  while [ "$((SECONDS - started))" -lt "${stage_deadline}" ]; do
+    attempt=$((attempt + 1))
+    if remote_root_write_ready "${candidate_fqdn}" "candidate-remote-root-write-ready"; then
+      log_switchover_info "Switchover candidate remote root write probe converged for ${candidate_name} attempt=${attempt} elapsed=$((SECONDS - started))s"
+      return 0
+    fi
+    # Capture stderr explicitly for attribution: rerun the same probe SQL
+    # with stderr collected so closeout sees the actual SQL error rather
+    # than opaque rc=1.
+    last_out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+      --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+      -P3306 -h"${candidate_fqdn}" -N -s -e "
+        CREATE DATABASE IF NOT EXISTS kubeblocks;
+        CREATE TABLE IF NOT EXISTS ${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE}(probe_id VARCHAR(128) PRIMARY KEY, check_ts BIGINT);
+        INSERT INTO ${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE}(probe_id, check_ts)
+          VALUES ('switchover_remote_root_probe', UNIX_TIMESTAMP())
+          ON DUPLICATE KEY UPDATE check_ts=VALUES(check_ts);
+        DELETE FROM ${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE} WHERE probe_id='switchover_remote_root_probe';
+      " 2>&1)
+    last_rc=$?
+    log_switchover_info "Switchover candidate remote root write probe attempt=${attempt} rc=${last_rc} stderr=${last_out}"
+    sleep "${SWITCHOVER_POLL_SECONDS}"
   done
 
-  log_switchover_error "Switchover failed: candidate remote root write probe did not close for ${candidate_name} within ${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}s"
+  log_switchover_error "Switchover failed: reason=candidate_remote_root_write_not_ready_in_budget candidate=${candidate_name} attempts=${attempt} stage_budget=${stage_deadline}s last_rc=${last_rc} last_stderr=${last_out}; fail-closed"
   return 1
 }
 
 run_switchover() {
-  # alpha.59 contract: action MUST complete inside the kbagent 60s ceiling and
-  # is responsible for exactly the three steps that make up the action-success
-  # contract:
-  #   1. syncerctl switchover succeeds (DCS switchover record created)
-  #   2. old primary local writes fenced (read_only=1, root local write closed)
-  #   3. candidate remote root write probe rc=0 within bounded budget
-  # All post-DCS convergence (Primary Service endpoint route, old primary
-  # follow, secondary remote root fence, kb_health_check 1062 repair) is
-  # delegated to roleProbe + KB endpoint controller. The test runner is
-  # expected to evaluate post-OpsRequest convergence in its own bounded gate
-  # and classify it independently of the action result.
+  # alpha.61 contract (Jack 01:40 review):
+  #   1. syncerctl switchover (DCS record)
+  #   2. old primary local fence + admin-bypass revoke + verify-1290 (alpha.60)
+  #   3. wait_candidate_promoted_via_syncerctl (NEW alpha.61)
+  #   4. wait_candidate_remote_root_write_ready (with stderr capture)
+  # All four steps share a single global deadline (default 55s, leaves a 5s
+  # buffer below kbagent's hardcoded 60s ceiling). Each step gets the smaller
+  # of its own configured maximum and the remaining global budget — so a slow
+  # earlier step shrinks the budget for later steps rather than overshooting.
+  # Post-DCS convergence (Primary Service endpoint route, old-primary follow,
+  # secondary fence, kb_health_check 1062 repair) is delegated to roleProbe +
+  # KB endpoint controller; runner side has its own bounded post-OpsRequest
+  # gate.
   local candidate_name="$1"
   local candidate_fqdn="$2"
   local current_name
@@ -853,6 +935,13 @@ run_switchover() {
     echo "Switchover failed: candidate name is empty" >&2
     return 1
   fi
+
+  local action_started=${SECONDS}
+  local action_deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}
+  local remaining
+
+  remaining=$((action_deadline - (SECONDS - action_started)))
+  log_switchover_info "Switchover action global deadline=${action_deadline}s; per-step budgets are clamped by remaining time."
 
   if ! prepare_current_primary_for_switchover; then
     return 1
@@ -868,11 +957,36 @@ run_switchover() {
     log_switchover_error "Switchover failed: current primary local write fence did not close after DCS switchover"
     return 1
   fi
-  if ! wait_candidate_remote_root_write_ready "${candidate_name}" "${candidate_fqdn}"; then
+
+  remaining=$((action_deadline - (SECONDS - action_started)))
+  if [ "${remaining}" -le 0 ]; then
+    log_switchover_error "Switchover failed: reason=action_deadline_exhausted_before_candidate_promotion elapsed=$((SECONDS - action_started))s deadline=${action_deadline}s; fail-closed"
+    return 1
+  fi
+  local promoted_budget=${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS}
+  if [ "${remaining}" -lt "${promoted_budget}" ]; then
+    promoted_budget=${remaining}
+  fi
+  log_switchover_info "Switchover stage candidate_promoted budget=${promoted_budget}s (remaining=${remaining}s of ${action_deadline}s)"
+  if ! wait_candidate_promoted_via_syncerctl "${candidate_name}" "${candidate_fqdn}" "${promoted_budget}"; then
     return 1
   fi
 
-  log_switchover_info "Switchover action returned: DCS recorded, current primary fenced, candidate writable. Post-DCS convergence delegated to roleProbe + KB endpoint controller."
+  remaining=$((action_deadline - (SECONDS - action_started)))
+  if [ "${remaining}" -le 0 ]; then
+    log_switchover_error "Switchover failed: reason=action_deadline_exhausted_before_write_probe elapsed=$((SECONDS - action_started))s deadline=${action_deadline}s; fail-closed"
+    return 1
+  fi
+  local write_budget=${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}
+  if [ "${remaining}" -lt "${write_budget}" ]; then
+    write_budget=${remaining}
+  fi
+  log_switchover_info "Switchover stage candidate_write_probe budget=${write_budget}s (remaining=${remaining}s of ${action_deadline}s)"
+  if ! wait_candidate_remote_root_write_ready "${candidate_name}" "${candidate_fqdn}" "${write_budget}"; then
+    return 1
+  fi
+
+  log_switchover_info "Switchover action returned: DCS recorded, current primary fenced, candidate promoted via DCS, candidate writable. Total elapsed=$((SECONDS - action_started))s of ${action_deadline}s deadline. Post-DCS convergence delegated to roleProbe + KB endpoint controller."
   return 0
 }
 

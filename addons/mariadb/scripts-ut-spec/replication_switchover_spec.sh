@@ -226,6 +226,9 @@ EOF
         revoke_user_facing_root_admin_privileges_for_secondary() {
           return 0
         }
+        wait_candidate_promoted_via_syncerctl() {
+          return 0
+        }
         fence_local_remote_root_for_secondary() {
           return 0
         }
@@ -255,7 +258,7 @@ EOF
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be success
         The output should include "Switchover candidate remote root write probe converged for mdb-mariadb-1"
-        The output should include "Switchover action returned: DCS recorded, current primary fenced, candidate writable. Post-DCS convergence delegated"
+        The output should include "Switchover action returned: DCS recorded, current primary fenced, candidate promoted via DCS, candidate writable"
       End
 
       It "passes pod names to syncerctl instead of candidate FQDN"
@@ -273,6 +276,9 @@ EOF
           return 0
         }
         revoke_user_facing_root_admin_privileges_for_secondary() {
+          return 0
+        }
+        wait_candidate_promoted_via_syncerctl() {
           return 0
         }
         fence_local_remote_root_for_secondary() {
@@ -338,6 +344,9 @@ EOF
         revoke_user_facing_root_admin_privileges_for_secondary() {
           return 0
         }
+        wait_candidate_promoted_via_syncerctl() {
+          return 0
+        }
         fence_local_remote_root_for_secondary() {
           return 0
         }
@@ -367,7 +376,7 @@ EOF
         When call main
         The status should be success
         The output should include "Switchover using mariadb client: ${MYSQL_CLIENT_DIR}/bin/mariadb"
-        The output should include "Switchover action returned: DCS recorded, current primary fenced, candidate writable. Post-DCS convergence delegated"
+        The output should include "Switchover action returned: DCS recorded, current primary fenced, candidate promoted via DCS, candidate writable"
       End
 
       It "alpha.59 contract: never invokes wait_switchover_done / wait_post_switchover_stabilization / wait_primary_service_routes_candidate / current_follows_candidate"
@@ -382,6 +391,7 @@ EOF
         remote_root_write_ready() { return 0; }
         verify_post_dcs_local_root_write_fenced() { return 0; }
         revoke_user_facing_root_admin_privileges_for_secondary() { return 0; }
+        wait_candidate_promoted_via_syncerctl() { return 0; }
         query_value() {
           case "$1:$2" in
             "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
@@ -395,7 +405,7 @@ EOF
         primary_service_routes_candidate() { record_call "BUG_primary_service_routes_candidate_called"; return 0; }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be success
-        The output should include "Switchover action returned: DCS recorded, current primary fenced, candidate writable. Post-DCS convergence delegated"
+        The output should include "Switchover action returned: DCS recorded, current primary fenced, candidate promoted via DCS, candidate writable"
         The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_switchover_done_called"
         The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_post_switchover_stabilization_called"
         The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_primary_service_routes_candidate_called"
@@ -404,7 +414,7 @@ EOF
         The contents of file "${TEST_DIR}/calls" should not include "BUG_primary_service_routes_candidate_called"
       End
 
-      It "alpha.59 contract: fails closed when candidate remote root write probe does not close in budget"
+      It "alpha.61 contract: fails closed when candidate remote root write probe does not close in budget"
         export CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS=0
         export SWITCHOVER_POLL_SECONDS=1
         make_syncerctl
@@ -414,6 +424,7 @@ EOF
         remote_root_write_ready() { return 1; }
         verify_post_dcs_local_root_write_fenced() { return 0; }
         revoke_user_facing_root_admin_privileges_for_secondary() { return 0; }
+        wait_candidate_promoted_via_syncerctl() { return 0; }
         query_value() {
           case "$1:$2" in
             "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
@@ -422,7 +433,8 @@ EOF
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be failure
         The output should include "Switchover post-DCS guard passed"
-        The stderr should include "Switchover failed: candidate remote root write probe did not close for mdb-mariadb-1"
+        The stderr should include "reason=candidate_remote_root_write_not_ready_in_budget"
+        The stderr should include "fail-closed"
       End
     End
 
@@ -536,6 +548,9 @@ EOF
         revoke_user_facing_root_admin_privileges_for_secondary() {
           return 0
         }
+        wait_candidate_promoted_via_syncerctl() {
+          return 0
+        }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be success
         The output should include "Switchover pre-DCS guard: disconnecting active remote root sessions 88 89"
@@ -589,6 +604,9 @@ EOF
           return 0
         }
         revoke_user_facing_root_admin_privileges_for_secondary() {
+          return 0
+        }
+        wait_candidate_promoted_via_syncerctl() {
           return 0
         }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
@@ -1183,6 +1201,129 @@ EOF
       The contents of file "${TEST_DIR}/calls" should not include "READ_ONLY ADMIN"
       The contents of file "${TEST_DIR}/calls" should not include "BINLOG ADMIN"
       The contents of file "${TEST_DIR}/calls" should not include ", GRANT OPTION,"
+    End
+  End
+
+  # alpha.61 (Jack 01:40 review): action must observe DCS-side candidate
+  # promotion (syncerctl getrole on candidate FQDN returns "primary") BEFORE
+  # the write probe runs. Without this, the write probe was the first place
+  # to notice non-promotion (and only via opaque INSERT rc=1).
+  Describe "wait_candidate_promoted_via_syncerctl()"
+    setup_promoted_env() {
+      export SYNCERCTL_BIN="${TEST_DIR}/syncerctl"
+      export SYNCERCTL_PORT="3601"
+      export SWITCHOVER_POLL_SECONDS="0"
+      export MOCK_SYNCERCTL_CALLS="${TEST_DIR}/syncerctl-calls"
+      : > "${MOCK_SYNCERCTL_CALLS}"
+    }
+    Before "setup_promoted_env"
+
+    It "returns success on first attempt when syncerctl getrole returns primary"
+      cat > "${SYNCERCTL_BIN}" <<'EOF'
+#!/bin/sh
+echo "$@" >> "${MOCK_SYNCERCTL_CALLS}"
+echo "primary"
+exit 0
+EOF
+      chmod +x "${SYNCERCTL_BIN}"
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 5
+      The status should be success
+      The output should include "Switchover candidate promoted via DCS observed"
+      The output should include "role=primary rc=0"
+    End
+
+    It "fails closed with reason=candidate_fqdn_not_found when candidate FQDN is empty"
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "" 5
+      The status should be failure
+      The stderr should include "reason=candidate_fqdn_not_found"
+      The stderr should include "fail-closed"
+    End
+
+    It "logs reason=role_query_failed and continues polling when syncerctl rc != 0"
+      cat > "${SYNCERCTL_BIN}" <<'EOF'
+#!/bin/sh
+echo "$@" >> "${MOCK_SYNCERCTL_CALLS}"
+n=$(cat "${MOCK_SYNCERCTL_CALLS}.count" 2>/dev/null || echo 0)
+n=$((n+1))
+echo "$n" > "${MOCK_SYNCERCTL_CALLS}.count"
+if [ "$n" -le 2 ]; then
+  echo "ERROR: connection refused" >&2
+  exit 1
+fi
+echo "primary"
+exit 0
+EOF
+      chmod +x "${SYNCERCTL_BIN}"
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 30
+      The status should be success
+      The output should include "reason=role_query_failed"
+      The output should include "stderr=ERROR: connection refused"
+      The output should include "Switchover candidate promoted via DCS observed"
+    End
+
+    It "logs reason=role_not_primary while candidate is still secondary, returns success after promotion"
+      cat > "${SYNCERCTL_BIN}" <<'EOF'
+#!/bin/sh
+echo "$@" >> "${MOCK_SYNCERCTL_CALLS}"
+n=$(cat "${MOCK_SYNCERCTL_CALLS}.count" 2>/dev/null || echo 0)
+n=$((n+1))
+echo "$n" > "${MOCK_SYNCERCTL_CALLS}.count"
+if [ "$n" -le 2 ]; then
+  echo "secondary"
+  exit 0
+fi
+echo "primary"
+exit 0
+EOF
+      chmod +x "${SYNCERCTL_BIN}"
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 30
+      The status should be success
+      The output should include "reason=role_not_primary role=secondary"
+      The output should include "Switchover candidate promoted via DCS observed"
+    End
+
+    It "fails closed with reason=candidate_not_promoted_via_dcs_in_budget when stage budget exhausts"
+      cat > "${SYNCERCTL_BIN}" <<'EOF'
+#!/bin/sh
+echo "$@" >> "${MOCK_SYNCERCTL_CALLS}"
+echo "secondary"
+exit 0
+EOF
+      chmod +x "${SYNCERCTL_BIN}"
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 0
+      The status should be failure
+      The stderr should include "reason=candidate_not_promoted_via_dcs_in_budget"
+      The stderr should include "stage_budget=0s"
+      The stderr should include "fail-closed"
+    End
+  End
+
+  # alpha.61: run_switchover global deadline contract
+  Describe "run_switchover() alpha.61 global deadline"
+    It "alpha.61 contract: shrinks candidate_promoted budget when earlier stages consumed deadline"
+      export SWITCHOVER_ACTION_DEADLINE_SECONDS=1
+      export CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS=30
+      export CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS=10
+      make_syncerctl
+      prepare_current_primary_for_switchover() {
+        # Burn the global deadline before reaching candidate_promoted stage.
+        sleep 2
+        return 0
+      }
+      fence_local_remote_root_for_secondary() { return 0; }
+      local_remote_root_is_fenced_for_secondary() { return 0; }
+      verify_post_dcs_local_root_write_fenced() { return 0; }
+      revoke_user_facing_root_admin_privileges_for_secondary() { return 0; }
+      query_value() {
+        case "$1:$2" in
+          "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
+        esac
+      }
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+      The status should be failure
+      The output should include "Switchover post-DCS guard"
+      The stderr should include "reason=action_deadline_exhausted_before_candidate_promotion"
+      The stderr should include "fail-closed"
     End
   End
 End
