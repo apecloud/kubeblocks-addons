@@ -148,6 +148,11 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The status should be success
   End
 
+  It "clears stale remote-root fence markers before publishing a primary as writable"
+    When call function_contains "set_primary_read_write" ".remote-root-fence-role"
+    The status should be success
+  End
+
   It "clears primary read-write readiness when replication becomes pending"
     When call function_contains "mark_replication_pending" ".primary-read-write-ready"
     The status should be success
@@ -205,7 +210,7 @@ Describe "cmpd-semisync.yaml rejoin fence template"
   End
 
   It "repairs a syncer primary whose SQL listener is exposed before local write access is ready"
-    When call function_contains "reconcile_sql_listener_for_syncer_primary_once" "missing-primary-read-write-ready"
+    When call function_contains "reconcile_sql_listener_for_syncer_primary_once" "primary-role-state-drift"
     The status should be success
   End
 
@@ -216,6 +221,16 @@ Describe "cmpd-semisync.yaml rejoin fence template"
 
   It "marks an already exposed syncer primary pending if local writes are not ready"
     When call function_contains "expose_sql_listener_for_primary_role" "existing-listener-local-write-not-ready"
+    The status should be success
+  End
+
+  It "resets stale slave config when an already exposed listener becomes primary"
+    When call function_contains "expose_sql_listener_for_primary_role" "STOP SLAVE; RESET SLAVE ALL"
+    The status should be success
+  End
+
+  It "reconciles already exposed syncer primary when stale slave files remain"
+    When call function_contains "reconcile_sql_listener_for_syncer_primary_once" "master.info"
     The status should be success
   End
 
