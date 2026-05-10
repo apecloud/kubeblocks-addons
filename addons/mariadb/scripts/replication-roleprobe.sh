@@ -184,11 +184,22 @@ slave_status_has_kb_health_check_repairable_error() {
 # replication is broken specifically by the kb_health_check 1062/1146 signature.
 # Always returns 0 so the probe can re-evaluate replication health afterwards;
 # every attempt is logged with rc so closeout can observe whether repair fired.
+#
+# Critical post-Jack-19:45-review invariant: this function MUST NOT open
+# `@@global.read_only` even briefly. The whole point of the secondary fence
+# is to prove `double_writable=0` across the post-OpsRequest convergence
+# window; flipping read_only OFF/ON for repair would create a small but real
+# write window that contradicts the invariant we are testing for. We rely
+# on `kb_internal_root` holding `READ_ONLY ADMIN` (granted by the addon's
+# remote-root-fence path) so the maintenance DELETE works while
+# `read_only=1` stays in place. If `kb_internal_root` cannot write for any
+# reason, log rc and return; the next roleProbe tick re-evaluates.
+#
 # Idempotent: if the table is already empty the DELETE is a no-op (0 rows
-# affected); if STOP/START SLAVE has already converged the next probe tick will
-# observe IO/SQL=Yes and skip this branch entirely.
+# affected); if STOP/START SLAVE has already converged the next probe tick
+# will observe IO/SQL=Yes and skip this branch entirely.
 secondary_kb_health_check_repair_attempt() {
-  local slave_status read_only flip_back=0 mariadb_cli rc
+  local slave_status mariadb_cli rc
   slave_status=$(query_slave_status)
   slave_status_has_kb_health_check_repairable_error "${slave_status}" || return 0
   echo "secondary_kb_health_check_repair_attempt: detected 1062/1146 on kubeblocks.kb_health_check, attempting repair" >&2
@@ -197,26 +208,13 @@ secondary_kb_health_check_repair_attempt() {
     return 0
   }
   # Stop SQL thread so the repair DELETE is not racing the failing apply loop.
+  # Uses kb_internal_root only; never user-facing root.
   "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
     -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "STOP SLAVE SQL_THREAD;" >/dev/null 2>&1 || true
-  read_only=$(local_sql -e "SELECT UPPER(CAST(@@global.read_only AS CHAR));" 2>/dev/null || true)
-  case "${read_only}" in
-    1|ON)
-      if "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
-        -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "SET GLOBAL read_only=OFF;" >/dev/null 2>&1; then
-        flip_back=1
-      else
-        echo "secondary_kb_health_check_repair_attempt: rc=1 reason=set_read_only_off_failed" >&2
-        # Try to leave the world as we found it.
-        "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
-          -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "START SLAVE SQL_THREAD;" >/dev/null 2>&1 || true
-        return 0
-      fi
-      ;;
-  esac
-  # The repair is intentionally narrow: only the kb_health_check rows are
-  # cleared. We use kb_internal_root with sql_log_bin=0 so the DELETE does not
-  # propagate further (the new primary already has the canonical state).
+  # Narrow maintenance DELETE: only the kb_health_check rows. kb_internal_root
+  # holds READ_ONLY ADMIN, so this writes through while @@global.read_only=1
+  # stays untouched. sql_log_bin=0 keeps the DELETE from propagating (the new
+  # primary already has the canonical state).
   "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
     -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "
       SET SESSION sql_log_bin=0;
@@ -226,10 +224,6 @@ secondary_kb_health_check_repair_attempt() {
       SET SESSION sql_log_bin=1;
     " >/dev/null 2>&1
   rc=$?
-  if [ "${flip_back}" = "1" ]; then
-    "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
-      -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "SET GLOBAL read_only=ON;" >/dev/null 2>&1 || true
-  fi
   "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
     -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "START SLAVE SQL_THREAD;" >/dev/null 2>&1 || true
   echo "secondary_kb_health_check_repair_attempt: rc=${rc}" >&2
