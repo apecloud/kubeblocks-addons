@@ -651,19 +651,52 @@ fence_current_primary_local_writes_after_dcs() {
 }
 
 syncerctl_switchover() {
+  # alpha.61 v3 (Jack 02:23 review): syncerctl is wrapped by timeout(1) using
+  # min(SYNCERCTL_PER_CALL_TIMEOUT_SECONDS, dcs_budget) when caller passes
+  # ${3}. timeout(1) exit codes 124 (default SIGTERM after timeout) and 137
+  # (KILL via --kill-after, defensive) and 125 (timeout's own error) are
+  # mapped to a distinct sentinel `syncerctl_timeout` so closeout can tell
+  # "wall-clock budget exhausted" from "syncerctl reported a real failure".
+  # Without the wrapper (callers that don't pass dcs_budget — currently
+  # untested call sites) the legacy naked path is preserved for backward
+  # compatibility but emits the legacy `syncerctl exited with rc=` sentinel.
   local current_name="$1"
   local candidate_name="$2"
+  local stage_budget="${3:-}"
   local output
   local rc
+  local using_timeout=0
 
-  output=$("${SYNCERCTL_BIN}" --host "${SYNCERCTL_HOST}" --port "${SYNCERCTL_PORT}" \
-    switchover --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
-  rc=$?
+  if [ -n "${stage_budget}" ] && [ "${SWITCHOVER_HAS_TIMEOUT}" = "1" ]; then
+    local wall="${SYNCERCTL_PER_CALL_TIMEOUT_SECONDS}"
+    if [ "${stage_budget}" -lt "${wall}" ]; then wall="${stage_budget}"; fi
+    if [ "${wall}" -lt 1 ]; then wall=1; fi
+    using_timeout=1
+    output=$(timeout "${wall}" "${SYNCERCTL_BIN}" --host "${SYNCERCTL_HOST}" --port "${SYNCERCTL_PORT}" \
+      switchover --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
+    rc=$?
+  else
+    output=$("${SYNCERCTL_BIN}" --host "${SYNCERCTL_HOST}" --port "${SYNCERCTL_PORT}" \
+      switchover --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
+    rc=$?
+  fi
+
   if [ -n "${output}" ]; then
     log_switchover_info "Switchover syncerctl output: ${output}"
   else
     log_switchover_info "Switchover syncerctl output: <empty>"
   fi
+
+  # timeout(1) wall-clock exhaustion → distinct sentinel.
+  if [ "${using_timeout}" = "1" ]; then
+    case "${rc}" in
+      124|125|137)
+        log_switchover_error "Switchover failed: reason=syncerctl_timeout stage=dcs stage_budget=${stage_budget}s rc=${rc}; fail-closed"
+        return 1
+        ;;
+    esac
+  fi
+
   if [ "${rc}" -ne 0 ]; then
     log_switchover_error "Switchover failed: syncerctl exited with rc=${rc}"
     return 1
@@ -846,9 +879,10 @@ now_epoch() {
 
 initialize_action_clock() {
   # Called once at run_switchover entry. Captures the action start epoch and
-  # probes for `timeout(1)`. If the wall clock cannot be read OR `timeout` is
-  # absent, fail closed BEFORE we touch DCS so we never run with a silently
-  # broken clock or an unbounded external call.
+  # asserts `timeout(1)` is present. Either failure is fatal BEFORE we touch
+  # DCS so we never run with a silently broken clock or an unbounded external
+  # call. v3 (Jack 02:23 review): `timeout` is now a hard dependency — when
+  # absent we fail at action entry, NOT at the promote stage.
   local now
   now=$(now_epoch)
   if [ -z "${now}" ]; then
@@ -860,6 +894,8 @@ initialize_action_clock() {
     SWITCHOVER_HAS_TIMEOUT=1
   else
     SWITCHOVER_HAS_TIMEOUT=0
+    log_switchover_error "Switchover failed: reason=external_timeout_unavailable cause=command_v_timeout_failed; fail-closed (action_entry; DCS not touched)"
+    return 1
   fi
   return 0
 }
@@ -1137,15 +1173,36 @@ run_switchover() {
   if ! prepare_current_primary_for_switchover; then
     return 1
   fi
+  # alpha.61 v3 (Jack 02:23 review): post-stage overrun check. The stage
+  # body's inner SQL helpers do not yet enforce the stage budget per-call
+  # (caveat: alpha.61 v3 caps scope to keep alpha.60 revoke main path
+  # untouched). If the stage body wall-clock exceeds the budget, fail closed
+  # with a distinct `_overrun` sentinel BEFORE entering the next stage so
+  # downstream stages don't run with zero remaining time.
+  local remaining_after_prepare
+  remaining_after_prepare=$(remaining_action_budget)
+  if [ $? -ne 0 ] || [ "${remaining_after_prepare}" -le 0 ]; then
+    log_switchover_error "Switchover failed: reason=action_deadline_exhausted_prepare_overrun elapsed=$(action_elapsed_seconds)s deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}s; fail-closed (stage body exceeded budget)"
+    return 1
+  fi
 
   # Stage 2: DCS switchover
   local dcs_budget
   dcs_budget=$(stage_budget_or_exit "dcs" "${SWITCHOVER_DCS_STAGE_BUDGET_SECONDS}") || return 1
   log_switchover_info "Switchover stage dcs budget=${dcs_budget}s remaining_before=$(remaining_action_budget)s primary=${current_name} candidate=${candidate_name}"
   log_switchover_info "Switchover: creating syncer DCS switchover primary=${current_name} candidate=${candidate_name}"
-  if ! syncerctl_switchover "${current_name}" "${candidate_name}"; then
+  if ! syncerctl_switchover "${current_name}" "${candidate_name}" "${dcs_budget}"; then
     rollback_current_primary_switchover_guard || true
     log_switchover_error "Switchover failed: syncerctl could not create DCS switchover"
+    return 1
+  fi
+  # Defensive overrun guard mirrors prepare (DCS is bounded by the timeout(1)
+  # wrapper but the rollback guard above is best-effort and could itself
+  # consume time).
+  local remaining_after_dcs
+  remaining_after_dcs=$(remaining_action_budget)
+  if [ $? -ne 0 ] || [ "${remaining_after_dcs}" -le 0 ]; then
+    log_switchover_error "Switchover failed: reason=action_deadline_exhausted_dcs_overrun elapsed=$(action_elapsed_seconds)s deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}s; fail-closed (stage body exceeded budget)"
     return 1
   fi
 
@@ -1155,6 +1212,12 @@ run_switchover() {
   log_switchover_info "Switchover stage fence budget=${fence_budget}s remaining_before=$(remaining_action_budget)s"
   if ! fence_current_primary_local_writes_after_dcs; then
     log_switchover_error "Switchover failed: current primary local write fence did not close after DCS switchover"
+    return 1
+  fi
+  local remaining_after_fence
+  remaining_after_fence=$(remaining_action_budget)
+  if [ $? -ne 0 ] || [ "${remaining_after_fence}" -le 0 ]; then
+    log_switchover_error "Switchover failed: reason=action_deadline_exhausted_fence_overrun elapsed=$(action_elapsed_seconds)s deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}s; fail-closed (stage body exceeded budget)"
     return 1
   fi
 
