@@ -82,7 +82,7 @@ spec:
           - -c
           - /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
     switchover:
-      timeoutSeconds: 120
+      timeoutSeconds: 240
       exec:
         container: mariadb
         command:

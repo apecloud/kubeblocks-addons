@@ -69,7 +69,7 @@ spec:
           - -c
           - MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY=true /scripts/replication-roleprobe.sh
     switchover:
-      timeoutSeconds: 120
+      timeoutSeconds: 240
       exec:
         container: mariadb
         command:
