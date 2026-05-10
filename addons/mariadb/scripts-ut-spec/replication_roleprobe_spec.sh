@@ -526,9 +526,7 @@ Last_SQL_Error: Could not execute Write_rows event on table kubeblocks.kb_health
         The stderr should include "secondary_kb_health_check_repair_attempt: detected 1062/1146 on kubeblocks.kb_health_check, attempting repair"
         The stderr should include "secondary_kb_health_check_repair_attempt: rc=0"
         The contents of file "${TEST_DIR}/sql_calls" should include "STOP SLAVE SQL_THREAD;"
-        The contents of file "${TEST_DIR}/sql_calls" should include "SET GLOBAL read_only=OFF;"
         The contents of file "${TEST_DIR}/sql_calls" should include "DELETE FROM kubeblocks.kb_health_check;"
-        The contents of file "${TEST_DIR}/sql_calls" should include "SET GLOBAL read_only=ON;"
         The contents of file "${TEST_DIR}/sql_calls" should include "START SLAVE SQL_THREAD;"
       End
 
@@ -538,6 +536,19 @@ Last_SQL_Error: Could not execute Write_rows event on table kubeblocks.kb_health
         The stderr should include "secondary_kb_health_check_repair_attempt: rc=0"
         The contents of file "${TEST_DIR}/sql_calls" should include "-ukb_internal_root"
         The contents of file "${TEST_DIR}/sql_calls" should not include "-uroot"
+      End
+
+      It "alpha.59 invariant: NEVER opens @@global.read_only during repair (no double-writable window)"
+        # Per Jack 19:45 review blocker 2: a transient SET GLOBAL read_only=OFF
+        # during repair would create a tiny but real write window that
+        # contradicts double_writable=0. kb_internal_root has READ_ONLY ADMIN
+        # so the maintenance DELETE works while read_only stays ON.
+        When call secondary_kb_health_check_repair_attempt
+        The status should be success
+        The stderr should include "secondary_kb_health_check_repair_attempt: rc=0"
+        The contents of file "${TEST_DIR}/sql_calls" should not include "SET GLOBAL read_only=OFF"
+        The contents of file "${TEST_DIR}/sql_calls" should not include "SET GLOBAL read_only=ON"
+        The contents of file "${TEST_DIR}/sql_calls" should not include "set global read_only=off"
       End
     End
 

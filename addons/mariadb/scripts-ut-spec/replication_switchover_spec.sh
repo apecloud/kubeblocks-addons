@@ -220,6 +220,9 @@ EOF
         remote_root_write_ready() {
           return 0
         }
+        verify_post_dcs_local_root_write_fenced() {
+          return 0
+        }
         fence_local_remote_root_for_secondary() {
           return 0
         }
@@ -261,6 +264,9 @@ EOF
           return 0
         }
         remote_root_write_ready() {
+          return 0
+        }
+        verify_post_dcs_local_root_write_fenced() {
           return 0
         }
         fence_local_remote_root_for_secondary() {
@@ -320,6 +326,9 @@ EOF
         remote_root_write_ready() {
           return 0
         }
+        verify_post_dcs_local_root_write_fenced() {
+          return 0
+        }
         fence_local_remote_root_for_secondary() {
           return 0
         }
@@ -362,6 +371,7 @@ EOF
         fence_local_remote_root_for_secondary() { return 0; }
         local_remote_root_is_fenced_for_secondary() { return 0; }
         remote_root_write_ready() { return 0; }
+        verify_post_dcs_local_root_write_fenced() { return 0; }
         query_value() {
           case "$1:$2" in
             "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
@@ -392,6 +402,7 @@ EOF
         fence_local_remote_root_for_secondary() { return 0; }
         local_remote_root_is_fenced_for_secondary() { return 0; }
         remote_root_write_ready() { return 1; }
+        verify_post_dcs_local_root_write_fenced() { return 0; }
         query_value() {
           case "$1:$2" in
             "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
@@ -508,6 +519,9 @@ EOF
         remote_root_write_ready() {
           return 0
         }
+        verify_post_dcs_local_root_write_fenced() {
+          return 0
+        }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be success
         The output should include "Switchover pre-DCS guard: disconnecting active remote root sessions 88 89"
@@ -555,6 +569,9 @@ EOF
           return 0
         }
         remote_root_write_ready() {
+          return 0
+        }
+        verify_post_dcs_local_root_write_fenced() {
           return 0
         }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
@@ -764,6 +781,63 @@ EOF
       When call log_primary_service_route_diagnostic "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
       The status should be success
       The output should include "service_server_id=<empty-or-error> route_status=pending"
+    End
+  End
+
+  # alpha.59 design-contract close-out (Jack 19:45 review blocker 1):
+  # post-DCS local-root write fence must be _verified_ via an actual user-facing
+  # root INSERT being rejected with 1290/read-only, not just by setting
+  # @@global.read_only=ON. Otherwise the contract has a non-empty field that is
+  # never enforced at the write site.
+  Describe "verify_post_dcs_local_root_write_fenced()"
+    setup_fence_probe() {
+      export MARIADB_ROOT_USER="root"
+      export MARIADB_ROOT_PASSWORD="pw"
+      export MARIADB_CONNECT_TIMEOUT_SECONDS="5"
+      export MARIADB_CLIENT_BIN="${TEST_DIR}/mariadb"
+    }
+    Before "setup_fence_probe"
+
+    It "passes when user-facing root INSERT is rejected with server error 1290"
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "ERROR 1290 (HY000) at line 4: The MariaDB server is running with the --read-only option so it cannot execute this statement" >&2
+exit 1
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call verify_post_dcs_local_root_write_fenced
+      The status should be success
+      The output should include "Switchover post-DCS local-root write fence verified"
+    End
+
+    It "fails closed when user-facing root INSERT unexpectedly succeeds (fence not enforced)"
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call verify_post_dcs_local_root_write_fenced
+      The status should be failure
+      The stderr should include "Switchover failed: post-DCS local-root write fence not enforced"
+    End
+
+    It "fails closed when INSERT fails with an unrelated error (no 1290 / no read-only signal)"
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax" >&2
+exit 1
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call verify_post_dcs_local_root_write_fenced
+      The status should be failure
+      The stderr should include "Switchover failed: post-DCS local-root write fence verification got unexpected error"
+    End
+
+    It "fails closed when MARIADB_CLIENT_BIN is unavailable"
+      rm -f "${TEST_DIR}/mariadb"
+      When call verify_post_dcs_local_root_write_fenced
+      The status should be failure
+      The stderr should include "Switchover failed: post-DCS local-root write fence verification cannot run without MARIADB_CLIENT_BIN"
     End
   End
 End

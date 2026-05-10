@@ -412,6 +412,42 @@ prepare_current_primary_for_switchover() {
   return 0
 }
 
+verify_post_dcs_local_root_write_fenced() {
+  # alpha.59 design-contract close-out: setting @@global.read_only=ON is not
+  # enough on its own. Per Jack 19:45 review, the action must also prove that
+  # a user-facing root INSERT against this pod's localhost is actually rejected
+  # by the read-only fence (server error 1290 or "read-only" message). This
+  # closes the "non-empty contract field unenforced at write site" hole that
+  # the alpha.58 contract had: alpha.58 only set the marker without ever
+  # observing a denied write.
+  local out rc
+  if [ -z "${MARIADB_CLIENT_BIN}" ] || [ ! -x "${MARIADB_CLIENT_BIN}" ]; then
+    log_switchover_error "Switchover failed: post-DCS local-root write fence verification cannot run without MARIADB_CLIENT_BIN"
+    return 1
+  fi
+  out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+    -P3306 -h127.0.0.1 -N -s -e "
+      SET SESSION sql_log_bin=0;
+      CREATE DATABASE IF NOT EXISTS kubeblocks;
+      CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe(probe_id VARCHAR(64) PRIMARY KEY, ts BIGINT);
+      INSERT INTO kubeblocks.kb_post_dcs_fence_probe(probe_id, ts) VALUES ('post_dcs_fence', UNIX_TIMESTAMP());
+    " 2>&1)
+  rc=$?
+  if [ "${rc}" -eq 0 ]; then
+    log_switchover_error "Switchover failed: post-DCS local-root write fence not enforced; user-facing root INSERT succeeded after read_only=ON"
+    return 1
+  fi
+  case "${out}" in
+    *1290*|*read-only*|*"read only"*|*"--read-only"*)
+      log_switchover_info "Switchover post-DCS local-root write fence verified: user-facing root INSERT rejected (rc=${rc})"
+      return 0
+      ;;
+  esac
+  log_switchover_error "Switchover failed: post-DCS local-root write fence verification got unexpected error rc=${rc} out=${out}"
+  return 1
+}
+
 fence_current_primary_local_writes_after_dcs() {
   local current_name
   current_name=$(resolve_current_name)
@@ -424,7 +460,10 @@ fence_current_primary_local_writes_after_dcs() {
     log_switchover_error "Switchover failed: current primary read_only=ON was not verified after DCS switchover was accepted"
     return 1
   fi
-  log_switchover_info "Switchover post-DCS guard passed for current primary ${current_name}"
+  if ! verify_post_dcs_local_root_write_fenced; then
+    return 1
+  fi
+  log_switchover_info "Switchover post-DCS guard passed for current primary ${current_name}: read_only=1 + user-facing root local INSERT fenced (1290)"
   return 0
 }
 
