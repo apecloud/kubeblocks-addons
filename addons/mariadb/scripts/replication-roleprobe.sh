@@ -123,12 +123,21 @@ apply_remote_root_fence() {
       SET SESSION sql_log_bin=1;
     "
   else
+    # alpha.60: do NOT GRANT ALL PRIVILEGES because in MariaDB 10.11+ that
+    # bundles READ_ONLY ADMIN / SUPER / BINLOG ADMIN, which let user-facing
+    # root bypass @@global.read_only=ON. The post-DCS local-root fence in
+    # switchover relies on read_only being effective for user-facing root,
+    # so the primary-state grant must NOT include those bypass privileges.
+    # GRANT OPTION is supplied via the trailing `WITH GRANT OPTION` clause,
+    # not as a comma-separated privilege (which is a syntax error in some
+    # MariaDB versions).
     sql="
       SET SESSION sql_log_bin=0;
       CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
       ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
       ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
-      GRANT ALL PRIVILEGES ON *.* TO '${user}'@'${host}' WITH GRANT OPTION;
+      REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
+      GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER, CREATE USER ON *.* TO '${user}'@'${host}' WITH GRANT OPTION;
       FLUSH PRIVILEGES;
       SET SESSION sql_log_bin=1;
     "
