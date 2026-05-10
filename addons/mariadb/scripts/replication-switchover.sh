@@ -12,10 +12,11 @@ CLUSTER_DOMAIN="${CLUSTER_DOMAIN:-cluster.local}"
 SYNCERCTL_BIN="${SYNCERCTL_BIN:-/tools/syncerctl}"
 SYNCERCTL_HOST="${SYNCERCTL_HOST:-127.0.0.1}"
 SYNCERCTL_PORT="${SYNCERCTL_PORT:-3601}"
-SWITCHOVER_WAIT_SECONDS="${SWITCHOVER_WAIT_SECONDS:-50}"
+SWITCHOVER_WAIT_SECONDS="${SWITCHOVER_WAIT_SECONDS:-120}"
 SWITCHOVER_POLL_SECONDS="${SWITCHOVER_POLL_SECONDS:-2}"
 SWITCHOVER_STABILIZATION_SECONDS="${SWITCHOVER_STABILIZATION_SECONDS:-10}"
 REMOTE_ROOT_FENCE_WAIT_SECONDS="${REMOTE_ROOT_FENCE_WAIT_SECONDS:-30}"
+MARIADB_CONNECT_TIMEOUT_SECONDS="${MARIADB_CONNECT_TIMEOUT_SECONDS:-5}"
 MYSQL_CLIENT_DIR="${MYSQL_CLIENT_DIR:-/tools/mysql-client}"
 MARIADB_CLIENT_BIN="${MARIADB_CLIENT_BIN:-}"
 SWITCHOVER_TRACE_FILE="${SWITCHOVER_TRACE_FILE:-}"
@@ -121,6 +122,7 @@ query_value() {
   local host="$1"
   local sql="$2"
   "${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
     -P3306 -h"${host}" -N -s -e "${sql}" 2>/dev/null || echo ""
 }
 
@@ -128,18 +130,21 @@ run_sql() {
   local host="$1"
   local sql="$2"
   "${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
     -P3306 -h"${host}" -N -s -e "${sql}" >/dev/null 2>&1
 }
 
 run_local_sql_best_effort() {
   local sql="$1"
   "${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
     -P3306 -h127.0.0.1 -N -s -e "${sql}" >/dev/null 2>&1 || true
 }
 
 query_local_value() {
   local sql="$1"
   "${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
     -P3306 -h127.0.0.1 -N -s -e "${sql}" 2>/dev/null
 }
 
@@ -150,6 +155,7 @@ sql_quote() {
 query_slave_status() {
   local host="$1"
   "${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
     -P3306 -h"${host}" -e "SHOW SLAVE STATUS\\G" 2>/dev/null || true
 }
 

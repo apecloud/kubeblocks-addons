@@ -30,6 +30,7 @@ Describe "replication-switchover.sh"
     unset CLUSTER_NAME COMPONENT_NAME CLUSTER_NAMESPACE
     unset KB_SWITCHOVER_ROLE KB_SWITCHOVER_CURRENT_NAME KB_SWITCHOVER_CANDIDATE_NAME
     unset SWITCHOVER_WAIT_SECONDS SWITCHOVER_STABILIZATION_SECONDS SWITCHOVER_POLL_SECONDS
+    unset MARIADB_CONNECT_TIMEOUT_SECONDS
   }
   AfterEach "cleanup"
 
@@ -95,6 +96,43 @@ EOF
         When call resolve_candidate_fqdn
         The status should be success
         The output should eq "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+      End
+
+      It "passes a bounded connect timeout to mariadb client probes"
+        cat > "${MARIADB_CLIENT_BIN}" <<EOF
+#!/bin/sh
+printf "%s\\n" "\$*" > "${TEST_DIR}/mariadb.args"
+printf "1\\n"
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        export MARIADB_CONNECT_TIMEOUT_SECONDS="7"
+        query_value "127.0.0.1" "SELECT 1;" >/dev/null
+        When run cat "${TEST_DIR}/mariadb.args"
+        The status should be success
+        The output should include "--connect-timeout=7"
+      End
+
+      It "waits with bounded retry for delayed candidate convergence"
+        export SWITCHOVER_WAIT_SECONDS="4"
+        export SWITCHOVER_POLL_SECONDS="1"
+        export SWITCHOVER_STABILIZATION_SECONDS="0"
+        candidate_is_primary() {
+          local count
+          count=$(cat "${TEST_DIR}/candidate-count" 2>/dev/null || echo 0)
+          count=$((count + 1))
+          printf "%s" "${count}" > "${TEST_DIR}/candidate-count"
+          [ "${count}" -ge 3 ]
+        }
+        current_follows_candidate() {
+          return 0
+        }
+        log_primary_service_route_diagnostic() {
+          return 0
+        }
+        When call wait_switchover_done "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        The status should be success
+        The output should include "Switchover done"
+        The contents of file "${TEST_DIR}/candidate-count" should eq "3"
       End
     End
 
