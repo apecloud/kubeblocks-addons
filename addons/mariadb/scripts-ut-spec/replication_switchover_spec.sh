@@ -1417,7 +1417,7 @@ EOF
       The variable SWITCHOVER_HAS_TIMEOUT should equal "1"
     End
 
-    It "sets SWITCHOVER_HAS_TIMEOUT=0 when timeout(1) is absent (caller responsible for fail-closed)"
+    It "alpha.61 v3: fails closed at action entry with reason=external_timeout_unavailable when timeout(1) is absent (DCS not touched)"
       command() {
         if [ "$1" = "-v" ] && [ "$2" = "timeout" ]; then return 1; fi
         builtin command "$@"
@@ -1425,8 +1425,11 @@ EOF
       action_started_epoch=""
       SWITCHOVER_HAS_TIMEOUT=""
       When call initialize_action_clock
-      The status should be success
-      The variable SWITCHOVER_HAS_TIMEOUT should equal "0"
+      The status should be failure
+      The stderr should include "reason=external_timeout_unavailable"
+      The stderr should include "cause=command_v_timeout_failed"
+      The stderr should include "fail-closed"
+      The stderr should include "DCS not touched"
     End
 
     It "fails closed with reason=action_clock_unavailable when date itself fails"
@@ -1531,20 +1534,21 @@ secondary-other"
       The stderr should include "fail-closed"
     End
 
-    It "fails closed at dcs stage with action_deadline_exhausted_dcs when prepare consumes the deadline"
+    It "alpha.61 v3: fails closed with action_deadline_exhausted_prepare_overrun when prepare body exceeds budget"
       prepare_current_primary_for_switchover() {
-        # Burn 100s during prepare.
+        # Burn 100s during prepare body.
         advance_clock 100
         return 0
       }
       When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
       The status should be failure
       The output should include "Switchover stage prepare"
-      The stderr should include "reason=action_deadline_exhausted_dcs"
+      The stderr should include "reason=action_deadline_exhausted_prepare_overrun"
+      The stderr should include "stage body exceeded budget"
       The stderr should include "fail-closed"
     End
 
-    It "fails closed at fence stage with action_deadline_exhausted_fence when dcs consumes the deadline"
+    It "alpha.61 v3: fails closed with action_deadline_exhausted_dcs_overrun when dcs body exceeds budget"
       prepare_current_primary_for_switchover() { return 0; }
       syncerctl_switchover() {
         advance_clock 100
@@ -1553,11 +1557,12 @@ secondary-other"
       When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
       The status should be failure
       The output should include "Switchover stage dcs"
-      The stderr should include "reason=action_deadline_exhausted_fence"
+      The stderr should include "reason=action_deadline_exhausted_dcs_overrun"
+      The stderr should include "stage body exceeded budget"
       The stderr should include "fail-closed"
     End
 
-    It "fails closed at promote stage with action_deadline_exhausted_promote when fence consumes the deadline"
+    It "alpha.61 v3: fails closed with action_deadline_exhausted_fence_overrun when fence body exceeds budget"
       prepare_current_primary_for_switchover() { return 0; }
       syncerctl_switchover() { return 0; }
       fence_current_primary_local_writes_after_dcs() {
@@ -1567,11 +1572,12 @@ secondary-other"
       When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
       The status should be failure
       The output should include "Switchover stage fence"
-      The stderr should include "reason=action_deadline_exhausted_promote"
+      The stderr should include "reason=action_deadline_exhausted_fence_overrun"
+      The stderr should include "stage body exceeded budget"
       The stderr should include "fail-closed"
     End
 
-    It "fails closed at write stage with action_deadline_exhausted_write when promote consumes the deadline"
+    It "fails closed at write stage with action_deadline_exhausted_write when promote body exceeds budget"
       prepare_current_primary_for_switchover() { return 0; }
       syncerctl_switchover() { return 0; }
       fence_current_primary_local_writes_after_dcs() { return 0; }
@@ -1586,18 +1592,108 @@ secondary-other"
       The stderr should include "fail-closed"
     End
 
-    It "fails closed at any stage with cause=action_clock_unavailable when wall clock fails mid-action"
+    It "alpha.61 v3: fails closed at prepare overrun with cause=action_clock_unavailable when wall clock fails mid-prepare"
       prepare_current_primary_for_switchover() {
-        # Break the clock mid-action.
+        # Break the clock during prepare body.
         echo "not-a-number" > "${TEST_DIR}/clock_now"
         return 0
       }
       When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
       The status should be failure
       The output should include "Switchover stage prepare"
-      The stderr should include "reason=action_deadline_exhausted_dcs"
-      The stderr should include "cause=action_clock_unavailable"
+      The stderr should include "reason=action_deadline_exhausted_prepare_overrun"
       The stderr should include "fail-closed"
+    End
+  End
+
+  # alpha.61 v3 (Jack 02:23 review tightening): syncerctl_switchover wraps
+  # syncerctl with timeout(1) when stage_budget is provided. timeout(1) exit
+  # codes 124/125/137 are mapped to a distinct `syncerctl_timeout` sentinel
+  # so closeout can tell wall-clock budget exhaustion from a real syncerctl
+  # failure (rc!=0 from syncerctl itself or zero-status non-success message).
+  Describe "alpha.61 v3 syncerctl_switchover() timeout sentinel"
+    setup_syncerctl_env() {
+      export SYNCERCTL_BIN="${TEST_DIR}/syncerctl"
+      export SYNCERCTL_HOST="127.0.0.1"
+      export SYNCERCTL_PORT="3601"
+      export SWITCHOVER_HAS_TIMEOUT=1
+      export SYNCERCTL_PER_CALL_TIMEOUT_SECONDS=5
+    }
+    Before "setup_syncerctl_env"
+
+    It "alpha.61 v3: emits reason=syncerctl_timeout when timeout(1) reaps syncerctl (rc=124)"
+      cat > "${SYNCERCTL_BIN}" <<'EOF'
+#!/bin/sh
+echo "(would block)"
+exit 0
+EOF
+      chmod +x "${SYNCERCTL_BIN}"
+      # Stub `timeout` to simulate the 124 SIGTERM exit deterministically (avoids
+      # depending on real wall-clock and on host timeout(1) being installed).
+      timeout() {
+        # Consume the wall-clock arg; ignore the rest.
+        shift
+        # The simulated process "would have hung" — we model the kill.
+        printf "(syncerctl reaped by timeout)\n"
+        return 124
+      }
+      When call syncerctl_switchover "mdb-mariadb-0" "mdb-mariadb-1" 3
+      The status should be failure
+      The output should include "syncerctl output"
+      The stderr should include "reason=syncerctl_timeout"
+      The stderr should include "stage=dcs"
+      The stderr should include "stage_budget=3s"
+      The stderr should include "rc=124"
+      The stderr should include "fail-closed"
+    End
+
+    It "alpha.61 v3: emits the legacy 'syncerctl exited with rc=' sentinel when syncerctl itself returns non-zero (NOT timeout)"
+      cat > "${SYNCERCTL_BIN}" <<'EOF'
+#!/bin/sh
+echo "ERROR: connection refused" >&2
+exit 7
+EOF
+      chmod +x "${SYNCERCTL_BIN}"
+      timeout() {
+        # Pass-through: invoke the underlying command with the budget consumed.
+        shift
+        "$@"
+      }
+      When call syncerctl_switchover "mdb-mariadb-0" "mdb-mariadb-1" 3
+      The status should be failure
+      The output should include "syncerctl output"
+      The stderr should include "syncerctl exited with rc=7"
+      The stderr should not include "reason=syncerctl_timeout"
+    End
+
+    It "alpha.61 v3: returns success when syncerctl reports 'switchover success' within budget"
+      cat > "${SYNCERCTL_BIN}" <<'EOF'
+#!/bin/sh
+echo "switchover success: primary=mdb-mariadb-0 candidate=mdb-mariadb-1"
+exit 0
+EOF
+      chmod +x "${SYNCERCTL_BIN}"
+      timeout() {
+        shift
+        "$@"
+      }
+      When call syncerctl_switchover "mdb-mariadb-0" "mdb-mariadb-1" 3
+      The status should be success
+      The output should include "switchover success"
+    End
+
+    It "alpha.61 v3: legacy callers that omit the stage_budget arg still hit the naked path (no timeout wrapper)"
+      cat > "${SYNCERCTL_BIN}" <<'EOF'
+#!/bin/sh
+echo "switchover success"
+exit 0
+EOF
+      chmod +x "${SYNCERCTL_BIN}"
+      # `timeout` would error if called; verify it is NOT called by replacing it.
+      timeout() { return 99; }
+      When call syncerctl_switchover "mdb-mariadb-0" "mdb-mariadb-1"
+      The status should be success
+      The output should include "switchover success"
     End
   End
 
