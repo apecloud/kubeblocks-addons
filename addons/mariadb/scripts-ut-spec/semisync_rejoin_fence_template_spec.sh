@@ -134,12 +134,37 @@ Describe "cmpd-semisync.yaml rejoin fence template"
   End
 
   It "probes local root table writes before publishing a primary as writable"
-    When call function_contains "set_primary_read_write" "primary_local_root_write_ready \"primary-read-write\""
+    When call function_contains "primary_write_gates_ready" "primary_local_root_write_ready"
+    The status should be success
+  End
+
+  It "probes internal root table writes before publishing a primary as writable"
+    When call function_contains "primary_write_gates_ready" "primary_internal_root_write_ready"
     The status should be success
   End
 
   It "requires local root unlock before publishing a primary as writable"
     When call function_contains "set_primary_read_write" "primary-read-write local-root-unlock rc=1"
+    The status should be success
+  End
+
+  It "requires remote root unlock before publishing a primary as writable"
+    When call function_contains "set_primary_read_write" "fail_primary_read_write_gate \"primary-read-write\" \"remote-root-unlock\""
+    The status should be success
+  End
+
+  It "records failed primary write gates before publishing a primary as writable"
+    When call function_contains "fail_primary_read_write_gate" "primary-read-write \${reason} rc=1"
+    The status should be success
+  End
+
+  It "re-fences remote root when a primary write gate fails"
+    When call function_contains "fail_primary_read_write_gate" "lock_remote_root_writes"
+    The status should be success
+  End
+
+  It "fails closed when read_only cannot be opened for a primary"
+    When call function_contains "set_primary_read_write" "fail_primary_read_write_gate \"primary-read-write\" \"read-only-open\""
     The status should be success
   End
 
@@ -307,6 +332,11 @@ Describe "cmpd-semisync.yaml rejoin fence template"
 
   It "repairs kubeblocks health check replication errors before publishing replica readiness"
     When call function_contains "repair_kb_health_check_replication_error" "prepared-local-kb-health-check-after-replication-error"
+    The status should be success
+  End
+
+  It "temporarily opens read_only while repairing local health check rows"
+    When call function_contains "with_local_read_write_for_health_check_repair" "SET GLOBAL read_only = 0"
     The status should be success
   End
 

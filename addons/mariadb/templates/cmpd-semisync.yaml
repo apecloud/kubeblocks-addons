@@ -232,6 +232,38 @@ spec:
               prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1"
               return 1
             }
+            primary_internal_root_write_ready() {
+              local label="${1:-primary-internal-root-write-ready}"
+              if "${INTERNAL_LOCAL[@]}" -e "
+                SET SESSION sql_log_bin=0;
+                CREATE DATABASE IF NOT EXISTS kubeblocks;
+                CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
+                INSERT INTO kubeblocks.kb_health_check(type, check_ts)
+                  VALUES (0, UNIX_TIMESTAMP())
+                  ON DUPLICATE KEY UPDATE check_ts=VALUES(check_ts);
+                DELETE FROM kubeblocks.kb_health_check WHERE type=0;
+                SET SESSION sql_log_bin=1;
+              " >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                prestop_watchdog_log "primary-internal-root-write-ready label=${label} rc=0"
+                return 0
+              fi
+              prestop_watchdog_log "primary-internal-root-write-ready label=${label} rc=1"
+              return 1
+            }
+            primary_write_gates_ready() {
+              local label="${1:-primary-write-gates-ready}"
+              primary_local_root_write_ready "${label}" || return 1
+              primary_internal_root_write_ready "${label}" || return 1
+            }
+            fail_primary_read_write_gate() {
+              local label="$1"
+              local reason="$2"
+              rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
+              lock_remote_root_writes "${label}-${reason}" || true
+              set_fail_closed_read_only "${label}-${reason}" || true
+              lock_local_root_writes "${label}-${reason}" || true
+              prestop_watchdog_log "primary-read-write ${reason} rc=1"
+            }
             set_primary_read_write() {
               if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
                 prestop_watchdog_log "skip-primary-read-write reason=prestop-fence-started"
@@ -243,13 +275,13 @@ spec:
                 prestop_watchdog_log "primary-read-write local-root-unlock rc=1"
                 return 1
               fi
-              unlock_remote_root_writes "primary-read-write" || true
+              if ! unlock_remote_root_writes "primary-read-write"; then
+                fail_primary_read_write_gate "primary-read-write" "remote-root-unlock"
+                return 1
+              fi
               if "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null; then
-                if ! primary_local_root_write_ready "primary-read-write"; then
-                  rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
-                  set_fail_closed_read_only "primary-read-write-local-root-write-failed" || true
-                  lock_local_root_writes "primary-read-write-local-root-write-failed" || true
-                  prestop_watchdog_log "primary-read-write local-root-write rc=1"
+                if ! primary_write_gates_ready "primary-read-write"; then
+                  fail_primary_read_write_gate "primary-read-write" "write-gate"
                   return 1
                 fi
                 rm -f {{ .Values.dataMountPath }}/.remote-root-fence-role
@@ -258,11 +290,8 @@ spec:
                 return 0
               fi
               if "${LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null; then
-                if ! primary_local_root_write_ready "primary-read-write"; then
-                  rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
-                  set_fail_closed_read_only "primary-read-write-local-root-write-failed" || true
-                  lock_local_root_writes "primary-read-write-local-root-write-failed" || true
-                  prestop_watchdog_log "primary-read-write local-root-write rc=1"
+                if ! primary_write_gates_ready "primary-read-write"; then
+                  fail_primary_read_write_gate "primary-read-write" "write-gate"
                   return 1
                 fi
                 rm -f {{ .Values.dataMountPath }}/.remote-root-fence-role
@@ -270,7 +299,7 @@ spec:
                 prestop_watchdog_log "primary-read-write rc=0"
                 return 0
               fi
-              rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
+              fail_primary_read_write_gate "primary-read-write" "read-only-open"
               prestop_watchdog_log "primary-read-write rc=1"
               return 1
             }
@@ -833,10 +862,35 @@ spec:
               fi
               return 1
             }
+            with_local_read_write_for_health_check_repair() {
+              local decision="$1"
+              local old_read_only rc
+              old_read_only="$(read_only_value || true)"
+              case "${old_read_only}" in
+                0|OFF)
+                  ;;
+                *)
+                  if ! "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null; then
+                    prestop_watchdog_log "fresh-kb-health-check-repair read-only-open rc=1 decision=${decision}"
+                    return 1
+                  fi
+                  ;;
+              esac
+              clear_local_kb_health_check_table "${decision}"
+              rc=$?
+              case "${old_read_only}" in
+                0|OFF)
+                  ;;
+                *)
+                  set_fail_closed_read_only "${decision}-restore-read-only" || true
+                  ;;
+              esac
+              return "${rc}"
+            }
             prepare_fresh_replica_for_sql_thread_start() {
               local local_gtid="${1:-}"
               [ -z "${local_gtid}" ] || return 0
-              if clear_local_kb_health_check_table "cleared-local-kb-health-check-before-fresh-sql-thread"; then
+              if with_local_read_write_for_health_check_repair "cleared-local-kb-health-check-before-fresh-sql-thread"; then
                 return 0
               fi
               mark_replication_pending
@@ -852,7 +906,7 @@ spec:
               fi
               prestop_watchdog_log "fresh-kb-health-check-repair label=${label}"
               "${LOCAL[@]}" -e "STOP SLAVE SQL_THREAD;" 2>/dev/null || true
-              if ! clear_local_kb_health_check_table "prepared-local-kb-health-check-after-replication-error"; then
+              if ! with_local_read_write_for_health_check_repair "prepared-local-kb-health-check-after-replication-error"; then
                 mark_replication_pending
                 set_fail_closed_read_only "fresh-health-check-replication-repair-failed" || true
                 lock_local_root_writes "fresh-health-check-replication-repair-failed" || true

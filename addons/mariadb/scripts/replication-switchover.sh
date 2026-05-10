@@ -22,6 +22,7 @@ MYSQL_CLIENT_DIR="${MYSQL_CLIENT_DIR:-/tools/mysql-client}"
 MARIADB_CLIENT_BIN="${MARIADB_CLIENT_BIN:-}"
 MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
 SWITCHOVER_TRACE_FILE="${SWITCHOVER_TRACE_FILE:-}"
+SWITCHOVER_REMOTE_ROOT_PROBE_TABLE="${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE:-kubeblocks.kb_root_write_probe}"
 
 append_switchover_trace() {
   local message="$*"
@@ -203,6 +204,42 @@ remote_root_has_full_access() {
     *"GRANT ALL PRIVILEGES ON *.*"*) return 0 ;;
     *) return 1 ;;
   esac
+}
+
+remote_root_write_ready() {
+  local host="$1"
+  local label="${2:-candidate-remote-root-write-ready}"
+  local table
+  remote_root_host_is_local && return 0
+  table="${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE}"
+  case "${table}" in
+    *[!A-Za-z0-9_.]*|*.*.*|.*|*.)
+      log_switchover_error "Switchover candidate remote root write probe: invalid table ${table}"
+      return 1
+      ;;
+  esac
+  if run_sql "${host}" "
+    CREATE DATABASE IF NOT EXISTS kubeblocks;
+    CREATE TABLE IF NOT EXISTS ${table}(probe_id VARCHAR(128) PRIMARY KEY, check_ts BIGINT);
+    INSERT INTO ${table}(probe_id, check_ts)
+      VALUES ('switchover_remote_root_probe', UNIX_TIMESTAMP())
+      ON DUPLICATE KEY UPDATE check_ts=VALUES(check_ts);
+    DELETE FROM ${table} WHERE probe_id='switchover_remote_root_probe';
+  "; then
+    log_switchover_info "Switchover candidate remote root write probe label=${label} host=${host} rc=0"
+    return 0
+  fi
+  log_switchover_error "Switchover candidate remote root write probe label=${label} host=${host} rc=1"
+  return 1
+}
+
+syncer_role_is() {
+  local host="$1"
+  local expected="$2"
+  local role
+  [ -x "${SYNCERCTL_BIN}" ] || command -v "${SYNCERCTL_BIN}" >/dev/null 2>&1 || return 1
+  role="$(query_syncer_role "${host}")"
+  [ "${role}" = "${expected}" ]
 }
 
 grant_remote_root_optional_admin_privileges_for_secondary() {
@@ -427,7 +464,11 @@ candidate_is_primary() {
   read_only=$(query_value "${candidate_fqdn}" "SELECT @@global.read_only;")
   slave_status=$(query_slave_status "${candidate_fqdn}")
 
-  [ "${read_only}" = "0" ] && [ -z "${slave_status}" ] && remote_root_has_full_access "${candidate_fqdn}"
+  [ "${read_only}" = "0" ] || return 1
+  [ -z "${slave_status}" ] || return 1
+  remote_root_has_full_access "${candidate_fqdn}" || return 1
+  remote_root_write_ready "${candidate_fqdn}" "candidate-primary" || return 1
+  syncer_role_is "${candidate_fqdn}" "primary"
 }
 
 slave_status_is_ready_for_candidate() {
@@ -469,14 +510,40 @@ clear_local_kb_health_check_table() {
 
 repair_kb_health_check_replication_error() {
   local slave_status="$1"
+  local old_read_only
   if ! slave_status_has_kb_health_check_repairable_error "${slave_status}"; then
     return 1
   fi
   log_switchover_info "Switchover old-primary follow repair: detected repairable kubeblocks health check replication error"
   run_local_sql_best_effort "STOP SLAVE SQL_THREAD;"
+  old_read_only=$(query_value "127.0.0.1" "SELECT @@global.read_only;")
+  case "${old_read_only}" in
+    0)
+      ;;
+    *)
+      if ! set_local_read_only "OFF"; then
+        log_switchover_error "Switchover old-primary follow repair: failed to temporarily open local read_only for health check repair"
+        return 1
+      fi
+      ;;
+  esac
   if ! clear_local_kb_health_check_table "prepared-local-kb-health-check-after-switchover-replication-error"; then
+    case "${old_read_only}" in
+      0) ;;
+      *) set_local_read_only "ON" || true ;;
+    esac
     return 1
   fi
+  case "${old_read_only}" in
+    0)
+      ;;
+    *)
+      if ! set_local_read_only "ON"; then
+        log_switchover_error "Switchover old-primary follow repair: failed to restore local read_only after health check repair"
+        return 1
+      fi
+      ;;
+  esac
   run_local_sql_best_effort "START SLAVE SQL_THREAD;"
   return 0
 }
@@ -494,6 +561,7 @@ current_follows_candidate() {
 
   read_only=$(query_value "127.0.0.1" "SELECT @@global.read_only;")
   [ "${read_only}" = "1" ] || return 1
+  syncer_role_is "127.0.0.1" "secondary" || return 1
 
   slave_status=$(query_slave_status "127.0.0.1")
   if slave_status_is_ready_for_candidate "${slave_status}" "${candidate_name}" "${candidate_fqdn}"; then
