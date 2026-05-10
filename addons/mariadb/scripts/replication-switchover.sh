@@ -440,9 +440,19 @@ revoke_user_facing_root_admin_privileges_for_secondary() {
     log_switchover_error "Switchover failed: post-DCS root revoke cannot run without MARIADB_CLIENT_BIN"
     return 1
   fi
+  # alpha.60 v3 (Jack 00:08 review): the host enumeration query MUST distinguish
+  # "rc=0 with empty stdout" (genuinely no root account) from "rc!=0" (query
+  # itself failed for permission/connection/SQL reasons). Treating both as
+  # `root_account_not_found` is a class 1 silent fallback that lets the
+  # function pretend coverage. If the enumeration fails, fail-closed.
   hosts=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
     --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
-    -P3306 -h127.0.0.1 -N -B -s -e "SELECT Host FROM mysql.user WHERE User='${root_user}';" 2>/dev/null || true)
+    -P3306 -h127.0.0.1 -N -B -s -e "SELECT Host FROM mysql.user WHERE User='${root_user}';" 2>&1)
+  rc=$?
+  if [ "${rc}" -ne 0 ]; then
+    log_switchover_error "Switchover failed: post-DCS root revoke: reason=root_host_query_failed user=${root_user} rc=${rc} stderr=${hosts}; fail-closed"
+    return 1
+  fi
   if [ -z "${hosts}" ]; then
     log_switchover_info "Switchover post-DCS root revoke: reason=root_account_not_found user=${root_user} skip (rc=0)"
     return 0
