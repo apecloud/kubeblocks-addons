@@ -101,16 +101,20 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The output should include "unlock_local_root_writes"
   End
 
-  It "locks local root without granting table writes"
-    When call template_contains "GRANT SELECT, PROCESS, RELOAD, SUPER, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '\${user}'@'\${host}';"
+  It "alpha.64 v1: locks local root without granting table writes AND without admin-bypass SUPER (use CMPD_SECONDARY_FENCE_GRANT_BODY constant)"
+    # alpha.64 v1 (Jack 09:35 RED root cause): SUPER is admin bypass; dropped
+    # from secondary fence grant body. Grant body now sourced from
+    # CMPD_SECONDARY_FENCE_GRANT_BODY constant (SELECT, PROCESS, RELOAD,
+    # REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN).
+    When call template_contains "GRANT \${CMPD_SECONDARY_FENCE_GRANT_BODY} ON *.* TO '\${user}'@'\${host}';"
     The status should be success
-    The output should include "GRANT SELECT, PROCESS, RELOAD, SUPER"
+    The output should include "GRANT \${CMPD_SECONDARY_FENCE_GRANT_BODY}"
   End
 
-  It "keeps remote root follow privileges while table writes are fenced"
-    When call template_contains "GRANT SELECT, PROCESS, RELOAD, SUPER, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO '\${user}'@'\${host}';"
+  It "alpha.64 v1: secondary fence grant body constant explicitly excludes SUPER"
+    When call template_contains 'CMPD_SECONDARY_FENCE_GRANT_BODY="SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN"'
     The status should be success
-    The output should include "REPLICATION MASTER ADMIN"
+    The output should include "CMPD_SECONDARY_FENCE_GRANT_BODY"
   End
 
   It "keeps syncer local root semisync dynamic privileges while table writes are fenced"

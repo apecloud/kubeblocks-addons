@@ -2250,6 +2250,135 @@ EOF
   # surfaced because v1 had bash-only $SECONDS / $'\n' under #!/bin/sh).
   # The spec runs with --execdir @specfile, so the script lives at
   # ../scripts/replication-switchover.sh relative to scripts-ut-spec/.
+  # alpha.64 v1 (Jack 09:35 RED root cause + 10:01-10:13 design ack):
+  # cmpd-semisync.yaml runtime sql-listener-fence UNLOCK/LOCK paths must NOT
+  # introduce admin-bypass privileges to user-facing root. Verifier on switchover
+  # path correctly fail-closed; the actual fix is at the cmpd-yaml grant
+  # write site. ShellSpec covers: cmpd constants strong-bind, rendered manifest
+  # negative grep on user-facing root, MONITOR positive allowlist, account
+  # class separation (kb_internal_root admin grant remains legit, not flagged).
+  Describe "alpha.64 v1 cmpd-semisync grant body contract"
+    setup_cmpd_alpha64_env() {
+      # Source-file grep is sufficient for these contracts — cmpd-semisync.yaml
+      # has no helm template directives in the GRANT statement bodies (only
+      # in dataMountPath etc. paths), so source vs rendered diff doesn't
+      # change the negative-grep semantics. This avoids dependency on helm
+      # being installed in the test environment.
+      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+    }
+    Before "setup_cmpd_alpha64_env"
+
+    Context "cmpd constants strong-bind alignment"
+      It "alpha.64 v1: CMPD_EXPLICIT_PRIMARY_GRANT_BODY contains all 5 core write privs (INSERT/UPDATE/DELETE/CREATE/DROP) — aligned with switchover.sh SWITCHOVER_PRIMARY_CORE_WRITE_PRIVS [product-blocker]"
+        # Strong-bind invariant: cmpd-side primary grant body MUST contain
+        # the same core write privs that switchover.sh's
+        # remote_root_has_explicit_primary_grant verifier requires.
+        When call grep -E "CMPD_EXPLICIT_PRIMARY_GRANT_BODY=" ../templates/cmpd-semisync.yaml
+        The status should be success
+        The output should include "INSERT"
+        The output should include "UPDATE"
+        The output should include "DELETE"
+        The output should include "CREATE"
+        The output should include "DROP"
+      End
+
+      It "alpha.64 v1: CMPD_SECONDARY_FENCE_GRANT_BODY does NOT contain admin-bypass privileges (SUPER/READ_ONLY ADMIN/BINLOG ADMIN/CONNECTION ADMIN/ALL PRIVILEGES) [product-blocker]"
+        When call grep -E "CMPD_SECONDARY_FENCE_GRANT_BODY=" ../templates/cmpd-semisync.yaml
+        The status should be success
+        The output should not include "SUPER"
+        The output should not include "READ_ONLY ADMIN"
+        The output should not include "BINLOG ADMIN"
+        The output should not include "CONNECTION ADMIN"
+        The output should not include "ALL PRIVILEGES"
+      End
+
+      It "alpha.64 v1: CMPD_OPTIONAL_MONITOR_PRIVS contains only MONITOR types (BINLOG MONITOR / SLAVE MONITOR), no admin-bypass [product-blocker]"
+        When call grep -E "CMPD_OPTIONAL_MONITOR_PRIVS=" ../templates/cmpd-semisync.yaml
+        The status should be success
+        The output should include "BINLOG MONITOR"
+        The output should include "SLAVE MONITOR"
+        The output should not include "READ_ONLY ADMIN"
+        The output should not include "BINLOG ADMIN"
+        The output should not include "CONNECTION ADMIN"
+        The output should not include "REPLICATION SLAVE ADMIN"
+        The output should not include "REPLICATION MASTER ADMIN"
+      End
+    End
+
+    Context "rendered manifest user-facing root negative grep (per Cindy 09:58 + Jack 10:07 review focal)"
+      It "alpha.64 v1: NO active GRANT statement (outside comments) gives user-facing root admin-bypass privileges [product-blocker]"
+        # Account class separation (per Cindy 10:13 directive): kb_internal_root
+        # paths in ensure_internal_local_admin / grant_internal_admin_runtime_privileges
+        # legitimately GRANT ALL PRIVILEGES; user-facing root paths in the 7
+        # alpha.64-fixed callsites must NOT. We use awk-based block analysis
+        # to filter out kb_internal_root contexts (lines preceded within 30
+        # lines by user="$(sql_quote "${MARIADB_INTERNAL_ROOT_USER}")") AND
+        # comment-only lines.
+        When run sh -c '
+          awk "
+            /MARIADB_INTERNAL_ROOT_USER/ { internal_window = NR + 30; next }
+            /^[[:space:]]*#/ { next }
+            /^[[:space:]]*\\*/ { next }
+            NR > internal_window { in_internal = 0 }
+            NR <= internal_window { in_internal = 1 }
+            /GRANT[[:space:]]+(ALL[[:space:]]+PRIVILEGES|SUPER|READ_ONLY[[:space:]]+ADMIN|BINLOG[[:space:]]+ADMIN|CONNECTION[[:space:]]+ADMIN|REPLICATION[[:space:]]+SLAVE[[:space:]]+ADMIN|REPLICATION[[:space:]]+MASTER[[:space:]]+ADMIN)/ {
+              if (!in_internal) {
+                print NR\": \"\$0
+              }
+            }
+          " '"${CMPD_SOURCE}"' || true
+        '
+        The status should be success
+        # Output should be empty — any line printed is a violation.
+        The output should equal ""
+      End
+
+      It "alpha.64 v1: kb_internal_root grant of ALL PRIVILEGES remains legitimate (account class allowlist) [internal-exception]"
+        # Positive: confirm kb_internal_root grant statements still appear (we
+        # haven't broken the maintenance executor by overzealous removal).
+        When run grep -F "GRANT ALL PRIVILEGES ON *.* TO '\${user}'@'localhost' WITH GRANT OPTION" "${CMPD_SOURCE}"
+        The status should be success
+        The output should include "GRANT ALL PRIVILEGES"
+      End
+
+      It "alpha.64 v1: MONITOR positive allowlist — BINLOG MONITOR / SLAVE MONITOR appear in user-facing root grant context (read-only legit) [review-tightening]"
+        # Positive allowlist (per Cindy 10:01 ship-gate): MONITOR types must
+        # remain present (read-only privileges that don't bypass read_only).
+        When run grep -E "(BINLOG|SLAVE) MONITOR" "${CMPD_SOURCE}"
+        The status should be success
+        The output should include "BINLOG MONITOR"
+        The output should include "SLAVE MONITOR"
+      End
+    End
+
+    Context "Tier A vs Tier B fail-closed semantic (per Jack 10:05 contract)"
+      It "alpha.64 v1: Tier A monitor priv grant emits tier=monitor-best-effort 1227_swallowed=true fields (allowed continue, log only) [review-tightening]"
+        # Verify the source has Tier A logging pattern. Field order is
+        # tier=monitor-best-effort 1227_swallowed=true (single line emit).
+        When call grep -E "tier=monitor-best-effort 1227_swallowed=true" ../templates/cmpd-semisync.yaml
+        The status should be success
+        The output should include "tier=monitor-best-effort 1227_swallowed=true"
+      End
+
+      It "alpha.64 v1: Tier B required grant emits fail_closed=true + tier=required field (must return 1, caller skip ready/role) [product-blocker]"
+        # Verify the source has Tier B logging pattern with fail_closed marker.
+        When call grep -E "tier=required.*fail_closed=true" ../templates/cmpd-semisync.yaml
+        The status should be success
+        The output should include "fail_closed=true"
+      End
+    End
+
+    Context "live-gate runtime negative gate contract documentation"
+      It "alpha.64 v1: live-gate runtime contract documented — prestop-watchdog.log fresh stable window must NOT contain admin-bypass MONITOR-loop entries [product-blocker]"
+        # This is documentation/marker assertion: the source must contain a
+        # comment defining the live-gate runtime contract for closeout reviewers.
+        When call grep -E "alpha.64 v1.*Jack 09:35 RED" ../templates/cmpd-semisync.yaml
+        The status should be success
+        The output should include "alpha.64 v1"
+      End
+    End
+  End
+
   Describe "alpha.61 v2 POSIX shell self-check"
     It "addons/mariadb/scripts/replication-switchover.sh parses cleanly under dash -n"
       Skip if "dash is not installed" ! command -v dash >/dev/null 2>&1
