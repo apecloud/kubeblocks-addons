@@ -2703,18 +2703,17 @@ EOF
     }
     Before "setup_chart_alpha65_env"
 
-    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.68 [contract-no-regression]"
-      # Original alpha.65 v1 ship locked the chart at 1.1.1-alpha.65; the
-      # subsequent alpha.66/.67/.68 ships bumped further (alpha.66 syncer
-      # HA executor; alpha.67 @% write-site zero-priv; alpha.68 @% cross-
-      # member health grant allowlist) under the SAME CmpD immutability
-      # rule. The literal value here is intentionally synced with the
-      # latest chart version so this regression test stays green; the
-      # assertion still proves the version-line literal exists and matches
-      # the canonical bump.
+    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.69 [contract-no-regression]"
+      # alpha.65 v1 originally locked chart at alpha.65; alpha.66/.67/.68/.69
+      # ships bumped further (alpha.66 syncer HA executor; alpha.67 @%
+      # write-site zero-priv; alpha.68 @% cross-member health grant
+      # allowlist; alpha.69 ensure_internal_local_admin SQL ordering fix
+      # + mysql.user narrow grant for cross-pod DSN init_db) under the
+      # SAME CmpD immutability rule. Literal kept in sync with latest
+      # chart version.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.1.1-alpha.68"
+      The output should equal "version: 1.1.1-alpha.69"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -2769,16 +2768,13 @@ EOF
     Before "setup_chart_alpha66_env"
 
     Context "chart bump for CmpD immutability (per alpha.65 lesson)"
-      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.68 by alpha.68 v2 [contract-no-regression]"
-        # alpha.66 v1 originally locked at 1.1.1-alpha.66; alpha.67 v1
-        # and alpha.68 v2 bumped further under the same CmpD immutability
-        # rule (alpha.67 v1 added REVOKE in ensure_internal_local_admin;
-        # alpha.68 v2 changes @% from LOCKED+zero-priv to UNLOCK +
-        # cross-member health grant allowlist). Literal kept in sync
-        # with latest chart version.
+      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.69 by alpha.69 v1 [contract-no-regression]"
+        # alpha.66/.67/.68/.69 all bumped further under the same CmpD
+        # immutability rule. Literal kept in sync with latest chart
+        # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.68"
+        The output should equal "version: 1.1.1-alpha.69"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -2861,13 +2857,13 @@ EOF
         The output should not include "@'%' ACCOUNT LOCK"
       End
 
-      It "alpha.66 v1: SUPERSEDED by alpha.68 v2 — @'%' moved from zero-priv to cross-member grant allowlist; alpha.66 v1 intent (zero GRANT to @'%') is replaced by the alpha.68 v2 hard gate which permits exactly REPLICATION CLIENT + REPLICATION MASTER ADMIN + SELECT/INSERT/UPDATE on kubeblocks.kb_health_check and bans the forbidden classes (no admin bypass)"
+      It "alpha.66 v1: SUPERSEDED by alpha.69 v1 — @'%' grant allowlist now includes 4 grants (REPLICATION CLIENT + REPLICATION MASTER ADMIN + SELECT/INSERT/UPDATE on kubeblocks.kb_health_check + SELECT on mysql.user); forbidden classes still hard-banned (no admin bypass)"
         # alpha.66 v1 originally asserted zero GRANT @'%'; alpha.68 v2
-        # explicitly grants exactly 3 cross-member health privs. This
-        # regression test verifies the only GRANT statements to @'%'
-        # are the expected allowlist (REPLICATION CLIENT / REPLICATION
-        # MASTER ADMIN / SELECT,INSERT,UPDATE ON kubeblocks.kb_health_check).
-        # We skip lines that start with REVOKE (the REVOKE clause has
+        # explicitly grants 3 cross-member health privs; alpha.69 v1 adds
+        # a 4th narrow grant (SELECT ON mysql.user) to satisfy syncer's
+        # init_db=mysql handshake. This regression test verifies the only
+        # GRANT statements to @'%' are the expected allowlist of 4.
+        # We skip lines that start with REVOKE (REVOKE clause contains
         # "GRANT OPTION" substring but is not itself a GRANT statement).
         When run sh -c '
           awk "
@@ -2877,7 +2873,8 @@ EOF
               line = \$0
               if (line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+CLIENT[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
                   line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+MASTER[[:space:]]+ADMIN[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
-                  line !~ /GRANT[[:space:]]+SELECT,[[:space:]]+INSERT,[[:space:]]+UPDATE[[:space:]]+ON[[:space:]]+kubeblocks\\.kb_health_check/) {
+                  line !~ /GRANT[[:space:]]+SELECT,[[:space:]]+INSERT,[[:space:]]+UPDATE[[:space:]]+ON[[:space:]]+kubeblocks\\.kb_health_check/ &&
+                  line !~ /GRANT[[:space:]]+SELECT[[:space:]]+ON[[:space:]]+mysql\\.user/) {
                 print NR\": grant to @ percent outside allowlist: \"\$0
               }
             }
@@ -2942,15 +2939,13 @@ EOF
     Before "setup_chart_alpha67_env"
 
     Context "chart bump alpha.66 → alpha.67 → alpha.68 (CmpD immutability rule)"
-      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.68 by alpha.68 v2 [contract-no-regression]"
-        # alpha.67 v1 originally locked at 1.1.1-alpha.67; alpha.68 v2
-        # bumped further under the same CmpD immutability rule because
-        # alpha.68 v2 mutates cmpd-semisync.yaml ensure_internal_local_admin
-        # SQL (@% LOCKED+zero-priv → UNLOCK + cross-member health grant
-        # allowlist). Literal kept in sync with latest chart version.
+      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.69 by alpha.69 v1 [contract-no-regression]"
+        # alpha.67/.68/.69 all bumped further under the same CmpD
+        # immutability rule. Literal kept in sync with latest chart
+        # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.68"
+        The output should equal "version: 1.1.1-alpha.69"
       End
     End
 
@@ -3139,6 +3134,132 @@ EOF
         When call grep -E "alpha.64 v3.*Jack 11:14.*live-gate RED" "${CMPD_SOURCE}"
         The status should be success
         The output should include "alpha.64 v3"
+      End
+    End
+  End
+
+  # alpha.69 v1 (Jack 17:57 alpha.68 v2 install/script live-gate RED
+  # 3-evidence-chains closeout + 18:20 alpha.69 v1 design ACCEPT with
+  # runtime-acceptance tightening): alpha.68 v2's @'%' grant on
+  # kubeblocks.kb_health_check assumed the table existed, but
+  # ensure_internal_local_admin runs from "startup-before-role-decision"
+  # which precedes primary_local_root_write_ready (the function that
+  # creates the table). Fresh boots hit Error 1146, wait_for_internal_
+  # local_admin loops forever, role decision never reached, 2002
+  # downstream. alpha.69 v1 adds CREATE DATABASE + CREATE TABLE inside
+  # ensure_internal_local_admin SQL BEFORE the @'%' GRANT, plus narrow
+  # GRANT SELECT ON mysql.user TO @'%' to satisfy syncer's
+  # init_db=mysql handshake (Error 1044 fix).
+  #
+  # Source-side ShellSpec checks the literal source SQL syntax
+  # ("REPLICATION CLIENT", not the SHOW GRANTS normalized form
+  # "BINLOG MONITOR"). Runtime SHOW GRANTS acceptance (handled in live
+  # gate, not here) uses semantic-equivalent matching. `BINLOG MONITOR`
+  # in source SQL would be wrong (alpha.64 v3 has it for user-facing
+  # root via CMPD_OPTIONAL_MONITOR_PRIVS only); `BINLOG MONITOR` in
+  # SHOW GRANTS output is the positive normalized form of our
+  # REPLICATION CLIENT grant and is allowed.
+  Describe "alpha.69 v1 ensure_internal_local_admin bootstrap SQL ordering + mysql.user narrow grant"
+    setup_chart_alpha69_env() {
+      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+    }
+    Before "setup_chart_alpha69_env"
+
+    Context "1146 fix — CREATE DATABASE/TABLE before @'%' GRANT (per Jack 18:20 ACCEPT segment 1)"
+      It "alpha.69 v1: ensure_internal_local_admin body contains CREATE DATABASE IF NOT EXISTS kubeblocks (idempotent precondition) [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "CREATE DATABASE IF NOT EXISTS kubeblocks"
+      End
+
+      It "alpha.69 v1: ensure_internal_local_admin body contains CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check (idempotent precondition matching primary_local_root_write_ready schema) [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check"
+      End
+    End
+
+    Context "1044 fix — narrow GRANT SELECT ON mysql.user to satisfy syncer DSN /mysql init_db (per Jack 18:20 ACCEPT segment 2)"
+      It "alpha.69 v1: ensure_internal_local_admin body contains GRANT SELECT ON mysql.user TO kb_internal_root@'%' (narrow table-specific, satisfies init_db=mysql handshake) [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "GRANT SELECT ON mysql.user TO"
+        The output should include "@'%'"
+      End
+
+      It "alpha.69 v1: ensure_internal_local_admin body does NOT grant any broader mysql.* schema-wide DML (only the narrow mysql.user SELECT is allowed) [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func && /^[[:space:]]*GRANT[[:space:]]/ && /@'\''%'\''/ {
+              if (\$0 ~ /ON[[:space:]]+mysql\\.[*]/ ||
+                  (\$0 ~ /ON[[:space:]]+mysql\\./ && \$0 !~ /ON[[:space:]]+mysql\\.user[[:space:]]+TO/)) {
+                print NR\": broader mysql grant: \"\$0
+              }
+            }
+          " '"${CMPD_SOURCE}"' || true
+        '
+        The status should be success
+        The output should equal ""
+      End
+    End
+
+    Context "1146/1044 fix SQL ordering — CREATE DATABASE < CREATE TABLE < CREATE USER @'%' < UNLOCK < REVOKE < REPL CLIENT < REPL MASTER ADMIN < SELECT/INSERT/UPDATE on kb_health_check < SELECT on mysql.user (per Jack 18:20 ACCEPT)"
+      It "alpha.69 v1: full 9-step SQL ordering in ensure_internal_local_admin [product-blocker]"
+        # Each statement appears in the order listed; reordering would
+        # defeat one of the contracts (1146 fix requires CREATE DB/TABLE
+        # before any GRANT on the table; 1044 fix requires GRANT SELECT
+        # on mysql.user to be applied; all alpha.68 v2 ordering preserved).
+        # We scope to the ensure_internal_local_admin function body
+        # using awk; other CREATE DATABASE / CREATE TABLE occurrences
+        # exist in primary_local_root_write_ready / primary_internal_
+        # root_write_ready / clear_local_kb_health_check_table.
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func && \$0 ~ /^[[:space:]]*#/ { next }
+            in_func {
+              if (\$0 ~ /CREATE DATABASE IF NOT EXISTS kubeblocks/ && !create_db_line) create_db_line = NR
+              if (\$0 ~ /CREATE TABLE IF NOT EXISTS kubeblocks\\.kb_health_check/ && !create_table_line) create_table_line = NR
+              if (\$0 ~ /CREATE USER IF NOT EXISTS .*@.%. IDENTIFIED BY/ && !create_user_line) create_user_line = NR
+              if (\$0 ~ /ALTER USER .*@.%. ACCOUNT UNLOCK/ && !unlock_line) unlock_line = NR
+              if (\$0 ~ /REVOKE ALL PRIVILEGES, GRANT OPTION FROM .*@.%./ && !revoke_line) revoke_line = NR
+              if (\$0 ~ /GRANT REPLICATION CLIENT ON [*]\\.[*] TO/ && !repl_client_line) repl_client_line = NR
+              if (\$0 ~ /GRANT REPLICATION MASTER ADMIN ON [*]\\.[*] TO/ && !repl_master_line) repl_master_line = NR
+              if (\$0 ~ /GRANT SELECT, INSERT, UPDATE ON kubeblocks\\.kb_health_check TO/ && !health_grant_line) health_grant_line = NR
+              if (\$0 ~ /GRANT SELECT ON mysql\\.user TO/ && !mysql_grant_line) mysql_grant_line = NR
+            }
+            END {
+              if (!create_db_line || !create_table_line || !create_user_line || !unlock_line || !revoke_line || !repl_client_line || !repl_master_line || !health_grant_line || !mysql_grant_line) {
+                printf \"missing line: create_db=%s create_table=%s create_user=%s unlock=%s revoke=%s repl_client=%s repl_master=%s health=%s mysql_user=%s\\n\", (create_db_line ? create_db_line : \"MISSING\"), (create_table_line ? create_table_line : \"MISSING\"), (create_user_line ? create_user_line : \"MISSING\"), (unlock_line ? unlock_line : \"MISSING\"), (revoke_line ? revoke_line : \"MISSING\"), (repl_client_line ? repl_client_line : \"MISSING\"), (repl_master_line ? repl_master_line : \"MISSING\"), (health_grant_line ? health_grant_line : \"MISSING\"), (mysql_grant_line ? mysql_grant_line : \"MISSING\")
+              } else if (create_db_line >= create_table_line || create_table_line >= create_user_line || create_user_line >= unlock_line || unlock_line >= revoke_line || revoke_line >= repl_client_line || repl_client_line >= repl_master_line || repl_master_line >= health_grant_line || health_grant_line >= mysql_grant_line) {
+                printf \"wrong order: create_db=%d create_table=%d create_user=%d unlock=%d revoke=%d repl_client=%d repl_master=%d health=%d mysql_user=%d\\n\", create_db_line, create_table_line, create_user_line, unlock_line, revoke_line, repl_client_line, repl_master_line, health_grant_line, mysql_grant_line
+              }
+            }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should equal ""
       End
     End
   End

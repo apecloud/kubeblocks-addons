@@ -602,13 +602,81 @@ spec:
               # schema-wide DML / CREATE on kubeblocks.* (table is pre-
               # created by primary_local_root_write_ready).
               #
-              # alpha.69 mandatory blocking debt: syncer source change so
-              # cross-member `GetDBConnWithAddr` uses a dedicated lower-priv
-              # credential (or syncer-side mechanism replaces direct cross-
-              # pod admin SQL such as setSemiSyncSourceTimeout). alpha.69
-              # goal state restores `kb_internal_root@'%'` to alpha.67 v1
-              # LOCKED + zero-priv (clean security boundary). alpha.68 v2
-              # is bounded short-term unblock, NOT a final design.
+              # alpha.69 v1 (Jack 17:57 alpha.68 v2 install/script live-gate
+              # RED 3-evidence-chains closeout + 18:20 alpha.69 v1 design
+              # ACCEPT with runtime-acceptance tightening): the alpha.68 v2
+              # @'%' grant contract above was correct, but
+              # ensure_internal_local_admin had a bootstrap precondition
+              # gap. alpha.68 v2's `GRANT SELECT, INSERT, UPDATE ON
+              # kubeblocks.kb_health_check TO 'kb_internal_root'@'%'`
+              # assumed the table existed, but the function is called
+              # from `wait_for_internal_local_admin
+              # "startup-before-role-decision"` which runs BEFORE the
+              # role-decision branches that invoke
+              # primary_local_root_write_ready (the function that creates
+              # `kubeblocks.kb_health_check`). On a fresh boot the table
+              # therefore does not exist when the @'%' GRANT runs, the
+              # GRANT fails with Error 1146, ensure_internal_local_admin
+              # returns rc=1, wait_for_internal_local_admin loops forever,
+              # role decision never reaches expose_sql_listener_for_*_role,
+              # mariadbd stays bound to 127.0.0.1, and cross-pod TCP
+              # connections see Error 2002.
+              #
+              # alpha.69 v1 changes:
+              #   - Add CREATE DATABASE IF NOT EXISTS kubeblocks BEFORE the
+              #     @'%' grant block (idempotent; ROOT_LOCAL via socket has
+              #     GRANT ALL PRIVILEGES locally so can CREATE).
+              #   - Add CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check
+              #     same area (idempotent). primary_local_root_write_ready
+              #     and primary_internal_root_write_ready still run later
+              #     post-role-decision — both are idempotent on the table.
+              #   - Add GRANT SELECT ON mysql.user TO 'kb_internal_root'@'%'
+              #     AFTER the existing three @'%' grants. syncer's connection
+              #     URL (engines/mysql/config.go line 71) includes `/mysql`
+              #     as the default database, so go-sql-driver issues
+              #     `init_db = mysql` during the handshake. alpha.68 v2
+              #     grants on @'%' are global (REPLICATION CLIENT +
+              #     REPLICATION MASTER ADMIN ON *.*) + table-specific on
+              #     kubeblocks.kb_health_check; the cross-pod init_db
+              #     handshake fails with Error 1044 because the @'%'
+              #     account has no privilege on the `mysql` schema. SELECT
+              #     ON mysql.user is the narrow table-specific privilege
+              #     that satisfies the init_db check.
+              #
+              # Net attack-surface delta = 0 for SELECT ON mysql.user vs
+              # root@'%' (alpha.64 v1 CMPD_EXPLICIT_PRIMARY_GRANT_BODY
+              # grants `SELECT ON *.*` to root@'%'; root and
+              # kb_internal_root share MARIADB_ROOT_PASSWORD).
+              #
+              # MariaDB 11.4 SHOW GRANTS normalization (Jack 18:20
+              # tightening): `GRANT REPLICATION CLIENT ON *.*` is the
+              # backward-compatible source syntax; SHOW GRANTS displays
+              # the normalized form `BINLOG MONITOR ON *.*` (MariaDB 11.4
+              # split REPLICATION CLIENT into BINLOG MONITOR + SLAVE
+              # MONITOR). `BINLOG MONITOR` in SHOW GRANTS output is the
+              # **positive** normalized form of our `REPLICATION CLIENT`
+              # grant and is allowed; runtime grant verification uses
+              # semantic-equivalent matching. This is DIFFERENT from
+              # `BINLOG ADMIN`, which remains in the **forbidden** admin-
+              # bypass list and must NOT appear on `kb_internal_root@'%'`.
+              # Source-side ShellSpec checks the literal source SQL
+              # (`GRANT REPLICATION CLIENT`); runtime live-gate acceptance
+              # uses the normalized form (`BINLOG MONITOR`). These two
+              # are different write-side vs read-side口径; ShellSpec
+              # literal-match logic must not be reused to validate runtime
+              # SHOW GRANTS output (Jack 18:24 reminder).
+              #
+              # alpha.70+ mandatory blocking debt (was alpha.69 in earlier
+              # planning, renamed because chart-only alpha.69 ships
+              # alongside as bounded short-term unblock): syncer source
+              # change so cross-member `GetDBConnWithAddr` uses a dedicated
+              # lower-priv credential AND removes `/mysql` from the
+              # connection DSN (or syncer-side mechanism replaces direct
+              # cross-pod admin SQL such as setSemiSyncSourceTimeout).
+              # alpha.70+ goal state restores `kb_internal_root@'%'` to
+              # alpha.67 v1 LOCKED + zero-priv (clean security boundary).
+              # alpha.69 v1 is bounded short-term unblock, NOT a final
+              # design.
               local label="${1:-internal-local-admin}"
               local user password sql
               mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
@@ -624,12 +692,15 @@ spec:
                 ALTER USER '${user}'@'127.0.0.1' IDENTIFIED BY '${password}';
                 ALTER USER '${user}'@'127.0.0.1' ACCOUNT UNLOCK;
                 GRANT ALL PRIVILEGES ON *.* TO '${user}'@'127.0.0.1' WITH GRANT OPTION;
+                CREATE DATABASE IF NOT EXISTS kubeblocks;
+                CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
                 CREATE USER IF NOT EXISTS '${user}'@'%' IDENTIFIED BY '${password}';
                 ALTER USER '${user}'@'%' ACCOUNT UNLOCK;
                 REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'%';
                 GRANT REPLICATION CLIENT ON *.* TO '${user}'@'%';
                 GRANT REPLICATION MASTER ADMIN ON *.* TO '${user}'@'%';
                 GRANT SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check TO '${user}'@'%';
+                GRANT SELECT ON mysql.user TO '${user}'@'%';
                 FLUSH PRIVILEGES;
                 SET SESSION sql_log_bin=1;
               "
