@@ -79,11 +79,7 @@ spec:
   lifecycleActions:
     memberLeave:
       exec:
-        command:
-          - bash
-          - -c
-          - |
-            {{- .Files.Get "scripts/tikv_member_leave.sh" | nindent 14 }}
+        command: ["/scripts/tikv_member_leave.sh"]
   exporter:
     containerName: tikv
     scrapePort: "20180"

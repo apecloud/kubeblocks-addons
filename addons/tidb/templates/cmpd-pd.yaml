@@ -74,21 +74,16 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
+        container: pd
         command: ["/scripts/pd_roleprobe.sh"]
     memberLeave:
       exec:
-        command:
-          - bash
-          - -c
-          - |
-            {{- .Files.Get "scripts/pd_memberleave.sh" | nindent 14 }}
+        container: pd
+        command: ["/scripts/pd_memberleave.sh"]
     switchover:
       exec:
-        command:
-          - bash
-          - -c
-          - |
-            {{- .Files.Get "scripts/pd_switchover.sh" | nindent 14 }}
+        container: pd
+        command: ["/scripts/pd_switchover.sh"]
   exporter:
     containerName: pd
     scrapePort: "2379"

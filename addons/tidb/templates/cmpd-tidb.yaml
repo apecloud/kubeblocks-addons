@@ -52,9 +52,6 @@ spec:
       valueFrom:
         tlsVarRef:
           enabled: Optional
-    - name: KB_ENABLE_TLS_BETWEEN_COMPONENTS
-      valueFrom:
-        configMapKeyRef:
   runtime:
     containers:
       - name: tidb
@@ -116,18 +113,12 @@ spec:
     postProvision:
       preCondition: RuntimeReady
       exec:
-        command:
-          - sh
-          - -c
-          - |
-            {{- .Files.Get "scripts/tidb_postprovision.sh" | nindent 12 }}
+        container: tidb
+        command: ["/scripts/tidb_postprovision.sh"]
     accountProvision:
       exec:
-        command:
-          - sh
-          - -c
-          - |
-            {{- .Files.Get "scripts/tidb_accountprovision.sh" | nindent 12 }}
+        container: tidb
+        command: ["/scripts/tidb_accountprovision.sh"]
   exporter:
     containerName: tidb
     scrapePort: "10080"

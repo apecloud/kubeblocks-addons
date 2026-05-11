@@ -144,6 +144,3 @@ tidb-7-{{ .Chart.Version }}
   mountPath: /etc/pki/cluster-tls
 {{- end -}}
 
-{{- define "tidb.enableTLSBetweenComponentsEnv" -}}
-KB_ENABLE_TLS_BETWEEN_COMPONENTS
-{{- end -}}
