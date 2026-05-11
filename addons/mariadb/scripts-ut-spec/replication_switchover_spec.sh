@@ -2110,6 +2110,44 @@ EOF
         The output should include "grants_ignored_count=1"
         The output should include "reason=ok_by_grants_only:localhost_socket_not_attempted"
       End
+
+      It "alpha.63 v2 (Jack 08:36 v1 HOLD blocker): non-proxy 'WITH GRANT OPTION' line with NO write priv name (e.g. GRANT SELECT WITH GRANT OPTION) → fail-closed reason=grant_option_residual"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+# Construct the exact Jack reproducer: SELECT-only grant + WITH GRANT OPTION
+# clause. v1 false-passed this because no write priv name (INSERT/UPDATE/...)
+# matched the residual scan and GRANT OPTION had been removed from
+# SWITCHOVER_USER_FACING_WRITE_PATTERN. v2's grant_option_residual catches it.
+echo "GRANT SELECT ON *.* TO 'root'@'%' WITH GRANT OPTION"
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_is_fenced "%"
+        The status should be failure
+        The stderr should include "reason=grant_option_residual"
+        The stderr should include "probe_host=none:grant_option_residual_short_circuit"
+        The stderr should include "grants_bypass=GRANT_OPTION"
+        The stderr should include "grant_option_residual_dump_begin"
+        The stderr should include "GRANT SELECT ON *.* TO 'root'@'%' WITH GRANT OPTION"
+        The stderr should include "grant_option_residual_dump_end"
+      End
+
+      It "alpha.63 v2: short-circuit order — write priv (INSERT) still hits bypass_priv_residual FIRST, NOT grant_option_residual, even when WITH GRANT OPTION also present"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+# INSERT priv name + WITH GRANT OPTION clause. write_residual scan runs
+# BEFORE grant_option_residual, so reason should be bypass_priv_residual:INSERT
+# (with possible UPDATE), NOT grant_option_residual. This locks the
+# precedence Jack confirmed in 08:37 ACK.
+echo "GRANT INSERT, UPDATE ON *.* TO 'root'@'%' WITH GRANT OPTION"
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_is_fenced "%"
+        The status should be failure
+        The stderr should include "reason=bypass_priv_residual:INSERT,UPDATE"
+        The stderr should not include "reason=grant_option_residual"
+      End
     End
 
     Context "_local_root_write_probe_127() global var hardening (Jack instrumentation 1 + alpha.62 RED I-2 close)"

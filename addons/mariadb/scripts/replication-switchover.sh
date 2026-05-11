@@ -493,6 +493,36 @@ _verify_host_is_fenced() {
     fi
     return 1
   fi
+  # alpha.63 v2 (Jack 08:36 v1 review HOLD blocker): contract from 05:26 says
+  # "non-proxy WITH GRANT OPTION must fail-closed". v1 only removed the
+  # GRANT OPTION literal token from SWITCHOVER_USER_FACING_WRITE_PATTERN;
+  # input like `GRANT SELECT ON *.* TO 'root'@'%' WITH GRANT OPTION` (no
+  # write priv name + GRANT OPTION token) was false-passing because neither
+  # write_residual nor bypass_residual matched. Add an explicit
+  # grant_option_residual check on the post-whitelist filtered grants:
+  # any line with ` WITH GRANT OPTION` substring is non-proxy (PROXY rows
+  # were already removed by the line-anchored whitelist) and MUST
+  # fail-closed. Distinct reason `grant_option_residual` (NOT folded into
+  # bypass_priv_residual) so closeout can grep specifically for this
+  # token-level violation vs priv-name-level violations.
+  local grant_option_residual_lines
+  grant_option_residual_lines=$(printf '%s\n' "${grants_filtered}" | awk '/[ ]WITH GRANT OPTION/{print}')
+  if [ -n "${grant_option_residual_lines}" ]; then
+    reason="grant_option_residual"
+    log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=none:grant_option_residual_short_circuit grants_query_rc=0 ${grants_sha_field} grants_bypass=GRANT_OPTION grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=false write_probe_rc=skipped write_probe_errno=skipped reason=${reason}"
+    log_switchover_error "remote_root_fence_verify host=${host} grants_dump_begin"
+    log_switchover_error "${grants}"
+    log_switchover_error "remote_root_fence_verify host=${host} grants_dump_end"
+    log_switchover_error "remote_root_fence_verify host=${host} grant_option_residual_dump_begin"
+    log_switchover_error "${grant_option_residual_lines}"
+    log_switchover_error "remote_root_fence_verify host=${host} grant_option_residual_dump_end"
+    if [ "${__GRANTS_IGNORED_COUNT}" -gt 0 ]; then
+      log_switchover_error "remote_root_fence_verify host=${host} grants_ignored_dump_begin"
+      log_switchover_error "${__GRANTS_IGNORED_LINES}"
+      log_switchover_error "remote_root_fence_verify host=${host} grants_ignored_dump_end"
+    fi
+    return 1
+  fi
   # Probe scope: only deterministic for root@127.0.0.1.
   case "${host}" in
     "127.0.0.1")
