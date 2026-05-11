@@ -45,7 +45,53 @@ type: application
 # not a revoke. alpha.67 v1 closes the write-site contract gap so any
 # pre-existing privileges on `kb_internal_root@'%'` are revoked
 # regardless of prior state.
-version: 1.1.1-alpha.67
+#
+# alpha.68 v2 (Jack 15:39 alpha.67 v1 live-gate RED + 15:45 alpha.68
+# v1 design HOLD + 15:58 alpha.68 v2 Direction B ACCEPT with refined
+# checkpoint #3): Bumped from 1.1.1-alpha.67 → 1.1.1-alpha.68 because
+# the alpha.68 v2 fix mutates cmpd-semisync.yaml (ensure_internal_local_admin
+# SQL changes @'%' from LOCKED+zero-priv to UNLOCK + minimal cross-
+# member grant allowlist). Same KB CmpD immutability rule. The
+# alpha.67 v1 LOCKED+zero-priv design broke cross-member syncer auth:
+# syncer's `GetMemberConnection` uses Admin credential (=
+# kb_internal_root via MYSQL_ADMIN_USER) for cross-pod TCP, which
+# matched against the LOCKED @'%' record → 4151 Access denied →
+# secondary cannot poll leader health → RoleProbeNotDone forever.
+#
+# alpha.68 v2 @'%' grant contract (exact allowlist, per Helen 15:53
+# SQL matrix + Jack 15:58 design ACCEPT Direction B):
+#   - REPLICATION CLIENT ON *.* (SHOW SLAVE/MASTER STATUS)
+#   - REPLICATION MASTER ADMIN ON *.* (SET GLOBAL rpl_semi_sync_master_timeout
+#     cross-member from Follow secondary -> leader path)
+#   - SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check (ReadCheck
+#     + WriteCheck cross-member health probe)
+# No CREATE / DELETE / DROP / schema-wide DML on `kb_internal_root@'%'`.
+# Still forbidden: ALL PRIVILEGES / SUPER / READ_ONLY ADMIN /
+# CONNECTION ADMIN / BINLOG ADMIN / REPLICATION SLAVE ADMIN.
+#
+# Direction B risk acceptance (NOT zero risk):
+#   - `REPLICATION MASTER ADMIN` is admin-bypass class that allows
+#     `SET GLOBAL` on replication parameters while @@global.read_only=ON.
+#   - This priv is ALREADY granted to user-facing `root@'%'` by alpha.64
+#     v1 CMPD_EXPLICIT_PRIMARY_GRANT_BODY (line ~166 of cmpd-semisync.yaml).
+#   - root and `kb_internal_root` share `MARIADB_ROOT_PASSWORD` per the
+#     ensure_internal_local_admin pattern.
+#   - Net attack-surface delta = 0 for `REPLICATION MASTER ADMIN` from
+#     the perspective of an attacker with the shared password and
+#     remote network access (root@'%' already exposes this capability).
+#   - Residual risk: one additional `mysql.user` entry holding admin-
+#     bypass priv accessible from @'%'; semi-sync timeout DoS via SET
+#     GLOBAL during the alpha.68 → alpha.69 gap.
+#
+# alpha.69 mandatory blocking debt (NOT optional, queued in sediment
+# backlog as 9th sample): syncer source change so cross-member
+# `GetDBConnWithAddr` uses a dedicated lower-priv credential (or
+# syncer-side mechanism replaces direct cross-pod admin SQL such as
+# setSemiSyncSourceTimeout). alpha.69 goal state restores
+# `kb_internal_root@'%'` to alpha.67 v1 LOCKED + zero-priv (clean
+# security boundary). alpha.68 v2 is bounded short-term unblock,
+# NOT a final design.
+version: 1.1.1-alpha.68
 
 # This is the version number of the MARIADB being deployed,
 # (mariadb engine version unchanged from alpha.64; this bump is
