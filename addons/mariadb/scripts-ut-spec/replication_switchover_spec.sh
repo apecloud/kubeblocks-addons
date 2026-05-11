@@ -2379,6 +2379,201 @@ EOF
     End
   End
 
+  # alpha.64 v2 (Jack 10:32 HOLD blockers + 10:38 review-checkpoint 3):
+  # - Tier B required LOCK / set_replica_read_only / lock_local_root_for_prestop
+  #   failures MUST propagate rc to caller; caller MUST NOT publish ready/role
+  #   on failure.
+  # - Allowed `|| true` on those required-pattern callsites must carry an
+  #   inline `# tier=startup-defensive|error-recovery|fail-path-defensive|monitor-best-effort`
+  #   annotation (auditable list pattern).
+  # - preStop double-failure of lock_local_root_for_prestop (socket + tcp)
+  #   MUST emit the `prestop_lock_failed_both fail_closed=true` log token for
+  #   the live-gate runtime negative gate.
+  Describe "alpha.64 v2 cmpd-semisync Tier B caller propagation contract"
+    setup_cmpd_alpha64v2_env() {
+      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+    }
+    Before "setup_cmpd_alpha64v2_env"
+
+    Context "tier annotation auditable list (per Jack 10:38 review-checkpoint 3)"
+      It "alpha.64 v2: every \`lock_(local|remote)_root_writes ... || true\` in cmpd-semisync.yaml carries an inline \`# tier=...\` annotation (one of the 4 allowed tiers) [product-blocker]"
+        # Negative test: any line matching the required-pattern with `|| true`
+        # but no inline `# tier=` token is a violation. We grep matching lines
+        # and assert each one ends with the tier annotation.
+        When run sh -c '
+          awk "
+            /^[[:space:]]*lock_(local|remote)_root_writes\\b.*\\|\\| true/ {
+              if (\$0 !~ /# tier=(startup-defensive|error-recovery|fail-path-defensive|monitor-best-effort)/) {
+                print NR\": missing tier annotation: \"\$0
+              }
+            }
+          " '"${CMPD_SOURCE}"' || true
+        '
+        The status should be success
+        The output should equal ""
+      End
+
+      It "alpha.64 v2: NO \`set_replica_read_only || true\` callsite remains in cmpd-semisync.yaml (Tier B required: caller MUST check rc) [product-blocker]"
+        # Jack 10:32 blocker 1: set_replica_read_only is the publish-gate;
+        # caller must use \`if ! set_replica_read_only; then return 1; fi\`.
+        When run sh -c '
+          awk "
+            /set_replica_read_only[[:space:]]*\\|\\| true/ {
+              print NR\": forbidden swallow: \"\$0
+            }
+          " '"${CMPD_SOURCE}"' || true
+        '
+        The status should be success
+        The output should equal ""
+      End
+
+      It "alpha.64 v2: NO \`lock_local_root_for_prestop ... || true\` callsite remains in cmpd-semisync.yaml (Tier B required: preStop double-failure MUST emit fail-closed token) [product-blocker]"
+        # Jack 10:32 blocker 2: the trailing `|| true` was masking double-failure
+        # of socket+tcp paths; v2 replaces with explicit `if ! ... ; then ... fi`
+        # and a `prestop_lock_failed_both fail_closed=true` log token.
+        When run sh -c '
+          awk "
+            /lock_local_root_for_prestop\\b.*\\|\\| true/ {
+              print NR\": forbidden swallow: \"\$0
+            }
+          " '"${CMPD_SOURCE}"' || true
+        '
+        The status should be success
+        The output should equal ""
+      End
+
+      It "alpha.64 v2: tier annotation count + distribution (allowed swallow-true callsites are concentrated, not scattered) [audit]"
+        # Audit assertion: count of `# tier=...` annotations matches count of
+        # `|| true` lines on the required pattern. If they diverge, an
+        # annotation has been added without backing `|| true` or vice versa.
+        When run sh -c '
+          tier_lines=$(grep -cE "lock_(local|remote)_root_writes\\b.*\\|\\| true.*# tier=(startup-defensive|error-recovery|fail-path-defensive|monitor-best-effort)" '"${CMPD_SOURCE}"')
+          true_lines=$(grep -cE "^[[:space:]]*lock_(local|remote)_root_writes\\b.*\\|\\| true" '"${CMPD_SOURCE}"')
+          if [ "${tier_lines}" -ne "${true_lines}" ]; then
+            printf "tier annotation count mismatch: tier=%s swallow_count=%s\n" "${tier_lines}" "${true_lines}"
+          fi
+        '
+        The status should be success
+        The output should equal ""
+      End
+    End
+
+    Context "Tier B caller-side rc propagation pattern (per Jack 10:38 v2 fix recommendation)"
+      It "alpha.64 v2: \`set_replica_read_only\` body propagates rc to return 1 (replaces v1 internal \`|| true\`) [product-blocker]"
+        # Function body must contain `return 1` and not contain
+        # `lock_remote_root_writes "replica-read-only" || true` or
+        # `lock_local_root_writes "replica-read-only" || true`.
+        When run sh -c '
+          awk "
+            /^[[:space:]]*set_replica_read_only\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "return 1"
+        The output should not include "lock_remote_root_writes \"replica-read-only\" || true"
+        The output should not include "lock_local_root_writes \"replica-read-only\" || true"
+      End
+
+      It "alpha.64 v2: \`keep_replica_pending_until_healthy\` body propagates rc to return 1 [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*keep_replica_pending_until_healthy\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "return 1"
+        The output should not include "lock_remote_root_writes \"\${label}-pending\" || true"
+        The output should not include "lock_local_root_writes \"\${label}-pending\" || true"
+      End
+
+      It "alpha.64 v2: \`expose_sql_listener_for_safe_role\` body returns 1 BEFORE touch .sql-listener-ready when required local LOCK fails [product-blocker]"
+        # Body must contain `if ! lock_local_root_writes ... ; then ... return 1; fi`
+        # and the touch line must follow the if-block (not precede an unconditional path).
+        When run sh -c '
+          awk "
+            /^[[:space:]]*expose_sql_listener_for_safe_role\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "if ! lock_local_root_writes"
+        The output should include "return 1"
+        The output should not include "lock_local_root_writes \"sql-listener-\${label}\" || true"
+      End
+
+      It "alpha.64 v2: \`publish_replica_after_rejoin_ready\` body uses \`if ! set_replica_read_only; then return 1\` (NOT \`set_replica_read_only || true\`) [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*publish_replica_after_rejoin_ready\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "if ! set_replica_read_only"
+        The output should not include "set_replica_read_only || true"
+      End
+
+      It "alpha.64 v2: \`reconcile_sql_listener_for_syncer_secondary_once\` body uses \`if ! set_replica_read_only\` BEFORE marking ready [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*reconcile_sql_listener_for_syncer_secondary_once\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "if ! set_replica_read_only"
+        The output should not include "set_replica_read_only || true"
+      End
+
+      It "alpha.64 v2: \`configure_replication_from_primary_service_once\` body uses \`if ! set_replica_read_only\` at entry [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*configure_replication_from_primary_service_once\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "if ! set_replica_read_only"
+        The output should not include "set_replica_read_only || true"
+      End
+    End
+
+    Context "preStop double-failure fail-closed token (per Jack 10:32 blocker 2 + 10:38 ack)"
+      It "alpha.64 v2: preStop double-failure of lock_local_root_for_prestop emits \`prestop_lock_failed_both fail_closed=true tier=required\` token [product-blocker]"
+        # Live-gate runtime negative gate asserts this token does NOT appear
+        # in healthy install windows; it only appears when both socket and
+        # tcp lock paths failed (1227 swallowed but observability + caller
+        # contract preserved).
+        When call grep -F "prestop_lock_failed_both fail_closed=true tier=required" ../templates/cmpd-semisync.yaml
+        The status should be success
+        The output should include "prestop_lock_failed_both fail_closed=true tier=required"
+      End
+
+      It "alpha.64 v2: preStop block uses \`if ! lock_local_root_for_prestop ... ; then ... fi\` (NOT trailing \`|| true\`) [product-blocker]"
+        # Look for the block bracketed by `prestop_log "begin pod=` and
+        # `if [ -x /tools/syncerctl ]` to bound the search.
+        When run sh -c '
+          awk "
+            /prestop_log \"begin pod=/ { in_block = 1 }
+            in_block && /if \\[ -x \\/tools\\/syncerctl \\]/ { in_block = 0 }
+            in_block { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "if ! lock_local_root_for_prestop"
+        The output should not include "lock_local_root_for_prestop \"prestop\" \"socket\" || \\\\"
+      End
+    End
+  End
+
   Describe "alpha.61 v2 POSIX shell self-check"
     It "addons/mariadb/scripts/replication-switchover.sh parses cleanly under dash -n"
       Skip if "dash is not installed" ! command -v dash >/dev/null 2>&1
