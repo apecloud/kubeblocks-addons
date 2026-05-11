@@ -83,15 +83,63 @@ type: application
 #     bypass priv accessible from @'%'; semi-sync timeout DoS via SET
 #     GLOBAL during the alpha.68 → alpha.69 gap.
 #
-# alpha.69 mandatory blocking debt (NOT optional, queued in sediment
-# backlog as 9th sample): syncer source change so cross-member
-# `GetDBConnWithAddr` uses a dedicated lower-priv credential (or
+# alpha.69 v1 (Jack 17:57 alpha.68 v2 install/script live-gate RED
+# 3-evidence-chains closeout + 18:20 alpha.69 v1 design ACCEPT with
+# runtime-acceptance tightening): Bumped from 1.1.1-alpha.68 ->
+# 1.1.1-alpha.69 because the alpha.69 v1 fix mutates
+# cmpd-semisync.yaml ensure_internal_local_admin SQL (adds CREATE
+# DATABASE IF NOT EXISTS kubeblocks + CREATE TABLE IF NOT EXISTS
+# kubeblocks.kb_health_check BEFORE the @'%' grant block; adds GRANT
+# SELECT ON mysql.user TO 'kb_internal_root'@'%' AFTER the existing
+# three @'%' grants).
+#
+# Same KB CmpD immutability rule. alpha.68 v2 had a bootstrap pre-
+# condition gap: ensure_internal_local_admin runs from
+# wait_for_internal_local_admin "startup-before-role-decision",
+# which executes BEFORE primary_local_root_write_ready can create
+# kubeblocks.kb_health_check. Fresh boots therefore hit Error 1146
+# (table missing) on the @'%' GRANT, wait_for_internal_local_admin
+# loops forever, role decision is never reached,
+# expose_sql_listener_for_*_role is never called, mariadbd stays
+# bound to 127.0.0.1, and cross-pod TCP sees Error 2002. The
+# alpha.69 v1 CREATE DATABASE + CREATE TABLE inside
+# ensure_internal_local_admin SQL (ROOT_LOCAL via socket has GRANT
+# ALL PRIVILEGES locally; idempotent) closes the bootstrap
+# precondition gap.
+#
+# alpha.69 v1 also closes Error 1044 (Access denied for
+# kb_internal_root@'%' to database mysql). syncer's connection URL
+# (engines/mysql/config.go line 71) includes `/mysql` as the default
+# DB, so go-sql-driver issues `init_db = mysql` at handshake.
+# alpha.68 v2 grants on @'%' did not include any priv on the `mysql`
+# schema; the init_db handshake failed with 1044, cross-pod auth
+# never established. GRANT SELECT ON mysql.user is the narrow table-
+# specific privilege that satisfies init_db. Net attack-surface
+# delta = 0 vs root@'%' which already has SELECT on *.* via
+# alpha.64 v1 CMPD_EXPLICIT_PRIMARY_GRANT_BODY (root and
+# kb_internal_root share MARIADB_ROOT_PASSWORD).
+#
+# alpha.69 v1 fix shape is bounded short-term unblock. The long-term
+# mandatory blocking debt (renamed alpha.70+ because chart-only
+# short-term ships alongside as alpha.69) is: syncer source change
+# so cross-member `GetDBConnWithAddr` uses a dedicated lower-priv
+# credential AND removes `/mysql` from the connection DSN (or
 # syncer-side mechanism replaces direct cross-pod admin SQL such as
-# setSemiSyncSourceTimeout). alpha.69 goal state restores
+# setSemiSyncSourceTimeout). alpha.70+ goal state restores
 # `kb_internal_root@'%'` to alpha.67 v1 LOCKED + zero-priv (clean
-# security boundary). alpha.68 v2 is bounded short-term unblock,
-# NOT a final design.
-version: 1.1.1-alpha.68
+# security boundary).
+#
+# MariaDB 11.4 SHOW GRANTS normalization (Jack 18:20 tightening):
+# `GRANT REPLICATION CLIENT ON *.*` source syntax displays as
+# `BINLOG MONITOR ON *.*` in SHOW GRANTS output (MariaDB 11.4 split
+# REPLICATION CLIENT into BINLOG MONITOR + SLAVE MONITOR). Runtime
+# SHOW GRANTS acceptance uses semantic-equivalent matching (accept
+# `BINLOG MONITOR` as the normalized form of our `REPLICATION
+# CLIENT` grant); source-side ShellSpec tests check the literal
+# source syntax. `BINLOG MONITOR` in SHOW GRANTS output IS allowed
+# on kb_internal_root@'%' (positive normalized form);
+# `BINLOG ADMIN` is the admin-bypass class and is NOT allowed.
+version: 1.1.1-alpha.69
 
 # This is the version number of the MARIADB being deployed,
 # (mariadb engine version unchanged from alpha.64; this bump is
