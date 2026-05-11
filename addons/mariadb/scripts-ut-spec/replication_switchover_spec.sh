@@ -2574,6 +2574,122 @@ EOF
     End
   End
 
+  # alpha.64 v3 (Jack 11:14 live-gate RED + 11:16 v3 design ack):
+  # Multi-word optional MONITOR privileges (BINLOG MONITOR / SLAVE MONITOR)
+  # were broken by `for privilege in ${CMPD_OPTIONAL_MONITOR_PRIVS}; do`
+  # because POSIX `for` splits unquoted parameter expansion on IFS into
+  # 4 single-word tokens. v3 fix: inline quoted list at both callsites.
+  # The constant remains for documentation + ShellSpec strong-bind.
+  Describe "alpha.64 v3 cmpd-semisync multi-word MONITOR priv loop"
+    setup_cmpd_alpha64v3_env() {
+      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+    }
+    Before "setup_cmpd_alpha64v3_env"
+
+    Context "no unquoted CMPD_OPTIONAL_MONITOR_PRIVS for-loop residual (per Jack 11:16 focal #2)"
+      It "alpha.64 v3: NO active \`for privilege in \${CMPD_OPTIONAL_MONITOR_PRIVS}\` (braced) unquoted loop in source [product-blocker]"
+        # Negative test: skip comment lines so the documentation block in
+        # the constant declaration (which mentions the bad pattern verbatim)
+        # is allowed; only flag actual code occurrences.
+        When run sh -c '
+          awk "
+            /^[[:space:]]*#/ { next }
+            /for[[:space:]]+privilege[[:space:]]+in[[:space:]]+\\\$\\{CMPD_OPTIONAL_MONITOR_PRIVS\\}/ {
+              print NR\": active unquoted braced loop: \"\$0
+            }
+          " '"${CMPD_SOURCE}"' || true
+        '
+        The status should be success
+        The output should equal ""
+      End
+
+      It "alpha.64 v3: NO active \`for privilege in \$CMPD_OPTIONAL_MONITOR_PRIVS\` (no-brace) unquoted loop in source [product-blocker]"
+        # Same as above for the no-brace variant.
+        When run sh -c '
+          awk "
+            /^[[:space:]]*#/ { next }
+            /for[[:space:]]+privilege[[:space:]]+in[[:space:]]+\\\$CMPD_OPTIONAL_MONITOR_PRIVS([^A-Za-z_]|\$)/ {
+              print NR\": active unquoted no-brace loop: \"\$0
+            }
+          " '"${CMPD_SOURCE}"' || true
+        '
+        The status should be success
+        The output should equal ""
+      End
+    End
+
+    Context "inline quoted MONITOR list at both callsites (per Jack 11:16 focal #1)"
+      It "alpha.64 v3: \`grant_optional_local_root_privileges\` body iterates inline \`for privilege in \"BINLOG MONITOR\" \"SLAVE MONITOR\"\` [product-blocker]"
+        # Strip comment lines from the function body so the v3 root-cause
+        # docstring (which mentions the bad pattern verbatim for posterity)
+        # does not trigger the negative assertion.
+        When run sh -c '
+          awk "
+            /^[[:space:]]*grant_optional_local_root_privileges\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func && /^[[:space:]]*#/ { next }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "for privilege in \"BINLOG MONITOR\" \"SLAVE MONITOR\""
+        The output should not include "for privilege in \${CMPD_OPTIONAL_MONITOR_PRIVS}"
+      End
+
+      It "alpha.64 v3: \`grant_optional_remote_root_privileges\` body iterates inline \`for privilege in \"BINLOG MONITOR\" \"SLAVE MONITOR\"\` [product-blocker]"
+        # Strip comment lines (same rationale as local variant above).
+        When run sh -c '
+          awk "
+            /^[[:space:]]*grant_optional_remote_root_privileges\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func && /^[[:space:]]*#/ { next }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "for privilege in \"BINLOG MONITOR\" \"SLAVE MONITOR\""
+        The output should not include "for privilege in \${CMPD_OPTIONAL_MONITOR_PRIVS}"
+      End
+    End
+
+    Context "live-gate runtime negative gate documentation (per Jack 11:16 focal #3)"
+      It "alpha.64 v3: source documents that fresh stable window MUST NOT contain standalone single-word MONITOR tokens [product-blocker]"
+        # Documentation marker: the constant declaration must contain the
+        # explicit warning about IFS splitting and the inline-quoted
+        # rationale, so closeout reviewers know to grep for standalone
+        # single-word tokens (privilege=BINLOG / privilege=MONITOR /
+        # privilege=SLAVE) on prestop-watchdog.log fresh stable window.
+        When call grep -E "alpha.64 v3.*Jack 11:14.*live-gate RED" ../templates/cmpd-semisync.yaml
+        The status should be success
+        The output should include "alpha.64 v3"
+      End
+
+      It "alpha.64 v3: alpha.64 v1+v2 contracts not regressed — v1 grant body constants + v2 caller propagation patterns + tier annotation auditable list still present [contract-no-regression]"
+        # Per Jack 11:16 focal #4: v3 only changes the for-loop expansion
+        # at 2 callsites; v1 grant body alignment and v2 caller propagation
+        # MUST remain. Spot-check that the key v1+v2 invariants are still
+        # present in the source.
+        When run sh -c '
+          {
+            grep -c "CMPD_EXPLICIT_PRIMARY_GRANT_BODY=" "${CMPD_SOURCE}";
+            grep -c "CMPD_SECONDARY_FENCE_GRANT_BODY=" "${CMPD_SOURCE}";
+            grep -c "if ! set_replica_read_only" "${CMPD_SOURCE}";
+            grep -c "prestop_lock_failed_both fail_closed=true tier=required" "${CMPD_SOURCE}";
+            grep -cE "^[[:space:]]*lock_(local|remote)_root_writes\\b.*\\|\\| true.*# tier=" "${CMPD_SOURCE}";
+          } | tr "\n" " "
+        '
+        # Expected: 1 (CMPD_EXPLICIT_PRIMARY_GRANT_BODY=) + 1 (CMPD_SECONDARY_FENCE_GRANT_BODY=)
+        # + 4 (if ! set_replica_read_only callsites — publish_replica × 2 +
+        #   reconcile_secondary + configure_from_primary; the body of
+        #   set_replica_read_only itself is the function definition not a
+        #   self-call, so 4 caller patterns)
+        # + 1 (prestop_lock_failed_both literal in preStop block) + 16 (tier-annotated swallow lines)
+        The status should be success
+        The output should equal "1 1 4 1 16 "
+      End
+    End
+  End
+
   Describe "alpha.61 v2 POSIX shell self-check"
     It "addons/mariadb/scripts/replication-switchover.sh parses cleanly under dash -n"
       Skip if "dash is not installed" ! command -v dash >/dev/null 2>&1
