@@ -2703,16 +2703,17 @@ EOF
     }
     Before "setup_chart_alpha65_env"
 
-    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.66 [contract-no-regression]"
+    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.67 [contract-no-regression]"
       # Original alpha.65 v1 ship locked the chart at 1.1.1-alpha.65; the
-      # subsequent alpha.66 v1 ship bumped further (to fix the syncer HA
-      # executor RED) under the SAME CmpD immutability rule. The literal
-      # value here is intentionally synced with the latest chart version
-      # so this regression test stays green; the assertion still proves
-      # the version-line literal exists and matches the canonical bump.
+      # subsequent alpha.66 v1 + alpha.67 v1 ships bumped further (to fix
+      # the syncer HA executor RED + the @% zero-priv write-site contract
+      # gap) under the SAME CmpD immutability rule. The literal value here
+      # is intentionally synced with the latest chart version so this
+      # regression test stays green; the assertion still proves the
+      # version-line literal exists and matches the canonical bump.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.1.1-alpha.66"
+      The output should equal "version: 1.1.1-alpha.67"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -2767,10 +2768,15 @@ EOF
     Before "setup_chart_alpha66_env"
 
     Context "chart bump for CmpD immutability (per alpha.65 lesson)"
-      It "alpha.66 v1: Chart.yaml version is exactly 1.1.1-alpha.66 [product-blocker]"
+      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.67 by alpha.67 v1 [contract-no-regression]"
+        # alpha.66 v1 originally locked at 1.1.1-alpha.66; alpha.67 v1
+        # bumped further under the same CmpD immutability rule because
+        # alpha.67 v1 also mutates cmpd-semisync.yaml (adds REVOKE step
+        # in ensure_internal_local_admin to enforce @% zero-priv at the
+        # write site). Literal kept in sync with latest chart version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.66"
+        The output should equal "version: 1.1.1-alpha.67"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -2898,6 +2904,84 @@ EOF
         # Expected: 1 grant body explicit + 1 secondary fence + 4 if-! caller +
         # 1 prestop_lock_failed_both + 16 tier-annotated swallow + 2 inline-quoted MONITOR loops
         The output should equal "1 1 4 1 16 2 "
+      End
+    End
+  End
+
+  # alpha.67 v1 (Jack 12:56 alpha.66 v1 package-level review HOLD): the
+  # alpha.66 v1 @'%' "zero privileges" contract was only declarative —
+  # `CREATE USER IF NOT EXISTS` does not clear pre-existing privileges
+  # and `ACCOUNT LOCK` is not a revoke. alpha.67 v1 inserts an explicit
+  # `REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'%';` between
+  # `CREATE USER ... @'%'` and `ALTER USER ... @'%' ACCOUNT LOCK` so
+  # the zero-privilege state is enforced at the write site, not just
+  # declared. Plus chart bump 1.1.1-alpha.66 → 1.1.1-alpha.67 (KB CmpD
+  # immutability rule).
+  Describe "alpha.67 v1 ensure_internal_local_admin write-site zero-priv enforcement"
+    setup_chart_alpha67_env() {
+      export CHART_FILE="../Chart.yaml"
+      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+    }
+    Before "setup_chart_alpha67_env"
+
+    Context "chart bump alpha.66 → alpha.67 (CmpD immutability rule)"
+      It "alpha.67 v1: Chart.yaml version is exactly 1.1.1-alpha.67 [product-blocker]"
+        When call grep -E "^version:" "${CHART_FILE}"
+        The status should be success
+        The output should equal "version: 1.1.1-alpha.67"
+      End
+    End
+
+    Context "ensure_internal_local_admin write-site REVOKE step (per Jack 12:56 HOLD blocker)"
+      It "alpha.67 v1: ensure_internal_local_admin body contains explicit REVOKE ALL PRIVILEGES, GRANT OPTION FROM kb_internal_root@'%' (zero-priv enforced at write site, not just declared) [product-blocker]"
+        # The REVOKE clears any pre-existing privileges that CREATE USER
+        # IF NOT EXISTS would not touch and ACCOUNT LOCK does not affect.
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "REVOKE ALL PRIVILEGES, GRANT OPTION FROM"
+        The output should include "@'%'"
+      End
+
+      It "alpha.67 v1: ensure_internal_local_admin SQL ordering — CREATE USER @'%' before REVOKE @'%' before ALTER USER @'%' ACCOUNT LOCK [product-blocker]"
+        # Verify the three statements appear in the correct order: first
+        # CREATE (which is idempotent and might leave existing privs
+        # alone), then REVOKE (which clears them), then ALTER LOCK
+        # (which prevents future auth). Reordering would defeat either
+        # the zero-priv contract or the lock contract.
+        When run sh -c '
+          create_line=$(grep -n "CREATE USER IF NOT EXISTS .*@.%. IDENTIFIED BY" "${CMPD_SOURCE}" | head -1 | cut -d: -f1)
+          revoke_line=$(grep -n "REVOKE ALL PRIVILEGES, GRANT OPTION FROM .*@.%." "${CMPD_SOURCE}" | head -1 | cut -d: -f1)
+          lock_line=$(grep -n "ALTER USER .*@.%. ACCOUNT LOCK" "${CMPD_SOURCE}" | head -1 | cut -d: -f1)
+          if [ -z "${create_line}" ] || [ -z "${revoke_line}" ] || [ -z "${lock_line}" ]; then
+            printf "missing line: create=%s revoke=%s lock=%s\n" "${create_line:-MISSING}" "${revoke_line:-MISSING}" "${lock_line:-MISSING}"
+          elif [ "${create_line}" -ge "${revoke_line}" ] || [ "${revoke_line}" -ge "${lock_line}" ]; then
+            printf "wrong order: create=%s revoke=%s lock=%s (expect create<revoke<lock)\n" "${create_line}" "${revoke_line}" "${lock_line}"
+          fi
+        '
+        The status should be success
+        The output should equal ""
+      End
+    End
+
+    Context "alpha.66 v1 negative + alpha.64+.65 invariants preserved"
+      It "alpha.67 v1: ensure_internal_local_admin body STILL has zero GRANT to kb_internal_root@'%' (negative scan retained from alpha.66 v1) [contract-no-regression]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func && /GRANT[[:space:]].*TO.*@'\''%'\''/ {
+              print NR\": forbidden GRANT to @ percent host: \"\$0
+            }
+          " '"${CMPD_SOURCE}"' || true
+        '
+        The status should be success
+        The output should equal ""
       End
     End
   End

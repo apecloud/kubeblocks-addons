@@ -533,6 +533,23 @@ spec:
               # bypassed (no GRANT). This preserves the alpha.64 v1 fence
               # spirit: user-facing root has no admin bypass; internal admin
               # remains effectively local-only at runtime.
+              #
+              # alpha.67 v1 (Jack 12:56 alpha.66 v1 package-level review HOLD):
+              # the @'%' "zero privileges" contract was only declarative in
+              # alpha.66 v1 — `CREATE USER IF NOT EXISTS` does NOT clear an
+              # existing account's privileges, and `ACCOUNT LOCK` does not
+              # revoke. If `kb_internal_root@'%'` happens to pre-exist (e.g.
+              # from a misconfigured prior install or upgrade) with grants,
+              # alpha.66 v1 would lock the account but leave the privileges
+              # intact, violating the security contract. alpha.67 v1 inserts
+              # an explicit `REVOKE ALL PRIVILEGES, GRANT OPTION FROM` step
+              # between `CREATE USER ... @'%'` and `ALTER USER ... @'%'
+              # ACCOUNT LOCK` so the zero-privilege state is enforced at the
+              # write site, not just declared. This pattern matches the
+              # alpha.64 v1 LOCK paths (set_local/remote_root_account_state
+              # LOCK and lock_local_root_for_prestop) which already use the
+              # same REVOKE statement before re-applying the non-bypass grant
+              # body.
               local label="${1:-internal-local-admin}"
               local user password sql
               mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
@@ -549,6 +566,7 @@ spec:
                 ALTER USER '${user}'@'127.0.0.1' ACCOUNT UNLOCK;
                 GRANT ALL PRIVILEGES ON *.* TO '${user}'@'127.0.0.1' WITH GRANT OPTION;
                 CREATE USER IF NOT EXISTS '${user}'@'%' IDENTIFIED BY '${password}';
+                REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'%';
                 ALTER USER '${user}'@'%' ACCOUNT LOCK;
                 FLUSH PRIVILEGES;
                 SET SESSION sql_log_bin=1;

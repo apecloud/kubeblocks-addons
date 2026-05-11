@@ -32,7 +32,20 @@ type: application
 # @'%' record with ACCOUNT LOCK + zero privileges is added to satisfy
 # syncer's IsAdminCreated() detection (which queries `mysql.user WHERE
 # host='%'`) without expanding the remote attack surface.
-version: 1.1.1-alpha.66
+#
+# alpha.67 v1 (Jack 12:56 alpha.66 v1 package-level review HOLD):
+# Bumped from 1.1.1-alpha.66 → 1.1.1-alpha.67 because the alpha.67 v1
+# fix mutates cmpd-semisync.yaml (ensure_internal_local_admin SQL adds
+# an explicit REVOKE ALL PRIVILEGES, GRANT OPTION FROM
+# `kb_internal_root@'%'` between CREATE USER and ALTER USER ACCOUNT
+# LOCK). Same KB CmpD immutability rule. alpha.66 v1 declared
+# `kb_internal_root@'%'` as zero-privilege detection record but did
+# NOT enforce it at the write site — `CREATE USER IF NOT EXISTS` does
+# not clear an existing account's privileges, and `ACCOUNT LOCK` is
+# not a revoke. alpha.67 v1 closes the write-site contract gap so any
+# pre-existing privileges on `kb_internal_root@'%'` are revoked
+# regardless of prior state.
+version: 1.1.1-alpha.67
 
 # This is the version number of the MARIADB being deployed,
 # (mariadb engine version unchanged from alpha.64; this bump is
