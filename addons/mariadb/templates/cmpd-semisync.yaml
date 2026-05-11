@@ -550,6 +550,65 @@ spec:
               # LOCK and lock_local_root_for_prestop) which already use the
               # same REVOKE statement before re-applying the non-bypass grant
               # body.
+              #
+              # alpha.68 v2 (Jack 15:39 alpha.67 v1 live-gate RED + 15:45
+              # alpha.68 v1 design HOLD + 15:58 alpha.68 v2 Direction B
+              # ACCEPT with refined checkpoint #3): the alpha.67 v1
+              # detection-only LOCKED+zero-priv `@'%'` design was correct
+              # for the IsAdminCreated host='%' detection requirement but
+              # broke cross-member syncer auth. syncer's `GetMemberConnection`
+              # uses `config.GetDBConnWithAddr(addr)` with `AdminUsername`
+              # (= kb_internal_root via MYSQL_ADMIN_USER) for cross-pod TCP,
+              # which authenticates via the @'%' record. LOCKED → 4151
+              # Access denied; secondary cannot poll leader health; cluster
+              # stays in RoleProbeNotDone forever (1064 errors / 30s in
+              # bounded gate).
+              #
+              # SQL matrix audit (Helen 15:53 + Jack 15:58 design ACCEPT)
+              # established the cross-member exact grant requirement:
+              #   - IsReadonly (slave.go): SELECT @@global.* — USAGE
+              #   - IsMemberLagging / ReadCheck (manager.go) — SELECT on
+              #     kubeblocks.kb_health_check
+              #   - IsMemberHealthy leader-only WriteCheck — INSERT/UPDATE on
+              #     kubeblocks.kb_health_check (CREATE fallback handled by
+              #     primary_local_root_write_ready local bootstrap; cross-
+              #     pod path does not need CREATE because leader has pre-
+              #     created table during local primary bootstrap before role
+              #     publish)
+              #   - setSemiSyncSourceTimeout (semi_sync.go), Follow secondary
+              #     -> leader path — REPLICATION MASTER ADMIN required
+              #     because `SET GLOBAL rpl_semi_sync_master_timeout = N`
+              #     is an admin-bypass write on the target leader's mariadbd
+              #
+              # alpha.68 v2 grant contract (exact allowlist):
+              #   * REPLICATION CLIENT ON *.* (SHOW SLAVE/MASTER STATUS)
+              #   * REPLICATION MASTER ADMIN ON *.* (SET GLOBAL
+              #     rpl_semi_sync_master_timeout)
+              #   * SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check
+              #     (ReadCheck + WriteCheck)
+              #
+              # Refined checkpoint #3 (Jack 15:58): no NEW net capability,
+              # no read_only-bypass class. `REPLICATION MASTER ADMIN` is
+              # already in alpha.64 v1 `CMPD_EXPLICIT_PRIMARY_GRANT_BODY`
+              # which user-facing `root@'%'` carries; root and
+              # `kb_internal_root` share `MARIADB_ROOT_PASSWORD`, so an
+              # attacker with the password and remote access already has
+              # this capability via root@'%'. Net attack-surface delta = 0
+              # for `REPLICATION MASTER ADMIN`.
+              #
+              # Still forbidden on `kb_internal_root@'%'`: ALL PRIVILEGES /
+              # SUPER / READ_ONLY ADMIN / CONNECTION ADMIN / BINLOG ADMIN /
+              # REPLICATION SLAVE ADMIN / DELETE / DROP / CREATE USER /
+              # schema-wide DML / CREATE on kubeblocks.* (table is pre-
+              # created by primary_local_root_write_ready).
+              #
+              # alpha.69 mandatory blocking debt: syncer source change so
+              # cross-member `GetDBConnWithAddr` uses a dedicated lower-priv
+              # credential (or syncer-side mechanism replaces direct cross-
+              # pod admin SQL such as setSemiSyncSourceTimeout). alpha.69
+              # goal state restores `kb_internal_root@'%'` to alpha.67 v1
+              # LOCKED + zero-priv (clean security boundary). alpha.68 v2
+              # is bounded short-term unblock, NOT a final design.
               local label="${1:-internal-local-admin}"
               local user password sql
               mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
@@ -566,8 +625,11 @@ spec:
                 ALTER USER '${user}'@'127.0.0.1' ACCOUNT UNLOCK;
                 GRANT ALL PRIVILEGES ON *.* TO '${user}'@'127.0.0.1' WITH GRANT OPTION;
                 CREATE USER IF NOT EXISTS '${user}'@'%' IDENTIFIED BY '${password}';
+                ALTER USER '${user}'@'%' ACCOUNT UNLOCK;
                 REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'%';
-                ALTER USER '${user}'@'%' ACCOUNT LOCK;
+                GRANT REPLICATION CLIENT ON *.* TO '${user}'@'%';
+                GRANT REPLICATION MASTER ADMIN ON *.* TO '${user}'@'%';
+                GRANT SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check TO '${user}'@'%';
                 FLUSH PRIVILEGES;
                 SET SESSION sql_log_bin=1;
               "

@@ -2703,17 +2703,18 @@ EOF
     }
     Before "setup_chart_alpha65_env"
 
-    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.67 [contract-no-regression]"
+    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.68 [contract-no-regression]"
       # Original alpha.65 v1 ship locked the chart at 1.1.1-alpha.65; the
-      # subsequent alpha.66 v1 + alpha.67 v1 ships bumped further (to fix
-      # the syncer HA executor RED + the @% zero-priv write-site contract
-      # gap) under the SAME CmpD immutability rule. The literal value here
-      # is intentionally synced with the latest chart version so this
-      # regression test stays green; the assertion still proves the
-      # version-line literal exists and matches the canonical bump.
+      # subsequent alpha.66/.67/.68 ships bumped further (alpha.66 syncer
+      # HA executor; alpha.67 @% write-site zero-priv; alpha.68 @% cross-
+      # member health grant allowlist) under the SAME CmpD immutability
+      # rule. The literal value here is intentionally synced with the
+      # latest chart version so this regression test stays green; the
+      # assertion still proves the version-line literal exists and matches
+      # the canonical bump.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.1.1-alpha.67"
+      The output should equal "version: 1.1.1-alpha.68"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -2768,15 +2769,16 @@ EOF
     Before "setup_chart_alpha66_env"
 
     Context "chart bump for CmpD immutability (per alpha.65 lesson)"
-      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.67 by alpha.67 v1 [contract-no-regression]"
+      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.68 by alpha.68 v2 [contract-no-regression]"
         # alpha.66 v1 originally locked at 1.1.1-alpha.66; alpha.67 v1
-        # bumped further under the same CmpD immutability rule because
-        # alpha.67 v1 also mutates cmpd-semisync.yaml (adds REVOKE step
-        # in ensure_internal_local_admin to enforce @% zero-priv at the
-        # write site). Literal kept in sync with latest chart version.
+        # and alpha.68 v2 bumped further under the same CmpD immutability
+        # rule (alpha.67 v1 added REVOKE in ensure_internal_local_admin;
+        # alpha.68 v2 changes @% from LOCKED+zero-priv to UNLOCK +
+        # cross-member health grant allowlist). Literal kept in sync
+        # with latest chart version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.67"
+        The output should equal "version: 1.1.1-alpha.68"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -2841,7 +2843,13 @@ EOF
         The output should include "@'%' IDENTIFIED BY"
       End
 
-      It "alpha.66 v1: ensure_internal_local_admin body locks kb_internal_root@'%' via ACCOUNT LOCK (no remote auth) [product-blocker]"
+      It "alpha.66 v1: SUPERSEDED by alpha.68 v2 — @'%' moved from ACCOUNT LOCK to ACCOUNT UNLOCK (cross-member health executor requires usable account); alpha.66 v1 intent (detection-only sentinel) was lifted to alpha.68 v2 (active cross-member health executor with grant allowlist) due to Layer 5 product first-blocker; see alpha.68 v2 Describe for current @'%' contract"
+        # alpha.66 v1 originally asserted ACCOUNT LOCK; alpha.67 v1 retained
+        # LOCKED but added REVOKE; alpha.68 v2 inverts to ACCOUNT UNLOCK +
+        # grant allowlist because syncer's `GetMemberConnection` cross-pod
+        # path needs working auth via @'%'. The alpha.68 v2 Describe above
+        # asserts the new contract. This regression test now just verifies
+        # the LOCK pattern is no longer present.
         When run sh -c '
           awk "
             /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
@@ -2850,19 +2858,28 @@ EOF
           " '"${CMPD_SOURCE}"'
         '
         The status should be success
-        The output should include "@'%' ACCOUNT LOCK"
+        The output should not include "@'%' ACCOUNT LOCK"
       End
 
-      It "alpha.66 v1: ensure_internal_local_admin body grants ZERO privileges to kb_internal_root@'%' (no GRANT to @'%' in function) [product-blocker]"
-        # Per Jack 12:39 tightening 3: function body must have 0 hits on
-        # `GRANT .* TO ...@'%'`. Locked + no-priv is the security contract
-        # — only localhost/127.0.0.1 paths get GRANT statements.
+      It "alpha.66 v1: SUPERSEDED by alpha.68 v2 — @'%' moved from zero-priv to cross-member grant allowlist; alpha.66 v1 intent (zero GRANT to @'%') is replaced by the alpha.68 v2 hard gate which permits exactly REPLICATION CLIENT + REPLICATION MASTER ADMIN + SELECT/INSERT/UPDATE on kubeblocks.kb_health_check and bans the forbidden classes (no admin bypass)"
+        # alpha.66 v1 originally asserted zero GRANT @'%'; alpha.68 v2
+        # explicitly grants exactly 3 cross-member health privs. This
+        # regression test verifies the only GRANT statements to @'%'
+        # are the expected allowlist (REPLICATION CLIENT / REPLICATION
+        # MASTER ADMIN / SELECT,INSERT,UPDATE ON kubeblocks.kb_health_check).
+        # We skip lines that start with REVOKE (the REVOKE clause has
+        # "GRANT OPTION" substring but is not itself a GRANT statement).
         When run sh -c '
           awk "
             /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
             in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
-            in_func && /GRANT[[:space:]].*TO.*@'\''%'\''/ {
-              print NR\": forbidden GRANT to @ percent host: \"\$0
+            in_func && /^[[:space:]]*GRANT[[:space:]]/ && /@'\''%'\''/ {
+              line = \$0
+              if (line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+CLIENT[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
+                  line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+MASTER[[:space:]]+ADMIN[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
+                  line !~ /GRANT[[:space:]]+SELECT,[[:space:]]+INSERT,[[:space:]]+UPDATE[[:space:]]+ON[[:space:]]+kubeblocks\\.kb_health_check/) {
+                print NR\": grant to @ percent outside allowlist: \"\$0
+              }
             }
           " '"${CMPD_SOURCE}"' || true
         '
@@ -2924,18 +2941,23 @@ EOF
     }
     Before "setup_chart_alpha67_env"
 
-    Context "chart bump alpha.66 → alpha.67 (CmpD immutability rule)"
-      It "alpha.67 v1: Chart.yaml version is exactly 1.1.1-alpha.67 [product-blocker]"
+    Context "chart bump alpha.66 → alpha.67 → alpha.68 (CmpD immutability rule)"
+      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.68 by alpha.68 v2 [contract-no-regression]"
+        # alpha.67 v1 originally locked at 1.1.1-alpha.67; alpha.68 v2
+        # bumped further under the same CmpD immutability rule because
+        # alpha.68 v2 mutates cmpd-semisync.yaml ensure_internal_local_admin
+        # SQL (@% LOCKED+zero-priv → UNLOCK + cross-member health grant
+        # allowlist). Literal kept in sync with latest chart version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.67"
+        The output should equal "version: 1.1.1-alpha.68"
       End
     End
 
     Context "ensure_internal_local_admin write-site REVOKE step (per Jack 12:56 HOLD blocker)"
-      It "alpha.67 v1: ensure_internal_local_admin body contains explicit REVOKE ALL PRIVILEGES, GRANT OPTION FROM kb_internal_root@'%' (zero-priv enforced at write site, not just declared) [product-blocker]"
-        # The REVOKE clears any pre-existing privileges that CREATE USER
-        # IF NOT EXISTS would not touch and ACCOUNT LOCK does not affect.
+      It "alpha.67 v1: ensure_internal_local_admin body contains explicit REVOKE ALL PRIVILEGES, GRANT OPTION FROM kb_internal_root@'%' (zero-priv enforced at write site, not just declared; alpha.68 v2 still uses REVOKE before adding the cross-member grant allowlist) [product-blocker]"
+        # alpha.67 v1 introduced REVOKE; alpha.68 v2 keeps the REVOKE step
+        # but now adds explicit grants AFTER it for cross-member health.
         When run sh -c '
           awk "
             /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
@@ -2947,21 +2969,99 @@ EOF
         The output should include "REVOKE ALL PRIVILEGES, GRANT OPTION FROM"
         The output should include "@'%'"
       End
+    End
+  End
 
-      It "alpha.67 v1: ensure_internal_local_admin SQL ordering — CREATE USER @'%' before REVOKE @'%' before ALTER USER @'%' ACCOUNT LOCK [product-blocker]"
-        # Verify the three statements appear in the correct order: first
-        # CREATE (which is idempotent and might leave existing privs
-        # alone), then REVOKE (which clears them), then ALTER LOCK
-        # (which prevents future auth). Reordering would defeat either
-        # the zero-priv contract or the lock contract.
+  # alpha.68 v2 (Jack 15:39 alpha.67 v1 live-gate RED + 15:45 alpha.68 v1
+  # design HOLD + 15:58 alpha.68 v2 Direction B ACCEPT with refined
+  # checkpoint #3): the alpha.67 v1 LOCKED+zero-priv @'%' detection-only
+  # design correctly satisfied syncer's IsAdminCreated host='%' detection
+  # but broke cross-member syncer auth (4151 Access denied → RoleProbeNotDone).
+  # SQL matrix audit established the cross-member exact grant set; alpha.68
+  # v2 changes @'%' from LOCKED+zero-priv to UNLOCK + cross-member health
+  # grant allowlist:
+  #   - REPLICATION CLIENT ON *.* (SHOW SLAVE/MASTER STATUS)
+  #   - REPLICATION MASTER ADMIN ON *.* (cross-member SET GLOBAL
+  #     rpl_semi_sync_master_timeout from Follow secondary -> leader)
+  #   - SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check
+  # Refined checkpoint #3: no NEW net capability vs root@'%' which
+  # already has REPLICATION MASTER ADMIN via alpha.64 v1 contract; the
+  # forbidden classes (ALL PRIVILEGES / SUPER / READ_ONLY ADMIN /
+  # CONNECTION ADMIN / BINLOG ADMIN / REPLICATION SLAVE ADMIN /
+  # DELETE / DROP / CREATE USER / schema-wide DML / CREATE on
+  # kubeblocks.*) are still hard-banned.
+  Describe "alpha.68 v2 ensure_internal_local_admin cross-member health grant allowlist"
+    setup_chart_alpha68_env() {
+      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+    }
+    Before "setup_chart_alpha68_env"
+
+    Context "@'%' UNLOCK and 3 cross-member grants present (per Jack 15:58 grant contract)"
+      It "alpha.68 v2: ensure_internal_local_admin body issues ALTER USER ... @'%' ACCOUNT UNLOCK (not ACCOUNT LOCK as in alpha.67 v1) [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "@'%' ACCOUNT UNLOCK"
+        The output should not include "@'%' ACCOUNT LOCK"
+      End
+
+      It "alpha.68 v2: ensure_internal_local_admin body grants REPLICATION CLIENT on *.* to kb_internal_root@'%' (cross-member SHOW SLAVE/MASTER STATUS) [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "GRANT REPLICATION CLIENT ON *.* TO"
+        The output should include "@'%'"
+      End
+
+      It "alpha.68 v2: ensure_internal_local_admin body grants REPLICATION MASTER ADMIN on *.* to kb_internal_root@'%' (cross-member SET GLOBAL rpl_semi_sync_master_timeout) [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "GRANT REPLICATION MASTER ADMIN ON *.* TO"
+      End
+
+      It "alpha.68 v2: ensure_internal_local_admin body grants SELECT, INSERT, UPDATE on kubeblocks.kb_health_check to kb_internal_root@'%' (ReadCheck + WriteCheck cross-member health) [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "GRANT SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check TO"
+      End
+
+      It "alpha.68 v2: ensure_internal_local_admin SQL ordering — CREATE @'%' < ALTER UNLOCK @'%' < REVOKE @'%' < grant allowlist [product-blocker]"
+        # Per Jack 15:58 grant contract: CREATE creates the user record,
+        # ALTER UNLOCK reverses alpha.67 v1 LOCK, REVOKE clears any
+        # pre-existing privileges, then each grant adds exactly the
+        # cross-member health priv. Reordering would defeat either the
+        # write-site contract or the unlock contract.
         When run sh -c '
           create_line=$(grep -n "CREATE USER IF NOT EXISTS .*@.%. IDENTIFIED BY" "${CMPD_SOURCE}" | head -1 | cut -d: -f1)
+          unlock_line=$(grep -n "ALTER USER .*@.%. ACCOUNT UNLOCK" "${CMPD_SOURCE}" | head -1 | cut -d: -f1)
           revoke_line=$(grep -n "REVOKE ALL PRIVILEGES, GRANT OPTION FROM .*@.%." "${CMPD_SOURCE}" | head -1 | cut -d: -f1)
-          lock_line=$(grep -n "ALTER USER .*@.%. ACCOUNT LOCK" "${CMPD_SOURCE}" | head -1 | cut -d: -f1)
-          if [ -z "${create_line}" ] || [ -z "${revoke_line}" ] || [ -z "${lock_line}" ]; then
-            printf "missing line: create=%s revoke=%s lock=%s\n" "${create_line:-MISSING}" "${revoke_line:-MISSING}" "${lock_line:-MISSING}"
-          elif [ "${create_line}" -ge "${revoke_line}" ] || [ "${revoke_line}" -ge "${lock_line}" ]; then
-            printf "wrong order: create=%s revoke=%s lock=%s (expect create<revoke<lock)\n" "${create_line}" "${revoke_line}" "${lock_line}"
+          repl_client_line=$(grep -n "GRANT REPLICATION CLIENT ON .*@.%." "${CMPD_SOURCE}" | head -1 | cut -d: -f1)
+          if [ -z "${create_line}" ] || [ -z "${unlock_line}" ] || [ -z "${revoke_line}" ] || [ -z "${repl_client_line}" ]; then
+            printf "missing line: create=%s unlock=%s revoke=%s repl_client=%s\n" "${create_line:-MISSING}" "${unlock_line:-MISSING}" "${revoke_line:-MISSING}" "${repl_client_line:-MISSING}"
+          elif [ "${create_line}" -ge "${unlock_line}" ] || [ "${unlock_line}" -ge "${revoke_line}" ] || [ "${revoke_line}" -ge "${repl_client_line}" ]; then
+            printf "wrong order: create=%s unlock=%s revoke=%s repl_client=%s (expect create<unlock<revoke<repl_client)\n" "${create_line}" "${unlock_line}" "${revoke_line}" "${repl_client_line}"
           fi
         '
         The status should be success
@@ -2969,19 +3069,76 @@ EOF
       End
     End
 
-    Context "alpha.66 v1 negative + alpha.64+.65 invariants preserved"
-      It "alpha.67 v1: ensure_internal_local_admin body STILL has zero GRANT to kb_internal_root@'%' (negative scan retained from alpha.66 v1) [contract-no-regression]"
+    Context "@'%' forbidden-priv negative hard gate (per Jack 15:58 refined checkpoint #3)"
+      It "alpha.68 v2: ensure_internal_local_admin body grants ZERO forbidden privileges to kb_internal_root@'%' (refined checkpoint #3 hard gate: no ALL PRIVILEGES / SUPER / READ_ONLY ADMIN / CONNECTION ADMIN / BINLOG ADMIN / REPLICATION SLAVE ADMIN / DELETE / DROP / CREATE USER on @'%') [product-blocker]"
+        # Scope is limited to the ensure_internal_local_admin function body.
+        # We allow: REPLICATION CLIENT, REPLICATION MASTER ADMIN, SELECT/
+        # INSERT/UPDATE on kubeblocks.kb_health_check on @'%'. We forbid:
+        # ALL PRIVILEGES, SUPER, READ_ONLY ADMIN, CONNECTION ADMIN, BINLOG
+        # ADMIN, REPLICATION SLAVE ADMIN, DELETE, DROP, CREATE USER, plus
+        # any schema-wide DML or CREATE on kubeblocks.*.
         When run sh -c '
           awk "
             /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
             in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
-            in_func && /GRANT[[:space:]].*TO.*@'\''%'\''/ {
-              print NR\": forbidden GRANT to @ percent host: \"\$0
+            in_func && /GRANT[[:space:]]/ && /@'\''%'\''/ {
+              line = \$0
+              if (line ~ /GRANT[[:space:]]+ALL[[:space:]]+PRIVILEGES/ ||
+                  line ~ /GRANT[[:space:]]+SUPER/ ||
+                  line ~ /READ_ONLY[[:space:]]+ADMIN/ ||
+                  line ~ /CONNECTION[[:space:]]+ADMIN/ ||
+                  line ~ /BINLOG[[:space:]]+ADMIN/ ||
+                  line ~ /REPLICATION[[:space:]]+SLAVE[[:space:]]+ADMIN/ ||
+                  line ~ /[[:space:]]+DELETE[[:space:]]+/ ||
+                  line ~ /[[:space:]]+DROP[[:space:]]+/ ||
+                  line ~ /CREATE[[:space:]]+USER/) {
+                print NR\": forbidden grant to @ percent: \"\$0
+              }
             }
           " '"${CMPD_SOURCE}"' || true
         '
         The status should be success
         The output should equal ""
+      End
+
+      It "alpha.68 v2: ensure_internal_local_admin body does NOT grant CREATE on kubeblocks.* to kb_internal_root@'%' (primary_local_root_write_ready pre-creates kb_health_check during local bootstrap) [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func && /GRANT[[:space:]]+CREATE[[:space:]]+ON[[:space:]]+kubeblocks\\.\\*/ {
+              print NR\": forbidden CREATE on kubeblocks.* grant: \"\$0
+            }
+            in_func && /GRANT[[:space:]].*CREATE[[:space:]].*ON[[:space:]]+kubeblocks\\./ {
+              print NR\": forbidden CREATE-class grant on kubeblocks: \"\$0
+            }
+          " '"${CMPD_SOURCE}"' || true
+        '
+        The status should be success
+        The output should equal ""
+      End
+    End
+
+    Context "alpha.64+.65+.66+.67 contract no-regression spot-check"
+      It "alpha.68 v2: ensure_internal_local_admin body retains GRANT ALL PRIVILEGES to kb_internal_root@localhost AND @127.0.0.1 (internal exception preserved for syncer 127.0.0.1 AdminDB connection) [contract-no-regression]"
+        # alpha.64+.65+.66+.67 already established the local kb_internal_root
+        # full admin executor; alpha.68 v2 changes ONLY the @'%' record.
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "@'localhost' WITH GRANT OPTION"
+        The output should include "@'127.0.0.1' WITH GRANT OPTION"
+      End
+
+      It "alpha.68 v2: cmpd-semisync.yaml retains alpha.64 v3 root-cause comment marker (proves CmpD content alpha.64 v3 + alpha.65 + alpha.66 + alpha.67 design preserved) [contract-no-regression]"
+        When call grep -E "alpha.64 v3.*Jack 11:14.*live-gate RED" "${CMPD_SOURCE}"
+        The status should be success
+        The output should include "alpha.64 v3"
       End
     End
   End
