@@ -33,7 +33,7 @@ spec:
     - name: PSM_IMAGE_TAG
       value: {{ .Values.image.tag }}
     - name: PBM_DISABLE_PITR_WHEN_EXIT
-      value: "false"
+      value: "true"
   backupType: Continuous
   backup:
     preBackup:

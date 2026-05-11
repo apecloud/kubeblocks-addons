@@ -28,6 +28,7 @@ function disable_pitr() {
   echo "INFO: Disabling Pitr..."
   pbm config --set pitr.enabled=false --mongodb-uri "$PBM_MONGODB_URI"
   echo "INFO: Pitr disabled."
+  sleep 5
 }
 
 function upload_continuous_backup_info() {
