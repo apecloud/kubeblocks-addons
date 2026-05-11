@@ -151,6 +151,24 @@ spec:
             PRIMARY_HOST="${CLUSTER_NAME}-${COMPONENT_NAME}.${CLUSTER_NAMESPACE}.svc.cluster.local"
             SOCK="/run/mysqld/mysqld.sock"
             MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
+            # alpha.64 v1 (Jack 09:35 RED root cause + 10:01 v2 design ack):
+            # cmpd runtime sql-listener-fence GRANT statements MUST NOT introduce
+            # admin-bypass privileges (SUPER / READ_ONLY ADMIN / BINLOG ADMIN /
+            # CONNECTION ADMIN / REPLICATION SLAVE ADMIN / REPLICATION MASTER
+            # ADMIN / GRANT ALL PRIVILEGES) onto user-facing root, because those
+            # privileges bypass @@global.read_only=ON and let user-facing root
+            # write through fence intent. The previous wider grants leaked these
+            # privileges back to root@%/127.0.0.1/localhost between switchover-
+            # side fence and verifier read, producing the alpha.63 fresh-gatefix
+            # RED. The constants below are inlined non-bypass grant lists kept
+            # in sync with switchover.sh's SWITCHOVER_*_GRANT_BODY constants;
+            # ShellSpec strong-binds the alignment.
+            CMPD_EXPLICIT_PRIMARY_GRANT_BODY="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER, CREATE USER"
+            CMPD_SECONDARY_FENCE_GRANT_BODY="SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN"
+            # Best-effort monitor privileges (read-only). These never bypass
+            # read_only and are safe on user-facing root in any state. Tier A
+            # by Jack 10:05: failure here is allowed to log + continue.
+            CMPD_OPTIONAL_MONITOR_PRIVS="BINLOG MONITOR SLAVE MONITOR"
             # Fresh bootstrap keeps pod-0 as the deterministic first primary.
             # Give its roleProbe/Endpoint publish path a bounded window before a
             # later pod accepts a local syncer primary role.
@@ -588,19 +606,32 @@ spec:
               done
             }
             grant_optional_local_root_privileges() {
+              # alpha.64 v1 (Jack 09:35 RED + 10:01 design ack): drop admin
+              # bypass privs (READ_ONLY ADMIN / BINLOG ADMIN / CONNECTION ADMIN /
+              # REPLICATION SLAVE ADMIN / REPLICATION MASTER ADMIN). Only
+              # CMPD_OPTIONAL_MONITOR_PRIVS (BINLOG MONITOR / SLAVE MONITOR)
+              # remain — these are read-only monitoring privileges and do NOT
+              # bypass @@global.read_only. Tier A (Jack 10:05): failure on a
+              # MONITOR grant is allowed to log + continue (best-effort).
               local user="$1"
               local host="$2"
               local label="$3"
               local privilege
-              for privilege in "REPLICATION SLAVE ADMIN" "REPLICATION MASTER ADMIN" "BINLOG ADMIN" "BINLOG MONITOR" "SLAVE MONITOR" "CONNECTION ADMIN" "READ_ONLY ADMIN"; do
-                "${LOCAL[@]}" -e "
+              for privilege in ${CMPD_OPTIONAL_MONITOR_PRIVS}; do
+                if "${LOCAL[@]}" -e "
                   SET SESSION sql_log_bin=0;
                   GRANT ${privilege} ON *.* TO '${user}'@'${host}';
                   FLUSH PRIVILEGES;
                   SET SESSION sql_log_bin=1;
-                " >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1 \
-                  && prestop_watchdog_log "local-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=0" \
-                  || prestop_watchdog_log "local-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=1"
+                " >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                  prestop_watchdog_log "local-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=0 tier=monitor-best-effort"
+                else
+                  # Tier A: best-effort MONITOR grant; log 1227_swallowed for
+                  # observability and continue (do NOT propagate failure to
+                  # caller since these are monitoring-only and don't gate
+                  # primary-write/secondary-fence semantics).
+                  prestop_watchdog_log "local-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=1 tier=monitor-best-effort 1227_swallowed=true"
+                fi
               done
             }
             set_local_root_account_state() {
@@ -612,25 +643,36 @@ spec:
               password="$(sql_quote "${MARIADB_ROOT_PASSWORD}")"
               for host in localhost 127.0.0.1; do
                 if [ "${state}" = "LOCK" ]; then
-                  mode="read-replication-admin-only"
+                  # alpha.64 v1 (Jack 09:35 RED): drop SUPER (admin bypass).
+                  # Use CMPD_SECONDARY_FENCE_GRANT_BODY which excludes SUPER /
+                  # READ_ONLY ADMIN / BINLOG ADMIN / CONNECTION ADMIN. SUPER
+                  # bypassed @@global.read_only=ON, defeating the very fence
+                  # this LOCK path was supposed to enforce.
+                  mode="read-replication-admin-only-no-bypass"
                   sql="
                     SET SESSION sql_log_bin=0;
                     CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
                     ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
                     ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
                     REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
-                    GRANT SELECT, PROCESS, RELOAD, SUPER, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${user}'@'${host}';
+                    GRANT ${CMPD_SECONDARY_FENCE_GRANT_BODY} ON *.* TO '${user}'@'${host}';
                     FLUSH PRIVILEGES;
                     SET SESSION sql_log_bin=1;
                   "
                 else
-                  mode="full-access"
+                  # alpha.64 v1: replace GRANT ALL PRIVILEGES with explicit
+                  # primary grant body (CMPD_EXPLICIT_PRIMARY_GRANT_BODY)
+                  # aligned with switchover.sh's SWITCHOVER_EXPLICIT_PRIMARY_GRANT_BODY.
+                  # GRANT ALL PRIVILEGES bundled SUPER/READ_ONLY ADMIN/BINLOG
+                  # ADMIN which let user-facing root bypass read_only.
+                  mode="primary-write-no-bypass"
                   sql="
                     SET SESSION sql_log_bin=0;
                     CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
                     ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
                     ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
-                    GRANT ALL PRIVILEGES ON *.* TO '${user}'@'${host}' WITH GRANT OPTION;
+                    REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
+                    GRANT ${CMPD_EXPLICIT_PRIMARY_GRANT_BODY} ON *.* TO '${user}'@'${host}' WITH GRANT OPTION;
                     FLUSH PRIVILEGES;
                     SET SESSION sql_log_bin=1;
                   "
@@ -639,11 +681,14 @@ spec:
                   if [ "${state}" = "LOCK" ]; then
                     rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
                   fi
-                  prestop_watchdog_log "local-root-account-${state} mode=${mode} label=${label} host=${host} rc=0"
+                  prestop_watchdog_log "local-root-account-${state} mode=${mode} label=${label} host=${host} rc=0 tier=required"
                   grant_optional_local_root_privileges "${user}" "${host}" "${label}"
                   continue
                 fi
-                prestop_watchdog_log "local-root-account-${state} mode=${mode} label=${label} host=${host} rc=1"
+                # Tier B (Jack 10:05): account-state grant is required; failure
+                # MUST fail-closed. Caller (set_primary_read_write etc.) checks
+                # this rc and does NOT publish ready/role on rc!=0.
+                prestop_watchdog_log "local-root-account-${state} mode=${mode} label=${label} host=${host} rc=1 tier=required 1227_swallowed=true fail_closed=true"
                 return 1
               done
             }
@@ -662,35 +707,42 @@ spec:
                   ;;
               esac
               if [ "${state}" = "LOCK" ]; then
-                mode="read-replication-only"
+                # alpha.64 v1 (Jack 09:35 RED): drop SUPER (admin bypass).
+                # Use CMPD_SECONDARY_FENCE_GRANT_BODY shared with local LOCK.
+                mode="read-replication-only-no-bypass"
                 sql="
                   SET SESSION sql_log_bin=0;
                   CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
                   ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
                   ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
                   REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
-                  GRANT SELECT, PROCESS, RELOAD, SUPER, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO '${user}'@'${host}';
+                  GRANT ${CMPD_SECONDARY_FENCE_GRANT_BODY} ON *.* TO '${user}'@'${host}';
                   FLUSH PRIVILEGES;
                   SET SESSION sql_log_bin=1;
                 "
               else
-                mode="full-access"
+                # alpha.64 v1: replace GRANT ALL PRIVILEGES with explicit
+                # CMPD_EXPLICIT_PRIMARY_GRANT_BODY.
+                mode="primary-write-no-bypass"
                 sql="
                   SET SESSION sql_log_bin=0;
                   CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
                   ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
                   ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
-                  GRANT ALL PRIVILEGES ON *.* TO '${user}'@'${host}' WITH GRANT OPTION;
+                  REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
+                  GRANT ${CMPD_EXPLICIT_PRIMARY_GRANT_BODY} ON *.* TO '${user}'@'${host}' WITH GRANT OPTION;
                   FLUSH PRIVILEGES;
                   SET SESSION sql_log_bin=1;
                 "
               fi
               if "${LOCAL[@]}" -e "${sql}" \
                 >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
-                prestop_watchdog_log "remote-root-account-${state} mode=${mode} label=${label} host=${host} rc=0"
+                prestop_watchdog_log "remote-root-account-${state} mode=${mode} label=${label} host=${host} rc=0 tier=required"
                 return 0
               fi
-              prestop_watchdog_log "remote-root-account-${state} mode=${mode} label=${label} host=${host} rc=1"
+              # Tier B (Jack 10:05): remote root account-state grant required;
+              # failure MUST fail-closed; caller does NOT publish ready/role.
+              prestop_watchdog_log "remote-root-account-${state} mode=${mode} label=${label} host=${host} rc=1 tier=required 1227_swallowed=true fail_closed=true"
               return 1
             }
             grant_optional_remote_root_privileges() {
@@ -703,15 +755,22 @@ spec:
               esac
               user="$(sql_quote "${MARIADB_ROOT_USER}")"
               host="$(sql_quote "${MARIADB_ROOT_HOST:-%}")"
-              for privilege in "BINLOG ADMIN" "BINLOG MONITOR" "SLAVE MONITOR" "CONNECTION ADMIN" "READ_ONLY ADMIN"; do
-                "${LOCAL[@]}" -e "
+              # alpha.64 v1 (Jack 09:35 RED + 10:01 design ack): drop admin
+              # bypass privs (BINLOG ADMIN / READ_ONLY ADMIN / CONNECTION ADMIN).
+              # Only CMPD_OPTIONAL_MONITOR_PRIVS (BINLOG MONITOR / SLAVE MONITOR)
+              # remain — read-only monitoring privs that don't bypass read_only.
+              # Tier A (Jack 10:05): MONITOR grant failure log + continue.
+              for privilege in ${CMPD_OPTIONAL_MONITOR_PRIVS}; do
+                if "${LOCAL[@]}" -e "
                   SET SESSION sql_log_bin=0;
                   GRANT ${privilege} ON *.* TO '${user}'@'${host}';
                   FLUSH PRIVILEGES;
                   SET SESSION sql_log_bin=1;
-                " >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1 \
-                  && prestop_watchdog_log "remote-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=0" \
-                  || prestop_watchdog_log "remote-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=1"
+                " >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                  prestop_watchdog_log "remote-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=0 tier=monitor-best-effort"
+                else
+                  prestop_watchdog_log "remote-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=1 tier=monitor-best-effort 1227_swallowed=true"
+                fi
               done
             }
             lock_remote_root_writes() {
@@ -1562,6 +1621,17 @@ spec:
                     printf "%s" "$1" | sed "s/'/''/g"
                   }
                   lock_local_root_for_prestop() {
+                    # alpha.64 v1 (Jack 09:35 RED): drop SUPER (admin bypass).
+                    # NOTE: preStop hook is a SEPARATE shell scope (/bin/sh -c
+                    # block) so the main-container CMPD_SECONDARY_FENCE_GRANT_BODY
+                    # constant is NOT in scope here. The literal grant list
+                    # below MUST be kept in sync with the main-container constant
+                    # CMPD_SECONDARY_FENCE_GRANT_BODY (line ~155). ShellSpec
+                    # rendered-manifest negative grep enforces both callsites
+                    # do not contain SUPER / READ_ONLY ADMIN / BINLOG ADMIN /
+                    # CONNECTION ADMIN. Tier B (Jack 10:05): prestop LOCK is
+                    # required; failure MUST fail-closed (return 1) so caller
+                    # does not proceed.
                     label="$1"
                     mode="$2"
                     user="$(prestop_sql_quote "${MARIADB_ROOT_USER}")"
@@ -1573,15 +1643,15 @@ spec:
                         ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
                         ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
                         REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
-                        GRANT SELECT, PROCESS, RELOAD, SUPER, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${user}'@'${host}';
+                        GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO '${user}'@'${host}';
                         FLUSH PRIVILEGES;
                         SET SESSION sql_log_bin=1;
                       "
                       if run_sql "${label}-local-root-lock-${host}" "${mode}" "${sql}"; then
-                        prestop_log "local-root-lock label=${label} host=${host} mode=${mode} rc=0"
+                        prestop_log "local-root-lock label=${label} host=${host} mode=${mode} rc=0 tier=required"
                         continue
                       fi
-                      prestop_log "local-root-lock label=${label} host=${host} mode=${mode} rc=1"
+                      prestop_log "local-root-lock label=${label} host=${host} mode=${mode} rc=1 tier=required 1227_swallowed=true fail_closed=true"
                       return 1
                     done
                   }
