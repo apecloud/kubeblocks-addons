@@ -19,7 +19,20 @@ type: application
 # can keep the same chart version because the script CM is not
 # immutable; that is why alpha.61 v2/v3, alpha.62 v2, alpha.63 v2
 # could all reuse the same chart version.)
-version: 1.1.1-alpha.65
+#
+# alpha.66 v1 (Jack 12:18 alpha.65 v2 install/script live-gate RED +
+# 12:34 alpha.66 v1 design HOLD + 12:39 design ACCEPT): Bumped from
+# 1.1.1-alpha.65 → 1.1.1-alpha.66 because the alpha.66 fix mutates
+# cmpd-semisync.yaml (env block + ensure_internal_local_admin SQL).
+# Same KB CmpD immutability rule applies. The fix injects
+# MYSQL_ADMIN_USER=kb_internal_root so syncer's HA Promote/Demote SQL
+# uses the internal admin executor (full admin privileges via
+# kb_internal_root@127.0.0.1) instead of user-facing root (which has
+# no admin bypass since alpha.64 v1). A detection-only kb_internal_root
+# @'%' record with ACCOUNT LOCK + zero privileges is added to satisfy
+# syncer's IsAdminCreated() detection (which queries `mysql.user WHERE
+# host='%'`) without expanding the remote attack surface.
+version: 1.1.1-alpha.66
 
 # This is the version number of the MARIADB being deployed,
 # (mariadb engine version unchanged from alpha.64; this bump is
