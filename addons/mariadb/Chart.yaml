@@ -5,9 +5,25 @@ description: MariaDB is a high performance open source relational database manag
 type: application
 
 # This is the version number of the helm chart.
-version: 1.1.1-alpha.64
+#
+# alpha.65 v1 (Jack 11:35 install/script live-gate RED on alpha.64 v3):
+# Bumped from 1.1.1-alpha.64 → 1.1.1-alpha.65 because alpha.64 v2+v3
+# mutated cmpd-semisync.yaml (the rendered ComponentDefinition spec).
+# KubeBlocks treats the existing ComponentDefinition spec as immutable,
+# so a same-version chart upgrade with CmpD spec changes leaves the
+# CmpD in `Unavailable: immutable fields can't be updated`. Any future
+# patch within an alpha cycle that mutates cmpd-*.yaml MUST bump the
+# chart version to a fresh alpha so KubeBlocks creates a new CmpD
+# instead of trying to mutate the existing one. (Patches that only
+# touch versioned ConfigMap contents like replication-switchover.sh
+# can keep the same chart version because the script CM is not
+# immutable; that is why alpha.61 v2/v3, alpha.62 v2, alpha.63 v2
+# could all reuse the same chart version.)
+version: 1.1.1-alpha.65
 
 # This is the version number of the MARIADB being deployed,
+# (mariadb engine version unchanged from alpha.64; this bump is
+# packaging-contract only.)
 appVersion: "11.4.10"
 
 home: https://kubeblocks.io/

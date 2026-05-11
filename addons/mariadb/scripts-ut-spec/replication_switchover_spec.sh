@@ -2690,6 +2690,52 @@ EOF
     End
   End
 
+  # alpha.65 v1 (Jack 11:35 install/script live-gate RED on alpha.64 v3):
+  # KubeBlocks ComponentDefinition spec is immutable; any patch within an
+  # alpha cycle that mutates cmpd-*.yaml MUST bump the chart version to
+  # a fresh alpha so KubeBlocks creates a new CmpD object instead of
+  # trying to mutate the existing one. alpha.65 is functionally equivalent
+  # to alpha.64 v3 + chart version bump.
+  Describe "alpha.65 v1 chart version bump for CmpD immutability"
+    setup_chart_alpha65_env() {
+      export CHART_FILE="../Chart.yaml"
+      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+    }
+    Before "setup_chart_alpha65_env"
+
+    It "alpha.65 v1: Chart.yaml version is exactly 1.1.1-alpha.65 (chart bump from alpha.64 due to CmpD immutability) [product-blocker]"
+      When call grep -E "^version:" "${CHART_FILE}"
+      The status should be success
+      The output should equal "version: 1.1.1-alpha.65"
+    End
+
+    It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
+      When call grep -E "^appVersion:" "${CHART_FILE}"
+      The status should be success
+      The output should include "11.4.10"
+    End
+
+    It "alpha.65 v1: Chart.yaml documents the CmpD immutability rationale [doc-marker]"
+      # Documentation marker: Chart.yaml comment block must reference both
+      # the live-gate RED and the immutability rationale, so future patches
+      # within an alpha cycle have the rule visible at the version-bump site.
+      When call grep -E "alpha.65 v1.*Jack 11:35.*live-gate RED" "${CHART_FILE}"
+      The status should be success
+      The output should include "alpha.65 v1"
+    End
+
+    It "alpha.65 v1: cmpd-semisync.yaml content unchanged from alpha.64 v3 (CmpD spec preserved; only Chart.yaml differs) [contract-no-regression]"
+      # alpha.65 v1 must reuse alpha.64 v3 cmpd-semisync.yaml content
+      # verbatim. The v3 root-cause comment marker proves the v3 fix is still
+      # in place; the v1+v2 grant body / caller propagation invariants are
+      # also still present (covered by alpha.64 v3 contract-no-regression
+      # spot-check above).
+      When call grep -E "alpha.64 v3.*Jack 11:14.*live-gate RED" "${CMPD_SOURCE}"
+      The status should be success
+      The output should include "alpha.64 v3"
+    End
+  End
+
   Describe "alpha.61 v2 POSIX shell self-check"
     It "addons/mariadb/scripts/replication-switchover.sh parses cleanly under dash -n"
       Skip if "dash is not installed" ! command -v dash >/dev/null 2>&1
