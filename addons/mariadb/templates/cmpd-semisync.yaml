@@ -232,10 +232,23 @@ spec:
               return 1
             }
             set_replica_read_only() {
+              # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required LOCK
+              # failures MUST propagate rc to caller. set_replica_read_only is
+              # called from publish_replica_after_rejoin_ready, runtime-secondary
+              # reconcile, and configure_replication_from_primary_service_once;
+              # any failure here means the replica's read_only/lock state is
+              # not what we promised, so the caller must NOT publish
+              # ready/role. set_fail_closed_read_only also already returns 1
+              # on its own failure mode.
               rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
-              lock_remote_root_writes "replica-read-only" || true
-              set_fail_closed_read_only "replica-read-only"
-              lock_local_root_writes "replica-read-only" || true
+              local rc=0
+              lock_remote_root_writes "replica-read-only" || rc=1
+              set_fail_closed_read_only "replica-read-only" || rc=1
+              lock_local_root_writes "replica-read-only" || rc=1
+              if [ "${rc}" -ne 0 ]; then
+                prestop_watchdog_log "set-replica-read-only label=replica-read-only rc=1 tier=required fail_closed=true"
+                return 1
+              fi
             }
             primary_local_root_write_ready() {
               local label="${1:-primary-local-root-write-ready}"
@@ -282,9 +295,13 @@ spec:
               local label="$1"
               local reason="$2"
               rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
-              lock_remote_root_writes "${label}-${reason}" || true
-              set_fail_closed_read_only "${label}-${reason}" || true
-              lock_local_root_writes "${label}-${reason}" || true
+              # tier=fail-path-defensive: this is the failure handler for an
+              # already-failed primary write gate; defensive locking is
+              # best-effort observability. The caller has already concluded
+              # the gate failed and is not about to publish ready/role.
+              lock_remote_root_writes "${label}-${reason}" || true # tier=fail-path-defensive
+              set_fail_closed_read_only "${label}-${reason}" || true # tier=fail-path-defensive
+              lock_local_root_writes "${label}-${reason}" || true # tier=fail-path-defensive
               prestop_watchdog_log "primary-read-write ${reason} rc=1"
             }
             set_primary_read_write() {
@@ -396,15 +413,20 @@ spec:
               } >> "${evidence_file}" 2>/dev/null || true
             }
             block_existing_datadir_self_election_without_primary() {
+              # tier=fail-path-defensive: this branch is reached only when
+              # primary is unreachable and existing datadir cannot self-elect;
+              # the function deliberately does NOT publish ready/role and
+              # returns 0 to make the caller exit. Defensive locking is
+              # best-effort observability (Tier A class).
               local local_state slave_status evidence_file
               [ "${HAS_EXISTING_DATA}" = "true" ] || return 1
               local_state=$("${LOCAL[@]}" -e "SELECT @@global.gtid_binlog_state;" 2>/dev/null || echo "")
               slave_status=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null || true)
               "${LOCAL[@]}" -e "STOP SLAVE;" 2>/dev/null || true
-              lock_remote_root_writes "no-primary-existing-datadir" || true
-              set_fail_closed_read_only "no-primary-existing-datadir" || true
+              lock_remote_root_writes "no-primary-existing-datadir" || true # tier=fail-path-defensive
+              set_fail_closed_read_only "no-primary-existing-datadir" || true # tier=fail-path-defensive
               mark_replication_pending
-              lock_local_root_writes "no-primary-existing-datadir" || true
+              lock_local_root_writes "no-primary-existing-datadir" || true # tier=fail-path-defensive
               evidence_file="{{ .Values.dataMountPath }}/log/replication-no-primary-pending.log"
               mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
               {
@@ -439,10 +461,13 @@ spec:
               fi
               slave_status=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null || true)
               "${LOCAL[@]}" -e "STOP SLAVE;" 2>/dev/null || true
-              lock_remote_root_writes "gtid-divergence" || true
-              set_fail_closed_read_only "gtid-divergence" || true
+              # tier=fail-path-defensive: divergence has already been detected;
+              # function returns 0 only after marking pending and never publishes
+              # ready/role. Defensive locks are best-effort observability.
+              lock_remote_root_writes "gtid-divergence" || true # tier=fail-path-defensive
+              set_fail_closed_read_only "gtid-divergence" || true # tier=fail-path-defensive
               mark_replication_divergence_pending
-              lock_local_root_writes "gtid-divergence" || true
+              lock_local_root_writes "gtid-divergence" || true # tier=fail-path-defensive
               persist_gtid_divergence_evidence "fail_closed_for_gtid_divergence" "${local_state}" "${primary_state}" "${slave_status}"
               echo "GTID divergence detected for existing datadir rejoin: local binlog state ${local_state}, primary binlog state ${primary_state}. Keeping replication pending for rebuild/resync."
               return 0
@@ -865,30 +890,52 @@ spec:
               done
             }
             keep_replica_pending_until_healthy() {
+              # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required LOCK
+              # failures MUST propagate rc to caller. Caller pattern is
+              # `if ! keep_replica_pending_until_healthy ...; then return 1`,
+              # so propagating rc keeps the caller from publishing
+              # ready/role on locking failure.
               local label="$1"
+              local rc=0
               mark_replication_pending
-              lock_remote_root_writes "${label}-pending" || true
-              set_fail_closed_read_only "${label}-pending" || true
-              "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true
-              lock_local_root_writes "${label}-pending" || true
+              lock_remote_root_writes "${label}-pending" || rc=1
+              set_fail_closed_read_only "${label}-pending" || rc=1
+              "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true # tier=error-recovery
+              lock_local_root_writes "${label}-pending" || rc=1
+              if [ "${rc}" -ne 0 ]; then
+                prestop_watchdog_log "keep-replica-pending label=${label} rc=1 tier=required fail_closed=true"
+                return 1
+              fi
               wait_for_replication_healthy "${label}" 120 2
             }
             publish_replica_after_rejoin_ready() {
+              # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required path.
+              # mark_replication_ready (line below) is the publish point; if any
+              # required step fails (set_replica_read_only / expose_sql_listener),
+              # the function MUST return 1 BEFORE reaching mark_replication_ready.
               local label="$1"
               if ! keep_replica_pending_until_healthy "${label}-before-expose"; then
                 return 1
               fi
-              set_replica_read_only || true
+              if ! set_replica_read_only; then
+                prestop_watchdog_log "publish-replica-rejoin label=${label} step=before-expose rc=1 tier=required fail_closed=true"
+                return 1
+              fi
               if ! expose_sql_listener_for_safe_role "${label}"; then
                 return 1
               fi
-              "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true
-              set_replica_read_only || true
+              "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true # tier=error-recovery
+              if ! set_replica_read_only; then
+                prestop_watchdog_log "publish-replica-rejoin label=${label} step=after-expose rc=1 tier=required fail_closed=true"
+                return 1
+              fi
               if ! wait_for_replication_healthy "${label}-after-expose" 120 2; then
+                # tier=fail-path-defensive: replication is already
+                # known unhealthy; we mark pending and best-effort lock.
                 mark_replication_pending
-                lock_remote_root_writes "${label}-after-expose-not-healthy" || true
-                set_fail_closed_read_only "${label}-after-expose-not-healthy" || true
-                lock_local_root_writes "${label}-after-expose-not-healthy" || true
+                lock_remote_root_writes "${label}-after-expose-not-healthy" || true # tier=fail-path-defensive
+                set_fail_closed_read_only "${label}-after-expose-not-healthy" || true # tier=fail-path-defensive
+                lock_local_root_writes "${label}-after-expose-not-healthy" || true # tier=fail-path-defensive
                 return 1
               fi
               mark_replication_ready
@@ -958,8 +1005,10 @@ spec:
                 return 0
               fi
               mark_replication_pending
-              set_fail_closed_read_only "fresh-health-check-cleanup-failed" || true
-              lock_local_root_writes "fresh-health-check-cleanup-failed" || true
+              # tier=error-recovery: cleanup already failed; defensive locking
+              # follows mark_replication_pending and the function returns 1.
+              set_fail_closed_read_only "fresh-health-check-cleanup-failed" || true # tier=error-recovery
+              lock_local_root_writes "fresh-health-check-cleanup-failed" || true # tier=error-recovery
               echo "WARNING: failed to clear local kubeblocks health check table before fresh SQL thread starts; keeping roleProbe pending."
               return 1
             }
@@ -969,15 +1018,17 @@ spec:
                 return 1
               fi
               prestop_watchdog_log "fresh-kb-health-check-repair label=${label}"
-              "${LOCAL[@]}" -e "STOP SLAVE SQL_THREAD;" 2>/dev/null || true
+              "${LOCAL[@]}" -e "STOP SLAVE SQL_THREAD;" 2>/dev/null || true # tier=error-recovery
               if ! with_local_read_write_for_health_check_repair "prepared-local-kb-health-check-after-replication-error"; then
+                # tier=error-recovery: repair attempt already failed; defensive
+                # locking follows mark_replication_pending and the function returns 1.
                 mark_replication_pending
-                set_fail_closed_read_only "fresh-health-check-replication-repair-failed" || true
-                lock_local_root_writes "fresh-health-check-replication-repair-failed" || true
+                set_fail_closed_read_only "fresh-health-check-replication-repair-failed" || true # tier=error-recovery
+                lock_local_root_writes "fresh-health-check-replication-repair-failed" || true # tier=error-recovery
                 echo "WARNING: failed to repair kubeblocks health check replication error; keeping roleProbe pending."
                 return 1
               fi
-              "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null || true
+              "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null || true # tier=error-recovery
               return 0
             }
             mariadbd_pids() {
@@ -1076,6 +1127,11 @@ spec:
               wait ${MARIADB_PID} 2>/dev/null || true
             }
             expose_sql_listener_for_safe_role() {
+              # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required path.
+              # touch .sql-listener-ready below is the publish point that lets
+              # the runtime accept TCP traffic; required local LOCK + read_only
+              # MUST hold BEFORE we open the listener. Failure of either MUST
+              # return 1 BEFORE touching .sql-listener-ready.
               local label="$1"
               if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
                 prestop_watchdog_log "skip-sql-listener-expose label=${label} reason=prestop-fence-started"
@@ -1093,8 +1149,14 @@ spec:
                 wait ${MARIADB_PID}
                 exit $?
               fi
-              set_fail_closed_read_only "sql-listener-${label}" || true
-              lock_local_root_writes "sql-listener-${label}" || true
+              if ! set_fail_closed_read_only "sql-listener-${label}"; then
+                prestop_watchdog_log "sql-listener-expose label=${label} step=set-read-only rc=1 tier=required fail_closed=true"
+                return 1
+              fi
+              if ! lock_local_root_writes "sql-listener-${label}"; then
+                prestop_watchdog_log "sql-listener-expose label=${label} step=lock-local-root rc=1 tier=required fail_closed=true"
+                return 1
+              fi
               touch {{ .Values.dataMountPath }}/.sql-listener-ready
               prestop_watchdog_log "sql-listener-expose-complete label=${label}"
             }
@@ -1197,10 +1259,17 @@ spec:
               prestop_watchdog_log "runtime-primary-listener-reconcile-complete role=${role}"
             }
             configure_replication_from_primary_service_once() {
+              # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required path.
+              # set_replica_read_only failure means the replica's lock state
+              # is not safe; we MUST return 1 so caller does not interpret
+              # this iteration as a successful follow attempt.
               local label="${1:-runtime-secondary-follow}"
               local primary_sid master_gtid local_gtid slave_status
               mark_replication_pending
-              set_replica_read_only || true
+              if ! set_replica_read_only; then
+                prestop_watchdog_log "configure-replication-from-primary label=${label} step=enter-set-replica-read-only rc=1 tier=required fail_closed=true"
+                return 1
+              fi
               primary_sid="$(query_primary_service_server_id || true)"
               if [ -z "${primary_sid}" ] || [ "${primary_sid}" = "${SERVICE_ID}" ]; then
                 prestop_watchdog_log "runtime-secondary-follow-configure-defer label=${label} reason=primary-service-not-peer primary_sid=${primary_sid:-<empty>} service_id=${SERVICE_ID}"
@@ -1233,9 +1302,12 @@ spec:
                   return 1
                 fi
                 if ! "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
+                  # tier=error-recovery: SQL thread start has already failed.
+                  # mark_replication_pending + best-effort defensive locks +
+                  # function returns 1.
                   mark_replication_pending
-                  set_fail_closed_read_only "runtime-secondary-follow-sql-thread-start-failed" || true
-                  lock_local_root_writes "runtime-secondary-follow-sql-thread-start-failed" || true
+                  set_fail_closed_read_only "runtime-secondary-follow-sql-thread-start-failed" || true # tier=error-recovery
+                  lock_local_root_writes "runtime-secondary-follow-sql-thread-start-failed" || true # tier=error-recovery
                   prestop_watchdog_log "runtime-secondary-follow-configure-sql-failed label=${label}"
                   return 1
                 fi
@@ -1271,11 +1343,18 @@ spec:
               return 1
             }
             reconcile_sql_listener_for_syncer_secondary_once() {
+              # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required path.
+              # mark_replication_ready (line below) is the publish point;
+              # set_replica_read_only failure MUST return 1 BEFORE marking ready.
               local role slave_status
               [ ! -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ] || return 0
               role="$(query_local_syncer_role || true)"
               [ "${role}" = "secondary" ] || return 0
-              set_replica_read_only || true
+              if ! set_replica_read_only; then
+                mark_replication_pending
+                prestop_watchdog_log "runtime-secondary-listener-reconcile role=${role} step=set-replica-read-only rc=1 tier=required fail_closed=true"
+                return 1
+              fi
               slave_status="$(query_slave_status_verbose || true)"
               if slave_status_is_healthy "${slave_status}"; then
                 mark_replication_ready
@@ -1339,10 +1418,14 @@ spec:
               exit $?
             fi
             wait_for_internal_local_admin "startup-before-role-decision"
-            lock_local_root_writes "startup-before-role-decision-pre-remote" || true
-            lock_remote_root_writes "startup-before-role-decision" || true
-            set_fail_closed_read_only "startup-before-role-decision" || true
-            lock_local_root_writes "startup-before-role-decision" || true
+            # tier=startup-defensive: pre-role-decision defensive locks. Role
+            # has not been determined yet; subsequent role-decision branches
+            # each install their own required Tier B locks (set_replica_read_only,
+            # expose_sql_listener_for_*_role) before publishing ready/role.
+            lock_local_root_writes "startup-before-role-decision-pre-remote" || true # tier=startup-defensive
+            lock_remote_root_writes "startup-before-role-decision" || true # tier=startup-defensive
+            set_fail_closed_read_only "startup-before-role-decision" || true # tier=startup-defensive
+            lock_local_root_writes "startup-before-role-decision" || true # tier=startup-defensive
 
             # Determine role by querying the primary service VIP.
             # timeout 10 prevents an indefinite hang if the primary is temporarily unresponsive
@@ -1432,8 +1515,11 @@ spec:
               # Cycle 6 (alpha.18) caught the previous default-writable behavior as a SQL
               # invariant failure: pod-0 default-primary read_only=0 plus pod-1 waiting in
               # the loop with default read_only=0 = two writable instances.
-              set_fail_closed_read_only "wait-primary-loop-entry" || true
-              lock_local_root_writes "wait-primary-loop-entry" || true
+              # tier=startup-defensive: pre-role-decision waiting loop entry;
+              # subsequent publish_replica_after_rejoin_ready (Tier B required)
+              # is the actual ready/role publish point.
+              set_fail_closed_read_only "wait-primary-loop-entry" || true # tier=startup-defensive
+              lock_local_root_writes "wait-primary-loop-entry" || true # tier=startup-defensive
               _no_primary_iters=0
               while true; do
                 # Step 1: find primary (timeout 10 prevents hang if primary unresponsive)
@@ -1484,9 +1570,12 @@ spec:
                     continue
                   fi
                   if ! "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
+                    # tier=error-recovery: SQL thread start has already failed.
+                    # mark_replication_pending + best-effort defensive locks +
+                    # continue retry loop (does NOT publish ready/role).
                     mark_replication_pending
-                    set_fail_closed_read_only "fresh-sql-thread-start-failed" || true
-                    lock_local_root_writes "fresh-sql-thread-start-failed" || true
+                    set_fail_closed_read_only "fresh-sql-thread-start-failed" || true # tier=error-recovery
+                    lock_local_root_writes "fresh-sql-thread-start-failed" || true # tier=error-recovery
                     echo "START SLAVE SQL_THREAD failed; keeping roleProbe pending."
                     sleep 5
                     continue
@@ -1681,8 +1770,21 @@ spec:
                   prestop_log "begin pod=${POD_NAME:-unknown}"
                   touch "${DATA_DIR}/.prestop-fence-started" "${DATA_DIR}/.replication-pending" 2>/dev/null || true
                   rm -f "${DATA_DIR}/.replication-ready" 2>/dev/null || true
-                  lock_local_root_for_prestop "prestop" "socket" || \
-                    lock_local_root_for_prestop "prestop" "tcp" || true
+                  # alpha.64 v2 (Jack 10:32 HOLD blocker 2): Tier B preStop
+                  # required LOCK MUST NOT be silently swallowed by trailing
+                  # `|| true`. socket→tcp fallback is best-effort attempt
+                  # ordering; double failure emits an explicit fail-closed
+                  # token for the runtime negative gate. preStop has already
+                  # removed `.replication-ready` above and set
+                  # `.prestop-fence-started`, so continuing to kill mariadbd
+                  # IS the fail-closed behavior at the pod level — but the
+                  # log token is what the live-gate runtime negative grep
+                  # asserts. Do NOT add `|| true` after this block.
+                  if ! lock_local_root_for_prestop "prestop" "socket"; then
+                    if ! lock_local_root_for_prestop "prestop" "tcp"; then
+                      prestop_log "prestop_lock_failed_both fail_closed=true tier=required"
+                    fi
+                  fi
                   if [ -x /tools/syncerctl ]; then
                     timeout 3 /tools/syncerctl pause >> "${LOG_FILE}" 2>&1
                     prestop_log "syncerctl-pause rc=$?"
