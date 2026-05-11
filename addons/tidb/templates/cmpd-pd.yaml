@@ -73,6 +73,7 @@ spec:
       participatesInQuorum: true
   lifecycleActions:
     roleProbe:
+      periodSeconds: 10
       exec:
         container: pd
         command: ["/scripts/pd_roleprobe.sh"]
