@@ -2715,15 +2715,18 @@ EOF
       The output should include "11.4.10"
     End
 
-    It "alpha.65 v1: Chart.yaml documents the CmpD immutability rationale [doc-marker]"
-      # Documentation marker: Chart.yaml comment block must reference both
-      # the live-gate RED and the immutability rationale, so future patches
-      # within an alpha cycle have the rule visible at the version-bump site.
-      When call grep -E "alpha.65 v1.*Jack 11:35.*live-gate RED" "${CHART_FILE}"
-      The status should be success
-      The output should include "alpha.65 v1"
-    End
-
+    # alpha.65 v2 (Jack 11:45 v1 HOLD msg `721ad0a3`): the v1 doc-marker
+    # test (`grep "alpha.65 v1.*Jack 11:35.*live-gate RED" ../Chart.yaml`)
+    # passed in source-tree but failed when ShellSpec was rerun inside an
+    # extracted package, because `helm package` canonicalizes Chart.yaml
+    # (alphabetizes keys + removes blank/comments + strips quotes). The
+    # comment was therefore not in the package-installed Chart.yaml. v2
+    # drops the doc-marker assertion. The CmpD-immutability rationale
+    # remains documented in: source Chart.yaml comment block (visible to
+    # git users), this Describe's leading comment (preserved verbatim in
+    # the in-package spec file because helm package does NOT canonicalize
+    # ShellSpec source files), PR body, Slock handoff thread, and the
+    # post-fresh-switchover-GREEN sediment doc backlog.
     It "alpha.65 v1: cmpd-semisync.yaml content unchanged from alpha.64 v3 (CmpD spec preserved; only Chart.yaml differs) [contract-no-regression]"
       # alpha.65 v1 must reuse alpha.64 v3 cmpd-semisync.yaml content
       # verbatim. The v3 root-cause comment marker proves the v3 fix is still
