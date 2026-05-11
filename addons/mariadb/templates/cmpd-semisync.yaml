@@ -517,6 +517,22 @@ spec:
               done
             }
             ensure_internal_local_admin() {
+              # alpha.66 v1 (Jack 12:18 alpha.65 v2 install/script live-gate
+              # RED + Jack 12:34 alpha.66 v1 design HOLD + Jack 12:39 design
+              # ACCEPT with 3 tightening): the existing local @localhost +
+              # @127.0.0.1 paths preserve full admin-priv kb_internal_root
+              # for syncer's local AdminDB connection (127.0.0.1:3306 match
+              # priority falls on @127.0.0.1 first because it is the most
+              # specific host). The new @'%' record below is detection-only:
+              # it is required so syncer's `IsAdminCreated()` (which queries
+              # `mysql.user WHERE host='%' AND user LIKE 'kb%'`) can detect
+              # the admin user and trigger `mgr.DB = mgr.AdminDB` in
+              # IsRunning(). The @'%' record carries `ACCOUNT LOCK` AND zero
+              # privileges, so it cannot be used for any remote auth (LOCK
+              # rejects auth) and cannot run any SQL even if LOCK is somehow
+              # bypassed (no GRANT). This preserves the alpha.64 v1 fence
+              # spirit: user-facing root has no admin bypass; internal admin
+              # remains effectively local-only at runtime.
               local label="${1:-internal-local-admin}"
               local user password sql
               mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
@@ -532,6 +548,8 @@ spec:
                 ALTER USER '${user}'@'127.0.0.1' IDENTIFIED BY '${password}';
                 ALTER USER '${user}'@'127.0.0.1' ACCOUNT UNLOCK;
                 GRANT ALL PRIVILEGES ON *.* TO '${user}'@'127.0.0.1' WITH GRANT OPTION;
+                CREATE USER IF NOT EXISTS '${user}'@'%' IDENTIFIED BY '${password}';
+                ALTER USER '${user}'@'%' ACCOUNT LOCK;
                 FLUSH PRIVILEGES;
                 SET SESSION sql_log_bin=1;
               "
@@ -1852,10 +1870,36 @@ spec:
           - containerPort: 3601
             name: ha
         env:
-          # syncer DB engine reads KB_SERVICE_* for local DB credentials.
+          # syncer DB engine reads KB_SERVICE_* for the root/poll DB
+          # credentials. KB_SERVICE_USER stays bound to MARIADB_ROOT_USER
+          # so syncer's startup readiness ping always works (root is the
+          # one user that always exists from mariadbd init). HA promote/
+          # demote SQL is NOT executed via this credential — see
+          # MYSQL_ADMIN_USER below.
           - name: KB_SERVICE_USER
             value: "$(MARIADB_ROOT_USER)"
           - name: KB_SERVICE_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          # alpha.66 v1 (Jack 12:18 alpha.65 v2 install/script live-gate
+          # RED + Jack 12:34 alpha.66 v1 design HOLD): syncer's HA Promote/
+          # Demote SQL needs admin-bypass privileges (REPLICATION SLAVE
+          # ADMIN / READ_ONLY ADMIN / etc). alpha.64 v1 correctly removed
+          # these from user-facing root, so the syncer HA path was failing
+          # 1227. Upstream syncer (engines/mysql) already has a 3-tier
+          # credential model (Root / Admin / Replication) and an auto-switch
+          # in IsRunning() that swaps mgr.DB to AdminDB once the admin user
+          # is detected via `mysql.user WHERE host='%' AND user LIKE 'kb%'`.
+          # We inject MYSQL_ADMIN_USER=kb_internal_root (literal — NOT
+          # `$(MARIADB_INTERNAL_ROOT_USER)` because container env expansion
+          # order is not guaranteed) so syncer uses kb_internal_root for
+          # AdminDB. The bootstrap script also creates a detection-only
+          # `kb_internal_root@'%'` record (ACCOUNT LOCK + no privileges)
+          # so IsAdminCreated finds it without expanding the remote attack
+          # surface; the actual AdminDB connection from 127.0.0.1 matches
+          # `kb_internal_root@127.0.0.1` (full admin privileges).
+          - name: MYSQL_ADMIN_USER
+            value: "kb_internal_root"
+          - name: MYSQL_ADMIN_PASSWORD
             value: "$(MARIADB_ROOT_PASSWORD)"
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mariadb

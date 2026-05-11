@@ -2703,10 +2703,16 @@ EOF
     }
     Before "setup_chart_alpha65_env"
 
-    It "alpha.65 v1: Chart.yaml version is exactly 1.1.1-alpha.65 (chart bump from alpha.64 due to CmpD immutability) [product-blocker]"
+    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.66 [contract-no-regression]"
+      # Original alpha.65 v1 ship locked the chart at 1.1.1-alpha.65; the
+      # subsequent alpha.66 v1 ship bumped further (to fix the syncer HA
+      # executor RED) under the SAME CmpD immutability rule. The literal
+      # value here is intentionally synced with the latest chart version
+      # so this regression test stays green; the assertion still proves
+      # the version-line literal exists and matches the canonical bump.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.1.1-alpha.65"
+      The output should equal "version: 1.1.1-alpha.66"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -2736,6 +2742,163 @@ EOF
       When call grep -E "alpha.64 v3.*Jack 11:14.*live-gate RED" "${CMPD_SOURCE}"
       The status should be success
       The output should include "alpha.64 v3"
+    End
+  End
+
+  # alpha.66 v1 (Jack 12:18 alpha.65 v2 install/script live-gate RED +
+  # 12:34 alpha.66 v1 design HOLD + 12:39 design ACCEPT with 3 tightening):
+  # syncer's HA Promote/Demote SQL needs admin-bypass privileges that
+  # alpha.64 v1 correctly removed from user-facing root. Fix is to inject
+  # MYSQL_ADMIN_USER=kb_internal_root so syncer's existing 3-tier credential
+  # model + IsRunning auto-switch swaps mgr.DB to AdminDB (kb_internal_root,
+  # full admin priv) once IsAdminCreated detects kb_internal_root in
+  # mysql.user. Detection requires kb_internal_root to appear with host='%'
+  # in mysql.user (syncer's IsAdminCreated SQL filter); we add a
+  # detection-only kb_internal_root@'%' record with ACCOUNT LOCK + zero
+  # privileges so the actual remote attack surface is unchanged. Real
+  # admin connections from 127.0.0.1 still match kb_internal_root@127.0.0.1
+  # (full priv); user-facing root contracts (alpha.64 v1+v2+v3) remain
+  # intact.
+  Describe "alpha.66 v1 syncer HA executor + chart bump"
+    setup_chart_alpha66_env() {
+      export CHART_FILE="../Chart.yaml"
+      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+    }
+    Before "setup_chart_alpha66_env"
+
+    Context "chart bump for CmpD immutability (per alpha.65 lesson)"
+      It "alpha.66 v1: Chart.yaml version is exactly 1.1.1-alpha.66 [product-blocker]"
+        When call grep -E "^version:" "${CHART_FILE}"
+        The status should be success
+        The output should equal "version: 1.1.1-alpha.66"
+      End
+
+      It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
+        When call grep -E "^appVersion:" "${CHART_FILE}"
+        The status should be success
+        The output should include "11.4.10"
+      End
+    End
+
+    Context "syncer executor contract (per Jack 12:34 design HOLD blocker 1+2)"
+      It "alpha.66 v1: chart env contains MYSQL_ADMIN_USER literal kb_internal_root (NOT \$\(MARIADB_INTERNAL_ROOT_USER\) — env order risk closed) [product-blocker]"
+        # Literal value avoids the K8s env expansion order ambiguity that
+        # Jack flagged as Blocker 2 in the v1 HOLD review.
+        When run sh -c '
+          awk "
+            /^[[:space:]]*-[[:space:]]*name:[[:space:]]*MYSQL_ADMIN_USER/ { found_name = 1; next }
+            found_name && /^[[:space:]]*value:/ { print; found_name = 0 }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "kb_internal_root"
+        The output should not include "\$(MARIADB_INTERNAL_ROOT_USER)"
+      End
+
+      It "alpha.66 v1: chart env contains MYSQL_ADMIN_PASSWORD = \$\(MARIADB_ROOT_PASSWORD\) (shared with root password per existing pattern) [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*-[[:space:]]*name:[[:space:]]*MYSQL_ADMIN_PASSWORD/ { found_name = 1; next }
+            found_name && /^[[:space:]]*value:/ { print; found_name = 0 }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "MARIADB_ROOT_PASSWORD"
+      End
+
+      It "alpha.66 v1: chart env still contains KB_SERVICE_USER = \$\(MARIADB_ROOT_USER\) (poll/readiness path unchanged; root preserved for syncer startup ping) [contract-no-regression]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*-[[:space:]]*name:[[:space:]]*KB_SERVICE_USER/ { found_name = 1; next }
+            found_name && /^[[:space:]]*value:/ { print; found_name = 0 }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "MARIADB_ROOT_USER"
+      End
+    End
+
+    Context "detection-only @'%' record contract (per Jack 12:34 HOLD blocker 1 + 12:39 tightening 3)"
+      It "alpha.66 v1: ensure_internal_local_admin body creates kb_internal_root@'%' (detection-only record for syncer IsAdminCreated host='%' filter) [product-blocker]"
+        # Function body must contain CREATE USER ... @'%' — the @'%' suffix
+        # is unique to the new alpha.66 v1 detection record (localhost and
+        # 127.0.0.1 paths use different host literals).
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "CREATE USER IF NOT EXISTS"
+        The output should include "@'%' IDENTIFIED BY"
+      End
+
+      It "alpha.66 v1: ensure_internal_local_admin body locks kb_internal_root@'%' via ACCOUNT LOCK (no remote auth) [product-blocker]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "@'%' ACCOUNT LOCK"
+      End
+
+      It "alpha.66 v1: ensure_internal_local_admin body grants ZERO privileges to kb_internal_root@'%' (no GRANT to @'%' in function) [product-blocker]"
+        # Per Jack 12:39 tightening 3: function body must have 0 hits on
+        # `GRANT .* TO ...@'%'`. Locked + no-priv is the security contract
+        # — only localhost/127.0.0.1 paths get GRANT statements.
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func && /GRANT[[:space:]].*TO.*@'\''%'\''/ {
+              print NR\": forbidden GRANT to @ percent host: \"\$0
+            }
+          " '"${CMPD_SOURCE}"' || true
+        '
+        The status should be success
+        The output should equal ""
+      End
+
+      It "alpha.66 v1: ensure_internal_local_admin body retains GRANT ALL PRIVILEGES to kb_internal_root@localhost AND @127.0.0.1 (internal exception preserved for syncer 127.0.0.1 AdminDB connection) [contract-no-regression]"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+            in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+            in_func { print }
+          " '"${CMPD_SOURCE}"'
+        '
+        The status should be success
+        The output should include "@'localhost' WITH GRANT OPTION"
+        The output should include "@'127.0.0.1' WITH GRANT OPTION"
+      End
+    End
+
+    Context "alpha.64 v1+v2+v3 + alpha.65 contract no-regression spot-check"
+      It "alpha.66 v1: alpha.64 v1+v2+v3 cmpd-side invariants all preserved unchanged [contract-no-regression]"
+        # Spot-check: same invariant counts as alpha.65 v2 (chart only changed,
+        # cmpd-semisync.yaml grant body / caller propagation / tier annotation /
+        # multi-word loop all preserved). The new ensure_internal_local_admin
+        # @'%' addition is the only intentional cmpd content delta.
+        When run sh -c '
+          {
+            grep -c "CMPD_EXPLICIT_PRIMARY_GRANT_BODY=" "${CMPD_SOURCE}";
+            grep -c "CMPD_SECONDARY_FENCE_GRANT_BODY=" "${CMPD_SOURCE}";
+            grep -c "if ! set_replica_read_only" "${CMPD_SOURCE}";
+            grep -c "prestop_lock_failed_both fail_closed=true tier=required" "${CMPD_SOURCE}";
+            grep -cE "^[[:space:]]*lock_(local|remote)_root_writes\\b.*\\|\\| true.*# tier=" "${CMPD_SOURCE}";
+            grep -cE "^[[:space:]]*for privilege in \"BINLOG MONITOR\" \"SLAVE MONITOR\"" "${CMPD_SOURCE}";
+          } | tr "\n" " "
+        '
+        The status should be success
+        # Expected: 1 grant body explicit + 1 secondary fence + 4 if-! caller +
+        # 1 prestop_lock_failed_both + 16 tier-annotated swallow + 2 inline-quoted MONITOR loops
+        The output should equal "1 1 4 1 16 2 "
+      End
     End
   End
 
