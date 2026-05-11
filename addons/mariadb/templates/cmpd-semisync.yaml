@@ -168,6 +168,18 @@ spec:
             # Best-effort monitor privileges (read-only). These never bypass
             # read_only and are safe on user-facing root in any state. Tier A
             # by Jack 10:05: failure here is allowed to log + continue.
+            #
+            # alpha.64 v3 (Jack 11:14 live-gate RED): the priv list contains
+            # MULTI-WORD tokens (BINLOG MONITOR / SLAVE MONITOR). This
+            # constant is documentation + ShellSpec strong-bind ONLY. DO NOT
+            # iterate via unquoted parameter expansion (`for x in
+            # ${CMPD_OPTIONAL_MONITOR_PRIVS}; do`) — POSIX `for` would split
+            # on IFS (whitespace) into 4 single-word tokens (BINLOG / MONITOR
+            # / SLAVE / MONITOR) and `GRANT BINLOG ON *.* ...` is invalid SQL,
+            # producing 1227 (insufficient priv: SLAVE MONITOR) on every
+            # `SHOW SLAVE STATUS` and breaking promote/demote. ALWAYS use the
+            # inline quoted list at callsites:
+            #   for privilege in "BINLOG MONITOR" "SLAVE MONITOR"; do ...; done
             CMPD_OPTIONAL_MONITOR_PRIVS="BINLOG MONITOR SLAVE MONITOR"
             # Fresh bootstrap keeps pod-0 as the deterministic first primary.
             # Give its roleProbe/Endpoint publish path a bounded window before a
@@ -638,11 +650,18 @@ spec:
               # remain — these are read-only monitoring privileges and do NOT
               # bypass @@global.read_only. Tier A (Jack 10:05): failure on a
               # MONITOR grant is allowed to log + continue (best-effort).
+              #
+              # alpha.64 v3 (Jack 11:14 live-gate RED): use inline QUOTED list
+              # to preserve multi-word priv name semantics. Unquoted
+              # `for privilege in ${CMPD_OPTIONAL_MONITOR_PRIVS}` would split
+              # the string on IFS into 4 single-word tokens (BINLOG / MONITOR
+              # / SLAVE / MONITOR) and emit invalid GRANT statements. See
+              # constant-declaration block above for full root cause.
               local user="$1"
               local host="$2"
               local label="$3"
               local privilege
-              for privilege in ${CMPD_OPTIONAL_MONITOR_PRIVS}; do
+              for privilege in "BINLOG MONITOR" "SLAVE MONITOR"; do
                 if "${LOCAL[@]}" -e "
                   SET SESSION sql_log_bin=0;
                   GRANT ${privilege} ON *.* TO '${user}'@'${host}';
@@ -785,7 +804,10 @@ spec:
               # Only CMPD_OPTIONAL_MONITOR_PRIVS (BINLOG MONITOR / SLAVE MONITOR)
               # remain — read-only monitoring privs that don't bypass read_only.
               # Tier A (Jack 10:05): MONITOR grant failure log + continue.
-              for privilege in ${CMPD_OPTIONAL_MONITOR_PRIVS}; do
+              #
+              # alpha.64 v3 (Jack 11:14 live-gate RED): inline QUOTED list to
+              # preserve multi-word priv name semantics; see constant block.
+              for privilege in "BINLOG MONITOR" "SLAVE MONITOR"; do
                 if "${LOCAL[@]}" -e "
                   SET SESSION sql_log_bin=0;
                   GRANT ${privilege} ON *.* TO '${user}'@'${host}';
