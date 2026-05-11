@@ -92,7 +92,7 @@ spec:
       volumeName: scripts
       defaultMode: 0555
   tls:
-    volumeName: tls 
+    volumeName: tls
     mountPath: /etc/pki/tls
     caFile: ca.pem
     certFile: cert.pem

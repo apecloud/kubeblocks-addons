@@ -76,6 +76,11 @@ spec:
       serviceVersion: {{ default $.Chart.AppVersion $.Values.appVersionOverride }}
       disableExporter: false
       replicas: {{ .replicas | default 2 }}
+      tls: {{ .tlsEnable }}
+      {{- if .tlsEnable }}
+      issuer:
+        name: KubeBlocks
+      {{- end }}
       {{- with .tolerations }}
       tolerations: {{ .| toYaml | nindent 8 }}
       {{- end }}
