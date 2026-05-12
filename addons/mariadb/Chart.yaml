@@ -169,7 +169,34 @@ type: application
 # this chart REQUIRES syncer v3+. (KB CmpD immutability rule still
 # applies; chart version bump is mandatory because cmpd-semisync.yaml
 # is being mutated.)
-version: 1.1.1-alpha.70
+#
+# alpha.71 v1 (Helen TL 20:31 autonomous decision after westonnnn
+# `b95d14f3` 20:31 "你们自己分析"; XP review ACK from Jack at
+# `8ae309e9` 20:35 with implementation skeleton + 8-class walk):
+# Bumped from 1.1.1-alpha.70 → 1.1.1-alpha.71 because the alpha.71
+# v1 fix mutates cmpd-semisync.yaml: the
+# `primary_local_root_write_ready` function body is wrapped with a
+# bounded retry loop (max_attempts=30 with sleep_seconds=1 between
+# attempts, total 30s budget). Root cause addressed: alpha.70 v1
+# 5.D-r3 N=1 RED revealed that syncer's
+# `dbManager.IsDBStartupReady()` returns false at chart bootstrap
+# T+15s (syncer's own *sql.DB has not yet connected to mariadbd),
+# causing `ERR_PRECHECK_FAILED: database is not ready`. The
+# chart bootstrap was one-shot - a single failure permanently
+# marked `sql-listener-primary-expose-failed`. Evidence: pod-0
+# /var/lib/mysql/log/sql-listener-fence.log was 116 bytes (one
+# error), HA loop continued spinning 8+ minutes but the chart
+# never re-invoked the function. alpha.71 v1 contract: rc-only
+# (syncerctl exit code is the only signal), stdout/stderr
+# (including ERR_PRECHECK_FAILED text and any 503/curl/JSON
+# errors) appended to sql-listener-fence.log for postmortem only,
+# marker files NOT touched by the retry function (remain caller-
+# managed in set_primary_read_write after all gates pass),
+# .prestop-fence-started checked each attempt so termination
+# interrupts the budget. Budget 30s well under
+# terminationGracePeriodSeconds=120. Same syncer v3 image (no
+# syncer source change; chart-only patch).
+version: 1.1.1-alpha.71
 
 # This is the version number of the MARIADB being deployed,
 # (mariadb engine version unchanged from alpha.64; this bump is
