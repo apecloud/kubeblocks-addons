@@ -120,6 +120,12 @@ Define redis ComponentSpec with ComponentDefinition.
     value: {{ .Values.maxLagOnSwitchover | quote }}
   {{- end }}
   serviceVersion: {{ .Values.version }}
+  {{- if eq .Values.mode "replication-syncer" }}
+  configs:
+  - name: redis-replication-config
+    configMap:
+      name: {{ include "kblib.clusterName" . }}-redis-redis-replication-config
+  {{- end }}
   {{- if and .Values.customSecretName .Values.customSecretNamespace }}
   systemAccounts:
     - name: default
