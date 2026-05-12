@@ -264,6 +264,9 @@ spec:
             }
             primary_local_root_write_ready() {
               # alpha.70 v1: replace shell SQL probe with syncerctl writecheck.
+              # alpha.71 v1: bounded retry around syncerctl writecheck so a
+              # syncer-internal startup race (dbManager not yet connected to
+              # mariadbd at chart bootstrap T+15s) self-recovers within budget.
               #
               # Before alpha.70, this function ran the kb_health_check INSERT
               # through ROOT_LOCAL (the cluster's user-facing root). ROOT_LOCAL
@@ -276,27 +279,68 @@ spec:
               # alpha.69 v1 5.D-r2 RED: every line of
               # /var/lib/mysql/log/sql-listener-fence.log was the same 1227.
               #
-              # The probe semantics live in the syncer engine's
-              # Manager.WriteCheck (engines/mariadb/manager.go): same INSERT/
-              # UPSERT into kubeblocks.kb_health_check, with CREATE-then-
-              # INSERT fallback on Error 1049/1146. The syncer holds its own
-              # DB connection (built from MARIADB_INTERNAL_ROOT credentials,
+              # alpha.70 v1 replaced the shell SQL probe with `syncerctl
+              # writecheck`, which delegates the probe to syncer engine's
+              # Manager.WriteCheck (operations/replica/writecheck.go calling
+              # engines/mariadb/manager.go). The syncer holds its own DB
+              # connection (built from MARIADB_INTERNAL_ROOT credentials,
               # which retain full bypass priv), so the probe succeeds without
-              # asking ROOT_LOCAL to do anything beyond its locked-down
-              # priv set. /tools/syncerctl is already installed by the
-              # init-syncer initContainer (see template line 92, also used by
+              # asking ROOT_LOCAL to do anything beyond its locked-down priv
+              # set. /tools/syncerctl is already installed by the init-syncer
+              # initContainer (see template line 92, also used by
               # syncerctl_pause and syncerctl_getrole below).
+              #
+              # alpha.70 v1 5.D-r3 N=1 RED surfaced the next-layer race: the
+              # chart bootstrap calls this function ~15s after mariadbd start,
+              # but syncer's engine `dbManager.IsDBStartupReady()` (called by
+              # the WriteCheck.PreCheck path) returns false until syncer's own
+              # *sql.DB has connected to mariadbd and completed its startup
+              # readiness ping. A single attempt fails with
+              # `ERR_PRECHECK_FAILED: database is not ready` and the chart
+              # marks `sql-listener-primary-expose-failed` permanently.
+              # Direct evidence: pod-0
+              # /var/lib/mysql/log/sql-listener-fence.log was 116 bytes (one
+              # error), HA loop continued spinning 8+ minutes but chart
+              # bootstrap never re-invoked the function.
+              #
+              # alpha.71 v1 fix: bounded retry, max_attempts attempts with
+              # sleep_seconds between each. rc-only contract - syncerctl exit
+              # code is the only control-flow signal; stdout/stderr (including
+              # ERR_PRECHECK_FAILED text and any 503 / curl / JSON errors)
+              # are appended to sql-listener-fence.log for postmortem only,
+              # never parsed. Marker files (.replication-ready /
+              # .sql-listener-ready / .primary-read-write-ready) are NOT
+              # touched here; they remain caller-managed in set_primary_read_
+              # write() after ALL gates pass. Each attempt checks
+              # .prestop-fence-started first so termination interrupts the
+              # retry budget immediately; total budget is
+              # max_attempts * sleep_seconds = 30s, well under
+              # terminationGracePeriodSeconds=120.
               local label="${1:-primary-local-root-write-ready}"
               if [ ! -x /tools/syncerctl ]; then
                 prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1 reason=syncerctl-not-available"
                 return 1
               fi
-              if /tools/syncerctl --host 127.0.0.1 --port 3601 writecheck \
-                >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
-                prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=0 via=syncerctl-writecheck"
-                return 0
-              fi
-              prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1 via=syncerctl-writecheck"
+              local max_attempts=30
+              local sleep_seconds=1
+              local attempt=1
+              while [ "${attempt}" -le "${max_attempts}" ]; do
+                if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+                  prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1 via=syncerctl-writecheck reason=prestop-fence-started attempt=${attempt}"
+                  return 1
+                fi
+                if /tools/syncerctl --host 127.0.0.1 --port 3601 writecheck \
+                  >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                  prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=0 via=syncerctl-writecheck attempt=${attempt}"
+                  return 0
+                fi
+                prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1 via=syncerctl-writecheck attempt=${attempt}/${max_attempts}"
+                if [ "${attempt}" -lt "${max_attempts}" ]; then
+                  sleep "${sleep_seconds}"
+                fi
+                attempt=$((attempt + 1))
+              done
+              prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1 via=syncerctl-writecheck reason=budget-exhausted attempts=${max_attempts}"
               return 1
             }
             primary_internal_root_write_ready() {
