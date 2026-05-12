@@ -56,6 +56,13 @@ Define redis component definition regular expression name prefix
 {{- end -}}
 
 {{/*
+Define redis syncer component definition regular expression name prefix
+*/}}
+{{- define "redisSyncer.cmpdRegexpPattern" -}}
+^redis-syncer-\d+
+{{- end -}}
+
+{{/*
 Define redis 7.X component definition regular expression name prefix
 */}}
 {{- define "redis7.cmpdRegexpPattern" -}}

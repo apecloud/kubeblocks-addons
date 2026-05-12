@@ -32,7 +32,7 @@ spec:
     - name: replication-syncer
       components:
         - name: redis
-          compDef: {{ include "redis.cmpdRegexpPattern" . }}
+          compDef: {{ include "redisSyncer.cmpdRegexpPattern" . }}
       orders:
         provision:
           - redis
@@ -43,7 +43,7 @@ spec:
     - name: replication-twemproxy
       components:
         - name: redis
-          compDef: {{ include "redis.cmpdRegexpPattern" . }}
+          compDef: {{ include "redisSyncer.cmpdRegexpPattern" . }}
         - name: redis-twemproxy
           compDef: {{ include "redisTwemproxy.cmpdRegexpPattern" . }}
       orders:

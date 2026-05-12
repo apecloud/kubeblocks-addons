@@ -11,6 +11,7 @@ spec:
   {{- range .Values.redisVersions }}
   - compDefs:
       - {{ .componentDef }}
+      - {{ .syncerComponentDef }}
     releases:
   {{- range .mirrorVersions }}
     - {{ .version }}
