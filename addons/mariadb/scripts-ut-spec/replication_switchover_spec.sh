@@ -884,6 +884,108 @@ EOF
       The status should be failure
       The stderr should include "Switchover failed: post-DCS local-root write fence verification cannot run without MARIADB_CLIENT_BIN"
     End
+
+    # alpha.75 v1 hard gate 1 — verifier body MUST NOT contain
+    # `SET SESSION sql_log_bin=0` (alpha.74 v1 N=1 RED root cause:
+    # this preamble required BINLOG ADMIN that post-demote root lacks).
+    It "alpha.75 v1: verifier body must not contain SET SESSION sql_log_bin=0 [product-blocker]"
+      source_file="${SHELLSPEC_CWD:?}/addons/mariadb/scripts/replication-switchover.sh"
+      When call awk '/^verify_post_dcs_local_root_write_fenced\(\)/{f=1;next} f && /^}/{f=0} f && !/^[[:space:]]*#/' "${source_file}"
+      The output should not include "SET SESSION sql_log_bin=0"
+    End
+
+    # alpha.75 v1 hard gate 2 — verifier body MUST NOT contain
+    # CREATE DATABASE or CREATE TABLE; those belong in bootstrap-time
+    # INTERNAL_LOCAL setup, not in the user-facing root verifier path.
+    It "alpha.75 v1: verifier body must not contain CREATE DATABASE [product-blocker]"
+      source_file="${SHELLSPEC_CWD:?}/addons/mariadb/scripts/replication-switchover.sh"
+      When call awk '/^verify_post_dcs_local_root_write_fenced\(\)/{f=1;next} f && /^}/{f=0} f && !/^[[:space:]]*#/' "${source_file}"
+      The output should not include "CREATE DATABASE"
+    End
+    It "alpha.75 v1: verifier body must not contain CREATE TABLE [product-blocker]"
+      source_file="${SHELLSPEC_CWD:?}/addons/mariadb/scripts/replication-switchover.sh"
+      When call awk '/^verify_post_dcs_local_root_write_fenced\(\)/{f=1;next} f && /^}/{f=0} f && !/^[[:space:]]*#/' "${source_file}"
+      The output should not include "CREATE TABLE"
+    End
+
+    # alpha.75 v1 hard gate 3 — verifier MUST fail closed with distinct
+    # sentinel when probe table is missing (Error 1146). bootstrap-time
+    # ensure_internal_local_admin must own the probe table create.
+    It "alpha.75 v1: fails closed with distinct sentinel on Error 1146 (probe table missing)"
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "ERROR 1146 (42S02) at line 1: Table 'kubeblocks.kb_post_dcs_fence_probe' doesn't exist" >&2
+exit 1
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call verify_post_dcs_local_root_write_fenced
+      The status should be failure
+      The stderr should include "probe table missing (Error 1146)"
+      The stderr should include "alpha.75 v1 contract"
+    End
+
+    # alpha.75 v1 hard gate 4 — verifier MUST FAIL on Error 1227
+    # (BINLOG ADMIN). The alpha.74 v1 RED root cause was 1227 being
+    # reported as failure (correct behaviour), but the verifier body
+    # was generating it. After alpha.75 v1 the verifier body MUST NOT
+    # require BINLOG ADMIN, so a 1227 from any source must NOT be
+    # mistaken for fence closed.
+    It "alpha.75 v1: fails closed with distinct regression-guard sentinel on Error 1227 (BINLOG ADMIN, alpha.74 v1 RED root cause)"
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "ERROR 1227 (42000) at line 2: Access denied; you need (at least one of) the BINLOG ADMIN privilege(s) for this operation" >&2
+exit 1
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call verify_post_dcs_local_root_write_fenced
+      The status should be failure
+      The stderr should include "implementation error"
+      The stderr should include "Error 1227 BINLOG ADMIN"
+      The stderr should include "alpha.75 v1 regression guard"
+    End
+
+    # alpha.75 v1 hard gate 5 — verifier MUST FAIL on Error 1044
+    # (access denied on the schema). Same class as 1227: the verifier
+    # body must NOT require DDL/database-level grants beyond INSERT.
+    It "alpha.75 v1: fails closed with distinct regression-guard sentinel on Error 1044 (access denied)"
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "ERROR 1044 (42000) at line 1: Access denied for user 'root'@'localhost' to database 'kubeblocks'" >&2
+exit 1
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call verify_post_dcs_local_root_write_fenced
+      The status should be failure
+      The stderr should include "Error 1044 access denied"
+      The stderr should include "alpha.75 v1 regression guard"
+    End
+  End
+
+  # alpha.75 v1 bootstrap probe table contract — ensure_internal_local_admin
+  # in cmpd-semisync.yaml MUST create kubeblocks.kb_post_dcs_fence_probe
+  # (alongside kubeblocks.kb_health_check) at bootstrap time via INTERNAL_LOCAL
+  # with sql_log_bin=0. This is the prerequisite for the verifier strip in
+  # alpha.75 v1 hard gate 1-2.
+  Describe "alpha.75 v1: ensure_internal_local_admin probe table bootstrap"
+    cmpd_path="${SHELLSPEC_CWD:?}/addons/mariadb/templates/cmpd-semisync.yaml"
+
+    It "cmpd-semisync.yaml ensure_internal_local_admin body contains CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe [product-blocker]"
+      When call grep -c 'CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe' "${cmpd_path}"
+      The output should equal "1"
+    End
+
+    It "Chart.yaml literal version is 1.1.1-alpha.75 (alpha.75 bump because alpha.74 v1 switchover idle-state N=1 RED revealed fence verifier preamble required BINLOG ADMIN which post-demote root lacks)"
+      chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
+      When call grep -c '^version: 1.1.1-alpha.75$' "${chart_yaml}"
+      The output should equal "1"
+    End
+
+    It "Chart.yaml does not retain prior alpha.74 version line (no stale literal)"
+      chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
+      When call grep -c '^version: 1.1.1-alpha.74$' "${chart_yaml}"
+      The status should be failure
+      The output should equal "0"
+    End
   End
 
   # alpha.60 (Jack 23:28 8-class review): post-DCS read_only=ON does not fence
@@ -2713,7 +2815,7 @@ EOF
       # chart version.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.1.1-alpha.74"
+      The output should equal "version: 1.1.1-alpha.75"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -2768,13 +2870,13 @@ EOF
     Before "setup_chart_alpha66_env"
 
     Context "chart bump for CmpD immutability (per alpha.65 lesson)"
-      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.74 by alpha.74 v1 [contract-no-regression]"
+      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.75 by alpha.75 v1 [contract-no-regression]"
         # alpha.66/.67/.68/.69/.70 all bumped further under the same CmpD
         # immutability rule. Literal kept in sync with latest chart
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.74"
+        The output should equal "version: 1.1.1-alpha.75"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -2940,13 +3042,13 @@ EOF
     Before "setup_chart_alpha67_env"
 
     Context "chart bump alpha.66 → alpha.67 → alpha.68 (CmpD immutability rule)"
-      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.74 by alpha.74 v1 [contract-no-regression]"
+      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.75 by alpha.75 v1 [contract-no-regression]"
         # alpha.67/.68/.69 all bumped further under the same CmpD
         # immutability rule. Literal kept in sync with latest chart
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.74"
+        The output should equal "version: 1.1.1-alpha.75"
       End
     End
 

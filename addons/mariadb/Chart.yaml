@@ -254,7 +254,82 @@ type: application
 # chart version bump mandatory. Same syncer v3 image. SEMISYNC
 # TOPOLOGY ONLY (alpha.72 v1 scope-cap carried forward; replication
 # topology user-path convergence still deferred).
-version: 1.1.1-alpha.74
+#
+# alpha.74 v1 (Helen TL autonomous under westonnnn 01:28 `df3c94b0`
+# 12h autopilot mandate + Jack XP review ACK `c5997164` 01:37):
+# Bumped from 1.1.1-alpha.73 → 1.1.1-alpha.74 because alpha.73 v1
+# N=1 verify on n1h was PARTIAL: chart/bootstrap subpath GREEN
+# (env-pair set, writecheck, role/marker, Master_User=kb_replicator,
+# GRANT REPLICATION SLAVE only), but semisync product-chain RED —
+# pod-1 Slave_SQL_Running=No, Last_SQL_Errno=1396 "Operation
+# CREATE USER failed for kb_replicator@%" on binlog replay; INSERT
+# sync failed (ERROR 1049 Unknown database). Root cause: mariadb
+# 11.4 docker-entrypoint.sh consumes `MARIADB_REPLICATION_USER` /
+# `MARIADB_REPLICATION_PASSWORD` env on initdb and runs
+# `CREATE USER kb_replicator@'%' IDENTIFIED BY <pwd>` WITHOUT
+# `IF NOT EXISTS` while `sql_log_bin=1` (default) → CREATE USER
+# DDL written to binlog → pod-1 replays this binlog statement and
+# collides with the kb_replicator user that pod-1's own entrypoint
+# already created in its own initdb → 1396 → SQL_Thread stops →
+# downstream INSERT sync impossible. Fix: rename the two chart-
+# defined env names so they no longer match the entrypoint's
+# reserved list: `MARIADB_REPLICATION_USER` →
+# `MARIADB_REPL_USER`; `MARIADB_REPLICATION_PASSWORD` →
+# `MARIADB_REPL_PASSWORD`. Direct entrypoint grep evidence:
+# `MARIADB_REPLICATION_USER` is in the entrypoint's consumed env
+# list; `MARIADB_REPL_USER` is NOT; `MYSQL_REPLICATION_USER`
+# (kept) is also NOT (so syncer Follow continues to read it).
+# Chart inline CHANGE MASTER + `replication-member-join.sh` MASTER_USER
+# updated to read `${MARIADB_REPL_USER:-kb_replicator}` and
+# `${MARIADB_REPL_USER:-${MARIADB_ROOT_USER}}` (chained fallback
+# preserves alpha.72 v1 scope-cap: semisync sets REPL_USER →
+# kb_replicator; replication topology has no REPL_USER → root,
+# unchanged from pre-alpha.72). Same KB CmpD immutability rule —
+# CmpD env block mutated (env names changed), chart version bump
+# mandatory. Same syncer v3 image (syncer reads MYSQL_*, untouched).
+# SEMISYNC TOPOLOGY ONLY (alpha.72/.73 scope-cap carried forward;
+# replication topology user-path convergence still deferred).
+#
+# alpha.75 v1 (Helen TL autonomous under westonnnn 01:28 `df3c94b0`
+# 12h autopilot mandate + Jack XP review A2 verdict `72254007`
+# `29e61432`): Bumped from 1.1.1-alpha.74 -> 1.1.1-alpha.75 because
+# alpha.74 v1 switchover idle-state N=1 verify on n1u was RED:
+# OpsRequest phase=Failed, kbagent action stderr "Switchover failed:
+# post-DCS local-root write fence verification got unexpected error
+# rc=1 out=SET SESSION sql_log_bin=0 ERROR 1227 (42000) at line 2:
+# Access denied; you need (at least one of) the BINLOG ADMIN
+# privilege(s) for this operation; Switchover failed: current primary
+# local write fence did not close after DCS switchover". Root cause:
+# inherited contract drift between alpha.61 v3 secondary fence
+# (REVOKE ALL + GRANT non-bypass minimum list, NO BINLOG ADMIN) and
+# the verifier `verify_post_dcs_local_root_write_fenced()` preamble.
+# The verifier body ran "SET SESSION sql_log_bin=0; CREATE DATABASE
+# IF NOT EXISTS; CREATE TABLE IF NOT EXISTS" BEFORE the actual root
+# INSERT, all as user-facing root. After demote, user-facing root
+# lost BINLOG ADMIN -> 1227 -> verifier failed on a privilege gap
+# rather than reaching the fence test. alpha.74 fresh-bootstrap N=3
+# GREEN did not exercise this path because no switchover ran.
+#
+# alpha.75 v1 fix (Jack XP A2 verdict refined to B' final):
+#   1. Strip the preamble in
+#      `scripts/replication-switchover.sh::verify_post_dcs_local_root_write_fenced()`:
+#      remove `SET SESSION sql_log_bin=0`, `CREATE DATABASE`, `CREATE
+#      TABLE`. Verifier body only runs the user-facing root INSERT.
+#   2. Move probe table create to bootstrap-time in
+#      cmpd-semisync.yaml::ensure_internal_local_admin (INTERNAL_LOCAL
+#      with sql_log_bin=0 wrapper, binlog-replay-safe). Adds:
+#      `CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe`.
+#   3. Acceptance contract narrows: rc=0 FAIL; rc=1 with 1146/1227/
+#      1044 FAIL with distinct stderr sentinel (regression guards);
+#      rc=1 with 1290/read-only PASS only.
+# Same CmpD immutability rule applies (cmpd-semisync.yaml mutated,
+# `replication-switchover.sh` versioned CM contents mutated); chart
+# version bump mandatory. Same syncer v3 image (no syncer change).
+# SEMISYNC TOPOLOGY ONLY (alpha.72/.73/.74 scope-cap carried forward).
+# alpha.61 fence safety model preserved: user-facing root still NOT
+# granted BINLOG ADMIN; the fix is in the verifier contract, not in
+# the user-facing root privileges.
+version: 1.1.1-alpha.75
 
 # This is the version number of the MARIADB being deployed,
 # (mariadb engine version unchanged from alpha.64; this bump is
