@@ -1,11 +1,10 @@
 #!/bin/bash
 
-write_component_tls_env_to_file() {
-    if [[ $KB_ENABLE_TLS_BETWEEN_COMPONENTS != "true" ]]; then
-        return
+set_component_tls_variables() {
+    pdAddr="http://127.0.0.1:2379"
+    extraArg=""
+    if [[ $KB_ENABLE_TLS_BETWEEN_COMPONENTS == "true" ]]; then
+        pdAddr="https://127.0.0.1:2379"
+        extraArg+="--cacert /etc/pki/cluster-tls/ca.pem --cert /etc/pki/cluster-tls/cert.pem --key /etc/pki/cluster-tls/key.pem"
     fi
-    mkdir -p /etc/pki/cluster-tls/
-    echo "$KB_TLS_BETWEEN_COMPONENTS_CA" > /etc/pki/cluster-tls/ca.pem
-    echo "$KB_TLS_BETWEEN_COMPONENTS_CERT" > /etc/pki/cluster-tls/cert.pem
-    echo "$KB_TLS_BETWEEN_COMPONENTS_KEY" > /etc/pki/cluster-tls/key.pem
 }

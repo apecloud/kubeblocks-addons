@@ -82,10 +82,6 @@ ${__SOURCED__:+false} : || return 0
 
 set -exo pipefail
 
-# shellcheck disable=SC1091
-. /scripts/common.sh
-
-# write_component_tls_env_to_file
 set_scheme
 
 cat /etc/pd/pd.toml

@@ -7,10 +7,17 @@ if [[ $KB_SWITCHOVER_ROLE != "leader" ]]; then
     exit 0
 fi
 
+# shellcheck source=common.sh
+. /scripts/common.sh
+
+set_component_tls_variables
+
 if [[ -n $KB_SWITCHOVER_CANDIDATE_NAME ]]; then
-    result=$(/pd-ctl member leader transfer "$KB_SWITCHOVER_CANDIDATE_NAME")
+    # shellcheck disable=SC2086
+    result=$(/pd-ctl -u $pdAddr $extraArg member leader transfer "$KB_SWITCHOVER_CANDIDATE_NAME")
 else
-    result=$(/pd-ctl member leader resign)
+    # shellcheck disable=SC2086
+    result=$(/pd-ctl -u $pdAddr $extraArg member leader resign)
 fi
 
 if [[ $result != "Success!" ]]; then
