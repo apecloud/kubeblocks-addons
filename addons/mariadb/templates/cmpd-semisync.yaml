@@ -263,21 +263,40 @@ spec:
               fi
             }
             primary_local_root_write_ready() {
+              # alpha.70 v1: replace shell SQL probe with syncerctl writecheck.
+              #
+              # Before alpha.70, this function ran the kb_health_check INSERT
+              # through ROOT_LOCAL (the cluster's user-facing root). ROOT_LOCAL
+              # is intentionally locked to the read-replication-admin-only-no-
+              # bypass priv set (no BINLOG ADMIN). The probe started its first
+              # statement with `SET SESSION sql_log_bin=0;` which requires
+              # BINLOG ADMIN -> always failed with ERROR 1227 (42000), causing
+              # the chart watchdog to never write `.sql-listener-ready` and
+              # roleProbe to stay in `initializing` indefinitely. Evidence in
+              # alpha.69 v1 5.D-r2 RED: every line of
+              # /var/lib/mysql/log/sql-listener-fence.log was the same 1227.
+              #
+              # The probe semantics live in the syncer engine's
+              # Manager.WriteCheck (engines/mariadb/manager.go): same INSERT/
+              # UPSERT into kubeblocks.kb_health_check, with CREATE-then-
+              # INSERT fallback on Error 1049/1146. The syncer holds its own
+              # DB connection (built from MARIADB_INTERNAL_ROOT credentials,
+              # which retain full bypass priv), so the probe succeeds without
+              # asking ROOT_LOCAL to do anything beyond its locked-down
+              # priv set. /tools/syncerctl is already installed by the
+              # init-syncer initContainer (see template line 92, also used by
+              # syncerctl_pause and syncerctl_getrole below).
               local label="${1:-primary-local-root-write-ready}"
-              if "${ROOT_LOCAL[@]}" -e "
-                SET SESSION sql_log_bin=0;
-                CREATE DATABASE IF NOT EXISTS kubeblocks;
-                CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
-                INSERT INTO kubeblocks.kb_health_check(type, check_ts)
-                  VALUES (0, UNIX_TIMESTAMP())
-                  ON DUPLICATE KEY UPDATE check_ts=VALUES(check_ts);
-                DELETE FROM kubeblocks.kb_health_check WHERE type=0;
-                SET SESSION sql_log_bin=1;
-              " >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
-                prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=0"
+              if [ ! -x /tools/syncerctl ]; then
+                prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1 reason=syncerctl-not-available"
+                return 1
+              fi
+              if /tools/syncerctl --host 127.0.0.1 --port 3601 writecheck \
+                >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=0 via=syncerctl-writecheck"
                 return 0
               fi
-              prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1"
+              prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1 via=syncerctl-writecheck"
               return 1
             }
             primary_internal_root_write_ready() {
