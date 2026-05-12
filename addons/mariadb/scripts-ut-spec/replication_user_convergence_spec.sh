@@ -61,16 +61,23 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
       The status should be success
     End
 
-    It "cmpd-replication.yaml declares MYSQL_REPLICATION_USER=kb_replicator"
+    # alpha.72 v1 (Jack HOLD `c74a3b44` 22:46 Option 1 scope-cap): cmpd-
+    # replication.yaml is intentionally NOT extended in alpha.72 v1. Read
+    # paths in replication-member-join.sh use a chained fallback
+    # `${MARIADB_REPLICATION_USER:-${MARIADB_ROOT_USER}}` so replication
+    # topology preserves pre-alpha.72 behavior (root). alpha.72 v1 scope is
+    # SEMISYNC TOPOLOGY ONLY; replication topology kb_replicator
+    # convergence deferred to alpha.73+.
+    It "cmpd-replication.yaml is intentionally NOT extended with MYSQL_REPLICATION_USER (alpha.72 v1 scope = semisync only)"
       When call grep -c 'name: MYSQL_REPLICATION_USER' "${CMPD_REPLICATION}"
-      The output should eq "1"
-      The status should be success
+      The output should eq "0"
+      The status should be failure
     End
 
-    It "cmpd-replication.yaml declares MARIADB_REPLICATION_USER=kb_replicator"
+    It "cmpd-replication.yaml is intentionally NOT extended with MARIADB_REPLICATION_USER (alpha.72 v1 scope = semisync only)"
       When call grep -c 'name: MARIADB_REPLICATION_USER' "${CMPD_REPLICATION}"
-      The output should eq "1"
-      The status should be success
+      The output should eq "0"
+      The status should be failure
     End
   End
 
@@ -81,8 +88,8 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
       The status should be failure
     End
 
-    It "replication-member-join.sh uses MARIADB_REPLICATION_USER fallback to kb_replicator"
-      When call grep -c "MASTER_USER='\${MARIADB_REPLICATION_USER:-kb_replicator}'" "${MEMBER_JOIN}"
+    It "replication-member-join.sh uses chained fallback MARIADB_REPLICATION_USER -> MARIADB_ROOT_USER (semisync uses kb_replicator env, replication topology falls through to root)"
+      When call grep -c "MASTER_USER='\${MARIADB_REPLICATION_USER:-\${MARIADB_ROOT_USER}}'" "${MEMBER_JOIN}"
       The output should be present
       The status should be success
     End
@@ -99,14 +106,15 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
       The status should be success
     End
 
-    It "cmpd-replication.yaml inline CHANGE MASTER does not use MARIADB_ROOT_USER as MASTER_USER"
+    # alpha.72 v1 Option 1 scope-cap: cmpd-replication.yaml inline
+    # CHANGE MASTER intentionally keeps MARIADB_ROOT_USER (root) since
+    # alpha.72 v1 doesn't extend replication topology bootstrap with
+    # kb_replicator write site. Replication-member-join.sh (shared by
+    # both topologies) uses chained fallback so semisync pods (env set)
+    # use kb_replicator and replication pods (env not set) fall through
+    # to MARIADB_ROOT_USER.
+    It "cmpd-replication.yaml inline CHANGE MASTER keeps MARIADB_ROOT_USER as MASTER_USER (alpha.72 v1 scope cap)"
       When call grep -c "MASTER_USER='\${MARIADB_ROOT_USER}'" "${CMPD_REPLICATION}"
-      The output should eq "0"
-      The status should be failure
-    End
-
-    It "cmpd-replication.yaml inline CHANGE MASTER uses MARIADB_REPLICATION_USER fallback to kb_replicator"
-      When call grep -c "MASTER_USER='\${MARIADB_REPLICATION_USER:-kb_replicator}'" "${CMPD_REPLICATION}"
       The output should be present
       The status should be success
     End
