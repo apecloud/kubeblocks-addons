@@ -2316,7 +2316,7 @@ EOF
         # comment-only lines.
         When run sh -c '
           awk "
-            /MARIADB_INTERNAL_ROOT_USER/ { internal_window = NR + 30; next }
+            /MARIADB_INTERNAL_ROOT_USER/ { internal_window = NR + 50; next }
             /^[[:space:]]*#/ { next }
             /^[[:space:]]*\\*/ { next }
             NR > internal_window { in_internal = 0 }
@@ -2703,7 +2703,7 @@ EOF
     }
     Before "setup_chart_alpha65_env"
 
-    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.70 [contract-no-regression]"
+    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.72 [contract-no-regression]"
       # alpha.65 v1 originally locked chart at alpha.65; alpha.66/.67/.68/.69/.70
       # ships bumped further (alpha.66 syncer HA executor; alpha.67 @%
       # write-site zero-priv; alpha.68 @% cross-member health grant
@@ -2713,7 +2713,7 @@ EOF
       # chart version.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.1.1-alpha.70"
+      The output should equal "version: 1.1.1-alpha.72"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -2768,13 +2768,13 @@ EOF
     Before "setup_chart_alpha66_env"
 
     Context "chart bump for CmpD immutability (per alpha.65 lesson)"
-      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.70 by alpha.70 v1 [contract-no-regression]"
+      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.72 by alpha.72 v1 [contract-no-regression]"
         # alpha.66/.67/.68/.69/.70 all bumped further under the same CmpD
         # immutability rule. Literal kept in sync with latest chart
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.70"
+        The output should equal "version: 1.1.1-alpha.72"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -2857,7 +2857,7 @@ EOF
         The output should not include "@'%' ACCOUNT LOCK"
       End
 
-      It "alpha.66 v1: SUPERSEDED by alpha.69 v1 — @'%' grant allowlist now includes 4 grants (REPLICATION CLIENT + REPLICATION MASTER ADMIN + SELECT/INSERT/UPDATE on kubeblocks.kb_health_check + SELECT on mysql.user); forbidden classes still hard-banned (no admin bypass)"
+      It "alpha.66 v1: SUPERSEDED by alpha.69 v1 (+alpha.72 v1) — @'%' grant allowlist now includes 5 grants (REPLICATION CLIENT + REPLICATION MASTER ADMIN + SELECT/INSERT/UPDATE on kubeblocks.kb_health_check + SELECT on mysql.user for kb_internal_root@%; REPLICATION SLAVE on *.* for kb_replicator@%); forbidden classes still hard-banned (no admin bypass)"
         # alpha.66 v1 originally asserted zero GRANT @'%'; alpha.68 v2
         # explicitly grants 3 cross-member health privs; alpha.69 v1 adds
         # a 4th narrow grant (SELECT ON mysql.user) to satisfy syncer's
@@ -2874,7 +2874,8 @@ EOF
               if (line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+CLIENT[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
                   line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+MASTER[[:space:]]+ADMIN[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
                   line !~ /GRANT[[:space:]]+SELECT,[[:space:]]+INSERT,[[:space:]]+UPDATE[[:space:]]+ON[[:space:]]+kubeblocks\\.kb_health_check/ &&
-                  line !~ /GRANT[[:space:]]+SELECT[[:space:]]+ON[[:space:]]+mysql\\.user/) {
+                  line !~ /GRANT[[:space:]]+SELECT[[:space:]]+ON[[:space:]]+mysql\\.user/ &&
+                  line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+SLAVE[[:space:]]+ON[[:space:]]+\\*\\.\\*/) {
                 print NR\": grant to @ percent outside allowlist: \"\$0
               }
             }
@@ -2939,13 +2940,13 @@ EOF
     Before "setup_chart_alpha67_env"
 
     Context "chart bump alpha.66 → alpha.67 → alpha.68 (CmpD immutability rule)"
-      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.70 by alpha.70 v1 [contract-no-regression]"
+      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.72 by alpha.72 v1 [contract-no-regression]"
         # alpha.67/.68/.69 all bumped further under the same CmpD
         # immutability rule. Literal kept in sync with latest chart
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.70"
+        The output should equal "version: 1.1.1-alpha.72"
       End
     End
 

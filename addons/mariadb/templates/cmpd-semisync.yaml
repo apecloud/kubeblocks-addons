@@ -741,10 +741,23 @@ spec:
               # alpha.69 v1 is bounded short-term unblock, NOT a final
               # design.
               local label="${1:-internal-local-admin}"
-              local user password sql
+              local user password sql replication_user
               mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
               user="$(sql_quote "${MARIADB_INTERNAL_ROOT_USER}")"
               password="$(sql_quote "${MARIADB_ROOT_PASSWORD}")"
+              # alpha.72 v1 (Jack XP review HOLD blocker #2/#8 — `5a7c68e5`):
+              # use shell var for replication user so env / SQL / member-join
+              # / inline CHANGE MASTER 全部 reference the same value (no env
+              # absent → empty MASTER_USER risk). Default to "kb_replicator"
+              # if MARIADB_REPLICATION_USER env missing.
+              replication_user="$(sql_quote "${MARIADB_REPLICATION_USER:-kb_replicator}")"
+              # alpha.72 v1 wording per Jack #3: MariaDB DDL/GRANT statements
+              # are NOT atomic; if a single statement fails mid-block the
+              # already-applied statements remain. The SET sql_log_bin=0
+              # bracketing only prevents binlog propagation. We rely on
+              # idempotent convergence (CREATE IF NOT EXISTS + ALTER UNLOCK +
+              # REVOKE ALL + GRANT specific) so subsequent retries can finish
+              # any partial state.
               sql="
                 SET SESSION sql_log_bin=0;
                 CREATE USER IF NOT EXISTS '${user}'@'localhost' IDENTIFIED BY '${password}';
@@ -764,6 +777,11 @@ spec:
                 GRANT REPLICATION MASTER ADMIN ON *.* TO '${user}'@'%';
                 GRANT SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check TO '${user}'@'%';
                 GRANT SELECT ON mysql.user TO '${user}'@'%';
+                CREATE USER IF NOT EXISTS '${replication_user}'@'%' IDENTIFIED BY '${password}';
+                ALTER USER '${replication_user}'@'%' IDENTIFIED BY '${password}';
+                ALTER USER '${replication_user}'@'%' ACCOUNT UNLOCK;
+                REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${replication_user}'@'%';
+                GRANT REPLICATION SLAVE ON *.* TO '${replication_user}'@'%';
                 FLUSH PRIVILEGES;
                 SET SESSION sql_log_bin=1;
               "
@@ -1542,7 +1560,7 @@ spec:
                   STOP SLAVE;
                   CHANGE MASTER TO
                     MASTER_HOST='${PRIMARY_HOST}',
-                    MASTER_USER='${MARIADB_ROOT_USER}',
+                    MASTER_USER='${MARIADB_REPLICATION_USER:-kb_replicator}',
                     MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
                     MASTER_USE_GTID=slave_pos,
                     MASTER_CONNECT_RETRY=10;
@@ -1570,7 +1588,7 @@ spec:
                   STOP SLAVE;
                   CHANGE MASTER TO
                     MASTER_HOST='${PRIMARY_HOST}',
-                    MASTER_USER='${MARIADB_ROOT_USER}',
+                    MASTER_USER='${MARIADB_REPLICATION_USER:-kb_replicator}',
                     MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
                     MASTER_USE_GTID=slave_pos,
                     MASTER_CONNECT_RETRY=10;
@@ -1809,7 +1827,7 @@ spec:
                     STOP SLAVE;
                     CHANGE MASTER TO
                       MASTER_HOST='${PRIMARY_HOST}',
-                      MASTER_USER='${MARIADB_ROOT_USER}',
+                      MASTER_USER='${MARIADB_REPLICATION_USER:-kb_replicator}',
                       MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
                       MASTER_USE_GTID=slave_pos,
                       MASTER_CONNECT_RETRY=10;
@@ -1839,7 +1857,7 @@ spec:
                     STOP SLAVE;
                     CHANGE MASTER TO
                       MASTER_HOST='${PRIMARY_HOST}',
-                      MASTER_USER='${MARIADB_ROOT_USER}',
+                      MASTER_USER='${MARIADB_REPLICATION_USER:-kb_replicator}',
                       MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
                       MASTER_USE_GTID=slave_pos,
                       MASTER_CONNECT_RETRY=10;
@@ -2115,6 +2133,33 @@ spec:
             value: "kb_internal_root"
           - name: MYSQL_ADMIN_PASSWORD
             value: "$(MARIADB_ROOT_PASSWORD)"
+          # alpha.72 v1 (Helen TL 22:14 autonomous decision after westonnnn
+          # 21:56 `8390cc8a` full TL autonomy + Jack XP review request
+          # `89591496`): explicitly set `MYSQL_REPLICATION_USER=kb_replicator`
+          # to override syncer's fallback to `MYSQL_ADMIN_USER`. Without this
+          # env, syncer's engines/mariadb/config.go:80 falls back to
+          # getAdminUserName() (= MYSQL_ADMIN_USER = kb_internal_root), and
+          # engines/mariadb/manager.go:794 calls `CHANGE MASTER TO
+          # master_user=kb_internal_root`. But `kb_internal_root@'%'` is the
+          # admin role with only REPLICATION CLIENT + REPLICATION MASTER ADMIN
+          # (no REPLICATION SLAVE — alpha.69 v1 narrowed the grants), so the
+          # secondary's REGISTER_SLAVE fails with Errno 1597 / Errno 1045
+          # access denied. Evidence in alpha.71 v1 N=1 RED:
+          # pod-1 SHOW SLAVE STATUS Master_User=kb_internal_root +
+          # Last_IO_Error=COM_REGISTER_SLAVE failed Access denied for user
+          # 'kb_internal_root'@'%' (Errno: 1045). alpha.72 v1 fixes this by
+          # (a) setting MYSQL_REPLICATION_USER to a dedicated `kb_replicator`
+          # user, (b) creating that user with `REPLICATION SLAVE ON *.*` priv
+          # in ensure_internal_local_admin (same SQL transaction as
+          # kb_internal_root), and (c) chart member-join script reading
+          # MARIADB_REPLICATION_USER for its CHANGE MASTER TO. All three
+          # paths (syncer Follow + chart bootstrap + chart member-join)
+          # converge on kb_replicator. kb_internal_root remains admin-role
+          # only, not leaking REPLICATION SLAVE priv to remote.
+          - name: MYSQL_REPLICATION_USER
+            value: "kb_replicator"
+          - name: MARIADB_REPLICATION_USER
+            value: "kb_replicator"
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mariadb
           - name: CLUSTER_DOMAIN
