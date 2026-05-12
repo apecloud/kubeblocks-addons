@@ -3,13 +3,6 @@
 # reference: tidb-operator's start script
 # https://github.com/pingcap/tidb-operator/blob/master/pkg/manager/member/startscript/v2/pd_start_script.go
 
-set_scheme() {
-    scheme="http"
-    if [[ $KB_ENABLE_TLS_BETWEEN_COMPONENTS == "true" ]]; then
-        scheme="https"
-    fi
-}
-
 set_join_args() {
     # The /join detection is from tidb-operator's script.
     # Normally when a pod restarts, pd reads cluster info from its persistent storage,
@@ -89,7 +82,6 @@ set -exo pipefail
 # shellcheck source=common.sh
 . /scripts/common.sh
 
-set_scheme
 set_component_tls_variables
 
 cat /etc/pd/pd.toml
