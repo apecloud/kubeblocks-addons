@@ -95,14 +95,15 @@
       "properties": {
         "type": {
           "title": "Service Type",
-          "description": "Client Service Configuration, used for client access, NodePort and LoadBalancer is recommended; otherwise will will only create headless ClusterIP",
+          "description": "Client Service Configuration, used for client access. ClusterIP provides the local endpoint by default; use NodePort or LoadBalancer for external access.",
           "type": [
             "null",
             "string"
           ],
-          "default": null,
+          "default": "ClusterIP",
           "enum": [
             null,
+            "ClusterIP",
             "NodePort",
             "LoadBalancer"
           ]
