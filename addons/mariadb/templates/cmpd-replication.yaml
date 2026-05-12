@@ -853,7 +853,7 @@ spec:
                     STOP SLAVE;
                     CHANGE MASTER TO
                       MASTER_HOST='${ACTIVE_PRIMARY_HOST}',
-                      MASTER_USER='${MARIADB_ROOT_USER}',
+                      MASTER_USER='${MARIADB_REPLICATION_USER:-kb_replicator}',
                       MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
                       MASTER_USE_GTID=slave_pos;
                     START SLAVE IO_THREAD;
@@ -876,7 +876,7 @@ spec:
                     STOP SLAVE;
                     CHANGE MASTER TO
                       MASTER_HOST='${ACTIVE_PRIMARY_HOST}',
-                      MASTER_USER='${MARIADB_ROOT_USER}',
+                      MASTER_USER='${MARIADB_REPLICATION_USER:-kb_replicator}',
                       MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
                       MASTER_USE_GTID=slave_pos;
                     START SLAVE;
@@ -951,6 +951,23 @@ spec:
             value: "$(MARIADB_ROOT_USER)"
           - name: KB_SERVICE_PASSWORD
             value: "$(MARIADB_ROOT_PASSWORD)"
+          # alpha.72 v1 (Helen TL autonomous, Jack XP review): converge the
+          # syncer Follow CHANGE MASTER user, the chart member-join CHANGE
+          # MASTER user, and the chart bootstrap user-creation path to one
+          # dedicated `kb_replicator@'%'` user (granted REPLICATION SLAVE
+          # only, no admin bypass). Without MYSQL_REPLICATION_USER env,
+          # syncer engines/mariadb/config.go:80 falls back to
+          # MYSQL_ADMIN_USER (or root if neither set), and member-join
+          # script defaulted to MARIADB_ROOT_USER — causing Errno 1597
+          # COM_REGISTER_SLAVE failures observed in alpha.71 v1 N=1 RED
+          # under the semisync topology. The replication CmpD shares the
+          # replication-member-join.sh script with semisync (both use
+          # /scripts/replication-member-join.sh) so the same convergence
+          # is applied here.
+          - name: MYSQL_REPLICATION_USER
+            value: "kb_replicator"
+          - name: MARIADB_REPLICATION_USER
+            value: "kb_replicator"
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mariadb
           - name: CLUSTER_DOMAIN
