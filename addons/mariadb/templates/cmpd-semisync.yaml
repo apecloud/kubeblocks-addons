@@ -749,8 +749,8 @@ spec:
               # use shell var for replication user so env / SQL / member-join
               # / inline CHANGE MASTER 全部 reference the same value (no env
               # absent → empty MASTER_USER risk). Default to "kb_replicator"
-              # if MARIADB_REPLICATION_USER env missing.
-              replication_user="$(sql_quote "${MARIADB_REPLICATION_USER:-kb_replicator}")"
+              # if MARIADB_REPL_USER env missing.
+              replication_user="$(sql_quote "${MARIADB_REPL_USER:-kb_replicator}")"
               # alpha.72 v1 wording per Jack #3: MariaDB DDL/GRANT statements
               # are NOT atomic; if a single statement fails mid-block the
               # already-applied statements remain. The SET sql_log_bin=0
@@ -1560,7 +1560,7 @@ spec:
                   STOP SLAVE;
                   CHANGE MASTER TO
                     MASTER_HOST='${PRIMARY_HOST}',
-                    MASTER_USER='${MARIADB_REPLICATION_USER:-kb_replicator}',
+                    MASTER_USER='${MARIADB_REPL_USER:-kb_replicator}',
                     MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
                     MASTER_USE_GTID=slave_pos,
                     MASTER_CONNECT_RETRY=10;
@@ -1588,7 +1588,7 @@ spec:
                   STOP SLAVE;
                   CHANGE MASTER TO
                     MASTER_HOST='${PRIMARY_HOST}',
-                    MASTER_USER='${MARIADB_REPLICATION_USER:-kb_replicator}',
+                    MASTER_USER='${MARIADB_REPL_USER:-kb_replicator}',
                     MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
                     MASTER_USE_GTID=slave_pos,
                     MASTER_CONNECT_RETRY=10;
@@ -1827,7 +1827,7 @@ spec:
                     STOP SLAVE;
                     CHANGE MASTER TO
                       MASTER_HOST='${PRIMARY_HOST}',
-                      MASTER_USER='${MARIADB_REPLICATION_USER:-kb_replicator}',
+                      MASTER_USER='${MARIADB_REPL_USER:-kb_replicator}',
                       MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
                       MASTER_USE_GTID=slave_pos,
                       MASTER_CONNECT_RETRY=10;
@@ -1857,7 +1857,7 @@ spec:
                     STOP SLAVE;
                     CHANGE MASTER TO
                       MASTER_HOST='${PRIMARY_HOST}',
-                      MASTER_USER='${MARIADB_REPLICATION_USER:-kb_replicator}',
+                      MASTER_USER='${MARIADB_REPL_USER:-kb_replicator}',
                       MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
                       MASTER_USE_GTID=slave_pos,
                       MASTER_CONNECT_RETRY=10;
@@ -2166,26 +2166,38 @@ spec:
           # alpha.73+).
           - name: MYSQL_REPLICATION_USER
             value: "kb_replicator"
-          - name: MARIADB_REPLICATION_USER
+          # alpha.74 v1 (Helen TL autopilot mode westonnnn `df3c94b0` 01:28
+          # 12h-autonomous: TL self-determines + Jack XP review parallel
+          # non-blocking; root cause for alpha.73 v1 N=1 partial first-blocker
+          # = SQL replay 1396 on kb_replicator CREATE USER): mariadb 11.4
+          # image entrypoint /usr/local/bin/docker-entrypoint.sh examines
+          # MARIADB_REPLICATION_USER env at initdb time. If set, it runs
+          # `CREATE USER 'kb_replicator'@'%' IDENTIFIED BY ...; GRANT
+          # REPLICATION SLAVE ON *.* TO 'kb_replicator'@'%';` WITHOUT
+          # IF NOT EXISTS, WITHOUT SET SESSION sql_log_bin=0 wrapper. The
+          # CREATE USER is binlogged on pod-0; pod-1 also runs entrypoint
+          # initdb which creates kb_replicator@'%' locally; then pod-1
+          # START SLAVE replays pod-0 binlog CREATE USER -> 1396
+          # "Operation CREATE USER failed for 'kb_replicator'@'%'" because
+          # the entrypoint statement lacks IF NOT EXISTS clause.
+          #
+          # alpha.74 v1 fix: STOP setting MARIADB_REPLICATION_USER env
+          # entirely (so mariadb entrypoint doesn't trigger that CREATE/
+          # GRANT path), AND introduce a renamed `MARIADB_REPL_USER` shell
+          # variable for chart scripts (replication-member-join.sh + inline
+          # CHANGE MASTER TO) so the chart still has a well-known token to
+          # reference kb_replicator. syncer Go binary keeps reading
+          # MYSQL_REPLICATION_USER (engines/mariadb/config.go:80) — this
+          # env name is NOT consumed by mariadb image entrypoint, so syncer
+          # path stays converged to kb_replicator with no entrypoint side-
+          # effect. Chart's ensure_internal_local_admin still creates
+          # kb_replicator@'%' via INTERNAL_LOCAL with SET SESSION
+          # sql_log_bin=0 prefix, so chart's CREATE USER is NOT binlogged.
+          # Both pods bootstrap kb_replicator locally (idempotent) and no
+          # binlog event needs to replay through START SLAVE.
+          - name: MARIADB_REPL_USER
             value: "kb_replicator"
-          # alpha.73 v1 (Helen TL 22:14 + Jack XP review HOLD + alpha.72 v1
-          # N=1 verify RED root cause `8d41b29e` 23:26): mariadb 11.4
-          # Docker entrypoint has a USER+PASSWORD env-pair contract: when
-          # MARIADB_REPLICATION_USER is set, MARIADB_REPLICATION_PASSWORD
-          # (or _HASH) MUST also be set, otherwise the entrypoint fail-fast
-          # with `[ERROR] [Entrypoint]: MARIADB_REPLICATION_PASSWORD or
-          # MARIADB_REPLICATION_PASSWORD_HASH not found to create
-          # replication user for master` and exit code 1. Evidence:
-          # alpha.72 v1 n1g pod-0 mariadb container previous log line
-          # "== DB ERR == 2026-05-12 15:23:00 [ERROR] [Entrypoint]:
-          # MARIADB_REPLICATION_PASSWORD ... not found", CrashLoopBackOff
-          # exit code 1, container started 15:22:57 exited 15:23:00 (~3s).
-          # alpha.73 v1 supplies the matching _PASSWORD envs. Both kb_
-          # replicator and kb_internal_root share MARIADB_ROOT_PASSWORD
-          # (same secret pattern as MYSQL_ADMIN_PASSWORD above), and the
-          # chart bootstrap also creates kb_replicator@'%' IDENTIFIED BY
-          # ${MARIADB_ROOT_PASSWORD} so the values agree end-to-end.
-          - name: MARIADB_REPLICATION_PASSWORD
+          - name: MARIADB_REPL_PASSWORD
             value: "$(MARIADB_ROOT_PASSWORD)"
           - name: MYSQL_REPLICATION_PASSWORD
             value: "$(MARIADB_ROOT_PASSWORD)"

@@ -50,14 +50,14 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
   MEMBER_JOIN="${ADDON_ROOT}/scripts/replication-member-join.sh"
 
   Describe "Gate 1: Chart.yaml literal version"
-    It "is exactly 1.1.1-alpha.72 (alpha.73 bump because alpha.72 v1 N=1 RED revealed env-pair contract miss; CmpD mutated env block)"
-      When call grep -c '^version: 1.1.1-alpha.73$' "${CHART_YAML}"
+    It "is exactly 1.1.1-alpha.74 (alpha.74 bump because alpha.73 v1 N=1 partial revealed SQL replay 1396 from MARIADB_REPLICATION_USER triggering mariadb entrypoint CREATE USER; env renamed to MARIADB_REPL_USER to avoid the side-effect)"
+      When call grep -c '^version: 1.1.1-alpha.74$' "${CHART_YAML}"
       The output should eq "1"
       The status should be success
     End
 
-    It "does not retain prior alpha.72 version line (no stale literal)"
-      When call grep -c '^version: 1.1.1-alpha.72$' "${CHART_YAML}"
+    It "does not retain prior alpha.73 version line (no stale literal)"
+      When call grep -c '^version: 1.1.1-alpha.73$' "${CHART_YAML}"
       The output should eq "0"
       The status should be failure
     End
@@ -70,10 +70,16 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
       The status should be success
     End
 
-    It "cmpd-semisync.yaml declares MARIADB_REPLICATION_USER=kb_replicator (chart shell reads)"
-      When call grep -c 'name: MARIADB_REPLICATION_USER' "${CMPD_SEMISYNC}"
+    It "cmpd-semisync.yaml declares MARIADB_REPL_USER=kb_replicator (chart shell reads; renamed from MARIADB_REPLICATION_USER to avoid triggering mariadb image entrypoint CREATE USER binlog side-effect)"
+      When call grep -c 'name: MARIADB_REPL_USER' "${CMPD_SEMISYNC}"
       The output should eq "1"
       The status should be success
+    End
+
+    It "cmpd-semisync.yaml does NOT declare MARIADB_REPLICATION_USER env (alpha.74 v1: this env triggers mariadb 11.4 image entrypoint to run CREATE USER kb_replicator at initdb time without IF NOT EXISTS, causing SQL replay 1396 on secondary START SLAVE per alpha.73 v1 N=1 partial RED root cause)"
+      When call grep -c 'name: MARIADB_REPLICATION_USER' "${CMPD_SEMISYNC}"
+      The output should eq "0"
+      The status should be failure
     End
 
     # alpha.72 v1 (Jack HOLD `c74a3b44` 22:46 Option 1 scope-cap): cmpd-
@@ -103,8 +109,8 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
       The status should be failure
     End
 
-    It "replication-member-join.sh uses chained fallback MARIADB_REPLICATION_USER -> MARIADB_ROOT_USER (semisync uses kb_replicator env, replication topology falls through to root)"
-      When call grep -c "MASTER_USER='\${MARIADB_REPLICATION_USER:-\${MARIADB_ROOT_USER}}'" "${MEMBER_JOIN}"
+    It "replication-member-join.sh uses MARIADB_REPL_USER fallback to kb_replicator (renamed env per alpha.74 v1)"
+      When call grep -c "MASTER_USER='\${MARIADB_REPL_USER:-kb_replicator}'" "${MEMBER_JOIN}"
       The output should be present
       The status should be success
     End
@@ -115,8 +121,8 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
       The status should be failure
     End
 
-    It "cmpd-semisync.yaml inline CHANGE MASTER uses MARIADB_REPLICATION_USER fallback to kb_replicator"
-      When call grep -c "MASTER_USER='\${MARIADB_REPLICATION_USER:-kb_replicator}'" "${CMPD_SEMISYNC}"
+    It "cmpd-semisync.yaml inline CHANGE MASTER uses MARIADB_REPL_USER fallback to kb_replicator (renamed env per alpha.74 v1)"
+      When call grep -c "MASTER_USER='\${MARIADB_REPL_USER:-kb_replicator}'" "${CMPD_SEMISYNC}"
       The output should be present
       The status should be success
     End
@@ -172,8 +178,8 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
       The status should be failure
     End
 
-    It "uses shell var (replication_user) sourced from MARIADB_REPLICATION_USER fallback to kb_replicator"
-      When call grep -c 'replication_user="\$(sql_quote "\${MARIADB_REPLICATION_USER:-kb_replicator}")"' "${CMPD_SEMISYNC}"
+    It "uses shell var (replication_user) sourced from MARIADB_REPL_USER fallback to kb_replicator"
+      When call grep -c 'replication_user="\$(sql_quote "\${MARIADB_REPL_USER:-kb_replicator}")"' "${CMPD_SEMISYNC}"
       The output should eq "1"
       The status should be success
     End
@@ -186,10 +192,16 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
     # MARIADB_REPLICATION_PASSWORD or MARIADB_REPLICATION_PASSWORD_HASH
     # not found to create replication user for master". alpha.73 v1
     # supplies the matching _PASSWORD envs referencing $(MARIADB_ROOT_PASSWORD).
-    It "cmpd-semisync.yaml declares MARIADB_REPLICATION_PASSWORD (mariadb entrypoint USER+PASSWORD pair)"
-      When call grep -c 'name: MARIADB_REPLICATION_PASSWORD' "${CMPD_SEMISYNC}"
+    It "cmpd-semisync.yaml declares MARIADB_REPL_PASSWORD (renamed from MARIADB_REPLICATION_PASSWORD; mariadb entrypoint no longer reads it so initdb does NOT auto-create kb_replicator)"
+      When call grep -c 'name: MARIADB_REPL_PASSWORD' "${CMPD_SEMISYNC}"
       The output should eq "1"
       The status should be success
+    End
+
+    It "cmpd-semisync.yaml does NOT declare MARIADB_REPLICATION_PASSWORD env (alpha.74 v1: paired removal so mariadb entrypoint USER/PASSWORD contract is not triggered at all)"
+      When call grep -c 'name: MARIADB_REPLICATION_PASSWORD' "${CMPD_SEMISYNC}"
+      The output should eq "0"
+      The status should be failure
     End
 
     It "cmpd-semisync.yaml MARIADB_REPLICATION_PASSWORD value references MARIADB_ROOT_PASSWORD via env expansion"
