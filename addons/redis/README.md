@@ -1299,7 +1299,7 @@ metadata:
 spec:
   terminationPolicy: Delete
   clusterDef: redis
-  topology: replication-twemproxy  # set topology to standalone
+  topology: replication-twemproxy  # redis HA is managed by syncer; no redis-sentinel component
   componentSpecs:
   - name: redis
     replicas: 2
@@ -1319,23 +1319,6 @@ spec:
           resources:
             requests:
               storage: 20Gi
-  - name: redis-sentinel
-    replicas: 3
-    resources:
-      limits:
-        cpu: "0.2"
-        memory:  "0.2Gi"
-      requests:
-        cpu: "0.2"
-        memory:  "0.2Gi"
-    volumeClaimTemplates:
-      - name: data
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 20Gi
   - name: redis-twemproxy       # add one componet on provisioniing: twemproxy
     replicas: 3
     resources:
@@ -1345,6 +1328,7 @@ spec:
       requests:
         cpu: "0.2"
         memory: "0.2Gi"
+
 ```
 
 ```bash
