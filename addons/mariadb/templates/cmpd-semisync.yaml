@@ -2150,12 +2150,20 @@ spec:
           # 'kb_internal_root'@'%' (Errno: 1045). alpha.72 v1 fixes this by
           # (a) setting MYSQL_REPLICATION_USER to a dedicated `kb_replicator`
           # user, (b) creating that user with `REPLICATION SLAVE ON *.*` priv
-          # in ensure_internal_local_admin (same SQL transaction as
-          # kb_internal_root), and (c) chart member-join script reading
+          # in ensure_internal_local_admin within the same SQL block as
+          # kb_internal_root — NOT an atomic transaction; MariaDB DDL/GRANT
+          # statements are not transactional, so the bootstrap relies on
+          # idempotent convergence (CREATE IF NOT EXISTS + ALTER UNLOCK +
+          # REVOKE ALL + GRANT REPLICATION SLAVE) so retries can complete
+          # any partial state — and (c) chart member-join script reading
           # MARIADB_REPLICATION_USER for its CHANGE MASTER TO. All three
-          # paths (syncer Follow + chart bootstrap + chart member-join)
-          # converge on kb_replicator. kb_internal_root remains admin-role
-          # only, not leaking REPLICATION SLAVE priv to remote.
+          # semisync call sites (syncer Follow + chart inline
+          # configure_replication_from_primary_service_once + chart
+          # member-join) converge on kb_replicator. kb_internal_root remains
+          # admin-role only, not leaking REPLICATION SLAVE priv to remote.
+          # Replication topology stays on pre-alpha.72 root path (alpha.72
+          # v1 scope-cap to semisync; replication kb_replicator deferred to
+          # alpha.73+).
           - name: MYSQL_REPLICATION_USER
             value: "kb_replicator"
           - name: MARIADB_REPLICATION_USER
