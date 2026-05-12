@@ -383,6 +383,7 @@ spec:
           - -c
           - /scripts/redis-account-provision.sh
     switchover:
+      timeoutSeconds: 900
       exec:
         container: redis
         command:
