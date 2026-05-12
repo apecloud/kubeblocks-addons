@@ -254,7 +254,7 @@ type: application
 # chart version bump mandatory. Same syncer v3 image. SEMISYNC
 # TOPOLOGY ONLY (alpha.72 v1 scope-cap carried forward; replication
 # topology user-path convergence still deferred).
-version: 1.1.1-alpha.73
+version: 1.1.1-alpha.74
 
 # This is the version number of the MARIADB being deployed,
 # (mariadb engine version unchanged from alpha.64; this bump is
