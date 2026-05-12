@@ -50,14 +50,14 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
   MEMBER_JOIN="${ADDON_ROOT}/scripts/replication-member-join.sh"
 
   Describe "Gate 1: Chart.yaml literal version"
-    It "is exactly 1.1.1-alpha.72 (chart bump because CmpD spec mutates per KB immutability rule)"
-      When call grep -c '^version: 1.1.1-alpha.72$' "${CHART_YAML}"
+    It "is exactly 1.1.1-alpha.72 (alpha.73 bump because alpha.72 v1 N=1 RED revealed env-pair contract miss; CmpD mutated env block)"
+      When call grep -c '^version: 1.1.1-alpha.73$' "${CHART_YAML}"
       The output should eq "1"
       The status should be success
     End
 
-    It "does not retain prior alpha.71 version line (no stale literal)"
-      When call grep -c '^version: 1.1.1-alpha.71$' "${CHART_YAML}"
+    It "does not retain prior alpha.72 version line (no stale literal)"
+      When call grep -c '^version: 1.1.1-alpha.72$' "${CHART_YAML}"
       The output should eq "0"
       The status should be failure
     End
@@ -176,6 +176,44 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
       When call grep -c 'replication_user="\$(sql_quote "\${MARIADB_REPLICATION_USER:-kb_replicator}")"' "${CMPD_SEMISYNC}"
       The output should eq "1"
       The status should be success
+    End
+  End
+
+  Describe "Gate 5: env-pair USER+PASSWORD contract (alpha.73 v1 fix - mariadb 11.4 entrypoint contract)"
+    # alpha.72 v1 N=1 RED root cause: mariadb 11.4 Docker entrypoint
+    # requires *_REPLICATION_PASSWORD env when *_REPLICATION_USER is set.
+    # Container fails fast with "[ERROR] [Entrypoint]:
+    # MARIADB_REPLICATION_PASSWORD or MARIADB_REPLICATION_PASSWORD_HASH
+    # not found to create replication user for master". alpha.73 v1
+    # supplies the matching _PASSWORD envs referencing $(MARIADB_ROOT_PASSWORD).
+    It "cmpd-semisync.yaml declares MARIADB_REPLICATION_PASSWORD (mariadb entrypoint USER+PASSWORD pair)"
+      When call grep -c 'name: MARIADB_REPLICATION_PASSWORD' "${CMPD_SEMISYNC}"
+      The output should eq "1"
+      The status should be success
+    End
+
+    It "cmpd-semisync.yaml MARIADB_REPLICATION_PASSWORD value references MARIADB_ROOT_PASSWORD via env expansion"
+      When call grep -c '            value: "$(MARIADB_ROOT_PASSWORD)"' "${CMPD_SEMISYNC}"
+      The output should be present
+      The status should be success
+    End
+
+    It "cmpd-semisync.yaml declares MYSQL_REPLICATION_PASSWORD (syncer Go binary USER+PASSWORD pair)"
+      When call grep -c 'name: MYSQL_REPLICATION_PASSWORD' "${CMPD_SEMISYNC}"
+      The output should eq "1"
+      The status should be success
+    End
+
+    It "cmpd-replication.yaml is intentionally NOT extended with MARIADB_REPLICATION_PASSWORD (alpha.72/.73 v1 scope cap)"
+      When call grep -c 'name: MARIADB_REPLICATION_PASSWORD' "${CMPD_REPLICATION}"
+      The output should eq "0"
+      The status should be failure
+    End
+
+    It "cmpd-replication.yaml is intentionally NOT extended with MYSQL_REPLICATION_PASSWORD (alpha.72/.73 v1 scope cap)"
+      When call grep -c 'name: MYSQL_REPLICATION_PASSWORD' "${CMPD_REPLICATION}"
+      The output should eq "0"
+      The status should be failure
     End
   End
 End

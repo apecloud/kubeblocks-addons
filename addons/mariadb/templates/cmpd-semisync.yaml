@@ -2168,6 +2168,27 @@ spec:
             value: "kb_replicator"
           - name: MARIADB_REPLICATION_USER
             value: "kb_replicator"
+          # alpha.73 v1 (Helen TL 22:14 + Jack XP review HOLD + alpha.72 v1
+          # N=1 verify RED root cause `8d41b29e` 23:26): mariadb 11.4
+          # Docker entrypoint has a USER+PASSWORD env-pair contract: when
+          # MARIADB_REPLICATION_USER is set, MARIADB_REPLICATION_PASSWORD
+          # (or _HASH) MUST also be set, otherwise the entrypoint fail-fast
+          # with `[ERROR] [Entrypoint]: MARIADB_REPLICATION_PASSWORD or
+          # MARIADB_REPLICATION_PASSWORD_HASH not found to create
+          # replication user for master` and exit code 1. Evidence:
+          # alpha.72 v1 n1g pod-0 mariadb container previous log line
+          # "== DB ERR == 2026-05-12 15:23:00 [ERROR] [Entrypoint]:
+          # MARIADB_REPLICATION_PASSWORD ... not found", CrashLoopBackOff
+          # exit code 1, container started 15:22:57 exited 15:23:00 (~3s).
+          # alpha.73 v1 supplies the matching _PASSWORD envs. Both kb_
+          # replicator and kb_internal_root share MARIADB_ROOT_PASSWORD
+          # (same secret pattern as MYSQL_ADMIN_PASSWORD above), and the
+          # chart bootstrap also creates kb_replicator@'%' IDENTIFIED BY
+          # ${MARIADB_ROOT_PASSWORD} so the values agree end-to-end.
+          - name: MARIADB_REPLICATION_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          - name: MYSQL_REPLICATION_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mariadb
           - name: CLUSTER_DOMAIN

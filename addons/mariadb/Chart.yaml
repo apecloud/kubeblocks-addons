@@ -234,7 +234,27 @@ type: application
 # unchanged (no env, inline CHANGE MASTER keeps MARIADB_ROOT_USER)
 # — replication topology pods preserve pre-alpha.72 behavior.
 # Same syncer v3 image (no syncer source change; chart-only patch).
-version: 1.1.1-alpha.72
+#
+# alpha.73 v1 (Helen TL autonomous + Jack XP review task #21 22:28
+# `9274c29e`): Bumped from 1.1.1-alpha.72 → 1.1.1-alpha.73 because
+# alpha.72 v1 N=1 verify RED revealed mariadb 11.4 Docker entrypoint
+# requires MARIADB_REPLICATION_PASSWORD env when MARIADB_REPLICATION_USER
+# env is set. Direct evidence: alpha.72 v1 n1g pod-0 mariadb container
+# previous log line "== DB ERR == [ERROR] [Entrypoint]:
+# MARIADB_REPLICATION_PASSWORD or MARIADB_REPLICATION_PASSWORD_HASH
+# not found to create replication user for master"; container started
+# 15:22:57 exited 15:23:00 (~3s) with exit code 1; CrashLoopBackOff
+# 6 restarts. alpha.73 v1 supplies the matching env: MARIADB_REPLICATION_
+# PASSWORD (mariadb entrypoint contract) + MYSQL_REPLICATION_PASSWORD
+# (syncer Go binary fallback path consistency). Both reference
+# $(MARIADB_ROOT_PASSWORD) — kb_replicator shares the root password
+# secret because the chart bootstrap ensure_internal_local_admin
+# creates kb_replicator@'%' IDENTIFIED BY ${MARIADB_ROOT_PASSWORD}.
+# Same KB CmpD immutability rule applies — CmpD mutated (env block),
+# chart version bump mandatory. Same syncer v3 image. SEMISYNC
+# TOPOLOGY ONLY (alpha.72 v1 scope-cap carried forward; replication
+# topology user-path convergence still deferred).
+version: 1.1.1-alpha.73
 
 # This is the version number of the MARIADB being deployed,
 # (mariadb engine version unchanged from alpha.64; this bump is
