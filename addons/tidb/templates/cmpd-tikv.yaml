@@ -79,6 +79,7 @@ spec:
   lifecycleActions:
     memberLeave:
       exec:
+        container: tikv
         command: ["/scripts/tikv_member_leave.sh"]
   exporter:
     containerName: tikv

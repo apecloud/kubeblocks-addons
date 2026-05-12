@@ -41,7 +41,9 @@ set_join_args() {
             join=""
 
             for replica in $replicas; do
-                join="${join}$scheme://$replica:2380,"
+                # join address should be client url, otherwise join will fail when cluster tls is enabled
+                # https://github.com/tikv/pd/issues/1682
+                join="${join}$scheme://$replica:2379,"
             done
 
             join=${join%,}
