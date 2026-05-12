@@ -43,7 +43,7 @@ redisVersions:
       - version: "6.2.17"
         imageTag: "6.2.6-v18"
       - version: "6.2.18"
-        imageTag: "6.2.6-v19"
+        imageTag: "6.2.6-v20"
   - major: "7"
     componentDef: "redis-7"
     serviceVersion: "7.2.11"
@@ -115,7 +115,7 @@ image:
     reshardTag: 2.0.26-alpha.14
   syncer:
     repository: apecloud/syncer
-    tag: redis-fake-sentinel-409608d-ha1
+    tag: redis-fake-sentinel-task81-bootstrap1
 
 ceImage:
   registry:

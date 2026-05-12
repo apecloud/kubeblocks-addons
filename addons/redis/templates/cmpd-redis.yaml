@@ -99,7 +99,31 @@ spec:
       namespace: {{ $.Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
-  {{- include "kblib.syncer.policyRules" $ | nindent 2 }}
+  policyRules:
+    - apiGroups:
+        - ""
+      resources:
+        - configmaps
+      verbs:
+        - create
+        - get
+        - list
+        - patch
+        - update
+        - delete
+    - apiGroups:
+        - ""
+      resources:
+        - events
+      verbs:
+        - create
+    - apiGroups:
+        - apps.kubeblocks.io
+      resources:
+        - clusters
+        - components
+      verbs:
+        - get
   systemAccounts:
     - name: default
       initAccount: true
@@ -331,7 +355,7 @@ spec:
   lifecycleActions:
     roleProbe:
       periodSeconds: 1
-      timeoutSeconds: 1
+      timeoutSeconds: 5
       exec:
         env:
           - name: CURRENT_POD_NAME
@@ -339,6 +363,11 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          - name: CURRENT_POD_UID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.uid
           - name: KB_HOST_IP
             valueFrom:
               fieldRef:
@@ -352,9 +381,7 @@ spec:
             value: "$(SERVICE_PORT)"
         container: redis
         command:
-          - /tools/dbctl
-          - redis
-          - getrole
+          - /scripts/redis-role-probe.sh
     postProvision:
       exec:
         container: redis
@@ -371,6 +398,11 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          - name: CURRENT_POD_UID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.uid
           - name: CURRENT_POD_IP
             valueFrom:
               fieldRef:
@@ -390,6 +422,7 @@ spec:
           - -c
           - /scripts/redis-account-provision.sh
     switchover:
+      timeoutSeconds: 900
       exec:
         container: redis
         command:
@@ -457,6 +490,46 @@ spec:
         env:
           - name: PATH
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: KB_CLUSTER_NAME
+            value: "$(CLUSTER_NAME)"
+          - name: KB_COMP_NAME
+            value: redis
+          - name: KB_CLUSTER_COMP_NAME
+            value: "$(REDIS_COMPONENT_NAME)"
+          - name: KB_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: KB_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: KB_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: COMPONENT_NAME
+            value: redis
+          - name: CLUSTER_COMPONENT_NAME
+            value: "$(REDIS_COMPONENT_NAME)"
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
           - name: KB_SERVICE_CHARACTER_TYPE
             value: redis
           - name: KB_ENGINE_TYPE
@@ -476,6 +549,11 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          - name: CURRENT_POD_UID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.uid
           - name: CURRENT_POD_IP
             valueFrom:
               fieldRef:

@@ -29,25 +29,31 @@ spec:
         update:
           - redis-sentinel
           - redis
+    - name: replication-syncer
+      components:
+        - name: redis
+          compDef: {{ include "redis.cmpdRegexpPattern" . }}
+      orders:
+        provision:
+          - redis
+        terminate:
+          - redis
+        update:
+          - redis
     - name: replication-twemproxy
       components:
         - name: redis
           compDef: {{ include "redis.cmpdRegexpPattern" . }}
-        - name: redis-sentinel
-          compDef: {{ include "redisSentinel.cmpdRegexpPattern" . }}
         - name: redis-twemproxy
           compDef: {{ include "redisTwemproxy.cmpdRegexpPattern" . }}
       orders:
         provision:
-          - redis-sentinel
           - redis
           - redis-twemproxy
         terminate:
           - redis-twemproxy
-          - redis-sentinel
           - redis
         update:
-          - redis-sentinel
           - redis-twemproxy
           - redis
     - name: cluster
