@@ -1,31 +1,46 @@
 # shellcheck shell=sh
 # alpha.72 v1 (Helen TL 22:14 autonomous decision + Jack XP review HOLD
-# `5a7c68e5` 22:26 + ShellSpec hard-gate `d6103db1` 22:28).
+# `5a7c68e5` 22:26 + ShellSpec hard-gate `d6103db1` 22:28; Jack Option 1
+# scope-cap HOLD `c74a3b44` 22:46).
 #
-# 4 minimum static gates protecting the replication-user-path convergence
-# introduced in alpha.72 v1:
+# alpha.72 v1 SCOPE = SEMISYNC TOPOLOGY ONLY. cmpd-replication.yaml is
+# intentionally NOT extended (replication topology kb_replicator
+# convergence + bootstrap write-site deferred to alpha.73+).
+#
+# Static gates protecting the semisync replication-user-path
+# convergence introduced in alpha.72 v1:
 #   1. Chart.yaml literal alpha.72.
-#   2. Both cmpd-semisync.yaml and cmpd-replication.yaml carry the env
-#      MYSQL_REPLICATION_USER=kb_replicator + MARIADB_REPLICATION_USER=
-#      kb_replicator.
-#   3. No CHANGE MASTER TO call site uses MARIADB_ROOT_USER as MASTER_USER;
-#      all three call sites (replication-member-join.sh + cmpd-semisync.yaml
-#      inline + cmpd-replication.yaml inline) reference
-#      ${MARIADB_REPLICATION_USER:-kb_replicator}.
-#   4. ensure_internal_local_admin (cmpd-semisync.yaml) creates the
-#      kb_replicator@'%' user with the idempotent convergence chain:
+#   2a. cmpd-semisync.yaml carries env MYSQL_REPLICATION_USER=
+#       kb_replicator + MARIADB_REPLICATION_USER=kb_replicator.
+#   2b. cmpd-replication.yaml is intentionally NOT extended with these
+#       env (alpha.72 v1 scope cap).
+#   3a. cmpd-semisync.yaml inline CHANGE MASTER uses
+#       ${MARIADB_REPLICATION_USER:-kb_replicator}.
+#   3b. cmpd-replication.yaml inline CHANGE MASTER keeps
+#       ${MARIADB_ROOT_USER} (pre-alpha.72 behavior preserved).
+#   3c. replication-member-join.sh (shared by both topologies) uses
+#       chained fallback ${MARIADB_REPLICATION_USER:-${MARIADB_ROOT_USER}}:
+#       semisync pods (env set) use kb_replicator; replication pods
+#       (env not set) fall through to MARIADB_ROOT_USER (root).
+#   4. ensure_internal_local_admin (cmpd-semisync.yaml only) creates the
+#      kb_replicator@'%' user with the idempotent convergence chain
+#      in the same SQL block as kb_internal_root (NOT an atomic
+#      transaction — MariaDB DDL/GRANT statements are not
+#      transactional per Jack #3; rely on idempotent convergence):
 #      CREATE USER IF NOT EXISTS + ALTER UNLOCK + REVOKE ALL + GRANT
 #      REPLICATION SLAVE ON *.* (no admin bypass, no broad grants).
 #
-# Root cause being defended against (alpha.71 v1 N=1 RED):
-# pod-1 secondary COM_REGISTER_SLAVE failed Errno 1597 / Access denied
-# (Errno 1045) for `kb_internal_root@'%'`. syncer Follow fell back to
-# MYSQL_ADMIN_USER (=kb_internal_root) because MYSQL_REPLICATION_USER
-# env was not set, and kb_internal_root@'%' had REPLICATION CLIENT +
-# REPLICATION MASTER ADMIN but NO REPLICATION SLAVE. Three call sites
-# were diverging on MASTER_USER. alpha.72 v1 converges all three sites
-# to kb_replicator and creates the user in bootstrap with REPLICATION
-# SLAVE only.
+# Root cause being defended against (alpha.71 v1 N=1 RED, semisync
+# topology): pod-1 secondary COM_REGISTER_SLAVE failed Errno 1597 /
+# Access denied (Errno 1045) for `kb_internal_root@'%'`. syncer Follow
+# fell back to MYSQL_ADMIN_USER (=kb_internal_root) because
+# MYSQL_REPLICATION_USER env was not set, and kb_internal_root@'%' had
+# REPLICATION CLIENT + REPLICATION MASTER ADMIN but NO REPLICATION
+# SLAVE. Three semisync call sites were diverging on MASTER_USER.
+# alpha.72 v1 converges all three SEMISYNC call sites to kb_replicator
+# and creates the user in bootstrap with REPLICATION SLAVE only.
+# Replication topology stays on the pre-alpha.72 root path until
+# alpha.73+.
 
 Describe "alpha.72 v1 replication user path convergence (static gates)"
   ADDON_ROOT="${SHELLSPEC_CWD:?}/addons/mariadb"

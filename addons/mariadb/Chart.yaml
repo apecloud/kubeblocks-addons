@@ -199,33 +199,41 @@ type: application
 #
 # alpha.72 v1 (Helen TL 22:14 autonomous decision after westonnnn
 # 21:56 `8390cc8a` full TL autonomy; Jack XP review HOLD
-# `5a7c68e5` 22:26 + ShellSpec hard-gate `d6103db1` 22:28):
-# Bumped from 1.1.1-alpha.71 → 1.1.1-alpha.72 because alpha.72 v1
-# mutates cmpd-semisync.yaml AND cmpd-replication.yaml (and the
-# versioned mariadb-replication-scripts ConfigMap), converging
-# the replication user path across three previously divergent
-# call sites. Root cause addressed: alpha.71 v1 N=1 RED revealed
-# pod-1 COM_REGISTER_SLAVE failed Errno 1597 / Access denied
-# (Errno 1045) for `kb_internal_root@'%'`. syncer
+# `5a7c68e5` 22:26 + ShellSpec hard-gate `d6103db1` 22:28; Jack
+# Option 1 scope-cap HOLD `c74a3b44` 22:46): Bumped from
+# 1.1.1-alpha.71 → 1.1.1-alpha.72 because alpha.72 v1 mutates
+# cmpd-semisync.yaml only (alpha.72 v1 SCOPE = SEMISYNC TOPOLOGY
+# ONLY per Jack Option 1 scope-cap). Replication topology
+# kb_replicator convergence + cmpd-replication.yaml bootstrap
+# write-site extension deferred to alpha.73+ as an independent
+# patch gate. Root cause addressed for semisync topology:
+# alpha.71 v1 N=1 RED revealed pod-1 COM_REGISTER_SLAVE failed
+# Errno 1597 / Access denied (Errno 1045) for
+# `kb_internal_root@'%'`. syncer
 # `engines/mariadb/config.go:80` falls back to MYSQL_ADMIN_USER
 # (=`kb_internal_root`) when MYSQL_REPLICATION_USER env is absent,
 # and `kb_internal_root@'%'` had REPLICATION CLIENT +
 # REPLICATION MASTER ADMIN but no REPLICATION SLAVE (alpha.69 v1
-# narrowed grants). Three call sites diverged: syncer Follow
-# used `kb_internal_root`, chart
-# `configure_replication_from_primary_service_once` used root,
-# `replication-member-join.sh` used root. master.info ended up
-# pointing at root but syncer Follow kept overwriting with
-# kb_internal_root → 1597 every cycle. alpha.72 v1 converges
-# all three to `MYSQL_REPLICATION_USER` /
-# `MARIADB_REPLICATION_USER` = `kb_replicator` (with
-# `:-kb_replicator` shell fallback per Jack #8). A new
-# `kb_replicator@'%'` user is created in
-# `ensure_internal_local_admin` alongside `kb_internal_root`,
-# idempotent convergence (CREATE IF NOT EXISTS + ALTER UNLOCK +
-# REVOKE ALL + GRANT REPLICATION SLAVE, NOT an atomic transaction
-# per Jack #3). Same syncer v3 image (no syncer source change;
-# chart-only patch).
+# narrowed grants). For the SEMISYNC topology, three previously
+# divergent call sites are converged to
+# `MYSQL_REPLICATION_USER` / `MARIADB_REPLICATION_USER` =
+# `kb_replicator`: (1) syncer Follow CHANGE MASTER (reads
+# MYSQL_REPLICATION_USER env), (2) chart inline
+# configure_replication_from_primary_service_once CHANGE MASTER
+# (reads `${MARIADB_REPLICATION_USER:-kb_replicator}`), (3)
+# replication-member-join.sh CHANGE MASTER (reads chained fallback
+# `${MARIADB_REPLICATION_USER:-${MARIADB_ROOT_USER}}` so the
+# shared script works for replication topology unchanged when env
+# is not set). A new `kb_replicator@'%'` user is created in
+# semisync's `ensure_internal_local_admin` alongside
+# `kb_internal_root`, in the same SQL block (NOT an atomic
+# transaction — MariaDB DDL/GRANT statements are not
+# transactional per Jack #3; rely on idempotent convergence with
+# CREATE IF NOT EXISTS + ALTER UNLOCK + REVOKE ALL + GRANT
+# REPLICATION SLAVE). cmpd-replication.yaml is intentionally
+# unchanged (no env, inline CHANGE MASTER keeps MARIADB_ROOT_USER)
+# — replication topology pods preserve pre-alpha.72 behavior.
+# Same syncer v3 image (no syncer source change; chart-only patch).
 version: 1.1.1-alpha.72
 
 # This is the version number of the MARIADB being deployed,
