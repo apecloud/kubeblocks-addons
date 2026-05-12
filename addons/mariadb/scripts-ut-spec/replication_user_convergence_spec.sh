@@ -41,6 +41,35 @@
 # and creates the user in bootstrap with REPLICATION SLAVE only.
 # Replication topology stays on the pre-alpha.72 root path until
 # alpha.73+.
+#
+# alpha.74 v1 carry-forward (Helen TL autonomous under westonnnn 01:28
+# `df3c94b0` 12h autopilot mandate + Jack XP review ACK `c5997164`
+# 01:37): alpha.73 v1 N=1 verify on n1h was PARTIAL — chart/bootstrap
+# subpath GREEN but semisync product-chain RED (pod-1
+# Slave_SQL_Running=No, Last_SQL_Errno=1396 "Operation CREATE USER
+# failed for kb_replicator@%"; INSERT sync ERROR 1049). Root cause:
+# mariadb 11.4 docker-entrypoint.sh consumes `MARIADB_REPLICATION_USER`
+# / `MARIADB_REPLICATION_PASSWORD` env on initdb and runs CREATE USER
+# WITHOUT `IF NOT EXISTS` while `sql_log_bin=1` → CREATE USER DDL
+# written to binlog → pod-1 binlog replay collides with its own
+# entrypoint-created kb_replicator → 1396 → SQL_Thread stops →
+# INSERT sync impossible.
+#
+# alpha.74 v1 fix = rename the chart-defined env names so they no
+# longer match the mariadb entrypoint's reserved env list:
+#   MARIADB_REPLICATION_USER     -> MARIADB_REPL_USER
+#   MARIADB_REPLICATION_PASSWORD -> MARIADB_REPL_PASSWORD
+# Direct entrypoint grep evidence: `MARIADB_REPLICATION_USER` IS in
+# the entrypoint's consumed env list; `MARIADB_REPL_USER` is NOT;
+# `MYSQL_REPLICATION_USER` (kept) is NOT (syncer Follow continues to
+# read it). Chart inline CHANGE MASTER reads
+# `${MARIADB_REPL_USER:-kb_replicator}`; replication-member-join.sh
+# reads `${MARIADB_REPL_USER:-${MARIADB_ROOT_USER}}` (chained fallback
+# preserves alpha.72 v1 scope-cap: semisync sets REPL_USER →
+# kb_replicator; replication topology has no REPL_USER → root,
+# unchanged from pre-alpha.72). Static gates below are updated to
+# assert the renamed env names; `MARIADB_REPLICATION_USER` literal is
+# explicitly negative-grepped to prevent regression.
 
 Describe "alpha.72 v1 replication user path convergence (static gates)"
   ADDON_ROOT="${SHELLSPEC_CWD:?}/addons/mariadb"
@@ -50,8 +79,8 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
   MEMBER_JOIN="${ADDON_ROOT}/scripts/replication-member-join.sh"
 
   Describe "Gate 1: Chart.yaml literal version"
-    It "is exactly 1.1.1-alpha.74 (alpha.74 bump because alpha.73 v1 N=1 partial revealed SQL replay 1396 from MARIADB_REPLICATION_USER triggering mariadb entrypoint CREATE USER; env renamed to MARIADB_REPL_USER to avoid the side-effect)"
-      When call grep -c '^version: 1.1.1-alpha.74$' "${CHART_YAML}"
+    It "is exactly 1.1.1-alpha.75 (alpha.75 bump because alpha.74 v1 switchover idle-state N=1 RED revealed post-DCS local-root write fence verifier preamble required BINLOG ADMIN which post-demote root lacks; verifier preamble stripped + probe table moved to bootstrap)"
+      When call grep -c '^version: 1.1.1-alpha.75$' "${CHART_YAML}"
       The output should eq "1"
       The status should be success
     End

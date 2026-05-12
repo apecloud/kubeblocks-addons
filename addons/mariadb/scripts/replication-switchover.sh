@@ -1220,6 +1220,32 @@ verify_post_dcs_local_root_write_fenced() {
   # closes the "non-empty contract field unenforced at write site" hole that
   # the alpha.58 contract had: alpha.58 only set the marker without ever
   # observing a denied write.
+  #
+  # alpha.75 v1 verifier contract fix (Helen TL + Jack XP review):
+  # alpha.74 v1 switchover idle-state N=1 RED revealed an inherited contract
+  # drift between alpha.61 v3 secondary fence (REVOKE ALL + GRANT non-bypass
+  # minimum list, NO BINLOG ADMIN) and this verifier's preamble. The previous
+  # body ran "SET SESSION sql_log_bin=0" + "CREATE DATABASE IF NOT EXISTS"
+  # + "CREATE TABLE IF NOT EXISTS" BEFORE the actual INSERT, all as
+  # user-facing root. After alpha.60 demote, user-facing root has lost
+  # BINLOG ADMIN -> "SET SESSION sql_log_bin=0" errors out with rc=1 stderr
+  # "ERROR 1227 (42000) Access denied; you need (at least one of) the
+  # BINLOG ADMIN privilege(s) for this operation". This 1227 was being
+  # reported as the verifier failure even though the actual fence behaviour
+  # (read_only=ON rejecting root INSERT) was never reached: the preamble
+  # contaminated the test purpose ("verify read_only fence" -> "verify root
+  # has BINLOG ADMIN / DDL privilege").
+  #
+  # alpha.75 v1 fix:
+  #   - probe table provisioning moved to bootstrap-time
+  #     ensure_internal_local_admin in cmpd-semisync.yaml; INTERNAL_LOCAL
+  #     handles DDL with sql_log_bin=0 so it is binlog-replay-safe across pods
+  #   - this verifier body strips the preamble; runs ONLY the user-facing
+  #     root INSERT against the existing probe table
+  #   - acceptance contract narrows: rc=0 FAIL; rc=1 with 1146/1227/1044 FAIL
+  #     (must NOT be confused with read_only fence closed); rc=1 with
+  #     1290/read-only PASS
+  # Jack XP 8-class checklist & ShellSpec hard gates enforce these.
   local out rc
   if [ -z "${MARIADB_CLIENT_BIN}" ] || [ ! -x "${MARIADB_CLIENT_BIN}" ]; then
     log_switchover_error "Switchover failed: post-DCS local-root write fence verification cannot run without MARIADB_CLIENT_BIN"
@@ -1228,10 +1254,9 @@ verify_post_dcs_local_root_write_fenced() {
   out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
     --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
     -P3306 -h127.0.0.1 -N -s -e "
-      SET SESSION sql_log_bin=0;
-      CREATE DATABASE IF NOT EXISTS kubeblocks;
-      CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe(probe_id VARCHAR(64) PRIMARY KEY, ts BIGINT);
-      INSERT INTO kubeblocks.kb_post_dcs_fence_probe(probe_id, ts) VALUES ('post_dcs_fence', UNIX_TIMESTAMP());
+      INSERT INTO kubeblocks.kb_post_dcs_fence_probe(probe_id, ts)
+        VALUES ('post_dcs_fence', UNIX_TIMESTAMP())
+        ON DUPLICATE KEY UPDATE ts=VALUES(ts);
     " 2>&1)
   rc=$?
   if [ "${rc}" -eq 0 ]; then
@@ -1242,6 +1267,18 @@ verify_post_dcs_local_root_write_fenced() {
     *1290*|*read-only*|*"read only"*|*"--read-only"*)
       log_switchover_info "Switchover post-DCS local-root write fence verified: user-facing root INSERT rejected (rc=${rc})"
       return 0
+      ;;
+    *1146*)
+      log_switchover_error "Switchover failed: post-DCS local-root write fence verification probe table missing (Error 1146); bootstrap-time ensure_internal_local_admin must create kubeblocks.kb_post_dcs_fence_probe (alpha.75 v1 contract)"
+      return 1
+      ;;
+    *1227*)
+      log_switchover_error "Switchover failed: post-DCS local-root write fence verification implementation error rc=${rc} (Error 1227 BINLOG ADMIN); verifier body must NOT need BINLOG ADMIN; remove any sql_log_bin manipulation (alpha.75 v1 regression guard) out=${out}"
+      return 1
+      ;;
+    *1044*)
+      log_switchover_error "Switchover failed: post-DCS local-root write fence verification got Error 1044 access denied; verifier body must NOT need DDL/database-level grants beyond INSERT on the existing probe table (alpha.75 v1 regression guard) out=${out}"
+      return 1
       ;;
   esac
   log_switchover_error "Switchover failed: post-DCS local-root write fence verification got unexpected error rc=${rc} out=${out}"

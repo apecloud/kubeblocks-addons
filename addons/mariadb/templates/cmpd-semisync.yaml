@@ -770,6 +770,7 @@ spec:
                 GRANT ALL PRIVILEGES ON *.* TO '${user}'@'127.0.0.1' WITH GRANT OPTION;
                 CREATE DATABASE IF NOT EXISTS kubeblocks;
                 CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
+                CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe(probe_id VARCHAR(64) PRIMARY KEY, ts BIGINT);
                 CREATE USER IF NOT EXISTS '${user}'@'%' IDENTIFIED BY '${password}';
                 ALTER USER '${user}'@'%' ACCOUNT UNLOCK;
                 REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'%';
