@@ -109,8 +109,8 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
       The status should be failure
     End
 
-    It "replication-member-join.sh uses MARIADB_REPL_USER fallback to kb_replicator (renamed env per alpha.74 v1)"
-      When call grep -c "MASTER_USER='\${MARIADB_REPL_USER:-kb_replicator}'" "${MEMBER_JOIN}"
+    It "replication-member-join.sh uses chained fallback MARIADB_REPL_USER -> MARIADB_ROOT_USER (semisync sets MARIADB_REPL_USER=kb_replicator; replication topology unchanged per alpha.72 v1 scope-cap)"
+      When call grep -c "MASTER_USER='\${MARIADB_REPL_USER:-\${MARIADB_ROOT_USER}}'" "${MEMBER_JOIN}"
       The output should be present
       The status should be success
     End
