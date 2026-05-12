@@ -26,10 +26,12 @@ set_join_args() {
         if [[ -n $PD_LEADER_POD_NAME ]]; then
             echo "query member list from leader"
             leader_fqdn=$(echo "$replicas" | grep "$PD_LEADER_POD_NAME")
-            members=$(/pd-ctl --pd "$scheme://$leader_fqdn:2379" member | jq -r '.members[] | .name')
+            # shellcheck disable=SC2086
+            members=$(/pd-ctl --pd "$scheme://$leader_fqdn:2379" $extraArg member | jq -r '.members[] | .name')
             if echo "$members" | grep -q "$CURRENT_POD_NAME"; then
                 echo "current pod already in cluster, delete member first"
-                res=$(/pd-ctl --pd "$scheme://$leader_fqdn:2379" member delete name "$CURRENT_POD_NAME")
+                # shellcheck disable=SC2086
+                res=$(/pd-ctl --pd "$scheme://$leader_fqdn:2379" $extraArg member delete name "$CURRENT_POD_NAME")
                 if [[ $res != "Success!" ]]; then
                     exit 1
                 fi
@@ -82,7 +84,11 @@ ${__SOURCED__:+false} : || return 0
 
 set -exo pipefail
 
+# shellcheck source=common.sh
+. /scripts/common.sh
+
 set_scheme
+set_component_tls_variables
 
 cat /etc/pd/pd.toml
 
