@@ -139,7 +139,37 @@ type: application
 # source syntax. `BINLOG MONITOR` in SHOW GRANTS output IS allowed
 # on kb_internal_root@'%' (positive normalized form);
 # `BINLOG ADMIN` is the admin-bypass class and is NOT allowed.
-version: 1.1.1-alpha.69
+#
+# alpha.70 v1 (westonnnn 15:31 directive after alpha.69 v1 5.D-r2
+# RED first-blocker root cause CLOSED): Bumped from 1.1.1-alpha.69
+# -> 1.1.1-alpha.70 because the alpha.70 v1 fix mutates cmpd-
+# semisync.yaml: the `primary_local_root_write_ready` function body
+# is replaced. Before alpha.70 it ran the kb_health_check
+# INSERT/UPSERT via ROOT_LOCAL with `SET SESSION sql_log_bin=0`
+# bracketing; ROOT_LOCAL is locked to the no-bypass priv set (no
+# BINLOG ADMIN), so the first SQL statement always failed with
+# ERROR 1227 (42000) — `Access denied; you need (at least one of)
+# the BINLOG ADMIN privilege(s)`. Evidence in alpha.69 v1 5.D-r2
+# RED: every line of /var/lib/mysql/log/sql-listener-fence.log was
+# the same 1227. The chart watchdog therefore never wrote
+# `.sql-listener-ready`, roleProbe stayed in `initializing`, KB
+# never published role=primary, primary svc endpoint stayed empty,
+# and pod-1's wait-primary loop never advanced.
+#
+# alpha.70 v1 calls /tools/syncerctl writecheck (HTTP POST
+# /v1.0/writecheck, syncer's engine-level Manager.WriteCheck which
+# uses its own DB connection with full bypass priv via the syncer
+# Admin credential pattern). Same probe semantics (INSERT/UPSERT
+# into kubeblocks.kb_health_check with CREATE-then-INSERT fallback
+# on Error 1049/1146); just executed inside syncer rather than via
+# the locked-down ROOT_LOCAL shell. Depends on syncer v3 binaries
+# (syncer/syncerctl with `writecheck` subcommand from
+# apecloud/syncer PR #152, branch feat/mariadb-support). Pre-
+# alpha.70 syncer binaries do not have the writecheck subcommand;
+# this chart REQUIRES syncer v3+. (KB CmpD immutability rule still
+# applies; chart version bump is mandatory because cmpd-semisync.yaml
+# is being mutated.)
+version: 1.1.1-alpha.70
 
 # This is the version number of the MARIADB being deployed,
 # (mariadb engine version unchanged from alpha.64; this bump is
