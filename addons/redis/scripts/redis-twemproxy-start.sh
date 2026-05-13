@@ -8,6 +8,21 @@ SENTINEL_POLL_INTERVAL_SECONDS="${TWEMPROXY_SENTINEL_POLL_INTERVAL_SECONDS:-1}"
 LAST_MASTER_ADDR=""
 NUTCRACKER_PID=""
 
+normalize_master_addr() {
+  addr="$1"
+  host="${addr%:*}"
+  port="${addr##*:}"
+  case "$host" in
+    *.*)
+      resolved="$(getent hosts "$host" 2>/dev/null | awk 'NR == 1 {print $1}' || true)"
+      if [ -n "$resolved" ]; then
+        host="$resolved"
+      fi
+      ;;
+  esac
+  printf '%s:%s' "$host" "$port"
+}
+
 first_value() {
   value="${1:-}"
   value="${value%%,*}"
@@ -85,7 +100,8 @@ sentinel_master_name="${SENTINEL_MASTER_NAME:-$(default_master_name)}"
 
 if [ -z "$sentinel_host" ] || [ -z "$sentinel_port" ] || [ -z "$sentinel_master_name" ]; then
   echo "Fake Sentinel service is not configured; starting nutcracker without master watcher"
-  exec nutcracker -c "$NUTCRACKER_CONF" -v 4 -m 16384
+  # shellcheck disable=SC2086
+  exec nutcracker -c "$NUTCRACKER_CONF" -v 4 -m 16384 $NUTCRACKER_ARGS
 fi
 
 if ! command -v nc >/dev/null 2>&1; then
@@ -95,6 +111,9 @@ fi
 
 echo "twemproxy master watcher enabled: sentinel=${sentinel_host}:${sentinel_port}, master=${sentinel_master_name}, interval=${SENTINEL_POLL_INTERVAL_SECONDS}s"
 LAST_MASTER_ADDR="$(query_sentinel_master "$sentinel_host" "$sentinel_port" "$sentinel_master_name" || true)"
+if [ -n "$LAST_MASTER_ADDR" ]; then
+  LAST_MASTER_ADDR="$(normalize_master_addr "$LAST_MASTER_ADDR")"
+fi
 echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) initial Fake Sentinel master=${LAST_MASTER_ADDR:-unknown}"
 
 start_nutcracker
@@ -107,6 +126,7 @@ while true; do
 
   current_master_addr="$(query_sentinel_master "$sentinel_host" "$sentinel_port" "$sentinel_master_name" || true)"
   if [ -n "$current_master_addr" ]; then
+    current_master_addr="$(normalize_master_addr "$current_master_addr")"
     if [ -n "$LAST_MASTER_ADDR" ] && [ "$current_master_addr" != "$LAST_MASTER_ADDR" ]; then
       echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) Fake Sentinel master changed: ${LAST_MASTER_ADDR} -> ${current_master_addr}; restarting nutcracker"
       LAST_MASTER_ADDR="$current_master_addr"
