@@ -132,8 +132,8 @@ image:
   apeDts:
     registry: ""
     repository: apecloud/ape-dts
-    tag: 2.0.26-alpha.14
-    reshardTag: 2.0.26-alpha.14
+    tag: 2.0.26-alpha.16
+    reshardTag: 2.0.26-alpha.16
 
 ceImage:
   registry:
@@ -143,7 +143,7 @@ ceImage:
 apeDtsImage:
   registry: ""
   repository: apecloud/ape-dts
-  tag: 2.0.26-alpha.14
+  tag: 2.0.26-alpha.16
 
 dbctlImage:
   registry:
