@@ -118,6 +118,12 @@ spec:
       verbs:
         - create
     - apiGroups:
+        - ""
+      resources:
+        - pods
+      verbs:
+        - list
+    - apiGroups:
         - apps.kubeblocks.io
       resources:
         - clusters
