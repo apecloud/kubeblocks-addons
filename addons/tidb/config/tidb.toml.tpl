@@ -166,23 +166,36 @@ max-days = 0
 max-backups = 0
 
 [security]
+{{- if eq (index $ "TLS_ENABLED") "true" }}
 # Path of file that contains list of trusted SSL CAs for connection with mysql client.
-ssl-ca = ""
+ssl-ca = "/etc/pki/tls/ca.pem"
 
 # Path of file that contains X509 certificate in PEM format for connection with mysql client.
-ssl-cert = ""
+ssl-cert = "/etc/pki/tls/cert.pem"
 
 # Path of file that contains X509 key in PEM format for connection with mysql client.
-ssl-key = ""
+ssl-key = "/etc/pki/tls/key.pem"
+{{- end -}}
 
+{{/* a dirty way to inject user defined config */}}
+{{- $conponentTls := false }}
+{{- $container := index $.podSpec.containers 0}}
+{{- range $e := $container.env }}
+{{- if and (eq $e.name "KB_ENABLE_TLS_BETWEEN_COMPONENTS") (eq $e.value "true") }}
+{{- $conponentTls = true }}
+{{- end }}
+{{- end }}
+
+{{- if eq $conponentTls true }}
 # Path of file that contains list of trusted SSL CAs for connection with cluster components.
-cluster-ssl-ca = ""
+cluster-ssl-ca = "/etc/pki/cluster-tls/ca.pem"
 
 # Path of file that contains X509 certificate in PEM format for connection with cluster components.
-cluster-ssl-cert = ""
+cluster-ssl-cert = "/etc/pki/cluster-tls/cert.pem"
 
 # Path of file that contains X509 key in PEM format for connection with cluster components.
-cluster-ssl-key = ""
+cluster-ssl-key = "/etc/pki/cluster-tls/key.pem"
+{{- end }}
 
 # Configurations of the encryption method to use for encrypting the spilled data files.
 # Possible values are "plaintext", "aes128-ctr", if not set, it will be "plaintext" by default.

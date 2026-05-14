@@ -96,6 +96,18 @@ Start the stopped cluster
 kubectl apply -f examples/tidb/start.yaml
 ```
 
+### [Switchover](switchover.yaml)
+
+A switchover in database clusters is a planned operation that transfers the primary (leader) role from one database instance to another. The goal of a switchover is to ensure that the database cluster remains available and operational during the transition.
+
+TiDB's PD (Placement Driver) component uses leader election. To transfer the leader role to another PD instance:
+
+```bash
+kubectl apply -f examples/tidb/switchover.yaml
+```
+
+You may need to update the `opsrequest.spec.switchover.instanceName` field to the name of the current PD leader instance.
+
 ### Delete
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
