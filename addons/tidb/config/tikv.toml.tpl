@@ -660,12 +660,27 @@ enable-log-recycle = true
 ## Default: false
 prefill-for-recycle = false
 
+{{/* a dirty way to inject user defined config */}}
+{{- $conponentTls := false }}
+{{- $container := index $.podSpec.containers 0}}
+{{- range $e := $container.env }}
+{{- if and (eq $e.name "KB_ENABLE_TLS_BETWEEN_COMPONENTS") (eq $e.value "true") }}
+{{- $conponentTls = true }}
+{{- end }}
+{{- end }}
+
 [security]
-## The path for TLS certificates. Empty string means disabling secure connections.
-ca-path = ""
-cert-path = ""
-key-path = ""
-cert-allowed-cn = []
+{{- if eq $conponentTls true }}
+# Path of file that contains list of trusted SSL CAs for connection with cluster components.
+ca-path = "/etc/pki/cluster-tls/ca.pem"
+
+# Path of file that contains X509 certificate in PEM format for connection with cluster components.
+cert-path = "/etc/pki/cluster-tls/cert.pem"
+
+# Path of file that contains X509 key in PEM format for connection with cluster components.
+key-path = "/etc/pki/cluster-tls/key.pem"
+{{- end }}
+# cert-allowed-cn = []
 #
 ## Avoid outputing data (e.g. user keys) to info log. It currently does not avoid printing
 ## user data altogether, but greatly reduce those logs.
