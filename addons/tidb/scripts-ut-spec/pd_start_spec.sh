@@ -11,6 +11,8 @@ Describe "pd start script tests"
         ARGS=""
         unset PD_LEADER_POD_NAME
         unset CURRENT_POD_NAME
+
+        scheme="http"
     }
 
     cleanup() {
@@ -30,9 +32,9 @@ Describe "pd start script tests"
 
     Describe "set_join_args test"
         Example "w/ join file"
-            echo "demo-pd-0=http://demo-pd-0.demo-pd-peer.demo.svc:2380,demo-pd-1=http://demo-pd-1.demo-pd-peer.demo.svc:2380" > "$DATA_DIR/join"
+            echo "demo-pd-0=http://demo-pd-0.demo-pd-peer.demo.svc:2379,demo-pd-1=http://demo-pd-1.demo-pd-peer.demo.svc:2379" > "$DATA_DIR/join"
             When call set_join_args
-            The variable ARGS should equal " --join=http://demo-pd-0.demo-pd-peer.demo.svc:2380,http://demo-pd-1.demo-pd-peer.demo.svc:2380"
+            The variable ARGS should equal " --join=http://demo-pd-0.demo-pd-peer.demo.svc:2379,http://demo-pd-1.demo-pd-peer.demo.svc:2379"
             The stdout should equal "restarted pod, join cluster"
         End
 
@@ -69,7 +71,7 @@ Describe "pd start script tests"
             }
 
             When call set_join_args
-            The variable ARGS should equal " --join=http://tidb-cluster-tidb-pd-0.tidb-cluster-tidb-pd-headless.default.svc.cluster.local:2380,http://tidb-cluster-tidb-pd-1.tidb-cluster-tidb-pd-headless.default.svc.cluster.local:2380"
+            The variable ARGS should equal " --join=http://tidb-cluster-tidb-pd-0.tidb-cluster-tidb-pd-headless.default.svc.cluster.local:2379,http://tidb-cluster-tidb-pd-1.tidb-cluster-tidb-pd-headless.default.svc.cluster.local:2379"
             The line 3 of stdout should equal "current pod already in cluster, delete member first"
             The line 4 of stdout should equal "joining an existing cluster"
         End
@@ -94,7 +96,7 @@ Describe "pd start script tests"
             }
 
             When call set_join_args
-            The variable ARGS should equal " --join=http://tidb-cluster-tidb-pd-0.tidb-cluster-tidb-pd-headless.default.svc.cluster.local:2380,http://tidb-cluster-tidb-pd-1.tidb-cluster-tidb-pd-headless.default.svc.cluster.local:2380"
+            The variable ARGS should equal " --join=http://tidb-cluster-tidb-pd-0.tidb-cluster-tidb-pd-headless.default.svc.cluster.local:2379,http://tidb-cluster-tidb-pd-1.tidb-cluster-tidb-pd-headless.default.svc.cluster.local:2379"
             The line 3 of stdout should equal "joining an existing cluster"
         End
 
