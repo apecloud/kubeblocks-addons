@@ -20,6 +20,12 @@ spec:
       {{- end }}
       compDefs:
         - {{ include "clickhouse-keeper.cmpdRegexpPattern" . }}
+    - releases:
+      {{- range .Values.clickhouseVersions }}
+        - {{ .version }}
+      {{- end }}
+      compDefs:
+        - {{ include "clickhouse-readonly.cmpdRegexpPattern" . }}
   releases:
   {{- range .Values.clickhouseVersions }}
     - name: {{ .version }}

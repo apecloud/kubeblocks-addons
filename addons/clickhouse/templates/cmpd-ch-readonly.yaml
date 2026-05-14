@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "clickhouse.cmpdName" . }}
+  name: {{ include "clickhouse-readonly.cmpdName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
@@ -9,7 +9,7 @@ metadata:
     apps.kubeblocks.io/skip-immutable-check: "true"
 spec:
   provider: ApeCloud
-  description: {{ .Chart.Description }}
+  description: "ClickHouse read-only replica component. Shares Keeper and cluster topology with the main ClickHouse component; enforces readonly=1 for the default profile so only SELECT queries are accepted from regular connections."
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Chart.AppVersion }}
   podManagementPolicy: OrderedReady
@@ -33,7 +33,7 @@ spec:
             podAffinityTerm:
               labelSelector:
                 matchLabels:
-                  app.kubernetes.io/component: clickhouse
+                  app.kubernetes.io/component: clickhouse-readonly
               topologyKey: kubernetes.io/hostname
     topologySpreadConstraints:
       - maxSkew: 1
@@ -41,10 +41,11 @@ spec:
         whenUnsatisfiable: ScheduleAnyway
         labelSelector:
           matchLabels:
-            app.kubernetes.io/component: clickhouse
+            app.kubernetes.io/component: clickhouse-readonly
     initContainers:
       - name: copy-tools
         imagePullPolicy: {{ .Values.busyboxImage.pullPolicy }}
+        image: {{ include "busybox.image" . }}
         command:
           - sh
           - -c
@@ -150,8 +151,8 @@ spec:
     scrapePath: /metrics
     scrapePort: "8001"
   configs:
-    - name: clickhouse-tpl
-      template: {{ include "clickhouse.configurationTplName" . }}
+    - name: clickhouse-readonly-tpl
+      template: clickhouse-readonly-configuration-tpl
       volumeName: config
       namespace: {{ .Release.Namespace }}
       restartOnFileChange: false
@@ -180,6 +181,8 @@ spec:
         numSymbols: 0
         letterCase: MixedCases
   vars:
+    - name: CLICKHOUSE_READONLY_MODE
+      value: "true"
     - name: BITNAMI_DEBUG
       value: "false"
     - name: CLICKHOUSE_HTTP_PORT
@@ -234,6 +237,7 @@ spec:
       valueFrom:
         tlsVarRef:
           enabled: Optional
+    # Gather topology from both read-write and read-only shards for cluster config
     - name: ALL_SHARDS_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
@@ -290,28 +294,9 @@ spec:
           - name: tcp-postgresql
             targetPort: tcp-postgresql
             port: 9005
-          - name: http-intersrv
-            targetPort: http-intersrv
-            port: 9009
-          - name: https-intersrv
-            targetPort: https-intersrv
-            port: 9010
-          - name: tcp-secure
-            targetPort: tcp-secure
-            port: 9440
   tls:
     volumeName: tls
     mountPath: /etc/pki/tls
     caFile: ca.pem
     certFile: cert.pem
     keyFile: key.pem
-  lifecycleActions:
-    memberJoin:
-      preCondition: RuntimeReady
-      exec:
-        container: clickhouse
-        command:
-          - bash
-          - -c
-          - |
-            /scripts/member-join.sh > /tmp/member-join.log 2>&1

@@ -154,6 +154,41 @@
     <buffer_size_rows_flush_threshold>524288</buffer_size_rows_flush_threshold>
     <flush_on_crash>false</flush_on_crash>
   </query_log>
+  <!-- UNDROP TABLE: allows recovering dropped tables (requires ClickHouse >= 22.4).
+       Prerequisite: Keeper-based replicated user directory must be enabled (see <replicated> block below).
+       Reference: https://clickhouse.com/docs/sql-reference/statements/undrop-table -->
+  <allow_experimental_undrop_table_query>1</allow_experimental_undrop_table_query>
+  <!-- Transparent Data Encryption (TDE) via ClickHouse Virtual Encrypted Filesystem.
+       Requires: values.yaml tde.enabled=true. Encrypts data at rest using AES-256-CTR.
+       Key rotation: update tde.currentKeyId and add new key; old key is kept for decryption only.
+       Reference: https://clickhouse.com/docs/operations/storing-data#encrypted-virtual-file-system -->
+  {{- if (index . "TDE_ENABLED") }}
+  <encryption_codecs>
+    <aes_256_gcm_siv>
+      <key_hex from_env="TDE_KEY_HEX"/>
+    </aes_256_gcm_siv>
+  </encryption_codecs>
+  <storage_configuration>
+    <disks>
+      <encrypted>
+        <type>encrypted</type>
+        <disk>default</disk>
+        <path>encrypted/</path>
+        <algorithm>AES_256_CTR</algorithm>
+        <key_hex from_env="TDE_KEY_HEX"/>
+      </encrypted>
+    </disks>
+    <policies>
+      <encrypted_policy>
+        <volumes>
+          <main>
+            <disk>encrypted</disk>
+          </main>
+        </volumes>
+      </encrypted_policy>
+    </policies>
+  </storage_configuration>
+  {{- end }}
   <!-- User directories configuration -->
   <!-- see https://github.com/ClickHouse/ClickHouse/issues/78830 -->
   <user_directories replace="replace">

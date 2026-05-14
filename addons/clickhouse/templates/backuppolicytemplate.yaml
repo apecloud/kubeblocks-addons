@@ -42,10 +42,10 @@ spec:
             mountPath: /opt/bitnami/clickhouse/etc/conf.d
   schedules:
     - backupMethod: full
-      enabled: false
-      cronExpression: "0 18 * * *"
-      retentionPeriod: 7d
+      enabled: {{ .Values.backup.enabled }}
+      cronExpression: {{ .Values.backup.fullSchedule | quote }}
+      retentionPeriod: {{ .Values.backup.fullRetentionPeriod }}
     - backupMethod: incremental
-      enabled: false
-      cronExpression: "0 18 * * *"
-      retentionPeriod: 7d
+      enabled: {{ .Values.backup.enabled }}
+      cronExpression: {{ .Values.backup.incrementalSchedule | quote }}
+      retentionPeriod: {{ .Values.backup.incrementalRetentionPeriod }}

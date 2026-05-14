@@ -1,0 +1,94 @@
+{{- if .Values.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "clickhouse.fullname" . }}-alerts
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+    {{- if .Values.prometheusRule.additionalLabels }}
+    {{- toYaml .Values.prometheusRule.additionalLabels | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: clickhouse.replication
+      rules:
+        - alert: ClickHouseReplicaMaxAbsoluteDelay
+          expr: ClickHouseAsyncMetrics_ReplicasMaxAbsoluteDelay > 300
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ClickHouse replica lag > 300s"
+            description: "Replica {{ "{{" }} $labels.instance {{ "}}" }} is {{ "{{" }} $value {{ "}}" }}s behind the leader."
+
+        - alert: ClickHouseReplicaQueueSize
+          expr: ClickHouseMetrics_ReplicatedChecks > 100
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ClickHouse replication queue depth is high"
+            description: "Instance {{ "{{" }} $labels.instance {{ "}}" }} has {{ "{{" }} $value {{ "}}" }} pending replication tasks."
+
+    - name: clickhouse.merges
+      rules:
+        - alert: ClickHouseMergeQueueBacklog
+          expr: ClickHouseMetrics_BackgroundMergesAndMutationsPoolTask > 50
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ClickHouse background merge queue is backlogged"
+            description: "Instance {{ "{{" }} $labels.instance {{ "}}" }} has {{ "{{" }} $value {{ "}}" }} pending merge/mutation tasks."
+
+    - name: clickhouse.connections
+      rules:
+        - alert: ClickHouseTCPConnectionsHigh
+          expr: ClickHouseMetrics_TCPConnection > 500
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ClickHouse TCP connection count is high"
+            description: "Instance {{ "{{" }} $labels.instance {{ "}}" }} has {{ "{{" }} $value {{ "}}" }} active TCP connections."
+
+        - alert: ClickHouseHTTPConnectionsHigh
+          expr: ClickHouseMetrics_HTTPConnection > 200
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ClickHouse HTTP connection count is high"
+            description: "Instance {{ "{{" }} $labels.instance {{ "}}" }} has {{ "{{" }} $value {{ "}}" }} active HTTP connections."
+
+    - name: clickhouse.memory
+      rules:
+        - alert: ClickHouseQueryMemoryOverLimit
+          expr: ClickHouseMetrics_MemoryTracking > (ClickHouseAsyncMetrics_MemoryResident * 0.9)
+          for: 3m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ClickHouse query memory usage near limit"
+            description: "Instance {{ "{{" }} $labels.instance {{ "}}" }} query memory tracking is {{ "{{" }} $value {{ "}}" }} bytes (>90% of resident memory)."
+
+    - name: clickhouse.keeper
+      rules:
+        - alert: ClickHouseKeeperLeaderElections
+          expr: increase(ClickHouseProfileEvents_KeeperLeaderElections[5m]) > 0
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ClickHouse Keeper leader election occurred"
+            description: "Instance {{ "{{" }} $labels.instance {{ "}}" }} triggered a Keeper leader election in the last 5 minutes."
+
+        - alert: ClickHouseKeeperRequestLatencyHigh
+          expr: ClickHouseAsyncMetrics_KeeperAvgLatency > 100
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ClickHouse Keeper average latency is high"
+            description: "Instance {{ "{{" }} $labels.instance {{ "}}" }} Keeper avg latency is {{ "{{" }} $value {{ "}}" }}ms."
+{{- end }}

@@ -85,6 +85,20 @@ Define clickhouse component definition regex pattern
 {{- end }}
 
 {{/*
+Define clickhouse-readonly component definition name
+*/}}
+{{- define "clickhouse-readonly.cmpdName" -}}
+clickhouse-readonly-{{ .Chart.Version }}
+{{- end }}
+
+{{/*
+Define clickhouse-readonly component definition regex pattern
+*/}}
+{{- define "clickhouse-readonly.cmpdRegexpPattern" -}}
+^clickhouse-readonly-1.*
+{{- end }}
+
+{{/*
 === CLICKHOUSE-KEEPER COMPONENT DEFINITIONS ===
 */}}
 

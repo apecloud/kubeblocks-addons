@@ -7,9 +7,15 @@
       <max_threads>8</max_threads>
       <log_queries>1</log_queries>
       <log_queries_min_query_duration_ms>2000</log_queries_min_query_duration_ms>
+      {{- if eq (index . "CLICKHOUSE_READONLY_MODE") "true" }}
+      <!-- Readonly mode enforced by read-only replica component.
+           readonly=2: SELECT and setting changes allowed, but no DDL/DML (INSERT/CREATE/ALTER).
+           Using 2 instead of 1 so connection-level settings (e.g. connect_timeout) still work. -->
+      <readonly>2</readonly>
+      {{- end }}
     </default>
 
-    <!-- Settings for quries from the user interface, this is a example profile for day-2-create user or special sessions -->
+    <!-- Settings for queries from the user interface, this is a example profile for day-2-create user or special sessions -->
     <web>
       <max_rows_to_read>1000000000</max_rows_to_read>
       <max_bytes_to_read>100000000000</max_bytes_to_read>
@@ -39,6 +45,25 @@
 
       <readonly>1</readonly>
     </web>
+
+    <!-- Read-only analytics profile: SELECT only, no DDL/DML -->
+    <readonly>
+      <readonly>1</readonly>
+      <log_queries>1</log_queries>
+      <max_execution_time>120</max_execution_time>
+    </readonly>
+
+    <!-- Monitoring profile: read system.* tables only -->
+    <monitoring>
+      <readonly>1</readonly>
+      <log_queries>0</log_queries>
+    </monitoring>
+
+    <!-- Ingest profile: INSERT only, no SELECT on user tables -->
+    <ingest>
+      <readonly>0</readonly>
+      <log_queries>1</log_queries>
+    </ingest>
   </profiles>
 
   <!-- Resource usage limits enforced per 1-hour time window -->
@@ -66,11 +91,35 @@
       <show_named_collections_secrets>1</show_named_collections_secrets>
 
       <networks replace="replace">
+        <!-- Loopback always allowed (required for pod-local health checks and interserver communication) -->
+        <ip>127.0.0.1</ip>
+        <ip>::1</ip>
+        {{- if index . "ALLOWED_NETWORKS" }}
+        {{- range $_, $cidr := splitList "," (index . "ALLOWED_NETWORKS") }}
+        <ip>{{ $cidr }}</ip>
+        {{- end }}
+        {{- else }}
         <ip>::/0</ip>
+        {{- end }}
       </networks>
 
       <profile>default</profile>
       <quota>default</quota>
     </admin>
   </users>
+
+  <!-- Role definitions for day-2 user management.
+       Roles with grants must be created via SQL after cluster provisioning.
+       Example:
+         CREATE ROLE readonly;
+         GRANT SELECT ON *.* TO readonly;
+         CREATE USER analyst IDENTIFIED BY 'password';
+         GRANT readonly TO analyst;
+
+         CREATE ROLE monitoring;
+         GRANT SELECT ON system.* TO monitoring;
+
+         CREATE ROLE ingest;
+         GRANT INSERT ON *.* TO ingest;
+  -->
 </clickhouse>
