@@ -21,10 +21,10 @@ server:
   log_level: {{ default "info" .LOG_LEVEL }}
 
 memberlist:
-   bind_addr:
-   - ${KB_POD_IP}
-   join_members:
-   - {{ .KB_CLUSTER_NAME }}-memberlist
+  bind_addr:
+  - ${KB_POD_IP}
+  join_members:
+  - {{ .KB_CLUSTER_NAME }}-memberlist
 
 common:
   compactor_address: '{{ .KB_CLUSTER_NAME }}-backend'
