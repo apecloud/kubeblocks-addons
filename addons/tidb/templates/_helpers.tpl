@@ -137,3 +137,10 @@ tikv-7-{{ .Chart.Version }}
 tidb-7-{{ .Chart.Version }}
 {{- end -}}
 
+{{- define "tidb.commonVolumeMount" -}}
+- name: scripts
+  mountPath: /scripts
+- name: component-tls
+  mountPath: /etc/pki/cluster-tls
+{{- end -}}
+

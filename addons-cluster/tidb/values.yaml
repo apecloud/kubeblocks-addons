@@ -47,7 +47,12 @@ tidb:
       cpu: 4
       memory: 16
   tolerations: []
+  tlsEnable: false
 
 extra:
   # @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Delete, WipeOut.
   terminationPolicy: Delete
+  # @param enableTLSBetweenComponents determines if tls Between TiDB Components is enabled
+  # ref to https://docs.pingcap.com/tidb/stable/enable-tls-between-components/
+  # Note component TLS and client TLS (.Values.tidb.tlsEnable) are using different certificates, enabling component TLS does not mean client TLS is enabled.
+  enableTLSBetweenComponents: false
