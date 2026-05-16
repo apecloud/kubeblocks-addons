@@ -5,10 +5,336 @@ description: MariaDB is a high performance open source relational database manag
 type: application
 
 # This is the version number of the helm chart.
-version: 1.1.0-alpha.0
+#
+# alpha.65 v1 (Jack 11:35 install/script live-gate RED on alpha.64 v3):
+# Bumped from 1.1.1-alpha.64 → 1.1.1-alpha.65 because alpha.64 v2+v3
+# mutated cmpd-semisync.yaml (the rendered ComponentDefinition spec).
+# KubeBlocks treats the existing ComponentDefinition spec as immutable,
+# so a same-version chart upgrade with CmpD spec changes leaves the
+# CmpD in `Unavailable: immutable fields can't be updated`. Any future
+# patch within an alpha cycle that mutates cmpd-*.yaml MUST bump the
+# chart version to a fresh alpha so KubeBlocks creates a new CmpD
+# instead of trying to mutate the existing one. (Patches that only
+# touch versioned ConfigMap contents like replication-switchover.sh
+# can keep the same chart version because the script CM is not
+# immutable; that is why alpha.61 v2/v3, alpha.62 v2, alpha.63 v2
+# could all reuse the same chart version.)
+#
+# alpha.66 v1 (Jack 12:18 alpha.65 v2 install/script live-gate RED +
+# 12:34 alpha.66 v1 design HOLD + 12:39 design ACCEPT): Bumped from
+# 1.1.1-alpha.65 → 1.1.1-alpha.66 because the alpha.66 fix mutates
+# cmpd-semisync.yaml (env block + ensure_internal_local_admin SQL).
+# Same KB CmpD immutability rule applies. The fix injects
+# MYSQL_ADMIN_USER=kb_internal_root so syncer's HA Promote/Demote SQL
+# uses the internal admin executor (full admin privileges via
+# kb_internal_root@127.0.0.1) instead of user-facing root (which has
+# no admin bypass since alpha.64 v1). A detection-only kb_internal_root
+# @'%' record with ACCOUNT LOCK + zero privileges is added to satisfy
+# syncer's IsAdminCreated() detection (which queries `mysql.user WHERE
+# host='%'`) without expanding the remote attack surface.
+#
+# alpha.67 v1 (Jack 12:56 alpha.66 v1 package-level review HOLD):
+# Bumped from 1.1.1-alpha.66 → 1.1.1-alpha.67 because the alpha.67 v1
+# fix mutates cmpd-semisync.yaml (ensure_internal_local_admin SQL adds
+# an explicit REVOKE ALL PRIVILEGES, GRANT OPTION FROM
+# `kb_internal_root@'%'` between CREATE USER and ALTER USER ACCOUNT
+# LOCK). Same KB CmpD immutability rule. alpha.66 v1 declared
+# `kb_internal_root@'%'` as zero-privilege detection record but did
+# NOT enforce it at the write site — `CREATE USER IF NOT EXISTS` does
+# not clear an existing account's privileges, and `ACCOUNT LOCK` is
+# not a revoke. alpha.67 v1 closes the write-site contract gap so any
+# pre-existing privileges on `kb_internal_root@'%'` are revoked
+# regardless of prior state.
+#
+# alpha.68 v2 (Jack 15:39 alpha.67 v1 live-gate RED + 15:45 alpha.68
+# v1 design HOLD + 15:58 alpha.68 v2 Direction B ACCEPT with refined
+# checkpoint #3): Bumped from 1.1.1-alpha.67 → 1.1.1-alpha.68 because
+# the alpha.68 v2 fix mutates cmpd-semisync.yaml (ensure_internal_local_admin
+# SQL changes @'%' from LOCKED+zero-priv to UNLOCK + minimal cross-
+# member grant allowlist). Same KB CmpD immutability rule. The
+# alpha.67 v1 LOCKED+zero-priv design broke cross-member syncer auth:
+# syncer's `GetMemberConnection` uses Admin credential (=
+# kb_internal_root via MYSQL_ADMIN_USER) for cross-pod TCP, which
+# matched against the LOCKED @'%' record → 4151 Access denied →
+# secondary cannot poll leader health → RoleProbeNotDone forever.
+#
+# alpha.68 v2 @'%' grant contract (exact allowlist, per Helen 15:53
+# SQL matrix + Jack 15:58 design ACCEPT Direction B):
+#   - REPLICATION CLIENT ON *.* (SHOW SLAVE/MASTER STATUS)
+#   - REPLICATION MASTER ADMIN ON *.* (SET GLOBAL rpl_semi_sync_master_timeout
+#     cross-member from Follow secondary -> leader path)
+#   - SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check (ReadCheck
+#     + WriteCheck cross-member health probe)
+# No CREATE / DELETE / DROP / schema-wide DML on `kb_internal_root@'%'`.
+# Still forbidden: ALL PRIVILEGES / SUPER / READ_ONLY ADMIN /
+# CONNECTION ADMIN / BINLOG ADMIN / REPLICATION SLAVE ADMIN.
+#
+# Direction B risk acceptance (NOT zero risk):
+#   - `REPLICATION MASTER ADMIN` is admin-bypass class that allows
+#     `SET GLOBAL` on replication parameters while @@global.read_only=ON.
+#   - This priv is ALREADY granted to user-facing `root@'%'` by alpha.64
+#     v1 CMPD_EXPLICIT_PRIMARY_GRANT_BODY (line ~166 of cmpd-semisync.yaml).
+#   - root and `kb_internal_root` share `MARIADB_ROOT_PASSWORD` per the
+#     ensure_internal_local_admin pattern.
+#   - Net attack-surface delta = 0 for `REPLICATION MASTER ADMIN` from
+#     the perspective of an attacker with the shared password and
+#     remote network access (root@'%' already exposes this capability).
+#   - Residual risk: one additional `mysql.user` entry holding admin-
+#     bypass priv accessible from @'%'; semi-sync timeout DoS via SET
+#     GLOBAL during the alpha.68 → alpha.69 gap.
+#
+# alpha.69 v1 (Jack 17:57 alpha.68 v2 install/script live-gate RED
+# 3-evidence-chains closeout + 18:20 alpha.69 v1 design ACCEPT with
+# runtime-acceptance tightening): Bumped from 1.1.1-alpha.68 ->
+# 1.1.1-alpha.69 because the alpha.69 v1 fix mutates
+# cmpd-semisync.yaml ensure_internal_local_admin SQL (adds CREATE
+# DATABASE IF NOT EXISTS kubeblocks + CREATE TABLE IF NOT EXISTS
+# kubeblocks.kb_health_check BEFORE the @'%' grant block; adds GRANT
+# SELECT ON mysql.user TO 'kb_internal_root'@'%' AFTER the existing
+# three @'%' grants).
+#
+# Same KB CmpD immutability rule. alpha.68 v2 had a bootstrap pre-
+# condition gap: ensure_internal_local_admin runs from
+# wait_for_internal_local_admin "startup-before-role-decision",
+# which executes BEFORE primary_local_root_write_ready can create
+# kubeblocks.kb_health_check. Fresh boots therefore hit Error 1146
+# (table missing) on the @'%' GRANT, wait_for_internal_local_admin
+# loops forever, role decision is never reached,
+# expose_sql_listener_for_*_role is never called, mariadbd stays
+# bound to 127.0.0.1, and cross-pod TCP sees Error 2002. The
+# alpha.69 v1 CREATE DATABASE + CREATE TABLE inside
+# ensure_internal_local_admin SQL (ROOT_LOCAL via socket has GRANT
+# ALL PRIVILEGES locally; idempotent) closes the bootstrap
+# precondition gap.
+#
+# alpha.69 v1 also closes Error 1044 (Access denied for
+# kb_internal_root@'%' to database mysql). syncer's connection URL
+# (engines/mysql/config.go line 71) includes `/mysql` as the default
+# DB, so go-sql-driver issues `init_db = mysql` at handshake.
+# alpha.68 v2 grants on @'%' did not include any priv on the `mysql`
+# schema; the init_db handshake failed with 1044, cross-pod auth
+# never established. GRANT SELECT ON mysql.user is the narrow table-
+# specific privilege that satisfies init_db. Net attack-surface
+# delta = 0 vs root@'%' which already has SELECT on *.* via
+# alpha.64 v1 CMPD_EXPLICIT_PRIMARY_GRANT_BODY (root and
+# kb_internal_root share MARIADB_ROOT_PASSWORD).
+#
+# alpha.69 v1 fix shape is bounded short-term unblock. The long-term
+# mandatory blocking debt (renamed alpha.70+ because chart-only
+# short-term ships alongside as alpha.69) is: syncer source change
+# so cross-member `GetDBConnWithAddr` uses a dedicated lower-priv
+# credential AND removes `/mysql` from the connection DSN (or
+# syncer-side mechanism replaces direct cross-pod admin SQL such as
+# setSemiSyncSourceTimeout). alpha.70+ goal state restores
+# `kb_internal_root@'%'` to alpha.67 v1 LOCKED + zero-priv (clean
+# security boundary).
+#
+# MariaDB 11.4 SHOW GRANTS normalization (Jack 18:20 tightening):
+# `GRANT REPLICATION CLIENT ON *.*` source syntax displays as
+# `BINLOG MONITOR ON *.*` in SHOW GRANTS output (MariaDB 11.4 split
+# REPLICATION CLIENT into BINLOG MONITOR + SLAVE MONITOR). Runtime
+# SHOW GRANTS acceptance uses semantic-equivalent matching (accept
+# `BINLOG MONITOR` as the normalized form of our `REPLICATION
+# CLIENT` grant); source-side ShellSpec tests check the literal
+# source syntax. `BINLOG MONITOR` in SHOW GRANTS output IS allowed
+# on kb_internal_root@'%' (positive normalized form);
+# `BINLOG ADMIN` is the admin-bypass class and is NOT allowed.
+#
+# alpha.70 v1 (westonnnn 15:31 directive after alpha.69 v1 5.D-r2
+# RED first-blocker root cause CLOSED): Bumped from 1.1.1-alpha.69
+# -> 1.1.1-alpha.70 because the alpha.70 v1 fix mutates cmpd-
+# semisync.yaml: the `primary_local_root_write_ready` function body
+# is replaced. Before alpha.70 it ran the kb_health_check
+# INSERT/UPSERT via ROOT_LOCAL with `SET SESSION sql_log_bin=0`
+# bracketing; ROOT_LOCAL is locked to the no-bypass priv set (no
+# BINLOG ADMIN), so the first SQL statement always failed with
+# ERROR 1227 (42000) — `Access denied; you need (at least one of)
+# the BINLOG ADMIN privilege(s)`. Evidence in alpha.69 v1 5.D-r2
+# RED: every line of /var/lib/mysql/log/sql-listener-fence.log was
+# the same 1227. The chart watchdog therefore never wrote
+# `.sql-listener-ready`, roleProbe stayed in `initializing`, KB
+# never published role=primary, primary svc endpoint stayed empty,
+# and pod-1's wait-primary loop never advanced.
+#
+# alpha.70 v1 calls /tools/syncerctl writecheck (HTTP POST
+# /v1.0/writecheck, syncer's engine-level Manager.WriteCheck which
+# uses its own DB connection with full bypass priv via the syncer
+# Admin credential pattern). Same probe semantics (INSERT/UPSERT
+# into kubeblocks.kb_health_check with CREATE-then-INSERT fallback
+# on Error 1049/1146); just executed inside syncer rather than via
+# the locked-down ROOT_LOCAL shell. Depends on syncer v3 binaries
+# (syncer/syncerctl with `writecheck` subcommand from
+# apecloud/syncer PR #152, branch feat/mariadb-support). Pre-
+# alpha.70 syncer binaries do not have the writecheck subcommand;
+# this chart REQUIRES syncer v3+. (KB CmpD immutability rule still
+# applies; chart version bump is mandatory because cmpd-semisync.yaml
+# is being mutated.)
+#
+# alpha.71 v1 (Helen TL 20:31 autonomous decision after westonnnn
+# `b95d14f3` 20:31 "你们自己分析"; XP review ACK from Jack at
+# `8ae309e9` 20:35 with implementation skeleton + 8-class walk):
+# Bumped from 1.1.1-alpha.70 → 1.1.1-alpha.71 because the alpha.71
+# v1 fix mutates cmpd-semisync.yaml: the
+# `primary_local_root_write_ready` function body is wrapped with a
+# bounded retry loop (max_attempts=30 with sleep_seconds=1 between
+# attempts, total 30s budget). Root cause addressed: alpha.70 v1
+# 5.D-r3 N=1 RED revealed that syncer's
+# `dbManager.IsDBStartupReady()` returns false at chart bootstrap
+# T+15s (syncer's own *sql.DB has not yet connected to mariadbd),
+# causing `ERR_PRECHECK_FAILED: database is not ready`. The
+# chart bootstrap was one-shot - a single failure permanently
+# marked `sql-listener-primary-expose-failed`. Evidence: pod-0
+# /var/lib/mysql/log/sql-listener-fence.log was 116 bytes (one
+# error), HA loop continued spinning 8+ minutes but the chart
+# never re-invoked the function. alpha.71 v1 contract: rc-only
+# (syncerctl exit code is the only signal), stdout/stderr
+# (including ERR_PRECHECK_FAILED text and any 503/curl/JSON
+# errors) appended to sql-listener-fence.log for postmortem only,
+# marker files NOT touched by the retry function (remain caller-
+# managed in set_primary_read_write after all gates pass),
+# .prestop-fence-started checked each attempt so termination
+# interrupts the budget. Budget 30s well under
+# terminationGracePeriodSeconds=120. Same syncer v3 image (no
+# syncer source change; chart-only patch).
+#
+# alpha.72 v1 (Helen TL 22:14 autonomous decision after westonnnn
+# 21:56 `8390cc8a` full TL autonomy; Jack XP review HOLD
+# `5a7c68e5` 22:26 + ShellSpec hard-gate `d6103db1` 22:28; Jack
+# Option 1 scope-cap HOLD `c74a3b44` 22:46): Bumped from
+# 1.1.1-alpha.71 → 1.1.1-alpha.72 because alpha.72 v1 mutates
+# cmpd-semisync.yaml only (alpha.72 v1 SCOPE = SEMISYNC TOPOLOGY
+# ONLY per Jack Option 1 scope-cap). Replication topology
+# kb_replicator convergence + cmpd-replication.yaml bootstrap
+# write-site extension deferred to alpha.73+ as an independent
+# patch gate. Root cause addressed for semisync topology:
+# alpha.71 v1 N=1 RED revealed pod-1 COM_REGISTER_SLAVE failed
+# Errno 1597 / Access denied (Errno 1045) for
+# `kb_internal_root@'%'`. syncer
+# `engines/mariadb/config.go:80` falls back to MYSQL_ADMIN_USER
+# (=`kb_internal_root`) when MYSQL_REPLICATION_USER env is absent,
+# and `kb_internal_root@'%'` had REPLICATION CLIENT +
+# REPLICATION MASTER ADMIN but no REPLICATION SLAVE (alpha.69 v1
+# narrowed grants). For the SEMISYNC topology, three previously
+# divergent call sites are converged to
+# `MYSQL_REPLICATION_USER` / `MARIADB_REPLICATION_USER` =
+# `kb_replicator`: (1) syncer Follow CHANGE MASTER (reads
+# MYSQL_REPLICATION_USER env), (2) chart inline
+# configure_replication_from_primary_service_once CHANGE MASTER
+# (reads `${MARIADB_REPLICATION_USER:-kb_replicator}`), (3)
+# replication-member-join.sh CHANGE MASTER (reads chained fallback
+# `${MARIADB_REPLICATION_USER:-${MARIADB_ROOT_USER}}` so the
+# shared script works for replication topology unchanged when env
+# is not set). A new `kb_replicator@'%'` user is created in
+# semisync's `ensure_internal_local_admin` alongside
+# `kb_internal_root`, in the same SQL block (NOT an atomic
+# transaction — MariaDB DDL/GRANT statements are not
+# transactional per Jack #3; rely on idempotent convergence with
+# CREATE IF NOT EXISTS + ALTER UNLOCK + REVOKE ALL + GRANT
+# REPLICATION SLAVE). cmpd-replication.yaml is intentionally
+# unchanged (no env, inline CHANGE MASTER keeps MARIADB_ROOT_USER)
+# — replication topology pods preserve pre-alpha.72 behavior.
+# Same syncer v3 image (no syncer source change; chart-only patch).
+#
+# alpha.73 v1 (Helen TL autonomous + Jack XP review task #21 22:28
+# `9274c29e`): Bumped from 1.1.1-alpha.72 → 1.1.1-alpha.73 because
+# alpha.72 v1 N=1 verify RED revealed mariadb 11.4 Docker entrypoint
+# requires MARIADB_REPLICATION_PASSWORD env when MARIADB_REPLICATION_USER
+# env is set. Direct evidence: alpha.72 v1 n1g pod-0 mariadb container
+# previous log line "== DB ERR == [ERROR] [Entrypoint]:
+# MARIADB_REPLICATION_PASSWORD or MARIADB_REPLICATION_PASSWORD_HASH
+# not found to create replication user for master"; container started
+# 15:22:57 exited 15:23:00 (~3s) with exit code 1; CrashLoopBackOff
+# 6 restarts. alpha.73 v1 supplies the matching env: MARIADB_REPLICATION_
+# PASSWORD (mariadb entrypoint contract) + MYSQL_REPLICATION_PASSWORD
+# (syncer Go binary fallback path consistency). Both reference
+# $(MARIADB_ROOT_PASSWORD) — kb_replicator shares the root password
+# secret because the chart bootstrap ensure_internal_local_admin
+# creates kb_replicator@'%' IDENTIFIED BY ${MARIADB_ROOT_PASSWORD}.
+# Same KB CmpD immutability rule applies — CmpD mutated (env block),
+# chart version bump mandatory. Same syncer v3 image. SEMISYNC
+# TOPOLOGY ONLY (alpha.72 v1 scope-cap carried forward; replication
+# topology user-path convergence still deferred).
+#
+# alpha.74 v1 (Helen TL autonomous under westonnnn 01:28 `df3c94b0`
+# 12h autopilot mandate + Jack XP review ACK `c5997164` 01:37):
+# Bumped from 1.1.1-alpha.73 → 1.1.1-alpha.74 because alpha.73 v1
+# N=1 verify on n1h was PARTIAL: chart/bootstrap subpath GREEN
+# (env-pair set, writecheck, role/marker, Master_User=kb_replicator,
+# GRANT REPLICATION SLAVE only), but semisync product-chain RED —
+# pod-1 Slave_SQL_Running=No, Last_SQL_Errno=1396 "Operation
+# CREATE USER failed for kb_replicator@%" on binlog replay; INSERT
+# sync failed (ERROR 1049 Unknown database). Root cause: mariadb
+# 11.4 docker-entrypoint.sh consumes `MARIADB_REPLICATION_USER` /
+# `MARIADB_REPLICATION_PASSWORD` env on initdb and runs
+# `CREATE USER kb_replicator@'%' IDENTIFIED BY <pwd>` WITHOUT
+# `IF NOT EXISTS` while `sql_log_bin=1` (default) → CREATE USER
+# DDL written to binlog → pod-1 replays this binlog statement and
+# collides with the kb_replicator user that pod-1's own entrypoint
+# already created in its own initdb → 1396 → SQL_Thread stops →
+# downstream INSERT sync impossible. Fix: rename the two chart-
+# defined env names so they no longer match the entrypoint's
+# reserved list: `MARIADB_REPLICATION_USER` →
+# `MARIADB_REPL_USER`; `MARIADB_REPLICATION_PASSWORD` →
+# `MARIADB_REPL_PASSWORD`. Direct entrypoint grep evidence:
+# `MARIADB_REPLICATION_USER` is in the entrypoint's consumed env
+# list; `MARIADB_REPL_USER` is NOT; `MYSQL_REPLICATION_USER`
+# (kept) is also NOT (so syncer Follow continues to read it).
+# Chart inline CHANGE MASTER + `replication-member-join.sh` MASTER_USER
+# updated to read `${MARIADB_REPL_USER:-kb_replicator}` and
+# `${MARIADB_REPL_USER:-${MARIADB_ROOT_USER}}` (chained fallback
+# preserves alpha.72 v1 scope-cap: semisync sets REPL_USER →
+# kb_replicator; replication topology has no REPL_USER → root,
+# unchanged from pre-alpha.72). Same KB CmpD immutability rule —
+# CmpD env block mutated (env names changed), chart version bump
+# mandatory. Same syncer v3 image (syncer reads MYSQL_*, untouched).
+# SEMISYNC TOPOLOGY ONLY (alpha.72/.73 scope-cap carried forward;
+# replication topology user-path convergence still deferred).
+#
+# alpha.75 v1 (Helen TL autonomous under westonnnn 01:28 `df3c94b0`
+# 12h autopilot mandate + Jack XP review A2 verdict `72254007`
+# `29e61432`): Bumped from 1.1.1-alpha.74 -> 1.1.1-alpha.75 because
+# alpha.74 v1 switchover idle-state N=1 verify on n1u was RED:
+# OpsRequest phase=Failed, kbagent action stderr "Switchover failed:
+# post-DCS local-root write fence verification got unexpected error
+# rc=1 out=SET SESSION sql_log_bin=0 ERROR 1227 (42000) at line 2:
+# Access denied; you need (at least one of) the BINLOG ADMIN
+# privilege(s) for this operation; Switchover failed: current primary
+# local write fence did not close after DCS switchover". Root cause:
+# inherited contract drift between alpha.61 v3 secondary fence
+# (REVOKE ALL + GRANT non-bypass minimum list, NO BINLOG ADMIN) and
+# the verifier `verify_post_dcs_local_root_write_fenced()` preamble.
+# The verifier body ran "SET SESSION sql_log_bin=0; CREATE DATABASE
+# IF NOT EXISTS; CREATE TABLE IF NOT EXISTS" BEFORE the actual root
+# INSERT, all as user-facing root. After demote, user-facing root
+# lost BINLOG ADMIN -> 1227 -> verifier failed on a privilege gap
+# rather than reaching the fence test. alpha.74 fresh-bootstrap N=3
+# GREEN did not exercise this path because no switchover ran.
+#
+# alpha.75 v1 fix (Jack XP A2 verdict refined to B' final):
+#   1. Strip the preamble in
+#      `scripts/replication-switchover.sh::verify_post_dcs_local_root_write_fenced()`:
+#      remove `SET SESSION sql_log_bin=0`, `CREATE DATABASE`, `CREATE
+#      TABLE`. Verifier body only runs the user-facing root INSERT.
+#   2. Move probe table create to bootstrap-time in
+#      cmpd-semisync.yaml::ensure_internal_local_admin (INTERNAL_LOCAL
+#      with sql_log_bin=0 wrapper, binlog-replay-safe). Adds:
+#      `CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe`.
+#   3. Acceptance contract narrows: rc=0 FAIL; rc=1 with 1146/1227/
+#      1044 FAIL with distinct stderr sentinel (regression guards);
+#      rc=1 with 1290/read-only PASS only.
+# Same CmpD immutability rule applies (cmpd-semisync.yaml mutated,
+# `replication-switchover.sh` versioned CM contents mutated); chart
+# version bump mandatory. Same syncer v3 image (no syncer change).
+# SEMISYNC TOPOLOGY ONLY (alpha.72/.73/.74 scope-cap carried forward).
+# alpha.61 fence safety model preserved: user-facing root still NOT
+# granted BINLOG ADMIN; the fix is in the verifier contract, not in
+# the user-facing root privileges.
+version: 1.1.1-alpha.75
 
 # This is the version number of the MARIADB being deployed,
-appVersion: "10.6.15"
+# (mariadb engine version unchanged from alpha.64; this bump is
+# packaging-contract only.)
+appVersion: "11.4.10"
 
 home: https://kubeblocks.io/
 icon: https://github.com/apecloud/kubeblocks/raw/main/img/logo.png

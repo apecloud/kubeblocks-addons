@@ -1,0 +1,2242 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mariadb.semisync.cmpdName" . }}
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  provider: Community
+  description: MariaDB replication component definition for Kubernetes (semi-sync)
+  serviceKind: mariadb
+  serviceVersion: {{ .Values.defaultServiceVersion.replication }}
+  updateStrategy: BestEffortParallel
+  podManagementPolicy: OrderedReady
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+    scrapePort: metrics
+  services:
+    - name: default
+      roleSelector: primary
+      spec:
+        ports:
+          - name: mariadb
+            port: 3306
+            targetPort: mariadb
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+      isExclusive: true
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
+  configs:
+    - name: mariadb-semisync-config
+      template: mariadb-semisync-config-template
+      volumeName: mariadb-config
+      namespace: {{ .Release.Namespace }}
+      externalManaged: true
+      {{- include "mariadb.config.reconfigureAction" . | nindent 6 }}
+  scripts:
+    - name: {{ include "mariadb.replication.scriptConfigMapName" . }}
+      template: {{ include "mariadb.replication.scriptConfigMapName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^*"
+      optional: true
+  volumes:
+    - name: data
+      needSnapshot: true
+  {{- include "mariadb.replication.spec.systemAccounts" . | nindent 2 }}
+  {{- include "mariadb.spec.vars" . | nindent 2 }}
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - -c
+          - MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY=true /scripts/replication-roleprobe.sh
+    switchover:
+      # KB kbagent enforces a hardcoded maxActionCallTimeout of 60s
+      # (pkg/kbagent/service/action_utils.go), so any value above 60 is silently
+      # truncated. We declare 60 here so the contract reflects what kbagent
+      # actually enforces. The switchover action is intentionally short and
+      # delegates post-DCS convergence to roleProbe + KB endpoint controller.
+      timeoutSeconds: 60
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - /scripts/replication-switchover.sh
+  runtime:
+    # Give preStop enough time to fence the old primary and stop mariadbd before
+    # syncer releases the HA lease.
+    terminationGracePeriodSeconds: 120
+    initContainers:
+      - command:
+          - /bin/sh
+          - -c
+          - |
+            cp -r /bin/syncer /bin/syncerctl /tools/
+            mkdir -p {{ .Values.dataMountPath }}
+            rm -f {{ .Values.dataMountPath }}/.replication-ready {{ .Values.dataMountPath }}/.replication-divergence-pending
+            rm -f {{ .Values.dataMountPath }}/.prestop-fence-started \
+              {{ .Values.dataMountPath }}/.prestop-fence-complete \
+              {{ .Values.dataMountPath }}/.prestop-fence-failed
+            rm -f {{ .Values.dataMountPath }}/.sql-listener-ready \
+              {{ .Values.dataMountPath }}/.remote-root-fence-role \
+              {{ .Values.dataMountPath }}/.primary-read-write-ready
+            touch {{ .Values.dataMountPath }}/.replication-pending
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-syncer
+        securityContext:
+          runAsGroup: 0
+          runAsUser: 0
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+    containers:
+      - name: mariadb
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /tools/syncer
+          - --port
+          - "3601"
+          - --
+          - bash
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,tmp}
+            chown -R mysql:mysql {{ .Values.dataMountPath }}
+            MYSQL_CLIENT_DIR=/tools/mysql-client
+            MARIADB_BIN="$(command -v mariadb)"
+            MARIADB_LOADER="$(ldd "${MARIADB_BIN}" | awk '{for (i = 1; i <= NF; i++) if ($i ~ /^\// && ($i ~ /ld-linux/ || $i ~ /ld-musl/)) { print $i; exit }}')"
+            mkdir -p "${MYSQL_CLIENT_DIR}/bin" "${MYSQL_CLIENT_DIR}/lib"
+            cp -L "${MARIADB_BIN}" "${MYSQL_CLIENT_DIR}/bin/mariadb.bin"
+            ldd "${MARIADB_BIN}" | awk '{for (i = 1; i <= NF; i++) if ($i ~ /^\//) print $i}' | sort -u | while IFS= read -r lib; do
+              [ -n "${lib}" ] || continue
+              cp -L "${lib}" "${MYSQL_CLIENT_DIR}/lib/"
+            done
+            cat > "${MYSQL_CLIENT_DIR}/bin/mariadb" <<EOF
+            #!/bin/sh
+            set -eu
+            ROOT="\$(CDPATH= cd -- "\$(dirname -- "\$0")"/.. && pwd)"
+            exec "\${ROOT}/lib/${MARIADB_LOADER##*/}" --library-path "\${ROOT}/lib" "\${ROOT}/bin/mariadb.bin" "\$@"
+            EOF
+            chmod 0555 "${MYSQL_CLIENT_DIR}/bin/mariadb"
+            # Set data dir group to kbagent's GID (1000) and grant group write so that
+            # kbagent can write switchover trigger files. Files inside remain mysql-owned.
+            chgrp 1000 {{ .Values.dataMountPath }} && chmod g+w {{ .Values.dataMountPath }}
+            # Signal to roleProbe that this pod is initializing — prevents spurious "primary"
+            # reports that would cause KubeBlocks to auto-trigger a switchover.
+            rm -f {{ .Values.dataMountPath }}/.replication-ready
+            touch {{ .Values.dataMountPath }}/.replication-pending
+
+            POD_INDEX="${POD_NAME##*-}"
+            SERVICE_ID=$((POD_INDEX + 1))
+            PRIMARY_HOST="${CLUSTER_NAME}-${COMPONENT_NAME}.${CLUSTER_NAMESPACE}.svc.cluster.local"
+            SOCK="/run/mysqld/mysqld.sock"
+            MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
+            # alpha.64 v1 (Jack 09:35 RED root cause + 10:01 v2 design ack):
+            # cmpd runtime sql-listener-fence GRANT statements MUST NOT introduce
+            # admin-bypass privileges (SUPER / READ_ONLY ADMIN / BINLOG ADMIN /
+            # CONNECTION ADMIN / REPLICATION SLAVE ADMIN / REPLICATION MASTER
+            # ADMIN / GRANT ALL PRIVILEGES) onto user-facing root, because those
+            # privileges bypass @@global.read_only=ON and let user-facing root
+            # write through fence intent. The previous wider grants leaked these
+            # privileges back to root@%/127.0.0.1/localhost between switchover-
+            # side fence and verifier read, producing the alpha.63 fresh-gatefix
+            # RED. The constants below are inlined non-bypass grant lists kept
+            # in sync with switchover.sh's SWITCHOVER_*_GRANT_BODY constants;
+            # ShellSpec strong-binds the alignment.
+            CMPD_EXPLICIT_PRIMARY_GRANT_BODY="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER, CREATE USER"
+            CMPD_SECONDARY_FENCE_GRANT_BODY="SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN"
+            # Best-effort monitor privileges (read-only). These never bypass
+            # read_only and are safe on user-facing root in any state. Tier A
+            # by Jack 10:05: failure here is allowed to log + continue.
+            #
+            # alpha.64 v3 (Jack 11:14 live-gate RED): the priv list contains
+            # MULTI-WORD tokens (BINLOG MONITOR / SLAVE MONITOR). This
+            # constant is documentation + ShellSpec strong-bind ONLY. DO NOT
+            # iterate via unquoted parameter expansion (`for x in
+            # ${CMPD_OPTIONAL_MONITOR_PRIVS}; do`) — POSIX `for` would split
+            # on IFS (whitespace) into 4 single-word tokens (BINLOG / MONITOR
+            # / SLAVE / MONITOR) and `GRANT BINLOG ON *.* ...` is invalid SQL,
+            # producing 1227 (insufficient priv: SLAVE MONITOR) on every
+            # `SHOW SLAVE STATUS` and breaking promote/demote. ALWAYS use the
+            # inline quoted list at callsites:
+            #   for privilege in "BINLOG MONITOR" "SLAVE MONITOR"; do ...; done
+            CMPD_OPTIONAL_MONITOR_PRIVS="BINLOG MONITOR SLAVE MONITOR"
+            # Fresh bootstrap keeps pod-0 as the deterministic first primary.
+            # Give its roleProbe/Endpoint publish path a bounded window before a
+            # later pod accepts a local syncer primary role.
+            SYNCER_PRIMARY_BOOTSTRAP_GRACE_SECONDS="${MARIADB_SYNCER_PRIMARY_BOOTSTRAP_GRACE_SECONDS:-45}"
+            SYNCER_PRIMARY_BOOTSTRAP_GRACE_UNTIL="$(($(date +%s) + SYNCER_PRIMARY_BOOTSTRAP_GRACE_SECONDS))"
+            ROOT_LOCAL=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
+            INTERNAL_LOCAL=(mariadb "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
+            LOCAL=("${ROOT_LOCAL[@]}")
+            if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              {
+                printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
+                printf 'decision=refuse-restart-after-prestop\n'
+                printf 'reason=prestop-fence-started marker exists in this container lifecycle\n'
+                printf '\n'
+              } >> {{ .Values.dataMountPath }}/log/startup-fence.log 2>/dev/null || true
+              rm -f {{ .Values.dataMountPath }}/.replication-ready
+              touch {{ .Values.dataMountPath }}/.replication-pending
+              echo "preStop fence marker exists; refusing to restart mariadbd in terminating pod"
+              while true; do
+                sleep 3600
+              done
+            fi
+            HAS_EXISTING_DATA=false
+            if [ -d "{{ .Values.dataMountPath }}/mysql" ] || \
+               ls {{ .Values.dataMountPath }}/binlog/*.bin* >/dev/null 2>&1; then
+              HAS_EXISTING_DATA=true
+            fi
+            read_only_value() {
+              "${LOCAL[@]}" -e "SELECT UPPER(CAST(@@global.read_only AS CHAR));" 2>/dev/null \
+                | tr -d '\r' \
+                | awk 'NF {print $1; exit}'
+            }
+            read_only_is_fail_closed() {
+              local value
+              value="$(read_only_value || true)"
+              case "${value}" in
+                1|ON|NO_LOCK|NO_LOCK_NO_ADMIN)
+                  return 0
+                  ;;
+              esac
+              return 1
+            }
+            set_fail_closed_read_only() {
+              local label="${1:-fail-closed}"
+              if "${LOCAL[@]}" -e "SET GLOBAL read_only = NO_LOCK_NO_ADMIN;" 2>/dev/null && read_only_is_fail_closed; then
+                echo "Set fail-closed read_only=NO_LOCK_NO_ADMIN (${label})"
+                return 0
+              fi
+              if "${LOCAL[@]}" -e "SET GLOBAL read_only = ON;" 2>/dev/null && read_only_is_fail_closed; then
+                echo "Set fail-closed read_only=ON (${label})"
+                return 0
+              fi
+              if "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null && read_only_is_fail_closed; then
+                echo "Set fail-closed read_only fallback=1 (${label})"
+                return 0
+              fi
+              echo "WARNING: read_only still OFF after fail-closed attempts (${label})"
+              echo "WARNING: failed to set fail-closed read_only (${label})"
+              return 1
+            }
+            set_replica_read_only() {
+              # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required LOCK
+              # failures MUST propagate rc to caller. set_replica_read_only is
+              # called from publish_replica_after_rejoin_ready, runtime-secondary
+              # reconcile, and configure_replication_from_primary_service_once;
+              # any failure here means the replica's read_only/lock state is
+              # not what we promised, so the caller must NOT publish
+              # ready/role. set_fail_closed_read_only also already returns 1
+              # on its own failure mode.
+              rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
+              local rc=0
+              lock_remote_root_writes "replica-read-only" || rc=1
+              set_fail_closed_read_only "replica-read-only" || rc=1
+              lock_local_root_writes "replica-read-only" || rc=1
+              if [ "${rc}" -ne 0 ]; then
+                prestop_watchdog_log "set-replica-read-only label=replica-read-only rc=1 tier=required fail_closed=true"
+                return 1
+              fi
+            }
+            primary_local_root_write_ready() {
+              # alpha.70 v1: replace shell SQL probe with syncerctl writecheck.
+              # alpha.71 v1: bounded retry around syncerctl writecheck so a
+              # syncer-internal startup race (dbManager not yet connected to
+              # mariadbd at chart bootstrap T+15s) self-recovers within budget.
+              #
+              # Before alpha.70, this function ran the kb_health_check INSERT
+              # through ROOT_LOCAL (the cluster's user-facing root). ROOT_LOCAL
+              # is intentionally locked to the read-replication-admin-only-no-
+              # bypass priv set (no BINLOG ADMIN). The probe started its first
+              # statement with `SET SESSION sql_log_bin=0;` which requires
+              # BINLOG ADMIN -> always failed with ERROR 1227 (42000), causing
+              # the chart watchdog to never write `.sql-listener-ready` and
+              # roleProbe to stay in `initializing` indefinitely. Evidence in
+              # alpha.69 v1 5.D-r2 RED: every line of
+              # /var/lib/mysql/log/sql-listener-fence.log was the same 1227.
+              #
+              # alpha.70 v1 replaced the shell SQL probe with `syncerctl
+              # writecheck`, which delegates the probe to syncer engine's
+              # Manager.WriteCheck (operations/replica/writecheck.go calling
+              # engines/mariadb/manager.go). The syncer holds its own DB
+              # connection (built from MARIADB_INTERNAL_ROOT credentials,
+              # which retain full bypass priv), so the probe succeeds without
+              # asking ROOT_LOCAL to do anything beyond its locked-down priv
+              # set. /tools/syncerctl is already installed by the init-syncer
+              # initContainer (see template line 92, also used by
+              # syncerctl_pause and syncerctl_getrole below).
+              #
+              # alpha.70 v1 5.D-r3 N=1 RED surfaced the next-layer race: the
+              # chart bootstrap calls this function ~15s after mariadbd start,
+              # but syncer's engine `dbManager.IsDBStartupReady()` (called by
+              # the WriteCheck.PreCheck path) returns false until syncer's own
+              # *sql.DB has connected to mariadbd and completed its startup
+              # readiness ping. A single attempt fails with
+              # `ERR_PRECHECK_FAILED: database is not ready` and the chart
+              # marks `sql-listener-primary-expose-failed` permanently.
+              # Direct evidence: pod-0
+              # /var/lib/mysql/log/sql-listener-fence.log was 116 bytes (one
+              # error), HA loop continued spinning 8+ minutes but chart
+              # bootstrap never re-invoked the function.
+              #
+              # alpha.71 v1 fix: bounded retry, max_attempts attempts with
+              # sleep_seconds between each. rc-only contract - syncerctl exit
+              # code is the only control-flow signal; stdout/stderr (including
+              # ERR_PRECHECK_FAILED text and any 503 / curl / JSON errors)
+              # are appended to sql-listener-fence.log for postmortem only,
+              # never parsed. Marker files (.replication-ready /
+              # .sql-listener-ready / .primary-read-write-ready) are NOT
+              # touched here; they remain caller-managed in set_primary_read_
+              # write() after ALL gates pass. Each attempt checks
+              # .prestop-fence-started first so termination interrupts the
+              # retry budget immediately; total budget is
+              # max_attempts * sleep_seconds = 30s, well under
+              # terminationGracePeriodSeconds=120.
+              local label="${1:-primary-local-root-write-ready}"
+              if [ ! -x /tools/syncerctl ]; then
+                prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1 reason=syncerctl-not-available"
+                return 1
+              fi
+              local max_attempts=30
+              local sleep_seconds=1
+              local attempt=1
+              while [ "${attempt}" -le "${max_attempts}" ]; do
+                if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+                  prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1 via=syncerctl-writecheck reason=prestop-fence-started attempt=${attempt}"
+                  return 1
+                fi
+                if /tools/syncerctl --host 127.0.0.1 --port 3601 writecheck \
+                  >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                  prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=0 via=syncerctl-writecheck attempt=${attempt}"
+                  return 0
+                fi
+                prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1 via=syncerctl-writecheck attempt=${attempt}/${max_attempts}"
+                if [ "${attempt}" -lt "${max_attempts}" ]; then
+                  sleep "${sleep_seconds}"
+                fi
+                attempt=$((attempt + 1))
+              done
+              prestop_watchdog_log "primary-local-root-write-ready label=${label} rc=1 via=syncerctl-writecheck reason=budget-exhausted attempts=${max_attempts}"
+              return 1
+            }
+            primary_internal_root_write_ready() {
+              local label="${1:-primary-internal-root-write-ready}"
+              if "${INTERNAL_LOCAL[@]}" -e "
+                SET SESSION sql_log_bin=0;
+                CREATE DATABASE IF NOT EXISTS kubeblocks;
+                CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
+                INSERT INTO kubeblocks.kb_health_check(type, check_ts)
+                  VALUES (0, UNIX_TIMESTAMP())
+                  ON DUPLICATE KEY UPDATE check_ts=VALUES(check_ts);
+                DELETE FROM kubeblocks.kb_health_check WHERE type=0;
+                SET SESSION sql_log_bin=1;
+              " >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                prestop_watchdog_log "primary-internal-root-write-ready label=${label} rc=0"
+                return 0
+              fi
+              prestop_watchdog_log "primary-internal-root-write-ready label=${label} rc=1"
+              return 1
+            }
+            primary_write_gates_ready() {
+              local label="${1:-primary-write-gates-ready}"
+              primary_local_root_write_ready "${label}" || return 1
+              primary_internal_root_write_ready "${label}" || return 1
+            }
+            fail_primary_read_write_gate() {
+              local label="$1"
+              local reason="$2"
+              rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
+              # tier=fail-path-defensive: this is the failure handler for an
+              # already-failed primary write gate; defensive locking is
+              # best-effort observability. The caller has already concluded
+              # the gate failed and is not about to publish ready/role.
+              lock_remote_root_writes "${label}-${reason}" || true # tier=fail-path-defensive
+              set_fail_closed_read_only "${label}-${reason}" || true # tier=fail-path-defensive
+              lock_local_root_writes "${label}-${reason}" || true # tier=fail-path-defensive
+              prestop_watchdog_log "primary-read-write ${reason} rc=1"
+            }
+            set_primary_read_write() {
+              if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+                prestop_watchdog_log "skip-primary-read-write reason=prestop-fence-started"
+                mark_replication_pending
+                return 1
+              fi
+              if ! unlock_local_root_writes "primary-read-write"; then
+                rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
+                prestop_watchdog_log "primary-read-write local-root-unlock rc=1"
+                return 1
+              fi
+              if ! unlock_remote_root_writes "primary-read-write"; then
+                fail_primary_read_write_gate "primary-read-write" "remote-root-unlock"
+                return 1
+              fi
+              if "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null; then
+                if ! primary_write_gates_ready "primary-read-write"; then
+                  fail_primary_read_write_gate "primary-read-write" "write-gate"
+                  return 1
+                fi
+                rm -f {{ .Values.dataMountPath }}/.remote-root-fence-role
+                touch {{ .Values.dataMountPath }}/.primary-read-write-ready
+                prestop_watchdog_log "primary-read-write rc=0"
+                return 0
+              fi
+              if "${LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null; then
+                if ! primary_write_gates_ready "primary-read-write"; then
+                  fail_primary_read_write_gate "primary-read-write" "write-gate"
+                  return 1
+                fi
+                rm -f {{ .Values.dataMountPath }}/.remote-root-fence-role
+                touch {{ .Values.dataMountPath }}/.primary-read-write-ready
+                prestop_watchdog_log "primary-read-write rc=0"
+                return 0
+              fi
+              fail_primary_read_write_gate "primary-read-write" "read-only-open"
+              prestop_watchdog_log "primary-read-write rc=1"
+              return 1
+            }
+            mark_replication_pending() {
+              rm -f {{ .Values.dataMountPath }}/.replication-ready
+              rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
+              rm -f {{ .Values.dataMountPath }}/.sql-listener-ready
+              rm -f {{ .Values.dataMountPath }}/.remote-root-fence-role
+              touch {{ .Values.dataMountPath }}/.replication-pending
+            }
+            mark_replication_ready() {
+              touch {{ .Values.dataMountPath }}/.replication-ready
+              touch {{ .Values.dataMountPath }}/.sql-listener-ready
+              rm -f {{ .Values.dataMountPath }}/.replication-pending {{ .Values.dataMountPath }}/.replication-divergence-pending
+            }
+            mark_replication_divergence_pending() {
+              mark_replication_pending
+              touch {{ .Values.dataMountPath }}/.replication-divergence-pending
+            }
+            gtid_state_is_covered_by() {
+              local local_state="$1"
+              local primary_state="$2"
+              local token ptoken domain server seq pdom pserver pseq found
+              [ -z "${local_state}" ] && return 0
+              IFS=',' read -r -a local_tokens <<< "${local_state}"
+              IFS=',' read -r -a primary_tokens <<< "${primary_state}"
+              for token in "${local_tokens[@]}"; do
+                token="${token//[[:space:]]/}"
+                [ -n "${token}" ] || continue
+                IFS='-' read -r domain server seq <<< "${token}"
+                [ -n "${domain}" ] && [ -n "${server}" ] && [ -n "${seq}" ] || return 1
+                found=false
+                for ptoken in "${primary_tokens[@]}"; do
+                  ptoken="${ptoken//[[:space:]]/}"
+                  [ -n "${ptoken}" ] || continue
+                  IFS='-' read -r pdom pserver pseq <<< "${ptoken}"
+                  if [ "${pdom}" = "${domain}" ] && [ "${pserver}" = "${server}" ]; then
+                    if [ "${pseq}" -ge "${seq}" ] 2>/dev/null; then
+                      found=true
+                      break
+                    fi
+                    return 1
+                  fi
+                done
+                [ "${found}" = "true" ] || return 1
+              done
+              return 0
+            }
+            persist_gtid_divergence_evidence() {
+              local branch="$1" local_state="$2" primary_state="$3" slave_status="$4"
+              local evidence_file="{{ .Values.dataMountPath }}/log/replication-divergence.log"
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              {
+                printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                printf 'branch=%s\n' "${branch}"
+                printf 'decision=divergence-pending\n'
+                printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
+                printf 'primary_host=%s\n' "${PRIMARY_HOST:-unknown}"
+                printf 'service_id=%s\n' "${SERVICE_ID:-unknown}"
+                printf 'has_existing_data=%s\n' "${HAS_EXISTING_DATA:-unknown}"
+                printf 'local_gtid_binlog_state=%s\n' "${local_state:-<empty>}"
+                printf 'primary_gtid_binlog_state=%s\n' "${primary_state:-<empty>}"
+                printf 'slave_status_begin\n'
+                if [ -n "${slave_status}" ]; then
+                  printf '%s\n' "${slave_status}"
+                else
+                  printf '<empty>\n'
+                fi
+                printf 'slave_status_end\n'
+                printf '\n'
+              } >> "${evidence_file}" 2>/dev/null || true
+            }
+            block_existing_datadir_self_election_without_primary() {
+              # tier=fail-path-defensive: this branch is reached only when
+              # primary is unreachable and existing datadir cannot self-elect;
+              # the function deliberately does NOT publish ready/role and
+              # returns 0 to make the caller exit. Defensive locking is
+              # best-effort observability (Tier A class).
+              local local_state slave_status evidence_file
+              [ "${HAS_EXISTING_DATA}" = "true" ] || return 1
+              local_state=$("${LOCAL[@]}" -e "SELECT @@global.gtid_binlog_state;" 2>/dev/null || echo "")
+              slave_status=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null || true)
+              "${LOCAL[@]}" -e "STOP SLAVE;" 2>/dev/null || true
+              lock_remote_root_writes "no-primary-existing-datadir" || true # tier=fail-path-defensive
+              set_fail_closed_read_only "no-primary-existing-datadir" || true # tier=fail-path-defensive
+              mark_replication_pending
+              lock_local_root_writes "no-primary-existing-datadir" || true # tier=fail-path-defensive
+              evidence_file="{{ .Values.dataMountPath }}/log/replication-no-primary-pending.log"
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              {
+                printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                printf 'decision=no-primary-pending\n'
+                printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
+                printf 'service_id=%s\n' "${SERVICE_ID:-unknown}"
+                printf 'has_existing_data=%s\n' "${HAS_EXISTING_DATA:-unknown}"
+                printf 'local_gtid_binlog_state=%s\n' "${local_state:-<empty>}"
+                printf 'slave_status_begin\n'
+                if [ -n "${slave_status}" ]; then
+                  printf '%s\n' "${slave_status}"
+                else
+                  printf '<empty>\n'
+                fi
+                printf 'slave_status_end\n'
+                printf '\n'
+              } >> "${evidence_file}" 2>/dev/null || true
+              echo "Existing datadir with stale slave config but no primary found. Keeping read_only and replication pending instead of self-electing."
+              return 0
+            }
+            fail_closed_for_gtid_divergence() {
+              local primary_state local_state slave_status
+              [ "${HAS_EXISTING_DATA}" = "true" ] || return 1
+              local_state=$("${LOCAL[@]}" -e "SELECT @@global.gtid_binlog_state;" 2>/dev/null)
+              [ -n "${local_state}" ] || return 1
+              primary_state=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@global.gtid_binlog_state;" 2>/dev/null || echo "")
+              [ -n "${primary_state}" ] || return 1
+              if gtid_state_is_covered_by "${local_state}" "${primary_state}"; then
+                return 1
+              fi
+              slave_status=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null || true)
+              "${LOCAL[@]}" -e "STOP SLAVE;" 2>/dev/null || true
+              # tier=fail-path-defensive: divergence has already been detected;
+              # function returns 0 only after marking pending and never publishes
+              # ready/role. Defensive locks are best-effort observability.
+              lock_remote_root_writes "gtid-divergence" || true # tier=fail-path-defensive
+              set_fail_closed_read_only "gtid-divergence" || true # tier=fail-path-defensive
+              mark_replication_divergence_pending
+              lock_local_root_writes "gtid-divergence" || true # tier=fail-path-defensive
+              persist_gtid_divergence_evidence "fail_closed_for_gtid_divergence" "${local_state}" "${primary_state}" "${slave_status}"
+              echo "GTID divergence detected for existing datadir rejoin: local binlog state ${local_state}, primary binlog state ${primary_state}. Keeping replication pending for rebuild/resync."
+              return 0
+            }
+            prestop_watchdog_log() {
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              printf '%s prestop-watchdog %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$*" \
+                >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>/dev/null || true
+            }
+            sql_quote() {
+              printf "%s" "$1" | sed "s/'/''/g"
+            }
+            grant_internal_admin_runtime_privileges() {
+              local label="${1:-internal-local-admin-runtime-privileges}"
+              local user host privilege sql
+              user="$(sql_quote "${MARIADB_INTERNAL_ROOT_USER}")"
+              for host in localhost 127.0.0.1; do
+                for privilege in "REPLICATION SLAVE ADMIN" "REPLICATION MASTER ADMIN" "BINLOG ADMIN" "BINLOG MONITOR" "SLAVE MONITOR" "CONNECTION ADMIN" "READ_ONLY ADMIN"; do
+                  sql="
+                    SET SESSION sql_log_bin=0;
+                    GRANT ${privilege} ON *.* TO '${user}'@'${host}';
+                    FLUSH PRIVILEGES;
+                    SET SESSION sql_log_bin=1;
+                  "
+                  if "${ROOT_LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                    prestop_watchdog_log "internal-local-admin-runtime-privilege privilege=${privilege} label=${label} host=${host} via=root rc=0"
+                    continue
+                  fi
+                  if "${INTERNAL_LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                    prestop_watchdog_log "internal-local-admin-runtime-privilege privilege=${privilege} label=${label} host=${host} via=internal rc=0"
+                    continue
+                  fi
+                  prestop_watchdog_log "internal-local-admin-runtime-privilege privilege=${privilege} label=${label} host=${host} rc=1"
+                done
+              done
+            }
+            ensure_internal_local_admin() {
+              # alpha.66 v1 (Jack 12:18 alpha.65 v2 install/script live-gate
+              # RED + Jack 12:34 alpha.66 v1 design HOLD + Jack 12:39 design
+              # ACCEPT with 3 tightening): the existing local @localhost +
+              # @127.0.0.1 paths preserve full admin-priv kb_internal_root
+              # for syncer's local AdminDB connection (127.0.0.1:3306 match
+              # priority falls on @127.0.0.1 first because it is the most
+              # specific host). The new @'%' record below is detection-only:
+              # it is required so syncer's `IsAdminCreated()` (which queries
+              # `mysql.user WHERE host='%' AND user LIKE 'kb%'`) can detect
+              # the admin user and trigger `mgr.DB = mgr.AdminDB` in
+              # IsRunning(). The @'%' record carries `ACCOUNT LOCK` AND zero
+              # privileges, so it cannot be used for any remote auth (LOCK
+              # rejects auth) and cannot run any SQL even if LOCK is somehow
+              # bypassed (no GRANT). This preserves the alpha.64 v1 fence
+              # spirit: user-facing root has no admin bypass; internal admin
+              # remains effectively local-only at runtime.
+              #
+              # alpha.67 v1 (Jack 12:56 alpha.66 v1 package-level review HOLD):
+              # the @'%' "zero privileges" contract was only declarative in
+              # alpha.66 v1 — `CREATE USER IF NOT EXISTS` does NOT clear an
+              # existing account's privileges, and `ACCOUNT LOCK` does not
+              # revoke. If `kb_internal_root@'%'` happens to pre-exist (e.g.
+              # from a misconfigured prior install or upgrade) with grants,
+              # alpha.66 v1 would lock the account but leave the privileges
+              # intact, violating the security contract. alpha.67 v1 inserts
+              # an explicit `REVOKE ALL PRIVILEGES, GRANT OPTION FROM` step
+              # between `CREATE USER ... @'%'` and `ALTER USER ... @'%'
+              # ACCOUNT LOCK` so the zero-privilege state is enforced at the
+              # write site, not just declared. This pattern matches the
+              # alpha.64 v1 LOCK paths (set_local/remote_root_account_state
+              # LOCK and lock_local_root_for_prestop) which already use the
+              # same REVOKE statement before re-applying the non-bypass grant
+              # body.
+              #
+              # alpha.68 v2 (Jack 15:39 alpha.67 v1 live-gate RED + 15:45
+              # alpha.68 v1 design HOLD + 15:58 alpha.68 v2 Direction B
+              # ACCEPT with refined checkpoint #3): the alpha.67 v1
+              # detection-only LOCKED+zero-priv `@'%'` design was correct
+              # for the IsAdminCreated host='%' detection requirement but
+              # broke cross-member syncer auth. syncer's `GetMemberConnection`
+              # uses `config.GetDBConnWithAddr(addr)` with `AdminUsername`
+              # (= kb_internal_root via MYSQL_ADMIN_USER) for cross-pod TCP,
+              # which authenticates via the @'%' record. LOCKED → 4151
+              # Access denied; secondary cannot poll leader health; cluster
+              # stays in RoleProbeNotDone forever (1064 errors / 30s in
+              # bounded gate).
+              #
+              # SQL matrix audit (Helen 15:53 + Jack 15:58 design ACCEPT)
+              # established the cross-member exact grant requirement:
+              #   - IsReadonly (slave.go): SELECT @@global.* — USAGE
+              #   - IsMemberLagging / ReadCheck (manager.go) — SELECT on
+              #     kubeblocks.kb_health_check
+              #   - IsMemberHealthy leader-only WriteCheck — INSERT/UPDATE on
+              #     kubeblocks.kb_health_check (CREATE fallback handled by
+              #     primary_local_root_write_ready local bootstrap; cross-
+              #     pod path does not need CREATE because leader has pre-
+              #     created table during local primary bootstrap before role
+              #     publish)
+              #   - setSemiSyncSourceTimeout (semi_sync.go), Follow secondary
+              #     -> leader path — REPLICATION MASTER ADMIN required
+              #     because `SET GLOBAL rpl_semi_sync_master_timeout = N`
+              #     is an admin-bypass write on the target leader's mariadbd
+              #
+              # alpha.68 v2 grant contract (exact allowlist):
+              #   * REPLICATION CLIENT ON *.* (SHOW SLAVE/MASTER STATUS)
+              #   * REPLICATION MASTER ADMIN ON *.* (SET GLOBAL
+              #     rpl_semi_sync_master_timeout)
+              #   * SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check
+              #     (ReadCheck + WriteCheck)
+              #
+              # Refined checkpoint #3 (Jack 15:58): no NEW net capability,
+              # no read_only-bypass class. `REPLICATION MASTER ADMIN` is
+              # already in alpha.64 v1 `CMPD_EXPLICIT_PRIMARY_GRANT_BODY`
+              # which user-facing `root@'%'` carries; root and
+              # `kb_internal_root` share `MARIADB_ROOT_PASSWORD`, so an
+              # attacker with the password and remote access already has
+              # this capability via root@'%'. Net attack-surface delta = 0
+              # for `REPLICATION MASTER ADMIN`.
+              #
+              # Still forbidden on `kb_internal_root@'%'`: ALL PRIVILEGES /
+              # SUPER / READ_ONLY ADMIN / CONNECTION ADMIN / BINLOG ADMIN /
+              # REPLICATION SLAVE ADMIN / DELETE / DROP / CREATE USER /
+              # schema-wide DML / CREATE on kubeblocks.* (table is pre-
+              # created by primary_local_root_write_ready).
+              #
+              # alpha.69 v1 (Jack 17:57 alpha.68 v2 install/script live-gate
+              # RED 3-evidence-chains closeout + 18:20 alpha.69 v1 design
+              # ACCEPT with runtime-acceptance tightening): the alpha.68 v2
+              # @'%' grant contract above was correct, but
+              # ensure_internal_local_admin had a bootstrap precondition
+              # gap. alpha.68 v2's `GRANT SELECT, INSERT, UPDATE ON
+              # kubeblocks.kb_health_check TO 'kb_internal_root'@'%'`
+              # assumed the table existed, but the function is called
+              # from `wait_for_internal_local_admin
+              # "startup-before-role-decision"` which runs BEFORE the
+              # role-decision branches that invoke
+              # primary_local_root_write_ready (the function that creates
+              # `kubeblocks.kb_health_check`). On a fresh boot the table
+              # therefore does not exist when the @'%' GRANT runs, the
+              # GRANT fails with Error 1146, ensure_internal_local_admin
+              # returns rc=1, wait_for_internal_local_admin loops forever,
+              # role decision never reaches expose_sql_listener_for_*_role,
+              # mariadbd stays bound to 127.0.0.1, and cross-pod TCP
+              # connections see Error 2002.
+              #
+              # alpha.69 v1 changes:
+              #   - Add CREATE DATABASE IF NOT EXISTS kubeblocks BEFORE the
+              #     @'%' grant block (idempotent; ROOT_LOCAL via socket has
+              #     GRANT ALL PRIVILEGES locally so can CREATE).
+              #   - Add CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check
+              #     same area (idempotent). primary_local_root_write_ready
+              #     and primary_internal_root_write_ready still run later
+              #     post-role-decision — both are idempotent on the table.
+              #   - Add GRANT SELECT ON mysql.user TO 'kb_internal_root'@'%'
+              #     AFTER the existing three @'%' grants. syncer's connection
+              #     URL (engines/mysql/config.go line 71) includes `/mysql`
+              #     as the default database, so go-sql-driver issues
+              #     `init_db = mysql` during the handshake. alpha.68 v2
+              #     grants on @'%' are global (REPLICATION CLIENT +
+              #     REPLICATION MASTER ADMIN ON *.*) + table-specific on
+              #     kubeblocks.kb_health_check; the cross-pod init_db
+              #     handshake fails with Error 1044 because the @'%'
+              #     account has no privilege on the `mysql` schema. SELECT
+              #     ON mysql.user is the narrow table-specific privilege
+              #     that satisfies the init_db check.
+              #
+              # Net attack-surface delta = 0 for SELECT ON mysql.user vs
+              # root@'%' (alpha.64 v1 CMPD_EXPLICIT_PRIMARY_GRANT_BODY
+              # grants `SELECT ON *.*` to root@'%'; root and
+              # kb_internal_root share MARIADB_ROOT_PASSWORD).
+              #
+              # MariaDB 11.4 SHOW GRANTS normalization (Jack 18:20
+              # tightening): `GRANT REPLICATION CLIENT ON *.*` is the
+              # backward-compatible source syntax; SHOW GRANTS displays
+              # the normalized form `BINLOG MONITOR ON *.*` (MariaDB 11.4
+              # split REPLICATION CLIENT into BINLOG MONITOR + SLAVE
+              # MONITOR). `BINLOG MONITOR` in SHOW GRANTS output is the
+              # **positive** normalized form of our `REPLICATION CLIENT`
+              # grant and is allowed; runtime grant verification uses
+              # semantic-equivalent matching. This is DIFFERENT from
+              # `BINLOG ADMIN`, which remains in the **forbidden** admin-
+              # bypass list and must NOT appear on `kb_internal_root@'%'`.
+              # Source-side ShellSpec checks the literal source SQL
+              # (`GRANT REPLICATION CLIENT`); runtime live-gate acceptance
+              # uses the normalized form (`BINLOG MONITOR`). These two
+              # are different write-side vs read-side口径; ShellSpec
+              # literal-match logic must not be reused to validate runtime
+              # SHOW GRANTS output (Jack 18:24 reminder).
+              #
+              # alpha.70+ mandatory blocking debt (was alpha.69 in earlier
+              # planning, renamed because chart-only alpha.69 ships
+              # alongside as bounded short-term unblock): syncer source
+              # change so cross-member `GetDBConnWithAddr` uses a dedicated
+              # lower-priv credential AND removes `/mysql` from the
+              # connection DSN (or syncer-side mechanism replaces direct
+              # cross-pod admin SQL such as setSemiSyncSourceTimeout).
+              # alpha.70+ goal state restores `kb_internal_root@'%'` to
+              # alpha.67 v1 LOCKED + zero-priv (clean security boundary).
+              # alpha.69 v1 is bounded short-term unblock, NOT a final
+              # design.
+              local label="${1:-internal-local-admin}"
+              local user password sql replication_user
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              user="$(sql_quote "${MARIADB_INTERNAL_ROOT_USER}")"
+              password="$(sql_quote "${MARIADB_ROOT_PASSWORD}")"
+              # alpha.72 v1 (Jack XP review HOLD blocker #2/#8 — `5a7c68e5`):
+              # use shell var for replication user so env / SQL / member-join
+              # / inline CHANGE MASTER 全部 reference the same value (no env
+              # absent → empty MASTER_USER risk). Default to "kb_replicator"
+              # if MARIADB_REPL_USER env missing.
+              replication_user="$(sql_quote "${MARIADB_REPL_USER:-kb_replicator}")"
+              # alpha.72 v1 wording per Jack #3: MariaDB DDL/GRANT statements
+              # are NOT atomic; if a single statement fails mid-block the
+              # already-applied statements remain. The SET sql_log_bin=0
+              # bracketing only prevents binlog propagation. We rely on
+              # idempotent convergence (CREATE IF NOT EXISTS + ALTER UNLOCK +
+              # REVOKE ALL + GRANT specific) so subsequent retries can finish
+              # any partial state.
+              sql="
+                SET SESSION sql_log_bin=0;
+                CREATE USER IF NOT EXISTS '${user}'@'localhost' IDENTIFIED BY '${password}';
+                ALTER USER '${user}'@'localhost' IDENTIFIED BY '${password}';
+                ALTER USER '${user}'@'localhost' ACCOUNT UNLOCK;
+                GRANT ALL PRIVILEGES ON *.* TO '${user}'@'localhost' WITH GRANT OPTION;
+                CREATE USER IF NOT EXISTS '${user}'@'127.0.0.1' IDENTIFIED BY '${password}';
+                ALTER USER '${user}'@'127.0.0.1' IDENTIFIED BY '${password}';
+                ALTER USER '${user}'@'127.0.0.1' ACCOUNT UNLOCK;
+                GRANT ALL PRIVILEGES ON *.* TO '${user}'@'127.0.0.1' WITH GRANT OPTION;
+                CREATE DATABASE IF NOT EXISTS kubeblocks;
+                CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
+                CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe(probe_id VARCHAR(64) PRIMARY KEY, ts BIGINT);
+                CREATE USER IF NOT EXISTS '${user}'@'%' IDENTIFIED BY '${password}';
+                ALTER USER '${user}'@'%' ACCOUNT UNLOCK;
+                REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'%';
+                GRANT REPLICATION CLIENT ON *.* TO '${user}'@'%';
+                GRANT REPLICATION MASTER ADMIN ON *.* TO '${user}'@'%';
+                GRANT SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check TO '${user}'@'%';
+                GRANT SELECT ON mysql.user TO '${user}'@'%';
+                CREATE USER IF NOT EXISTS '${replication_user}'@'%' IDENTIFIED BY '${password}';
+                ALTER USER '${replication_user}'@'%' IDENTIFIED BY '${password}';
+                ALTER USER '${replication_user}'@'%' ACCOUNT UNLOCK;
+                REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${replication_user}'@'%';
+                GRANT REPLICATION SLAVE ON *.* TO '${replication_user}'@'%';
+                FLUSH PRIVILEGES;
+                SET SESSION sql_log_bin=1;
+              "
+              if "${ROOT_LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                grant_internal_admin_runtime_privileges "${label}"
+                prestop_watchdog_log "internal-local-admin label=${label} via=root rc=0"
+                return 0
+              fi
+              if "${INTERNAL_LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                grant_internal_admin_runtime_privileges "${label}"
+                prestop_watchdog_log "internal-local-admin label=${label} via=internal rc=0"
+                return 0
+              fi
+              prestop_watchdog_log "internal-local-admin label=${label} rc=1"
+              return 1
+            }
+            probe_internal_local_admin() {
+              if "${INTERNAL_LOCAL[@]}" -e "SELECT 1;" >/dev/null 2>&1; then
+                return 0
+              fi
+              prestop_watchdog_log "internal-local-admin-probe rc=1"
+              return 1
+            }
+            internal_local_admin_has_required_privileges() {
+              local semisync_master_value semisync_slave_value read_only_value
+              semisync_master_value=$("${INTERNAL_LOCAL[@]}" -e "SELECT @@global.rpl_semi_sync_master_enabled;" 2>/dev/null | tr -d '\r' | awk 'NF {print $1; exit}')
+              case "${semisync_master_value}" in
+                ON|on)
+                  semisync_master_value=1
+                  ;;
+                OFF|off)
+                  semisync_master_value=0
+                  ;;
+                0|1)
+                  ;;
+                *)
+                  prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_MASTER_ADMIN probe=read-semisync-value rc=1 value=${semisync_master_value:-<empty>}"
+                  return 1
+                  ;;
+              esac
+              if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=${semisync_master_value};" >/dev/null 2>&1; then
+                prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_MASTER_ADMIN probe=set-semisync-same-value rc=0"
+              else
+                prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_MASTER_ADMIN probe=set-semisync-same-value rc=1"
+                return 1
+              fi
+              semisync_slave_value=$("${INTERNAL_LOCAL[@]}" -e "SELECT @@global.rpl_semi_sync_slave_enabled;" 2>/dev/null | tr -d '\r' | awk 'NF {print $1; exit}')
+              case "${semisync_slave_value}" in
+                ON|on)
+                  semisync_slave_value=1
+                  ;;
+                OFF|off)
+                  semisync_slave_value=0
+                  ;;
+                0|1)
+                  ;;
+                *)
+                  prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_SLAVE_ADMIN probe=read-semisync-value rc=1 value=${semisync_slave_value:-<empty>}"
+                  return 1
+                  ;;
+              esac
+              if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_slave_enabled=${semisync_slave_value};" >/dev/null 2>&1; then
+                prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_SLAVE_ADMIN probe=set-semisync-same-value rc=0"
+              else
+                prestop_watchdog_log "internal-local-admin-required-privilege privilege=REPLICATION_SLAVE_ADMIN probe=set-semisync-same-value rc=1"
+                return 1
+              fi
+              read_only_value=$("${INTERNAL_LOCAL[@]}" -e "SELECT UPPER(CAST(@@global.read_only AS CHAR));" 2>/dev/null | tr -d '\r' | awk 'NF {print $1; exit}')
+              case "${read_only_value}" in
+                0|1|ON|OFF|NO_LOCK|NO_LOCK_NO_ADMIN)
+                  ;;
+                *)
+                  prestop_watchdog_log "internal-local-admin-required-privilege privilege=READ_ONLY_ADMIN probe=read-read-only-value rc=1 value=${read_only_value:-<empty>}"
+                  return 1
+                  ;;
+              esac
+              if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = ${read_only_value};" >/dev/null 2>&1; then
+                prestop_watchdog_log "internal-local-admin-required-privilege privilege=READ_ONLY_ADMIN probe=set-read-only-same-value rc=0"
+                return 0
+              fi
+              prestop_watchdog_log "internal-local-admin-required-privilege privilege=READ_ONLY_ADMIN probe=set-read-only-same-value rc=1"
+              return 1
+            }
+            wait_for_internal_local_admin() {
+              local label="${1:-internal-local-admin-ready}"
+              local sleep_seconds="${2:-2}"
+              local log_every_seconds="${3:-30}"
+              local start now elapsed next_log
+              start="$(date +%s)"
+              next_log=0
+              while true; do
+                if ensure_internal_local_admin "${label}" && probe_internal_local_admin && internal_local_admin_has_required_privileges; then
+                  LOCAL=("${INTERNAL_LOCAL[@]}")
+                  now="$(date +%s)"
+                  elapsed=$((now - start))
+                  prestop_watchdog_log "internal-local-admin-ready label=${label} elapsed=${elapsed}s"
+                  return 0
+                fi
+                LOCAL=("${ROOT_LOCAL[@]}")
+                mark_replication_pending
+                now="$(date +%s)"
+                elapsed=$((now - start))
+                if [ "${elapsed}" -ge "${next_log}" ]; then
+                  set_fail_closed_read_only "${label}-wait-internal-admin" || true
+                  prestop_watchdog_log "internal-local-admin-wait label=${label} elapsed=${elapsed}s"
+                  next_log=$((elapsed + log_every_seconds))
+                fi
+                sleep "${sleep_seconds}"
+              done
+            }
+            grant_optional_local_root_privileges() {
+              # alpha.64 v1 (Jack 09:35 RED + 10:01 design ack): drop admin
+              # bypass privs (READ_ONLY ADMIN / BINLOG ADMIN / CONNECTION ADMIN /
+              # REPLICATION SLAVE ADMIN / REPLICATION MASTER ADMIN). Only
+              # CMPD_OPTIONAL_MONITOR_PRIVS (BINLOG MONITOR / SLAVE MONITOR)
+              # remain — these are read-only monitoring privileges and do NOT
+              # bypass @@global.read_only. Tier A (Jack 10:05): failure on a
+              # MONITOR grant is allowed to log + continue (best-effort).
+              #
+              # alpha.64 v3 (Jack 11:14 live-gate RED): use inline QUOTED list
+              # to preserve multi-word priv name semantics. Unquoted
+              # `for privilege in ${CMPD_OPTIONAL_MONITOR_PRIVS}` would split
+              # the string on IFS into 4 single-word tokens (BINLOG / MONITOR
+              # / SLAVE / MONITOR) and emit invalid GRANT statements. See
+              # constant-declaration block above for full root cause.
+              local user="$1"
+              local host="$2"
+              local label="$3"
+              local privilege
+              for privilege in "BINLOG MONITOR" "SLAVE MONITOR"; do
+                if "${LOCAL[@]}" -e "
+                  SET SESSION sql_log_bin=0;
+                  GRANT ${privilege} ON *.* TO '${user}'@'${host}';
+                  FLUSH PRIVILEGES;
+                  SET SESSION sql_log_bin=1;
+                " >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                  prestop_watchdog_log "local-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=0 tier=monitor-best-effort"
+                else
+                  # Tier A: best-effort MONITOR grant; log 1227_swallowed for
+                  # observability and continue (do NOT propagate failure to
+                  # caller since these are monitoring-only and don't gate
+                  # primary-write/secondary-fence semantics).
+                  prestop_watchdog_log "local-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=1 tier=monitor-best-effort 1227_swallowed=true"
+                fi
+              done
+            }
+            set_local_root_account_state() {
+              local state="$1"
+              local label="$2"
+              local user password host mode sql
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              user="$(sql_quote "${MARIADB_ROOT_USER}")"
+              password="$(sql_quote "${MARIADB_ROOT_PASSWORD}")"
+              for host in localhost 127.0.0.1; do
+                if [ "${state}" = "LOCK" ]; then
+                  # alpha.64 v1 (Jack 09:35 RED): drop SUPER (admin bypass).
+                  # Use CMPD_SECONDARY_FENCE_GRANT_BODY which excludes SUPER /
+                  # READ_ONLY ADMIN / BINLOG ADMIN / CONNECTION ADMIN. SUPER
+                  # bypassed @@global.read_only=ON, defeating the very fence
+                  # this LOCK path was supposed to enforce.
+                  mode="read-replication-admin-only-no-bypass"
+                  sql="
+                    SET SESSION sql_log_bin=0;
+                    CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
+                    ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
+                    ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
+                    REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
+                    GRANT ${CMPD_SECONDARY_FENCE_GRANT_BODY} ON *.* TO '${user}'@'${host}';
+                    FLUSH PRIVILEGES;
+                    SET SESSION sql_log_bin=1;
+                  "
+                else
+                  # alpha.64 v1: replace GRANT ALL PRIVILEGES with explicit
+                  # primary grant body (CMPD_EXPLICIT_PRIMARY_GRANT_BODY)
+                  # aligned with switchover.sh's SWITCHOVER_EXPLICIT_PRIMARY_GRANT_BODY.
+                  # GRANT ALL PRIVILEGES bundled SUPER/READ_ONLY ADMIN/BINLOG
+                  # ADMIN which let user-facing root bypass read_only.
+                  mode="primary-write-no-bypass"
+                  sql="
+                    SET SESSION sql_log_bin=0;
+                    CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
+                    ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
+                    ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
+                    REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
+                    GRANT ${CMPD_EXPLICIT_PRIMARY_GRANT_BODY} ON *.* TO '${user}'@'${host}' WITH GRANT OPTION;
+                    FLUSH PRIVILEGES;
+                    SET SESSION sql_log_bin=1;
+                  "
+                fi
+                if "${LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                  if [ "${state}" = "LOCK" ]; then
+                    rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
+                  fi
+                  prestop_watchdog_log "local-root-account-${state} mode=${mode} label=${label} host=${host} rc=0 tier=required"
+                  grant_optional_local_root_privileges "${user}" "${host}" "${label}"
+                  continue
+                fi
+                # Tier B (Jack 10:05): account-state grant is required; failure
+                # MUST fail-closed. Caller (set_primary_read_write etc.) checks
+                # this rc and does NOT publish ready/role on rc!=0.
+                prestop_watchdog_log "local-root-account-${state} mode=${mode} label=${label} host=${host} rc=1 tier=required 1227_swallowed=true fail_closed=true"
+                return 1
+              done
+            }
+            set_remote_root_account_state() {
+              local state="$1"
+              local label="$2"
+              local user host password mode sql
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              user="$(sql_quote "${MARIADB_ROOT_USER}")"
+              host="$(sql_quote "${MARIADB_ROOT_HOST:-%}")"
+              password="$(sql_quote "${MARIADB_ROOT_PASSWORD}")"
+              case "${MARIADB_ROOT_HOST:-%}" in
+                localhost|127.0.0.1|::1)
+                  prestop_watchdog_log "remote-root-account-${state} label=${label} host=${host} rc=0 decision=skip-local-host"
+                  return 0
+                  ;;
+              esac
+              if [ "${state}" = "LOCK" ]; then
+                # alpha.64 v1 (Jack 09:35 RED): drop SUPER (admin bypass).
+                # Use CMPD_SECONDARY_FENCE_GRANT_BODY shared with local LOCK.
+                mode="read-replication-only-no-bypass"
+                sql="
+                  SET SESSION sql_log_bin=0;
+                  CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
+                  ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
+                  ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
+                  REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
+                  GRANT ${CMPD_SECONDARY_FENCE_GRANT_BODY} ON *.* TO '${user}'@'${host}';
+                  FLUSH PRIVILEGES;
+                  SET SESSION sql_log_bin=1;
+                "
+              else
+                # alpha.64 v1: replace GRANT ALL PRIVILEGES with explicit
+                # CMPD_EXPLICIT_PRIMARY_GRANT_BODY.
+                mode="primary-write-no-bypass"
+                sql="
+                  SET SESSION sql_log_bin=0;
+                  CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
+                  ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
+                  ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
+                  REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
+                  GRANT ${CMPD_EXPLICIT_PRIMARY_GRANT_BODY} ON *.* TO '${user}'@'${host}' WITH GRANT OPTION;
+                  FLUSH PRIVILEGES;
+                  SET SESSION sql_log_bin=1;
+                "
+              fi
+              if "${LOCAL[@]}" -e "${sql}" \
+                >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                prestop_watchdog_log "remote-root-account-${state} mode=${mode} label=${label} host=${host} rc=0 tier=required"
+                return 0
+              fi
+              # Tier B (Jack 10:05): remote root account-state grant required;
+              # failure MUST fail-closed; caller does NOT publish ready/role.
+              prestop_watchdog_log "remote-root-account-${state} mode=${mode} label=${label} host=${host} rc=1 tier=required 1227_swallowed=true fail_closed=true"
+              return 1
+            }
+            grant_optional_remote_root_privileges() {
+              local label="${1:-remote-root-optional-privileges}"
+              local user host privilege
+              case "${MARIADB_ROOT_HOST:-%}" in
+                localhost|127.0.0.1|::1)
+                  return 0
+                  ;;
+              esac
+              user="$(sql_quote "${MARIADB_ROOT_USER}")"
+              host="$(sql_quote "${MARIADB_ROOT_HOST:-%}")"
+              # alpha.64 v1 (Jack 09:35 RED + 10:01 design ack): drop admin
+              # bypass privs (BINLOG ADMIN / READ_ONLY ADMIN / CONNECTION ADMIN).
+              # Only CMPD_OPTIONAL_MONITOR_PRIVS (BINLOG MONITOR / SLAVE MONITOR)
+              # remain — read-only monitoring privs that don't bypass read_only.
+              # Tier A (Jack 10:05): MONITOR grant failure log + continue.
+              #
+              # alpha.64 v3 (Jack 11:14 live-gate RED): inline QUOTED list to
+              # preserve multi-word priv name semantics; see constant block.
+              for privilege in "BINLOG MONITOR" "SLAVE MONITOR"; do
+                if "${LOCAL[@]}" -e "
+                  SET SESSION sql_log_bin=0;
+                  GRANT ${privilege} ON *.* TO '${user}'@'${host}';
+                  FLUSH PRIVILEGES;
+                  SET SESSION sql_log_bin=1;
+                " >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                  prestop_watchdog_log "remote-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=0 tier=monitor-best-effort"
+                else
+                  prestop_watchdog_log "remote-root-optional-privilege privilege=${privilege} label=${label} host=${host} rc=1 tier=monitor-best-effort 1227_swallowed=true"
+                fi
+              done
+            }
+            lock_remote_root_writes() {
+              set_remote_root_account_state "LOCK" "$1" || return 1
+              grant_optional_remote_root_privileges "$1" || true
+            }
+            unlock_remote_root_writes() {
+              set_remote_root_account_state "UNLOCK" "$1"
+            }
+            lock_local_root_writes() {
+              set_local_root_account_state "LOCK" "$1"
+            }
+            unlock_local_root_writes() {
+              set_local_root_account_state "UNLOCK" "$1"
+            }
+            query_slave_status_verbose() {
+              timeout 5 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                -S "${SOCK}" -e "SHOW SLAVE STATUS\\G" 2>/dev/null || true
+            }
+            slave_status_is_healthy() {
+              local slave_status="$1"
+              [ -n "${slave_status}" ] || return 1
+              case "${slave_status}" in
+                *"Slave_IO_Running: Yes"*) ;;
+                *) return 1 ;;
+              esac
+              case "${slave_status}" in
+                *"Slave_SQL_Running: Yes"*) ;;
+                *) return 1 ;;
+              esac
+              case "${slave_status}" in
+                *"Last_IO_Errno: 0"*) ;;
+                *) return 1 ;;
+              esac
+              case "${slave_status}" in
+                *"Last_SQL_Errno: 0"*) ;;
+                *) return 1 ;;
+              esac
+            }
+            slave_status_has_kb_health_check_repairable_error() {
+              local slave_status="$1"
+              [ -n "${slave_status}" ] || return 1
+              case "${slave_status}" in
+                *"Last_SQL_Errno: 1062"* | *"Last_Errno: 1062"* | \
+                *"Last_SQL_Errno: 1146"* | *"Last_Errno: 1146"*) ;;
+                *) return 1 ;;
+              esac
+              case "${slave_status}" in
+                *"kubeblocks.kb_health_check"*) ;;
+                *) return 1 ;;
+              esac
+            }
+            wait_for_replication_healthy() {
+              local label="$1"
+              local timeout_seconds="${2:-120}"
+              local sleep_seconds="${3:-2}"
+              local start now elapsed slave_status evidence_file
+              start="$(date +%s)"
+              evidence_file="{{ .Values.dataMountPath }}/log/rejoin-replication-wait.log"
+              mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+              while true; do
+                slave_status="$(query_slave_status_verbose || true)"
+                if slave_status_is_healthy "${slave_status}"; then
+                  elapsed=$(($(date +%s) - start))
+                  prestop_watchdog_log "rejoin-replication-healthy label=${label} elapsed=${elapsed}s"
+                  return 0
+                fi
+                if repair_kb_health_check_replication_error "${label}" "${slave_status}"; then
+                  sleep "${sleep_seconds}"
+                  continue
+                fi
+                now="$(date +%s)"
+                elapsed=$((now - start))
+                if [ "${elapsed}" -ge "${timeout_seconds}" ]; then
+                  {
+                    printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                    printf 'label=%s\n' "${label}"
+                    printf 'decision=replication-not-healthy\n'
+                    printf 'elapsed_seconds=%s\n' "${elapsed}"
+                    printf 'slave_status_begin\n'
+                    if [ -n "${slave_status}" ]; then
+                      printf '%s\n' "${slave_status}"
+                    else
+                      printf '<empty>\n'
+                    fi
+                    printf 'slave_status_end\n\n'
+                  } >> "${evidence_file}" 2>/dev/null || true
+                  prestop_watchdog_log "rejoin-replication-not-healthy label=${label} elapsed=${elapsed}s"
+                  return 1
+                fi
+                sleep "${sleep_seconds}"
+              done
+            }
+            keep_replica_pending_until_healthy() {
+              # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required LOCK
+              # failures MUST propagate rc to caller. Caller pattern is
+              # `if ! keep_replica_pending_until_healthy ...; then return 1`,
+              # so propagating rc keeps the caller from publishing
+              # ready/role on locking failure.
+              local label="$1"
+              local rc=0
+              mark_replication_pending
+              lock_remote_root_writes "${label}-pending" || rc=1
+              set_fail_closed_read_only "${label}-pending" || rc=1
+              "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true # tier=error-recovery
+              lock_local_root_writes "${label}-pending" || rc=1
+              if [ "${rc}" -ne 0 ]; then
+                prestop_watchdog_log "keep-replica-pending label=${label} rc=1 tier=required fail_closed=true"
+                return 1
+              fi
+              wait_for_replication_healthy "${label}" 120 2
+            }
+            publish_replica_after_rejoin_ready() {
+              # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required path.
+              # mark_replication_ready (line below) is the publish point; if any
+              # required step fails (set_replica_read_only / expose_sql_listener),
+              # the function MUST return 1 BEFORE reaching mark_replication_ready.
+              local label="$1"
+              if ! keep_replica_pending_until_healthy "${label}-before-expose"; then
+                return 1
+              fi
+              if ! set_replica_read_only; then
+                prestop_watchdog_log "publish-replica-rejoin label=${label} step=before-expose rc=1 tier=required fail_closed=true"
+                return 1
+              fi
+              if ! expose_sql_listener_for_safe_role "${label}"; then
+                return 1
+              fi
+              "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true # tier=error-recovery
+              if ! set_replica_read_only; then
+                prestop_watchdog_log "publish-replica-rejoin label=${label} step=after-expose rc=1 tier=required fail_closed=true"
+                return 1
+              fi
+              if ! wait_for_replication_healthy "${label}-after-expose" 120 2; then
+                # tier=fail-path-defensive: replication is already
+                # known unhealthy; we mark pending and best-effort lock.
+                mark_replication_pending
+                lock_remote_root_writes "${label}-after-expose-not-healthy" || true # tier=fail-path-defensive
+                set_fail_closed_read_only "${label}-after-expose-not-healthy" || true # tier=fail-path-defensive
+                lock_local_root_writes "${label}-after-expose-not-healthy" || true # tier=fail-path-defensive
+                return 1
+              fi
+              mark_replication_ready
+              return 0
+            }
+            clear_local_kb_health_check_table() {
+              local decision="$1" evidence_file table_count row_count
+              if "${LOCAL[@]}" -e "
+                SET SESSION sql_log_bin=0;
+                CREATE DATABASE IF NOT EXISTS kubeblocks;
+                CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
+                DELETE FROM kubeblocks.kb_health_check;
+                SET SESSION sql_log_bin=1;
+              " 2>/dev/null; then
+                evidence_file="{{ .Values.dataMountPath }}/log/fresh-replica-health-check-cleanup.log"
+                mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+                table_count=$("${LOCAL[@]}" -N -s -e "
+                  SELECT COUNT(*)
+                  FROM information_schema.TABLES
+                  WHERE TABLE_SCHEMA = 'kubeblocks'
+                    AND TABLE_NAME = 'kb_health_check';
+                " 2>/dev/null || echo "unknown")
+                row_count=$("${LOCAL[@]}" -N -s -e "SELECT COUNT(*) FROM kubeblocks.kb_health_check;" 2>/dev/null || echo "unknown")
+                {
+                  printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                  printf 'decision=%s\n' "${decision}"
+                  printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
+                  printf 'primary_host=%s\n' "${PRIMARY_HOST:-unknown}"
+                  printf 'health_table_after_cleanup=%s\n' "${table_count}"
+                  printf 'health_rows_after_cleanup=%s\n' "${row_count}"
+                  printf '\n'
+                } >> "${evidence_file}" 2>/dev/null || true
+                echo "Prepared local kubeblocks health check table (${decision})."
+                return 0
+              fi
+              return 1
+            }
+            with_local_read_write_for_health_check_repair() {
+              local decision="$1"
+              local old_read_only rc
+              old_read_only="$(read_only_value || true)"
+              case "${old_read_only}" in
+                0|OFF)
+                  ;;
+                *)
+                  if ! "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null; then
+                    prestop_watchdog_log "fresh-kb-health-check-repair read-only-open rc=1 decision=${decision}"
+                    return 1
+                  fi
+                  ;;
+              esac
+              clear_local_kb_health_check_table "${decision}"
+              rc=$?
+              case "${old_read_only}" in
+                0|OFF)
+                  ;;
+                *)
+                  set_fail_closed_read_only "${decision}-restore-read-only" || true
+                  ;;
+              esac
+              return "${rc}"
+            }
+            prepare_fresh_replica_for_sql_thread_start() {
+              local local_gtid="${1:-}"
+              [ -z "${local_gtid}" ] || return 0
+              if with_local_read_write_for_health_check_repair "cleared-local-kb-health-check-before-fresh-sql-thread"; then
+                return 0
+              fi
+              mark_replication_pending
+              # tier=error-recovery: cleanup already failed; defensive locking
+              # follows mark_replication_pending and the function returns 1.
+              set_fail_closed_read_only "fresh-health-check-cleanup-failed" || true # tier=error-recovery
+              lock_local_root_writes "fresh-health-check-cleanup-failed" || true # tier=error-recovery
+              echo "WARNING: failed to clear local kubeblocks health check table before fresh SQL thread starts; keeping roleProbe pending."
+              return 1
+            }
+            repair_kb_health_check_replication_error() {
+              local label="$1" slave_status="$2"
+              if ! slave_status_has_kb_health_check_repairable_error "${slave_status}"; then
+                return 1
+              fi
+              prestop_watchdog_log "fresh-kb-health-check-repair label=${label}"
+              "${LOCAL[@]}" -e "STOP SLAVE SQL_THREAD;" 2>/dev/null || true # tier=error-recovery
+              if ! with_local_read_write_for_health_check_repair "prepared-local-kb-health-check-after-replication-error"; then
+                # tier=error-recovery: repair attempt already failed; defensive
+                # locking follows mark_replication_pending and the function returns 1.
+                mark_replication_pending
+                set_fail_closed_read_only "fresh-health-check-replication-repair-failed" || true # tier=error-recovery
+                lock_local_root_writes "fresh-health-check-replication-repair-failed" || true # tier=error-recovery
+                echo "WARNING: failed to repair kubeblocks health check replication error; keeping roleProbe pending."
+                return 1
+              fi
+              "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null || true # tier=error-recovery
+              return 0
+            }
+            mariadbd_pids() {
+              if command -v pidof >/dev/null 2>&1; then
+                pidof mariadbd 2>/dev/null || true
+                return
+              fi
+              ps 2>/dev/null | awk '$NF ~ /mariadbd$/ {print $1}'
+            }
+            pause_syncer_for_prestop() {
+              local rc
+              [ -x /tools/syncerctl ] || return 0
+              timeout 3 /tools/syncerctl pause >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>&1
+              rc=$?
+              prestop_watchdog_log "syncerctl-pause rc=${rc}"
+              return 0
+            }
+            fence_read_only_for_prestop() {
+              timeout 2 "${LOCAL[@]}" -e "SET GLOBAL read_only = NO_LOCK_NO_ADMIN;" \
+                >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>&1 \
+                || timeout 2 "${LOCAL[@]}" -e "SET GLOBAL read_only = ON;" \
+                >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>&1 \
+                || timeout 2 "${LOCAL[@]}" -e "SET GLOBAL read_only = 1;" \
+                >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>&1 \
+                || true
+              timeout 2 "${LOCAL[@]}" \
+                -e "SELECT NOW(), @@global.read_only, @@global.gtid_binlog_state, @@global.gtid_binlog_pos;" \
+                >> {{ .Values.dataMountPath }}/log/prestop-watchdog.log 2>&1 || true
+            }
+            stop_mariadbd_for_prestop() {
+              local pids
+              pids="$(mariadbd_pids | tr '\n' ' ')"
+              if [ -z "${pids}" ]; then
+                prestop_watchdog_log "mariadbd pid not found"
+                return 0
+              fi
+              prestop_watchdog_log "term mariadbd pids=${pids}"
+              kill -TERM ${pids} 2>/dev/null || true
+              sleep 1
+              pids="$(mariadbd_pids | tr '\n' ' ')"
+              if [ -n "${pids}" ]; then
+                prestop_watchdog_log "kill mariadbd pids=${pids}"
+                kill -KILL ${pids} 2>/dev/null || true
+              fi
+            }
+            wait_for_mariadb_local() {
+              until "${LOCAL[@]}" -e "SELECT 1" >/dev/null 2>&1; do
+                if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+                  prestop_watchdog_log "connection-wait-exit reason=prestop-fence-started"
+                  return 1
+                fi
+                if ! kill -0 ${MARIADB_PID} 2>/dev/null; then
+                  prestop_watchdog_log "connection-wait-exit reason=mariadbd-exited"
+                  return 1
+                fi
+                sleep 2
+              done
+            }
+            start_mariadbd_process() {
+              local bind_address="$1"
+              local label="$2"
+              prestop_watchdog_log "start-mariadbd label=${label} bind_address=${bind_address}"
+              docker-entrypoint.sh mariadbd \
+                --server-id=${SERVICE_ID} \
+                --log-bin={{ .Values.dataMountPath }}/binlog/${POD_NAME}-bin \
+                --skip-slave-start=ON \
+                --read-only=NO_LOCK_NO_ADMIN \
+                --thread-cache-size=100 \
+                --bind-address="${bind_address}" &
+              MARIADB_PID=$!
+              prestop_fence_watchdog &
+              PRESTOP_WATCHDOG_PID=$!
+            }
+            stop_mariadbd_process() {
+              local label="$1"
+              local i pids
+              pids="$(mariadbd_pids | tr '\n' ' ')"
+              if [ -z "${pids}" ]; then
+                prestop_watchdog_log "stop-mariadbd label=${label} pid-not-found"
+                return 0
+              fi
+              prestop_watchdog_log "stop-mariadbd label=${label} term pids=${pids}"
+              kill -TERM ${pids} 2>/dev/null || true
+              i=0
+              while [ "${i}" -lt 15 ]; do
+                pids="$(mariadbd_pids | tr '\n' ' ')"
+                [ -z "${pids}" ] && break
+                sleep 1
+                i=$((i + 1))
+              done
+              pids="$(mariadbd_pids | tr '\n' ' ')"
+              if [ -n "${pids}" ]; then
+                prestop_watchdog_log "stop-mariadbd label=${label} kill pids=${pids}"
+                kill -KILL ${pids} 2>/dev/null || true
+              fi
+              wait ${MARIADB_PID} 2>/dev/null || true
+            }
+            expose_sql_listener_for_safe_role() {
+              # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required path.
+              # touch .sql-listener-ready below is the publish point that lets
+              # the runtime accept TCP traffic; required local LOCK + read_only
+              # MUST hold BEFORE we open the listener. Failure of either MUST
+              # return 1 BEFORE touching .sql-listener-ready.
+              local label="$1"
+              if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+                prestop_watchdog_log "skip-sql-listener-expose label=${label} reason=prestop-fence-started"
+                mark_replication_pending
+                return 1
+              fi
+              if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+                return 0
+              fi
+              mark_replication_pending
+              prestop_watchdog_log "sql-listener-expose-begin label=${label}"
+              stop_mariadbd_process "sql-listener-${label}"
+              start_mariadbd_process "0.0.0.0" "sql-listener-${label}"
+              if ! wait_for_mariadb_local; then
+                wait ${MARIADB_PID}
+                exit $?
+              fi
+              if ! set_fail_closed_read_only "sql-listener-${label}"; then
+                prestop_watchdog_log "sql-listener-expose label=${label} step=set-read-only rc=1 tier=required fail_closed=true"
+                return 1
+              fi
+              if ! lock_local_root_writes "sql-listener-${label}"; then
+                prestop_watchdog_log "sql-listener-expose label=${label} step=lock-local-root rc=1 tier=required fail_closed=true"
+                return 1
+              fi
+              touch {{ .Values.dataMountPath }}/.sql-listener-ready
+              prestop_watchdog_log "sql-listener-expose-complete label=${label}"
+            }
+            expose_sql_listener_for_primary_role() {
+              local label="$1"
+              if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+                prestop_watchdog_log "skip-sql-listener-primary-expose label=${label} reason=prestop-fence-started"
+                mark_replication_pending
+                return 1
+              fi
+              if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+                "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+                "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+                if set_primary_read_write; then
+                  touch {{ .Values.dataMountPath }}/.sql-listener-ready
+                  prestop_watchdog_log "sql-listener-primary-existing-reconciled label=${label}"
+                  return 0
+                fi
+                mark_replication_pending
+                prestop_watchdog_log "sql-listener-primary-expose-failed label=${label} reason=existing-listener-local-write-not-ready"
+                return 1
+              fi
+              mark_replication_pending
+              prestop_watchdog_log "sql-listener-primary-expose-begin label=${label}"
+              stop_mariadbd_process "sql-listener-primary-${label}"
+              start_mariadbd_process "0.0.0.0" "sql-listener-primary-${label}"
+              if ! wait_for_mariadb_local; then
+                wait ${MARIADB_PID}
+                exit $?
+              fi
+              "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
+              "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+              if ! set_primary_read_write; then
+                mark_replication_pending
+                prestop_watchdog_log "sql-listener-primary-expose-failed label=${label}"
+                return 1
+              fi
+              touch {{ .Values.dataMountPath }}/.sql-listener-ready
+              prestop_watchdog_log "sql-listener-primary-expose-complete label=${label}"
+            }
+            query_local_syncer_role() {
+              [ -x /tools/syncerctl ] || return 1
+              timeout 3 /tools/syncerctl --host 127.0.0.1 --port 3601 getrole 2>/dev/null | tr -d '\r\n'
+            }
+            query_primary_service_server_id() {
+              timeout 3 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || true
+            }
+            local_user_table_count() {
+              "${LOCAL[@]}" -e "
+                SELECT COUNT(*)
+                FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys', 'kubeblocks');
+              " 2>/dev/null | tr -d '\r' | awk 'NF {print $1; exit}'
+            }
+            local_has_user_tables() {
+              local table_count
+              table_count="$(local_user_table_count || echo unknown)"
+              case "${table_count}" in
+                ''|*[!0-9]*)
+                  prestop_watchdog_log "runtime-secondary-follow-user-table-count rc=1 value=${table_count:-<empty>}"
+                  return 0
+                  ;;
+              esac
+              prestop_watchdog_log "runtime-secondary-follow-user-table-count rc=0 value=${table_count}"
+              [ "${table_count}" -gt 0 ]
+            }
+            reconcile_sql_listener_for_syncer_primary_once() {
+              local now primary_sid role
+              [ ! -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ] || return 0
+              if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+                role="$(query_local_syncer_role || true)"
+                [ "${role}" = "primary" ] || return 0
+                if [ -f "{{ .Values.dataMountPath }}/.primary-read-write-ready" ] && [ ! -f "{{ .Values.dataMountPath }}/.remote-root-fence-role" ] && [ ! -f "{{ .Values.dataMountPath }}/master.info" ]; then
+                  return 0
+                fi
+                prestop_watchdog_log "runtime-primary-listener-reconcile-repair-begin reason=primary-role-state-drift role=${role}"
+                expose_sql_listener_for_primary_role "syncer-promoted-primary-existing-listener" || return 1
+                mark_replication_ready
+                prestop_watchdog_log "runtime-primary-listener-reconcile-repair-complete role=${role}"
+                return 0
+              fi
+              if [ "${POD_INDEX}" -gt 0 ] && [ ! -f "{{ .Values.dataMountPath }}/master.info" ]; then
+                now="$(date +%s)"
+                if [ "${now}" -lt "${SYNCER_PRIMARY_BOOTSTRAP_GRACE_UNTIL}" ]; then
+                  prestop_watchdog_log "runtime-primary-listener-reconcile-defer reason=fresh-bootstrap-grace pod_index=${POD_INDEX}"
+                  return 0
+                fi
+              fi
+              primary_sid="$(query_primary_service_server_id || true)"
+              if [ -n "${primary_sid}" ] && [ "${primary_sid}" != "${SERVICE_ID}" ]; then
+                prestop_watchdog_log "runtime-primary-listener-reconcile-defer reason=primary-service-routes-to-peer primary_sid=${primary_sid} service_id=${SERVICE_ID}"
+                return 0
+              fi
+              role="$(query_local_syncer_role || true)"
+              [ "${role}" = "primary" ] || return 0
+              prestop_watchdog_log "runtime-primary-listener-reconcile-begin role=${role}"
+              expose_sql_listener_for_primary_role "syncer-promoted-primary" || return 1
+              mark_replication_ready
+              prestop_watchdog_log "runtime-primary-listener-reconcile-complete role=${role}"
+            }
+            configure_replication_from_primary_service_once() {
+              # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required path.
+              # set_replica_read_only failure means the replica's lock state
+              # is not safe; we MUST return 1 so caller does not interpret
+              # this iteration as a successful follow attempt.
+              local label="${1:-runtime-secondary-follow}"
+              local primary_sid master_gtid local_gtid slave_status
+              mark_replication_pending
+              if ! set_replica_read_only; then
+                prestop_watchdog_log "configure-replication-from-primary label=${label} step=enter-set-replica-read-only rc=1 tier=required fail_closed=true"
+                return 1
+              fi
+              primary_sid="$(query_primary_service_server_id || true)"
+              if [ -z "${primary_sid}" ] || [ "${primary_sid}" = "${SERVICE_ID}" ]; then
+                prestop_watchdog_log "runtime-secondary-follow-configure-defer label=${label} reason=primary-service-not-peer primary_sid=${primary_sid:-<empty>} service_id=${SERVICE_ID}"
+                return 1
+              fi
+              if local_has_user_tables && fail_closed_for_gtid_divergence; then
+                prestop_watchdog_log "runtime-secondary-follow-configure-blocked label=${label} reason=gtid-divergence"
+                return 1
+              fi
+              master_gtid=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@global.gtid_binlog_pos;" 2>/dev/null || echo "")
+              local_gtid=$("${LOCAL[@]}" -e "SELECT @@global.gtid_slave_pos;" 2>/dev/null || echo "")
+              prestop_watchdog_log "runtime-secondary-follow-configure-begin label=${label} primary_sid=${primary_sid} service_id=${SERVICE_ID} local_gtid=${local_gtid:-<empty>} primary_gtid=${master_gtid:-<empty>}"
+              if [ -z "${local_gtid}" ]; then
+                if ! "${LOCAL[@]}" -e "
+                  STOP SLAVE;
+                  CHANGE MASTER TO
+                    MASTER_HOST='${PRIMARY_HOST}',
+                    MASTER_USER='${MARIADB_REPL_USER:-kb_replicator}',
+                    MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+                    MASTER_USE_GTID=slave_pos,
+                    MASTER_CONNECT_RETRY=10;
+                  START SLAVE IO_THREAD;
+                " 2>/dev/null; then
+                  prestop_watchdog_log "runtime-secondary-follow-configure-io-failed label=${label}"
+                  return 1
+                fi
+                if ! prepare_fresh_replica_for_sql_thread_start "${local_gtid}"; then
+                  prestop_watchdog_log "runtime-secondary-follow-configure-pre-sql-failed label=${label}"
+                  return 1
+                fi
+                if ! "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
+                  # tier=error-recovery: SQL thread start has already failed.
+                  # mark_replication_pending + best-effort defensive locks +
+                  # function returns 1.
+                  mark_replication_pending
+                  set_fail_closed_read_only "runtime-secondary-follow-sql-thread-start-failed" || true # tier=error-recovery
+                  lock_local_root_writes "runtime-secondary-follow-sql-thread-start-failed" || true # tier=error-recovery
+                  prestop_watchdog_log "runtime-secondary-follow-configure-sql-failed label=${label}"
+                  return 1
+                fi
+              else
+                if ! "${LOCAL[@]}" -e "
+                  STOP SLAVE;
+                  CHANGE MASTER TO
+                    MASTER_HOST='${PRIMARY_HOST}',
+                    MASTER_USER='${MARIADB_REPL_USER:-kb_replicator}',
+                    MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+                    MASTER_USE_GTID=slave_pos,
+                    MASTER_CONNECT_RETRY=10;
+                  START SLAVE;
+                " 2>/dev/null; then
+                  prestop_watchdog_log "runtime-secondary-follow-configure-start-failed label=${label}"
+                  return 1
+                fi
+              fi
+              slave_status="$(query_slave_status_verbose || true)"
+              if [ -z "${slave_status}" ]; then
+                prestop_watchdog_log "runtime-secondary-follow-configure-no-slave-status label=${label}"
+                return 1
+              fi
+              if publish_replica_after_rejoin_ready "${label}"; then
+                prestop_watchdog_log "runtime-secondary-follow-configure-complete label=${label} primary_sid=${primary_sid}"
+                return 0
+              fi
+              if local_has_user_tables && fail_closed_for_gtid_divergence; then
+                prestop_watchdog_log "runtime-secondary-follow-configure-blocked label=${label} reason=gtid-divergence-after-configure"
+                return 1
+              fi
+              prestop_watchdog_log "runtime-secondary-follow-configure-not-healthy label=${label}"
+              return 1
+            }
+            reconcile_sql_listener_for_syncer_secondary_once() {
+              # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required path.
+              # mark_replication_ready (line below) is the publish point;
+              # set_replica_read_only failure MUST return 1 BEFORE marking ready.
+              local role slave_status
+              [ ! -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ] || return 0
+              role="$(query_local_syncer_role || true)"
+              [ "${role}" = "secondary" ] || return 0
+              if ! set_replica_read_only; then
+                mark_replication_pending
+                prestop_watchdog_log "runtime-secondary-listener-reconcile role=${role} step=set-replica-read-only rc=1 tier=required fail_closed=true"
+                return 1
+              fi
+              slave_status="$(query_slave_status_verbose || true)"
+              if slave_status_is_healthy "${slave_status}"; then
+                mark_replication_ready
+                prestop_watchdog_log "runtime-secondary-listener-reconcile-ready role=${role}"
+                return 0
+              fi
+              if configure_replication_from_primary_service_once "runtime-secondary-follow"; then
+                prestop_watchdog_log "runtime-secondary-listener-reconcile-ready-after-configure role=${role}"
+                return 0
+              fi
+              mark_replication_pending
+              prestop_watchdog_log "runtime-secondary-listener-reconcile-pending role=${role}"
+            }
+            wait_for_mariadbd_with_role_reconcile() {
+              local rc=0
+              while kill -0 "${MARIADB_PID}" 2>/dev/null; do
+                reconcile_sql_listener_for_syncer_secondary_once || true
+                reconcile_sql_listener_for_syncer_primary_once || true
+                sleep 1
+              done
+              wait "${MARIADB_PID}" || rc=$?
+              return "${rc}"
+            }
+            prestop_fence_watchdog() {
+              local fired=false
+              local iter=0
+              while true; do
+                if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+                  iter=$((iter + 1))
+                  if [ "${fired}" = "false" ]; then
+                    fired=true
+                    prestop_watchdog_log "marker-detected pod=${POD_NAME:-unknown} mariadb_pid=${MARIADB_PID:-unknown}"
+                    touch {{ .Values.dataMountPath }}/.prestop-fence-watchdog-active 2>/dev/null || true
+                  fi
+                  mark_replication_pending
+                  if [ $((iter % 5)) -eq 1 ]; then
+                    pause_syncer_for_prestop
+                  fi
+                  fence_read_only_for_prestop
+                  stop_mariadbd_for_prestop
+                  sleep 1
+                  continue
+                fi
+                kill -0 "${MARIADB_PID}" 2>/dev/null || break
+                sleep 0.2
+              done
+              if [ "${fired}" = "true" ]; then
+                prestop_watchdog_log "exit"
+              fi
+            }
+
+            # Start local-only until the pod has a safe role. During replacement
+            # startup, read_only does not block privileged root writes in MariaDB,
+            # so root write privileges are fenced until the pod is a confirmed
+            # primary or a healthy replica.
+            start_mariadbd_process "127.0.0.1" "bootstrap-local-only"
+
+            # Wait for MariaDB to accept connections
+            if ! wait_for_mariadb_local; then
+              wait ${MARIADB_PID}
+              exit $?
+            fi
+            wait_for_internal_local_admin "startup-before-role-decision"
+            # tier=startup-defensive: pre-role-decision defensive locks. Role
+            # has not been determined yet; subsequent role-decision branches
+            # each install their own required Tier B locks (set_replica_read_only,
+            # expose_sql_listener_for_*_role) before publishing ready/role.
+            lock_local_root_writes "startup-before-role-decision-pre-remote" || true # tier=startup-defensive
+            lock_remote_root_writes "startup-before-role-decision" || true # tier=startup-defensive
+            set_fail_closed_read_only "startup-before-role-decision" || true # tier=startup-defensive
+            lock_local_root_writes "startup-before-role-decision" || true # tier=startup-defensive
+
+            # Determine role by querying the primary service VIP.
+            # timeout 10 prevents an indefinite hang if the primary is temporarily unresponsive
+            # (e.g. its semi-sync ACK receiver is stalled) — treat it as "no primary".
+            PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+              -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || echo "")
+
+            # Check for existing slave config.
+            # Use tabular SHOW SLAVE STATUS (not \G) because -N suppresses field names in \G format.
+            SLAVE_STATUS=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null)
+
+            if [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
+              # Primary service routes to us — we are the current primary.
+              # Clear any stale slave config and mark initialization as complete.
+              if ! expose_sql_listener_for_primary_role "primary-service-route"; then
+                wait ${MARIADB_PID}
+                exit 1
+              fi
+              mark_replication_ready
+              echo "Starting as primary (server_id=${SERVICE_ID})"
+            elif [ -n "${SLAVE_STATUS}" ]; then
+              # We have existing slave config from a previous run.
+              # Do not let an existing datadir self-elect while the primary service is
+              # temporarily empty. A terminating old primary can otherwise publish stale
+              # local transactions as the new source of truth.
+              if fail_closed_for_gtid_divergence; then
+                wait ${MARIADB_PID}
+                exit 1
+              fi
+              if [ "${POD_INDEX}" = "0" ] && [ -z "${PRIMARY_SID}" ]; then
+                if block_existing_datadir_self_election_without_primary; then
+                  wait ${MARIADB_PID}
+                  exit 1
+                fi
+                if ! expose_sql_listener_for_primary_role "stale-slave-no-primary"; then
+                  wait ${MARIADB_PID}
+                  exit 1
+                fi
+                mark_replication_ready
+                echo "Starting as primary (pod-0 with stale slave config, no primary found)"
+              else
+                while true; do
+                  reconcile_sql_listener_for_syncer_primary_once || true
+                  if [ ! -f "{{ .Values.dataMountPath }}/master.info" ] && \
+                     [ -f "{{ .Values.dataMountPath }}/.primary-read-write-ready" ] && \
+                     [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+                    echo "Existing slave config accepted syncer primary promotion"
+                    break
+                  fi
+                  if publish_replica_after_rejoin_ready "existing-slave-config"; then
+                    echo "Resumed replication from existing slave config"
+                    break
+                  fi
+                  if fail_closed_for_gtid_divergence; then
+                    wait ${MARIADB_PID}
+                    exit 1
+                  fi
+                  echo "Existing slave config is not healthy yet; keeping replication pending and read-only, retrying in 5s."
+                  sleep 5
+                done
+              fi
+            elif [ -n "${PRIMARY_SID}" ] || [ "${POD_INDEX}" -gt 0 ]; then
+              # No slave config; we need to configure replication from the primary.
+              # Loop indefinitely until replication is successfully configured:
+              #   1. Find the primary (a server_id different from ours) — retry every 3s
+              #   2. Run CHANGE MASTER TO; START SLAVE
+              #   3. Verify SHOW SLAVE STATUS is non-empty (config stored); on failure,
+              #      sleep 5s and retry from step 1.
+              # .replication-pending stays set throughout so roleProbe does not publish a
+              # role, preventing a spurious "primary" report and the resulting split-brain race.
+              #
+              # Chart-side self-election paths (Path A 60s any-pod / Path B 30s non-pod-0)
+              # were removed 2026-05-05 to fix cycle 4 semisync n01 double-primary race
+              # (pod-0 default-primary by index + pod-1 self-elect after 30s both firing).
+              # Primary election now belongs entirely to syncer/DCS:
+              #   - Fresh bootstrap entry point: pod-0 default-primary by index (else branch below)
+              #   - Failover: syncer IsHealthiestMember fence (apecloud/syncer PR #142) +
+              #     AttemptAcquireLease + Promote()
+              # The loop never gives up on its own — chart waits for primary to appear,
+              # never self-elects. If pod-0 never comes (broken image), this pod stays in
+              # the loop and the cluster waits for kbagent restart / operator intervention.
+              # That is the intended trade-off of "primary election belongs to syncer/DCS".
+              #
+              # Set fail-closed read_only BEFORE entering the wait loop. mariadbd starts
+              # read-only from the command line, and this explicit set plus the local
+              # root write fence keeps the pod unwritable while role is unresolved.
+              # Cycle 6 (alpha.18) caught the previous default-writable behavior as a SQL
+              # invariant failure: pod-0 default-primary read_only=0 plus pod-1 waiting in
+              # the loop with default read_only=0 = two writable instances.
+              # tier=startup-defensive: pre-role-decision waiting loop entry;
+              # subsequent publish_replica_after_rejoin_ready (Tier B required)
+              # is the actual ready/role publish point.
+              set_fail_closed_read_only "wait-primary-loop-entry" || true # tier=startup-defensive
+              lock_local_root_writes "wait-primary-loop-entry" || true # tier=startup-defensive
+              _no_primary_iters=0
+              while true; do
+                # Step 1: find primary (timeout 10 prevents hang if primary unresponsive)
+                PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                  -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || echo "")
+                if [ -z "${PRIMARY_SID}" ] || [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
+                  if [ ! -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+                    reconcile_sql_listener_for_syncer_primary_once || true
+                    if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] && [ ! -f "{{ .Values.dataMountPath }}/master.info" ]; then
+                      echo "Starting as primary after syncer promoted this pod"
+                      break
+                    fi
+                  fi
+                  _no_primary_iters=$((_no_primary_iters + 1))
+                  # Observability: log every 30s so external watchers see we are still waiting
+                  # for primary, not silently stuck. Does not change behavior.
+                  if [ $((_no_primary_iters % 10)) -eq 0 ]; then
+                    echo "INFO: primary not found at iter=${_no_primary_iters} (~$((_no_primary_iters * 3))s elapsed); still waiting for syncer/DCS to elect a primary"
+                  fi
+                  sleep 3
+                  continue
+                fi
+                # Step 2: configure replication
+                if fail_closed_for_gtid_divergence; then
+                  wait ${MARIADB_PID}
+                  exit 1
+                fi
+                MASTER_GTID=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                  -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@global.gtid_binlog_pos;" 2>/dev/null)
+                LOCAL_GTID=$("${LOCAL[@]}" -e "SELECT @@global.gtid_slave_pos;" 2>/dev/null || echo "")
+                if [ -z "${LOCAL_GTID}" ]; then
+                  if ! "${LOCAL[@]}" -e "
+                    STOP SLAVE;
+                    CHANGE MASTER TO
+                      MASTER_HOST='${PRIMARY_HOST}',
+                      MASTER_USER='${MARIADB_REPL_USER:-kb_replicator}',
+                      MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+                      MASTER_USE_GTID=slave_pos,
+                      MASTER_CONNECT_RETRY=10;
+                    START SLAVE IO_THREAD;
+                  " 2>/dev/null; then
+                    echo "CHANGE MASTER TO or START SLAVE IO_THREAD failed; retrying in 5s"
+                    sleep 5
+                    continue
+                  fi
+                  if ! prepare_fresh_replica_for_sql_thread_start "${LOCAL_GTID}"; then
+                    sleep 5
+                    continue
+                  fi
+                  if ! "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
+                    # tier=error-recovery: SQL thread start has already failed.
+                    # mark_replication_pending + best-effort defensive locks +
+                    # continue retry loop (does NOT publish ready/role).
+                    mark_replication_pending
+                    set_fail_closed_read_only "fresh-sql-thread-start-failed" || true # tier=error-recovery
+                    lock_local_root_writes "fresh-sql-thread-start-failed" || true # tier=error-recovery
+                    echo "START SLAVE SQL_THREAD failed; keeping roleProbe pending."
+                    sleep 5
+                    continue
+                  fi
+                else
+                  "${LOCAL[@]}" -e "
+                    STOP SLAVE;
+                    CHANGE MASTER TO
+                      MASTER_HOST='${PRIMARY_HOST}',
+                      MASTER_USER='${MARIADB_REPL_USER:-kb_replicator}',
+                      MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
+                      MASTER_USE_GTID=slave_pos,
+                      MASTER_CONNECT_RETRY=10;
+                    START SLAVE;
+                  " 2>/dev/null || true
+                fi
+                # Step 3: verify CHANGE MASTER TO actually stored config.
+                # If it failed (e.g. auth error, primary briefly unreachable), retry from step 1
+                # after a short backoff. Only remove .replication-pending once slave config is
+                # confirmed. Do NOT self-elect on failure.
+                SLAVE_STATUS_CHECK=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null)
+                if [ -n "${SLAVE_STATUS_CHECK}" ]; then
+                  if publish_replica_after_rejoin_ready "new-slave-config"; then
+                    echo "Replication configured from primary ${PRIMARY_HOST} at GTID ${MASTER_GTID}"
+                    break
+                  fi
+                  if fail_closed_for_gtid_divergence; then
+                    wait ${MARIADB_PID}
+                    exit 1
+                  fi
+                  echo "Replication stored but not healthy yet; retrying in 5s"
+                  sleep 5
+                  continue
+                fi
+                echo "CHANGE MASTER TO did not store config; retrying in 5s"
+                sleep 5
+              done
+            else
+              # Pod-0, primary unreachable, no slave config: start as primary by default.
+              if ! expose_sql_listener_for_primary_role "default-pod0-primary"; then
+                wait ${MARIADB_PID}
+                exit 1
+              fi
+              mark_replication_ready
+              echo "Starting as primary by default (index=0)"
+            fi
+
+            # Background: clear the semi-sync ACK receiver deadlock when detected.
+            # When a secondary is RST-killed, MariaDB's ACK receiver thread can deadlock for
+            # ~150s (TCP retransmit timeout), blocking ALL new TCP connections to the primary.
+            # Detection: Unix socket shows clients=0 AND TCP connection to port 3306 fails.
+            # (Unix socket bypasses TCP; if TCP is blocked, it's the deadlock — not just a
+            #  transient state where the secondary is reconnecting.)
+            # Toggling rpl_semi_sync_master_enabled=0→1 stops and restarts the ACK receiver.
+            SOCK="/run/mysqld/mysqld.sock"
+            SOCK_CLI=(mariadb "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
+            TCP_CLI=(mariadb "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -N -s)
+            (while kill -0 ${MARIADB_PID} 2>/dev/null; do
+              sleep 10
+              # Deadlock check: Unix socket works even during ACK receiver deadlock;
+              # TCP fails when deadlocked. Do NOT gate on clients=0: a force-killed
+              # slave leaves a CLOSE-WAIT connection that keeps clients=1, masking the
+              # deadlock. Check TCP directly — if it fails, toggle to restart ACK receiver.
+              if ! timeout 3 "${TCP_CLI[@]}" -e "SELECT 1;" >/dev/null 2>&1; then
+                if kill -0 ${MARIADB_PID} 2>/dev/null; then
+                  "${SOCK_CLI[@]}" \
+                    -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" \
+                    2>/dev/null || true
+                fi
+              fi
+            done) &
+
+            # Switchover is coordinated by /scripts/replication-switchover.sh
+            # through syncerctl, which creates the DCS switchover record. Remove
+            # stale raw-SQL trigger files from older script versions so they cannot
+            # race with syncer's HA loop.
+            rm -f {{ .Values.dataMountPath }}/.switchover-request \
+              {{ .Values.dataMountPath }}/.switchover-done \
+              {{ .Values.dataMountPath }}/.switchover-error
+
+            wait_for_mariadbd_with_role_reconcile
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mariadb-config
+          - mountPath: /tools
+            name: tools
+          - name: scripts
+            mountPath: /scripts
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  DATA_DIR="{{ .Values.dataMountPath }}"
+                  LOG_DIR="${DATA_DIR}/log"
+                  LOG_FILE="${LOG_DIR}/prestop-fence.log"
+                  INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
+                  mkdir -p "${LOG_DIR}" 2>/dev/null || true
+                  prestop_log() {
+                    line="$(date -u +"%Y-%m-%dT%H:%M:%SZ") prestop-fence $*"
+                    echo "${line}"
+                    printf '%s\n' "${line}" >> "${LOG_FILE}" 2>/dev/null || true
+                  }
+                  run_sql() {
+                    label="$1"
+                    mode="$2"
+                    sql="$3"
+                    if [ "${mode}" = "socket" ]; then
+                      timeout 3 mariadb -u"${INTERNAL_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
+                        -S /run/mysqld/mysqld.sock -e "${sql}" >> "${LOG_FILE}" 2>&1
+                    else
+                      timeout 3 mariadb -u"${INTERNAL_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
+                        -h127.0.0.1 -P3306 -e "${sql}" >> "${LOG_FILE}" 2>&1
+                    fi
+                    rc=$?
+                    prestop_log "${label} rc=${rc}"
+                    return "${rc}"
+                  }
+                  fence_read_only() {
+                    label="$1"
+                    mode="$2"
+                    run_sql "${label}-no-lock-no-admin" "${mode}" "SET GLOBAL read_only = NO_LOCK_NO_ADMIN;" \
+                      || run_sql "${label}-fallback-on" "${mode}" "SET GLOBAL read_only = ON;" \
+                      || run_sql "${label}-fallback-1" "${mode}" "SET GLOBAL read_only = 1;" \
+                      || true
+                  }
+                  prestop_sql_quote() {
+                    printf "%s" "$1" | sed "s/'/''/g"
+                  }
+                  lock_local_root_for_prestop() {
+                    # alpha.64 v1 (Jack 09:35 RED): drop SUPER (admin bypass).
+                    # NOTE: preStop hook is a SEPARATE shell scope (/bin/sh -c
+                    # block) so the main-container CMPD_SECONDARY_FENCE_GRANT_BODY
+                    # constant is NOT in scope here. The literal grant list
+                    # below MUST be kept in sync with the main-container constant
+                    # CMPD_SECONDARY_FENCE_GRANT_BODY (line ~155). ShellSpec
+                    # rendered-manifest negative grep enforces both callsites
+                    # do not contain SUPER / READ_ONLY ADMIN / BINLOG ADMIN /
+                    # CONNECTION ADMIN. Tier B (Jack 10:05): prestop LOCK is
+                    # required; failure MUST fail-closed (return 1) so caller
+                    # does not proceed.
+                    label="$1"
+                    mode="$2"
+                    user="$(prestop_sql_quote "${MARIADB_ROOT_USER}")"
+                    password="$(prestop_sql_quote "${MARIADB_ROOT_PASSWORD}")"
+                    for host in localhost 127.0.0.1; do
+                      sql="
+                        SET SESSION sql_log_bin=0;
+                        CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
+                        ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
+                        ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
+                        REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
+                        GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO '${user}'@'${host}';
+                        FLUSH PRIVILEGES;
+                        SET SESSION sql_log_bin=1;
+                      "
+                      if run_sql "${label}-local-root-lock-${host}" "${mode}" "${sql}"; then
+                        prestop_log "local-root-lock label=${label} host=${host} mode=${mode} rc=0 tier=required"
+                        continue
+                      fi
+                      prestop_log "local-root-lock label=${label} host=${host} mode=${mode} rc=1 tier=required 1227_swallowed=true fail_closed=true"
+                      return 1
+                    done
+                  }
+                  mariadbd_pids() {
+                    if command -v pidof >/dev/null 2>&1; then
+                      pidof mariadbd 2>/dev/null || true
+                      return
+                    fi
+                    ps 2>/dev/null | awk '$NF ~ /mariadbd$/ {print $1}'
+                  }
+                  wait_mariadbd_exit() {
+                    limit="$1"
+                    i=0
+                    while [ "${i}" -lt "${limit}" ]; do
+                      pids="$(mariadbd_pids | tr '\n' ' ')"
+                      if [ -z "${pids}" ]; then
+                        prestop_log "mariadbd exited after ${i}s"
+                        return 0
+                      fi
+                      sleep 1
+                      i=$((i + 1))
+                    done
+                    prestop_log "mariadbd still running after ${limit}s pids=${pids}"
+                    return 1
+                  }
+
+                  prestop_log "begin pod=${POD_NAME:-unknown}"
+                  touch "${DATA_DIR}/.prestop-fence-started" "${DATA_DIR}/.replication-pending" 2>/dev/null || true
+                  rm -f "${DATA_DIR}/.replication-ready" 2>/dev/null || true
+                  # alpha.64 v2 (Jack 10:32 HOLD blocker 2): Tier B preStop
+                  # required LOCK MUST NOT be silently swallowed by trailing
+                  # `|| true`. socket→tcp fallback is best-effort attempt
+                  # ordering; double failure emits an explicit fail-closed
+                  # token for the runtime negative gate. preStop has already
+                  # removed `.replication-ready` above and set
+                  # `.prestop-fence-started`, so continuing to kill mariadbd
+                  # IS the fail-closed behavior at the pod level — but the
+                  # log token is what the live-gate runtime negative grep
+                  # asserts. Do NOT add `|| true` after this block.
+                  if ! lock_local_root_for_prestop "prestop" "socket"; then
+                    if ! lock_local_root_for_prestop "prestop" "tcp"; then
+                      prestop_log "prestop_lock_failed_both fail_closed=true tier=required"
+                    fi
+                  fi
+                  if [ -x /tools/syncerctl ]; then
+                    timeout 3 /tools/syncerctl pause >> "${LOG_FILE}" 2>&1
+                    prestop_log "syncerctl-pause rc=$?"
+                  else
+                    prestop_log "syncerctl-pause skipped: /tools/syncerctl missing"
+                  fi
+
+                  run_sql "socket-state-before" "socket" "SELECT NOW(), @@global.read_only, @@global.gtid_binlog_state, @@global.gtid_binlog_pos;" || true
+                  fence_read_only "socket-read-only" "socket"
+                  fence_read_only "tcp-read-only" "tcp"
+                  # This closes secondary IO with FIN instead of RST and avoids the
+                  # semi-sync ACK receiver deadlock on the primary. It is harmless on a primary.
+                  run_sql "socket-stop-slave-io" "socket" "STOP SLAVE IO_THREAD;" || true
+                  run_sql "tcp-stop-slave-io" "tcp" "STOP SLAVE IO_THREAD;" || true
+                  run_sql "socket-state-after-fence" "socket" "SELECT NOW(), @@global.read_only, @@global.gtid_binlog_state, @@global.gtid_binlog_pos;" || true
+
+                  pids="$(mariadbd_pids | tr '\n' ' ')"
+                  if [ -n "${pids}" ]; then
+                    prestop_log "term mariadbd pids=${pids}"
+                    kill -TERM ${pids} 2>/dev/null || true
+                  else
+                    prestop_log "mariadbd pid not found before term"
+                  fi
+
+                  if ! wait_mariadbd_exit 15; then
+                    pids="$(mariadbd_pids | tr '\n' ' ')"
+                    if [ -n "${pids}" ]; then
+                      prestop_log "kill mariadbd pids=${pids}"
+                      kill -KILL ${pids} 2>/dev/null || true
+                    fi
+                    if ! wait_mariadbd_exit 5; then
+                      touch "${DATA_DIR}/.prestop-fence-failed" 2>/dev/null || true
+                      prestop_log "end status=failed"
+                      exit 0
+                    fi
+                  fi
+
+                  touch "${DATA_DIR}/.prestop-fence-complete" 2>/dev/null || true
+                  prestop_log "end status=complete"
+        ports:
+          - containerPort: 3306
+            name: mariadb
+          - containerPort: 3601
+            name: ha
+        env:
+          # syncer DB engine reads KB_SERVICE_* for the root/poll DB
+          # credentials. KB_SERVICE_USER stays bound to MARIADB_ROOT_USER
+          # so syncer's startup readiness ping always works (root is the
+          # one user that always exists from mariadbd init). HA promote/
+          # demote SQL is NOT executed via this credential — see
+          # MYSQL_ADMIN_USER below.
+          - name: KB_SERVICE_USER
+            value: "$(MARIADB_ROOT_USER)"
+          - name: KB_SERVICE_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          # alpha.66 v1 (Jack 12:18 alpha.65 v2 install/script live-gate
+          # RED + Jack 12:34 alpha.66 v1 design HOLD): syncer's HA Promote/
+          # Demote SQL needs admin-bypass privileges (REPLICATION SLAVE
+          # ADMIN / READ_ONLY ADMIN / etc). alpha.64 v1 correctly removed
+          # these from user-facing root, so the syncer HA path was failing
+          # 1227. Upstream syncer (engines/mysql) already has a 3-tier
+          # credential model (Root / Admin / Replication) and an auto-switch
+          # in IsRunning() that swaps mgr.DB to AdminDB once the admin user
+          # is detected via `mysql.user WHERE host='%' AND user LIKE 'kb%'`.
+          # We inject MYSQL_ADMIN_USER=kb_internal_root (literal — NOT
+          # `$(MARIADB_INTERNAL_ROOT_USER)` because container env expansion
+          # order is not guaranteed) so syncer uses kb_internal_root for
+          # AdminDB. The bootstrap script also creates a detection-only
+          # `kb_internal_root@'%'` record (ACCOUNT LOCK + no privileges)
+          # so IsAdminCreated finds it without expanding the remote attack
+          # surface; the actual AdminDB connection from 127.0.0.1 matches
+          # `kb_internal_root@127.0.0.1` (full admin privileges).
+          - name: MYSQL_ADMIN_USER
+            value: "kb_internal_root"
+          - name: MYSQL_ADMIN_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          # alpha.72 v1 (Helen TL 22:14 autonomous decision after westonnnn
+          # 21:56 `8390cc8a` full TL autonomy + Jack XP review request
+          # `89591496`): explicitly set `MYSQL_REPLICATION_USER=kb_replicator`
+          # to override syncer's fallback to `MYSQL_ADMIN_USER`. Without this
+          # env, syncer's engines/mariadb/config.go:80 falls back to
+          # getAdminUserName() (= MYSQL_ADMIN_USER = kb_internal_root), and
+          # engines/mariadb/manager.go:794 calls `CHANGE MASTER TO
+          # master_user=kb_internal_root`. But `kb_internal_root@'%'` is the
+          # admin role with only REPLICATION CLIENT + REPLICATION MASTER ADMIN
+          # (no REPLICATION SLAVE — alpha.69 v1 narrowed the grants), so the
+          # secondary's REGISTER_SLAVE fails with Errno 1597 / Errno 1045
+          # access denied. Evidence in alpha.71 v1 N=1 RED:
+          # pod-1 SHOW SLAVE STATUS Master_User=kb_internal_root +
+          # Last_IO_Error=COM_REGISTER_SLAVE failed Access denied for user
+          # 'kb_internal_root'@'%' (Errno: 1045). alpha.72 v1 fixes this by
+          # (a) setting MYSQL_REPLICATION_USER to a dedicated `kb_replicator`
+          # user, (b) creating that user with `REPLICATION SLAVE ON *.*` priv
+          # in ensure_internal_local_admin within the same SQL block as
+          # kb_internal_root — NOT an atomic transaction; MariaDB DDL/GRANT
+          # statements are not transactional, so the bootstrap relies on
+          # idempotent convergence (CREATE IF NOT EXISTS + ALTER UNLOCK +
+          # REVOKE ALL + GRANT REPLICATION SLAVE) so retries can complete
+          # any partial state — and (c) chart member-join script reading
+          # MARIADB_REPLICATION_USER for its CHANGE MASTER TO. All three
+          # semisync call sites (syncer Follow + chart inline
+          # configure_replication_from_primary_service_once + chart
+          # member-join) converge on kb_replicator. kb_internal_root remains
+          # admin-role only, not leaking REPLICATION SLAVE priv to remote.
+          # Replication topology stays on pre-alpha.72 root path (alpha.72
+          # v1 scope-cap to semisync; replication kb_replicator deferred to
+          # alpha.73+).
+          - name: MYSQL_REPLICATION_USER
+            value: "kb_replicator"
+          # alpha.74 v1 (Helen TL autopilot mode westonnnn `df3c94b0` 01:28
+          # 12h-autonomous: TL self-determines + Jack XP review parallel
+          # non-blocking; root cause for alpha.73 v1 N=1 partial first-blocker
+          # = SQL replay 1396 on kb_replicator CREATE USER): mariadb 11.4
+          # image entrypoint /usr/local/bin/docker-entrypoint.sh examines
+          # MARIADB_REPLICATION_USER env at initdb time. If set, it runs
+          # `CREATE USER 'kb_replicator'@'%' IDENTIFIED BY ...; GRANT
+          # REPLICATION SLAVE ON *.* TO 'kb_replicator'@'%';` WITHOUT
+          # IF NOT EXISTS, WITHOUT SET SESSION sql_log_bin=0 wrapper. The
+          # CREATE USER is binlogged on pod-0; pod-1 also runs entrypoint
+          # initdb which creates kb_replicator@'%' locally; then pod-1
+          # START SLAVE replays pod-0 binlog CREATE USER -> 1396
+          # "Operation CREATE USER failed for 'kb_replicator'@'%'" because
+          # the entrypoint statement lacks IF NOT EXISTS clause.
+          #
+          # alpha.74 v1 fix: STOP setting MARIADB_REPLICATION_USER env
+          # entirely (so mariadb entrypoint doesn't trigger that CREATE/
+          # GRANT path), AND introduce a renamed `MARIADB_REPL_USER` shell
+          # variable for chart scripts (replication-member-join.sh + inline
+          # CHANGE MASTER TO) so the chart still has a well-known token to
+          # reference kb_replicator. syncer Go binary keeps reading
+          # MYSQL_REPLICATION_USER (engines/mariadb/config.go:80) — this
+          # env name is NOT consumed by mariadb image entrypoint, so syncer
+          # path stays converged to kb_replicator with no entrypoint side-
+          # effect. Chart's ensure_internal_local_admin still creates
+          # kb_replicator@'%' via INTERNAL_LOCAL with SET SESSION
+          # sql_log_bin=0 prefix, so chart's CREATE USER is NOT binlogged.
+          # Both pods bootstrap kb_replicator locally (idempotent) and no
+          # binlog event needs to replay through START SLAVE.
+          - name: MARIADB_REPL_USER
+            value: "kb_replicator"
+          - name: MARIADB_REPL_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          - name: MYSQL_REPLICATION_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mariadb
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain | quote }}
+          - name: MARIADB_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: MARIADB_INTERNAL_ROOT_USER
+            value: kb_internal_root
+          - name: MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY
+            value: "true"
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          # syncer uses this pod FQDN to wait for DNS readiness before control-plane actions.
+          - name: KB_POD_FQDN
+            value: "$(POD_NAME).$(CLUSTER_NAME)-$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+          - name: SERVICE_PORT
+            value: "3306"
+          - name: PATH
+            value: /tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: MARIADB_AUTO_UPGRADE
+            value: "1"
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+      {{- include "mariadb.container.exporter" . | nindent 6 }}
+    volumes:
+      - name: tools
+        emptyDir: {}
