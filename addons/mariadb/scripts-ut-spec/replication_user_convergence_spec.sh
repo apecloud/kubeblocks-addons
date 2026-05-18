@@ -79,14 +79,14 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
   MEMBER_JOIN="${ADDON_ROOT}/scripts/replication-member-join.sh"
 
   Describe "Gate 1: Chart.yaml literal version"
-    It "is exactly 1.1.1-alpha.85 (alpha.85 bump: pure version bump to escape KB CmpD immutability after alpha.84 v2 amend mutated cmpd-semisync.yaml; same scope as alpha.84 v2: semisync ParametersDefinition only)"
-      When call grep -c '^version: 1.1.1-alpha.85$' "${CHART_YAML}"
+    It "is exactly 1.1.1-alpha.88 (alpha.88 bump: drop parse smoke after kbagent PATH + set -e dry-run blocker; injection defense + atomic write remain)"
+      When call grep -c '^version: 1.1.1-alpha.88$' "${CHART_YAML}"
       The output should eq "1"
       The status should be success
     End
 
-    It "does not retain prior alpha.84 version line (no stale literal)"
-      When call grep -c '^version: 1.1.1-alpha.84$' "${CHART_YAML}"
+    It "does not retain prior alpha.87 version line (no stale literal)"
+      When call grep -c '^version: 1.1.1-alpha.87$' "${CHART_YAML}"
       The output should eq "0"
       The status should be failure
     End
