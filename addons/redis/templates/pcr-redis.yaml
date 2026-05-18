@@ -20,3 +20,26 @@ spec:
       reRenderResourceTypes:
         - vscale
 {{- end }}
+{{- range .Values.redisVersions }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ printf "redis-syncer%s-pcr-%s" .major  $.Chart.Version }}
+  labels:
+    {{- include "redis.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "redis.annotations" $ | nindent 4 }}
+spec:
+  componentDef: {{ printf "%s-%s" .syncerComponentDef  $.Chart.Version }}
+  parametersDefs:
+    - {{ printf "redis%s-config-pd" .major }}
+
+  configs:
+    - name: redis.conf
+      templateName: redis-replication-config
+      fileFormatConfig:
+        format: redis
+      reRenderResourceTypes:
+        - vscale
+{{- end }}

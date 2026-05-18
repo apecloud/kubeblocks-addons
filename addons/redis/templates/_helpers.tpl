@@ -56,6 +56,13 @@ Define redis component definition regular expression name prefix
 {{- end -}}
 
 {{/*
+Define redis syncer component definition regular expression name prefix
+*/}}
+{{- define "redisSyncer.cmpdRegexpPattern" -}}
+^redis-syncer-\d+
+{{- end -}}
+
+{{/*
 Define redis 7.X component definition regular expression name prefix
 */}}
 {{- define "redis7.cmpdRegexpPattern" -}}
@@ -123,6 +130,13 @@ redis-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
+Define redis sentinel component script template name
+*/}}
+{{- define "redisSentinel.scriptsTemplate" -}}
+redis-sentinel-scripts-template-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
 Define redis cluster component script template name
 */}}
 {{- define "redisCluster.scriptsTemplate" -}}
@@ -174,8 +188,24 @@ Generate scripts configmap
 */}}
 {{- define "redis.extend.scripts" -}}
 {{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{- $name := $path | base }}
+{{- if not (has $name (list "redis-sentinel-account-provision.sh" "redis-sentinel-member-join.sh" "redis-sentinel-member-leave.sh" "redis-sentinel-ping.sh" "redis-sentinel-post-start.sh" "redis-sentinel-start-v2.sh" "redis5-sentinel-start-v2.sh" "redis6-sentinel-post-start.sh")) }}
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Generate scripts configmap for the independent redis-sentinel component.
+*/}}
+{{- define "redis-sentinel.extend.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{- $name := $path | base }}
+{{- if has $name (list "redis-sentinel-account-provision.sh" "redis-sentinel-member-join.sh" "redis-sentinel-member-leave.sh" "redis-sentinel-ping.sh" "redis-sentinel-post-start.sh" "redis-sentinel-start-v2.sh" "redis5-sentinel-start-v2.sh" "redis6-sentinel-post-start.sh") }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
 {{- end }}
 {{- end }}
 
