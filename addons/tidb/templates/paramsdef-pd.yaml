@@ -18,6 +18,9 @@ spec:
     cue: |-
       {{- .Files.Get "config/pd-config-constraint.cue" | nindent 6 }}
 
+  # pd won't honor dynamic configs in config file once it is initialized
+  mergeReloadAndRestart: false
+
   dynamicParameters:
     - cluster-version
     - schedule.max-merge-region-size
