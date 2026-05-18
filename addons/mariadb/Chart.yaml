@@ -845,7 +845,217 @@ type: application
 #     check from alpha.83 to alpha.84.
 #   - scripts-ut-spec/semisync_rejoin_fence_template_spec.sh: no
 #     change (the alpha.81 SLAVE MONITOR contract is not version-keyed).
-version: 1.1.1-alpha.85
+#
+# alpha.86 v1 (Helen 2026-05-19 07:00 LAND) — adds defense-in-depth
+# persistence layer for `SET GLOBAL` reconfigure values on the semisync
+# topology, independent of the controller-side fix for KB Configure /
+# InstanceSet switchover-trigger bug (PR #10252, owned by Edward/Rocco).
+#
+# Why persistence is necessary even after #10252 lands: PR #10252 fixes
+# the specific case where config-hash-only Pod template updates from
+# dynamic reconfigure incorrectly trigger `lifecycleActions.switchover`.
+# But mariadbd process restart can still happen from unrelated paths —
+# OOMKill, node drain, manual restart, syncer-driven failover after
+# health probe failure, etc. In any of those cases, `SET GLOBAL` runtime
+# state is wiped and the runtime invariant reverts to chart defaults.
+# alpha.86 adds a PVC-backed override file that mariadbd loads at
+# startup via `--defaults-extra-file`, so reconfigured values survive
+# ANY mariadbd restart regardless of trigger.
+#
+# Design lesson from alpha.84 v1 dry-run FAIL: the original v1 design
+# put `!includedir /var/lib/mysql/runtime-overrides.d/` directly into
+# the chart-rendered ConfigMap-backed `my.cnf`, which KB
+# ParametersDefinition's strict INI parser
+# (`fileFormatConfig.format: ini`) rejected with `key-value delimiter
+# not found`. alpha.86 avoids that by putting `!includedir` into a
+# SEPARATE loader file on the data PVC (not in any KB-managed
+# ConfigMap) and passing it to mariadbd via `--defaults-extra-file`.
+# KB never sees the loader file or its `!includedir`; mariadbd's
+# native option parser does support `!includedir`.
+#
+# alpha.86 v1 fix (chart + tests patch, SEMISYNC TOPOLOGY ONLY;
+# replication / galera / standalone PDs and helpers unchanged; base
+# reconfigureAction helper unchanged for those topologies):
+#
+#   1. templates/cmpd-semisync.yaml init-syncer command:
+#        - mkdir -p `{{ .Values.dataMountPath }}/runtime-overrides.d`
+#          (per-parameter override files live here)
+#        - touch `{{ .Values.dataMountPath }}/runtime-overrides.cnf`
+#          and write the single line `!includedir
+#          {{ .Values.dataMountPath }}/runtime-overrides.d/` (mariadbd
+#          loader entry point; pure mariadbd option-file syntax)
+#        - `chgrp 1000` + `chmod g+w` on the dir so kbagent (gid=1000)
+#          can write override files; mariadbd (mysql user) can read.
+#          Same group-write pattern as existing dataMountPath setup.
+#
+#   2. templates/cmpd-semisync.yaml `start_mariadbd_process` function:
+#        - Prepend `--defaults-extra-file=
+#          {{ .Values.dataMountPath }}/runtime-overrides.cnf` as the
+#          FIRST mariadbd option (mariadbd requires --defaults-* args
+#          to be first). Reading is silent-skip if file missing; init-
+#          syncer ensures it exists.
+#
+#   3. templates/_helpers.tpl: NEW helper variant
+#      `mariadb.config.reconfigureAction.persisted` (semisync-only).
+#      After each successful `SET GLOBAL`, writes one
+#      `${OVERRIDES_DIR}/<param_name>.cnf` file with `[mysqld]\n<name>
+#      = <value>` content via temp file + atomic rename. Fail-closed
+#      on mkdir / tmp write / mv / parse-smoke failure (exit 1 after
+#      tmp cleanup). Parse-smoke runs `mariadbd --defaults-extra-file=
+#      <loader> --print-defaults >/dev/null` after each persist to
+#      detect mariadb-syntax-invalid input that would crash the engine
+#      on next restart; if smoke fails, that param's file is removed
+#      and the action exits 1.
+#
+#      Injection defense:
+#        - param name regex `^[A-Za-z0-9_.-]+$` (mariadb option name
+#          spec; reject anything else)
+#        - param value rejects newline (`\n` / `\r`), NUL, and other
+#          control chars (`\x00`-`\x1f` and `\x7f`)
+#        - param value rejects section headers like `[mysqld]` to
+#          prevent option-file injection across the parameter boundary
+#
+#      Edge case documented in this comment block + case doc: when
+#      persist fails after SET GLOBAL succeeded, runtime is already
+#      mutated but the action exits 1, so KB marks the OpsRequest
+#      Failed. Operator must retry; retry is idempotent (SET GLOBAL is
+#      a no-op if value already set, persist writes the same content).
+#      This trade-off is safe because false-success was the pre-alpha.84
+#      class we are explicitly closing.
+#
+#      The shared base helper `mariadb.config.reconfigureAction` stays
+#      unchanged (no persistence). standalone / replication / galera
+#      continue to use the base helper; they neither include the
+#      runtime-overrides.d/ directory nor add `--defaults-extra-file`,
+#      so adding persistence there would write files mariadbd never
+#      loads.
+#
+#   4. templates/cmpd-semisync.yaml: include
+#      `mariadb.config.reconfigureAction.persisted` instead of the
+#      bare `mariadb.config.reconfigureAction` helper.
+#
+#   5. scripts-ut-spec/reconfigure_persisted_semisync_spec.sh (NEW):
+#      focused source-level contract tests covering Jack 5-guard list:
+#      (1) init-syncer mkdir + chgrp + loader file creation, (2)
+#      --defaults-extra-file is the FIRST mariadbd option in
+#      start_mariadbd_process (positional assertion, not just grep),
+#      (3) reconfigureAction.persisted has injection defense on name
+#      and value, (4) fail-closed sentinels on mkdir / tmp write / mv
+#      / parse-smoke, (5) loader file content is exactly the includedir
+#      directive (no key=value would crash mariadbd). 4 verify gate
+#      groups: render/static, runtime reconfigure, process restart
+#      (mariadbd PID kill + SHOW GLOBAL ON/3 persists), controller
+#      combo (after #10252 patch image arrives).
+#
+# Same KB CmpD immutability rule applies (cmpd-semisync.yaml init-
+# syncer + start_mariadbd_process mutated). Chart version bump
+# mandatory. Same syncer v3 image. SEMISYNC TOPOLOGY ONLY (alpha.72
+# through alpha.85 scope-cap carried forward).
+#
+# Verify plan (alpha.86 v1 4-group gate):
+#   Group 1 — render/static: helm template renders
+#     `--defaults-extra-file=<loader>` as first mariadbd arg; loader
+#     file content matches `!includedir <dir>`; runtime-overrides.d
+#     dir created in init-syncer with correct group/mode.
+#   Group 2 — runtime reconfigure: OpsRequest Succeed; both pods SQL
+#     ON/3 within bounded wait.
+#   Group 3 — process restart: kill -TERM mariadbd inside one pod;
+#     wait for kbagent / syncer to restart it; new mariadbd PID; SHOW
+#     GLOBAL still ON/3 (proves --defaults-extra-file loads the
+#     persisted override on startup).
+#   Group 4 — controller combo (after PR #10252 patch image lands):
+#     re-run reconfigure; verify config-hash-only update does NOT
+#     trigger switchover (Rocco gate 1: controller image identity;
+#     Rocco gate 2: pod YAML diff is config-hash-only).
+#   N≥3 fresh clusters all four groups pass independently before
+#   marking the axis closed.
+#
+# alpha.87 v1 (Helen 2026-05-19 07:35 LAND) — pure version bump to
+# escape KB ComponentDefinition immutability after the alpha.86 commit
+# amend (`2ee2ad3f` adds parse smoke stderr/stdout capture in the
+# persisted helper). The amend kept the chart version literal at
+# alpha.86, but the rendered cmpd-semisync.yaml content changed
+# (reconfigureAction body inlines the helper output), and the test
+# vcluster already had an alpha.86 CmpD installed from the first
+# alpha.86 chart that Jack dry-ran. KB rejected the helm upgrade with
+# `mariadb-semisync-1.1.1-alpha.86 phase=Unavailable, status.message:
+# immutable fields can't be updated`. Same KB CmpD immutability rule
+# the comment block has tracked since alpha.65: any cmpd-*.yaml
+# (rendered or source) content change requires a fresh alpha.
+#
+# alpha.87 v1 fix scope is byte-identical to alpha.86 with the
+# stderr-capture amend (semisync ParametersDefinition + persisted
+# reconfigureAction variant with mariadbd --defaults-extra-file + 5
+# Jack guards + parse smoke stderr/stdout capture). The only delta vs
+# alpha.86 source tree is the version literal `1.1.1-alpha.86` →
+# `1.1.1-alpha.87` in this Chart.yaml plus the matching ShellSpec
+# version literal assertions.
+#
+# Same KB CmpD immutability rule applies (rendered cmpd-semisync.yaml
+# content is identical to alpha.86 amend but the chart version literal
+# bumps to create a fresh CmpD object the controller can install
+# cleanly). Same syncer v3 image. SEMISYNC TOPOLOGY ONLY (alpha.72
+# through alpha.86 scope-cap carried forward).
+#
+# Test deltas in alpha.87 v1: chart version literal assertions bumped
+# from alpha.86 to alpha.87 in replication_switchover_spec.sh and
+# replication_user_convergence_spec.sh.
+#
+# alpha.88 v1 (Helen 2026-05-19 07:48 LAND) — DROP parse smoke
+# entirely after alpha.86 + alpha.87 dry-runs (Jack msg `e6afaa1a`).
+# Two root causes made parse smoke unworkable in kbagent action
+# runtime:
+#   1. `mariadbd` is NOT on PATH in the kbagent action context
+#      (kbagent synthesizes its own PATH for action shells; mariadbd
+#      lives in /usr/sbin/ or similar which is not included). The
+#      `mariadbd --print-defaults` invocation returned rc=127
+#      (command not found).
+#   2. The helper used `set -e` plus the pattern
+#      `smoke_out=$(mariadbd ... 2>&1)`. POSIX shell exits
+#      immediately on a failed command substitution under `set -e`;
+#      the subsequent `smoke_rc=$?` check, stderr print, and bad-file
+#      cleanup never executed. Each retry left an orphan `.cnf` file
+#      under /var/lib/mysql/runtime-overrides.d/ that was supposed
+#      to have been removed by the fail-closed cleanup.
+#
+# alpha.88 v1 fix: remove parse smoke entirely. The remaining
+# defense layers cover the threat model:
+#   - injection defense (is_safe_param_name + is_safe_param_value)
+#     rejects the only inputs that could produce malformed `.cnf`
+#     content (unsafe option names, control chars / NUL, bracketed
+#     section markers).
+#   - atomic temp + mv guarantees no half-written file.
+#   - mariadbd's own error log on next restart is the authoritative
+#     validation surface for engine-side option-file parsing — and
+#     it sees the file in its real runtime context, not the kbagent
+#     synthesized PATH.
+#
+# Same KB CmpD immutability rule applies (rendered cmpd-semisync.yaml
+# content changed because the persisted helper body shrunk). Chart
+# version literal MUST bump. Same syncer v3 image. SEMISYNC TOPOLOGY
+# ONLY (alpha.72 through alpha.87 scope-cap carried forward).
+#
+# Test deltas in alpha.88 v1:
+#   - chart version literal assertions bumped from alpha.87 to
+#     alpha.88 in replication_switchover_spec.sh and
+#     replication_user_convergence_spec.sh.
+#   - scripts-ut-spec/reconfigure_persisted_alpha86_spec.sh: parse
+#     smoke "presence" tests REPLACED by parse smoke "absence"
+#     regression guards (must NOT contain `mariadbd --defaults-
+#     extra-file=` / `--print-defaults` / `smoke_out=$(` / `Parse
+#     smoke failed` strings) to prevent re-introduction of the
+#     broken pattern. Guard 5 documentation kept inline as an
+#     archeology note for future readers.
+#
+# Edge-case impact: an operator who reconfigures a parameter with
+# a value that mariadbd-as-engine refuses (unlikely given injection
+# defense, but theoretically possible) will see the failure on the
+# next mariadbd restart (engine error log + crash). The previous
+# parse smoke design tried to catch this at write time, but it never
+# actually worked in the kbagent context. Removing it does NOT
+# regress the actual safety posture; it removes a dead defense that
+# was leaving orphan files.
+version: 1.1.1-alpha.88
 
 # This is the version number of the MARIADB being deployed,
 # (mariadb engine version unchanged from alpha.64; this bump is

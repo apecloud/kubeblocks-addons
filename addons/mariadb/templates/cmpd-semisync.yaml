@@ -40,7 +40,18 @@ spec:
       volumeName: mariadb-config
       namespace: {{ .Release.Namespace }}
       externalManaged: true
-      {{- include "mariadb.config.reconfigureAction" . | nindent 6 }}
+      {{- /* alpha.86 v1 (Helen 2026-05-19) — semisync uses the persisted
+             variant of reconfigureAction so SET GLOBAL values also land in
+             /var/lib/mysql/runtime-overrides.d/<param>.cnf, which mariadbd
+             loads at startup via --defaults-extra-file. Required because
+             mariadbd process restart (from any path: switchover promote
+             after PR #10252 fix, OOMKill, node drain, manual restart, etc.)
+             would otherwise wipe SET GLOBAL runtime state and revert to
+             chart defaults. Other topologies continue to use the base
+             helper (no persistence writes) because they do NOT have
+             init-syncer mkdir for runtime-overrides.d/ nor pass
+             --defaults-extra-file to mariadbd. */}}
+      {{- include "mariadb.config.reconfigureAction.persisted" . | nindent 6 }}
   scripts:
     - name: {{ include "mariadb.replication.scriptConfigMapName" . }}
       template: {{ include "mariadb.replication.scriptConfigMapName" . }}
@@ -91,6 +102,29 @@ spec:
           - |
             cp -r /bin/syncer /bin/syncerctl /tools/
             mkdir -p {{ .Values.dataMountPath }}
+            # alpha.86 v1 (Helen) — runtime override persistence layer.
+            # Per-parameter `.cnf` files live under runtime-overrides.d/;
+            # mariadbd loads them via --defaults-extra-file pointing at
+            # the loader file runtime-overrides.cnf (which `!includedir`
+            # the dir). KB's strict INI parser never sees `!includedir`
+            # because it does not parse this file. Group write (gid=1000
+            # matches the kbagent gid the main container chgrp below)
+            # so the reconfigureAction.persisted helper running in the
+            # mariadb container as the kbagent group can write override
+            # files; mariadbd reads via its mysql user.
+            mkdir -p {{ .Values.dataMountPath }}/runtime-overrides.d
+            chgrp 1000 {{ .Values.dataMountPath }}/runtime-overrides.d 2>/dev/null || true
+            chmod 0770 {{ .Values.dataMountPath }}/runtime-overrides.d 2>/dev/null || true
+            # Loader file is created idempotently with the single
+            # `!includedir` directive. mariadbd silently accepts an
+            # empty dir; first reconfigure populates per-param files
+            # under runtime-overrides.d/. Loader file itself is
+            # treated as immutable shape; we always overwrite to the
+            # canonical content so a corrupted prior write cannot
+            # block mariadbd startup on the next restart.
+            printf '!includedir %s/runtime-overrides.d/\n' '{{ .Values.dataMountPath }}' > {{ .Values.dataMountPath }}/runtime-overrides.cnf
+            chgrp 1000 {{ .Values.dataMountPath }}/runtime-overrides.cnf 2>/dev/null || true
+            chmod 0660 {{ .Values.dataMountPath }}/runtime-overrides.cnf 2>/dev/null || true
             rm -f {{ .Values.dataMountPath }}/.replication-ready {{ .Values.dataMountPath }}/.replication-divergence-pending
             rm -f {{ .Values.dataMountPath }}/.prestop-fence-started \
               {{ .Values.dataMountPath }}/.prestop-fence-complete \
@@ -146,6 +180,21 @@ spec:
             # Set data dir group to kbagent's GID (1000) and grant group write so that
             # kbagent can write switchover trigger files. Files inside remain mysql-owned.
             chgrp 1000 {{ .Values.dataMountPath }} && chmod g+w {{ .Values.dataMountPath }}
+            # alpha.86 v1 (Helen 2026-05-19) — re-apply runtime-overrides
+            # layer permissions AFTER the `chown -R mysql:mysql` above,
+            # which would otherwise reset the gid=1000 + g+rwx set by
+            # init-syncer. Idempotent canonical rewrite of the loader
+            # file recovers from accidental edits / corruption from
+            # prior generations (Jack 07:03 peer review B2 follow-up).
+            # mariadbd's --defaults-extra-file silently accepts an
+            # empty `runtime-overrides.d/` so this block is also safe
+            # on fresh bootstrap.
+            mkdir -p {{ .Values.dataMountPath }}/runtime-overrides.d
+            printf '!includedir %s/runtime-overrides.d/\n' '{{ .Values.dataMountPath }}' > {{ .Values.dataMountPath }}/runtime-overrides.cnf
+            chgrp 1000 {{ .Values.dataMountPath }}/runtime-overrides.d 2>/dev/null || true
+            chmod 0770 {{ .Values.dataMountPath }}/runtime-overrides.d 2>/dev/null || true
+            chgrp 1000 {{ .Values.dataMountPath }}/runtime-overrides.cnf 2>/dev/null || true
+            chmod 0660 {{ .Values.dataMountPath }}/runtime-overrides.cnf 2>/dev/null || true
             # Signal to roleProbe that this pod is initializing — prevents spurious "primary"
             # reports that would cause KubeBlocks to auto-trigger a switchover.
             rm -f {{ .Values.dataMountPath }}/.replication-ready
@@ -1419,7 +1468,19 @@ spec:
               local bind_address="$1"
               local label="$2"
               prestop_watchdog_log "start-mariadbd label=${label} bind_address=${bind_address}"
+              # alpha.86 v1 (Helen) — --defaults-extra-file must be the
+              # FIRST mariadbd option (MariaDB requires --defaults-* args
+              # to come before any other args). The loader file at
+              # {{ .Values.dataMountPath }}/runtime-overrides.cnf is
+              # created by init-syncer with the single directive
+              # `!includedir {{ .Values.dataMountPath }}/runtime-overrides.d/`.
+              # mariadbd silently accepts an empty dir, so fresh-bootstrap
+              # works before any reconfigure has populated the dir.
+              # Each successful reconfigure writes a per-parameter
+              # `.cnf` file into runtime-overrides.d/; mariadbd picks
+              # them up on next restart.
               docker-entrypoint.sh mariadbd \
+                --defaults-extra-file={{ .Values.dataMountPath }}/runtime-overrides.cnf \
                 --server-id=${SERVICE_ID} \
                 --log-bin={{ .Values.dataMountPath }}/binlog/${POD_NAME}-bin \
                 --skip-slave-start=ON \

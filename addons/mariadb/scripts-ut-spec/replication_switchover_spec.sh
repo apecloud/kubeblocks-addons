@@ -850,9 +850,9 @@ EOF
       The output should equal "1"
     End
 
-    It "Chart.yaml literal version is current (alpha.85 — pure version bump to escape KB CmpD immutability after alpha.84 v2 amend mutated cmpd-semisync.yaml; same scope as alpha.84 v2: semisync ParametersDefinition only)"
+    It "Chart.yaml literal version is current (alpha.88 — drop parse smoke after kbagent PATH + set -e dry-run blocker; injection defense + atomic write remain)"
       chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
-      When call grep -c '^version: 1.1.1-alpha.85$' "${chart_yaml}"
+      When call grep -c '^version: 1.1.1-alpha.88$' "${chart_yaml}"
       The output should equal "1"
     End
 
@@ -2843,7 +2843,7 @@ EOF
       # chart version.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.1.1-alpha.85"
+      The output should equal "version: 1.1.1-alpha.88"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -2904,7 +2904,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.85"
+        The output should equal "version: 1.1.1-alpha.88"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -3081,7 +3081,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.85"
+        The output should equal "version: 1.1.1-alpha.88"
       End
     End
 
