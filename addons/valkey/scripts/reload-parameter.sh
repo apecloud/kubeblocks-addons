@@ -9,7 +9,8 @@
 #   (maxmemory-policy) and runs CONFIG SET on the live server.
 #
 #   Not all parameters support CONFIG SET (e.g., bind, port require restart).
-#   We silently ignore errors for unsupported parameters.
+#   Unsupported/static parameters are ignored, but value validation failures
+#   must fail closed so the reconfigure action cannot report a false success.
 
 param_name="${1}"
 param_value="${2}"
@@ -29,12 +30,15 @@ if [ -n "${VALKEY_CLI_TLS_ARGS}" ]; then
 fi
 
 # valkey-cli exits 0 even for protocol errors; capture output and check content.
+# Connection failures also fail closed; the caller should retry the action.
 output=$(${cli_cmd} CONFIG SET "${valkey_param}" "${param_value}" 2>&1) || true
 # Silently ignore parameters that do not support CONFIG SET (e.g. bind, port).
-# Log a warning only when the error is not "ERR Unknown option" or similar
-# (which indicate a static/unsupported param) so that invalid values are surfaced.
+# Fail closed for other CONFIG SET errors so invalid dynamic values are surfaced.
 case "${output}" in
   "OK") ;;   # success
   *"ERR Unknown option"*|*"not allowed"*|*"can't set"*) ;;
-  *) echo "WARNING: CONFIG SET ${valkey_param} failed: ${output}" >&2 ;;
+  *)
+    echo "ERROR: CONFIG SET ${valkey_param} failed: ${output}" >&2
+    exit 1
+    ;;
 esac
