@@ -187,9 +187,20 @@ reconfigure:
           exit 1
         fi
 
+        # alpha.83 v1 (Helen): reconfigure action must use internal admin
+        # account to call `SET GLOBAL`. User-facing root has SUPER stripped by
+        # chart security hardening (alpha.64 "drop SUPER (admin bypass)"); the
+        # internal admin account `kb_internal_root` carries ALL PRIVILEGES.
+        # Without this, `SET GLOBAL slow_query_log=ON` and similar dynamic
+        # variable writes fail with `ERROR 1227 (42000) ... SUPER privilege(s)`.
+        # The MARIADB_ROOT_PASSWORD env shared with the internal admin (chart
+        # provisions identical passwords); we keep the same env to avoid a new
+        # secret indirection. Default fallback to kb_internal_root mirrors the
+        # preStop hook convention in cmpd-semisync.yaml.
         mariadb_exec() {
           query="$1"
-          "${MARIADB_CLI}" --user="${MARIADB_ROOT_USER}" --password="${MARIADB_ROOT_PASSWORD}" --host=127.0.0.1 -P 3306 -NBe "${query}"
+          INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
+          "${MARIADB_CLI}" --user="${INTERNAL_ROOT_USER}" --password="${MARIADB_ROOT_PASSWORD}" --host=127.0.0.1 -P 3306 -NBe "${query}"
         }
 
         to_numeric_value() {

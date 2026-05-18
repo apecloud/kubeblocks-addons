@@ -678,4 +678,27 @@ Last_SQL_Error: ... on table kubeblocks.kb_health_check"
       The status should be failure
     End
   End
+
+  Describe "alpha.76 v1 marker mechanism — alpha.80 v1 dead-code cleanup"
+    # The roleprobe-side switchover_fence_active_file / switchover_fence_active_is_fresh
+    # helpers + apply_remote_root_fence if-fresh gate were removed by alpha.80 v1
+    # because alpha.79 v1 minimalist deleted the marker writer in switchover.sh.
+    # All alpha.76 contract tests below are obsolete and marked Pending.
+
+    It "[alpha.80 v1: alpha.76 marker helpers + apply_remote_root_fence gate removed — all contract tests obsolete]"
+      Pending "alpha.80 v1 removed marker mechanism entirely; obsolete pending future ShellSpec cleanup"
+    End
+  End
+  Describe "alpha.76 v1 POSIX shell self-check"
+    It "addons/mariadb/scripts/replication-roleprobe.sh parses cleanly under dash -n"
+      Skip if "dash is not installed" ! command -v dash >/dev/null 2>&1
+      When run dash -n ../scripts/replication-roleprobe.sh
+      The status should be success
+    End
+
+    It "addons/mariadb/scripts/replication-roleprobe.sh parses cleanly under bash -n"
+      When run bash -n ../scripts/replication-roleprobe.sh
+      The status should be success
+    End
+  End
 End

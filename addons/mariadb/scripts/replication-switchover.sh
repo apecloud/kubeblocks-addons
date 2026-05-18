@@ -43,7 +43,18 @@ SWITCHOVER_PREPARE_STAGE_BUDGET_SECONDS="${SWITCHOVER_PREPARE_STAGE_BUDGET_SECON
 SWITCHOVER_DCS_STAGE_BUDGET_SECONDS="${SWITCHOVER_DCS_STAGE_BUDGET_SECONDS:-15}"
 SWITCHOVER_FENCE_STAGE_BUDGET_SECONDS="${SWITCHOVER_FENCE_STAGE_BUDGET_SECONDS:-15}"
 CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS="${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS:-30}"
-CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS="${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS:-10}"
+# alpha.77 v2 (Helen TL): bumped from 10s -> 30s. alpha.77 v1 N=1 verify on
+# n1y closed the pre-DCS REMOTE root fence race (stages 1-4 all PASS, no
+# `bypass_priv_residual` in stderr) but failed at stage 5 because the new
+# primary's chart watchdog SECONDARY -> PRIMARY role transition takes longer
+# than 10s. Direct evidence: pod-1 watchdog log at 11:40:21-23 still running
+# replica-read-only LOCK while DCS swap completed at 11:40:19; stage 5 probe
+# attempts 1-3 saw 1044/1290 (account still locked / read_only still ON)
+# followed by 2002 (mariadbd briefly unreachable during stop+start_mariadbd
+# rebind from 127.0.0.1 to 0.0.0.0 inside expose_sql_listener_for_primary_
+# role). 30s gives the new primary watchdog one full role-transition cycle
+# (~6-10s typical) + headroom. Env override still respected.
+CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS="${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS:-30}"
 MARIADB_CONNECT_TIMEOUT_SECONDS="${MARIADB_CONNECT_TIMEOUT_SECONDS:-5}"
 SYNCERCTL_PER_CALL_TIMEOUT_SECONDS="${SYNCERCTL_PER_CALL_TIMEOUT_SECONDS:-5}"
 
@@ -55,6 +66,22 @@ MARIADB_CLIENT_BIN="${MARIADB_CLIENT_BIN:-}"
 MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
 SWITCHOVER_TRACE_FILE="${SWITCHOVER_TRACE_FILE:-}"
 SWITCHOVER_REMOTE_ROOT_PROBE_TABLE="${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE:-kubeblocks.kb_root_write_probe}"
+
+# alpha.80 v1 (Helen TL): the alpha.76/.77/.78 `.switchover-fence-active`
+# marker mechanism is now removed. alpha.79 v1 minimalist refactor (per
+# westonnnn directive) eliminated the pre-DCS fence chain in
+# `prepare_current_primary_for_switchover`, which was the SOURCE of the race
+# the marker was designed to gate. With no fence chain, nothing writes the
+# marker; with nothing writing it, the consumer-side checks in cmpd-semisync
+# `reconcile_sql_listener_for_syncer_primary_once` / `set_remote_root_account
+# _state` and roleprobe.sh `apply_remote_root_fence` always evaluate to
+# "not fresh" and proceed normally. Keeping the helpers + consumer checks
+# served no runtime purpose; alpha.80 v1 deletes them entirely.
+#
+# Scope: this is dead-code cleanup ONLY. No runtime behavior change. NOT a
+# fix for same-cluster repeat RED, under-load data-divergence RED, or pod-
+# kill 1032-rejoin RED — those each have their own first-blocker that
+# remains open with separate evidence packets.
 
 # alpha.62 v1 (Jack 04:08 review): contract drift between switchover-side
 # pre-DCS fence and roleProbe-side secondary fence + verifier口径漂移. Single
@@ -1002,6 +1029,11 @@ rollback_current_primary_switchover_guard() {
   # host_list to unfence + verifier, both read same per-host enumeration.
   # Legacy full-access rollback verifier renamed to
   # remote_root_has_explicit_primary_grant — see that function's comment.
+  #
+  # alpha.80 v1 (Helen): the alpha.76 `.switchover-fence-active` marker
+  # clear call here has been removed — alpha.79 v1 minimalist deleted the
+  # marker writer in prepare, so there is nothing to clear. Pure dead-code
+  # cleanup, no runtime behavior change.
   local failed=0
   local host_list=""
   log_switchover_info "Switchover rollback: restoring current primary write access after pre-DCS failure"
@@ -1030,45 +1062,36 @@ rollback_current_primary_switchover_guard() {
 }
 
 prepare_current_primary_for_switchover() {
-  # alpha.62 v1 (Jack 04:08 Blocker 1 + tightening 1): host list is enumerated
-  # ONCE at the top of prepare and passed by parameter to fence + verifier.
-  # This eliminates the source of root_host_list_drift between fence and
-  # verifier callsites. Defensive drift detection still lives inside both
-  # callees as fallback when called externally without host_list.
-  local current_name host_list host_list_sha
-  current_name=$(resolve_current_name)
-  log_switchover_info "Switchover pre-DCS guard: fencing remote root on current primary ${current_name}"
-  host_list=$(enumerate_user_facing_root_hosts) || {
-    log_switchover_error "Switchover failed: prepare_current_primary_for_switchover could not enumerate user-facing root hosts; fail-closed"
-    return 1
-  }
-  if [ -z "${host_list}" ]; then
-    log_switchover_error "Switchover failed: prepare_current_primary_for_switchover reason=root_account_not_found user=${MARIADB_ROOT_USER}; fail-closed"
-    return 1
-  fi
-  host_list_sha=$(compute_grants_sha "${host_list}")
-  log_switchover_info "Switchover pre-DCS guard: enumerated user-facing root host list sha=${host_list_sha} hosts_count=$(printf '%s\n' "${host_list}" | wc -l | tr -d ' ')"
-  if ! disconnect_local_remote_root_sessions_for_secondary; then
-    log_switchover_error "Switchover failed: could not disconnect current primary remote root sessions before fencing"
-    rollback_current_primary_switchover_guard || true
-    return 1
-  fi
-  if ! fence_local_remote_root_for_secondary "${host_list}"; then
-    log_switchover_error "Switchover failed: could not fence current primary remote root before DCS switchover"
-    rollback_current_primary_switchover_guard || true
-    return 1
-  fi
-  if ! disconnect_local_remote_root_sessions_for_secondary; then
-    log_switchover_error "Switchover failed: could not disconnect current primary remote root sessions after fencing"
-    rollback_current_primary_switchover_guard || true
-    return 1
-  fi
-  if ! local_remote_root_is_fenced_for_secondary "${host_list}"; then
-    log_switchover_error "Switchover failed: current primary remote root fence was not verified before DCS switchover"
-    rollback_current_primary_switchover_guard || true
-    return 1
-  fi
-  log_switchover_info "Switchover pre-DCS guard passed for current primary ${current_name}; read_only is left unchanged until syncer accepts the DCS switchover"
+  # alpha.79 v1 (Helen TL, per westonnnn 21:50 `48a132e2`/`b9a62176`
+  # directive: "学 MySQL semisync 的极简思路，来改，现在 / 改完之后再测"):
+  # The pre-DCS REMOTE root fence chain (fence_local_remote_root_for_secondary
+  # + local_remote_root_is_fenced_for_secondary + _verify_host_is_fenced)
+  # introduced in alpha.61 is the SOURCE of the race that alpha.75/.76/.77/
+  # .78 chased without 100% closing (alpha.78 v1 N=3 = 2 GREEN / 1 RED with
+  # same-type race reopened on n1ab 2026-05-14 13:27:33Z; trace shows
+  # grants_sha SECONDARY→PRIMARY flip in the 1s between inner verify and
+  # outer verify).
+  #
+  # The MySQL semisync addon (research 2026-05-14 by Explore agent) does
+  # NOT modify root@'%' grants during switchover at all. It relies on:
+  #   1. read_only=1 set on the demoted primary post-DCS swap
+  #   2. semi-sync ACK protocol blocking commits
+  #   3. user-facing root account NOT holding any admin-bypass privileges
+  #      (BINLOG ADMIN / SUPER / READ_ONLY ADMIN), which is the alpha.61
+  #      hard contract that MariaDB has already adopted and we are KEEPING
+  #
+  # alpha.79 v1 short-circuits this function to a no-op. The post-DCS local-
+  # root write fence verifier (verify_post_dcs_local_root_write_fenced)
+  # remains the gatekeeper for "read_only=1 is effective on user-facing
+  # root" — that verifier reads INSERT/UPDATE rejection at 1290 errno, NOT
+  # grant state, so it remains race-free.
+  #
+  # alpha.80 v1 (Helen): the alpha.76/.77/.78 marker helpers
+  # (write_switchover_fence_active_marker / clear_switchover_fence_active_
+  # marker / switchover_fence_active_marker_file) are now removed entirely.
+  # The roleprobe.sh + cmpd-semisync.yaml consumer checks are also removed.
+  # All pure dead-code cleanup, no runtime behavior change.
+  log_switchover_info "Switchover pre-DCS guard (alpha.79 v1 minimalist): skipping per-host root@'%' fence; relying on post-DCS read_only=1 + semisync ACK + alpha.61 admin-bypass priv contract"
   return 0
 }
 
@@ -1330,17 +1353,30 @@ syncerctl_switchover() {
   local rc
   local using_timeout=0
 
+  # alpha.79 v2 (Helen TL autopilot 22:31 westonnnn `442a5d2e`): pass --force
+  # so syncer overrides any leftover "previous switchover unfinished" DCS
+  # record from a prior successful switchover. n1ad same-cluster repeat axis
+  # (2026-05-14 ~14:54 UTC) exposed this: after the first GREEN switchover
+  # cleared chart-side state and OpsRequest reached Succeed, syncer's DCS
+  # record stayed in "unfinished" state. Repeat switchovers got
+  # `Create switchover failed: there is another switchover
+  # maria-5d-n1ad-mariadb-switchover unfinished`. Using --force on every
+  # invocation is safe: first-time switchovers have no leftover record so
+  # --force is a no-op; repeated switchovers proceed cleanly. This is a
+  # syncer-layer cleanup gap (syncer should mark its own DCS record done
+  # when the switchover protocol completes); --force is a chart-side
+  # workaround until syncer side cleans up properly.
   if [ -n "${stage_budget}" ] && [ "${SWITCHOVER_HAS_TIMEOUT}" = "1" ]; then
     local wall="${SYNCERCTL_PER_CALL_TIMEOUT_SECONDS}"
     if [ "${stage_budget}" -lt "${wall}" ]; then wall="${stage_budget}"; fi
     if [ "${wall}" -lt 1 ]; then wall=1; fi
     using_timeout=1
     output=$(timeout "${wall}" "${SYNCERCTL_BIN}" --host "${SYNCERCTL_HOST}" --port "${SYNCERCTL_PORT}" \
-      switchover --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
+      switchover --force --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
     rc=$?
   else
     output=$("${SYNCERCTL_BIN}" --host "${SYNCERCTL_HOST}" --port "${SYNCERCTL_PORT}" \
-      switchover --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
+      switchover --force --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
     rc=$?
   fi
 
@@ -1924,6 +1960,10 @@ main() {
   local candidate_fqdn
   candidate_name=$(resolve_candidate_name)
   candidate_fqdn=$(resolve_candidate_fqdn)
+  # alpha.80 v1 (Helen): the alpha.76 unconditional clear_switchover_fence_
+  # active_marker call has been removed. alpha.79 v1 minimalist deleted the
+  # marker writer in prepare, so no marker exists to clear. Pure dead-code
+  # cleanup, no runtime behavior change.
   run_switchover "${candidate_name}" "${candidate_fqdn}"
 }
 
