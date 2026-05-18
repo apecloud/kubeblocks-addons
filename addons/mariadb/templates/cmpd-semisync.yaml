@@ -98,6 +98,11 @@ spec:
             rm -f {{ .Values.dataMountPath }}/.sql-listener-ready \
               {{ .Values.dataMountPath }}/.remote-root-fence-role \
               {{ .Values.dataMountPath }}/.primary-read-write-ready
+            # alpha.80 v1 (Helen): removed `.switchover-fence-active` from this
+            # init rm list. alpha.79 v1 minimalist deleted the marker writer
+            # in switchover.sh so the marker file never appears anywhere; the
+            # init-syncer rm of it was a no-op safety net. Pure dead-code
+            # cleanup, no runtime behavior change.
             touch {{ .Values.dataMountPath }}/.replication-pending
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-syncer
@@ -163,8 +168,21 @@ spec:
             # RED. The constants below are inlined non-bypass grant lists kept
             # in sync with switchover.sh's SWITCHOVER_*_GRANT_BODY constants;
             # ShellSpec strong-binds the alignment.
-            CMPD_EXPLICIT_PRIMARY_GRANT_BODY="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER, CREATE USER"
-            CMPD_SECONDARY_FENCE_GRANT_BODY="SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN"
+            # alpha.81 v1: explicitly add SLAVE MONITOR to the grant bodies.
+            # Root cause: MariaDB 11.4 split legacy `REPLICATION CLIENT` into
+            # `BINLOG MONITOR` + `SLAVE MONITOR`. `GRANT REPLICATION CLIENT`
+            # only normalizes to `BINLOG MONITOR` in SHOW GRANTS — `SLAVE
+            # MONITOR` (required for `SHOW SLAVE STATUS`) is NOT included.
+            # Without `SLAVE MONITOR`, syncer engine's `IsSwitchoverDone()`
+            # in promotion_gate.go (which connects new primary -> old primary
+            # via `kb_internal_root@'%'` then issues `SHOW SLAVE STATUS`) gets
+            # ERROR 1227 ("need SLAVE MONITOR privilege"), returns false
+            # forever, the framework `HandlerSwitchoverForPrimary` cleanup
+            # gate never trips, and the DCS Switchover ConfigMap leaks. This
+            # broke same-cluster repeat switchover (the alpha.79 N=3 RED
+            # "there is another switchover unfinished" axis).
+            CMPD_EXPLICIT_PRIMARY_GRANT_BODY="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, SLAVE MONITOR, REPLICATION MASTER ADMIN, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER, CREATE USER"
+            CMPD_SECONDARY_FENCE_GRANT_BODY="SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, SLAVE MONITOR, REPLICATION MASTER ADMIN"
             # Best-effort monitor privileges (read-only). These never bypass
             # read_only and are safe on user-facing root in any state. Tier A
             # by Jack 10:05: failure here is allowed to log + continue.
@@ -186,6 +204,13 @@ spec:
             # later pod accepts a local syncer primary role.
             SYNCER_PRIMARY_BOOTSTRAP_GRACE_SECONDS="${MARIADB_SYNCER_PRIMARY_BOOTSTRAP_GRACE_SECONDS:-45}"
             SYNCER_PRIMARY_BOOTSTRAP_GRACE_UNTIL="$(($(date +%s) + SYNCER_PRIMARY_BOOTSTRAP_GRACE_SECONDS))"
+            # alpha.80 v1 (Helen): the alpha.76 `switchover_fence_active_is_fresh`
+            # function + `SWITCHOVER_FENCE_MARKER_MAX_AGE_SECONDS` env are
+            # removed. alpha.79 v1 minimalist deleted the marker writer in
+            # switchover.sh, so this consumer-side function never observed a
+            # fresh marker; the consumer checks in `reconcile_sql_listener_for_
+            # syncer_primary_once` and `set_remote_root_account_state` always
+            # fell through. Pure dead-code cleanup, no runtime behavior change.
             ROOT_LOCAL=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
             INTERNAL_LOCAL=(mariadb "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
             LOCAL=("${ROOT_LOCAL[@]}")
@@ -775,6 +800,7 @@ spec:
                 ALTER USER '${user}'@'%' ACCOUNT UNLOCK;
                 REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'%';
                 GRANT REPLICATION CLIENT ON *.* TO '${user}'@'%';
+                GRANT SLAVE MONITOR ON *.* TO '${user}'@'%';
                 GRANT REPLICATION MASTER ADMIN ON *.* TO '${user}'@'%';
                 GRANT SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check TO '${user}'@'%';
                 GRANT SELECT ON mysql.user TO '${user}'@'%';
@@ -1001,6 +1027,10 @@ spec:
                   return 0
                   ;;
               esac
+              # alpha.80 v1 (Helen): the alpha.77 in-function marker check
+              # has been removed. alpha.79 v1 minimalist deleted the marker
+              # writer in switchover.sh, so this gate could never trip. Pure
+              # dead-code cleanup, no runtime behavior change.
               if [ "${state}" = "LOCK" ]; then
                 # alpha.64 v1 (Jack 09:35 RED): drop SUPER (admin bypass).
                 # Use CMPD_SECONDARY_FENCE_GRANT_BODY shared with local LOCK.
@@ -1125,11 +1155,36 @@ spec:
               local label="$1"
               local timeout_seconds="${2:-120}"
               local sleep_seconds="${3:-2}"
-              local start now elapsed slave_status evidence_file
+              local start now elapsed slave_status evidence_file current_syncer_role
               start="$(date +%s)"
               evidence_file="{{ .Values.dataMountPath }}/log/rejoin-replication-wait.log"
               mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
               while true; do
+                # alpha.77 v3 (Helen TL): if syncer has flipped this pod to
+                # primary in DCS (e.g. a switchover OpsRequest just promoted
+                # this candidate), exit the secondary-rejoin wait immediately
+                # so the outer wait_for_mariadbd_with_role_reconcile loop can
+                # switch into the primary reconcile path on its next tick.
+                # Without this short-circuit, this loop will spin up to
+                # `timeout_seconds` (default 120s) trying to follow the OLD
+                # primary that is no longer the DCS primary, blowing past the
+                # switchover candidate-write-ready stage budget.
+                #
+                # Backward compatibility: when syncer continues to report
+                # role=secondary (the normal post-rejoin / lifecycle path),
+                # the loop body below runs unchanged. The check itself is
+                # bounded by `timeout 3` inside query_local_syncer_role and
+                # is best-effort (failure is treated as not-flipped, loop
+                # continues). Distinct sentinel log + return code 2 so
+                # downstream callers and closeout can distinguish "DCS
+                # promoted us mid-rejoin" from a real replication-not-
+                # healthy timeout (return 1).
+                current_syncer_role="$(query_local_syncer_role || true)"
+                if [ "${current_syncer_role}" = "primary" ]; then
+                  elapsed=$(($(date +%s) - start))
+                  prestop_watchdog_log "rejoin-replication-exit-on-dcs-primary label=${label} elapsed=${elapsed}s reason=dcs_promoted_during_secondary_rejoin"
+                  return 2
+                fi
                 slave_status="$(query_slave_status_verbose || true)"
                 if slave_status_is_healthy "${slave_status}"; then
                   elapsed=$(($(date +%s) - start))
@@ -1500,6 +1555,11 @@ spec:
             reconcile_sql_listener_for_syncer_primary_once() {
               local now primary_sid role
               [ ! -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ] || return 0
+              # alpha.80 v1 (Helen): the alpha.76 `switchover_fence_active_is_fresh`
+              # early-skip has been removed. alpha.79 v1 minimalist deleted the
+              # marker writer in switchover.sh, so this check could never observe
+              # a fresh marker and always fell through. Pure dead-code cleanup,
+              # no runtime behavior change.
               if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
                 role="$(query_local_syncer_role || true)"
                 [ "${role}" = "primary" ] || return 0
@@ -2005,7 +2065,7 @@ spec:
                         ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
                         ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
                         REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
-                        GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO '${user}'@'${host}';
+                        GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, SLAVE MONITOR, REPLICATION MASTER ADMIN ON *.* TO '${user}'@'${host}';
                         FLUSH PRIVILEGES;
                         SET SESSION sql_log_bin=1;
                       "

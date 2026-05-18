@@ -51,6 +51,14 @@ remote_root_fence_file() {
   printf "%s/.remote-root-fence-role" "$(data_dir)"
 }
 
+# alpha.80 v1 (Helen): the alpha.76 `switchover_fence_active_file` +
+# `switchover_fence_active_is_fresh` + `SWITCHOVER_FENCE_MARKER_MAX_AGE_SECONDS`
+# helpers are removed. alpha.79 v1 minimalist refactor in switchover.sh
+# eliminated the marker writer (the pre-DCS fence chain was deleted), so
+# this consumer-side check could never observe a fresh marker and always
+# fell through to the existing role-marker logic. Pure dead-code cleanup,
+# no runtime behavior change.
+
 primary_read_write_ready_file() {
   printf "%s/.primary-read-write-ready" "$(data_dir)"
 }
@@ -101,6 +109,12 @@ apply_remote_root_fence() {
       return 0
       ;;
   esac
+
+  # alpha.80 v1 (Helen): the alpha.76 `switchover_fence_active_is_fresh`
+  # check has been removed. alpha.79 v1 minimalist deleted the marker
+  # writer in switchover.sh, so this check could never observe a fresh
+  # marker and always fell through. Pure dead-code cleanup, no runtime
+  # behavior change.
 
   marker="$(remote_root_fence_file)"
   current="$(cat "${marker}" 2>/dev/null || true)"

@@ -329,7 +329,523 @@ type: application
 # alpha.61 fence safety model preserved: user-facing root still NOT
 # granted BINLOG ADMIN; the fix is in the verifier contract, not in
 # the user-facing root privileges.
-version: 1.1.1-alpha.75
+#
+# alpha.76 v1 (Helen TL autonomous under westonnnn 16:33 `84ddd85b`
+# "开啊" directive after autopilot session): Bumped from
+# 1.1.1-alpha.75 -> 1.1.1-alpha.76 because alpha.75 v1 switchover
+# idle-state N=1 verify on n1w was RED with a DIFFERENT first-blocker
+# than alpha.74: pre-DCS REMOTE root fence verifier failed because the
+# chart `wait_for_mariadbd_with_role_reconcile` watchdog re-granted
+# CMPD_EXPLICIT_PRIMARY_GRANT_BODY on root@'%' every 1s during the
+# pre-DCS fence window, racing
+# `fence_local_remote_root_for_secondary`'s REVOKE+SECONDARY_FENCE
+# grant. Action cost 2603ms; outer verifier saw INSERT/UPDATE/DELETE/
+# CREATE/DROP/ALTER residual; failure message "current primary remote
+# root fence was not verified before DCS switchover". Audit confirmed
+# fence_apply itself succeeded; the race window between inner verify
+# (inside fence_local_remote_root_for_secondary) and outer verify
+# (local_remote_root_is_fenced_for_secondary) was ~1s, well within
+# the watchdog 1s cadence.
+#
+# alpha.76 v1 fix:
+#   1. `scripts/replication-switchover.sh`: introduce
+#      `.switchover-fence-active` marker. write before fence_apply,
+#      clear on every error path inside
+#      `prepare_current_primary_for_switchover`, in
+#      `rollback_current_primary_switchover_guard`, after run_switchover
+#      success, and unconditionally in `main` (catches Stage 3/4/5
+#      failure paths that don't trigger rollback). Marker payload is
+#      `epoch=<unix-sec>\npid=<switchover-pid>\n`; freshness cutoff
+#      is `SWITCHOVER_FENCE_MARKER_MAX_AGE_SECONDS=300` (5 min).
+#   2. `templates/cmpd-semisync.yaml`: chart watchdog
+#      `reconcile_sql_listener_for_syncer_primary_once` early-returns
+#      when the marker is fresh; init-syncer adds the file to its
+#      startup `rm -f` list so a stale marker from a prior pod
+#      generation cannot pin the new pod.
+#   3. `scripts/replication-roleprobe.sh`: defense-in-depth — same
+#      switchover_fence_active_is_fresh() check in apply_remote_root_
+#      fence so role-driven grant reconcile also suspends during the
+#      pre-DCS window.
+# Scope cap: this fix only adds a race-safe pause; it does NOT change
+# any grant body, fence verifier口径, admin priv contract, or fence
+# safety model. The workspace HOLD doc draft (`addon-pre-dcs-remote-
+# root-fence-fresh-bootstrap-grant-contract-guide.md`) hypothesized
+# bootstrap-time tightening but the audit FALSIFIED that hypothesis
+# (bootstrap-time tighten would break user-facing root primary writes
+# entirely). That doc needs rewrite to reflect the race-based root
+# cause; rewrite is OUT of alpha.76 ship scope.
+# Same CmpD immutability rule applies (cmpd-semisync.yaml mutated
+# and versioned CM contents mutated); chart version bump mandatory.
+# Same syncer v3 image (no syncer change). SEMISYNC TOPOLOGY ONLY
+# (alpha.72/.73/.74/.75 scope-cap carried forward).
+#
+# alpha.77 v1 (Helen TL): alpha.76 v1 N=1 verify on n1x failed with
+# the SAME stderr signature as alpha.75 v1 n1w. Refined audit from
+# actual runtime evidence: the alpha.76 v1 fix in `reconcile_sql_
+# listener_for_syncer_primary_once` early-skips the watchdog cycle
+# only at cycle START. Watchdog cycles already in-flight (started
+# BEFORE switchover wrote the marker) continue and call
+# set_remote_root_account_state UNLOCK on root@'%' mid-cycle, racing
+# switchover.sh's REVOKE+SECONDARY_FENCE GRANT. trace log showed:
+# inner verifier ok_by_grants_only (saw SECONDARY at fence_apply
+# completion); 1-2s later, outer verifier saw PRIMARY grants again.
+# Watchdog log confirmed continuous repair cycles even with the
+# alpha.76 marker file present because the cycle was already past
+# the early-skip when the marker was written.
+#
+# alpha.77 v1 fix: defense-in-depth at the lowest SQL-apply layer.
+# Add a second marker check INSIDE set_remote_root_account_state
+# at the moment of SQL execution, gated on `state=UNLOCK` only
+# (LOCK is the fence-friendly direction and stays unmuted). Even
+# if a watchdog cycle is already in flight when switchover writes
+# the marker, the per-host UNLOCK SQL is now gated at the exact
+# moment of attempted execution. Switchover.sh's rollback path
+# uses a different helper (unfence_local_remote_root_for_primary)
+# so rollback still restores primary grants without being gated.
+# Scope cap: no other change; same syncer v3 image; same admin priv
+# contract; same fence verifier口径. SEMISYNC TOPOLOGY ONLY.
+#
+# alpha.78 v1 (Helen TL): alpha.77 v2 N=1 verify on n1z exposed a
+# downstream blocker after the alpha.77 pre-DCS REMOTE root fence
+# race fix held: the candidate (pod-1) chart watchdog stayed inside
+# `runtime-secondary-follow-before-expose` calling
+# `wait_for_replication_healthy` for the full 120s timeout AFTER the
+# DCS swap completed. During those 120s the candidate was still in
+# secondary-LOCK state on root@'%' even though syncer had promoted
+# it in DCS — the switchover stage 5 candidate-write-ready probe
+# timed out at 28 attempts. Direct evidence: n1z pod-1 watchdog log
+# `runtime-secondary-follow-configure-begin` at 12:12:14 →
+# `rejoin-replication-not-healthy elapsed=120s` at 12:14:18 →
+# `runtime-primary-listener-reconcile-begin role=primary` at
+# 12:14:19 → first `remote-root-account-UNLOCK host=% rc=0` at
+# 12:14:25. End-to-end SECONDARY→PRIMARY transition took ~2m 11s.
+#
+# alpha.78 v1 fix: add a per-iteration syncer-role check inside
+# `wait_for_replication_healthy` (cmpd-semisync.yaml). If
+# `query_local_syncer_role` returns "primary" mid-wait, log a
+# distinct `rejoin-replication-exit-on-dcs-primary` sentinel and
+# return 2. The caller chain (keep_replica_pending_until_healthy →
+# publish_replica_after_rejoin_ready → configure_replication_from_
+# primary_service_once → reconcile_sql_listener_for_syncer_
+# secondary_once) already treats non-zero as failure and unwinds
+# to mark_replication_pending; the outer
+# wait_for_mariadbd_with_role_reconcile loop ticks every 1s and on
+# its next tick hits reconcile_sql_listener_for_syncer_primary_once
+# which now sees role=primary and runs expose_sql_listener_for_
+# primary_role → set_primary_read_write → unlock_remote_root_writes
+# on root@'%'. Stage 5 budget (30s from alpha.77 v2) is now
+# sufficient for the new primary watchdog transition (~3-6s).
+#
+# Backward compat: the inner role check is only reached when the
+# loop is already running (i.e. secondary-rejoin path active). If
+# syncer continues to report secondary (the normal lifecycle case
+# without an in-flight switchover), the check returns immediately
+# and the loop body runs unchanged. fresh-bootstrap N=3 GREEN
+# (alpha.74) path does NOT exercise wait_for_replication_healthy
+# because pod-1 follows pod-0 successfully on first attempt; the
+# health check passes immediately and the function returns 0 —
+# never reaches the new role check branch.
+#
+# Same CmpD immutability rule applies (cmpd-semisync.yaml mutated);
+# chart version bump mandatory. Same syncer v3 image. SEMISYNC
+# TOPOLOGY ONLY (alpha.72/.73/.74/.75/.76/.77 scope-cap carried
+# forward). No fence verifier change, no admin priv change, no
+# grant body change.
+#
+# alpha.79 v1 (Helen TL per westonnnn 21:50 `48a132e2`/`b9a62176`
+# directive "学 MySQL semisync 的极简思路，来改，现在 / 改完之后再测"):
+# alpha.78 v1 N=3 verify (n1aa GREEN / n1ab RED / n1ac GREEN) showed
+# alpha.76/.77/.78 marker race-defense is NOT 100% reliable: at certain
+# pod-restart timing windows, the chart watchdog still wins the race
+# against switchover.sh fence_apply. n1ab grants_sha SECONDARY→PRIMARY
+# flip in 1s between inner verify and outer verify (path:
+# alpha78v1-n1ab-switchover-idle-pre-DCS-race-REOPENED-RED-20260514-212730).
+#
+# Research (Explore agent) confirmed: MySQL addon's semisync topology
+# never modifies root@'%' grants during switchover. It relies entirely
+# on:
+#   1. read_only=1 on demoted primary (set post-DCS)
+#   2. semi-sync ACK protocol blocking commits
+#   3. user-facing root NOT holding admin-bypass priv (no SUPER /
+#      BINLOG ADMIN / READ_ONLY ADMIN — same contract MariaDB adopted
+#      in alpha.61)
+#
+# alpha.79 v1 applies this minimalist model to MariaDB semisync:
+#   - prepare_current_primary_for_switchover short-circuits to a
+#     no-op (drops fence_local_remote_root_for_secondary +
+#     local_remote_root_is_fenced_for_secondary chain)
+#   - alpha.76/.77/.78 marker mechanism becomes dead code (helpers,
+#     cmpd switchover_fence_active_is_fresh(), roleprobe check). One
+#     transition cycle keeps the helpers so any inflight rollback
+#     references resolve; alpha.80+ removes the dead code entirely.
+#   - post-DCS local-root write fence verifier
+#     (verify_post_dcs_local_root_write_fenced) is RETAINED as the
+#     gatekeeper — it reads INSERT 1290 errno (read_only-based), NOT
+#     grant state, so it is race-free.
+#   - alpha.61 admin-bypass priv contract is PRESERVED (root@'%'
+#     keeps INSERT/UPDATE/DELETE/CREATE/DROP/ALTER but NOT SUPER /
+#     BINLOG ADMIN / READ_ONLY ADMIN / CONNECTION ADMIN).
+#   - The chart watchdog reconcile_sql_listener_for_syncer_primary_
+#     once continues to call set_primary_read_write per cycle on the
+#     stable primary; that's intentional (it maintains the normal
+#     state). During switchover the pre-DCS step no longer fights
+#     it because we no longer try to REVOKE here.
+#
+# Risk profile: returns to alpha.60-and-earlier risk model where the
+# switchover window relies on read_only=1 + semisync to block writes.
+# Acceptable because alpha.61 already removed admin-bypass priv from
+# user-facing root, so read_only=1 IS effective on root@'%'.
+#
+# Same CmpD immutability rule applies (cmpd-semisync.yaml mutated
+# via dead-code path renamed/commented; scripts/replication-
+# switchover.sh changed); chart version bump mandatory. Same syncer
+# v3 image. SEMISYNC TOPOLOGY ONLY.
+#
+# alpha.80 v1 (Helen TL): dead-code cleanup ONLY. NOT a fix for any
+# of the alpha.79 v2 axes RED (same-cluster repeat, under-load data-
+# divergence, pod-kill 1032-rejoin). NOT release-ready. NOT a new
+# GREEN axis. Pure static quality改动: removes the alpha.76/.77/.78
+# `.switchover-fence-active` marker mechanism that became dead code
+# after alpha.79 v1 minimalist deleted its writer.
+#
+# Removed (3 files):
+#   scripts/replication-switchover.sh: SWITCHOVER_FENCE_MARKER_MAX_
+#     AGE_SECONDS + switchover_fence_active_marker_file() +
+#     write_switchover_fence_active_marker() + clear_switchover_
+#     fence_active_marker() helpers + 3 clear callsites (rollback /
+#     run_switchover end / main).
+#   scripts/replication-roleprobe.sh: switchover_fence_active_file()
+#     + switchover_fence_active_is_fresh() + the if-fresh early-
+#     return in apply_remote_root_fence().
+#   templates/cmpd-semisync.yaml: switchover_fence_active_is_fresh()
+#     function + the SWITCHOVER_FENCE_MARKER_MAX_AGE_SECONDS env +
+#     the if-fresh early-skip in reconcile_sql_listener_for_syncer_
+#     primary_once + the in-function UNLOCK gate in
+#     set_remote_root_account_state + `.switchover-fence-active`
+#     from init-syncer rm list.
+#
+# Why safe: alpha.79 v1 minimalist short-circuited prepare to a
+# no-op with no marker writer. Consumer-side fresh-checks always
+# returned 1 (file never exists). All consumer paths fell through to
+# existing logic. alpha.79 v1+v2 N=3 fresh-bootstrap idle-state runs
+# (helm rev 13/14) proved the marker mechanism was no longer
+# exercised. Removing the unused code does not change runtime
+# behavior.
+#
+# Bump rationale: cmpd-semisync.yaml mutated (function definition
+# removed + 3 in-function checks removed). KB CmpD immutability rule
+# applies. Same syncer v3 image. SEMISYNC TOPOLOGY ONLY.
+#
+# IMPORTANT: alpha.80 v1 is a STATIC QUALITY change. Existing axes
+# RED results (same-cluster repeat, under-load data-divergence, pod-
+# kill 1032-rejoin) remain unchanged. Each has its own first-blocker
+# tracked separately in its own evidence packet.
+#
+# alpha.81 v1 (Helen 2026-05-15 10:30 closes the same-cluster repeat
+# switchover axis RED root cause): explicitly GRANT SLAVE MONITOR to
+# `kb_internal_root@'%'` so syncer engine's `IsSwitchoverDone()` can
+# successfully remote-query the old primary's SHOW SLAVE STATUS after
+# a switchover.
+#
+# Root cause: MariaDB 11.4 split the legacy `REPLICATION CLIENT`
+# privilege into `BINLOG MONITOR` + `SLAVE MONITOR`. A single
+# `GRANT REPLICATION CLIENT` statement only normalizes to
+# `BINLOG MONITOR` in SHOW GRANTS — `SLAVE MONITOR` (required for
+# `SHOW SLAVE STATUS` on MariaDB 10.5+) is NOT automatically included.
+#
+# Chart's `kb_internal_root@'%'` grant block (alpha.69 v1 closeout)
+# used `GRANT REPLICATION CLIENT ON *.*`, so the live grant on the
+# wire-side wildcard host was `BINLOG MONITOR ON *.* + REPLICATION
+# MASTER ADMIN ON *.*` — `SLAVE MONITOR` was missing.
+#
+# Failure mode: After a successful switchover, syncer's HA loop on
+# the new primary tries to confirm `IsSwitchoverDone()` (defined in
+# engines/mariadb/promotion_gate.go) by remote-connecting to the old
+# primary as `kb_internal_root@'%'` and running `SHOW SLAVE STATUS`.
+# That query returns ERROR 1227 ("Access denied; you need (at least
+# one of) the SLAVE MONITOR privilege(s)"). The engine returns
+# `IsSwitchoverDone = false`, the framework's
+# `HandlerSwitchoverForPrimary` cleanup gate never trips,
+# `DeleteSwitchover()` never runs, and the DCS Switchover ConfigMap
+# leaks indefinitely. On the next `OpsRequest switchover` the syncer
+# rejects the request with "there is another switchover unfinished"
+# because the residual ConfigMap is still present. This was the
+# alpha.79 N=3 same-cluster-repeat RED axis.
+#
+# Evidence on alpha.80 (N=3, mariadb-test4 vcluster, n1ad/n1ae/n1af):
+#   - new primary read_only=0, INSERT works
+#   - old primary SHOW SLAVE STATUS (locally) shows
+#     `Master_Host = <new primary>`, Slave_IO_Running=Yes,
+#     Slave_SQL_Running=Yes, Seconds_Behind_Master=0
+#   - From the new primary, `kb_internal_root@'%'` SHOW SLAVE STATUS
+#     against the old primary returns ERROR 1227 (SLAVE MONITOR)
+#   - HA log on new primary every 5s: "switchover candidate is
+#     promoted but switchover is not done", 11h after the switchover
+#   - DCS ConfigMap `<cluster>-mariadb-switchover` still present 11h
+#     after the original switchover
+#
+# Fix (alpha.81 v1 — semisync topology only, replication/galera/
+# standalone do not have user-triggered switchover):
+#   templates/cmpd-semisync.yaml:
+#     1. CMPD_EXPLICIT_PRIMARY_GRANT_BODY: insert `SLAVE MONITOR`
+#        between `REPLICATION CLIENT` and `REPLICATION MASTER ADMIN`.
+#     2. CMPD_SECONDARY_FENCE_GRANT_BODY: insert `SLAVE MONITOR`
+#        between `REPLICATION CLIENT` and `REPLICATION MASTER ADMIN`.
+#     3. ensure_internal_local_admin SQL (`kb_internal_root@'%'`
+#        grant block ~line 789): add an explicit
+#        `GRANT SLAVE MONITOR ON *.* TO '${user}'@'%';` after the
+#        existing `GRANT REPLICATION CLIENT ON *.* ...` statement.
+#     4. Pre-stop hardcoded local-root lock SQL (~line 2068): add
+#        `SLAVE MONITOR` to the grant list so the prestop fence
+#        body stays semantically equivalent to
+#        CMPD_SECONDARY_FENCE_GRANT_BODY.
+#   templates/replication-switchover.sh / cmpd-semisync.yaml comment
+#   blocks: unchanged (they accurately described the split but did
+#   not enforce `SLAVE MONITOR`; the body constants now reflect the
+#   correct enforcement).
+#
+# Net attack-surface delta on `kb_internal_root@'%'` for SLAVE
+# MONITOR: zero. `SLAVE MONITOR` only grants `SHOW SLAVE STATUS`
+# read-only visibility (already implicitly granted by REPLICATION
+# CLIENT in MariaDB 10.x). The 11.4 split was a renaming, not a new
+# capability. user-facing root@'%' (alpha.64 v1
+# CMPD_EXPLICIT_PRIMARY_GRANT_BODY) already had REPLICATION CLIENT
+# legacy, so root@'%' on 10.6 had the equivalent and on 11.4 carries
+# `BINLOG MONITOR` after normalization. Adding `SLAVE MONITOR`
+# explicitly aligns alpha.69 v1's intent with MariaDB 11.4's
+# enforcement.
+#
+# Bump rationale: cmpd-semisync.yaml mutated (constant definitions
+# + GRANT SQL). KB CmpD immutability rule applies (any cmpd-*.yaml
+# mutation requires a fresh alpha). Same syncer v3 image. Same
+# scripts CM contents. SEMISYNC TOPOLOGY ONLY.
+#
+# Verify plan: helm upgrade alpha.81 → fresh semisync 2-replica
+# cluster → trigger one switchover OpsRequest → wait OpsRequest
+# Succeed → check
+# `kubectl get cm <cluster>-mariadb-switchover` is NotFound within
+# the HA loop period (~10s) and a SECOND switchover OpsRequest
+# completes Succeed without "there is another switchover
+# unfinished".
+# alpha.82 v1 (Helen 2026-05-17 06:38 LAND) — pairs alpha.81 chart-side
+# SLAVE MONITOR fix with an engine-side simplification per 陈祝红 syncer-
+# team directive `8db03a3f` / `1e9d0da5`:
+#   "dbmanager 对象不要增加新的接口，IsSwitchoverDone 可以直接使用
+#   IsPromoted 代替，当新主节点提升成功即可删除 Switchover ConfigMap"
+#
+# Engine change: apecloud/syncer feat/mariadb-support local worktree,
+# engines/mariadb/promotion_gate.go — IsSwitchoverDone body replaced with
+# `return mgr.IsPromoted(ctx)`. Unused cluster/switchover args preserved
+# in signature to match engines.DBManager interface (no new interface
+# methods per 陈祝红's "不要增加新的接口" constraint).
+#
+# Image: `apecloud/syncer:mariadb-isspromoted-fix-20260515-amd64` (96MB)
+# built locally, sideloaded to mariadb-test4 host nodes via 10MB split-tar
+# chunks → kubectl cp → /host-bin/ctr -n k8s.io images import. All 3
+# nodes verified.
+#
+# Chart change in this bump:
+#   templates/cmpd-semisync.yaml — unchanged
+#   values.yaml — image.syncer.tag override via helm install --set
+#
+# alpha.81 chart-side SLAVE MONITOR grant stays as belt-and-suspenders:
+# SLAVE MONITOR is a hygiene grant other operators legitimately need.
+#
+# Verify plan: alpha.82 install → fresh semisync cluster → switchover
+# OpsRequest → confirm cleanup runs even with kb_internal_root@'%'
+# SLAVE MONITOR temporarily revoked (proves engine no longer needs it).
+#
+# alpha.83 v1 (Helen 2026-05-19 02:00 LAND) — reconfigure action account
+# switch from `MARIADB_ROOT_USER` to `MARIADB_INTERNAL_ROOT_USER` so
+# `SET GLOBAL <param>` queries pass MariaDB 11.4 privilege check.
+#
+# Root cause (T6 fresh复现, KB 1.2 + 5 fixes + #10248 V(1) diagnostic image,
+# Cluster + Component CRD schema upgraded to main bool semantic):
+# - user-facing root@127.0.0.1 grant list lacks SUPER (chart security
+#   hardening since alpha.64 "drop SUPER (admin bypass)"); root *cannot*
+#   execute `SET GLOBAL`.
+# - kb_internal_root@127.0.0.1 has `ALL PRIVILEGES ... WITH GRANT OPTION`;
+#   `SET GLOBAL slow_query_log=ON` and `SET GLOBAL long_query_time=3`
+#   succeed under that account on both pods of the two preserved
+#   stuck-reconfigure clusters (mdb-t6-configure + t6-fresh), N=2 each.
+# - Live error before fix: `ERROR 1227 (42000) at line 1: Access denied;
+#   you need (at least one of) the SUPER privilege(s) for this operation`
+#   from `udf-reconfigure-cmpd-mariadb-semisync-config` action.
+#
+# Fix scope: only `mariadb.config.reconfigureAction` helper in
+# templates/_helpers.tpl. The chart's root account remains SUPER-stripped
+# — the security posture from alpha.64 is preserved. No new env or secret
+# indirection: chart already provisions root and kb_internal_root with the
+# same password value (MARIADB_ROOT_PASSWORD == MYSQL_ADMIN_PASSWORD env
+# vars carry identical values), so the existing MARIADB_ROOT_PASSWORD env
+# is reused; only the user changes.
+#
+# Verify plan: alpha.83 install over patched KB 1.2+5 fixes + CRD generation 2
+# (Cluster + Component) → fresh semisync cluster → T6 OpsRequest
+# Reconfiguring `slow_query_log=ON, long_query_time=3` → expect:
+#   - OpsRequest phase transitions Running → Succeed within timeout
+#   - ComponentParameter `currentRevision == updateRevision` collapsing
+#   - both pod `SHOW GLOBAL VARIABLES LIKE 'slow_query_log'` returns `ON`
+#     and `long_query_time` returns `3` (sample N=2 from primary + secondary)
+# Boundary: this is the addon-side fix; the CRD schema fix and #10248 V(1)
+# diagnostic logging remain controller-side and are not bundled here.
+#
+# alpha.84 v2 (Helen 2026-05-19 06:00 amend after v1 dry-run FAIL) —
+# closes the new product-path false-success first-blocker exposed by
+# clean-r1 on alpha.83 (Jack evidence packet `9502a88f4...`, summary
+# sha `4fa0f12f6...`). The packet showed OpsRequest phase=Succeed,
+# ComponentParameter Finished currentRevision=4/updateRevision=4
+# expectedCount=2/succeedCount=2 with kbagent attestation green on BOTH
+# pods, but the runtime invariant was only carried on pod0 — pod1
+# reported `slow_query_log=OFF / long_query_time=10` (chart defaults)
+# for the full observation window through 20:48Z. K8s container
+# restartCount=0 misled the first-pass hypothesis; the actual mechanism
+# is a mariadbd process-level restart at 20:42:33 (switchover promote
+# path) inside the same container, reading the OLD ConfigMap-volume-
+# mounted my.cnf because kubelet's ConfigMap sync (typical seconds to
+# ~60s) had not yet propagated the updated values into
+# `/etc/mysql/conf.d/my.cnf` on disk.
+#
+# Two compounding causes were identified:
+#   A. paramsdef.yaml previously declared only standalone / replication /
+#      galera ParametersDefinitions. The replication PD `componentDef`
+#      regex `^mariadb-replication-` did NOT match `^mariadb-semisync-`
+#      cmpd. With no matching PD, the KB Configure controller treats
+#      every parameter as unknown-effect and defaults to rolling restart,
+#      which on semisync triggers switchover/promote and mariadbd
+#      restart on the new primary.
+#   B. `mariadb.config.reconfigureAction` (templates/_helpers.tpl
+#      L161-317) only executes `SET GLOBAL <param>` against the running
+#      mysqld. The assignment is runtime-only; any mariadbd restart
+#      erases it. The chart did not write the reconfigured values to any
+#      persistent location, so the SET GLOBAL × ConfigMap sync timing
+#      race left pod1 running on stale defaults after promote.
+#
+# alpha.84 v1 first draft attempted to address both A and B by adding a
+# semisync PD AND a defense-in-depth persistence layer (`!includedir
+# /var/lib/mysql/runtime-overrides.d/` in `mariadb-semisync.tpl`, plus
+# a `mariadb.config.reconfigureAction.persisted` helper variant that
+# wrote per-parameter `.cnf` files). v1 N=1 fresh dry-run by Jack
+# (evidence tar `9a7a74fe...`) found that the KB Configure controller
+# parses ConfigMap-stored `my.cnf` with a strict INI parser
+# (`fileFormatConfig.format: ini`); MariaDB's `!includedir` directive is
+# not valid INI key=value syntax and made the parser throw
+# `key-value delimiter not found: !includedir /var/lib/mysql/runtime-
+# overrides.d/`. OpsRequest entered Failed before the reconfigureAction
+# could run, so the persistence layer never even had a chance to
+# demonstrate value. v1 N=1 ns `mariadb-t6-alpha84-n1-0547` is frozen
+# as evidence of this pre-action parser blocker.
+#
+# alpha.84 v2 (this version) is the MINIMAL fix: address cause A only.
+# Persistence (cause B) needs a load path that is NOT in the KB-managed
+# config file; that redesign is deferred to alpha.85 and tracked
+# separately (probable approach: `--defaults-extra-file` mariadbd arg
+# pointing at a single PVC-backed override file outside KB's PD scope).
+#
+# alpha.84 v2 fix (1 chart file, SEMISYNC TOPOLOGY ONLY;
+# replication / galera / standalone PDs unchanged):
+#   - templates/paramsdef.yaml: new `mariadb-semisync-pd` declaration
+#     with componentDef regex `^mariadb-semisync-` and templateName
+#     `mariadb-semisync-config` (matches cmpd-semisync.yaml
+#     configs[0].name, NOT the helm template object name — Galera
+#     comment block already documents the same trap). Uses the same
+#     staticParameters / dynamicParameters source as the other topology
+#     PDs (`config/mariadb-config-effect-scope.yaml`). With this PD in
+#     place, the KB Configure controller can classify slow_query_log /
+#     long_query_time / etc. as dynamic and skip rolling restart.
+#
+# Test deltas in alpha.84 v2 keep the version literal and grant
+# allowlist updates that were correct independent of the persistence
+# rollback:
+#   - scripts-ut-spec/replication_switchover_spec.sh: chart version
+#     literal assertions bumped from alpha.80 to alpha.84; @'%' grant
+#     allowlist assertion adds `SLAVE MONITOR` (alpha.81 v1 contract
+#     reflected in ensure_internal_local_admin SQL).
+#   - scripts-ut-spec/replication_user_convergence_spec.sh: version
+#     literal bumped from alpha.75 to alpha.84; prior-version negative
+#     check updated from alpha.73 to alpha.83.
+#   - scripts-ut-spec/semisync_rejoin_fence_template_spec.sh:
+#     `CMPD_SECONDARY_FENCE_GRANT_BODY` literal assertion adds
+#     `SLAVE MONITOR` between `REPLICATION CLIENT` and
+#     `REPLICATION MASTER ADMIN` (same alpha.81 v1 contract).
+#
+# Why the v2 minimal scope: classifying parameters as dynamic via the
+# semisync PD is necessary in any future design; the persistence layer
+# in v1 attempted to ALSO defend against unrelated restart paths
+# (OOMKill / node drain) but it bumped into a KB parser contract that
+# needs careful redesign rather than a quick patch. Shipping just the
+# PD reduces the v2 verify gate to three items (PD dynamic hit, no
+# rolling restart / switchover triggered, both pods reflect new values
+# within bounded wait); the "forced mariadbd restart preserves" gate is
+# deferred to alpha.86 (originally targeted at alpha.85 but alpha.85
+# was consumed by the bump-to-escape-CmpD-immutability described below).
+#
+# Verify plan (alpha.84 v2 3-item gate, narrowed from v1's 4-item gate
+# because persistence layer is deferred):
+#   1. semisync PD is registered (`kubectl get parametersdef
+#      mariadb-semisync-pd` Available; rendered manifest matches
+#      slow_query_log / long_query_time in dynamicParameters).
+#   2. Reconfigure of slow_query_log/long_query_time does NOT trigger
+#      rolling restart / switchover: pod identity (UID + startTime +
+#      restartCount) before/after the OpsRequest is byte-identical;
+#      role labels unchanged.
+#   3. OpsRequest Succeed → both pods SHOW GLOBAL VARIABLES report
+#      slow_query_log=ON / long_query_time=3 within bounded wait.
+#   N≥3 fresh clusters all three gates pass independently before
+#   marking the axis closed. The "forced mariadbd restart preserves"
+#   gate from v1 is deferred to alpha.86 along with the persistence
+#   redesign.
+#
+# Same KB CmpD immutability rule applies (alpha.84 v2 mutated
+# cmpd-semisync.yaml content vs alpha.83 baseline by reverting the
+# init-syncer mkdir line and changing the configs[].reconfigure
+# include from `.persisted` variant back to base helper; the chart
+# version literal MUST still bump). Same syncer v3 image. Replication
+# / galera / standalone topology PDs unchanged; this fix does not
+# touch their configs[].name or templates.
+#
+# alpha.85 v1 (Helen 2026-05-19 06:10 LAND) — pure version bump to
+# escape KB ComponentDefinition immutability. alpha.84 v1 chart was
+# installed into the test vcluster during Jack v1 dry run; once an
+# alpha.84 CmpD exists in the cluster, KB rejects any subsequent
+# install that changes cmpd-semisync.yaml content at the same chart
+# version with `phase=Unavailable` and `status.message: immutable
+# fields can't be updated`. This is the same CmpD immutability rule
+# the comment block has tracked since alpha.65: any cmpd-*.yaml
+# mutation requires a fresh alpha. alpha.84 v2 amend mutated
+# cmpd-semisync.yaml (init-syncer mkdir removed, configs[].reconfigure
+# include reverted to base helper) but kept the version literal at
+# alpha.84 — which blocked Jack v2 dry run at the deploy gate
+# (evidence tar `bf50831ad968f9354c62e5909dae126d4df39c4f6ce3c6e1b9a4f4546293b7af`).
+#
+# alpha.85 v1 fix scope is byte-identical to alpha.84 v2 (semisync
+# ParametersDefinition only; no chart-side persistence layer; no
+# script or runtime behavior delta beyond the PD). The only delta vs
+# alpha.84 v2 source tree is the version literal `1.1.1-alpha.84` →
+# `1.1.1-alpha.85` in this Chart.yaml plus the matching ShellSpec
+# version literal assertions. Persistence redesign (cause B from
+# alpha.84 v1) remains deferred to alpha.86 once a load path outside
+# the KB-managed ConfigMap parser scope is designed (probable
+# approach: mariadbd `--defaults-extra-file` arg pointing at a
+# single PVC-backed override file, written by reconfigureAction with
+# read-modify-write merge semantics).
+#
+# Same KB CmpD immutability rule applies (cmpd-semisync.yaml content
+# is identical to alpha.84 v2 but the chart version literal bumps to
+# create a fresh CmpD object the controller can install cleanly).
+# Same syncer v3 image (no syncer change). SEMISYNC TOPOLOGY ONLY
+# (alpha.72 through alpha.84 scope-cap carried forward).
+#
+# Test deltas in alpha.85 v1 keep the alpha.84 v2 assertions but bump
+# version literals one more time:
+#   - scripts-ut-spec/replication_switchover_spec.sh: chart version
+#     literal assertions bumped from alpha.84 to alpha.85.
+#   - scripts-ut-spec/replication_user_convergence_spec.sh: version
+#     literal bumped from alpha.84 to alpha.85; prior-version negative
+#     check from alpha.83 to alpha.84.
+#   - scripts-ut-spec/semisync_rejoin_fence_template_spec.sh: no
+#     change (the alpha.81 SLAVE MONITOR contract is not version-keyed).
+version: 1.1.1-alpha.85
 
 # This is the version number of the MARIADB being deployed,
 # (mariadb engine version unchanged from alpha.64; this bump is

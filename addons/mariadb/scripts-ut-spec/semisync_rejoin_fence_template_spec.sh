@@ -111,8 +111,8 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The output should include "GRANT \${CMPD_SECONDARY_FENCE_GRANT_BODY}"
   End
 
-  It "alpha.64 v1: secondary fence grant body constant explicitly excludes SUPER"
-    When call template_contains 'CMPD_SECONDARY_FENCE_GRANT_BODY="SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN"'
+  It "alpha.64 v1: secondary fence grant body constant explicitly excludes SUPER (alpha.81 v1: insert SLAVE MONITOR between REPLICATION CLIENT and REPLICATION MASTER ADMIN for MariaDB 11.4 SHOW SLAVE STATUS support)"
+    When call template_contains 'CMPD_SECONDARY_FENCE_GRANT_BODY="SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, SLAVE MONITOR, REPLICATION MASTER ADMIN"'
     The status should be success
     The output should include "CMPD_SECONDARY_FENCE_GRANT_BODY"
   End

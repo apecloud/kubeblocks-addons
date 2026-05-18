@@ -310,7 +310,9 @@ EOF
         run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         When run cat "${SYNCERCTL_ARGS}"
         The status should be success
-        The output should eq "--host 127.0.0.1 --port 3601 switchover --primary mdb-mariadb-0 --candidate mdb-mariadb-1"
+        # alpha.79 v2: --force added to bypass syncer's "previous switchover
+        # unfinished" DCS record so same-cluster repeat switchovers proceed.
+        The output should eq "--host 127.0.0.1 --port 3601 switchover --force --primary mdb-mariadb-0 --candidate mdb-mariadb-1"
       End
 
       It "fails before switchover when mariadb client is unavailable"
@@ -502,132 +504,19 @@ EOF_MOCK
         The output should include "fence_local_remote_root_for_secondary: host=% fence_apply_rc=0"
       End
 
-      It "disconnects active remote root sessions around the grant fence"
-        enumerate_user_facing_root_hosts() { echo "%"; return 0; }
-        query_local_value() {
-          record_call "query_sessions"
-          echo "88 89"
-        }
-        run_local_sql_best_effort() {
-          record_call "best_effort=$1"
-          return 0
-        }
-        fence_local_remote_root_for_secondary() {
-          record_call "fence"
-          return 0
-        }
-        local_remote_root_is_fenced_for_secondary() {
-          record_call "verify_fence"
-          return 0
-        }
-        syncerctl_switchover() {
-          record_call "syncerctl"
-          return 0
-        }
-        set_local_read_only() {
-          record_call "set_read_only=$1"
-          return 0
-        }
-        local_read_only_is() {
-          record_call "verify_read_only=$1"
-          [ "$1" = "1" ]
-        }
-        candidate_is_primary() {
-          return 0
-        }
-        current_follows_candidate() {
-          return 0
-        }
-        wait_post_switchover_stabilization() {
-          return 0
-        }
-        primary_service_routes_candidate() {
-          return 0
-        }
-        wait_current_secondary_remote_root_fenced() {
-          return 0
-        }
-        remote_root_write_ready() {
-          return 0
-        }
-        verify_post_dcs_local_root_write_fenced() {
-          return 0
-        }
-        revoke_user_facing_root_admin_privileges_for_secondary() {
-          return 0
-        }
-        wait_candidate_promoted_via_syncerctl() {
-          return 0
-        }
-        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
-        The status should be success
-        The output should include "Switchover pre-DCS guard: disconnecting active remote root sessions 88 89"
-        The output should include "remote root session disconnect issued killed=2 skipped=0"
-        The contents of file "${TEST_DIR}/calls" should include "best_effort=KILL CONNECTION 88;"
-        The contents of file "${TEST_DIR}/calls" should include "best_effort=KILL CONNECTION 89;"
-        The contents of file "${TEST_DIR}/calls" should include "fence"
-        The contents of file "${TEST_DIR}/calls" should include "syncerctl"
+      It "[alpha.79 v1: obsolete; prepare no longer disconnects remote-root sessions or fences root@'%']"
+        # alpha.61-.78 contract: prepare_current_primary_for_switchover ran
+        # disconnect_local_remote_root_sessions_for_secondary +
+        # fence_local_remote_root_for_secondary + local_remote_root_is_fenced_for_secondary.
+        # alpha.79 v1 (westonnnn 21:50 directive) replaces this chain with a
+        # no-op short-circuit, modeled on MySQL semisync addon which does not
+        # modify root@'%' grants during switchover. This obsolete test is
+        # marked Pending; alpha.80 cleanup will remove the test entirely.
+        Pending "alpha.79 minimalist removes fence chain from prepare; obsolete tracker pending alpha.80 cleanup"
       End
 
-      It "fences remote root before DCS and local writes immediately after DCS is accepted"
-        enumerate_user_facing_root_hosts() { echo "%"; return 0; }
-        fence_local_remote_root_for_secondary() {
-          record_call "fence"
-          return 0
-        }
-        local_remote_root_is_fenced_for_secondary() {
-          record_call "verify_fence"
-          return 0
-        }
-        syncerctl_switchover() {
-          record_call "syncerctl"
-          return 0
-        }
-        set_local_read_only() {
-          record_call "set_read_only=$1"
-          return 0
-        }
-        local_read_only_is() {
-          record_call "verify_read_only=$1"
-          [ "$1" = "1" ]
-        }
-        candidate_is_primary() {
-          return 0
-        }
-        current_follows_candidate() {
-          return 0
-        }
-        wait_post_switchover_stabilization() {
-          return 0
-        }
-        primary_service_routes_candidate() {
-          return 0
-        }
-        wait_current_secondary_remote_root_fenced() {
-          return 0
-        }
-        remote_root_write_ready() {
-          return 0
-        }
-        verify_post_dcs_local_root_write_fenced() {
-          return 0
-        }
-        revoke_user_facing_root_admin_privileges_for_secondary() {
-          return 0
-        }
-        wait_candidate_promoted_via_syncerctl() {
-          return 0
-        }
-        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
-        The status should be success
-        The output should include "Switchover pre-DCS guard passed"
-        The output should include "Switchover: creating syncer DCS switchover"
-        The output should include "Switchover post-DCS guard passed"
-        The contents of file "${TEST_DIR}/calls" should include "fence"
-        The contents of file "${TEST_DIR}/calls" should include "verify_fence"
-        The contents of file "${TEST_DIR}/calls" should include "syncerctl"
-        The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
-        The contents of file "${TEST_DIR}/calls" should include "verify_read_only=1"
+      It "[alpha.79 v1: obsolete; prepare no longer logs 'Switchover pre-DCS guard passed' or calls fence/verify_fence]"
+        Pending "alpha.79 minimalist removes fence + verify_fence calls from prepare; obsolete tracker pending alpha.80 cleanup"
       End
 
       It "fails closed when post-DCS local write fence does not close"
@@ -657,24 +546,11 @@ EOF_MOCK
         The contents of file "${TEST_DIR}/calls" should not include "rollback"
       End
 
-      It "does not create DCS switchover when the old-primary guard fails"
-        make_syncerctl
-        enumerate_user_facing_root_hosts() { echo "%"; return 0; }
-        fence_local_remote_root_for_secondary() {
-          record_call "fence"
-          return 1
-        }
-        rollback_current_primary_switchover_guard() {
-          record_call "rollback"
-          return 0
-        }
-        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
-        The status should be failure
-        The output should include "Switchover pre-DCS guard"
-        The stderr should include "Switchover failed: could not fence current primary remote root before DCS switchover"
-        The path "${SYNCERCTL_ARGS}" should not be exist
-        The contents of file "${TEST_DIR}/calls" should include "fence"
-        The contents of file "${TEST_DIR}/calls" should include "rollback"
+      It "[alpha.79 v1: obsolete; prepare cannot fail by fence-chain failure anymore (it's a no-op)]"
+        # alpha.61-.78 contract: prepare guard fails when fence_local_remote_root_
+        # for_secondary returns non-zero. alpha.79 minimalist prepare returns 0
+        # unconditionally; this failure path is unreachable.
+        Pending "alpha.79 minimalist prepare unconditionally returns 0; obsolete tracker pending alpha.80 cleanup"
       End
     End
   End
@@ -974,17 +850,169 @@ EOF
       The output should equal "1"
     End
 
-    It "Chart.yaml literal version is 1.1.1-alpha.75 (alpha.75 bump because alpha.74 v1 switchover idle-state N=1 RED revealed fence verifier preamble required BINLOG ADMIN which post-demote root lacks)"
+    It "Chart.yaml literal version is current (alpha.85 — pure version bump to escape KB CmpD immutability after alpha.84 v2 amend mutated cmpd-semisync.yaml; same scope as alpha.84 v2: semisync ParametersDefinition only)"
       chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
-      When call grep -c '^version: 1.1.1-alpha.75$' "${chart_yaml}"
+      When call grep -c '^version: 1.1.1-alpha.85$' "${chart_yaml}"
       The output should equal "1"
     End
 
-    It "Chart.yaml does not retain prior alpha.74 version line (no stale literal)"
+    It "Chart.yaml does not retain prior alpha.79 version line (no stale literal)"
       chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
-      When call grep -c '^version: 1.1.1-alpha.74$' "${chart_yaml}"
+      When call grep -c '^version: 1.1.1-alpha.79$' "${chart_yaml}"
       The status should be failure
       The output should equal "0"
+    End
+
+    It "alpha.79 v1: prepare_current_primary_for_switchover does NOT call fence_local_remote_root_for_secondary [product-blocker]"
+      # alpha.79 minimalist: prepare stage must NOT invoke any per-host
+      # root@'%' fence. The race source is removed by deletion, not by
+      # additional defense.
+      When run sh -c '
+        awk "
+          /^prepare_current_primary_for_switchover\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+          in_func && /^\\}[[:space:]]*\$/ { in_func = 0 }
+          in_func && \$0 ~ /^[^#]*fence_local_remote_root_for_secondary[^_]/ { found_fence = 1 }
+          in_func && \$0 ~ /^[^#]*local_remote_root_is_fenced_for_secondary/ { found_verify = 1 }
+          END { if (found_fence || found_verify) { printf \"alpha.79 violation: prepare still calls fence=%s verify=%s\\n\", (found_fence ? \"YES\" : \"no\"), (found_verify ? \"YES\" : \"no\"); exit 1 } }
+        " ../scripts/replication-switchover.sh
+      '
+      The status should be success
+    End
+
+    It "alpha.79 v1: prepare_current_primary_for_switchover logs alpha.79 minimalist sentinel [observability]"
+      # Distinct sentinel so historical alpha.61-.78 behavior is
+      # distinguishable from alpha.79+ minimalist in closeout logs.
+      When run sh -c '
+        awk "
+          /^prepare_current_primary_for_switchover\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+          in_func && /^\\}[[:space:]]*\$/ { in_func = 0 }
+          in_func && \$0 ~ /alpha\\.79 v1 minimalist/ { found = 1 }
+          END { if (!found) { print \"missing alpha.79 minimalist sentinel in prepare log\"; exit 1 } }
+        " ../scripts/replication-switchover.sh
+      '
+      The status should be success
+    End
+
+    It "alpha.79 v1: post-DCS verify_post_dcs_local_root_write_fenced is PRESERVED (read_only=1-based, race-free) [contract-no-regression]"
+      # The post-DCS local-root write fence verifier reads INSERT 1290 errno
+      # from user-facing root, not grant state. It is the safety net that
+      # alpha.79 minimalist relies on. MUST remain intact.
+      When call grep -c '^verify_post_dcs_local_root_write_fenced()' ../scripts/replication-switchover.sh
+      The output should equal "1"
+    End
+
+    It "alpha.79 v1: alpha.76/.77/.78 marker helpers tracked as alpha.80 cleanup debt [tech-debt-tracked]"
+      # Dead-code policy: marker helpers + cmpd switchover_fence_active_is_fresh
+      # + roleprobe skip check are no longer called by the active path. The
+      # cleanup debt MUST be tracked in Chart.yaml so alpha.80+ can grep for it.
+      chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
+      When call grep -c "alpha\.80.*cleanup\|alpha\.80+ removes" "${chart_yaml}"
+      The status should be success
+      The output should not equal "0"
+    End
+
+    It "alpha.78 v1: wait_for_replication_healthy checks syncer role per iteration AT THE TOP OF THE LOOP and exits with return 2 when role=primary [product-blocker]"
+      # cmpd-semisync.yaml wait_for_replication_healthy MUST include a
+      # query_local_syncer_role check inside the while loop, BEFORE the
+      # existing slave_status_is_healthy probe. When the check returns
+      # "primary", function MUST return 2 (distinct from the timeout return 1
+      # and the healthy return 0) so callers can attribute the exit cause.
+      When run sh -c '
+        awk "
+          /^[[:space:]]*wait_for_replication_healthy\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+          in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+          in_func && /while true; do/ { in_loop = 1; next }
+          in_func && in_loop && \$0 ~ /query_local_syncer_role/ && !syncer_line { syncer_line = NR }
+          in_func && in_loop && \$0 ~ /current_syncer_role.*=.*\"primary\"/ && !check_line { check_line = NR }
+          in_func && in_loop && \$0 ~ /^[[:space:]]+return 2\$/ && !ret2_line { ret2_line = NR }
+          in_func && in_loop && \$0 ~ /slave_status_is_healthy/ && !slave_check_line { slave_check_line = NR }
+          END {
+            if (!syncer_line || !check_line || !ret2_line || !slave_check_line) { printf \"missing syncer=%s check=%s ret2=%s slave=%s\\n\", (syncer_line ? syncer_line : \"MISSING\"), (check_line ? check_line : \"MISSING\"), (ret2_line ? ret2_line : \"MISSING\"), (slave_check_line ? slave_check_line : \"MISSING\"); exit 1 }
+            # syncer-role check must be BEFORE slave_status_is_healthy probe
+            if (!(syncer_line < slave_check_line)) { printf \"syncer check must be BEFORE slave_status check: syncer=%d slave=%d\\n\", syncer_line, slave_check_line; exit 1 }
+            # return 2 must be between syncer check and slave check
+            if (!(syncer_line <= ret2_line && ret2_line < slave_check_line)) { printf \"return 2 must follow syncer check before slave check: syncer=%d ret2=%d slave=%d\\n\", syncer_line, ret2_line, slave_check_line; exit 1 }
+          }
+        " "${CMPD_SOURCE:-../templates/cmpd-semisync.yaml}"
+      '
+      The status should be success
+    End
+
+    It "alpha.78 v1: wait_for_replication_healthy distinct sentinel log when exiting on DCS-primary [product-blocker]"
+      When run sh -c '
+        awk "
+          /^[[:space:]]*wait_for_replication_healthy\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+          in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+          in_func && \$0 ~ /rejoin-replication-exit-on-dcs-primary/ { found = 1 }
+          END { if (!found) { print \"missing rejoin-replication-exit-on-dcs-primary sentinel\"; exit 1 } }
+        " "${CMPD_SOURCE:-../templates/cmpd-semisync.yaml}"
+      '
+      The status should be success
+    End
+
+    It "alpha.78 v1: original 120s timeout path preserved (return 1 + sentinel rejoin-replication-not-healthy) [contract-no-regression]"
+      When run sh -c '
+        awk "
+          /^[[:space:]]*wait_for_replication_healthy\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+          in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+          in_func && \$0 ~ /rejoin-replication-not-healthy/ { timeout_found = 1 }
+          in_func && \$0 ~ /^[[:space:]]+return 1\$/ { ret1_found = 1 }
+          END { if (!timeout_found || !ret1_found) { print \"missing timeout sentinel or return 1\"; exit 1 } }
+        " "${CMPD_SOURCE:-../templates/cmpd-semisync.yaml}"
+      '
+      The status should be success
+    End
+
+    It "alpha.78 v1: original healthy-success path preserved (return 0 + sentinel rejoin-replication-healthy) [contract-no-regression]"
+      When run sh -c '
+        awk "
+          /^[[:space:]]*wait_for_replication_healthy\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
+          in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
+          in_func && \$0 ~ /rejoin-replication-healthy[^-]/ { healthy_found = 1 }
+          in_func && \$0 ~ /^[[:space:]]+return 0\$/ { ret0_found = 1 }
+          END { if (!healthy_found || !ret0_found) { print \"missing healthy sentinel or return 0\"; exit 1 } }
+        " "${CMPD_SOURCE:-../templates/cmpd-semisync.yaml}"
+      '
+      The status should be success
+    End
+
+    It "[alpha.80 v1: alpha.77 marker UNLOCK gate obsolete — marker mechanism removed entirely]"
+      # alpha.77 v1 added an in-function `switchover_fence_active_is_fresh`
+      # check inside set_remote_root_account_state UNLOCK branch. alpha.79 v1
+      # minimalist deleted the marker writer in switchover.sh, making the
+      # check unreachable; alpha.80 v1 dead-code cleanup removed the check
+      # entirely. The set_remote_root_account_state function still works
+      # correctly without the gate because alpha.79 minimalist no longer
+      # competes for root@'%' grants.
+      Pending "alpha.80 v1 removed marker mechanism entirely; obsolete pending future ShellSpec cleanup"
+    End
+
+    It "alpha.77 v2: CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS default >= 30s (new primary watchdog SECONDARY->PRIMARY transition needs >10s) [product-blocker]"
+      # alpha.77 v1 N=1 verify on n1y closed pre-DCS REMOTE root fence race
+      # but stage 5 candidate write probe timed out at 10s. New primary's
+      # chart watchdog needs ~6-10s to detect role change + run
+      # expose_sql_listener_for_primary_role + set_primary_read_write +
+      # unlock_remote_root_writes + flip read_only=0. 30s gives one full
+      # role-transition cycle + headroom while remaining well under the
+      # 55s SWITCHOVER_ACTION_DEADLINE_SECONDS.
+      When call sh -c '
+        unset CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS
+        export MARIADB_DATADIR='"${TEST_DIR}"'
+        export DATA_DIR='"${TEST_DIR}"'
+        export __SOURCED__=1
+        . ../scripts/replication-switchover.sh
+        if [ "${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}" -lt 30 ]; then
+          echo "default=${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS} expected>=30"
+          exit 1
+        fi
+        printf "%s\n" "${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}"
+      '
+      The status should be success
+      The output should equal "30"
+    End
+
+    It "[alpha.80 v1: alpha.77 marker LOCK-not-gated contract obsolete — marker mechanism removed entirely]"
+      Pending "alpha.80 v1 removed marker mechanism entirely; obsolete pending future ShellSpec cleanup"
     End
   End
 
@@ -2815,7 +2843,7 @@ EOF
       # chart version.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.1.1-alpha.75"
+      The output should equal "version: 1.1.1-alpha.85"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -2876,7 +2904,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.75"
+        The output should equal "version: 1.1.1-alpha.85"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -2959,14 +2987,18 @@ EOF
         The output should not include "@'%' ACCOUNT LOCK"
       End
 
-      It "alpha.66 v1: SUPERSEDED by alpha.69 v1 (+alpha.72 v1) — @'%' grant allowlist now includes 5 grants (REPLICATION CLIENT + REPLICATION MASTER ADMIN + SELECT/INSERT/UPDATE on kubeblocks.kb_health_check + SELECT on mysql.user for kb_internal_root@%; REPLICATION SLAVE on *.* for kb_replicator@%); forbidden classes still hard-banned (no admin bypass)"
+      It "alpha.66 v1: SUPERSEDED by alpha.69 v1 (+alpha.72 v1 +alpha.81 v1) — @'%' grant allowlist now includes 6 grants (REPLICATION CLIENT + REPLICATION MASTER ADMIN + SELECT/INSERT/UPDATE on kubeblocks.kb_health_check + SELECT on mysql.user + SLAVE MONITOR on *.* for kb_internal_root@%; REPLICATION SLAVE on *.* for kb_replicator@%); forbidden classes still hard-banned (no admin bypass)"
         # alpha.66 v1 originally asserted zero GRANT @'%'; alpha.68 v2
         # explicitly grants 3 cross-member health privs; alpha.69 v1 adds
         # a 4th narrow grant (SELECT ON mysql.user) to satisfy syncer's
-        # init_db=mysql handshake. This regression test verifies the only
-        # GRANT statements to @'%' are the expected allowlist of 4.
-        # We skip lines that start with REVOKE (REVOKE clause contains
-        # "GRANT OPTION" substring but is not itself a GRANT statement).
+        # init_db=mysql handshake; alpha.81 v1 adds a 5th narrow grant
+        # (SLAVE MONITOR ON *.*) to satisfy syncer engine's
+        # IsSwitchoverDone() SHOW SLAVE STATUS query on MariaDB 11.4+.
+        # This regression test verifies the only GRANT statements to @'%'
+        # are the expected allowlist of 6 (5 for kb_internal_root@%, 1
+        # for kb_replicator@%). We skip lines that start with REVOKE
+        # (REVOKE clause contains "GRANT OPTION" substring but is not
+        # itself a GRANT statement).
         When run sh -c '
           awk "
             /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
@@ -2977,6 +3009,7 @@ EOF
                   line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+MASTER[[:space:]]+ADMIN[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
                   line !~ /GRANT[[:space:]]+SELECT,[[:space:]]+INSERT,[[:space:]]+UPDATE[[:space:]]+ON[[:space:]]+kubeblocks\\.kb_health_check/ &&
                   line !~ /GRANT[[:space:]]+SELECT[[:space:]]+ON[[:space:]]+mysql\\.user/ &&
+                  line !~ /GRANT[[:space:]]+SLAVE[[:space:]]+MONITOR[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
                   line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+SLAVE[[:space:]]+ON[[:space:]]+\\*\\.\\*/) {
                 print NR\": grant to @ percent outside allowlist: \"\$0
               }
@@ -3048,7 +3081,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.75"
+        The output should equal "version: 1.1.1-alpha.85"
       End
     End
 
@@ -3364,6 +3397,19 @@ EOF
         The status should be success
         The output should equal ""
       End
+    End
+  End
+
+  Describe "alpha.76/.77/.78 marker mechanism — alpha.80 v1 dead-code cleanup"
+    # The entire `.switchover-fence-active` marker mechanism (helpers,
+    # consumer fresh-checks, init-syncer rm) was removed by alpha.80 v1
+    # because alpha.79 v1 minimalist deleted the marker writer. The
+    # alpha.76/.77/.78 contract tests below are obsolete and marked
+    # Pending. A future ShellSpec cleanup pass can delete them entirely;
+    # left here as audit trail of which contracts changed.
+
+    It "[alpha.80 v1: alpha.76/.77/.78 marker mechanism removed — all contract tests obsolete]"
+      Pending "alpha.80 v1 removed marker mechanism entirely; obsolete pending future ShellSpec cleanup"
     End
   End
 

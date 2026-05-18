@@ -57,6 +57,59 @@ spec:
   {{- end }}
 
 ---
+# ParametersDefinition for semisync MariaDB
+#
+# alpha.84 v1 (Helen 2026-05-19) — semisync topology previously had NO
+# ParametersDefinition. paramsdef.yaml declared standalone / replication /
+# galera but not semisync; replication PD `componentDef` regex
+# `^mariadb-replication-` did not match `^mariadb-semisync-` cmpd. With no
+# matching PD, the KB Configure controller treats dynamic parameters
+# (slow_query_log, long_query_time, etc.) as unknown-effect and falls back
+# to rolling restart, which on semisync triggers switchover/promote and
+# causes the new primary's mysqld to restart inside the container — losing
+# the `SET GLOBAL` runtime state applied by reconfigureAction. The fresh
+# clean-r1 evidence packet (`9502a88f...`) showed pod1 mysqld process-level
+# restart at 20:42:33 (k8s container restartCount=0, but mariadbd PID
+# changed via switchover promote path), reading old my.cnf from the
+# ConfigMap volume that had not yet propagated kubelet's sync.
+#
+# This semisync PD aligns with replication PD shape:
+#   componentDef: ^mariadb-semisync-
+#   templateName: mariadb-semisync-config  (matches cmpd-semisync.yaml's
+#     configs[0].name; NOT the ConfigMap object name
+#     `mariadb-semisync-config-template`, which is the Helm template
+#     identifier — see Galera comment for the same trap)
+#   fileName: my.cnf
+# Same staticParameters / dynamicParameters scope as other topologies
+# (sourced from `config/mariadb-config-effect-scope.yaml`).
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: mariadb-semisync-pd
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.semisync.cmpdRegexpPattern" . | quote }}
+  templateName: mariadb-semisync-config
+  fileName: my.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: mysqld
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- range (get $pd "staticParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- range (get $pd "dynamicParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+
+---
 # ParametersDefinition for Galera MariaDB
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
