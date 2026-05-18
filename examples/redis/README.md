@@ -678,7 +678,7 @@ To create a redis with a proxy (Twemproxy) in front of it:
 kubectl apply -f examples/redis/cluster-twemproxy.yaml
 ```
 
-A cluster named `redis-twemproxy` will be created with three components, one for Redis (2 replicas), one for Sentinel (3 replicas), and one for twemproxy (3 replicas).
+A cluster named `redis-twemproxy` will be created with two components: Redis (2 replicas, HA managed by syncer) and twemproxy (3 replicas).
 
 ```yaml
 # snippet of cluster.yaml
@@ -687,10 +687,9 @@ kind: Cluster
 spec:
   terminationPolicy: Delete
   clusterDef: redis
-  topology: replication-twemproxy  # set topology to standalone
+  topology: replication-twemproxy  # redis HA is managed by syncer
   componentSpecs:
   - name: redis
-  - name: redis-sentinel
   - name: redis-twemproxy       # add one componet on provisioniing: twemproxy
     replicas: 3                 # set the desired number of replicas for twemproxy
     resources:
