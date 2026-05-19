@@ -24,3 +24,17 @@ data:
   # env passthroughs added in commit 4 v2 for connection context.
   validate-replication-mode.sh: |-
     {{- .Files.Get "scripts/validate-replication-mode.sh" | nindent 4 }}
+  # alpha.89 v1 commit 12 (Helen 2026-05-20, C3 design mapper) —
+  # mount replication-mode-mapper.sh at /scripts so the merged CmpD's
+  # reconfigureAction.persisted helper can source it before the main
+  # loop processes parameter assignments. The mapper translates the
+  # synthetic `replicationMode` ComponentSpec parameter
+  # ("async" | "semisync") into the four real engine variables
+  # (rpl_semi_sync_master_enabled / slave_enabled /
+  # master_wait_for_slave_count / master_timeout) and fails closed on
+  # invalid mode or conflict with user-supplied real-var values. The
+  # CUE `replicationmode?: _|_` declared in commit 11 v2
+  # (`mariadb-config-constraint.cue`) is the defense-in-depth
+  # backstop preventing the synthetic key from ever landing in my.cnf.
+  replication-mode-mapper.sh: |-
+    {{- .Files.Get "scripts/replication-mode-mapper.sh" | nindent 4 }}

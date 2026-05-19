@@ -537,6 +537,31 @@ reconfigure:
         parameter_file="$(mktemp)"
         trap 'rm -f "${parameter_file}"' EXIT
         emit_action_parameters > "${parameter_file}"
+
+        # alpha.89 v1 commit 12 (Helen 2026-05-20, C3 design mapper) —
+        # translate the synthetic `replicationMode` ComponentSpec
+        # parameter into the four real engine variables BEFORE the
+        # main loop sees the parameter list. The mapper is the unique
+        # consumer / writer of `replicationMode`; it strips any
+        # synthetic `replicationmode` / `replicationMode` line, fails
+        # closed on invalid mode or conflict with user-supplied real
+        # vars, and is idempotent on both-consistent input. Contract
+        # is locked in `scripts/replication-mode-mapper.sh`.
+        #
+        # The mapper is sourced (not executed) so it runs in the same
+        # shell, preserves `set -eu`, and shares the trap'd parameter
+        # file. The /scripts mount comes from the replication scripts
+        # ConfigMap (configmap-scripts-replication.yaml commit 12).
+        if [ -r /scripts/replication-mode-mapper.sh ]; then
+          # shellcheck disable=SC1091
+          __SOURCED__=1 . /scripts/replication-mode-mapper.sh
+          if ! apply_replication_mode_mapping "${parameter_file}"; then
+            mapper_rc=$?
+            echo "replicationMode mapper failed (rc=${mapper_rc}); reconfigure aborts before any SET GLOBAL or runtime-overrides.d write" >&2
+            exit 1
+          fi
+        fi
+
         if [ ! -s "${parameter_file}" ]; then
           echo "No reconfigure parameters were injected into action environment" >&2
           exit 1
@@ -636,7 +661,6 @@ reconfigure:
           override_file="${OVERRIDES_DIR}/${param_name}.cnf"
           override_tmp="${override_file}.tmp.$$"
           if ! {
-            echo "# Written by reconfigureAction.persisted on $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "[mysqld]"
             echo "${param_name} = ${persist_quoted}"
           } > "${override_tmp}"; then
@@ -644,7 +668,25 @@ reconfigure:
             echo "Failed to write tmp override file ${override_tmp}; reconfigure cannot guarantee persistence" >&2
             exit 1
           fi
-          if ! mv "${override_tmp}" "${override_file}"; then
+          # alpha.89 v1 commit 12 (Helen 2026-05-20, Jack contract msg
+          # `2e93eb72`) — byte-equal short-circuit. If the existing
+          # override file already has identical content to the new
+          # tmp file, skip the atomic mv so the on-disk file's mtime
+          # is preserved across no-op reconfigures (idempotency
+          # guarantee for both-consistent and repeated mode-only
+          # reconfigure cases). The skip branch runs strictly after
+          # safety validation (is_safe_param_name + is_safe_param_value
+          # gated above) and after the mapper-driven conflict check
+          # (apply_replication_mode_mapping runs before any reach into
+          # this loop). Conflict cases never get here — the mapper
+          # exits the action non-zero before any tmp file is written.
+          # The alpha.86 timestamp comment was removed (commit 12)
+          # because it forced every write to differ even when the
+          # parameter value was unchanged.
+          if [ -f "${override_file}" ] && cmp -s "${override_tmp}" "${override_file}"; then
+            rm -f "${override_tmp}" 2>/dev/null || true
+            echo "Override for ${param_name} already at target value; skipping rewrite to preserve mtime"
+          elif ! mv "${override_tmp}" "${override_file}"; then
             rm -f "${override_tmp}" 2>/dev/null || true
             echo "Failed to rename tmp override into place at ${override_file}; reconfigure cannot guarantee persistence" >&2
             exit 1
