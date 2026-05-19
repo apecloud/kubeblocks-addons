@@ -14,3 +14,13 @@ data:
     {{- .Files.Get "scripts/replication-member-join.sh" | nindent 4 }}
   replication-switchover.sh: |-
     {{- .Files.Get "scripts/replication-switchover.sh" | nindent 4 }}
+  # alpha.89 v1 commit 5 (Helen 2026-05-19, C1 path lifecycle wiring) —
+  # mount validate-replication-mode.sh at /scripts so it is callable
+  # via `kubectl exec <pod> -c mariadb -- /scripts/validate-replication-mode.sh`
+  # (test runners + ad-hoc operators). A later commit can add a
+  # kbagent lifecycle action referencing this same path without
+  # re-touching the ConfigMap. The script stays read-only and uses
+  # the MYSQL_SOCKET / MYSQL_USER / MYSQL_PASSWORD / MYSQL_EXTRA_ARGS
+  # env passthroughs added in commit 4 v2 for connection context.
+  validate-replication-mode.sh: |-
+    {{- .Files.Get "scripts/validate-replication-mode.sh" | nindent 4 }}
