@@ -126,10 +126,14 @@ spec:
 # `mariadb-semisync-config` to `mariadb-replication-config`; this PD
 # tracks the rename so the binding stays consistent across the three
 # files (cmpd configspec name / PD templateName / PCR templateName).
-# The underlying ConfigMap object template is still
-# `mariadb-semisync-config-template` until the parameter-driven
-# defaults land, so PD parameter resolution continues to work
-# against the semisync ConfigMap content unchanged.
+# alpha.89 v1 commit 8 (Helen 2026-05-19) flipped the underlying
+# ConfigMap object template from `mariadb-semisync-config-template`
+# to `mariadb-replication-config-template` (async defaults). PD
+# parameter resolution now operates against the async ConfigMap;
+# the four `rpl_semi_sync_*` variables are absent from the default
+# my.cnf and only land when a Cluster CR explicitly sets them via
+# `spec.componentSpecs[].parameters` (validated by the CUE schema
+# declared below at commit 3 v2).
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
