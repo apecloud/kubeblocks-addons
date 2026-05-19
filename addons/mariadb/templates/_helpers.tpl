@@ -95,6 +95,30 @@ mariadb-galera-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
+Define mariadb-replication-merged component definition name.
+
+alpha.89 v1 (Helen 2026-05-19) — new CmpD for topology merge (weston
+2026-05-19 14:12 Option B). The merged CmpD consolidates the old
+`mariadb-replication` (async) and `mariadb-semisync` CmpDs into one,
+selected at runtime by a `replicationMode: async | semisync`
+ComponentSpec parameter rather than by topology name. A new CmpD name
+is used (not reusing `mariadb-replication-`) so KB does not see this
+as a mutation of the existing immutable CmpD spec — see Chart.yaml
+header for the immutability rule.
+*/}}
+{{- define "mariadb.replication.merged.cmpdName" -}}
+mariadb-replication-merged-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Regexp pattern for the merged replication CmpD (matches names that
+start with the merged prefix; used by ParametersDefinition).
+*/}}
+{{- define "mariadb.replication.merged.cmpdRegexpPattern" -}}
+^mariadb-replication-merged-
+{{- end -}}
+
+{{/*
 Define mariadb component definition regular expression name prefix
 */}}
 {{- define "mariadb.cmpdRegexpPattern" -}}
@@ -110,10 +134,18 @@ Define mariadb standalone component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define mariadb-replication component definition regular expression name prefix
+Define mariadb-replication component definition regular expression name prefix.
+
+alpha.89 v1 (Helen 2026-05-19, Jack design review Blocker 1) — narrowed
+from `^mariadb-replication-` to `^mariadb-replication-[0-9]` so the
+old replication CmpD regex does NOT also match the new merged CmpD
+name `mariadb-replication-merged-{ChartVersion}`. The chart-version
+suffix on the old CmpD name always starts with a digit (e.g.
+`mariadb-replication-1.1.1-alpha.89`), so requiring a digit
+immediately after the `replication-` prefix is a safe disambiguator.
 */}}
 {{- define "mariadb.replication.cmpdRegexpPattern" -}}
-^mariadb-replication-
+^mariadb-replication-[0-9]
 {{- end -}}
 
 {{/*

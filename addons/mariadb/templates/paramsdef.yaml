@@ -110,6 +110,52 @@ spec:
   {{- end }}
 
 ---
+# ParametersDefinition for the merged replication CmpD
+# (alpha.89 — topology merge under weston 2026-05-19 Option B).
+#
+# Binds to the new `mariadb-replication-merged-…` CmpD via
+# `^mariadb-replication-merged-` regex. The regex does NOT overlap
+# with `^mariadb-replication-` (old async CmpD) or `^mariadb-semisync-`
+# (old semisync CmpD); the `-merged-` middle segment ensures the
+# match is exclusive (Jack design Gate 3 — single PD per CmpD, no
+# double-match across PDs).
+#
+# This first commit reuses the same fileName / templateName as the
+# old semisync PD (`mariadb-semisync-config`) because the new merged
+# CmpD initially uses the same configspec name as cmpd-semisync.yaml.
+# Subsequent commits will rename the configspec to
+# `mariadb-replication-config` (single template) and update this PD
+# accordingly. For now this PD keeps the merged CmpD's semisync-style
+# parameters resolvable so reconfigureAction goes through the dynamic
+# path rather than rolling restart.
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: mariadb-replication-merged-pd
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.replication.merged.cmpdRegexpPattern" . | quote }}
+  templateName: mariadb-semisync-config
+  fileName: my.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: mysqld
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- range (get $pd "staticParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- range (get $pd "dynamicParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+
+---
 # ParametersDefinition for Galera MariaDB
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
