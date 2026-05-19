@@ -260,6 +260,47 @@ query_local_value() {
     -P3306 -h127.0.0.1 -N -s -e "${sql}" 2>/dev/null
 }
 
+# alpha.89 v1 commit 7 (Helen 2026-05-19, C1 path topology merge) —
+# read-only helper to detect whether semisync is currently enabled at
+# runtime via the engine's in-memory @@rpl_semi_sync_master_enabled
+# variable. Staged for future caller patches that need to decide
+# whether to wait for semisync ACK during switchover or fall through
+# immediately when the cluster is running in async mode under the
+# merged CmpD.
+#
+# Return contract:
+#   0 — semisync ON (@@rpl_semi_sync_master_enabled is 1 / ON / on)
+#   1 — semisync OFF (@@rpl_semi_sync_master_enabled is 0 / OFF / off)
+#   2 — undetermined: mariadb client failed, returned no row, or
+#       returned a value outside the four recognized literals. Callers
+#       MUST treat this as fail-closed by assuming semisync (do not
+#       skip the safety wait) so a transient client failure does not
+#       silently flip behavior to async during switchover.
+#
+# No caller wires this in commit 7. The helper is intentionally
+# added without changing any call site so the existing switchover
+# behavior is untouched on alpha.89; a focused follow-up commit will
+# wire the helper into the specific stages that currently wait for
+# semisync ACK and need to fall through under async mode.
+#
+# Connection context follows the surrounding query_local_value /
+# run_local_internal_sql pattern: localhost on the chart's mariadbd
+# port, user-facing root credentials read from the same env surface
+# the rest of the switchover script already establishes. /bin/sh +
+# busybox compatibility is the same as the surrounding helpers.
+is_semisync_mode() {
+  local val
+  val=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+    -P3306 -h127.0.0.1 -N -s \
+    -e "SELECT @@rpl_semi_sync_master_enabled" 2>/dev/null) || return 2
+  case "${val}" in
+    1|ON|on) return 0 ;;
+    0|OFF|off) return 1 ;;
+    *) return 2 ;;
+  esac
+}
+
 sql_quote() {
   printf "%s" "$1" | sed "s/'/''/g"
 }
