@@ -13,36 +13,57 @@
 // `ClassifyComponentParameters()` / `DoMerge()` boundary, before
 // engine config is rendered.
 //
-// alpha.89 v1 commit 10 (Helen 2026-05-20, C3 path per weston
-// 2026-05-20 00:08 msg `cb0afa37`) — extended with a
-// `replicationMode` field whose CUE conditional blocks derive the
-// four `rpl_semi_sync_*` engine variables when set. weston's
-// precedence rule: if `replicationMode` is set, it overrides the
-// four real variables; if the user ALSO sets one of the four with
-// an inconsistent value, CUE unification fails and KB rejects the
-// assignment at the controller parameter reconcile path. If
-// `replicationMode` is unset, the user can freely set the four
-// real variables (chart default is async via the four variables
-// taking their CUE defaults of OFF).
+// alpha.89 v1 commit 11 (Helen 2026-05-20, C3 path correction
+// after Jack KB-validator behavioral test 2026-05-20 00:16 msg
+// `ea50aa12`): revert the conditional `replicationMode`-derivation
+// blocks introduced in commit 10 and fix a separate closed-section
+// bug that has been silently present since commit 3 v2.
 //
-// This makes both user-facing surfaces (a single logical
-// `replicationMode` switch AND the four real engine variables)
-// visible and changeable per weston's directive; CUE unification
-// handles the consistency check natively and the four variables
-// remain the ground-truth source rendered into my.cnf.
+// Jack's behavioral test against KB `pkg/parameters/validate
+// /cue_util.go ValidateConfigWithCue()` + `DoMerge()` proved:
 //
-// Note that this CUE expression depends on KB's CUE renderer
-// actually emitting derived field values into the rendered my.cnf
-// (not only validating them). If KB's renderer only validates and
-// does not derive (i.e. it ignores the conditional blocks for
-// rendering), a thin addon-side mapper in reconfigureAction would
-// fill the four variables when only `replicationMode` is set,
-// while CUE unification continues to reject inconsistent explicit
-// assignments. Jack's KB-validator behavioral test
-// (pkg/parameters/validate/cue_util.go ValidateConfigWithCue) is
-// scheduled to verify which path the runtime takes; until then this
-// commit lays the schema only and the mapper question is deferred
-// to commit 11+ based on Jack's findings.
+// 1. KB does NOT emit CUE-derived field values into the rendered
+//    my.cnf. A user setting only `replicationMode=semisync` would
+//    get a my.cnf containing `replicationmode=semisync` (which
+//    mariadbd rejects as an unknown variable) and no derived
+//    `rpl_semi_sync_master_enabled=ON`. So the C3 single-source-of
+//    -truth cannot be CUE alone; an addon-side mapper inside
+//    reconfigureAction must consume `replicationMode` BEFORE the
+//    my.cnf render and write the four real variables explicitly.
+// 2. KB's INI parser lowercases all keys, so a camelCase CUE field
+//    `replicationMode` does not match the parsed key
+//    `replicationmode` — even validation fails on this.
+// 3. The `[SectionName=_]: #MariaDBParameter` binding from
+//    commit 3 v2 is a CLOSED CUE struct. Any key in the rendered
+//    base my.cnf that is not declared in `#MariaDBParameter` (e.g.
+//    `binlog_format`, `max_connections`, `slow_query_log`) is
+//    rejected by `ValidateConfigWithCue()` as "field not allowed".
+//    Commit 3 v2's ShellSpec used a narrow fixture (only the four
+//    `rpl_semi_sync_*` keys) so this bug never surfaced; a real
+//    cluster's full base my.cnf merge would fail.
+//
+// Fix in this commit:
+//
+// - `replicationMode` is REMOVED from the CUE schema. It will be
+//   re-introduced in a follow-up commit as a ComponentSpec parameter
+//   consumed by an addon-side mapper in reconfigureAction (the
+//   mapper validates consistency against the four real variables
+//   and writes the derived values into my.cnf via the alpha.88
+//   persistence path; the four real variables remain the only
+//   keys that land in the rendered ConfigMap).
+// - The two `if replicationMode == ...` conditional blocks are
+//   REMOVED. CUE unification is no longer used to express
+//   precedence; the mapper handles it.
+// - The struct is now OPEN (`[string]: _`), so base my.cnf keys
+//   not declared in this schema pass through unchallenged. This
+//   retroactively fixes the commit 3 v2 closed-section bug; the
+//   four `rpl_semi_sync_*` fields still take their declared
+//   constraints because CUE unifies any matching key with the
+//   field constraint and lets unknown keys flow through.
+//
+// The four `rpl_semi_sync_*` field declarations and the
+// `[SectionName=_]: #MariaDBParameter` section binding are
+// unchanged from commit 3 v2.
 //
 // MariaDB accepts both "ON"/"OFF" and "1"/"0" for boolean variables
 // in my.cnf and via SET GLOBAL. The schema constrains the my.cnf
@@ -51,23 +72,6 @@
 // SQL layer (the engine normalizes).
 
 #MariaDBParameter: {
-	// alpha.89 v1 commit 10 (Helen 2026-05-20, C3 path) — logical
-	// replication-mode switch. When set, the conditional blocks
-	// below unify the two `rpl_semi_sync_*_enabled` fields with
-	// the corresponding ON / OFF value. The user may also set the
-	// two `*_enabled` fields explicitly; CUE unification fails if
-	// the explicit value disagrees with the value derived from
-	// `replicationMode`, and KB rejects the assignment via the
-	// existing `ValidateConfigWithCue()` path that already binds
-	// `#MariaDBParameter` to every INI section.
-	//
-	// `replicationMode` is intentionally NOT given a default. Per
-	// weston 2026-05-20 00:08 msg `cb0afa37`: when the user does
-	// not set `replicationMode`, the four real variables are
-	// freely settable and the cluster defaults to async via the
-	// `rpl_semi_sync_*_enabled` defaults of OFF below.
-	replicationMode?: "async" | "semisync"
-
 	// Enables semisync replication on the primary. When ON, the
 	// primary waits for at least
 	// rpl_semi_sync_master_wait_for_slave_count secondaries to
@@ -96,23 +100,42 @@
 	// not recommended).
 	rpl_semi_sync_master_timeout?: int & >=1 & <=2147483647 | *10000 @timeDurationResource(1ms)
 
-	// C3 precedence — `replicationMode` overrides the two
-	// `*_enabled` fields. The conditional blocks unify those
-	// fields with the derived value; if the user also sets one of
-	// them with a conflicting literal, CUE unification fails and
-	// KB rejects the assignment. The auxiliary `wait_for_slave_count`
-	// and `master_timeout` fields are not constrained by
-	// `replicationMode` — they remain user-tunable within their
-	// declared int range whether the cluster runs async or
-	// semisync (engine ignores the values when semisync is OFF).
-	if replicationMode == "semisync" {
-		rpl_semi_sync_master_enabled: "ON"
-		rpl_semi_sync_slave_enabled:  "ON"
-	}
-	if replicationMode == "async" {
-		rpl_semi_sync_master_enabled: "OFF"
-		rpl_semi_sync_slave_enabled:  "OFF"
-	}
+	// alpha.89 v1 commit 11 v2 (Helen 2026-05-20, Jack B1 fix):
+	// explicitly forbid the synthetic key `replicationmode` from
+	// landing in my.cnf. KB's INI parser lowercases every key, so
+	// user input `replicationMode`, `replicationmode`, or any other
+	// case variant normalizes to `replicationmode` before CUE
+	// validation runs. The C3 design places `replicationMode` at
+	// the ComponentSpec-parameter layer (consumed by an addon
+	// mapper in reconfigureAction BEFORE my.cnf render) — under no
+	// path should `replicationmode` appear as a my.cnf key, because
+	// mariadbd does not recognize it and would log an unknown-
+	// variable warning at startup. The `_|_` (CUE bottom value)
+	// forbids the field outright: any ConfigMap merge that includes
+	// this key fails `ValidateConfigWithCue()` with a clear CUE
+	// conflict, before the merged config reaches the engine.
+	//
+	// More-specific field declarations take precedence over the
+	// `[string]: _` open pattern below, so this forbid rule still
+	// fires even though the open pattern accepts arbitrary string
+	// keys.
+	replicationmode?: _|_
+
+	// Open the struct so KB's `ValidateConfigWithCue()` accepts any
+	// other key the rendered base my.cnf may contain (e.g.
+	// `binlog_format`, `max_connections`, `slow_query_log`) without
+	// requiring this schema to enumerate every MariaDB engine
+	// variable. The four `rpl_semi_sync_*` fields above still
+	// constrain those specific keys when they are present; the
+	// `replicationmode` forbid above still rejects that specific
+	// key; all other unknown keys pass through unchallenged.
+	//
+	// alpha.89 v1 commit 11 (Helen 2026-05-20) — retroactive fix
+	// for the commit 3 v2 closed-section bug Jack surfaced via
+	// KB-validator behavioral test (msg `ea50aa12`). Without this
+	// open marker, a real cluster's full base my.cnf merge fails
+	// with "field not allowed" on any key not in this schema.
+	[string]: _
 }
 
 // Bind #MariaDBParameter to every INI section in the parsed my.cnf.

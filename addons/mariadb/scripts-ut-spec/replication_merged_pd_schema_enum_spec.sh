@@ -83,24 +83,58 @@ Describe "alpha.89 merged PD CUE schema + dynamic classification"
       The status should be success
     End
 
-    It "declares the replicationMode logical switch as enum (C3 path)"
-      # alpha.89 v1 commit 10 (Helen 2026-05-20) — weston 2026-05-20
-      # 00:08 msg `cb0afa37` directs that the merged CmpD expose
-      # both a single logical `replicationMode` switch AND the four
-      # real `rpl_semi_sync_*` variables. The previous C1 path
-      # spec asserted absence of `replicationMode`; under C3 the
-      # field must exist as an enum `"async" | "semisync"`.
-      When call grep_silent 'replicationMode?: "async" | "semisync"' "$(cue_path)"
+    It "does not declare a replicationMode CUE field (C3 mapper owns it, not CUE)"
+      # alpha.89 v1 commit 11 (Helen 2026-05-20, post Jack
+      # KB-validator behavioral test msg `ea50aa12`) — KB does not
+      # emit CUE-derived field values into the rendered my.cnf, so
+      # a `replicationMode` field in CUE would either be silently
+      # ignored OR land verbatim in my.cnf (which mariadbd rejects
+      # as an unknown variable). C3's `replicationMode` lives as a
+      # ComponentSpec parameter consumed by an addon-side mapper
+      # in reconfigureAction BEFORE my.cnf render; CUE only
+      # validates the four real engine variables. This negative
+      # assertion guards against a future edit silently
+      # reintroducing `replicationMode` into CUE.
+      When call grep -qE '^[[:space:]]*replicationMode\??:' "$(cue_path)"
+      The status should be failure
+    End
+
+    It "does not declare any if replicationMode CUE conditional block as code"
+      # Same post-Jack-finding reason: CUE conditional blocks would
+      # only validate, not derive; expressing C3 precedence in CUE
+      # gives a false sense of completeness. The grep below
+      # excludes comment lines (those starting with `//`) so the
+      # commit 11 preamble's textual reference to the removed
+      # blocks does not trigger a false positive.
+      When call grep -qE '^[[:space:]]*if[[:space:]]+replicationMode' "$(cue_path)"
+      The status should be failure
+    End
+
+    It "opens the #MariaDBParameter struct so base my.cnf keys pass through"
+      # alpha.89 v1 commit 11 (Helen 2026-05-20) — retroactive fix
+      # for commit 3 v2 closed-section bug surfaced by Jack's
+      # KB-validator full-base-merge test (msg `ea50aa12`). Without
+      # the `[string]: _` open marker inside #MariaDBParameter,
+      # ValidateConfigWithCue() rejects base my.cnf keys
+      # (binlog_format, max_connections, slow_query_log, etc.)
+      # that this schema does not enumerate.
+      When call grep_silent "[string]: _" "$(cue_path)"
       The status should be success
     End
 
-    It "binds replicationMode=semisync to the two *_enabled fields = ON via a CUE conditional"
-      When call grep_silent 'if replicationMode == "semisync" {' "$(cue_path)"
-      The status should be success
-    End
-
-    It "binds replicationMode=async to the two *_enabled fields = OFF via a CUE conditional"
-      When call grep_silent 'if replicationMode == "async" {' "$(cue_path)"
+    It "explicitly forbids the synthetic replicationmode key in my.cnf"
+      # alpha.89 v1 commit 11 v2 (Helen 2026-05-20, Jack B1 fix
+      # msg `f8e7e078`) — the `[string]: _` open marker alone
+      # allowed a `replicationMode=semisync` patch to merge into
+      # my.cnf (KB's INI parser lowercases it to `replicationmode`,
+      # which mariadbd does not recognize as a server variable).
+      # The C3 design places `replicationMode` at the
+      # ComponentSpec-parameter layer consumed by an addon mapper
+      # BEFORE my.cnf render; under no path should the key appear
+      # in my.cnf. The `_|_` (CUE bottom) declaration forbids the
+      # specific lowercase key, while the open `[string]: _`
+      # pattern still permits unrelated base my.cnf keys.
+      When call grep_silent "replicationmode?: _|_" "$(cue_path)"
       The status should be success
     End
 
