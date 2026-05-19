@@ -144,6 +144,37 @@ spec:
     format: ini
     iniConfig:
       sectionName: mysqld
+  # alpha.89 v1 commit 3 v2 (Helen 2026-05-19, C1 path / Jack
+  # design review Class 4 sentinel + Class 4 fail-closed blocker
+  # B1) — declare a CUE-based parametersSchema so KB validates
+  # `rpl_semi_sync_*` parameter assignments before they reach the
+  # engine. The CUE file under config/mariadb-config-constraint.cue
+  # both declares the #MariaDBParameter type AND binds it to every
+  # INI section via `[SectionName=_]: #MariaDBParameter` — without
+  # the binding, KB's `ValidateConfigWithCue()` does not use the
+  # top-level definition and invalid values such as
+  # `rpl_semi_sync_master_enabled = MAYBE` slip through. With the
+  # binding in place, KB rejects unknown enum / out-of-range /
+  # wrong-type assignments at the controller parameter reconcile
+  # path (`ClassifyComponentParameters()` / `DoMerge()` calling
+  # the CUE validator), so an invalid value never lands in the
+  # rendered ConfigMap. PR #10254 once merged extends the
+  # validation to an earlier `ValidateComponentParameterAssignments()`
+  # entry that hard-rejects at OpsRequest validate-phase using the
+  # same schema.
+  #
+  # The CUE schema covers only the four semisync engine variables
+  # that are the real source-of-truth for replication mode. There
+  # is intentionally no synthetic `replicationMode` key — KB's
+  # ParamConfigRenderer has no transform hook to expand a single
+  # logical key into multiple engine variables, so a synthetic key
+  # would either be ignored or land in my.cnf verbatim and break
+  # mariadbd. The unified-switch UX is delivered via addon docs
+  # (and future helper scripts).
+  parametersSchema:
+    topLevelKey: MariaDBParameter
+    cue: |-
+      {{- .Files.Get "config/mariadb-config-constraint.cue" | nindent 6 }}
   {{- if hasKey $pd "staticParameters" }}
   staticParameters:
     {{- range (get $pd "staticParameters") }}

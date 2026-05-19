@@ -193,6 +193,20 @@ dynamicParameters:
   - profiling
   - profiling_history_size
   - query_alloc_block_size
+  # alpha.89 v1 commit 3 (Helen 2026-05-19, C1 path) — semisync
+  # engine variables are runtime-applicable via SET GLOBAL (MariaDB
+  # documents them as dynamic system variables). Listing them here
+  # tells the KB Configure controller that a reconfigure on any of
+  # the four can be applied via the dynamic path (reconfigureAction
+  # plus the persisted override file from alpha.88) and does NOT
+  # need a rolling restart. Without this declaration the controller
+  # falls back to rolling restart, which on semisync triggers
+  # switchover/promote and re-introduces the SET-GLOBAL-without-
+  # persist race the alpha.84 → alpha.88 chain already closed.
+  - rpl_semi_sync_master_enabled
+  - rpl_semi_sync_slave_enabled
+  - rpl_semi_sync_master_wait_for_slave_count
+  - rpl_semi_sync_master_timeout
   - query_cache_limit
   - query_cache_min_res_unit
   - query_cache_size
