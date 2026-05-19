@@ -21,6 +21,7 @@ metadata:
   annotations:
     {{- include "redis.annotations" $ | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks
   description: An official v{{ .major }}.0 Redis Cluster(distributed implementation of Redis) component definition for Kubernetes
   serviceKind: redis-cluster

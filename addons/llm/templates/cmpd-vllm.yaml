@@ -8,6 +8,7 @@ metadata:
     apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "llm.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks
   serviceKind: vllm
   updateStrategy: BestEffortParallel

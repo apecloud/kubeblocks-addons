@@ -12,6 +12,7 @@ metadata:
   annotations:
     {{- include "falkordb.annotations" $ | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks
   description: An official v{{ .major }}.0 FalkorDB Cluster(distributed implementation of FalkorDB) component definition for Kubernetes
   serviceKind: falkordb-cluster

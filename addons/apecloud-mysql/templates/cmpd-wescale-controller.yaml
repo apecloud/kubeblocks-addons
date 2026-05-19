@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "apecloud-mysql.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks.io
   description: wescale controller
   serviceKind: wescale-ctrl
