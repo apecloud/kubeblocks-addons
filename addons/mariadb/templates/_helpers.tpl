@@ -6,6 +6,35 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
+alpha.89 v1 commit 13 v2 (Helen 2026-05-20, Jack B2 fix msg
+`f9433634`) — Helm template-time fail-closed validation of
+`.Values.replication.mode`. If the chart user sets the value to
+anything other than the accepted set ("" / "async" / "semisync"),
+`helm template` / `helm install` / `helm upgrade` aborts with a
+clear error BEFORE the manifest is rendered. Without this gate, an
+invalid value like `bogus` would render successfully and only fail
+at container startup when the seeder runs (correctly fail-closed,
+but the diagnosis loop is longer and the bad value is already
+written into the rendered CmpD env).
+
+Accepted values:
+  ""        — default; mapper / seeder no-op; existing behavior.
+  "async"   — install-time mode = async.
+  "semisync" — install-time mode = semisync.
+
+Called from `cmpd-replication-merged.yaml` (the only place the value
+is consumed). Other CmpDs do not declare the env entry and are not
+affected.
+*/}}
+{{- define "mariadb.replication.mode.validate" -}}
+{{- $mode := .Values.replication.mode | default "" -}}
+{{- if and $mode (not (has $mode (list "async" "semisync"))) -}}
+{{- fail (printf "invalid mariadb.replication.mode=%q; expected one of \"\", \"async\", \"semisync\" (commit 13 v2 / Jack B2 install-time fail-closed)" $mode) -}}
+{{- end -}}
+{{- $mode -}}
+{{- end -}}
+
+{{/*
 Selector labels
 */}}
 {{- define "mariadb.selectorLabels" -}}

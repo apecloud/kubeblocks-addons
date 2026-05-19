@@ -63,14 +63,30 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
       The output should equal "1"
     End
 
-    It "sources the env value from .Values.replication.mode via Helm template"
-      When call grep -c '\.Values\.replication\.mode' "$(cmpd_merged_path)"
+    It "sources the env value through the mariadb.replication.mode.validate helper (Jack B2 fail-closed path)"
+      When call grep -c 'include "mariadb\.replication\.mode\.validate"' "$(cmpd_merged_path)"
       The status should be success
       The output should equal "1"
     End
 
-    It "defaults the env value to empty string when Helm value is unset"
-      When call grep -c '\.Values\.replication\.mode | default "" | quote' "$(cmpd_merged_path)"
+    helper_path() {
+      printf "%s/addons/mariadb/templates/_helpers.tpl" "$(repo_root)"
+    }
+
+    It "_helpers.tpl declares the mariadb.replication.mode.validate helper"
+      When call grep -c 'define "mariadb\.replication\.mode\.validate"' "$(helper_path)"
+      The status should be success
+      The output should equal "1"
+    End
+
+    It "validator defaults the value to empty string when Helm value is unset"
+      When call grep -c '\.Values\.replication\.mode | default ""' "$(helper_path)"
+      The status should be success
+      The output should equal "1"
+    End
+
+    It "validator uses fail to abort helm render on invalid value"
+      When call grep -c 'fail (printf "invalid mariadb\.replication\.mode' "$(helper_path)"
       The status should be success
       The output should equal "1"
     End
@@ -100,6 +116,45 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
       The status should be success
       The output should include 'name: MARIADB_REPLICATION_MODE
             value: "async"'
+    End
+  End
+
+  Describe "Helm template-time fail-closed on invalid value (Jack B2 fix)"
+    # alpha.89 v1 commit 13 v2 (Helen 2026-05-20, Jack B2 fix msg
+    # `f9433634`) — invalid `replication.mode` values fail the helm
+    # render with a clear error BEFORE the manifest is produced, so
+    # the bad value never lands in the rendered CmpD env. Catches
+    # the diagnosis at install/upgrade time, not container startup.
+    helm_template_or_fail() {
+      helm template test "$(chart_path)" "$@" 2>&1
+    }
+
+    It "rejects mariadb.replication.mode=bogus at render time"
+      When call helm_template_or_fail --set replication.mode=bogus
+      The status should be failure
+      The output should include 'invalid mariadb.replication.mode'
+      The output should include 'bogus'
+      The output should include 'expected one of'
+    End
+
+    It "rejects arbitrary string values at render time"
+      When call helm_template_or_fail --set replication.mode=garbage
+      The status should be failure
+      The output should include 'invalid mariadb.replication.mode'
+      The output should include 'garbage'
+    End
+
+    It "rejects mixed-case async at render time (only lowercase enum members accepted)"
+      When call helm_template_or_fail --set replication.mode=ASYNC
+      The status should be failure
+      The output should include 'invalid mariadb.replication.mode'
+    End
+
+    It "accepts the empty string explicitly (preserves default behavior)"
+      When call helm_template_or_fail --set replication.mode=""
+      The status should be success
+      The output should include 'name: MARIADB_REPLICATION_MODE
+            value: ""'
     End
   End
 
