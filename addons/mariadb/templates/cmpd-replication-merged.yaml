@@ -262,6 +262,32 @@ spec:
             chmod 0770 {{ .Values.dataMountPath }}/runtime-overrides.d 2>/dev/null || true
             chgrp 1000 {{ .Values.dataMountPath }}/runtime-overrides.cnf 2>/dev/null || true
             chmod 0660 {{ .Values.dataMountPath }}/runtime-overrides.cnf 2>/dev/null || true
+            # alpha.89 v1 commit 13 v2 (Helen 2026-05-20, Jack
+            # post-commit-13-v1 install-time write-site requirement
+            # msg `696e7b16`) — seed runtime-overrides.d/ from
+            # `MARIADB_REPLICATION_MODE` BEFORE the first mariadbd
+            # process exec. Without this seeder the Helm value
+            # `mariadb.replication.mode=semisync` set at install
+            # time would have no effect until the first
+            # reconfigureAction trigger; the seeder closes that gap
+            # so the chart-author-selected semisync/async state
+            # takes effect from the very first mariadbd start. The
+            # seeder writes byte-identical content to what
+            # reconfigureAction.persisted writes for the same env,
+            # so the two write-sites converge and a later reconfigure
+            # is a byte-equal no-op (mtime preserved by the cmp -s
+            # short-circuit). Empty env is a no-op (preserves
+            # behavior on clusters whose Helm values do not set the
+            # mode). Invalid mode fails the container (fail-closed):
+            # mariadbd does not start until the env is corrected.
+            if [ -r /scripts/seed-replication-mode-overrides.sh ]; then
+              seed_rc=0
+              sh /scripts/seed-replication-mode-overrides.sh || seed_rc=$?
+              if [ "${seed_rc}" -ne 0 ]; then
+                echo "seed-replication-mode-overrides failed (rc=${seed_rc}); refusing to start mariadbd — correct MARIADB_REPLICATION_MODE and restart the pod" >&2
+                exit 1
+              fi
+            fi
             # Signal to roleProbe that this pod is initializing — prevents spurious "primary"
             # reports that would cause KubeBlocks to auto-trigger a switchover.
             rm -f {{ .Values.dataMountPath }}/.replication-ready
@@ -2453,8 +2479,15 @@ spec:
           # fix in commit 12 v2) still runs unconditionally as
           # defense-in-depth, and the four real engine variables
           # continue to flow through the existing persisted helper.
+          # alpha.89 v1 commit 13 v2 (Helen 2026-05-20, Jack B2 fix
+          # msg `f9433634`) — value flows through
+          # `mariadb.replication.mode.validate` helper which fails
+          # the helm render with a clear error message when the value
+          # is not in the accepted set ("" / "async" / "semisync"),
+          # so invalid values are caught at install/upgrade time
+          # rather than only at container startup.
           - name: MARIADB_REPLICATION_MODE
-            value: {{ .Values.replication.mode | default "" | quote }}
+            value: {{ include "mariadb.replication.mode.validate" . | quote }}
           - name: POD_NAMESPACE
             valueFrom:
               fieldRef:
