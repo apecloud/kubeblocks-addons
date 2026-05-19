@@ -122,20 +122,35 @@ Describe "alpha.89 merged PD CUE schema + dynamic classification"
       The status should be success
     End
 
-    It "explicitly forbids the synthetic replicationmode key in my.cnf"
-      # alpha.89 v1 commit 11 v2 (Helen 2026-05-20, Jack B1 fix
-      # msg `f8e7e078`) — the `[string]: _` open marker alone
-      # allowed a `replicationMode=semisync` patch to merge into
-      # my.cnf (KB's INI parser lowercases it to `replicationmode`,
-      # which mariadbd does not recognize as a server variable).
-      # The C3 design places `replicationMode` at the
-      # ComponentSpec-parameter layer consumed by an addon mapper
-      # BEFORE my.cnf render; under no path should the key appear
-      # in my.cnf. The `_|_` (CUE bottom) declaration forbids the
-      # specific lowercase key, while the open `[string]: _`
-      # pattern still permits unrelated base my.cnf keys.
-      When call grep_silent "replicationmode?: _|_" "$(cue_path)"
-      The status should be success
+    It "does NOT declare replicationmode as a CUE bottom value (commit 14 live N=1 first-blocker fix)"
+      # alpha.89 v1 commit 14 (Helen 2026-05-20, live N=1 first
+      # blocker from vcluster `mariadb-test5`): commit 11 v2 added
+      # `replicationmode?: _|_` as a defense-in-depth forbid. KB's
+      # local fixture / static ValidateConfigWithCue accepted that
+      # pattern, but the live KB controller's PD reconcile loop
+      # generates an OpenAPI schema from the CUE and rejects any
+      # bottom literal with `failed to generate openAPISchema:
+      # failed to marshal cue-yaml: explicit error (_|_ literal) in
+      # source`. The PD never goes Available and the chart is
+      # unusable.
+      #
+      # Fix: the bottom declaration is removed. The synthetic-key
+      # defense is preserved via three other layers that already
+      # exist and are exercised by ShellSpec:
+      #   1. Helm template-time validator
+      #      (mariadb.replication.mode.validate helper)
+      #   2. Startup seeder
+      #      (scripts/seed-replication-mode-overrides.sh)
+      #   3. Reconfigure mapper unconditional strip
+      #      (scripts/replication-mode-mapper.sh)
+      # Lock that the bottom value never reappears so a future
+      # well-meaning edit cannot reintroduce the live PD breakage.
+      # Match only code lines (skip lines whose first non-space char
+      # is `/`) so the rationale comment above (which textually
+      # references the removed declaration) does not false-positive.
+      When call grep -cE '^[[:space:]]*[^/[:space:]].*replicationmode\?: _\|_' "$(cue_path)"
+      The status should be failure
+      The output should equal "0"
     End
 
     # Jack design review (2026-05-19 18:48 Class 4 blocker B1) —
