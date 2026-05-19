@@ -26,12 +26,12 @@ Describe "alpha.89 PD regex disambiguation"
   OLD_SEMISYNC_RE='^mariadb-semisync-'
   MERGED_RE='^mariadb-replication-merged-'
 
-  # The five concrete CmpD names rendered at version 1.1.1-alpha.89.
-  STANDALONE_NAME='mariadb-1.1.1-alpha.89'
-  GALERA_NAME='mariadb-galera-1.1.1-alpha.89'
-  OLD_REPL_NAME='mariadb-replication-1.1.1-alpha.89'
-  OLD_SEMISYNC_NAME='mariadb-semisync-1.1.1-alpha.89'
-  MERGED_NAME='mariadb-replication-merged-1.1.1-alpha.89'
+  # The five concrete CmpD names rendered at version 1.1.1-alpha.90.
+  STANDALONE_NAME='mariadb-1.1.1-alpha.90'
+  GALERA_NAME='mariadb-galera-1.1.1-alpha.90'
+  OLD_REPL_NAME='mariadb-replication-1.1.1-alpha.90'
+  OLD_SEMISYNC_NAME='mariadb-semisync-1.1.1-alpha.90'
+  MERGED_NAME='mariadb-replication-merged-1.1.1-alpha.90'
 
   Describe "standalone CmpD name"
     It "matches only the standalone regex"

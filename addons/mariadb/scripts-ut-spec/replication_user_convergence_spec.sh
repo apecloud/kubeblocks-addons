@@ -79,8 +79,8 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
   MEMBER_JOIN="${ADDON_ROOT}/scripts/replication-member-join.sh"
 
   Describe "Gate 1: Chart.yaml literal version"
-    It "is exactly 1.1.1-alpha.89 (alpha.89 bump: topology merge scaffolding + PD CUE schema with INI section binding + validate-replication-mode.sh helper)"
-      When call grep -c '^version: 1.1.1-alpha.89$' "${CHART_YAML}"
+    It "is exactly 1.1.1-alpha.90 (alpha.90 bump: CmpD immutability — alpha.89 13/14/15/16 mutated merged CmpD spec; KB rejected updates with immutable fields can't be updated; bump produces fresh mariadb-replication-merged-1.1.1-alpha.90 CmpD)"
+      When call grep -c '^version: 1.1.1-alpha.90$' "${CHART_YAML}"
       The output should eq "1"
       The status should be success
     End
