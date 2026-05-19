@@ -170,13 +170,43 @@ apply_replication_mode_mapping() {
         return "${REPLICATION_MODE_MAPPER_EXIT_BAD_ARG}"
     fi
 
+    # alpha.89 v1 commit 12 v2 (Helen 2026-05-20, Jack B2 fix msg
+    # `008885e2`) — UNCONDITIONAL synthetic-key strip runs BEFORE the
+    # empty-mode early return. This makes the defense-in-depth contract
+    # claimed by the script preamble actually true: any parameter list
+    # containing a `replicationMode` / `replicationmode` line has that
+    # line removed regardless of whether the env mode is set, so the
+    # synthetic key never reaches the main loop, even on the
+    # only-4-vars path. For clean only-4-vars input (no synthetic key),
+    # the file is byte-identical after the strip (awk preserves the
+    # other lines and just drops the synthetic match), preserving
+    # Jack contract item 4 (only-4-vars unchanged on clean input).
+    strip_tmp="${param_file}.strip.$$"
+    if ! replication_mode_strip_synthetic "${param_file}" > "${strip_tmp}"; then
+        rm -f "${strip_tmp}" 2>/dev/null || true
+        echo "replication-mode-mapper: failed to strip synthetic key from parameter list" >&2
+        return "${REPLICATION_MODE_MAPPER_EXIT_IO}"
+    fi
+    # Atomic rename only when the strip changed something — preserves
+    # mtime for clean only-4-vars input.
+    if cmp -s "${strip_tmp}" "${param_file}"; then
+        rm -f "${strip_tmp}" 2>/dev/null || true
+    else
+        if ! mv "${strip_tmp}" "${param_file}"; then
+            rm -f "${strip_tmp}" 2>/dev/null || true
+            echo "replication-mode-mapper: failed to atomically rewrite parameter list after synthetic strip" >&2
+            return "${REPLICATION_MODE_MAPPER_EXIT_IO}"
+        fi
+    fi
+
     mode="${MARIADB_REPLICATION_MODE:-}"
 
     if [ -z "${mode}" ]; then
-        # Only-4-vars path: leave the parameter list untouched.
-        # Per Jack contract (msg `144afd93`): mapper must return 0 in
-        # this case without rewriting the file, so the only-4-vars
-        # path is provably not touched.
+        # Only-4-vars path: synthetic strip above has already run; if
+        # the input was clean, the file is byte-identical. If the input
+        # contained a synthetic key, it has been removed (defense in
+        # depth). Per Jack contract item 4 (msg `144afd93`): mapper
+        # returns 0 in this case without further modification.
         return "${REPLICATION_MODE_MAPPER_EXIT_OK}"
     fi
 
