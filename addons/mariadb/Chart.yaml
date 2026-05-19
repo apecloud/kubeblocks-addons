@@ -1055,8 +1055,57 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.88
+version: 1.1.1-alpha.89
 
+# alpha.89 v1 scaffolding (Helen 2026-05-19) — topology merge initial
+# commit (weston 2026-05-19 14:12 msg `d8ecfae7` Option B). Jack v3
+# design review (15:36) 4 blockers folded into this scaffolding:
+#
+# - clusterdefinition.yaml lists ONLY the `replication` topology for
+#   primary/secondary (plus `standalone` and `galera` unchanged).
+#   `async` and `semisync` are NOT listed: Option B is a breaking
+#   change; users with old Cluster CRs must actively migrate to
+#   `spec.topology=replication` plus a ComponentSpec parameter
+#   `replicationMode: async | semisync`. Auto-rebind by KB on a
+#   topology compDef rename is exploratory (verified in upgrade
+#   gate N=1) and is NOT promised in release notes (Jack design
+#   Gate 6 / Blocker 4).
+# - Adds a new CmpD `mariadb-replication-merged-1.1.1-alpha.89`.
+#   Initially a near-verbatim copy of cmpd-semisync.yaml (semisync
+#   already has the most resilience layers: alpha.85 PD, alpha.88
+#   persistence, SLAVE MONITOR grants, fence markers,
+#   runtime-overrides.d/ mkdir). Subsequent commits will parameterize
+#   it by `replicationMode`.
+# - Single ParametersDefinition `mariadb-replication-merged-pd` bound
+#   to the new CmpD via the narrow regex `^mariadb-replication-merged-`
+#   (Jack design Gate 3 / Blocker 3 — no double-match against
+#   standalone / galera / old async / old semisync PDs).
+# - replicationMode source-of-truth is ComponentSpec parameter
+#   `replicationMode`, written by the user into the Cluster CR and
+#   resolved by KB into ComponentParameter / engine config; Helm-time
+#   only provides global defaults (Jack design Gate 2 / Blocker 2 —
+#   no per-cluster Helm rendering of mode-specific defaults). The
+#   parameter wiring is added in a subsequent commit.
+# - Old `cmpd-replication.yaml` and `cmpd-semisync.yaml` still render
+#   so that any Cluster CR still referencing those CmpDs by name does
+#   not get an "unresolved compDef" error during upgrade. They are
+#   not listed in clusterdefinition.yaml.topologies and are scheduled
+#   for removal in a later release after the upgrade gate closes.
+# - No engine version change. No new runtime behavior in this commit;
+#   the merged CmpD currently behaves identically to mariadb-semisync.
+#   release-ready validation for the merged topology happens after
+#   subsequent commits land the parameter-driven defaults / switchover
+#   runtime detection / mode verify helper / upgrade gate N=1.
+#
+# alpha.88 v1 (Helen 2026-05-19) — drop parse smoke from chart helper
+# (kbagent runtime PATH does not include mariadbd; `set -e` plus
+# `var=$(failing_cmd)` caused the helper to exit before cleanup,
+# breaking alpha.86/.87 dry-run smoke). The persistence layer kept its
+# write contract: SET GLOBAL applied first, then per-parameter atomic
+# write to /var/lib/mysql/runtime-overrides.d/<param>.cnf, loaded at
+# next mariadbd startup via --defaults-extra-file pointing at
+# runtime-overrides.cnf with !includedir.
+#
 # This is the version number of the MARIADB being deployed,
 # (mariadb engine version unchanged from alpha.64; this bump is
 # packaging-contract only.)

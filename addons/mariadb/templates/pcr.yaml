@@ -42,7 +42,18 @@ spec:
     - mariadb-replication-pd
 
 ---
-# ParamConfigRenderer for semisync MariaDB
+# ParamConfigRenderer for semisync MariaDB.
+#
+# alpha.89 v1 (Helen 2026-05-19, Jack design review caveat) — fixed
+# parametersDefs from `mariadb-replication-pd` (which binds to
+# `^mariadb-replication-[0-9]` CmpD, NOT to semisync) to the correct
+# `mariadb-semisync-pd` (which binds to `^mariadb-semisync-` CmpD).
+# The previous wiring was a pre-existing bug that happened not to bite
+# under the old `^mariadb-replication-` wide regex; under the new
+# narrowed regex it would silently leave the semisync PCR pointing at
+# an unrelated PD. Since the deprecated semisync CmpD is kept around
+# to serve any already-bound Cluster, its PCR must reference the
+# matching PD or live config rendering will not resolve correctly.
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParamConfigRenderer
 metadata:
@@ -61,7 +72,34 @@ spec:
       reRenderResourceTypes:
         - vscale
   parametersDefs:
-    - mariadb-replication-pd
+    - mariadb-semisync-pd
+
+---
+# ParamConfigRenderer for the merged replication CmpD
+# (alpha.89 — topology merge). Initial PCR uses the same
+# templateName as semisync because the merged CmpD currently inherits
+# cmpd-semisync.yaml's configspec name. Subsequent commits will switch
+# this PCR to a unified `mariadb-replication-config` template once the
+# CmpD's configspec is renamed.
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "mariadb.replication.merged.cmpdName" . }}-pcr
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.replication.merged.cmpdName" . }}
+  configs:
+    - name: my.cnf
+      templateName: mariadb-semisync-config
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: mysqld
+      reRenderResourceTypes:
+        - vscale
+  parametersDefs:
+    - mariadb-replication-merged-pd
 
 ---
 # ParamConfigRenderer for Galera MariaDB
