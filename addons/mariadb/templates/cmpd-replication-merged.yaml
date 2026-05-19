@@ -2414,6 +2414,47 @@ spec:
             value: /tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: MARIADB_AUTO_UPGRADE
             value: "1"
+          # alpha.89 v1 commit 13 (Helen 2026-05-20, C3 design env
+          # plumbing — Helm value path / Option C of the plumbing
+          # candidate list, per the commit 11+12 / addon-docs guide
+          # discussion).
+          #
+          # `MARIADB_REPLICATION_MODE` is consumed by the addon-side
+          # mapper sourced into `reconfigureAction.persisted` (see
+          # `scripts/replication-mode-mapper.sh` + commit 12
+          # `mariadb.config.reconfigureAction.persisted` helper). The
+          # mapper translates the synthetic `replicationMode` switch
+          # ("async" | "semisync") into the four real engine
+          # variables (rpl_semi_sync_master_enabled / slave_enabled /
+          # master_wait_for_slave_count / master_timeout) BEFORE the
+          # main loop renders any my.cnf or runtime-overrides.d/
+          # file. When the env is empty the mapper is a no-op
+          # (parameter list flows through unchanged), preserving the
+          # "only-4-vars" path on existing clusters.
+          #
+          # Sourcing the value from a Helm value rather than a KB
+          # ParametersDefinition parameter or an annotation is the
+          # conservative path: it sets the topology default at chart
+          # install/upgrade time without requiring speculative KB
+          # behavior (the standard `parameters` reconfigure path is
+          # blocked by the `replicationmode?: _|_` CUE backstop
+          # added in commit 11 v2 specifically to prevent the
+          # synthetic key from landing in my.cnf). Runtime-time mode
+          # flip via OpsRequest reconfigure is deferred to a future
+          # commit / version that wires either a Cluster annotation
+          # + addon-side reader OR a separate non-INI-bound PD; the
+          # mapper interface itself is unchanged in either case
+          # (only the env source differs).
+          #
+          # Empty default = "" means existing clusters whose Helm
+          # values do not set `mariadb.replication.mode` see no
+          # behavioral change: the mapper short-circuits at the
+          # empty-mode early return, the strip-synthetic pass (B2
+          # fix in commit 12 v2) still runs unconditionally as
+          # defense-in-depth, and the four real engine variables
+          # continue to flow through the existing persisted helper.
+          - name: MARIADB_REPLICATION_MODE
+            value: {{ .Values.replication.mode | default "" | quote }}
           - name: POD_NAMESPACE
             valueFrom:
               fieldRef:
