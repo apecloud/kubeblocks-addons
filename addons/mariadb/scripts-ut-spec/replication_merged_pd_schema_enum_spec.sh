@@ -83,13 +83,25 @@ Describe "alpha.89 merged PD CUE schema + dynamic classification"
       The status should be success
     End
 
-    It "does not declare a synthetic replicationMode key"
-      # The C1 path explicitly avoids a synthetic key (KB has no
-      # transform from a logical mode to multiple engine vars).
-      # If a future edit adds one, this spec fails and the design
-      # decision is forced back to the surface.
-      When call grep -qE '^[[:space:]]*replicationMode\??:' "$(cue_path)"
-      The status should be failure
+    It "declares the replicationMode logical switch as enum (C3 path)"
+      # alpha.89 v1 commit 10 (Helen 2026-05-20) — weston 2026-05-20
+      # 00:08 msg `cb0afa37` directs that the merged CmpD expose
+      # both a single logical `replicationMode` switch AND the four
+      # real `rpl_semi_sync_*` variables. The previous C1 path
+      # spec asserted absence of `replicationMode`; under C3 the
+      # field must exist as an enum `"async" | "semisync"`.
+      When call grep_silent 'replicationMode?: "async" | "semisync"' "$(cue_path)"
+      The status should be success
+    End
+
+    It "binds replicationMode=semisync to the two *_enabled fields = ON via a CUE conditional"
+      When call grep_silent 'if replicationMode == "semisync" {' "$(cue_path)"
+      The status should be success
+    End
+
+    It "binds replicationMode=async to the two *_enabled fields = OFF via a CUE conditional"
+      When call grep_silent 'if replicationMode == "async" {' "$(cue_path)"
+      The status should be success
     End
 
     # Jack design review (2026-05-19 18:48 Class 4 blocker B1) —

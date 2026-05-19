@@ -13,17 +13,36 @@
 // `ClassifyComponentParameters()` / `DoMerge()` boundary, before
 // engine config is rendered.
 //
-// This schema only declares the four `rpl_semi_sync_*` engine
-// variables that are the real source-of-truth for replication mode
-// (per Jack's enum-research conclusion). It does not declare a
-// `replicationMode` synthetic key — KB has no transform from a
-// synthetic key to multiple engine variables (ParamConfigRenderer
-// has no transform hook); declaring `replicationMode` here would
-// either be ignored or, if KB treats it as a managed key, write
-// `replicationMode = semisync` into my.cnf, which mariadbd does
-// not recognize. The unified-switch UX is provided by addon-side
-// docs and (future) helper scripts that emit the four-parameter
-// block from a single user-facing choice.
+// alpha.89 v1 commit 10 (Helen 2026-05-20, C3 path per weston
+// 2026-05-20 00:08 msg `cb0afa37`) — extended with a
+// `replicationMode` field whose CUE conditional blocks derive the
+// four `rpl_semi_sync_*` engine variables when set. weston's
+// precedence rule: if `replicationMode` is set, it overrides the
+// four real variables; if the user ALSO sets one of the four with
+// an inconsistent value, CUE unification fails and KB rejects the
+// assignment at the controller parameter reconcile path. If
+// `replicationMode` is unset, the user can freely set the four
+// real variables (chart default is async via the four variables
+// taking their CUE defaults of OFF).
+//
+// This makes both user-facing surfaces (a single logical
+// `replicationMode` switch AND the four real engine variables)
+// visible and changeable per weston's directive; CUE unification
+// handles the consistency check natively and the four variables
+// remain the ground-truth source rendered into my.cnf.
+//
+// Note that this CUE expression depends on KB's CUE renderer
+// actually emitting derived field values into the rendered my.cnf
+// (not only validating them). If KB's renderer only validates and
+// does not derive (i.e. it ignores the conditional blocks for
+// rendering), a thin addon-side mapper in reconfigureAction would
+// fill the four variables when only `replicationMode` is set,
+// while CUE unification continues to reject inconsistent explicit
+// assignments. Jack's KB-validator behavioral test
+// (pkg/parameters/validate/cue_util.go ValidateConfigWithCue) is
+// scheduled to verify which path the runtime takes; until then this
+// commit lays the schema only and the mapper question is deferred
+// to commit 11+ based on Jack's findings.
 //
 // MariaDB accepts both "ON"/"OFF" and "1"/"0" for boolean variables
 // in my.cnf and via SET GLOBAL. The schema constrains the my.cnf
@@ -32,6 +51,23 @@
 // SQL layer (the engine normalizes).
 
 #MariaDBParameter: {
+	// alpha.89 v1 commit 10 (Helen 2026-05-20, C3 path) — logical
+	// replication-mode switch. When set, the conditional blocks
+	// below unify the two `rpl_semi_sync_*_enabled` fields with
+	// the corresponding ON / OFF value. The user may also set the
+	// two `*_enabled` fields explicitly; CUE unification fails if
+	// the explicit value disagrees with the value derived from
+	// `replicationMode`, and KB rejects the assignment via the
+	// existing `ValidateConfigWithCue()` path that already binds
+	// `#MariaDBParameter` to every INI section.
+	//
+	// `replicationMode` is intentionally NOT given a default. Per
+	// weston 2026-05-20 00:08 msg `cb0afa37`: when the user does
+	// not set `replicationMode`, the four real variables are
+	// freely settable and the cluster defaults to async via the
+	// `rpl_semi_sync_*_enabled` defaults of OFF below.
+	replicationMode?: "async" | "semisync"
+
 	// Enables semisync replication on the primary. When ON, the
 	// primary waits for at least
 	// rpl_semi_sync_master_wait_for_slave_count secondaries to
@@ -59,6 +95,24 @@
 	// (10s); 0 disables timeout (wait forever, which is unsafe and
 	// not recommended).
 	rpl_semi_sync_master_timeout?: int & >=1 & <=2147483647 | *10000 @timeDurationResource(1ms)
+
+	// C3 precedence — `replicationMode` overrides the two
+	// `*_enabled` fields. The conditional blocks unify those
+	// fields with the derived value; if the user also sets one of
+	// them with a conflicting literal, CUE unification fails and
+	// KB rejects the assignment. The auxiliary `wait_for_slave_count`
+	// and `master_timeout` fields are not constrained by
+	// `replicationMode` — they remain user-tunable within their
+	// declared int range whether the cluster runs async or
+	// semisync (engine ignores the values when semisync is OFF).
+	if replicationMode == "semisync" {
+		rpl_semi_sync_master_enabled: "ON"
+		rpl_semi_sync_slave_enabled:  "ON"
+	}
+	if replicationMode == "async" {
+		rpl_semi_sync_master_enabled: "OFF"
+		rpl_semi_sync_slave_enabled:  "OFF"
+	}
 }
 
 // Bind #MariaDBParameter to every INI section in the parsed my.cnf.
