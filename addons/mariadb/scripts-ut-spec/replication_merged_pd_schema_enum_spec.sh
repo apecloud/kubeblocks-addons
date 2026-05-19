@@ -73,9 +73,20 @@ Describe "alpha.89 merged PD CUE schema + dynamic classification"
       The status should be success
     End
 
-    It "constrains rpl_semi_sync_master_wait_for_slave_count to a positive int range"
-      When call grep_silent 'rpl_semi_sync_master_wait_for_slave_count?: int & >=1 & <=65535' "$(cue_path)"
-      The status should be success
+    It "does NOT declare rpl_semi_sync_master_wait_for_slave_count (commit 16 MariaDB-unsupported drop)"
+      # alpha.89 v1 commit 16 (Helen 2026-05-20, live N=1 third
+      # first-blocker fix): MariaDB 11.4 does NOT support the
+      # MySQL-specific rpl_semi_sync_master_wait_for_slave_count
+      # variable. Setting it in my.cnf causes `mariadbd --verbose
+      # --help` to exit rc=7 with `unknown variable
+      # 'rpl_semi_sync_master_wait_for_slave_count=1'`, which
+      # CrashLoops the engine container on first startup. Match
+      # only code lines (skip lines starting with `//`) so the
+      # rationale comment textually mentioning the removed variable
+      # does not false-positive.
+      When call grep -cE '^[[:space:]]*[^/[:space:]].*rpl_semi_sync_master_wait_for_slave_count' "$(cue_path)"
+      The status should be failure
+      The output should equal "0"
     End
 
     It "constrains rpl_semi_sync_master_timeout to a positive int range"
@@ -199,11 +210,16 @@ Describe "alpha.89 merged PD CUE schema + dynamic classification"
       The output should equal "ok"
     End
 
-    It "lists rpl_semi_sync_master_wait_for_slave_count in dynamicParameters"
+    It "does NOT list rpl_semi_sync_master_wait_for_slave_count in dynamicParameters (commit 16 MariaDB-unsupported drop)"
+      # alpha.89 v1 commit 16 — MariaDB 11.4 does NOT support
+      # this MySQL-specific variable. If it's in dynamicParameters
+      # the reconfigureAction.persisted helper would attempt
+      # `SET GLOBAL rpl_semi_sync_master_wait_for_slave_count`
+      # which fails on MariaDB with `Unknown system variable`.
       When call awk_in_dyn_params \
         '^[[:space:]]+-[[:space:]]+rpl_semi_sync_master_wait_for_slave_count[[:space:]]*$' \
         "$(effect_scope_path)"
-      The output should equal "ok"
+      The output should not equal "ok"
     End
 
     It "lists rpl_semi_sync_master_timeout in dynamicParameters"

@@ -205,7 +205,12 @@ dynamicParameters:
   # persist race the alpha.84 → alpha.88 chain already closed.
   - rpl_semi_sync_master_enabled
   - rpl_semi_sync_slave_enabled
-  - rpl_semi_sync_master_wait_for_slave_count
+  # alpha.89 v1 commit 16 (Helen 2026-05-20) — removed
+  # `rpl_semi_sync_master_wait_for_slave_count` from
+  # dynamicParameters because MariaDB 11.4 does not recognize the
+  # MySQL-specific variable. Setting it in my.cnf causes
+  # `mariadbd --verbose --help` to exit rc=7 with "unknown variable",
+  # which CrashLoops the engine container on first startup.
   - rpl_semi_sync_master_timeout
   - query_cache_limit
   - query_cache_min_res_unit

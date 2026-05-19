@@ -5,14 +5,23 @@
 # Purpose
 # -------
 # Translates the synthetic `replicationMode` ComponentSpec parameter
-# ("async" | "semisync") into the four real MariaDB engine variables
-# (rpl_semi_sync_master_enabled / rpl_semi_sync_slave_enabled /
-# rpl_semi_sync_master_wait_for_slave_count / rpl_semi_sync_master_timeout)
-# BEFORE the reconfigureAction's main loop renders any my.cnf or
+# ("async" | "semisync") into the three real MariaDB engine variables
+# supported by MariaDB 11.4 (rpl_semi_sync_master_enabled /
+# rpl_semi_sync_slave_enabled / rpl_semi_sync_master_timeout) BEFORE
+# the reconfigureAction's main loop renders any my.cnf or
 # runtime-overrides.d/ file. After this mapper runs, the parameter list
 # contains only real engine variable assignments; the synthetic key
 # `replicationMode` (and its lowercased form `replicationmode`) never
 # reaches `SET GLOBAL` and never lands in my.cnf.
+#
+# alpha.89 v1 commit 16 (Helen 2026-05-20, live N=1 third first-blocker
+# fix): `rpl_semi_sync_master_wait_for_slave_count` was originally
+# part of the derived set, mirroring MySQL semisync's 4-var picture.
+# MariaDB 11.4 does NOT recognize this variable (it is a MySQL 5.7.3+
+# extension). Setting it in my.cnf causes mariadbd to exit on first
+# startup with rc=7 "unknown variable". MariaDB semisync waits for
+# exactly one secondary acknowledgement and has no equivalent count
+# variable. The variable is now removed from the derived set.
 #
 # Why a mapper instead of a CUE conditional
 # ------------------------------------------
@@ -98,19 +107,15 @@ replication_mode_derive() {
     async)
         printf "rpl_semi_sync_master_enabled=OFF\n"
         printf "rpl_semi_sync_slave_enabled=OFF\n"
-        # wait_for_slave_count and timeout are only meaningful when
-        # master_enabled=ON. Per the schema defaults (commit 3 v2),
-        # the count default is 1 and the timeout default is 10000ms.
-        # The mapper emits them for async too so the override file
-        # set is deterministic and a future flip to semisync does
-        # not leave stale values from the OFF state.
-        printf "rpl_semi_sync_master_wait_for_slave_count=1\n"
+        # timeout is only meaningful when master_enabled=ON. The
+        # mapper emits it for async too so the override file set is
+        # deterministic and a future flip to semisync does not leave
+        # stale values from the OFF state.
         printf "rpl_semi_sync_master_timeout=10000\n"
         ;;
     semisync)
         printf "rpl_semi_sync_master_enabled=ON\n"
         printf "rpl_semi_sync_slave_enabled=ON\n"
-        printf "rpl_semi_sync_master_wait_for_slave_count=1\n"
         printf "rpl_semi_sync_master_timeout=10000\n"
         ;;
     *)

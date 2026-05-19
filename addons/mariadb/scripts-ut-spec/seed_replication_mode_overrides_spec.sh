@@ -83,12 +83,18 @@ Describe "alpha.89 commit 13 v2 seed-replication-mode-overrides.sh"
       The contents of file "${overrides_dir}/rpl_semi_sync_slave_enabled.cnf" should include "rpl_semi_sync_slave_enabled = ON"
     End
 
-    It "writes rpl_semi_sync_master_wait_for_slave_count=1"
+    It "does NOT write rpl_semi_sync_master_wait_for_slave_count.cnf (commit 16 MariaDB-unsupported drop)"
+      # alpha.89 v1 commit 16 (Helen 2026-05-20, live N=1 third
+      # first-blocker fix): MariaDB 11.4 does NOT support this
+      # MySQL-specific variable. Writing it to runtime-overrides.d/
+      # causes mariadbd to exit on first startup with rc=7 unknown
+      # variable, CrashLooping the engine container.
       MARIADB_REPLICATION_MODE=semisync
       export MARIADB_REPLICATION_MODE
-      When call run_seeder
+      run_seeder
+      file_exists=$([ -e "${overrides_dir}/rpl_semi_sync_master_wait_for_slave_count.cnf" ] && echo "exists" || echo "absent")
+      When call test "${file_exists}" = "absent"
       The status should be success
-      The contents of file "${overrides_dir}/rpl_semi_sync_master_wait_for_slave_count.cnf" should include "rpl_semi_sync_master_wait_for_slave_count = 1"
     End
 
     It "writes rpl_semi_sync_master_timeout=10000"
@@ -240,8 +246,9 @@ Describe "alpha.89 commit 13 v2 seed-replication-mode-overrides.sh"
     It "fails with rc=5 when a target path exists as a directory"
       MARIADB_REPLICATION_MODE=semisync
       export MARIADB_REPLICATION_MODE
-      # Pre-create the wait_for_slave_count target as a directory.
-      mkdir "${overrides_dir}/rpl_semi_sync_master_wait_for_slave_count.cnf"
+      # commit 16: wait_for_slave_count was removed; use timeout
+      # target as the directory-shape victim instead.
+      mkdir "${overrides_dir}/rpl_semi_sync_master_timeout.cnf"
       When call run_seeder
       The status should equal 5
       The stderr should include "exists but is not a regular file"

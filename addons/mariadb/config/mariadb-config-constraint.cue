@@ -73,11 +73,10 @@
 
 #MariaDBParameter: {
 	// Enables semisync replication on the primary. When ON, the
-	// primary waits for at least
-	// rpl_semi_sync_master_wait_for_slave_count secondaries to
-	// acknowledge each transaction's binlog event (or for
-	// rpl_semi_sync_master_timeout milliseconds) before returning
-	// OK to the client. Default OFF — async replication.
+	// primary waits for one secondary's acknowledgement of each
+	// transaction's binlog event (or rpl_semi_sync_master_timeout
+	// milliseconds) before returning OK to the client. Default OFF
+	// — async replication.
 	rpl_semi_sync_master_enabled?: string & "ON" | "OFF" | *"OFF"
 
 	// Enables semisync replication on the secondary. Must be ON on
@@ -85,12 +84,23 @@
 	// the primary side. Default OFF — async replication.
 	rpl_semi_sync_slave_enabled?: string & "ON" | "OFF" | *"OFF"
 
-	// Number of secondaries that must acknowledge a binlog event
-	// before the primary commits in semisync mode. Only meaningful
-	// when rpl_semi_sync_master_enabled = ON. MariaDB hard minimum
-	// is 1; upper bound matches the maximum allowable replica
-	// count.
-	rpl_semi_sync_master_wait_for_slave_count?: int & >=1 & <=65535 | *1
+	// alpha.89 v1 commit 16 (Helen 2026-05-20, live N=1 third
+	// first-blocker fix from vcluster `mariadb-test5`,
+	// ns `mariadb-alpha89-mode-n1c2-041720`): the
+	// `rpl_semi_sync_master_wait_for_slave_count` variable is a
+	// MySQL extension (added in MySQL 5.7.3). MariaDB 11.4 (and
+	// historical MariaDB lineage) does NOT support it. Setting it
+	// in my.cnf causes `mariadbd --verbose --help` to exit rc=7
+	// with `unknown variable
+	// 'rpl_semi_sync_master_wait_for_slave_count=1'`, which makes
+	// the engine container CrashLoop on first startup. MariaDB
+	// semisync waits for exactly one secondary acknowledgement;
+	// there is no equivalent variable in MariaDB. The previous
+	// alpha.89 v1 commits 11 v2 / 12 / 13 listed this variable in
+	// the CUE schema / dynamicParameters / mapper-derive / seeder
+	// because the four-variable picture came from a MySQL-flavored
+	// reference and was never live-validated. The variable is now
+	// removed entirely from the addon surface.
 
 	// (ms) Timeout in milliseconds for the primary to wait for
 	// secondary acknowledgement in semisync mode before falling
