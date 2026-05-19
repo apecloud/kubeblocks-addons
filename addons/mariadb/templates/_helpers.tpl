@@ -555,8 +555,23 @@ reconfigure:
         if [ -r /scripts/replication-mode-mapper.sh ]; then
           # shellcheck disable=SC1091
           __SOURCED__=1 . /scripts/replication-mode-mapper.sh
-          if ! apply_replication_mode_mapping "${parameter_file}"; then
-            mapper_rc=$?
+          # alpha.89 v1 commit 12 v2 (Helen 2026-05-20, Jack B1 fix
+          # msg `008885e2`) — capture the mapper's original rc. The
+          # earlier `if ! apply_replication_mode_mapping ...; then
+          # mapper_rc=$?` form lost the rc because `!` inverts the
+          # exit code, so `$?` inside the then-block was always 0.
+          # The `|| mapper_rc=$?` form preserves the mapper's actual
+          # return code (2/3/4/5) into the diagnostic sentinel, which
+          # downstream first-blocker classification reads to decide
+          # which contract layer (invalid mode vs conflict vs IO vs
+          # bad arg) the failure came from.
+          #
+          # The `|| <cmd>` chain disables `set -e` for the mapper
+          # invocation, so the action stays alive long enough to
+          # print the rc-aware sentinel before exiting 1.
+          mapper_rc=0
+          apply_replication_mode_mapping "${parameter_file}" || mapper_rc=$?
+          if [ "${mapper_rc}" -ne 0 ]; then
             echo "replicationMode mapper failed (rc=${mapper_rc}); reconfigure aborts before any SET GLOBAL or runtime-overrides.d write" >&2
             exit 1
           fi

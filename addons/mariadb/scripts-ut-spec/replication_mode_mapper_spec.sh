@@ -266,6 +266,47 @@ Describe "alpha.89 replication-mode-mapper.sh"
       The contents of file "${param_file}" should not include 'replicationmode'
       The contents of file "${param_file}" should not include 'replicationMode'
     End
+
+    # alpha.89 v1 commit 12 v2 (Helen 2026-05-20, Jack B2 fix msg
+    # `008885e2`) — UNCONDITIONAL strip means the synthetic key is
+    # removed even when MARIADB_REPLICATION_MODE is unset/empty. The
+    # earlier commit 12 v1 placed the strip after the empty-mode
+    # early return, so a parameter list with a stray
+    # `replicationMode=semisync` line and no env mode would silently
+    # leave the synthetic key in place.
+    It "strips replicationMode even when MARIADB_REPLICATION_MODE is unset (Jack B2 fix)"
+      write_param_file 'replicationMode=semisync' 'rpl_semi_sync_master_enabled=ON'
+      unset MARIADB_REPLICATION_MODE
+      When call run_mapper
+      The status should be success
+      The contents of file "${param_file}" should not include 'replicationMode'
+      The contents of file "${param_file}" should not include 'replicationmode'
+      The contents of file "${param_file}" should include 'rpl_semi_sync_master_enabled=ON'
+    End
+
+    It "strips lowercase replicationmode even when MARIADB_REPLICATION_MODE is empty (Jack B2 fix)"
+      write_param_file 'replicationmode=async' 'rpl_semi_sync_slave_enabled=OFF'
+      MARIADB_REPLICATION_MODE=""
+      export MARIADB_REPLICATION_MODE
+      When call run_mapper
+      The status should be success
+      The contents of file "${param_file}" should not include 'replicationmode'
+      The contents of file "${param_file}" should not include 'replicationMode'
+      The contents of file "${param_file}" should include 'rpl_semi_sync_slave_enabled=OFF'
+    End
+
+    It "preserves mtime for clean only-4-vars input even with the unconditional strip"
+      # When the input is clean (no synthetic key), strip is a no-op
+      # and the param file's mtime is preserved.
+      write_param_file 'rpl_semi_sync_master_enabled=ON' 'rpl_semi_sync_slave_enabled=ON'
+      pre_sha=$(shasum -a 256 "${param_file}" | awk '{print $1}')
+      unset MARIADB_REPLICATION_MODE
+      run_mapper >/dev/null 2>&1
+      rc=$?
+      post_sha=$(shasum -a 256 "${param_file}" | awk '{print $1}')
+      When call test "${rc}" -eq 0 -a "${pre_sha}" = "${post_sha}"
+      The status should be success
+    End
   End
 
   Describe "unique-call-site contract (rendered helper inspection)"
@@ -298,6 +339,33 @@ Describe "alpha.89 replication-mode-mapper.sh"
 
     It "_helpers.tpl exits non-zero when the mapper returns non-zero (fail-closed)"
       When call grep -c 'replicationMode mapper failed' "$(helper_path)"
+      The status should be success
+      The output should equal "1"
+    End
+
+    # alpha.89 v1 commit 12 v2 (Helen 2026-05-20, Jack B1 fix msg
+    # `008885e2`) — `if ! apply_replication_mode_mapping ...; then
+    # mapper_rc=$?` loses the original rc because `!` inverts the
+    # exit code, so `$?` inside the then-block is 0 not the mapper's
+    # 2/3/4/5. The fix preserves the rc via `|| mapper_rc=$?`.
+    It "_helpers.tpl does NOT use the rc-losing 'if ! apply_replication_mode_mapping' antipattern as code (comments excluded)"
+      # Match only code lines (no leading `#`) to avoid false positives
+      # from the fix rationale comment that textually references the
+      # earlier antipattern. The grep regex skips lines whose first
+      # non-whitespace char is `#`.
+      When call grep -cE '^[[:space:]]*[^#[:space:]].*if ! apply_replication_mode_mapping' "$(helper_path)"
+      The status should be failure
+      The output should equal "0"
+    End
+
+    It "_helpers.tpl preserves the mapper's original rc via '|| mapper_rc=\$?' (Jack B1 fix)"
+      When call grep -c 'apply_replication_mode_mapping "\${parameter_file}" || mapper_rc=\$?' "$(helper_path)"
+      The status should be success
+      The output should equal "1"
+    End
+
+    It "_helpers.tpl checks mapper_rc -ne 0 after the call (rc-aware fail-closed)"
+      When call grep -c 'if \[ "\${mapper_rc}" -ne 0 \]' "$(helper_path)"
       The status should be success
       The output should equal "1"
     End
