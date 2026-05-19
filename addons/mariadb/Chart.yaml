@@ -1055,8 +1055,23 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.89
+version: 1.1.1-alpha.90
 
+# alpha.90 v1 (Helen 2026-05-20, live N=1 fourth first-blocker from
+# vcluster `mariadb-test5`) — bump from 1.1.1-alpha.89 → 1.1.1-alpha.90
+# because alpha.89 commits 13/14/15/16 mutated the rendered merged
+# CmpD spec (env block + container command body + CmpV regex + dynamic
+# parameter list + seeder/mapper script bodies via configmap-scripts).
+# KubeBlocks treats the existing ComponentDefinition spec as immutable.
+# A same-version chart upgrade with CmpD spec changes leaves the
+# CmpD in `Unavailable: immutable fields can't be updated` (Jack
+# round-4 N=1 finding: live `mariadb-replication-merged-1.1.1-alpha.89`
+# stuck Unavailable; fresh Cluster reuses the broken CmpD; samples
+# invalid). Bumping the chart version produces a new CmpD
+# `mariadb-replication-merged-1.1.1-alpha.90` so KB creates it fresh
+# instead of attempting an immutable-field update. Same KB immutability
+# rule that drove alpha.65 / alpha.66 / alpha.70 / earlier bumps.
+#
 # alpha.89 v1 scaffolding (Helen 2026-05-19) — topology merge initial
 # commit (weston 2026-05-19 14:12 msg `d8ecfae7` Option B). Jack v3
 # design review (15:36) 4 blockers folded into this scaffolding:
