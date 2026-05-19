@@ -209,7 +209,84 @@ Describe "alpha.89 commit 13 v2 seed-replication-mode-overrides.sh"
     It "cmpd-replication-merged.yaml fails the container on seeder non-zero rc"
       When call grep -c 'refusing to start mariadbd' "$(cmpd_merged_path)"
       The status should be success
+      The output should equal "2"
+    End
+
+    # alpha.89 v1 commit 13 v3 (Helen 2026-05-20, Jack B3 fix msg
+    # `6e6eab69`) — when MARIADB_REPLICATION_MODE is non-empty the
+    # seeder script MUST be readable; missing script with non-empty
+    # mode must fail-closed (no silent fallback to async).
+    It "cmpd-replication-merged.yaml fail-closes on missing seeder script when mode is non-empty (Jack B3 fix)"
+      When call grep -c 'set but seeder script /scripts/seed-replication-mode-overrides.sh is missing or unreadable' "$(cmpd_merged_path)"
+      The status should be success
       The output should equal "1"
+    End
+
+    It "cmpd-replication-merged.yaml gates the missing-script check on non-empty MARIADB_REPLICATION_MODE"
+      When call grep -cE 'if \[ -n "\$\{MARIADB_REPLICATION_MODE:-\}" \]' "$(cmpd_merged_path)"
+      The status should be success
+      The output should equal "1"
+    End
+  End
+
+  Describe "B4 target type validation defense-in-depth Jack fix"
+    # If a target path exists but is not a regular file (directory,
+    # symlink-to-dir, device, fifo, socket), `mv tmp target` would
+    # move tmp INTO the directory (for dir case) or silently overwrite
+    # the wrong shape — leaving the target as a non-file with no
+    # override content. The seeder MUST pre-validate target type
+    # before any tmp write.
+
+    It "fails with rc=5 when a target path exists as a directory"
+      MARIADB_REPLICATION_MODE=semisync
+      export MARIADB_REPLICATION_MODE
+      # Pre-create the wait_for_slave_count target as a directory.
+      mkdir "${overrides_dir}/rpl_semi_sync_master_wait_for_slave_count.cnf"
+      When call run_seeder
+      The status should equal 5
+      The stderr should include "exists but is not a regular file"
+    End
+
+    It "does NOT write any tmp / override files when validation fails (no partial state)"
+      MARIADB_REPLICATION_MODE=semisync
+      export MARIADB_REPLICATION_MODE
+      mkdir "${overrides_dir}/rpl_semi_sync_master_timeout.cnf"
+      run_seeder >/dev/null 2>&1 || true
+      # No .cnf files written (the only thing in the dir is the
+      # pre-created bogus dir target).
+      regular_file_count=$(find "${overrides_dir}" -maxdepth 1 -type f -name '*.cnf' | wc -l | tr -d ' ')
+      tmp_file_count=$(find "${overrides_dir}" -maxdepth 1 -type f -name '*.cnf.tmp.*' | wc -l | tr -d ' ')
+      When call test "${regular_file_count}" -eq 0 -a "${tmp_file_count}" -eq 0
+      The status should be success
+    End
+  End
+
+  Describe "B5 partial-state protection Jack fix"
+    # When a tmp write or rename fails partway through the 4-file
+    # batch, the seeder must not leave any orphan tmp files behind.
+    # On the very first failure, the seeder calls cleanup_all_tmps to
+    # remove any tmp files that have already been written and returns
+    # rc=5.
+
+    # ShellSpec captures stderr globally for the `When call` block.
+    # The seeder writes a "Permission denied" + sentinel to stderr
+    # on a read-only-dir write failure, so we consume both via
+    # `The stderr should include` to avoid "unexpected stderr" abort.
+    It "cleans up all tmp files + returns rc=5 + no .cnf residue when a tmp write fails (read-only dir)"
+      MARIADB_REPLICATION_MODE=semisync
+      export MARIADB_REPLICATION_MODE
+      attempt_then_assert() {
+        chmod 0555 "${overrides_dir}"
+        local rc=0
+        run_seeder >/dev/null 2>&1 || rc=$?
+        chmod 0755 "${overrides_dir}"
+        local tmp_residue=$(find "${overrides_dir}" -maxdepth 1 -name '*.cnf.tmp.*' 2>/dev/null | wc -l | tr -d ' ')
+        local cnf_residue=$(find "${overrides_dir}" -maxdepth 1 -name '*.cnf' -type f 2>/dev/null | wc -l | tr -d ' ')
+        printf "rc=%s tmp=%s cnf=%s\n" "${rc}" "${tmp_residue}" "${cnf_residue}"
+      }
+      When call attempt_then_assert
+      The status should be success
+      The output should equal "rc=5 tmp=0 cnf=0"
     End
   End
 
