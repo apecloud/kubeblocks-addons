@@ -100,41 +100,73 @@
 	// not recommended).
 	rpl_semi_sync_master_timeout?: int & >=1 & <=2147483647 | *10000 @timeDurationResource(1ms)
 
-	// alpha.89 v1 commit 11 v2 (Helen 2026-05-20, Jack B1 fix):
-	// explicitly forbid the synthetic key `replicationmode` from
-	// landing in my.cnf. KB's INI parser lowercases every key, so
-	// user input `replicationMode`, `replicationmode`, or any other
-	// case variant normalizes to `replicationmode` before CUE
-	// validation runs. The C3 design places `replicationMode` at
-	// the ComponentSpec-parameter layer (consumed by an addon
-	// mapper in reconfigureAction BEFORE my.cnf render) — under no
-	// path should `replicationmode` appear as a my.cnf key, because
-	// mariadbd does not recognize it and would log an unknown-
-	// variable warning at startup. The `_|_` (CUE bottom value)
-	// forbids the field outright: any ConfigMap merge that includes
-	// this key fails `ValidateConfigWithCue()` with a clear CUE
-	// conflict, before the merged config reaches the engine.
+	// alpha.89 v1 commit 14 (Helen 2026-05-20, live N=1 first-blocker
+	// fix from vcluster `mariadb-test5` run with controller image
+	// `apecloud/kubeblocks:pr-10252-1c8723184`):
 	//
-	// More-specific field declarations take precedence over the
-	// `[string]: _` open pattern below, so this forbid rule still
-	// fires even though the open pattern accepts arbitrary string
-	// keys.
-	replicationmode?: _|_
+	// commit 11 v2 declared `replicationmode?: _|_` as a defense-in
+	// -depth forbid against the synthetic key ever landing in my.cnf.
+	// KB local fixture / static `ValidateConfigWithCue` test accepted
+	// that pattern. But the live KB controller's PD reconcile loop
+	// generates an OpenAPI schema from the CUE before activating the
+	// ParametersDefinition, and the OpenAPI schema generator rejects
+	// any CUE bottom literal with the error:
+	//   `failed to generate openAPISchema: failed to marshal cue-yaml:
+	//    explicit error (_|_ literal) in source`
+	// The `mariadb-replication-merged-pd` PD never goes Available,
+	// downstream Component reconcile reports the PD as unavailable,
+	// and Pods never get created — chart is unusable.
+	//
+	// Fix: the `replicationmode?: _|_` declaration is REMOVED. The
+	// synthetic-key defense moves entirely to the three layers that
+	// already exist and are exercised by ShellSpec:
+	//
+	//   1. Helm template-time validator (`mariadb.replication.mode
+	//      .validate`) — rejects invalid `replication.mode` Helm
+	//      values at `helm render` time.
+	//   2. Startup seeder (`scripts/seed-replication-mode-overrides
+	//      .sh`) — writes the four real `rpl_semi_sync_*` engine
+	//      variables to `runtime-overrides.d/` BEFORE mariadbd
+	//      starts; synthetic key never appears in any rendered file.
+	//   3. Reconfigure mapper (`scripts/replication-mode-mapper.sh`,
+	//      sourced from `reconfigureAction.persisted`) — unconditional
+	//      strip of `replicationMode` / `replicationmode` from the
+	//      parameter list BEFORE the main loop reaches `SET GLOBAL`
+	//      or `runtime-overrides.d/` writes.
+	//
+	// A user OpsRequest that includes `replicationmode=<value>` would
+	// now pass CUE validation via the `[string]: _` open pattern,
+	// land in the rendered my.cnf, and produce an mariadbd unknown-
+	// variable warning at next restart. That is noise, not a fail-
+	// closed product break — mariadbd ignores unrecognized server
+	// variables (does not refuse startup). Reconfigure mapper still
+	// strips the synthetic key from the SET GLOBAL / persist loop,
+	// so the engine never sees a `replicationmode` runtime variable
+	// assignment.
+	//
+	// Runtime synthetic-key OpsRequest fail-closed (KB-validator
+	// rejecting `replicationmode=*`) is deferred to alpha.90 — needs
+	// a KB-supported form that survives OpenAPI schema generation
+	// (candidates: a CUE `string & !~"^.+$"` impossible pattern, a
+	// pre-flight admission webhook on Cluster CR annotations, or a
+	// PD validation hook). The case appendix in kubeblocks-addon
+	// -docs PR #258 records the deferred work.
 
 	// Open the struct so KB's `ValidateConfigWithCue()` accepts any
 	// other key the rendered base my.cnf may contain (e.g.
 	// `binlog_format`, `max_connections`, `slow_query_log`) without
 	// requiring this schema to enumerate every MariaDB engine
 	// variable. The four `rpl_semi_sync_*` fields above still
-	// constrain those specific keys when they are present; the
-	// `replicationmode` forbid above still rejects that specific
-	// key; all other unknown keys pass through unchallenged.
+	// constrain those specific keys when they are present; all
+	// other unknown keys (including the synthetic `replicationmode`
+	// post commit-14 revert) pass through unchallenged at the CUE
+	// layer; the addon-side mapper handles synthetic stripping.
 	//
 	// alpha.89 v1 commit 11 (Helen 2026-05-20) — retroactive fix
-	// for the commit 3 v2 closed-section bug Jack surfaced via
-	// KB-validator behavioral test (msg `ea50aa12`). Without this
-	// open marker, a real cluster's full base my.cnf merge fails
-	// with "field not allowed" on any key not in this schema.
+	// for the commit 3 v2 closed-section bug surfaced via
+	// KB-validator behavioral test. Without this open marker, a
+	// real cluster's full base my.cnf merge fails with "field not
+	// allowed" on any key not in this schema.
 	[string]: _
 }
 
