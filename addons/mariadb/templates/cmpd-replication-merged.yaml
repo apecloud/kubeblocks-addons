@@ -77,15 +77,33 @@ spec:
     # alpha.89 v1 commit 2 (Helen 2026-05-19) — configspec name renamed
     # from `mariadb-semisync-config` to `mariadb-replication-config`
     # so the merged CmpD does not carry the legacy semisync identifier
-    # in its addressable surface. The underlying ConfigMap object
-    # template (`mariadb-semisync-config-template`) is left in place
-    # for now and will be migrated to a unified
-    # `mariadb-replication-config-template` once `replicationMode`
-    # parameterization lands (the merged CmpD currently still produces
-    # semisync defaults; renaming the rendered ConfigMap before
-    # parameter-driven defaults would silently change cluster behavior).
+    # in its addressable surface.
+    #
+    # alpha.89 v1 commit 8 (Helen 2026-05-19, C1 path default-async
+    # closure) — the rendered ConfigMap template is now
+    # `mariadb-replication-config-template` (which loads
+    # `config/mariadb-replication.tpl`), so the merged CmpD's default
+    # behavior is async replication: the four semisync engine
+    # variables are absent from the default my.cnf and therefore
+    # take their engine defaults (OFF / 0). Users who want semisync
+    # set the four `rpl_semi_sync_*` variables via
+    # `spec.componentSpecs[].parameters` at create time; the PD
+    # CUE schema added in commit 3 v2 validates the values, and the
+    # alpha.88 persistence layer (still in this CmpD's init
+    # container + mariadbd `--defaults-extra-file` start arg) carries
+    # the runtime values through process restarts.
+    #
+    # This default flip is the v3.1 design §1 / §8 commitment: under
+    # Option B the merged CmpD has a single canonical configspec
+    # template; defaulting to async is the safer choice for new
+    # clusters since async does not silently degrade under partial
+    # secondary failure the way semisync's wait_for_slave gate does.
+    # Existing Cluster CRs that referenced the deprecated
+    # `mariadb-semisync-1.1.1-alpha.88` CmpD continue to use that
+    # CmpD's own configspec — the deprecated CmpD still renders in
+    # the chart per the scaffolding commit's compat-resource policy.
     - name: mariadb-replication-config
-      template: mariadb-semisync-config-template
+      template: mariadb-replication-config-template
       volumeName: mariadb-config
       namespace: {{ .Release.Namespace }}
       externalManaged: true
