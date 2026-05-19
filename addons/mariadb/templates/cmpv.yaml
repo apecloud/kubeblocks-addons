@@ -12,6 +12,19 @@ spec:
         - {{ include "mariadb.standalone.cmpdRegexpPattern" . }}
         - {{ include "mariadb.replication.cmpdRegexpPattern" . }}
         - {{ include "mariadb.semisync.cmpdRegexpPattern" . }}
+        # alpha.89 v1 commit 15 (Helen 2026-05-20, live N=1 first
+        # blocker from vcluster `mariadb-test5` rerun) — bind the
+        # merged replication CmpD to the same release set so the
+        # InstanceSet gets the engine / exporter / init-syncer
+        # images. Without this entry the rendered live InstanceSet
+        # leaves the mariadb / exporter / init-syncer image fields
+        # empty (Pod create fails with "spec.containers[*].image:
+        # Required value", controller log "ImageUtil parse image
+        # failed, image="""). The merged regex is more specific
+        # than `^mariadb-replication-[0-9]` (matches digits only),
+        # so adding the merged pattern alongside the existing three
+        # does not over-match.
+        - {{ include "mariadb.replication.merged.cmpdRegexpPattern" . }}
       releases:
         - 10.6.15
         - 11.4.5
