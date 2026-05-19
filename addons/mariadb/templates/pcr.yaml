@@ -76,11 +76,18 @@ spec:
 
 ---
 # ParamConfigRenderer for the merged replication CmpD
-# (alpha.89 — topology merge). Initial PCR uses the same
-# templateName as semisync because the merged CmpD currently inherits
-# cmpd-semisync.yaml's configspec name. Subsequent commits will switch
-# this PCR to a unified `mariadb-replication-config` template once the
-# CmpD's configspec is renamed.
+# (alpha.89 — topology merge).
+#
+# alpha.89 v1 commit 2 (Helen 2026-05-19) — `templateName` updated
+# from `mariadb-semisync-config` to `mariadb-replication-config` to
+# track the merged CmpD's configspec rename (cmpd-replication-merged
+# .yaml `spec.configs[].name`). KB Configure resolves this PCR's
+# templateName against the CmpD's configspec name, so they must
+# stay in lockstep. The underlying ConfigMap object template name
+# (`mariadb-semisync-config-template`) is not part of this rename;
+# it remains the rendered source until `replicationMode`
+# parameterization lands and async/semisync defaults can be
+# expressed in a unified template.
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParamConfigRenderer
 metadata:
@@ -91,7 +98,7 @@ spec:
   componentDef: {{ include "mariadb.replication.merged.cmpdName" . }}
   configs:
     - name: my.cnf
-      templateName: mariadb-semisync-config
+      templateName: mariadb-replication-config
       fileFormatConfig:
         format: ini
         iniConfig:

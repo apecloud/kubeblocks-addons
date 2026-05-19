@@ -74,7 +74,17 @@ spec:
       participatesInQuorum: false
   {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   configs:
-    - name: mariadb-semisync-config
+    # alpha.89 v1 commit 2 (Helen 2026-05-19) — configspec name renamed
+    # from `mariadb-semisync-config` to `mariadb-replication-config`
+    # so the merged CmpD does not carry the legacy semisync identifier
+    # in its addressable surface. The underlying ConfigMap object
+    # template (`mariadb-semisync-config-template`) is left in place
+    # for now and will be migrated to a unified
+    # `mariadb-replication-config-template` once `replicationMode`
+    # parameterization lands (the merged CmpD currently still produces
+    # semisync defaults; renaming the rendered ConfigMap before
+    # parameter-driven defaults would silently change cluster behavior).
+    - name: mariadb-replication-config
       template: mariadb-semisync-config-template
       volumeName: mariadb-config
       namespace: {{ .Release.Namespace }}
