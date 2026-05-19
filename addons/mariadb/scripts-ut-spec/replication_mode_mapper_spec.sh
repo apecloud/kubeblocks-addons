@@ -72,7 +72,7 @@ Describe "alpha.89 replication-mode-mapper.sh"
   }
 
   Describe "case 1 — only mode (mode set, no user-supplied real vars)"
-    It "exits 0 and produces all 4 derived vars for mode=semisync"
+    It "exits 0 and produces the 3 MariaDB-supported derived vars for mode=semisync"
       write_param_file
       MARIADB_REPLICATION_MODE=semisync
       export MARIADB_REPLICATION_MODE
@@ -80,11 +80,12 @@ Describe "alpha.89 replication-mode-mapper.sh"
       The status should be success
       The contents of file "${param_file}" should include 'rpl_semi_sync_master_enabled=ON'
       The contents of file "${param_file}" should include 'rpl_semi_sync_slave_enabled=ON'
-      The contents of file "${param_file}" should include 'rpl_semi_sync_master_wait_for_slave_count=1'
       The contents of file "${param_file}" should include 'rpl_semi_sync_master_timeout=10000'
+      # commit 16: wait_for_slave_count is MySQL-specific and breaks MariaDB.
+      The contents of file "${param_file}" should not include 'rpl_semi_sync_master_wait_for_slave_count'
     End
 
-    It "exits 0 and produces all 4 derived vars for mode=async (all OFF / defaults)"
+    It "exits 0 and produces the 3 MariaDB-supported derived vars for mode=async (all OFF / defaults)"
       write_param_file
       MARIADB_REPLICATION_MODE=async
       export MARIADB_REPLICATION_MODE
@@ -92,8 +93,8 @@ Describe "alpha.89 replication-mode-mapper.sh"
       The status should be success
       The contents of file "${param_file}" should include 'rpl_semi_sync_master_enabled=OFF'
       The contents of file "${param_file}" should include 'rpl_semi_sync_slave_enabled=OFF'
-      The contents of file "${param_file}" should include 'rpl_semi_sync_master_wait_for_slave_count=1'
       The contents of file "${param_file}" should include 'rpl_semi_sync_master_timeout=10000'
+      The contents of file "${param_file}" should not include 'rpl_semi_sync_master_wait_for_slave_count'
     End
 
     It "does NOT leak the synthetic replicationmode key into the rewritten parameter list"
@@ -141,8 +142,8 @@ Describe "alpha.89 replication-mode-mapper.sh"
       The status should be success
       The contents of file "${param_file}" should include 'rpl_semi_sync_master_enabled=ON'
       The contents of file "${param_file}" should include 'rpl_semi_sync_slave_enabled=ON'
-      The contents of file "${param_file}" should include 'rpl_semi_sync_master_wait_for_slave_count=1'
       The contents of file "${param_file}" should include 'rpl_semi_sync_master_timeout=10000'
+      The contents of file "${param_file}" should not include 'rpl_semi_sync_master_wait_for_slave_count'
     End
 
     It "does not duplicate the user-supplied master_enabled line"

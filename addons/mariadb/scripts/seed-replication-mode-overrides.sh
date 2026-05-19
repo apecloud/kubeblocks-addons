@@ -113,11 +113,12 @@ seed_replication_mode_write_one_tmp() {
     return "${SEED_REPLICATION_MODE_EXIT_OK}"
 }
 
-# Helper: cleanup all 4 tmp files (used on any failure in the
-# write-all-then-commit path).
+# Helper: cleanup all 3 tmp files (used on any failure in the
+# write-all-then-commit path). commit 16 dropped
+# rpl_semi_sync_master_wait_for_slave_count (MariaDB unsupported).
 seed_replication_mode_cleanup_all_tmps() {
     overrides_dir="$1"
-    for name in rpl_semi_sync_master_enabled rpl_semi_sync_slave_enabled rpl_semi_sync_master_wait_for_slave_count rpl_semi_sync_master_timeout; do
+    for name in rpl_semi_sync_master_enabled rpl_semi_sync_slave_enabled rpl_semi_sync_master_timeout; do
         rm -f "${overrides_dir}/${name}.cnf.tmp.$$" 2>/dev/null || true
     done
 }
@@ -186,22 +187,27 @@ seed_replication_mode_overrides() {
     slave_value="$(printf '%s\n' "${pair_output}" | awk -F= '$1=="slave"{print $2; exit}')"
 
     # --- Phase B: pre-validate target types (B4) ---
-    for name in rpl_semi_sync_master_enabled rpl_semi_sync_slave_enabled rpl_semi_sync_master_wait_for_slave_count rpl_semi_sync_master_timeout; do
+    # alpha.89 v1 commit 16 (Helen 2026-05-20, live N=1 third
+    # first-blocker fix): the previous 4-var list included the
+    # MySQL-specific `rpl_semi_sync_master_wait_for_slave_count`
+    # which MariaDB 11.4 does not recognize. Setting it in
+    # runtime-overrides.d/ causes mariadbd to exit on first
+    # startup with rc=7 "unknown variable". Removed. MariaDB
+    # semisync waits for one slave; there is no equivalent
+    # MariaDB variable.
+    for name in rpl_semi_sync_master_enabled rpl_semi_sync_slave_enabled rpl_semi_sync_master_timeout; do
         if ! seed_replication_mode_validate_target_type "${overrides_dir}/${name}.cnf"; then
             return "${SEED_REPLICATION_MODE_EXIT_IO}"
         fi
     done
 
-    # --- Phase C: write all 4 tmp files ---
+    # --- Phase C: write the 3 tmp files (commit 16 dropped
+    # rpl_semi_sync_master_wait_for_slave_count, MariaDB-unsupported) ---
     if ! seed_replication_mode_write_one_tmp "${overrides_dir}" rpl_semi_sync_master_enabled "${master_value}"; then
         seed_replication_mode_cleanup_all_tmps "${overrides_dir}"
         return "${SEED_REPLICATION_MODE_EXIT_IO}"
     fi
     if ! seed_replication_mode_write_one_tmp "${overrides_dir}" rpl_semi_sync_slave_enabled "${slave_value}"; then
-        seed_replication_mode_cleanup_all_tmps "${overrides_dir}"
-        return "${SEED_REPLICATION_MODE_EXIT_IO}"
-    fi
-    if ! seed_replication_mode_write_one_tmp "${overrides_dir}" rpl_semi_sync_master_wait_for_slave_count 1; then
         seed_replication_mode_cleanup_all_tmps "${overrides_dir}"
         return "${SEED_REPLICATION_MODE_EXIT_IO}"
     fi
@@ -211,7 +217,7 @@ seed_replication_mode_overrides() {
     fi
 
     # --- Phase D & E: byte-equal compare + rename ---
-    for name in rpl_semi_sync_master_enabled rpl_semi_sync_slave_enabled rpl_semi_sync_master_wait_for_slave_count rpl_semi_sync_master_timeout; do
+    for name in rpl_semi_sync_master_enabled rpl_semi_sync_slave_enabled rpl_semi_sync_master_timeout; do
         target="${overrides_dir}/${name}.cnf"
         tmp="${target}.tmp.$$"
         if [ -f "${target}" ] && cmp -s "${tmp}" "${target}"; then
