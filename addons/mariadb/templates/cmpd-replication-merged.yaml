@@ -280,7 +280,22 @@ spec:
             # behavior on clusters whose Helm values do not set the
             # mode). Invalid mode fails the container (fail-closed):
             # mariadbd does not start until the env is corrected.
-            if [ -r /scripts/seed-replication-mode-overrides.sh ]; then
+            # alpha.89 v1 commit 13 v3 (Helen 2026-05-20, Jack B3 fix
+            # msg `6e6eab69`) — when MARIADB_REPLICATION_MODE is
+            # non-empty the seeder script MUST be readable. The
+            # previous form `if [ -r ]; then ...; fi` silently skipped
+            # the seeder on a missing / unreadable script while leaving
+            # the env value set, so a non-empty mode could degrade to
+            # async (Class 1 silent fallback). Empty mode keeps the
+            # original lenient form because the seeder is a no-op
+            # anyway and a missing-script scenario is a deploy-time
+            # config drift that should still let async deployments
+            # boot.
+            if [ -n "${MARIADB_REPLICATION_MODE:-}" ]; then
+              if [ ! -r /scripts/seed-replication-mode-overrides.sh ]; then
+                echo "MARIADB_REPLICATION_MODE='${MARIADB_REPLICATION_MODE}' set but seeder script /scripts/seed-replication-mode-overrides.sh is missing or unreadable; refusing to start mariadbd (fail-closed) — fix the script mount and restart the pod" >&2
+                exit 1
+              fi
               seed_rc=0
               sh /scripts/seed-replication-mode-overrides.sh || seed_rc=$?
               if [ "${seed_rc}" -ne 0 ]; then

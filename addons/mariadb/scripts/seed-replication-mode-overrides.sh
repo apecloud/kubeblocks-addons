@@ -79,11 +79,20 @@ seed_replication_mode_derive_master_slave() {
     esac
 }
 
-# Write a single per-parameter override .cnf file via tmp + atomic
-# rename, with byte-equal short-circuit so identical content does not
-# refresh mtime. Mirrors the body shape produced by
-# `reconfigureAction.persisted` so the two write-sites converge.
-seed_replication_mode_write_override() {
+# Helper: write a single tmp file for the (name, value) pair into
+# overrides_dir. Returns rc=5 on write failure (tmp cleaned up).
+# Tmp filename pattern: `<param_name>.cnf.tmp.<pid>` colocated with
+# the eventual target so the later mv is intra-filesystem atomic.
+#
+# Implementation note (Jack B5 smoke msg `6e6eab69`): uses a single
+# `printf ... > tmp` simple command rather than `{ ... } > tmp`
+# because bash compound-command redirection failures do NOT propagate
+# to the surrounding `if !` test (see `bash -c 'if ! { echo ok; } >
+# /no-such-dir/file; then echo X; fi'` — X never prints even though
+# the redirect failed). A simple command's redirect failure does
+# propagate, so we use printf and additionally post-check `[ -s ]`
+# as a belt-and-suspenders guard against truncated writes.
+seed_replication_mode_write_one_tmp() {
     overrides_dir="$1"
     param_name="$2"
     param_value="$3"
@@ -91,32 +100,70 @@ seed_replication_mode_write_override() {
     target="${overrides_dir}/${param_name}.cnf"
     tmp="${target}.tmp.$$"
 
-    if ! {
-        echo "[mysqld]"
-        echo "${param_name} = ${param_value}"
-    } > "${tmp}"; then
+    if ! printf '[mysqld]\n%s = %s\n' "${param_name}" "${param_value}" > "${tmp}" 2>/dev/null; then
         rm -f "${tmp}" 2>/dev/null || true
         echo "seed-replication-mode-overrides: failed to write tmp override file for ${param_name}" >&2
         return "${SEED_REPLICATION_MODE_EXIT_IO}"
     fi
-
-    if [ -f "${target}" ] && cmp -s "${tmp}" "${target}"; then
+    if [ ! -s "${tmp}" ]; then
         rm -f "${tmp}" 2>/dev/null || true
-        return "${SEED_REPLICATION_MODE_EXIT_OK}"
-    fi
-
-    if ! mv "${tmp}" "${target}"; then
-        rm -f "${tmp}" 2>/dev/null || true
-        echo "seed-replication-mode-overrides: failed to atomically write override file ${target}" >&2
+        echo "seed-replication-mode-overrides: tmp override file for ${param_name} is empty after write (write was silently truncated)" >&2
         return "${SEED_REPLICATION_MODE_EXIT_IO}"
     fi
+    return "${SEED_REPLICATION_MODE_EXIT_OK}"
+}
 
+# Helper: cleanup all 4 tmp files (used on any failure in the
+# write-all-then-commit path).
+seed_replication_mode_cleanup_all_tmps() {
+    overrides_dir="$1"
+    for name in rpl_semi_sync_master_enabled rpl_semi_sync_slave_enabled rpl_semi_sync_master_wait_for_slave_count rpl_semi_sync_master_timeout; do
+        rm -f "${overrides_dir}/${name}.cnf.tmp.$$" 2>/dev/null || true
+    done
+}
+
+# Helper: verify that an existing target path is absent OR a regular
+# file. If it exists but is a directory / symlink-to-dir / device /
+# fifo / socket, refuse to write because `mv tmp target` would
+# silently move tmp INTO a directory and leave the target unchanged
+# in shape (Jack B4 fix msg `6e6eab69`).
+seed_replication_mode_validate_target_type() {
+    target="$1"
+    if [ -e "${target}" ] && [ ! -f "${target}" ]; then
+        echo "seed-replication-mode-overrides: target ${target} exists but is not a regular file (refusing to write — would not produce the expected override)" >&2
+        return "${SEED_REPLICATION_MODE_EXIT_IO}"
+    fi
     return "${SEED_REPLICATION_MODE_EXIT_OK}"
 }
 
 # Main entry. Reads MARIADB_REPLICATION_MODE from env; returns 0 on
 # success (or no-op when env is empty); returns 2 on invalid mode;
 # returns 5 on IO failure.
+#
+# Multi-file commit pattern (Jack B5 fix msg `6e6eab69`): writes
+# happen in 5 phases so a failure in any single file leaves the
+# overrides dir in its prior state rather than partial / mixed.
+#
+#   Phase A — derive: compute all 4 (name, value) pairs into shell
+#             vars. Fail-closed on invalid mode BEFORE any disk write.
+#   Phase B — pre-validate target types: check each target is absent
+#             OR a regular file (B4 backstop). Fail-closed without
+#             touching disk.
+#   Phase C — write 4 tmp files. If any tmp write fails, clean up all
+#             4 tmp files (any subset that exists) and return rc=5.
+#             At this point no target has been renamed yet, so the
+#             on-disk overrides dir is unchanged from the prior run.
+#   Phase D — byte-equal compare each tmp to its target; build the
+#             rename list. Targets that are already byte-identical to
+#             the staged content are skipped to preserve mtime.
+#   Phase E — rename each entry in the rename list. Each rename is
+#             intra-filesystem and atomic; the renames happen in tight
+#             sequence to minimize the partial-commit window. If any
+#             rename fails, the remaining tmp files are cleaned up
+#             and rc=5 is returned (best-effort partial-state
+#             reporting; previously-renamed targets are NOT rolled
+#             back, but the failure exits the action loudly and the
+#             container refuses to start mariadbd).
 seed_replication_mode_overrides() {
     overrides_dir="${MARIADB_RUNTIME_OVERRIDES_DIR:-/var/lib/mysql/runtime-overrides.d}"
     mode="${MARIADB_REPLICATION_MODE:-}"
@@ -133,20 +180,59 @@ seed_replication_mode_overrides() {
         return "${SEED_REPLICATION_MODE_EXIT_IO}"
     fi
 
-    # Compute the master/slave values. Fail-closed on invalid mode
-    # BEFORE writing anything.
+    # --- Phase A: derive ---
     pair_output="$(seed_replication_mode_derive_master_slave "${mode}")" || return $?
     master_value="$(printf '%s\n' "${pair_output}" | awk -F= '$1=="master"{print $2; exit}')"
     slave_value="$(printf '%s\n' "${pair_output}" | awk -F= '$1=="slave"{print $2; exit}')"
 
-    # Write the four override files in a deterministic order. Each
-    # call uses cmp -s to preserve mtime if the on-disk content is
-    # already at the target value, so kubelet restarts / pod
-    # re-creates do not churn mtime.
-    seed_replication_mode_write_override "${overrides_dir}" rpl_semi_sync_master_enabled "${master_value}" || return $?
-    seed_replication_mode_write_override "${overrides_dir}" rpl_semi_sync_slave_enabled "${slave_value}" || return $?
-    seed_replication_mode_write_override "${overrides_dir}" rpl_semi_sync_master_wait_for_slave_count 1 || return $?
-    seed_replication_mode_write_override "${overrides_dir}" rpl_semi_sync_master_timeout 10000 || return $?
+    # --- Phase B: pre-validate target types (B4) ---
+    for name in rpl_semi_sync_master_enabled rpl_semi_sync_slave_enabled rpl_semi_sync_master_wait_for_slave_count rpl_semi_sync_master_timeout; do
+        if ! seed_replication_mode_validate_target_type "${overrides_dir}/${name}.cnf"; then
+            return "${SEED_REPLICATION_MODE_EXIT_IO}"
+        fi
+    done
+
+    # --- Phase C: write all 4 tmp files ---
+    if ! seed_replication_mode_write_one_tmp "${overrides_dir}" rpl_semi_sync_master_enabled "${master_value}"; then
+        seed_replication_mode_cleanup_all_tmps "${overrides_dir}"
+        return "${SEED_REPLICATION_MODE_EXIT_IO}"
+    fi
+    if ! seed_replication_mode_write_one_tmp "${overrides_dir}" rpl_semi_sync_slave_enabled "${slave_value}"; then
+        seed_replication_mode_cleanup_all_tmps "${overrides_dir}"
+        return "${SEED_REPLICATION_MODE_EXIT_IO}"
+    fi
+    if ! seed_replication_mode_write_one_tmp "${overrides_dir}" rpl_semi_sync_master_wait_for_slave_count 1; then
+        seed_replication_mode_cleanup_all_tmps "${overrides_dir}"
+        return "${SEED_REPLICATION_MODE_EXIT_IO}"
+    fi
+    if ! seed_replication_mode_write_one_tmp "${overrides_dir}" rpl_semi_sync_master_timeout 10000; then
+        seed_replication_mode_cleanup_all_tmps "${overrides_dir}"
+        return "${SEED_REPLICATION_MODE_EXIT_IO}"
+    fi
+
+    # --- Phase D & E: byte-equal compare + rename ---
+    for name in rpl_semi_sync_master_enabled rpl_semi_sync_slave_enabled rpl_semi_sync_master_wait_for_slave_count rpl_semi_sync_master_timeout; do
+        target="${overrides_dir}/${name}.cnf"
+        tmp="${target}.tmp.$$"
+        if [ -f "${target}" ] && cmp -s "${tmp}" "${target}"; then
+            # Already at target value — skip rename to preserve mtime.
+            rm -f "${tmp}" 2>/dev/null || true
+            continue
+        fi
+        if ! mv "${tmp}" "${target}"; then
+            seed_replication_mode_cleanup_all_tmps "${overrides_dir}"
+            echo "seed-replication-mode-overrides: failed to atomically rename tmp into place at ${target}; some prior renames in this batch may have already committed" >&2
+            return "${SEED_REPLICATION_MODE_EXIT_IO}"
+        fi
+        # Post-rename sanity: target must now be a regular file. If
+        # the rename succeeded into a directory shape we never want
+        # to silently advertise success.
+        if [ ! -f "${target}" ]; then
+            seed_replication_mode_cleanup_all_tmps "${overrides_dir}"
+            echo "seed-replication-mode-overrides: post-rename target ${target} is not a regular file (rename did not produce the expected override)" >&2
+            return "${SEED_REPLICATION_MODE_EXIT_IO}"
+        fi
+    done
 
     return "${SEED_REPLICATION_MODE_EXIT_OK}"
 }
