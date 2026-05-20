@@ -307,6 +307,158 @@ Describe "Valkey Check-Role Bash Script Tests"
     End
   End
 
+  Describe "query_sentinel_master_runid_quorum() — strict majority"
+    # Bug B convergence-window guard:
+    #   First-reachable-sentinel is NOT sufficient. During a sentinel
+    #   FAILOVER window, a stale sentinel may still report the old
+    #   master's runid while the other sentinels have moved to the
+    #   new master. If roleProbe trusts the first reachable, the
+    #   demoted pod (whose runid matches the stale sentinel) would
+    #   wrap that stale view as an authoritative GlobalRoleSnapshot
+    #   pair, bypassing the #10269 plain-EventTime gate. The strict-
+    #   majority pattern matches the bar already set by
+    #   valkey-start.sh:query_sentinel_quorum_for_master.
+
+    setup() {
+      export SENTINEL_POD_FQDN_LIST="s0.svc,s1.svc,s2.svc"
+      export SENTINEL_COMPONENT_NAME="valkey-sentinel"
+      export VALKEY_COMPONENT_NAME="valkey"
+      unset SENTINEL_PASSWORD
+      unset VALKEY_CLI_TLS_ARGS
+    }
+    Before "setup"
+
+    teardown() {
+      unset SENTINEL_POD_FQDN_LIST
+      unset SENTINEL_COMPONENT_NAME
+      unset VALKEY_COMPONENT_NAME
+    }
+    After "teardown"
+
+    Context "all sentinels agree on the same runid (post-convergence)"
+      It "returns the agreed runid:epoch"
+        valkey-cli() {
+          # Match the host arg ` -h <fqdn> ` and the action token
+          # `sentinel master` so we serve a runid based on which
+          # sentinel was queried. All three agree on RUNID_NEW.
+          local args="$*"
+          case "${args}" in
+            *" -h s0.svc "*|*" -h s1.svc "*|*" -h s2.svc "*)
+              if [[ "${args}" == *"sentinel master"* ]]; then
+                printf "name\r\nvalkey\r\nrunid\r\nRUNID_NEW\r\nconfig-epoch\r\n7\r\n"
+              fi
+              ;;
+          esac
+        }
+        When call query_sentinel_master_runid_quorum
+        The status should be success
+        The stdout should eq "RUNID_NEW:7"
+      End
+    End
+
+    Context "stale first sentinel, majority on new runid (Bug B regression guard)"
+      It "returns the majority runid, NOT the stale first-reachable runid"
+        valkey-cli() {
+          local args="$*"
+          if [[ "${args}" == *"sentinel master"* ]]; then
+            case "${args}" in
+              *" -h s0.svc "*)
+                # s0 is stale — still reports the demoted master.
+                printf "name\r\nvalkey\r\nrunid\r\nRUNID_OLD_DEMOTED\r\nconfig-epoch\r\n6\r\n"
+                ;;
+              *" -h s1.svc "*|*" -h s2.svc "*)
+                # s1 and s2 have moved to the new master post-failover.
+                printf "name\r\nvalkey\r\nrunid\r\nRUNID_NEW_PROMOTED\r\nconfig-epoch\r\n7\r\n"
+                ;;
+            esac
+          fi
+        }
+        When call query_sentinel_master_runid_quorum
+        The status should be success
+        The stdout should eq "RUNID_NEW_PROMOTED:7"
+        The stdout should not include "RUNID_OLD_DEMOTED"
+      End
+    End
+
+    Context "no majority — three-way split during failover convergence"
+      It "returns empty (caller must fall back to plain string)"
+        valkey-cli() {
+          local args="$*"
+          if [[ "${args}" == *"sentinel master"* ]]; then
+            case "${args}" in
+              *" -h s0.svc "*)
+                printf "name\r\nvalkey\r\nrunid\r\nRUNID_A\r\nconfig-epoch\r\n5\r\n"
+                ;;
+              *" -h s1.svc "*)
+                printf "name\r\nvalkey\r\nrunid\r\nRUNID_B\r\nconfig-epoch\r\n6\r\n"
+                ;;
+              *" -h s2.svc "*)
+                printf "name\r\nvalkey\r\nrunid\r\nRUNID_C\r\nconfig-epoch\r\n7\r\n"
+                ;;
+            esac
+          fi
+        }
+        When call query_sentinel_master_runid_quorum
+        The status should be failure
+        The stdout should eq ""
+      End
+    End
+
+    Context "only one sentinel reachable out of three — no majority"
+      It "returns empty"
+        valkey-cli() {
+          local args="$*"
+          if [[ "${args}" == *"sentinel master"* ]]; then
+            case "${args}" in
+              *" -h s0.svc "*)
+                printf "name\r\nvalkey\r\nrunid\r\nRUNID_LONE\r\nconfig-epoch\r\n5\r\n"
+                ;;
+              *" -h s1.svc "*|*" -h s2.svc "*)
+                # Unreachable: caller treats exit-0 with empty stdout
+                # as no response. Simulate by returning 1.
+                return 1
+                ;;
+            esac
+          fi
+        }
+        When call query_sentinel_master_runid_quorum
+        The status should be failure
+        The stdout should eq ""
+      End
+    End
+
+    Context "two of three reachable agree (minimum quorum)"
+      It "returns the agreed runid:epoch when exactly quorum is met"
+        valkey-cli() {
+          local args="$*"
+          if [[ "${args}" == *"sentinel master"* ]]; then
+            case "${args}" in
+              *" -h s0.svc "*|*" -h s1.svc "*)
+                printf "name\r\nvalkey\r\nrunid\r\nRUNID_AGREED\r\nconfig-epoch\r\n8\r\n"
+                ;;
+              *" -h s2.svc "*)
+                # Unreachable
+                return 1
+                ;;
+            esac
+          fi
+        }
+        When call query_sentinel_master_runid_quorum
+        The status should be success
+        The stdout should eq "RUNID_AGREED:8"
+      End
+    End
+
+    Context "all sentinels unreachable"
+      It "returns empty"
+        valkey-cli() { return 1; }
+        When call query_sentinel_master_runid_quorum
+        The status should be failure
+        The stdout should eq ""
+      End
+    End
+  End
+
   Describe "Bug B contract — stale local master must not be wrapped as authoritative primary"
     # Simulated scenario:
     #   - Demoted primary (Pod 0). Its local INFO replication still
