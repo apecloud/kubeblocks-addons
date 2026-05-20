@@ -6,15 +6,44 @@ MariaDB is a high performance open source relational database management system 
 
 ### Lifecycle Management
 
-| Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| No (Standalone Only)   | Yes                   | Yes               | Yes       | Yes        | No        | Yes    | No         |
+Per-topology support matrix. `Yes (verified)` has a recorded end-to-end evidence chain; `Yes (declared)` means the chart wires the action but a full release-standard evidence chain has not yet been recorded; `No` means the topology does not implement the lifecycle action:
+
+| Topology | Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
+|---|---|---|---|---|---|---|---|---|
+| standalone | No | Yes | Yes | Yes | Yes | No | Yes | No |
+| replication | Yes (declared) | Yes | Yes | Yes | Yes | Yes (declared) | Yes | Yes (verified) |
+| semisync | Yes (declared) | Yes | Yes | Yes | Yes | Yes (declared) | Yes | Yes (verified) |
+| galera | Yes (declared) | Yes | Yes | Yes | Yes | Yes (declared) | Yes | No |
+
+Notes:
+- `Switchover (verified)` for `replication` / `semisync` covers the OpsRequest path with bounded role transition. The action is implemented in `cmpd-replication.yaml`, `cmpd-replication-merged.yaml`, and `cmpd-semisync.yaml`.
+- `Configure (declared)` means the chart wires `ParametersDefinition` and `reconfigure.exec` plus the `replicationMode` synthetic-parameter mapper. Only a subset of parameters has end-to-end runtime evidence today, so per-parameter coverage is "declared" until a parameter is exercised in a recorded test artifact.
 
 ### Versions
 
-| Versions |
-|----------|
-| 10.6.15 |
+`ComponentVersion` lists multiple release tags, but only `10.6.15` (standalone) and `11.4.10` (replication / semisync / galera) currently have an evidence-supported install + smoke chain. Other tags listed in `cmpv.yaml` are API-compatible but unproven; treat them as "declared but unverified":
+
+| Topology | Verified release | Declared but unproven |
+|---|---|---|
+| standalone | 10.6.15 | — |
+| replication / semisync / replication-merged | 11.4.10 | 11.4.5, 11.4.8, 11.8.4, 12.0.2 |
+| galera | 11.4.10 | 11.4.5, 11.4.8 |
+
+### Extended capability declarations (claim-only acceptance)
+
+The following capabilities are **not declared** by the MariaDB chart today. Treat them as "not supported" rather than "untested":
+
+- Backup encryption (passphrase, method formatVersion, snapshot artifact, repository artifact)
+- Selective backup / restore, `RestoreKubeResources`, cross-topology / cross-sharding restore, multi-target `sourceBackupTargetName`
+- PITR / continuous backup
+- Sharding
+- Proxy in front of the engine
+- Host network / `hostAliases` / `hostPort` / advertised LoadBalancer address
+- Cross-namespace `ServiceRef`
+
+The following capability is declared **only for the `standalone` topology** and is not yet wired into multi-instance topologies. Multi-instance + TLS should be treated as "not declared, not supported" until the corresponding `cmpd-replication*.yaml`, `cmpd-semisync.yaml`, or `cmpd-galera.yaml` declares the TLS spec and a topology-aware evidence chain is recorded:
+
+- TLS-only / mutual TLS / certificate mounting at the engine layer
 
 ## Prerequisites
 
