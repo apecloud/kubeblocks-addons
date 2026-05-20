@@ -480,7 +480,10 @@
 	// The size of a bucket when `enable-region-bucket` is true.
 	"coprocessor-v2.region-bucket-size": string | *"50MiB"
 
-	// rocksdb config is currently removed due to its complexity to parse
+	// most rocksdb config is currently removed due to its complexity to parse
+
+	// The total number of files that RocksDB can open
+	"rocksdb.max-open-files": int & >=-1 | *20000
 
 	// The number of background threads in RocksDB. When you modify the size of the RocksDB thread pool, refer to [Performance tuning for TiKV thread pools](/tune-tikv-thread-performance.md#performance-tuning-for-tikv-thread-pools).
 	"raftdb.max-background-jobs": int & >=2 | *4
@@ -489,7 +492,7 @@
 	"raftdb.max-sub-compactions": int & >=1 | *2
 
 	// The total number of files that RocksDB can open
-	"raftdb.max-open-files": int & >=-1 | *40960
+	"raftdb.max-open-files": int & >=-1 | *20000
 
 	// The maximum size of a RocksDB Manifest file. Unit: B|KiB|MiB|GiB
 	"raftdb.max-manifest-file-size": string | *"20MiB"
