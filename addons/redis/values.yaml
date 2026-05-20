@@ -140,7 +140,7 @@ image:
     reshardTag: 2.0.26-alpha.16
   syncer:
     repository: apecloud/syncer
-    tag: 0.1.0-alpha.1
+    tag: 0.7.4
 
 ceImage:
   registry:
