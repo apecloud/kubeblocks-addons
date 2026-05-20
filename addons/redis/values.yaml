@@ -49,6 +49,7 @@ redisVersions:
       - version: "6.2.18"
         imageTag: "6.2.6-v19"
       - version: "6.2.19"
+        imageTag: "6.2.6-v20"
       - version: "6.2.22"
         imageTag: "6.2.22"
         repository: "redis"
