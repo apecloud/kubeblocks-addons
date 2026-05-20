@@ -386,6 +386,22 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          # KB_POD_NAME / KB_POD_UID are required by check-role.sh so the
+          # GlobalRoleSnapshot JSON it emits in sentinel topology carries
+          # podName and podUid that match the live pod. The controller's
+          # parseGlobalRoleSnapshot path ignores pairs whose podUid does
+          # not match the current pod UID, so an empty podUid would make
+          # the authoritative report silently dropped.
+          - name: KB_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: KB_POD_UID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.uid
           - name: KB_HOST_IP
             valueFrom:
               fieldRef:
