@@ -121,6 +121,8 @@ spec:
       value: "true"
   {{- end }}
     ## the name of current cluster instance
+    - name: REDIS_DIAL_TIMEOUT
+      value: "2"
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
@@ -324,7 +326,7 @@ spec:
   lifecycleActions:
     roleProbe:
       periodSeconds: 1
-      timeoutSeconds: 1
+      timeoutSeconds: 3
       exec:
         env:
           - name: CURRENT_POD_NAME
