@@ -173,7 +173,7 @@ spec:
             mountPath: /kb_tools
           - name: metricslog
             mountPath: /home/admin/obagent/log
-        workingDir: /home/admin/obagento
+        workingDir: /home/admin/obagent
     volumes:
       - name: metricslog
         emptyDir:
