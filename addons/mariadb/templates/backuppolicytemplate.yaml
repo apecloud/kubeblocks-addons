@@ -8,8 +8,15 @@ spec:
   serviceKind: Mariadb
   compDefs:
     - {{ include "mariadb.cmpdRegexpPattern" . }}
+  # The ActionSet uses `mariadb-backup --safe-slave-backup --slave-info`,
+  # designed to back up a replica without disrupting the writable primary.
+  # For replication / semisync topologies the secondary role is the
+  # preferred backup target; if no secondary is available KubeBlocks
+  # falls back to the primary so a standalone cluster (single pod with
+  # role=primary) still has a backup target.
   target:
-    role: ""
+    role: secondary
+    fallbackRole: primary
     account: root
   backupMethods:
     - name: mariadb-backup
