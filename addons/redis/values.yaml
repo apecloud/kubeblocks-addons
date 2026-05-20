@@ -49,6 +49,7 @@ redisVersions:
       - version: "6.2.18"
         imageTag: "6.2.6-v19"
       - version: "6.2.19"
+        imageTag: "6.2.6-v20"
       - version: "6.2.22"
         imageTag: "6.2.22"
         repository: "redis"
@@ -155,7 +156,7 @@ dbctlImage:
   registry:
   repository: apecloud/dbctl
   pullPolicy: IfNotPresent
-  tag: 0.2.2
+  tag: 0.2.3
 
 redisTwemproxyImage:
   # if the value of redisTwemproxyImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default

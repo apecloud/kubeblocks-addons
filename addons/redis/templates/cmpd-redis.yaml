@@ -120,6 +120,8 @@ spec:
     - name: IS_REDIS8
       value: "true"
   {{- end }}
+    - name: REDIS_DIAL_TIMEOUT
+      value: "2"
     ## the name of current cluster instance
     - name: CLUSTER_NAME
       valueFrom:
@@ -324,7 +326,7 @@ spec:
   lifecycleActions:
     roleProbe:
       periodSeconds: 1
-      timeoutSeconds: 1
+      timeoutSeconds: 3
       exec:
         env:
           - name: CURRENT_POD_NAME
