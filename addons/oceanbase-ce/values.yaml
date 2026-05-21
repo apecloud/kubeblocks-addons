@@ -15,10 +15,5 @@ image:
     repository: apecloud/obtools
     tag: 4.2.1
 
-roleProbe:
-  failureThreshold: 3
-  periodSeconds: 2
-  timeoutSeconds: 2
-
 nameOverride: ""
 fullnameOverride: ""
