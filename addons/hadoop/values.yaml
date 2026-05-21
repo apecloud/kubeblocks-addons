@@ -1,0 +1,42 @@
+# Hadoop common image (used by initContainers via ComponentVersion.hadoop-common)
+image:
+  common:
+    registry: docker.io
+    repository: apecloud/hadoop-common
+    tag: "v3.3.4"
+    pullPolicy: IfNotPresent
+
+# Component-specific images
+core:
+  image:
+    registry: docker.io
+    repository: apecloud/hadoop-common
+    tag: "v3.3.4-1.0.0"
+    pullPolicy: IfNotPresent
+
+journalNode:
+  image:
+    registry: docker.io
+    repository: apecloud/hdfs-journalnode
+    tag: "v3.3.4-1.0.0"
+    pullPolicy: IfNotPresent
+
+nameNode:
+  image:
+    registry: docker.io
+    repository: apecloud/hdfs-namenode
+    tag: "v3.3.4-1.0.0"
+    pullPolicy: IfNotPresent
+
+dataNode:
+  image:
+    registry: docker.io
+    repository: apecloud/hdfs-datanode
+    tag: "v3.3.4-1.0.0"
+    pullPolicy: IfNotPresent
+
+# kblib extension config
+extra:
+  disableExporter: true
+  terminationPolicy: Delete
+  clusterDomain: cluster.local

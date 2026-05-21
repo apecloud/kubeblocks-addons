@@ -1,0 +1,15 @@
+releases:
+  - version: 1.1.0-alpha.0
+    notes:
+      en: >
+        Migrated cluster chart from KubeBlocks 0.9 to 1.1:
+        - clusterDef: hadoop (was clusterDefinitionRef: hadoop-hdfs)
+        - topology: ha-cluster (was hadoop-ha-cluster)
+        - kblib 0.1.2 (was kblib-v2 0.1.1)
+        - terminationPolicy moved to extra block
+      zh: >
+        从 KubeBlocks 0.9 迁移至 1.1 的集群 Chart:
+        - clusterDef: hadoop (原 clusterDefinitionRef: hadoop-hdfs)
+        - topology: ha-cluster (原 hadoop-ha-cluster)
+        - kblib 0.1.2 (原 kblib-v2 0.1.1)
+        - terminationPolicy 移入 extra 块

@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "replicas": {
+      "type": "object",
+      "properties": {
+        "core": { "type": "integer", "default": 1, "minimum": 1 },
+        "journalnode": { "type": "integer", "default": 3, "minimum": 3 },
+        "namenode": { "type": "integer", "default": 2, "minimum": 2, "maximum": 2 },
+        "datanode": { "type": "integer", "default": 1, "minimum": 1 }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "core": { "$ref": "#/definitions/resourceSchema" },
+        "journalnode": { "$ref": "#/definitions/resourceSchema" },
+        "namenode": { "$ref": "#/definitions/resourceSchema" },
+        "datanode": { "$ref": "#/definitions/resourceSchema" }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "properties": {
+        "journalnode": { "type": "string", "default": "10Gi" },
+        "namenode": { "type": "string", "default": "10Gi" },
+        "datanode": { "type": "string", "default": "30Gi" }
+      }
+    },
+    "serviceRefs": {
+      "type": "object",
+      "properties": {
+        "hadoopZookeeper": {
+          "type": "object",
+          "properties": {
+            "namespace": { "type": "string", "default": "default" },
+            "clusterServiceSelector": {
+              "type": "object",
+              "properties": {
+                "cluster": { "type": "string", "default": "zkcluster" },
+                "service": {
+                  "type": "object",
+                  "properties": {
+                    "component": { "type": "string", "default": "zookeeper" },
+                    "service": { "type": "string", "default": "headless" },
+                    "port": { "type": "string", "default": "client" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "resourceSchema": {
+      "type": "object",
+      "properties": {
+        "requests": {
+          "type": "object",
+          "properties": {
+            "cpu": { "type": "string", "default": "0.5" },
+            "memory": { "type": "string", "default": "0.5Gi" }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "cpu": { "type": "string", "default": "0.5" },
+            "memory": { "type": "string", "default": "2Gi" }
+          }
+        }
+      }
+    }
+  }
+}

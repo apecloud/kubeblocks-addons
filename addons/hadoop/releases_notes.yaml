@@ -1,0 +1,19 @@
+releases:
+  - version: 1.1.0-alpha.0
+    notes:
+      en: >
+        Migrated from KubeBlocks 0.9 to 1.1:
+        - CRD upgrades: ConfigConstraint → ParametersDefinition + ParamConfigRenderer
+        - API upgrades: v1alpha1 → v1
+        - SSOT image management with hadoop.commonImage helper
+        - Shared ConfigMap pattern restored for cross-component core-site.xml
+      zh: >
+        从 KubeBlocks 0.9 迁移至 1.1:
+        - CRD 升级: ConfigConstraint → ParametersDefinition + ParamConfigRenderer
+        - API 升级: v1alpha1 → v1
+        - SSOT 镜像管理 (hadoop.commonImage helper)
+        - 恢复共享 ConfigMap 模式实现跨组件 core-site.xml 管理
+  - version: 0.9.0
+    notes:
+      en: Initial HDFS HA cluster support on KubeBlocks 0.9.
+      zh: 在 KubeBlocks 0.9 上的初始 HDFS HA 集群支持。
