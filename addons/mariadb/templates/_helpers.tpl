@@ -220,6 +220,16 @@ Define versioned replication script configmap name.
 {{- end -}}
 
 {{/*
+Define galera script configmap name. Single source for the galera scripts CM
+referenced from configmap-scripts-galera.yaml and cmpd-galera.yaml. Per
+docs/addon-api/01-define-scope.md the resource name must come from one helper
+so that multiple template files do not each stitch the same literal.
+*/}}
+{{- define "mariadb.galera.scriptConfigMapName" -}}
+mariadb-galera-scripts
+{{- end -}}
+
+{{/*
 Generate reloader scripts configmap data
 */}}
 {{- define "mariadb.extend.reload.scripts" -}}

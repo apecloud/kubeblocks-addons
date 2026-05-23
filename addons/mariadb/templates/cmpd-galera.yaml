@@ -44,8 +44,8 @@ spec:
       externalManaged: true
       {{- include "mariadb.config.reconfigureAction" . | nindent 6 }}
   scripts:
-    - name: mariadb-galera-scripts
-      template: mariadb-galera-scripts
+    - name: {{ include "mariadb.galera.scriptConfigMapName" . }}
+      template: {{ include "mariadb.galera.scriptConfigMapName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
