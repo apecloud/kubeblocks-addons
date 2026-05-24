@@ -1513,6 +1513,27 @@ spec:
                 echo "WARNING: failed to repair kubeblocks health check replication error; keeping roleProbe pending."
                 return 1
               fi
+              # alpha.92 v2 (Helen 2026-05-25, live N=1 first-blocker from
+              # vcluster mariadb-test5 kubeblocks-tests async cluster
+              # mdb-async-82190): after STOP SLAVE SQL_THREAD + DELETE
+              # FROM kubeblocks.kb_health_check the SQL thread relay log
+              # position is still pointing at the Update_rows_v1 event
+              # for the row we just cleared. START SLAVE SQL_THREAD
+              # without skipping re-applies the same event and hits the
+              # same 1032 / HA_ERR_KEY_NOT_FOUND, infinite loop. Skip 1
+              # event so the SQL thread advances past the offending
+              # Update_rows_v1; the just-cleared local table will be
+              # re-populated by the next Insert_rows or Update_rows event
+              # from the primary's kubeblocks.kb_health_check write loop
+              # (which fires every few seconds via KB controller probe).
+              # SET GLOBAL sql_slave_skip_counter requires SUPER which
+              # user-facing root no longer has after alpha.60 admin
+              # bypass revoke; INTERNAL_LOCAL uses kb_internal_root which
+              # retains ALL PRIVILEGES so it can execute SET GLOBAL.
+              # The skip is bounded to one event: if a different binlog
+              # event also fails afterwards the next repair cycle will
+              # catch it; we do not skip more than one event per call.
+              "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL sql_slave_skip_counter = 1;" 2>/dev/null || true # tier=error-recovery
               "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null || true # tier=error-recovery
               return 0
             }
