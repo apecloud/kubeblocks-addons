@@ -727,6 +727,23 @@ Describe "Valkey Check-Role Bash Script Tests"
         The status should be success
         The stdout should include "/dev/null"
       End
+
+      It "writes the diagnostic record as a single JSONL line per probe call"
+        # Edward msg=be0a283c blocker: per-sentinel objects must be
+        # comma-separated in the same line, and the final printf must
+        # not embed newlines inside the array literal. Without this,
+        # off-line tools cannot split records 1:1 against controller
+        # event payloads.
+        When call grep -F '"sentinels":[%s]}' "${check_role_script}"
+        The status should be success
+        The stdout should include "sentinels"
+      End
+
+      It "uses a comma separator between per-sentinel array elements"
+        When call grep -F '__debug_sep=","' "${check_role_script}"
+        The status should be success
+        The stdout should include "__debug_sep"
+      End
     End
   End
 

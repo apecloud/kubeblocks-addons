@@ -177,12 +177,14 @@ if [ "${VALKEY_CHECK_ROLE_DEBUG:-0}" = "1" ]; then
   __check_role_debug_log="/tmp/check-role-debug.log"
 fi
 __debug_records=""
+__debug_sep=""
 __debug_append() {
-  # Append a single line; build incrementally to avoid one fork per
-  # sentinel for the common case where DEBUG is off.
+  # Build the per-sentinel JSON array element on a single line so the
+  # final record stays JSONL-parseable. Comma-separate elements; the
+  # first append uses an empty separator, every subsequent one uses ",".
   [ -z "${__check_role_debug_log}" ] && return 0
-  __debug_records="${__debug_records}${1}
-"
+  __debug_records="${__debug_records}${__debug_sep}${1}"
+  __debug_sep=","
 }
 __sentinel_records=""
 engine_version=""
@@ -260,7 +262,7 @@ if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
           *,o_down,*)               __drop_reason="flags_o_down" ;;
         esac
       fi
-      __debug_append "  {\"fqdn\":\"${s}\",\"epoch\":\"${epoch}\",\"runid\":\"${runid}\",\"flags\":\"${flags}\",\"drop\":\"${__drop_reason}\"}"
+      __debug_append "{\"fqdn\":\"${s}\",\"epoch\":\"${epoch}\",\"runid\":\"${runid}\",\"flags\":\"${flags}\",\"drop\":\"${__drop_reason}\"}"
       if [ -n "${__drop_reason}" ]; then
         continue
       fi
@@ -325,13 +327,15 @@ __quorum_emit_role="${authoritative_role}"
 if [ -n "${__check_role_debug_log}" ]; then
   __debug_ts=$(date -u +%Y-%m-%dT%H:%M:%S.%N%z 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)
   __debug_pod="${CURRENT_POD_NAME:-${HOSTNAME:-unknown}}"
-  __debug_sentinels="${__debug_records%$'\n'}"
   __debug_versioned_payload=""
   if [ -n "${engine_version}" ] && [ -n "${sentinel_master_runid}" ]; then
     __debug_versioned_payload=",\"emit_epoch\":\"${engine_version}\",\"emit_runid\":\"${sentinel_master_runid}\",\"emit_role\":\"${__quorum_emit_role}\""
   fi
+  # One probe call = one line on disk (JSONL). Per Edward msg=be0a283c:
+  # multi-line records would mis-align with controller event payloads
+  # during analysis.
   {
-    printf '{"ts":"%s","pod":"%s","local_run_id":"%s","configured_count":%s,"min_valid":%s,"valid_count":%s,"decision":"%s"%s,"sentinels":[\n%s\n]}\n' \
+    printf '{"ts":"%s","pod":"%s","local_run_id":"%s","configured_count":%s,"min_valid":%s,"valid_count":%s,"decision":"%s"%s,"sentinels":[%s]}\n' \
       "${__debug_ts}" \
       "${__debug_pod}" \
       "${local_run_id}" \
@@ -340,7 +344,7 @@ if [ -n "${__check_role_debug_log}" ]; then
       "${valid_count:-0}" \
       "${__quorum_decision_reason}" \
       "${__debug_versioned_payload}" \
-      "${__debug_sentinels}"
+      "${__debug_records}"
   } >> "${__check_role_debug_log}" 2>/dev/null || true
 fi
 
