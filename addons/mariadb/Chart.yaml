@@ -1055,8 +1055,22 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.94
+version: 1.1.1-alpha.95
 
+# alpha.95 v1 (Helen 2026-05-25, live N=1 follow-up from
+# vcluster mariadb-test5 cluster mdb-async-36884 pod-0: alpha.94
+# detector fix lands and repair_kb_health_check_replication
+# _error is invoked every 4s as expected, but pod-0 SLAVE
+# SQL_THREAD stays No. Root cause: STOP / START SLAVE SQL_THREAD
+# used LOCAL=user-facing root which lost REPLICATION SLAVE ADMIN
+# in alpha.60 admin-bypass revoke; both calls returned ERROR
+# 1227 silently swallowed by `2>/dev/null || true`. Manual repair
+# via INTERNAL_LOCAL=kb_internal_root flipped pod-0
+# Slave_SQL_Running No -> Yes within 3s) - bump from alpha.94 to
+# alpha.95 because the repair function body changes
+# (3 mariadb calls re-routed from LOCAL to INTERNAL_LOCAL). Same
+# CmpD immutability packaging-contract bump pattern.
+#
 # alpha.94 v1 (Helen 2026-05-25, live N=1 follow-up from
 # vcluster mariadb-test5 kubeblocks-tests async cluster
 # mdb-async-12644: alpha.93 skip-counter fix in
