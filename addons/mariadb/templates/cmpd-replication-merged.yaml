@@ -1524,7 +1524,31 @@ spec:
                 return 1
               fi
               prestop_watchdog_log "fresh-kb-health-check-repair label=${label}"
-              "${LOCAL[@]}" -e "STOP SLAVE SQL_THREAD;" 2>/dev/null || true # tier=error-recovery
+              # alpha.95 (Helen 2026-05-25, live N=1 follow-up from
+              # vcluster mariadb-test5 cluster mdb-async-36884 pod-0):
+              # the alpha.93 / alpha.94 chain confirmed the repair was
+              # being called but Slave_SQL_Running stayed No even after
+              # the skip-counter ran. Root cause: STOP / START SLAVE
+              # SQL_THREAD were invoked via LOCAL (user-facing root)
+              # which after alpha.60 admin-bypass revoke no longer has
+              # REPLICATION SLAVE ADMIN; both calls failed with ERROR
+              # 1227 (silently swallowed by `2>/dev/null || true`). With
+              # STOP never actually stopping the thread, SET GLOBAL
+              # sql_slave_skip_counter set the variable but the running
+              # SQL thread already failed at the offending event before
+              # the counter applied. START via LOCAL also failed silently.
+              # Net effect: repair traced repeatedly but no state change.
+              # Manual verification: same STOP / SET GLOBAL / START
+              # sequence via INTERNAL_LOCAL (kb_internal_root, retains
+              # ALL PRIVILEGES per alpha.83 v1) flipped
+              # Slave_SQL_Running from No to Yes within 3s on the live
+              # stuck pod-0.
+              #
+              # Fix: route all 3 calls (STOP / SET GLOBAL / START)
+              # through INTERNAL_LOCAL. STOP and START need REPLICATION
+              # SLAVE ADMIN; SET GLOBAL needs SUPER; user-facing root
+              # has neither.
+              "${INTERNAL_LOCAL[@]}" -e "STOP SLAVE SQL_THREAD;" 2>/dev/null || true # tier=error-recovery
               if ! with_local_read_write_for_health_check_repair "prepared-local-kb-health-check-after-replication-error"; then
                 # tier=error-recovery: repair attempt already failed; defensive
                 # locking follows mark_replication_pending and the function returns 1.
@@ -1534,28 +1558,20 @@ spec:
                 echo "WARNING: failed to repair kubeblocks health check replication error; keeping roleProbe pending."
                 return 1
               fi
-              # alpha.92 v2 (Helen 2026-05-25, live N=1 first-blocker from
-              # vcluster mariadb-test5 kubeblocks-tests async cluster
-              # mdb-async-82190): after STOP SLAVE SQL_THREAD + DELETE
-              # FROM kubeblocks.kb_health_check the SQL thread relay log
-              # position is still pointing at the Update_rows_v1 event
-              # for the row we just cleared. START SLAVE SQL_THREAD
-              # without skipping re-applies the same event and hits the
-              # same 1032 / HA_ERR_KEY_NOT_FOUND, infinite loop. Skip 1
-              # event so the SQL thread advances past the offending
-              # Update_rows_v1; the just-cleared local table will be
-              # re-populated by the next Insert_rows or Update_rows event
-              # from the primary's kubeblocks.kb_health_check write loop
-              # (which fires every few seconds via KB controller probe).
-              # SET GLOBAL sql_slave_skip_counter requires SUPER which
-              # user-facing root no longer has after alpha.60 admin
-              # bypass revoke; INTERNAL_LOCAL uses kb_internal_root which
-              # retains ALL PRIVILEGES so it can execute SET GLOBAL.
-              # The skip is bounded to one event: if a different binlog
-              # event also fails afterwards the next repair cycle will
-              # catch it; we do not skip more than one event per call.
+              # alpha.92 v2 (Helen 2026-05-25): after STOP SLAVE SQL_THREAD
+              # + DELETE FROM kubeblocks.kb_health_check the SQL thread
+              # relay log position is still pointing at the Update_rows
+              # _v1 event for the row we just cleared. START SLAVE
+              # SQL_THREAD without skipping re-applies the same event and
+              # hits the same 1032 / HA_ERR_KEY_NOT_FOUND, infinite loop.
+              # Skip 1 event so the SQL thread advances past the
+              # offending Update_rows_v1; the just-cleared local table
+              # will be re-populated by the next Insert_rows or
+              # Update_rows event from the primary's
+              # kubeblocks.kb_health_check write loop (which fires every
+              # few seconds via KB controller probe).
               "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL sql_slave_skip_counter = 1;" 2>/dev/null || true # tier=error-recovery
-              "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null || true # tier=error-recovery
+              "${INTERNAL_LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null || true # tier=error-recovery
               return 0
             }
             mariadbd_pids() {
