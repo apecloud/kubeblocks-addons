@@ -775,10 +775,20 @@ reconfigure:
 {{- end -}}
 
 {{/*
-Syncer image
+Syncer image (alpha.91, Helen 2026-05-24): use image.syncer.registry
+with docker.io default, INDEPENDENT of image.registry. The syncer
+image (apecloud/syncer:mariadb-isspromoted-fix-*) lives on docker.io
+under apecloud/, while the engine image (mariadb:11.4.10) lives at
+docker.io/mariadb. When users override image.registry to a mirror
+like apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com for engine
+images, syncer must still resolve to the registry where the
+mariadb-aware syncer tag actually exists. Falls back to
+image.registry (then docker.io) when image.syncer.registry not set,
+preserving alpha.90 behavior for installations that don't override
+registries.
 */}}
 {{- define "mariadb.syncer.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+{{ .Values.image.syncer.registry | default (.Values.image.registry | default "docker.io") }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
 {{- end -}}
 
 {{/*
