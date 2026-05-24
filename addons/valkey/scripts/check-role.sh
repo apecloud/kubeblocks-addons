@@ -165,8 +165,30 @@ done <<<"${server_info}"
 # Single `valkey-cli ... sentinel masters` invocation per sentinel attempt,
 # no pipelines, to preserve the fork-and-zombie discipline (see
 # docs/addon-probe-script-fork-and-zombie-guide.md).
+#
+# Diagnostic instrumentation: when VALKEY_CHECK_ROLE_DEBUG=1, each call
+# appends one JSON-shaped line to /tmp/check-role-debug.log inside the
+# Pod with per-sentinel raw values, filter decisions, quorum result, and
+# the emitted token. Stdout is NEVER written by this path — production
+# contract (single role token, optionally followed by `\n<uint64>`) is
+# preserved unchanged. Default off so production has zero overhead.
+__check_role_debug_log=""
+if [ "${VALKEY_CHECK_ROLE_DEBUG:-0}" = "1" ]; then
+  __check_role_debug_log="/tmp/check-role-debug.log"
+fi
+__debug_records=""
+__debug_append() {
+  # Append a single line; build incrementally to avoid one fork per
+  # sentinel for the common case where DEBUG is off.
+  [ -z "${__check_role_debug_log}" ] && return 0
+  __debug_records="${__debug_records}${1}
+"
+}
+__sentinel_records=""
 engine_version=""
 sentinel_master_runid=""
+__quorum_decision_reason=""
+__quorum_emit_role=""
 if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
   sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
   # TLS args must flow into the sentinel query path; silently dropping
@@ -214,26 +236,40 @@ if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
         fi
         [ -n "${epoch}" ] && [ -n "${runid}" ] && [ -n "${flags}" ] && break
       done <<<"${sentinel_out}"
+      __drop_reason=""
       # Validate: epoch must be uint64.
       case "${epoch}" in
-        ''|*[!0-9]*) continue ;;
+        ''|*[!0-9]*) __drop_reason="epoch_not_uint64" ;;
       esac
-      # Validate: runid must be a non-empty hex token (no fixed length).
-      case "${runid}" in
-        ''|*[!0-9a-fA-F]*) continue ;;
-      esac
-      # Validate: master flags must not include transient or failure
-      # markers. A sentinel that flags the master as failover_in_progress
-      # / force_failover / s_down / o_down is mid-transition; including
-      # its view in the quorum would mistake the transient state for
-      # consensus.
-      case ",${flags}," in
-        *,failover_in_progress,*|*,force_failover,*|*,s_down,*|*,o_down,*) continue ;;
-      esac
+      if [ -z "${__drop_reason}" ]; then
+        # Validate: runid must be a non-empty hex token (no fixed length).
+        case "${runid}" in
+          ''|*[!0-9a-fA-F]*) __drop_reason="runid_empty_or_non_hex" ;;
+        esac
+      fi
+      if [ -z "${__drop_reason}" ]; then
+        # Validate: master flags must not include transient or failure
+        # markers. A sentinel that flags the master as failover_in_progress
+        # / force_failover / s_down / o_down is mid-transition; including
+        # its view in the quorum would mistake the transient state for
+        # consensus.
+        case ",${flags}," in
+          *,failover_in_progress,*) __drop_reason="flags_failover_in_progress" ;;
+          *,force_failover,*)       __drop_reason="flags_force_failover" ;;
+          *,s_down,*)               __drop_reason="flags_s_down" ;;
+          *,o_down,*)               __drop_reason="flags_o_down" ;;
+        esac
+      fi
+      __debug_append "  {\"fqdn\":\"${s}\",\"epoch\":\"${epoch}\",\"runid\":\"${runid}\",\"flags\":\"${flags}\",\"drop\":\"${__drop_reason}\"}"
+      if [ -n "${__drop_reason}" ]; then
+        continue
+      fi
       quorum_keys+=("${epoch}:${runid}")
     done
     valid_count=${#quorum_keys[@]}
-    if [ "${valid_count}" -ge "${min_valid}" ]; then
+    if [ "${valid_count}" -lt "${min_valid}" ]; then
+      __quorum_decision_reason="insufficient_valid"
+    else
       first_key="${quorum_keys[0]}"
       all_agree=1
       for k in "${quorum_keys[@]}"; do
@@ -245,9 +281,16 @@ if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
       if [ "${all_agree}" = 1 ]; then
         engine_version="${first_key%%:*}"
         sentinel_master_runid="${first_key#*:}"
+        __quorum_decision_reason="versioned"
+      else
+        __quorum_decision_reason="split_view"
       fi
     fi
+  else
+    __quorum_decision_reason="no_sentinel_configured"
   fi
+else
+  __quorum_decision_reason="no_sentinel_env"
 fi
 set_xtrace_when_ut_mode_false
 
@@ -266,6 +309,39 @@ if [ -n "${engine_version}" ] && [ -n "${sentinel_master_runid}" ]; then
   else
     authoritative_role="secondary"
   fi
+fi
+__quorum_emit_role="${authoritative_role}"
+
+# Write the diagnostic record (if VALKEY_CHECK_ROLE_DEBUG=1) to a Pod-
+# local file. Stdout is left untouched — production roleProbe contract
+# is preserved. Per Bob2 + Edward 2026-05-24 review:
+#   - debug never writes to stdout (would corrupt the role token)
+#   - per-call line includes wall timestamp, pod identity, local
+#     run_id, configured/min_valid/valid counts, per-sentinel raw
+#     (epoch, runid, flags) plus filter drop reason, final decision
+#     (versioned | legacy reason), emitted role + epoch.
+# Output is a JSON-shaped one-liner so it stays grep-friendly while
+# preserving the per-sentinel structure for later analysis.
+if [ -n "${__check_role_debug_log}" ]; then
+  __debug_ts=$(date -u +%Y-%m-%dT%H:%M:%S.%N%z 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)
+  __debug_pod="${CURRENT_POD_NAME:-${HOSTNAME:-unknown}}"
+  __debug_sentinels="${__debug_records%$'\n'}"
+  __debug_versioned_payload=""
+  if [ -n "${engine_version}" ] && [ -n "${sentinel_master_runid}" ]; then
+    __debug_versioned_payload=",\"emit_epoch\":\"${engine_version}\",\"emit_runid\":\"${sentinel_master_runid}\",\"emit_role\":\"${__quorum_emit_role}\""
+  fi
+  {
+    printf '{"ts":"%s","pod":"%s","local_run_id":"%s","configured_count":%s,"min_valid":%s,"valid_count":%s,"decision":"%s"%s,"sentinels":[\n%s\n]}\n' \
+      "${__debug_ts}" \
+      "${__debug_pod}" \
+      "${local_run_id}" \
+      "${configured_count:-0}" \
+      "${min_valid:-0}" \
+      "${valid_count:-0}" \
+      "${__quorum_decision_reason}" \
+      "${__debug_versioned_payload}" \
+      "${__debug_sentinels}"
+  } >> "${__check_role_debug_log}" 2>/dev/null || true
 fi
 
 # printf %s prints the role token with no trailing newline, so when no

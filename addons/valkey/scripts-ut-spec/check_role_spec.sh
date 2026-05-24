@@ -429,10 +429,14 @@ Describe "Valkey Check-Role Bash Script Tests"
       It "rejects non-hex sentinel master runid via case-statement shape guard"
         # Per Edward msg=2140dce9, an empty check alone is not enough:
         # a non-empty but malformed runid (e.g. `not-a-real-runid!`)
-        # would otherwise enter the engine-version path.
-        When call grep -F "''|*[!0-9a-fA-F]*) continue ;;" "${check_role_script}"
+        # would otherwise enter the engine-version path. The production
+        # path now records the rejection reason in `__drop_reason` so
+        # the debug instrumentation can report which sentinel views were
+        # excluded; the character-set pattern lives on the right side of
+        # the `case` arm.
+        When call grep -F '__drop_reason="runid_empty_or_non_hex"' "${check_role_script}"
         The status should be success
-        The stdout should include "0-9a-fA-F"
+        The stdout should include "runid_empty_or_non_hex"
       End
     End
 
@@ -678,6 +682,50 @@ Describe "Valkey Check-Role Bash Script Tests"
         When call grep -A 8 'authoritative_role=""' "${check_role_script}"
         The status should be success
         The stdout should include "sentinel_master_runid"
+      End
+    End
+
+    Context "VALKEY_CHECK_ROLE_DEBUG diagnostic instrumentation (env-gated)"
+      # When the operator sets VALKEY_CHECK_ROLE_DEBUG=1, each call must
+      # append one JSON-shaped line to /tmp/check-role-debug.log with the
+      # raw per-sentinel readings plus the quorum decision. Stdout MUST
+      # stay on the production contract — debug must not leak into the
+      # role token under any path.
+      check_role_script="../scripts/check-role.sh"
+
+      It "is gated by VALKEY_CHECK_ROLE_DEBUG env (default off)"
+        When call grep -F 'VALKEY_CHECK_ROLE_DEBUG' "${check_role_script}"
+        The status should be success
+        The stdout should include "VALKEY_CHECK_ROLE_DEBUG"
+      End
+
+      It "writes the diagnostic record to a Pod-local file under /tmp"
+        When call grep -F '__check_role_debug_log="/tmp/check-role-debug.log"' "${check_role_script}"
+        The status should be success
+        The stdout should include "/tmp/check-role-debug.log"
+      End
+
+      It "records both the per-sentinel raw fields and the quorum decision reason"
+        # We rely on these names so off-line analysis tooling has a stable
+        # contract to grep against.
+        When call grep -E '"decision":"|__quorum_decision_reason' "${check_role_script}"
+        The status should be success
+        The stdout should include "decision"
+      End
+
+      It "captures the configured / min_valid / valid counts in the record"
+        When call grep -F 'configured_count' "${check_role_script}"
+        The status should be success
+        The stdout should include "configured_count"
+      End
+
+      It "redirects the debug write to /dev/null on failure (won't surface in roleProbe)"
+        # Belt-and-braces: the writer must redirect errors so a missing
+        # /tmp permission never leaks bytes to stdout that would corrupt
+        # the role token.
+        When call grep -F '>> "${__check_role_debug_log}" 2>/dev/null || true' "${check_role_script}"
+        The status should be success
+        The stdout should include "/dev/null"
       End
     End
   End
