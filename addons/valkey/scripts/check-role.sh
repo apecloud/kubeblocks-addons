@@ -12,10 +12,21 @@
 #   Only the first token becomes the Pod role label.
 #
 #   For Valkey (Redis-compatible):
-#     INFO replication → role:master  →  print "primary"  (first token)
-#     INFO replication → role:slave   →  print "secondary" (first token)
-#   Then, when reachable, the highest sentinel config-epoch is appended as
-#   the second token, separated by a newline.
+#     - When Sentinel returns a clean uint64 `config-epoch` AND a non-
+#       empty hex master `runid`: the role token comes from a Sentinel-
+#       authoritative gate, not from local INFO alone. `primary` is
+#       emitted ONLY when local INFO=master AND local `INFO server`
+#       `run_id` equals the Sentinel master `runid`. Otherwise emit
+#       `secondary`. The matched Sentinel's `config-epoch` is appended
+#       as the whitespace-separated second token. Local INFO=master on
+#       a deposed primary is treated as `secondary` so two pods cannot
+#       both emit `primary <same-epoch>` after a sentinel-driven
+#       failover.
+#     - When Sentinel is unreachable / the password is missing / the
+#       parsed epoch is non-numeric / the parsed runid is empty or
+#       malformed: fall back to legacy single-token output (local INFO
+#       → `primary` for `role:master`, `secondary` for `role:slave`).
+#       The controller then uses its existing EventTime gate.
 #
 #   Using valkey-cli (not redis-cli) because Valkey ships its own CLI.
 #   The -h 127.0.0.1 ensures we hit this pod's own server.
@@ -181,6 +192,16 @@ if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
     done <<<"${sentinel_out}"
     case "${epoch}" in
       ''|*[!0-9]*) continue ;;
+    esac
+    # Sentinel runid must be a non-empty hex token. Anything else is a
+    # malformed authority — wrapping it into `primary <epoch>` (or even
+    # `secondary <epoch>` against a malformed peer) would re-create the
+    # round-3 dual-primary race the gate is supposed to close. The shape
+    # guard is purely on the character set; we don't pin length so the
+    # check stays resilient if Valkey/Sentinel ever changes the runid
+    # encoding.
+    case "${runid}" in
+      ''|*[!0-9a-fA-F]*) continue ;;
     esac
     if [ "${epoch}" -gt "${best_epoch}" ]; then
       best_epoch="${epoch}"

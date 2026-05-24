@@ -425,6 +425,65 @@ Describe "Valkey Check-Role Bash Script Tests"
         The status should be success
         The stdout should include "info server"
       End
+
+      It "rejects non-hex sentinel master runid via case-statement shape guard"
+        # Per Edward msg=2140dce9, an empty check alone is not enough:
+        # a non-empty but malformed runid (e.g. `not-a-real-runid!`)
+        # would otherwise enter the engine-version path.
+        When call grep -F "''|*[!0-9a-fA-F]*) continue ;;" "${check_role_script}"
+        The status should be success
+        The stdout should include "0-9a-fA-F"
+      End
+    End
+
+    Context "non-empty malformed sentinel runid is rejected like an empty one"
+      # Mirror the production case-statement directly so the decision
+      # cell stays pinned: a non-hex runid must be treated the same as
+      # empty by the per-sentinel selector, so the script never enters
+      # the engine-version path with a malformed authority.
+      runid_passes_shape_guard() {
+        local runid="$1"
+        case "${runid}" in
+          ''|*[!0-9a-fA-F]*) printf "REJECT" ;;
+          *) printf "ACCEPT" ;;
+        esac
+      }
+
+      It "accepts a clean lowercase hex runid"
+        When call runid_passes_shape_guard "aaaaaaaa1111bbbb2222cccc3333dddd44445555"
+        The status should be success
+        The stdout should eq "ACCEPT"
+      End
+
+      It "accepts a clean uppercase hex runid"
+        When call runid_passes_shape_guard "AAAA1111BBBB2222"
+        The status should be success
+        The stdout should eq "ACCEPT"
+      End
+
+      It "rejects empty runid (legacy fallback path)"
+        When call runid_passes_shape_guard ""
+        The status should be success
+        The stdout should eq "REJECT"
+      End
+
+      It "rejects non-hex characters (legacy fallback path)"
+        When call runid_passes_shape_guard "not-a-real-runid!"
+        The status should be success
+        The stdout should eq "REJECT"
+      End
+
+      It "rejects mixed hex with one stray non-hex char (legacy fallback path)"
+        When call runid_passes_shape_guard "abcd1234g"
+        The status should be success
+        The stdout should eq "REJECT"
+      End
+
+      It "rejects runid with embedded whitespace (legacy fallback path)"
+        When call runid_passes_shape_guard "abcd 1234"
+        The status should be success
+        The stdout should eq "REJECT"
+      End
     End
   End
 
