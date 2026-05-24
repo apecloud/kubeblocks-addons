@@ -1055,8 +1055,23 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.93
+version: 1.1.1-alpha.94
 
+# alpha.94 v1 (Helen 2026-05-25, live N=1 follow-up from
+# vcluster mariadb-test5 kubeblocks-tests async cluster
+# mdb-async-12644: alpha.93 skip-counter fix in
+# repair_kb_health_check_replication_error landed but pod-0 SQL
+# thread still stuck on Error 1032 because
+# slave_status_has_kb_health_check_repairable_error only
+# whitelisted 1062 / 1146 - 1032 never triggered the repair
+# function so the skip counter never ran. Adds 1032 to the
+# repairable error class. Verified live: 1032 case "Can't find
+# record in 'kb_health_check'" matches the alpha.93 fix scope
+# exactly) - bump from 1.1.1-alpha.93 to 1.1.1-alpha.94 because
+# the detector body in templates/cmpd-replication-merged.yaml
+# changes. Same KB CmpD immutability packaging-contract bump
+# pattern.
+#
 # alpha.93 v1 (Helen 2026-05-25, live N=1 first-blocker from
 # vcluster mariadb-test5 kubeblocks-tests async cluster
 # mdb-async-82190: after alpha.92 bounded-retry rejoin port, pod-0

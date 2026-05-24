@@ -1298,7 +1298,28 @@ spec:
             slave_status_has_kb_health_check_repairable_error() {
               local slave_status="$1"
               [ -n "${slave_status}" ] || return 1
+              # alpha.94 (Helen 2026-05-25): add 1032 (HA_ERR_KEY_NOT_FOUND)
+              # to repairable error class. After a clean rolling restart
+              # primary advances kb_health_check rows monotonically; pod-0
+              # may finish CHANGE MASTER + START SLAVE at a relay position
+              # where the next event is Update_rows_v1 against a row that
+              # didn't exist when pod-0 ran clear_local_kb_health_check
+              # _table during prepare_fresh_replica_for_sql_thread_start.
+              # Result: Slave_SQL_Running=No / Last_SQL_Errno=1032
+              # "Could not execute Update_rows_v1 event ... Can't find
+              # record in 'kb_health_check'". Previously the detector
+              # only recognized 1062 (duplicate entry, e.g. from previous
+              # gtid replay) and 1146 (table not found, e.g. before
+              # CREATE TABLE replicated). 1032 was the missing third
+              # class that the alpha.93 skip-counter fix targets - the
+              # fix only fires if this detector returns 0. Verified live
+              # on vcluster mariadb-test5 cluster mdb-async-12644 pod-0
+              # after CM4 back_log rolling restart: slave status shows
+              # 1032 "Can't find record in 'kb_health_check'" and the
+              # repair function was never invoked because this detector
+              # bailed at first case.
               case "${slave_status}" in
+                *"Last_SQL_Errno: 1032"* | *"Last_Errno: 1032"* | \
                 *"Last_SQL_Errno: 1062"* | *"Last_Errno: 1062"* | \
                 *"Last_SQL_Errno: 1146"* | *"Last_Errno: 1146"*) ;;
                 *) return 1 ;;
