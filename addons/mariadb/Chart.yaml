@@ -1055,8 +1055,29 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.90
+version: 1.1.1-alpha.91
 
+# alpha.91 v1 (Helen 2026-05-24, live N=1 first-blocker from
+# vcluster `mariadb-test5` kubeblocks-tests async suite, cluster
+# `mdb-async-39059`) — bump from 1.1.1-alpha.90 → 1.1.1-alpha.91
+# because templates/paramsdef.yaml mutates the
+# `mariadb-replication-merged-pd` spec (removes parametersSchema).
+# KB treats PD spec as immutable across same-chart-version upgrades
+# for the PD reconciler's OpenAPI schema generation pipeline; a
+# fresh chart version produces a new merged PD content that takes
+# effect on existing Clusters via the PD reconcile loop without
+# triggering "immutable fields" rejection. Same packaging-contract
+# bump pattern that drove alpha.85 / alpha.90 / earlier bumps.
+#
+# Behavioral change: reconfigure OpsRequests against the merged
+# replication topology now work for all 239 dynamic+static MariaDB
+# params declared in mariadb-config-effect-scope.yaml. alpha.90
+# behavior: only the 3 rpl_semi_sync_* params were accepted;
+# everything else returned "parameter X not found in parameters
+# schema" from KB validator. See templates/paramsdef.yaml comment
+# block for full root-cause + Class 4 fail-closed alternative
+# enforcement.
+#
 # alpha.90 v1 (Helen 2026-05-20, live N=1 fourth first-blocker from
 # vcluster `mariadb-test5`) — bump from 1.1.1-alpha.89 → 1.1.1-alpha.90
 # because alpha.89 commits 13/14/15/16 mutated the rendered merged
