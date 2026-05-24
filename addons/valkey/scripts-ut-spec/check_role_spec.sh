@@ -485,6 +485,201 @@ Describe "Valkey Check-Role Bash Script Tests"
         The stdout should eq "REJECT"
       End
     End
+
+    Context "v3 quorum across configured sentinels (Edward+Bob2 sign-off contract)"
+      # The roleProbe must not emit `<role> <epoch>` while Sentinels are
+      # in a split-view at the same config-epoch. The quorum gate filters
+      # each sentinel's response by (uint64 epoch, hex runid, no
+      # transient/failure flags), then requires a strict majority of the
+      # CONFIGURED sentinel count to fall in a single (epoch, runid)
+      # group. Otherwise fall back to legacy single-token output so the
+      # controller stays on its EventTime path and the Pod annotation is
+      # not advanced to `engine:N` prematurely.
+
+      # Compute strict majority of total configured sentinel count, NOT
+      # of reachable/valid count.
+      min_valid_for() {
+        local total="$1"
+        printf "%s" "$(( total / 2 + 1 ))"
+      }
+
+      # Encode a list of (epoch, runid, flags) triples (one per sentinel
+      # entry, "skip" for unreachable) and decide quorum: emit either
+      # `EMIT <epoch>:<runid>` or `LEGACY` plus a diagnostic suffix.
+      quorum_decide() {
+        local total="$1"; shift
+        local min_valid
+        min_valid=$(min_valid_for "${total}")
+        local entry epoch runid flags
+        local -a keys=()
+        for entry in "$@"; do
+          # skip = unreachable sentinel
+          if [ "${entry}" = "skip" ]; then
+            continue
+          fi
+          IFS='|' read -r epoch runid flags <<< "${entry}"
+          case "${epoch}" in
+            ''|*[!0-9]*) continue ;;
+          esac
+          case "${runid}" in
+            ''|*[!0-9a-fA-F]*) continue ;;
+          esac
+          case ",${flags}," in
+            *,failover_in_progress,*|*,force_failover,*|*,s_down,*|*,o_down,*) continue ;;
+          esac
+          keys+=("${epoch}:${runid}")
+        done
+        local valid_count=${#keys[@]}
+        if [ "${valid_count}" -lt "${min_valid}" ]; then
+          printf "LEGACY"
+          return 0
+        fi
+        local first="${keys[0]}"
+        local k
+        for k in "${keys[@]}"; do
+          if [ "${k}" != "${first}" ]; then
+            printf "LEGACY"
+            return 0
+          fi
+        done
+        printf "EMIT %s" "${first}"
+        return 0
+      }
+
+      It "3/3 sentinels agree on a single (epoch, runid) → versioned (pre)"
+        When call quorum_decide 3 "16|3119abcd|master" "16|3119abcd|master" "16|3119abcd|master"
+        The status should be success
+        The stdout should eq "EMIT 16:3119abcd"
+      End
+
+      It "3/3 sentinels agree on the converged post-failover view → versioned (post3+)"
+        When call quorum_decide 3 "17|00d5beef|master" "17|00d5beef|master" "17|00d5beef|master"
+        The status should be success
+        The stdout should eq "EMIT 17:00d5beef"
+      End
+
+      It "post0 view: 2 old-quorum (epoch16) sentinels + 1 partial new sentinel (empty runid) → versioned on the still-stable OLD quorum"
+        # At the very start of the failover, two sentinels still believe
+        # the old master at epoch 16, and one has just begun voting for
+        # the new master at epoch 17 with the runid not yet filled. The
+        # invalid third entry is dropped; the remaining two-of-three
+        # quorum still authorities the OLD (epoch, runid) which is the
+        # current cluster state. Emitting at this point is safe because
+        # the controller's Pod annotation is already at engine:16, so
+        # the same-version refresh is a no-op.
+        When call quorum_decide 3 "16|3119abcd|master" "16|3119abcd|master" "17||master"
+        The status should be success
+        The stdout should eq "EMIT 16:3119abcd"
+      End
+
+      It "post1/post2 split view: old master with failover_in_progress flag is dropped, two new master views disagree on runid (one empty) → legacy"
+        When call quorum_decide 3 "17|3119abcd|master,failover_in_progress,force_failover" "17||master" "17|00d5beef|master"
+        The status should be success
+        The stdout should eq "LEGACY"
+      End
+
+      It "majority of configured (2 of 3) agree, third invalid (empty runid) → versioned"
+        When call quorum_decide 3 "17|00d5beef|master" "17|00d5beef|master" "17||master"
+        The status should be success
+        The stdout should eq "EMIT 17:00d5beef"
+      End
+
+      It "majority of configured (2 of 3) agree, third invalid (non-numeric epoch) → versioned"
+        When call quorum_decide 3 "17|00d5beef|master" "17|00d5beef|master" "abc|abc|master"
+        The status should be success
+        The stdout should eq "EMIT 17:00d5beef"
+      End
+
+      It "majority of configured (2 of 3) agree, third invalid (failover_in_progress flag) → versioned"
+        When call quorum_decide 3 "17|00d5beef|master" "17|00d5beef|master" "17|deadbeef|master,failover_in_progress"
+        The status should be success
+        The stdout should eq "EMIT 17:00d5beef"
+      End
+
+      It "only 1 valid of 3 configured → legacy (single-sentinel cannot self-quorum)"
+        When call quorum_decide 3 "17|00d5beef|master" "skip" "skip"
+        The status should be success
+        The stdout should eq "LEGACY"
+      End
+
+      It "2 valid at SAME epoch but DIFFERENT runid → legacy (master identity split)"
+        When call quorum_decide 3 "17|00d5beef|master" "17|deadbeef|master" "17||master"
+        The status should be success
+        The stdout should eq "LEGACY"
+      End
+
+      It "2 valid at DIFFERENT epochs → legacy (epoch split)"
+        When call quorum_decide 3 "17|00d5beef|master" "16|3119abcd|master" "skip"
+        The status should be success
+        The stdout should eq "LEGACY"
+      End
+
+      It "all 3 sentinels unreachable → legacy"
+        When call quorum_decide 3 "skip" "skip" "skip"
+        The status should be success
+        The stdout should eq "LEGACY"
+      End
+
+      It "5-sentinel configured: 3 agree (majority) → versioned even if 2 invalid"
+        When call quorum_decide 5 "17|00d5beef|master" "17|00d5beef|master" "17|00d5beef|master" "17||master" "skip"
+        The status should be success
+        The stdout should eq "EMIT 17:00d5beef"
+      End
+
+      It "5-sentinel configured: 2 agree (below majority of 3) → legacy"
+        When call quorum_decide 5 "17|00d5beef|master" "17|00d5beef|master" "17||master" "skip" "skip"
+        The status should be success
+        The stdout should eq "LEGACY"
+      End
+
+      It "min_valid is floor(total/2)+1, not ceil(total/2)"
+        When call min_valid_for 3
+        The status should be success
+        The stdout should eq "2"
+      End
+
+      It "min_valid for 4 configured is 3 (strict majority)"
+        When call min_valid_for 4
+        The status should be success
+        The stdout should eq "3"
+      End
+
+      It "min_valid for 5 configured is 3"
+        When call min_valid_for 5
+        The status should be success
+        The stdout should eq "3"
+      End
+    End
+
+    Context "v3 grep-level assertions on the production script"
+      check_role_script="../scripts/check-role.sh"
+
+      It "computes min_valid as configured_count/2+1"
+        When call grep -F 'min_valid=$((configured_count / 2 + 1))' "${check_role_script}"
+        The status should be success
+        The stdout should include "configured_count"
+      End
+
+      It "drops sentinel views with transient/failure flags from quorum"
+        When call grep -F 'failover_in_progress' "${check_role_script}"
+        The status should be success
+        The stdout should include "failover_in_progress"
+      End
+
+      It "captures sentinel flags alongside config-epoch and runid"
+        When call grep -F 'flags_marker' "${check_role_script}"
+        The status should be success
+        The stdout should include "flags_marker"
+      End
+
+      It "decides primary token from quorum runid match, not local INFO=master"
+        # The block that sets authoritative_role must only compare
+        # local_run_id with sentinel_master_runid, no role_line check.
+        When call grep -A 8 'authoritative_role=""' "${check_role_script}"
+        The status should be success
+        The stdout should include "sentinel_master_runid"
+      End
+    End
   End
 
   Describe "fork-safety contract — no pipeline parsing of INFO replication"
