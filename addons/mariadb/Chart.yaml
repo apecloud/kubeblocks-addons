@@ -1055,8 +1055,41 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.92
+version: 1.1.1-alpha.93
 
+# alpha.93 v1 (Helen 2026-05-25, live N=1 first-blocker from
+# vcluster mariadb-test5 kubeblocks-tests async cluster
+# mdb-async-82190: after alpha.92 bounded-retry rejoin port, pod-0
+# successfully reaches the new-slave-config path AND starts SLAVE
+# IO/SQL threads. But SQL thread fails with Error 1032
+# HA_ERR_KEY_NOT_FOUND on a kubeblocks.kb_health_check
+# Update_rows_v1 event because the local kb_health_check table was
+# just cleared by the addon's repair function. The existing
+# repair function calls STOP SLAVE SQL_THREAD + DELETE + START
+# SLAVE SQL_THREAD but the SQL thread's relay log position still
+# points at the same Update_rows_v1 event, so the same error
+# repeats indefinitely; wait_for_replication_healthy times out
+# every 120s and re-tries forever) - bump from 1.1.1-alpha.92 to
+# 1.1.1-alpha.93 because templates/cmpd-replication-merged.yaml
+# mutates the repair_kb_health_check_replication_error function
+# body (adds SET GLOBAL sql_slave_skip_counter = 1 via INTERNAL_
+# LOCAL between STOP SLAVE SQL_THREAD and START SLAVE SQL_THREAD).
+# KB treats CmpD spec as immutable across same-chart-version
+# upgrades; new chart version produces a new merged CmpD that
+# takes effect on existing Clusters via fresh CmpD reconcile
+# rather than triggering "immutable fields" rejection. Same
+# packaging-contract bump pattern that drove alpha.85 / alpha.90
+# / alpha.91 / alpha.92 / earlier bumps.
+#
+# Behavioral change: rolling-restart-induced kb_health_check
+# replication conflicts now skip the offending Update_rows event
+# once, allowing the SQL thread to resume forward progress. The
+# local table is re-populated by the primary's next
+# kb_health_check probe write (KB controller fires probes every
+# few seconds). Skip is bounded to one event per repair call so a
+# different binlog event hitting a separate error class is caught
+# by the next repair cycle.
+#
 # alpha.92 v1 (Helen 2026-05-24, live N=1 first-blocker from
 # vcluster mariadb-test5 kubeblocks-tests async cluster
 # mdb-async-98800: 8 of 41 assertions FAIL all tracing to
