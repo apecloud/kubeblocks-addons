@@ -95,7 +95,24 @@ while IFS= read -r line; do
   esac
 done <<<"${repl_info}"
 
-# Engine-authoritative role version — sentinel config-epoch.
+# Local server identity. After a sentinel-driven failover the deposed
+# primary still reports `role:master` locally for a brief window before its
+# `replicaof <new-master>` lands; emitting `primary` from that pod would
+# clash with the real new primary because both pods would carry the same
+# sentinel config-epoch as their version. The local `run_id` (`INFO
+# server`) is the stable per-server identity Sentinel records as `runid`
+# for the current master. Comparing the two lets the script reject the
+# stale-master self-report before it reaches the controller.
+server_info=$(${cli_cmd} info server 2>/dev/null) || server_info=""
+local_run_id=""
+while IFS= read -r line; do
+  line="${line%$'\r'}"
+  case "${line}" in
+    run_id:*) local_run_id="${line#run_id:}"; break ;;
+  esac
+done <<<"${server_info}"
+
+# Engine-authoritative role and version from Sentinel.
 # Contract: KubeBlocks controllers (post-PR #10280) parse roleProbe stdout
 # as whitespace-separated tokens; a second token must be a clean uint64,
 # otherwise the entire event is rejected as malformed (no silent fallback
@@ -106,19 +123,30 @@ done <<<"${repl_info}"
 # `SENTINEL FAILOVER` triggered via switchover.sh), which is exactly the
 # granularity Bug B's stale-event gate needs.
 #
-# Resilience: pick the highest `config-epoch` across reachable sentinels
-# (matches the pattern in valkey-member-leave.sh). A partially reachable
-# sentinel set is normal during failover or network partition; selecting a
-# stale/isolated sentinel would emit a stale version and starve subsequent
-# legitimate updates because the controller stores the engine annotation
-# and refuses legacy fallback once it has been recorded.
+# Authority: the role token must also come from Sentinel — local `INFO
+# replication role:master` is not authoritative during the failover
+# window. Treat this Pod as the real primary only when local INFO says
+# `master` AND the local `run_id` equals the Sentinel master `runid`.
+# Otherwise emit `secondary <epoch>` so the controller-side staleness
+# gate sees a consistent global view. If Sentinel returns an empty /
+# malformed `runid` we fall back to legacy single-token output rather
+# than wrap incomplete authority into `primary`.
 #
-# Silently fall back to legacy single-line output when no sentinel is
-# reachable, the password is missing, or no parsed value is a clean uint64.
-# Single valkey-cli invocation per sentinel attempt, no pipelines, to
-# preserve the fork-and-zombie discipline (see
-# docs/addon-probe-script-fork-and-zombie-guide.md).
+# Resilience: pick the highest `config-epoch` across reachable sentinels
+# (matches the pattern in valkey-member-leave.sh) and capture that
+# Sentinel's master `runid` from the same response. A partially reachable
+# sentinel set is normal during failover; selecting a stale/isolated
+# sentinel would emit a stale version and starve subsequent legitimate
+# updates because the controller stores the engine annotation and refuses
+# legacy fallback once recorded.
+#
+# Silently fall back to legacy single-token output when no sentinel is
+# reachable, the password is missing, or no parsed value yields a clean
+# uint64 epoch with a non-empty master runid. Single valkey-cli invocation
+# per sentinel attempt, no pipelines, to preserve the fork-and-zombie
+# discipline (see docs/addon-probe-script-fork-and-zombie-guide.md).
 engine_version=""
+sentinel_master_runid=""
 if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
   sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
   # TLS args must flow into the sentinel query path; silently dropping them
@@ -132,14 +160,24 @@ if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
   for s in "${sentinel_fqdns[@]}"; do
     sentinel_out=$(valkey-cli --no-auth-warning -h "${s}" -p "${sentinel_port}" -a "${SENTINEL_PASSWORD}" ${sentinel_tls_args} sentinel masters 2>/dev/null) || continue
     ce_marker=""
+    runid_marker=""
     epoch=""
+    runid=""
     while IFS= read -r sline; do
       sline="${sline%$'\r'}"
       if [ -n "${ce_marker}" ]; then
         epoch="${sline}"
-        break
+        ce_marker=""
+      elif [ -n "${runid_marker}" ]; then
+        runid="${sline}"
+        runid_marker=""
+      else
+        case "${sline}" in
+          "config-epoch") ce_marker="1" ;;
+          "runid")        runid_marker="1" ;;
+        esac
       fi
-      [ "${sline}" = "config-epoch" ] && ce_marker="1"
+      [ -n "${epoch}" ] && [ -n "${runid}" ] && break
     done <<<"${sentinel_out}"
     case "${epoch}" in
       ''|*[!0-9]*) continue ;;
@@ -147,10 +185,40 @@ if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
     if [ "${epoch}" -gt "${best_epoch}" ]; then
       best_epoch="${epoch}"
       engine_version="${epoch}"
+      sentinel_master_runid="${runid}"
     fi
   done
 fi
 set_xtrace_when_ut_mode_false
+
+# Resolve the authoritative role token by combining local INFO with the
+# Sentinel master `runid`. If Sentinel data is unavailable the script
+# stays on the legacy single-token path below and the controller falls
+# back to EventTime. If Sentinel returned an epoch but the master `runid`
+# is empty / malformed, we also drop back to legacy: emitting
+# `primary <epoch>` with incomplete authority would re-create the
+# round-3 dual-primary race that exposed Bug B in #10280 V1.
+authoritative_role=""
+if [ -n "${engine_version}" ] && [ -n "${sentinel_master_runid}" ]; then
+  case "${role_line}" in
+    "role:master")
+      if [ -n "${local_run_id}" ] && [ "${local_run_id}" = "${sentinel_master_runid}" ]; then
+        authoritative_role="primary"
+      else
+        # Local INFO still says master but Sentinel disagrees on identity:
+        # this Pod is a deposed/stale primary, not the elected master.
+        authoritative_role="secondary"
+      fi
+      ;;
+    "role:slave")
+      authoritative_role="secondary"
+      ;;
+    *)
+      echo "unknown role: '${role_line}'" >&2
+      exit 1
+      ;;
+  esac
+fi
 
 # printf %s prints the role token with no trailing newline, so when no
 # engine version is appended the stdout stays a single token. When the
@@ -158,23 +226,21 @@ set_xtrace_when_ut_mode_false
 # controller `strings.Fields` parser splits role and version into two
 # tokens and uses only the role token as the Pod label, so embedded
 # newlines no longer fail Kubernetes label validation.
-case "${role_line}" in
-  "role:master") printf %s "primary"   ;;
-  "role:slave")  printf %s "secondary" ;;
-  *)
-    echo "unknown role: '${role_line}'" >&2
-    # Returning a non-zero exit code tells KubeBlocks the probe failed.
-    # KubeBlocks will increment the failure counter and, after
-    # failureThreshold is exceeded, clear the role label on this pod.
-    exit 1
-    ;;
-esac
-
-# Append the engine-authoritative version as a second whitespace-separated
-# token only when at least one reachable sentinel returned a clean uint64
-# config-epoch. Empty or non-numeric falls back to legacy single-line and
-# the controller uses its existing EventTime gate.
-case "${engine_version}" in
-  ''|*[!0-9]*) : ;;
-  *) printf '\n%s' "${engine_version}" ;;
-esac
+if [ -n "${authoritative_role}" ]; then
+  printf %s "${authoritative_role}"
+  printf '\n%s' "${engine_version}"
+else
+  # Legacy single-token output (Sentinel unreachable / empty runid /
+  # non-numeric epoch). Use local INFO directly.
+  case "${role_line}" in
+    "role:master") printf %s "primary"   ;;
+    "role:slave")  printf %s "secondary" ;;
+    *)
+      echo "unknown role: '${role_line}'" >&2
+      # Returning a non-zero exit code tells KubeBlocks the probe failed.
+      # KubeBlocks will increment the failure counter and, after
+      # failureThreshold is exceeded, clear the role label on this pod.
+      exit 1
+      ;;
+  esac
+fi

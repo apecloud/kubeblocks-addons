@@ -324,6 +324,108 @@ Describe "Valkey Check-Role Bash Script Tests"
         The stdout should include "sentinel_tls_args"
       End
     End
+
+    Context "primary authority gate via local run_id vs sentinel master runid"
+      # During a sentinel-driven failover the deposed primary keeps
+      # reporting `role:master` locally for a brief window. Without a
+      # cross-check, both the new and the deposed primary would emit
+      # `primary <epoch>` with the same config-epoch, and the controller
+      # would race-accept both. The fix grounds the role token in
+      # Sentinel: only when local INFO=master AND the local run_id
+      # matches the Sentinel master `runid` is `primary` authoritative.
+
+      decide_role() {
+        local local_role="$1" local_run_id="$2" sentinel_master_runid="$3" engine_version="$4"
+        local role_line
+        case "${local_role}" in
+          master) role_line="role:master" ;;
+          slave)  role_line="role:slave"  ;;
+          *)      role_line="role:${local_role}" ;;
+        esac
+        if [ -n "${engine_version}" ] && [ -n "${sentinel_master_runid}" ]; then
+          case "${role_line}" in
+            "role:master")
+              if [ -n "${local_run_id}" ] && [ "${local_run_id}" = "${sentinel_master_runid}" ]; then
+                printf '%s\n%s' "primary"   "${engine_version}"
+              else
+                printf '%s\n%s' "secondary" "${engine_version}"
+              fi
+              return 0
+              ;;
+            "role:slave")
+              printf '%s\n%s' "secondary" "${engine_version}"
+              return 0
+              ;;
+          esac
+        fi
+        case "${role_line}" in
+          "role:master") printf %s "primary"   ;;
+          "role:slave")  printf %s "secondary" ;;
+        esac
+        return 0
+      }
+
+      It "emits primary <epoch> when local INFO=master and run_id matches sentinel master runid"
+        When call decide_role "master" "aaaaaaaa" "aaaaaaaa" "5"
+        The status should be success
+        The stdout should eq "primary
+5"
+      End
+
+      It "emits secondary <epoch> when local INFO=master but run_id does not match sentinel master runid (round-3 race fix)"
+        When call decide_role "master" "aaaaaaaa" "bbbbbbbb" "5"
+        The status should be success
+        The stdout should eq "secondary
+5"
+      End
+
+      It "emits secondary <epoch> when local INFO=slave and sentinel reachable"
+        When call decide_role "slave" "aaaaaaaa" "bbbbbbbb" "5"
+        The status should be success
+        The stdout should eq "secondary
+5"
+      End
+
+      It "falls back to legacy single token when sentinel master runid is empty"
+        When call decide_role "master" "aaaaaaaa" "" "5"
+        The status should be success
+        The stdout should eq "primary"
+      End
+
+      It "falls back to legacy single token when sentinel is unreachable (no engine version)"
+        When call decide_role "slave" "aaaaaaaa" "" ""
+        The status should be success
+        The stdout should eq "secondary"
+      End
+
+      It "rejects a local master with empty local run_id but a sentinel runid set"
+        # Defensive: an empty local run_id cannot prove this Pod is the
+        # current master, even if its INFO replication says master.
+        When call decide_role "master" "" "aaaaaaaa" "5"
+        The status should be success
+        The stdout should eq "secondary
+5"
+      End
+    End
+
+    Context "sentinel masters parser extracts both config-epoch and runid"
+      # The production script walks the sentinel-masters flat output once
+      # and captures both fields; the parser must not depend on field
+      # order and must stop after both are found.
+      check_role_script="../scripts/check-role.sh"
+
+      It "captures the master runid alongside config-epoch on the script's sentinel response loop"
+        When call grep -F 'sentinel_master_runid' "${check_role_script}"
+        The status should be success
+        The stdout should include "sentinel_master_runid"
+      End
+
+      It "reads INFO server for the local run_id"
+        When call grep -E 'info[[:space:]]+server' "${check_role_script}"
+        The status should be success
+        The stdout should include "info server"
+      End
+    End
   End
 
   Describe "fork-safety contract — no pipeline parsing of INFO replication"
