@@ -1958,17 +1958,74 @@ spec:
                 exit 1
               fi
               if [ "${POD_INDEX}" = "0" ] && [ -z "${PRIMARY_SID}" ]; then
-                if block_existing_datadir_self_election_without_primary; then
-                  wait ${MARIADB_PID}
-                  exit 1
+                # alpha.92 (Helen 2026-05-24, live N=1 first-blocker from
+                # vcluster mariadb-test5 kubeblocks-tests async cluster
+                # mdb-async-98800): after a rolling restart of pod-0 (which
+                # had been promoted to primary then demoted by switchover),
+                # pod-0 starts up with existing slave config (master.info
+                # pointing to pod-1, the new primary). At the moment its
+                # PRIMARY_SID resolver fires there is a race window where
+                # pod-1 has not yet finished self-electing / publishing as
+                # primary in the service VIP, so PRIMARY_SID resolves empty.
+                # Previously this dropped straight into
+                # block_existing_datadir_self_election_without_primary which
+                # marks .replication-pending and exits; no further code
+                # re-evaluates primary visibility, leaving pod-0 stuck in
+                # the pending state forever (syncer HA loop reports
+                # "follow failed: replication-pending marker exists" every
+                # second; cluster never reaches Running phase). This trap
+                # is the merged-CmpD analogue of the alpha.11 single-shot
+                # vs bounded-retry rejoin gate documented in
+                # docs/cases/mariadb/rejoin-gate-single-shot-vs-bounded
+                # -wait-case.md; cmpd-replication.yaml had a similar fix
+                # path via finalize_replication_rejoin_ready_gate but
+                # merged CmpD was branched off cmpd-semisync.yaml which
+                # never had that fix.
+                #
+                # Fix: wrap the no-primary branch in a bounded retry loop.
+                # Every 5s re-resolve PRIMARY_SID. If it appears (the new
+                # primary's self-election + DCS publish converges), fall
+                # into the existing-slave-config rejoin path (the else
+                # branch below). If PRIMARY_SID stays empty for the full
+                # MARIADB_NO_PRIMARY_RETRY_BUDGET_SECONDS budget (default
+                # 60s — enough for a healthy syncer to elect and publish
+                # without being so long it blocks legitimate "primary
+                # really is gone, do not self-elect" semisync semantics),
+                # fall back to the original mark-pending-and-exit
+                # behavior so pod-0 does not silently self-elect after a
+                # genuine primary outage. The waiting loop keeps
+                # set_fail_closed_read_only + lock_local_root_writes
+                # in place via the startup-before-role-decision setup
+                # already done at lines 1927-1930.
+                no_primary_budget="${MARIADB_NO_PRIMARY_RETRY_BUDGET_SECONDS:-60}"
+                no_primary_deadline=$((SECONDS + no_primary_budget))
+                while [ $SECONDS -lt $no_primary_deadline ]; do
+                  echo "pod-0 startup: no primary visible yet, polling every 5s for up to ${no_primary_budget}s before deciding (alpha.92 bounded rejoin retry)"
+                  sleep 5
+                  PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+                    -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || echo "")
+                  [ -n "${PRIMARY_SID}" ] && break
+                done
+                if [ -z "${PRIMARY_SID}" ]; then
+                  if block_existing_datadir_self_election_without_primary; then
+                    wait ${MARIADB_PID}
+                    exit 1
+                  fi
+                  if ! expose_sql_listener_for_primary_role "stale-slave-no-primary"; then
+                    wait ${MARIADB_PID}
+                    exit 1
+                  fi
+                  mark_replication_ready
+                  echo "Starting as primary (pod-0 with stale slave config, no primary found after ${no_primary_budget}s wait)"
+                  PRIMARY_SID=""  # signal: we self-elected; do not fall through to rejoin
                 fi
-                if ! expose_sql_listener_for_primary_role "stale-slave-no-primary"; then
-                  wait ${MARIADB_PID}
-                  exit 1
-                fi
-                mark_replication_ready
-                echo "Starting as primary (pod-0 with stale slave config, no primary found)"
-              else
+              fi
+              # alpha.92 fall-through: when PRIMARY_SID is now non-empty
+              # (either set on initial resolve, or appeared during the
+              # bounded retry above), drop into the existing-slave-config
+              # rejoin loop. PRIMARY_SID="" means we already self-elected
+              # in the no-primary branch above and should skip rejoin.
+              if [ -n "${PRIMARY_SID}" ] && [ "${PRIMARY_SID}" != "${SERVICE_ID}" ]; then
                 while true; do
                   reconcile_sql_listener_for_syncer_primary_once || true
                   if [ ! -f "{{ .Values.dataMountPath }}/master.info" ] && \
