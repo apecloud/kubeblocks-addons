@@ -1055,8 +1055,24 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.95
+version: 1.1.1-alpha.96
 
+# alpha.96 v1 (Helen 2026-05-25, live N=1 second-blocker from
+# vcluster mariadb-test5 cluster mdb-async-71412 / mdb-async
+# -36884: alpha.95 routed STOP/SKIP/START SLAVE SQL_THREAD via
+# INTERNAL_LOCAL but skip_counter is INCOMPATIBLE with GTID
+# replication mode which this addon uses (MASTER_USE_GTID
+# =slave_pos in replication-member-join.sh). The repair fires
+# every 4s indefinitely without advancing the SQL thread past
+# the failing kubeblocks.kb_health_check Update_rows_v1 event.
+# Adds --replicate-ignore-table=kubeblocks.kb_health_check to
+# mariadbd startup args. The kb_health_check table is owned
+# by KB controller probes against the current primary;
+# secondaries do not need to apply primary probe writes, so
+# the filter is correct on every pod) - bump from alpha.95 to
+# alpha.96 because mariadbd startup args mutate. Same CmpD
+# immutability packaging-contract bump pattern.
+#
 # alpha.95 v1 (Helen 2026-05-25, live N=1 follow-up from
 # vcluster mariadb-test5 cluster mdb-async-36884 pod-0: alpha.94
 # detector fix lands and repair_kb_health_check_replication
