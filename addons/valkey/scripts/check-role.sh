@@ -88,36 +88,54 @@ while IFS= read -r line; do
   esac
 done <<<"${repl_info}"
 
-# Engine-authoritative role version (kb-role-version) — sentinel config-epoch.
-# Contract: KubeBlocks controllers (post-PR #10280) use the second line
-# `kb-role-version=<uint64>` to gate stale roleProbe events; the value MUST
-# come from an engine epoch that is monotonic and comparable across pods in
-# the component. For Valkey + sentinel, the sentinel `config-epoch` on the
-# current master bumps on every successful sentinel-driven failover (both
-# auto failover and `SENTINEL FAILOVER` triggered via switchover.sh), which
-# is exactly the granularity Bug B's stale-event gate needs.
+# Engine-authoritative role version — sentinel config-epoch.
+# Contract: KubeBlocks controllers (post-PR #10280) parse roleProbe stdout
+# as whitespace-separated tokens; a second token must be a clean uint64,
+# otherwise the entire event is rejected as malformed (no silent fallback
+# to EventTime). The version MUST come from an engine epoch that is
+# monotonic and comparable across pods in the component. For Valkey +
+# sentinel, the sentinel `config-epoch` on the current master bumps on
+# every successful sentinel-driven failover (both auto failover and
+# `SENTINEL FAILOVER` triggered via switchover.sh), which is exactly the
+# granularity Bug B's stale-event gate needs.
 #
-# Resilience: silently fall back to legacy single-line output if sentinel is
-# unreachable, the password is missing, or the parsed value is non-numeric.
-# Per PR #10280 strict-parser contract, emitting a malformed line would make
-# the controller reject the event outright; emitting NO version line keeps
-# the legacy EventTime fallback path. Single valkey-cli invocation, no
-# pipelines, to preserve the fork-and-zombie discipline (see
+# Resilience: pick the highest `config-epoch` across reachable sentinels
+# (matches the pattern in valkey-member-leave.sh). A partially reachable
+# sentinel set is normal during failover or network partition; selecting a
+# stale/isolated sentinel would emit a stale version and starve subsequent
+# legitimate updates because the controller stores the engine annotation
+# and refuses legacy fallback once it has been recorded.
+#
+# Silently fall back to legacy single-line output when no sentinel is
+# reachable, the password is missing, or no parsed value is a clean uint64.
+# Single valkey-cli invocation per sentinel attempt, no pipelines, to
+# preserve the fork-and-zombie discipline (see
 # docs/addon-probe-script-fork-and-zombie-guide.md).
 engine_version=""
 if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
-  sentinel_host="${SENTINEL_POD_FQDN_LIST%%,*}"
   sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
-  sentinel_out=$(valkey-cli --no-auth-warning -h "${sentinel_host}" -p "${sentinel_port}" -a "${SENTINEL_PASSWORD}" sentinel masters 2>/dev/null) || sentinel_out=""
-  ce_marker=""
-  while IFS= read -r sline; do
-    sline="${sline%$'\r'}"
-    if [ -n "${ce_marker}" ]; then
-      engine_version="${sline}"
-      break
+  best_epoch=-1
+  IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
+  for s in "${sentinel_fqdns[@]}"; do
+    sentinel_out=$(valkey-cli --no-auth-warning -h "${s}" -p "${sentinel_port}" -a "${SENTINEL_PASSWORD}" sentinel masters 2>/dev/null) || continue
+    ce_marker=""
+    epoch=""
+    while IFS= read -r sline; do
+      sline="${sline%$'\r'}"
+      if [ -n "${ce_marker}" ]; then
+        epoch="${sline}"
+        break
+      fi
+      [ "${sline}" = "config-epoch" ] && ce_marker="1"
+    done <<<"${sentinel_out}"
+    case "${epoch}" in
+      ''|*[!0-9]*) continue ;;
+    esac
+    if [ "${epoch}" -gt "${best_epoch}" ]; then
+      best_epoch="${epoch}"
+      engine_version="${epoch}"
     fi
-    [ "${sline}" = "config-epoch" ] && ce_marker="1"
-  done <<<"${sentinel_out}"
+  done
 fi
 set_xtrace_when_ut_mode_false
 
@@ -136,9 +154,11 @@ case "${role_line}" in
     ;;
 esac
 
-# Append engine-authoritative version on second line only when sentinel
-# returned a clean uint64. Non-numeric or empty result drops back to legacy.
+# Append the engine-authoritative version as a second whitespace-separated
+# token only when at least one reachable sentinel returned a clean uint64
+# config-epoch. Empty or non-numeric falls back to legacy single-line and
+# the controller uses its existing EventTime gate.
 case "${engine_version}" in
   ''|*[!0-9]*) : ;;
-  *) printf '\nkb-role-version=%s' "${engine_version}" ;;
+  *) printf '\n%s' "${engine_version}" ;;
 esac
