@@ -1055,8 +1055,32 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.91
+version: 1.1.1-alpha.92
 
+# alpha.92 v1 (Helen 2026-05-24, live N=1 first-blocker from
+# vcluster mariadb-test5 kubeblocks-tests async cluster
+# mdb-async-98800: 8 of 41 assertions FAIL all tracing to
+# rolling-restart pod-0 stuck in .replication-pending after the
+# new primary is not yet visible at pod-0's startup PRIMARY_SID
+# resolve moment) - bump from 1.1.1-alpha.91 to 1.1.1-alpha.92
+# because templates/cmpd-replication-merged.yaml mutates the
+# startup branch logic for "pod-0 with existing slave config and
+# no primary visible". KB treats CmpD spec as immutable across
+# same-chart-version upgrades; new chart version produces a new
+# merged CmpD that takes effect on existing Clusters via fresh
+# CmpD reconcile rather than triggering "immutable fields"
+# rejection. Same packaging-contract bump pattern that drove
+# alpha.85 / alpha.90 / alpha.91 / earlier bumps.
+#
+# Behavioral change: pod-0 with existing slave config now polls
+# PRIMARY_SID every 5s for up to MARIADB_NO_PRIMARY_RETRY_BUDGET
+# _SECONDS (default 60s) before deciding to mark .replication
+# -pending and stop trying. The merged-CmpD analogue of the
+# alpha.11 single-shot vs bounded-retry rejoin gate fix (case
+# documented in docs/cases/mariadb/rejoin-gate-single-shot
+# -vs-bounded-wait-case.md; merged CmpD was branched off
+# cmpd-semisync.yaml which never had that fix).
+#
 # alpha.91 v1 (Helen 2026-05-24, live N=1 first-blocker from
 # vcluster `mariadb-test5` kubeblocks-tests async suite, cluster
 # `mdb-async-39059`) — bump from 1.1.1-alpha.90 → 1.1.1-alpha.91
