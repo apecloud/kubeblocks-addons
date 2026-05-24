@@ -152,6 +152,90 @@ Describe "Valkey Check-Role Bash Script Tests"
     End
   End
 
+  Describe "engine-authoritative kb-role-version trailer (PR #10280 contract)"
+    # check-role.sh now appends a second line `kb-role-version=<sentinel
+    # config-epoch>` when sentinel is reachable and returns a clean uint64.
+    # The controller-side strict parser rejects malformed `kb-role-version=`
+    # lines outright, so the script either emits a well-formed numeric line
+    # or no version line at all (legacy mode).
+    parse_engine_version() {
+      local sentinel_out="$1"
+      local sline ce_marker="" engine_version=""
+      while IFS= read -r sline; do
+        sline="${sline%$'\r'}"
+        if [ -n "${ce_marker}" ]; then
+          engine_version="${sline}"
+          break
+        fi
+        [ "${sline}" = "config-epoch" ] && ce_marker="1"
+      done <<<"${sentinel_out}"
+      printf "%s" "${engine_version}"
+    }
+
+    Context "sentinel returns a clean numeric config-epoch"
+      It "extracts the numeric value following the config-epoch marker"
+        sentinel_out=$'name\nvlk-foo\nconfig-epoch\n42\nnum-slaves\n2'
+        When call parse_engine_version "${sentinel_out}"
+        The status should be success
+        The stdout should eq "42"
+      End
+    End
+
+    Context "sentinel output missing config-epoch marker"
+      It "returns empty so the script falls back to legacy single-line output"
+        sentinel_out=$'name\nvlk-foo\nnum-slaves\n2'
+        When call parse_engine_version "${sentinel_out}"
+        The status should be success
+        The stdout should eq ""
+      End
+    End
+
+    Context "sentinel returns non-numeric config-epoch (malformed)"
+      It "extracts the raw value (numeric guard later drops non-uint64)"
+        sentinel_out=$'name\nvlk-foo\nconfig-epoch\nNaN\nnum-slaves\n2'
+        When call parse_engine_version "${sentinel_out}"
+        The status should be success
+        The stdout should eq "NaN"
+      End
+    End
+
+    Context "numeric guard before emitting second line"
+      # Mirror the production check that drops anything not purely numeric
+      # so the controller's strict parser never sees a malformed value.
+      emit_or_drop() {
+        local v="$1"
+        case "${v}" in
+          ''|*[!0-9]*) printf "DROP" ;;
+          *) printf "kb-role-version=%s" "${v}" ;;
+        esac
+      }
+
+      It "emits the line for a clean uint64"
+        When call emit_or_drop "42"
+        The status should be success
+        The stdout should eq "kb-role-version=42"
+      End
+
+      It "drops empty value"
+        When call emit_or_drop ""
+        The status should be success
+        The stdout should eq "DROP"
+      End
+
+      It "drops non-numeric value"
+        When call emit_or_drop "NaN"
+        The status should be success
+        The stdout should eq "DROP"
+      End
+
+      It "drops mixed alphanumeric"
+        When call emit_or_drop "42abc"
+        The status should be success
+        The stdout should eq "DROP"
+      End
+    End
+  End
+
   Describe "fork-safety contract — no pipeline parsing of INFO replication"
     # Background: `valkey-cli ... info replication | grep ... | tr ...`
     # spawns three subprocess children per probe call. When kbagent

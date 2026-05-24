@@ -87,6 +87,38 @@ while IFS= read -r line; do
     role:*) role_line="${line}"; break ;;
   esac
 done <<<"${repl_info}"
+
+# Engine-authoritative role version (kb-role-version) — sentinel config-epoch.
+# Contract: KubeBlocks controllers (post-PR #10280) use the second line
+# `kb-role-version=<uint64>` to gate stale roleProbe events; the value MUST
+# come from an engine epoch that is monotonic and comparable across pods in
+# the component. For Valkey + sentinel, the sentinel `config-epoch` on the
+# current master bumps on every successful sentinel-driven failover (both
+# auto failover and `SENTINEL FAILOVER` triggered via switchover.sh), which
+# is exactly the granularity Bug B's stale-event gate needs.
+#
+# Resilience: silently fall back to legacy single-line output if sentinel is
+# unreachable, the password is missing, or the parsed value is non-numeric.
+# Per PR #10280 strict-parser contract, emitting a malformed line would make
+# the controller reject the event outright; emitting NO version line keeps
+# the legacy EventTime fallback path. Single valkey-cli invocation, no
+# pipelines, to preserve the fork-and-zombie discipline (see
+# docs/addon-probe-script-fork-and-zombie-guide.md).
+engine_version=""
+if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
+  sentinel_host="${SENTINEL_POD_FQDN_LIST%%,*}"
+  sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
+  sentinel_out=$(valkey-cli --no-auth-warning -h "${sentinel_host}" -p "${sentinel_port}" -a "${SENTINEL_PASSWORD}" sentinel masters 2>/dev/null) || sentinel_out=""
+  ce_marker=""
+  while IFS= read -r sline; do
+    sline="${sline%$'\r'}"
+    if [ -n "${ce_marker}" ]; then
+      engine_version="${sline}"
+      break
+    fi
+    [ "${sline}" = "config-epoch" ] && ce_marker="1"
+  done <<<"${sentinel_out}"
+fi
 set_xtrace_when_ut_mode_false
 
 # printf %s avoids the trailing newline that `echo` adds — KubeBlocks roleProbe
@@ -102,4 +134,11 @@ case "${role_line}" in
     # failureThreshold is exceeded, clear the role label on this pod.
     exit 1
     ;;
+esac
+
+# Append engine-authoritative version on second line only when sentinel
+# returned a clean uint64. Non-numeric or empty result drops back to legacy.
+case "${engine_version}" in
+  ''|*[!0-9]*) : ;;
+  *) printf '\nkb-role-version=%s' "${engine_version}" ;;
 esac
