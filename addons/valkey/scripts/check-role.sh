@@ -114,10 +114,16 @@ done <<<"${repl_info}"
 engine_version=""
 if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
   sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
+  # TLS args must flow into the sentinel query path; silently dropping them
+  # on a TLS-enabled topology would make every sentinel call fail and the
+  # whole script degrade to legacy single-line output. Match the pattern in
+  # valkey-member-leave.sh / valkey-start.sh: append ${VALKEY_CLI_TLS_ARGS}
+  # whenever it is set.
+  sentinel_tls_args="${VALKEY_CLI_TLS_ARGS:-}"
   best_epoch=-1
   IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
   for s in "${sentinel_fqdns[@]}"; do
-    sentinel_out=$(valkey-cli --no-auth-warning -h "${s}" -p "${sentinel_port}" -a "${SENTINEL_PASSWORD}" sentinel masters 2>/dev/null) || continue
+    sentinel_out=$(valkey-cli --no-auth-warning -h "${s}" -p "${sentinel_port}" -a "${SENTINEL_PASSWORD}" ${sentinel_tls_args} sentinel masters 2>/dev/null) || continue
     ce_marker=""
     epoch=""
     while IFS= read -r sline; do

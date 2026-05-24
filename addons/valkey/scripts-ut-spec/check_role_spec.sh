@@ -303,6 +303,27 @@ Describe "Valkey Check-Role Bash Script Tests"
         The status should be failure
       End
     End
+
+    Context "TLS-aware sentinel cli construction"
+      # check-role.sh must append ${VALKEY_CLI_TLS_ARGS} to the sentinel
+      # query path; without it, every sentinel call on a TLS-enabled topology
+      # would fail and the script would silently degrade to legacy single-
+      # line output, defeating the engine-version gate. The production line
+      # is grep-able directly from the script.
+      check_role_script="../scripts/check-role.sh"
+
+      It "resolves VALKEY_CLI_TLS_ARGS into a local before the sentinel cli call"
+        When call grep -F 'sentinel_tls_args="${VALKEY_CLI_TLS_ARGS:-}"' "${check_role_script}"
+        The status should be success
+        The stdout should include "VALKEY_CLI_TLS_ARGS"
+      End
+
+      It "passes the TLS args local to the sentinel valkey-cli call"
+        When call grep -E 'valkey-cli[^|]*sentinel masters' "${check_role_script}"
+        The status should be success
+        The stdout should include "sentinel_tls_args"
+      End
+    End
   End
 
   Describe "fork-safety contract — no pipeline parsing of INFO replication"
