@@ -148,37 +148,64 @@ spec:
     format: ini
     iniConfig:
       sectionName: mysqld
-  # alpha.89 v1 commit 3 v2 (Helen 2026-05-19, C1 path / Jack
-  # design review Class 4 sentinel + Class 4 fail-closed blocker
-  # B1) — declare a CUE-based parametersSchema so KB validates
-  # `rpl_semi_sync_*` parameter assignments before they reach the
-  # engine. The CUE file under config/mariadb-config-constraint.cue
-  # both declares the #MariaDBParameter type AND binds it to every
-  # INI section via `[SectionName=_]: #MariaDBParameter` — without
-  # the binding, KB's `ValidateConfigWithCue()` does not use the
-  # top-level definition and invalid values such as
-  # `rpl_semi_sync_master_enabled = MAYBE` slip through. With the
-  # binding in place, KB rejects unknown enum / out-of-range /
-  # wrong-type assignments at the controller parameter reconcile
-  # path (`ClassifyComponentParameters()` / `DoMerge()` calling
-  # the CUE validator), so an invalid value never lands in the
-  # rendered ConfigMap. PR #10254 once merged extends the
-  # validation to an earlier `ValidateComponentParameterAssignments()`
-  # entry that hard-rejects at OpsRequest validate-phase using the
-  # same schema.
+  # alpha.91 (Helen 2026-05-24, live N=1 first-blocker fix from
+  # vcluster mariadb-test5 run mdb-async-39059 kubeblocks-tests
+  # async suite) — parametersSchema is removed.
   #
-  # The CUE schema covers only the four semisync engine variables
-  # that are the real source-of-truth for replication mode. There
-  # is intentionally no synthetic `replicationMode` key — KB's
-  # ParamConfigRenderer has no transform hook to expand a single
-  # logical key into multiple engine variables, so a synthetic key
-  # would either be ignored or land in my.cnf verbatim and break
-  # mariadbd. The unified-switch UX is delivered via addon docs
-  # (and future helper scripts).
-  parametersSchema:
-    topLevelKey: MariaDBParameter
-    cue: |-
-      {{- .Files.Get "config/mariadb-config-constraint.cue" | nindent 6 }}
+  # alpha.89 v1 commit 3 v2 added a CUE-based parametersSchema with
+  # only the 4 rpl_semi_sync_* engine vars declared as typed CUE
+  # fields, with `[string]: _` open marker on top to let other
+  # parameters pass CUE validation. Live behavioral test against
+  # KB controller (image apecloud/kubeblocks:1.0.0) reveals that
+  # KB's reconfigure validator only registers keys from the CUE
+  # schema's OpenAPI `properties` set, NOT the `additionalProperties`
+  # produced by the open marker. KB source:
+  # pkg/parameters/parameter_schema.go:50 — `props := openapi
+  # .FlattenSchema(schema.Properties[openapi.DefaultSchemaName])
+  # .Properties` — only enumerates properties; subsequent
+  # `FindParameterSchema()` returns false for any key not in props,
+  # and reconfigure fails with "parameter X not found in
+  # parameters schema" (parameter_utils.go:158).
+  #
+  # Effect on live cluster: ALL reconfigure OpsRequests against
+  # common dynamic params (long_query_time, wait_timeout,
+  # innodb_lock_wait_timeout, sync_binlog, back_log) fail at
+  # KB controller validate-phase. The 239 params declared in
+  # `dynamicParameters` / `staticParameters` lists are NOT
+  # consulted by the reconfigure path once a parametersSchema is
+  # present — the lists are used only for restart-vs-runtime
+  # classification, not for known-parameter whitelisting.
+  #
+  # Fix: drop the parametersSchema. This restores alpha.85
+  # reconfigure behavior (all `dynamicParameters` / `staticParameters`
+  # are reconfigurable; per-parameter type / range validation is
+  # deferred to mariadbd's own SET GLOBAL handling).
+  #
+  # Class 4 fail-closed for the 4 rpl_semi_sync_* engine vars is
+  # still enforced by the three other layers:
+  #   1. Helm template-time validator (`mariadb.replication.mode
+  #      .validate` in _helpers.tpl) rejects invalid `replication
+  #      .mode` Helm values at `helm render` time.
+  #   2. Startup seeder (`scripts/seed-replication-mode-overrides
+  #      .sh`) writes the 4 real `rpl_semi_sync_*` engine
+  #      variables to `runtime-overrides.d/` BEFORE mariadbd
+  #      starts.
+  #   3. Reconfigure mapper (`scripts/replication-mode-mapper.sh`)
+  #      strips synthetic `replicationMode` / `replicationmode` from
+  #      the parameter list BEFORE SET GLOBAL.
+  #
+  # Degraded path: a user OpsRequest that directly sets
+  # `rpl_semi_sync_master_enabled=MAYBE` will now reach mariadbd's
+  # SET GLOBAL which rejects unknown enum values, producing a Failed
+  # OpsRequest at the action layer rather than at the validator
+  # layer. Engine-layer fail (loud, with mariadbd-side error
+  # message) is acceptable for this single corner case; the bulk
+  # protection sits in the 3 layers above.
+  #
+  # Re-introducing parametersSchema would require enumerating ALL
+  # 239 dynamic+static MariaDB params with their type constraints
+  # (similar to mysql8-config-constraint.cue's 426 declarations),
+  # deferred to a separate alpha pending bandwidth.
   {{- if hasKey $pd "staticParameters" }}
   staticParameters:
     {{- range (get $pd "staticParameters") }}
