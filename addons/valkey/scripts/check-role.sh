@@ -3,12 +3,19 @@
 #
 # Learning note:
 #   KubeBlocks calls this script every periodSeconds seconds on EACH pod.
-#   The contract is simple: print exactly one line to stdout — the role name
-#   that matches one of the roles[] entries in ComponentDefinition.
+#   Contract (post-PR apecloud/kubeblocks#10280): stdout is parsed via
+#   `strings.Fields`. The first whitespace-separated token must be the role
+#   name (one of the roles[] entries in ComponentDefinition); an optional
+#   second whitespace-separated token carries an engine-authoritative
+#   `uint64` role version that the controller's staleness gate uses to
+#   reject replayed Kubernetes Event objects. Any other shape is rejected.
+#   Only the first token becomes the Pod role label.
 #
 #   For Valkey (Redis-compatible):
-#     INFO replication → role:master  →  print "primary"
-#     INFO replication → role:slave   →  print "secondary"
+#     INFO replication → role:master  →  print "primary"  (first token)
+#     INFO replication → role:slave   →  print "secondary" (first token)
+#   Then, when reachable, the highest sentinel config-epoch is appended as
+#   the second token, separated by a newline.
 #
 #   Using valkey-cli (not redis-cli) because Valkey ships its own CLI.
 #   The -h 127.0.0.1 ensures we hit this pod's own server.
@@ -145,9 +152,12 @@ if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
 fi
 set_xtrace_when_ut_mode_false
 
-# printf %s avoids the trailing newline that `echo` adds — KubeBlocks roleProbe
-# rejects label values containing '\n' (Kubernetes label validation), surfacing
-# as transient `RoleProbeNotDone` and `invalid label value primary\n` events.
+# printf %s prints the role token with no trailing newline, so when no
+# engine version is appended the stdout stays a single token. When the
+# engine version IS appended below, it follows on a new line; the
+# controller `strings.Fields` parser splits role and version into two
+# tokens and uses only the role token as the Pod label, so embedded
+# newlines no longer fail Kubernetes label validation.
 case "${role_line}" in
   "role:master") printf %s "primary"   ;;
   "role:slave")  printf %s "secondary" ;;
