@@ -1645,34 +1645,47 @@ spec:
               # Each successful reconfigure writes a per-parameter
               # `.cnf` file into runtime-overrides.d/; mariadbd picks
               # them up on next restart.
-              # alpha.96 (Helen 2026-05-25, live N=1 second-blocker
-              # from vcluster mariadb-test5 cluster mdb-async-71412
-              # / mdb-async-36884): kubeblocks.kb_health_check is a
-              # per-pod KB controller probe table. KB controller
-              # writes to whichever pod is primary every few seconds
-              # to verify connectivity. After a rolling restart,
-              # the primary's binlog has Update_rows_v1 events on
-              # rows that pod-0 cleared via
-              # clear_local_kb_health_check_table; replication SQL
-              # thread re-applies them and hits Error 1032
-              # HA_ERR_KEY_NOT_FOUND. The alpha.92-95 chain tried
-              # an in-repair skip via SET GLOBAL
-              # sql_slave_skip_counter but skip_counter is
-              # incompatible with GTID replication (MASTER_USE_GTID
-              # =slave_pos) which this addon uses, so the skip
-              # never advances the SQL thread past the failing
-              # event. Repair logs fresh-kb-health-check-repair
-              # every 4s indefinitely without making progress.
+              # alpha.97 (Helen 2026-05-25, live N=1 third-blocker
+              # from vcluster mariadb-test5 cluster mdb-async-39296
+              # T9 Switchover): REVERT alpha.96's
+              # --replicate-ignore-table=kubeblocks.kb_health_check.
               #
-              # Fix: tell mariadbd to NOT apply any
-              # kubeblocks.kb_health_check binlog events on this
-              # pod. The table is owned by KB controller probes;
-              # secondaries do not need to apply primary probe
-              # writes. --replicate-ignore-table is a per-server
-              # filter; setting it here on all pods is correct
-              # because the table is always written by KB
-              # controller against whichever pod is currently
-              # primary, never replicated as user data.
+              # alpha.96 claim "secondaries do not need to apply
+              # primary probe writes" was wrong. The kubeblocks
+              # .kb_health_check.check_ts row is the only signal
+              # syncer's IsMemberLagging uses to measure replication
+              # lag (`engines/mariadb/manager.go` GetOpTimestamp
+              # reads it; IsMemberLagging compares leader's
+              # OpTimestamp vs member's OpTimestamp). With the
+              # filter, secondary never receives kb_health_check
+              # updates -> secondary's kb_health_check stays empty
+              # -> GetOpTimestamp returns "sql: no rows in result
+              # set" -> IsMemberLagging returns (true,
+              # math.MaxInt64) -> IsMemberHealthy returns false ->
+              # ha.HasOtherHealthyMember returns false ->
+              # HandlerSwitchoverForPrimary falls through to
+              # Promote (line 59 of syncer's
+              # highavailability/switchover.go) -> syncer keeps
+              # the old leader and resets read_only=0 every second
+              # -> addon's fence verify window collapses ->
+              # Switchover OpsRequest fails.
+              #
+              # Live experiment on cluster mdb-async-39296:
+              # `SET GLOBAL replicate_ignore_table=''` (un-filter)
+              # on pod-1 + START SLAVE -> Error 1032
+              # immediately. Confirms both the original 1032 bug
+              # and that the filter was the actual T9 blocker.
+              #
+              # T9 Switchover is the higher-priority unblock per
+              # weston 2026-05-25 13:31; the 1032 / rolling-restart
+              # symptom that alpha.96 was trying to fix is
+              # re-investigated in a separate alpha. Candidate
+              # alpha.98 paths in flight: change
+              # `prepare_fresh_replica_for_sql_thread_start` to
+              # not DELETE existing kb_health_check rows, since
+              # the row already in the data dir matches the
+              # primary's INSERT/UPDATE history more often than
+              # not.
               docker-entrypoint.sh mariadbd \
                 --defaults-extra-file={{ .Values.dataMountPath }}/runtime-overrides.cnf \
                 --server-id=${SERVICE_ID} \
@@ -1680,7 +1693,6 @@ spec:
                 --skip-slave-start=ON \
                 --read-only=NO_LOCK_NO_ADMIN \
                 --thread-cache-size=100 \
-                --replicate-ignore-table=kubeblocks.kb_health_check \
                 --bind-address="${bind_address}" &
               MARIADB_PID=$!
               prestop_fence_watchdog &

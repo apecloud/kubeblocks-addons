@@ -1055,8 +1055,30 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.96
+version: 1.1.1-alpha.97
 
+# alpha.97 v1 (Helen 2026-05-25, live N=1 third-blocker from
+# vcluster mariadb-test5 cluster mdb-async-39296 T9 Switchover:
+# alpha.96's --replicate-ignore-table=kubeblocks.kb_health_check
+# broke syncer's IsMemberLagging lag detection, causing T9
+# Switchover OpsRequest to deadlock on "no other healthy
+# members") - bump from alpha.96 to alpha.97 because
+# templates/cmpd-replication-merged.yaml mariadbd startup args
+# mutate (remove --replicate-ignore-table line). Same KB CmpD
+# immutability packaging-contract bump pattern.
+#
+# Behavioral change: secondaries now apply
+# kubeblocks.kb_health_check binlog events. T9 Switchover
+# stops failing with "no other healthy members" because
+# secondary's GetOpTimestamp can now read a real check_ts.
+#
+# Regression risk: the original 1032 / rolling-restart bug
+# that alpha.96 was trying to suppress is BACK. Investigation
+# of root-cause path (don't DELETE secondary's
+# kb_health_check on bootstrap, or use GTID-mode skip) is
+# in flight; alpha.97 is the T9-first revert per westonnnn
+# 2026-05-25 13:31 prioritization.
+#
 # alpha.96 v1 (Helen 2026-05-25, live N=1 second-blocker from
 # vcluster mariadb-test5 cluster mdb-async-71412 / mdb-async
 # -36884: alpha.95 routed STOP/SKIP/START SLAVE SQL_THREAD via
