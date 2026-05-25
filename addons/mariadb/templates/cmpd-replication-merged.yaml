@@ -1551,6 +1551,20 @@ spec:
               # local 0-1-213 (same domain 0) → 1950. With per-server
               # domain, pod-0 writes in domain 1, pod-1 in domain 2; their
               # sequences are independent → no strict-mode conflict.
+              # alpha.101 (Helen 2026-05-25): set
+              # --rpl-semi-sync-master-wait-point=AFTER_SYNC instead
+              # of MariaDB's default AFTER_COMMIT. AFTER_SYNC makes
+              # the primary wait for replica ACK BEFORE storage-
+              # engine commit (instead of after), so clients do not
+              # see commit return until at least one replica has
+              # acked the binlog. Aligns mariadb wait_point with
+              # MySQL 5.7+/8.0 default. Partial mitigation only:
+              # when replica is down for longer than
+              # rpl_semi_sync_master_timeout (10s default), both
+              # AFTER_SYNC and AFTER_COMMIT fall back to async, so
+              # orphan events can still occur during a long pod-1
+              # restart. A complete fix requires syncer Demote-time
+              # catch-up wait (Path B, separate PR).
               docker-entrypoint.sh mariadbd \
                 --defaults-extra-file={{ .Values.dataMountPath }}/runtime-overrides.cnf \
                 --server-id=${SERVICE_ID} \
@@ -1559,6 +1573,7 @@ spec:
                 --skip-slave-start=ON \
                 --read-only=NO_LOCK_NO_ADMIN \
                 --thread-cache-size=100 \
+                --rpl-semi-sync-master-wait-point=AFTER_SYNC \
                 --bind-address="${bind_address}" &
               MARIADB_PID=$!
               prestop_fence_watchdog &
