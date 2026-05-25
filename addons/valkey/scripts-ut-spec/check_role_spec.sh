@@ -841,6 +841,62 @@ Describe "Valkey Check-Role Bash Script Tests"
         The stdout should equal "2"
       End
     End
+
+    Context "quorum-entry gate depends only on SENTINEL_POD_FQDN_LIST"
+      # Background: Bob2 review on PR apecloud/kubeblocks-addons#2676.
+      # The earlier gate `[ -n "${SENTINEL_PASSWORD}" ] && [ -n "${SENTINEL_POD_FQDN_LIST}" ]`
+      # would route a sentinel-configured-but-password-missing topology
+      # to `no_sentinel_env`, and the no-sentinel fallback emits legacy
+      # `primary` from `role:master` — which is exactly the cross-mode
+      # strip path this PR exists to close. Sentinel topology must be
+      # detected by FQDN list alone; password is only an auth flag.
+      check_role_script="../scripts/check-role.sh"
+
+      It "outer gate keys on SENTINEL_POD_FQDN_LIST only, not also SENTINEL_PASSWORD"
+        # The fixed gate must NOT couple SENTINEL_PASSWORD with FQDN
+        # via `&&` at the outer-if level.
+        When call grep -F 'if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then' "${check_role_script}"
+        The status should be success
+        The stdout should include 'SENTINEL_POD_FQDN_LIST'
+      End
+
+      It "must not couple SENTINEL_PASSWORD into the outer quorum-entry gate"
+        # Negative assertion: the legacy
+        # `if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]`
+        # pattern must be gone. Wrap in `|| true` so a zero match (grep
+        # exit 1) does not fail the `status should be success` assertion.
+        When call bash -c 'grep -c -F "if [ -n \"\${SENTINEL_PASSWORD:-}\" ] && [ -n \"\${SENTINEL_POD_FQDN_LIST:-}\" ]" ../scripts/check-role.sh || true'
+        The status should be success
+        The stdout should equal "0"
+      End
+
+      It "sentinel-cli auth flag is conditional on SENTINEL_PASSWORD presence"
+        # The cli call must consume a pre-computed sentinel_auth_args
+        # variable rather than always hard-coding `-a "${SENTINEL_PASSWORD}"`.
+        # That way missing password leaves auth args empty and the cli
+        # call NOAUTH-fails, routing to `insufficient_valid`.
+        When call grep -F '${sentinel_auth_args} ${sentinel_tls_args} sentinel masters' "${check_role_script}"
+        The status should be success
+        The stdout should include 'sentinel_auth_args'
+      End
+
+      It "no_sentinel_env branch is no longer reachable via missing password alone"
+        # If only password is missing but FQDN is set, the new outer gate
+        # enters the quorum path; per-sentinel calls NOAUTH-fail and the
+        # decision becomes `insufficient_valid`. The `no_sentinel_env`
+        # reason is now only reachable when FQDN list is empty.
+        When call grep -c -F '__quorum_decision_reason="no_sentinel_env"' "${check_role_script}"
+        The status should be success
+        # Exactly one occurrence — in the else branch of the FQDN gate.
+        The stdout should equal "1"
+      End
+
+      It "documents that missing password does not mean no-sentinel"
+        When call grep -c -F 'Password is only' "${check_role_script}"
+        The status should be success
+        The stdout should not equal "0"
+      End
+    End
   End
 
   Describe "fork-safety contract — no pipeline parsing of INFO replication"

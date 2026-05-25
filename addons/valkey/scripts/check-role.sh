@@ -191,7 +191,12 @@ engine_version=""
 sentinel_master_runid=""
 __quorum_decision_reason=""
 __quorum_emit_role=""
-if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
+if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
+  # Sentinel topology is detected by FQDN list alone. Password is only
+  # an auth flag for the sentinel-cli call; missing password does NOT
+  # mean "no Sentinel". Treating a missing password as `no_sentinel_env`
+  # would re-open the cross-mode legacy `primary` fallback that this
+  # whole quorum path exists to block (see fallback branches below).
   sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
   # TLS args must flow into the sentinel query path; silently dropping
   # them on a TLS-enabled topology would make every sentinel call fail
@@ -199,6 +204,15 @@ if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
   # the pattern in valkey-member-leave.sh / valkey-start.sh: append
   # ${VALKEY_CLI_TLS_ARGS} whenever it is set.
   sentinel_tls_args="${VALKEY_CLI_TLS_ARGS:-}"
+  # Auth flag is conditional: only add -a when the password is set.
+  # When password is missing on a sentinel-configured topology, the
+  # cli call will fail (NOAUTH) and the per-sentinel drop will push
+  # the decision to `insufficient_valid`, which the fallback branch
+  # now correctly maps to `secondary`.
+  sentinel_auth_args=""
+  if [ -n "${SENTINEL_PASSWORD:-}" ]; then
+    sentinel_auth_args="-a ${SENTINEL_PASSWORD}"
+  fi
   # Configured total: count non-empty entries. Empty entries from a
   # trailing comma or runtime mis-render must not lower the quorum bar.
   IFS=',' read -ra sentinel_fqdns_raw <<< "${SENTINEL_POD_FQDN_LIST}"
@@ -211,7 +225,7 @@ if [ -n "${SENTINEL_PASSWORD:-}" ] && [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
     min_valid=$((configured_count / 2 + 1))
     quorum_keys=()
     for s in "${sentinel_fqdns[@]}"; do
-      sentinel_out=$(valkey-cli --no-auth-warning -h "${s}" -p "${sentinel_port}" -a "${SENTINEL_PASSWORD}" ${sentinel_tls_args} sentinel masters 2>/dev/null) || continue
+      sentinel_out=$(valkey-cli --no-auth-warning -h "${s}" -p "${sentinel_port}" ${sentinel_auth_args} ${sentinel_tls_args} sentinel masters 2>/dev/null) || continue
       ce_marker=""
       runid_marker=""
       flags_marker=""
