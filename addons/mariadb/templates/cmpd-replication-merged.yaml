@@ -1686,6 +1686,68 @@ spec:
               # the row already in the data dir matches the
               # primary's INSERT/UPDATE history more often than
               # not.
+              # alpha.98 (Helen 2026-05-25, live N=1 fix for
+              # kb_health_check Error 1032 cascade after rolling
+              # restart, the bug alpha.92-alpha.97 chain chased
+              # through wrong fixes): set slave_exec_mode=IDEMPOTENT
+              # via mariadbd startup arg so the SQL_Thread skips
+              # row-image-mismatch errors instead of stopping.
+              #
+              # Why this is the right fix for kb_health_check:
+              # the table is a shared heartbeat written by whichever
+              # pod is currently primary. After a switchover or
+              # rolling restart the old primary's local row =
+              # value the old primary wrote when it was leader.
+              # The new primary's binlog has Update_rows_v1 events
+              # whose before-image = value the new primary wrote.
+              # The two values must differ. STRICT mode rejects
+              # the apply with Error 1032 HA_ERR_KEY_NOT_FOUND;
+              # IDEMPOTENT mode skips the offending event and
+              # continues; the next event (the new primary's
+              # ON DUPLICATE KEY UPDATE -> Insert/Update) lands
+              # correctly and the secondary's row converges.
+              #
+              # Why NOT replicate-ignore-table (alpha.96 wrong
+              # path): syncer engines/mariadb/manager.go
+              # GetOpTimestamp reads kubeblocks.kb_health_check
+              # .check_ts to measure replication lag. If we filter
+              # the table out on secondary, secondary's table
+              # stays empty -> GetOpTimestamp returns "sql: no
+              # rows in result set" -> IsMemberLagging returns
+              # (true, math.MaxInt64) -> IsMemberHealthy returns
+              # false -> ha.HasOtherHealthyMember returns false ->
+              # HandlerSwitchoverForPrimary cannot demote ->
+              # syncer keeps the old leader and resets read_only
+              # to 0 every second -> addon fence verify window
+              # collapses -> T9 Switchover OpsRequest fails.
+              # alpha.96 -> alpha.97 trail proved this both
+              # directions.
+              #
+              # Side-effect bound: IDEMPOTENT also relaxes user
+              # data row-image matching. For a master/slave async
+              # cluster where primary is the only writer this is
+              # equivalent to STRICT (secondary's row always
+              # matches primary's binlog before-image). The only
+              # divergence is chaos-test scenarios where
+              # secondary is anomalously written; mariadb addon
+              # already enforces secondary read_only=ON so
+              # application traffic cannot write to secondary,
+              # making the chaos-only side-effect N/A.
+              #
+              # Verified live on vcluster mariadb-test5 cluster
+              # mdb-async-13674 pod-0 (2026-05-25 14:11Z):
+              # SET GLOBAL slave_exec_mode=IDEMPOTENT (with
+              # syncerctl pause to prevent override) + STOP SLAVE
+              # + START SLAVE recovered the stuck SQL_Thread from
+              # Slave_SQL_Running=No / Last_SQL_Errno=1032 to
+              # Slave_SQL_Running=Yes / Last_SQL_Errno=0 /
+              # Exec_Master_Log_Pos catching Read_Master_Log_Pos
+              # within 8 seconds.
+              #
+              # Methodology case sedimented:
+              # docs/cases/methodology/slave-exec-mode-idempotent
+              # -for-multi-writer-heartbeat-table-case.md
+              # (kubeblocks-addon-docs PR #308).
               docker-entrypoint.sh mariadbd \
                 --defaults-extra-file={{ .Values.dataMountPath }}/runtime-overrides.cnf \
                 --server-id=${SERVICE_ID} \
@@ -1693,6 +1755,7 @@ spec:
                 --skip-slave-start=ON \
                 --read-only=NO_LOCK_NO_ADMIN \
                 --thread-cache-size=100 \
+                --slave-exec-mode=IDEMPOTENT \
                 --bind-address="${bind_address}" &
               MARIADB_PID=$!
               prestop_fence_watchdog &
