@@ -358,17 +358,48 @@ if [ -n "${authoritative_role}" ]; then
   printf %s "${authoritative_role}"
   printf '\n%s' "${engine_version}"
 else
-  # Legacy single-token output (Sentinel unreachable / empty runid /
-  # non-numeric epoch). Use local INFO directly.
-  case "${role_line}" in
-    "role:master") printf %s "primary"   ;;
-    "role:slave")  printf %s "secondary" ;;
+  # Legacy single-token fallback. The mode of fallback matters: when
+  # Sentinel is *not configured at all* the local INFO is the only
+  # authority and `role:master` legitimately means `primary`. But when
+  # Sentinel *is* configured and the quorum is merely transiently
+  # invalid (split-view, insufficient_valid, flags transient, missing
+  # auth), a sibling pod may already hold an engine-versioned `primary`
+  # annotation on the controller. Emitting plain legacy `primary` from
+  # this Pod's `role:master` in that window lets the controller's
+  # cross-mode `removeExclusiveRoleLabels` strip the sibling's
+  # engine-versioned label, after which the controller's strict
+  # `engine:>` gate refuses to repair the missing label even when this
+  # Pod resumes emitting versioned output (the same-version events are
+  # rejected as staleRoleEventVersion).
+  #
+  # Safe degrade: when Sentinel is configured but quorum is transiently
+  # invalid, emit `secondary` regardless of local INFO. The primary
+  # Service may have no endpoint briefly while Sentinel converges, but
+  # no engine-versioned peer can be exclusive-cleaned. When Sentinel is
+  # not configured / not envvar-provided (`no_sentinel_env` /
+  # `no_sentinel_configured`), keep the original local-INFO mapping
+  # because that is the only authority for standalone / no-sentinel
+  # topologies.
+  case "${__quorum_decision_reason}" in
+    no_sentinel_env|no_sentinel_configured)
+      case "${role_line}" in
+        "role:master") printf %s "primary"   ;;
+        "role:slave")  printf %s "secondary" ;;
+        *)
+          echo "unknown role: '${role_line}'" >&2
+          exit 1
+          ;;
+      esac
+      ;;
     *)
-      echo "unknown role: '${role_line}'" >&2
-      # Returning a non-zero exit code tells KubeBlocks the probe failed.
-      # KubeBlocks will increment the failure counter and, after
-      # failureThreshold is exceeded, clear the role label on this pod.
-      exit 1
+      # insufficient_valid / split_view / future quorum-invalid reasons
+      case "${role_line}" in
+        "role:master"|"role:slave") printf %s "secondary" ;;
+        *)
+          echo "unknown role: '${role_line}'" >&2
+          exit 1
+          ;;
+      esac
       ;;
   esac
 fi
