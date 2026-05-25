@@ -1540,9 +1540,21 @@ spec:
               # table now belongs entirely to syncer. STRICT mode
               # is safe again because the secondary's row state
               # always tracks primary's binlog before-image.
+              # alpha.100 prototype (Helen 2026-05-25): set gtid_domain_id
+              # per-server (= SERVICE_ID = POD_INDEX + 1) so each pod writes
+              # its own GTID sequence in a unique domain. Avoids the 1950
+              # HA_ERR_GTID_OUT_OF_ORDER cascade that surfaced on alpha.99
+              # CM4 (cluster mdb-a99-cm4 2026-05-25 17:27Z): pod-0 wrote
+              # 0-1-213 before switchover, pod-1 promoted only catching up
+              # to 0-1-211, started writing 0-2-212+; when pod-0 reboots
+              # as secondary, applying 0-2-212 with strict_mode against
+              # local 0-1-213 (same domain 0) → 1950. With per-server
+              # domain, pod-0 writes in domain 1, pod-1 in domain 2; their
+              # sequences are independent → no strict-mode conflict.
               docker-entrypoint.sh mariadbd \
                 --defaults-extra-file={{ .Values.dataMountPath }}/runtime-overrides.cnf \
                 --server-id=${SERVICE_ID} \
+                --gtid-domain-id=${SERVICE_ID} \
                 --log-bin={{ .Values.dataMountPath }}/binlog/${POD_NAME}-bin \
                 --skip-slave-start=ON \
                 --read-only=NO_LOCK_NO_ADMIN \
