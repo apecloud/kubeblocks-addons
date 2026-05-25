@@ -1055,7 +1055,38 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.100
+version: 1.1.1-alpha.101
+
+# alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
+# event / GTID divergence cascade surfaced after alpha.100): add
+# --rpl-semi-sync-master-wait-point=AFTER_SYNC to mariadbd startup.
+# Aligns mariadb default with MySQL 5.7+/8.0 default AFTER_SYNC,
+# instead of MariaDB historical default AFTER_COMMIT.
+#
+# AFTER_SYNC: primary waits replica semisync ACK BEFORE storage
+# commit (client does not see commit success until at least one
+# replica has acked binlog flush). AFTER_COMMIT (unpatched default):
+# storage commit FIRST then wait for ACK — window where binlog has
+# events no replica has yet acknowledged.
+#
+# Iron evidence on cluster mdb-a100-t9 pod-0 (2026-05-25 23:15Z):
+#   ENUM_VALUE_LIST: AFTER_SYNC, AFTER_COMMIT  (both supported)
+#   DEFAULT_VALUE: AFTER_COMMIT  (mariadb default is unsafe one)
+#   Live SET GLOBAL rpl_semi_sync_master_wait_point=AFTER_SYNC ok
+#   Rpl_semi_sync_master_no_tx = 30  (30 transactions committed
+#     without semisync ACK while running on AFTER_COMMIT)
+#
+# Partial mitigation only: when the replica is fully down for
+# longer than rpl_semi_sync_master_timeout (10s default), both
+# AFTER_SYNC and AFTER_COMMIT fall back to async. Orphan events
+# can still occur during pod-1 restart (typically 30-60s + IO
+# THREAD catch-up lag). Complete fix requires syncer-side
+# catch-up wait in mariadb engine Demote (Path B, separate PR).
+#
+# Bump rationale: cmpd-replication-merged.yaml mariadbd startup
+# args mutated; KB CmpD immutability rule applies. Same syncer
+# image. Three-level stack on top of alpha.99 (PR #2668) +
+# alpha.100 (PR #2673).
 
 # alpha.100 v1 (Helen 2026-05-25 PROTOTYPE — Path A for GTID 1950
 # out-of-order): add mariadbd `--gtid-domain-id=${SERVICE_ID}` to
