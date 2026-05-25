@@ -526,15 +526,25 @@ spec:
               return 1
             }
             primary_internal_root_write_ready() {
+              # alpha.99 (Helen 2026-05-25): write probe uses addon-owned
+              # kubeblocks.kb_addon_write_probe scratch table, NOT
+              # kubeblocks.kb_health_check. kb_health_check is owned by
+              # syncer (engines/mariadb/manager.go WriteCheck / GetOpTimestamp);
+              # addon scripts touching it violates the ownership boundary and
+              # caused the 1032 cascade documented in iron-evidence repro
+              # (cluster mdb-repro-1032 2026-05-25 08:03Z). Probe upserts a
+              # single row keyed on a fixed probe_id; no DELETE, because the
+              # next probe just overwrites via ON DUPLICATE KEY UPDATE.
+              # sql_log_bin=0 keeps the probe local-only (the syncerctl
+              # writecheck path is the cluster-wide write verification).
               local label="${1:-primary-internal-root-write-ready}"
               if "${INTERNAL_LOCAL[@]}" -e "
                 SET SESSION sql_log_bin=0;
                 CREATE DATABASE IF NOT EXISTS kubeblocks;
-                CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
-                INSERT INTO kubeblocks.kb_health_check(type, check_ts)
-                  VALUES (0, UNIX_TIMESTAMP())
-                  ON DUPLICATE KEY UPDATE check_ts=VALUES(check_ts);
-                DELETE FROM kubeblocks.kb_health_check WHERE type=0;
+                CREATE TABLE IF NOT EXISTS kubeblocks.kb_addon_write_probe(probe_id VARCHAR(64) PRIMARY KEY, ts BIGINT);
+                INSERT INTO kubeblocks.kb_addon_write_probe(probe_id, ts)
+                  VALUES ('internal-root', UNIX_TIMESTAMP())
+                  ON DUPLICATE KEY UPDATE ts=VALUES(ts);
                 SET SESSION sql_log_bin=1;
               " >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
                 prestop_watchdog_log "primary-internal-root-write-ready label=${label} rc=0"
@@ -951,15 +961,15 @@ spec:
                 ALTER USER '${user}'@'127.0.0.1' ACCOUNT UNLOCK;
                 GRANT ALL PRIVILEGES ON *.* TO '${user}'@'127.0.0.1' WITH GRANT OPTION;
                 CREATE DATABASE IF NOT EXISTS kubeblocks;
-                CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
                 CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe(probe_id VARCHAR(64) PRIMARY KEY, ts BIGINT);
+                CREATE TABLE IF NOT EXISTS kubeblocks.kb_addon_write_probe(probe_id VARCHAR(64) PRIMARY KEY, ts BIGINT);
                 CREATE USER IF NOT EXISTS '${user}'@'%' IDENTIFIED BY '${password}';
                 ALTER USER '${user}'@'%' ACCOUNT UNLOCK;
                 REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'%';
                 GRANT REPLICATION CLIENT ON *.* TO '${user}'@'%';
                 GRANT SLAVE MONITOR ON *.* TO '${user}'@'%';
                 GRANT REPLICATION MASTER ADMIN ON *.* TO '${user}'@'%';
-                GRANT SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check TO '${user}'@'%';
+                GRANT SELECT, INSERT, UPDATE ON kubeblocks.* TO '${user}'@'%';
                 GRANT SELECT ON mysql.user TO '${user}'@'%';
                 CREATE USER IF NOT EXISTS '${replication_user}'@'%' IDENTIFIED BY '${password}';
                 ALTER USER '${replication_user}'@'%' IDENTIFIED BY '${password}';
@@ -1295,40 +1305,19 @@ spec:
                 *) return 1 ;;
               esac
             }
-            slave_status_has_kb_health_check_repairable_error() {
-              local slave_status="$1"
-              [ -n "${slave_status}" ] || return 1
-              # alpha.94 (Helen 2026-05-25): add 1032 (HA_ERR_KEY_NOT_FOUND)
-              # to repairable error class. After a clean rolling restart
-              # primary advances kb_health_check rows monotonically; pod-0
-              # may finish CHANGE MASTER + START SLAVE at a relay position
-              # where the next event is Update_rows_v1 against a row that
-              # didn't exist when pod-0 ran clear_local_kb_health_check
-              # _table during prepare_fresh_replica_for_sql_thread_start.
-              # Result: Slave_SQL_Running=No / Last_SQL_Errno=1032
-              # "Could not execute Update_rows_v1 event ... Can't find
-              # record in 'kb_health_check'". Previously the detector
-              # only recognized 1062 (duplicate entry, e.g. from previous
-              # gtid replay) and 1146 (table not found, e.g. before
-              # CREATE TABLE replicated). 1032 was the missing third
-              # class that the alpha.93 skip-counter fix targets - the
-              # fix only fires if this detector returns 0. Verified live
-              # on vcluster mariadb-test5 cluster mdb-async-12644 pod-0
-              # after CM4 back_log rolling restart: slave status shows
-              # 1032 "Can't find record in 'kb_health_check'" and the
-              # repair function was never invoked because this detector
-              # bailed at first case.
-              case "${slave_status}" in
-                *"Last_SQL_Errno: 1032"* | *"Last_Errno: 1032"* | \
-                *"Last_SQL_Errno: 1062"* | *"Last_Errno: 1062"* | \
-                *"Last_SQL_Errno: 1146"* | *"Last_Errno: 1146"*) ;;
-                *) return 1 ;;
-              esac
-              case "${slave_status}" in
-                *"kubeblocks.kb_health_check"*) ;;
-                *) return 1 ;;
-              esac
-            }
+            # alpha.99 (Helen 2026-05-25): removed
+            # slave_status_has_kb_health_check_repairable_error +
+            # repair_kb_health_check_replication_error functions.
+            # The "repair" was DELETE FROM kubeblocks.kb_health_check,
+            # which violated table ownership (kb_health_check is a syncer
+            # resource, see engines/mariadb/manager.go) and caused the
+            # very Error 1032 it tried to fix. Iron-evidence repro on
+            # cluster mdb-repro-1032 2026-05-25 08:03Z confirmed: DELETE
+            # on secondary removes the row that primary's next Update_rows
+            # _v1 event expects to find -> 1032 HA_ERR_KEY_NOT_FOUND.
+            # Without the DELETE the row stays valid, replication applies
+            # cleanly. syncer's WriteCheck path handles the table
+            # lifecycle (CREATE fallback included in manager.go).
             wait_for_replication_healthy() {
               local label="$1"
               local timeout_seconds="${2:-120}"
@@ -1368,10 +1357,6 @@ spec:
                   elapsed=$(($(date +%s) - start))
                   prestop_watchdog_log "rejoin-replication-healthy label=${label} elapsed=${elapsed}s"
                   return 0
-                fi
-                if repair_kb_health_check_replication_error "${label}" "${slave_status}"; then
-                  sleep "${sleep_seconds}"
-                  continue
                 fi
                 now="$(date +%s)"
                 elapsed=$((now - start))
@@ -1447,133 +1432,19 @@ spec:
               mark_replication_ready
               return 0
             }
-            clear_local_kb_health_check_table() {
-              local decision="$1" evidence_file table_count row_count
-              if "${LOCAL[@]}" -e "
-                SET SESSION sql_log_bin=0;
-                CREATE DATABASE IF NOT EXISTS kubeblocks;
-                CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
-                DELETE FROM kubeblocks.kb_health_check;
-                SET SESSION sql_log_bin=1;
-              " 2>/dev/null; then
-                evidence_file="{{ .Values.dataMountPath }}/log/fresh-replica-health-check-cleanup.log"
-                mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
-                table_count=$("${LOCAL[@]}" -N -s -e "
-                  SELECT COUNT(*)
-                  FROM information_schema.TABLES
-                  WHERE TABLE_SCHEMA = 'kubeblocks'
-                    AND TABLE_NAME = 'kb_health_check';
-                " 2>/dev/null || echo "unknown")
-                row_count=$("${LOCAL[@]}" -N -s -e "SELECT COUNT(*) FROM kubeblocks.kb_health_check;" 2>/dev/null || echo "unknown")
-                {
-                  printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-                  printf 'decision=%s\n' "${decision}"
-                  printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
-                  printf 'primary_host=%s\n' "${PRIMARY_HOST:-unknown}"
-                  printf 'health_table_after_cleanup=%s\n' "${table_count}"
-                  printf 'health_rows_after_cleanup=%s\n' "${row_count}"
-                  printf '\n'
-                } >> "${evidence_file}" 2>/dev/null || true
-                echo "Prepared local kubeblocks health check table (${decision})."
-                return 0
-              fi
-              return 1
-            }
-            with_local_read_write_for_health_check_repair() {
-              local decision="$1"
-              local old_read_only rc
-              old_read_only="$(read_only_value || true)"
-              case "${old_read_only}" in
-                0|OFF)
-                  ;;
-                *)
-                  if ! "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null; then
-                    prestop_watchdog_log "fresh-kb-health-check-repair read-only-open rc=1 decision=${decision}"
-                    return 1
-                  fi
-                  ;;
-              esac
-              clear_local_kb_health_check_table "${decision}"
-              rc=$?
-              case "${old_read_only}" in
-                0|OFF)
-                  ;;
-                *)
-                  set_fail_closed_read_only "${decision}-restore-read-only" || true
-                  ;;
-              esac
-              return "${rc}"
-            }
-            prepare_fresh_replica_for_sql_thread_start() {
-              local local_gtid="${1:-}"
-              [ -z "${local_gtid}" ] || return 0
-              if with_local_read_write_for_health_check_repair "cleared-local-kb-health-check-before-fresh-sql-thread"; then
-                return 0
-              fi
-              mark_replication_pending
-              # tier=error-recovery: cleanup already failed; defensive locking
-              # follows mark_replication_pending and the function returns 1.
-              set_fail_closed_read_only "fresh-health-check-cleanup-failed" || true # tier=error-recovery
-              lock_local_root_writes "fresh-health-check-cleanup-failed" || true # tier=error-recovery
-              echo "WARNING: failed to clear local kubeblocks health check table before fresh SQL thread starts; keeping roleProbe pending."
-              return 1
-            }
-            repair_kb_health_check_replication_error() {
-              local label="$1" slave_status="$2"
-              if ! slave_status_has_kb_health_check_repairable_error "${slave_status}"; then
-                return 1
-              fi
-              prestop_watchdog_log "fresh-kb-health-check-repair label=${label}"
-              # alpha.95 (Helen 2026-05-25, live N=1 follow-up from
-              # vcluster mariadb-test5 cluster mdb-async-36884 pod-0):
-              # the alpha.93 / alpha.94 chain confirmed the repair was
-              # being called but Slave_SQL_Running stayed No even after
-              # the skip-counter ran. Root cause: STOP / START SLAVE
-              # SQL_THREAD were invoked via LOCAL (user-facing root)
-              # which after alpha.60 admin-bypass revoke no longer has
-              # REPLICATION SLAVE ADMIN; both calls failed with ERROR
-              # 1227 (silently swallowed by `2>/dev/null || true`). With
-              # STOP never actually stopping the thread, SET GLOBAL
-              # sql_slave_skip_counter set the variable but the running
-              # SQL thread already failed at the offending event before
-              # the counter applied. START via LOCAL also failed silently.
-              # Net effect: repair traced repeatedly but no state change.
-              # Manual verification: same STOP / SET GLOBAL / START
-              # sequence via INTERNAL_LOCAL (kb_internal_root, retains
-              # ALL PRIVILEGES per alpha.83 v1) flipped
-              # Slave_SQL_Running from No to Yes within 3s on the live
-              # stuck pod-0.
-              #
-              # Fix: route all 3 calls (STOP / SET GLOBAL / START)
-              # through INTERNAL_LOCAL. STOP and START need REPLICATION
-              # SLAVE ADMIN; SET GLOBAL needs SUPER; user-facing root
-              # has neither.
-              "${INTERNAL_LOCAL[@]}" -e "STOP SLAVE SQL_THREAD;" 2>/dev/null || true # tier=error-recovery
-              if ! with_local_read_write_for_health_check_repair "prepared-local-kb-health-check-after-replication-error"; then
-                # tier=error-recovery: repair attempt already failed; defensive
-                # locking follows mark_replication_pending and the function returns 1.
-                mark_replication_pending
-                set_fail_closed_read_only "fresh-health-check-replication-repair-failed" || true # tier=error-recovery
-                lock_local_root_writes "fresh-health-check-replication-repair-failed" || true # tier=error-recovery
-                echo "WARNING: failed to repair kubeblocks health check replication error; keeping roleProbe pending."
-                return 1
-              fi
-              # alpha.92 v2 (Helen 2026-05-25): after STOP SLAVE SQL_THREAD
-              # + DELETE FROM kubeblocks.kb_health_check the SQL thread
-              # relay log position is still pointing at the Update_rows
-              # _v1 event for the row we just cleared. START SLAVE
-              # SQL_THREAD without skipping re-applies the same event and
-              # hits the same 1032 / HA_ERR_KEY_NOT_FOUND, infinite loop.
-              # Skip 1 event so the SQL thread advances past the
-              # offending Update_rows_v1; the just-cleared local table
-              # will be re-populated by the next Insert_rows or
-              # Update_rows event from the primary's
-              # kubeblocks.kb_health_check write loop (which fires every
-              # few seconds via KB controller probe).
-              "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL sql_slave_skip_counter = 1;" 2>/dev/null || true # tier=error-recovery
-              "${INTERNAL_LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null || true # tier=error-recovery
-              return 0
-            }
+            # alpha.99 (Helen 2026-05-25): removed
+            # clear_local_kb_health_check_table /
+            # with_local_read_write_for_health_check_repair /
+            # prepare_fresh_replica_for_sql_thread_start /
+            # repair_kb_health_check_replication_error.
+            # All four wrapped an addon-side DELETE FROM
+            # kubeblocks.kb_health_check, which broke the syncer's
+            # ownership of that table and triggered the very 1032 cascade
+            # they tried to repair. See removed
+            # slave_status_has_kb_health_check_repairable_error block for
+            # the iron-evidence reference. The addon now does not touch
+            # kb_health_check at any lifecycle point; syncer owns
+            # create/read/write per engines/mariadb/manager.go.
             mariadbd_pids() {
               if command -v pidof >/dev/null 2>&1; then
                 pidof mariadbd 2>/dev/null || true
@@ -1645,109 +1516,30 @@ spec:
               # Each successful reconfigure writes a per-parameter
               # `.cnf` file into runtime-overrides.d/; mariadbd picks
               # them up on next restart.
-              # alpha.97 (Helen 2026-05-25, live N=1 third-blocker
-              # from vcluster mariadb-test5 cluster mdb-async-39296
-              # T9 Switchover): REVERT alpha.96's
-              # --replicate-ignore-table=kubeblocks.kb_health_check.
+              # alpha.99 (Helen 2026-05-25): REVERT alpha.98's
+              # --slave-exec-mode=IDEMPOTENT.
               #
-              # alpha.96 claim "secondaries do not need to apply
-              # primary probe writes" was wrong. The kubeblocks
-              # .kb_health_check.check_ts row is the only signal
-              # syncer's IsMemberLagging uses to measure replication
-              # lag (`engines/mariadb/manager.go` GetOpTimestamp
-              # reads it; IsMemberLagging compares leader's
-              # OpTimestamp vs member's OpTimestamp). With the
-              # filter, secondary never receives kb_health_check
-              # updates -> secondary's kb_health_check stays empty
-              # -> GetOpTimestamp returns "sql: no rows in result
-              # set" -> IsMemberLagging returns (true,
-              # math.MaxInt64) -> IsMemberHealthy returns false ->
-              # ha.HasOtherHealthyMember returns false ->
-              # HandlerSwitchoverForPrimary falls through to
-              # Promote (line 59 of syncer's
-              # highavailability/switchover.go) -> syncer keeps
-              # the old leader and resets read_only=0 every second
-              # -> addon's fence verify window collapses ->
-              # Switchover OpsRequest fails.
+              # Iron-evidence repro on cluster mdb-repro-1032
+              # (2026-05-25 08:03Z) showed IDEMPOTENT only stops
+              # SQL_THREAD from halting on 1032 — it does NOT
+              # repopulate the secondary's empty kb_health_check
+              # row. Primary's INSERT...ON DUPLICATE KEY UPDATE
+              # always becomes Update_rows in the binlog (because
+              # the row exists on primary); secondary therefore
+              # never receives Insert_rows. With IDEMPOTENT the
+              # secondary table stays empty forever -> syncer's
+              # GetOpTimestamp returns no rows -> IsMemberLagging
+              # = MaxInt64 -> IsMemberHealthy=false -> same T9
+              # switchover deadlock as alpha.96.
               #
-              # Live experiment on cluster mdb-async-39296:
-              # `SET GLOBAL replicate_ignore_table=''` (un-filter)
-              # on pod-1 + START SLAVE -> Error 1032
-              # immediately. Confirms both the original 1032 bug
-              # and that the filter was the actual T9 blocker.
-              #
-              # T9 Switchover is the higher-priority unblock per
-              # weston 2026-05-25 13:31; the 1032 / rolling-restart
-              # symptom that alpha.96 was trying to fix is
-              # re-investigated in a separate alpha. Candidate
-              # alpha.98 paths in flight: change
-              # `prepare_fresh_replica_for_sql_thread_start` to
-              # not DELETE existing kb_health_check rows, since
-              # the row already in the data dir matches the
-              # primary's INSERT/UPDATE history more often than
-              # not.
-              # alpha.98 (Helen 2026-05-25, live N=1 fix for
-              # kb_health_check Error 1032 cascade after rolling
-              # restart, the bug alpha.92-alpha.97 chain chased
-              # through wrong fixes): set slave_exec_mode=IDEMPOTENT
-              # via mariadbd startup arg so the SQL_Thread skips
-              # row-image-mismatch errors instead of stopping.
-              #
-              # Why this is the right fix for kb_health_check:
-              # the table is a shared heartbeat written by whichever
-              # pod is currently primary. After a switchover or
-              # rolling restart the old primary's local row =
-              # value the old primary wrote when it was leader.
-              # The new primary's binlog has Update_rows_v1 events
-              # whose before-image = value the new primary wrote.
-              # The two values must differ. STRICT mode rejects
-              # the apply with Error 1032 HA_ERR_KEY_NOT_FOUND;
-              # IDEMPOTENT mode skips the offending event and
-              # continues; the next event (the new primary's
-              # ON DUPLICATE KEY UPDATE -> Insert/Update) lands
-              # correctly and the secondary's row converges.
-              #
-              # Why NOT replicate-ignore-table (alpha.96 wrong
-              # path): syncer engines/mariadb/manager.go
-              # GetOpTimestamp reads kubeblocks.kb_health_check
-              # .check_ts to measure replication lag. If we filter
-              # the table out on secondary, secondary's table
-              # stays empty -> GetOpTimestamp returns "sql: no
-              # rows in result set" -> IsMemberLagging returns
-              # (true, math.MaxInt64) -> IsMemberHealthy returns
-              # false -> ha.HasOtherHealthyMember returns false ->
-              # HandlerSwitchoverForPrimary cannot demote ->
-              # syncer keeps the old leader and resets read_only
-              # to 0 every second -> addon fence verify window
-              # collapses -> T9 Switchover OpsRequest fails.
-              # alpha.96 -> alpha.97 trail proved this both
-              # directions.
-              #
-              # Side-effect bound: IDEMPOTENT also relaxes user
-              # data row-image matching. For a master/slave async
-              # cluster where primary is the only writer this is
-              # equivalent to STRICT (secondary's row always
-              # matches primary's binlog before-image). The only
-              # divergence is chaos-test scenarios where
-              # secondary is anomalously written; mariadb addon
-              # already enforces secondary read_only=ON so
-              # application traffic cannot write to secondary,
-              # making the chaos-only side-effect N/A.
-              #
-              # Verified live on vcluster mariadb-test5 cluster
-              # mdb-async-13674 pod-0 (2026-05-25 14:11Z):
-              # SET GLOBAL slave_exec_mode=IDEMPOTENT (with
-              # syncerctl pause to prevent override) + STOP SLAVE
-              # + START SLAVE recovered the stuck SQL_Thread from
-              # Slave_SQL_Running=No / Last_SQL_Errno=1032 to
-              # Slave_SQL_Running=Yes / Last_SQL_Errno=0 /
-              # Exec_Master_Log_Pos catching Read_Master_Log_Pos
-              # within 8 seconds.
-              #
-              # Methodology case sedimented:
-              # docs/cases/methodology/slave-exec-mode-idempotent
-              # -for-multi-writer-heartbeat-table-case.md
-              # (kubeblocks-addon-docs PR #308).
+              # alpha.99 fix is structural: addon scripts no longer
+              # DELETE / repair kubeblocks.kb_health_check (see
+              # removed clear/repair/detector block above and the
+              # primary_internal_root_write_ready rewrite that
+              # uses kubeblocks.kb_addon_write_probe instead). The
+              # table now belongs entirely to syncer. STRICT mode
+              # is safe again because the secondary's row state
+              # always tracks primary's binlog before-image.
               docker-entrypoint.sh mariadbd \
                 --defaults-extra-file={{ .Values.dataMountPath }}/runtime-overrides.cnf \
                 --server-id=${SERVICE_ID} \
@@ -1755,7 +1547,6 @@ spec:
                 --skip-slave-start=ON \
                 --read-only=NO_LOCK_NO_ADMIN \
                 --thread-cache-size=100 \
-                --slave-exec-mode=IDEMPOTENT \
                 --bind-address="${bind_address}" &
               MARIADB_PID=$!
               prestop_fence_watchdog &
@@ -1961,10 +1752,16 @@ spec:
                   prestop_watchdog_log "runtime-secondary-follow-configure-io-failed label=${label}"
                   return 1
                 fi
-                if ! prepare_fresh_replica_for_sql_thread_start "${local_gtid}"; then
-                  prestop_watchdog_log "runtime-secondary-follow-configure-pre-sql-failed label=${label}"
-                  return 1
-                fi
+                # alpha.99 (Helen 2026-05-25): removed
+                # prepare_fresh_replica_for_sql_thread_start call. That
+                # function used to DELETE FROM kubeblocks.kb_health_check
+                # before SQL_THREAD start, which empties the secondary's
+                # row right before replication tries to apply primary's
+                # Update_rows_v1 events and triggers 1032. Without the
+                # DELETE the local row (if any) matches primary's
+                # before-image (because it was last set by replication
+                # from this same primary lineage), so START SLAVE
+                # SQL_THREAD applies cleanly.
                 if ! "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
                   # tier=error-recovery: SQL thread start has already failed.
                   # mark_replication_pending + best-effort defensive locks +
@@ -2286,10 +2083,12 @@ spec:
                     sleep 5
                     continue
                   fi
-                  if ! prepare_fresh_replica_for_sql_thread_start "${LOCAL_GTID}"; then
-                    sleep 5
-                    continue
-                  fi
+                  # alpha.99: removed prepare_fresh_replica_for_sql_thread_start
+                  # (see comment block in runtime-secondary-follow-configure
+                  # above). The function used to DELETE kubeblocks
+                  # .kb_health_check on local secondary which directly
+                  # triggered the 1032 cascade documented in cluster
+                  # mdb-repro-1032 evidence (2026-05-25 08:03Z).
                   if ! "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
                     # tier=error-recovery: SQL thread start has already failed.
                     # mark_replication_pending + best-effort defensive locks +
