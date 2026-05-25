@@ -1055,9 +1055,119 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.98
+version: 1.1.1-alpha.99
 
-# alpha.98 v1 (Helen 2026-05-25, live N=1 fix on vcluster
+# alpha.99 v1 (Helen 2026-05-25, iron-evidence root-cause fix
+# for kb_health_check 1032 cascade — supersedes alpha.92-alpha.98
+# attempts that all attacked symptoms not cause).
+#
+# Iron evidence (cluster mdb-repro-1032, 2026-05-25 08:03Z):
+#   - Pod-1 secondary kb_health_check row = (1, 1779696185)
+#   - DELETE FROM kubeblocks.kb_health_check on pod-1
+#   - Primary at 08:03:06 wrote GTID 0-1-201 = Update_rows_v1
+#     with before-image @1=1, @2=1779696185
+#   - Pod-1 START SLAVE SQL_THREAD → STRICT mode looked for
+#     row matching @2=1779696185, found nothing (deleted) →
+#     Last_SQL_Errno=1032 Last_SQL_Error "Could not execute
+#     Update_rows_v1 event ... HA_ERR_KEY_NOT_FOUND"
+#
+# Also-iron: alpha.98 IDEMPOTENT fix is INCOMPLETE. With
+# IDEMPOTENT, SQL_THREAD does not stop on 1032 (it skips the
+# row-image mismatch), but the secondary's kb_health_check
+# stays empty forever. The primary's INSERT...ON DUPLICATE KEY
+# UPDATE generates Update_rows in the binlog (not Insert_rows,
+# because the row exists on primary), so the secondary never
+# receives an Insert_rows event to repopulate. Result:
+# syncer's GetOpTimestamp on the secondary returns "no rows"
+# → IsMemberLagging returns (true, MaxInt64) → IsMemberHealthy
+# = false → HasOtherHealthyMember = false → switchover
+# deadlock. Same end-state as alpha.96 replicate-ignore-table.
+# Verified on cluster mdb-repro-1032 after IDEMPOTENT recovery:
+# pod-1 row count = 0 persistently (8min+).
+#
+# Root cause: addon scripts were operating on
+# kubeblocks.kb_health_check, which is a syncer-owned table
+# (engines/mariadb/manager.go WriteCheck / GetOpTimestamp).
+# Per weston 2026-05-25 15:42 msg `b1ce148a`: addon scripts
+# should not have any operations on kb_health_check.
+#
+# Origin of the bug: commit 2ad5e122 (2026-05-09 21:47, chart
+# alpha.43 → alpha.44) added prepare_fresh_replica_for_binlog_
+# start (later renamed to ..._sql_thread_start) that DROPped
+# / DELETEd kubeblocks.kb_health_check. The bug existed since
+# alpha.44 but was masked by upstream blockers (merged-pd
+# parametersSchema in alpha.86-89, topology merge etc.) that
+# stopped CM4 reconfigure from triggering the rolling-restart
+# path. alpha.91 closed the merged-pd blocker → CM4 finally
+# triggered rolling restart → 1032 surfaced for the first time.
+#
+# alpha.99 fix scope (cmpd-replication-merged.yaml — the
+# only cmpd referenced by clusterdef for `replication`
+# topology):
+#   1. REVERT alpha.98 mariadbd `--slave-exec-mode=IDEMPOTENT`
+#      startup arg (back to STRICT default — safe because
+#      addon no longer creates the row mismatch).
+#   2. REMOVE 4 helper functions and all call sites:
+#      slave_status_has_kb_health_check_repairable_error,
+#      clear_local_kb_health_check_table,
+#      with_local_read_write_for_health_check_repair,
+#      prepare_fresh_replica_for_sql_thread_start,
+#      repair_kb_health_check_replication_error.
+#      Call sites in wait_for_replication_healthy,
+#      runtime-secondary-follow-configure, and main loop now
+#      flow directly into START SLAVE SQL_THREAD without
+#      addon-side DELETE.
+#   3. REWRITE primary_internal_root_write_ready to use
+#      addon-owned kubeblocks.kb_addon_write_probe scratch
+#      table (single-row UPSERT, no DELETE). Previous body
+#      borrowed kb_health_check as a scratch probe and the
+#      DELETE WHERE type=0 created the same row divergence
+#      pattern that triggers 1032 (via syncer's next
+#      WriteCheck on the now-deleted row → Insert_rows event
+#      → secondary 1062 / future row mismatch).
+#   4. ensure_internal_local_admin SQL: drop
+#      `CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check`
+#      (syncer manager.go has CREATE IF NOT EXISTS fallback
+#      that runs on leader's local connection with ALL
+#      PRIVILEGES, so addon does not need to pre-create).
+#      ADD `CREATE TABLE IF NOT EXISTS
+#      kubeblocks.kb_addon_write_probe` for the new probe.
+#      Change `GRANT SELECT, INSERT, UPDATE ON
+#      kubeblocks.kb_health_check TO 'kb_internal_root'@'%'`
+#      to `... ON kubeblocks.* TO ...@'%'` so syncer cross-
+#      pod IsMemberLagging can SELECT, addon doesn't name
+#      the syncer table, and the new probe table also covered.
+#      CREATE DATABASE kubeblocks stays (it is the KB-wide
+#      namespace shared by syncer kb_health_check + addon
+#      kb_post_dcs_fence_probe + addon kb_addon_write_probe).
+#
+# Bump rationale: KB CmpD immutability rule applies because
+# cmpd-replication-merged.yaml mutated. Same syncer image (no
+# syncer change). REPLICATION TOPOLOGY (covers both async and
+# semisync replicationMode values; the merged cmpd is the
+# single canonical primary/secondary topology since alpha.89).
+#
+# Methodology: a separate sediment case will document the
+# encapsulation lesson (addon must not operate on syncer-owned
+# tables, even with sql_log_bin=0 wrappers) for other addon
+# teams. The previously-merged docs PR #308 IDEMPOTENT case
+# remains valid as a general methodology for multi-writer
+# heartbeat tables, but is NOT the fix for this addon's bug
+# because (a) this addon's writer is single-primary (syncer
+# WriteCheck runs only on leader) so the case doesn't apply,
+# and (b) IDEMPOTENT does not repopulate empty secondary rows.
+#
+# Verify plan: helm upgrade alpha.99 → fresh cluster on
+# `replication` topology → wait for primary + secondary
+# steady state → trigger CM4 back_log static-parameter
+# reconfigure (rolls primary out of leadership, demotes,
+# restarts) → expect zero 1032 anywhere, T6 Stop/Start +
+# T7 vscale + T8 Restart green, T9 Switchover green if
+# alpha.60 fence verify bug is independently resolved or
+# absent. Cluster mdb-repro-1032 (2026-05-25 08:03Z scene)
+# preserved for alpha.99 verification baseline.
+#
+# alpha.98 v1 (REPLACED — see alpha.99 above): Helen 2026-05-25, live N=1 fix on vcluster
 # mariadb-test5 cluster mdb-async-13674 for kb_health_check
 # Error 1032 cascade after rolling restart - the bug
 # alpha.92-alpha.97 chain chased through 5 wrong fixes
