@@ -1055,8 +1055,45 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.97
+version: 1.1.1-alpha.98
 
+# alpha.98 v1 (Helen 2026-05-25, live N=1 fix on vcluster
+# mariadb-test5 cluster mdb-async-13674 for kb_health_check
+# Error 1032 cascade after rolling restart - the bug
+# alpha.92-alpha.97 chain chased through 5 wrong fixes
+# before pinning the right one) - bump from alpha.97 to
+# alpha.98 because cmpd-replication-merged.yaml mariadbd
+# startup args add --slave-exec-mode=IDEMPOTENT. Same KB
+# CmpD immutability packaging-contract bump pattern.
+#
+# Behavioral change: secondary's SQL_Thread skips row-image
+# mismatch errors on kb_health_check (heartbeat table
+# written by whichever pod is currently primary; row state
+# is always slightly out of sync after switchover / rolling
+# restart) instead of stopping. kb_health_check still
+# replicates (no filter) so syncer's GetOpTimestamp /
+# IsMemberLagging can measure lag correctly and
+# HasOtherHealthyMember returns true. T9 Switchover deadlock
+# + CM4/T6/T7/T8 rolling-restart cascade are both unblocked
+# by a single mariadbd flag.
+#
+# Side-effect bound: see cmpd-replication-merged.yaml
+# comment block at the docker-entrypoint.sh mariadbd line.
+# Short version: IDEMPOTENT also relaxes user data row-image
+# matching; for a master/slave async cluster where primary
+# is the only writer this is equivalent to STRICT; chaos
+# scenarios cannot write secondary because addon enforces
+# secondary read_only=ON.
+#
+# Verification live N=1: SET GLOBAL slave_exec_mode=IDEMPOTENT
+# + STOP/START SLAVE on stuck pod-0 recovered SQL_Thread
+# from Slave_SQL_Running=No / Last_SQL_Errno=1032 to
+# Slave_SQL_Running=Yes / Last_SQL_Errno=0 in 8 seconds.
+#
+# Methodology case sedimented: docs/cases/methodology/
+# slave-exec-mode-idempotent-for-multi-writer-heartbeat
+# -table-case.md (kubeblocks-addon-docs PR #308).
+#
 # alpha.97 v1 (Helen 2026-05-25, live N=1 third-blocker from
 # vcluster mariadb-test5 cluster mdb-async-39296 T9 Switchover:
 # alpha.96's --replicate-ignore-table=kubeblocks.kb_health_check
