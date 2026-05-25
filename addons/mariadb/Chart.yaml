@@ -1055,7 +1055,47 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.99
+version: 1.1.1-alpha.100
+
+# alpha.100 v1 (Helen 2026-05-25 PROTOTYPE — Path A for GTID 1950
+# out-of-order): add mariadbd `--gtid-domain-id=${SERVICE_ID}` to
+# the cmpd-replication-merged.yaml mariadbd startup args. Each pod
+# now writes its own GTID sequence in a unique domain (pod-0 →
+# domain 1, pod-1 → domain 2). After switchover the new primary's
+# writes go into its own domain, so when the old primary reconnects
+# as secondary and applies events, there is no sequence-overlap
+# against its own historical writes in the original domain.
+#
+# Iron-evidence from alpha.99 N=1 verify on cluster mdb-a99-cm4
+# (2026-05-25 17:27Z) — the bug this targets:
+#   pod-0 (was primary, now secondary): server_id=1, binlog has 0-1-213
+#   pod-1 (was secondary, now primary): server_id=2, gtid_slave_pos
+#     only reached 0-1-211 before promote, then started own writes
+#     at 0-2-212 (sequence 212, server_id 2, still in domain 0)
+#   pod-0 SLAVE SQL_THREAD applying 0-2-212: gtid_strict_mode
+#     compares against existing 0-1-213 within domain 0 → out-of-order
+#     → Last_SQL_Errno=1950, SQL_THREAD stops.
+#
+# Path A fix: with per-server gtid_domain_id, pod-1's promoted writes
+# become 2-2-1+ (domain 2). pod-0 applying 2-2-1 has no events in
+# domain 2 yet → no out-of-order possible.
+#
+# Side-effects to verify:
+#   - In-place upgrade from alpha.99 to alpha.100: existing binlog
+#     events stay in domain 0; new writes shift to domain 1/2/etc.
+#     gtid_slave_pos preserves domain 0 entries.
+#   - Backup/PITR: mariabackup uses gtid_binlog_pos as restore point;
+#     mix of domain 0 historical + per-server domain new should be
+#     fine for slave_pos comparisons.
+#   - Monitoring: external GTID consumers may need to handle multiple
+#     domain IDs per cluster.
+#   - This is a PROTOTYPE — not yet release-ready until verified
+#     on fresh cluster + N rounds of CM4/T6/T7/T8 + switchover/restart.
+#
+# alpha.100 is bumped from alpha.99 because cmpd-replication-merged.yaml
+# mariadbd startup args mutated (KB CmpD immutability rule applies).
+# Same syncer image (no syncer change). Builds on alpha.99 fix for
+# kb_health_check 1032 cascade.
 
 # alpha.99 v1 (Helen 2026-05-25, iron-evidence root-cause fix
 # for kb_health_check 1032 cascade — supersedes alpha.92-alpha.98
