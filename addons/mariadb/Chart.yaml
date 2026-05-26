@@ -1055,7 +1055,34 @@ type: application
 # actually worked in the kbagent context. Removing it does NOT
 # regress the actual safety posture; it removes a dead defense that
 # was leaving orphan files.
-version: 1.1.1-alpha.101
+# alpha.102 v1 (Helen 2026-05-26): mark_replication_pending no longer
+# clears .sql-listener-ready. That marker semantically represents
+# "mariadbd has been re-bound to 0.0.0.0 past the bootstrap 127.0.0.1-
+# only phase" — a per-process bind state, not a replication-ready state.
+# Pre-fix: in a runtime switchover (e.g. syncerctl switchover candidate
+# = pod-1), pod-1's secondary-reconciler ran briefly after syncer had
+# already promoted pod-1 to primary (race window where syncerctl getrole
+# returned stale "secondary"). set_replica_read_only failed because the
+# pod was already primary; the failure path called mark_replication_
+# pending which cleared .sql-listener-ready. The next-tick primary-
+# reconciler then took the bootstrap "fresh start" branch in
+# expose_sql_listener_for_primary_role and physically restarted mariadbd.
+# That restart killed the syncer lease, the demoted peer re-acquired
+# leader, wrote a kb_health_check INSERT as new "interim primary", then
+# the cluster flapped back — leaving 1-event orphan in domain 1 that
+# `EnsurePromoteGTIDContinuity` then refused to promote past, sticking
+# the demoted peer as a permanent secondary. Same cause on both topology
+# subpaths (cmpd-replication-merged.yaml + cmpd-semisync.yaml).
+# Fix: rm of .sql-listener-ready removed from mark_replication_pending
+# in both files. Bind state is reset only by the bootstrap path's
+# fresh start_mariadbd_process at line 1901 of cmpd-replication-merged
+# (a fresh container restart will rebuild it). Same CmpD immutability
+# rule applies — chart version bump required.
+# Same syncer image as alpha.101 (no syncer change in this bump; the
+# syncer-side double-stop fix is in apecloud/syncer branch
+# helen/mariadb-demote-pause-writecheck, image
+# apecloud/syncer:mariadb-fullfix-20260526-v5).
+version: 1.1.1-alpha.102
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
