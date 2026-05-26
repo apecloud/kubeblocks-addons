@@ -613,7 +613,17 @@ spec:
             mark_replication_pending() {
               rm -f {{ .Values.dataMountPath }}/.replication-ready
               rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
-              rm -f {{ .Values.dataMountPath }}/.sql-listener-ready
+              # DO NOT clear .sql-listener-ready here. That marker represents
+              # "mariadbd has been re-bound to 0.0.0.0 (past the bootstrap
+              # 127.0.0.1-only phase)" — a per-process state, not a
+              # replication-ready state. Clearing it during a runtime role
+              # transition causes the next reconcile_sql_listener_for_syncer_
+              # primary_once tick to take the bootstrap "fresh start" branch
+              # in expose_sql_listener_for_primary_role and physically restart
+              # mariadbd, which kills the syncer lease and triggers the
+              # demoted peer to re-acquire leader and write orphan events.
+              # Bind-state is only reset by the bootstrap start_mariadbd_process
+              # at line 1901 (a fresh container restart will rebuild it).
               rm -f {{ .Values.dataMountPath }}/.remote-root-fence-role
               touch {{ .Values.dataMountPath }}/.replication-pending
             }
