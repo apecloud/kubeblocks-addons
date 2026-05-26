@@ -371,8 +371,14 @@ spec:
   # ── Lifecycle actions ──────────────────────────────────────────────────
   lifecycleActions:
     # roleProbe: KubeBlocks calls this every periodSeconds to learn the
-    # role of each pod.  The script must print exactly the role name
-    # (matching one of the roles[] names above) to stdout.
+    # role of each pod. Contract (post-PR apecloud/kubeblocks#10280):
+    # stdout is parsed via `strings.Fields`. The first whitespace token
+    # must be the role name (matching one of the roles[] names above);
+    # an optional second whitespace token is a uint64 engine-authoritative
+    # version that the controller uses to gate stale Event replays. Only
+    # the first token becomes the Pod role label. The Valkey script
+    # appends the highest reachable sentinel config-epoch as the second
+    # token whenever a sentinel is reachable.
     roleProbe:
       periodSeconds: 5
       timeoutSeconds: 3
