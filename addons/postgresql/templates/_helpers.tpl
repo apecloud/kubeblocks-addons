@@ -233,7 +233,7 @@ reconfigure:
 
         env | cut -d= -f1 | grep -E '^[a-z0-9_.-][a-z0-9_.-]*$' | sort -u | while IFS= read -r param; do
           [ -n "${param}" ] || continue
-          /scripts/update-parameter.sh "${param}" "$(printenv "${param}")"
+          /kb-scripts/update-parameter.sh "${param}" "$(printenv "${param}")"
         done
 {{- end -}}
 
