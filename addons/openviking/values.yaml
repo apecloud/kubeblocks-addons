@@ -1,0 +1,75 @@
+## Application name overrides
+nameOverride: ""
+fullnameOverride: ""
+
+clusterDomain: ".cluster.local"
+
+## OpenViking exposes a single HTTP service on this port
+servicePort: 1933
+
+## Data directory inside the container - mounted as a PVC by KubeBlocks
+dataMountDir: /app/data
+
+## ov.conf file path inside the container (rendered from a config template)
+configMountDir: /etc/openviking
+configFileName: ov.conf
+
+## OpenViking image configuration
+image:
+  registry: ghcr.io
+  repository: volcengine/openviking
+  pullPolicy: IfNotPresent
+
+## If specified, the component definition name will use it as a prefix.
+cmpdVersionPrefix:
+  major0: "openviking-0"
+
+## OpenViking versions and matching image tags
+openvikingVersions:
+  - version: 0.3.12
+    imageTag: "v0.3.12"
+
+## Default ov.conf content rendered into a config template ConfigMap.
+## Users can override individual fields per-cluster via OpsRequest of type
+## `Reconfiguring` (see examples/openviking/configure.yaml). All overrides
+## are validated against the cue schema in config/ov-config-constraint.cue.
+##
+## NOTE: API keys should be supplied at cluster install time, not committed here.
+config:
+  storage:
+    workspace: /app/data/openviking_workspace
+    vectordb:
+      name: context
+      backend: local
+      project: default
+    agfs:
+      backend: local
+      timeout: 10
+  log:
+    level: INFO
+    output: stdout
+  server:
+    host: "0.0.0.0"
+    port: 1933
+    workers: 1
+    root_api_key: ""
+    cors_origins:
+      - "*"
+  embedding:
+    dense:
+      api_base: "https://ark.cn-beijing.volces.com/api/v3"
+      api_key: ""
+      provider: "volcengine"
+      dimension: 1024
+      model: "doubao-embedding-vision-251215"
+      input: "multimodal"
+    max_concurrent: 10
+  vlm:
+    api_base: "https://ark.cn-beijing.volces.com/api/v3"
+    api_key: ""
+    provider: "volcengine"
+    model: "doubao-seed-2-0-pro-260215"
+    temperature: 0.0
+    max_retries: 2
+    thinking: false
+    max_concurrent: 100

@@ -1,0 +1,49 @@
+## Application name overrides
+nameOverride: ""
+fullnameOverride: ""
+
+## OpenViking service version. Must match a release in the openviking
+## ComponentVersion (addons/openviking).
+version: 0.3.12
+
+## OpenViking is single-node (RocksDB-backed local store). Replicas must be 1.
+replicas: 1
+
+## Service exposing the OpenViking HTTP API.
+## Set type to ClusterIP / NodePort / LoadBalancer to control how the API
+## is reached from outside the cluster.
+service:
+  type: ClusterIP
+  port: 1933
+  nodePort:
+  annotations: {}
+
+## Resource Requests / Limits
+cpu: 1
+memory: 2
+# requests:
+#   cpu: 500m
+#   memory: 1Gi
+
+## Storage (Gi). RocksDB workspace is stored at /app/data inside the pod.
+storage: 20
+storageClassName: ""
+
+## Override individual fields in the addon's default ov.conf. This is a
+## sparse map merged on top of the addon's defaults via Cluster componentSpec
+## env / config overrides at install time.
+##
+## At minimum you should set the API keys for embedding and VLM:
+##   --set 'config.embedding.dense.api_key=YOUR_KEY'
+##   --set 'config.vlm.api_key=YOUR_KEY'
+config:
+  embedding:
+    dense:
+      api_key: ""
+  vlm:
+    api_key: ""
+
+## Extra Customizations
+extra:
+  terminationPolicy: Delete
+  disableExporter: true

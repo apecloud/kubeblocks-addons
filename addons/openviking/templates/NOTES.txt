@@ -1,0 +1,40 @@
+OpenViking addon ({{ .Chart.Name }} v{{ .Chart.Version }}) installed.
+
+To create an OpenViking cluster, install the matching cluster chart:
+
+  helm install openviking-cluster ../../addons-cluster/openviking
+
+Or apply a Cluster CR directly. Example:
+
+  apiVersion: apps.kubeblocks.io/v1
+  kind: Cluster
+  metadata:
+    name: openviking-demo
+    namespace: default
+  spec:
+    terminationPolicy: Delete
+    componentSpecs:
+      - name: openviking
+        componentDef: {{ include "openviking.cmpdName" . }}
+        serviceVersion: {{ .Chart.AppVersion }}
+        replicas: 1
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes: [ReadWriteOnce]
+              resources:
+                requests:
+                  storage: 20Gi
+
+After the cluster is Running, the OpenViking HTTP API is exposed
+on port {{ .Values.servicePort }} via the cluster's `http` service:
+
+  kubectl -n default port-forward svc/openviking-demo-openviking-http {{ .Values.servicePort }}:{{ .Values.servicePort }}
+  curl http://localhost:{{ .Values.servicePort }}/health

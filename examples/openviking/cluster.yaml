@@ -1,0 +1,40 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: openviking-cluster
+  namespace: demo
+spec:
+  # Specifies the behavior when a Cluster is deleted.
+  # Valid options are: [DoNotTerminate, Delete, WipeOut]
+  # - `DoNotTerminate`: Prevents deletion of the Cluster.
+  # - `Delete`: Removes resources including PVCs.
+  # - `WipeOut`: Removes everything including external backups.
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: openviking
+      componentDef: openviking
+      # ServiceVersion specifies the OpenViking version to provision.
+      # Valid options are: [0.3.12]
+      serviceVersion: 0.3.12
+      # OpenViking uses RocksDB and does not support multiple pods sharing
+      # the same PVC. Replicas MUST be 1.
+      replicas: 1
+      resources:
+        limits:
+          cpu: "2"
+          memory: "4Gi"
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+      # PersistentVolumeClaim template for the OpenViking workspace.
+      # Refers to the `data` volumeMount declared in the ComponentDefinition.
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                # Set the storage size as needed
+                storage: 20Gi

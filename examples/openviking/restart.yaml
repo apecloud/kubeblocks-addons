@@ -1,0 +1,12 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: openviking-restart
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: openviking-cluster
+  type: Restart
+  # Lists Components to be restarted.
+  restart:
+    - componentName: openviking

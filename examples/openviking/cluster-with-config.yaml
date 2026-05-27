@@ -1,0 +1,79 @@
+# Local-test Cluster for the OpenViking addon.
+#
+# This manifest provisions an OpenViking cluster with explicit `embedding`
+# and `vlm` configuration baked into the rendered ov.conf, so that you can
+# subsequently exercise the day-2 reconfigure flow:
+#
+#   1. kubectl apply -f cluster-with-config.yaml
+#   2. wait until the cluster is Running
+#   3. kubectl apply -f configure.yaml          # multi-key reconfigure
+#      kubectl apply -f reconfigure-loglevel.yaml  # single-key reconfigure
+#   4. observe ConfigMap rewrite + pod restart, then re-check ov.conf
+#
+# NOTE: replace the placeholder API keys before applying.
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: openviking-cluster
+  namespace: demo
+spec:
+  # Valid options are: [DoNotTerminate, Delete, WipeOut]
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: openviking
+      componentDef: openviking
+      serviceVersion: 0.3.12
+      # OpenViking uses RocksDB and does not support multi-pod sharing.
+      replicas: 1
+      resources:
+        limits:
+          cpu: "2"
+          memory: "4Gi"
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+      # Initial ov.conf overrides applied at cluster creation time.
+      # Keys map 1:1 to the JSON layout of ov.conf and are validated against
+      # addons/openviking/config/ov-config-constraint.cue.
+      #
+      # The `name: config` MUST match the configs[].name declared
+      # in the ComponentDefinition (see templates/cmpd.yaml).
+      configs:
+        - name: config
+          variables:
+            # ---- log ----
+            log.level: "INFO"
+            log.output: "stdout"
+
+            # ---- server ----
+            server.host: "0.0.0.0"
+            server.port: "1933"
+            server.workers: "1"
+
+            # ---- embedding (Volcengine Doubao) ----
+            embedding.dense.provider: "volcengine"
+            embedding.dense.api_base: "https://ark.cn-beijing.volces.com/api/v3"
+            embedding.dense.api_key: "REPLACE_WITH_VOLCENGINE_EMBEDDING_KEY"
+            embedding.dense.model: "doubao-embedding-vision-251215"
+            embedding.dense.input: "multimodal"
+            embedding.dense.dimension: "1024"
+            embedding.max_concurrent: "10"
+
+            # ---- vlm (Volcengine Doubao) ----
+            vlm.provider: "volcengine"
+            vlm.api_base: "https://ark.cn-beijing.volces.com/api/v3"
+            vlm.api_key: "REPLACE_WITH_VOLCENGINE_VLM_KEY"
+            vlm.model: "doubao-seed-2-0-pro-260215"
+            vlm.temperature: "0.0"
+            vlm.max_retries: "2"
+            vlm.thinking: "false"
+            vlm.max_concurrent: "100"
