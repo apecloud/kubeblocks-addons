@@ -47,6 +47,6 @@ kubectl -n demo apply -f restart.yaml
 ## Access the API
 
 ```bash
-kubectl -n demo port-forward svc/openviking-cluster-openviking-http 1933:1933
+kubectl -n demo port-forward svc/openviking-cluster-openviking-openviking-http 1933:1933
 curl http://localhost:1933/health
 ```

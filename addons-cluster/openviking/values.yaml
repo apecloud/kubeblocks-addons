@@ -37,6 +37,8 @@ storageClassName: ""
 ##   --set 'config.embedding.dense.api_key=YOUR_KEY'
 ##   --set 'config.vlm.api_key=YOUR_KEY'
 config:
+  server:
+    root_api_key: "CHANGE_ME"
   embedding:
     dense:
       api_key: ""

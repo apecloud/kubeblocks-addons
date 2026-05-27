@@ -46,7 +46,7 @@ helm upgrade --install ov-demo addons-cluster/openviking -n default \
 
 | Chart version | OpenViking appVersion |
 |---------------|-----------------------|
-| 0.1.0         | 0.1.0                 |
+| 0.1.0         | 0.3.12                |
 
 ## Reconfigure (day-2)
 
@@ -92,10 +92,10 @@ effect (RocksDB workspace is preserved on the PVC).
 | Section     | Keys (dot-path)                                                                                                  |
 |-------------|------------------------------------------------------------------------------------------------------------------|
 | `storage.*` | `storage.workspace`                                                                                              |
-| `log.*`     | `log.level`, `log.format`, `log.file`                                                                            |
-| `server.*`  | `server.host`, `server.port`, `server.cors_origins`                                                              |
-| `embedding.*` | `embedding.dense.model`, `embedding.dense.endpoint`, `embedding.dense.api_key`, `embedding.dense.dimension`, `embedding.sparse.enabled` |
-| `vlm.*`     | `vlm.model`, `vlm.endpoint`, `vlm.api_key`, `vlm.temperature`, `vlm.max_tokens`                                  |
+| `log.*`     | `log.level`, `log.output`                                                                                       |
+| `server.*`  | `server.host`, `server.port`, `server.workers`, `server.root_api_key`, `server.cors_origins`                    |
+| `embedding.*` | `embedding.dense.api_base`, `embedding.dense.api_key`, `embedding.dense.provider`, `embedding.dense.dimension`, `embedding.dense.model`, `embedding.dense.input`, `embedding.max_concurrent` |
+| `vlm.*`     | `vlm.api_base`, `vlm.api_key`, `vlm.provider`, `vlm.model`, `vlm.temperature`, `vlm.max_retries`, `vlm.thinking`, `vlm.max_concurrent` |
 
 Value constraints (enums, ranges) are enforced by the cue schema in
 `config/ov-config-constraint.cue`; invalid `OpsRequest` payloads will be

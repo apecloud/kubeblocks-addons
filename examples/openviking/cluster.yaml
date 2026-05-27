@@ -10,6 +10,15 @@ spec:
   # - `Delete`: Removes resources including PVCs.
   # - `WipeOut`: Removes everything including external backups.
   terminationPolicy: Delete
+  services:
+    - name: http
+      serviceName: openviking-http
+      spec:
+        type: ClusterIP
+        ports:
+          - port: 1933
+            targetPort: 1933
+      componentSelector: openviking
   componentSpecs:
     - name: openviking
       componentDef: openviking
