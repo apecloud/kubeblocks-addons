@@ -86,6 +86,10 @@ function clear_stale_allocation_exclusion_for_self() {
     curl --fail ${COMMON_OPTIONS} -X PUT "${ENDPOINT}/_cluster/settings" -H 'Content-Type: application/json' -d '{"persistent":{"cluster.routing.allocation.exclude._name":null}}'
 }
 
+if [ "${ES_POST_START_UNIT_TEST:-0}" = "1" ]; then
+    return 0 2>/dev/null || exit 0
+fi
+
 # For master nodes: Initialize cluster and create CLUSTER_FORMED_FILE
 # CLUSTER_FORMED_FILE is used to indicate that cluster is already initialized
 # When cluster restarts, elasticsearch.yml needs to be modified to remove INITIAL_MASTER_NODES_BLOCK
