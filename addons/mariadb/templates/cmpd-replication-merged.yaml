@@ -1993,7 +1993,22 @@ spec:
                 # set_fail_closed_read_only + lock_local_root_writes
                 # in place via the startup-before-role-decision setup
                 # already done at lines 1927-1930.
-                no_primary_budget="${MARIADB_NO_PRIMARY_RETRY_BUDGET_SECONDS:-60}"
+                # alpha.106 (Jack 2026-05-29) Round 1c-C async T6
+                # Stop/Start exposed 60s is not enough when both pods are
+                # stopped and started together: pod-1 can take 70-100s
+                # from new containerCreating to "mariadbd ready for
+                # connections" under vcluster CPU/IO contention. With a
+                # 60s budget pod-0 falls through to
+                # block_existing_datadir_self_election_without_primary,
+                # writes `.replication-pending` and never returns. The
+                # alpha.106 reaper in replication-roleprobe.sh is the
+                # main self-heal path; extending this budget to 180s
+                # reduces how often the reaper has to fire and avoids
+                # the visible "Cluster Failed for N minutes" window on
+                # the first roleProbe tick. 180s is well under the
+                # InstanceSet startupProbe budget so it does not push
+                # pod-0 past KB's NotReady threshold.
+                no_primary_budget="${MARIADB_NO_PRIMARY_RETRY_BUDGET_SECONDS:-180}"
                 no_primary_deadline=$((SECONDS + no_primary_budget))
                 while [ $SECONDS -lt $no_primary_deadline ]; do
                   echo "pod-0 startup: no primary visible yet, polling every 5s for up to ${no_primary_budget}s before deciding (alpha.92 bounded rejoin retry)"
