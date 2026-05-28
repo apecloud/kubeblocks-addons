@@ -639,6 +639,9 @@ start_redis_server() {
 
 # build redis cluster configuration redis.conf
 build_redis_conf() {
+  # Truncate before building to guarantee a clean slate on every container start.
+  # See: https://github.com/apecloud/kubeblocks-addons/issues/2686
+  > "$redis_real_conf"
   load_redis_template_conf
   build_redis_cluster_service_port
   build_announce_ip_and_port
