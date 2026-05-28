@@ -478,6 +478,26 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
     End
   End
 
+  Describe "Reconfigure action execution surface"
+    # `exec.container` shares the MariaDB container resources, but the
+    # action process itself runs in the action runtime. The reconfigure
+    # script calls the `mariadb` CLI, so pin the action image to the
+    # MariaDB image while keeping `container: mariadb` for shared mounts.
+    It "base reconfigureAction declares the MariaDB exec image"
+      When call extract_base_helper_body
+      The status should be success
+      The output should include 'container: mariadb'
+      The output should include 'image: {{ include "mariadb.image" . }}'
+    End
+
+    It "persisted reconfigureAction declares the MariaDB exec image"
+      When call extract_persisted_helper_body
+      The status should be success
+      The output should include 'container: mariadb'
+      The output should include 'image: {{ include "mariadb.image" . }}'
+    End
+  End
+
   Describe "Regression: KB-managed config has NO !includedir (alpha.84 v1 parser FAIL)"
     It "config/mariadb-semisync.tpl does NOT contain !includedir (mariadbd loads via --defaults-extra-file instead)"
       # alpha.84 v1 put !includedir into KB-managed my.cnf, which KB
@@ -488,7 +508,7 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
       The output should equal "0"
     End
 
-    It "config/mariadb-semisync.tpl content remains pure INI (no `!` directives)"
+    It "config/mariadb-semisync.tpl content remains pure INI (no bang directives)"
       When call grep -c '^!' "${SEMISYNC_CFG}"
       The status should be failure
       The output should equal "0"
