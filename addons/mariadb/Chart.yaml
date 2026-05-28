@@ -1104,7 +1104,38 @@ type: application
 # No script content changes, no CmpD shape changes beyond the new
 # reconfigure exec.image field; syncer/image baseline unchanged from
 # alpha.102.
-version: 1.1.1-alpha.103
+# alpha.104 v1 (Jack 2026-05-29): provision kb_internal_root in
+# standalone CmpD. Round 1 acceptance task442-full-n1-alpha103-r1-0226
+# launched on alpha.103 and FAILED at standalone T4 reconfigure with
+# `ERROR 1045 (28000): Access denied for user 'kb_internal_root'@
+# '127.0.0.1' (using password: YES)`. Live MariaDB inspection on the
+# test pod confirmed only `root` and `healthcheck` users existed; the
+# chart-wide reconfigure helper in `_helpers.tpl` defaults to
+# `kb_internal_root` per the alpha.83 security-hardening convention,
+# but only `cmpd-replication-merged.yaml` / `cmpd-replication.yaml` /
+# `cmpd-semisync.yaml` / `cmpd-galera.yaml` actually CREATE that user
+# during their inline bootstrap; standalone CmpD `cmpd.yaml` did not.
+# The PR #2689 reconfigure CLI fix removed the prior "CLI not found"
+# wall and surfaced this pre-existing standalone gap. SQL `ERROR 1045`
+# from the server is the strongest evidence so far that PR #2689's
+# `exec.image` actually wires CLI -> server in the alpha.103 runtime
+# (action reaches authentication and fails there, not earlier).
+# Fix: standalone CmpD entrypoint wrapper now writes
+# `/docker-entrypoint-initdb.d/01-kb-internal-root.sh` before exec'ing
+# docker-entrypoint.sh. MariaDB's official entrypoint processes `*.sh`
+# in `/docker-entrypoint-initdb.d/` exactly once on fresh datadir init
+# and runs `CREATE USER IF NOT EXISTS` + `ALTER USER ... IDENTIFIED BY`
+# + `GRANT ALL PRIVILEGES`. Same `MARIADB_ROOT_PASSWORD` secret as
+# user-facing root (chart-wide convention: root and kb_internal_root
+# share the password).
+# Evidence: `artifacts/task442-full-n1-alpha103-r1-0226-t4-access-denied-freeze-0237.tar.gz`
+# sha256 e7b04d01139c3178ca4a5fad0caf3e1def9323dc28a68f92fb7d26a02966f332.
+# Scope: only standalone CmpD `templates/cmpd.yaml`; replication /
+# semisync / galera CmpDs already create kb_internal_root via their
+# existing inline startup SQL block (`cmpd-replication-merged.yaml`).
+# No script content changes outside the entrypoint wrapper.
+# syncer/image baseline unchanged from alpha.103.
+version: 1.1.1-alpha.104
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
