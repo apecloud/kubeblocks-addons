@@ -1135,7 +1135,45 @@ type: application
 # existing inline startup SQL block (`cmpd-replication-merged.yaml`).
 # No script content changes outside the entrypoint wrapper.
 # syncer/image baseline unchanged from alpha.103.
-version: 1.1.1-alpha.104
+# alpha.105 v1 (Jack 2026-05-29): rewrite `verify_post_dcs_local_root_
+# write_fenced` in `addons/mariadb/scripts/replication-switchover.sh`
+# from a destructive INSERT probe to a read-only privilege query.
+# Round 1c-B (task442-full-n1-alpha104-r1c-fullrun-0428) async CM4
+# uncovered a self-referential bug: the alpha.59-104 verifier issued
+# `INSERT INTO kubeblocks.kb_post_dcs_fence_probe` as user-facing root
+# to test whether read_only=ON rejects user-facing writes. When the
+# fence had a real gap (`apply_post_dcs_root_revoke` only strips
+# READ_ONLY ADMIN / SUPER / BINLOG ADMIN, leaving base INSERT on
+# user-facing root), the INSERT succeeded, was binlogged on the
+# demoted primary, and the new primary — already promoted in DCS —
+# never replicated it. That single INSERT became a permanent orphan
+# event (pod-0 gtid_binlog_pos=1-1-175 vs pod-1=1-1-174,2-2-N) and
+# the subsequent rejoin path hit GTID divergence fail-closed, locking
+# pod-0 as a stuck orphan. The verifier was both the source and the
+# detector of the very bug it was supposed to enforce.
+# Live evidence: both pods of mdb-async-10255 hold a
+# `kb_post_dcs_fence_probe` row with ts=1780001450 (2026-05-28
+# 20:50:50Z, the verifier's own write); evidence pack sha256
+# a48ab90d13da5740a7899ba6e28657671534352f9c6000bd15b32bcf048275c9.
+# Fix: the verifier now connects as MARIADB_INTERNAL_ROOT_USER
+# (kb_internal_root) and emits `SHOW GRANTS FOR 'root'@'%' /
+# 'root'@'127.0.0.1' / 'root'@'localhost'`, then scans the combined
+# output for any of READ_ONLY ADMIN / BINLOG ADMIN / SUPER / ALL
+# PRIVILEGES. Presence of any → fence not enforced (FAIL); absence
+# on all three hosts → fence enforced (PASS). 1141 (no such grant)
+# is accepted as PASS for that host. The query is purely read-only:
+# zero binlog events, zero data mutation, zero replication side
+# effects. Satisfies the four-part diagnostic-isolation contract
+# (Doc B Rule 4 a/b/c/d): (a) internal account, (b) suppresses
+# binlog propagation by performing no writes at all, (c) reads from
+# system tables only, (d) the diagnostic account does not bypass the
+# gate under test (the gate is "does user-facing root carry bypass
+# grants?", the diagnostic just reads grants).
+# Scope: only `addons/mariadb/scripts/replication-switchover.sh`
+# `verify_post_dcs_local_root_write_fenced()` body + Chart.yaml.
+# No other addon script content changes. syncer/image baseline
+# unchanged from alpha.104.
+version: 1.1.1-alpha.105
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
