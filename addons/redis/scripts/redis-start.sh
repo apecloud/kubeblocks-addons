@@ -88,26 +88,34 @@ replace_user_entry_in_acl() {
 
 # Ensure password exists in user entry, preserving any extra passwords added by user
 # This allows users to add passwords via ACL SETUSER + ACL SAVE and have them persist
+# Note: ACL SAVE writes passwords in SHA256 hash format (#hash), while the startup
+# script uses plaintext format (>password). We must handle both formats.
 ensure_password_in_user() {
   local username="$1"
   local password="$2"
   local permissions="$3"
 
+  # Compute SHA256 hash of the password for matching against ACL SAVE'd entries
+  local password_hash
+  password_hash=$(printf '%s' "$password" | sha256sum | cut -d' ' -f1)
+
   if [ -f "$redis_acl_file" ] && grep -q "^user $username " "$redis_acl_file"; then
     # User exists in acl file, check if this password is already present
     local existing_entry
     existing_entry="$(grep "^user $username " "$redis_acl_file")"
-    if printf '%s\n' "$existing_entry" | grep -F -q -- ">$password"; then
+    # Check both plaintext (>password) and hash (#sha256) formats
+    if printf '%s\n' "$existing_entry" | grep -F -q -- ">$password" || \
+       printf '%s\n' "$existing_entry" | grep -F -q -- "#$password_hash"; then
       echo "Password from Secret already exists for user $username, preserving existing entry"
       # Update permissions if they differ from the configured ones
       if [ -n "$permissions" ]; then
-        # Rebuild entry: keep all fields up to the last password (tokens starting with '>'),
+        # Rebuild entry: keep all fields up to the last password (tokens starting with '>' or '#'),
         # then append the configured permissions.
         local entry_prefix
         entry_prefix=$(printf '%s\n' "$existing_entry" | awk '{
           last = 0;
           for (i = 1; i <= NF; i++) {
-            if ($i ~ /^>/) {
+            if ($i ~ /^[>#]/) {
               last = i;
             }
           }
@@ -133,6 +141,7 @@ ensure_password_in_user() {
       fi
     else
       # Password not present, need to add it to existing user
+      # Preserve all existing passwords (both > plaintext and # hash formats)
       local entry_prefix
       entry_prefix=$(printf '%s\n' "$existing_entry" | awk -v username="$username" -v password="$password" '{
         on_idx = 0;
@@ -145,7 +154,7 @@ ensure_password_in_user() {
         if (on_idx == 0) {
           printf "user %s on >%s", username, password;
           for (i = 1; i <= NF; i++) {
-            if ($i ~ /^>/) {
+            if ($i ~ /^[>#]/) {
               printf " %s", $i;
             }
           }
@@ -157,7 +166,7 @@ ensure_password_in_user() {
         }
         printf " >%s", password;
         for (i = on_idx + 1; i <= NF; i++) {
-          if ($i ~ /^>/) {
+          if ($i ~ /^[>#]/) {
             printf " %s", $i;
           }
         }
@@ -209,7 +218,17 @@ build_redis_default_accounts() {
 
 build_announce_ip_and_port() {
   # build announce ip and port according to whether the announce addr is exist
-  if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value"; then
+  # trim whitespace to avoid writing invalid redis.conf entries like "replica-announce-port" without a value
+  redis_announce_host_value="${redis_announce_host_value//[[:space:]]/}"
+  redis_announce_port_value="${redis_announce_port_value//[[:space:]]/}"
+  if [[ -z "$redis_announce_host_value" || -z "$redis_announce_port_value" || ! "$redis_announce_port_value" =~ ^[0-9]+$ ]]; then
+    if [[ -n "$redis_announce_host_value" || -n "$redis_announce_port_value" ]]; then
+      echo "Invalid redis announce addr, host='$redis_announce_host_value', port='$redis_announce_port_value'. Fallback to pod IP/FQDN."
+    fi
+    redis_announce_host_value=""
+    redis_announce_port_value=""
+  fi
+  if [[ -n "$redis_announce_host_value" && -n "$redis_announce_port_value" ]]; then
     echo "redis use nodeport $redis_announce_host_value:$redis_announce_port_value to announce"
     {
       echo "replica-announce-port $redis_announce_port_value"
