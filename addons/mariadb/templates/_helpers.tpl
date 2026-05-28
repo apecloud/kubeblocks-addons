@@ -247,6 +247,7 @@ ComponentDefinition reconfigure action for MariaDB
 reconfigure:
   exec:
     container: mariadb
+    image: {{ include "mariadb.image" . }}
     command:
       - /bin/sh
       - -c
@@ -455,6 +456,7 @@ parse smoke REMOVED in alpha.88 after dry-run blocker (Jack msg
 reconfigure:
   exec:
     container: mariadb
+    image: {{ include "mariadb.image" . }}
     command:
       - /bin/sh
       - -c
