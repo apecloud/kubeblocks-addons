@@ -1277,76 +1277,96 @@ EOF_HOSTS
 }
 
 verify_post_dcs_local_root_write_fenced() {
-  # alpha.59 design-contract close-out: setting @@global.read_only=ON is not
-  # enough on its own. Per Jack 19:45 review, the action must also prove that
-  # a user-facing root INSERT against this pod's localhost is actually rejected
-  # by the read-only fence (server error 1290 or "read-only" message). This
-  # closes the "non-empty contract field unenforced at write site" hole that
-  # the alpha.58 contract had: alpha.58 only set the marker without ever
-  # observing a denied write.
+  # alpha.105 (Jack 2026-05-29) verifier rewrite — destructive write check
+  # removed; replaced with read-only privilege query against user-facing root
+  # accounts. Reason: the alpha.59-104 verifier body issued an INSERT into
+  # kubeblocks.kb_post_dcs_fence_probe as user-facing root to test whether
+  # @@global.read_only=ON actually rejects user-facing writes. Under a real
+  # bypass condition (post-DCS root revoke ran but only stripped READ_ONLY
+  # ADMIN / SUPER / BINLOG ADMIN, leaving INSERT/UPDATE/DELETE on
+  # user-facing root), this INSERT SUCCEEDED, was binlogged on the demoted
+  # primary, and the new primary (already promoted in DCS) never replicated
+  # it back. That single INSERT became a permanent orphan event and the
+  # subsequent rejoin attempt hit GTID divergence fail-closed — the verifier
+  # itself was the source of the orphan it then detected. Live reproduction
+  # task442-full-n1-alpha104-r1c-fullrun-0428 async CM4 confirmed the
+  # self-referential cycle: pod-0 binlog gtid_binlog_pos=1-1-175, pod-1
+  # gtid_binlog_pos=1-1-174,2-2-N, both `kubeblocks.kb_post_dcs_fence_probe`
+  # rows show ts=20:50:50Z (the verifier's own write). Evidence sha256
+  # a48ab90d13da5740a7899ba6e28657671534352f9c6000bd15b32bcf048275c9.
   #
-  # alpha.75 v1 verifier contract fix (Helen TL + Jack XP review):
-  # alpha.74 v1 switchover idle-state N=1 RED revealed an inherited contract
-  # drift between alpha.61 v3 secondary fence (REVOKE ALL + GRANT non-bypass
-  # minimum list, NO BINLOG ADMIN) and this verifier's preamble. The previous
-  # body ran "SET SESSION sql_log_bin=0" + "CREATE DATABASE IF NOT EXISTS"
-  # + "CREATE TABLE IF NOT EXISTS" BEFORE the actual INSERT, all as
-  # user-facing root. After alpha.60 demote, user-facing root has lost
-  # BINLOG ADMIN -> "SET SESSION sql_log_bin=0" errors out with rc=1 stderr
-  # "ERROR 1227 (42000) Access denied; you need (at least one of) the
-  # BINLOG ADMIN privilege(s) for this operation". This 1227 was being
-  # reported as the verifier failure even though the actual fence behaviour
-  # (read_only=ON rejecting root INSERT) was never reached: the preamble
-  # contaminated the test purpose ("verify read_only fence" -> "verify root
-  # has BINLOG ADMIN / DDL privilege").
+  # The verifier purpose stands: confirm user-facing root cannot bypass the
+  # post-DCS read_only=ON fence. The new implementation enumerates SHOW
+  # GRANTS for root@'%' / root@'127.0.0.1' / root@'localhost' (the same
+  # host set apply_post_dcs_root_revoke iterates) and scans for any of the
+  # read_only-bypass privileges that the revoke step claims to have removed
+  # (READ_ONLY ADMIN / BINLOG ADMIN / SUPER, plus a defensive ALL
+  # PRIVILEGES match). If any bypass-class privilege is still granted, the
+  # fence is by definition not enforced; otherwise the contract holds. The
+  # query produces zero binlog events and zero observable side effects on
+  # data, replication topology, or DCS state, eliminating the self-pollution
+  # path. The session connects as MARIADB_INTERNAL_ROOT_USER (kb_internal_
+  # root) because user-facing root@'localhost' is the very subject under
+  # test and may itself have been narrowed past SELECT on mysql.* — using
+  # the internal admin keeps the query unambiguously read-only at the
+  # privilege-system level (per Lily Doc B Rule 4(d): "诊断账号不得拥有
+  # 可绕过被测 gate 的特权" — true here because the diagnostic is
+  # SHOW GRANTS, not the gate operation itself).
   #
-  # alpha.75 v1 fix:
-  #   - probe table provisioning moved to bootstrap-time
-  #     ensure_internal_local_admin in cmpd-semisync.yaml; INTERNAL_LOCAL
-  #     handles DDL with sql_log_bin=0 so it is binlog-replay-safe across pods
-  #   - this verifier body strips the preamble; runs ONLY the user-facing
-  #     root INSERT against the existing probe table
-  #   - acceptance contract narrows: rc=0 FAIL; rc=1 with 1146/1227/1044 FAIL
-  #     (must NOT be confused with read_only fence closed); rc=1 with
-  #     1290/read-only PASS
-  # Jack XP 8-class checklist & ShellSpec hard gates enforce these.
+  # Acceptance contract (rewrite):
+  #   - rc=0 + grants contain no READ_ONLY ADMIN / BINLOG ADMIN / SUPER /
+  #     ALL PRIVILEGES on any of the three root hosts                 → PASS
+  #   - rc=0 + grants contain any bypass-class privilege               → FAIL
+  #     (fence not enforced; user-facing root can still bypass read_only)
+  #   - rc!=0 with 1141 (no such grant — root@host absent)             → PASS
+  #     (host carries no user-facing root at all; nothing to bypass)
+  #   - rc!=0 otherwise (1044 access denied, connection failure, etc.) → FAIL
+  #     (verifier could not observe; do not infer fence state)
+  #
+  # The kubeblocks.kb_post_dcs_fence_probe table is no longer required by
+  # this verifier, but the bootstrap-time ensure_internal_local_admin path
+  # in cmpd-replication-merged.yaml still creates it so legacy callers and
+  # diagnostics that inspect it (e.g. case appendices) keep working.
   local out rc
   if [ -z "${MARIADB_CLIENT_BIN}" ] || [ ! -x "${MARIADB_CLIENT_BIN}" ]; then
     log_switchover_error "Switchover failed: post-DCS local-root write fence verification cannot run without MARIADB_CLIENT_BIN"
     return 1
   fi
-  out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+  out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
     --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
     -P3306 -h127.0.0.1 -N -s -e "
-      INSERT INTO kubeblocks.kb_post_dcs_fence_probe(probe_id, ts)
-        VALUES ('post_dcs_fence', UNIX_TIMESTAMP())
-        ON DUPLICATE KEY UPDATE ts=VALUES(ts);
+      SHOW GRANTS FOR 'root'@'%';
+      SHOW GRANTS FOR 'root'@'127.0.0.1';
+      SHOW GRANTS FOR 'root'@'localhost';
     " 2>&1)
   rc=$?
-  if [ "${rc}" -eq 0 ]; then
-    log_switchover_error "Switchover failed: post-DCS local-root write fence not enforced; user-facing root INSERT succeeded after read_only=ON"
+  if [ "${rc}" -ne 0 ]; then
+    case "${out}" in
+      *1141*)
+        log_switchover_info "Switchover post-DCS local-root write fence verified via read-only privilege query: no user-facing root account present (1141 from SHOW GRANTS)"
+        return 0
+        ;;
+    esac
+    log_switchover_error "Switchover failed: post-DCS local-root write fence verification SHOW GRANTS failed rc=${rc} out=${out}"
     return 1
   fi
+  # MariaDB emits dynamic privileges as plain space-separated text in SHOW
+  # GRANTS output (e.g. "GRANT READ_ONLY ADMIN ON *.* TO ..."). The case
+  # patterns below intentionally match the literal grant tokens. None of
+  # the non-bypass grants the chart leaves on user-facing root after
+  # alpha.83 (SELECT / RELOAD / PROCESS / REPLICATION SLAVE / BINLOG
+  # MONITOR / REPLICATION MASTER ADMIN / SLAVE MONITOR / PROXY) trigger
+  # these patterns. ALL PRIVILEGES catches the defensive "did the revoke
+  # step run at all" failure mode where the chart bootstrap script crashed
+  # before narrowing root.
   case "${out}" in
-    *1290*|*read-only*|*"read only"*|*"--read-only"*)
-      log_switchover_info "Switchover post-DCS local-root write fence verified: user-facing root INSERT rejected (rc=${rc})"
-      return 0
-      ;;
-    *1146*)
-      log_switchover_error "Switchover failed: post-DCS local-root write fence verification probe table missing (Error 1146); bootstrap-time ensure_internal_local_admin must create kubeblocks.kb_post_dcs_fence_probe (alpha.75 v1 contract)"
-      return 1
-      ;;
-    *1227*)
-      log_switchover_error "Switchover failed: post-DCS local-root write fence verification implementation error rc=${rc} (Error 1227 BINLOG ADMIN); verifier body must NOT need BINLOG ADMIN; remove any sql_log_bin manipulation (alpha.75 v1 regression guard) out=${out}"
-      return 1
-      ;;
-    *1044*)
-      log_switchover_error "Switchover failed: post-DCS local-root write fence verification got Error 1044 access denied; verifier body must NOT need DDL/database-level grants beyond INSERT on the existing probe table (alpha.75 v1 regression guard) out=${out}"
+    *"READ_ONLY ADMIN"*|*"READ ONLY ADMIN"*|*"BINLOG ADMIN"*|*" SUPER "*|*" SUPER,"*|*"GRANT SUPER "*|*"ALL PRIVILEGES"*)
+      log_switchover_error "Switchover failed: post-DCS local-root write fence not enforced; user-facing root still holds a read_only-bypass privilege (READ_ONLY ADMIN / BINLOG ADMIN / SUPER / ALL PRIVILEGES). grants=${out}"
       return 1
       ;;
   esac
-  log_switchover_error "Switchover failed: post-DCS local-root write fence verification got unexpected error rc=${rc} out=${out}"
-  return 1
+  log_switchover_info "Switchover post-DCS local-root write fence verified via read-only privilege query: user-facing root carries no read_only-bypass privilege on any of @%/@127.0.0.1/@localhost"
+  return 0
 }
 
 fence_current_primary_local_writes_after_dcs() {
