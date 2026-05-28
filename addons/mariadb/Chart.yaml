@@ -1082,7 +1082,29 @@ type: application
 # syncer-side double-stop fix is in apecloud/syncer branch
 # helen/mariadb-demote-pause-writecheck, image
 # apecloud/syncer:mariadb-fullfix-20260526-v5).
-version: 1.1.1-alpha.102
+# alpha.103 v1 (Jack 2026-05-29): pin reconfigure action image (PR #2689,
+# squash-merged as 91f98ad38439b65e4b9a8d48528d4d688fa33bb6). The
+# `mariadb.config.reconfigureAction` and `.persisted` helpers now emit
+# `exec.image: {{ include "mariadb.image" . }}` in addition to the
+# existing `exec.container: mariadb`. task442-full-n1-2320 acceptance
+# Round 1 standalone T4 reconfigure was timing out at 600s because
+# kbagent action runtime did not have the mariadb CLI in PATH and the
+# previous `exec.container: mariadb` alone did not bring the CLI into
+# the runtime (see kubeblocks-addon-docs PR #382 contract guard:
+# `exec.container` shares mounts/resources, it does not exec inside
+# the target container's filesystem). Bumping the chart version is
+# mandatory: CmpD spec is immutable per Helm, so the patched
+# reconfigure exec must land under a new ComponentDefinition name.
+# Patch-head pre-validation on `mariadb-1.1.1-alpha.102-pr2689`
+# isolated CmpD passed in IDC mariadb-test5: OpsRequest Reconfiguring
+# `max_connections=200` succeeded in ~15-30s (vs alpha.102 600s
+# timeout) and live `SHOW VARIABLES LIKE 'max_connections'` returned
+# 200 (evidence sha256
+# e16cda074db48a7195790474b5d04b0c5bcc8f9d0ca8cb6c9035b609e7b9a6d6).
+# No script content changes, no CmpD shape changes beyond the new
+# reconfigure exec.image field; syncer/image baseline unchanged from
+# alpha.102.
+version: 1.1.1-alpha.103
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
