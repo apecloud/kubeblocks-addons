@@ -1327,45 +1327,60 @@ verify_post_dcs_local_root_write_fenced() {
   # this verifier, but the bootstrap-time ensure_internal_local_admin path
   # in cmpd-replication-merged.yaml still creates it so legacy callers and
   # diagnostics that inspect it (e.g. case appendices) keep working.
-  local out rc
+  # alpha.105 v2 R1 fix (Helen TL review): a single `mariadb -e "stmt1;
+  # stmt2; stmt3"` invocation short-circuits on the first error (default
+  # client behavior) and reports a non-zero exit. If any of the per-host
+  # SHOW GRANTS hits 1141 (no such grant), later host queries never run
+  # and earlier host output is still attached to the same `out` capture.
+  # A naïve `case rc!=0 in *1141* return 0` would then false-PASS even
+  # when an earlier host already revealed a bypass-class grant. Switch to
+  # per-host loop: one mariadb invocation per host, classify each
+  # independently, fail the moment any host shows bypass, count 1141 as
+  # "no account on that host", and only PASS when no host showed bypass
+  # AND at least one host returned a usable grant list (or all hosts are
+  # 1141 — host set is genuinely empty).
+  local rc host_count=0 missing_count=0
   if [ -z "${MARIADB_CLIENT_BIN}" ] || [ ! -x "${MARIADB_CLIENT_BIN}" ]; then
     log_switchover_error "Switchover failed: post-DCS local-root write fence verification cannot run without MARIADB_CLIENT_BIN"
     return 1
   fi
-  out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
-    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
-    -P3306 -h127.0.0.1 -N -s -e "
-      SHOW GRANTS FOR 'root'@'%';
-      SHOW GRANTS FOR 'root'@'127.0.0.1';
-      SHOW GRANTS FOR 'root'@'localhost';
-    " 2>&1)
-  rc=$?
-  if [ "${rc}" -ne 0 ]; then
-    case "${out}" in
-      *1141*)
-        log_switchover_info "Switchover post-DCS local-root write fence verified via read-only privilege query: no user-facing root account present (1141 from SHOW GRANTS)"
-        return 0
-        ;;
-    esac
-    log_switchover_error "Switchover failed: post-DCS local-root write fence verification SHOW GRANTS failed rc=${rc} out=${out}"
-    return 1
-  fi
-  # MariaDB emits dynamic privileges as plain space-separated text in SHOW
-  # GRANTS output (e.g. "GRANT READ_ONLY ADMIN ON *.* TO ..."). The case
-  # patterns below intentionally match the literal grant tokens. None of
-  # the non-bypass grants the chart leaves on user-facing root after
-  # alpha.83 (SELECT / RELOAD / PROCESS / REPLICATION SLAVE / BINLOG
-  # MONITOR / REPLICATION MASTER ADMIN / SLAVE MONITOR / PROXY) trigger
-  # these patterns. ALL PRIVILEGES catches the defensive "did the revoke
-  # step run at all" failure mode where the chart bootstrap script crashed
-  # before narrowing root.
-  case "${out}" in
-    *"READ_ONLY ADMIN"*|*"READ ONLY ADMIN"*|*"BINLOG ADMIN"*|*" SUPER "*|*" SUPER,"*|*"GRANT SUPER "*|*"ALL PRIVILEGES"*)
-      log_switchover_error "Switchover failed: post-DCS local-root write fence not enforced; user-facing root still holds a read_only-bypass privilege (READ_ONLY ADMIN / BINLOG ADMIN / SUPER / ALL PRIVILEGES). grants=${out}"
+  for host in '%' '127.0.0.1' 'localhost'; do
+    host_count=$((host_count + 1))
+    local out
+    out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+      --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+      -P3306 -h127.0.0.1 -N -s -e "SHOW GRANTS FOR 'root'@'${host}';" 2>&1)
+    rc=$?
+    if [ "${rc}" -ne 0 ]; then
+      case "${out}" in
+        *1141*)
+          missing_count=$((missing_count + 1))
+          log_switchover_info "Switchover post-DCS local-root write fence verification: 'root'@'${host}' absent (1141), skipping"
+          continue
+          ;;
+      esac
+      log_switchover_error "Switchover failed: post-DCS local-root write fence verification SHOW GRANTS FOR 'root'@'${host}' failed rc=${rc} out=${out}"
       return 1
-      ;;
-  esac
-  log_switchover_info "Switchover post-DCS local-root write fence verified via read-only privilege query: user-facing root carries no read_only-bypass privilege on any of @%/@127.0.0.1/@localhost"
+    fi
+    # Word-boundary match: avoid false hits on SUPER inside other words
+    # and on tokens whose name happens to share a prefix with the bypass
+    # set (SLAVE MONITOR / REPLICATION MASTER ADMIN / BINLOG MONITOR are
+    # all NON-bypass grants present on the alpha.83 narrowed root and
+    # must not trip this scan). `grep -E` keeps the regex compact and
+    # the patterns explicit. "SUPER" is matched only when surrounded
+    # by `[, ]` (privilege list separator) or sitting at start/end of
+    # the line. ALL PRIVILEGES is matched as a defensive catch-all in
+    # case the chart bootstrap revoke step never ran.
+    if printf '%s\n' "${out}" | grep -qE '(READ_ONLY ADMIN|READ ONLY ADMIN|BINLOG ADMIN|(^|[, ])SUPER([, ]|$)|ALL PRIVILEGES)'; then
+      log_switchover_error "Switchover failed: post-DCS local-root write fence not enforced; 'root'@'${host}' still holds a read_only-bypass privilege (READ_ONLY ADMIN / BINLOG ADMIN / SUPER / ALL PRIVILEGES). grants=${out}"
+      return 1
+    fi
+  done
+  if [ "${missing_count}" -eq "${host_count}" ]; then
+    log_switchover_info "Switchover post-DCS local-root write fence verified via read-only privilege query: no user-facing root account present on any of @%/@127.0.0.1/@localhost (all hosts 1141)"
+    return 0
+  fi
+  log_switchover_info "Switchover post-DCS local-root write fence verified via read-only privilege query: user-facing root carries no read_only-bypass privilege on any present host (checked=${host_count}, missing=${missing_count})"
   return 0
 }
 
