@@ -103,4 +103,4 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0644
-      restartOnFileChange: true
+      externalManaged: true

@@ -29,22 +29,6 @@ memory: 2
 storage: 20
 storageClassName: ""
 
-## Override individual fields in the addon's default ov.conf. This is a
-## sparse map merged on top of the addon's defaults via Cluster componentSpec
-## env / config overrides at install time.
-##
-## At minimum you should set the API keys for embedding and VLM:
-##   --set 'config.embedding.dense.api_key=YOUR_KEY'
-##   --set 'config.vlm.api_key=YOUR_KEY'
-config:
-  server:
-    root_api_key: "CHANGE_ME"
-  embedding:
-    dense:
-      api_key: ""
-  vlm:
-    api_key: ""
-
 ## Extra Customizations
 extra:
   terminationPolicy: Delete

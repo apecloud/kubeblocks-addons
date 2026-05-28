@@ -42,18 +42,14 @@ on port {{ .Values.servicePort }} via the cluster's `http` service:
 !! IMPORTANT: Security Notice !!
 
 The default root_api_key is set to "CHANGE_ME". You MUST change it
-before exposing the service to any network. Set a strong API key:
-
-  helm upgrade openviking-cluster ../../addons-cluster/openviking \
-    --set 'config.server.root_api_key=YOUR_STRONG_KEY'
-
-Or via an OpsRequest after cluster creation:
+before exposing the service to any network. Use an OpsRequest:
 
   kubectl apply -f - <<EOF
   apiVersion: operations.kubeblocks.io/v1alpha1
   kind: OpsRequest
   metadata:
     name: ov-set-apikey
+    namespace: default
   spec:
     clusterName: openviking-demo
     type: Reconfiguring
@@ -62,6 +58,8 @@ Or via an OpsRequest after cluster creation:
         parameters:
           - key: server.root_api_key
             value: YOUR_STRONG_KEY
-        configItemDetails:
-          - name: openviking-config
   EOF
+
+You can also configure embedding and VLM providers the same way:
+
+  kubectl apply -f examples/openviking/configure.yaml

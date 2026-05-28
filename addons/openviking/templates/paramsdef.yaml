@@ -6,7 +6,7 @@ metadata:
     {{- include "openviking.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "openviking.cmpdName" . }}
-  templateName: {{ include "openviking.configTemplate" . }}
+  templateName: config
   fileName: {{ .Values.configFileName }}
   fileFormatConfig:
     format: json

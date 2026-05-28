@@ -7,16 +7,4 @@
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      configs:
-        - name: config
-          variables:
-            {{- if .Values.config.server.root_api_key }}
-            server.root_api_key: {{ .Values.config.server.root_api_key | quote }}
-            {{- end }}
-            {{- if .Values.config.embedding.dense.api_key }}
-            embedding.dense.api_key: {{ .Values.config.embedding.dense.api_key | quote }}
-            {{- end }}
-            {{- if .Values.config.vlm.api_key }}
-            vlm.api_key: {{ .Values.config.vlm.api_key | quote }}
-            {{- end }}
   {{- include "openviking-cluster.service" . | indent 2 }}
