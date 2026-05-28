@@ -28,6 +28,10 @@ spec:
       # OpenViking uses RocksDB and does not support multiple pods sharing
       # the same PVC. Replicas MUST be 1.
       replicas: 1
+      configs:
+        - name: config
+          configMap:
+            name: openviking-config-template-0.1.0
       resources:
         limits:
           cpu: "2"

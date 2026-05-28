@@ -33,6 +33,10 @@ spec:
       serviceVersion: 0.3.12
       # OpenViking uses RocksDB and does not support multi-pod sharing.
       replicas: 1
+      configs:
+        - name: config
+          configMap:
+            name: openviking-config-template-0.1.0
       resources:
         limits:
           cpu: "2"

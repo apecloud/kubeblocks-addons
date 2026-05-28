@@ -6,6 +6,10 @@ fullnameOverride: ""
 ## ComponentVersion (addons/openviking).
 version: 0.3.12
 
+## Chart version of the openviking addon (addons/openviking).
+## Used to reference the ConfigMap created by the addon's config-template.yaml.
+addonChartVersion: 0.1.0
+
 ## OpenViking is single-node (RocksDB-backed local store). Replicas must be 1.
 replicas: 1
 
@@ -33,3 +37,44 @@ storageClassName: ""
 extra:
   terminationPolicy: Delete
   disableExporter: true
+
+## Default ov.conf content rendered into the ConfigMap.
+## NOTE: API keys should be supplied at install time, not committed here.
+config:
+  storage:
+    workspace: /app/data/openviking_workspace
+    vectordb:
+      name: context
+      backend: local
+      project: default
+    agfs:
+      backend: local
+      timeout: 10
+  log:
+    level: INFO
+    output: stdout
+  server:
+    host: "0.0.0.0"
+    port: 1933
+    workers: 1
+    root_api_key: "CHANGE_ME"
+    cors_origins:
+      - "http://localhost:1933"
+  embedding:
+    dense:
+      api_base: "https://ark.cn-beijing.volces.com/api/v3"
+      api_key: "mock-embedding-api-key"
+      provider: "volcengine"
+      dimension: 1024
+      model: "doubao-embedding-vision-251215"
+      input: "multimodal"
+    max_concurrent: 10
+  vlm:
+    api_base: "https://ark.cn-beijing.volces.com/api/v3"
+    api_key: "mock-vlm-api-key"
+    provider: "volcengine"
+    model: "doubao-seed-2-0-pro-260215"
+    temperature: 0.0
+    max_retries: 2
+    thinking: false
+    max_concurrent: 100
