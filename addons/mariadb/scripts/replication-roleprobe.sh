@@ -67,6 +67,17 @@ master_info_file() {
   printf "%s/master.info" "$(data_dir)"
 }
 
+# alpha.106 v1 (Jack 2026-05-29): divergence_pending_file marker is written
+# by fail_closed_for_gtid_divergence in cmpd-replication-merged.yaml and
+# cmpd-semisync.yaml when the chart's startup-after-restart path detects a
+# GTID divergence between local datadir and primary. The marker file is the
+# fail-safe authority: while it is present, do not auto-heal. The reaper
+# below explicitly bails when it sees this marker so the alpha.60 / Round
+# 1c-B style orphan-event protection is preserved.
+divergence_pending_file() {
+  printf "%s/.replication-divergence-pending" "$(data_dir)"
+}
+
 resolve_mariadb_cli() {
   if command -v mariadb >/dev/null 2>&1; then
     command -v mariadb
@@ -351,7 +362,65 @@ primary_read_write_ready() {
   return 1
 }
 
+attempt_marker_self_heal() {
+  # alpha.106 v1 (Jack 2026-05-29): defensive marker reaper for the
+  # stuck-pending-after-recovery state surfaced by Round 1c-C async T6
+  # Stop/Start (task442-full-n1-alpha105-r1c-fullrun-0617). When both pods
+  # are stopped and started together, pod-0 startup probes pod-1:3306
+  # before pod-1's mariadbd has finished accepting connections. The
+  # cmpd-replication-merged.yaml alpha.92 bounded retry (default 60s) can
+  # expire if pod-1 takes longer than that to come up; the startup script
+  # then drops into block_existing_datadir_self_election_without_primary,
+  # which writes `.replication-pending` and never returns to clear it.
+  # After pod-1 becomes reachable, the slave IO/SQL threads catch up
+  # cleanly but no actor (startup, HA syncer, switchover) ever flips the
+  # markers back to ready, so roleProbe keeps publishing `initializing`
+  # and the cluster never reaches Running. Live verification on
+  # mdb-async-11076 confirmed that touching `.replication-ready` +
+  # `.sql-listener-ready` and removing `.replication-pending` causes
+  # roleProbe to immediately publish `secondary` and the cluster to
+  # converge to Running (evidence sha
+  # 154cb8735a4d5efe203303c36e779ed5b4617835571c4690313fb5a50a833b82).
+  #
+  # The reaper observes the live replication state and clears the pending
+  # marker only when ALL strict conditions hold:
+  #   1. .replication-pending exists
+  #   2. .replication-divergence-pending does NOT exist (do not mask the
+  #      alpha.60 / Round 1c-B style GTID divergence fail-closed)
+  #   3. master.info exists (we are configured as a secondary; not in
+  #      initial bootstrap or self-election path)
+  #   4. .replication-ready missing (otherwise nothing to heal)
+  #   5. db_ready (local MariaDB is up and accepting connections)
+  #   6. secondary_replication_ready (Slave_IO_Running=Yes,
+  #      Slave_SQL_Running=Yes, Last_IO_Errno=0, Last_SQL_Errno=0)
+  # Any condition not met -> return 1 without touching markers. The
+  # reaper never writes a binlog event and never calls admin SQL as
+  # user-facing root: secondary_replication_ready already runs via the
+  # internal admin path. Doc B Rule 4 (a) internal account / (b) no
+  # binlog propagation / (c) only reads from existing tables / (d) does
+  # not bypass the divergence-pending gate.
+  [ -f "$(pending_file)" ] || return 1
+  [ -f "$(divergence_pending_file)" ] && return 1
+  [ -f "$(master_info_file)" ] || return 1
+  [ -f "$(ready_file)" ] && return 1
+  db_ready || return 1
+  secondary_replication_ready || return 1
+  touch "$(ready_file)" || return 1
+  touch "$(sql_listener_ready_file)" || return 1
+  rm -f "$(pending_file)" || return 1
+  echo "alpha.106 marker self-heal: replication ready confirmed via Slave_IO/SQL healthy + no divergence; cleared .replication-pending and created .replication-ready + .sql-listener-ready" >&2
+  return 0
+}
+
 check_role() {
+  # alpha.106 v1 (Jack 2026-05-29): try to self-heal stuck-pending markers
+  # before falling through to the existing pending/ready gate. The reaper
+  # returns success only when the strict five-condition pre-check passes
+  # (see attempt_marker_self_heal); otherwise it is a no-op and the
+  # original logic stands. We swallow any unexpected runtime error so the
+  # reaper never propagates a failure into the role-decision path.
+  attempt_marker_self_heal 2>/dev/null || true
+
   # Before the startup command finishes role selection, do not publish a role.
   # Publishing "secondary" here causes secondary -> primary label flips for
   # pod-0, and publishing "primary" before the pending marker exists causes

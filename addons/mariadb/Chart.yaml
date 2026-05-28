@@ -1173,7 +1173,66 @@ type: application
 # `verify_post_dcs_local_root_write_fenced()` body + Chart.yaml.
 # No other addon script content changes. syncer/image baseline
 # unchanged from alpha.104.
-version: 1.1.1-alpha.105
+# alpha.106 v1 (Jack 2026-05-29): self-heal stuck-pending markers
+# after a Stop/Start cycle where pod-0 startup probes pod-1 before
+# pod-1's mariadbd has finished accepting connections. Round 1c-C
+# (task442-full-n1-alpha105-r1c-fullrun-0617) async T6 Stop/Start
+# exposed a different chart bug than alpha.105 fixed: when both
+# pods are stopped and started together, pod-0 startup at
+# 22:43:38 polled pod-1:3306 for the alpha.92 bounded 60s budget
+# (default) and never saw it listen, so the script dropped into
+# block_existing_datadir_self_election_without_primary, wrote
+# `.replication-pending`, and exited. After pod-1 came up the
+# slave IO/SQL threads (started manually as kb_internal_root in
+# diagnosis) caught up cleanly with no GTID divergence, but no
+# actor — startup, HA syncer, switchover — ever flipped the
+# `.replication-pending` -> `.replication-ready` markers, so
+# roleProbe kept publishing `initializing` and the cluster never
+# reached Running. Live verification on mdb-async-11076 confirmed
+# the markers were the sole gate: `touch .replication-ready +
+# .sql-listener-ready; rm .replication-pending` -> roleProbe
+# immediately published `secondary`, KB published the role label,
+# cluster moved Failed -> Running in <15s. Evidence sha256
+# 154cb8735a4d5efe203303c36e779ed5b4617835571c4690313fb5a50a833b82.
+# Fix path C = A + B:
+# A. `addons/mariadb/templates/cmpd-replication-merged.yaml`
+#    raises the alpha.92 MARIADB_NO_PRIMARY_RETRY_BUDGET_SECONDS
+#    default from 60s -> 180s. Stays well under the InstanceSet
+#    startupProbe budget (failureThreshold 60 * periodSeconds 10 =
+#    600s) so it does not push pod-0 past KB NotReady. This reduces
+#    how often the reaper fires and shortens the visible "Cluster
+#    Failed" window on first roleProbe tick. Does not address the
+#    underlying race; only widens it.
+# B. `addons/mariadb/scripts/replication-roleprobe.sh` adds
+#    `attempt_marker_self_heal()` and calls it at the top of
+#    check_role. The reaper observes the live replication state and
+#    clears `.replication-pending` + creates `.replication-ready` +
+#    `.sql-listener-ready` only when ALL strict conditions hold:
+#    (1) .replication-pending exists, (2) .replication-divergence-
+#    pending does NOT exist (preserves the alpha.60 / Round 1c-B
+#    GTID divergence fail-closed protection), (3) master.info
+#    exists (we are configured as a secondary, not in initial
+#    bootstrap), (4) .replication-ready missing (otherwise nothing
+#    to heal), (5) db_ready (local mariadbd up), (6)
+#    secondary_replication_ready (Slave_IO_Running=Yes,
+#    Slave_SQL_Running=Yes, Last_IO_Errno=0, Last_SQL_Errno=0).
+#    Any condition not met -> return 1, no marker write.
+# Doc B Rule 4 (a-d) compliance: (a) reads only via existing
+# internal admin helper, (b) writes only marker files outside the
+# replication stream (no binlog event), (c) reads from existing
+# tables, (d) the diagnostic does not bypass the divergence-pending
+# gate that detects the bug class the alpha.60 fix protects against.
+# Doc B Rule 5 (Lily 06:57 proposed): live-verified the fix layer
+# on the frozen scene before the PR; the markers ARE the sole gate.
+# Scope: `addons/mariadb/templates/cmpd-replication-merged.yaml`
+# (A budget bump), `addons/mariadb/scripts/replication-roleprobe.sh`
+# (B reaper + helper), `Chart.yaml` (version bump + this note).
+# cmpd-semisync.yaml and cmpd-replication.yaml are unchanged; the B
+# reaper in replication-roleprobe.sh is used by all replication
+# topologies, so it heals semisync and replication-merged uniformly
+# without engine-specific code changes. syncer / image baseline
+# unchanged from alpha.105.
+version: 1.1.1-alpha.106
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
