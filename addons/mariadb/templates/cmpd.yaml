@@ -26,6 +26,41 @@ spec:
           - bash
           - -c
           - |
+            # alpha.104 (Jack 2026-05-29): provision the internal admin
+            # account kb_internal_root before mariadbd starts. The shared
+            # reconfigure helper in _helpers.tpl uses kb_internal_root for
+            # dynamic SET GLOBAL (alpha.83 v1: user-facing root has SUPER
+            # stripped under the security hardening path used by the
+            # replication topologies). standalone topology previously did
+            # not create kb_internal_root, which the PR #2689 CLI fix
+            # exposed at task442-full-n1-alpha103-r1-0226 standalone T4
+            # reconfigure (`ERROR 1045 (28000): Access denied for user
+            # 'kb_internal_root'@'127.0.0.1' (using password: YES)`). The
+            # provisioning runs only on first-init (docker-entrypoint.sh
+            # processes /docker-entrypoint-initdb.d/*.sh exactly once when
+            # the datadir is fresh); CREATE USER IF NOT EXISTS + ALTER USER
+            # keep it idempotent if the script is re-run for any reason.
+            # Same MARIADB_ROOT_PASSWORD secret as the root account per the
+            # chart-wide convention (root and kb_internal_root share the
+            # password, no extra secret indirection).
+            mkdir -p /docker-entrypoint-initdb.d
+            cat > /docker-entrypoint-initdb.d/01-kb-internal-root.sh <<'INITDB_EOF'
+            #!/bin/bash
+            set -eu
+            mariadb -h localhost -u root -p"${MARIADB_ROOT_PASSWORD}" <<-SQL
+              CREATE USER IF NOT EXISTS 'kb_internal_root'@'localhost' IDENTIFIED BY '${MARIADB_ROOT_PASSWORD}';
+              ALTER USER 'kb_internal_root'@'localhost' IDENTIFIED BY '${MARIADB_ROOT_PASSWORD}';
+              ALTER USER 'kb_internal_root'@'localhost' ACCOUNT UNLOCK;
+              GRANT ALL PRIVILEGES ON *.* TO 'kb_internal_root'@'localhost' WITH GRANT OPTION;
+              CREATE USER IF NOT EXISTS 'kb_internal_root'@'127.0.0.1' IDENTIFIED BY '${MARIADB_ROOT_PASSWORD}';
+              ALTER USER 'kb_internal_root'@'127.0.0.1' IDENTIFIED BY '${MARIADB_ROOT_PASSWORD}';
+              ALTER USER 'kb_internal_root'@'127.0.0.1' ACCOUNT UNLOCK;
+              GRANT ALL PRIVILEGES ON *.* TO 'kb_internal_root'@'127.0.0.1' WITH GRANT OPTION;
+              FLUSH PRIVILEGES;
+            SQL
+            INITDB_EOF
+            chmod +x /docker-entrypoint-initdb.d/01-kb-internal-root.sh
+
             # Copy TLS certs to data dir (root:root 600 mounts are unreadable by mysql user)
             if [ "${TLS_ENABLED:-false}" = "true" ] && [ -d /etc/pki/mariadb-ssl ]; then
               mkdir -p /var/lib/mysql/tls
