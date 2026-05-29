@@ -448,7 +448,17 @@ spec:
               return 1
             }
             primary_write_gates_ready() {
+              # alpha.110 P0a URGENT Direction E mirror (see cmpd-replication-merged.yaml
+              # for full design narrative + 4-cosign LGTM chain). Skip writecheck
+              # on repair path when label ends with "-no-writecheck" suffix.
               local label="${1:-primary-write-gates-ready}"
+              case "${label}" in
+                *-no-writecheck)
+                  prestop_watchdog_log "primary-write-gates-ready label=${label} reason=skip-writecheck-repair-path"
+                  primary_internal_root_write_ready "${label}" || return 1
+                  return 0
+                  ;;
+              esac
               primary_local_root_write_ready "${label}" || return 1
               primary_internal_root_write_ready "${label}" || return 1
             }
@@ -466,42 +476,44 @@ spec:
               prestop_watchdog_log "primary-read-write ${reason} rc=1"
             }
             set_primary_read_write() {
+              # alpha.110 P0a URGENT Direction E mirror: accept label parameter.
+              local label="${1:-primary-read-write}"
               if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
                 prestop_watchdog_log "skip-primary-read-write reason=prestop-fence-started"
                 mark_replication_pending
                 return 1
               fi
-              if ! unlock_local_root_writes "primary-read-write"; then
+              if ! unlock_local_root_writes "${label}"; then
                 rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
-                prestop_watchdog_log "primary-read-write local-root-unlock rc=1"
+                prestop_watchdog_log "primary-read-write local-root-unlock rc=1 label=${label}"
                 return 1
               fi
-              if ! unlock_remote_root_writes "primary-read-write"; then
-                fail_primary_read_write_gate "primary-read-write" "remote-root-unlock"
+              if ! unlock_remote_root_writes "${label}"; then
+                fail_primary_read_write_gate "${label}" "remote-root-unlock"
                 return 1
               fi
               if "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null; then
-                if ! primary_write_gates_ready "primary-read-write"; then
-                  fail_primary_read_write_gate "primary-read-write" "write-gate"
+                if ! primary_write_gates_ready "${label}"; then
+                  fail_primary_read_write_gate "${label}" "write-gate"
                   return 1
                 fi
                 rm -f {{ .Values.dataMountPath }}/.remote-root-fence-role
                 touch {{ .Values.dataMountPath }}/.primary-read-write-ready
-                prestop_watchdog_log "primary-read-write rc=0"
+                prestop_watchdog_log "primary-read-write rc=0 label=${label}"
                 return 0
               fi
               if "${LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null; then
-                if ! primary_write_gates_ready "primary-read-write"; then
-                  fail_primary_read_write_gate "primary-read-write" "write-gate"
+                if ! primary_write_gates_ready "${label}"; then
+                  fail_primary_read_write_gate "${label}" "write-gate"
                   return 1
                 fi
                 rm -f {{ .Values.dataMountPath }}/.remote-root-fence-role
                 touch {{ .Values.dataMountPath }}/.primary-read-write-ready
-                prestop_watchdog_log "primary-read-write rc=0"
+                prestop_watchdog_log "primary-read-write rc=0 label=${label}"
                 return 0
               fi
-              fail_primary_read_write_gate "primary-read-write" "read-only-open"
-              prestop_watchdog_log "primary-read-write rc=1"
+              fail_primary_read_write_gate "${label}" "read-only-open"
+              prestop_watchdog_log "primary-read-write rc=1 label=${label}"
               return 1
             }
             mark_replication_pending() {
@@ -1609,7 +1621,7 @@ spec:
               if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
                 "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
                 "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
-                if set_primary_read_write; then
+                if set_primary_read_write "${label}"; then
                   touch {{ .Values.dataMountPath }}/.sql-listener-ready
                   prestop_watchdog_log "sql-listener-primary-existing-reconciled label=${label}"
                   return 0
@@ -1628,7 +1640,7 @@ spec:
               fi
               "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
               "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
-              if ! set_primary_read_write; then
+              if ! set_primary_read_write "${label}"; then
                 mark_replication_pending
                 prestop_watchdog_log "sql-listener-primary-expose-failed label=${label}"
                 return 1
@@ -1678,7 +1690,9 @@ spec:
                   return 0
                 fi
                 prestop_watchdog_log "runtime-primary-listener-reconcile-repair-begin reason=primary-role-state-drift role=${role}"
-                expose_sql_listener_for_primary_role "syncer-promoted-primary-existing-listener" || return 1
+                # alpha.110 P0a URGENT Direction E mirror (see cmpd-replication-merged.yaml
+                # for full design narrative + 4-cosign LGTM chain).
+                expose_sql_listener_for_primary_role "syncer-promoted-primary-existing-listener-no-writecheck" || return 1
                 mark_replication_ready
                 prestop_watchdog_log "runtime-primary-listener-reconcile-repair-complete role=${role}"
                 return 0
