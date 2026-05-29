@@ -81,6 +81,13 @@ openviking-pd
 {{- end }}
 
 {{/*
+ParamConfigRenderer name. Bridges ComponentDefinition to ParametersDefinition.
+*/}}
+{{- define "openviking.pcrName" -}}
+openviking-pcr-{{ .Chart.Version }}
+{{- end }}
+
+{{/*
 Full image reference for the OpenViking container image.
 */}}
 {{- define "openviking.repository" -}}
