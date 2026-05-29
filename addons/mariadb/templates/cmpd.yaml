@@ -47,7 +47,16 @@ spec:
             cat > /docker-entrypoint-initdb.d/01-kb-internal-root.sh <<'INITDB_EOF'
             #!/bin/bash
             set -eu
+            # alpha.111 P0a URGENT Phase 2 hygiene wrap: bracket all binlog-
+            # affecting DDL/DCL in SET SESSION sql_log_bin=0/1 per chart-wide
+            # FLUSH PRIVILEGES wrap audit completeness pattern. This initdb
+            # script runs ONCE at cluster T0 (mariadbd fresh datadir init)
+            # BEFORE any secondary joins, so unwrapped emit was historically
+            # not orphan source — but wrap maintained for chart-wide hygiene
+            # consistency and to prevent future regressions if invocation
+            # path expands.
             mariadb -h localhost -u root -p"${MARIADB_ROOT_PASSWORD}" <<-SQL
+              SET SESSION sql_log_bin=0;
               CREATE USER IF NOT EXISTS 'kb_internal_root'@'localhost' IDENTIFIED BY '${MARIADB_ROOT_PASSWORD}';
               ALTER USER 'kb_internal_root'@'localhost' IDENTIFIED BY '${MARIADB_ROOT_PASSWORD}';
               ALTER USER 'kb_internal_root'@'localhost' ACCOUNT UNLOCK;
@@ -57,6 +66,7 @@ spec:
               ALTER USER 'kb_internal_root'@'127.0.0.1' ACCOUNT UNLOCK;
               GRANT ALL PRIVILEGES ON *.* TO 'kb_internal_root'@'127.0.0.1' WITH GRANT OPTION;
               FLUSH PRIVILEGES;
+              SET SESSION sql_log_bin=1;
             SQL
             INITDB_EOF
             chmod +x /docker-entrypoint-initdb.d/01-kb-internal-root.sh
