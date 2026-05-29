@@ -812,7 +812,76 @@ spec:
               printf "%s" "$1" | sed "s/'/''/g"
             }
             grant_internal_admin_runtime_privileges() {
+              # alpha.109 P0a (Jack 12:08 Round 1c-F FAIL § 5.3 halt + Helen 12:13/12:17/12:19
+              # TL pick NEW C+probe combo + Rocco 12:18 INTERNAL_LOCAL self-query syntax +
+              # Edward 12:19 Doc B Rule 6 cross-link + Lily 12:21 cosign): close the
+              # chicken-and-egg residual that Round 1c-F surfaced as production-FATAL on
+              # CM secondary-restart bootstrap.
+              #
+              # The grant loop below uses ROOT_LOCAL (root@localhost) as the SQL session
+              # to GRANT admin privileges to kb_internal_root. At bootstrap-time, before
+              # the role-decision branches run set_local_root_account_state (which
+              # alpha.108 P0a B2 restored BINLOG ADMIN to root@localhost via host-scoped
+              # _LOCAL grant body), root@localhost does NOT yet have BINLOG ADMIN. The
+              # multi-statement wrapper `SET SESSION sql_log_bin=0; GRANT ...; SET
+              # SESSION sql_log_bin=1` therefore silently fails on the SET (ERROR 1227),
+              # the GRANT runs WITH binlog enabled, and 14 DDL events (2 host × 7 privilege)
+              # leak into the local binlog. On a fresh-create primary that's
+              # tolerable because the secondary follows from primary's GTID position and
+              # inherits those events. On a CM secondary-restart with persistent PVC
+              # (kb_internal_root already has the privileges from a prior bootstrap),
+              # the leak is pure waste: 14 events emitted with this pod's server_id
+              # that the primary does NOT have, producing GTID divergence → alpha.60
+              # fail-closed marker `.replication-divergence-pending` → HA permanent
+              # follow rejection → role probe timeout → Cluster Failed. This is the
+              # exact mechanism Round 1c-F mdb-async-12851 hit on CM4 post-rolling-restart
+              # (pod-0 secondary, ERROR 1227 leak 9s post-restart, divergence-pending
+              # marker emitted, cluster Failed in 22min).
+              #
+              # alpha.109 P0a closes this via two-source-of-truth defense-in-depth:
+              # (1) Fast-path sentinel file `.bootstrap-complete` from prior successful
+              #     bootstrap. Read via single stat() — no SQL roundtrip.
+              # (2) SQL probe fallback via INTERNAL_LOCAL identity self-query
+              #     `SHOW GRANTS FOR CURRENT_USER()` substring match for ALL PRIVILEGES
+              #     or BINLOG ADMIN. Rocco 12:18 picked INTERNAL_LOCAL self-query
+              #     (not ROOT_LOCAL cross-user SHOW GRANTS) to avoid the symmetric
+              #     ERROR 1142 silent-fail trap that ROOT_LOCAL's possible missing
+              #     SELECT on mysql.global_priv would induce; INTERNAL_LOCAL self-query
+              #     is always allowed for self regardless of mysql DB privilege.
+              # Either path → skip the grant loop and touch the sentinel for future
+              # fast-path. Neither path → run the grant loop (initial bootstrap path,
+              # acceptable leak on fresh-create) and touch the sentinel after.
+              #
+              # Edward 12:19 cross-link: alpha.105 fence verifier rewrite (Round 1c-C)
+              # established the "verifier MUST NOT self-fall-victim to the same family
+              # trap" pattern; INTERNAL_LOCAL self-query is the alpha.109 P0a application
+              # of that pattern at the probe layer.
               local label="${1:-internal-local-admin-runtime-privileges}"
+              local sentinel="{{ .Values.dataMountPath }}/.bootstrap-complete"
+
+              # Fast-path: sentinel from prior successful bootstrap
+              if [ -f "${sentinel}" ]; then
+                prestop_watchdog_log "internal-local-admin-runtime-privilege-skip label=${label} reason=sentinel"
+                return 0
+              fi
+
+              # Defense-in-depth: SQL probe via INTERNAL_LOCAL identity self-query
+              # (Rocco 12:18 INTERNAL_LOCAL self-query, NOT ROOT_LOCAL cross-user query —
+              # avoids ERROR 1142 family silent-fail trap; Edward 12:19 Rule 6 verifier
+              # self-immunity application).
+              if "${INTERNAL_LOCAL[@]}" -BNe "SELECT 1" >/dev/null 2>&1 \
+                 && "${INTERNAL_LOCAL[@]}" -BNe "SHOW GRANTS FOR CURRENT_USER()" 2>/dev/null \
+                      | grep -qiE "(ALL PRIVILEGES|BINLOG[[:space:]]*ADMIN)"; then
+                touch "${sentinel}" 2>/dev/null || true
+                prestop_watchdog_log "internal-local-admin-runtime-privilege-skip label=${label} reason=sql-probe"
+                return 0
+              fi
+
+              # Initial bootstrap path (kb_internal_root not yet granted admin privileges).
+              # The 14-event leak in this path is acceptable on fresh-create because the
+              # secondary follows from primary's GTID position which includes the leak
+              # (mutual bootstrap state, Rocco 10:39 sealed). The leak does NOT recur on
+              # secondary-restart because the sentinel/probe fast-paths above will skip.
               local user host privilege sql
               user="$(sql_quote "${MARIADB_INTERNAL_ROOT_USER}")"
               for host in localhost 127.0.0.1; do
@@ -834,6 +903,7 @@ spec:
                   prestop_watchdog_log "internal-local-admin-runtime-privilege privilege=${privilege} label=${label} host=${host} rc=1"
                 done
               done
+              touch "${sentinel}" 2>/dev/null || true
             }
             ensure_internal_local_admin() {
               # alpha.66 v1 (Jack 12:18 alpha.65 v2 install/script live-gate
