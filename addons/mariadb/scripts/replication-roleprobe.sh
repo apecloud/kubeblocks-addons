@@ -78,6 +78,59 @@ divergence_pending_file() {
   printf "%s/.replication-divergence-pending" "$(data_dir)"
 }
 
+# alpha.107 v1 (Jack 2026-05-29): mariadbd_listen_on_all_interfaces returns
+# 0 iff mariadbd has at least one listening TCP socket bound to 0.0.0.0:3306
+# (IPv4 wildcard) OR :::3306 (IPv6 wildcard). The check looks directly at
+# /proc/net/tcp + /proc/net/tcp6 (kernel-truth) instead of `@@bind_address`
+# (which can be set to "*" or "0.0.0.0" by config while a startup-time
+# argument still pins the actual listening socket to 127.0.0.1). This is
+# the alpha.102 v1 `.sql-listener-ready` marker semantic in its strongest
+# form: the marker means "mariadbd is reachable from off-pod traffic past
+# the bootstrap 127.0.0.1-only phase", and the only direct way to confirm
+# that is to read the listen socket. Reaper Cond 7 (added in alpha.107)
+# uses this so it never sets `.sql-listener-ready` while mariadbd is still
+# bound to 127.0.0.1 (Round 1c-D async CM4 self-referential reaper bug,
+# evidence sha d8d1aa42160c46df8eb0aecbdf41c739a9f691ece3724b05647c941fc7f75ac6).
+#
+# Port 3306 = hex 0CEA. Listen state in /proc/net/tcp{,6} = hex 0A.
+# IPv4 0.0.0.0:3306 listen row local_address = "00000000:0CEA".
+# IPv6 :::3306    listen row local_address = "00000000000000000000000000000000:0CEA".
+# Function is POSIX-portable and uses awk + grep instead of `ss` so it
+# works inside the kbagent action runtime that does not always ship `ss`.
+mariadbd_listen_on_all_interfaces() {
+  local tcp4 tcp6
+  tcp4=$(awk 'NR>1 && $2=="00000000:0CEA" && $4=="0A" {print; exit}' /proc/net/tcp 2>/dev/null)
+  if [ -n "${tcp4}" ]; then
+    return 0
+  fi
+  tcp6=$(awk 'NR>1 && $2=="00000000000000000000000000000000:0CEA" && $4=="0A" {print; exit}' /proc/net/tcp6 2>/dev/null)
+  if [ -n "${tcp6}" ]; then
+    return 0
+  fi
+  return 1
+}
+
+# alpha.107 v1 (Jack 2026-05-29): reaper_audit_log writes a single line to
+# `${dataMountPath}/log/reaper-audit.log`. The audit log is intentionally
+# kept OUT of the `check_role()` `2>/dev/null` stderr-suppression path so a
+# future investigation can reconstruct exactly which conditions the reaper
+# observed and which steps it executed at every probe tick. Round 1c-D async
+# CM4 narrow (2026-05-29 07:30-08:13) had to spend 40+ minutes reverse-
+# engineering whether the reaper fired or not because the only fire-time
+# signal was a single `echo >&2` that `check_role` then swallowed. This
+# audit log makes the reaper's behavior self-documenting on disk. Format is
+# `YYYY-MM-DDTHH:MM:SSZ reaper-audit kv=val kv=val ...`. The function is a
+# best-effort write: if mkdir or tee fails we silently continue so the
+# reaper's main logic does not depend on the audit log being functional.
+reaper_audit_log() {
+  local audit_dir audit_file ts
+  audit_dir="$(data_dir)/log"
+  audit_file="${audit_dir}/reaper-audit.log"
+  mkdir -p "${audit_dir}" 2>/dev/null || return 0
+  ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null)"
+  printf '%s reaper-audit %s\n' "${ts}" "$*" >> "${audit_file}" 2>/dev/null || true
+}
+
 resolve_mariadb_cli() {
   if command -v mariadb >/dev/null 2>&1; then
     command -v mariadb
@@ -393,22 +446,94 @@ attempt_marker_self_heal() {
   #   5. db_ready (local MariaDB is up and accepting connections)
   #   6. secondary_replication_ready (Slave_IO_Running=Yes,
   #      Slave_SQL_Running=Yes, Last_IO_Errno=0, Last_SQL_Errno=0)
+  #   7. mariadbd_listen_on_all_interfaces (added in alpha.107 — see below)
   # Any condition not met -> return 1 without touching markers. The
   # reaper never writes a binlog event and never calls admin SQL as
   # user-facing root: secondary_replication_ready already runs via the
   # internal admin path. Doc B Rule 4 (a) internal account / (b) no
   # binlog propagation / (c) only reads from existing tables / (d) does
-  # not bypass the divergence-pending gate.
-  [ -f "$(pending_file)" ] || return 1
-  [ -f "$(divergence_pending_file)" ] && return 1
-  [ -f "$(master_info_file)" ] || return 1
-  [ -f "$(ready_file)" ] && return 1
-  db_ready || return 1
-  secondary_replication_ready || return 1
-  touch "$(ready_file)" || return 1
-  touch "$(sql_listener_ready_file)" || return 1
-  rm -f "$(pending_file)" || return 1
-  echo "alpha.106 marker self-heal: replication ready confirmed via Slave_IO/SQL healthy + no divergence; cleared .replication-pending and created .replication-ready + .sql-listener-ready" >&2
+  # not bypass the divergence-pending gate. Doc B Rule 6 (proposed by
+  # Helen TL 2026-05-29 08:12): the reaper now verifies the marker
+  # semantic invariant at write time (Cond 7 directly reads the kernel
+  # listen socket) instead of inferring it from indirect health signals.
+  # alpha.107 v1 (Jack 2026-05-29): Cond 7 closes the alpha.106 self-
+  # referential reaper bug uncovered by Round 1c-D async CM4
+  # (task442-full-n1-alpha106-r1d-fullrun-0712). After CM4 rolling restart,
+  # the recreated pod-1 mariadbd was launched with `--bind-address=127.0.0.1`
+  # (bootstrap-local-only phase). The PVC carried a stale master.info from
+  # the previous incarnation, so the alpha.106 6-condition gate (pending /
+  # divergence-pending absent / master.info present / ready absent /
+  # db_ready / secondary_replication_ready) all passed at the next
+  # roleProbe tick. The reaper touched `.replication-ready` +
+  # `.sql-listener-ready` and removed `.replication-pending`. But
+  # `.sql-listener-ready` carries the alpha.102 v1 semantic "mariadbd has
+  # been re-bound to 0.0.0.0 past the bootstrap 127.0.0.1-only phase".
+  # Pod-1's mariadbd was still 127.0.0.1-only, so the marker was a lie.
+  # KB then promoted pod-1 to primary (saw ready=secondary in DCS, ran
+  # switchover RESET SLAVE ALL + SET GLOBAL read_only=0) — but mariadbd
+  # was still 127.0.0.1-only, so pod-0's slave IO got Connection refused.
+  # Cluster never reached Running.
+  #
+  # Evidence sha256
+  # d8d1aa42160c46df8eb0aecbdf41c739a9f691ece3724b05647c941fc7f75ac6.
+  #
+  # Cond 7 reads /proc/net/tcp + /proc/net/tcp6 directly and requires at
+  # least one wildcard listen socket (0.0.0.0:3306 or :::3306) before
+  # the reaper may set `.sql-listener-ready`. This is the strongest
+  # possible direct proof of the marker's contract.
+  reaper_audit_log "tick=enter"
+  if [ ! -f "$(pending_file)" ]; then
+    reaper_audit_log "cond=1 pending=absent rc=bail"
+    return 1
+  fi
+  reaper_audit_log "cond=1 pending=present rc=continue"
+  if [ -f "$(divergence_pending_file)" ]; then
+    reaper_audit_log "cond=2 divergence_pending=present rc=bail"
+    return 1
+  fi
+  reaper_audit_log "cond=2 divergence_pending=absent rc=continue"
+  if [ ! -f "$(master_info_file)" ]; then
+    reaper_audit_log "cond=3 master_info=absent rc=bail"
+    return 1
+  fi
+  reaper_audit_log "cond=3 master_info=present rc=continue"
+  if [ -f "$(ready_file)" ]; then
+    reaper_audit_log "cond=4 ready=present rc=bail"
+    return 1
+  fi
+  reaper_audit_log "cond=4 ready=absent rc=continue"
+  if ! db_ready; then
+    reaper_audit_log "cond=5 db_ready=false rc=bail"
+    return 1
+  fi
+  reaper_audit_log "cond=5 db_ready=true rc=continue"
+  if ! secondary_replication_ready; then
+    reaper_audit_log "cond=6 secondary_replication_ready=false rc=bail"
+    return 1
+  fi
+  reaper_audit_log "cond=6 secondary_replication_ready=true rc=continue"
+  if ! mariadbd_listen_on_all_interfaces; then
+    reaper_audit_log "cond=7 mariadbd_bind=127.0.0.1-only rc=bail"
+    return 1
+  fi
+  reaper_audit_log "cond=7 mariadbd_bind=wildcard rc=continue"
+  if ! touch "$(ready_file)"; then
+    reaper_audit_log "fire step=touch_ready rc=fail"
+    return 1
+  fi
+  reaper_audit_log "fire step=touch_ready rc=ok"
+  if ! touch "$(sql_listener_ready_file)"; then
+    reaper_audit_log "fire step=touch_sql_listener_ready rc=fail"
+    return 1
+  fi
+  reaper_audit_log "fire step=touch_sql_listener_ready rc=ok"
+  if ! rm -f "$(pending_file)"; then
+    reaper_audit_log "fire step=rm_pending rc=fail"
+    return 1
+  fi
+  reaper_audit_log "fire step=rm_pending rc=ok"
+  reaper_audit_log "fire step=complete"
+  echo "alpha.107 marker self-heal: replication ready confirmed via Slave_IO/SQL healthy + no divergence + mariadbd bound to 0.0.0.0; cleared .replication-pending and created .replication-ready + .sql-listener-ready" >&2
   return 0
 }
 
