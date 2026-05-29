@@ -652,7 +652,31 @@ spec:
               printf "%s" "$1" | sed "s/'/''/g"
             }
             grant_internal_admin_runtime_privileges() {
+              # alpha.109 P0a (Jack 12:08 Round 1c-F FAIL § 5.3 halt + Helen 12:13/12:17/12:19
+              # TL pick NEW C+probe combo + Rocco 12:18 INTERNAL_LOCAL self-query syntax +
+              # Edward 12:19 Doc B Rule 6 cross-link + Lily 12:21 cosign): close the
+              # chicken-and-egg residual that Round 1c-F surfaced as production-FATAL on
+              # CM secondary-restart bootstrap. See cmpd-replication-merged.yaml for the
+              # full design narrative; this is the semisync template mirror.
               local label="${1:-internal-local-admin-runtime-privileges}"
+              local sentinel="{{ .Values.dataMountPath }}/.bootstrap-complete"
+
+              # Fast-path: sentinel from prior successful bootstrap
+              if [ -f "${sentinel}" ]; then
+                prestop_watchdog_log "internal-local-admin-runtime-privilege-skip label=${label} reason=sentinel"
+                return 0
+              fi
+
+              # Defense-in-depth: SQL probe via INTERNAL_LOCAL identity self-query
+              if "${INTERNAL_LOCAL[@]}" -BNe "SELECT 1" >/dev/null 2>&1 \
+                 && "${INTERNAL_LOCAL[@]}" -BNe "SHOW GRANTS FOR CURRENT_USER()" 2>/dev/null \
+                      | grep -qiE "(ALL PRIVILEGES|BINLOG[[:space:]]*ADMIN)"; then
+                touch "${sentinel}" 2>/dev/null || true
+                prestop_watchdog_log "internal-local-admin-runtime-privilege-skip label=${label} reason=sql-probe"
+                return 0
+              fi
+
+              # Initial bootstrap path
               local user host privilege sql
               user="$(sql_quote "${MARIADB_INTERNAL_ROOT_USER}")"
               for host in localhost 127.0.0.1; do
@@ -674,6 +698,7 @@ spec:
                   prestop_watchdog_log "internal-local-admin-runtime-privilege privilege=${privilege} label=${label} host=${host} rc=1"
                 done
               done
+              touch "${sentinel}" 2>/dev/null || true
             }
             ensure_internal_local_admin() {
               # alpha.66 v1 (Jack 12:18 alpha.65 v2 install/script live-gate
