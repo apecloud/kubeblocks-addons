@@ -1312,7 +1312,152 @@ type: application
 # Reaper + helper are topology-neutral; semisync/replication-merged
 # benefit uniformly without engine-specific code changes.
 # syncer / image baseline unchanged from alpha.106.
-version: 1.1.1-alpha.107
+#
+# alpha.108 v1 (Jack 2026-05-29) — close 6-alpha silent-fail in
+# chart-internal `SET SESSION sql_log_bin=0` wrap mechanism.
+#
+# Root cause (Round 1c-E acceptance evidence):
+# Chart functions wrapping DDL with `SET SESSION sql_log_bin=0;
+# ... SET SESSION sql_log_bin=1;` write SQL via `${LOCAL[@]}`
+# (user-facing root). Since alpha.64 hardening, user-facing root
+# has neither SUPER nor BINLOG ADMIN. The `SET SESSION
+# sql_log_bin=0` statement silently fails with `ERROR 1227
+# (42000) Access denied; you need (at least one of) the BINLOG
+# ADMIN privilege(s)`. `mariadb -e` continues to the next
+# statement on default binlog state, so the subsequent
+# CREATE USER / GRANT / REVOKE / ALTER USER statements emit
+# binlog events with server_id=this pod. Accumulated across
+# `set_local_root_account_state`, `set_remote_root_account_state`,
+# `grant_optional_local_root_privileges`,
+# `grant_optional_remote_root_privileges`, and the
+# prestop-fence path, ~45 silent-fail × ~5.5 DDL ≈ 248 orphan
+# events accumulated on pod-1 during the Round 1c-E async
+# VScale rolling restart window. Pod-1 then hit alpha.60
+# fail-closed protection (`.replication-divergence-pending`),
+# never published a valid role, and the VScale OpsRequest stayed
+# at progress 1/2 indefinitely. Evidence sha
+# 1d3554cd483bcf4eef9a96ce982b7341c6dce6a316f4e51b2731b1548f53b43f.
+# Historical context: alpha.69 v1 5.D-r2 RED documented this
+# same ERROR 1227 pattern for the kb_health_check probe path,
+# and alpha.70 v1 fixed *only* the probe path by delegating it
+# to `syncerctl writecheck` via the syncer-held internal admin
+# connection. The same fix pattern was not generalized to other
+# `${LOCAL[@]}` sites, and the architectural class went 6 alpha
+# generations unfixed until Round 1c-E acceptance surfaced it.
+#
+# alpha.64 hardening sub-boundary (corrected scope precision):
+# alpha.64 hardening rationale was: prevent user-facing root from
+# bypassing `@@global.read_only=ON`. The privilege that performs
+# that bypass is SUPER (and READ_ONLY ADMIN). The privilege that
+# was *also* dropped in the same alpha.64 commit, BINLOG ADMIN,
+# does NOT bypass read_only; it controls only
+# `SET SESSION sql_log_bin=*` and related binlog options.
+# alpha.108 P0a corrects the boundary as follows:
+#
+#   - user-facing root @'%' (remote)   → SUPER ✗, BINLOG ADMIN ✗,
+#                                         READ_ONLY ADMIN ✗
+#     (full alpha.64 hardening retained; remote root cannot bypass
+#      read_only or control binlog).
+#   - user-facing root @'localhost'    → SUPER ✗, BINLOG ADMIN ✓,
+#                                         READ_ONLY ADMIN ✗
+#     (read_only bypass still blocked; chart-internal
+#      sql_log_bin=0 wrap now takes effect).
+#   - user-facing root @'127.0.0.1'    → SUPER ✗, BINLOG ADMIN ✓,
+#                                         READ_ONLY ADMIN ✗
+#     (same as @'localhost').
+#
+# Configure-line contract: chart-internal SQL via socket/loopback
+# is trusted with binlog control (BINLOG ADMIN); remote root
+# remains fully hardened per the original alpha.64 intent.
+# K8s pod network boundary (pod-local unix socket + loopback)
+# means an external user cannot reach the @'localhost' or
+# @'127.0.0.1' grant; the BINLOG ADMIN restoration does not
+# widen the externally-reachable privilege set.
+#
+# Doc B reference (see kubeblocks-addon-docs once published):
+#   - Rule 5 sub-1.B 10th trap: source-intent envelope ≠
+#     runtime-effect payload, mediated by access-control
+#     privilege requirements.
+#   - Rule 5 sub-1.B 11th trap: security hardening grant-set
+#     envelope ≠ minimum-necessary privilege payload (alpha.64
+#     bundled drop should have been narrowed to SUPER + READ_ONLY
+#     ADMIN per minimum-necessary principle).
+#
+# Scope of this PR (alpha.108 P0a):
+#   1. CMPD_SECONDARY_FENCE_GRANT_BODY_LOCAL: new constant adding
+#      `BINLOG ADMIN` to CMPD_SECONDARY_FENCE_GRANT_BODY; used by
+#      set_local_root_account_state which iterates @'localhost' and
+#      @'127.0.0.1'. set_remote_root_account_state still uses the
+#      original CMPD_SECONDARY_FENCE_GRANT_BODY for @'%' targets.
+#   2. CMPD_EXPLICIT_PRIMARY_GRANT_BODY_LOCAL: same pattern; new
+#      _LOCAL variant for @'localhost' / @'127.0.0.1' usage.
+#   3. Defense-in-depth: swap `${LOCAL[@]}` → `${INTERNAL_LOCAL[@]}`
+#      in post-INTERNAL_LOCAL-ready chart functions
+#      (set_local_root_account_state, set_remote_root_account_state,
+#      grant_optional_local_root_privileges,
+#      grant_optional_remote_root_privileges)
+#      in cmpd-replication-merged.yaml + cmpd-semisync.yaml mirror.
+#      Even if a future hardening pass removes BINLOG ADMIN from
+#      @'localhost' / @'127.0.0.1' again, chart-internal DDL
+#      stays on INTERNAL_LOCAL (kb_internal_root) which retains
+#      BINLOG ADMIN per grant_internal_admin_runtime_privileges.
+#
+# Pre-merge acceptance anchor (sub-3d direct-runtime verify):
+# Deploy this chart into a fresh test pod and confirm
+# `grep -c "ERROR 1227" /var/lib/mysql/log/sql-listener-fence.log`
+# returns 0 throughout the startup window. Post-merge acceptance:
+# Round 1c-F fresh 4 topology N=1 stop-on-first-fail with this
+# chart pinned. T1.2 negative regression assertion (Rocco
+# 2026-05-29 10:26): external connection to user-facing root
+# @'%' attempting `SET SESSION sql_log_bin=0` MUST still emit
+# ERROR 1227 — verifying that the BINLOG ADMIN restoration is
+# host-scoped (alpha.64 hardening boundary preserved on @'%').
+#
+# syncer / image baseline unchanged from alpha.107. cmpd-
+# replication.yaml and cmpd.yaml (standalone) unchanged: those
+# topologies' chart-internal SQL paths either do not exercise
+# the affected functions or already use kb_internal_root for
+# their bootstrap path.
+#
+# Known residual: initial cluster bootstrap chicken-and-egg
+# (Lily 2026-05-29 10:41 documentation refinement, not addressed
+# in alpha.108 P0a):
+# `grant_internal_admin_runtime_privileges` (which GRANTS
+# BINLOG ADMIN etc. to kb_internal_root@'localhost' and
+# kb_internal_root@'127.0.0.1') must itself run as ROOT_LOCAL
+# (user-facing root via socket) before kb_internal_root exists.
+# Its first invocation on a fresh pod therefore still produces
+# ~14 BINLOG ADMIN-related GRANT events on the local binlog
+# under the user-facing root identity (whose sql_log_bin=0 wrap
+# is still ineffective at that point, since BINLOG ADMIN has not
+# yet been granted). These events are confined to the initial
+# cluster bootstrap window — pre-first-rolling-restart and
+# pre-any-secondary-following-the-primary — and they are
+# written to the eventual primary's binlog from cluster T0,
+# before any secondary joins. They therefore do NOT produce
+# server_id-divergence orphan events of the kind that triggered
+# the Round 1c-E failure (which required a transient primary
+# role on a future secondary). The pattern does NOT recur during
+# VScale / CM4 / T6 cycles, because after wait_for_internal_local_admin
+# promotes LOCAL=INTERNAL_LOCAL, all subsequent chart functions
+# use the kb_internal_root identity that has BINLOG ADMIN.
+# A future alpha could close this residual by, e.g.:
+#   (a) docker-entrypoint initdb-time pre-grant of BINLOG ADMIN
+#       to user-facing root @'localhost' (chart then revokes
+#       after promotion), or
+#   (b) `RESET MASTER` at GTID position 0 immediately before
+#       `grant_internal_admin_runtime_privileges` writes (clears
+#       the bootstrap binlog so no events remain), or
+#   (c) delegating the GRANT-BINLOG-ADMIN-to-kb_internal_root
+#       sequence to a syncer-internal init path analogous to
+#       alpha.70's `syncerctl writecheck` model.
+# alpha.108 P0a explicitly does NOT address this residual; Round
+# 1c-F acceptance evidence validates only the recurring-VScale-
+# orphan path. Doc B Rule 5 sub-1.A application: do NOT read
+# "alpha.108 P0a Round 1c-F PASS" as "all chart-internal DDL is
+# binlog-suppressed under every condition" — the initial-bootstrap
+# path remains a known scope exclusion until a future alpha.
+version: 1.1.1-alpha.108
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add

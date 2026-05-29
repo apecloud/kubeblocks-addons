@@ -340,6 +340,60 @@ spec:
             # "there is another switchover unfinished" axis).
             CMPD_EXPLICIT_PRIMARY_GRANT_BODY="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, SLAVE MONITOR, REPLICATION MASTER ADMIN, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER, CREATE USER"
             CMPD_SECONDARY_FENCE_GRANT_BODY="SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, SLAVE MONITOR, REPLICATION MASTER ADMIN"
+            # alpha.108 P0a (Jack 2026-05-29): @localhost / @'127.0.0.1' variants
+            # restore BINLOG ADMIN to user-facing root @socket+loopback so the
+            # chart-internal `SET SESSION sql_log_bin=0; ...; SET SESSION
+            # sql_log_bin=1;` wrap mechanism in `set_local_root_account_state`
+            # / `set_remote_root_account_state` / `grant_optional_local_root_
+            # privileges` / `grant_optional_remote_root_privileges` actually
+            # takes effect. Background: from alpha.64 (security hardening to
+            # drop user-facing root admin-bypass) through alpha.107, the chart
+            # author's intended `sql_log_bin=0` wrap was structurally
+            # ineffective on ${LOCAL[@]} (= ROOT_LOCAL at bootstrap, user-
+            # facing root via socket) because user-facing root lost BINLOG
+            # ADMIN, so `SET SESSION sql_log_bin=0` returned ERROR 1227
+            # (Access denied; you need (at least one of) the BINLOG ADMIN
+            # privilege(s) for this operation) and `mariadb -e` silently
+            # continued to the subsequent CREATE USER / ALTER USER /
+            # REVOKE / GRANT / FLUSH PRIVILEGES statements WITH binlog
+            # enabled — each statement writing one binlog event with
+            # server_id=this_pod, accumulating as orphan events on the pod's
+            # local binlog. The bug was tracked indirectly through 5 alpha-
+            # test rounds (1c-A through 1c-E); Round 1c-E acceptance run
+            # finally surfaced the silent failure pattern directly via
+            # `grep "ERROR 1227" sql-listener-fence.log` (45 instances on
+            # frozen scene `mdb-async-11221`, sha
+            # 1d3554cd483bcf4eef9a96ce982b7341c6dce6a316f4e51b2731b1548f53b43f).
+            # Quantitative accounting: 45 silent-fail × ~5.5 DDL/fail ≈ 248
+            # orphan events matched the observed `gtid_binlog_pos` delta
+            # `2-2-248` (primary) vs `2-2-249` (pod-1 secondary) within 8%
+            # noise (FLUSH PRIVILEGES row-event variance + LOCK→LOCK same-
+            # state short-circuit + reconcile-repair mid-loop interruption).
+            #
+            # Security boundary preservation (per Helen TL 10:21 + Lily Doc B
+            # 主笔 10:20 alpha.64 hardening sub-boundary wording precision):
+            # BINLOG ADMIN is privilege-orthogonal to SUPER. SUPER allows
+            # `SET GLOBAL read_only=0` bypass and a broader admin-bypass set;
+            # BINLOG ADMIN allows ONLY `SET SESSION sql_log_bin=*` + a small
+            # set of binlog log-control statements; it does NOT bypass
+            # `@@global.read_only=1`. Restoring BINLOG ADMIN to user-facing
+            # root @'localhost' + @'127.0.0.1' therefore does NOT re-introduce
+            # the read_only bypass risk that alpha.64 hardening was designed
+            # to prevent. alpha.64 hardening boundary is preserved:
+            #   - user-facing root @'%' (remote): SUPER + BINLOG ADMIN +
+            #     READ_ONLY ADMIN remain dropped (unchanged from alpha.64)
+            #   - user-facing root @'localhost' + @'127.0.0.1' (socket /
+            #     loopback): SUPER + READ_ONLY ADMIN remain dropped; BINLOG
+            #     ADMIN restored to support chart-internal sql_log_bin=0 wrap
+            #
+            # Host-scope rationale: chart-internal SQL operations connect via
+            # unix socket or `127.0.0.1` loopback only (`${LOCAL[@]}` =
+            # `(mariadb ... -S "${SOCK}" ...)`). External users reaching the
+            # cluster via Service routing cannot reach the socket or
+            # loopback; @'%' remains the only attack surface for remote
+            # privilege escalation, and alpha.64 hardening on @'%' is intact.
+            CMPD_EXPLICIT_PRIMARY_GRANT_BODY_LOCAL="${CMPD_EXPLICIT_PRIMARY_GRANT_BODY}, BINLOG ADMIN"
+            CMPD_SECONDARY_FENCE_GRANT_BODY_LOCAL="${CMPD_SECONDARY_FENCE_GRANT_BODY}, BINLOG ADMIN"
             # Best-effort monitor privileges (read-only). These never bypass
             # read_only and are safe on user-facing root in any state. Tier A
             # by Jack 10:05: failure here is allowed to log + continue.
@@ -1116,7 +1170,12 @@ spec:
               local label="$3"
               local privilege
               for privilege in "BINLOG MONITOR" "SLAVE MONITOR"; do
-                if "${LOCAL[@]}" -e "
+                # alpha.108 P0a (Jack 2026-05-29): defense-in-depth wrapper
+                # swap ${LOCAL[@]} → ${INTERNAL_LOCAL[@]} (kb_internal_root)
+                # so sql_log_bin=0 wrap works regardless of any future
+                # hardening pass that might re-trim BINLOG ADMIN from
+                # user-facing root @'localhost'/@'127.0.0.1'.
+                if "${INTERNAL_LOCAL[@]}" -e "
                   SET SESSION sql_log_bin=0;
                   GRANT ${privilege} ON *.* TO '${user}'@'${host}';
                   FLUSH PRIVILEGES;
@@ -1146,14 +1205,23 @@ spec:
                   # READ_ONLY ADMIN / BINLOG ADMIN / CONNECTION ADMIN. SUPER
                   # bypassed @@global.read_only=ON, defeating the very fence
                   # this LOCK path was supposed to enforce.
-                  mode="read-replication-admin-only-no-bypass"
+                  #
+                  # alpha.108 P0a (Jack 2026-05-29): use _LOCAL variant of
+                  # CMPD_SECONDARY_FENCE_GRANT_BODY which adds BINLOG ADMIN.
+                  # BINLOG ADMIN is host-scoped to @localhost+@'127.0.0.1' so
+                  # the chart-internal sql_log_bin=0 wrap below actually
+                  # takes effect (alpha.64 unintentionally bundled BINLOG
+                  # ADMIN drop with SUPER drop; BINLOG ADMIN is privilege-
+                  # orthogonal to SUPER and does NOT bypass @@global.read_only=1
+                  # — see CMPD_*_LOCAL constant comments above).
+                  mode="read-replication-admin-only-no-bypass-with-binlog-admin"
                   sql="
                     SET SESSION sql_log_bin=0;
                     CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
                     ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
                     ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
                     REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
-                    GRANT ${CMPD_SECONDARY_FENCE_GRANT_BODY} ON *.* TO '${user}'@'${host}';
+                    GRANT ${CMPD_SECONDARY_FENCE_GRANT_BODY_LOCAL} ON *.* TO '${user}'@'${host}';
                     FLUSH PRIVILEGES;
                     SET SESSION sql_log_bin=1;
                   "
@@ -1163,19 +1231,37 @@ spec:
                   # aligned with switchover.sh's SWITCHOVER_EXPLICIT_PRIMARY_GRANT_BODY.
                   # GRANT ALL PRIVILEGES bundled SUPER/READ_ONLY ADMIN/BINLOG
                   # ADMIN which let user-facing root bypass read_only.
-                  mode="primary-write-no-bypass"
+                  #
+                  # alpha.108 P0a (Jack 2026-05-29): use _LOCAL variant for
+                  # same reason as the LOCK branch above (host-scoped BINLOG
+                  # ADMIN restoration to close the 6-alpha sql_log_bin=0 silent
+                  # failure pattern).
+                  mode="primary-write-no-bypass-with-binlog-admin"
                   sql="
                     SET SESSION sql_log_bin=0;
                     CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
                     ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
                     ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
                     REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
-                    GRANT ${CMPD_EXPLICIT_PRIMARY_GRANT_BODY} ON *.* TO '${user}'@'${host}' WITH GRANT OPTION;
+                    GRANT ${CMPD_EXPLICIT_PRIMARY_GRANT_BODY_LOCAL} ON *.* TO '${user}'@'${host}' WITH GRANT OPTION;
                     FLUSH PRIVILEGES;
                     SET SESSION sql_log_bin=1;
                   "
                 fi
-                if "${LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                # alpha.108 P0a (Jack 2026-05-29): defense-in-depth wrapper
+                # swap from ${LOCAL[@]} (which begins as ROOT_LOCAL = user-
+                # facing root and stays that way until wait_for_internal_
+                # local_admin promotes it) to ${INTERNAL_LOCAL[@]} (=
+                # kb_internal_root with full admin privileges). Even though
+                # the host-scoped CMPD_*_LOCAL GRANT BODY change above is
+                # the primary mechanism that closes the sql_log_bin=0 silent
+                # failure, using INTERNAL_LOCAL here adds a second
+                # independent layer of protection (a future hardening pass
+                # that accidentally drops BINLOG ADMIN from user-facing root
+                # @'localhost' would no longer regress this fix; reviewer
+                # sees explicit kb_internal_root identity rather than the
+                # bootstrap-time ambiguous LOCAL identity).
+                if "${INTERNAL_LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
                   if [ "${state}" = "LOCK" ]; then
                     rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
                   fi
@@ -1237,7 +1323,12 @@ spec:
                   SET SESSION sql_log_bin=1;
                 "
               fi
-              if "${LOCAL[@]}" -e "${sql}" \
+              # alpha.108 P0a (Jack 2026-05-29): defense-in-depth wrapper
+              # swap ${LOCAL[@]} → ${INTERNAL_LOCAL[@]} so sql_log_bin=0
+              # wrap works on this @'%' grant path even if the @'%'
+              # alpha.64 hardening (BINLOG ADMIN dropped, intentionally
+              # retained by alpha.108) is ever further tightened.
+              if "${INTERNAL_LOCAL[@]}" -e "${sql}" \
                 >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
                 prestop_watchdog_log "remote-root-account-${state} mode=${mode} label=${label} host=${host} rc=0 tier=required"
                 return 0
@@ -1265,8 +1356,13 @@ spec:
               #
               # alpha.64 v3 (Jack 11:14 live-gate RED): inline QUOTED list to
               # preserve multi-word priv name semantics; see constant block.
+              #
+              # alpha.108 P0a (Jack 2026-05-29): defense-in-depth wrapper
+              # swap ${LOCAL[@]} → ${INTERNAL_LOCAL[@]} so sql_log_bin=0
+              # wrap works regardless of which alpha generation user-facing
+              # root @'%' grant set takes.
               for privilege in "BINLOG MONITOR" "SLAVE MONITOR"; do
-                if "${LOCAL[@]}" -e "
+                if "${INTERNAL_LOCAL[@]}" -e "
                   SET SESSION sql_log_bin=0;
                   GRANT ${privilege} ON *.* TO '${user}'@'${host}';
                   FLUSH PRIVILEGES;

@@ -232,6 +232,18 @@ spec:
             # "there is another switchover unfinished" axis).
             CMPD_EXPLICIT_PRIMARY_GRANT_BODY="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, SLAVE MONITOR, REPLICATION MASTER ADMIN, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER, CREATE USER"
             CMPD_SECONDARY_FENCE_GRANT_BODY="SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, SLAVE MONITOR, REPLICATION MASTER ADMIN"
+            # alpha.108 P0a (Jack 2026-05-29): @localhost / @'127.0.0.1'
+            # variants restore BINLOG ADMIN to support chart-internal
+            # `SET SESSION sql_log_bin=0` wrap mechanism. See full rationale
+            # in cmpd-replication-merged.yaml (sister template) constant
+            # block comments + Chart.yaml alpha.108 v1 annotated note.
+            # Summary: alpha.64 unintentionally bundled BINLOG ADMIN drop
+            # with SUPER drop; BINLOG ADMIN is privilege-orthogonal to
+            # SUPER and does NOT bypass @@global.read_only=1. Host-scoping
+            # to @'localhost' + @'127.0.0.1' preserves alpha.64 hardening
+            # boundary for @'%' (remote, unchanged).
+            CMPD_EXPLICIT_PRIMARY_GRANT_BODY_LOCAL="${CMPD_EXPLICIT_PRIMARY_GRANT_BODY}, BINLOG ADMIN"
+            CMPD_SECONDARY_FENCE_GRANT_BODY_LOCAL="${CMPD_SECONDARY_FENCE_GRANT_BODY}, BINLOG ADMIN"
             # Best-effort monitor privileges (read-only). These never bypass
             # read_only and are safe on user-facing root in any state. Tier A
             # by Jack 10:05: failure here is allowed to log + continue.
@@ -997,8 +1009,11 @@ spec:
               local host="$2"
               local label="$3"
               local privilege
+              # alpha.108 P0a (Jack 2026-05-29): defense-in-depth wrapper
+              # swap ${LOCAL[@]} → ${INTERNAL_LOCAL[@]} (see sister template
+              # cmpd-replication-merged.yaml + Chart.yaml note).
               for privilege in "BINLOG MONITOR" "SLAVE MONITOR"; do
-                if "${LOCAL[@]}" -e "
+                if "${INTERNAL_LOCAL[@]}" -e "
                   SET SESSION sql_log_bin=0;
                   GRANT ${privilege} ON *.* TO '${user}'@'${host}';
                   FLUSH PRIVILEGES;
@@ -1024,40 +1039,38 @@ spec:
               for host in localhost 127.0.0.1; do
                 if [ "${state}" = "LOCK" ]; then
                   # alpha.64 v1 (Jack 09:35 RED): drop SUPER (admin bypass).
-                  # Use CMPD_SECONDARY_FENCE_GRANT_BODY which excludes SUPER /
-                  # READ_ONLY ADMIN / BINLOG ADMIN / CONNECTION ADMIN. SUPER
-                  # bypassed @@global.read_only=ON, defeating the very fence
-                  # this LOCK path was supposed to enforce.
-                  mode="read-replication-admin-only-no-bypass"
+                  # alpha.108 P0a (Jack 2026-05-29): use _LOCAL variant which
+                  # adds BINLOG ADMIN (host-scoped @localhost+@'127.0.0.1' only,
+                  # @'%' unchanged). See sister template + Chart.yaml note.
+                  mode="read-replication-admin-only-no-bypass-with-binlog-admin"
                   sql="
                     SET SESSION sql_log_bin=0;
                     CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
                     ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
                     ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
                     REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
-                    GRANT ${CMPD_SECONDARY_FENCE_GRANT_BODY} ON *.* TO '${user}'@'${host}';
+                    GRANT ${CMPD_SECONDARY_FENCE_GRANT_BODY_LOCAL} ON *.* TO '${user}'@'${host}';
                     FLUSH PRIVILEGES;
                     SET SESSION sql_log_bin=1;
                   "
                 else
                   # alpha.64 v1: replace GRANT ALL PRIVILEGES with explicit
-                  # primary grant body (CMPD_EXPLICIT_PRIMARY_GRANT_BODY)
-                  # aligned with switchover.sh's SWITCHOVER_EXPLICIT_PRIMARY_GRANT_BODY.
-                  # GRANT ALL PRIVILEGES bundled SUPER/READ_ONLY ADMIN/BINLOG
-                  # ADMIN which let user-facing root bypass read_only.
-                  mode="primary-write-no-bypass"
+                  # primary grant body.
+                  # alpha.108 P0a: use _LOCAL variant (host-scoped BINLOG ADMIN).
+                  mode="primary-write-no-bypass-with-binlog-admin"
                   sql="
                     SET SESSION sql_log_bin=0;
                     CREATE USER IF NOT EXISTS '${user}'@'${host}' IDENTIFIED BY '${password}';
                     ALTER USER '${user}'@'${host}' IDENTIFIED BY '${password}';
                     ALTER USER '${user}'@'${host}' ACCOUNT UNLOCK;
                     REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${host}';
-                    GRANT ${CMPD_EXPLICIT_PRIMARY_GRANT_BODY} ON *.* TO '${user}'@'${host}' WITH GRANT OPTION;
+                    GRANT ${CMPD_EXPLICIT_PRIMARY_GRANT_BODY_LOCAL} ON *.* TO '${user}'@'${host}' WITH GRANT OPTION;
                     FLUSH PRIVILEGES;
                     SET SESSION sql_log_bin=1;
                   "
                 fi
-                if "${LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
+                # alpha.108 P0a (Jack 2026-05-29): wrapper swap (defense-in-depth).
+                if "${INTERNAL_LOCAL[@]}" -e "${sql}" >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
                   if [ "${state}" = "LOCK" ]; then
                     rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
                   fi
@@ -1119,7 +1132,8 @@ spec:
                   SET SESSION sql_log_bin=1;
                 "
               fi
-              if "${LOCAL[@]}" -e "${sql}" \
+              # alpha.108 P0a (Jack 2026-05-29): wrapper swap (defense-in-depth).
+              if "${INTERNAL_LOCAL[@]}" -e "${sql}" \
                 >> {{ .Values.dataMountPath }}/log/sql-listener-fence.log 2>&1; then
                 prestop_watchdog_log "remote-root-account-${state} mode=${mode} label=${label} host=${host} rc=0 tier=required"
                 return 0
@@ -1147,8 +1161,9 @@ spec:
               #
               # alpha.64 v3 (Jack 11:14 live-gate RED): inline QUOTED list to
               # preserve multi-word priv name semantics; see constant block.
+              # alpha.108 P0a (Jack 2026-05-29): wrapper swap (defense-in-depth).
               for privilege in "BINLOG MONITOR" "SLAVE MONITOR"; do
-                if "${LOCAL[@]}" -e "
+                if "${INTERNAL_LOCAL[@]}" -e "
                   SET SESSION sql_log_bin=0;
                   GRANT ${privilege} ON *.* TO '${user}'@'${host}';
                   FLUSH PRIVILEGES;
