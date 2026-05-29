@@ -1457,7 +1457,110 @@ type: application
 # "alpha.108 P0a Round 1c-F PASS" as "all chart-internal DDL is
 # binlog-suppressed under every condition" — the initial-bootstrap
 # path remains a known scope exclusion until a future alpha.
-version: 1.1.1-alpha.108
+#
+# alpha.109 P0a (Jack 2026-05-29 12:08 Round 1c-F FAIL § 5.3 strict
+# halt + Helen 12:10 TL approve halt + retract + alpha.109 narrow
+# scope升格 + 12:17 TL pick NEW C+probe combo + 12:19 INTERNAL_LOCAL
+# self-query syntax sealed + Rocco 12:18 + Edward 12:19 + Lily 12:21
+# 4/4 cosign matrix complete):
+#
+# Round 1c-F empirically reversed the alpha.108 Known residual fold's
+# implicit claim "does NOT recur during VScale / CM4 / T6 cycles".
+# On Round 1c-F's first async-topology CM4 reconfigure cycle, pod-0
+# (which was secondary at the time) rolling-restarted, ran
+# `wait_for_internal_local_admin "startup-before-role-decision"` →
+# `grant_internal_admin_runtime_privileges`. Because that call sits
+# BEFORE the role-decision branches that run
+# `set_local_root_account_state` (which is where alpha.108 P0a B2
+# restored BINLOG ADMIN to user-facing root@localhost), root@localhost
+# at THAT point still had no BINLOG ADMIN. The multi-statement
+# wrapper `SET sql_log_bin=0; GRANT ...; SET sql_log_bin=1` silently
+# failed on the SET (ERROR 1227, 15 entries in sql-listener-fence.log
+# at 03:38:07Z on mdb-async-12851 pod-0), the GRANT ran with binlog
+# enabled, ~14 binlog events leaked under this pod's server_id, the
+# primary (pod-1) did not have those events, alpha.60 fail-closed
+# detected divergence and wrote `.replication-divergence-pending`
+# 9 seconds post-restart, HA refused to follow indefinitely, role
+# probe timed out, cluster transitioned to Failed within 22min.
+#
+# Apply-timing dimension (13th trap candidate, Jack 12:22 sediment):
+# alpha.108 B2 grant is logically in scope but its runtime apply
+# timing (role-decision-time, line ~1135 of cmpd-replication-merged.yaml)
+# is AFTER the chicken-and-egg path runs (startup-before-role-decision,
+# line 2041). Fix scope correct + apply timing wrong = effectively
+# no-op for the specific path that produced Round 1c-F's failure.
+#
+# alpha.109 P0a NEW C+probe combo (sealed Helen 12:17/12:19):
+# `grant_internal_admin_runtime_privileges` now starts with a
+# two-source-of-truth defense-in-depth skip path before falling
+# through to the original grant loop:
+#
+#   (1) Fast-path: sentinel file `.bootstrap-complete` from prior
+#       successful bootstrap. Read via single stat() — no SQL.
+#   (2) SQL probe fallback via INTERNAL_LOCAL identity self-query
+#       `SHOW GRANTS FOR CURRENT_USER()` substring match for
+#       `ALL PRIVILEGES` or `BINLOG ADMIN`. Rocco 12:18 picked
+#       INTERNAL_LOCAL self-query (NOT ROOT_LOCAL cross-user
+#       `SHOW GRANTS FOR 'kb_internal_root'@'localhost'`) to avoid
+#       the symmetric ERROR 1142 silent-fail trap that ROOT_LOCAL's
+#       possible missing SELECT on mysql.global_priv would induce.
+#       INTERNAL_LOCAL self-query is always allowed for self
+#       regardless of mysql DB privilege.
+#
+# Either path matches → skip the grant loop and touch the sentinel
+# for future fast-path. Neither path matches → run the original
+# grant loop (initial bootstrap path, acceptable leak on fresh-create
+# only because the secondary follows from the primary's GTID
+# position which already includes those events — mutual bootstrap
+# state, Rocco 10:39 sealed), then touch the sentinel after.
+#
+# Edward 12:19 cross-link: alpha.105 fence verifier rewrite
+# (Round 1c-C) established the "verifier MUST NOT self-fall-victim
+# to the same family trap" pattern. INTERNAL_LOCAL self-query is
+# the alpha.109 P0a application of that pattern at the probe layer.
+#
+# Acceptance protocol (Helen 12:13 + Rocco 12:15 + Jack 12:16 sealed):
+#   - T1.0' delta-count over observation window (inherited from
+#     alpha.108 Helen 12:02 sealed: capture ERROR 1227 count at
+#     T_start, wait ≥5min observation window with log mtime updating,
+#     capture T_end, expect delta = 0).
+#   - T1.1 / T1.1b / T1.2 privilege boundary verify (inherited from
+#     alpha.108: INTERNAL_LOCAL + user-facing root @localhost socket
+#     SET sql_log_bin=0 succeed; user-facing root @'%' SET
+#     sql_log_bin=0 still emit ERROR 1227 — alpha.64 hardening
+#     boundary on @'%' intact).
+#   - T1.4 NEW: fresh cluster CM4 secondary-restart path verify on
+#     alpha.109 chart. Pre-CM4 pod-0 sql-listener-fence.log baseline
+#     ERROR 1227 count, trigger CM4, wait pod-0 rolling restart
+#     complete, post-restart verify `.replication-divergence-pending`
+#     NOT emit + sentinel `.bootstrap-complete` present + post-restart
+#     ERROR 1227 delta = 0 + prestop-watchdog.log shows
+#     `internal-local-admin-runtime-privilege-skip ... reason=sentinel`
+#     or `reason=sql-probe` line.
+#   - T1.5 NEW: mdb-async-12851 frozen scenario cross-cluster
+#     regression replay. helm upgrade in-place to alpha.109 chart
+#     on a clean replica cluster matching mdb-async-12851's topology,
+#     then trigger equivalent CM4 reconfigure cycle, expect
+#     Cluster Updating → Running within 240s + no
+#     `.replication-divergence-pending` marker emission + no role
+#     probe timeout.
+#   - T1.5b NEW: PVC restore path verify. Simulate sentinel-missing
+#     + kb_internal_root already present (e.g. delete the sentinel
+#     file then restart the pod), expect SQL probe path skip the
+#     grant loop via INTERNAL_LOCAL `SHOW GRANTS FOR CURRENT_USER()`
+#     substring match + ERROR 1227 delta = 0 + sentinel re-touched.
+#
+# Doc B Rule 5 sub-1.A application: read alpha.109 P0a scope as
+# "chicken-and-egg residual closed for CM secondary-restart bootstrap
+# path via two-source-of-truth defense-in-depth skip" — initial
+# fresh-create bootstrap still leaks ~14 binlog events on the primary,
+# but those are inherited by the secondary's GTID position from T0,
+# so the leak does NOT produce server_id-divergence orphan events.
+# A future alpha (B3-style initdb-time create kb_internal_root) can
+# close the fresh-create leak as architectural cleanup — alpha.109
+# does not require it because the production-FATAL path is the
+# secondary-restart path, and that is now closed.
+version: 1.1.1-alpha.109
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
