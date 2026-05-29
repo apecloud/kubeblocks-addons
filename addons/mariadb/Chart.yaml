@@ -1418,6 +1418,45 @@ type: application
 # topologies' chart-internal SQL paths either do not exercise
 # the affected functions or already use kb_internal_root for
 # their bootstrap path.
+#
+# Known residual: initial cluster bootstrap chicken-and-egg
+# (Lily 2026-05-29 10:41 documentation refinement, not addressed
+# in alpha.108 P0a):
+# `grant_internal_admin_runtime_privileges` (which GRANTS
+# BINLOG ADMIN etc. to kb_internal_root@'localhost' and
+# kb_internal_root@'127.0.0.1') must itself run as ROOT_LOCAL
+# (user-facing root via socket) before kb_internal_root exists.
+# Its first invocation on a fresh pod therefore still produces
+# ~14 BINLOG ADMIN-related GRANT events on the local binlog
+# under the user-facing root identity (whose sql_log_bin=0 wrap
+# is still ineffective at that point, since BINLOG ADMIN has not
+# yet been granted). These events are confined to the initial
+# cluster bootstrap window — pre-first-rolling-restart and
+# pre-any-secondary-following-the-primary — and they are
+# written to the eventual primary's binlog from cluster T0,
+# before any secondary joins. They therefore do NOT produce
+# server_id-divergence orphan events of the kind that triggered
+# the Round 1c-E failure (which required a transient primary
+# role on a future secondary). The pattern does NOT recur during
+# VScale / CM4 / T6 cycles, because after wait_for_internal_local_admin
+# promotes LOCAL=INTERNAL_LOCAL, all subsequent chart functions
+# use the kb_internal_root identity that has BINLOG ADMIN.
+# A future alpha could close this residual by, e.g.:
+#   (a) docker-entrypoint initdb-time pre-grant of BINLOG ADMIN
+#       to user-facing root @'localhost' (chart then revokes
+#       after promotion), or
+#   (b) `RESET MASTER` at GTID position 0 immediately before
+#       `grant_internal_admin_runtime_privileges` writes (clears
+#       the bootstrap binlog so no events remain), or
+#   (c) delegating the GRANT-BINLOG-ADMIN-to-kb_internal_root
+#       sequence to a syncer-internal init path analogous to
+#       alpha.70's `syncerctl writecheck` model.
+# alpha.108 P0a explicitly does NOT address this residual; Round
+# 1c-F acceptance evidence validates only the recurring-VScale-
+# orphan path. Doc B Rule 5 sub-1.A application: do NOT read
+# "alpha.108 P0a Round 1c-F PASS" as "all chart-internal DDL is
+# binlog-suppressed under every condition" — the initial-bootstrap
+# path remains a known scope exclusion until a future alpha.
 version: 1.1.1-alpha.108
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
