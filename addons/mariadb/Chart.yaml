@@ -1560,7 +1560,113 @@ type: application
 # close the fresh-create leak as architectural cleanup — alpha.109
 # does not require it because the production-FATAL path is the
 # secondary-restart path, and that is now closed.
-version: 1.1.1-alpha.109
+#
+# alpha.110 P0a URGENT (Jack 15:15 Round 1c-G 2nd PRODUCT-level FAIL
+# § 5.3 strict halt + Helen 15:20 TL ratify + Rocco 15:17 cosign +
+# Lily 15:19 strong +1 + Edward 15:22 controller-facing 5-項监听 100%
+# triggered + 15:25-15:34 Direction A→D→E narrow chain + Helen 15:34
+# TL pick Direction E + Helen 15:51 + Edward 15:51 + Rocco 15:53 +
+# Lily 15:54 4-cosign LGTM on Direction E patch design):
+#
+# Round 1c-G 2nd surfaced the EXACT Round 1c-E mechanism that alpha.108
+# + alpha.109 did NOT cover: chart `reconcile_sql_listener_for_syncer_
+# primary_once` repair loop fires `runtime-primary-listener-reconcile-
+# repair-begin` every ~3s while syncer-role=primary and chart markers
+# OUT-OF-SYNC (`.primary-read-write-ready` MISSING OR `.remote-root-
+# fence-role` PRESENT OR `master.info` PRESENT). Each iteration calls
+# `expose_sql_listener_for_primary_role` → `set_primary_read_write` →
+# `primary_write_gates_ready` → `primary_local_root_write_ready` →
+# `/tools/syncerctl --host 127.0.0.1 --port 3601 writecheck` → syncer
+# INSERT into kubeblocks.kb_health_check → **1 binlog event per fire**.
+# Round 1c-G 2nd mdb-async-10271 pod-0 fired 18 iterations in 2.5min,
+# accumulating 18 orphan events under pod-0's local domain. Post-
+# reconfigure switchover (pod-0 becomes secondary), pod-0's GTID is
+# 18 events ahead of primary → alpha.60 fail-closed detects divergence
+# → emits `.replication-divergence-pending` → HA permanent refuse
+# follow → role probe timeout → Cluster Failed within 22min. Round
+# 1c-G 2nd evidence pack:
+#   `artifacts/task442-r1g-2nd-fail-snapshot-1510.tar.gz`
+#   sha256 725907b959bec72523846be2598a57223b8b5819833fce5aa7702ff093b1453b
+#
+# This is NOT a syncer privilege issue. syncer uses MARIADB_INTERNAL_ROOT
+# (== kb_internal_root) which HAS BINLOG ADMIN per alpha.108 P0a B2 +
+# alpha.68 v2 grant matrix. syncer's WriteCheck deliberately writes to
+# binlog as part of replication health-check design — kb_health_check
+# IS supposed to replicate to secondaries for replication health
+# verification (alpha.99 Helen 2026-05-25 sealed: "kb_health_check is
+# owned by syncer (engines/mariadb/manager.go WriteCheck /
+# GetOpTimestamp)" + "syncerctl writecheck path is cluster-wide write
+# verification"). The problem is chart-side loop firing rate × per-
+# iteration binlog event accumulation; in the repair path (state-drift
+# detected) the writecheck is redundant — the state-drift is a chart
+# marker reconciliation issue, not a write-ready verification need.
+#
+# alpha.110 P0a URGENT Direction E (TL pick per Helen 15:34, smallest
+# scope per Jack 15:26 Direction E recommendation + Rocco 15:25 +
+# 15:54 cosign + Edward 15:51 cosign + Lily 15:54 cosign): skip
+# `primary_local_root_write_ready` syncerctl-writecheck step when
+# `expose_sql_listener_for_primary_role` is called from the
+# reconcile-repair-begin path (label has "-no-writecheck" suffix per
+# Rocco 15:53 stricter pattern). Implementation:
+#   1. `primary_write_gates_ready` (cmpd-replication-merged.yaml:610-614
+#      + cmpd-semisync.yaml:450-454): add case `*-no-writecheck` that
+#      skips `primary_local_root_write_ready` and preserves
+#      `primary_internal_root_write_ready` (kb_addon_write_probe addon-
+#      owned with explicit SET sql_log_bin=0 — NOT orphan event source).
+#   2. `set_primary_read_write` (cmpd-replication-merged.yaml:661 +
+#      cmpd-semisync.yaml:468): accept label parameter and pass through
+#      to all unlock/fail/primary_write_gates_ready calls.
+#   3. `expose_sql_listener_for_primary_role` (cmpd-replication-merged.yaml:
+#      1853/1872 + cmpd-semisync.yaml:1614/1631): pass label through to
+#      `set_primary_read_write`.
+#   4. `reconcile_sql_listener_for_syncer_primary_once` (cmpd-replication-
+#      merged.yaml:1922 + cmpd-semisync.yaml:1693): call with label
+#      "syncer-promoted-primary-existing-listener-no-writecheck" so the
+#      repair path triggers the skip case in `primary_write_gates_ready`.
+#
+# Happy-path writecheck PRESERVED for normal primary promotion (line
+# 1942 syncer-promoted-primary / 2134 primary-service-route / 2218
+# stale-slave-no-primary / 2383 default-pod0-primary, plus the
+# semisync template equivalents). None of these labels contain
+# "-no-writecheck" suffix, so they continue to run
+# `primary_local_root_write_ready` writecheck for replication health
+# verification (alpha.99 design intent preserved). Marker emit + role
+# probe + read_only management + lock/unlock logic all preserved in
+# `set_primary_read_write` happy path — only the writecheck step is
+# skipped on the repair path.
+#
+# alpha.110 P0e (former P0d, parallel, controller-side, Edward + Lily
+# pair, Helen 15:24 RATIFIED): KB controller OpsRequest condition
+# surface "DownstreamProgressionFailed" with structured reason for
+# alpha.60 fail-closed scenarios — orthogonal layer to alpha.110 P0a,
+# does not depend on chart-side closure but benefits from it.
+#
+# Acceptance protocol (Helen 15:52 sealed):
+# - T1.0' delta-count over observation window (alpha.108 inherited)
+# - T1.1 / T1.1b / T1.2 privilege boundary (alpha.108 inherited)
+# - T1.3 NEW: Reconfigure cycle reconcile-repair-begin loop verify —
+#   trigger reconfigure cycle on fresh cluster, verify post-CM4:
+#   pod-0 prestop-watchdog.log shows `runtime-primary-listener-reconcile-
+#   repair-begin` lines AND accompanying `primary-write-gates-ready
+#   label=...-no-writecheck reason=skip-writecheck-repair-path` lines,
+#   `.replication-divergence-pending` NOT emit, sql-listener-fence.log
+#   binlog event count delta = 0 over reconcile cycle window,
+#   Cluster Updating → Running ≤ 240s.
+# - T1.4 NEW: mdb-async-10271 frozen anchor cross-cluster regression —
+#   apply alpha.110 chart to mdb-async-10271 equivalent cluster + trigger
+#   CM4 → verify NO `.replication-divergence-pending` emit + cluster
+#   recovers Running.
+# - T1.5 NEW: happy-path writecheck preservation — fresh-create cluster
+#   bootstrap normal primary promotion paths run `primary_local_root_
+#   write_ready` (label without "-no-writecheck"), kb_health_check
+#   INSERT happens as designed for replication health verification.
+#
+# Direction B (root-cause why chart markers go OUT-OF-SYNC during
+# reconfigure cycle) deferred to alpha.111 backlog candidate per Lily
+# 15:45 sealed; alpha.110 P0a Direction E closes the production-FATAL
+# orphan event source mechanism, Direction B addresses the marker
+# state-drift root cause architectural sustainability.
+version: 1.1.1-alpha.110
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add

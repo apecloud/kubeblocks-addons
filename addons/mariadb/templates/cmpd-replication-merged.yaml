@@ -608,7 +608,40 @@ spec:
               return 1
             }
             primary_write_gates_ready() {
+              # alpha.110 P0a URGENT Direction E (Jack 15:26 + Helen TL 15:34 sealed +
+              # Edward 15:51 + Rocco 15:53 + Lily 15:54 4-cosign LGTM):
+              # Skip primary_local_root_write_ready syncerctl-writecheck step on
+              # reconcile-repair-begin path. Root cause: chart-side
+              # reconcile_sql_listener_for_syncer_primary_once fires
+              # `runtime-primary-listener-reconcile-repair-begin` every ~3s while
+              # syncer-role=primary but chart markers OUT-OF-SYNC; each iteration's
+              # writecheck INSERTs into kb_health_check generating 1 binlog event
+              # per fire → cumulative orphan events on local domain → post-
+              # reconfigure switchover GTID divergence → alpha.60 fail-closed →
+              # HA permanent refuse follow → cluster stuck Updating. Round 1c-G
+              # 2nd mdb-async-10271 saw 18 events accumulate in 2.5min loop fire
+              # window.
+              #
+              # alpha.110 P0a URGENT Direction E preserves alpha.99 Helen
+              # 2026-05-25 design intent (syncer's WriteCheck deliberately writes
+              # to binlog for replication health verification): happy-path
+              # writecheck still runs on normal primary promotion paths (line
+              # 1942/2134/2218/2383 callers use labels without "-no-writecheck"
+              # suffix). Only the reconcile-repair-begin path passes label with
+              # "-no-writecheck" suffix (per Rocco 15:53 stricter suffix-anchored
+              # pattern), triggering this case to skip the writecheck step while
+              # preserving primary_internal_root_write_ready (kb_addon_write_probe
+              # addon-owned + explicit SET sql_log_bin=0 per line 596-602 — NOT
+              # orphan event source) + marker emit + role probe + read_only +
+              # role transition logic in set_primary_read_write happy path.
               local label="${1:-primary-write-gates-ready}"
+              case "${label}" in
+                *-no-writecheck)
+                  prestop_watchdog_log "primary-write-gates-ready label=${label} reason=skip-writecheck-repair-path"
+                  primary_internal_root_write_ready "${label}" || return 1
+                  return 0
+                  ;;
+              esac
               primary_local_root_write_ready "${label}" || return 1
               primary_internal_root_write_ready "${label}" || return 1
             }
@@ -626,42 +659,47 @@ spec:
               prestop_watchdog_log "primary-read-write ${reason} rc=1"
             }
             set_primary_read_write() {
+              # alpha.110 P0a URGENT Direction E (Jack 15:26 + 4-cosign sealed):
+              # accept label parameter so callers can pass "-no-writecheck" suffix
+              # through to primary_write_gates_ready for repair-path skip.
+              # Default label preserves alpha.109 and earlier behavior.
+              local label="${1:-primary-read-write}"
               if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
                 prestop_watchdog_log "skip-primary-read-write reason=prestop-fence-started"
                 mark_replication_pending
                 return 1
               fi
-              if ! unlock_local_root_writes "primary-read-write"; then
+              if ! unlock_local_root_writes "${label}"; then
                 rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
-                prestop_watchdog_log "primary-read-write local-root-unlock rc=1"
+                prestop_watchdog_log "primary-read-write local-root-unlock rc=1 label=${label}"
                 return 1
               fi
-              if ! unlock_remote_root_writes "primary-read-write"; then
-                fail_primary_read_write_gate "primary-read-write" "remote-root-unlock"
+              if ! unlock_remote_root_writes "${label}"; then
+                fail_primary_read_write_gate "${label}" "remote-root-unlock"
                 return 1
               fi
               if "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null; then
-                if ! primary_write_gates_ready "primary-read-write"; then
-                  fail_primary_read_write_gate "primary-read-write" "write-gate"
+                if ! primary_write_gates_ready "${label}"; then
+                  fail_primary_read_write_gate "${label}" "write-gate"
                   return 1
                 fi
                 rm -f {{ .Values.dataMountPath }}/.remote-root-fence-role
                 touch {{ .Values.dataMountPath }}/.primary-read-write-ready
-                prestop_watchdog_log "primary-read-write rc=0"
+                prestop_watchdog_log "primary-read-write rc=0 label=${label}"
                 return 0
               fi
               if "${LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null; then
-                if ! primary_write_gates_ready "primary-read-write"; then
-                  fail_primary_read_write_gate "primary-read-write" "write-gate"
+                if ! primary_write_gates_ready "${label}"; then
+                  fail_primary_read_write_gate "${label}" "write-gate"
                   return 1
                 fi
                 rm -f {{ .Values.dataMountPath }}/.remote-root-fence-role
                 touch {{ .Values.dataMountPath }}/.primary-read-write-ready
-                prestop_watchdog_log "primary-read-write rc=0"
+                prestop_watchdog_log "primary-read-write rc=0 label=${label}"
                 return 0
               fi
-              fail_primary_read_write_gate "primary-read-write" "read-only-open"
-              prestop_watchdog_log "primary-read-write rc=1"
+              fail_primary_read_write_gate "${label}" "read-only-open"
+              prestop_watchdog_log "primary-read-write rc=1 label=${label}"
               return 1
             }
             mark_replication_pending() {
@@ -1850,7 +1888,7 @@ spec:
               if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] && mariadbd_listen_on_all_interfaces; then
                 "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
                 "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
-                if set_primary_read_write; then
+                if set_primary_read_write "${label}"; then
                   touch {{ .Values.dataMountPath }}/.sql-listener-ready
                   prestop_watchdog_log "sql-listener-primary-existing-reconciled label=${label}"
                   return 0
@@ -1869,7 +1907,7 @@ spec:
               fi
               "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
               "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
-              if ! set_primary_read_write; then
+              if ! set_primary_read_write "${label}"; then
                 mark_replication_pending
                 prestop_watchdog_log "sql-listener-primary-expose-failed label=${label}"
                 return 1
@@ -1919,7 +1957,18 @@ spec:
                   return 0
                 fi
                 prestop_watchdog_log "runtime-primary-listener-reconcile-repair-begin reason=primary-role-state-drift role=${role}"
-                expose_sql_listener_for_primary_role "syncer-promoted-primary-existing-listener" || return 1
+                # alpha.110 P0a URGENT Direction E: pass "-no-writecheck" suffix
+                # to skip primary_local_root_write_ready syncerctl-writecheck in
+                # the repair path. Each loop iteration's writecheck INSERTs into
+                # kb_health_check generating 1 binlog event per fire; in Round
+                # 1c-G 2nd this fired 18 times in 2.5min on mdb-async-10271 pod-0
+                # accumulating 18 orphan events that caused post-reconfigure
+                # switchover GTID divergence + alpha.60 fail-closed. Skipping the
+                # writecheck here removes the orphan event source while preserving
+                # primary_internal_root_write_ready (kb_addon_write_probe addon-
+                # owned with explicit SET sql_log_bin=0) + marker emit + role
+                # probe + read_only management + lock/unlock logic.
+                expose_sql_listener_for_primary_role "syncer-promoted-primary-existing-listener-no-writecheck" || return 1
                 mark_replication_ready
                 prestop_watchdog_log "runtime-primary-listener-reconcile-repair-complete role=${role}"
                 return 0
