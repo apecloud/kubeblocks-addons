@@ -1232,7 +1232,87 @@ type: application
 # topologies, so it heals semisync and replication-merged uniformly
 # without engine-specific code changes. syncer / image baseline
 # unchanged from alpha.105.
-version: 1.1.1-alpha.106
+#
+# alpha.107 v1 (Jack 2026-05-29 — Round 1c-D async CM4 RED root cause
+# CLOSED): alpha.106 reaper itself became a 6th `.sql-listener-ready`
+# writer that fires while mariadbd is still in 127.0.0.1-only
+# bootstrap mode. Round 1c-D async CM4 N=1 fresh run
+# (task442-full-n1-alpha106-r1d-fullrun-0712) at T6 Stop/Start was
+# RED: at 23:29:38 reaper Cond 1-6 all returned true (.replication-
+# pending present, no divergence-pending, master.info present,
+# .replication-ready absent, db_ready, secondary_replication_ready)
+# so the reaper touched `.replication-ready` + `.sql-listener-ready`
+# WHILE mariadbd was still bound to 127.0.0.1 (bootstrap phase pre-
+# rebind to 0.0.0.0). The marker semantic of `.sql-listener-ready`
+# = "mariadbd has rebound to 0.0.0.0 past bootstrap 127.0.0.1-only
+# phase" — Cond 6's secondary_replication_ready probes via the
+# 127.0.0.1 local mariadb client, so it is satisfied at bootstrap
+# time and is structurally NOT a direct proxy for the bind invariant.
+# Result: `.sql-listener-ready` lied, downstream actors (chart
+# expose_sql_listener_for_primary_role reconciled-existing fast
+# path, syncer Follow, KB roleProbe) saw a green marker and skipped
+# the rebind that the marker name claims is already done, leaving
+# pods unreachable on Service traffic. Live evidence frozen on
+# mdb-async-10115 sha256
+# d8d1aa42160c46df8eb0aecbdf41c739a9f691ece3724b05647c941fc7f75ac6
+# + narrow ABC sha256
+# a13c05dc9b25b972e1af4760a094da3a5bd7d9da0ac23bf9c4b4e7f3d1412107.
+# Cross-team cosign retraction (Helen TL / Edward / Rocco / Lily) on
+# PR #2694 alpha.106 LGTMs and upgrade to Doc B Rule 6.
+#
+# alpha.107 v1 fix (3-part bind invariant alignment):
+# 1. `addons/mariadb/scripts/replication-roleprobe.sh`
+#    `attempt_marker_self_heal()` adds Cond 7
+#    `mariadbd_listen_on_all_interfaces` — reads /proc/net/tcp +
+#    /proc/net/tcp6, accepts IPv4 wildcard `00000000:0CEA` (port
+#    3306 = hex 0CEA) OR IPv6 wildcard
+#    `00000000000000000000000000000000:0CEA` with listen state 0A.
+#    Rejects only 127.0.0.1-only (`0100007F:0CEA`). Any condition
+#    1-7 not met → return 1, no marker write.
+# 2. `addons/mariadb/templates/cmpd-replication-merged.yaml`
+#    `expose_sql_listener_for_primary_role()` reconciled-existing
+#    fast path is gated on the same bind verify — if
+#    `.sql-listener-ready` exists but `mariadbd_listen_on_all_
+#    interfaces` returns false, fall through to fresh-listener path
+#    which actually rebinds. Closes the symmetric DRY risk where a
+#    future stale `.sql-listener-ready` (reaper bug, PVC residue,
+#    other writer) would let the chart skip the rebind too.
+# 3. `addons/mariadb/scripts/replication-roleprobe.sh`
+#    `reaper_audit_log()` writes per-condition pass/bail rc to
+#    `${dataMountPath}/log/reaper-audit.log` (independent file —
+#    NOT stderr, which is suppressed via `2>/dev/null` per
+#    kbagent role-probe runtime contract and stays suppressed).
+#    Format: `<RFC3339 timestamp> cond=N <gate>=<value> rc=<bail|
+#    continue>`. Grep-able per gate + timestamps alignable with
+#    kbagent log time window for postmortem audit (Edward unique
+#    add: Rule 1 直证清单 alignment).
+#
+# Doc B Rule 4 (a-d) compliance: unchanged from alpha.106 — reaper
+# still reads only via existing internal admin helper +
+# /proc/net/tcp[6] (kernel proc filesystem, no replication-stream
+# side effect), writes only marker + audit files (no binlog event),
+# the divergence-pending fail-closed gate is preserved.
+# Doc B Rule 5 (Lily 06:57): live-verify scenario for alpha.107 will
+# explicitly enumerate implicit precondition "mariadbd 已 rebind
+# 0.0.0.0" so the verify scenario is equivalent to the CM4 rolling-
+# restart-with-stale-bind production failure mode that alpha.106's
+# mdb-async-11076 手工恢复 scenario did NOT cover.
+# Doc B Rule 6 (Helen 08:12 proposed, Lily 08:14 independent rule,
+# Rocco 08:15 / Edward 08:15 / Helen 08:17 cosign): marker semantic
+# invariant must be direct-verified at write time. Cond 7 reads the
+# real kernel-level bind state via /proc/net/tcp[6] instead of
+# inferring it from `secondary_replication_ready` (an indirect
+# 127.0.0.1-side health probe that does not reflect external bind).
+# Scope: `addons/mariadb/scripts/replication-roleprobe.sh` (Cond 7
+# + reaper_audit_log helper + Cond 1-6 per-gate audit hooks),
+# `addons/mariadb/templates/cmpd-replication-merged.yaml`
+# (mariadbd_listen_on_all_interfaces helper + reconciled-existing
+# fast path bind gate), `Chart.yaml` (version bump + this note).
+# cmpd-semisync.yaml and cmpd-replication.yaml are unchanged.
+# Reaper + helper are topology-neutral; semisync/replication-merged
+# benefit uniformly without engine-specific code changes.
+# syncer / image baseline unchanged from alpha.106.
+version: 1.1.1-alpha.107
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add

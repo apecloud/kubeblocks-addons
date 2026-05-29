@@ -1647,6 +1647,26 @@ spec:
               touch {{ .Values.dataMountPath }}/.sql-listener-ready
               prestop_watchdog_log "sql-listener-expose-complete label=${label}"
             }
+            # alpha.107 (Doc B Rule 6): direct verify mariadbd is listening on
+            # 0.0.0.0:3306 (or :::3306) — `.sql-listener-ready` marker semantic
+            # = "mariadbd already rebound past 127.0.0.1 bootstrap". Read
+            # /proc/net/tcp (IPv4) + /proc/net/tcp6 (IPv6); listen state = 0A;
+            # port 3306 = hex 0CEA. IPv4 wildcard local_address = 00000000:0CEA;
+            # IPv6 wildcard = 00000000000000000000000000000000:0CEA. Either
+            # present passes; only 127.0.0.1:3306 (0100007F:0CEA) → fail.
+            mariadbd_listen_on_all_interfaces() {
+              local f
+              for f in /proc/net/tcp /proc/net/tcp6; do
+                [ -r "$f" ] || continue
+                awk 'NR>1 && $4=="0A" {print $2}' "$f" | while read -r addr; do
+                  case "$addr" in
+                    00000000:0CEA) echo wildcard; break ;;
+                    00000000000000000000000000000000:0CEA) echo wildcard; break ;;
+                  esac
+                done | grep -q wildcard && return 0
+              done
+              return 1
+            }
             expose_sql_listener_for_primary_role() {
               local label="$1"
               if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
@@ -1654,7 +1674,14 @@ spec:
                 mark_replication_pending
                 return 1
               fi
-              if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+              # alpha.107 (Doc B Rule 6): gate reconciled-existing fast path on
+              # direct mariadbd bind verify. Without this, a stale
+              # `.sql-listener-ready` marker (reaper bug, PVC residue, etc.)
+              # lets us skip the actual rebind and leave mariadbd on 127.0.0.1
+              # bootstrap — pods can't be reached by Service traffic. If the
+              # marker exists but mariadbd is still bootstrap-bound, fall
+              # through to the fresh-listener path below.
+              if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] && mariadbd_listen_on_all_interfaces; then
                 "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
                 "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
                 if set_primary_read_write; then
