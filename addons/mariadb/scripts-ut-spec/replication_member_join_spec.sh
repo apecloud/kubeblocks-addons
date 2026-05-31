@@ -585,12 +585,119 @@ EOF
     End
   End
 
+  Describe "replication_member_join_diagnose_not_ready()"
+    Context "emits structured stderr with action label, phase, and retry-safe"
+      It "writes the action label, phase, and next-retry-safe to stderr"
+        export KB_CLUSTER_NAME="mdb-cluster"
+        export POD_NAME="mdb-mariadb-1"
+        ACTIVE_PRIMARY_HOST="mdb-mariadb.demo.svc.cluster.local"
+        When call replication_member_join_diagnose_not_ready "primary-not-yet-reachable" "  probe_primary_host: mdb-mariadb.demo.svc.cluster.local" "yes"
+        The status should be success
+        The stderr should include "action: replication-member-join"
+        The stderr should include "phase: primary-not-yet-reachable"
+        The stderr should include "cluster: mdb-cluster"
+        The stderr should include "pod: mdb-mariadb-1"
+        The stderr should include "probe_primary_host: mdb-mariadb.demo.svc.cluster.local"
+        The stderr should include "next-retry-safe: yes"
+      End
+
+      It "supports retry-safe: no for operator-attention failures"
+        When call replication_member_join_diagnose_not_ready "change-master-failed" "  master_host: pri" "no"
+        The status should be success
+        The stderr should include "phase: change-master-failed"
+        The stderr should include "next-retry-safe: no"
+      End
+    End
+  End
+
+  Describe "probe_primary_or_defer() single-shot"
+    Context "when PRIMARY_HOST accepts SELECT 1"
+      It "sets ACTIVE_PRIMARY_HOST and returns success"
+        host_sql() {
+          case "$1" in
+            "${PRIMARY_HOST}") return 0 ;;
+            *) return 1 ;;
+          esac
+        }
+        ACTIVE_PRIMARY_HOST=""
+        When call probe_primary_or_defer
+        The status should be success
+        The variable ACTIVE_PRIMARY_HOST should eq "${PRIMARY_HOST}"
+      End
+    End
+
+    Context "when PRIMARY_HOST is unreachable on pod-0"
+      It "defers without trying bootstrap fallback and writes retry-safe: yes diagnose"
+        export POD_NAME="mdb-mariadb-0"
+        POD_INDEX="0"
+        host_sql() { return 1; }
+        ACTIVE_PRIMARY_HOST=""
+        When call probe_primary_or_defer
+        The status should be failure
+        The variable ACTIVE_PRIMARY_HOST should eq ""
+        The stderr should include "phase: primary-not-yet-reachable"
+        The stderr should include "next-retry-safe: yes"
+      End
+    End
+
+    Context "when PRIMARY_HOST unreachable on pod-1 and bootstrap primary is writable"
+      It "falls back to BOOTSTRAP_PRIMARY_HOST and returns success"
+        export POD_NAME="mdb-mariadb-1"
+        POD_INDEX="1"
+        host_sql() {
+          case "$*" in
+            *"${BOOTSTRAP_PRIMARY_HOST}"*"read_only"*) echo "0"; return 0 ;;
+            *) return 1 ;;
+          esac
+        }
+        ACTIVE_PRIMARY_HOST=""
+        When call probe_primary_or_defer
+        The status should be success
+        The variable ACTIVE_PRIMARY_HOST should eq "${BOOTSTRAP_PRIMARY_HOST}"
+        The output should include "Using bootstrap primary"
+      End
+    End
+
+    Context "when neither PRIMARY_HOST nor bootstrap primary are reachable on pod-1"
+      It "defers with retry-safe: yes"
+        export POD_NAME="mdb-mariadb-1"
+        POD_INDEX="1"
+        host_sql() { return 1; }
+        ACTIVE_PRIMARY_HOST=""
+        When call probe_primary_or_defer
+        The status should be failure
+        The variable ACTIVE_PRIMARY_HOST should eq ""
+        The stderr should include "phase: primary-not-yet-reachable"
+        The stderr should include "next-retry-safe: yes"
+        The stderr should include "pod_index: 1"
+      End
+    End
+
+    Context "when PRIMARY_HOST unreachable on pod-1 but bootstrap primary is read_only"
+      It "defers because bootstrap is not writable (read_only != 0)"
+        export POD_NAME="mdb-mariadb-1"
+        POD_INDEX="1"
+        host_sql() {
+          case "$*" in
+            *"${BOOTSTRAP_PRIMARY_HOST}"*"read_only"*) echo "1"; return 0 ;;
+            *) return 1 ;;
+          esac
+        }
+        ACTIVE_PRIMARY_HOST=""
+        When call probe_primary_or_defer
+        The status should be failure
+        The variable ACTIVE_PRIMARY_HOST should eq ""
+        The stderr should include "next-retry-safe: yes"
+      End
+    End
+  End
+
   Describe "main() self-primary guard"
     Context "when this pod is the primary"
       It "skips replication setup and exits 0"
         local_sql()         { echo "100"; }
         primary_sql()       { echo "100"; }
-        wait_for_primary()  { return 0; }
+        probe_primary_or_defer() { return 0; }
         When call main
         The status should be success
         The output should include "Already primary"
@@ -607,7 +714,7 @@ EOF
           esac
         }
         primary_sql()      { echo "100"; }
-        wait_for_primary() { return 0; }
+        probe_primary_or_defer() { return 0; }
         When call main
         The status should be success
         The output should include "Nothing to do"
@@ -615,14 +722,14 @@ EOF
     End
 
     Context "when PRIMARY_HOST is unreachable but slave is already running"
-      It "returns success without waiting for PRIMARY_HOST"
+      It "returns success without probing PRIMARY_HOST"
         local_sql() {
           case "$*" in
             *"SHOW SLAVE STATUS"*) echo "some-row" ;;
             *"Slave_running"*)     printf 'Slave_running\tON\n' ;;
           esac
         }
-        wait_for_primary() { echo "should-not-be-called"; return 1; }
+        probe_primary_or_defer() { echo "should-not-be-called"; return 1; }
         When call main
         The status should be success
         The output should include "Nothing to do"
