@@ -836,6 +836,63 @@ systemAccounts:
 {{- end -}}
 
 {{/*
+System accounts for semisync + replication-merged topologies (Phase A account-model RFC; design review issue 3 from 2026-05-31 audit).
+
+Phase A scope is DECLARATIVE ONLY. kb_internal_root and kb_replicator are declared as KubeBlocks-managed systemAccounts with `initAccount: true` so KB controller materializes a placeholder Secret per account and tracks the lifecycle hook, but does NOT execute `accountProvision.statement.create` SQL against the engine. Per `transformer_component_account_provision.go:161-167`, `initAccount: true` short-circuits the provision exec path.
+
+DB-side runtime behavior is byte-identical to alpha.110: chart's `ensure_internal_local_admin` (cmpd-semisync.yaml + cmpd-replication-merged.yaml) and initdb (cmpd.yaml) continue to inline-create + maintain kb_internal_root and kb_replicator using `${MARIADB_ROOT_PASSWORD}`. The narrow alpha.81 @'%' grant allowlist (REPLICATION CLIENT + SLAVE MONITOR + REPLICATION MASTER ADMIN + narrow table grants + SELECT mysql.user for kb_internal_root; REPLICATION SLAVE for kb_replicator) is enforced by chart watchdog and unchanged.
+
+Phase A's only behavior delta is that KB controller now materializes a Secret per declared account and tracks `Component.status.conditions[SystemAccountProvision]`. The KB-managed Secret password is random (per passwordGenerationPolicy below) and INTENTIONALLY DIFFERENT from the DB-side password (= MARIADB_ROOT_PASSWORD). No external consumer reads these two Secrets in Phase A; alpha.110 also did not expose them.
+
+Phase B (separate future PR) will switch the chart to source the kb_internal_root / kb_replicator password from these Secrets via `credentialVarRef`, define `statement.create` + `statement.update` for real KB-driven provision, and sweep all 16+ script call sites in `ensure_internal_local_admin`, `replication-roleprobe.sh`, and `replication-switchover.sh` to use `${KB_INTERNAL_ROOT_PASSWORD}` / `${KB_REPLICATOR_PASSWORD}` atomically. Phase B's full grant contract design is captured in the addon-side RFC catalog.
+*/}}
+{{- define "mariadb.semisync.spec.systemAccounts" -}}
+systemAccounts:
+  - name: root
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 3
+      numSymbols: 4
+      letterCase: MixedCases
+  - name: kb_internal_root
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 32
+      numDigits: 16
+      numSymbols: 0
+      letterCase: MixedCases
+  - name: kb_replicator
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 32
+      numDigits: 16
+      numSymbols: 0
+      letterCase: MixedCases
+{{- end -}}
+
+{{/*
+System accounts for standalone topology (Phase A account-model RFC). Same declarative-only scope as the semisync helper above. Standalone declares only kb_internal_root because there is no replication (single-node).
+*/}}
+{{- define "mariadb.standalone.spec.systemAccounts" -}}
+systemAccounts:
+  - name: root
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 3
+      numSymbols: 4
+      letterCase: MixedCases
+  - name: kb_internal_root
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 32
+      numDigits: 16
+      numSymbols: 0
+      letterCase: MixedCases
+{{- end -}}
+
+{{/*
 Common vars for replication and galera
 */}}
 {{- define "mariadb.spec.vars" -}}
