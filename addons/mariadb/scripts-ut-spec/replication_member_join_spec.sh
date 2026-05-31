@@ -583,6 +583,43 @@ EOF
         The output should include "GTID out-of-order (1950) before primary truth stabilized"
       End
     End
+
+    Context "when slave is not yet ready for rejoin (Slave_IO_Running still Connecting)"
+      It "returns failure with classified slave-not-yet-ready-for-rejoin retry=yes (alpha.110 implicit rc=0 bug fix)"
+        # Regression guard for alpha.110 implicit rc=0 bug: that release returned rc=0
+        # from this branch because the last statement was an echo (no explicit return 1).
+        # alpha.113 reclassifies as slave-not-yet-ready-for-rejoin + retry=yes so kbagent
+        # re-fires memberJoin until slave actually converges.
+        primary_sql() {
+          case "$*" in
+            *"gtid_binlog_pos"*) echo "0-1-100" ;;
+          esac
+        }
+        local_sql() {
+          case "$*" in
+            *"gtid_slave_pos;"*)   echo "" ;;
+            *"SHOW SLAVE STATUS"*) echo "some-slave-status-row" ;;
+            *) : ;;
+          esac
+        }
+        query_slave_status_verbose() {
+          cat <<'EOF'
+Slave_IO_Running: Connecting
+Slave_SQL_Running: No
+Last_IO_Errno: 0
+Last_SQL_Errno: 0
+EOF
+        }
+        When call setup_replication
+        The status should be failure
+        The path "${TEST_DIR}/.replication-pending" should be exist
+        The output should include "WARNING: replication rejoin not yet healthy"
+        The stderr should include "phase: slave-not-yet-ready-for-rejoin"
+        The stderr should include "next-retry-safe: yes"
+        The stderr should include "Slave_IO_Running: Connecting"
+        The stderr should include "Slave_SQL_Running: No"
+      End
+    End
   End
 
   Describe "replication_member_join_diagnose_not_ready()"

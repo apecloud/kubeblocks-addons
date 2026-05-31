@@ -1741,9 +1741,10 @@ type: application
 #                   not yet Yes/0/0 (catch-up in progress); GTID
 #                   out-of-order WITHOUT confirmed divergence (primary
 #                   truth still stabilizing).
-#   - rc=0 paths preserved verbatim: is_slave_running fast-path,
-#     is_self_primary guard, slave_status_is_ready_for_rejoin positive
-#     verify, post-repair re-verify. No new rc=0 path.
+#   - The 4 explicit positive-success rc=0 paths preserved verbatim:
+#     is_slave_running fast-path, is_self_primary guard,
+#     slave_status_is_ready_for_rejoin positive verify, post-repair
+#     re-verify. No new rc=0 path.
 #
 # Numbering: alpha.111 reserved for PR #2701 (P0a URGENT FLUSH
 # PRIVILEGES wrap, in flight) and alpha.112 reserved for PR #2702
@@ -1751,14 +1752,37 @@ type: application
 # refactor, in flight). Integration owner reconciles the chain at
 # merge time.
 #
-# Behavior preservation: all four existing rc=0 paths return rc=0 on
-# the same conditions as alpha.110. All existing rc=1 paths still
-# return rc=1; the only behavior delta is (a) the wait_for_primary
-# polling loop becomes a single-shot probe + retry=yes defer (under
-# kbagent's 60s cap this is equivalent to or better than the prior
-# in-process poll), and (b) every rc=1 path now emits classified
-# stderr that operator triage can read to distinguish transient
-# from operator-attention failures.
+# Behavior delta vs alpha.110 (acknowledged corrected bug, not pure
+# preservation — Jack peer review 2026-06-01 01:59 GH comment
+# 4587575867 caught the over-claim in PR #2712 v1):
+#
+#   (a) The wait_for_primary polling loop becomes a single-shot
+#       probe + retry=yes defer. Under kbagent's 60s cap this is
+#       equivalent to or better than the prior in-process poll, which
+#       was silently truncated at 60s and discarded partial state.
+#
+#   (b) Every rc=1 path now emits classified stderr that operator
+#       triage can read to distinguish transient (retry=yes) from
+#       operator-attention (retry=no) failures.
+#
+#   (c) CORRECTED IMPLICIT rc=0 BUG: alpha.110's `setup_replication`
+#       had a final `mark_replication_pending; echo "WARNING: ... not
+#       yet healthy"; }` branch with NO explicit `return 1`. Because
+#       the last statement in that branch was `echo`, the function
+#       returned the rc of `echo` (= 0), which propagated up through
+#       `main` so kbagent observed memberJoin = succeeded even when
+#       Slave_IO / Slave_SQL had not converged. The cluster eventually
+#       self-healed via roleProbe reading `.replication-pending`, but
+#       memberJoin was lying to the controller about its outcome.
+#       alpha.113 makes this branch an explicit `return 1` classified
+#       as `slave-not-yet-ready-for-rejoin` + retry=yes, so kbagent
+#       sees the true not-ready state and re-fires the action until
+#       slave IS ready. This is the correct single-shot bootstrap-
+#       or-defer behavior; it is also a semantic change vs alpha.110.
+#       Same `mark_replication_pending` marker write preserved for
+#       roleProbe interop. New ShellSpec assertion in
+#       scripts-ut-spec/replication_member_join_spec.sh covers this
+#       phase + retry-safe so the regression cannot reopen silently.
 #
 # Use-precondition (per skill): runtime re-invokes the action on a
 # subsequent attempt when the previous invocation returned rc=1.
