@@ -20,6 +20,9 @@ spec:
         valueFrom:
           versionMapping:
             - serviceVersions:
+              - "8.0.23"
+              mappedValue: "8.0.23"
+            - serviceVersions:
               - "8.0"
               mappedValue: "8.0.17"
             - serviceVersions:
