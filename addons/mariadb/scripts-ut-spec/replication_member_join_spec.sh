@@ -448,6 +448,8 @@ EOF
         The path "${TEST_DIR}/.replication-pending" should be exist
         The path "${TEST_DIR}/.replication-divergence-pending" should be exist
         The output should include "GTID divergence detected"
+        The stderr should include "phase: gtid-divergence-fail-closed"
+        The stderr should include "next-retry-safe: no"
       End
 
       It "persists divergence decision evidence for later proof collection"
@@ -491,6 +493,8 @@ EOF
         The contents of file "${TEST_DIR}/.replication-divergence-pending" should include "branch=fail_closed_for_gtid_divergence"
         The contents of file "${TEST_DIR}/.replication-divergence-pending" should include "primary_resolved_endpoint=mdb-mariadb-1"
         The contents of file "${TEST_DIR}/.replication-divergence-pending" should include "primary_gtid_binlog_state=0-1-8550,0-2-8689"
+        The stderr should include "phase: gtid-divergence-fail-closed"
+        The stderr should include "next-retry-safe: no"
       End
 
       It "does not fail closed when primary sampling is unstable across retries"
@@ -581,6 +585,8 @@ EOF
         The path "${TEST_DIR}/.replication-pending" should be exist
         The path "${TEST_DIR}/.replication-divergence-pending" should not be exist
         The output should include "GTID out-of-order (1950) before primary truth stabilized"
+        The stderr should include "phase: gtid-out-of-order-transient"
+        The stderr should include "next-retry-safe: yes"
       End
     End
 
