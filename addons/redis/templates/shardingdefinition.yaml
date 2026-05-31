@@ -19,17 +19,25 @@ spec:
       shared: true
   lifecycleActions:
     shardRemove:
-      timeoutSeconds: 900
+      # kbagent caps lifecycle action calls at 60s; keep this below the cap
+      # and let retryPolicy re-enter the idempotent shardRemove action.
+      timeoutSeconds: 50
       exec:
         container: redis-cluster
         command:
           - /bin/bash
           - -c
           - |
+            log=/tmp/pre-terminate.log
+            : > "$log"
             if [ "$LEGACY_REDIS" == "true" ]; then
-               /scripts/redis-cluster6-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
+               script=/scripts/redis-cluster6-manage.sh
             else
-               /scripts/redis-cluster-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
+               script=/scripts/redis-cluster-manage.sh
             fi
+            "$script" --pre-terminate > "$log" 2>&1
+            rc=$?
+            cat "$log" >&2 || true
+            exit "$rc"
       retryPolicy:
         maxRetries: 10

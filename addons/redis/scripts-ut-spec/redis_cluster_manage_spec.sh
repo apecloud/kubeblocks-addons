@@ -1005,8 +1005,15 @@ Describe "Redis Cluster Manage Bash Script Tests"
         return 0
       }
 
+      count_node_slots() {
+        echo "16384"
+      }
+
       setup() {
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
         export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1"
         export SERVICE_PORT="6379"
       }
@@ -1022,7 +1029,8 @@ Describe "Redis Cluster Manage Bash Script Tests"
       It "returns success when the current component shard is already scaled out"
         When call scale_out_redis_cluster_shard
         The status should be success
-        The output should include "The current component shard is already scaled out, no need to scale out again."
+        The output should include "The current component shard primary and replicas already joined the cluster."
+        The output should include "Redis cluster scale out shard already owns 16384 slots and cluster is stable"
       End
     End
 
