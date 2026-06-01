@@ -25,7 +25,7 @@ KubeBlocks add-ons.
 | nebula | nebula-v3.5.0<br>nebula-v3.8.0 | NebulaGraph is a popular open-source graph database that can handle large volumes of data with milliseconds of latency, scale up quickly, and have the ability to perform fast graph analytics. | wangyelei shanshanying Xuntao Cheng |
 | neo4j | neo4j-4.4.42<br>neo4j-5.26.5 | Neo4j is a highly scalable, robust native graph database. | xuriwuyun |
 | neon | neon-broker-1.0.0<br>neon-compute-1.0.0<br>neon-pageserver-1.0.0<br>neon-safekeeper-1.0.0 | Neon is a serverless open-source alternative to AWS Aurora Postgres. It separates storage and compute and substitutes the PostgreSQL storage layer by redistributing data across a cluster of nodes. | ApeCloud |
-| oceanbase-ce | oceanbase-ce-4.3.0 | OceanBase has served over 400 customers across the globe and has been supporting all mission critical systems in Alipay. | Powerfooi shanshanying |
+| oceanbase-ce | oceanbase-ce-4.2.1<br>oceanbase-ce-4.2.5<br>oceanbase-ce-4.3.5 | OceanBase has served over 400 customers across the globe and has been supporting all mission critical systems in Alipay. | Powerfooi shanshanying |
 | opensearch | opensearch-2.7.0<br>opensearch-dashboard-2.7.0 | Open source distributed and RESTful search engine. | ApeCloud |
 | orchestrator | orchestrator-3.2.6 | Orchestrator is a MySQL high availability and replication management tool, runs as a service and provides command line access, HTTP API and Web interface. | ApeCloud |
 | orioledb | orioledb-16.4.0 | OrioleDB is a new storage engine for PostgreSQL, bringing a modern approach to database capacity, capabilities and performance to the world's most-loved database platform. | ApeCloud |
