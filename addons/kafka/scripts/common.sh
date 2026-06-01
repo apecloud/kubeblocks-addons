@@ -82,7 +82,9 @@ build_server_jaas_config() {
 KafkaServer {
   ${login_module}
   username="$KAFKA_ADMIN_USER"
-  password="$admin_password";
+  password="$admin_password"
+  user_$KAFKA_ADMIN_USER="$admin_password"
+  user_$KAFKA_CLIENT_USER="$client_password";
 };
 KafkaClient {
   ${login_module}
