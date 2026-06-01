@@ -15,8 +15,15 @@
     <!-- Root Directory Configuration -->
     <property>
         <name>hbase.rootdir</name>
-        <value>hdfs://ENV_HADOOP_CLUSTER_NAME:8020/hbase</value>
+        <value>hdfs://ENV_HADOOP_CLUSTER_NAME:8020/ENV_HBASE_ROOT_DIR</value>
         <description>Root directory of HBase on HDFS. Use file:///hbase for standalone mode. ENV_HADOOP_CLUSTER_NAME will be replaced in init scripts.</description>
+    </property>
+
+    <!-- ZK Parent Node Configuration -->
+    <property>
+        <name>zookeeper.znode.parent</name>
+        <value>ENV_HBASE_ZK_PARENT</value>
+        <description>ZooKeeper root znode for HBase. Must be unique per HBase cluster sharing the same ZK ensemble.</description>
     </property>
 
     <!-- Cluster Mode Configuration -->

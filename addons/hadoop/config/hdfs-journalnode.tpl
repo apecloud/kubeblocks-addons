@@ -4,21 +4,21 @@
 <configuration>
     <property>
         <name>dfs.nameservices</name>
-        <value>{{- .KB_CLUSTER_NAME }}</value>
+        <value>{{- .CLUSTER_NAME }}</value>
     </property>
     <property>
         <name>dfs.journalnode.edits.dir</name>
-        <value>/hadoop/dfs/journal</value>
+        <value>{{- .HDFS_JOURNALNODE_EDITS_DIR }}</value>
     </property>
     <!-- JournalNode 基本配置 -->
     <property>
         <name>dfs.journalnode.rpc-address</name>
-        <value>0.0.0.0:8485</value>
+        <value>0.0.0.0:{{- .HDFS_JOURNALNODE_RPC_PORT }}</value>
     </property>
     
     <property>
         <name>dfs.journalnode.http-address</name>
-        <value>0.0.0.0:8480</value>
+        <value>0.0.0.0:{{- .HDFS_JOURNALNODE_HTTP_PORT }}</value>
     </property>
 
     <!-- JMX 配置 -->

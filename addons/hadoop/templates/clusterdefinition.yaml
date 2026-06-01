@@ -8,7 +8,24 @@ metadata:
     {{- include "hadoop.apiVersion" . | nindent 4 }}
 spec:
   topologies:
-    - name: ha-cluster
+    - name: standalone
+      components:
+        - name: hadoop-core
+          compDef: {{ include "hadoop.hadoopCoreStandaloneCmpdRegexPattern" . }}
+        - name: namenode
+          compDef: {{ include "hadoop.hdfsNamenodeStandaloneCmpdRegexPattern" . }}
+        - name: datanode
+          compDef: {{ include "hadoop.hdfsDatanodeStandaloneCmpdRegexPattern" . }}
+      orders:
+        provision:
+          - hadoop-core
+          - namenode
+          - datanode
+        terminate:
+          - datanode
+          - namenode
+          - hadoop-core
+    - name: cluster
       default: true
       components:
         - name: hadoop-core

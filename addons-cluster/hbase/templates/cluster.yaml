@@ -26,6 +26,10 @@
       env:
         - name: "HADOOP_CLUSTER_NAME"
           value: {{ .Values.hadoopClusterName | quote }}
+        - name: "HBASE_ROOT_DIR"
+          value: {{ .Values.hbaseRootDir | default "hbase" | quote }}
+        - name: "HBASE_ZK_PARENT"
+          value: {{ .Values.hbaseZkParent | default "/hbase" | quote }}
       resources:
         requests:
           cpu: {{ .Values.resources.hmaster.requests.cpu | quote }}
@@ -36,10 +40,10 @@
       volumes:
         - name: hadoop-core-config
           configMap:
-            name: {{ .Values.hadoopClusterName }}-hadoop-core-config
+            name: {{ .Values.hadoopClusterName }}-hadoop-core-hadoop-core-config
         - name: hadoop-hdfs-config
           configMap:
-            name: {{ .Values.hadoopClusterName }}-namenode-config
+            name: {{ .Values.hadoopClusterName }}-namenode-namenode-config
       volumeClaimTemplates:
         - name: hbase-log
           spec:
@@ -48,6 +52,7 @@
             resources:
               requests:
                 storage: {{ .Values.storage.hbaseLog }}
+            storageClassName: {{ .Values.storage.storageClassName }}
     - name: hregionserver
       componentDef: hbase-hregionserver-2.5
       serviceVersion: 2.5.6
@@ -72,6 +77,10 @@
       env:
         - name: "HADOOP_CLUSTER_NAME"
           value: {{ .Values.hadoopClusterName | quote }}
+        - name: "HBASE_ROOT_DIR"
+          value: {{ .Values.hbaseRootDir | default "hbase" | quote }}
+        - name: "HBASE_ZK_PARENT"
+          value: {{ .Values.hbaseZkParent | default "/hbase" | quote }}
       resources:
         requests:
           cpu: {{ .Values.resources.hregionserver.requests.cpu | quote }}
@@ -82,10 +91,10 @@
       volumes:
         - name: hadoop-core-config
           configMap:
-            name: {{ .Values.hadoopClusterName }}-hadoop-core-config
+            name: {{ .Values.hadoopClusterName }}-hadoop-core-hadoop-core-config
         - name: hadoop-hdfs-config
           configMap:
-            name: {{ .Values.hadoopClusterName }}-namenode-config
+            name: {{ .Values.hadoopClusterName }}-namenode-namenode-config
       volumeClaimTemplates:
         - name: hbase-temp-data
           spec:
@@ -94,3 +103,4 @@
             resources:
               requests:
                 storage: {{ .Values.storage.hbaseTempData }}
+            storageClassName: {{ .Values.storage.storageClassName }}

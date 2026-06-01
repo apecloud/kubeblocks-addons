@@ -4,8 +4,8 @@ fullnameOverride: ""
 
 # Replicas for each component
 replicas:
-  hmaster: 1
-  hregionserver: 1
+  hmaster: 2
+  hregionserver: 2
 
 # Resource requirements for each component
 resources:
@@ -28,6 +28,7 @@ resources:
 storage:
   hbaseLog: 2Gi
   hbaseTempData: 10Gi
+  storageClassName: "local-path"
 
 # Service references for external dependencies
 serviceRefs:
@@ -42,14 +43,14 @@ serviceRefs:
   hadoopNamenode:
     namespace: default
     clusterServiceSelector:
-      cluster: hadoop2
+      cluster: hdfscluster
       service:
         component: namenode
         service: headless
         port: client
 
 # Hadoop cluster name (required for HDFS root path)
-hadoopClusterName: hadoop2
+hadoopClusterName: hdfscluster
 
 extra:
   terminationPolicy: Delete

@@ -12,6 +12,7 @@ spec:
         - v3.3.4
       compDefs:
         - hadoop-core
+        - hadoop-core-standalone
   releases:
     - name: v3.3.4
       serviceVersion: v3.3.4

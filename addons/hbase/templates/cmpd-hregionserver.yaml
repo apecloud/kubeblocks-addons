@@ -25,13 +25,32 @@ spec:
           serviceVersion: "^*"
     - name: hadoop-namenode
       serviceRefDeclarationSpecs:
-        - serviceKind: namenode
+        - serviceKind: hdfs-namenode
           serviceVersion: "^*"
   runtime:
     initContainers:
       - name: init-regionserver
         imagePullPolicy: {{ default "IfNotPresent" .Values.init.image.pullPolicy }}
         command: [ "/hbase/scripts/hbase-config-setup.sh" ]
+        env:
+          - name: KB_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: KB_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: KB_CLUSTER_COMP_NAME
+            value: hregionserver
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.extra.clusterDomain | default "cluster.local" }}
+          - name: HADOOP_CLUSTER_NAME
+            value: {{ .Values.hadoopClusterName | quote }}
+          - name: HBASE_ROOT_DIR
+            value: {{ .Values.hbaseRootDir | default "hbase" | quote }}
+          - name: HBASE_ZK_PARENT
+            value: {{ .Values.hbaseZkParent | default "/hbase" | quote }}
         securityContext:
           runAsUser: 10000
           runAsGroup: 1000
@@ -61,6 +80,12 @@ spec:
         env:
           - name: DEBUG_MODEL
             value: "false"
+          - name: HBASE_CONF_DIR
+            value: /hbase/conf
+          - name: HADOOP_CONF_DIR
+            value: /hadoop/conf
+          - name: HBASE_CLASSPATH
+            value: /hadoop/conf
           - name: CURRENT_POD
             valueFrom:
               fieldRef:
@@ -115,16 +140,13 @@ spec:
           optional: true
   configs:
     - name: hbase-orig-conf
-      templateRef: hbase-config-template
+      template: hbase-config-template
       volumeName: hbase-orig-conf
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
-      keys:
-        - hbase-site.xml
-        - log4j.properties
   scripts:
     - name: hbase-scripts
-      templateRef: hbase-scripts
+      template: hbase-scripts
       volumeName: hbase-scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755

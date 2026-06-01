@@ -2,15 +2,15 @@
 image:
   common:
     registry: docker.io
-    repository: apecloud/hadoop-common
-    tag: "v3.3.4"
+    repository: apecloud/hdfs-journalnode
+    tag: "v3.3.4-1.0.0"
     pullPolicy: IfNotPresent
 
 # Component-specific images
 core:
   image:
     registry: docker.io
-    repository: apecloud/hadoop-common
+    repository: apecloud/hdfs-journalnode
     tag: "v3.3.4-1.0.0"
     pullPolicy: IfNotPresent
 
@@ -40,3 +40,90 @@ extra:
   disableExporter: true
   terminationPolicy: Delete
   clusterDomain: cluster.local
+
+runtime:
+  debug: false
+  hadoopHome: /opt/kubeemr/hadoop/hadoop-3.3.4
+  hadoopSoftwareDir: /opt/software/hadoop-3.3.4
+  configDir: /hadoop/conf
+  scriptsDir: /kubeblocks/scripts
+  datanode:
+    hostNetwork: true
+    hostPID: true
+    dnsPolicy: ClusterFirstWithHostNet
+  journalnode:
+    waitZkToReady: false
+
+hdfs:
+  ports:
+    namenode:
+      rpc: 8020
+      http: 9870
+    journalnode:
+      rpc: 8485
+      http: 8480
+    datanode:
+      http: 9864
+  paths:
+    namenodeMetadataDir: /hadoop/dfs/metadata
+    namenodeJournalDir: /hadoop/dfs/journal
+    datanodeDataDir: /hadoop/dfs/data0
+    journalnodeEditsDir: /hadoop/dfs/journal
+
+securityContext:
+  initRunAsUser: 0
+  runAsUser: 10000
+  runAsGroup: 1000
+  fsGroup: 1000
+  fsGroupChangePolicy: Always
+  runAsNonRoot: true
+  privileged: false
+  allowPrivilegeEscalation: false
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop:
+      - ALL
+
+probes:
+  namenode:
+    liveness:
+      failureThreshold: 6
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+    readiness:
+      failureThreshold: 6
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+  journalnode:
+    liveness:
+      failureThreshold: 6
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+    readiness:
+      failureThreshold: 6
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+  datanode:
+    liveness:
+      failureThreshold: 6
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+    readiness:
+      failureThreshold: 6
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+
+config:
+  defaultMode: 0755
+
+scripts:
+  defaultMode: 0755
+
+updateStrategy: BestEffortParallel

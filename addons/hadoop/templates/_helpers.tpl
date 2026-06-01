@@ -54,6 +54,10 @@ Component definition regex patterns
 ^hadoop-core$
 {{- end }}
 
+{{- define "hadoop.hadoopCoreStandaloneCmpdRegexPattern" -}}
+^hadoop-core-standalone$
+{{- end }}
+
 {{- define "hadoop.hdfsJournalnodeCmpdRegexPattern" -}}
 ^hdfs-journalnode$
 {{- end }}
@@ -62,8 +66,16 @@ Component definition regex patterns
 ^hdfs-namenode$
 {{- end }}
 
+{{- define "hadoop.hdfsNamenodeStandaloneCmpdRegexPattern" -}}
+^hdfs-namenode-standalone$
+{{- end }}
+
 {{- define "hadoop.hdfsDatanodeCmpdRegexPattern" -}}
 ^hdfs-datanode$
+{{- end }}
+
+{{- define "hadoop.hdfsDatanodeStandaloneCmpdRegexPattern" -}}
+^hdfs-datanode-standalone$
 {{- end }}
 
 {{/*

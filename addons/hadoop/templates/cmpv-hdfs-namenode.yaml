@@ -12,6 +12,7 @@ spec:
         - v3.3.4
       compDefs:
         - hdfs-namenode
+        - hdfs-namenode-standalone
   releases:
     - name: v3.3.4
       serviceVersion: v3.3.4

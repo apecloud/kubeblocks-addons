@@ -1,3 +1,5 @@
+topology: cluster
+
 replicas:
   core: 1
   journalnode: 3
@@ -35,15 +37,62 @@ resources:
       memory: 2Gi
 
 storage:
-  journalnode: 10Gi
-  namenode: 10Gi
-  datanode: 30Gi
+  journalnode:
+    size: 10Gi
+    storageClassName: ""
+    accessModes:
+      - ReadWriteOnce
+  namenode:
+    size: 10Gi
+    storageClassName: ""
+    accessModes:
+      - ReadWriteOnce
+  datanode:
+    size: 30Gi
+    storageClassName: ""
+    accessModes:
+      - ReadWriteOnce
+
+hdfs:
+  ports:
+    namenode:
+      rpc: 8020
+      http: 9870
+    journalnode:
+      rpc: 8485
+      http: 8480
+  paths:
+    namenodeMetadataDir: /hadoop/dfs/metadata
+    datanodeDataDir: /hadoop/dfs/data0
+    journalnodeEditsDir: /hadoop/dfs/journal
+  replication: 1
+  client:
+    replaceDatanodeOnFailurePolicy: NEVER
+  permissions:
+    enabled: false
+  registration:
+    ipHostnameCheck: false
+  ha:
+    automaticFailoverEnabled: true
+    fencingMethods: "shell(/bin/true)"
+    zookeeper:
+      parentZnodePrefix: /hadoop-ha
+      includeClusterUID: true
+      sessionTimeoutMs: 60000
+      operationRetries: 3
+  ipc:
+    clientConnectionMaxIdleTimeMs: 300000
+    clientConnectTimeoutMs: 20000
+    clientConnectionPoolSize: 8
+    clientConnectRetryIntervalMs: 1000
+    clientPing: true
+    pingIntervalMs: 30000
 
 serviceRefs:
   hadoopZookeeper:
-    namespace: default
+    namespace: kubeblocks
     clusterServiceSelector:
-      cluster: zkcluster
+      cluster: zk
       service:
         component: zookeeper
         service: headless

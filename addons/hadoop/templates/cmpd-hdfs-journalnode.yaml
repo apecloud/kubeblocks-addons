@@ -15,9 +15,9 @@ spec:
       spec:
         ports:
           - name: jn
-            port: 8485
+            port: {{ .Values.hdfs.ports.journalnode.rpc }}
           - name: http
-            port: 8480
+            port: {{ .Values.hdfs.ports.journalnode.http }}
   runtime:
     initContainers:
       - name: hadoop-common
@@ -27,87 +27,95 @@ spec:
         args:
           - -ec
           - |
-            cp -r /opt/software/hadoop-3.3.4/* /opt/kubeemr/hadoop/hadoop-3.3.4
-            mkdir -p /hadoop/dfs/journal
-            chown -R 10000:1000 /hadoop/dfs/journal
-            chown -R 10000:1000 /opt/kubeemr/hadoop/hadoop-3.3.4
+            cp -r {{ .Values.runtime.hadoopSoftwareDir }}/* {{ .Values.runtime.hadoopHome }}
+            mkdir -p {{ .Values.hdfs.paths.journalnodeEditsDir }}
+            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.hdfs.paths.journalnodeEditsDir }}
+            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.runtime.hadoopHome }}
         securityContext:
-          runAsUser: 0
+          runAsUser: {{ .Values.securityContext.initRunAsUser }}
         volumeMounts:
           - name: hadoop-common
-            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
+            mountPath: {{ .Values.runtime.hadoopHome }}
           - name: edits-dir
-            mountPath: /hadoop/dfs/journal
+            mountPath: {{ .Values.hdfs.paths.journalnodeEditsDir }}
             subPath: journal
     containers:
       - name: hdfs-journalnode
         image: {{ include "hadoop.journalNodeImage" . | quote }}
         imagePullPolicy: {{ .Values.journalNode.image.pullPolicy }}
         ports:
-          - containerPort: 8485
+          - containerPort: {{ .Values.hdfs.ports.journalnode.rpc }}
             name: jn
-          - containerPort: 8480
+          - containerPort: {{ .Values.hdfs.ports.journalnode.http }}
             name: http
         env:
           - name: DEBUG_MODEL
-            value: "false"
+            value: {{ .Values.runtime.debug | quote }}
           - name: WAIT_ZK_TO_READY
-            value: "false"
+            value: {{ .Values.runtime.journalnode.waitZkToReady | quote }}
         livenessProbe:
-          failureThreshold: 6
-          initialDelaySeconds: 30
-          periodSeconds: 10
+          failureThreshold: {{ .Values.probes.journalnode.liveness.failureThreshold }}
+          initialDelaySeconds: {{ .Values.probes.journalnode.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.journalnode.liveness.periodSeconds }}
           successThreshold: 1
-          timeoutSeconds: 5
+          timeoutSeconds: {{ .Values.probes.journalnode.liveness.timeoutSeconds }}
           exec:
             command:
               - /bin/bash
               - /kubeblocks/scripts/check-journal-status.sh
         readinessProbe:
-          failureThreshold: 6
-          initialDelaySeconds: 5
-          periodSeconds: 10
+          failureThreshold: {{ .Values.probes.journalnode.readiness.failureThreshold }}
+          initialDelaySeconds: {{ .Values.probes.journalnode.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.journalnode.readiness.periodSeconds }}
           successThreshold: 1
-          timeoutSeconds: 5
+          timeoutSeconds: {{ .Values.probes.journalnode.readiness.timeoutSeconds }}
           exec:
             command:
               - /bin/bash
               - /kubeblocks/scripts/check-journal-status.sh
         volumeMounts:
           - name: hadoop-common
-            mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
+            mountPath: {{ .Values.runtime.hadoopHome }}
           - name: edits-dir
-            mountPath: /hadoop/dfs/journal
+            mountPath: {{ .Values.hdfs.paths.journalnodeEditsDir }}
             subPath: journal
           - name: hadoop-core-config
-            mountPath: /hadoop/conf/core-site.xml
+            mountPath: {{ .Values.runtime.configDir }}/core-site.xml
             subPath: core-site.xml
           - name: journalnode-config
-            mountPath: /hadoop/conf/hdfs-site.xml
+            mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
             subPath: hdfs-site.xml
           - name: journalnode-config
-            mountPath: /hadoop/conf/log4j.properties
+            mountPath: {{ .Values.runtime.configDir }}/log4j.properties
             subPath: log4j.properties
           - name: scripts
-            mountPath: /kubeblocks/scripts
+            mountPath: {{ .Values.runtime.scriptsDir }}
         securityContext:
-          runAsUser: 10000
-          runAsGroup: 1000
-          runAsNonRoot: true
-          privileged: false
-          allowPrivilegeEscalation: false
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          privileged: {{ .Values.securityContext.privileged }}
+          allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
           capabilities:
-            drop: [ "ALL" ]
+{{ toYaml .Values.securityContext.capabilities | nindent 12 }}
           seccompProfile:
-            type: "RuntimeDefault"
+{{ toYaml .Values.securityContext.seccompProfile | nindent 12 }}
     securityContext:
-      fsGroupChangePolicy: Always
-      fsGroup: 1000
+      fsGroupChangePolicy: {{ .Values.securityContext.fsGroupChangePolicy }}
+      fsGroup: {{ .Values.securityContext.fsGroup }}
     volumes:
       - name: hadoop-common
         emptyDir: {}
-  updateStrategy: BestEffortParallel
+  updateStrategy: {{ .Values.updateStrategy }}
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
     - name: JOURNALNODE_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
@@ -115,16 +123,13 @@ spec:
           podFQDNs: Required
   configs:
     - name: journalnode-config
-      templateRef: journalnode-config-template
-      constraintRef: journalnode-config-constraints
+      template: journalnode-config-template
       volumeName: journalnode-config
       namespace: {{ .Release.Namespace }}
-      defaultMode: 0755
-      keys:
-        - hdfs-site.xml
+      defaultMode: {{ .Values.config.defaultMode }}
   scripts:
     - name: hadoop-scripts
-      templateRef: hadoop-scripts
+      template: hadoop-scripts
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
-      defaultMode: 0755
+      defaultMode: {{ .Values.scripts.defaultMode }}
