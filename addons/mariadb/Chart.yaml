@@ -1704,7 +1704,92 @@ type: application
 # preserving long-running SST support under a 60s-per-call ceiling.
 # replication-member-join.sh refactor to the same pattern tracked
 # separately (TODO in cmpd-replication.yaml memberJoin block).
-version: 1.1.1-alpha.112
+#
+# alpha.113 v1 (Helen 2026-06-01 — single-shot bootstrap-or-defer
+# refactor of replication-member-join.sh, deferred follow-up to
+# alpha.112 / PR #2702 which only capped cmpd-replication.yaml
+# memberJoin timeoutSeconds 180→60 but explicitly left the script
+# refactor as TODO).
+#
+# Problem: the script's `wait_for_primary 120` polling loop was
+# silently truncated by kbagent's 60s maxActionCallTimeout. The
+# alpha.112 cmpd cap made the truncation honest in the spec but
+# did not change the script — every memberJoin invocation that hit
+# an unresponsive primary service still wasted 60s on an in-process
+# poll that the runtime would simply kill and retry.
+#
+# Fix (1 script + this Chart.yaml; cmpd-replication.yaml unchanged
+# because PR #2702 already capped its timeoutSeconds to 60):
+#   - scripts/replication-member-join.sh: replace `wait_for_primary`
+#     polling loop with single-shot `probe_primary_or_defer`
+#     (one PRIMARY_HOST SELECT 1 + one BOOTSTRAP_PRIMARY_HOST
+#     read_only fallback for pod-index>0). On miss, classify
+#     "primary-not-yet-reachable" with retry=yes and exit 1; the
+#     runtime re-fires.
+#   - Add per-action `replication_member_join_diagnose_not_ready`
+#     helper (Pin 1 of
+#     skills/addon-lifecycle-single-shot-bootstrap-or-defer), with
+#     action label baked in. Every rc=1 path in main / setup_replication
+#     now routes through this helper with a phase label and
+#     next-retry-safe classification:
+#       retry=no  → mariadb CLI missing; CHANGE MASTER TO failed;
+#                   START SLAVE SQL_THREAD failed; SHOW SLAVE STATUS
+#                   empty after CHANGE MASTER; fresh-replica prepare
+#                   failed; GTID divergence fail-closed; GTID
+#                   out-of-order WITH confirmed divergence.
+#       retry=yes → primary service not yet reachable; slave threads
+#                   not yet Yes/0/0 (catch-up in progress); GTID
+#                   out-of-order WITHOUT confirmed divergence (primary
+#                   truth still stabilizing).
+#   - The 4 explicit positive-success rc=0 paths preserved verbatim:
+#     is_slave_running fast-path, is_self_primary guard,
+#     slave_status_is_ready_for_rejoin positive verify, post-repair
+#     re-verify. No new rc=0 path.
+#
+# Numbering: alpha.111 reserved for PR #2701 (P0a URGENT FLUSH
+# PRIVILEGES wrap, in flight) and alpha.112 reserved for PR #2702
+# (honest 60s timeoutSeconds on memberJoin + galera single-shot
+# refactor, in flight). Integration owner reconciles the chain at
+# merge time.
+#
+# Behavior delta vs alpha.110 (acknowledged corrected bug, not pure
+# preservation — Jack peer review 2026-06-01 01:59 GH comment
+# 4587575867 caught the over-claim in PR #2712 v1):
+#
+#   (a) The wait_for_primary polling loop becomes a single-shot
+#       probe + retry=yes defer. Under kbagent's 60s cap this is
+#       equivalent to or better than the prior in-process poll, which
+#       was silently truncated at 60s and discarded partial state.
+#
+#   (b) Every rc=1 path now emits classified stderr that operator
+#       triage can read to distinguish transient (retry=yes) from
+#       operator-attention (retry=no) failures.
+#
+#   (c) CORRECTED IMPLICIT rc=0 BUG: alpha.110's `setup_replication`
+#       had a final `mark_replication_pending; echo "WARNING: ... not
+#       yet healthy"; }` branch with NO explicit `return 1`. Because
+#       the last statement in that branch was `echo`, the function
+#       returned the rc of `echo` (= 0), which propagated up through
+#       `main` so kbagent observed memberJoin = succeeded even when
+#       Slave_IO / Slave_SQL had not converged. The cluster eventually
+#       self-healed via roleProbe reading `.replication-pending`, but
+#       memberJoin was lying to the controller about its outcome.
+#       alpha.113 makes this branch an explicit `return 1` classified
+#       as `slave-not-yet-ready-for-rejoin` + retry=yes, so kbagent
+#       sees the true not-ready state and re-fires the action until
+#       slave IS ready. This is the correct single-shot bootstrap-
+#       or-defer behavior; it is also a semantic change vs alpha.110.
+#       Same `mark_replication_pending` marker write preserved for
+#       roleProbe interop. New ShellSpec assertion in
+#       scripts-ut-spec/replication_member_join_spec.sh covers this
+#       phase + retry-safe so the regression cannot reopen silently.
+#
+# Use-precondition (per skill): runtime re-invokes the action on a
+# subsequent attempt when the previous invocation returned rc=1.
+# Already evidenced by 2026-05-28 fake-CmpD probe on KB controller
+# 1.0.3-beta.6 (skill `## 已知未知` section); no new evidence pack
+# needed.
+version: 1.1.1-alpha.113
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add

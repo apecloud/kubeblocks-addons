@@ -414,31 +414,46 @@ repair_kb_health_check_replication_error() {
   return 0
 }
 
-# Wait for the primary service endpoint to accept connections.
-wait_for_primary() {
-  local max_wait="${1:-120}" elapsed=0
-  echo "Waiting for primary (${PRIMARY_HOST}) to be reachable..."
-  while true; do
-    if host_sql "${PRIMARY_HOST}" -e "SELECT 1;" >/dev/null 2>&1; then
-      ACTIVE_PRIMARY_HOST="${PRIMARY_HOST}"
+# Per-action diagnose helper. Action label baked in.
+# Pin 1 of skills/addon-lifecycle-single-shot-bootstrap-or-defer.
+replication_member_join_diagnose_not_ready() {
+  local phase="$1" ctx="$2" retry_safe="$3"
+  {
+    echo "memberJoin diagnosis:"
+    echo "  action: replication-member-join"
+    echo "  phase: ${phase}"
+    echo "  cluster: ${KB_CLUSTER_NAME:-${CLUSTER_NAME:-<unset>}}"
+    echo "  pod: ${POD_NAME:-<unset>}"
+    echo "  primary_host: ${PRIMARY_HOST:-<unset>}"
+    echo "  active_primary_host: ${ACTIVE_PRIMARY_HOST:-<unset>}"
+    echo "${ctx}"
+    echo "  next-retry-safe: ${retry_safe}"
+  } >&2
+}
+
+# Single-shot probe of the primary service endpoint. No in-process polling —
+# the runtime re-fires this action on rc=1 retry=yes, which gives us a fresh
+# 60s window each time. If neither the headless primary service nor the
+# bootstrap pod-0 fallback is reachable, defer for the next re-fire.
+probe_primary_or_defer() {
+  if host_sql "${PRIMARY_HOST}" -e "SELECT 1;" >/dev/null 2>&1; then
+    ACTIVE_PRIMARY_HOST="${PRIMARY_HOST}"
+    return 0
+  fi
+  if [ -n "${POD_INDEX}" ] && [ "${POD_INDEX}" -gt 0 ] 2>/dev/null; then
+    local direct_read_only
+    direct_read_only=$(host_sql "${BOOTSTRAP_PRIMARY_HOST}" -e "SELECT @@global.read_only;" 2>/dev/null || echo "")
+    if [ "${direct_read_only}" = "0" ]; then
+      ACTIVE_PRIMARY_HOST="${BOOTSTRAP_PRIMARY_HOST}"
+      echo "Using bootstrap primary ${ACTIVE_PRIMARY_HOST} while primary service has no endpoint."
       return 0
     fi
-    if [ -n "${POD_INDEX}" ] && [ "${POD_INDEX}" -gt 0 ] 2>/dev/null; then
-      local direct_read_only
-      direct_read_only=$(host_sql "${BOOTSTRAP_PRIMARY_HOST}" -e "SELECT @@global.read_only;" 2>/dev/null || echo "")
-      if [ "${direct_read_only}" = "0" ]; then
-        ACTIVE_PRIMARY_HOST="${BOOTSTRAP_PRIMARY_HOST}"
-        echo "Using bootstrap primary ${ACTIVE_PRIMARY_HOST} while primary service has no endpoint."
-        return 0
-      fi
-    fi
-    if [ "$elapsed" -ge "$max_wait" ]; then
-      echo "Timeout waiting for primary. Exiting."
-      return 1
-    fi
-    sleep 3
-    elapsed=$((elapsed + 3))
-  done
+  fi
+  local ctx
+  ctx=$(printf '  probe_primary_host: %s (SELECT 1 unreachable)\n  probe_bootstrap_host: %s (read_only != 0 or unreachable)\n  pod_index: %s' \
+    "${PRIMARY_HOST}" "${BOOTSTRAP_PRIMARY_HOST}" "${POD_INDEX:-<unset>}")
+  replication_member_join_diagnose_not_ready "primary-not-yet-reachable" "${ctx}" "yes"
+  return 1
 }
 
 # Return 0 if the primary service currently routes to this pod (we are the primary).
@@ -472,6 +487,15 @@ setup_replication() {
   # Rejoining pod: preserve local gtid_slave_pos and catch up from the local replay point.
 
   if fail_closed_for_gtid_divergence; then
+    # fail_closed_for_gtid_divergence already echoes the "GTID divergence
+    # detected" line for operator visibility and writes the marker file;
+    # add classified stderr for triage.
+    replication_member_join_diagnose_not_ready \
+      "gtid-divergence-fail-closed" \
+      "  local_gtid_binlog_state: ${local_gtid:-<empty>}
+  primary_gtid_binlog_pos: ${master_gtid:-<empty>}
+  marker: .replication-divergence-pending written; rebuild/resync required" \
+      "no"
     return 1
   fi
 
@@ -487,14 +511,29 @@ CHANGE MASTER TO
 START SLAVE IO_THREAD;
 "; then
       echo "CHANGE MASTER TO or START SLAVE IO_THREAD failed. Keeping roleProbe pending."
+      replication_member_join_diagnose_not_ready \
+        "change-master-or-start-io-failed" \
+        "  branch: fresh-pod (empty gtid_slave_pos)
+  master_host: ${PRIMARY_HOST}" \
+        "no"
       return 1
     fi
     if ! prepare_fresh_replica_for_sql_thread_start "${local_gtid}"; then
+      replication_member_join_diagnose_not_ready \
+        "fresh-replica-prepare-failed" \
+        "  branch: fresh-pod
+  reason: failed to clear local kb_health_check table" \
+        "no"
       return 1
     fi
     if ! local_sql -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
       mark_replication_pending
       echo "START SLAVE SQL_THREAD failed. Keeping roleProbe pending."
+      replication_member_join_diagnose_not_ready \
+        "start-slave-sql-thread-failed" \
+        "  branch: fresh-pod
+  marker: .replication-pending" \
+        "no"
       return 1
     fi
   else
@@ -509,11 +548,21 @@ CHANGE MASTER TO
 START SLAVE;
 "; then
       echo "CHANGE MASTER TO failed. Keeping roleProbe pending."
+      replication_member_join_diagnose_not_ready \
+        "change-master-failed" \
+        "  branch: rejoining-pod (local gtid_slave_pos preserved)
+  master_host: ${PRIMARY_HOST}
+  local_gtid_slave_pos: ${local_gtid}" \
+        "no"
       return 1
     fi
   fi
   if [ -z "$(local_sql -e "SHOW SLAVE STATUS;" 2>/dev/null)" ]; then
     echo "CHANGE MASTER TO did not store slave config. Keeping roleProbe pending."
+    replication_member_join_diagnose_not_ready \
+      "slave-config-not-persisted" \
+      "  reason: SHOW SLAVE STATUS empty immediately after CHANGE MASTER TO" \
+      "no"
     return 1
   fi
 
@@ -538,26 +587,53 @@ START SLAVE;
   fi
   if slave_status_has_gtid_out_of_order "${slave_status_verbose}"; then
     if fail_closed_for_gtid_divergence; then
+      replication_member_join_diagnose_not_ready \
+        "gtid-out-of-order-divergent" \
+        "  symptom: Last_SQL_Errno=1950 (out-of-order) + GTID divergence confirmed
+  marker: .replication-divergence-pending; rebuild/resync required" \
+        "no"
       return 1
     fi
     mark_replication_pending
     echo "WARNING: replication rejoin hit GTID out-of-order (1950) before primary truth stabilized; keeping roleProbe pending for retry"
+    replication_member_join_diagnose_not_ready \
+      "gtid-out-of-order-transient" \
+      "  symptom: Last_SQL_Errno=1950 (out-of-order) but no GTID divergence yet
+  hint: primary truth may still be stabilizing; runtime re-fires this action" \
+      "yes"
     return 1
   fi
   mark_replication_pending
   echo "WARNING: replication rejoin not yet healthy; keeping roleProbe pending until Slave_IO/Slave_SQL are Yes and Last_IO/Last_SQL_Errno are 0"
+  local ready_snapshot
+  ready_snapshot=$(printf '%s' "${slave_status_verbose}" | grep -E "Slave_IO_Running|Slave_SQL_Running|Last_IO_Errno|Last_SQL_Errno" | sed 's/^/    /')
+  replication_member_join_diagnose_not_ready \
+    "slave-not-yet-ready-for-rejoin" \
+    "  required: Slave_IO_Running=Yes AND Slave_SQL_Running=Yes AND Last_IO_Errno=0 AND Last_SQL_Errno=0
+  observed:
+${ready_snapshot}" \
+    "yes"
+  return 1
 }
 
 main() {
+  # Single-shot bootstrap-or-defer per skills/addon-lifecycle-single-shot-bootstrap-or-defer:
+  # each invocation either (a) closes positively with rc=0 (replication observably
+  # running) or (b) defers with rc=1 + classified diagnose on stderr. No in-process
+  # polling — kbagent caps every call to 60s and re-fires on rc=1 retry=yes.
   if [ -z "${MARIADB_CLI}" ]; then
     echo "MariaDB client is unavailable in current memberJoin runtime."
+    replication_member_join_diagnose_not_ready \
+      "mariadb-cli-unavailable" \
+      "  reason: neither \`mariadb\` on PATH nor ${MYSQL_CLIENT_DIR}/bin/mariadb is executable in current memberJoin runtime" \
+      "no"
     return 1
   fi
 
   # Skip if replication is already configured AND running.
-  # This fast-path must run before waiting on PRIMARY_HOST: after scale-out,
+  # This fast-path must run before probing PRIMARY_HOST: after scale-out,
   # startup may already have configured replication successfully while the
-  # memberJoin action is retried later. In that case, waiting on the primary
+  # memberJoin action is retried later. In that case, probing the primary
   # service again only keeps the control-plane stuck on MemberJoined=false.
   if is_slave_running; then
     echo "Replication already configured and running. Nothing to do."
@@ -565,7 +641,7 @@ main() {
     return 0
   fi
 
-  wait_for_primary 120 || return 1
+  probe_primary_or_defer || return 1
 
   # Guard: if the primary service routes to this pod, this pod IS the primary.
   # Do not configure replication — the startup command already handled it.
