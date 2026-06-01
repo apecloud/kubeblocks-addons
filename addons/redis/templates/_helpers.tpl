@@ -187,9 +187,10 @@ redis-account.sh: |-
 {{- end }}
 
 {{- define "redis.config.reconfigureAction" -}}
+{{- $container := .container | default "redis" -}}
 reconfigure:
   exec:
-    container: redis
+    container: {{ $container }}
     targetPodSelector: All
     command:
       - /bin/sh
