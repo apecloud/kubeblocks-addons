@@ -55,7 +55,7 @@ mysql_query_rules=
 		flagIN=0
 		apply=1
 		rule_id=1
-		destination_hostgroup=2
+		destination_hostgroup=1
 		match_digest="^SELECT.*FOR UPDATE$"
 		negate_match_pattern=0
 		active=1
@@ -65,20 +65,10 @@ mysql_query_rules=
 		active=1
 		re_modifiers="CASELESS"
 		negate_match_pattern=0
-		destination_hostgroup=3
+		destination_hostgroup=2
 		flagIN=0
 		match_digest="^SELECT"
 		rule_id=2
-	},
-	{
-		re_modifiers="CASELESS"
-		destination_hostgroup=2
-		active=1
-		rule_id=3
-		match_digest=".*"
-		apply=1
-		negate_match_pattern=0
-		flagIN=0
 	}
 )
 
