@@ -13,7 +13,7 @@ spec:
   topology: distribution
   componentSpecs:
     - name: oceanbase
-      serviceVersion: 4.3.0
+      serviceVersion: 4.3.5
       disableExporter: false
       env:
       - name: ZONE_COUNT
