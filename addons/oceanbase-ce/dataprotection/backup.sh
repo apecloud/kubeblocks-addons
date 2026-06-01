@@ -62,7 +62,11 @@ function prepareTenantLogArchive() {
   fi
   # enable dest
   echo "ALTER SYSTEM SET LOG_ARCHIVE_DEST_STATE='ENABLE' TENANT=${tenant_name};"
-  ${mysql_cmd} "SET SESSION ob_query_timeout=1000000000; ALTER SYSTEM SET LOG_ARCHIVE_DEST_STATE='ENABLE' TENANT=${tenant_name};"
+  result=`${mysql_cmd} "SET SESSION ob_query_timeout=1000000000; ALTER SYSTEM SET LOG_ARCHIVE_DEST_STATE='ENABLE' TENANT=${tenant_name};"`
+  if [[ $? -ne 0 ]];then
+     echo "ERROR: enable log_archive_dest for tenant ${tenant_name} failed: ${result}"
+     exit 1
+  fi
   # add recovery window to auto-clean backup.
   #deletePolicyCount=`${mysql_cmd} "SELECT count(*) FROM oceanbase.CDB_OB_BACKUP_DELETE_POLICY where TENANT_ID=${tenant_id};" |awk -F '\t' '{print}'`
   #if [ $deletePolicyCount -eq 0 ]; then
