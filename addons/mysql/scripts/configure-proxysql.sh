@@ -96,6 +96,7 @@ CREATE DATABASE IF NOT EXISTS sys;
 USE sys;
 DROP VIEW IF EXISTS gr_member_routing_candidate_status;
 DROP FUNCTION IF EXISTS gr_member_in_primary_partition;
+DROP FUNCTION IF EXISTS gr_transactions_behind;
 DROP FUNCTION IF EXISTS gr_transactions_to_cert;
 CREATE FUNCTION gr_member_in_primary_partition() RETURNS VARCHAR(3) DETERMINISTIC READS SQL DATA
 RETURN (
@@ -120,6 +121,12 @@ RETURN (
     JOIN performance_schema.replication_group_member_stats rgms USING (member_id)
   WHERE rgms.MEMBER_ID = @@SERVER_UUID
 );
+CREATE FUNCTION gr_transactions_behind() RETURNS INT DETERMINISTIC READS SQL DATA
+RETURN (
+  SELECT COUNT_TRANSACTIONS_REMOTE_IN_APPLIER_QUEUE
+  FROM performance_schema.replication_group_member_stats
+  WHERE MEMBER_ID = @@SERVER_UUID
+);
 CREATE FUNCTION gr_transactions_to_cert() RETURNS INT DETERMINISTIC NO SQL
 RETURN 0;
 CREATE VIEW gr_member_routing_candidate_status AS
@@ -134,14 +141,11 @@ SELECT
     'YES',
     'NO'
   ) AS read_only,
-  (
-    SELECT COUNT_TRANSACTIONS_REMOTE_IN_APPLIER_QUEUE
-    FROM performance_schema.replication_group_member_stats
-    WHERE MEMBER_ID = @@SERVER_UUID
-  ) AS transactions_behind,
+  sys.gr_transactions_behind() AS transactions_behind,
   sys.gr_transactions_to_cert() AS transactions_to_cert;
 GRANT SELECT ON sys.gr_member_routing_candidate_status TO 'proxysql'@'%';
 GRANT EXECUTE ON FUNCTION sys.gr_member_in_primary_partition TO 'proxysql'@'%';
+GRANT EXECUTE ON FUNCTION sys.gr_transactions_behind TO 'proxysql'@'%';
 GRANT SELECT ON performance_schema.replication_group_members TO 'proxysql'@'%';
 GRANT SELECT ON performance_schema.replication_group_member_stats TO 'proxysql'@'%';
 GRANT SELECT ON performance_schema.global_variables TO 'proxysql'@'%';
