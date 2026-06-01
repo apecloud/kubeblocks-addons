@@ -52,14 +52,17 @@ function prepareTenantLogArchive() {
   save_defer_archivelog_tenants "${tenant_id}"
   destUrl=$(getDestURL archive ${tenant_name} ${tenant_id})
   echo "INFO: prepare log archive dest for tenant ${tenant_name}"
-  result=`${mysql_cmd} "ALTER SYSTEM SET LOG_ARCHIVE_DEST=\"LOCATION=${destUrl}\" TENANT=${tenant_name}"`
+  # Cluster-wide ALTER SYSTEM SET LOG_ARCHIVE_DEST propagation can exceed the
+  # default ob_query_timeout (10s). Prefix SET SESSION ob_query_timeout=1000000000
+  # to match the idiom already used in restore.sh and bootstrap.sh.
+  result=`${mysql_cmd} "SET SESSION ob_query_timeout=1000000000; ALTER SYSTEM SET LOG_ARCHIVE_DEST=\"LOCATION=${destUrl}\" TENANT=${tenant_name};"`
   if [[ $? -ne 0 ]];then
      echo "ERROR: alert log_archive_dest for tenant ${tenant_name} failed: ${result}"
      exit 1
   fi
   # enable dest
   echo "ALTER SYSTEM SET LOG_ARCHIVE_DEST_STATE='ENABLE' TENANT=${tenant_name};"
-  ${mysql_cmd} "ALTER SYSTEM SET LOG_ARCHIVE_DEST_STATE='ENABLE' TENANT=${tenant_name};"
+  ${mysql_cmd} "SET SESSION ob_query_timeout=1000000000; ALTER SYSTEM SET LOG_ARCHIVE_DEST_STATE='ENABLE' TENANT=${tenant_name};"
   # add recovery window to auto-clean backup.
   #deletePolicyCount=`${mysql_cmd} "SELECT count(*) FROM oceanbase.CDB_OB_BACKUP_DELETE_POLICY where TENANT_ID=${tenant_id};" |awk -F '\t' '{print}'`
   #if [ $deletePolicyCount -eq 0 ]; then
@@ -72,7 +75,9 @@ function prepareTenantDataBackup() {
   tenant_name=${1:?missing tenant name}
   destUrl=$(getDestURL data ${tenant_name})
   echo "INFO: prepare data backup dest for tenant ${tenant_name}"
-  result=`${mysql_cmd} "ALTER SYSTEM SET DATA_BACKUP_DEST=\"${destUrl}\" TENANT=${tenant_name}"`
+  # Same pattern as prepareTenantLogArchive: SET SESSION ob_query_timeout prefix
+  # (matches restore.sh / bootstrap.sh idiom).
+  result=`${mysql_cmd} "SET SESSION ob_query_timeout=1000000000; ALTER SYSTEM SET DATA_BACKUP_DEST=\"${destUrl}\" TENANT=${tenant_name};"`
   if [[ $? -ne 0 ]];then
      echo "ERROR: alert data_backup_dest for tenant ${tenant_name} failed: ${result}"
      exit 1
