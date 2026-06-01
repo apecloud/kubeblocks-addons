@@ -1282,6 +1282,10 @@ Describe "Redis Cluster Manage Bash Script Tests"
         return 0
       }
 
+      check_slots_covered() {
+        return 0
+      }
+
       forget_fail_node_when_cluster_is_ok() {
         return 0
       }
@@ -1329,6 +1333,10 @@ Describe "Redis Cluster Manage Bash Script Tests"
         return 1
       }
 
+      check_slots_covered() {
+        return 0
+      }
+
       setup() {
         export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
@@ -1373,6 +1381,10 @@ Describe "Redis Cluster Manage Bash Script Tests"
 
       scale_in_shard_del_node() {
         return 1
+      }
+
+      check_slots_covered() {
+        return 0
       }
 
       setup() {
