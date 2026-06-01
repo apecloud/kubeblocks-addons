@@ -14,6 +14,8 @@ spec:
       value: rep_user
     - name: DP_TIME_FORMAT
       value: "2006-01-02 15:04:05"
+    - name: SUPPORT_S3
+      value: "true"
   backup:
     preBackup: []
     postBackup: []
