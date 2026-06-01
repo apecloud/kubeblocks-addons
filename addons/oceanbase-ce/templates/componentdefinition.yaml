@@ -49,6 +49,18 @@ spec:
       - http
       - pprof
   runtime:
+    initContainers:
+      - name: init-obtools
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - sh
+          - -c
+          - |
+            cp /bin/ob-tools /kb_tools/obtools
+            chmod 0755 /kb_tools/obtools
+        volumeMounts:
+          - name: kb-tools
+            mountPath: /kb_tools
     containers:
       - name: observer-container
         command:
@@ -178,3 +190,5 @@ spec:
       - name: metricslog
         emptyDir:
           sizeLimit: 1Gi   # Can use Mi, Gi, Ti etc
+      - name: kb-tools
+        emptyDir: {}

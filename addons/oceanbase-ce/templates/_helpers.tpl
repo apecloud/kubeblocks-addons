@@ -168,6 +168,10 @@ Define image
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.metrics.repository }}
 {{- end -}}
 
+{{- define "oceanbase-ce.obtools.repository" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.obtools.repository }}
+{{- end -}}
+
 {{- define "oceanbase-ce.spec.vars" -}}
 vars:
 - name: OB_ROOT_PASSWD
