@@ -1185,6 +1185,14 @@ Describe "Redis Cluster Manage Bash Script Tests"
         return 1
       }
 
+      fix_unstable_cluster_and_defer() {
+        return 0
+      }
+
+      count_node_slots() {
+        echo "0"
+      }
+
       find_exist_available_node() {
         echo "10.42.0.3:6379"
       }
