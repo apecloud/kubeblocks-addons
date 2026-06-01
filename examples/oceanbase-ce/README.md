@@ -21,7 +21,9 @@ OceanBase Database is an enterprise-level native distributed database independen
 
 | Service Version | Description |
 |-----------------|-------------|
-| 4.3.0           | OceanBase 4.3.0.1-100000242024032211 |
+| 4.3.5           | OceanBase CE 4.3.5 LTS (`oceanbase/oceanbase-ce:4.3.5-lts`) |
+| 4.2.5           | OceanBase CE 4.2.5 LTS (`oceanbase/oceanbase-ce:4.2.5-lts`) |
+| 4.2.1           | OceanBase CE 4.2.1 LTS (`oceanbase/oceanbase-ce:4.2.1-lts`) |
 
 ## Prerequisites
 
@@ -112,7 +114,7 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: oceanbase
-      serviceVersion: "4.3.0"
+      serviceVersion: "4.3.5"
       disableExporter: false
       replicas: 3 # increase `replicas` for scaling in, and decrease for scaling out
 ```

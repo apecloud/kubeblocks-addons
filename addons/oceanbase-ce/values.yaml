@@ -6,14 +6,31 @@ image:
   registry: docker.io
   pullPolicy: IfNotPresent
   observer:
-    repository: apecloud/oceanbase
-    tag: 4.3.0.1-100000242024032211
+    repository: oceanbase/oceanbase-ce
+    tag: 4.3.5-lts
   metrics:
     repository: apecloud/obagent
     tag: 4.2.1-100000092023101717
   obtools:
     repository: apecloud/obtools
     tag: 4.2.1
+
+versions:
+  - name: 4.3.5
+    serviceVersion: "4.3.5"
+    observerTag: 4.3.5-lts
+    metricsTag: 4.2.1-100000092023101717
+    obtoolsTag: 4.2.1
+  - name: 4.2.5
+    serviceVersion: "4.2.5"
+    observerTag: 4.2.5-lts
+    metricsTag: 4.2.1-100000092023101717
+    obtoolsTag: 4.2.1
+  - name: 4.2.1
+    serviceVersion: "4.2.1"
+    observerTag: 4.2.1-lts
+    metricsTag: 4.2.1-100000092023101717
+    obtoolsTag: 4.2.1
 
 roleProbe:
   failureThreshold: 3

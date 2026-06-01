@@ -21,7 +21,9 @@ OceanBase Database is an enterprise-level native distributed database independen
 
 | Service Version | Description |
 |-----------------|-------------|
-| 4.3.0           | OceanBase 4.3.0.1-100000242024032211 |
+| 4.3.5           | OceanBase CE 4.3.5 LTS (`oceanbase/oceanbase-ce:4.3.5-lts`) |
+| 4.2.5           | OceanBase CE 4.2.5 LTS (`oceanbase/oceanbase-ce:4.2.5-lts`) |
+| 4.2.1           | OceanBase CE 4.2.1 LTS (`oceanbase/oceanbase-ce:4.2.1-lts`) |
 
 ## Prerequisites
 
@@ -71,8 +73,8 @@ spec:
     - name: oceanbase
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [4.3.0]
-      serviceVersion: 4.3.0
+      # Valid options are: [4.3.5, 4.2.5, 4.2.1]
+      serviceVersion: 4.3.5
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -253,7 +255,7 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: oceanbase
-      serviceVersion: "4.3.0"
+      serviceVersion: "4.3.5"
       disableExporter: false
       replicas: 3 # increase `replicas` for scaling in, and decrease for scaling out
 ```
@@ -552,7 +554,7 @@ spec:
   topology: distribution
   componentSpecs:
     - name: oceanbase
-      serviceVersion: 4.3.0
+      serviceVersion: 4.3.5
       disableExporter: false
       env:
       - name: ZONE_COUNT  # number of zones, default to 3, immutable

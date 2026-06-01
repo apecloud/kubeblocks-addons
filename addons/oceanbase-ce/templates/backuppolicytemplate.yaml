@@ -13,6 +13,15 @@ spec:
     - name: full
       snapshotVolumes: false
       actionSetName: {{ include "oceanbase-ce.backup.actionset" .}}
+      env:
+        - name: IMAGE_TAG
+          valueFrom:
+            versionMapping:
+              {{- range .Values.versions }}
+              - serviceVersions:
+                  - "{{ .serviceVersion }}"
+                mappedValue: "{{ .observerTag }}"
+              {{- end }}
       targetVolumes:
         volumeMounts:
           - name: workdir
