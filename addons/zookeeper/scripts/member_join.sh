@@ -8,7 +8,11 @@ fi
 
 new_member_index="${KB_JOIN_MEMBER_POD_NAME##*-}"
 new_member_fqdn="$KB_JOIN_MEMBER_POD_FQDN"
-server_entry="server.${new_member_index}=${new_member_fqdn}:2888:3888:participant;2181"
+member_type="participant"
+if [ "$new_member_index" -ge 3 ]; then
+    member_type="observer"
+fi
+server_entry="server.${new_member_index}=${new_member_fqdn}:2888:3888:${member_type};2181"
 
 echo "Adding ZooKeeper member: $server_entry"
 

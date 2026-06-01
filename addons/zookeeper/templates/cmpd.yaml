@@ -106,7 +106,6 @@ spec:
       namespace: {{ .Release.Namespace }}
       template: {{ include "zookeeper.dynamicConfigTplName" . }}
       volumeName: dynamic-config
-      externalManaged: true
   lifecycleActions:
     roleProbe:
       exec:
