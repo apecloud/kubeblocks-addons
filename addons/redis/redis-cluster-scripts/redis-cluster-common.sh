@@ -436,8 +436,8 @@ fix_cluster_slots() {
     fix_command="redis-cli $REDIS_CLI_TLS_CMD --cluster fix $node_endpoint_with_port -p $cluster_service_port --cluster-yes -a $REDIS_DEFAULT_PASSWORD"
     logging_mask_fix_command="${fix_command/$REDIS_DEFAULT_PASSWORD/********}"
   fi
-  echo "fix Redis Cluster slots command: $logging_mask_fix_command" >&2
-  if ! $fix_command; then
+  echo "fix Redis Cluster slots command: yes yes | $logging_mask_fix_command" >&2
+  if ! yes yes | $fix_command; then
     set_xtrace_when_ut_mode_false
     echo "Failed to fix Redis Cluster slots for $node_endpoint_with_port" >&2
     return 1
