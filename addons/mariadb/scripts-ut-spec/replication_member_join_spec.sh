@@ -781,6 +781,110 @@ EOF
     End
   End
 
+  Describe "setup_replication() rc=1 paths MUST write .replication-pending marker (regression guard for roleProbe stuck-initializing window)"
+    setup_pending_guard() {
+      rm -f "${TEST_DIR}/.replication-ready" "${TEST_DIR}/.replication-pending" "${TEST_DIR}/.replication-divergence-pending"
+    }
+    BeforeEach "setup_pending_guard"
+
+    Context "fresh-pod CHANGE MASTER + START IO failed"
+      It "writes .replication-pending before returning failure"
+        primary_sql() {
+          case "$*" in
+            *"gtid_binlog_pos"*) echo "0-1-100" ;;
+          esac
+        }
+        local_sql() {
+          case "$*" in
+            *"gtid_slave_pos;"*) echo "" ;;
+            *"STOP SLAVE"*) return 1 ;;
+            *) : ;;
+          esac
+        }
+        When call setup_replication
+        The status should be failure
+        The path "${TEST_DIR}/.replication-pending" should be exist
+        The stderr should include "phase: change-master-or-start-io-failed"
+      End
+    End
+
+    Context "rejoining-pod CHANGE MASTER failed"
+      It "writes .replication-pending before returning failure"
+        primary_sql() {
+          case "$*" in
+            *"gtid_binlog_pos"*) echo "0-1-200" ;;
+          esac
+        }
+        local_sql() {
+          case "$*" in
+            *"gtid_slave_pos;"*) echo "0-1-150" ;;
+            *"STOP SLAVE"*) return 1 ;;
+            *) : ;;
+          esac
+        }
+        When call setup_replication
+        The status should be failure
+        The path "${TEST_DIR}/.replication-pending" should be exist
+        The stderr should include "phase: change-master-failed"
+      End
+    End
+
+    Context "SHOW SLAVE STATUS empty after successful CHANGE MASTER"
+      It "writes .replication-pending before returning failure"
+        primary_sql() {
+          case "$*" in
+            *"gtid_binlog_pos"*) echo "0-1-300" ;;
+          esac
+        }
+        local_sql() {
+          case "$*" in
+            *"gtid_slave_pos;"*) echo "0-1-250" ;;
+            *"STOP SLAVE"*) : ;;
+            *"SHOW SLAVE STATUS"*) echo "" ;;
+            *) : ;;
+          esac
+        }
+        When call setup_replication
+        The status should be failure
+        The path "${TEST_DIR}/.replication-pending" should be exist
+        The stderr should include "phase: slave-config-not-persisted"
+      End
+    End
+  End
+
+  Describe "main() rc=1 paths MUST write .replication-pending marker (regression guard for roleProbe stuck-initializing window)"
+    setup_main_guard() {
+      rm -f "${TEST_DIR}/.replication-ready" "${TEST_DIR}/.replication-pending" "${TEST_DIR}/.replication-divergence-pending"
+    }
+    BeforeEach "setup_main_guard"
+
+    Context "MARIADB_CLI unavailable"
+      It "writes .replication-pending before returning failure"
+        export MARIADB_CLI=""
+        When call main
+        The status should be failure
+        The path "${TEST_DIR}/.replication-pending" should be exist
+        The stderr should include "phase: mariadb-cli-unavailable"
+      End
+    End
+
+    Context "probe_primary_or_defer fails"
+      It "writes .replication-pending before returning failure"
+        local_sql() {
+          case "$*" in
+            *"SHOW SLAVE STATUS"*) echo "" ;;
+            *) : ;;
+          esac
+        }
+        is_slave_running() { return 1; }
+        probe_primary_or_defer() { return 1; }
+        When call main
+        The status should be failure
+        The path "${TEST_DIR}/.replication-pending" should be exist
+      End
+    End
+  End
+
   Describe "PRIMARY_HOST default contract"
     Context "when CLUSTER_DOMAIN is overridden"
       It "builds PRIMARY_HOST from CLUSTER_DOMAIN"

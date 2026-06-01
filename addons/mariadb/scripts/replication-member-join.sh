@@ -511,6 +511,7 @@ CHANGE MASTER TO
 START SLAVE IO_THREAD;
 "; then
       echo "CHANGE MASTER TO or START SLAVE IO_THREAD failed. Keeping roleProbe pending."
+      mark_replication_pending
       replication_member_join_diagnose_not_ready \
         "change-master-or-start-io-failed" \
         "  branch: fresh-pod (empty gtid_slave_pos)
@@ -548,6 +549,7 @@ CHANGE MASTER TO
 START SLAVE;
 "; then
       echo "CHANGE MASTER TO failed. Keeping roleProbe pending."
+      mark_replication_pending
       replication_member_join_diagnose_not_ready \
         "change-master-failed" \
         "  branch: rejoining-pod (local gtid_slave_pos preserved)
@@ -559,6 +561,7 @@ START SLAVE;
   fi
   if [ -z "$(local_sql -e "SHOW SLAVE STATUS;" 2>/dev/null)" ]; then
     echo "CHANGE MASTER TO did not store slave config. Keeping roleProbe pending."
+    mark_replication_pending
     replication_member_join_diagnose_not_ready \
       "slave-config-not-persisted" \
       "  reason: SHOW SLAVE STATUS empty immediately after CHANGE MASTER TO" \
