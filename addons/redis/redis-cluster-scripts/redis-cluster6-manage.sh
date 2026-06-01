@@ -819,18 +819,18 @@ scale_out_redis_cluster_shard() {
     fi
   fi
 
-  # find the exist available node which is not in the current component
-  available_node=$(find_exist_available_node)
-  if is_empty "$available_node"; then
-    echo "No exist available node found or cluster status is not ok" >&2
-    return 1
-  fi
-
-  # Forget fail node when cluster is ok
-  forget_fail_node_when_cluster_is_ok "${available_node%%:*}" "${available_node##*:}"
-
   # add the primary node for the current shard
   if [ "$current_primary_joined" = "false" ]; then
+    # find the exist available node which is not in the current component
+    available_node=$(find_exist_available_node)
+    if is_empty "$available_node"; then
+      echo "No exist available node found or cluster status is not ok" >&2
+      return 1
+    fi
+
+    # Forget fail node when cluster is ok
+    forget_fail_node_when_cluster_is_ok "${available_node%%:*}" "${available_node##*:}"
+
     local scale_out_shard_default_primary
     for primary_pod_name in "${!scale_out_shard_default_primary_node[@]}"; do
       scale_out_shard_default_primary="${scale_out_shard_default_primary_node[$primary_pod_name]}"
