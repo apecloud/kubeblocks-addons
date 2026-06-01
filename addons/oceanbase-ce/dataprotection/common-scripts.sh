@@ -192,5 +192,14 @@ function getDestURL() {
   elif [[ ${host} = "oss"* ]]; then
      destPrefix="oss"
   fi
-  echo "${destPrefix}://${bucket}${destPath}/${tenantName}/${tenantId}?host=${host}&access_id=${access_key_id}&access_key=${secret_access_key}"
+  destUrl="${destPrefix}://${bucket}${destPath}/${tenantName}/${tenantId}?host=${host}&access_id=${access_key_id}&access_key=${secret_access_key}"
+  if [[ ${destPrefix} == "s3" ]]; then
+     storageRegion=${region:-${DP_STORAGE_REGION:-}}
+     if [[ -z ${storageRegion} ]]; then
+        echo "ERROR: s3_region is required for S3-compatible storage"
+        exit 1
+     fi
+     destUrl="${destUrl}&s3_region=${storageRegion}"
+  fi
+  echo "${destUrl}"
 }
