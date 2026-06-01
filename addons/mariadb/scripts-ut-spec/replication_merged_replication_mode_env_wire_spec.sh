@@ -40,6 +40,18 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
     printf "%s/addons/mariadb/templates/cmpd-replication-merged.yaml" "$(repo_root)"
   }
 
+  clusterdefinition_path() {
+    printf "%s/addons/mariadb/templates/clusterdefinition.yaml" "$(repo_root)"
+  }
+
+  chart_yaml_path() {
+    printf "%s/addons/mariadb/Chart.yaml" "$(repo_root)"
+  }
+
+  helper_path() {
+    printf "%s/addons/mariadb/templates/_helpers.tpl" "$(repo_root)"
+  }
+
   Describe "values.yaml declares replication.mode with empty default"
     It "declares a top-level replication block"
       When call grep -E '^replication:' "$(values_path)"
@@ -56,6 +68,35 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
     End
   End
 
+  Describe "replication topology contract wording stays aligned with the actual implementation"
+    # API-doc / MySQL-addon comparison guard (Jack 2026-06-01):
+    # MySQL exposes semisync as an explicit topology, while MariaDB's
+    # merged replication CmpD currently selects async/semisync through
+    # the install-time Helm value below. Do not document this as a
+    # per-Cluster ComponentSpec parameter unless the chart actually
+    # implements that contract end-to-end.
+
+    It "ClusterDefinition documents mariadb.replication.mode as the current mode source"
+      When call grep -q 'mariadb\.replication\.mode' "$(clusterdefinition_path)"
+      The status should be success
+    End
+
+    It "ClusterDefinition does not claim replicationMode is a ComponentSpec parameter"
+      When call grep -Eq 'ComponentSpec parameter[[:space:]]+`?replicationMode|`replicationMode[^`]*`[[:space:]]+ComponentSpec parameter' "$(clusterdefinition_path)"
+      The status should be failure
+    End
+
+    It "Chart.yaml does not claim replicationMode is the ComponentSpec source of truth"
+      When call grep -Eq 'replicationMode source-of-truth is ComponentSpec parameter|ComponentSpec parameter[[:space:]]+`replicationMode`' "$(chart_yaml_path)"
+      The status should be failure
+    End
+
+    It "_helpers.tpl documents the merged mode as install/render-time rather than per-Cluster"
+      When call grep -q 'Current mode selection is install/render-time only' "$(helper_path)"
+      The status should be success
+    End
+  End
+
   Describe "cmpd-replication-merged.yaml wires MARIADB_REPLICATION_MODE env from Helm value"
     It "declares a MARIADB_REPLICATION_MODE env entry in the merged CmpD"
       When call grep -c 'name: MARIADB_REPLICATION_MODE' "$(cmpd_merged_path)"
@@ -68,10 +109,6 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
       The status should be success
       The output should equal "1"
     End
-
-    helper_path() {
-      printf "%s/addons/mariadb/templates/_helpers.tpl" "$(repo_root)"
-    }
 
     It "_helpers.tpl declares the mariadb.replication.mode.validate helper"
       When call grep -c 'define "mariadb\.replication\.mode\.validate"' "$(helper_path)"

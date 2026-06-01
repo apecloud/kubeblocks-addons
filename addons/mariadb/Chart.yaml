@@ -2054,11 +2054,9 @@ version: 1.1.1-alpha.110
 #   primary/secondary (plus `standalone` and `galera` unchanged).
 #   `async` and `semisync` are NOT listed: Option B is a breaking
 #   change; users with old Cluster CRs must actively migrate to
-#   `spec.topology=replication` plus a ComponentSpec parameter
-#   `replicationMode: async | semisync`. Auto-rebind by KB on a
-#   topology compDef rename is exploratory (verified in upgrade
-#   gate N=1) and is NOT promised in release notes (Jack design
-#   Gate 6 / Blocker 4).
+#   `spec.topology=replication`. Auto-rebind by KB on a topology
+#   compDef rename is exploratory (verified in upgrade gate N=1) and
+#   is NOT promised in release notes (Jack design Gate 6 / Blocker 4).
 # - Adds a new CmpD `mariadb-replication-merged-1.1.1-alpha.89`.
 #   Initially a near-verbatim copy of cmpd-semisync.yaml (semisync
 #   already has the most resilience layers: alpha.85 PD, alpha.88
@@ -2069,12 +2067,11 @@ version: 1.1.1-alpha.110
 #   to the new CmpD via the narrow regex `^mariadb-replication-merged-`
 #   (Jack design Gate 3 / Blocker 3 — no double-match against
 #   standalone / galera / old async / old semisync PDs).
-# - replicationMode source-of-truth is ComponentSpec parameter
-#   `replicationMode`, written by the user into the Cluster CR and
-#   resolved by KB into ComponentParameter / engine config; Helm-time
-#   only provides global defaults (Jack design Gate 2 / Blocker 2 —
-#   no per-cluster Helm rendering of mode-specific defaults). The
-#   parameter wiring is added in a subsequent commit.
+# - replication mode source-of-truth is the install/render-time Helm
+#   value `mariadb.replication.mode`, wired to the merged CmpD as
+#   `MARIADB_REPLICATION_MODE`. The current chart deliberately does
+#   not expose any per-Cluster mode parameter named `replicationMode`;
+#   runtime mode flip via OpsRequest reconfigure is deferred.
 # - Old `cmpd-replication.yaml` and `cmpd-semisync.yaml` still render
 #   so that any Cluster CR still referencing those CmpDs by name does
 #   not get an "unresolved compDef" error during upgrade. They are

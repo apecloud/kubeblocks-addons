@@ -129,9 +129,12 @@ Define mariadb-replication-merged component definition name.
 alpha.89 v1 (Helen 2026-05-19, Jack design review non-blocking
 clarification) — new CmpD for topology merge (weston 2026-05-19
 14:12 Option B). The merged CmpD consolidates the old
-`mariadb-replication` (async) and `mariadb-semisync` CmpDs into one,
-selected at runtime by a `replicationMode: async | semisync`
-ComponentSpec parameter rather than by topology name.
+`mariadb-replication` (async) and `mariadb-semisync` CmpDs into one.
+Current mode selection is install/render-time only: the Helm value
+`mariadb.replication.mode` is validated by
+`mariadb.replication.mode.validate` and wired to the merged CmpD as
+`MARIADB_REPLICATION_MODE`. The current chart does not expose any
+per-Cluster mode parameter named `replicationMode`.
 
 The new CmpD name is `mariadb-replication-merged-{ChartVersion}`.
 It still starts with `mariadb-replication-`, but disambiguation from
