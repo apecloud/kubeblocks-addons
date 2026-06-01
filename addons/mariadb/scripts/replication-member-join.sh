@@ -511,6 +511,7 @@ CHANGE MASTER TO
 START SLAVE IO_THREAD;
 "; then
       echo "CHANGE MASTER TO or START SLAVE IO_THREAD failed. Keeping roleProbe pending."
+      mark_replication_pending
       replication_member_join_diagnose_not_ready \
         "change-master-or-start-io-failed" \
         "  branch: fresh-pod (empty gtid_slave_pos)
@@ -548,6 +549,7 @@ CHANGE MASTER TO
 START SLAVE;
 "; then
       echo "CHANGE MASTER TO failed. Keeping roleProbe pending."
+      mark_replication_pending
       replication_member_join_diagnose_not_ready \
         "change-master-failed" \
         "  branch: rejoining-pod (local gtid_slave_pos preserved)
@@ -559,6 +561,7 @@ START SLAVE;
   fi
   if [ -z "$(local_sql -e "SHOW SLAVE STATUS;" 2>/dev/null)" ]; then
     echo "CHANGE MASTER TO did not store slave config. Keeping roleProbe pending."
+    mark_replication_pending
     replication_member_join_diagnose_not_ready \
       "slave-config-not-persisted" \
       "  reason: SHOW SLAVE STATUS empty immediately after CHANGE MASTER TO" \
@@ -621,8 +624,21 @@ main() {
   # each invocation either (a) closes positively with rc=0 (replication observably
   # running) or (b) defers with rc=1 + classified diagnose on stderr. No in-process
   # polling — kbagent caps every call to 60s and re-fires on rc=1 retry=yes.
+  #
+  # roleProbe-marker contract for every rc=1 path in this function: write
+  # `.replication-pending` so roleProbe (`replication-roleprobe.sh`) has an
+  # explicit "pod still configuring" signal. Without the marker, roleProbe's
+  # `not_ready()` path returns rc=1 with stdout `initializing` for every
+  # invocation; controller ignores those events; pod label is never written;
+  # KB never advances Component to Running. The cluster stays Creating until
+  # a memberJoin invocation either reaches `mark_replication_ready` or a
+  # downstream marker write. If memberJoin keeps re-firing through this
+  # function's early rc=1 paths (MARIADB_CLI missing, probe defer) without
+  # writing `.replication-pending`, the pod stays in the no-marker limbo
+  # forever and Cluster never converges.
   if [ -z "${MARIADB_CLI}" ]; then
     echo "MariaDB client is unavailable in current memberJoin runtime."
+    mark_replication_pending
     replication_member_join_diagnose_not_ready \
       "mariadb-cli-unavailable" \
       "  reason: neither \`mariadb\` on PATH nor ${MYSQL_CLIENT_DIR}/bin/mariadb is executable in current memberJoin runtime" \
@@ -641,7 +657,13 @@ main() {
     return 0
   fi
 
-  probe_primary_or_defer || return 1
+  if ! probe_primary_or_defer; then
+    # probe_primary_or_defer already emitted its own diagnose stderr; we add
+    # the marker write so roleProbe has an explicit pending signal during the
+    # primary-service-not-yet-reachable window.
+    mark_replication_pending
+    return 1
+  fi
 
   # Guard: if the primary service routes to this pod, this pod IS the primary.
   # Do not configure replication — the startup command already handled it.
