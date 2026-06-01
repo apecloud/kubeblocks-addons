@@ -5,11 +5,13 @@ export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
 noArchivedTenantsFiles="no_archived_tenants.dp"
 deferArchiveLogTenantsFiles="defer_archive_tenants.dp"
+archiveCheckpointFailedFile="archive_checkpoint_failed.dp"
 endTimeInfoFile="kb_end_time.info"
 
 mysql_cmd="mysql -u ${DP_DB_USER} -h ${DP_DB_HOST} -P${DP_DB_PORT} -p${DP_DB_PASSWORD} -N -e"
 OlD_IFS=$IFS
 time_zone_file="timezone.dp"
+archiveCheckpointTimeout="${ARCHIVE_CHECKPOINT_TIMEOUT_SECONDS:-600}"
 
 pod_ordinal=$(get_pod_ordinal ${DP_TARGET_POD_NAME})
 if [[ ${pod_ordinal} -ne 0  ]]; then
@@ -40,6 +42,31 @@ function save_defer_archivelog_tenants() {
          echo "${tenant_name}" >> $deferArchiveLogTenantsFiles
      fi
   fi
+}
+
+function waitArchiveCheckpoint() {
+  local tenant_id=${1:?missing tenant id}
+  local tenant_name=${2:?missing tenant name}
+  local minRestoreSCN=${3:?missing min restore scn}
+  local time=0
+  local checkpoint_scn=""
+
+  while true; do
+    checkpoint_scn=$(${mysql_cmd} "SELECT COALESCE(MAX(CHECKPOINT_SCN), 0) FROM oceanbase.CDB_OB_ARCHIVELOG WHERE tenant_id=${tenant_id};" | awk -F '\t' '{print}')
+    [[ ${checkpoint_scn} =~ ^[0-9]+$ ]] || checkpoint_scn=0
+    if [[ ${checkpoint_scn} -ge ${minRestoreSCN} ]]; then
+      echo "INFO: archive checkpoint for tenant ${tenant_name} is ready: checkpoint_scn=${checkpoint_scn}, min_restore_scn=${minRestoreSCN}"
+      return
+    fi
+    if [[ ${time} -ge ${archiveCheckpointTimeout} ]]; then
+      echo "ERROR: timed out waiting archive checkpoint for tenant ${tenant_name}: checkpoint_scn=${checkpoint_scn}, min_restore_scn=${minRestoreSCN}"
+      echo "tenant=${tenant_name}, checkpoint_scn=${checkpoint_scn}, min_restore_scn=${minRestoreSCN}" >> ${archiveCheckpointFailedFile}
+      return 1
+    fi
+    echo "INFO: wait archive checkpoint for tenant ${tenant_name}: checkpoint_scn=${checkpoint_scn}, min_restore_scn=${minRestoreSCN}"
+    sleep 5
+    time=$((time+5))
+  done
 }
 
 function prepareTenantLogArchive() {
@@ -212,19 +239,6 @@ done
 echo "INFO: backup data completed."
 sleep 5
 
-# step 5 ==> close tenant archive if the tenant not open the log archive.
-if [[ -f $noArchivedTenantsFiles ]]; then
-   IFS=$'\n'
-   for tenant_name in `cat $noArchivedTenantsFiles`; do
-     IFS=${OlD_IFS}
-     if [[ ! -z $tenant_name ]]; then
-       echo "INFO: start to close ${tenant_name} archive"
-       ${mysql_cmd} "ALTER SYSTEM NOARCHIVELOG TENANT=${tenant_name}"
-     fi
-   done
-fi
-
-
 # step 6===> check if backup jobs are successful and collect backup info for restore.
 tenantFile="tenantStatus.dp"
 unitSQLFile="create_unit.sql"
@@ -272,6 +286,7 @@ ${mysql_cmd} "select tenant_id, backup_set_id from oceanbase.CDB_OB_BACKUP_JOB_H
       tenantJson=$(buildJsonString "$tenantJson" "poolList" "${pool_list}")
       echo "{${tenantJson}}" >> ${tenantFile}
       saveEndTime "${res[5]}" "${res[6]}"
+      waitArchiveCheckpoint "${tenant_id}" "${tenantName}" "${res[5]}"
     done
 
     ${mysql_cmd} "SELECT r.name, u.name as unit_name, r.unit_count, r.zone_list FROM oceanbase.DBA_OB_RESOURCE_POOLS r, oceanbase.DBA_OB_UNIT_CONFIGS u where u.UNIT_CONFIG_ID = r.UNIT_CONFIG_ID and r.TENANT_ID=${tenant_id};" | while IFS=$'\t' read -a pool; do
@@ -280,8 +295,25 @@ ${mysql_cmd} "select tenant_id, backup_set_id from oceanbase.CDB_OB_BACKUP_JOB_H
     done
 done
 
+if [[ -f ${archiveCheckpointFailedFile} ]]; then
+   cat ${archiveCheckpointFailedFile}
+   exit 1
+fi
 
-# step 7===> get extras infos
+# step 7 ==> close tenant archive if the tenant did not have archive enabled before this backup.
+if [[ -f $noArchivedTenantsFiles ]]; then
+   IFS=$'\n'
+   for tenant_name in `cat $noArchivedTenantsFiles`; do
+     IFS=${OlD_IFS}
+     if [[ ! -z $tenant_name ]]; then
+       echo "INFO: start to close ${tenant_name} archive"
+       ${mysql_cmd} "ALTER SYSTEM NOARCHIVELOG TENANT=${tenant_name}"
+     fi
+   done
+fi
+
+
+# step 8===> get extras infos
 extras=""
 while IFS= read -r line; do
   IFS=$OlD_IFS
@@ -301,7 +333,7 @@ if [ -f ${endTimeInfoFile} ]; then
    fi
 fi
 
-# step 8===> save tenants info for restore and backup status
+# step 9===> save tenants info for restore and backup status
 datasafed push ${unitSQLFile} "/${unitSQLFile}"
 datasafed push ${resourcePoolSQLFile} "/${resourcePoolSQLFile}"
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
