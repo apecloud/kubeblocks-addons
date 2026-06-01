@@ -428,6 +428,8 @@ check_slots_covered() {
 fix_cluster_slots() {
   local node_endpoint_with_port="$1"
   local cluster_service_port="$2"
+  local fix_yes_input
+  local fix_yes_count
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
     fix_command="redis-cli $REDIS_CLI_TLS_CMD --cluster fix $node_endpoint_with_port -p $cluster_service_port --cluster-yes"
@@ -436,8 +438,14 @@ fix_cluster_slots() {
     fix_command="redis-cli $REDIS_CLI_TLS_CMD --cluster fix $node_endpoint_with_port -p $cluster_service_port --cluster-yes -a $REDIS_DEFAULT_PASSWORD"
     logging_mask_fix_command="${fix_command/$REDIS_DEFAULT_PASSWORD/********}"
   fi
-  echo "fix Redis Cluster slots command: yes yes | $logging_mask_fix_command" >&2
-  if ! yes yes | $fix_command; then
+  fix_yes_input=""
+  fix_yes_count=0
+  while [ "$fix_yes_count" -lt 128 ]; do
+    fix_yes_input="${fix_yes_input}yes\n"
+    fix_yes_count=$((fix_yes_count + 1))
+  done
+  echo "fix Redis Cluster slots command: printf yes... | $logging_mask_fix_command" >&2
+  if ! printf "%b" "$fix_yes_input" | $fix_command; then
     set_xtrace_when_ut_mode_false
     echo "Failed to fix Redis Cluster slots for $node_endpoint_with_port" >&2
     return 1
