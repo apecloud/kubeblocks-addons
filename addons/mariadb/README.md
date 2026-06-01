@@ -6,27 +6,26 @@ MariaDB is a high performance open source relational database management system 
 
 ### Lifecycle Management
 
-Per-topology support matrix. `Yes (verified)` has a recorded end-to-end evidence chain; `Yes (declared)` means the chart wires the action but a full release-standard evidence chain has not yet been recorded; `No` means the topology does not implement the lifecycle action:
+Per-topology support matrix. The MariaDB ClusterDefinition currently exposes three user-facing topologies: `standalone`, `replication`, and `galera`. Async vs semi-sync behavior is an install-time replication mode under the `replication` topology, not a separate ClusterDefinition topology. `Yes (verified)` has a recorded end-to-end evidence chain; `Yes (declared)` means the chart wires the action but a full release-standard evidence chain has not yet been recorded; `No` means the topology does not implement the lifecycle action:
 
 | Topology | Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
 |---|---|---|---|---|---|---|---|---|
 | standalone | No | Yes | Yes | Yes | Yes | No | Yes | No |
-| replication | Yes (declared) | Yes | Yes | Yes | Yes | Yes (declared) | Yes | Yes (verified) |
-| semisync | Yes (declared) | Yes | Yes | Yes | Yes | Yes (declared) | Yes | Yes (verified) |
+| replication (async / semisync install mode) | Yes (declared) | Yes | Yes | Yes | Yes | Yes (declared) | Yes | Yes (verified) |
 | galera | Yes (declared) | Yes | Yes | Yes | Yes | Yes (declared) | Yes | No |
 
 Notes:
-- `Switchover (verified)` for `replication` / `semisync` covers the OpsRequest path with bounded role transition. The action is implemented in `cmpd-replication.yaml`, `cmpd-replication-merged.yaml`, and `cmpd-semisync.yaml`.
+- `Switchover (verified)` for `replication` covers the OpsRequest path with bounded role transition. Semi-sync mode is selected by `mariadb.replication.mode=semisync` when installing or upgrading the addon; users should still create Clusters with `spec.topology: replication`.
 - `Configure (declared)` means the chart wires `ParametersDefinition` and `reconfigure.exec` plus the `replicationMode` synthetic-parameter mapper. Only a subset of parameters has end-to-end runtime evidence today, so per-parameter coverage is "declared" until a parameter is exercised in a recorded test artifact.
 
 ### Versions
 
-`ComponentVersion` lists multiple release tags, but only `10.6.15` (standalone) and `11.4.10` (replication / semisync / galera) currently have an evidence-supported install + smoke chain. Other tags listed in `cmpv.yaml` are API-compatible but unproven; treat them as "declared but unverified":
+`ComponentVersion` lists multiple release tags, but only `10.6.15` (standalone) and `11.4.10` (replication async/semi-sync mode / galera) currently have an evidence-supported install + smoke chain. Other tags listed in `cmpv.yaml` are API-compatible but unproven; treat them as "declared but unverified":
 
 | Topology | Verified release | Declared but unproven |
 |---|---|---|
 | standalone | 10.6.15 | — |
-| replication / semisync / replication-merged | 11.4.10 | 11.4.5, 11.4.8, 11.8.4, 12.0.2 |
+| replication (async / semisync install mode) | 11.4.10 | 11.4.5, 11.4.8, 11.8.4, 12.0.2 |
 | galera | 11.4.10 | 11.4.5, 11.4.8 |
 
 ### Extended capability declarations (claim-only acceptance)
@@ -62,7 +61,7 @@ The following capability is declared **only for the `standalone` topology** and 
 
 ### Create
 
-Create a mariadb cluster with ONE replica:
+Create a standalone MariaDB cluster with ONE replica:
 
 ```yaml
 # cat examples/mariadb/cluster.yaml
@@ -72,12 +71,11 @@ metadata:
   name: mariadb-cluster
   namespace: demo
 spec:
+  clusterDef: mariadb
+  topology: standalone
   terminationPolicy: Delete
   componentSpecs:
     - name: mariadb
-      componentDef: mariadb
-      # [!Note]
-      # Replicate Mode for MariaDB is not supported yet. Please set replicas to '1'
       replicas: 1
       resources:
         limits:
@@ -107,6 +105,46 @@ spec:
 
 ```bash
 kubectl apply -f examples/mariadb/cluster.yaml
+```
+
+Create a primary/secondary replication Cluster with two replicas:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: mariadb-replication
+  namespace: demo
+spec:
+  clusterDef: mariadb
+  topology: replication
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: mariadb
+      serviceVersion: "11.4.10"
+      replicas: 2
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+```
+
+Semi-sync replication uses the same `replication` topology. Select it when installing or upgrading the addon:
+
+```bash
+helm upgrade --install mariadb ./addons/mariadb --set replication.mode=semisync
 ```
 
 ### Vertical scaling
