@@ -862,14 +862,14 @@ systemAccounts:
     initAccount: true
     passwordGenerationPolicy:
       length: 32
-      numDigits: 16
+      numDigits: 8
       numSymbols: 0
       letterCase: MixedCases
   - name: kb_replicator
     initAccount: true
     passwordGenerationPolicy:
       length: 32
-      numDigits: 16
+      numDigits: 8
       numSymbols: 0
       letterCase: MixedCases
 {{- end -}}
@@ -890,7 +890,7 @@ systemAccounts:
     initAccount: true
     passwordGenerationPolicy:
       length: 32
-      numDigits: 16
+      numDigits: 8
       numSymbols: 0
       letterCase: MixedCases
 {{- end -}}

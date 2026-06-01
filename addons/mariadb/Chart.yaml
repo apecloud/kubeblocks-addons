@@ -1937,7 +1937,46 @@ type: application
 # cmpd files; rendered systemAccounts blocks verified per topology.
 # IDC vcluster live verification deferred to next alpha-cycle deploy
 # alongside PR #2701 / .112 / .113.
-version: 1.1.1-alpha.114
+#
+# alpha.115 v1 (Helen 2026-06-01 — schema validation hotfix surfaced by
+# IDC vcluster first live deploy of the alpha.114 Path C systemAccount
+# declarations).
+#
+# Problem: alpha.114 declared `kb_internal_root` and `kb_replicator`
+# with `passwordGenerationPolicy.numDigits: 16`. KubeBlocks
+# ComponentDefinition CRD constrains `numDigits` to `Maximum=8`
+# (per `apis/apps/v1/types.go:443-449` `+kubebuilder:validation:Maximum=8`).
+# `helm template` only renders the chart; CRD validation runs on the
+# controller side when the ComponentDefinition object is applied. The
+# alpha.114 ShellSpec render gate (kubeblocks-tests PR #135) and the
+# author's own `helm template` checks therefore did not catch the
+# constraint; the constraint surfaced at first live `helm upgrade`
+# against an IDC vcluster as:
+#
+#     ComponentDefinition.apps.kubeblocks.io "mariadb-replication-merged-
+#     1.1.1-alpha.114" is invalid:
+#     [spec.systemAccounts[1].passwordGenerationPolicy.numDigits: Invalid
+#     value: 16: ... should be less than or equal to 8,
+#      spec.systemAccounts[2].passwordGenerationPolicy.numDigits: Invalid
+#     value: 16: ... should be less than or equal to 8]
+#
+# Fix: change `numDigits: 16` → `numDigits: 8` at the 3 occurrences in
+# `_helpers.tpl` (`mariadb.semisync.spec.systemAccounts`
+# kb_internal_root and kb_replicator entries, and
+# `mariadb.standalone.spec.systemAccounts` kb_internal_root entry).
+# `length: 32` is preserved (Maximum=32 per the same struct).
+# `numSymbols: 0` is already within Maximum=8.
+#
+# No SQL change. No CmpD spec change beyond the field value adjustment.
+# No script change. No watchdog change.
+#
+# Lesson captured for the code-review cycle catalog: addon-side
+# `helm template` + ShellSpec render gates do NOT validate CRD schema
+# constraints. Any new value placed on a CRD-validated field must be
+# cross-checked against the corresponding `+kubebuilder:validation:*`
+# annotation in `apis/apps/v1/`. The "value within shape" check is a
+# separate review dimension from "field shape is correct".
+version: 1.1.1-alpha.115
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
