@@ -1666,7 +1666,34 @@ type: application
 # 15:45 sealed; alpha.110 P0a Direction E closes the production-FATAL
 # orphan event source mechanism, Direction B addresses the marker
 # state-drift root cause architectural sustainability.
-version: 1.1.1-alpha.110
+#
+# alpha.111 P0a URGENT Phase 2 (root cause): Round 1c-H Track A async
+# CM4 surfaced alpha.110 P0a Direction E scope-completeness GAP — the
+# Direction E label-anchored skip closed the syncerctl-writecheck
+# orphan path in the runtime reconcile-repair watchdog loop, but a
+# SEPARATE chart code path was emitting orphan binlog events. Jack
+# mysqlbinlog dump on Round 1c-H Track A frozen anchor mdb-async-9391
+# pod-0 @11:30:06Z identified the orphan event content as a bare
+# `FLUSH PRIVILEGES;` statement emitted on the eventual demoted-primary
+# pod's local binlog via `replication-switchover.sh:1264` post-DCS
+# root revoke summary path (the per-priv REVOKE statements above
+# wrap in SET SESSION sql_log_bin=0, but the FINAL summary FLUSH
+# at line 1264 was unwrapped). Phase 2 fix wraps the FLUSH PRIVILEGES
+# in SET SESSION sql_log_bin=0/1 bracket. Also wraps cmpd.yaml:59
+# initdb script FLUSH PRIVILEGES for chart-wide audit completeness
+# (bootstrap-only, not orphan source, hygiene wrap only). Evidence
+# chain: Helen 20:14 causality hypothesis (ERROR 1227 != orphan source
+# per MariaDB CLI stop-on-first-error semantic) + Rocco 20:26 chart
+# code self-documentation cross-anchor (cmpd-replication-merged.yaml
+# 1010-1016 chart comment) + Jack 20:23 GTID divergence direct evidence
+# (pod-0 1-1-154 vs pod-1 1-1-153) + Jack 20:37 mysqlbinlog SMOKING
+# GUN content (orphan SQL = FLUSH PRIVILEGES) + Helen 20:46 worktree
+# audit + Rocco 20:48 parallel chart grep独 convergence on same site
+# = sextuple cross-anchor sealing. Pre-merge T-pre.NEW protocol:
+# `mysqlbinlog --start-datetime --stop-datetime <local-binlog>` on
+# demoted-primary post-switchover must observe ZERO domain-1
+# FLUSH PRIVILEGES events.
+version: 1.1.1-alpha.111
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add

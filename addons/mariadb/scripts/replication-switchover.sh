@@ -1259,9 +1259,23 @@ EOF_HOSTS
     log_switchover_error "Switchover failed: post-DCS root revoke summary revoked=${total_revoked} already_fenced=${total_already_fenced} failed_hosts=${total_failed_hosts}; fail-closed"
     return 1
   fi
+  # alpha.111 P0a URGENT Phase 2 root cause fix: wrap FLUSH PRIVILEGES in
+  # SET SESSION sql_log_bin=0/1 to prevent orphan binlog event emission on
+  # demoted-primary post-switchover binlog. Round 1c-H Track A async CM4
+  # evidence (Jack mysqlbinlog dump on mdb-async-9391 pod-0 @11:30:06Z)
+  # identified a domain-1 FLUSH PRIVILEGES event that became orphan post-CM4
+  # switchover (pod-1 promoted primary at domain-1 seq=153, pod-0 demoted
+  # secondary had local domain-1 seq=154 — the extra event was this bare
+  # FLUSH PRIVILEGES emit). kb_internal_root has BINLOG ADMIN per alpha.66+
+  # so SET sql_log_bin=0 succeeds; FLUSH PRIVILEGES still executes against
+  # local mysql.user but emit to binlog suppressed.
   out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
     --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
-    -P3306 -h127.0.0.1 -N -s -e "FLUSH PRIVILEGES;" 2>&1)
+    -P3306 -h127.0.0.1 -N -s -e "
+      SET SESSION sql_log_bin=0;
+      FLUSH PRIVILEGES;
+      SET SESSION sql_log_bin=1;
+    " 2>&1)
   rc=$?
   if [ "${rc}" -ne 0 ]; then
     log_switchover_error "Switchover failed: post-DCS root revoke: FLUSH PRIVILEGES failed rc=${rc} out=${out}; fail-closed"
