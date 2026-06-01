@@ -68,7 +68,21 @@ spec:
           - /bin/sh
           - /scripts/replication-roleprobe.sh
     memberJoin:
-      timeoutSeconds: 180
+      # KB kbagent enforces a hardcoded maxActionCallTimeout of 60s
+      # (pkg/kbagent/service/action_utils.go); any value above 60 is silently
+      # truncated. The previous declared 180s was misleading — kbagent never
+      # honored more than 60s. The 60s declared here matches kbagent's actual
+      # cap.
+      #
+      # TODO(helen, alpha.112+): replication-member-join.sh still polls
+      # wait_for_primary up to 120s in-process, which will hit the 60s cap when
+      # the primary takes longer than ~55s to become reachable (e.g., scale-out
+      # against a slow primary). Refactor to the single-shot
+      # bootstrap-or-defer pattern (see skills/addon-lifecycle-single-shot-
+      # bootstrap-or-defer and the galera-member-join.sh rewrite in this PR
+      # for the reference shape) so each rc=1 with "next-retry-safe: yes"
+      # lets the runtime re-fire. Tracked separately to keep this PR scoped.
+      timeoutSeconds: 60
       exec:
         container: mariadb
         command:
