@@ -57,7 +57,7 @@ backupImage:
   registry: ""
   repository: apecloud/clickhouse-backup-full
   pullPolicy: IfNotPresent
-  tag: 2.6.42
+  tag: 2.7.0
 
 restore:
   schemaReadyTimeoutSeconds: 1800

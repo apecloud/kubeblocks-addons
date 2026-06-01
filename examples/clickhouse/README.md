@@ -629,7 +629,7 @@ The incremental backup's `parentBackupName` must refer to an existing backup cre
 > [!NOTE]
 > When the restore target has TLS enabled, the restore job mounts the ClickHouse TLS files and connects through the secure TCP port.
 
-Restore process will restore schema first, then restore data. Non-TLS restores also restore RBAC metadata; TLS restores focus on schema and data because replicated RBAC backup requires a direct Keeper TLS connection. You can tune schema-ready waiting behavior for restore jobs via Helm values:
+Restore process will restore schema and RBAC metadata first, then restore data. When the restore target has TLS enabled, the restore job uses the secure ClickHouse TCP port and Keeper TLS settings for RBAC metadata. You can tune schema-ready waiting behavior for restore jobs via Helm values:
 
 ```yaml
 restore:
