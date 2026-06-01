@@ -108,7 +108,15 @@ spec:
           - /bin/sh
           - /scripts/galera-roleprobe.sh
     memberJoin:
-      timeoutSeconds: 3660
+      # KB kbagent enforces a hardcoded maxActionCallTimeout of 60s
+      # (pkg/kbagent/service/action_utils.go); any value above 60 is silently
+      # truncated. Galera SST can run much longer than 60s, so the script uses
+      # the single-shot bootstrap-or-defer pattern: each invocation checks the
+      # .galera-synced marker (written by galera-start.sh once wsrep_local_state
+      # reaches 4 = Synced); if not yet synced, it exits 1 with a classified
+      # "next-retry-safe: yes" diagnose so the runtime re-fires until SST
+      # completes. The 60s declared here matches kbagent's actual cap.
+      timeoutSeconds: 60
       exec:
         container: mariadb
         command:

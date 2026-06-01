@@ -1693,7 +1693,18 @@ type: application
 # `mysqlbinlog --start-datetime --stop-datetime <local-binlog>` on
 # demoted-primary post-switchover must observe ZERO domain-1
 # FLUSH PRIVILEGES events.
-version: 1.1.1-alpha.111
+#
+# alpha.112 honest-timeout: lifecycle action timeoutSeconds must match
+# kbagent's 60s hard cap. Galera memberJoin previously declared 3660s
+# (~61 minutes) and replication memberJoin declared 180s; both were silently
+# truncated to 60s by kbagent and the declared value misled operators.
+# This release reduces both to 60s and refactors galera-member-join.sh to
+# the single-shot bootstrap-or-defer pattern so each rc=1 with classified
+# "next-retry-safe: yes" lets the runtime re-fire until SST completes,
+# preserving long-running SST support under a 60s-per-call ceiling.
+# replication-member-join.sh refactor to the same pattern tracked
+# separately (TODO in cmpd-replication.yaml memberJoin block).
+version: 1.1.1-alpha.112
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
