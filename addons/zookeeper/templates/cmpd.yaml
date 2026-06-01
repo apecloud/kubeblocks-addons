@@ -117,9 +117,10 @@ spec:
           - |
             /kubeblocks/scripts/roleprobe.sh
     memberJoin:
-      preCondition: RuntimeReady
       exec:
         container: zookeeper
+        targetPodSelector: Role
+        matchingKey: leader
         command:
           - /bin/bash
           - -c
@@ -129,6 +130,8 @@ spec:
       preCondition: RuntimeReady
       exec:
         container: zookeeper
+        targetPodSelector: Role
+        matchingKey: leader
         command:
           - /bin/bash
           - -c
