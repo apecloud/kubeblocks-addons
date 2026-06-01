@@ -300,7 +300,14 @@ kubectl describe -n demo ops kafka-combined-scale-out
 
 #### Scale-in
 
-Horizontal scaling in  `kafka-combine` component in cluster `kafka-combined-cluster` by deleting ONE replica:
+> [!IMPORTANT]
+> Combined KRaft scale-in is currently not supported for the default Kafka service version.
+> Removing a combined broker/controller requires Kafka quorum voter convergence, which this addon
+> does not implement yet. The addon blocks this operation through `memberLeave` instead of allowing
+> the OpsRequest to succeed and leaving Kafka with stale quorum voters.
+
+The manifest shape below shows the KubeBlocks `HorizontalScaling.scaleIn` API fields. It is not
+currently a supported operation for the combined KRaft topology:
 
 ```yaml
 # cat examples/kafka/scale-in.yaml
@@ -325,9 +332,7 @@ spec:
 
 ```
 
-```bash
-kubectl apply -f examples/kafka/scale-in.yaml
-```
+Applying this manifest is expected to fail fast until combined KRaft scale-in support is implemented.
 
 #### Scale-in/out using Cluster API
 
