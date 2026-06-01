@@ -448,6 +448,8 @@ EOF
         The path "${TEST_DIR}/.replication-pending" should be exist
         The path "${TEST_DIR}/.replication-divergence-pending" should be exist
         The output should include "GTID divergence detected"
+        The stderr should include "phase: gtid-divergence-fail-closed"
+        The stderr should include "next-retry-safe: no"
       End
 
       It "persists divergence decision evidence for later proof collection"
@@ -491,6 +493,8 @@ EOF
         The contents of file "${TEST_DIR}/.replication-divergence-pending" should include "branch=fail_closed_for_gtid_divergence"
         The contents of file "${TEST_DIR}/.replication-divergence-pending" should include "primary_resolved_endpoint=mdb-mariadb-1"
         The contents of file "${TEST_DIR}/.replication-divergence-pending" should include "primary_gtid_binlog_state=0-1-8550,0-2-8689"
+        The stderr should include "phase: gtid-divergence-fail-closed"
+        The stderr should include "next-retry-safe: no"
       End
 
       It "does not fail closed when primary sampling is unstable across retries"
@@ -581,6 +585,152 @@ EOF
         The path "${TEST_DIR}/.replication-pending" should be exist
         The path "${TEST_DIR}/.replication-divergence-pending" should not be exist
         The output should include "GTID out-of-order (1950) before primary truth stabilized"
+        The stderr should include "phase: gtid-out-of-order-transient"
+        The stderr should include "next-retry-safe: yes"
+      End
+    End
+
+    Context "when slave is not yet ready for rejoin (Slave_IO_Running still Connecting)"
+      It "returns failure with classified slave-not-yet-ready-for-rejoin retry=yes (alpha.110 implicit rc=0 bug fix)"
+        # Regression guard for alpha.110 implicit rc=0 bug: that release returned rc=0
+        # from this branch because the last statement was an echo (no explicit return 1).
+        # alpha.113 reclassifies as slave-not-yet-ready-for-rejoin + retry=yes so kbagent
+        # re-fires memberJoin until slave actually converges.
+        primary_sql() {
+          case "$*" in
+            *"gtid_binlog_pos"*) echo "0-1-100" ;;
+          esac
+        }
+        local_sql() {
+          case "$*" in
+            *"gtid_slave_pos;"*)   echo "" ;;
+            *"SHOW SLAVE STATUS"*) echo "some-slave-status-row" ;;
+            *) : ;;
+          esac
+        }
+        query_slave_status_verbose() {
+          cat <<'EOF'
+Slave_IO_Running: Connecting
+Slave_SQL_Running: No
+Last_IO_Errno: 0
+Last_SQL_Errno: 0
+EOF
+        }
+        When call setup_replication
+        The status should be failure
+        The path "${TEST_DIR}/.replication-pending" should be exist
+        The output should include "WARNING: replication rejoin not yet healthy"
+        The stderr should include "phase: slave-not-yet-ready-for-rejoin"
+        The stderr should include "next-retry-safe: yes"
+        The stderr should include "Slave_IO_Running: Connecting"
+        The stderr should include "Slave_SQL_Running: No"
+      End
+    End
+  End
+
+  Describe "replication_member_join_diagnose_not_ready()"
+    Context "emits structured stderr with action label, phase, and retry-safe"
+      It "writes the action label, phase, and next-retry-safe to stderr"
+        export KB_CLUSTER_NAME="mdb-cluster"
+        export POD_NAME="mdb-mariadb-1"
+        ACTIVE_PRIMARY_HOST="mdb-mariadb.demo.svc.cluster.local"
+        When call replication_member_join_diagnose_not_ready "primary-not-yet-reachable" "  probe_primary_host: mdb-mariadb.demo.svc.cluster.local" "yes"
+        The status should be success
+        The stderr should include "action: replication-member-join"
+        The stderr should include "phase: primary-not-yet-reachable"
+        The stderr should include "cluster: mdb-cluster"
+        The stderr should include "pod: mdb-mariadb-1"
+        The stderr should include "probe_primary_host: mdb-mariadb.demo.svc.cluster.local"
+        The stderr should include "next-retry-safe: yes"
+      End
+
+      It "supports retry-safe: no for operator-attention failures"
+        When call replication_member_join_diagnose_not_ready "change-master-failed" "  master_host: pri" "no"
+        The status should be success
+        The stderr should include "phase: change-master-failed"
+        The stderr should include "next-retry-safe: no"
+      End
+    End
+  End
+
+  Describe "probe_primary_or_defer() single-shot"
+    Context "when PRIMARY_HOST accepts SELECT 1"
+      It "sets ACTIVE_PRIMARY_HOST and returns success"
+        host_sql() {
+          case "$1" in
+            "${PRIMARY_HOST}") return 0 ;;
+            *) return 1 ;;
+          esac
+        }
+        ACTIVE_PRIMARY_HOST=""
+        When call probe_primary_or_defer
+        The status should be success
+        The variable ACTIVE_PRIMARY_HOST should eq "${PRIMARY_HOST}"
+      End
+    End
+
+    Context "when PRIMARY_HOST is unreachable on pod-0"
+      It "defers without trying bootstrap fallback and writes retry-safe: yes diagnose"
+        export POD_NAME="mdb-mariadb-0"
+        POD_INDEX="0"
+        host_sql() { return 1; }
+        ACTIVE_PRIMARY_HOST=""
+        When call probe_primary_or_defer
+        The status should be failure
+        The variable ACTIVE_PRIMARY_HOST should eq ""
+        The stderr should include "phase: primary-not-yet-reachable"
+        The stderr should include "next-retry-safe: yes"
+      End
+    End
+
+    Context "when PRIMARY_HOST unreachable on pod-1 and bootstrap primary is writable"
+      It "falls back to BOOTSTRAP_PRIMARY_HOST and returns success"
+        export POD_NAME="mdb-mariadb-1"
+        POD_INDEX="1"
+        host_sql() {
+          case "$*" in
+            *"${BOOTSTRAP_PRIMARY_HOST}"*"read_only"*) echo "0"; return 0 ;;
+            *) return 1 ;;
+          esac
+        }
+        ACTIVE_PRIMARY_HOST=""
+        When call probe_primary_or_defer
+        The status should be success
+        The variable ACTIVE_PRIMARY_HOST should eq "${BOOTSTRAP_PRIMARY_HOST}"
+        The output should include "Using bootstrap primary"
+      End
+    End
+
+    Context "when neither PRIMARY_HOST nor bootstrap primary are reachable on pod-1"
+      It "defers with retry-safe: yes"
+        export POD_NAME="mdb-mariadb-1"
+        POD_INDEX="1"
+        host_sql() { return 1; }
+        ACTIVE_PRIMARY_HOST=""
+        When call probe_primary_or_defer
+        The status should be failure
+        The variable ACTIVE_PRIMARY_HOST should eq ""
+        The stderr should include "phase: primary-not-yet-reachable"
+        The stderr should include "next-retry-safe: yes"
+        The stderr should include "pod_index: 1"
+      End
+    End
+
+    Context "when PRIMARY_HOST unreachable on pod-1 but bootstrap primary is read_only"
+      It "defers because bootstrap is not writable (read_only != 0)"
+        export POD_NAME="mdb-mariadb-1"
+        POD_INDEX="1"
+        host_sql() {
+          case "$*" in
+            *"${BOOTSTRAP_PRIMARY_HOST}"*"read_only"*) echo "1"; return 0 ;;
+            *) return 1 ;;
+          esac
+        }
+        ACTIVE_PRIMARY_HOST=""
+        When call probe_primary_or_defer
+        The status should be failure
+        The variable ACTIVE_PRIMARY_HOST should eq ""
+        The stderr should include "next-retry-safe: yes"
       End
     End
   End
@@ -590,7 +740,7 @@ EOF
       It "skips replication setup and exits 0"
         local_sql()         { echo "100"; }
         primary_sql()       { echo "100"; }
-        wait_for_primary()  { return 0; }
+        probe_primary_or_defer() { return 0; }
         When call main
         The status should be success
         The output should include "Already primary"
@@ -607,7 +757,7 @@ EOF
           esac
         }
         primary_sql()      { echo "100"; }
-        wait_for_primary() { return 0; }
+        probe_primary_or_defer() { return 0; }
         When call main
         The status should be success
         The output should include "Nothing to do"
@@ -615,14 +765,14 @@ EOF
     End
 
     Context "when PRIMARY_HOST is unreachable but slave is already running"
-      It "returns success without waiting for PRIMARY_HOST"
+      It "returns success without probing PRIMARY_HOST"
         local_sql() {
           case "$*" in
             *"SHOW SLAVE STATUS"*) echo "some-row" ;;
             *"Slave_running"*)     printf 'Slave_running\tON\n' ;;
           esac
         }
-        wait_for_primary() { echo "should-not-be-called"; return 1; }
+        probe_primary_or_defer() { echo "should-not-be-called"; return 1; }
         When call main
         The status should be success
         The output should include "Nothing to do"
