@@ -1142,6 +1142,13 @@ Describe "Redis Cluster Manage Bash Script Tests"
         return 0
       }
 
+      check_node_in_cluster() {
+        if [ "$2" != "6379" ]; then
+          echo "unexpected check_node_in_cluster port: $2" >&2
+        fi
+        return 1
+      }
+
       secondary_replicated_to_primary() {
         return 1
       }
@@ -1164,6 +1171,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
         When call scale_out_redis_cluster_shard
         The status should be failure
         The error should include "Failed to scale out shard secondary node redis-shard-98x-1"
+        The error should not include "unexpected check_node_in_cluster port"
         The stdout should include "Redis cluster scale out shard primary node redis-shard-98x-0 successfully"
         The stdout should include "primary_node_with_port: 10.42.0.1:6379, primary_node_fqdn: 10.42.0.1, mapping_primary_cluster_id: cluster_id_123"
       End
@@ -1205,6 +1213,13 @@ Describe "Redis Cluster Manage Bash Script Tests"
         return 0
       }
 
+      check_node_in_cluster() {
+        if [ "$2" != "6379" ]; then
+          echo "unexpected check_node_in_cluster port: $2" >&2
+        fi
+        return 1
+      }
+
       scale_out_shard_reshard() {
         return 1
       }
@@ -1235,6 +1250,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
         When call scale_out_redis_cluster_shard
         The status should be failure
         The error should include "Failed to scale out shard reshard"
+        The error should not include "unexpected check_node_in_cluster port"
         The stdout should include "Redis cluster scale out shard secondary node redis-shard-98x-1 successfully"
       End
     End
