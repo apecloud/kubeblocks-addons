@@ -161,7 +161,7 @@ Describe "Redis Cluster Common Bash Script Tests"
 
       When call fix_cluster_slots "redis-0:6379" "6379"
       The status should be success
-      The error should include "yes yes | redis-cli"
+      The error should include "printf yes... | redis-cli"
     End
   End
 
