@@ -134,7 +134,7 @@ spec:
   volumes:
     - name: data
       needSnapshot: true
-  {{- include "mariadb.replication.spec.systemAccounts" . | nindent 2 }}
+  {{- include "mariadb.semisync.spec.systemAccounts" . | nindent 2 }}
   {{- include "mariadb.spec.vars" . | nindent 2 }}
   lifecycleActions:
     roleProbe:
