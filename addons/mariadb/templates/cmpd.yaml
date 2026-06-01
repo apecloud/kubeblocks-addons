@@ -140,11 +140,4 @@ spec:
   volumes:
     - name: data
       needSnapshot: true
-  systemAccounts:
-    - name: root
-      initAccount: true
-      passwordGenerationPolicy:
-        length: 10
-        numDigits: 3
-        numSymbols: 4
-        letterCase: MixedCases
+  {{- include "mariadb.standalone.spec.systemAccounts" . | nindent 2 }}

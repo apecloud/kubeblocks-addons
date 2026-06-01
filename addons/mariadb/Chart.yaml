@@ -1789,7 +1789,155 @@ type: application
 # Already evidenced by 2026-05-28 fake-CmpD probe on KB controller
 # 1.0.3-beta.6 (skill `## 已知未知` section); no new evidence pack
 # needed.
-version: 1.1.1-alpha.113
+#
+# alpha.114 v2 (Helen 2026-06-01 — design review issue 3 / account
+# model Phase A Path C declarative-only).
+#
+# Background: alpha.110 declared only `root` as systemAccount, but
+# chart `ensure_internal_local_admin` (cmpd-semisync.yaml + cmpd-
+# replication-merged.yaml) and initdb (cmpd.yaml) inline-created
+# `kb_internal_root` (181 refs across 11 files) and `kb_replicator`
+# (81 refs across 5 files). KB controller had no model of these
+# accounts — no Secret materialization, no lifecycle hook,
+# no accountProvision plumbing. Design review (2026-05-31 weston-
+# requested audit) flagged this as issue 3.
+#
+# Phase A Path C scope (declarative-only, byte-identical runtime):
+# Declare `kb_internal_root` and `kb_replicator` as systemAccounts
+# with `initAccount: true` and `passwordGenerationPolicy`. KB
+# controller materializes per-account Secrets (KB-managed random
+# password) and registers account presence + lifecycle plumbing only.
+# Because the new systemAccounts have no `secretRef`,
+# `transformer_component_account.go:160-174` `buildAccountHash` short-
+# circuits (account.SecretRef == nil) and does NOT write a hash
+# annotation; cond.Message hash tracking and DB-side password drift
+# handling are DEFERRED to Phase B (which declares secretRef +
+# statement.create + statement.update). NO statement.create. NO
+# credentialVarRef env on the new accounts. NO chart watchdog /
+# initdb / script changes. All 16+ chart consumers of
+# MARIADB_ROOT_PASSWORD for kb_internal_root / kb_replicator
+# credentials continue working unchanged. Runtime behavior is
+# byte-identical to alpha.110.
+#
+# Path C rationale (over earlier candidate paths):
+#   - Path A naive (cluster.spec systemAccount.secretRef.name = KB-
+#     managed root Secret name) fails: componentAccountTransformer
+#     processes createSet in alphabetical order (kb_internal_root <
+#     kb_replicator < root); getPasswordFromSecret lookups for
+#     kb_internal_root hit NotFound on the root Secret which has not
+#     yet been committed to the apiserver in the same DAG. Result:
+#     infinite reconcile retry loop. Verified against
+#     transformer_component_account.go buildAccountSecret /
+#     getPasswordFromSecret path on KB main `8ee04938`.
+#   - Path A.1 (chart renders shared credentials Secret consumed by
+#     all three accounts) changes root account password ownership
+#     from KB-managed random to chart-managed — architectural shift
+#     outside Phase A scope.
+#   - Path B (full 16+ script sweep + credentialVarRef + watchdog
+#     password switch in one PR) atomic but large blast radius;
+#     deferred to Phase B as a separate atomic PR.
+#
+# Path C delivers the KB lifecycle hook in this PR without any
+# runtime behavior change, isolating the actual credential ownership
+# migration (16+ chart/script touchpoints) to a single atomic
+# Phase B PR.
+#
+# Topology coverage:
+#   - cmpd.yaml (standalone): kb_internal_root declared
+#   - cmpd-semisync.yaml: kb_internal_root + kb_replicator declared
+#   - cmpd-replication-merged.yaml: kb_internal_root + kb_replicator
+#     declared
+#   - cmpd-replication.yaml: UNCHANGED (zero kb_internal_root /
+#     kb_replicator references in this topology)
+#   - cmpd-galera.yaml: UNCHANGED (galera uses
+#     wsrep_sst_auth=root cluster-wide as engine-native auth model;
+#     no chart-managed kb_internal_root / kb_replicator path
+#     exists to declare against)
+#
+# Behavior delta vs alpha.110:
+#   (a) NEW KubeBlocks-managed Secrets:
+#       <cluster>-<comp>-account-kb_internal_root (3 topologies) and
+#       <cluster>-<comp>-account-kb_replicator (2 topologies). These
+#       Secrets are populated with KB-generated random passwords and
+#       are NOT consumed by any chart path during Phase A. They are
+#       lifecycle placeholders only.
+#   (b) NO env injection (no credentialVarRef on the new accounts).
+#       Pods see no new env. The existing `MARIADB_ROOT_PASSWORD`
+#       env (from credentialVarRef name: root) is unchanged.
+#   (c) NO chart watchdog / initdb / scripts code change.
+#   (d) initAccount: true semantics:
+#       transformer_component_account_provision.go:161-167 skips
+#       statement.create exec when initAccount is true; the
+#       placeholder Secret still materializes via
+#       componentAccountTransformer.
+#   (e) Phase A KB Secret password values do NOT match the actual
+#       DB-side password of `kb_internal_root` / `kb_replicator`
+#       (which remains MARIADB_ROOT_PASSWORD per existing chart).
+#       This is intentional and safe for Phase A because alpha.110
+#       does not expose these accounts to any external consumer
+#       (kbcli / Service binding / external tooling); chart-internal
+#       callers continue using MARIADB_ROOT_PASSWORD directly.
+#
+# Migration safety: alpha.110 → alpha.114 is fully additive.
+# Existing `root` systemAccount unchanged. New Secret objects
+# materialize but are not referenced by any chart path. No SQL DDL
+# fires. No behavior delta on any reconcile path. Rollback = revert
+# the systemAccounts declarations; KB will garbage-collect the
+# unreferenced Secret objects.
+#
+# Phase B (separate future PR, after one alpha cycle of Phase A
+# stable observation):
+#   - Add `mariadb.<topology>.spec.vars` helpers injecting
+#     KB_INTERNAL_ROOT_PASSWORD and KB_REPLICATOR_PASSWORD via
+#     credentialVarRef with optional: false safety contract.
+#   - Switch chart watchdog `ensure_internal_local_admin` password
+#     source from MARIADB_ROOT_PASSWORD to KB_INTERNAL_ROOT_PASSWORD
+#     / KB_REPLICATOR_PASSWORD across cmpd-semisync.yaml and
+#     cmpd-replication-merged.yaml.
+#   - Switch standalone initdb 01-kb-internal-root.sh password
+#     literal to KB_INTERNAL_ROOT_PASSWORD.
+#   - Update all 16+ chart-side credential collocations:
+#     INTERNAL_LOCAL and SOCK_CLI/TCP_CLI shell arrays
+#     (cmpd-semisync.yaml + cmpd-replication-merged.yaml);
+#     scripts/replication-roleprobe.sh (4 sites);
+#     scripts/replication-switchover.sh (12+ sites).
+#   - Set initAccount: false + statement.create with alpha.81 narrow
+#     allowlist (REPLICATION CLIENT + SLAVE MONITOR + REPLICATION
+#     MASTER ADMIN + kubeblocks.kb_health_check narrow table grants
+#     + SELECT mysql.user on @'%' for kb_internal_root; REPLICATION
+#     SLAVE on @'%' for kb_replicator). NO admin-bypass.
+#   - Add statement.update body (idempotent re-apply: CREATE IF NOT
+#     EXISTS + ALTER IDENTIFIED BY + ALTER ACCOUNT UNLOCK + REVOKE
+#     ALL + GRANT specific + FLUSH PRIVILEGES) so Secret rotation,
+#     DB user manual deletion, and privilege drift all converge via
+#     the same path.
+#   - Phase B is atomic single-PR: KB Secret password value, chart
+#     credential consumption, and DB-side user password all converge
+#     in one merge.
+#
+# Numbering: alpha.111 reserved for the P0a URGENT FLUSH PRIVILEGES
+# wrap PR, alpha.112 for the honest 60s memberJoin timeoutSeconds +
+# galera single-shot PR, alpha.113 for the replication memberJoin
+# single-shot bootstrap-or-defer PR. Integration owner reconciles
+# the version chain at merge time.
+#
+# Controller-side source-line citations (KB main `8ee04938`):
+#   - SystemAccount API: componentdefinition_types.go:1187-1239
+#   - initAccount semantics (skip provision exec):
+#     transformer_component_account_provision.go:161-167
+#   - placeholder Secret materialization:
+#     transformer_component_account.go:106-114 + createAccount
+#     line 119-130
+#   - accountProvision retry semantics (per-reconcile fire-and-retry):
+#     transformer_component_account_provision.go:103-134
+#   - createSet alphabetical ordering (root processed after kb_*):
+#     transformer_component_account.go:88 setDiff + sets.List
+#
+# Test plan: helm dependency build + helm template PASS for all 5
+# cmpd files; rendered systemAccounts blocks verified per topology.
+# IDC vcluster live verification deferred to next alpha-cycle deploy
+# alongside PR #2701 / .112 / .113.
+version: 1.1.1-alpha.114
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
