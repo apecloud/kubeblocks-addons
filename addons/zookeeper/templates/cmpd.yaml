@@ -127,7 +127,6 @@ spec:
           - |
             /kubeblocks/scripts/member_join.sh
     memberLeave:
-      preCondition: RuntimeReady
       exec:
         container: zookeeper
         targetPodSelector: Role
