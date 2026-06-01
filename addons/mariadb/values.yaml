@@ -13,9 +13,10 @@ image:
       tag: v0.14.0
   syncer:
     repository: apecloud/syncer
-    # alpha.23: patched syncer for semisync switchover old-primary rejoin.
-    # Built linux/amd64 and distributed by sideload with IfNotPresent.
-    tag: mariadb-switchover-follow-alpha23-20260506-1005-amd64
+    # Keep the chart default on a published syncer tag. Candidate or
+    # engine-specific syncer builds must be supplied explicitly by values
+    # override during validation, not baked into the release chart default.
+    tag: 0.6.7
 
 ## @param componentServiceVersion define default serviceVersion of each Component
 defaultServiceVersion:
