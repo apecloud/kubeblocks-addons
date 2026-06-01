@@ -63,6 +63,7 @@ API version annotation
 */}}
 {{- define "kafka.apiVersion" -}}
 kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+apps.kubeblocks.io/skip-immutable-check: "true"
 {{- end }}
 
 {{/*
