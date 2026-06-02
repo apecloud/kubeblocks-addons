@@ -29,6 +29,7 @@ build_cluster_address() {
 # Instead, query wsrep_cluster_status on each reachable peer. Only
 # "Primary" means the peer belongs to a functioning cluster.
 _any_peer_alive() {
+  local quiet="${1:-}"
   local fqdns="${PEER_FQDNS:-}"
   [ -z "$fqdns" ] && return 1
   local peer
@@ -45,7 +46,7 @@ _any_peer_alive() {
         echo "Peer ${peer} is alive with wsrep_cluster_status=Primary."
         return 0
       fi
-      echo "Peer ${peer} port 3306 open but wsrep_cluster_status=${cluster_status:-unreachable} (not Primary, skipping)."
+      [ -z "${quiet}" ] && echo "Peer ${peer} port 3306 open but wsrep_cluster_status=${cluster_status:-unreachable} (not Primary, skipping)."
     fi
   done
   return 1
@@ -75,7 +76,7 @@ _wait_for_primary_peer() {
   while [ $elapsed -lt $max_wait ]; do
     sleep 3
     elapsed=$((elapsed + 3))
-    if _any_peer_alive; then
+    if _any_peer_alive quiet; then
       echo "Found peer with Primary component after ${elapsed}s."
       return 0
     fi
