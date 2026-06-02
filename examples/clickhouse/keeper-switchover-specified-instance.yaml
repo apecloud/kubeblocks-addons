@@ -14,6 +14,6 @@ spec:
     # Specifies the instance whose role will be transferred.
     # A typical usage is to transfer the leader role in a consensus system.
     instanceName: "clickhouse-cluster-ch-keeper-0"
-    # Specifies the instance that will become the new leader, if not specify, the first non leader instance will become candidate.
-    # Need to ensure the candidate instance is catch up logs of the quorum, otherwise the switchover will transfer the leader to other instance.
+    # ClickHouse Keeper switchover currently requires candidateName.
+    # Need to ensure the candidate instance has caught up with quorum logs.
     candidateName: "clickhouse-cluster-ch-keeper-1"
