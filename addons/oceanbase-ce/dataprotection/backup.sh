@@ -8,7 +8,8 @@ deferArchiveLogTenantsFiles="defer_archive_tenants.dp"
 archiveCheckpointFailedFile="archive_checkpoint_failed.dp"
 endTimeInfoFile="kb_end_time.info"
 
-mysql_cmd="mysql -u ${DP_DB_USER} -h ${DP_DB_HOST} -P${DP_DB_PORT} -p${DP_DB_PASSWORD} -N -e"
+detect_mysql_bin
+mysql_cmd="${OB_MYSQL_BIN} -u ${DP_DB_USER} -h ${DP_DB_HOST} -P${DP_DB_PORT} -p${DP_DB_PASSWORD} -N -e"
 OlD_IFS=$IFS
 time_zone_file="timezone.dp"
 archiveCheckpointTimeout="${ARCHIVE_CHECKPOINT_TIMEOUT_SECONDS:-600}"
@@ -271,7 +272,7 @@ ${mysql_cmd} "select tenant_id, backup_set_id from oceanbase.CDB_OB_BACKUP_JOB_H
       # record time zone
       userName="root"
       timezone_sql="select @@time_zone;"
-      mysql_tenant_cmd="mysql -u ${userName}@${tenantName} -h ${DP_DB_HOST} -P${DP_DB_PORT} -N -e"
+      mysql_tenant_cmd="${OB_MYSQL_BIN} -u ${userName}@${tenantName} -h ${DP_DB_HOST} -P${DP_DB_PORT} -N -e"
       # get time zone
       timeZone=$(${mysql_tenant_cmd} "${timezone_sql}")
       echo $(getTimeZoneOffset "${timeZone}") > ${time_zone_file}
