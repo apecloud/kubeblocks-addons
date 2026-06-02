@@ -192,17 +192,31 @@ main() {
   # subshell so a single failed query never kills the loop. Run forever
   # so role flapping (state transitions Synced → Donor/Joining → Synced)
   # is reflected in the file in near real time.
+  #
+  # Self-healing: if wsrep_cluster_status stays non-Primary for 90s after
+  # the socket is available, the node is stuck in a dead partition (e.g.
+  # pod-1/2 formed a 2-node non-Primary group after losing pod-0 mid-SST
+  # during a TOCTOU race in parallel restart). Kill mariadbd to force a
+  # container restart; galera-start.sh will re-evaluate and join the now-
+  # stable Primary cluster.
   (
     set +e
     rm -f "${DATA_DIR}/.galera-synced" "${DATA_DIR}/.galera-role"
     SOCK=/run/mysqld/mysqld.sock
     SYNCED_ONCE=0
+    NON_PRIMARY_COUNT=0
+    NON_PRIMARY_THRESHOLD=30  # 30 × 3s = 90s
     while true; do
       STATE=""
+      CLUSTER_STATUS=""
       if [ -S "${SOCK}" ]; then
         STATE=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
           -S "${SOCK}" -N -s \
           -e "SHOW STATUS LIKE 'wsrep_local_state';" 2>/dev/null \
+          | awk '{print $2}')
+        CLUSTER_STATUS=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+          -S "${SOCK}" -N -s \
+          -e "SHOW STATUS LIKE 'wsrep_cluster_status';" 2>/dev/null \
           | awk '{print $2}')
       fi
       if [ "${STATE}" = "4" ]; then
@@ -214,10 +228,23 @@ main() {
           chown mysql:mysql "${DATA_DIR}/.galera-synced" 2>/dev/null || true
           SYNCED_ONCE=1
         fi
+        NON_PRIMARY_COUNT=0
       else
         printf "secondary" > "${DATA_DIR}/.galera-role.tmp" \
           && chown mysql:mysql "${DATA_DIR}/.galera-role.tmp" 2>/dev/null \
           ; mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
+        if [ -S "${SOCK}" ] && [ "${CLUSTER_STATUS}" = "non-Primary" ]; then
+          NON_PRIMARY_COUNT=$((NON_PRIMARY_COUNT + 1))
+          if [ ${NON_PRIMARY_COUNT} -ge ${NON_PRIMARY_THRESHOLD} ]; then
+            echo "SELF-HEALING: wsrep_cluster_status=non-Primary for $((NON_PRIMARY_COUNT * 3))s. Killing mariadbd to force restart."
+            pkill -SIGTERM mariadbd 2>/dev/null || true
+            sleep 5
+            pkill -9 mariadbd 2>/dev/null || true
+            NON_PRIMARY_COUNT=0
+          fi
+        else
+          NON_PRIMARY_COUNT=0
+        fi
       fi
       sleep 3
     done

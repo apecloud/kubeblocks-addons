@@ -1986,6 +1986,30 @@ type: application
 # causes unnecessary Serial pod restarts on a 3-node cluster.
 # Test galera CM3 reconfigures wsrep_slave_threads from 4 to 8.
 #
+# alpha.122 (Helen 2026-06-02 — galera self-healing non-Primary watcher):
+# Fix TOCTOU race in parallel restart. Alpha.121 added _wait_for_primary_peer
+# so pod-1/pod-2 wait for pod-0 to bootstrap. But the InstanceSet controller
+# can issue a second restart wave: pod-0 restarts AGAIN after pod-1/pod-2
+# already saw it as Primary and started joining. Pod-1/pod-2 lose pod-0
+# mid-SST, fall to non-Primary, and form a dead 2-node partition. New pod-0
+# bootstraps as a 1-node singleton. The 1+2 split persists because the stuck
+# nodes' MariaDB is alive (not crashing), so Kubernetes never restarts them.
+#
+# Evidence: alpha.121 galera full r1 CM4 — pod-1/pod-2 wait log shows they
+# DID find pod-0 Primary, started join, then pod-0 restarted again.
+# Pod-1/pod-2 stuck at wsrep_cluster_status=non-Primary indefinitely.
+#
+# Fix: add self-healing to the background watcher. The watcher now also
+# queries wsrep_cluster_status each cycle. If the node stays in non-Primary
+# for 90s (30 cycles x 3s) while the socket is available, the watcher
+# kills mariadbd (SIGTERM then SIGKILL after 5s). The container restart
+# triggers galera-start.sh re-evaluation: by then pod-0 is stable Primary,
+# so the restarted pod joins cleanly.
+#
+# The 90s threshold avoids false kills during normal SST/IST (state transfer
+# is typically <60s for small datasets). The counter resets whenever
+# wsrep_local_state reaches 4 (Synced) or cluster_status is not non-Primary.
+#
 # alpha.121 (Helen 2026-06-02 — galera non-pod-0 wait for Primary):
 # Fix 1+2 split after parallel restart. Alpha.120 correctly made pod-0
 # bootstrap when peers are non-Primary, but pod-1/pod-2 start MariaDB
@@ -2117,7 +2141,7 @@ type: application
 # reconfigure executor. Without this, any galera Reconfiguring
 # OpsRequest fails with ERROR 1045 (Access denied for
 # kb_internal_root). CmpD spec change requires version bump.
-version: 1.1.1-alpha.121
+version: 1.1.1-alpha.122
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
