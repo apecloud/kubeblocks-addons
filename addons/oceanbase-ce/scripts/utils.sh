@@ -1,5 +1,20 @@
 #!/usr/bin/env bash
 
+OB_OBSERVER_BIN=${OB_OBSERVER_BIN:-}
+if [ -z "$OB_OBSERVER_BIN" ]; then
+  if [ -x "/home/admin/oceanbase/bin/observer" ]; then
+    OB_OBSERVER_BIN="/home/admin/oceanbase/bin/observer"
+  elif [ -x "/root/demo/bin/observer" ]; then
+    OB_OBSERVER_BIN="/root/demo/bin/observer"
+    export LD_LIBRARY_PATH="/root/demo/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  fi
+fi
+if [ -z "$OB_OBSERVER_BIN" ] || [ ! -x "$OB_OBSERVER_BIN" ]; then
+  echo "FATAL: observer binary not found" >&2
+  exit 1
+fi
+echo "OB_OBSERVER_BIN: $OB_OBSERVER_BIN"
+
 function prepare_dirs {
   # log dir
   mkdir -p /home/admin/log/log
@@ -142,7 +157,7 @@ function start_observer {
 
   cluster_id=${OB_CLUSTER_ID:-1}
 
-  /home/admin/oceanbase/bin/observer --appname ${OB_COMPONENT_NAME} \
+  $OB_OBSERVER_BIN --appname ${OB_COMPONENT_NAME} \
     --cluster_id ${cluster_id} --zone $ZONE_NAME \
     -I ${curr_pod_ip} \
     --rpc_port ${OB_RPC_PORT} \
@@ -154,7 +169,7 @@ function start_observer {
 function start_observer_with_exsting_configs {
   echo "Start observer with existing configs"
   # Start observer w/o any flags
-  /home/admin/oceanbase/bin/observer
+  $OB_OBSERVER_BIN
 }
 
 function update_root_password {
@@ -164,12 +179,12 @@ function update_root_password {
 }
 
 function get_ob_major_version {
-  version=$(/home/admin/oceanbase/bin/observer --version 2>&1  | grep -oP '(\d+\.\d+\.\d+)')
+  version=$($OB_OBSERVER_BIN --version 2>&1  | grep -oP '(\d+\.\d+\.\d+)')
   echo $version
 }
 
 function get_ob_full_version {
-  version=$(/home/admin/oceanbase/bin/observer --version 2>&1  | grep -oP '(\d+\.\d+\.\d+\.\d+)')
+  version=$($OB_OBSERVER_BIN --version 2>&1  | grep -oP '(\d+\.\d+\.\d+\.\d+)')
   echo $version
 }
 
