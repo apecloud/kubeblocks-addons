@@ -1976,7 +1976,16 @@ type: application
 # cross-checked against the corresponding `+kubebuilder:validation:*`
 # annotation in `apis/apps/v1/`. The "value within shape" check is a
 # separate review dimension from "field shape is correct".
-version: 1.1.1-alpha.115
+#
+# alpha.116 (Helen 2026-06-02 — code-review Pass 4 finding):
+# add wsrep_slave_threads to dynamicParameters in config effect scope.
+# MariaDB documents wsrep_slave_threads as a dynamic system variable
+# (SET GLOBAL applies immediately, no restart required). Without this
+# declaration the KB Configure controller falls back to rolling restart
+# for any Galera reconfigure touching wsrep_slave_threads, which
+# causes unnecessary Serial pod restarts on a 3-node cluster.
+# Test galera CM3 reconfigures wsrep_slave_threads from 4 to 8.
+version: 1.1.1-alpha.116
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add

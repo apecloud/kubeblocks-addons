@@ -212,6 +212,7 @@ dynamicParameters:
   # `mariadbd --verbose --help` to exit rc=7 with "unknown variable",
   # which CrashLoops the engine container on first startup.
   - rpl_semi_sync_master_timeout
+  - wsrep_slave_threads
   - query_cache_limit
   - query_cache_min_res_unit
   - query_cache_size
