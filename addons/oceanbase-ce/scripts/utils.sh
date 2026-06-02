@@ -58,7 +58,7 @@ function create_ready_flag {
 
 function wait_for_observer_ready {
   echo "Wait for observer on this node to be ready"
-  until nc -z 127.0.0.1 $OB_SERVICE_PORT; do
+  until bash -c "echo > /dev/tcp/127.0.0.1/$OB_SERVICE_PORT" 2>/dev/null; do
     echo "observer on this node is not ready, wait for a moment..."
     sleep 10
   done
@@ -112,7 +112,7 @@ function get_pod_ip {
   fi
   while true; do
     replica_ip=$(getent hosts $replica_hostname 2>/dev/null | awk '{print $1}')
-    if [ $? -ne 0 ]; then
+    if [ -z "$replica_ip" ]; then
       sleep 5
     else
       echo $replica_ip
