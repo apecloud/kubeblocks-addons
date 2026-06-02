@@ -13,11 +13,12 @@ primary_host="${OB_COMPONENT_NAME}-0.${SUBDOMAIN}"
 target_host="${primary_host}"
 
 
-primaryCmd="mysql -u root -P${DP_DB_PORT} -h ${primary_host} -p${OB_ROOT_PASSWD} -N -e"
+detect_mysql_bin
+primaryCmd="${OB_MYSQL_BIN} -u root -P${DP_DB_PORT} -h ${primary_host} -p${OB_ROOT_PASSWD} -N -e"
 
 echo "INFO: primary host: ${primary_host}, current pod host: ${DP_DB_HOST}, target host: ${target_host}"
 
-mysql_cmd="mysql -u root -P${DP_DB_PORT} -h ${target_host} -p${OB_ROOT_PASSWD} -N -e"
+mysql_cmd="${OB_MYSQL_BIN} -u root -P${DP_DB_PORT} -h ${target_host} -p${OB_ROOT_PASSWD} -N -e"
 
 OlD_IFS=$IFS
 

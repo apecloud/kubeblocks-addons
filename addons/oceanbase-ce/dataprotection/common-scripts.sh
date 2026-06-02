@@ -7,6 +7,21 @@ region=
 endpoint=
 bucket=
 
+OB_MYSQL_BIN=""
+detect_mysql_bin() {
+  if [ -n "$OB_MYSQL_BIN" ]; then
+    return
+  fi
+  for candidate in mysql /usr/bin/mysql obclient /u01/obclient/bin/obclient; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+      OB_MYSQL_BIN="$candidate"
+      return
+    fi
+  done
+  echo "ERROR: no mysql-compatible client found (tried mysql, obclient)"
+  exit 1
+}
+
 # log info file
 function DP_log() {
     msg=$1
