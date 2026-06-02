@@ -136,7 +136,7 @@ function replaceK8sSVC() {
     if [[ ${localEndpoint} == *".svc."* ]]; then
        local port=${localEndpoint#*:}
        local host=${localEndpoint%:*}
-       hostIP=$(nslookup ${host} | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
+       hostIP=$(getent hosts ${host} 2>/dev/null | awk '{print $1}')
        if [ -z ${port} ]; then
            echo ${hostIP}
        else
