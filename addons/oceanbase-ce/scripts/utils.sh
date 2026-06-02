@@ -146,10 +146,9 @@ function start_observer {
 
   # check if file exists
   if [ -f "/kb-config/oceanbase.conf" ]; then
-    echo "observer.conf.bin exists, start observer with existing configs"
-    customized_config=$(cat "/kb-config/oceanbase.conf" | sed 's/ \+/ /g' | tr '\n' ',')
-    # remove all spaces and the last comma
-    customized_config=$(echo "$customized_config"  | sed 's/,$//' | sed 's/^,//')
+    echo "KubeBlocks config found, applying customized configs"
+    customized_config=$(cat "/kb-config/oceanbase.conf" | sed 's/ *= */=/g' | tr '\n' ',')
+    customized_config=$(echo "$customized_config" | sed 's/,$//' | sed 's/^,//')
     echo "customized_config: $customized_config"
     default_configs=$customized_config
   fi
