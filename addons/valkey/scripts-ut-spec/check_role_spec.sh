@@ -769,12 +769,16 @@ Describe "Valkey Check-Role Bash Script Tests"
     #
     # check-role.sh defence: when Sentinel is configured (any of
     # `insufficient_valid`, `split_view`, etc.) but quorum is invalid,
-    # do NOT emit legacy `primary` from `local INFO=master`. Emit
-    # `secondary` instead, so the primary Service may briefly have no
-    # endpoint while Sentinel converges but no engine-versioned peer
-    # can be cleaned. `no_sentinel_env` / `no_sentinel_configured`
-    # paths keep the original local-INFO mapping because they are the
-    # only authority for standalone topologies.
+    # do NOT emit legacy `primary` from `local INFO=master`. Fail the
+    # current probe sample instead. KB controller skips non-zero
+    # roleProbe events, so the last trusted primary label is preserved
+    # while Sentinel converges, and a new pod with no trusted label is
+    # not promoted from a stale local INFO result. But local
+    # `role:slave` is safe and should emit `secondary` so a demoted pod
+    # does not keep a stale primary label. `no_sentinel_env` /
+    # `no_sentinel_configured` paths keep the original local-INFO
+    # mapping because they are the only authority for standalone
+    # topologies.
     Context "Sentinel configured + quorum invalid + INFO=master"
       check_role_script="../scripts/check-role.sh"
 
@@ -784,17 +788,26 @@ Describe "Valkey Check-Role Bash Script Tests"
         The stdout should include 'no_sentinel_env|no_sentinel_configured'
       End
 
-      It "documents the cross-mode safety rationale next to the fallback case"
-        When call grep -c -F 'no engine-versioned peer can be exclusive-cleaned' "${check_role_script}"
+      It "documents the controller skip contract next to the fallback case"
+        When call grep -c -F 'KB controller treats a non-zero roleProbe event as' "${check_role_script}"
         The status should be success
         The stdout should not equal "0"
       End
 
-      It "ensures the quorum-invalid branch maps role:master to secondary (not primary)"
-        # In the *quorum-invalid* fallback, role:master and role:slave
-        # both collapse to `secondary`. Production line shape:
-        # `"role:master"|"role:slave") printf %s "secondary" ;;`
-        When call grep -F '"role:master"|"role:slave") printf %s "secondary"' "${check_role_script}"
+      It "ensures the quorum-invalid role:master branch fails the probe instead of emitting a role"
+        When call grep -F 'sentinel quorum invalid (${__quorum_decision_reason}); skipping master role update' "${check_role_script}"
+        The status should be success
+        The stdout should include 'skipping master role update'
+      End
+
+      It "does not map quorum-invalid role:master to secondary"
+        When call bash -c 'grep -c -F "\"role:master\"|\"role:slave\") printf %s \"secondary\"" ../scripts/check-role.sh || true'
+        The status should be success
+        The stdout should equal "0"
+      End
+
+      It "keeps quorum-invalid role:slave mapped to secondary"
+        When call grep -F '"role:slave") printf %s "secondary" ;;' "${check_role_script}"
         The status should be success
         The stdout should include 'secondary'
       End
@@ -812,32 +825,30 @@ Describe "Valkey Check-Role Bash Script Tests"
       End
 
       It "documents that the no-sentinel branch preserves original local-INFO mapping"
-        When call grep -c -F 'only authority for standalone' "${check_role_script}"
+        When call grep -c -F 'original local-INFO mapping' "${check_role_script}"
         The status should be success
         The stdout should not equal "0"
       End
     End
 
-    Context "role:slave under any quorum decision"
+    Context "role:slave fallback"
       check_role_script="../scripts/check-role.sh"
 
-      It "maps to secondary in the no_sentinel fallback"
+      It "maps to secondary in fallback paths"
         When call grep -c -F '"role:slave")  printf %s "secondary"' "${check_role_script}"
         The status should be success
         The stdout should not equal "0"
       End
     End
 
-    Context "unknown role under any quorum decision"
+    Context "unknown role under fallback paths"
       check_role_script="../scripts/check-role.sh"
 
-      It "exits non-zero so KubeBlocks clears the stale role label via failureThreshold"
-        # The unknown-role branch must remain `echo + exit 1` in both
-        # the no-sentinel and the quorum-invalid path.
+      It "exits non-zero so KubeBlocks skips the invalid sample"
+        # Unknown-role branches must remain `echo + exit 1` in both the
+        # no-sentinel and quorum-invalid paths.
         When call grep -c -F "unknown role: '" "${check_role_script}"
         The status should be success
-        # Two occurrences: one for no_sentinel branch, one for
-        # quorum-invalid branch.
         The stdout should equal "2"
       End
     End
