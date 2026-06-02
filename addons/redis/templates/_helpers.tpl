@@ -200,14 +200,16 @@ reconfigure:
       - /bin/sh
       - -c
       - |
+        rc=0
         tr '\0' '\n' < /proc/self/environ > /tmp/_reconf_env.txt
         while IFS= read -r line; do
           key="${line%%=*}"
           printf '%s\n' "$key" | grep -qE '^[a-z0-9_.-][a-z0-9_.-]*$' || continue
           value="${line#*=}"
-          /scripts/reload-parameter.sh "$key" "$value"
+          /scripts/reload-parameter.sh "$key" "$value" || rc=$?
         done < /tmp/_reconf_env.txt
         rm -f /tmp/_reconf_env.txt
+        exit "$rc"
 {{- end -}}
 
 {{- define "apeDts.reshard.image" -}}
