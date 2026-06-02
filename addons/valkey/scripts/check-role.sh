@@ -22,11 +22,15 @@
 #       a deposed primary is treated as `secondary` so two pods cannot
 #       both emit `primary <same-epoch>` after a sentinel-driven
 #       failover.
-#     - When Sentinel is unreachable / the password is missing / the
-#       parsed epoch is non-numeric / the parsed runid is empty or
-#       malformed: fall back to legacy single-token output (local INFO
-#       → `primary` for `role:master`, `secondary` for `role:slave`).
+#     - When Sentinel is not configured (SENTINEL_POD_FQDN_LIST empty):
+#       fall back to legacy single-token output (local INFO →
+#       `primary` for `role:master`, `secondary` for `role:slave`).
 #       The controller then uses its existing EventTime gate.
+#     - When Sentinel is configured but quorum is transiently invalid
+#       (insufficient valid sentinels / split view / missing password
+#       causing NOAUTH / non-numeric epoch / empty or malformed runid):
+#       emit `secondary` regardless of local INFO to prevent a legacy
+#       `primary` event from stripping an engine-versioned peer label.
 #
 #   Using valkey-cli (not redis-cli) because Valkey ships its own CLI.
 #   The -h 127.0.0.1 ensures we hit this pod's own server.
