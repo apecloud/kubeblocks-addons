@@ -173,9 +173,26 @@ for i in $(seq 0 ${index}); do
   archivePath=$(echo "$extras"  | jq -r ".[${i}].archivePath")
   uri="$(getDestURL data "${tenant_name}"),$(getDestURL restoreFromArchive "${tenant_name}" "${tenant_id}" "${archivePath}")"
   restoreFragment=$(getRestoreFragment "${tenant_name}" "${minRestoreSCN}")
+  existing_role=$(${mysql_cmd} "SELECT tenant_role FROM oceanbase.DBA_OB_TENANTS WHERE tenant_name='${tenant_name}' AND tenant_type='USER';" 2>/dev/null | awk 'NF {print; exit}')
+  if [[ -n "$existing_role" ]]; then
+    case "$existing_role" in
+      PRIMARY)
+        echo "INFO: tenant ${tenant_name} already PRIMARY, skipping RESTORE"
+        ;;
+      STANDBY)
+        echo "INFO: tenant ${tenant_name} already STANDBY (restore completed), skipping RESTORE"
+        ;;
+      RESTORE)
+        echo "INFO: tenant ${tenant_name} in RESTORE state, skipping RESTORE command"
+        ;;
+      *)
+        echo "ERROR: tenant ${tenant_name} exists with unexpected role '${existing_role}'"
+        exit 1
+        ;;
+    esac
+    continue
+  fi
   echo "INFO: start to restore tenant ${tenant_name} until ${restoreFragment}"
-  # TODO: check if the sql executed successfully. if restore time is over than actual time, it will failed.
-  # ERROR 4018 (HY000) at line 1: No enough log for restore
   restoreTenant "${tenant_name}" "SET SESSION ob_query_timeout=1000000000; ALTER SYSTEM RESTORE ${tenant_name} FROM '${uri}' UNTIL ${restoreFragment} WITH 'pool_list=${poolList}'"
   if [ $? -eq 1 ]; then
     exit 1
