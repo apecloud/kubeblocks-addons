@@ -1986,6 +1986,35 @@ type: application
 # causes unnecessary Serial pod restarts on a 3-node cluster.
 # Test galera CM3 reconfigures wsrep_slave_threads from 4 to 8.
 #
+# alpha.119 (Helen 2026-06-02 — galera single-owner bootstrap):
+# Fix split-brain regression in alpha.118. With podManagementPolicy=
+# Parallel, preStop hooks run simultaneously and multiple nodes can
+# end up with safe_to_bootstrap=1 (race in Galera's last-node
+# detection). Alpha.118 added crash recovery for pod-0 (path c) but
+# did not restrict path (b) — any node with safe_to_bootstrap=1
+# could bootstrap independently. Jack's alpha.118 T6 evidence showed
+# pod-0 bootstrapped via path (c) AND pod-2 bootstrapped via path (b),
+# forming a 2+1 split-brain (wsrep_cluster_size=2 instead of 3).
+#
+# Fix: restrict ALL bootstrap decisions to pod-0 only. Galera uses
+# synchronous replication, so all nodes have identical committed data;
+# pod-0 is always a safe bootstrap candidate. Non-pod-0 nodes always
+# join, even if their grastate.dat has safe_to_bootstrap=1 (logged as
+# "Non-pod-0: safe_to_bootstrap=1 ignored (single-owner bootstrap)").
+# Pod-0 also checks _any_peer_alive before bootstrapping — if any
+# peer already has port 3306 open, pod-0 joins instead (handles
+# single-pod restart and rolling restart correctly).
+#
+# Three bootstrap paths, ALL pod-0 only:
+#   (a) Fresh cluster: no data directory → bootstrap.
+#   (b) Clean shutdown: grastate.dat safe_to_bootstrap=1 → bootstrap.
+#   (c) Crash recovery: safe_to_bootstrap=0, no peers alive →
+#       wsrep-recover → set safe_to_bootstrap=1 → bootstrap.
+# Non-pod-0: return 1 (join) unconditionally when grastate.dat exists.
+#
+# No CmpD spec change (script-only fix via ConfigMap), but version
+# bump for traceability.
+#
 # alpha.118 (Helen 2026-06-02 — galera Stop/Start crash recovery):
 # Fix galera-start.sh to handle the case where all nodes have
 # safe_to_bootstrap=0 after a KubeBlocks Stop operation. With
@@ -2028,7 +2057,7 @@ type: application
 # reconfigure executor. Without this, any galera Reconfiguring
 # OpsRequest fails with ERROR 1045 (Access denied for
 # kb_internal_root). CmpD spec change requires version bump.
-version: 1.1.1-alpha.118
+version: 1.1.1-alpha.119
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
