@@ -116,9 +116,9 @@ function getRestoreFragment() {
       if [ -z "$line" ]; then
           continue
       fi
-      tenant=`echo ${line} | jq -r ".name"`
+      tenant=$(json_get name "$line")
       if [ "${tenant}" == "${tenantName}" ]; then
-          checkPointTime=`echo ${line} | jq -r ".checkPointTime"`
+          checkPointTime=$(json_get checkPointTime "$line")
           if [ $(date -d "${DP_RESTORE_TIME}" +%s) -gt $(date -d "${checkPointTime}" +%s) ]; then
             echo "TIME='$(date -d "${checkPointTime}" "+%Y-%m-%d %H:%M:%S")'"
             return
@@ -160,18 +160,18 @@ analysisToolConfig
 pullArchiveStatusFile
 # global_comp_index=$(echo $OB_COMPONENT_NAME | awk -F '-' '{print $(NF)}')
 extras=$(cat /dp_downward/status_extras)
-length=$(echo "$extras" | jq length)
+length=$(json_array_len "$extras")
 index=$((length-1))
 for i in $(seq 0 ${index}); do
   if [[ -f ${tenant_restored_signal} ]]; then
     echo "INFO: primary cluster has been restored, skip the restore process."
     continue
   fi
-  tenant_name=$(echo "$extras" | jq -r ".[${i}].name")
-  tenant_id=$(echo "$extras"  | jq -r ".[${i}].tenantId")
-  minRestoreSCN=$(echo "$extras"  | jq -r ".[${i}].minRestoreSCN")
-  poolList=$(echo "$extras"  | jq -r ".[${i}].poolList")
-  archivePath=$(echo "$extras"  | jq -r ".[${i}].archivePath")
+  tenant_name=$(json_array_get "$i" name "$extras")
+  tenant_id=$(json_array_get "$i" tenantId "$extras")
+  minRestoreSCN=$(json_array_get "$i" minRestoreSCN "$extras")
+  poolList=$(json_array_get "$i" poolList "$extras")
+  archivePath=$(json_array_get "$i" archivePath "$extras")
   uri="$(getDestURL data "${tenant_name}"),$(getDestURL restoreFromArchive "${tenant_name}" "${tenant_id}" "${archivePath}")"
   restoreFragment=$(getRestoreFragment "${tenant_name}" "${minRestoreSCN}")
   existing_role=$(${mysql_cmd} "SELECT tenant_role FROM oceanbase.DBA_OB_TENANTS WHERE tenant_name='${tenant_name}' AND tenant_type='USER';" 2>/dev/null | awk 'NF {print; exit}')

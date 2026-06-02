@@ -7,6 +7,22 @@ region=
 endpoint=
 bucket=
 
+json_get() {
+  local key="$1"
+  echo "$2" | grep -o "\"${key}\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | head -1 | sed 's/.*:[[:space:]]*"\(.*\)"/\1/'
+}
+
+json_array_len() {
+  echo "$1" | grep -o '{' | wc -l | tr -d ' '
+}
+
+json_array_get() {
+  local idx="$1" key="$2"
+  local elem
+  elem=$(echo "$3" | grep -o '{[^}]*}' | sed -n "$((idx+1))p")
+  json_get "$key" "$elem"
+}
+
 OB_MYSQL_BIN=""
 detect_mysql_bin() {
   if [ -n "$OB_MYSQL_BIN" ]; then
