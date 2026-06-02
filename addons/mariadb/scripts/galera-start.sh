@@ -51,6 +51,39 @@ _any_peer_alive() {
   return 1
 }
 
+# Wait until at least one peer has a Primary component before starting
+# MariaDB in join mode. Prevents non-pod-0 nodes from forming a dead
+# non-Primary group during full cluster restart:
+#
+# Without this wait, pod-1/pod-2 start MariaDB in join mode, connect to
+# each other via Galera group communication, and form a 2-node non-Primary
+# partition (seqno=-1, can't elect primary). Meanwhile pod-0 bootstraps
+# independently. The two partitions are separate Galera clusters — pod-1/2
+# will never discover pod-0's new primary because they're already locked
+# in their own dead group communication session.
+#
+# With this wait, pod-1/pod-2 delay starting MariaDB until pod-0 has
+# bootstrapped and is reporting wsrep_cluster_status=Primary. They then
+# join pod-0's cluster cleanly.
+_wait_for_primary_peer() {
+  if _any_peer_alive; then
+    return 0
+  fi
+  echo "No peer has Primary component. Waiting for bootstrap node..."
+  local max_wait=120
+  local elapsed=0
+  while [ $elapsed -lt $max_wait ]; do
+    sleep 3
+    elapsed=$((elapsed + 3))
+    if _any_peer_alive; then
+      echo "Found peer with Primary component after ${elapsed}s."
+      return 0
+    fi
+  done
+  echo "No Primary peer found after ${max_wait}s. Starting join anyway."
+  return 0
+}
+
 # Run wsrep-recover to extract the last committed position from InnoDB,
 # then mark grastate.dat safe_to_bootstrap=1 so MariaDB will accept
 # --wsrep-new-cluster on the next exec.
@@ -194,6 +227,10 @@ main() {
     echo "Starting Galera cluster bootstrap (--wsrep-new-cluster)..."
     exec docker-entrypoint.sh mariadbd "${wsrep_args[@]}" --wsrep-new-cluster
   else
+    local pod_index="${POD_NAME##*-}"
+    if [ "$pod_index" != "0" ]; then
+      _wait_for_primary_peer
+    fi
     echo "Joining Galera cluster at ${cluster_address}..."
     exec docker-entrypoint.sh mariadbd "${wsrep_args[@]}"
   fi
