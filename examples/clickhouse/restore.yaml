@@ -3,10 +3,15 @@ kind: Cluster
 metadata:
   name: clickhouse-cluster-restore
   namespace: demo
-  annotations:
-    # clickhouse-cluster-backup is the Backup CR name.
-    kubeblocks.io/restore-from-backup: '{"clickhouse":{"name":"clickhouse-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: clickhouse-cluster-backup
+      namespace: demo
+    parameters:
+      dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   clusterDef: clickhouse
   topology: cluster
   terminationPolicy: Delete

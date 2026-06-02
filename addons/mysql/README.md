@@ -579,9 +579,15 @@ kind: Cluster
 metadata:
   name: mysql-cluster-restore
   namespace: demo
-  annotations:
-    kubeblocks.io/restore-from-backup: '{"mysql":{"name":"mysql-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: mysql-cluster-backup
+      namespace: demo
+    parameters:
+      dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   componentSpecs:
     - name: mysql

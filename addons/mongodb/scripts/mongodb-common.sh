@@ -21,10 +21,19 @@ function wait_restore_completion_by_cluster_cr() {
             continue
         fi
 
-        restore_from_backup=$(echo "$cluster_json" | jq -r '.metadata.annotations["kubeblocks.io/restore-from-backup"] // empty')
-        if [ -z "$restore_from_backup" ]; then
-            # echo "INFO: No restore-from-backup annotation, do not need to restore."
+        if ! is_restore_cluster "$cluster_json"; then
+            # echo "INFO: No restore spec, do not need to restore."
             return 0
+        fi
+
+        restore_status=$(echo "$cluster_json" | jq -r '.status.conditions[]? | select(.type=="Restore") | .status' | head -n 1)
+        if [ "$restore_status" = "True" ]; then
+            echo "INFO: Restore completed."
+            return 0
+        elif [ "$restore_status" = "False" ]; then
+            restore_message=$(echo "$cluster_json" | jq -r '.status.conditions[]? | select(.type=="Restore") | .message // empty' | head -n 1)
+            echo "ERROR: Restore failed. $restore_message"
+            exit 1
         else
             if [[ "$state" != "1" ]]; then
                 echo "INFO: Waiting for restore completion..."
@@ -51,6 +60,13 @@ function kill_process() {
         kill -9 $process_pid
         echo "INFO: kill $process_name with pid $process_pid"
     fi
+}
+
+function is_restore_cluster() {
+    local cluster_json="$1"
+    local restore_source_name
+    restore_source_name=$(echo "$cluster_json" | jq -r '.spec.restore.source.name // empty')
+    [ -n "$restore_source_name" ]
 }
 
 function process_restore_signal() {
@@ -121,9 +137,8 @@ function boot_or_enter_restore() {
             continue
         fi
 
-        restore_from_backup=$(echo "$cluster_json" | jq -r '.metadata.annotations["kubeblocks.io/restore-from-backup"] // empty')
-        if [ -z "$restore_from_backup" ]; then
-            # echo "INFO: No restore-from-backup annotation, do not need to restore."
+        if ! is_restore_cluster "$cluster_json"; then
+            # echo "INFO: No restore spec, do not need to restore."
             exec $process
             exit 0
         else
