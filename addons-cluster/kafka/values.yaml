@@ -125,6 +125,14 @@ fixedPodIPEnabled: false
 
 # zookeeper config, valid only if mode is withZookeeper-10
 zookeeper:
+  mode: serviceRef
+  component:
+    serviceVersion: 
+    replicas: 3
+    storage:
+      storageClassName:
+      data: 8
+      log: 2
   serviceRef:
     namespace:
     cluster:

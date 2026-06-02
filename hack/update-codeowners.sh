@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FALLBACKS="@leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers"
+FALLBACKS="@leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers"
 
 function codeowners_content() {
   cat <<-EOF

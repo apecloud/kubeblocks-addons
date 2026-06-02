@@ -112,6 +112,7 @@ vanilla-postgresql-reload-tools-script
 reconfigure:
   exec:
     container: postgresql
+    targetPodSelector: All
     command:
       - /bin/sh
       - -c

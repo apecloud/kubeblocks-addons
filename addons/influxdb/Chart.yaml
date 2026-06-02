@@ -2,7 +2,7 @@ apiVersion: v2
 name: influxdb
 type: application
 
-version: 1.1.0-alpha.0
+version: 1.2.0-alpha.0
 
 appVersion: 2.7.11
 
@@ -16,6 +16,11 @@ keywords:
   - tick
   - database
   - timeseries
+
+maintainers:
+  - name: cjc7373
+    url: https://github.com/cjc7373
+
 
 annotations:
   category: Database

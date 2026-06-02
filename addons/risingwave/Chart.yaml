@@ -4,7 +4,7 @@ description: RisingWave is a distributed SQL streaming database that enables cos
 
 type: application
 
-version: 1.1.0-alpha.0
+version: 1.2.0-alpha.0
 
 appVersion: v1.0.0
 
@@ -17,8 +17,8 @@ keywords:
 - real-time
 
 maintainers:
-- name: RisingWave Labs
-  url: https://www.risingwave-labs.com
+  - name: RisingWave Labs
+    url: https://www.risingwave-labs.com
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"

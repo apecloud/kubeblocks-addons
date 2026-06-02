@@ -3,7 +3,7 @@ name: polardbx
 description: PolarDB-X is a cloud native distributed SQL Database designed for high concurrency, massive storage, complex querying scenarios.
 
 type: application
-version: 1.1.0-alpha.0
+version: 1.2.0-alpha.0
 appVersion: 2.3.0
 
 keywords:
@@ -15,8 +15,11 @@ keywords:
 home: https://polardbx.com/home
 
 maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/
   - name: Vettal Wu
     email: vettal.wd@alibaba-inc.com
+
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"

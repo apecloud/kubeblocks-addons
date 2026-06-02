@@ -116,6 +116,7 @@ reset_redis_sentinel_conf() {
     -e "/tls-ca-cert-file /d" \
     -e "/tls-port /d" \
     -e "/tls-auth-clients no/d" \
+    -e "/tls-replication /d" \
     -e "/aclfile \/data\/users.acl/d" $redis_sentinel_real_conf
     unset_xtrace_when_ut_mode_false
     if [ -n "$SENTINEL_PASSWORD" ]; then

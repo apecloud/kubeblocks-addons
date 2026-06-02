@@ -142,7 +142,8 @@ fi
 # Store the certificate in an ES index for Kibana to access
 # https://github.com/apecloud/kubeblocks/issues/8278
 index_name=kubeblocks_ca_crt
-ca_crt=$(cat /usr/share/elasticsearch/config/ca.crt | base64 -w 0)
+# ca in /usr/share/elasticsearch/config is in PEM format, but we want to store it in CRT format for better compatibility with KB, so we just change the file extension but keep the content unchanged
+ca_crt=$(cat /usr/share/elasticsearch/config/ca.pem | base64 -w 0)
 echo "fill elastic ca into index ${index_name}"
 #{
 #  "_index" : "kubeblocks_ca_crt",

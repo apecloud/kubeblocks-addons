@@ -217,5 +217,15 @@ spec:
             resources:
               requests:
                 storage: {{ print .Values.zookeeper.persistence.data.size "Gi" | quote }}
+        - name: snapshot-log
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            {{- if .Values.zookeeper.persistence.log.storageClassName }}
+            storageClassName: {{ .Values.zookeeper.persistence.log.storageClassName}}
+            {{- end }}
+            resources:
+              requests:
+                storage: {{ print .Values.zookeeper.persistence.log.size "Gi" | quote }}
       {{- end }}
   {{- end }}

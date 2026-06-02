@@ -187,6 +187,12 @@ get_current_comp_nodes_for_scale_out_replica() {
 
     local node_port
     node_port=$(echo "$node_announce_ip_port" | cut -d':' -f2)
+    if [ "$node_port" -eq 0 ]; then
+      tls_port=$(grep "$node_announce_ip_port" /data/nodes.conf | sed -n 's/.*tls-port=\([0-9]*\).*/\1/p')
+      if [ "$tls_port" != "0" ]; then
+          node_port="$tls_port"
+      fi
+    fi
 
     local node_bus_port
     node_bus_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $2}' | awk -F ',' '{print $1}')
@@ -608,6 +614,21 @@ build_redis_cluster_service_port() {
   fi
 }
 
+build_redis_tls_config() {
+  if [ "$TLS_ENABLED" == "true" ]; then
+    TLS_MOUNT_PATH=${TLS_MOUNT_PATH:-/etc/pki/tls}
+    {
+      echo "tls-cert-file $TLS_MOUNT_PATH/tls.crt"
+      echo "tls-key-file $TLS_MOUNT_PATH/tls.key"
+      echo "tls-ca-cert-file $TLS_MOUNT_PATH/ca.crt"
+      echo "tls-auth-clients no"
+      echo "tls-replication yes"
+      echo "tls-cluster yes"
+      echo "port 0"
+    } >> $redis_real_conf
+  fi
+}
+
 parse_redis_cluster_shard_announce_addr() {
   # The value format of CURRENT_SHARD_ADVERTISED_PORT and CURRENT_SHARD_ADVERTISED_BUS_PORT are "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   if is_empty "$CURRENT_SHARD_ADVERTISED_PORT" || is_empty "$CURRENT_SHARD_ADVERTISED_BUS_PORT"; then
@@ -688,8 +709,12 @@ start_redis_server() {
 
 # build redis cluster configuration redis.conf
 build_redis_conf() {
+  # Truncate before building to guarantee a clean slate on every container start.
+  # See: https://github.com/apecloud/kubeblocks-addons/issues/2686
+  > "$redis_real_conf"
   load_redis_template_conf
   build_redis_cluster_service_port
+  build_redis_tls_config
   build_announce_ip_and_port
   build_cluster_announce_info
   rebuild_redis_acl_file

@@ -153,6 +153,7 @@ falkordb-account.sh: |-
 reconfigure:
   exec:
     container: falkordb
+    targetPodSelector: All
     command:
       - /bin/sh
       - -c
