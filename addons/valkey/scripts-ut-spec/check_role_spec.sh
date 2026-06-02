@@ -496,9 +496,9 @@ Describe "Valkey Check-Role Bash Script Tests"
       # each sentinel's response by (uint64 epoch, hex runid, no
       # transient/failure flags), then requires a strict majority of the
       # CONFIGURED sentinel count to fall in a single (epoch, runid)
-      # group. Otherwise fall back to legacy single-token output so the
-      # controller stays on its EventTime path and the Pod annotation is
-      # not advanced to `engine:N` prematurely.
+      # group. Otherwise it either takes the bootstrap local-INFO path
+      # (successful sentinel query but no master record yet) or the
+      # quorum-invalid unsafe path.
 
       # Compute strict majority of total configured sentinel count, NOT
       # of reachable/valid count.
@@ -508,19 +508,28 @@ Describe "Valkey Check-Role Bash Script Tests"
       }
 
       # Encode a list of (epoch, runid, flags) triples (one per sentinel
-      # entry, "skip" for unreachable) and decide quorum: emit either
-      # `EMIT <epoch>:<runid>` or `LEGACY` plus a diagnostic suffix.
+      # entry, "skip" for unreachable/NOAUTH and "empty" for a
+      # successful bootstrap query with no master record) and decide
+      # quorum: emit either `EMIT <epoch>:<runid>`, `BOOTSTRAP`, or
+      # `LEGACY` plus a diagnostic suffix.
       quorum_decide() {
         local total="$1"; shift
         local min_valid
         min_valid=$(min_valid_for "${total}")
         local entry epoch runid flags
         local -a keys=()
+        local query_success_count=0
+        local master_config_count=0
         for entry in "$@"; do
-          # skip = unreachable sentinel
+          # skip = unreachable sentinel / NOAUTH / client failure
           if [ "${entry}" = "skip" ]; then
             continue
           fi
+          query_success_count=$((query_success_count + 1))
+          if [ "${entry}" = "empty" ]; then
+            continue
+          fi
+          master_config_count=$((master_config_count + 1))
           IFS='|' read -r epoch runid flags <<< "${entry}"
           case "${epoch}" in
             ''|*[!0-9]*) continue ;;
@@ -535,6 +544,10 @@ Describe "Valkey Check-Role Bash Script Tests"
         done
         local valid_count=${#keys[@]}
         if [ "${valid_count}" -lt "${min_valid}" ]; then
+          if [ "${query_success_count}" -gt 0 ] && [ "${master_config_count}" -eq 0 ]; then
+            printf "BOOTSTRAP"
+            return 0
+          fi
           printf "LEGACY"
           return 0
         fi
@@ -606,6 +619,24 @@ Describe "Valkey Check-Role Bash Script Tests"
         The stdout should eq "LEGACY"
       End
 
+      It "successful sentinel queries with no master records → bootstrap local-INFO fallback"
+        When call quorum_decide 3 "empty" "empty" "empty"
+        The status should be success
+        The stdout should eq "BOOTSTRAP"
+      End
+
+      It "all 3 sentinels unreachable or NOAUTH-failed → legacy unsafe path, not bootstrap"
+        When call quorum_decide 3 "skip" "skip" "skip"
+        The status should be success
+        The stdout should eq "LEGACY"
+      End
+
+      It "sentinels with master config but invalid records → legacy unsafe path, not bootstrap"
+        When call quorum_decide 3 "17||master" "17||master" "skip"
+        The status should be success
+        The stdout should eq "LEGACY"
+      End
+
       It "2 valid at SAME epoch but DIFFERENT runid → legacy (master identity split)"
         When call quorum_decide 3 "17|00d5beef|master" "17|deadbeef|master" "17||master"
         The status should be success
@@ -614,12 +645,6 @@ Describe "Valkey Check-Role Bash Script Tests"
 
       It "2 valid at DIFFERENT epochs → legacy (epoch split)"
         When call quorum_decide 3 "17|00d5beef|master" "16|3119abcd|master" "skip"
-        The status should be success
-        The stdout should eq "LEGACY"
-      End
-
-      It "all 3 sentinels unreachable → legacy"
-        When call quorum_decide 3 "skip" "skip" "skip"
         The status should be success
         The stdout should eq "LEGACY"
       End
@@ -772,20 +797,21 @@ Describe "Valkey Check-Role Bash Script Tests"
     # do NOT emit legacy `primary` from `local INFO=master`. Fail the
     # current probe sample instead. KB controller skips non-zero
     # roleProbe events, so the last trusted primary label is preserved
-    # while Sentinel converges, and a new pod with no trusted label is
-    # not promoted from a stale local INFO result. But local
-    # `role:slave` is safe and should emit `secondary` so a demoted pod
-    # does not keep a stale primary label. `no_sentinel_env` /
-    # `no_sentinel_configured` paths keep the original local-INFO
-    # mapping because they are the only authority for standalone
-    # topologies.
+    # while Sentinel converges. But local `role:slave` is safe and should
+    # emit `secondary` so a demoted pod does not keep a stale primary
+    # label. `no_sentinel_env` / `no_sentinel_configured` paths keep the
+    # original local-INFO mapping because they are the only authority for
+    # standalone topologies. Bootstrap gets one extra safe local-INFO path:
+    # if configured Sentinel queries succeed but return no master records,
+    # there is no old primary label to preserve yet and postProvision
+    # needs a primary execution pod to register the first master.
     Context "Sentinel configured + quorum invalid + INFO=master"
       check_role_script="../scripts/check-role.sh"
 
-      It "branches on quorum decision reason via a no_sentinel_env|no_sentinel_configured case"
-        When call grep -F 'no_sentinel_env|no_sentinel_configured' "${check_role_script}"
+      It "branches on quorum decision reason via a local-INFO fallback allowlist"
+        When call grep -F 'no_sentinel_env|no_sentinel_configured|bootstrap_no_sentinel_master' "${check_role_script}"
         The status should be success
-        The stdout should include 'no_sentinel_env|no_sentinel_configured'
+        The stdout should include 'bootstrap_no_sentinel_master'
       End
 
       It "documents the controller skip contract next to the fallback case"
@@ -810,6 +836,18 @@ Describe "Valkey Check-Role Bash Script Tests"
         When call grep -F '"role:slave") printf %s "secondary" ;;' "${check_role_script}"
         The status should be success
         The stdout should include 'secondary'
+      End
+
+      It "detects bootstrap only after at least one successful sentinel query"
+        When call grep -F '[ "${sentinel_query_success_count}" -gt 0 ] && [ "${sentinel_master_config_count}" -eq 0 ]' "${check_role_script}"
+        The status should be success
+        The stdout should include 'sentinel_query_success_count'
+      End
+
+      It "classifies successful no-master sentinel responses as bootstrap_no_sentinel_master"
+        When call grep -F '__quorum_decision_reason="bootstrap_no_sentinel_master"' "${check_role_script}"
+        The status should be success
+        The stdout should include 'bootstrap_no_sentinel_master'
       End
     End
 

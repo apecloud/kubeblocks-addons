@@ -35,6 +35,11 @@
 #       a non-zero roleProbe event as "skip this sample", keeping the last
 #       trusted role label instead of accepting a possibly stale master
 #       self-report.
+#     - Bootstrap exception: before postProvision registers the initial
+#       master, reachable Sentinels can legitimately return no master
+#       records. That is not a steady-state quorum failure. In that
+#       specific case, fall back to local INFO so the first local master
+#       can receive `primary` and postProvision can run.
 #
 #   Using valkey-cli (not redis-cli) because Valkey ships its own CLI.
 #   The -h 127.0.0.1 ensures we hit this pod's own server.
@@ -163,6 +168,12 @@ done <<<"${server_info}"
 #     local `role:slave` emits `secondary`. The controller skips failed
 #     roleProbe samples and keeps the previous Pod role label, so once
 #     sentinels converge the next successful emission can take effect.
+#   - Bootstrap-only exception: if at least one configured Sentinel
+#     answers successfully but NONE of the successful answers contains a
+#     master record yet, treat this as `bootstrap_no_sentinel_master` and
+#     use local INFO. This only covers first-start registration. Failed
+#     Sentinel queries, NOAUTH, malformed master records, and split views
+#     do not enter this exception.
 #   - When all valid entries agree on a single `(epoch, runid)` group AND
 #     there are at least `min_valid` of them, that group is the quorum
 #     authority. The version token is the group's epoch; the role token
@@ -233,8 +244,12 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
   if [ "${configured_count}" -ge 1 ]; then
     min_valid=$((configured_count / 2 + 1))
     quorum_keys=()
+    sentinel_query_success_count=0
+    sentinel_master_config_count=0
     for s in "${sentinel_fqdns[@]}"; do
       sentinel_out=$(valkey-cli --no-auth-warning -h "${s}" -p "${sentinel_port}" ${sentinel_auth_args} ${sentinel_tls_args} sentinel masters 2>/dev/null) || continue
+      sentinel_query_success_count=$((sentinel_query_success_count + 1))
+      sentinel_has_master_config=0
       ce_marker=""
       runid_marker=""
       flags_marker=""
@@ -254,13 +269,17 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
           flags_marker=""
         else
           case "${sline}" in
-            "config-epoch") ce_marker="1" ;;
-            "runid")        runid_marker="1" ;;
-            "flags")        flags_marker="1" ;;
+            "name")         sentinel_has_master_config=1 ;;
+            "config-epoch") sentinel_has_master_config=1; ce_marker="1" ;;
+            "runid")        sentinel_has_master_config=1; runid_marker="1" ;;
+            "flags")        sentinel_has_master_config=1; flags_marker="1" ;;
           esac
         fi
         [ -n "${epoch}" ] && [ -n "${runid}" ] && [ -n "${flags}" ] && break
       done <<<"${sentinel_out}"
+      if [ "${sentinel_has_master_config}" -eq 1 ] || [ -n "${epoch}" ] || [ -n "${runid}" ] || [ -n "${flags}" ]; then
+        sentinel_master_config_count=$((sentinel_master_config_count + 1))
+      fi
       __drop_reason=""
       # Validate: epoch must be uint64.
       case "${epoch}" in
@@ -293,7 +312,11 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
     done
     valid_count=${#quorum_keys[@]}
     if [ "${valid_count}" -lt "${min_valid}" ]; then
-      __quorum_decision_reason="insufficient_valid"
+      if [ "${sentinel_query_success_count}" -gt 0 ] && [ "${sentinel_master_config_count}" -eq 0 ]; then
+        __quorum_decision_reason="bootstrap_no_sentinel_master"
+      else
+        __quorum_decision_reason="insufficient_valid"
+      fi
     else
       first_key="${quorum_keys[0]}"
       all_agree=1
@@ -383,14 +406,16 @@ if [ -n "${authoritative_role}" ]; then
 else
   # Legacy single-token fallback. The mode of fallback matters: when
   # Sentinel is *not configured at all* the local INFO is the only
-  # authority and `role:master` legitimately means `primary`. But when
-  # Sentinel *is* configured and the quorum is merely transiently
-  # invalid (split-view, insufficient_valid, flags transient, missing
-  # auth), a sibling pod may already hold an engine-versioned `primary`
-  # annotation on the controller. Emitting plain legacy `primary` from
-  # this Pod's `role:master` in that window lets the controller's
-  # cross-mode `removeExclusiveRoleLabels` strip the sibling's
-  # engine-versioned label, after which the controller's strict
+  # authority and `role:master` legitimately means `primary`. The same is
+  # true during bootstrap when configured Sentinels answer but none has a
+  # master record yet: postProvision cannot run until one pod is labelled
+  # primary. But when Sentinel *is* configured and the quorum is merely
+  # transiently invalid (split-view, insufficient_valid, flags transient,
+  # missing auth), a sibling pod may already hold an engine-versioned
+  # `primary` annotation on the controller. Emitting plain legacy
+  # `primary` from this Pod's `role:master` in that window lets the
+  # controller's cross-mode `removeExclusiveRoleLabels` strip the
+  # sibling's engine-versioned label, after which the controller's strict
   # `engine:>` gate refuses to repair the missing label even when this
   # Pod resumes emitting versioned output (the same-version events are
   # rejected as staleRoleEventVersion).
@@ -399,15 +424,15 @@ else
   # invalid, local `role:master` fails this probe sample instead of
   # emitting any role. KB controller treats a non-zero roleProbe event as
   # "skip this sample", so an existing trusted primary label is preserved
-  # while Sentinel recovers, and a new pod with no trusted label is not
-  # promoted from a possibly stale local INFO result. Local `role:slave`
-  # still emits `secondary`: a demotion is safe and must not leave a stale
-  # primary label behind. When Sentinel is not configured / not
-  # envvar-provided (`no_sentinel_env` / `no_sentinel_configured`), keep
-  # the original local-INFO mapping because that is the only authority for
-  # standalone / no-sentinel topologies.
+  # while Sentinel recovers. Local `role:slave` still emits `secondary`:
+  # a demotion is safe and must not leave a stale primary label behind.
+  # When Sentinel is not configured / not envvar-provided
+  # (`no_sentinel_env` / `no_sentinel_configured`), or configured
+  # Sentinels have not registered their first master yet
+  # (`bootstrap_no_sentinel_master`), keep the original local-INFO mapping
+  # because that is the only available authority for the startup path.
   case "${__quorum_decision_reason}" in
-    no_sentinel_env|no_sentinel_configured)
+    no_sentinel_env|no_sentinel_configured|bootstrap_no_sentinel_master)
       case "${role_line}" in
         "role:master") printf %s "primary"   ;;
         "role:slave")  printf %s "secondary" ;;
