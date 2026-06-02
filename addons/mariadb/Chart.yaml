@@ -1986,6 +1986,14 @@ type: application
 # causes unnecessary Serial pod restarts on a 3-node cluster.
 # Test galera CM3 reconfigures wsrep_slave_threads from 4 to 8.
 #
+# alpha.123 (Helen 2026-06-02 — galera reduce polling log noise):
+# Address Jade's non-blocking review feedback on PR #2734: _any_peer_alive
+# logs per-peer status on every call, producing ~80-120 lines during the
+# _wait_for_primary_peer polling loop (40 iterations × 2 peers). Add a
+# quiet parameter to suppress non-Primary peer status lines during polling.
+# Success lines ("Peer X is alive with Primary") always log. First call
+# and should_bootstrap calls remain verbose for diagnostic value.
+#
 # alpha.122 (Helen 2026-06-02 — galera self-healing non-Primary watcher):
 # Fix TOCTOU race in parallel restart. Alpha.121 added _wait_for_primary_peer
 # so pod-1/pod-2 wait for pod-0 to bootstrap. But the InstanceSet controller
@@ -2141,7 +2149,7 @@ type: application
 # reconfigure executor. Without this, any galera Reconfiguring
 # OpsRequest fails with ERROR 1045 (Access denied for
 # kb_internal_root). CmpD spec change requires version bump.
-version: 1.1.1-alpha.122
+version: 1.1.1-alpha.123
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
