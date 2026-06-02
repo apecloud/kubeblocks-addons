@@ -15,10 +15,19 @@ build_cluster_address() {
   echo "gcomm://${addr}"
 }
 
-# Check whether any peer node already has MariaDB listening on port 3306.
-# Used to distinguish "full cluster restart" (no peers alive — pod-0 should
-# bootstrap) from "single pod restart" (peers alive — must join, not bootstrap,
-# to avoid split-brain).
+# Check whether any peer node has a functioning Galera Primary component.
+# Used to distinguish "full cluster restart" (no peers with Primary — pod-0
+# should bootstrap) from "single pod restart" (peers with Primary — must
+# join, not bootstrap, to avoid split-brain).
+#
+# A simple TCP probe on port 3306 is insufficient: MariaDB in join mode
+# opens port 3306 while stuck in non-Primary/Initialized state. If all
+# pods restart simultaneously (podManagementPolicy=Parallel), pod-1/pod-2
+# start in join mode with 3306 open, and a TCP-only check would make
+# pod-0 also join → all three deadlocked in non-Primary.
+#
+# Instead, query wsrep_cluster_status on each reachable peer. Only
+# "Primary" means the peer belongs to a functioning cluster.
 _any_peer_alive() {
   local fqdns="${PEER_FQDNS:-}"
   [ -z "$fqdns" ] && return 1
@@ -26,8 +35,17 @@ _any_peer_alive() {
   for peer in $(echo "$fqdns" | tr ',' ' '); do
     echo "$peer" | grep -q "${POD_NAME}" && continue
     if timeout 3 bash -c "echo > /dev/tcp/${peer}/3306" 2>/dev/null; then
-      echo "Peer ${peer} is alive on port 3306."
-      return 0
+      local cluster_status
+      cluster_status=$(timeout 5 mariadb \
+        -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
+        -h "${peer}" -N -s \
+        -e "SHOW STATUS LIKE 'wsrep_cluster_status';" 2>/dev/null \
+        | awk '{print $2}')
+      if [ "${cluster_status}" = "Primary" ]; then
+        echo "Peer ${peer} is alive with wsrep_cluster_status=Primary."
+        return 0
+      fi
+      echo "Peer ${peer} port 3306 open but wsrep_cluster_status=${cluster_status:-unreachable} (not Primary, skipping)."
     fi
   done
   return 1
