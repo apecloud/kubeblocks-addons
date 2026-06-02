@@ -29,8 +29,12 @@
 #     - When Sentinel is configured but quorum is transiently invalid
 #       (insufficient valid sentinels / split view / missing password
 #       causing NOAUTH / non-numeric epoch / empty or malformed runid):
-#       emit `secondary` regardless of local INFO to prevent a legacy
-#       `primary` event from stripping an engine-versioned peer label.
+#       only trust a local `role:slave` demotion. Local `role:master`
+#       cannot prove primary without Sentinel majority, so fail the
+#       current probe without emitting a role token. KubeBlocks consumes
+#       a non-zero roleProbe event as "skip this sample", keeping the last
+#       trusted role label instead of accepting a possibly stale master
+#       self-report.
 #
 #   Using valkey-cli (not redis-cli) because Valkey ships its own CLI.
 #   The -h 127.0.0.1 ensures we hit this pod's own server.
@@ -154,10 +158,11 @@ done <<<"${server_info}"
 #       - `flags` contains any transient/failure marker
 #         (`failover_in_progress`, `force_failover`, `s_down`, `o_down`).
 #   - If fewer than `min_valid` valid entries remain, OR the valid entries
-#     fall into more than one `(epoch, runid)` group, fall back to legacy
-#     single-token output. The controller then uses its existing EventTime
-#     gate and the Pod annotation is NOT advanced to `engine:N`, so once
-#     sentinels converge the next emission can take effect.
+#     fall into more than one `(epoch, runid)` group, local `role:master`
+#     fails the current probe sample without emitting a role token, while
+#     local `role:slave` emits `secondary`. The controller skips failed
+#     roleProbe samples and keeps the previous Pod role label, so once
+#     sentinels converge the next successful emission can take effect.
 #   - When all valid entries agree on a single `(epoch, runid)` group AND
 #     there are at least `min_valid` of them, that group is the quorum
 #     authority. The version token is the group's epoch; the role token
@@ -211,8 +216,8 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
   # Auth flag is conditional: only add -a when the password is set.
   # When password is missing on a sentinel-configured topology, the
   # cli call will fail (NOAUTH) and the per-sentinel drop will push
-  # the decision to `insufficient_valid`, which the fallback branch
-  # now correctly maps to `secondary`.
+  # the decision to `insufficient_valid`, which the fallback branch now
+  # correctly maps to a failed probe sample.
   sentinel_auth_args=""
   if [ -n "${SENTINEL_PASSWORD:-}" ]; then
     sentinel_auth_args="-a ${SENTINEL_PASSWORD}"
@@ -391,13 +396,16 @@ else
   # rejected as staleRoleEventVersion).
   #
   # Safe degrade: when Sentinel is configured but quorum is transiently
-  # invalid, emit `secondary` regardless of local INFO. The primary
-  # Service may have no endpoint briefly while Sentinel converges, but
-  # no engine-versioned peer can be exclusive-cleaned. When Sentinel is
-  # not configured / not envvar-provided (`no_sentinel_env` /
-  # `no_sentinel_configured`), keep the original local-INFO mapping
-  # because that is the only authority for standalone / no-sentinel
-  # topologies.
+  # invalid, local `role:master` fails this probe sample instead of
+  # emitting any role. KB controller treats a non-zero roleProbe event as
+  # "skip this sample", so an existing trusted primary label is preserved
+  # while Sentinel recovers, and a new pod with no trusted label is not
+  # promoted from a possibly stale local INFO result. Local `role:slave`
+  # still emits `secondary`: a demotion is safe and must not leave a stale
+  # primary label behind. When Sentinel is not configured / not
+  # envvar-provided (`no_sentinel_env` / `no_sentinel_configured`), keep
+  # the original local-INFO mapping because that is the only authority for
+  # standalone / no-sentinel topologies.
   case "${__quorum_decision_reason}" in
     no_sentinel_env|no_sentinel_configured)
       case "${role_line}" in
@@ -410,9 +418,16 @@ else
       esac
       ;;
     *)
-      # insufficient_valid / split_view / future quorum-invalid reasons
+      # insufficient_valid / split_view / future quorum-invalid reasons.
       case "${role_line}" in
-        "role:master"|"role:slave") printf %s "secondary" ;;
+        "role:master")
+          # Do not emit a role token here; stdout must stay empty so the
+          # controller cannot accept a stale local master self-report as
+          # primary.
+          echo "sentinel quorum invalid (${__quorum_decision_reason}); skipping master role update" >&2
+          exit 1
+          ;;
+        "role:slave") printf %s "secondary" ;;
         *)
           echo "unknown role: '${role_line}'" >&2
           exit 1
