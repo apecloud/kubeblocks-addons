@@ -99,6 +99,8 @@ spec:
             mountPath: /kb-config
           - name: oceanbase-sysvars
             mountPath: /opt/oceanbase/sysvars
+          - name: kb-tools
+            mountPath: /kb_tools
         workingDir: /home/admin/workdir
         env:
           - name: LD_LIBRARY_PATH
