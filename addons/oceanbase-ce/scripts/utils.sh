@@ -111,7 +111,7 @@ function get_pod_ip {
     replica_hostname=${pod_name}.${SUBDOMAIN}
   fi
   while true; do
-    replica_ip=$(nslookup $replica_hostname | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
+    replica_ip=$(getent hosts $replica_hostname 2>/dev/null | awk '{print $1}')
     if [ $? -ne 0 ]; then
       sleep 5
     else
