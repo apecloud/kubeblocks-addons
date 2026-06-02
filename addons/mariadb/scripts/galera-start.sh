@@ -15,12 +15,46 @@ build_cluster_address() {
   echo "gcomm://${addr}"
 }
 
+# Check whether any peer node already has MariaDB listening on port 3306.
+# Used to distinguish "full cluster restart" (no peers alive — pod-0 should
+# bootstrap) from "single pod restart" (peers alive — must join, not bootstrap,
+# to avoid split-brain).
+_any_peer_alive() {
+  local fqdns="${PEER_FQDNS:-}"
+  [ -z "$fqdns" ] && return 1
+  local peer
+  for peer in $(echo "$fqdns" | tr ',' ' '); do
+    echo "$peer" | grep -q "${POD_NAME}" && continue
+    if timeout 3 bash -c "echo > /dev/tcp/${peer}/3306" 2>/dev/null; then
+      echo "Peer ${peer} is alive on port 3306."
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Run wsrep-recover to extract the last committed position from InnoDB,
+# then mark grastate.dat safe_to_bootstrap=1 so MariaDB will accept
+# --wsrep-new-cluster on the next exec.
+_wsrep_recover_and_bootstrap() {
+  local recover_output
+  recover_output=$(mariadbd --wsrep-recover 2>&1) || true
+  local recovered_seqno
+  recovered_seqno=$(echo "$recover_output" | grep 'Recovered position' | sed 's/.*://' | tail -1)
+  echo "wsrep-recover: seqno=${recovered_seqno:-unknown}"
+  sed -i 's/^safe_to_bootstrap: 0/safe_to_bootstrap: 1/' "${DATA_DIR}/grastate.dat"
+  echo "grastate.dat updated: safe_to_bootstrap=1 for crash recovery bootstrap."
+}
+
 # Determine whether this node should bootstrap.
 #
-# Bootstrap if EITHER:
+# Bootstrap if ANY of:
 #   (a) Fresh cluster: this is pod-0 and there is no initialized data directory yet.
-#   (b) Restart after full cluster shutdown: grastate.dat has safe_to_bootstrap=1,
+#   (b) Restart after clean shutdown: grastate.dat has safe_to_bootstrap=1,
 #       meaning this is the last node that shut down cleanly.
+#   (c) Full cluster crash recovery: pod-0, grastate.dat has safe_to_bootstrap=0,
+#       AND no peer is alive (distinguishes full-cluster-restart from single-pod-restart).
+#       Runs wsrep-recover to validate InnoDB consistency, then marks safe_to_bootstrap=1.
 should_bootstrap() {
   local pod_index="${POD_NAME##*-}"
 
@@ -30,7 +64,18 @@ should_bootstrap() {
       echo "grastate.dat: safe_to_bootstrap=1, this node will bootstrap the cluster."
       return 0
     fi
-    # Another node has safe_to_bootstrap=1 — join, don't bootstrap
+    # (c) safe_to_bootstrap=0: only pod-0 may attempt crash recovery bootstrap.
+    # This handles the case where podManagementPolicy=Parallel causes all nodes
+    # to shut down simultaneously, leaving every node with safe_to_bootstrap=0.
+    if [ "$pod_index" = "0" ]; then
+      if _any_peer_alive; then
+        echo "Peer node is already running. Pod-0 will join existing cluster."
+        return 1
+      fi
+      echo "No peers alive. Pod-0 attempting crash recovery bootstrap..."
+      _wsrep_recover_and_bootstrap
+      return 0
+    fi
     return 1
   fi
 
