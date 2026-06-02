@@ -59,7 +59,10 @@ Common annotations
 {{- end }}
 
 {{/*
-API version annotation
+API version annotation.
+skip-immutable-check: KB webhook rejects CmpD upgrades that add or change lifecycleActions,
+runtime, and similar fields classified as immutable. This annotation bypasses that check so
+addon chart upgrades can land new fields (e.g. memberLeave for scale-in blocking).
 */}}
 {{- define "kafka.apiVersion" -}}
 kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
