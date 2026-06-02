@@ -538,9 +538,15 @@ kind: Cluster
 metadata:
   name: oceanbase-cluster-restore
   namespace: demo
-  annotations:
-    kubeblocks.io/restore-from-backup: '{"oceanbase":{"name":"ob-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: ob-cluster-backup
+      namespace: demo
+    parameters:
+      dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   clusterDef: oceanbase-ce
   topology: distribution
