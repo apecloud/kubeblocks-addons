@@ -48,35 +48,43 @@ _wsrep_recover_and_bootstrap() {
 
 # Determine whether this node should bootstrap.
 #
-# Bootstrap if ANY of:
-#   (a) Fresh cluster: this is pod-0 and there is no initialized data directory yet.
-#   (b) Restart after clean shutdown: grastate.dat has safe_to_bootstrap=1,
-#       meaning this is the last node that shut down cleanly.
-#   (c) Full cluster crash recovery: pod-0, grastate.dat has safe_to_bootstrap=0,
-#       AND no peer is alive (distinguishes full-cluster-restart from single-pod-restart).
-#       Runs wsrep-recover to validate InnoDB consistency, then marks safe_to_bootstrap=1.
+# ONLY pod-0 may bootstrap — this prevents split-brain when parallel shutdown
+# (podManagementPolicy=Parallel) causes multiple nodes to have safe_to_bootstrap=1.
+# Galera uses synchronous replication, so all nodes have identical committed data;
+# pod-0 is always a safe bootstrap candidate.
+#
+# Bootstrap if ALL of: this is pod-0, AND no peer is already running, AND one of:
+#   (a) Fresh cluster: no initialized data directory yet.
+#   (b) Restart after clean shutdown: grastate.dat has safe_to_bootstrap=1.
+#   (c) Full cluster crash recovery: grastate.dat has safe_to_bootstrap=0.
+#       Runs wsrep-recover to validate InnoDB consistency before bootstrap.
 should_bootstrap() {
   local pod_index="${POD_NAME##*-}"
 
-  # (b) grastate.dat says we are safe to bootstrap (after full cluster shutdown)
   if [ -f "${DATA_DIR}/grastate.dat" ]; then
-    if grep -q "^safe_to_bootstrap: 1" "${DATA_DIR}/grastate.dat"; then
-      echo "grastate.dat: safe_to_bootstrap=1, this node will bootstrap the cluster."
-      return 0
-    fi
-    # (c) safe_to_bootstrap=0: only pod-0 may attempt crash recovery bootstrap.
-    # This handles the case where podManagementPolicy=Parallel causes all nodes
-    # to shut down simultaneously, leaving every node with safe_to_bootstrap=0.
-    if [ "$pod_index" = "0" ]; then
-      if _any_peer_alive; then
-        echo "Peer node is already running. Pod-0 will join existing cluster."
-        return 1
+    # Non-pod-0 never bootstraps — always join.
+    if [ "$pod_index" != "0" ]; then
+      if grep -q "^safe_to_bootstrap: 1" "${DATA_DIR}/grastate.dat"; then
+        echo "Non-pod-0: safe_to_bootstrap=1 ignored (single-owner bootstrap). Will join."
       fi
-      echo "No peers alive. Pod-0 attempting crash recovery bootstrap..."
-      _wsrep_recover_and_bootstrap
-      return 0
+      return 1
     fi
-    return 1
+
+    # Pod-0: if any peer is already running, join instead of bootstrapping.
+    # This handles single-pod restart and rolling restart correctly.
+    if _any_peer_alive; then
+      echo "Peers alive. Pod-0 will join existing cluster."
+      return 1
+    fi
+
+    # Pod-0, no peers alive: this is a full cluster restart.
+    if grep -q "^safe_to_bootstrap: 1" "${DATA_DIR}/grastate.dat"; then
+      echo "grastate.dat: safe_to_bootstrap=1, pod-0 will bootstrap."
+    else
+      echo "No peers alive. Pod-0 crash recovery bootstrap..."
+      _wsrep_recover_and_bootstrap
+    fi
+    return 0
   fi
 
   # (a) Fresh cluster: no data directory, must be pod-0
