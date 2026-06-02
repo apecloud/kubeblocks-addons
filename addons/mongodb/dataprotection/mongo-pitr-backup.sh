@@ -12,6 +12,9 @@ export WALG_DATASAFED_CONFIG=""
 export WALG_COMPRESSION_METHOD=zstd
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
+# wal-g oplog-push expects /oplog_005 to exist in the storage backend;
+# on first run no prior backup has created it yet.
+datasafed mkdir /oplog_005 2>/dev/null || true
 # retention time
 export OPLOG_PITR_DISCOVERY_INTERVAL=168h
 retryTimes=0
