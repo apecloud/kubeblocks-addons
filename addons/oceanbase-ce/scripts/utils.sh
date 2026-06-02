@@ -9,11 +9,9 @@ if [ -z "$OB_OBSERVER_BIN" ]; then
     export LD_LIBRARY_PATH="/root/demo/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
   fi
 fi
-if [ -z "$OB_OBSERVER_BIN" ] || [ ! -x "$OB_OBSERVER_BIN" ]; then
-  echo "FATAL: observer binary not found" >&2
-  exit 1
+if [ -n "$OB_OBSERVER_BIN" ]; then
+  echo "OB_OBSERVER_BIN: $OB_OBSERVER_BIN"
 fi
-echo "OB_OBSERVER_BIN: $OB_OBSERVER_BIN"
 
 function prepare_dirs {
   # log dir
@@ -137,6 +135,9 @@ function get_pod_ip {
 }
 
 function start_observer {
+  if [ -z "$OB_OBSERVER_BIN" ] || [ ! -x "$OB_OBSERVER_BIN" ]; then
+    echo "FATAL: observer binary not found" >&2; exit 1
+  fi
   echo "Start observer process as normal server..."
   # if debug mode is enabled, set log level to debug
   local loglevel="INFO"
@@ -167,6 +168,9 @@ function start_observer {
 }
 
 function start_observer_with_exsting_configs {
+  if [ -z "$OB_OBSERVER_BIN" ] || [ ! -x "$OB_OBSERVER_BIN" ]; then
+    echo "FATAL: observer binary not found" >&2; exit 1
+  fi
   echo "Start observer with existing configs"
   # Start observer w/o any flags
   $OB_OBSERVER_BIN
