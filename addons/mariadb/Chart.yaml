@@ -1985,7 +1985,17 @@ type: application
 # for any Galera reconfigure touching wsrep_slave_threads, which
 # causes unnecessary Serial pod restarts on a 3-node cluster.
 # Test galera CM3 reconfigures wsrep_slave_threads from 4 to 8.
-version: 1.1.1-alpha.116
+#
+# alpha.117 (Helen 2026-06-02 — galera reconfigure auth fix):
+# set MARIADB_INTERNAL_ROOT_USER=root in cmpd-galera.yaml vars.
+# The shared reconfigure helper defaults to kb_internal_root, but
+# galera CmpD does not provision this account (no initdb block like
+# standalone/replication/semisync). Galera root retains full
+# privileges (no alpha.64 SUPER stripping), so root is the correct
+# reconfigure executor. Without this, any galera Reconfiguring
+# OpsRequest fails with ERROR 1045 (Access denied for
+# kb_internal_root). CmpD spec change requires version bump.
+version: 1.1.1-alpha.117
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add

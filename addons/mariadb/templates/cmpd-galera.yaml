@@ -79,6 +79,8 @@ spec:
         componentVarRef:
           optional: false
           shortName: Required
+    - name: MARIADB_INTERNAL_ROOT_USER
+      value: root
     - name: PEER_FQDNS
       valueFrom:
         componentVarRef:
