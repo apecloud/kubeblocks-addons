@@ -231,6 +231,61 @@ Describe "Valkey Switchover Bash Script Tests"
     End
   End
 
+  Describe "diagnostic logging helpers"
+    Context "when replication info is available"
+      It "summarizes the fields needed to diagnose Sentinel promotion timeout"
+        valkey-cli() {
+          cat <<'VALKEYINFO'
+# Replication
+role:slave
+master_host:valkey-2.headless.default.svc.cluster.local
+master_link_status:up
+master_sync_in_progress:0
+slave_read_repl_offset:150134
+slave_repl_offset:150134
+VALKEYINFO
+        }
+        When call replication_summary_for "valkey-0.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include "role=slave"
+        The stdout should include "master_link_status=up"
+        The stdout should include "master_sync_in_progress=0"
+        The stdout should include "slave_repl_offset=150134"
+      End
+    End
+
+    Context "when Sentinel state is requested"
+      setup() {
+        export VALKEY_COMPONENT_NAME="mycluster-valkey"
+        export SENTINEL_POD_FQDN_LIST="sentinel-0.headless.default.svc.cluster.local"
+        export SENTINEL_SERVICE_PORT="26379"
+      }
+      Before "setup"
+
+      teardown() {
+        unset VALKEY_COMPONENT_NAME
+        unset SENTINEL_POD_FQDN_LIST
+        unset SENTINEL_SERVICE_PORT
+      }
+      After "teardown"
+
+      It "prints master, replica, and quorum diagnostics"
+        valkey-cli() {
+          case "$*" in
+            *"SENTINEL MASTER"*) echo "name"; echo "mycluster-valkey" ;;
+            *"SENTINEL REPLICAS"*) echo "name"; echo "valkey-0" ;;
+            *"SENTINEL CKQUORUM"*) echo "OK 3 usable Sentinels. Quorum and failover authorization can be reached" ;;
+          esac
+        }
+        When call log_sentinel_state "unit"
+        The status should be success
+        The stderr should include "SENTINEL MASTER mycluster-valkey"
+        The stderr should include "SENTINEL REPLICAS mycluster-valkey"
+        The stderr should include "SENTINEL CKQUORUM mycluster-valkey"
+      End
+    End
+  End
+
   Describe "promote_replica()"
     Context "when REPLICAOF NO ONE succeeds"
       It "returns success"

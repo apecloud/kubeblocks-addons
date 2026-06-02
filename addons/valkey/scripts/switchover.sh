@@ -54,6 +54,72 @@ get_role() {
   ${cli} info replication 2>/dev/null | grep "^role:" | tr -d '\r\n' | cut -d: -f2
 }
 
+log_multiline() {
+  local prefix="${1}" text="${2}"
+  if is_empty "${text}"; then
+    echo "${prefix}<empty>" >&2
+    return 0
+  fi
+  while IFS= read -r line; do
+    echo "${prefix}${line}" >&2
+  done <<< "${text}"
+}
+
+replication_summary_for() {
+  local fqdn="${1}"
+  local cli output exit_code=0
+  cli=$(build_cli "${fqdn}")
+  output=$(${cli} info replication 2>&1) || exit_code=$?
+  output="${output//$'\r'/}"
+  if [ "${exit_code}" -ne 0 ]; then
+    echo "unreachable exit=${exit_code} output=${output}"
+    return 0
+  fi
+
+  echo "${output}" | awk -F: '
+    $1 == "role" { role = $2 }
+    $1 == "master_host" { master_host = $2 }
+    $1 == "master_link_status" { master_link_status = $2 }
+    $1 == "master_sync_in_progress" { master_sync = $2 }
+    $1 == "slave_read_repl_offset" { slave_read_offset = $2 }
+    $1 == "slave_repl_offset" { slave_offset = $2 }
+    $1 == "master_repl_offset" { master_offset = $2 }
+    $1 == "connected_slaves" { connected_slaves = $2 }
+    /^slave[0-9]+:/ {
+      if (slaves != "") { slaves = slaves ";" }
+      slaves = slaves $0
+    }
+    END {
+      printf "role=%s", role
+      if (master_host != "") { printf " master_host=%s", master_host }
+      if (master_link_status != "") { printf " master_link_status=%s", master_link_status }
+      if (master_sync != "") { printf " master_sync_in_progress=%s", master_sync }
+      if (slave_read_offset != "") { printf " slave_read_repl_offset=%s", slave_read_offset }
+      if (slave_offset != "") { printf " slave_repl_offset=%s", slave_offset }
+      if (master_offset != "") { printf " master_repl_offset=%s", master_offset }
+      if (connected_slaves != "") { printf " connected_slaves=%s", connected_slaves }
+      if (slaves != "") { printf " slaves=[%s]", slaves }
+      printf "\n"
+    }
+  '
+}
+
+log_replication_summaries() {
+  local label="${1}" expected_fqdn="${2}"
+  local fqdn summary
+  IFS=',' read -ra pod_fqdns <<< "$(pod_fqdns_with_candidate "${expected_fqdn}")"
+  echo "DEBUG: ${label}: replication summaries" >&2
+  for fqdn in "${pod_fqdns[@]}"; do
+    is_empty "${fqdn}" && continue
+    summary=$(replication_summary_for "${fqdn}") || true
+    echo "DEBUG: ${label}: ${fqdn}: ${summary}" >&2
+  done
+}
+
+runtime_diagnostics_enabled() {
+  [ "${ut_mode:-false}" = "false" ]
+}
+
 promote_replica() {
   local target_fqdn="${1}"
   echo "Promoting ${target_fqdn} to primary..."
@@ -162,6 +228,36 @@ sentinel_cli_for() {
   echo "${cmd}"
 }
 
+log_sentinel_command_output() {
+  local label="${1}" s_fqdn="${2}" command_label="${3}" output="${4}" exit_code="${5}"
+  output="${output//$'\r'/}"
+  echo "DEBUG: ${label}: ${s_fqdn}: ${command_label} exit=${exit_code}" >&2
+  log_multiline "DEBUG: ${label}: ${s_fqdn}:   " "${output}"
+}
+
+log_sentinel_state() {
+  local label="${1}"
+  local master_name="${VALKEY_COMPONENT_NAME}"
+  IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
+  for s_fqdn in "${sentinel_fqdns[@]}"; do
+    is_empty "${s_fqdn}" && continue
+    local cli output exit_code
+    cli=$(sentinel_cli_for "${s_fqdn}")
+
+    exit_code=0
+    output=$(${cli} SENTINEL MASTER "${master_name}" 2>&1) || exit_code=$?
+    log_sentinel_command_output "${label}" "${s_fqdn}" "SENTINEL MASTER ${master_name}" "${output}" "${exit_code}"
+
+    exit_code=0
+    output=$(${cli} SENTINEL REPLICAS "${master_name}" 2>&1) || exit_code=$?
+    log_sentinel_command_output "${label}" "${s_fqdn}" "SENTINEL REPLICAS ${master_name}" "${output}" "${exit_code}"
+
+    exit_code=0
+    output=$(${cli} SENTINEL CKQUORUM "${master_name}" 2>&1) || exit_code=$?
+    log_sentinel_command_output "${label}" "${s_fqdn}" "SENTINEL CKQUORUM ${master_name}" "${output}" "${exit_code}"
+  done
+}
+
 _do_set_replica_priority() {
   local fqdn="${1}" prio="${2}"
   local cli output
@@ -197,6 +293,9 @@ execute_sentinel_failover() {
     output="${output//$'\r'/}"
     if [ "${output}" = "OK" ]; then
       echo "Sentinel FAILOVER accepted by ${s_fqdn}"
+      if runtime_diagnostics_enabled; then
+        log_sentinel_state "after-sentinel-failover-accepted"
+      fi
       return 0
     fi
   done
@@ -263,6 +362,9 @@ wait_for_new_master() {
   local max_wait=300 elapsed=0
 
   while [ "${elapsed}" -lt "${max_wait}" ]; do
+    if runtime_diagnostics_enabled && { [ "${elapsed}" -eq 0 ] || [ $((elapsed % 30)) -eq 0 ]; }; then
+      log_replication_summaries "wait_for_new_master elapsed=${elapsed}s expected=${expected_fqdn:-any}" "${expected_fqdn}"
+    fi
     IFS=',' read -ra pod_fqdns <<< "$(pod_fqdns_with_candidate "${expected_fqdn}")"
     for fqdn in "${pod_fqdns[@]}"; do
       local role
@@ -286,6 +388,10 @@ wait_for_new_master() {
     elapsed=$((elapsed + 3))
   done
   echo "WARNING: could not confirm new primary within ${max_wait}s" >&2
+  if runtime_diagnostics_enabled; then
+    log_replication_summaries "wait_for_new_master timeout expected=${expected_fqdn:-any}" "${expected_fqdn}"
+    log_sentinel_state "wait_for_new_master timeout"
+  fi
   return 1
 }
 
