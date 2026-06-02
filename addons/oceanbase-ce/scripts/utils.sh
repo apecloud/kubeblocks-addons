@@ -16,28 +16,28 @@ fi
 function prepare_dirs {
   # log dir
   mkdir -p /home/admin/log/log
-  ln -sf /home/admin/log/log ${OB_HOME_DIR}/log
+  ln -sfn /home/admin/log/log ${OB_HOME_DIR}/log
 
   mkdir -p  ${OB_HOME_DIR}/store
   # data log dir
   mkdir -p /home/admin/data-log/clog
 
-  ln -sf /home/admin/data-log/clog ${OB_HOME_DIR}/store/clog
+  ln -sfn /home/admin/data-log/clog ${OB_HOME_DIR}/store/clog
   mkdir -p /home/admin/data-log/ilog
-  ln -sf /home/admin/data-log/ilog ${OB_HOME_DIR}/store/ilog
+  ln -sfn /home/admin/data-log/ilog ${OB_HOME_DIR}/store/ilog
 
   mkdir -p /home/admin/data-file/slog
-  ln -sf /home/admin/data-file/slog ${OB_HOME_DIR}/store/slog
+  ln -sfn /home/admin/data-file/slog ${OB_HOME_DIR}/store/slog
   mkdir -p /home/admin/data-file/etc
-  ln -sf /home/admin/data-file/etc ${OB_HOME_DIR}/store/etc
+  ln -sfn /home/admin/data-file/etc ${OB_HOME_DIR}/store/etc
   mkdir -p /home/admin/data-file/sort_dir
-  ln -sf /home/admin/data-file/sort_dir ${OB_HOME_DIR}/store/sort_dir
+  ln -sfn /home/admin/data-file/sort_dir ${OB_HOME_DIR}/store/sort_dir
   mkdir -p /home/admin/data-file/sstable
-  ln -sf /home/admin/data-file/sstable ${OB_HOME_DIR}/store/sstable
+  ln -sfn /home/admin/data-file/sstable ${OB_HOME_DIR}/store/sstable
   # chown -R root:root ${OB_HOME_DIR}
 
   # link /home/admin/workdir/admin dir to /home/admin/oceanbase/admin
-  ln -sf /home/admin/oceanbase/admin ${OB_HOME_DIR}/admin
+  ln -sfn /home/admin/oceanbase/admin ${OB_HOME_DIR}/admin
 }
 
 function clean_dirs {
