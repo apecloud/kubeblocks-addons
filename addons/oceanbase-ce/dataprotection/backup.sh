@@ -27,7 +27,7 @@ function saveEndTime() {
       return
     fi
     if [ -f $endTimeInfoFile ]; then
-       oldMinRestoreSCN=$(cat ${endTimeInfoFile} | jq -r ".minRestoreSCN" )
+       oldMinRestoreSCN=$(json_get minRestoreSCN "$(cat ${endTimeInfoFile})")
        [ $minRestoreSCN -gt ${oldMinRestoreSCN} ] && echo "{\"minRestoreSCN\":\"${minRestoreSCN}\",\"minRestoreTime\":\"${minRestoreTime}\"}" > ${endTimeInfoFile}
     else
        echo "{\"minRestoreSCN\":\"${minRestoreSCN}\",\"minRestoreTime\":\"${minRestoreTime}\"}" > ${endTimeInfoFile}
@@ -327,7 +327,7 @@ done < ${tenantFile}
 # get stop time
 STOP_TIME=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
 if [ -f ${endTimeInfoFile} ]; then
-   stop_scn=$(cat ${endTimeInfoFile} | jq -r ".minRestoreSCN")
+   stop_scn=$(json_get minRestoreSCN "$(cat ${endTimeInfoFile})")
    if [ "${stop_scn}" != "NULL" ]; then
       stop_timestamp=$((${stop_scn}/1000000000))
       STOP_TIME=$(date -d @$stop_timestamp -u "+%Y-%m-%dT%H:%M:%SZ")
