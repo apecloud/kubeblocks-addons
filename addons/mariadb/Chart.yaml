@@ -1986,6 +1986,39 @@ type: application
 # causes unnecessary Serial pod restarts on a 3-node cluster.
 # Test galera CM3 reconfigures wsrep_slave_threads from 4 to 8.
 #
+# alpha.118 (Helen 2026-06-02 — galera Stop/Start crash recovery):
+# Fix galera-start.sh to handle the case where all nodes have
+# safe_to_bootstrap=0 after a KubeBlocks Stop operation. With
+# podManagementPolicy=Parallel, all pods terminate simultaneously
+# and no node gets designated as safe_to_bootstrap=1 by Galera.
+# On restart, no node bootstraps and the cluster deadlocks in
+# CrashLoop (all nodes try to join but no primary component exists).
+#
+# Fix adds two helpers to galera-start.sh:
+#   _any_peer_alive — TCP probe port 3306 on each peer FQDN to
+#     distinguish full-cluster-restart (no peers → bootstrap) from
+#     single-pod-restart (peers alive → join, prevents split-brain).
+#   _wsrep_recover_and_bootstrap — runs mariadbd --wsrep-recover to
+#     extract last committed position from InnoDB redo log, then
+#     marks safe_to_bootstrap=1 in grastate.dat for pod-0.
+#
+# should_bootstrap() new path (c): if pod-0 AND safe_to_bootstrap=0
+# AND no peer alive → wsrep-recover → set safe_to_bootstrap=1 →
+# bootstrap. Non-pod-0 nodes continue to join; they may CrashLoop
+# briefly until pod-0 finishes bootstrap, then join on next restart.
+#
+# Split-brain safety: _any_peer_alive returns true when ANY peer has
+# port 3306 open (running MariaDB), so pod-0 will join instead of
+# bootstrapping. During full cluster restart, no peer has 3306 open
+# (MariaDB in join mode does not open 3306 until connected to
+# primary), so the check correctly identifies full-cluster-restart.
+#
+# Verified by: alpha.117 galera T6 Stop/Start failure evidence
+# (Jack artifacts sha256 d9c6f97e...), which showed all 3 nodes
+# with safe_to_bootstrap=0 seqno=-1, NON_PRIM, CrashLoop.
+# No CmpD spec change (script-only fix via ConfigMap), but version
+# bump for traceability.
+#
 # alpha.117 (Helen 2026-06-02 — galera reconfigure auth fix):
 # set MARIADB_INTERNAL_ROOT_USER=root in cmpd-galera.yaml vars.
 # The shared reconfigure helper defaults to kb_internal_root, but
@@ -1995,7 +2028,7 @@ type: application
 # reconfigure executor. Without this, any galera Reconfiguring
 # OpsRequest fails with ERROR 1045 (Access denied for
 # kb_internal_root). CmpD spec change requires version bump.
-version: 1.1.1-alpha.117
+version: 1.1.1-alpha.118
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
