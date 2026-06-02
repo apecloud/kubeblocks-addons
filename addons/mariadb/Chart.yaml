@@ -1986,6 +1986,36 @@ type: application
 # causes unnecessary Serial pod restarts on a 3-node cluster.
 # Test galera CM3 reconfigures wsrep_slave_threads from 4 to 8.
 #
+# alpha.120 (Helen 2026-06-02 — galera _any_peer_alive wsrep query):
+# Fix non-Primary deadlock after static parameter reconfigure (CM4
+# back_log=200). With podManagementPolicy=Parallel, static reconfigure
+# triggers simultaneous pod restart. Pod-1/pod-2 start MariaDB in join
+# mode: port 3306 opens but wsrep_cluster_status=non-Primary (waiting
+# for primary). Alpha.119's TCP-only _any_peer_alive sees port 3306
+# open → returns true → pod-0 also joins → all three deadlocked in
+# non-Primary/Initialized, no quorum, no recovery.
+#
+# Fix: _any_peer_alive now queries wsrep_cluster_status on each
+# reachable peer via mariadb client. Only "Primary" counts as a
+# functioning cluster member. Peers in non-Primary/Initialized state
+# are skipped. If no peer has Primary, pod-0 bootstraps.
+#
+# Edge cases verified by design:
+#   - Single pod restart (other pods healthy/Primary): peer query
+#     returns Primary → pod-0 joins → correct.
+#   - Full cluster restart (Stop/Start): no peer has 3306 open →
+#     TCP check fails → pod-0 bootstraps → correct (same as alpha.119).
+#   - Parallel restart (reconfigure): peers have 3306 open but
+#     non-Primary → skipped → pod-0 bootstraps → pod-1/pod-2 join
+#     pod-0's new Primary → correct.
+#
+# Evidence: Jack alpha.119 galera full r2 CM4 failure —
+# wsrep_cluster_status=non-Primary on all 3 nodes, grastate.dat
+# seqno=-1 safe_to_bootstrap=0, .galera-role=secondary.
+# Evidence sha256: 7a0b3cd2...
+# No CmpD spec change (script-only fix via ConfigMap), but version
+# bump for traceability.
+#
 # alpha.119 (Helen 2026-06-02 — galera single-owner bootstrap):
 # Fix split-brain regression in alpha.118. With podManagementPolicy=
 # Parallel, preStop hooks run simultaneously and multiple nodes can
@@ -2057,7 +2087,7 @@ type: application
 # reconfigure executor. Without this, any galera Reconfiguring
 # OpsRequest fails with ERROR 1045 (Access denied for
 # kb_internal_root). CmpD spec change requires version bump.
-version: 1.1.1-alpha.119
+version: 1.1.1-alpha.120
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
