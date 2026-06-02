@@ -1986,6 +1986,36 @@ type: application
 # causes unnecessary Serial pod restarts on a 3-node cluster.
 # Test galera CM3 reconfigures wsrep_slave_threads from 4 to 8.
 #
+# alpha.121 (Helen 2026-06-02 — galera non-pod-0 wait for Primary):
+# Fix 1+2 split after parallel restart. Alpha.120 correctly made pod-0
+# bootstrap when peers are non-Primary, but pod-1/pod-2 start MariaDB
+# in join mode BEFORE pod-0 finishes bootstrapping. Pod-1/pod-2 connect
+# to each other via Galera group communication, form a 2-node non-Primary
+# partition (seqno=-1, can't elect primary). Pod-0 then bootstraps as a
+# separate 1-node cluster. Result: pod-0 = 1-node Primary, pod-1/pod-2 =
+# 2-node non-Primary — two separate Galera partitions that never merge.
+#
+# Evidence: alpha.120 galera full r5 CM4 — pod-0 wsrep_cluster_size=1
+# Primary/Synced; pod-1/pod-2 wsrep_cluster_size=2 non-Primary/Initialized.
+# CM4 focused PASS'd because timing was different (pod-0 bootstrapped
+# before pod-1/2 could form their dead group).
+#
+# Fix: add _wait_for_primary_peer() called by non-pod-0 nodes before
+# starting MariaDB. Polls _any_peer_alive (wsrep_cluster_status=Primary
+# check) every 3s for up to 120s. This ensures pod-1/pod-2 don't start
+# MariaDB until pod-0 has bootstrapped and reports Primary. After timeout,
+# starts join anyway (Kubernetes will restart on failure).
+#
+# Flow after fix:
+#   Full cluster restart: pod-0 bootstraps (no Primary peers) → becomes
+#     Primary. Pod-1/2 wait → see pod-0 Primary → start → join → 3-node.
+#   Single pod restart: peer already Primary → wait returns immediately.
+#   Pod-0 restart (others healthy): pod-0 joins via _any_peer_alive →
+#     wait not called (pod-0 path).
+#
+# No CmpD spec change (script-only fix via ConfigMap), but version
+# bump for traceability.
+#
 # alpha.120 (Helen 2026-06-02 — galera _any_peer_alive wsrep query):
 # Fix non-Primary deadlock after static parameter reconfigure (CM4
 # back_log=200). With podManagementPolicy=Parallel, static reconfigure
@@ -2087,7 +2117,7 @@ type: application
 # reconfigure executor. Without this, any galera Reconfiguring
 # OpsRequest fails with ERROR 1045 (Access denied for
 # kb_internal_root). CmpD spec change requires version bump.
-version: 1.1.1-alpha.120
+version: 1.1.1-alpha.121
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
