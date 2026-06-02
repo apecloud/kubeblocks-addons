@@ -8,36 +8,25 @@ trap handle_exit EXIT
 generate_backup_config
 set_clickhouse_backup_config_env
 
-if [[ "${CLICKHOUSE_SECURE}" = "true" ]]; then
-	DP_error_log "ClickHouse restore does not support TLS"
-	exit 1
-fi
-
 # 1. Download full (base) backup
 export S3_PATH="$DP_BACKUP_ROOT_PATH/$DP_BASE_BACKUP_NAME/$DP_TARGET_RELATIVE_PATH"
 fetch_backup "$DP_BASE_BACKUP_NAME"
+downloaded_backups=("$DP_BASE_BACKUP_NAME")
 
 # 2. Download ancestor incremental backups
 IFS=',' read -r -a ancestors <<<"${DP_ANCESTOR_INCREMENTAL_BACKUP_NAMES}"
 for parent_name in "${ancestors[@]}"; do
+	[[ -z "$parent_name" ]] && continue
 	export S3_PATH="$DP_BACKUP_ROOT_PATH/$parent_name/$DP_TARGET_RELATIVE_PATH"
+	stage_required_backup_metadata "$S3_PATH" "${downloaded_backups[@]}" || exit 1
 	fetch_backup "$parent_name"
+	downloaded_backups+=("$parent_name")
 done
 
-# 3. Detect topology mode: standalone (no ':' in FQDN) or cluster
+# 3. Detect topology mode: standalone or cluster
 export S3_PATH="${DP_BACKUP_BASE_PATH}"
-first_entry="${ALL_COMBINED_SHARDS_POD_FQDN_LIST%%,*}"
-first_component="${first_entry%%:*}"
-if [[ -z "$first_component" ]]; then
-	DP_error_log "Invalid ALL_COMBINED_SHARDS_POD_FQDN_LIST"
-	exit 1
-fi
-if [[ "$first_component" == "$first_entry" ]]; then
-	mode_info="standalone"
-	DP_log "Standalone mode detected"
-else
-	mode_info="cluster:$first_component"
-fi
+stage_required_backup_metadata "$S3_PATH" "${downloaded_backups[@]}" || exit 1
+mode_info=$(detect_restore_mode) || exit 1
 
 # 4. Restore schema + data + marker
 do_restore "${DP_BACKUP_NAME}" "$mode_info" || exit 1
