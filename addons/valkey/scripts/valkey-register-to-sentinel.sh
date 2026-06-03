@@ -61,11 +61,11 @@ echo "Primary address for Sentinel registration: ${primary_host}:${primary_port}
 
 sentinel_cli() {
   local host="${1}"
-  local cmd="valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -h ${host} -p ${sentinel_port}"
+  # shellcheck disable=SC2206
+  _sentinel_cli_cmd=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -h "${host}" -p "${sentinel_port}")
   if ! is_empty "${SENTINEL_PASSWORD}"; then
-    cmd="${cmd} -a ${SENTINEL_PASSWORD}"
+    _sentinel_cli_cmd+=(-a "${SENTINEL_PASSWORD}")
   fi
-  echo "${cmd}"
 }
 
 # ── helper: run one sentinel sub-command and verify "OK" ────────────────────
@@ -73,9 +73,9 @@ sentinel_cli() {
 execute_sentinel_cmd() {
   local host="${1}"
   shift
-  local cli output
-  cli=$(sentinel_cli "${host}")
-  output=$(${cli} "$@" 2>&1) || { echo "sentinel cmd failed: ${output}" >&2; return 1; }
+  local output
+  sentinel_cli "${host}"
+  output=$("${_sentinel_cli_cmd[@]}" "$@" 2>&1) || { echo "sentinel cmd failed: ${output}" >&2; return 1; }
   if [ "${output}" != "OK" ]; then
     echo "Unexpected sentinel response: ${output}" >&2
     return 1
@@ -86,17 +86,17 @@ execute_sentinel_cmd() {
 
 check_sentinel_connectivity() {
   local host="${1}"
-  local cli
-  cli=$(sentinel_cli "${host}")
-  ${cli} PING 2>/dev/null | grep -q "PONG"
+  sentinel_cli "${host}"
+  "${_sentinel_cli_cmd[@]}" PING 2>/dev/null | grep -q "PONG"
 }
 
 check_data_connectivity() {
-  local cmd="valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -h ${primary_host} -p ${primary_port}"
+  # shellcheck disable=SC2206
+  local cmd=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -h "${primary_host}" -p "${primary_port}")
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    cmd="${cmd} -a ${VALKEY_DEFAULT_PASSWORD}"
+    cmd+=(-a "${VALKEY_DEFAULT_PASSWORD}")
   fi
-  ${cmd} PING 2>/dev/null | grep -q "PONG"
+  "${cmd[@]}" PING 2>/dev/null | grep -q "PONG"
 }
 
 # ── register with one Sentinel pod ──────────────────────────────────────────
@@ -114,14 +114,14 @@ register_to_one_sentinel() {
     return 1
   }
 
-  local cli
-  cli=$(sentinel_cli "${sentinel_fqdn}")
+  sentinel_cli "${sentinel_fqdn}"
+  local cli=("${_sentinel_cli_cmd[@]}")
 
   # Check if already monitored
   # get-master-addr-by-name returns "(nil)" when master is not registered,
   # which is non-empty so must be checked explicitly.
   local master_addr
-  master_addr=$(${cli} SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null || true)
+  master_addr=$("${cli[@]}" SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null || true)
   if is_empty "${master_addr}" || [ "${master_addr}" = "(nil)" ]; then
     echo "Sentinel not yet monitoring '${master_name}' — issuing SENTINEL monitor..."
     call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \

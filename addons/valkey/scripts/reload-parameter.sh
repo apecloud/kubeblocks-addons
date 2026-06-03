@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # reload-parameter.sh — hot-reload a single configuration parameter.
 #
 # Learning note:
@@ -21,17 +21,18 @@ valkey_param=$(echo "${param_name}" | tr '[:upper:]_' '[:lower:]-')
 port="${SERVICE_PORT:-6379}"
 # Use 'timeout' to prevent the reconfigure action from hanging indefinitely
 # if Valkey is slow or unresponsive.
-cli_cmd="timeout 30 valkey-cli --no-auth-warning -h 127.0.0.1 -p ${port}"
+cli_cmd=(timeout 30 valkey-cli --no-auth-warning -h 127.0.0.1 -p "${port}")
 if [ -n "${VALKEY_DEFAULT_PASSWORD}" ]; then
-  cli_cmd="${cli_cmd} -a ${VALKEY_DEFAULT_PASSWORD}"
+  cli_cmd+=(-a "${VALKEY_DEFAULT_PASSWORD}")
 fi
 if [ -n "${VALKEY_CLI_TLS_ARGS}" ]; then
-  cli_cmd="${cli_cmd} ${VALKEY_CLI_TLS_ARGS}"
+  # shellcheck disable=SC2206
+  cli_cmd+=(${VALKEY_CLI_TLS_ARGS})
 fi
 
 # valkey-cli exits 0 even for protocol errors; capture output and check content.
 # Connection failures also fail closed; the caller should retry the action.
-output=$(${cli_cmd} CONFIG SET "${valkey_param}" "${param_value}" 2>&1) || true
+output=$("${cli_cmd[@]}" CONFIG SET "${valkey_param}" "${param_value}" 2>&1) || true
 # Silently ignore parameters that do not support CONFIG SET (e.g. bind, port).
 # Fail closed for other CONFIG SET errors so invalid dynamic values are surfaced.
 case "${output}" in

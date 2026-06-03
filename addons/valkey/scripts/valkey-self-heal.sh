@@ -50,36 +50,35 @@ SELF_HEAL_UT_MODE="${ut_mode:-false}"
 
 cascade_build_local_cli_cmd() {
   local port="${KB_SERVICE_PORT:-${SERVICE_PORT:-6379}}"
-  local cmd="valkey-cli --no-auth-warning -h 127.0.0.1 -p ${port}"
+  _cli_cmd=(valkey-cli --no-auth-warning -h 127.0.0.1 -p "${port}")
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    cmd="${cmd} -a ${VALKEY_DEFAULT_PASSWORD}"
+    _cli_cmd+=(-a "${VALKEY_DEFAULT_PASSWORD}")
   fi
   if ! is_empty "${VALKEY_CLI_TLS_ARGS}"; then
-    cmd="${cmd} ${VALKEY_CLI_TLS_ARGS}"
+    # shellcheck disable=SC2206
+    _cli_cmd+=(${VALKEY_CLI_TLS_ARGS})
   fi
-  echo "${cmd}"
 }
 
 cascade_build_remote_cli_cmd() {
   local host="$1"
   local port="${KB_SERVICE_PORT:-${SERVICE_PORT:-6379}}"
-  local cmd="valkey-cli --no-auth-warning -h ${host} -p ${port}"
+  _cli_cmd=(valkey-cli --no-auth-warning -h "${host}" -p "${port}")
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    cmd="${cmd} -a ${VALKEY_DEFAULT_PASSWORD}"
+    _cli_cmd+=(-a "${VALKEY_DEFAULT_PASSWORD}")
   fi
   if ! is_empty "${VALKEY_CLI_TLS_ARGS}"; then
-    cmd="${cmd} ${VALKEY_CLI_TLS_ARGS}"
+    # shellcheck disable=SC2206
+    _cli_cmd+=(${VALKEY_CLI_TLS_ARGS})
   fi
-  echo "${cmd}"
 }
 
 cascade_info_replication_with_timeout() {
-  local cmd="$1"
   if command -v timeout >/dev/null 2>&1 && [ "${CASCADE_REMOTE_TIMEOUT_SECONDS}" != "0" ]; then
-    timeout "${CASCADE_REMOTE_TIMEOUT_SECONDS}" ${cmd} info replication 2>/dev/null
+    timeout "${CASCADE_REMOTE_TIMEOUT_SECONDS}" "${_cli_cmd[@]}" info replication 2>/dev/null
     return $?
   fi
-  ${cmd} info replication 2>/dev/null
+  "${_cli_cmd[@]}" info replication 2>/dev/null
 }
 
 cascade_extract_replication_field() {
@@ -128,11 +127,11 @@ cascade_is_self_host() {
 # + skip-self-target).
 cascade_check_one_round() {
   local local_port="${KB_SERVICE_PORT:-${SERVICE_PORT:-6379}}"
-  local cli_cmd
-  cli_cmd=$(cascade_build_local_cli_cmd)
+  local cli_cmd=()
+  cascade_build_local_cli_cmd; cli_cmd=("${_cli_cmd[@]}")
 
   local repl_info
-  repl_info=$(${cli_cmd} info replication 2>/dev/null) || return 0
+  repl_info=$("${cli_cmd[@]}" info replication 2>/dev/null) || return 0
 
   local role_line
   role_line=$(cascade_extract_replication_field "${repl_info}" "role")
@@ -142,11 +141,11 @@ cascade_check_one_round() {
   master_host=$(cascade_extract_replication_field "${repl_info}" "master_host")
   is_empty "${master_host}" && return 0
 
-  local remote_cli
-  remote_cli=$(cascade_build_remote_cli_cmd "${master_host}")
+  local remote_cli=()
+  cascade_build_remote_cli_cmd "${master_host}"; remote_cli=("${_cli_cmd[@]}")
 
   local master_repl_info master_role
-  master_repl_info=$(cascade_info_replication_with_timeout "${remote_cli}") || {
+  master_repl_info=$(cascade_info_replication_with_timeout) || {
     echo "INFO: skip cascade repair (remote-master-unreachable): cannot query ${master_host} within ${CASCADE_REMOTE_TIMEOUT_SECONDS}s." >&2
     return 0
   }
@@ -162,7 +161,7 @@ cascade_check_one_round() {
   # at the start of this round and now, Sentinel may have promoted this pod.
   # Issuing REPLICAOF on a fresh master would demote it. Re-read local role.
   local current_repl_info current_role
-  current_repl_info=$(${cli_cmd} info replication 2>/dev/null) || return 0
+  current_repl_info=$("${cli_cmd[@]}" info replication 2>/dev/null) || return 0
   current_role=$(cascade_extract_replication_field "${current_repl_info}" "role")
   if [ "${current_role}" != "slave" ]; then
     echo "INFO: skip cascade repair (skip-stale-role): local role is '${current_role:-unknown}', not slave." >&2
@@ -176,7 +175,7 @@ cascade_check_one_round() {
   fi
 
   echo "WARNING: cascading topology — our master ${master_host} is a slave of ${real_master_host}. Issuing REPLICAOF to reconnect directly to real master." >&2
-  ${cli_cmd} REPLICAOF "${real_master_host}" "${real_master_port:-${local_port}}" 2>/dev/null || true
+  "${cli_cmd[@]}" REPLICAOF "${real_master_host}" "${real_master_port:-${local_port}}" 2>/dev/null || true
 }
 
 # stall_check_one_round — Bug 5 (full-sync stall) detector.
@@ -198,9 +197,10 @@ cascade_check_one_round() {
 #   iteration means stall detection never spawns subprocesses regardless
 #   of where it is called from.
 stall_check_one_round() {
-  local cli_cmd repl_info sync_in_progress read_bytes line role_line
-  cli_cmd=$(cascade_build_local_cli_cmd)
-  repl_info=$(${cli_cmd} info replication 2>/dev/null) || return 0
+  local repl_info sync_in_progress read_bytes line role_line
+  local cli_cmd=()
+  cascade_build_local_cli_cmd; cli_cmd=("${_cli_cmd[@]}")
+  repl_info=$("${cli_cmd[@]}" info replication 2>/dev/null) || return 0
 
   # Single-process parse: bash builtins only, no pipeline / cmd-substitution
   # children that could leak under any future SIGKILL exposure.
@@ -260,13 +260,12 @@ DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS="${DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS:-10}"
 DUAL_MASTER_CONFIRM_POLL_INTERVAL_SECONDS="${DUAL_MASTER_CONFIRM_POLL_INTERVAL_SECONDS:-1}"
 
 dual_master_confirm_demote() {
-  local cli_cmd="$1"
-  local expected_master_host="$2"
+  local expected_master_host="$1"
   local deadline=$((SECONDS + DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS))
   while [ "${SECONDS}" -lt "${deadline}" ]; do
     sleep "${DUAL_MASTER_CONFIRM_POLL_INTERVAL_SECONDS}"
     local repl_info post_role post_master_host
-    repl_info=$(${cli_cmd} info replication 2>/dev/null) || continue
+    repl_info=$("${_dm_cli_cmd[@]}" info replication 2>/dev/null) || continue
     post_role=$(cascade_extract_replication_field "${repl_info}" "role")
     post_master_host=$(cascade_extract_replication_field "${repl_info}" "master_host")
     if [ "${post_role}" = "slave" ] && [ -n "${post_master_host}" ]; then
@@ -333,11 +332,11 @@ dual_master_check_one_round() {
   is_empty "${SENTINEL_POD_FQDN_LIST}" && return 0
 
   local local_port="${KB_SERVICE_PORT:-${SERVICE_PORT:-6379}}"
-  local cli_cmd
-  cli_cmd=$(cascade_build_local_cli_cmd)
+  local cli_cmd=()
+  cascade_build_local_cli_cmd; cli_cmd=("${_cli_cmd[@]}")
 
   local repl_info role_line
-  repl_info=$(${cli_cmd} info replication 2>/dev/null) || return 0
+  repl_info=$("${cli_cmd[@]}" info replication 2>/dev/null) || return 0
   role_line=$(cascade_extract_replication_field "${repl_info}" "role")
   [ "${role_line}" != "master" ] && return 0
 
@@ -364,9 +363,9 @@ dual_master_check_one_round() {
   # REPLICAOF to a non-master would create a cascade slave chain (the
   # exact class of failure this daemon is designed to repair).  If the
   # remote is unreachable or not yet master, skip this round and retry.
-  local remote_cli remote_info remote_role
-  remote_cli=$(cascade_build_remote_cli_cmd "${quorum_master_fqdn}")
-  remote_info=$(cascade_info_replication_with_timeout "${remote_cli}") || {
+  local remote_info remote_role
+  cascade_build_remote_cli_cmd "${quorum_master_fqdn}"
+  remote_info=$(cascade_info_replication_with_timeout) || {
     echo "INFO: skip dual-master demote (skip-quorum-target-unreachable): cannot query ${quorum_master_fqdn} within ${CASCADE_REMOTE_TIMEOUT_SECONDS}s." >&2
     return 0
   }
@@ -378,7 +377,7 @@ dual_master_check_one_round() {
 
   # Skip-stale-role: re-read just before REPLICAOF.
   local current_repl_info current_role
-  current_repl_info=$(${cli_cmd} info replication 2>/dev/null) || return 0
+  current_repl_info=$("${cli_cmd[@]}" info replication 2>/dev/null) || return 0
   current_role=$(cascade_extract_replication_field "${current_repl_info}" "role")
   if [ "${current_role}" != "master" ]; then
     echo "INFO: skip dual-master demote (skip-stale-role): local role is '${current_role:-unknown}', no longer master." >&2
@@ -386,9 +385,11 @@ dual_master_check_one_round() {
   fi
 
   echo "WARNING: rogue master detected — sentinel-quorum reports real master is '${quorum_master_fqdn}'; demoting self via REPLICAOF." >&2
-  ${cli_cmd} REPLICAOF "${quorum_master_fqdn}" "${local_port}" 2>/dev/null || true
+  "${cli_cmd[@]}" REPLICAOF "${quorum_master_fqdn}" "${local_port}" 2>/dev/null || true
 
-  if dual_master_confirm_demote "${cli_cmd}" "${quorum_master_fqdn}"; then
+  # Pass cli_cmd to dual_master_confirm_demote via global array
+  _dm_cli_cmd=("${cli_cmd[@]}")
+  if dual_master_confirm_demote "${quorum_master_fqdn}"; then
     echo "INFO: dual-master demote confirmed: now role:slave attached to '${quorum_master_fqdn}'." >&2
     return 0
   fi

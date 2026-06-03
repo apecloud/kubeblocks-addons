@@ -33,23 +33,23 @@ load_common_library() {
 
 build_cli() {
   local host="${1}"
-  local cmd="valkey-cli --no-auth-warning -h ${host} -p ${port}"
+  _cli=(valkey-cli --no-auth-warning -h "${host}" -p "${port}")
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    cmd="${cmd} -a ${VALKEY_DEFAULT_PASSWORD}"
+    _cli+=(-a "${VALKEY_DEFAULT_PASSWORD}")
   fi
   if ! is_empty "${VALKEY_CLI_TLS_ARGS}"; then
-    cmd="${cmd} ${VALKEY_CLI_TLS_ARGS}"
+    # shellcheck disable=SC2206
+    _cli+=(${VALKEY_CLI_TLS_ARGS})
   fi
-  echo "${cmd}"
 }
 
 # Find the current primary by polling each pod's role
 find_primary_fqdn() {
   IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
   for fqdn in "${pod_fqdns[@]}"; do
-    local role cli
-    cli=$(build_cli "${fqdn}")
-    role=$(${cli} info replication 2>/dev/null \
+    local role
+    build_cli "${fqdn}"
+    role=$("${_cli[@]}" info replication 2>/dev/null \
              | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || continue
     if [ "${role}" = "master" ]; then
       echo "${fqdn}"
@@ -69,16 +69,16 @@ find_primary_fqdn() {
 # Copy all non-default ACL rules from source to target
 sync_acl_to_replica() {
   local src_fqdn="${1}" dst_fqdn="${2}"
-  local src_cli dst_cli
-  src_cli=$(build_cli "${src_fqdn}")
-  dst_cli=$(build_cli "${dst_fqdn}")
+  local src_cli=() dst_cli=()
+  build_cli "${src_fqdn}"; src_cli=("${_cli[@]}")
+  build_cli "${dst_fqdn}"; dst_cli=("${_cli[@]}")
 
   echo "Syncing ACL from ${src_fqdn} → ${dst_fqdn}"
 
   # Read ACL rules from primary
   # valkey-cli exits 0 even for server errors; check output for error prefix.
   local acl_list
-  acl_list=$(${src_cli} ACL LIST 2>&1) || {
+  acl_list=$("${src_cli[@]}" ACL LIST 2>&1) || {
     echo "WARNING: could not read ACL LIST from ${src_fqdn}: ${acl_list}" >&2
     return 1
   }
@@ -106,7 +106,8 @@ sync_acl_to_replica() {
     # Disable glob expansion so ~* and &* in rule_flags are not expanded by the shell.
     # shellcheck disable=SC2086
     set -f
-    setuser_out=$(${dst_cli} ACL SETUSER "${username}" ${rule_flags} 2>&1) || true
+    # shellcheck disable=SC2086
+    setuser_out=$("${dst_cli[@]}" ACL SETUSER "${username}" ${rule_flags} 2>&1) || true
     set +f
     case "${setuser_out}" in
       *"ERR"*|*"WRONGTYPE"*|*"error"*)
@@ -117,7 +118,7 @@ sync_acl_to_replica() {
   # Persist on the replica
   # valkey-cli exits 0 even for server errors; check output content.
   local acl_save_out
-  acl_save_out=$(${dst_cli} ACL SAVE 2>&1) || true
+  acl_save_out=$("${dst_cli[@]}" ACL SAVE 2>&1) || true
   if [ "${acl_save_out}" != "OK" ]; then
     echo "WARNING: ACL SAVE failed on ${dst_fqdn}: ${acl_save_out} — rules applied in memory only, will be lost on restart" >&2
   fi

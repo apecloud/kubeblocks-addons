@@ -144,23 +144,18 @@ create_initial_conf_if_needed() {
 # Returns empty string if none found.
 _find_master_fqdn() {
   local data_port="${SERVICE_PORT:-6379}"
-  local tls_args=""
-  [ "${TLS_ENABLED}" = "true" ] && tls_args="--tls --insecure"
   for fqdn in $(echo "${VALKEY_POD_FQDN_LIST:-}" | tr ',' '\n'); do
     [ -z "${fqdn}" ] && continue
-    local role
-    if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-      # shellcheck disable=SC2086
-      role=$(valkey-cli -h "${fqdn}" -p "${data_port}" \
-        ${tls_args} \
-        -a "${VALKEY_DEFAULT_PASSWORD}" --no-auth-warning \
-        info replication 2>/dev/null | grep "^role:" | tr -d '\r\n' | cut -d: -f2)
-    else
-      # shellcheck disable=SC2086
-      role=$(valkey-cli -h "${fqdn}" -p "${data_port}" \
-        ${tls_args} \
-        info replication 2>/dev/null | grep "^role:" | tr -d '\r\n' | cut -d: -f2)
+    local cmd=(valkey-cli -h "${fqdn}" -p "${data_port}")
+    if [ "${TLS_ENABLED}" = "true" ]; then
+      cmd+=(--tls --insecure)
     fi
+    if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
+      cmd+=(-a "${VALKEY_DEFAULT_PASSWORD}")
+    fi
+    cmd+=(--no-auth-warning)
+    local role
+    role=$("${cmd[@]}" info replication 2>/dev/null | grep "^role:" | tr -d '\r\n' | cut -d: -f2)
     if [ "${role}" = "master" ]; then
       echo "${fqdn}"
       return 0
@@ -170,14 +165,14 @@ _find_master_fqdn() {
 
 # _sentinel_cli — run a valkey-cli command against this sentinel's own port.
 _sentinel_cli() {
-  local cmd="valkey-cli -h 127.0.0.1 -p ${sentinel_port} --no-auth-warning"
+  local _scli=(valkey-cli -h 127.0.0.1 -p "${sentinel_port}" --no-auth-warning)
   if [ "${TLS_ENABLED}" = "true" ]; then
-    cmd="${cmd} --tls --insecure"
+    _scli+=(--tls --insecure)
   fi
   if ! is_empty "${SENTINEL_PASSWORD}"; then
-    cmd="${cmd} -a ${SENTINEL_PASSWORD}"
+    _scli+=(-a "${SENTINEL_PASSWORD}")
   fi
-  ${cmd} "$@" 2>/dev/null
+  "${_scli[@]}" "$@" 2>/dev/null
 }
 
 # _register_monitor — dynamically register the master with the running sentinel

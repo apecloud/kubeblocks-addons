@@ -30,6 +30,11 @@ Describe "Valkey Member-Leave Bash Script Tests"
   AfterAll "cleanup"
 
   Describe "build_data_cli()"
+    _build_data_cli_as_string() {
+      build_data_cli "$@"
+      printf '%s\n' "${_data_cli_cmd[*]}"
+    }
+
     Context "with password"
       setup() {
         export VALKEY_DEFAULT_PASSWORD="mypass"
@@ -42,7 +47,7 @@ Describe "Valkey Member-Leave Bash Script Tests"
       After "teardown"
 
       It "includes --no-auth-warning and -a flag"
-        When call build_data_cli "valkey-0.headless.default.svc.cluster.local"
+        When call _build_data_cli_as_string "valkey-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "--no-auth-warning"
         The stdout should include "-a mypass"
@@ -57,7 +62,7 @@ Describe "Valkey Member-Leave Bash Script Tests"
       Before "setup"
 
       It "includes --no-auth-warning and no -a flag"
-        When call build_data_cli "valkey-0.headless.default.svc.cluster.local"
+        When call _build_data_cli_as_string "valkey-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "--no-auth-warning"
         The stdout should not include " -a "
@@ -66,6 +71,11 @@ Describe "Valkey Member-Leave Bash Script Tests"
   End
 
   Describe "build_sentinel_cli()"
+    _build_sentinel_cli_as_string() {
+      build_sentinel_cli "$@"
+      printf '%s\n' "${_sentinel_cli_cmd[*]}"
+    }
+
     Context "with Sentinel password"
       setup() {
         export SENTINEL_PASSWORD="sentpass"
@@ -78,7 +88,7 @@ Describe "Valkey Member-Leave Bash Script Tests"
       After "teardown"
 
       It "includes --no-auth-warning and -a flag on sentinel port"
-        When call build_sentinel_cli "sentinel-0.headless.default.svc.cluster.local"
+        When call _build_sentinel_cli_as_string "sentinel-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "--no-auth-warning"
         The stdout should include "-a sentpass"
