@@ -1,4 +1,5 @@
 # shellcheck shell=sh
+# shellcheck disable=SC2218
 # Unit tests for replication-switchover.sh
 # Tests role guard, candidate resolution, and syncerctl/DCS handoff.
 
@@ -705,25 +706,39 @@ EOF
     End
   End
 
-  # alpha.59 design-contract close-out (Jack 19:45 review blocker 1):
-  # post-DCS local-root write fence must be _verified_ via an actual user-facing
-  # root INSERT being rejected with 1290/read-only, not just by setting
-  # @@global.read_only=ON. Otherwise the contract has a non-empty field that is
-  # never enforced at the write site.
+  # alpha.105+ design-contract close-out:
+  # post-DCS local-root write fence is verified by read-only SHOW GRANTS
+  # inspection, not a destructive INSERT probe. alpha.124 narrows BINLOG ADMIN:
+  # it is allowed for local loopback/socket root because chart-internal
+  # sql_log_bin=0 paths need it, but it remains disallowed for non-local root.
   Describe "verify_post_dcs_local_root_write_fenced()"
     setup_fence_probe() {
       export MARIADB_ROOT_USER="root"
       export MARIADB_ROOT_PASSWORD="pw"
+      export MARIADB_INTERNAL_ROOT_USER="kb_internal_root"
       export MARIADB_CONNECT_TIMEOUT_SECONDS="5"
       export MARIADB_CLIENT_BIN="${TEST_DIR}/mariadb"
     }
     Before "setup_fence_probe"
 
-    It "passes when user-facing root INSERT is rejected with server error 1290"
+    It "alpha.124: passes when local root keeps BINLOG ADMIN but remote root has no bypass privilege"
       cat > "${TEST_DIR}/mariadb" <<'EOF'
 #!/bin/sh
-echo "ERROR 1290 (HY000) at line 4: The MariaDB server is running with the --read-only option so it cannot execute this statement" >&2
-exit 1
+case "$*" in
+  *"SHOW GRANTS FOR 'root'@'%'"*)
+    printf "%s\n" "GRANT SELECT ON *.* TO 'root'@'%'"
+    exit 0
+    ;;
+  *"SHOW GRANTS FOR 'root'@'127.0.0.1'"*)
+    printf "%s\n" "GRANT SELECT, BINLOG ADMIN ON *.* TO 'root'@'127.0.0.1'"
+    exit 0
+    ;;
+  *"SHOW GRANTS FOR 'root'@'localhost'"*)
+    printf "%s\n" "GRANT SELECT, BINLOG ADMIN ON *.* TO 'root'@'localhost'"
+    exit 0
+    ;;
+esac
+exit 0
 EOF
       chmod +x "${TEST_DIR}/mariadb"
       When call verify_post_dcs_local_root_write_fenced
@@ -731,27 +746,49 @@ EOF
       The output should include "Switchover post-DCS local-root write fence verified"
     End
 
-    It "fails closed when user-facing root INSERT unexpectedly succeeds (fence not enforced)"
+    It "alpha.124: fails closed when remote root@% still has BINLOG ADMIN"
       cat > "${TEST_DIR}/mariadb" <<'EOF'
 #!/bin/sh
+case "$*" in
+  *"SHOW GRANTS FOR 'root'@'%'"*)
+    printf "%s\n" "GRANT SELECT, BINLOG ADMIN ON *.* TO 'root'@'%'"
+    exit 0
+    ;;
+  *"SHOW GRANTS FOR 'root'@'127.0.0.1'"*|*"SHOW GRANTS FOR 'root'@'localhost'"*)
+    printf "%s\n" "GRANT SELECT ON *.* TO 'root'@'local'"
+    exit 0
+    ;;
+esac
 exit 0
 EOF
       chmod +x "${TEST_DIR}/mariadb"
       When call verify_post_dcs_local_root_write_fenced
       The status should be failure
       The stderr should include "Switchover failed: post-DCS local-root write fence not enforced"
+      The stderr should include "'root'@'%'"
+      The stderr should include "BINLOG ADMIN"
     End
 
-    It "fails closed when INSERT fails with an unrelated error (no 1290 / no read-only signal)"
+    It "alpha.124: fails closed when local root keeps READ_ONLY ADMIN"
       cat > "${TEST_DIR}/mariadb" <<'EOF'
 #!/bin/sh
-echo "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax" >&2
-exit 1
+case "$*" in
+  *"SHOW GRANTS FOR 'root'@'%'"*|*"SHOW GRANTS FOR 'root'@'127.0.0.1'"*)
+    printf "%s\n" "GRANT SELECT ON *.* TO 'root'@'ok'"
+    exit 0
+    ;;
+  *"SHOW GRANTS FOR 'root'@'localhost'"*)
+    printf "%s\n" "GRANT SELECT, BINLOG ADMIN, READ_ONLY ADMIN ON *.* TO 'root'@'localhost'"
+    exit 0
+    ;;
+esac
+exit 0
 EOF
       chmod +x "${TEST_DIR}/mariadb"
       When call verify_post_dcs_local_root_write_fenced
       The status should be failure
-      The stderr should include "Switchover failed: post-DCS local-root write fence verification got unexpected error"
+      The stderr should include "'root'@'localhost'"
+      The stderr should include "READ_ONLY ADMIN"
     End
 
     It "fails closed when MARIADB_CLIENT_BIN is unavailable"
@@ -784,56 +821,28 @@ EOF
       The output should not include "CREATE TABLE"
     End
 
-    # alpha.75 v1 hard gate 3 — verifier MUST fail closed with distinct
-    # sentinel when probe table is missing (Error 1146). bootstrap-time
-    # ensure_internal_local_admin must own the probe table create.
-    It "alpha.75 v1: fails closed with distinct sentinel on Error 1146 (probe table missing)"
+    It "passes when all user-facing root host variants are absent with Error 1141"
       cat > "${TEST_DIR}/mariadb" <<'EOF'
 #!/bin/sh
-echo "ERROR 1146 (42S02) at line 1: Table 'kubeblocks.kb_post_dcs_fence_probe' doesn't exist" >&2
+echo "ERROR 1141 (42000): There is no such grant defined for user 'root' on host" >&2
 exit 1
 EOF
       chmod +x "${TEST_DIR}/mariadb"
       When call verify_post_dcs_local_root_write_fenced
-      The status should be failure
-      The stderr should include "probe table missing (Error 1146)"
-      The stderr should include "alpha.75 v1 contract"
+      The status should be success
+      The output should include "all hosts 1141"
     End
 
-    # alpha.75 v1 hard gate 4 — verifier MUST FAIL on Error 1227
-    # (BINLOG ADMIN). The alpha.74 v1 RED root cause was 1227 being
-    # reported as failure (correct behaviour), but the verifier body
-    # was generating it. After alpha.75 v1 the verifier body MUST NOT
-    # require BINLOG ADMIN, so a 1227 from any source must NOT be
-    # mistaken for fence closed.
-    It "alpha.75 v1: fails closed with distinct regression-guard sentinel on Error 1227 (BINLOG ADMIN, alpha.74 v1 RED root cause)"
+    It "fails closed when SHOW GRANTS returns an unrelated error"
       cat > "${TEST_DIR}/mariadb" <<'EOF'
 #!/bin/sh
-echo "ERROR 1227 (42000) at line 2: Access denied; you need (at least one of) the BINLOG ADMIN privilege(s) for this operation" >&2
+echo "ERROR 1044 (42000): Access denied for user 'kb_internal_root'@'localhost'" >&2
 exit 1
 EOF
       chmod +x "${TEST_DIR}/mariadb"
       When call verify_post_dcs_local_root_write_fenced
       The status should be failure
-      The stderr should include "implementation error"
-      The stderr should include "Error 1227 BINLOG ADMIN"
-      The stderr should include "alpha.75 v1 regression guard"
-    End
-
-    # alpha.75 v1 hard gate 5 — verifier MUST FAIL on Error 1044
-    # (access denied on the schema). Same class as 1227: the verifier
-    # body must NOT require DDL/database-level grants beyond INSERT.
-    It "alpha.75 v1: fails closed with distinct regression-guard sentinel on Error 1044 (access denied)"
-      cat > "${TEST_DIR}/mariadb" <<'EOF'
-#!/bin/sh
-echo "ERROR 1044 (42000) at line 1: Access denied for user 'root'@'localhost' to database 'kubeblocks'" >&2
-exit 1
-EOF
-      chmod +x "${TEST_DIR}/mariadb"
-      When call verify_post_dcs_local_root_write_fenced
-      The status should be failure
-      The stderr should include "Error 1044 access denied"
-      The stderr should include "alpha.75 v1 regression guard"
+      The stderr should include "SHOW GRANTS FOR 'root'@'%' failed"
     End
   End
 
@@ -1016,9 +1025,10 @@ EOF
     End
   End
 
-  # alpha.60 (Jack 23:28 8-class review): post-DCS read_only=ON does not fence
-  # user-facing root if root holds READ_ONLY ADMIN / SUPER / BINLOG ADMIN.
-  # This describe block exercises the synchronous revoke that closes that gap.
+  # alpha.60 + alpha.124: post-DCS read_only=ON does not fence user-facing
+  # root if it holds READ_ONLY ADMIN / SUPER; non-local root must also not hold
+  # BINLOG ADMIN. Local root may keep BINLOG ADMIN for chart-internal
+  # sql_log_bin=0 paths because it does not bypass read_only by itself.
   Describe "revoke_user_facing_root_admin_privileges_for_secondary()"
     setup_revoke_env() {
       export MARIADB_ROOT_USER="root"
@@ -1048,7 +1058,7 @@ EOF
       The contents of file "${MOCK_REVOKE_CALLS}" should not include "REVOKE READ_ONLY ADMIN"
     End
 
-    It "alpha.60 v2: revokes each bypass priv per-host and verifies post-revoke residual is clean"
+    It "alpha.124: revokes host-disallowed bypass privs and verifies post-revoke residual is clean"
       # Per Jack 23:52 v2 review: REVOKE per-privilege; after all REVOKEs for a
       # host, re-SHOW GRANTS and assert no bypass priv remains. Mock alternates
       # SHOW GRANTS responses (odd-call = initial bypass, even-call = post-
@@ -1087,11 +1097,48 @@ EOF
       The output should include "reason=revoked root@% priv=BINLOG ADMIN"
       The output should include "reason=revoked root@127.0.0.1 priv=READ_ONLY ADMIN"
       The output should include "reason=revoked root@localhost priv=READ_ONLY ADMIN"
-      The output should include "Switchover post-DCS root revoke summary revoked=9"
+      The output should include "Switchover post-DCS root revoke summary revoked=7"
       The contents of file "${MOCK_REVOKE_CALLS}" should include "REVOKE READ_ONLY ADMIN"
       The contents of file "${MOCK_REVOKE_CALLS}" should include "REVOKE SUPER"
       The contents of file "${MOCK_REVOKE_CALLS}" should include "REVOKE BINLOG ADMIN"
+      The contents of file "${MOCK_REVOKE_CALLS}" should not include "REVOKE BINLOG ADMIN ON *.* FROM 'root'@'127.0.0.1'"
+      The contents of file "${MOCK_REVOKE_CALLS}" should not include "REVOKE BINLOG ADMIN ON *.* FROM 'root'@'localhost'"
       The contents of file "${MOCK_REVOKE_CALLS}" should include "FLUSH PRIVILEGES"
+    End
+
+    It "alpha.124: allows local BINLOG ADMIN residual after post-DCS revoke"
+      cat > "${TEST_DIR}/mariadb" <<'EOF'
+#!/bin/sh
+echo "$@" >> "${MOCK_REVOKE_CALLS}"
+case "$*" in
+  *"SELECT Host FROM mysql.user"*)
+    printf "127.0.0.1\nlocalhost\n"
+    exit 0
+    ;;
+  *"SHOW GRANTS FOR 'root'@'127.0.0.1'"*)
+    printf "%s\n" "GRANT SELECT, BINLOG ADMIN ON *.* TO 'root'@'127.0.0.1'"
+    exit 0
+    ;;
+  *"SHOW GRANTS FOR 'root'@'localhost'"*)
+    printf "%s\n" "GRANT SELECT, BINLOG ADMIN ON *.* TO 'root'@'localhost'"
+    exit 0
+    ;;
+  *"REVOKE READ_ONLY ADMIN"*|*"REVOKE SUPER"*)
+    echo "ERROR 1141 (42000): There is no such grant defined for user 'root' on host" >&2
+    exit 1
+    ;;
+  *"FLUSH PRIVILEGES"*|*"SELECT CONCAT"*)
+    exit 0
+    ;;
+esac
+exit 0
+EOF
+      chmod +x "${TEST_DIR}/mariadb"
+      When call revoke_user_facing_root_admin_privileges_for_secondary
+      The status should be success
+      The output should include "failed_hosts=0"
+      The stderr should not include "revoke_residual_bypass"
+      The contents of file "${MOCK_REVOKE_CALLS}" should not include "REVOKE BINLOG ADMIN"
     End
 
     It "fails closed when even one host still has bypass priv that REVOKE refuses (non-1141)"
@@ -1506,8 +1553,8 @@ EOF
 
       It "fails closed (rc=2) when now_epoch fails (NOT silent 0 fallback)"
         export SWITCHOVER_ACTION_DEADLINE_SECONDS=55
-        action_started_epoch=$(date +%s)
-        date() { return 1; }
+        action_started_epoch=100
+        now_epoch() { return 2; }
         When call remaining_action_budget
         The status should equal 2
         The output should equal "0"
