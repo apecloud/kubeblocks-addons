@@ -374,6 +374,9 @@ spec:
                 initdb:
                   - auth-host: md5
                   - auth-local: trust
+              postgresql:
+                remove_data_directory_on_rewind_failure: true
+                remove_data_directory_on_diverged_timelines: true
           - name: ALLOW_NOSSL
             value: "true"
           - name: PGROOT
