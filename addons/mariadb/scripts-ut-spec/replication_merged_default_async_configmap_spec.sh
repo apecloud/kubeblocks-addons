@@ -67,4 +67,26 @@ Describe "alpha.89 merged CmpD default-async ConfigMap template"
     End
   End
 
+  Describe "merged CmpD runtime semisync guard"
+    It "declares the MARIADB_REPLICATION_MODE based semisync env helper before primary listener exposure"
+      helper_line=$(grep -n '^            is_semisync_mode_env() {' "$(cmpd_path)" | cut -d: -f1)
+      expose_line=$(grep -n '^            expose_sql_listener_for_primary_role() {' "$(cmpd_path)" | cut -d: -f1)
+      test -n "${helper_line}" && test -n "${expose_line}" && test "${helper_line}" -lt "${expose_line}"
+    End
+
+    It "routes primary listener semisync reset through the guarded helper"
+      count=$(grep -c 'reset_semisync_master_ack_receiver_if_enabled "primary-' "$(cmpd_path)")
+      The variable count should equal 2
+    End
+
+    It "background ACK receiver reset is guarded by is_semisync_mode_env"
+      awk '
+        /label=background-tcp-probe/ { found_log=1 }
+        /if is_semisync_mode_env; then/ { in_guard=1 }
+        in_guard && /SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;/ { found_guarded=1 }
+        END { exit !(found_log && found_guarded) }
+      ' "$(cmpd_path)"
+    End
+  End
+
 End
