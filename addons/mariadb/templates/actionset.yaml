@@ -14,7 +14,7 @@ spec:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       runOnTargetPodNode: true
       command:
-        - sh
+        - bash
         - -c
         - |
           set -eo pipefail;
@@ -30,7 +30,7 @@ spec:
     prepareData:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       command:
-        - sh
+        - bash
         - -c
         - |
           set -eo pipefail;
