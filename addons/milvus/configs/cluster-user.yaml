@@ -1,6 +1,17 @@
 common:
   security:
     authorizationEnabled: true
+    {{- if .TLS_ENABLED }}
+    tlsMode: 1
+    {{- end }}
+
+{{- if .TLS_ENABLED }}
+tls:
+  serverPemPath: /etc/pki/tls/cert.pem
+  serverKeyPath: /etc/pki/tls/key.pem
+  caPemPath: /etc/pki/tls/ca.pem
+{{- end }}
+
 etcd:
   endpoints:
     - {{ .ETCD_ENDPOINT }}
