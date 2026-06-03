@@ -1991,13 +1991,12 @@ spec:
                   return 0
                 fi
               fi
-              primary_sid="$(query_primary_service_server_id || true)"
-              if [ -n "${primary_sid}" ] && [ "${primary_sid}" != "${SERVICE_ID}" ]; then
-                prestop_watchdog_log "runtime-primary-listener-reconcile-defer reason=primary-service-routes-to-peer primary_sid=${primary_sid} service_id=${SERVICE_ID}"
-                return 0
-              fi
               role="$(query_local_syncer_role || true)"
               [ "${role}" = "primary" ] || return 0
+              primary_sid="$(query_primary_service_server_id || true)"
+              if [ -n "${primary_sid}" ] && [ "${primary_sid}" != "${SERVICE_ID}" ]; then
+                prestop_watchdog_log "runtime-primary-listener-reconcile-override reason=dcs-primary-overrides-service-routing primary_sid=${primary_sid} service_id=${SERVICE_ID} syncer_role=${role}"
+              fi
               prestop_watchdog_log "runtime-primary-listener-reconcile-begin role=${role}"
               expose_sql_listener_for_primary_role "syncer-promoted-primary" || return 1
               mark_replication_ready
