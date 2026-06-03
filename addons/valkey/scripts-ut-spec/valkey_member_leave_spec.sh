@@ -147,10 +147,14 @@ Describe "Valkey Member-Leave Bash Script Tests"
       export KB_LEAVE_MEMBER_POD_FQDN="valkey-1.headless.default.svc.cluster.local"
       export KB_LEAVE_MEMBER_POD_NAME="valkey-1"
       valkey-cli() { printf "role:slave\r\n"; }
-      _data_cli=$(build_data_cli "${KB_LEAVE_MEMBER_POD_FQDN}")
-      leaving_role=$(${_data_cli} INFO replication 2>/dev/null \
-                     | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
-      When call echo "${leaving_role}"
+      _detect_slave_role() {
+        build_data_cli "${KB_LEAVE_MEMBER_POD_FQDN}"
+        local leaving_role
+        leaving_role=$("${_data_cli_cmd[@]}" INFO replication 2>/dev/null \
+                       | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
+        printf '%s' "${leaving_role}"
+      }
+      When call _detect_slave_role
       The stdout should eq "slave"
     End
 
@@ -158,10 +162,14 @@ Describe "Valkey Member-Leave Bash Script Tests"
       export KB_LEAVE_MEMBER_POD_FQDN="valkey-0.headless.default.svc.cluster.local"
       export KB_LEAVE_MEMBER_POD_NAME="valkey-0"
       valkey-cli() { printf "role:master\r\n"; }
-      _data_cli=$(build_data_cli "${KB_LEAVE_MEMBER_POD_FQDN}")
-      leaving_role=$(${_data_cli} INFO replication 2>/dev/null \
-                     | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
-      When call echo "${leaving_role}"
+      _detect_master_role() {
+        build_data_cli "${KB_LEAVE_MEMBER_POD_FQDN}"
+        local leaving_role
+        leaving_role=$("${_data_cli_cmd[@]}" INFO replication 2>/dev/null \
+                       | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
+        printf '%s' "${leaving_role}"
+      }
+      When call _detect_master_role
       The stdout should eq "master"
     End
   End

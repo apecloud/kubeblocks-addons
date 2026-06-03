@@ -41,7 +41,11 @@ Describe "Valkey Self-Heal Daemon"
       Before "setup"
 
       It "builds a basic valkey-cli command"
-        When call cascade_build_local_cli_cmd
+        _local_cli_as_string() {
+          cascade_build_local_cli_cmd
+          printf '%s\n' "${_cli_cmd[*]}"
+        }
+        When call _local_cli_as_string
         The status should be success
         The stdout should include "valkey-cli --no-auth-warning"
         The stdout should include "-h 127.0.0.1"
@@ -62,7 +66,11 @@ Describe "Valkey Self-Heal Daemon"
       After "teardown"
 
       It "includes -a flag"
-        When call cascade_build_local_cli_cmd
+        _local_cli_with_pw_as_string() {
+          cascade_build_local_cli_cmd
+          printf '%s\n' "${_cli_cmd[*]}"
+        }
+        When call _local_cli_with_pw_as_string
         The status should be success
         The stdout should include "-a secret"
       End
@@ -371,8 +379,8 @@ Describe "Valkey Self-Heal Daemon"
     It "returns success when role is slave and master_host matches expected"
       export DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS="5"
       export CONFIRM_SCENARIO="ok"
+      _dm_cli_cmd=(valkey-cli --no-auth-warning -h 127.0.0.1 -p 6379)
       When call dual_master_confirm_demote \
-        "valkey-cli --no-auth-warning -h 127.0.0.1 -p 6379" \
         "vlk-0.vlk-headless.ns.svc.cluster.local"
       The status should be success
     End
@@ -380,8 +388,8 @@ Describe "Valkey Self-Heal Daemon"
     It "returns failure when role is slave but master_host points to a different host"
       export DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS="1"
       export CONFIRM_SCENARIO="wrong_host"
+      _dm_cli_cmd=(valkey-cli --no-auth-warning -h 127.0.0.1 -p 6379)
       When call dual_master_confirm_demote \
-        "valkey-cli --no-auth-warning -h 127.0.0.1 -p 6379" \
         "vlk-0.vlk-headless.ns.svc.cluster.local"
       The status should be failure
     End
@@ -389,8 +397,8 @@ Describe "Valkey Self-Heal Daemon"
     It "returns failure when cli is unreachable throughout the timeout window"
       export DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS="1"
       export CONFIRM_SCENARIO="unreachable"
+      _dm_cli_cmd=(valkey-cli --no-auth-warning -h 127.0.0.1 -p 6379)
       When call dual_master_confirm_demote \
-        "valkey-cli --no-auth-warning -h 127.0.0.1 -p 6379" \
         "vlk-0.vlk-headless.ns.svc.cluster.local"
       The status should be failure
     End

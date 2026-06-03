@@ -929,7 +929,7 @@ Describe "Valkey Check-Role Bash Script Tests"
         # variable rather than always hard-coding `-a "${SENTINEL_PASSWORD}"`.
         # That way missing password leaves auth args empty and the cli
         # call NOAUTH-fails, routing to `insufficient_valid`.
-        When call grep -F '${sentinel_auth_args} ${sentinel_tls_args} sentinel masters' "${check_role_script}"
+        When call grep -F '"${sentinel_auth_args[@]}" ${sentinel_tls_args} sentinel masters' "${check_role_script}"
         The status should be success
         The stdout should include 'sentinel_auth_args'
       End

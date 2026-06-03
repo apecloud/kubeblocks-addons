@@ -44,32 +44,32 @@ SH
 
   It "succeeds when CONFIG SET returns OK"
     export FAKE_VALKEY_OUTPUT=OK
-    When run sh ../scripts/reload-parameter.sh MAXMEMORY_POLICY allkeys-lru
+    When run bash ../scripts/reload-parameter.sh MAXMEMORY_POLICY allkeys-lru
     The status should be success
   End
 
   It "keeps unsupported static parameters non-fatal"
     export FAKE_VALKEY_OUTPUT=unknown
-    When run sh ../scripts/reload-parameter.sh BIND 0.0.0.0
+    When run bash ../scripts/reload-parameter.sh BIND 0.0.0.0
     The status should be success
   End
 
   It "keeps immutable runtime parameters non-fatal"
     export FAKE_VALKEY_OUTPUT=immutable
-    When run sh ../scripts/reload-parameter.sh CLUSTER_ENABLED yes
+    When run bash ../scripts/reload-parameter.sh CLUSTER_ENABLED yes
     The status should be success
   End
 
   It "fails closed on invalid enum values"
     export FAKE_VALKEY_OUTPUT=invalid
-    When run sh ../scripts/reload-parameter.sh MAXMEMORY_POLICY definitely-not-a-policy
+    When run bash ../scripts/reload-parameter.sh MAXMEMORY_POLICY definitely-not-a-policy
     The status should be failure
     The stderr should include "ERROR: CONFIG SET maxmemory-policy failed"
   End
 
   It "fails closed on invalid range values"
     export FAKE_VALKEY_OUTPUT=range
-    When run sh ../scripts/reload-parameter.sh MAXMEMORY_SAMPLES 0
+    When run bash ../scripts/reload-parameter.sh MAXMEMORY_SAMPLES 0
     The status should be failure
     The stderr should include "ERROR: CONFIG SET maxmemory-samples failed"
   End
