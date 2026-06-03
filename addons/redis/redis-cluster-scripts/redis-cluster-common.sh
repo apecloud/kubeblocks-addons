@@ -515,6 +515,56 @@ check_cluster_initialized() {
   return 1
 }
 
+check_current_shard_already_settled() {
+  local service_port=${SERVICE_PORT:-6379}
+
+  if ! check_redis_server_ready "127.0.0.1" "$service_port" 2>/dev/null; then
+    return 1
+  fi
+
+  local cluster_info
+  cluster_info=$(get_cluster_info "127.0.0.1" "$service_port") || return 1
+  local cluster_state
+  cluster_state=$(echo "$cluster_info" | awk -F: '/cluster_state/{print $2}' | tr -d '[:space:]')
+  if [ "$cluster_state" != "ok" ]; then
+    return 1
+  fi
+
+  local cluster_nodes_info
+  cluster_nodes_info=$(get_cluster_nodes_info "127.0.0.1" "$service_port") || return 1
+
+  local my_line
+  my_line=$(echo "$cluster_nodes_info" | grep "myself")
+  if is_empty "$my_line"; then
+    return 1
+  fi
+
+  local my_flags primary_id
+  my_flags=$(echo "$my_line" | awk '{print $3}')
+  if echo "$my_flags" | grep -q "slave"; then
+    primary_id=$(echo "$my_line" | awk '{print $4}')
+  else
+    primary_id=$(echo "$my_line" | awk '{print $1}')
+  fi
+
+  local slot_count
+  slot_count=$(count_node_slots "127.0.0.1" "$service_port" "$primary_id") || return 1
+  if [ "${slot_count:-0}" -eq 0 ] 2>/dev/null; then
+    return 1
+  fi
+
+  if ! is_empty "$CURRENT_SHARD_POD_FQDN_LIST"; then
+    for pod_fqdn in $(echo "$CURRENT_SHARD_POD_FQDN_LIST" | tr ',' ' '); do
+      local pod_name=${pod_fqdn%%.*}
+      if ! echo "$cluster_nodes_info" | grep -q "$pod_name"; then
+        return 1
+      fi
+    done
+  fi
+
+  return 0
+}
+
 build_redis_cluster_create_command() {
   local primary_nodes="$1"
   unset_xtrace_when_ut_mode_false

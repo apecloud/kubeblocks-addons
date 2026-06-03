@@ -1437,6 +1437,67 @@ Describe "Redis Cluster Manage Bash Script Tests"
   End
 
   Describe "initialize_or_scale_out_redis_cluster()"
+    check_current_shard_already_settled() {
+      return 1
+    }
+
+    Context "when current shard is already settled (scale-in re-trigger)"
+      check_current_shard_already_settled() {
+        return 0
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0.redis-shard-98x-headless.ns.svc.cluster.local,redis-shard-98x-1.redis-shard-98x-headless.ns.svc.cluster.local,redis-shard-7hy-0.redis-shard-7hy-headless.ns.svc.cluster.local,redis-shard-7hy-1.redis-shard-7hy-headless.ns.svc.cluster.local,redis-shard-kpl-0.redis-shard-kpl-headless.ns.svc.cluster.local,redis-shard-kpl-1.redis-shard-kpl-headless.ns.svc.cluster.local"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_FQDN_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "returns success without running init or scale-out"
+        When run initialize_or_scale_out_redis_cluster
+        The status should be success
+        The output should include "Current shard already settled in cluster"
+        The output should not include "Redis Cluster not initialized"
+        The output should not include "scaling out the shard"
+      End
+    End
+
+    Context "when shard not settled and cluster not initialized (real scale-out)"
+      check_current_shard_already_settled() {
+        return 1
+      }
+
+      check_cluster_initialized() {
+        return 1
+      }
+
+      initialize_redis_cluster() {
+        return 0
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_FQDN_LIST
+      }
+      After "un_setup"
+
+      It "falls through to init path when shard not settled"
+        When run initialize_or_scale_out_redis_cluster
+        The status should be success
+        The output should not include "Current shard already settled"
+        The output should include "Redis Cluster not initialized, initializing..."
+        The output should include "Redis Cluster initialized successfully"
+      End
+    End
 
     Context "when Redis Cluster is not initialized"
       check_cluster_initialized() {
@@ -1530,6 +1591,10 @@ Describe "Redis Cluster Manage Bash Script Tests"
 
       scale_out_redis_cluster_shard() {
         return 1
+      }
+
+      sync_acl_for_redis_cluster_shard() {
+        return 0
       }
 
       setup() {

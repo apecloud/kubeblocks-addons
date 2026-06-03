@@ -1039,6 +1039,11 @@ initialize_or_scale_out_redis_cluster() {
   # TODO: remove random sleep, it's a workaround for the multi components initialization parallelism issue
   sleep_random_second_when_ut_mode_false 10 1
 
+  if check_current_shard_already_settled; then
+    echo "Current shard already settled in cluster (cluster ok, primary owns slots, all pods joined), no action needed"
+    return 0
+  fi
+
   # if the cluster is not initialized, initialize it
   if ! check_cluster_initialized "$KB_CLUSTER_POD_FQDN_LIST"; then
     echo "Redis Cluster not initialized, initializing..."
