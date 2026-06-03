@@ -17,11 +17,11 @@ spec:
         - sh
         - -c
         - |
-          set -e;
+          set -eo pipefail;
           export PATH="$PATH:$DP_DATASAFED_BIN_PATH";
           export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH";
           echo "DB_HOST=${DP_DB_HOST} DB_USER=${DP_DB_USER} DB_PASSWORD=${DP_DB_PASSWORD} DATA_DIR=${DATA_DIR} BACKUP_DIR=${DP_BACKUP_DIR} BACKUP_NAME=${DP_BACKUP_NAME}";
-          mariadb-backup --backup --safe-slave-backup --slave-info --stream=mbstream --host=${DP_DB_HOST} \
+          mariadb-backup --backup --slave-info --stream=mbstream --host=${DP_DB_HOST} \
           --user=${DP_DB_USER} --password=${DP_DB_PASSWORD} --datadir=${DATA_DIR} \
           --skip-ssl | datasafed push - "/${DP_BACKUP_NAME}.mbstream";
           TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}');
@@ -33,7 +33,7 @@ spec:
         - sh
         - -c
         - |
-          set -e;
+          set -eo pipefail;
           export PATH="$PATH:$DP_DATASAFED_BIN_PATH";
           export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH";
           echo "BACKUP_DIR=${DP_BACKUP_BASE_PATH} BACKUP_NAME=${DP_BACKUP_NAME} DATA_DIR=${DATA_DIR}";
