@@ -830,6 +830,30 @@ spec:
 
 ```
 
+```yaml
+# cat examples/clickhouse/keeper-switchover-specified-instance.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: keeper-switchover
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: Switchover
+  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
+  switchover:
+    # Specifies the name of the Component.
+  - componentName: ch-keeper
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: "clickhouse-cluster-ch-keeper-0"
+    # ClickHouse Keeper switchover currently requires candidateName.
+    # Need to ensure the candidate instance has caught up with quorum logs.
+    candidateName: "clickhouse-cluster-ch-keeper-1"
+
+```
+
 ```bash
 kubectl apply -f examples/clickhouse/keeper-switchover-specified-instance.yaml
 ```
@@ -1554,7 +1578,7 @@ spec:
                 storage: 10Gi
   shardings:
     - name: clickhouse
-      shards: 3
+      shards: 2
       template:
         name: clickhouse
         componentDef: clickhouse-1
@@ -1847,6 +1871,7 @@ metadata:
 type: Opaque
 data:
   password: cGFzc3dvcmQxMjM=  # 'password123' in base64
+
 ```
 
 ```bash
