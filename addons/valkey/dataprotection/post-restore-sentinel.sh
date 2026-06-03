@@ -18,8 +18,9 @@
 #   data pod:     <cluster>-<comp>-<n>
 #   sentinel comp: <cluster>-valkey-sentinel  (standard topology name)
 #
-# SENTINEL_SERVICE_PORT and SENTINEL_PASSWORD must be injected via the
-# BackupPolicyTemplate env section if Sentinel auth is enabled.
+# Current BackupPolicyTemplate env schema cannot inject cross-component
+# Sentinel credentials. Re-registration is best-effort and can only authenticate
+# when SENTINEL_PASSWORD is supplied by a future explicit contract.
 
 set -e
 set -o pipefail

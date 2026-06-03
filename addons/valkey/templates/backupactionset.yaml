@@ -7,12 +7,12 @@ Backup flow:
 
 Restore flow:
   1. prepareData: pull the archive and extract it into DATA_DIR before the pod starts.
-  2. postReady: once Valkey pods are Running+Ready, restore any Sentinel ACL rules
-     that were saved during backup.
+  2. postReady: best-effort Sentinel monitor re-registration after data restore.
 
 KubeBlocks DataProtection passes standard DP_* variables into all job containers;
-additional variables (DATA_DIR, SENTINEL_*) are injected from the ActionSet env
-and from the BackupPolicyTemplate.
+DATA_DIR is injected from the ActionSet env. Current BackupPolicyTemplate env
+schema only supports versionMapping for this chart path, so cross-component
+Sentinel FQDN/password injection is not available here.
 */}}
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
@@ -51,17 +51,9 @@ spec:
         - |
           {{- .Files.Get "dataprotection/restore.sh" | nindent 10 }}
     postReady:
-      # Step 1: restore Sentinel ACL rules (non-default accounts)
-      - job:
-          image: {{ include "valkey.defaultImage" . }}
-          onError: Fail
-          runOnTargetPodNode: true
-          command:
-            - bash
-            - -c
-            - |
-              {{- .Files.Get "dataprotection/restore-sentinel-acl.sh" | nindent 14 }}
-      # Step 2: re-register the primary with Sentinel (Sentinel's own PVC is not backed up)
+      # Re-register the primary with Sentinel (Sentinel's own PVC is not backed up).
+      # This is best-effort because current DP BackupPolicyTemplate env cannot
+      # inject cross-component Sentinel credentials.
       - job:
           image: {{ include "valkey.defaultImage" . }}
           onError: Continue
