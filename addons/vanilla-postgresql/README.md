@@ -573,9 +573,15 @@ kind: Cluster
 metadata:
   name: vanpg-restore
   namespace: demo
-  annotations:
-    kubeblocks.io/restore-from-backup: '{"postgresql":{"name":"vanpg-cluster-pg-basebackup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: vanpg-cluster-pg-basebackup
+      namespace: demo
+    parameters:
+      dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   clusterDef: vanilla-postgresql
   topology: vanilla-postgresql
