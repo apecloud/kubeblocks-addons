@@ -30,6 +30,11 @@ Describe "Valkey Member-Leave Bash Script Tests"
   AfterAll "cleanup"
 
   Describe "build_data_cli()"
+    _build_data_cli_as_string() {
+      build_data_cli "$@"
+      printf '%s\n' "${_data_cli_cmd[*]}"
+    }
+
     Context "with password"
       setup() {
         export VALKEY_DEFAULT_PASSWORD="mypass"
@@ -42,7 +47,7 @@ Describe "Valkey Member-Leave Bash Script Tests"
       After "teardown"
 
       It "includes --no-auth-warning and -a flag"
-        When call build_data_cli "valkey-0.headless.default.svc.cluster.local"
+        When call _build_data_cli_as_string "valkey-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "--no-auth-warning"
         The stdout should include "-a mypass"
@@ -57,7 +62,7 @@ Describe "Valkey Member-Leave Bash Script Tests"
       Before "setup"
 
       It "includes --no-auth-warning and no -a flag"
-        When call build_data_cli "valkey-0.headless.default.svc.cluster.local"
+        When call _build_data_cli_as_string "valkey-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "--no-auth-warning"
         The stdout should not include " -a "
@@ -66,6 +71,11 @@ Describe "Valkey Member-Leave Bash Script Tests"
   End
 
   Describe "build_sentinel_cli()"
+    _build_sentinel_cli_as_string() {
+      build_sentinel_cli "$@"
+      printf '%s\n' "${_sentinel_cli_cmd[*]}"
+    }
+
     Context "with Sentinel password"
       setup() {
         export SENTINEL_PASSWORD="sentpass"
@@ -78,7 +88,7 @@ Describe "Valkey Member-Leave Bash Script Tests"
       After "teardown"
 
       It "includes --no-auth-warning and -a flag on sentinel port"
-        When call build_sentinel_cli "sentinel-0.headless.default.svc.cluster.local"
+        When call _build_sentinel_cli_as_string "sentinel-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "--no-auth-warning"
         The stdout should include "-a sentpass"
@@ -137,10 +147,14 @@ Describe "Valkey Member-Leave Bash Script Tests"
       export KB_LEAVE_MEMBER_POD_FQDN="valkey-1.headless.default.svc.cluster.local"
       export KB_LEAVE_MEMBER_POD_NAME="valkey-1"
       valkey-cli() { printf "role:slave\r\n"; }
-      _data_cli=$(build_data_cli "${KB_LEAVE_MEMBER_POD_FQDN}")
-      leaving_role=$(${_data_cli} INFO replication 2>/dev/null \
-                     | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
-      When call echo "${leaving_role}"
+      _detect_slave_role() {
+        build_data_cli "${KB_LEAVE_MEMBER_POD_FQDN}"
+        local leaving_role
+        leaving_role=$("${_data_cli_cmd[@]}" INFO replication 2>/dev/null \
+                       | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
+        printf '%s' "${leaving_role}"
+      }
+      When call _detect_slave_role
       The stdout should eq "slave"
     End
 
@@ -148,10 +162,14 @@ Describe "Valkey Member-Leave Bash Script Tests"
       export KB_LEAVE_MEMBER_POD_FQDN="valkey-0.headless.default.svc.cluster.local"
       export KB_LEAVE_MEMBER_POD_NAME="valkey-0"
       valkey-cli() { printf "role:master\r\n"; }
-      _data_cli=$(build_data_cli "${KB_LEAVE_MEMBER_POD_FQDN}")
-      leaving_role=$(${_data_cli} INFO replication 2>/dev/null \
-                     | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
-      When call echo "${leaving_role}"
+      _detect_master_role() {
+        build_data_cli "${KB_LEAVE_MEMBER_POD_FQDN}"
+        local leaving_role
+        leaving_role=$("${_data_cli_cmd[@]}" INFO replication 2>/dev/null \
+                       | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
+        printf '%s' "${leaving_role}"
+      }
+      When call _detect_master_role
       The stdout should eq "master"
     End
   End

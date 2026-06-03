@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 # account-provision.sh — called by KubeBlocks to create/update a database account.
 #
@@ -21,19 +21,20 @@ set -e
 
 port="${SERVICE_PORT:-6379}"
 
-base_cmd="valkey-cli --no-auth-warning -p ${port}"
+base_cmd=(valkey-cli --no-auth-warning -p "${port}")
 if [ -n "${VALKEY_DEFAULT_PASSWORD}" ]; then
-  base_cmd="${base_cmd} -a ${VALKEY_DEFAULT_PASSWORD}"
+  base_cmd+=(-a "${VALKEY_DEFAULT_PASSWORD}")
 fi
 if [ -n "${VALKEY_CLI_TLS_ARGS}" ]; then
-  base_cmd="${base_cmd} ${VALKEY_CLI_TLS_ARGS}"
+  # shellcheck disable=SC2206
+  base_cmd+=(${VALKEY_CLI_TLS_ARGS})
 fi
 
 # Execute the statement provided by KubeBlocks.
 # Pipe via stdin so that '>' in ACL password syntax (e.g. >mypassword) is not
 # misinterpreted as a shell output-redirect operator.
 # valkey-cli exits 0 even for protocol errors; capture output and check content.
-output=$(echo "${KB_ACCOUNT_STATEMENT}" | ${base_cmd} 2>&1) || {
+output=$(echo "${KB_ACCOUNT_STATEMENT}" | "${base_cmd[@]}" 2>&1) || {
   echo "ERROR: account statement failed: ${output}" >&2
   exit 1
 }
@@ -43,7 +44,7 @@ if [ "${output}" != "OK" ]; then
 fi
 
 # Persist ACL to disk so it survives pod restarts
-acl_save_out=$(${base_cmd} ACL SAVE 2>&1) || {
+acl_save_out=$("${base_cmd[@]}" ACL SAVE 2>&1) || {
   echo "ERROR: ACL SAVE failed: ${acl_save_out}" >&2
   exit 1
 }

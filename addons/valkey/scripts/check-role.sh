@@ -74,14 +74,14 @@ set -e
 port="${KB_SERVICE_PORT:-${SERVICE_PORT:-6379}}"
 
 build_cli_cmd() {
-  local cmd="valkey-cli --no-auth-warning -h 127.0.0.1 -p ${port}"
+  cli_cmd=(valkey-cli --no-auth-warning -h 127.0.0.1 -p "${port}")
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    cmd="${cmd} -a ${VALKEY_DEFAULT_PASSWORD}"
+    cli_cmd+=(-a "${VALKEY_DEFAULT_PASSWORD}")
   fi
   if ! is_empty "${VALKEY_CLI_TLS_ARGS}"; then
-    cmd="${cmd} ${VALKEY_CLI_TLS_ARGS}"
+    # shellcheck disable=SC2206
+    cli_cmd+=(${VALKEY_CLI_TLS_ARGS})
   fi
-  echo "${cmd}"
 }
 
 load_common_library() {
@@ -95,7 +95,7 @@ ${__SOURCED__:+false} : || return 0
 # ── main ────────────────────────────────────────────────────────────────
 load_common_library
 
-cli_cmd=$(build_cli_cmd)
+build_cli_cmd
 
 unset_xtrace_when_ut_mode_false
 # Capture the full INFO replication output once via a single command
@@ -110,7 +110,7 @@ unset_xtrace_when_ut_mode_false
 # valkey-cli INFO output uses CRLF line endings per the Redis protocol;
 # the parameter expansion `${line%$'\r'}` trims the trailing CR before
 # the case match.
-repl_info=$(${cli_cmd} info replication 2>/dev/null) || repl_info=""
+repl_info=$("${cli_cmd[@]}" info replication 2>/dev/null) || repl_info=""
 role_line=""
 while IFS= read -r line; do
   line="${line%$'\r'}"
@@ -127,7 +127,7 @@ done <<<"${repl_info}"
 # server`) is the stable per-server identity Sentinel records as `runid`
 # for the current master. Comparing the two lets the script reject the
 # stale-master self-report before it reaches the controller.
-server_info=$(${cli_cmd} info server 2>/dev/null) || server_info=""
+server_info=$("${cli_cmd[@]}" info server 2>/dev/null) || server_info=""
 local_run_id=""
 while IFS= read -r line; do
   line="${line%$'\r'}"
@@ -229,9 +229,9 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
   # cli call will fail (NOAUTH) and the per-sentinel drop will push
   # the decision to `insufficient_valid`, which the fallback branch now
   # correctly maps to a failed probe sample.
-  sentinel_auth_args=""
+  sentinel_auth_args=()
   if [ -n "${SENTINEL_PASSWORD:-}" ]; then
-    sentinel_auth_args="-a ${SENTINEL_PASSWORD}"
+    sentinel_auth_args=(-a "${SENTINEL_PASSWORD}")
   fi
   # Configured total: count non-empty entries. Empty entries from a
   # trailing comma or runtime mis-render must not lower the quorum bar.
@@ -247,7 +247,7 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
     sentinel_query_success_count=0
     sentinel_master_config_count=0
     for s in "${sentinel_fqdns[@]}"; do
-      sentinel_out=$(valkey-cli --no-auth-warning -h "${s}" -p "${sentinel_port}" ${sentinel_auth_args} ${sentinel_tls_args} sentinel masters 2>/dev/null) || continue
+      sentinel_out=$(valkey-cli --no-auth-warning -h "${s}" -p "${sentinel_port}" "${sentinel_auth_args[@]}" ${sentinel_tls_args} sentinel masters 2>/dev/null) || continue
       sentinel_query_success_count=$((sentinel_query_success_count + 1))
       sentinel_has_master_config=0
       ce_marker=""

@@ -18,12 +18,13 @@ set -e
 port="${SERVICE_PORT:-6379}"
 expected_replicas=$(( COMPONENT_REPLICAS - 1 ))
 
-cli_cmd="valkey-cli --no-auth-warning -h 127.0.0.1 -p ${port}"
+cli_cmd=(valkey-cli --no-auth-warning -h 127.0.0.1 -p "${port}")
 if [ -n "${VALKEY_DEFAULT_PASSWORD}" ]; then
-  cli_cmd="${cli_cmd} -a ${VALKEY_DEFAULT_PASSWORD}"
+  cli_cmd+=(-a "${VALKEY_DEFAULT_PASSWORD}")
 fi
 if [ -n "${VALKEY_CLI_TLS_ARGS}" ]; then
-  cli_cmd="${cli_cmd} ${VALKEY_CLI_TLS_ARGS}"
+  # shellcheck disable=SC2206
+  cli_cmd+=(${VALKEY_CLI_TLS_ARGS})
 fi
 
 # In standalone mode there are no replicas to check
@@ -37,7 +38,7 @@ max_wait=60
 elapsed=0
 connected=0
 while [ "${elapsed}" -lt "${max_wait}" ]; do
-  connected=$(${cli_cmd} info replication 2>/dev/null \
+  connected=$("${cli_cmd[@]}" info replication 2>/dev/null \
     | grep "^connected_slaves:" | cut -d: -f2 | tr -d '\r\n') || true
   if [ "${connected}" = "${expected_replicas}" ]; then
     echo "postProvision: all ${expected_replicas} replica(s) connected."

@@ -28,6 +28,11 @@ Describe "Valkey Check-Role Bash Script Tests"
   AfterAll "cleanup"
 
   Describe "build_cli_cmd()"
+    _cli_cmd_as_string() {
+      build_cli_cmd
+      printf '%s\n' "${cli_cmd[*]}"
+    }
+
     Context "without password or TLS"
       setup() {
         unset VALKEY_DEFAULT_PASSWORD
@@ -36,7 +41,7 @@ Describe "Valkey Check-Role Bash Script Tests"
       Before "setup"
 
       It "builds a basic valkey-cli command"
-        When call build_cli_cmd
+        When call _cli_cmd_as_string
         The status should be success
         The stdout should include "valkey-cli --no-auth-warning"
         The stdout should include "-h 127.0.0.1"
@@ -57,7 +62,7 @@ Describe "Valkey Check-Role Bash Script Tests"
       After "teardown"
 
       It "includes -a flag"
-        When call build_cli_cmd
+        When call _cli_cmd_as_string
         The status should be success
         The stdout should include "-a secret"
       End
@@ -77,7 +82,7 @@ Describe "Valkey Check-Role Bash Script Tests"
       After "teardown"
 
       It "uses the custom port"
-        When call build_cli_cmd
+        When call _cli_cmd_as_string
         The status should be success
         The stdout should include "-p 6380"
       End
@@ -105,8 +110,8 @@ Describe "Valkey Check-Role Bash Script Tests"
         valkey-cli() {
           printf "# Replication\r\nrole:master\r\nconnected_slaves:2\r\n"
         }
-        cli_cmd=$(build_cli_cmd)
-        repl_info=$(${cli_cmd} info replication 2>/dev/null)
+        build_cli_cmd
+        repl_info=$("${cli_cmd[@]}" info replication 2>/dev/null)
         role_line=$(parse_role_line "${repl_info}")
         When call bash -c "
           case \"${role_line}\" in
@@ -125,8 +130,8 @@ Describe "Valkey Check-Role Bash Script Tests"
         valkey-cli() {
           printf "# Replication\r\nrole:slave\r\nmaster_host:valkey-0\r\n"
         }
-        cli_cmd=$(build_cli_cmd)
-        repl_info=$(${cli_cmd} info replication 2>/dev/null)
+        build_cli_cmd
+        repl_info=$("${cli_cmd[@]}" info replication 2>/dev/null)
         role_line=$(parse_role_line "${repl_info}")
         When call bash -c "
           case \"${role_line}\" in
@@ -143,8 +148,8 @@ Describe "Valkey Check-Role Bash Script Tests"
     Context "when INFO output is empty (pod startup window)"
       It "produces empty role_line (script will exit 1 in main)"
         valkey-cli() { return 1; }   # cli connection fails
-        cli_cmd=$(build_cli_cmd)
-        repl_info=$(${cli_cmd} info replication 2>/dev/null) || repl_info=""
+        build_cli_cmd
+        repl_info=$("${cli_cmd[@]}" info replication 2>/dev/null) || repl_info=""
         When call parse_role_line "${repl_info}"
         The status should be success
         The stdout should eq ""
@@ -924,7 +929,7 @@ Describe "Valkey Check-Role Bash Script Tests"
         # variable rather than always hard-coding `-a "${SENTINEL_PASSWORD}"`.
         # That way missing password leaves auth args empty and the cli
         # call NOAUTH-fails, routing to `insufficient_valid`.
-        When call grep -F '${sentinel_auth_args} ${sentinel_tls_args} sentinel masters' "${check_role_script}"
+        When call grep -F '"${sentinel_auth_args[@]}" ${sentinel_tls_args} sentinel masters' "${check_role_script}"
         The status should be success
         The stdout should include 'sentinel_auth_args'
       End

@@ -37,30 +37,29 @@ load_common_library() {
 
 build_cli() {
   local host="${1}"
-  local cmd="valkey-cli --no-auth-warning -h ${host} -p ${port}"
+  _cli=(valkey-cli --no-auth-warning -h "${host}" -p "${port}")
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    cmd="${cmd} -a ${VALKEY_DEFAULT_PASSWORD}"
+    _cli+=(-a "${VALKEY_DEFAULT_PASSWORD}")
   fi
   if ! is_empty "${VALKEY_CLI_TLS_ARGS}"; then
-    cmd="${cmd} ${VALKEY_CLI_TLS_ARGS}"
+    # shellcheck disable=SC2206
+    _cli+=(${VALKEY_CLI_TLS_ARGS})
   fi
-  echo "${cmd}"
 }
 
 get_role() {
   local fqdn="${1}"
-  local cli
-  cli=$(build_cli "${fqdn}")
-  ${cli} info replication 2>/dev/null | grep "^role:" | tr -d '\r\n' | cut -d: -f2
+  build_cli "${fqdn}"
+  "${_cli[@]}" info replication 2>/dev/null | grep "^role:" | tr -d '\r\n' | cut -d: -f2
 }
 
 promote_replica() {
   local target_fqdn="${1}"
   echo "Promoting ${target_fqdn} to primary..."
-  local cli output
-  cli=$(build_cli "${target_fqdn}")
+  local output
+  build_cli "${target_fqdn}"
   # valkey-cli exits 0 even for protocol errors; capture output and check content.
-  output=$(${cli} REPLICAOF NO ONE 2>&1) || {
+  output=$("${_cli[@]}" REPLICAOF NO ONE 2>&1) || {
     echo "ERROR: REPLICAOF NO ONE failed on ${target_fqdn}: ${output}" >&2
     return 1
   }
@@ -87,10 +86,10 @@ wait_until_master() {
 repoint_one() {
   # Wrapped as a named function so call_func_with_retry can call it by name.
   local fqdn="${1}" new_primary="${2}" target_port="${3}"
-  local cli output
-  cli=$(build_cli "${fqdn}")
+  local output
+  build_cli "${fqdn}"
   # valkey-cli exits 0 even for protocol errors; capture output and check content.
-  output=$(${cli} REPLICAOF "${new_primary}" "${target_port}" 2>&1) || {
+  output=$("${_cli[@]}" REPLICAOF "${new_primary}" "${target_port}" 2>&1) || {
     echo "ERROR: REPLICAOF command failed on ${fqdn}: ${output}" >&2
     return 1
   }
@@ -155,21 +154,21 @@ pod_fqdns_with_candidate() {
 sentinel_cli_for() {
   local host="${1}"
   local s_port="${SENTINEL_SERVICE_PORT:-26379}"
-  local cmd="valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -h ${host} -p ${s_port}"
+  # shellcheck disable=SC2206
+  _sentinel_cli=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -h "${host}" -p "${s_port}")
   if ! is_empty "${SENTINEL_PASSWORD}"; then
-    cmd="${cmd} -a ${SENTINEL_PASSWORD}"
+    _sentinel_cli+=(-a "${SENTINEL_PASSWORD}")
   fi
-  echo "${cmd}"
 }
 
 _do_set_replica_priority() {
   local fqdn="${1}" prio="${2}"
-  local cli output
-  cli=$(build_cli "${fqdn}")
+  local output
+  build_cli "${fqdn}"
   # Capture only stdout (the Valkey protocol response); redirect stderr to
   # /dev/null so TLS warnings do not pollute the comparison value.
   # valkey-cli exits 0 even for protocol errors, so we check output content.
-  output=$(${cli} CONFIG SET replica-priority "${prio}" 2>/dev/null) || true
+  output=$("${_cli[@]}" CONFIG SET replica-priority "${prio}" 2>/dev/null) || true
   # Strip \r (valkey-cli may return "OK\r" on some platforms).
   output="${output//$'\r'/}"
   if [ "${output}" = "OK" ]; then
@@ -188,10 +187,9 @@ execute_sentinel_failover() {
   local master_name="${VALKEY_COMPONENT_NAME}"
   IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
   for s_fqdn in "${sentinel_fqdns[@]}"; do
-    local cli output
-    cli=$(sentinel_cli_for "${s_fqdn}")
-    local exit_code=0
-    output=$(${cli} SENTINEL FAILOVER "${master_name}" 2>/dev/null) || exit_code=$?
+    local output exit_code=0
+    sentinel_cli_for "${s_fqdn}"
+    output=$("${_sentinel_cli[@]}" SENTINEL FAILOVER "${master_name}" 2>/dev/null) || exit_code=$?
     [ "${exit_code}" -ne 0 ] && continue
     # Strip \r (valkey-cli may return "OK\r" on some platforms, including TLS mode).
     output="${output//$'\r'/}"
@@ -224,15 +222,15 @@ wait_sentinel_sees_priority() {
     IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
     local confirmed=0 total=${#sentinel_fqdns[@]}
     for s_fqdn in "${sentinel_fqdns[@]}"; do
-      local cli prio
-      cli=$(sentinel_cli_for "${s_fqdn}")
+      local prio
+      sentinel_cli_for "${s_fqdn}"
       # Parse SENTINEL REPLICAS output:
       #   tr -d '"'       — strip valkey-cli string quotes
       #   sed 's/.*) //'  — strip leading array-index prefixes like "  3) "
       #   awk             — find the replica matching candidate_host, extract slave-priority
       #                     Uses index()+literal "." suffix (e.g. "valkey-1.")
       #                     to avoid "valkey-1" substring-matching "valkey-10".
-      prio=$(${cli} SENTINEL REPLICAS "${VALKEY_COMPONENT_NAME}" 2>/dev/null \
+      prio=$("${_sentinel_cli[@]}" SENTINEL REPLICAS "${VALKEY_COMPONENT_NAME}" 2>/dev/null \
         | tr -d '"' \
         | sed 's/.*) //' \
         | awk -v cand="${candidate_host}." '

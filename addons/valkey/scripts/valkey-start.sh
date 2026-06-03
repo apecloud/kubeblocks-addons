@@ -266,15 +266,16 @@ query_sentinel_for_master() {
   local sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
   local master_name="${VALKEY_COMPONENT_NAME}"
 
-  local sentinel_cli_base="valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p ${sentinel_port}"
+  # shellcheck disable=SC2206
+  local sentinel_cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${sentinel_port}")
   if ! is_empty "${SENTINEL_PASSWORD}"; then
-    sentinel_cli_base="${sentinel_cli_base} -a ${SENTINEL_PASSWORD}"
+    sentinel_cli_base+=(-a "${SENTINEL_PASSWORD}")
   fi
 
   IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
   for s_fqdn in "${sentinel_fqdns[@]}"; do
     local response
-    response=$(${sentinel_cli_base} -h "${s_fqdn}" \
+    response=$("${sentinel_cli_base[@]}" -h "${s_fqdn}" \
                  SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null) || continue
 
     # Response is two lines: IP/host on line 1, port on line 2.
@@ -320,9 +321,10 @@ query_sentinel_quorum_for_master() {
   local sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
   local master_name="${VALKEY_COMPONENT_NAME}"
 
-  local sentinel_cli_base="valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p ${sentinel_port}"
+  # shellcheck disable=SC2206
+  local sentinel_cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${sentinel_port}")
   if ! is_empty "${SENTINEL_PASSWORD}"; then
-    sentinel_cli_base="${sentinel_cli_base} -a ${SENTINEL_PASSWORD}"
+    sentinel_cli_base+=(-a "${SENTINEL_PASSWORD}")
   fi
 
   IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
@@ -335,7 +337,7 @@ query_sentinel_quorum_for_master() {
 
   for s_fqdn in "${sentinel_fqdns[@]}"; do
     local response master_addr
-    response=$(${sentinel_cli_base} -h "${s_fqdn}" \
+    response=$("${sentinel_cli_base[@]}" -h "${s_fqdn}" \
                  SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null) || continue
     master_addr=$(echo "${response}" | head -n1 | tr -d '\r\n')
     is_empty "${master_addr}" && continue
@@ -405,16 +407,17 @@ query_sentinel_quorum_for_master() {
 #
 # We skip ourselves because valkey-server hasn't started yet and won't respond.
 scan_pods_for_master() {
-  local cli_base="valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p ${service_port}"
+  # shellcheck disable=SC2206
+  local cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${service_port}")
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    cli_base="${cli_base} -a ${VALKEY_DEFAULT_PASSWORD}"
+    cli_base+=(-a "${VALKEY_DEFAULT_PASSWORD}")
   fi
 
   IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
   for pod_fqdn in "${pod_fqdns[@]}"; do
     contains "${pod_fqdn}" "${CURRENT_POD_NAME}." && continue
     local role
-    role=$(timeout 3 ${cli_base} -h "${pod_fqdn}" info replication 2>/dev/null \
+    role=$(timeout 3 "${cli_base[@]}" -h "${pod_fqdn}" info replication 2>/dev/null \
       | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
     if [ "${role}" = "master" ]; then
       echo "${pod_fqdn}"
@@ -441,12 +444,13 @@ elect_lexicographic_primary() {
 # verify_pod_role — return the replication role ("master", "slave", or "") of a remote pod.
 verify_pod_role() {
   local fqdn="$1"
-  local cli_base="valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p ${service_port}"
+  # shellcheck disable=SC2206
+  local cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${service_port}")
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    cli_base="${cli_base} -a ${VALKEY_DEFAULT_PASSWORD}"
+    cli_base+=(-a "${VALKEY_DEFAULT_PASSWORD}")
   fi
   local role
-  role=$(timeout 3 ${cli_base} -h "${fqdn}" info replication 2>/dev/null \
+  role=$(timeout 3 "${cli_base[@]}" -h "${fqdn}" info replication 2>/dev/null \
     | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
   echo "${role}"
 }
@@ -455,12 +459,13 @@ verify_pod_role() {
 # replicates from.  Returns empty if the chain cannot be resolved to a known pod.
 follow_slave_to_master() {
   local slave_fqdn="$1"
-  local cli_base="valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p ${service_port}"
+  # shellcheck disable=SC2206
+  local cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${service_port}")
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    cli_base="${cli_base} -a ${VALKEY_DEFAULT_PASSWORD}"
+    cli_base+=(-a "${VALKEY_DEFAULT_PASSWORD}")
   fi
   local master_host
-  master_host=$(${cli_base} -h "${slave_fqdn}" info replication 2>/dev/null \
+  master_host=$("${cli_base[@]}" -h "${slave_fqdn}" info replication 2>/dev/null \
     | grep "^master_host:" | tr -d '\r\n' | cut -d: -f2) || true
   is_empty "${master_host}" && return 0
   IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"

@@ -37,18 +37,26 @@ sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
 
 build_data_cli() {
   local host="${1}"
-  local cmd="valkey-cli --no-auth-warning -h ${host} -p ${port}"
-  [ -n "${VALKEY_DEFAULT_PASSWORD}" ] && cmd="${cmd} -a ${VALKEY_DEFAULT_PASSWORD}"
-  [ -n "${VALKEY_CLI_TLS_ARGS}" ]     && cmd="${cmd} ${VALKEY_CLI_TLS_ARGS}"
-  echo "${cmd}"
+  _data_cli_cmd=(valkey-cli --no-auth-warning -h "${host}" -p "${port}")
+  if [ -n "${VALKEY_DEFAULT_PASSWORD}" ]; then
+    _data_cli_cmd+=(-a "${VALKEY_DEFAULT_PASSWORD}")
+  fi
+  if [ -n "${VALKEY_CLI_TLS_ARGS}" ]; then
+    # shellcheck disable=SC2206
+    _data_cli_cmd+=(${VALKEY_CLI_TLS_ARGS})
+  fi
 }
 
 build_sentinel_cli() {
   local host="${1}"
-  local cmd="valkey-cli --no-auth-warning -h ${host} -p ${sentinel_port}"
-  [ -n "${SENTINEL_PASSWORD}" ] && cmd="${cmd} -a ${SENTINEL_PASSWORD}"
-  [ -n "${VALKEY_CLI_TLS_ARGS}" ] && cmd="${cmd} ${VALKEY_CLI_TLS_ARGS}"
-  echo "${cmd}"
+  _sentinel_cli_cmd=(valkey-cli --no-auth-warning -h "${host}" -p "${sentinel_port}")
+  if [ -n "${SENTINEL_PASSWORD}" ]; then
+    _sentinel_cli_cmd+=(-a "${SENTINEL_PASSWORD}")
+  fi
+  if [ -n "${VALKEY_CLI_TLS_ARGS}" ]; then
+    # shellcheck disable=SC2206
+    _sentinel_cli_cmd+=(${VALKEY_CLI_TLS_ARGS})
+  fi
 }
 
 # This is magic for shellspec ut framework, do not modify!
@@ -71,8 +79,8 @@ master_name="${VALKEY_COMPONENT_NAME}"
 leaving_fqdn="${KB_LEAVE_MEMBER_POD_FQDN}"
 
 # Determine the role of the leaving pod
-_data_cli=$(build_data_cli "${leaving_fqdn}")
-leaving_role=$(${_data_cli} INFO replication 2>/dev/null \
+build_data_cli "${leaving_fqdn}"
+leaving_role=$("${_data_cli_cmd[@]}" INFO replication 2>/dev/null \
                  | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
 
 echo "Leaving pod: ${leaving_fqdn}, role: ${leaving_role:-unknown}"
@@ -85,9 +93,9 @@ sentinel_fqdn=""
 best_epoch=-1
 IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
 for s in "${sentinel_fqdns[@]}"; do
-  _s_cli=$(build_sentinel_cli "${s}")
-  if ${_s_cli} PING 2>/dev/null | grep -q "PONG"; then
-    epoch=$(${_s_cli} SENTINEL masters 2>/dev/null \
+  build_sentinel_cli "${s}"
+  if "${_sentinel_cli_cmd[@]}" PING 2>/dev/null | grep -q "PONG"; then
+    epoch=$("${_sentinel_cli_cmd[@]}" SENTINEL masters 2>/dev/null \
               | awk '/^config-epoch$/{getline; gsub(/\r/,""); print; exit}')
     epoch="${epoch:-0}"
     if [ "${epoch}" -gt "${best_epoch}" ]; then
@@ -103,7 +111,8 @@ if is_empty "${sentinel_fqdn}"; then
 fi
 
 echo "Using sentinel ${sentinel_fqdn} (config-epoch=${best_epoch})"
-s_cli=$(build_sentinel_cli "${sentinel_fqdn}")
+build_sentinel_cli "${sentinel_fqdn}"
+s_cli=("${_sentinel_cli_cmd[@]}")
 
 # Resolve the leaving pod's IP once for all comparisons below.
 leaving_ip=$(getent hosts "${leaving_fqdn}" 2>/dev/null | awk '{print $1}' | head -n1) || true
@@ -111,7 +120,7 @@ leaving_ip=$(getent hosts "${leaving_fqdn}" 2>/dev/null | awk '{print $1}' | hea
 _sentinel_master_is_leaving() {
   # Returns 0 (true) when the chosen sentinel reports the leaving pod as master.
   local sm
-  sm=$(${s_cli} SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null \
+  sm=$("${s_cli[@]}" SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null \
          | head -n1 | tr -d '\r\n') || true
   if is_empty "${sm}" || [ "${sm}" = "(nil)" ]; then
     return 1   # sentinel doesn't know — treat as "not leaving"
@@ -183,7 +192,7 @@ if [ "${leaving_role}" = "master" ]; then
   if _sentinel_master_is_leaving; then
     echo "Leaving pod is the primary per sentinel — triggering SENTINEL FAILOVER first..."
     # valkey-cli exits 0 even for protocol errors; capture output and log it.
-    failover_out=$(${s_cli} SENTINEL FAILOVER "${master_name}" 2>&1) || true
+    failover_out=$("${s_cli[@]}" SENTINEL FAILOVER "${master_name}" 2>&1) || true
     echo "SENTINEL FAILOVER response: ${failover_out}"
     case "${failover_out}" in
       *"ERR"*|*"error"*|*"BUSY"*)
@@ -193,7 +202,7 @@ if [ "${leaving_role}" = "master" ]; then
     failover_done=false
     for _ in $(seq 1 10); do
       sleep 3
-      new_master=$(${s_cli} SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null \
+      new_master=$("${s_cli[@]}" SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null \
                      | head -n1 | tr -d '\r\n') || true
       # Accept the failover as complete when Sentinel reports a master that is
       # neither the leaving pod's IP nor its pod name/FQDN fragment.

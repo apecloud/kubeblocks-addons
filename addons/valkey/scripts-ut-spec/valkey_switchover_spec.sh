@@ -72,6 +72,11 @@ Describe "Valkey Switchover Bash Script Tests"
   End
 
   Describe "build_cli()"
+    _build_cli_as_string() {
+      build_cli "$@"
+      printf '%s\n' "${_cli[*]}"
+    }
+
     Context "when no password and no TLS args are set"
       setup() {
         export VALKEY_DEFAULT_PASSWORD=""
@@ -86,7 +91,7 @@ Describe "Valkey Switchover Bash Script Tests"
       After "teardown"
 
       It "returns basic valkey-cli command without -a or TLS flags"
-        When call build_cli "valkey-0.headless.default.svc.cluster.local"
+        When call _build_cli_as_string "valkey-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "valkey-cli"
         The stdout should include "-h valkey-0.headless.default.svc.cluster.local"
@@ -109,7 +114,7 @@ Describe "Valkey Switchover Bash Script Tests"
       After "teardown"
 
       It "appends -a <password> to the command"
-        When call build_cli "valkey-0.headless.default.svc.cluster.local"
+        When call _build_cli_as_string "valkey-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include " -a s3cr3t"
       End
@@ -129,7 +134,7 @@ Describe "Valkey Switchover Bash Script Tests"
       After "teardown"
 
       It "appends TLS args to the command"
-        When call build_cli "valkey-0.headless.default.svc.cluster.local"
+        When call _build_cli_as_string "valkey-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "--tls"
         The stdout should include "--cacert /tls/ca.crt"
@@ -151,7 +156,7 @@ Describe "Valkey Switchover Bash Script Tests"
       After "teardown"
 
       It "includes both -a <password> and TLS args"
-        When call build_cli "valkey-0.headless.default.svc.cluster.local"
+        When call _build_cli_as_string "valkey-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include " -a s3cr3t"
         The stdout should include "--tls"
@@ -161,6 +166,11 @@ Describe "Valkey Switchover Bash Script Tests"
   End
 
   Describe "sentinel_cli_for()"
+    _sentinel_cli_for_as_string() {
+      sentinel_cli_for "$@"
+      printf '%s\n' "${_sentinel_cli[*]}"
+    }
+
     Context "when no sentinel password and no TLS args"
       setup() {
         export SENTINEL_PASSWORD=""
@@ -177,7 +187,7 @@ Describe "Valkey Switchover Bash Script Tests"
       After "teardown"
 
       It "returns valkey-cli command targeting sentinel port 26379 without -a"
-        When call sentinel_cli_for "sentinel-0.headless.default.svc.cluster.local"
+        When call _sentinel_cli_for_as_string "sentinel-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "-h sentinel-0.headless.default.svc.cluster.local"
         The stdout should include "-p 26379"
@@ -201,7 +211,7 @@ Describe "Valkey Switchover Bash Script Tests"
       After "teardown"
 
       It "appends -a <sentinel-password> to the command"
-        When call sentinel_cli_for "sentinel-0.headless.default.svc.cluster.local"
+        When call _sentinel_cli_for_as_string "sentinel-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include " -a sentinelpass"
       End
@@ -223,7 +233,7 @@ Describe "Valkey Switchover Bash Script Tests"
       After "teardown"
 
       It "uses the custom port instead of the default 26379"
-        When call sentinel_cli_for "sentinel-0.headless.default.svc.cluster.local"
+        When call _sentinel_cli_for_as_string "sentinel-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "-p 36379"
         The stdout should not include "-p 26379"
