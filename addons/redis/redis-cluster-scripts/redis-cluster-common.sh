@@ -547,9 +547,22 @@ check_current_shard_already_settled() {
     primary_id=$(echo "$my_line" | awk '{print $1}')
   fi
 
+  local expected_min_slots=1
+  if ! is_empty "$KB_CLUSTER_POD_NAME_LIST" && ! is_empty "$CURRENT_SHARD_POD_NAME_LIST" && ! is_empty "$CURRENT_SHARD_COMPONENT_NAME"; then
+    local current_comp_pod_count all_comp_pod_count shard_count
+    current_comp_pod_count=$(echo "$CURRENT_SHARD_POD_NAME_LIST" | tr ',' '\n' | grep -c "^$CURRENT_SHARD_COMPONENT_NAME-")
+    all_comp_pod_count=$(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' '\n' | grep -c ".*")
+    if [ "$current_comp_pod_count" -gt 0 ] 2>/dev/null; then
+      shard_count=$((all_comp_pod_count / current_comp_pod_count))
+      if [ "$shard_count" -gt 0 ] 2>/dev/null; then
+        expected_min_slots=$((16384 / shard_count))
+      fi
+    fi
+  fi
+
   local slot_count
   slot_count=$(count_node_slots "127.0.0.1" "$service_port" "$primary_id") || return 1
-  if [ "${slot_count:-0}" -eq 0 ] 2>/dev/null; then
+  if [ "${slot_count:-0}" -lt "$expected_min_slots" ] 2>/dev/null; then
     return 1
   fi
 

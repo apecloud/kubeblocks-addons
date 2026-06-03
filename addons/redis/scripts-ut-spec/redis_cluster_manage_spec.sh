@@ -1436,6 +1436,102 @@ Describe "Redis Cluster Manage Bash Script Tests"
     End
   End
 
+  Describe "check_current_shard_already_settled()"
+    Context "when existing shard is fully settled (slots >= expected)"
+      check_redis_server_ready() { return 0; }
+      get_cluster_info() {
+        echo "cluster_state:ok"
+      }
+      get_cluster_nodes_info() {
+        echo "abc123 10.0.0.1:6379@16379,redis-shard-98x-0.redis-shard-98x-headless.ns.svc myself,master - 0 0 1 connected 0-5460"
+        echo "def456 10.0.0.2:6379@16379,redis-shard-98x-1.redis-shard-98x-headless.ns.svc slave abc123 0 0 1 connected"
+        echo "ghi789 10.0.0.3:6379@16379,redis-shard-7hy-0.redis-shard-7hy-headless.ns.svc master - 0 0 2 connected 5461-10922"
+        echo "jkl012 10.0.0.4:6379@16379,redis-shard-7hy-1.redis-shard-7hy-headless.ns.svc slave ghi789 0 0 2 connected"
+        echo "mno345 10.0.0.5:6379@16379,redis-shard-jwl-0.redis-shard-jwl-headless.ns.svc master - 0 0 3 connected 10923-16383"
+        echo "pqr678 10.0.0.6:6379@16379,redis-shard-jwl-1.redis-shard-jwl-headless.ns.svc slave mno345 0 0 3 connected"
+      }
+      count_node_slots() { echo "5461"; }
+
+      setup() {
+        export SERVICE_PORT="6379"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-98x-0.redis-shard-98x-headless.ns.svc,redis-shard-98x-1.redis-shard-98x-headless.ns.svc"
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+      }
+      Before "setup"
+      un_setup() {
+        unset SERVICE_PORT CURRENT_SHARD_POD_FQDN_LIST CURRENT_SHARD_POD_NAME_LIST CURRENT_SHARD_COMPONENT_NAME KB_CLUSTER_POD_NAME_LIST
+      }
+      After "un_setup"
+
+      It "returns 0 when shard owns >= expected slots"
+        When call check_current_shard_already_settled
+        The status should be success
+      End
+    End
+
+    Context "when new shard has partial slots from chunked scale-out (< expected)"
+      check_redis_server_ready() { return 0; }
+      get_cluster_info() {
+        echo "cluster_state:ok"
+      }
+      get_cluster_nodes_info() {
+        echo "abc123 10.0.0.1:6379@16379,redis-shard-98x-0.redis-shard-98x-headless.ns.svc myself,master - 0 0 1 connected 0-1023"
+        echo "def456 10.0.0.2:6379@16379,redis-shard-98x-1.redis-shard-98x-headless.ns.svc slave abc123 0 0 1 connected"
+      }
+      count_node_slots() { echo "1024"; }
+
+      setup() {
+        export SERVICE_PORT="6379"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-98x-0.redis-shard-98x-headless.ns.svc,redis-shard-98x-1.redis-shard-98x-headless.ns.svc"
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1,redis-shard-kpl-0,redis-shard-kpl-1"
+      }
+      Before "setup"
+      un_setup() {
+        unset SERVICE_PORT CURRENT_SHARD_POD_FQDN_LIST CURRENT_SHARD_POD_NAME_LIST CURRENT_SHARD_COMPONENT_NAME KB_CLUSTER_POD_NAME_LIST
+      }
+      After "un_setup"
+
+      It "returns 1 when shard has partial slots (1024 < expected 4096)"
+        When call check_current_shard_already_settled
+        The status should be failure
+      End
+    End
+
+    Context "when new shard has 0 slots"
+      check_redis_server_ready() { return 0; }
+      get_cluster_info() {
+        echo "cluster_state:ok"
+      }
+      get_cluster_nodes_info() {
+        echo "abc123 10.0.0.1:6379@16379,redis-shard-98x-0.redis-shard-98x-headless.ns.svc myself,master - 0 0 1 connected"
+        echo "def456 10.0.0.2:6379@16379,redis-shard-98x-1.redis-shard-98x-headless.ns.svc slave abc123 0 0 1 connected"
+      }
+      count_node_slots() { echo "0"; }
+
+      setup() {
+        export SERVICE_PORT="6379"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-98x-0.redis-shard-98x-headless.ns.svc,redis-shard-98x-1.redis-shard-98x-headless.ns.svc"
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+      }
+      Before "setup"
+      un_setup() {
+        unset SERVICE_PORT CURRENT_SHARD_POD_FQDN_LIST CURRENT_SHARD_POD_NAME_LIST CURRENT_SHARD_COMPONENT_NAME KB_CLUSTER_POD_NAME_LIST
+      }
+      After "un_setup"
+
+      It "returns 1 when new shard has no slots"
+        When call check_current_shard_already_settled
+        The status should be failure
+      End
+    End
+  End
+
   Describe "initialize_or_scale_out_redis_cluster()"
     check_current_shard_already_settled() {
       return 1
