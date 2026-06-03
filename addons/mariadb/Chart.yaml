@@ -2152,7 +2152,7 @@ type: application
 # reconfigure executor. Without this, any galera Reconfiguring
 # OpsRequest fails with ERROR 1045 (Access denied for
 # kb_internal_root). CmpD spec change requires version bump.
-version: 1.2.0-alpha.0
+version: 1.2.0-alpha.1
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
