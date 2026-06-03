@@ -1,11 +1,11 @@
 common:
   security:
     authorizationEnabled: true
-    {{- if .TLS_ENABLED }}
+    {{- if eq (index $ "TLS_ENABLED") "true" }}
     tlsMode: 1
     {{- end }}
 
-{{- if .TLS_ENABLED }}
+{{- if eq (index $ "TLS_ENABLED") "true" }}
 tls:
   serverPemPath: /etc/pki/tls/cert.pem
   serverKeyPath: /etc/pki/tls/key.pem
