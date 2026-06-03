@@ -1871,6 +1871,17 @@ spec:
               done
               return 1
             }
+            is_semisync_mode_env() {
+              [ "${MARIADB_REPLICATION_MODE:-}" = "semisync" ]
+            }
+            reset_semisync_master_ack_receiver_if_enabled() {
+              local label="${1:-unknown}"
+              if ! is_semisync_mode_env; then
+                prestop_watchdog_log "skip-semisync-master-ack-reset label=${label} reason=replication-mode-not-semisync mode=${MARIADB_REPLICATION_MODE:-<empty>}"
+                return 0
+              fi
+              "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+            }
             expose_sql_listener_for_primary_role() {
               local label="$1"
               if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
@@ -1887,7 +1898,7 @@ spec:
               # through to the fresh-listener path below.
               if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] && mariadbd_listen_on_all_interfaces; then
                 "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
-                "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+                reset_semisync_master_ack_receiver_if_enabled "primary-existing-listener-${label}"
                 if set_primary_read_write "${label}"; then
                   touch {{ .Values.dataMountPath }}/.sql-listener-ready
                   prestop_watchdog_log "sql-listener-primary-existing-reconciled label=${label}"
@@ -1906,7 +1917,7 @@ spec:
                 exit $?
               fi
               "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
-              "${LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" 2>/dev/null || true
+              reset_semisync_master_ack_receiver_if_enabled "primary-fresh-listener-${label}"
               if ! set_primary_read_write "${label}"; then
                 mark_replication_pending
                 prestop_watchdog_log "sql-listener-primary-expose-failed label=${label}"
@@ -2455,9 +2466,13 @@ spec:
               # deadlock. Check TCP directly — if it fails, toggle to restart ACK receiver.
               if ! timeout 3 "${TCP_CLI[@]}" -e "SELECT 1;" >/dev/null 2>&1; then
                 if kill -0 ${MARIADB_PID} 2>/dev/null; then
-                  "${SOCK_CLI[@]}" \
-                    -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" \
-                    2>/dev/null || true
+                  if is_semisync_mode_env; then
+                    "${SOCK_CLI[@]}" \
+                      -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;" \
+                      2>/dev/null || true
+                  else
+                    prestop_watchdog_log "skip-semisync-master-ack-reset label=background-tcp-probe reason=replication-mode-not-semisync mode=${MARIADB_REPLICATION_MODE:-<empty>}"
+                  fi
                 fi
               fi
             done) &
