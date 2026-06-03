@@ -111,6 +111,39 @@ SWITCHOVER_USER_FACING_WRITE_PATTERN='INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|CRE
 # `GRANT INSERT ... WITH GRANT OPTION` are NOT silently filtered. The
 # verifier counts and dumps ignored lines for audit.
 SWITCHOVER_GRANTS_IGNORED_LINE_PATTERN='^GRANT PROXY ON .* TO .* WITH GRANT OPTION$'
+
+root_read_only_bypass_pattern_for_host() {
+  case "${1}" in
+    "127.0.0.1"|"localhost")
+      printf '%s' 'READ_ONLY ADMIN|READ ONLY ADMIN|(^|[, ])SUPER([, ]|$)|ALL PRIVILEGES'
+      ;;
+    *)
+      printf '%s' 'READ_ONLY ADMIN|READ ONLY ADMIN|BINLOG ADMIN|(^|[, ])SUPER([, ]|$)|ALL PRIVILEGES'
+      ;;
+  esac
+}
+
+root_read_only_bypass_label_for_host() {
+  case "${1}" in
+    "127.0.0.1"|"localhost")
+      printf '%s' 'READ_ONLY ADMIN / SUPER / ALL PRIVILEGES'
+      ;;
+    *)
+      printf '%s' 'READ_ONLY ADMIN / BINLOG ADMIN / SUPER / ALL PRIVILEGES'
+      ;;
+  esac
+}
+
+root_post_dcs_revoke_privilege_list_for_host() {
+  case "${1}" in
+    "127.0.0.1"|"localhost")
+      printf '%s\n%s\n' "READ_ONLY ADMIN" "SUPER"
+      ;;
+    *)
+      printf '%s\n%s\n%s\n' "READ_ONLY ADMIN" "SUPER" "BINLOG ADMIN"
+      ;;
+  esac
+}
 # Secondary fence GRANT clause body (excludes admin bypass and user-facing
 # writes; aligned with roleProbe secondary fence post-alpha.61).
 SWITCHOVER_SECONDARY_FENCE_GRANT_BODY='SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN'
@@ -1117,9 +1150,10 @@ prepare_current_primary_for_switchover() {
   # NOT modify root@'%' grants during switchover at all. It relies on:
   #   1. read_only=1 set on the demoted primary post-DCS swap
   #   2. semi-sync ACK protocol blocking commits
-  #   3. user-facing root account NOT holding any admin-bypass privileges
-  #      (BINLOG ADMIN / SUPER / READ_ONLY ADMIN), which is the alpha.61
-  #      hard contract that MariaDB has already adopted and we are KEEPING
+  #   3. user-facing root account NOT holding any read_only-bypass privilege
+  #      (SUPER / READ_ONLY ADMIN everywhere, BINLOG ADMIN on non-local hosts),
+  #      which is the alpha.61 hard contract that MariaDB has already adopted
+  #      and we are KEEPING
   #
   # alpha.79 v1 short-circuits this function to a no-op. The post-DCS local-
   # root write fence verifier (verify_post_dcs_local_root_write_fenced)
@@ -1145,15 +1179,18 @@ revoke_user_facing_root_admin_privileges_for_secondary() {
   # on a single privilege only marks THAT privilege already-fenced - never
   # the host as a whole.
   #
-  # post-DCS read_only=ON does not fence user-facing root that holds
-  # READ_ONLY ADMIN / SUPER / BINLOG ADMIN. kb_internal_root is intentionally
-  # OUT of scope (it must keep READ_ONLY ADMIN for secondary-side 1062 repair
-  # in the alpha.59 secondary roleProbe path).
+  # post-DCS read_only=ON does not fence user-facing root that holds READ_ONLY
+  # ADMIN / SUPER. It also does not fence non-local root hosts that hold BINLOG
+  # ADMIN, so remote root@'%' must lose BINLOG ADMIN. Local root@localhost and
+  # root@127.0.0.1 may keep BINLOG ADMIN because chart-internal loopback/socket
+  # paths need SET sql_log_bin=0 and BINLOG ADMIN alone does not bypass
+  # @@global.read_only. kb_internal_root is intentionally OUT of scope (it must
+  # keep READ_ONLY ADMIN for secondary-side 1062 repair in the alpha.59
+  # secondary roleProbe path).
   local root_user="${MARIADB_ROOT_USER:-root}"
   local hosts host grants out rc
   local total_revoked=0 total_already_fenced=0 total_failed_hosts=0
   local snapshot
-  local PRIVS="READ_ONLY ADMIN|SUPER|BINLOG ADMIN"
   if [ -z "${MARIADB_CLIENT_BIN}" ] || [ ! -x "${MARIADB_CLIENT_BIN}" ]; then
     log_switchover_error "Switchover failed: post-DCS root revoke cannot run without MARIADB_CLIENT_BIN"
     return 1
@@ -1197,8 +1234,10 @@ revoke_user_facing_root_admin_privileges_for_secondary() {
       esac
     fi
     # Per-privilege REVOKE. 1141 on one priv is local-skip, NEVER host-wide.
-    local priv
-    for priv in "READ_ONLY ADMIN" "SUPER" "BINLOG ADMIN"; do
+    local priv privs
+    privs=$(root_post_dcs_revoke_privilege_list_for_host "${host}")
+    while IFS= read -r priv; do
+      [ -z "${priv}" ] && continue
       out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
         --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
         -P3306 -h127.0.0.1 -N -s -e "
@@ -1219,10 +1258,12 @@ revoke_user_facing_root_admin_privileges_for_secondary() {
           *)
             log_switchover_error "Switchover failed: post-DCS root revoke: reason=revoke_failed ${root_user}@${host} priv=${priv} rc=${rc} out=${out}"
             host_failed=$((host_failed + 1))
-            ;;
+          ;;
         esac
       fi
-    done
+    done <<EOF_PRIVS
+${privs}
+EOF_PRIVS
     # Per-host post-revoke residual check. If any bypass priv survived,
     # the host is fail-closed regardless of per-priv counts.
     grants=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
@@ -1240,12 +1281,10 @@ revoke_user_facing_root_admin_privileges_for_secondary() {
           ;;
       esac
     else
-      case "${grants}" in
-        *"READ_ONLY ADMIN"*|*"SUPER"*|*"BINLOG ADMIN"*|*"GRANT ALL PRIVILEGES"*|*"ALL PRIVILEGES ON \\*.\\*"*|*"ALL PRIVILEGES ON *.*"*)
-          log_switchover_error "Switchover failed: post-DCS root revoke: reason=revoke_residual_bypass ${root_user}@${host} grants=${grants}"
-          host_failed=$((host_failed + 1))
-          ;;
-      esac
+      if printf '%s\n' "${grants}" | grep -qE "$(root_read_only_bypass_pattern_for_host "${host}")"; then
+        log_switchover_error "Switchover failed: post-DCS root revoke: reason=revoke_residual_bypass ${root_user}@${host} disallowed_privs=$(root_read_only_bypass_label_for_host "${host}") grants=${grants}"
+        host_failed=$((host_failed + 1))
+      fi
     fi
     if [ "${host_failed}" -gt 0 ]; then
       total_failed_hosts=$((total_failed_hosts + 1))
@@ -1297,7 +1336,7 @@ verify_post_dcs_local_root_write_fenced() {
   # kubeblocks.kb_post_dcs_fence_probe as user-facing root to test whether
   # @@global.read_only=ON actually rejects user-facing writes. Under a real
   # bypass condition (post-DCS root revoke ran but only stripped READ_ONLY
-  # ADMIN / SUPER / BINLOG ADMIN, leaving INSERT/UPDATE/DELETE on
+  # ADMIN / SUPER / remote BINLOG ADMIN, leaving INSERT/UPDATE/DELETE on
   # user-facing root), this INSERT SUCCEEDED, was binlogged on the demoted
   # primary, and the new primary (already promoted in DCS) never replicated
   # it back. That single INSERT became a permanent orphan event and the
@@ -1314,8 +1353,9 @@ verify_post_dcs_local_root_write_fenced() {
   # GRANTS for root@'%' / root@'127.0.0.1' / root@'localhost' (the same
   # host set apply_post_dcs_root_revoke iterates) and scans for any of the
   # read_only-bypass privileges that the revoke step claims to have removed
-  # (READ_ONLY ADMIN / BINLOG ADMIN / SUPER, plus a defensive ALL
-  # PRIVILEGES match). If any bypass-class privilege is still granted, the
+  # (READ_ONLY ADMIN / SUPER everywhere, BINLOG ADMIN only on non-local root
+  # hosts, plus a defensive ALL PRIVILEGES match). If any bypass-class
+  # privilege is still granted, the
   # fence is by definition not enforced; otherwise the contract holds. The
   # query produces zero binlog events and zero observable side effects on
   # data, replication topology, or DCS state, eliminating the self-pollution
@@ -1328,8 +1368,8 @@ verify_post_dcs_local_root_write_fenced() {
   # SHOW GRANTS, not the gate operation itself).
   #
   # Acceptance contract (rewrite):
-  #   - rc=0 + grants contain no READ_ONLY ADMIN / BINLOG ADMIN / SUPER /
-  #     ALL PRIVILEGES on any of the three root hosts                 → PASS
+  #   - rc=0 + grants contain no host-disallowed bypass privilege
+  #     (local BINLOG ADMIN is allowed; remote BINLOG ADMIN is not)    → PASS
   #   - rc=0 + grants contain any bypass-class privilege               → FAIL
   #     (fence not enforced; user-facing root can still bypass read_only)
   #   - rc!=0 with 1141 (no such grant — root@host absent)             → PASS
@@ -1385,8 +1425,8 @@ verify_post_dcs_local_root_write_fenced() {
     # by `[, ]` (privilege list separator) or sitting at start/end of
     # the line. ALL PRIVILEGES is matched as a defensive catch-all in
     # case the chart bootstrap revoke step never ran.
-    if printf '%s\n' "${out}" | grep -qE '(READ_ONLY ADMIN|READ ONLY ADMIN|BINLOG ADMIN|(^|[, ])SUPER([, ]|$)|ALL PRIVILEGES)'; then
-      log_switchover_error "Switchover failed: post-DCS local-root write fence not enforced; 'root'@'${host}' still holds a read_only-bypass privilege (READ_ONLY ADMIN / BINLOG ADMIN / SUPER / ALL PRIVILEGES). grants=${out}"
+    if printf '%s\n' "${out}" | grep -qE "$(root_read_only_bypass_pattern_for_host "${host}")"; then
+      log_switchover_error "Switchover failed: post-DCS local-root write fence not enforced; 'root'@'${host}' still holds a read_only-bypass privilege ($(root_read_only_bypass_label_for_host "${host}")). grants=${out}"
       return 1
     fi
   done
@@ -1410,12 +1450,13 @@ fence_current_primary_local_writes_after_dcs() {
     log_switchover_error "Switchover failed: current primary read_only=ON was not verified after DCS switchover was accepted"
     return 1
   fi
-  # alpha.60: synchronously revoke user-facing root admin bypass privileges
-  # (READ_ONLY ADMIN / SUPER / BINLOG ADMIN) for every root account in
-  # mysql.user. read_only=ON alone does not fence root that holds these
-  # privileges; the alpha.59 verify_post_dcs_local_root_write_fenced caught
-  # this gap. Restoration of secondary follow-time grants stays in roleProbe
-  # secondary path - this action does NOT re-grant admin bypass.
+  # alpha.60 + alpha.124: synchronously revoke user-facing root admin bypass
+  # privileges. READ_ONLY ADMIN / SUPER are disallowed everywhere; BINLOG ADMIN
+  # is disallowed on non-local root hosts but allowed for local loopback/socket
+  # root because chart-internal sql_log_bin=0 paths need it and it does not
+  # bypass read_only by itself. Restoration of secondary follow-time grants
+  # stays in roleProbe secondary path - this action does NOT re-grant read_only
+  # bypass privileges.
   if ! revoke_user_facing_root_admin_privileges_for_secondary; then
     return 1
   fi
