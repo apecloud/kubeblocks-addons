@@ -62,6 +62,10 @@
         {
           "imageTag": "9.0.0",
           "version": "9.0.0"
+        },
+        {
+          "imageTag": "9.1.0",
+          "version": "9.1.0"
         }
       ],
       "sentinelComponentDef": "valkey-sentinel-9",
