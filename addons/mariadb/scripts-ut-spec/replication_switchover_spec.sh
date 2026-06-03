@@ -1,4 +1,5 @@
 # shellcheck shell=sh
+# shellcheck disable=SC2218
 # Unit tests for replication-switchover.sh
 # Tests role guard, candidate resolution, and syncerctl/DCS handoff.
 
