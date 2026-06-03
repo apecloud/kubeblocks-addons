@@ -6,7 +6,8 @@ image:
   registry: docker.io
   pullPolicy: IfNotPresent
   observer:
-    repository: oceanbase/oceanbase-ce
+    image: docker.io/oceanbase/oceanbase-ce
+    repository: ""
     tag: 4.3.5-lts
   metrics:
     repository: apecloud/obagent
