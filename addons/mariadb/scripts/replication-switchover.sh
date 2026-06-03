@@ -48,13 +48,21 @@ CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS="${CANDIDATE_PROMOTED_VIA_SYNCERCT
 # `bypass_priv_residual` in stderr) but failed at stage 5 because the new
 # primary's chart watchdog SECONDARY -> PRIMARY role transition takes longer
 # than 10s. Direct evidence: pod-1 watchdog log at 11:40:21-23 still running
-# replica-read-only LOCK while DCS swap completed at 11:40:19; stage 5 probe
+# replica-read-only LOCK while DCS swap completed at 11:40:19; stage 5
 # attempts 1-3 saw 1044/1290 (account still locked / read_only still ON)
 # followed by 2002 (mariadbd briefly unreachable during stop+start_mariadbd
 # rebind from 127.0.0.1 to 0.0.0.0 inside expose_sql_listener_for_primary_
 # role). 30s gives the new primary watchdog one full role-transition cycle
 # (~6-10s typical) + headroom. Env override still respected.
+#
+# alpha.127: stage 5 no longer performs a mutating remote root DDL/DML probe.
+# r9 showed that repeating the probe can leave orphan GTIDs on a temporary
+# candidate when role flaps: CREATE DATABASE + INSERT/DELETE in
+# kb_root_write_probe were logged locally and later made CM4 fail-closed on
+# GTID divergence. Keep the old env var as a compatibility default, but the
+# runtime gate is now a non-mutating root primary-readiness check.
 CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS="${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS:-30}"
+CANDIDATE_REMOTE_ROOT_PRIMARY_READY_WAIT_SECONDS="${CANDIDATE_REMOTE_ROOT_PRIMARY_READY_WAIT_SECONDS:-${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}}"
 MARIADB_CONNECT_TIMEOUT_SECONDS="${MARIADB_CONNECT_TIMEOUT_SECONDS:-5}"
 SYNCERCTL_PER_CALL_TIMEOUT_SECONDS="${SYNCERCTL_PER_CALL_TIMEOUT_SECONDS:-5}"
 
@@ -65,6 +73,8 @@ MYSQL_CLIENT_DIR="${MYSQL_CLIENT_DIR:-/tools/mysql-client}"
 MARIADB_CLIENT_BIN="${MARIADB_CLIENT_BIN:-}"
 MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
 SWITCHOVER_TRACE_FILE="${SWITCHOVER_TRACE_FILE:-}"
+# Used only by the local old-primary fence probe. Candidate primary-readiness
+# checks must stay non-mutating and must not use this table.
 SWITCHOVER_REMOTE_ROOT_PROBE_TABLE="${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE:-kubeblocks.kb_root_write_probe}"
 
 # alpha.80 v1 (Helen TL): the alpha.76/.77/.78 `.switchover-fence-active`
@@ -746,7 +756,18 @@ _verify_host_has_explicit_primary_grant() {
       ;;
   esac
   # Reject admin bypass priv (excluding ALL PRIVILEGES which was caught above).
-  bypass_residual=$(printf '%s' "${grants}" | grep -oE "READ_ONLY ADMIN|SUPER|BINLOG ADMIN|CONNECTION ADMIN" | sort -u | tr '\n' ',' | sed 's/,$//')
+  # Local loopback/socket root may keep BINLOG ADMIN for chart-internal
+  # sql_log_bin=0 paths; remote root must not keep it.
+  local primary_bypass_pattern
+  case "${host}" in
+    "127.0.0.1"|"localhost")
+      primary_bypass_pattern="READ_ONLY ADMIN|SUPER|CONNECTION ADMIN"
+      ;;
+    *)
+      primary_bypass_pattern="READ_ONLY ADMIN|SUPER|BINLOG ADMIN|CONNECTION ADMIN"
+      ;;
+  esac
+  bypass_residual=$(printf '%s' "${grants}" | grep -oE "${primary_bypass_pattern}" | sort -u | tr '\n' ',' | sed 's/,$//')
   if [ -n "${bypass_residual}" ]; then
     reason="admin_bypass_residual:${bypass_residual}"
     log_switchover_error "remote_root_explicit_primary_grant_verify host=${host} grants_query_rc=0 ${grants_sha_field} core_priv_present=unknown reason=${reason}"
@@ -821,30 +842,20 @@ EOF_HOSTS
   [ "${failed_hosts}" -eq 0 ] && [ "${total_hosts}" -gt 0 ]
 }
 
-remote_root_write_ready() {
+remote_root_primary_ready() {
   local host="$1"
-  local label="${2:-candidate-remote-root-write-ready}"
-  local table
+  local label="${2:-candidate-remote-root-primary-ready}"
+  local read_only
   remote_root_host_is_local && return 0
-  table="${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE}"
-  case "${table}" in
-    *[!A-Za-z0-9_.]*|*.*.*|.*|*.)
-      log_switchover_error "Switchover candidate remote root write probe: invalid table ${table}"
-      return 1
+  read_only=$(query_value "${host}" "SELECT @@global.read_only;")
+  case "${read_only}" in
+    0|OFF|off)
+      log_switchover_info "Switchover candidate remote root primary-readiness probe label=${label} host=${host} read_only=${read_only} rc=0"
+      return 0
       ;;
   esac
-  if run_sql "${host}" "
-    CREATE DATABASE IF NOT EXISTS kubeblocks;
-    CREATE TABLE IF NOT EXISTS ${table}(probe_id VARCHAR(128) PRIMARY KEY, check_ts BIGINT);
-    INSERT INTO ${table}(probe_id, check_ts)
-      VALUES ('switchover_remote_root_probe', UNIX_TIMESTAMP())
-      ON DUPLICATE KEY UPDATE check_ts=VALUES(check_ts);
-    DELETE FROM ${table} WHERE probe_id='switchover_remote_root_probe';
-  "; then
-    log_switchover_info "Switchover candidate remote root write probe label=${label} host=${host} rc=0"
-    return 0
-  fi
-  log_switchover_error "Switchover candidate remote root write probe label=${label} host=${host} rc=1"
+  [ -z "${read_only}" ] && read_only="<empty>"
+  log_switchover_error "Switchover candidate remote root primary-readiness probe label=${label} host=${host} read_only=${read_only} rc=1"
   return 1
 }
 
@@ -1561,11 +1572,11 @@ candidate_is_primary() {
   # the legacy `GRANT ALL PRIVILEGES` signature; the explicit-primary-grant
   # check now lives at the local-fence callsite (rollback verifier — see
   # remote_root_has_explicit_primary_grant). For candidate primary state, the remaining
-  # 4 signals (read_only=0 + no slave_status + remote_root_write_ready +
-  # syncer role=primary) are sufficient — the write_ready INSERT probe on
-  # the candidate is itself the strongest signal that root@<candidate-fqdn>
-  # actually has primary-write privileges.
-  remote_root_write_ready "${candidate_fqdn}" "candidate-primary" || return 1
+  # 4 signals (read_only=0 + no slave_status + remote_root_primary_ready +
+  # syncer role=primary) are sufficient. alpha.127 makes the root check
+  # non-mutating: repeated switchover retries must not create orphan GTIDs on
+  # a temporary candidate.
+  remote_root_primary_ready "${candidate_fqdn}" "candidate-primary" || return 1
   syncer_role_is "${candidate_fqdn}" "primary"
 }
 
@@ -1896,12 +1907,12 @@ wait_candidate_promoted_via_syncerctl() {
   return 1
 }
 
-wait_candidate_remote_root_write_ready() {
-  # alpha.59: bounded synchronous probe of the candidate's writability. After
-  # alpha.61's wait_candidate_promoted_via_syncerctl precondition, this probe
+wait_candidate_remote_root_primary_ready() {
+  # alpha.59: bounded synchronous probe of the candidate's primary readiness.
+  # After alpha.61's wait_candidate_promoted_via_syncerctl precondition, this probe
   # should converge in 1-2s under healthy conditions; the budget is kept
-  # because actual SQL write semantics may lag slightly even after syncerctl
-  # role flip. SQL stderr is now captured per attempt (Jack 01:40 review)
+  # because read_only/account state may lag slightly even after syncerctl
+  # role flip. SQL stderr/stdout is now captured per attempt (Jack 01:40 review)
   # so a non-rc=0 outcome can be attributed (probe_sql_stderr_<errno> /
   # probe_connection_failed) instead of opaque rc=1.
   #
@@ -1911,12 +1922,12 @@ wait_candidate_remote_root_write_ready() {
   # fail-closed (no silent fallback).
   local candidate_name="$1"
   local candidate_fqdn="$2"
-  local stage_deadline="${3:-${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}}"
+  local stage_deadline="${3:-${CANDIDATE_REMOTE_ROOT_PRIMARY_READY_WAIT_SECONDS}}"
 
   local stage_started_epoch
   stage_started_epoch=$(now_epoch)
   if [ -z "${stage_started_epoch}" ]; then
-    log_switchover_error "Switchover failed: reason=action_clock_unavailable stage=candidate_write_probe; fail-closed"
+    log_switchover_error "Switchover failed: reason=action_clock_unavailable stage=candidate_primary_ready; fail-closed"
     return 1
   fi
 
@@ -1926,7 +1937,7 @@ wait_candidate_remote_root_write_ready() {
     local now
     now=$(now_epoch)
     if [ -z "${now}" ]; then
-      log_switchover_error "Switchover failed: reason=action_clock_unavailable stage=candidate_write_probe; fail-closed"
+      log_switchover_error "Switchover failed: reason=action_clock_unavailable stage=candidate_primary_ready; fail-closed"
       return 1
     fi
     stage_elapsed=$(( now - stage_started_epoch ))
@@ -1934,29 +1945,23 @@ wait_candidate_remote_root_write_ready() {
       break
     fi
     attempt=$((attempt + 1))
-    if remote_root_write_ready "${candidate_fqdn}" "candidate-remote-root-write-ready"; then
-      log_switchover_info "Switchover candidate remote root write probe converged for ${candidate_name} attempt=${attempt} elapsed=${stage_elapsed}s"
+    if remote_root_primary_ready "${candidate_fqdn}" "candidate-remote-root-primary-ready"; then
+      log_switchover_info "Switchover candidate remote root primary-readiness probe converged for ${candidate_name} attempt=${attempt} elapsed=${stage_elapsed}s"
       return 0
     fi
-    # Capture stderr explicitly for attribution: rerun the same probe SQL
-    # with stderr collected so closeout sees the actual SQL error rather
-    # than opaque rc=1.
+    # Capture stdout+stderr explicitly for attribution. This is intentionally
+    # non-mutating; do not add DDL/DML here.
     last_out=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
       --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
       -P3306 -h"${candidate_fqdn}" -N -s -e "
-        CREATE DATABASE IF NOT EXISTS kubeblocks;
-        CREATE TABLE IF NOT EXISTS ${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE}(probe_id VARCHAR(128) PRIMARY KEY, check_ts BIGINT);
-        INSERT INTO ${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE}(probe_id, check_ts)
-          VALUES ('switchover_remote_root_probe', UNIX_TIMESTAMP())
-          ON DUPLICATE KEY UPDATE check_ts=VALUES(check_ts);
-        DELETE FROM ${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE} WHERE probe_id='switchover_remote_root_probe';
+        SELECT @@global.read_only;
       " 2>&1)
     last_rc=$?
-    log_switchover_info "Switchover candidate remote root write probe attempt=${attempt} rc=${last_rc} stderr=${last_out}"
+    log_switchover_info "Switchover candidate remote root primary-readiness probe attempt=${attempt} rc=${last_rc} observation=${last_out}"
     sleep "${SWITCHOVER_POLL_SECONDS}"
   done
 
-  log_switchover_error "Switchover failed: reason=candidate_remote_root_write_not_ready_in_budget candidate=${candidate_name} attempts=${attempt} stage_budget=${stage_deadline}s last_rc=${last_rc} last_stderr=${last_out}; fail-closed"
+  log_switchover_error "Switchover failed: reason=candidate_remote_root_primary_not_ready_in_budget candidate=${candidate_name} attempts=${attempt} stage_budget=${stage_deadline}s last_rc=${last_rc} last_observation=${last_out}; fail-closed"
   return 1
 }
 
@@ -1973,7 +1978,7 @@ run_switchover() {
   #   3. fence         - fence_current_primary_local_writes_after_dcs
   #                      (revoke admin-bypass + verify_post_dcs_local_root_write_fenced)
   #   4. promote       - wait_candidate_promoted_via_syncerctl
-  #   5. write         - wait_candidate_remote_root_write_ready
+  #   5. ready         - wait_candidate_remote_root_primary_ready
   #
   # External tools that can block:
   #   - syncerctl getrole: wrapped with timeout(1) (initialize_action_clock
@@ -2068,15 +2073,15 @@ run_switchover() {
     return 1
   fi
 
-  # Stage 5: candidate remote root write probe
-  local write_budget
-  write_budget=$(stage_budget_or_exit "write" "${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}") || return 1
-  log_switchover_info "Switchover stage candidate_write_probe budget=${write_budget}s remaining_before=$(remaining_action_budget)s"
-  if ! wait_candidate_remote_root_write_ready "${candidate_name}" "${candidate_fqdn}" "${write_budget}"; then
+  # Stage 5: candidate remote root primary-readiness probe
+  local ready_budget
+  ready_budget=$(stage_budget_or_exit "ready" "${CANDIDATE_REMOTE_ROOT_PRIMARY_READY_WAIT_SECONDS}") || return 1
+  log_switchover_info "Switchover stage candidate_primary_ready budget=${ready_budget}s remaining_before=$(remaining_action_budget)s"
+  if ! wait_candidate_remote_root_primary_ready "${candidate_name}" "${candidate_fqdn}" "${ready_budget}"; then
     return 1
   fi
 
-  log_switchover_info "Switchover action returned: DCS recorded, current primary fenced, candidate promoted via DCS, candidate writable. Total elapsed=$(action_elapsed_seconds)s of ${SWITCHOVER_ACTION_DEADLINE_SECONDS}s deadline. Post-DCS convergence delegated to roleProbe + KB endpoint controller."
+  log_switchover_info "Switchover action returned: DCS recorded, current primary fenced, candidate promoted via DCS, candidate root primary-readiness observed without mutating probe. Total elapsed=$(action_elapsed_seconds)s of ${SWITCHOVER_ACTION_DEADLINE_SECONDS}s deadline. Post-DCS convergence delegated to roleProbe + KB endpoint controller."
   return 0
 }
 
