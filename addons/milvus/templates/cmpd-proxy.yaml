@@ -10,6 +10,14 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 4
+        numSymbols: 0
+        letterCase: MixedCases
   services:
     - name: milvus
       serviceName:  # use default name
@@ -30,6 +38,18 @@ spec:
     {{- include "milvus.cluster.serviceRef" . | indent 4 }}
   vars:
     {{- include "milvus.cluster.serviceRefVars" . | indent 4 }}
+    - name: MILVUS_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: root
+          password: Required
+  lifecycleActions:
+    postProvision:
+      exec:
+        command:
+          - python3
+          - /milvus/scripts/post_provision.py
+        container: proxy
   runtime:
     initContainers:
       {{- include "milvus.initContainer.setup" . | indent 6 }}

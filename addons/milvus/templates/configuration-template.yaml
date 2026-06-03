@@ -23,10 +23,12 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "milvus-delegate-run.configTemplateName" . }}
+  name: {{ include "milvus-scripts.configTemplateName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "milvus.labels" . | nindent 4 }}
 data:
-  delegate-run.sh: |-
-    {{- .Files.Get "scripts/delegate-run.sh" | nindent 4 }}
+  {{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+  {{ $path | base }}: |-
+  {{- $.Files.Get $path | nindent 4 }}
+  {{- end }}

@@ -1,3 +1,6 @@
+common:
+  security:
+    authorizationEnabled: true
 etcd:
   endpoints:
     - {{ .ETCD_ENDPOINT }}
