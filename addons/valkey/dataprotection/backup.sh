@@ -10,7 +10,10 @@
 #   DP_BACKUP_INFO_FILE  — path to write backup metadata JSON
 #   DP_DATASAFED_BIN_PATH — path to datasafed binary
 #   DATA_DIR             — data mount path (set in ActionSet env)
-#   SENTINEL_POD_FQDN_LIST, SENTINEL_SERVICE_PORT, SENTINEL_PASSWORD — optional
+#
+# Current BackupPolicyTemplate env schema cannot inject cross-component
+# Sentinel FQDN/password values. Sentinel ACL backup is therefore inactive
+# unless those SENTINEL_* variables are supplied by a future explicit contract.
 
 set -o pipefail
 
@@ -47,7 +50,8 @@ else
   connect_url="valkey-cli --no-auth-warning ${tls_args} -h ${DP_DB_HOST} -p ${DP_DB_PORT}"
 fi
 
-# Save Sentinel ACL so it can be restored after a full restore
+# Save Sentinel ACL only when Sentinel connection variables are explicitly
+# supplied. The current chart's BackupPolicyTemplate does not inject them.
 save_sentinel_acl() {
   [ -z "${SENTINEL_POD_FQDN_LIST}" ] && return 0
   local acl_list=""

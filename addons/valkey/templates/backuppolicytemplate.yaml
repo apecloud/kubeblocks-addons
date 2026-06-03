@@ -53,23 +53,6 @@ spec:
                 mappedValue: {{ $repo }}:{{ .imageTag }}
               {{- end }}
               {{- end }}
-        # Inject Sentinel connection info so backup.sh can save Sentinel ACL.
-        # These vars come from the data component's vars[] (cross-component refs).
-        - name: SENTINEL_POD_FQDN_LIST
-          valueFrom:
-            componentVarRef:
-              compDef: {{ include "valkeySentinel.cmpdRegexpPattern" . }}
-              optional: true
-              podFQDNs: Required
-        - name: SENTINEL_SERVICE_PORT
-          value: "26379"
-        - name: SENTINEL_PASSWORD
-          valueFrom:
-            credentialVarRef:
-              compDef: {{ include "valkeySentinel.cmpdRegexpPattern" . }}
-              name: default
-              optional: true
-              password: Required
 
     # ── Volume snapshot (CSI-based, StorageClass must support it) ────────────
     - name: volume-snapshot
