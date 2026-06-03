@@ -3,10 +3,15 @@ kind: Cluster
 metadata:
   name: etcd-cluster-restore
   namespace: demo
-  annotations:
-    # etcd-cluster-backup is the backup name.
-    kubeblocks.io/restore-from-backup: '{"etcd":{"name":"etcd-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: etcd-cluster-backup
+      namespace: demo
+    parameters:
+      dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   componentSpecs:
     - name: etcd

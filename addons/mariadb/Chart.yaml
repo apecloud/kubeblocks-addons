@@ -6,19 +6,6 @@ type: application
 
 # This is the version number of the helm chart.
 #
-# alpha.65 v1 (Jack 11:35 install/script live-gate RED on alpha.64 v3):
-# Bumped from 1.1.1-alpha.64 → 1.1.1-alpha.65 because alpha.64 v2+v3
-# mutated cmpd-semisync.yaml (the rendered ComponentDefinition spec).
-# KubeBlocks treats the existing ComponentDefinition spec as immutable,
-# so a same-version chart upgrade with CmpD spec changes leaves the
-# CmpD in `Unavailable: immutable fields can't be updated`. Any future
-# patch within an alpha cycle that mutates cmpd-*.yaml MUST bump the
-# chart version to a fresh alpha so KubeBlocks creates a new CmpD
-# instead of trying to mutate the existing one. (Patches that only
-# touch versioned ConfigMap contents like replication-switchover.sh
-# can keep the same chart version because the script CM is not
-# immutable; that is why alpha.61 v2/v3, alpha.62 v2, alpha.63 v2
-# could all reuse the same chart version.)
 #
 # alpha.66 v1 (Jack 12:18 alpha.65 v2 install/script live-gate RED +
 # 12:34 alpha.66 v1 design HOLD + 12:39 design ACCEPT): Bumped from
@@ -2165,7 +2152,7 @@ type: application
 # reconfigure executor. Without this, any galera Reconfiguring
 # OpsRequest fails with ERROR 1045 (Access denied for
 # kb_internal_root). CmpD spec change requires version bump.
-version: 1.1.1-alpha.124
+version: 1.2.0-alpha.0
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add

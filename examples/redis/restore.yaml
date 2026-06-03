@@ -3,9 +3,15 @@ kind: Cluster
 metadata:
   name: redis-replication-restore
   namespace: demo
-  annotations:
-    kubeblocks.io/restore-from-backup: '{"redis":{"name":"redis-replication-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: redis-replication-backup
+      namespace: demo
+    parameters:
+      dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   clusterDef: redis
   topology: replication
