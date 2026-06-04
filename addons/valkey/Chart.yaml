@@ -11,3 +11,7 @@ dependencies:
 - name: kblib
   repository: file://../kblib
   version: 0.1.0
+
+maintainers:
+- name: weicao
+  url: https://github.com/weicao
