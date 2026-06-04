@@ -177,21 +177,21 @@ Describe "alpha.89 merged PD CUE schema + dynamic classification"
     End
   End
 
-  Describe "merged PD parametersSchema wiring"
-    It "the merged PD block declares parametersSchema with the CUE top-level key"
+  Describe "merged PD parametersSchema wiring (removed in alpha.91 — KB validator only reads CUE properties, not additionalProperties)"
+    It "the merged PD block does NOT declare parametersSchema (removed to unblock reconfigure of common dynamic params)"
       When call awk_line_in_block \
         'name:[[:space:]]+mariadb-replication-merged-pd[[:space:]]*$' \
         'topLevelKey:[[:space:]]+MariaDBParameter' \
         "$(paramsdef_path)"
-      The output should equal "ok"
+      The output should equal ""
     End
 
-    It "the merged PD block references the CUE file via Files.Get"
+    It "the merged PD block does NOT reference the CUE file via Files.Get (parametersSchema removed)"
       When call awk_line_in_block \
         'name:[[:space:]]+mariadb-replication-merged-pd[[:space:]]*$' \
         'Files\.Get "config/mariadb-config-constraint\.cue"' \
         "$(paramsdef_path)"
-      The output should equal "ok"
+      The output should equal ""
     End
   End
 
