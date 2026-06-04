@@ -468,7 +468,7 @@ spec:
           - redis
           - getrole
     postProvision:
-      timeoutSeconds: 900
+      timeoutSeconds: 600
       exec:
         container: redis-cluster
         command:

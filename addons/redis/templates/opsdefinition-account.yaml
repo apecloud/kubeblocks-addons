@@ -60,7 +60,7 @@ spec:
         podSpec:
           containers:
             - name: redis-account-ops
-              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+              image: {{ include "redis7.image" . }}
               imagePullPolicy: IfNotPresent
               command:
                 - bash
@@ -130,7 +130,7 @@ spec:
         podSpec:
           containers:
             - name: redis-account-ops
-              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+              image: {{ include "redis7.image" . }}
               imagePullPolicy: IfNotPresent
               command:
                 - bash
@@ -216,7 +216,7 @@ spec:
         podSpec:
           containers:
             - name: redis-account-ops
-              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+              image: {{ include "redis7.image" . }}
               imagePullPolicy: IfNotPresent
               command:
                 - bash
