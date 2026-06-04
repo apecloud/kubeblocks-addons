@@ -130,17 +130,8 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
   End
 
   Describe "rendered manifest reflects the Helm value"
-    # alpha.89 v1 commit 13 v3 v2 (Helen 2026-05-20, Jack
-    # test-harness HOLD msg `ea4b77ee`) — earlier form passed the
-    # full ~16k-line `helm template` output into `When call ... The
-    # output should include ...`. ShellSpec's matcher loads the
-    # entire captured stdout into memory and pattern-matches against
-    # it, which is slow / unstable on macOS+Homebrew bash and timed
-    # out at Jack's 34s budget. Refactor: render once into a tmp
-    # file in a helper, then use `grep` on the file (Jack's
-    # `awk/rg` suggestion applied via `grep -F` for fixed-string
-    # matching). `When call grep ...` captures only the matched
-    # line, not the full manifest, so the matcher stays bounded.
+    helm_not_available() { ! command -v helm >/dev/null 2>&1; }
+    Skip if "helm not available" helm_not_available
 
     render_to_tmp() {
       # Render the chart to a tmp file and echo the path. Caller
@@ -197,12 +188,8 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
   End
 
   Describe "Helm template-time fail-closed on invalid value (Jack B2 fix)"
-    # alpha.89 v1 commit 13 v2 (Helen 2026-05-20) — invalid
-    # `replication.mode` values fail the helm render BEFORE any
-    # manifest is produced. v3 v2 (Jack test-harness HOLD msg
-    # `ea4b77ee`) — same refactor: capture stderr to a tmp file
-    # and grep -c, never feed the full output into a ShellSpec
-    # matcher.
+    helm_not_available_b2() { ! command -v helm >/dev/null 2>&1; }
+    Skip if "helm not available" helm_not_available_b2
 
     render_stderr_to_tmp() {
       tmp_stderr=$(mktemp -t mariadb-rend-err-XXXXXX)
