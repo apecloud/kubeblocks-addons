@@ -13,6 +13,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install helm
         uses: azure/setup-helm@v4
+      - name: Build helm chart dependencies
+        run: |
+          for chart in addons/*/Chart.yaml; do
+            dir=$(dirname "$chart")
+            if grep -q 'dependencies:' "$chart" 2>/dev/null; then
+              helm dependency build "$dir" 2>/dev/null || true
+            fi
+          done
       - name: shellspec test
         run: |
           make scripts-test
