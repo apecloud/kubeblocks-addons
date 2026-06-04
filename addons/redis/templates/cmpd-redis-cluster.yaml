@@ -468,21 +468,13 @@ spec:
           - redis
           - getrole
     postProvision:
-      # kbagent caps lifecycle action calls at 60s; keep this below the cap
-      # and let retryPolicy re-enter the idempotent postProvision action.
-      timeoutSeconds: 50
+      timeoutSeconds: 600
       exec:
         container: redis-cluster
         command:
           - /bin/bash
           - -c
-          - |
-            log=/tmp/post-provision.log
-            : > "$log"
-            /scripts/{{ $redisClusterManageScripts }} --post-provision > "$log" 2>&1
-            rc=$?
-            cat "$log" >&2 || true
-            exit "$rc"
+          - /scripts/{{ $redisClusterManageScripts }} --post-provision  > /tmp/post-provision.log 2>&1
         ## all lifecycle actions share the same env
         env:
           - name: CURRENT_POD_NAME

@@ -815,7 +815,6 @@ scale_out_redis_cluster_shard() {
   if check_slots_covered "$primary_node_with_port" "$SERVICE_PORT"; then
     if check_current_shard_other_nodes_are_joined "$primary_node_fqdn" "$primary_node_port"; then
       echo "The current component shard primary and replicas already joined the cluster."
-      current_primary_joined=true
     else
       current_primary_joined=true
     fi
@@ -879,8 +878,6 @@ scale_out_redis_cluster_shard() {
   local slots_per_shard
   local current_slots
   local remaining_slots
-  local reshard_slots
-  local reshard_batch_size
   total_slots=16384
   current_comp_pod_count=$(echo "$CURRENT_SHARD_POD_NAME_LIST" | tr ',' '\n' | grep -c "^$CURRENT_SHARD_COMPONENT_NAME-")
   all_comp_pod_count=$(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' '\n' | grep -c ".*")
@@ -901,21 +898,10 @@ scale_out_redis_cluster_shard() {
     fix_unstable_cluster_and_defer "$primary_node_with_port" || return 1
   fi
 
-  reshard_batch_size=${REDIS_CLUSTER_RESHARD_BATCH_SIZE:-1024}
-  reshard_slots=$remaining_slots
-  if [ "$ut_mode" = "false" ] && [ "$remaining_slots" -gt "$reshard_batch_size" ]; then
-    reshard_slots=$reshard_batch_size
-  fi
-
-  if scale_out_shard_reshard "$primary_node_with_port" "$mapping_primary_cluster_id" "$reshard_slots"; then
+  if scale_out_shard_reshard "$primary_node_with_port" "$mapping_primary_cluster_id" "$remaining_slots"; then
     echo "Redis cluster scale out shard reshard successfully"
   else
     echo "Failed to scale out shard reshard" >&2
-    return 1
-  fi
-
-  if [ "$reshard_slots" -lt "$remaining_slots" ]; then
-    echo "Redis cluster scale out shard moved $reshard_slots/$remaining_slots remaining slots; defer for retry" >&2
     return 1
   fi
 
