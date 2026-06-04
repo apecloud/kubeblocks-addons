@@ -920,8 +920,6 @@ scale_out_redis_cluster_shard() {
   local slots_per_shard
   local current_slots
   local remaining_slots
-  local reshard_slots
-  local reshard_batch_size
   total_slots=16384
   current_comp_pod_count=$(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' '\n' | grep -c "^$CURRENT_SHARD_COMPONENT_NAME-")
   all_comp_pod_count=$(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' '\n' | grep -c ".*")
