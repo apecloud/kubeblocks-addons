@@ -295,8 +295,16 @@ EOF
 
     Context "when semisync pending secondary has fail-closed read_only and secondary variable shape"
       setup_semisync_pending_secondary_ready() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
         export MARIADB_REPLICATION_MODE="semisync"
         export MOCK_SYNCERCTL_ROLE="secondary"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT="Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Last_IO_Errno: 0
+Last_SQL_Errno: 0"
         export MOCK_MARIADB_READ_ONLY="1"
         export MOCK_MARIADB_SEMISYNC_MASTER="OFF"
         export MOCK_MARIADB_SEMISYNC_SLAVE="ON"
@@ -311,6 +319,32 @@ EOF
         When call check_role
         The status should be success
         The output should eq "secondary"
+      End
+    End
+
+    Context "when semisync pending secondary has variable shape but no replication truth"
+      setup_semisync_pending_secondary_empty_slave_status() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_REPLICATION_MODE="semisync"
+        export MOCK_SYNCERCTL_ROLE="secondary"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT=""
+        export MOCK_MARIADB_READ_ONLY="1"
+        export MOCK_MARIADB_SEMISYNC_MASTER="OFF"
+        export MOCK_MARIADB_SEMISYNC_SLAVE="ON"
+        touch "${TEST_DIR}/.replication-pending"
+        touch "${TEST_DIR}/master.info"
+        make_syncerctl
+        make_mariadb_cli
+      }
+      Before "setup_semisync_pending_secondary_empty_slave_status"
+
+      It "fails closed instead of publishing a broken secondary"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
       End
     End
 
