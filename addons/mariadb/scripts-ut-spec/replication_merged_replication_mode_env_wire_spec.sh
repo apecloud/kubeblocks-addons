@@ -134,12 +134,8 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
     Skip if "helm not available" helm_not_available
 
     render_to_tmp() {
-      # Render the chart to a tmp file and echo the path. Caller
-      # consumes via grep. `helm template` stderr is silenced for
-      # the positive cases; the fail-closed describe uses a
-      # separate helper that captures stderr.
       tmp_render=$(mktemp -t mariadb-render-XXXXXX)
-      helm template test "$(chart_path)" "$@" >"${tmp_render}" 2>/dev/null
+      helm template test "$(chart_path)" "$@" >"${tmp_render}" 2>/dev/null || true
       printf "%s" "${tmp_render}"
     }
 
@@ -193,8 +189,9 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
 
     render_stderr_to_tmp() {
       tmp_stderr=$(mktemp -t mariadb-rend-err-XXXXXX)
-      helm template test "$(chart_path)" "$@" >/dev/null 2>"${tmp_stderr}"
-      printf "%s|%s" "$?" "${tmp_stderr}"
+      local rc=0
+      helm template test "$(chart_path)" "$@" >/dev/null 2>"${tmp_stderr}" || rc=$?
+      printf "%s|%s" "${rc}" "${tmp_stderr}"
     }
 
     cleanup_tmp_stderr() {
@@ -251,7 +248,7 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
       # Empty-string render should succeed; reuse the render_to_tmp
       # helper from the previous Describe via inline duplicate.
       tmp_render=$(mktemp -t mariadb-render-empty-XXXXXX)
-      helm template test "$(chart_path)" --set replication.mode="" >"${tmp_render}" 2>/dev/null
+      helm template test "$(chart_path)" --set replication.mode="" >"${tmp_render}" 2>/dev/null || true
       render_rc=$?
       grep_result=$(grep -F -A1 'name: MARIADB_REPLICATION_MODE' "${tmp_render}" |
         awk 'NR==2 && $0 ~ /value: ""/ { print "ok"; exit }')
