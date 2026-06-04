@@ -76,8 +76,8 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
     # per-Cluster ComponentSpec parameter unless the chart actually
     # implements that contract end-to-end.
 
-    It "ClusterDefinition documents mariadb.replication.mode as the current mode source"
-      When call grep -q 'mariadb\.replication\.mode' "$(clusterdefinition_path)"
+    It "ClusterDefinition documents replication.mode as the current mode source"
+      When call grep -q 'replication\.mode' "$(clusterdefinition_path)"
       The status should be success
     End
 
@@ -123,7 +123,7 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
     End
 
     It "validator uses fail to abort helm render on invalid value"
-      When call grep -c 'fail (printf "invalid mariadb\.replication\.mode' "$(helper_path)"
+      When call grep -c 'fail (printf "invalid replication\.mode' "$(helper_path)"
       The status should be success
       The output should equal "1"
     End
@@ -209,8 +209,8 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
         echo "expected non-zero rc but got 0" >&2
         return 1
       fi
-      if ! grep -qF "invalid mariadb.replication.mode" "${file_path}"; then
-        echo "expected stderr to contain 'invalid mariadb.replication.mode'" >&2
+      if ! grep -qF "invalid replication.mode" "${file_path}"; then
+        echo "expected stderr to contain 'invalid replication.mode'" >&2
         return 1
       fi
       if ! grep -qF "${expected_value_in_msg}" "${file_path}"; then
