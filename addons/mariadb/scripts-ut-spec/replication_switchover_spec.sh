@@ -921,14 +921,15 @@ EOF
       The output should equal "1"
     End
 
-    It "alpha.79 v1: alpha.76/.77/.78 marker helpers tracked as alpha.80 cleanup debt [tech-debt-tracked]"
+    It "alpha.79 v1: alpha.76/.77/.78 marker helpers tracked as alpha.80 cleanup debt [tech-debt-resolved]"
       # Dead-code policy: marker helpers + cmpd switchover_fence_active_is_fresh
-      # + roleprobe skip check are no longer called by the active path. The
-      # cleanup debt MUST be tracked in Chart.yaml so alpha.80+ can grep for it.
-      chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
-      When call grep -c "alpha\.80.*cleanup\|alpha\.80+ removes" "${chart_yaml}"
-      The status should be success
-      The output should not equal "0"
+      # + roleprobe skip check have been removed from the active path.
+      # The cleanup debt tracked by Chart.yaml comments has been resolved;
+      # Chart.yaml development journal was stripped in PR #2774.
+      # Verify the dead code functions are indeed absent from the scripts.
+      When call grep -c 'switchover_fence_active_is_fresh()' ../scripts/replication-switchover.sh
+      The status should be failure
+      The output should equal "0"
     End
 
     It "alpha.78 v1: wait_for_replication_healthy checks syncer role per iteration AT THE TOP OF THE LOOP and exits with return 2 when role=primary [product-blocker]"
