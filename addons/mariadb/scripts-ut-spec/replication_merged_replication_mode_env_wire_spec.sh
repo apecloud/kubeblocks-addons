@@ -3,7 +3,7 @@
 # alpha.89 v1 commit 13 (Helen 2026-05-20, C3 design env plumbing —
 # Helm value / Option C path).
 #
-# Lock the wire-up that connects `mariadb.replication.mode` (Helm
+# Lock the wire-up that connects top-level `replication.mode` (Helm
 # value) → `MARIADB_REPLICATION_MODE` (env var on the merged CmpD's
 # mariadb container) → `apply_replication_mode_mapping` (mapper
 # sourced by `reconfigureAction.persisted`).
@@ -76,8 +76,8 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
     # per-Cluster ComponentSpec parameter unless the chart actually
     # implements that contract end-to-end.
 
-    It "ClusterDefinition documents mariadb.replication.mode as the current mode source"
-      When call grep -q 'mariadb\.replication\.mode' "$(clusterdefinition_path)"
+    It "ClusterDefinition documents replication.mode as the current mode source"
+      When call grep -q 'replication\.mode' "$(clusterdefinition_path)"
       The status should be success
     End
 
@@ -104,7 +104,7 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
       The output should equal "1"
     End
 
-    It "sources the env value through the mariadb.replication.mode.validate helper (Jack B2 fail-closed path)"
+    It "sources the env value through the replication.mode validate helper (Jack B2 fail-closed path)"
       When call grep -c 'include "mariadb\.replication\.mode\.validate"' "$(cmpd_merged_path)"
       The status should be success
       The output should equal "1"
@@ -123,7 +123,7 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
     End
 
     It "validator uses fail to abort helm render on invalid value"
-      When call grep -c 'fail (printf "invalid mariadb\.replication\.mode' "$(helper_path)"
+      When call grep -c 'fail (printf "invalid replication\.mode' "$(helper_path)"
       The status should be success
       The output should equal "1"
     End
@@ -209,8 +209,8 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
         echo "expected non-zero rc but got 0" >&2
         return 1
       fi
-      if ! grep -qF "invalid mariadb.replication.mode" "${file_path}"; then
-        echo "expected stderr to contain 'invalid mariadb.replication.mode'" >&2
+      if ! grep -qF "invalid replication.mode" "${file_path}"; then
+        echo "expected stderr to contain 'invalid replication.mode'" >&2
         return 1
       fi
       if ! grep -qF "${expected_value_in_msg}" "${file_path}"; then
@@ -220,7 +220,7 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
       printf "ok"
     }
 
-    It "rejects mariadb.replication.mode=bogus at render time"
+    It "rejects replication.mode=bogus at render time"
       tmp_stderr_setup=$(render_stderr_to_tmp --set replication.mode=bogus)
       tmp_stderr="${tmp_stderr_setup#*|}"
       When call check_render_failed_with_sentinel "${tmp_stderr_setup}" "bogus"
