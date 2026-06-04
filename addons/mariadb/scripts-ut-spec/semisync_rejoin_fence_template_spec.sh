@@ -133,7 +133,7 @@ Describe "cmpd-semisync.yaml rejoin fence template"
   End
 
   It "unlocks local root before publishing a primary as writable"
-    When call function_contains "set_primary_read_write" "unlock_local_root_writes \"primary-read-write\""
+    When call function_contains "set_primary_read_write" "unlock_local_root_writes \"\${label}\""
     The status should be success
   End
 
@@ -153,7 +153,7 @@ Describe "cmpd-semisync.yaml rejoin fence template"
   End
 
   It "requires remote root unlock before publishing a primary as writable"
-    When call function_contains "set_primary_read_write" "fail_primary_read_write_gate \"primary-read-write\" \"remote-root-unlock\""
+    When call function_contains "set_primary_read_write" "fail_primary_read_write_gate \"\${label}\" \"remote-root-unlock\""
     The status should be success
   End
 
@@ -168,7 +168,7 @@ Describe "cmpd-semisync.yaml rejoin fence template"
   End
 
   It "fails closed when read_only cannot be opened for a primary"
-    When call function_contains "set_primary_read_write" "fail_primary_read_write_gate \"primary-read-write\" \"read-only-open\""
+    When call function_contains "set_primary_read_write" "fail_primary_read_write_gate \"\${label}\" \"read-only-open\""
     The status should be success
   End
 
