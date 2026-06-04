@@ -189,7 +189,7 @@ Describe "alpha.89 merged PD CUE schema + dynamic classification"
     It "the merged PD block does NOT reference the CUE file via Files.Get (parametersSchema removed)"
       When call awk_line_in_block \
         'name:[[:space:]]+mariadb-replication-merged-pd[[:space:]]*$' \
-        'Files\.Get "config/mariadb-config-constraint\.cue"' \
+        'Files[.]Get "config/mariadb-config-constraint[.]cue"' \
         "$(paramsdef_path)"
       The output should equal ""
     End

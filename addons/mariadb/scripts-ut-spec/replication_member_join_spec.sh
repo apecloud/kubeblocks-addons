@@ -803,6 +803,7 @@ EOF
         }
         When call setup_replication
         The status should be failure
+        The output should be present
         The path "${TEST_DIR}/.replication-pending" should be exist
         The stderr should include "phase: change-master-or-start-io-failed"
       End
@@ -824,6 +825,7 @@ EOF
         }
         When call setup_replication
         The status should be failure
+        The output should be present
         The path "${TEST_DIR}/.replication-pending" should be exist
         The stderr should include "phase: change-master-failed"
       End
@@ -846,6 +848,7 @@ EOF
         }
         When call setup_replication
         The status should be failure
+        The output should be present
         The path "${TEST_DIR}/.replication-pending" should be exist
         The stderr should include "phase: slave-config-not-persisted"
       End
@@ -863,6 +866,7 @@ EOF
         export MARIADB_CLI=""
         When call main
         The status should be failure
+        The output should be present
         The path "${TEST_DIR}/.replication-pending" should be exist
         The stderr should include "phase: mariadb-cli-unavailable"
       End
