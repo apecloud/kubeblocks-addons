@@ -2170,6 +2170,17 @@ type: application
 # syncer and then pulled back to read_only by the stale replica rejoin
 # continuation.
 #
+# alpha.9 (Jack 2026-06-04 - VersionUpgrade preStop marker cleanup):
+# Bumped from 1.2.0-alpha.8 -> 1.2.0-alpha.9 because semisync and
+# merged replication startup scripts now clear stale PVC preStop fence
+# markers on the first startup attempt of a new container lifecycle. r20
+# T15 showed VersionUpgrade can restart only the mariadb container
+# in-place: init-syncer does not re-run, so init-time marker cleanup is
+# insufficient. The fix uses a container-local /tmp lifecycle marker:
+# first startup in a restarted container clears stale PVC fence markers;
+# later startup attempts in the same container keep the fence and refuse
+# mariadbd restart during a real preStop.
+#
 # alpha.6 (Jack 2026-06-04 — pending secondary semisync shape gate):
 # alpha.5 allowed pending secondary publication after persisted slave
 # config + syncer secondary + read_only=ON, but in semisync mode that
@@ -2199,7 +2210,7 @@ type: application
 # but it was rendered with the wrong values path (`mariadb.replication.mode`).
 # The chart consumes top-level `replication.mode`, so alpha.3 was not a
 # valid semisync focused verdict.
-version: 1.2.0-alpha.8
+version: 1.2.0-alpha.9
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add

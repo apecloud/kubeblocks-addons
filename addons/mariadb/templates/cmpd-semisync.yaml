@@ -275,7 +275,26 @@ spec:
             ROOT_LOCAL=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
             INTERNAL_LOCAL=(mariadb "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
             LOCAL=("${ROOT_LOCAL[@]}")
-            if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
+            LIFECYCLE_MARKER="/tmp/.mariadb-startup-lifecycle"
+            if [ ! -f "${LIFECYCLE_MARKER}" ]; then
+              touch "${LIFECYCLE_MARKER}" 2>/dev/null || true
+              if [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ] || \
+                 [ -f "{{ .Values.dataMountPath }}/.prestop-fence-complete" ] || \
+                 [ -f "{{ .Values.dataMountPath }}/.prestop-fence-failed" ]; then
+                mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
+                {
+                  printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                  printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
+                  printf 'decision=clear-stale-prestop-fence-on-container-start\n'
+                  printf 'reason=tmp lifecycle marker absent; this is the first startup attempt in this container\n'
+                  printf '\n'
+                } >> {{ .Values.dataMountPath }}/log/startup-fence.log 2>/dev/null || true
+              fi
+              rm -f {{ .Values.dataMountPath }}/.prestop-fence-started \
+                {{ .Values.dataMountPath }}/.prestop-fence-complete \
+                {{ .Values.dataMountPath }}/.prestop-fence-failed \
+                {{ .Values.dataMountPath }}/.prestop-fence-watchdog-active
+            elif [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
               mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
               {
                 printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
