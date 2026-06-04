@@ -30,6 +30,9 @@ jobs:
           make -j$(nproc)
           sudo make install
 
+      - name: Install helm
+        uses: azure/setup-helm@v4
+
       - name: shellspec test
         run: |
           make scripts-test-kcov

@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install helm
+        uses: azure/setup-helm@v4
       - name: shellspec test
         run: |
           make scripts-test
