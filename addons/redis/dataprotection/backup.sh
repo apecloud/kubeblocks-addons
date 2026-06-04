@@ -42,18 +42,45 @@ function save_sentinel_acl() {
 }
 
 connect_url="redis-cli $REDIS_CLI_TLS_CMD -h ${DP_DB_HOST} -p ${DP_DB_PORT} -a ${DP_DB_PASSWORD}"
-if [ -z ${DP_DB_PASSWORD} ]; then
+if [ -z "${DP_DB_PASSWORD:-}" ]; then
   connect_url="redis-cli $REDIS_CLI_TLS_CMD -h ${DP_DB_HOST} -p ${DP_DB_PORT}"
 fi
-last_save=$(${connect_url} LASTSAVE)
+
+function require_redis_cli() {
+  local action="$1"
+  shift
+
+  local output
+  if ! output=$(${connect_url} "$@" 2>&1); then
+    echo "ERROR: redis-cli ${action} failed against ${DP_DB_HOST}:${DP_DB_PORT}: ${output}" >&2
+    return 1
+  fi
+  printf "%s\n" "$output"
+}
+
+if ! last_save=$(require_redis_cli "LASTSAVE" LASTSAVE); then
+  exit 1
+fi
 echo "INFO: start BGSAVE"
-${connect_url} BGSAVE
+if ! require_redis_cli "BGSAVE" BGSAVE; then
+  exit 1
+fi
 echo "INFO: wait for saving rdb successfully"
 while true; do
-  persistence_info=$(${connect_url} INFO persistence)
+  if ! persistence_info=$(require_redis_cli "INFO persistence" INFO persistence); then
+    exit 1
+  fi
   bgsave_in_progress=$(echo "$persistence_info" | grep rdb_bgsave_in_progress | tr -d '\r' | cut -d: -f2)
+  if [ -z "$bgsave_in_progress" ]; then
+    echo "ERROR: INFO persistence did not contain rdb_bgsave_in_progress for ${DP_DB_HOST}:${DP_DB_PORT}" >&2
+    exit 1
+  fi
   if [ "$bgsave_in_progress" = "0" ]; then
     bgsave_status=$(echo "$persistence_info" | grep rdb_last_bgsave_status | tr -d '\r' | cut -d: -f2)
+    if [ -z "$bgsave_status" ]; then
+      echo "ERROR: INFO persistence did not contain rdb_last_bgsave_status for ${DP_DB_HOST}:${DP_DB_PORT}" >&2
+      exit 1
+    fi
     if [ "$bgsave_status" = "err" ]; then
       echo "ERROR: BGSAVE failed on target pod"
       exit 1
