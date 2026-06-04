@@ -29,7 +29,7 @@ affected.
 {{- define "mariadb.replication.mode.validate" -}}
 {{- $mode := .Values.replication.mode | default "" -}}
 {{- if and $mode (not (has $mode (list "async" "semisync"))) -}}
-{{- fail (printf "invalid mariadb.replication.mode=%q; expected one of \"\", \"async\", \"semisync\" (commit 13 v2 / Jack B2 install-time fail-closed)" $mode) -}}
+{{- fail (printf "invalid replication.mode=%q; expected one of \"\", \"async\", \"semisync\" (commit 13 v2 / Jack B2 install-time fail-closed)" $mode) -}}
 {{- end -}}
 {{- $mode -}}
 {{- end -}}
@@ -131,7 +131,7 @@ clarification) — new CmpD for topology merge (weston 2026-05-19
 14:12 Option B). The merged CmpD consolidates the old
 `mariadb-replication` (async) and `mariadb-semisync` CmpDs into one.
 Current mode selection is install/render-time only: the Helm value
-`mariadb.replication.mode` is validated by
+`replication.mode` is validated by
 `mariadb.replication.mode.validate` and wired to the merged CmpD as
 `MARIADB_REPLICATION_MODE`. The current chart does not expose any
 per-Cluster mode parameter named `replicationMode`.

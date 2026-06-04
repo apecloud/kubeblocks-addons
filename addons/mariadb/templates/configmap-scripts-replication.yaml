@@ -41,11 +41,11 @@ data:
   # alpha.89 v1 commit 13 v2 (Helen 2026-05-20, Jack post-commit-13-v1
   # install-time write-site requirement msg `696e7b16`) — install-time
   # seeder that translates `MARIADB_REPLICATION_MODE` (set by Helm
-  # value mariadb.replication.mode → CmpD container env, commit 13 v1)
+  # value replication.mode → CmpD container env, commit 13 v1)
   # into the four per-parameter override `.cnf` files under
   # runtime-overrides.d/ BEFORE the first mariadbd start. Without this
   # seeder the env wire was dormant: a chart user setting
-  # `mariadb.replication.mode=semisync` at install time would still
+  # `replication.mode=semisync` at install time would still
   # boot async and not flip until the first reconfigureAction trigger.
   # The seeder writes byte-identical content to what
   # reconfigureAction.persisted writes for the same env, so the two

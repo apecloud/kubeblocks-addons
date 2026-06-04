@@ -33,7 +33,7 @@ etcd:
 ## configurable; runtime OpsRequest mode flip is deferred to a future
 ## commit that wires a Cluster annotation OR a non-INI-bound PD).
 ##
-## `mariadb.replication.mode` is the top-level switch consumed by the
+## `replication.mode` is the top-level switch consumed by the
 ## addon-side mapper (`scripts/replication-mode-mapper.sh`) sourced
 ## into the merged CmpD's `reconfigureAction.persisted` helper. The
 ## mapper translates the value into the four real engine variables

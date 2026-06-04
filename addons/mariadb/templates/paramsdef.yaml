@@ -183,7 +183,7 @@ spec:
   #
   # Class 4 fail-closed for the 4 rpl_semi_sync_* engine vars is
   # still enforced by the three other layers:
-  #   1. Helm template-time validator (`mariadb.replication.mode
+  #   1. Helm template-time validator (`replication.mode
   #      .validate` in _helpers.tpl) rejects invalid `replication
   #      .mode` Helm values at `helm render` time.
   #   2. Startup seeder (`scripts/seed-replication-mode-overrides

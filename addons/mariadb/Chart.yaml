@@ -2152,7 +2152,18 @@ type: application
 # reconfigure executor. Without this, any galera Reconfiguring
 # OpsRequest fails with ERROR 1045 (Access denied for
 # kb_internal_root). CmpD spec change requires version bump.
-version: 1.2.0-alpha.2
+#
+# alpha.4 (Jack 2026-06-04 — semisync role shape publish gate):
+# replication-merged semisync runtime now fail-closed enforces
+# role-specific semisync variables before publishing primary/replica
+# readiness: primary master=1/slave=0, replica master=0/slave=1.
+# CmpD template changed, so bump the chart to create a fresh CmpD.
+#
+# alpha.3 was a focused-test candidate with the same role-shape gate,
+# but it was rendered with the wrong values path (`mariadb.replication.mode`).
+# The chart consumes top-level `replication.mode`, so alpha.3 was not a
+# valid semisync focused verdict.
+version: 1.2.0-alpha.4
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
@@ -2554,7 +2565,7 @@ version: 1.2.0-alpha.2
 #   (Jack design Gate 3 / Blocker 3 — no double-match against
 #   standalone / galera / old async / old semisync PDs).
 # - replication mode source-of-truth is the install/render-time Helm
-#   value `mariadb.replication.mode`, wired to the merged CmpD as
+#   value `replication.mode`, wired to the merged CmpD as
 #   `MARIADB_REPLICATION_MODE`. The current chart deliberately does
 #   not expose any per-Cluster mode parameter named `replicationMode`;
 #   runtime mode flip via OpsRequest reconfigure is deferred.
