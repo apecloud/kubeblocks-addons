@@ -131,6 +131,61 @@ EOF
       End
     End
 
+    Context "when pending marker exists but local syncer and SQL prove this pod is a fail-closed secondary"
+      setup_pending_secondary_fail_closed() {
+        export MOCK_SYNCERCTL_ROLE="secondary"
+        export MOCK_MARIADB_READ_ONLY="1"
+        touch "${TEST_DIR}/.replication-pending"
+        touch "${TEST_DIR}/.sql-listener-ready"
+        touch "${TEST_DIR}/master.info"
+        make_syncerctl
+        make_mariadb_cli
+      }
+      Before "setup_pending_secondary_fail_closed"
+
+      It "publishes secondary so a stale primary label is removed"
+        When call check_role
+        The status should be success
+        The output should eq "secondary"
+      End
+    End
+
+    Context "when pending secondary is not fail-closed read-only"
+      setup_pending_secondary_writable() {
+        export MOCK_SYNCERCTL_ROLE="secondary"
+        export MOCK_MARIADB_READ_ONLY="0"
+        touch "${TEST_DIR}/.replication-pending"
+        touch "${TEST_DIR}/master.info"
+        make_syncerctl
+        make_mariadb_cli
+      }
+      Before "setup_pending_secondary_writable"
+
+      It "does not publish a role"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+      End
+    End
+
+    Context "when pending pod has slave config but syncer does not confirm secondary"
+      setup_pending_without_syncer_secondary() {
+        export MOCK_SYNCERCTL_ROLE="primary"
+        export MOCK_MARIADB_READ_ONLY="1"
+        touch "${TEST_DIR}/.replication-pending"
+        touch "${TEST_DIR}/master.info"
+        make_syncerctl
+        make_mariadb_cli
+      }
+      Before "setup_pending_without_syncer_secondary"
+
+      It "keeps the pod unpublished"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+      End
+    End
+
     Context "when master.info exists (no pending flag)"
       setup_secondary() {
         touch "${TEST_DIR}/.replication-ready"

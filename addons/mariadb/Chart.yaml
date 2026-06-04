@@ -2153,6 +2153,17 @@ type: application
 # OpsRequest fails with ERROR 1045 (Access denied for
 # kb_internal_root). CmpD spec change requires version bump.
 #
+# alpha.5 (Jack 2026-06-04 — semisync Stop/Start stale primary
+# label fix): replication roleProbe now publishes `secondary` rc=0
+# for a pod that still has `.replication-pending` but is already
+# proven to be a fail-closed secondary by persisted slave config,
+# local syncer role, and local read_only SQL state. Without this,
+# KubeBlocks ignores the failed `initializing` probe and can keep a
+# stale `kubeblocks.io/role=primary` label on the old primary, so the
+# primary Service routes to a read-only replica after Stop/Start.
+# Script ConfigMap content changed, so bump chart version for a fresh
+# mounted script rollout.
+#
 # alpha.4 (Jack 2026-06-04 — semisync role shape publish gate):
 # replication-merged semisync runtime now fail-closed enforces
 # role-specific semisync variables before publishing primary/replica
@@ -2163,7 +2174,7 @@ type: application
 # but it was rendered with the wrong values path (`mariadb.replication.mode`).
 # The chart consumes top-level `replication.mode`, so alpha.3 was not a
 # valid semisync focused verdict.
-version: 1.2.0-alpha.4
+version: 1.2.0-alpha.5
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add
