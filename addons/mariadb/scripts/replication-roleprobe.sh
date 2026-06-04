@@ -439,6 +439,13 @@ pending_secondary_fail_closed_ready() {
     1|ON|NO_LOCK|NO_LOCK_NO_ADMIN) ;;
     *) return 1 ;;
   esac
+  # alpha.10: r28 semisync VScale showed that read_only + semisync variable
+  # shape is not enough to publish a secondary. A pod can hold
+  # .replication-pending after a transient self-promotion/reset, have
+  # syncerctl role=secondary, and still expose an empty SHOW SLAVE STATUS.
+  # Role labels feed KB service routing and update ordering, so fail closed
+  # until local SQL proves the replica IO/SQL threads are healthy.
+  secondary_replication_ready || return 1
   semisync_secondary_shape_ready || return 1
   return 0
 }

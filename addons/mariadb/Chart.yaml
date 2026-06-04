@@ -4,7 +4,7 @@ description: MariaDB is a high performance open source relational database manag
 
 type: application
 
-version: 1.2.0-alpha.9
+version: 1.2.0-alpha.10
 
 appVersion: "11.4.10"
 

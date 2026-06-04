@@ -79,8 +79,8 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
   MEMBER_JOIN="${ADDON_ROOT}/scripts/replication-member-join.sh"
 
   Describe "Gate 1: Chart.yaml literal version"
-    It "is exactly 1.2.0-alpha.9 (alpha.9 bump: VersionUpgrade preStop marker lifecycle cleanup)"
-      When call grep -c '^version: 1.2.0-alpha.9$' "${CHART_YAML}"
+    It "is exactly 1.2.0-alpha.10 (alpha.10 bump: pending secondary roleProbe requires replication truth)"
+      When call grep -c '^version: 1.2.0-alpha.10$' "${CHART_YAML}"
       The output should eq "1"
       The status should be success
     End
