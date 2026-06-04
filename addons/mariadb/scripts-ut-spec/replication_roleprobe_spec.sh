@@ -125,6 +125,102 @@ EOF
       End
     End
 
+    Context "when pending marker exists but local syncer and SQL prove this pod is a peer-reachable semisync primary"
+      setup_pending_primary_fail_closed() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_REPLICATION_MODE="semisync"
+        export MOCK_SYNCERCTL_ROLE="primary"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_READ_ONLY="0"
+        export MOCK_MARIADB_SEMISYNC_MASTER="ON"
+        export MOCK_MARIADB_SEMISYNC_SLAVE="OFF"
+        touch "${TEST_DIR}/.replication-pending"
+        make_syncerctl
+        make_mariadb_cli
+        mariadbd_listen_on_all_interfaces() { return 0; }
+      }
+      Before "setup_pending_primary_fail_closed"
+
+      It "publishes primary so the Primary Service can recover after marker loss"
+        When call check_role
+        The status should be success
+        The output should eq "primary"
+      End
+    End
+
+    Context "when pending primary is still local-listener-only"
+      setup_pending_primary_local_only() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_REPLICATION_MODE="semisync"
+        export MOCK_SYNCERCTL_ROLE="primary"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_READ_ONLY="0"
+        export MOCK_MARIADB_SEMISYNC_MASTER="ON"
+        export MOCK_MARIADB_SEMISYNC_SLAVE="OFF"
+        touch "${TEST_DIR}/.replication-pending"
+        make_syncerctl
+        make_mariadb_cli
+        mariadbd_listen_on_all_interfaces() { return 1; }
+      }
+      Before "setup_pending_primary_local_only"
+
+      It "does not publish primary before the SQL listener is peer-reachable"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+      End
+    End
+
+    Context "when pending primary is still read-only"
+      setup_pending_primary_read_only() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_REPLICATION_MODE="semisync"
+        export MOCK_SYNCERCTL_ROLE="primary"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_READ_ONLY="1"
+        export MOCK_MARIADB_SEMISYNC_MASTER="ON"
+        export MOCK_MARIADB_SEMISYNC_SLAVE="OFF"
+        touch "${TEST_DIR}/.replication-pending"
+        make_syncerctl
+        make_mariadb_cli
+        mariadbd_listen_on_all_interfaces() { return 0; }
+      }
+      Before "setup_pending_primary_read_only"
+
+      It "does not publish primary before read_only is open"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+      End
+    End
+
+    Context "when pending semisync primary has secondary-shaped variables"
+      setup_pending_primary_wrong_semisync_shape() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_REPLICATION_MODE="semisync"
+        export MOCK_SYNCERCTL_ROLE="primary"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_READ_ONLY="0"
+        export MOCK_MARIADB_SEMISYNC_MASTER="OFF"
+        export MOCK_MARIADB_SEMISYNC_SLAVE="ON"
+        touch "${TEST_DIR}/.replication-pending"
+        make_syncerctl
+        make_mariadb_cli
+        mariadbd_listen_on_all_interfaces() { return 0; }
+      }
+      Before "setup_pending_primary_wrong_semisync_shape"
+
+      It "does not publish primary before semisync variables converge"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+      End
+    End
+
     Context "when .replication-pending exists"
       setup_pending() {
         touch "${TEST_DIR}/.replication-ready"

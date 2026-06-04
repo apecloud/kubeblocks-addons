@@ -269,6 +269,18 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The output should include "Existing slave config accepted syncer primary promotion"
   End
 
+  It "keeps pod-0 blocked self-election in a reconcile loop instead of exiting permanently"
+    When call template_contains "pod-0 startup: blocked self-election, awaiting syncer promotion or primary Service"
+    The status should be success
+    The output should include "blocked self-election"
+  End
+
+  It "lets pod-0 accept syncer primary promotion after blocked self-election"
+    When call template_contains "pod-0 accepted syncer primary promotion after blocked self-election"
+    The status should be success
+    The output should include "accepted syncer primary promotion"
+  End
+
   It "reconciles syncer secondary into fail-closed local SQL state"
     When call function_contains "reconcile_sql_listener_for_syncer_secondary_once" "set_replica_read_only"
     The status should be success
