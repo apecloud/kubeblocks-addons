@@ -17,7 +17,7 @@ spec:
     # (alpha.89 — topology merge under weston 2026-05-19 Option B
     # msg `d8ecfae7`). The async vs semisync behavior is currently
     # selected at addon install/render time by the Helm value
-    # `mariadb.replication.mode`, which is wired to
+    # `replication.mode`, which is wired to
     # `MARIADB_REPLICATION_MODE` on the merged CmpD. It is NOT a
     # per-Cluster topology selector. The current chart does not expose
     # any user-facing mode parameter named `replicationMode`.
