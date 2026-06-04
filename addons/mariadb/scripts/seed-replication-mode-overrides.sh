@@ -34,9 +34,11 @@
 #   2. Empty/unset → no-op (return 0). Existing clusters whose Helm
 #      values do not set the mode see no behavioral change.
 #   3. Conflict not possible at install time (no user-supplied real
-#      vars in the path yet); seeder simply writes the 4 derived
-#      values.
-#   4. Synthetic key never written. Only the four real engine
+#      vars in the path yet); seeder writes the derived mode values.
+#      On later restarts, an existing valid
+#      rpl_semi_sync_master_timeout override is preserved so a dynamic
+#      reconfigure value is not reset to the install-time default.
+#   4. Synthetic key never written. Only the three real engine
 #      variables land in runtime-overrides.d/.
 #   5. Fail-closed on invalid mode: prints sentinel, exits non-zero;
 #      caller (CmpD container command) refuses to proceed with
@@ -137,6 +139,47 @@ seed_replication_mode_validate_target_type() {
     return "${SEED_REPLICATION_MODE_EXIT_OK}"
 }
 
+seed_replication_mode_read_existing_timeout() {
+    target="$1"
+
+    if [ ! -f "${target}" ]; then
+        printf "10000\n"
+        return "${SEED_REPLICATION_MODE_EXIT_OK}"
+    fi
+
+    value="$(awk -F= '
+        /^[[:space:]]*#/ { next }
+        /^[[:space:]]*;/ { next }
+        /^[[:space:]]*$/ { next }
+        /^[[:space:]]*\[/ { next }
+        {
+          key=$1
+          val=$2
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", val)
+          if (key == "rpl_semi_sync_master_timeout") {
+            print val
+            exit
+          }
+        }
+    ' "${target}")"
+
+    case "${value}" in
+    ''|*[!0-9]*)
+        echo "seed-replication-mode-overrides: invalid existing rpl_semi_sync_master_timeout override at ${target}: ${value:-<empty>}" >&2
+        return "${SEED_REPLICATION_MODE_EXIT_IO}"
+        ;;
+    esac
+
+    if [ "${value}" -gt 4294967295 ]; then
+        echo "seed-replication-mode-overrides: existing rpl_semi_sync_master_timeout override at ${target} is out of range: ${value}" >&2
+        return "${SEED_REPLICATION_MODE_EXIT_IO}"
+    fi
+
+    printf "%s\n" "${value}"
+    return "${SEED_REPLICATION_MODE_EXIT_OK}"
+}
+
 # Main entry. Reads MARIADB_REPLICATION_MODE from env; returns 0 on
 # success (or no-op when env is empty); returns 2 on invalid mode;
 # returns 5 on IO failure.
@@ -185,6 +228,7 @@ seed_replication_mode_overrides() {
     pair_output="$(seed_replication_mode_derive_master_slave "${mode}")" || return $?
     master_value="$(printf '%s\n' "${pair_output}" | awk -F= '$1=="master"{print $2; exit}')"
     slave_value="$(printf '%s\n' "${pair_output}" | awk -F= '$1=="slave"{print $2; exit}')"
+    timeout_value="$(seed_replication_mode_read_existing_timeout "${overrides_dir}/rpl_semi_sync_master_timeout.cnf")" || return $?
 
     # --- Phase B: pre-validate target types (B4) ---
     # alpha.89 v1 commit 16 (Helen 2026-05-20, live N=1 third
@@ -211,7 +255,7 @@ seed_replication_mode_overrides() {
         seed_replication_mode_cleanup_all_tmps "${overrides_dir}"
         return "${SEED_REPLICATION_MODE_EXIT_IO}"
     fi
-    if ! seed_replication_mode_write_one_tmp "${overrides_dir}" rpl_semi_sync_master_timeout 10000; then
+    if ! seed_replication_mode_write_one_tmp "${overrides_dir}" rpl_semi_sync_master_timeout "${timeout_value}"; then
         seed_replication_mode_cleanup_all_tmps "${overrides_dir}"
         return "${SEED_REPLICATION_MODE_EXIT_IO}"
     fi

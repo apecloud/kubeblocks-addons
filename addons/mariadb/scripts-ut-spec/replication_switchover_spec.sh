@@ -22,6 +22,17 @@ Describe "replication-switchover.sh"
     export SWITCHOVER_POLL_SECONDS="1"
     touch "${MARIADB_CLIENT_BIN}"
     chmod +x "${MARIADB_CLIENT_BIN}"
+    # Provide a timeout stub on macOS where GNU timeout is absent.
+    if ! command -v timeout >/dev/null 2>&1; then
+      mkdir -p "${TEST_DIR}/bin"
+      cat > "${TEST_DIR}/bin/timeout" <<'TIMEOUT_STUB'
+#!/bin/sh
+shift
+exec "$@"
+TIMEOUT_STUB
+      chmod +x "${TEST_DIR}/bin/timeout"
+      export PATH="${TEST_DIR}/bin:${PATH}"
+    fi
   }
   BeforeEach "setup"
 
@@ -258,8 +269,8 @@ EOF
         }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be success
-        The output should include "Switchover candidate remote root write probe converged for mdb-mariadb-1"
-        The output should include "Switchover action returned: DCS recorded, current primary fenced, candidate promoted via DCS, candidate writable"
+        The output should include "Switchover candidate remote root primary-readiness probe converged for mdb-mariadb-1"
+        The output should include "candidate root primary-readiness observed without mutating probe"
       End
 
       It "passes pod names to syncerctl instead of candidate FQDN"
@@ -379,7 +390,7 @@ EOF
         When call main
         The status should be success
         The output should include "Switchover using mariadb client: ${MYSQL_CLIENT_DIR}/bin/mariadb"
-        The output should include "Switchover action returned: DCS recorded, current primary fenced, candidate promoted via DCS, candidate writable"
+        The output should include "candidate root primary-readiness observed without mutating probe"
       End
 
       It "alpha.59 contract: never invokes wait_switchover_done / wait_post_switchover_stabilization / wait_primary_service_routes_candidate / current_follows_candidate"
@@ -391,7 +402,7 @@ EOF
         prepare_current_primary_for_switchover() { return 0; }
         fence_local_remote_root_for_secondary() { return 0; }
         local_remote_root_is_fenced_for_secondary() { return 0; }
-        remote_root_write_ready() { return 0; }
+        remote_root_primary_ready() { return 0; }
         verify_post_dcs_local_root_write_fenced() { return 0; }
         revoke_user_facing_root_admin_privileges_for_secondary() { return 0; }
         wait_candidate_promoted_via_syncerctl() { return 0; }
@@ -408,7 +419,7 @@ EOF
         primary_service_routes_candidate() { record_call "BUG_primary_service_routes_candidate_called"; return 0; }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be success
-        The output should include "Switchover action returned: DCS recorded, current primary fenced, candidate promoted via DCS, candidate writable"
+        The output should include "candidate root primary-readiness observed without mutating probe"
         The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_switchover_done_called"
         The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_post_switchover_stabilization_called"
         The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_primary_service_routes_candidate_called"
@@ -417,8 +428,8 @@ EOF
         The contents of file "${TEST_DIR}/calls" should not include "BUG_primary_service_routes_candidate_called"
       End
 
-      It "alpha.61 contract: fails closed when candidate remote root write probe does not close in budget"
-        export CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS=0
+      It "alpha.61 contract: fails closed when candidate remote root primary-readiness probe does not close in budget"
+        export CANDIDATE_REMOTE_ROOT_PRIMARY_READY_WAIT_SECONDS=0
         export SWITCHOVER_POLL_SECONDS=1
         make_syncerctl
         prepare_current_primary_for_switchover() { return 0; }
@@ -436,7 +447,7 @@ EOF
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be failure
         The output should include "Switchover post-DCS guard passed"
-        The stderr should include "reason=candidate_remote_root_write_not_ready_in_budget"
+        The stderr should include "reason=candidate_remote_root_primary_not_ready_in_budget"
         The stderr should include "fail-closed"
       End
     End
@@ -861,7 +872,7 @@ EOF
 
     It "Chart.yaml literal version is current (alpha.89 — topology merge scaffolding + PD CUE schema with INI section binding + validate-replication-mode.sh helper mount)"
       chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
-      When call grep -c '^version: 1.1.1-alpha.90$' "${chart_yaml}"
+      When call grep -c '^version: 1.2.0-alpha.2$' "${chart_yaml}"
       The output should equal "1"
     End
 
@@ -1683,7 +1694,7 @@ secondary-other"
   # Each stage entry MUST check remaining_action_budget BEFORE invoking the
   # stage body. Sentinel reasons are distinct so closeout can attribute the
   # exhausted stage. v1 only enforced this on the last 2 stages (promote,
-  # write); v2 enforces on all 5 (prepare, dcs, fence, promote, write).
+  # write); v2 enforces on all 5 (prepare, dcs, fence, promote, ready).
   Describe "run_switchover() alpha.61 v2 per-stage deadline enforcement"
     setup_v2_stage_env() {
       export SWITCHOVER_ACTION_DEADLINE_SECONDS=10
@@ -1778,7 +1789,7 @@ secondary-other"
       The stderr should include "fail-closed"
     End
 
-    It "fails closed at write stage with action_deadline_exhausted_write when promote body exceeds budget"
+    It "fails closed at ready stage with action_deadline_exhausted_ready when promote body exceeds budget"
       prepare_current_primary_for_switchover() { return 0; }
       syncerctl_switchover() { return 0; }
       fence_current_primary_local_writes_after_dcs() { return 0; }
@@ -1789,7 +1800,7 @@ secondary-other"
       When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
       The status should be failure
       The output should include "Switchover stage candidate_promoted"
-      The stderr should include "reason=action_deadline_exhausted_write"
+      The stderr should include "reason=action_deadline_exhausted_ready"
       The stderr should include "fail-closed"
     End
 
@@ -2890,7 +2901,7 @@ EOF
       # chart version.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.1.1-alpha.90"
+      The output should equal "version: 1.2.0-alpha.2"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -2951,7 +2962,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.90"
+        The output should equal "version: 1.2.0-alpha.2"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -3128,7 +3139,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.1.1-alpha.90"
+        The output should equal "version: 1.2.0-alpha.2"
       End
     End
 

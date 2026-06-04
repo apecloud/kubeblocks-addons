@@ -97,12 +97,30 @@ Describe "alpha.89 commit 13 v2 seed-replication-mode-overrides.sh"
       The status should be success
     End
 
-    It "writes rpl_semi_sync_master_timeout=10000"
+    It "writes rpl_semi_sync_master_timeout=10000 when no timeout override exists"
       MARIADB_REPLICATION_MODE=semisync
       export MARIADB_REPLICATION_MODE
       When call run_seeder
       The status should be success
       The contents of file "${overrides_dir}/rpl_semi_sync_master_timeout.cnf" should include "rpl_semi_sync_master_timeout = 10000"
+    End
+
+    It "preserves an existing valid rpl_semi_sync_master_timeout override across restart seeding"
+      MARIADB_REPLICATION_MODE=semisync
+      export MARIADB_REPLICATION_MODE
+      printf '[mysqld]\nrpl_semi_sync_master_timeout = 3000\n' > "${overrides_dir}/rpl_semi_sync_master_timeout.cnf"
+      When call run_seeder
+      The status should be success
+      The contents of file "${overrides_dir}/rpl_semi_sync_master_timeout.cnf" should include "rpl_semi_sync_master_timeout = 3000"
+    End
+
+    It "fails closed when an existing rpl_semi_sync_master_timeout override is invalid"
+      MARIADB_REPLICATION_MODE=semisync
+      export MARIADB_REPLICATION_MODE
+      printf '[mysqld]\nrpl_semi_sync_master_timeout = invalid\n' > "${overrides_dir}/rpl_semi_sync_master_timeout.cnf"
+      When call run_seeder
+      The status should equal 5
+      The stderr should include "invalid existing rpl_semi_sync_master_timeout"
     End
   End
 
