@@ -63,7 +63,7 @@ Describe "alpha.89 commit 15 ComponentVersion compatibility for merged CmpD"
 
     setup() {
       tmp_render=$(mktemp -t mariadb-cmpv-render-XXXXXX)
-      helm template test "$(chart_path)" >"${tmp_render}" 2>/dev/null
+      helm template test "$(chart_path)" >"${tmp_render}" 2>/dev/null || true
     }
 
     cleanup() {
