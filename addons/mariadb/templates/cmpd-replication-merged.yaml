@@ -1619,8 +1619,18 @@ spec:
               # mark_replication_ready (line below) is the publish point; if any
               # required step fails (set_replica_read_only / expose_sql_listener),
               # the function MUST return 1 BEFORE reaching mark_replication_ready.
-              local label="$1"
-              if ! keep_replica_pending_until_healthy "${label}-before-expose"; then
+              local label="$1" replica_rejoin_rc
+              keep_replica_pending_until_healthy "${label}-before-expose"
+              replica_rejoin_rc=$?
+              if [ "${replica_rejoin_rc}" -eq 2 ]; then
+                prestop_watchdog_log "publish-replica-rejoin label=${label} step=before-expose syncer_role=primary action=accept-primary-promotion"
+                if expose_sql_listener_for_primary_role "syncer-primary-during-replica-rejoin-before-expose-${label}"; then
+                  mark_replication_ready
+                  return 0
+                fi
+                return 2
+              fi
+              if [ "${replica_rejoin_rc}" -ne 0 ]; then
                 return 1
               fi
               if ! set_replica_read_only; then
@@ -1635,7 +1645,17 @@ spec:
                 prestop_watchdog_log "publish-replica-rejoin label=${label} step=after-expose rc=1 tier=required fail_closed=true"
                 return 1
               fi
-              if ! wait_for_replication_healthy "${label}-after-expose" 120 2; then
+              wait_for_replication_healthy "${label}-after-expose" 120 2
+              replica_rejoin_rc=$?
+              if [ "${replica_rejoin_rc}" -eq 2 ]; then
+                prestop_watchdog_log "publish-replica-rejoin label=${label} step=after-expose syncer_role=primary action=accept-primary-promotion"
+                if expose_sql_listener_for_primary_role "syncer-primary-during-replica-rejoin-after-expose-${label}"; then
+                  mark_replication_ready
+                  return 0
+                fi
+                return 2
+              fi
+              if [ "${replica_rejoin_rc}" -ne 0 ]; then
                 # tier=fail-path-defensive: replication is already
                 # known unhealthy; we mark pending and best-effort lock.
                 mark_replication_pending

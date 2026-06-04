@@ -31,6 +31,14 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
     ' "$(template_file)"
   }
 
+  publish_rejoin_accepts_syncer_primary_before_defensive_fail_closed() {
+    before_line="$(grep -n 'syncer-primary-during-replica-rejoin-before-expose' "$(template_file)" | head -1 | cut -d: -f1)"
+    after_line="$(grep -n 'syncer-primary-during-replica-rejoin-after-expose' "$(template_file)" | head -1 | cut -d: -f1)"
+    fail_closed_line="$(grep -n 'after-expose-not-healthy' "$(template_file)" | head -1 | cut -d: -f1)"
+    [ -n "${before_line}" ] && [ -n "${after_line}" ] && [ -n "${fail_closed_line}" ] || return 1
+    [ "${before_line}" -lt "${fail_closed_line}" ] && [ "${after_line}" -lt "${fail_closed_line}" ]
+  }
+
   It "defines a merged-CmpD local primary publish readiness gate"
     When call function_contains "local_primary_role_published" ".primary-read-write-ready"
     The status should be success
@@ -56,6 +64,17 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
     When call template_contains "accepted local syncer primary promotion while Primary Service is empty"
     The status should be success
     The output should include "accepted local syncer primary promotion"
+  End
+
+  It "accepts syncer primary promotion inside replica rejoin before fail-closing as replica"
+    When call publish_rejoin_accepts_syncer_primary_before_defensive_fail_closed
+    The status should be success
+  End
+
+  It "logs replica rejoin handoff to syncer primary publication"
+    When call template_contains "action=accept-primary-promotion"
+    The status should be success
+    The output should include "accept-primary-promotion"
   End
 
   It "keeps pod-0 blocked self-election in a reconcile loop instead of exiting permanently"
