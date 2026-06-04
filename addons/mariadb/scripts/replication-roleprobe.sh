@@ -436,7 +436,24 @@ pending_secondary_fail_closed_ready() {
   db_ready || return 1
   read_only=$(local_sql -e "SELECT UPPER(CAST(@@global.read_only AS CHAR));" 2>/dev/null || true)
   case "${read_only}" in
-    1|ON|NO_LOCK|NO_LOCK_NO_ADMIN)
+    1|ON|NO_LOCK|NO_LOCK_NO_ADMIN) ;;
+    *) return 1 ;;
+  esac
+  semisync_secondary_shape_ready || return 1
+  return 0
+}
+
+semisync_secondary_shape_ready() {
+  local master_enabled slave_enabled
+  [ "${MARIADB_REPLICATION_MODE:-}" = "semisync" ] || return 0
+  master_enabled=$(local_sql -e "SELECT UPPER(CAST(@@global.rpl_semi_sync_master_enabled AS CHAR));" 2>/dev/null || true)
+  slave_enabled=$(local_sql -e "SELECT UPPER(CAST(@@global.rpl_semi_sync_slave_enabled AS CHAR));" 2>/dev/null || true)
+  case "${master_enabled}" in
+    0|OFF) ;;
+    *) return 1 ;;
+  esac
+  case "${slave_enabled}" in
+    1|ON)
       return 0
       ;;
   esac

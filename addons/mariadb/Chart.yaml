@@ -2153,6 +2153,14 @@ type: application
 # OpsRequest fails with ERROR 1045 (Access denied for
 # kb_internal_root). CmpD spec change requires version bump.
 #
+# alpha.6 (Jack 2026-06-04 — pending secondary semisync shape gate):
+# alpha.5 allowed pending secondary publication after persisted slave
+# config + syncer secondary + read_only=ON, but in semisync mode that
+# could briefly publish a secondary label before the role-specific
+# semisync variables converged. Require master_enabled=OFF and
+# slave_enabled=ON for semisync pending-secondary publication. Script
+# ConfigMap content changed, so bump chart version for a fresh rollout.
+#
 # alpha.5 (Jack 2026-06-04 — semisync Stop/Start stale primary
 # label fix): replication roleProbe now publishes `secondary` rc=0
 # for a pod that still has `.replication-pending` but is already
@@ -2174,7 +2182,7 @@ type: application
 # but it was rendered with the wrong values path (`mariadb.replication.mode`).
 # The chart consumes top-level `replication.mode`, so alpha.3 was not a
 # valid semisync focused verdict.
-version: 1.2.0-alpha.5
+version: 1.2.0-alpha.6
 
 # alpha.101 v1 (Helen 2026-05-25 — Phase 1 mitigation for orphan
 # event / GTID divergence cascade surfaced after alpha.100): add

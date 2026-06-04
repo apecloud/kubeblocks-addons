@@ -19,11 +19,11 @@ Describe "replication-roleprobe.sh"
   cleanup() {
     rm -rf "$TEST_DIR"
     export PATH="$TEST_ORIG_PATH"
-    unset MARIADB_DATADIR DATA_DIR SYNCERCTL_BIN MOCK_SYNCERCTL_ROLE MARIADB_ROLEPROBE_SKIP_DB_READY MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY TEST_ORIG_PATH MARIADB_ROOT_HOST MARIADB_INTERNAL_ROOT_USER
+    unset MARIADB_DATADIR DATA_DIR SYNCERCTL_BIN MOCK_SYNCERCTL_ROLE MARIADB_ROLEPROBE_SKIP_DB_READY MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY TEST_ORIG_PATH MARIADB_ROOT_HOST MARIADB_INTERNAL_ROOT_USER MARIADB_REPLICATION_MODE
     unset MOCK_MARIADB_SELECT1_RC MOCK_MARIADB_SELECT1_STDOUT
     unset MOCK_MARIADB_SHOW_SLAVE_STATUS_RC MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT
     unset MOCK_MARIADB_BIND_ADDRESS MOCK_MARIADB_BIND_ADDRESS_RC
-    unset MOCK_MARIADB_READ_ONLY MOCK_MARIADB_READ_ONLY_RC
+    unset MOCK_MARIADB_READ_ONLY MOCK_MARIADB_READ_ONLY_RC MOCK_MARIADB_SEMISYNC_MASTER MOCK_MARIADB_SEMISYNC_MASTER_RC MOCK_MARIADB_SEMISYNC_SLAVE MOCK_MARIADB_SEMISYNC_SLAVE_RC
     unset MOCK_MARIADB_SQL_RC MOCK_MARIADB_CAPTURE_FILE MOCK_MARIADB_ROOT_SHOW_SLAVE_STATUS_RC MOCK_MARIADB_ROOT_SELECT1_RC
   }
   AfterEach "cleanup"
@@ -75,6 +75,14 @@ case "$*" in
   *"SELECT UPPER(CAST(@@global.read_only AS CHAR));"*)
     printf "%s\n" "${MOCK_MARIADB_READ_ONLY:-0}"
     exit "${MOCK_MARIADB_READ_ONLY_RC:-0}"
+    ;;
+  *"SELECT UPPER(CAST(@@global.rpl_semi_sync_master_enabled AS CHAR));"*)
+    printf "%s\n" "${MOCK_MARIADB_SEMISYNC_MASTER:-0}"
+    exit "${MOCK_MARIADB_SEMISYNC_MASTER_RC:-0}"
+    ;;
+  *"SELECT UPPER(CAST(@@global.rpl_semi_sync_slave_enabled AS CHAR));"*)
+    printf "%s\n" "${MOCK_MARIADB_SEMISYNC_SLAVE:-1}"
+    exit "${MOCK_MARIADB_SEMISYNC_SLAVE_RC:-0}"
     ;;
 esac
 if [ -n "${MOCK_MARIADB_CAPTURE_FILE:-}" ]; then
@@ -165,6 +173,48 @@ EOF
         When call check_role
         The status should be failure
         The output should eq "initializing"
+      End
+    End
+
+    Context "when semisync pending secondary has not reached secondary variable shape"
+      setup_semisync_pending_secondary_master_still_on() {
+        export MARIADB_REPLICATION_MODE="semisync"
+        export MOCK_SYNCERCTL_ROLE="secondary"
+        export MOCK_MARIADB_READ_ONLY="1"
+        export MOCK_MARIADB_SEMISYNC_MASTER="ON"
+        export MOCK_MARIADB_SEMISYNC_SLAVE="ON"
+        touch "${TEST_DIR}/.replication-pending"
+        touch "${TEST_DIR}/master.info"
+        make_syncerctl
+        make_mariadb_cli
+      }
+      Before "setup_semisync_pending_secondary_master_still_on"
+
+      It "does not publish secondary before semisync variables converge"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+      End
+    End
+
+    Context "when semisync pending secondary has fail-closed read_only and secondary variable shape"
+      setup_semisync_pending_secondary_ready() {
+        export MARIADB_REPLICATION_MODE="semisync"
+        export MOCK_SYNCERCTL_ROLE="secondary"
+        export MOCK_MARIADB_READ_ONLY="1"
+        export MOCK_MARIADB_SEMISYNC_MASTER="OFF"
+        export MOCK_MARIADB_SEMISYNC_SLAVE="ON"
+        touch "${TEST_DIR}/.replication-pending"
+        touch "${TEST_DIR}/master.info"
+        make_syncerctl
+        make_mariadb_cli
+      }
+      Before "setup_semisync_pending_secondary_ready"
+
+      It "publishes secondary after semisync variables converge"
+        When call check_role
+        The status should be success
+        The output should eq "secondary"
       End
     End
 
