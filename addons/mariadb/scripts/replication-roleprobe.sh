@@ -443,6 +443,39 @@ pending_secondary_fail_closed_ready() {
   return 0
 }
 
+pending_primary_fail_closed_ready() {
+  local role read_only
+  [ ! -f "$(master_info_file)" ] || return 1
+  role=$(syncerctl_getrole) || return 1
+  [ "${role}" = "primary" ] || return 1
+  db_ready || return 1
+  read_only=$(local_sql -e "SELECT UPPER(CAST(@@global.read_only AS CHAR));" 2>/dev/null || true)
+  case "${read_only}" in
+    0|OFF) ;;
+    *) return 1 ;;
+  esac
+  mariadbd_listen_on_all_interfaces || return 1
+  semisync_primary_shape_ready || return 1
+  return 0
+}
+
+semisync_primary_shape_ready() {
+  local master_enabled slave_enabled
+  [ "${MARIADB_REPLICATION_MODE:-}" = "semisync" ] || return 0
+  master_enabled=$(local_sql -e "SELECT UPPER(CAST(@@global.rpl_semi_sync_master_enabled AS CHAR));" 2>/dev/null || true)
+  slave_enabled=$(local_sql -e "SELECT UPPER(CAST(@@global.rpl_semi_sync_slave_enabled AS CHAR));" 2>/dev/null || true)
+  case "${master_enabled}" in
+    1|ON) ;;
+    *) return 1 ;;
+  esac
+  case "${slave_enabled}" in
+    0|OFF)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 semisync_secondary_shape_ready() {
   local master_enabled slave_enabled
   [ "${MARIADB_REPLICATION_MODE:-}" = "semisync" ] || return 0
@@ -603,6 +636,11 @@ check_role() {
     # outputs. Publishing secondary is safe only after local SQL proves the pod
     # is fail-closed read-only; replication may still be pending, but the pod
     # must not remain in the primary Service.
+    if pending_primary_fail_closed_ready; then
+      apply_remote_root_fence "primary" || { not_ready; return $?; }
+      echo -n "primary"
+      return 0
+    fi
     if pending_secondary_fail_closed_ready; then
       apply_remote_root_fence "secondary" || { not_ready; return $?; }
       echo -n "secondary"
