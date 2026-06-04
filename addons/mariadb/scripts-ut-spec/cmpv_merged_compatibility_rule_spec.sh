@@ -54,12 +54,8 @@ Describe "alpha.89 commit 15 ComponentVersion compatibility for merged CmpD"
   End
 
   Describe "rendered manifest contains all four regexes in the same compatibilityRule"
-    # Render once into a tmp file, then awk-parse to extract the
-    # first compatibilityRule's compDefs list and assert all four
-    # patterns are present. Same render-to-tmp + bounded matcher
-    # pattern as the env-wire spec (commit 13 v3 v2 / Jack
-    # test-harness HOLD msg `ea4b77ee`) so this spec stays fast
-    # and stable on macOS+Homebrew.
+    helm_not_available() { ! command -v helm >/dev/null 2>&1; }
+    Skip if "helm not available" helm_not_available
 
     chart_path() {
       printf "%s/addons/mariadb" "$(repo_root)"
