@@ -1619,8 +1619,18 @@ spec:
               # mark_replication_ready (line below) is the publish point; if any
               # required step fails (set_replica_read_only / expose_sql_listener),
               # the function MUST return 1 BEFORE reaching mark_replication_ready.
-              local label="$1"
-              if ! keep_replica_pending_until_healthy "${label}-before-expose"; then
+              local label="$1" replica_rejoin_rc
+              keep_replica_pending_until_healthy "${label}-before-expose"
+              replica_rejoin_rc=$?
+              if [ "${replica_rejoin_rc}" -eq 2 ]; then
+                prestop_watchdog_log "publish-replica-rejoin label=${label} step=before-expose syncer_role=primary action=accept-primary-promotion"
+                if expose_sql_listener_for_primary_role "syncer-primary-during-replica-rejoin-before-expose-${label}"; then
+                  mark_replication_ready
+                  return 0
+                fi
+                return 2
+              fi
+              if [ "${replica_rejoin_rc}" -ne 0 ]; then
                 return 1
               fi
               if ! set_replica_read_only; then
@@ -1635,7 +1645,17 @@ spec:
                 prestop_watchdog_log "publish-replica-rejoin label=${label} step=after-expose rc=1 tier=required fail_closed=true"
                 return 1
               fi
-              if ! wait_for_replication_healthy "${label}-after-expose" 120 2; then
+              wait_for_replication_healthy "${label}-after-expose" 120 2
+              replica_rejoin_rc=$?
+              if [ "${replica_rejoin_rc}" -eq 2 ]; then
+                prestop_watchdog_log "publish-replica-rejoin label=${label} step=after-expose syncer_role=primary action=accept-primary-promotion"
+                if expose_sql_listener_for_primary_role "syncer-primary-during-replica-rejoin-after-expose-${label}"; then
+                  mark_replication_ready
+                  return 0
+                fi
+                return 2
+              fi
+              if [ "${replica_rejoin_rc}" -ne 0 ]; then
                 # tier=fail-path-defensive: replication is already
                 # known unhealthy; we mark pending and best-effort lock.
                 mark_replication_pending
@@ -1968,6 +1988,11 @@ spec:
             query_primary_service_server_id() {
               timeout 3 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
                 -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || true
+            }
+            local_primary_role_published() {
+              [ ! -f "{{ .Values.dataMountPath }}/master.info" ] && \
+              [ -f "{{ .Values.dataMountPath }}/.primary-read-write-ready" ] && \
+              [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]
             }
             local_user_table_count() {
               "${LOCAL[@]}" -e "
@@ -2303,19 +2328,44 @@ spec:
                   PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
                     -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || echo "")
                   [ -n "${PRIMARY_SID}" ] && break
+                  reconcile_sql_listener_for_syncer_primary_once || true
+                  if local_primary_role_published; then
+                    echo "pod-0 startup: accepted local syncer primary promotion while Primary Service is empty"
+                    break
+                  fi
                 done
-                if [ -z "${PRIMARY_SID}" ]; then
+                if [ -z "${PRIMARY_SID}" ] && ! local_primary_role_published; then
+                  blocked_self_election_resolved=false
                   if block_existing_datadir_self_election_without_primary; then
-                    wait ${MARIADB_PID}
-                    exit 1
+                    while true; do
+                      reconcile_sql_listener_for_syncer_primary_once || true
+                      if local_primary_role_published; then
+                        echo "pod-0 accepted syncer primary promotion after blocked self-election"
+                        blocked_self_election_resolved=true
+                        break
+                      fi
+                      if publish_replica_after_rejoin_ready "existing-slave-config"; then
+                        echo "Resumed replication from existing slave config after blocked self-election"
+                        blocked_self_election_resolved=true
+                        break
+                      fi
+                      if fail_closed_for_gtid_divergence; then
+                        wait ${MARIADB_PID}
+                        exit 1
+                      fi
+                      echo "pod-0 startup: blocked self-election, awaiting syncer promotion or primary Service, retrying in 5s."
+                      sleep 5
+                    done
                   fi
-                  if ! expose_sql_listener_for_primary_role "stale-slave-no-primary"; then
-                    wait ${MARIADB_PID}
-                    exit 1
+                  if [ "${blocked_self_election_resolved}" != "true" ]; then
+                    if ! expose_sql_listener_for_primary_role "stale-slave-no-primary"; then
+                      wait ${MARIADB_PID}
+                      exit 1
+                    fi
+                    mark_replication_ready
+                    echo "Starting as primary (pod-0 with stale slave config, no primary found after ${no_primary_budget}s wait)"
                   fi
-                  mark_replication_ready
-                  echo "Starting as primary (pod-0 with stale slave config, no primary found after ${no_primary_budget}s wait)"
-                  PRIMARY_SID=""  # signal: we self-elected; do not fall through to rejoin
+                  PRIMARY_SID=""  # signal: resolved locally; do not fall through to rejoin
                 fi
               fi
               # alpha.92 fall-through: when PRIMARY_SID is now non-empty
@@ -2326,9 +2376,7 @@ spec:
               if [ -n "${PRIMARY_SID}" ] && [ "${PRIMARY_SID}" != "${SERVICE_ID}" ]; then
                 while true; do
                   reconcile_sql_listener_for_syncer_primary_once || true
-                  if [ ! -f "{{ .Values.dataMountPath }}/master.info" ] && \
-                     [ -f "{{ .Values.dataMountPath }}/.primary-read-write-ready" ] && \
-                     [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+                  if local_primary_role_published; then
                     echo "Existing slave config accepted syncer primary promotion"
                     break
                   fi
