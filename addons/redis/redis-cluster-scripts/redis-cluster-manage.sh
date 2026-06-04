@@ -886,7 +886,7 @@ scale_out_redis_cluster_shard() {
   current_primary_joined=false
   if check_slots_covered "$primary_node_with_port" "$SERVICE_PORT"; then
     if check_current_shard_other_nodes_are_joined "$primary_node_fqdn" "$primary_node_port"; then
-      echo "The current component shard is already scaled out, no need to scale out again."
+      echo "The current component shard primary and replicas already joined the cluster."
     fi
     current_primary_joined=true
   fi
