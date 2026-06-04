@@ -267,7 +267,7 @@ spec:
             # msg `696e7b16`) — seed runtime-overrides.d/ from
             # `MARIADB_REPLICATION_MODE` BEFORE the first mariadbd
             # process exec. Without this seeder the Helm value
-            # `mariadb.replication.mode=semisync` set at install
+            # `replication.mode=semisync` set at install
             # time would have no effect until the first
             # reconfigureAction trigger; the seeder closes that gap
             # so the chart-author-selected semisync/async state
@@ -493,6 +493,7 @@ spec:
               lock_remote_root_writes "replica-read-only" || rc=1
               set_fail_closed_read_only "replica-read-only" || rc=1
               lock_local_root_writes "replica-read-only" || rc=1
+              ensure_semisync_replica_role "replica-read-only" || rc=1
               if [ "${rc}" -ne 0 ]; then
                 prestop_watchdog_log "set-replica-read-only label=replica-read-only rc=1 tier=required fail_closed=true"
                 return 1
@@ -1874,6 +1875,30 @@ spec:
             is_semisync_mode_env() {
               [ "${MARIADB_REPLICATION_MODE:-}" = "semisync" ]
             }
+            ensure_semisync_primary_role() {
+              local label="${1:-unknown}"
+              if ! is_semisync_mode_env; then
+                return 0
+              fi
+              if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=1; SET GLOBAL rpl_semi_sync_slave_enabled=0;" >/dev/null 2>&1; then
+                prestop_watchdog_log "semisync-role-shape label=${label} role=primary master=1 slave=0 rc=0"
+                return 0
+              fi
+              prestop_watchdog_log "semisync-role-shape label=${label} role=primary rc=1"
+              return 1
+            }
+            ensure_semisync_replica_role() {
+              local label="${1:-unknown}"
+              if ! is_semisync_mode_env; then
+                return 0
+              fi
+              if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_slave_enabled=1;" >/dev/null 2>&1; then
+                prestop_watchdog_log "semisync-role-shape label=${label} role=secondary master=0 slave=1 rc=0"
+                return 0
+              fi
+              prestop_watchdog_log "semisync-role-shape label=${label} role=secondary rc=1"
+              return 1
+            }
             reset_semisync_master_ack_receiver_if_enabled() {
               local label="${1:-unknown}"
               if ! is_semisync_mode_env; then
@@ -1899,6 +1924,11 @@ spec:
               if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] && mariadbd_listen_on_all_interfaces; then
                 "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
                 reset_semisync_master_ack_receiver_if_enabled "primary-existing-listener-${label}"
+                if ! ensure_semisync_primary_role "primary-existing-listener-${label}"; then
+                  mark_replication_pending
+                  prestop_watchdog_log "sql-listener-primary-expose-failed label=${label} reason=existing-listener-semisync-role-shape"
+                  return 1
+                fi
                 if set_primary_read_write "${label}"; then
                   touch {{ .Values.dataMountPath }}/.sql-listener-ready
                   prestop_watchdog_log "sql-listener-primary-existing-reconciled label=${label}"
@@ -1918,6 +1948,11 @@ spec:
               fi
               "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
               reset_semisync_master_ack_receiver_if_enabled "primary-fresh-listener-${label}"
+              if ! ensure_semisync_primary_role "primary-fresh-listener-${label}"; then
+                mark_replication_pending
+                prestop_watchdog_log "sql-listener-primary-expose-failed label=${label} reason=fresh-listener-semisync-role-shape"
+                return 1
+              fi
               if ! set_primary_read_write "${label}"; then
                 mark_replication_pending
                 prestop_watchdog_log "sql-listener-primary-expose-failed label=${label}"
@@ -2814,7 +2849,7 @@ spec:
           # (only the env source differs).
           #
           # Empty default = "" means existing clusters whose Helm
-          # values do not set `mariadb.replication.mode` see no
+          # values do not set `replication.mode` see no
           # behavioral change: the mapper short-circuits at the
           # empty-mode early return, the strip-synthetic pass (B2
           # fix in commit 12 v2) still runs unconditionally as
@@ -2822,7 +2857,7 @@ spec:
           # continue to flow through the existing persisted helper.
           # alpha.89 v1 commit 13 v2 (Helen 2026-05-20, Jack B2 fix
           # msg `f9433634`) — value flows through
-          # `mariadb.replication.mode.validate` helper which fails
+          # `replication.mode` validation helper which fails
           # the helm render with a clear error message when the value
           # is not in the accepted set ("" / "async" / "semisync"),
           # so invalid values are caught at install/upgrade time
