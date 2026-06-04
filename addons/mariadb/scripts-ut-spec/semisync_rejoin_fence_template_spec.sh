@@ -76,6 +76,30 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The status should be success
   End
 
+  It "clears stale preStop fence markers only on the first startup attempt in a container lifecycle"
+    When call template_contains 'LIFECYCLE_MARKER="/tmp/.mariadb-startup-lifecycle"'
+    The status should be success
+    The output should include "/tmp/.mariadb-startup-lifecycle"
+  End
+
+  It "logs startup-time cleanup of stale PVC preStop markers"
+    When call template_contains "clear-stale-prestop-fence-on-container-start"
+    The status should be success
+    The output should include "clear-stale-prestop-fence-on-container-start"
+  End
+
+  It "keeps the preStop fence on later startup attempts in the same container lifecycle"
+    When call template_contains 'elif [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then'
+    The status should be success
+    The output should include ".prestop-fence-started"
+  End
+
+  It "logs refusal when preStop fence appears after the lifecycle marker exists"
+    When call template_contains "decision=refuse-restart-after-prestop"
+    The status should be success
+    The output should include "refuse-restart-after-prestop"
+  End
+
   It "requires internal admin primary semisync dynamic privilege before role publishing"
     When call function_contains "internal_local_admin_has_required_privileges" "REPLICATION_MASTER_ADMIN"
     The status should be success
