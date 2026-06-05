@@ -44,6 +44,13 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     [ "${before_line}" -lt "${fail_closed_line}" ] && [ "${after_line}" -lt "${fail_closed_line}" ]
   }
 
+  existing_slave_loop_recovers_empty_runtime_slave_status() {
+    recover_line="$(grep -n 'recover_empty_existing_slave_config_once "existing-slave-config"' "$(template_file)" | tail -1 | cut -d: -f1)"
+    retry_line="$(grep -n 'Existing slave config is not healthy yet' "$(template_file)" | tail -1 | cut -d: -f1)"
+    [ -n "${recover_line}" ] && [ -n "${retry_line}" ] || return 1
+    [ "${recover_line}" -lt "${retry_line}" ]
+  }
+
   It "declares an internal local admin before fencing user-facing root"
     When call template_contains 'MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"'
     The status should be success
@@ -338,6 +345,16 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     When call template_contains "runtime-secondary-follow-configure-begin"
     The status should be success
     The output should include "runtime-secondary-follow-configure-begin"
+  End
+
+  It "defines an existing-slave runtime-status recovery helper"
+    When call function_contains "recover_empty_existing_slave_config_once" "empty-runtime-slave-status"
+    The status should be success
+  End
+
+  It "reconfigures existing slave config when runtime slave status disappears"
+    When call existing_slave_loop_recovers_empty_runtime_slave_status
+    The status should be success
   End
 
   It "starts runtime secondary IO before local health cleanup"
