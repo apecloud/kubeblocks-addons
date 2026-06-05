@@ -1,6 +1,9 @@
 #!/bin/bash
 REPORT_HOST=${KB_CLUSTER_COMP_NAME}-mysql-${KB_POD_NAME##*-}
 SERVICE_ID=$((${KB_POD_NAME##*-} + 1))
+if [ "$SERVICE_ID" -ne 1 ]; then
+  export MYSQL_INITDB_SKIP_TZINFO=1
+fi
 if [ "${MYSQL_MAJOR}" = '5.7' ]; then
   /scripts/docker-entrypoint.sh mysqld --server-id $SERVICE_ID --report-host ${REPORT_HOST} \
     --ignore-db-dir=lost+found \

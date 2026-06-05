@@ -98,8 +98,6 @@ spec:
                 value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
               - name: KB_SERVICE_CHARACTER_TYPE
                 value: mysql
-              - name: MYSQL_INITDB_SKIP_TZINFO
-                value: "1"
               - name: SERVICE_PORT
                 value: "3306"
               - name: MYSQL_ROOT_HOST
