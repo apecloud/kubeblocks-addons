@@ -270,6 +270,14 @@ systemAccounts:
     numSymbols: 0
     letterCase: MixedCases
 lifecycleActions:
+  memberJoin:
+    preCondition: RuntimeReady
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - /mnt/remote-scripts/member-join.sh
+      container: elasticsearch
   memberLeave:
     exec:
       command:

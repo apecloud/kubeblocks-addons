@@ -17,6 +17,8 @@ data:
     {{- .Files.Get "scripts/install-plugins.sh" | nindent 4 }}
   member-leave.sh: |-
     {{- .Files.Get "scripts/member-leave.sh" | nindent 4 }}
+  member-join.sh: |-
+    {{- .Files.Get "scripts/member-join.sh" | nindent 4 }}
   entrypoint.sh: |-
     {{- .Files.Get "scripts/entrypoint.sh" | nindent 4 }}
   kibana-entrypoint.sh: |-

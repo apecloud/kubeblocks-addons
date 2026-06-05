@@ -259,9 +259,10 @@ safe_scale_down() {
   log "Node $node_name can now be safely removed from the cluster"
   log "=== Safe scale-down process completed successfully ==="
 
-  # Clear the shard exclusion settings since the node is safely removed
-  log "Clearing shard allocation exclusion settings..."
-  clear_shard_exclusion "$node_name" || log "Warning: Failed to clear shard exclusion after successful completion"
+  # Keep the shard exclusion in place until the controller has actually
+  # deleted the leaving pod. Clearing it here creates a window where ES can
+  # allocate a zero-replica primary back onto the soon-to-be-removed node.
+  log "Leaving shard allocation exclusion in place until the node is deleted"
 
   local total_time=$(( $(date +%s) - start_time ))
   log "Total time taken: ${total_time} seconds"
@@ -307,11 +308,10 @@ cleanup() {
       clear_shard_exclusion "$KB_LEAVE_MEMBER_POD_NAME" || log "Failed to clear shard exclusions during cleanup"
     fi
   else
-    # Even on successful exit, ensure we clear the exclusion settings
-    log "Script completed successfully, clearing shard exclusions..."
-    if [ -n "${KB_LEAVE_MEMBER_POD_NAME:-}" ]; then
-      clear_shard_exclusion "$KB_LEAVE_MEMBER_POD_NAME" || log "Failed to clear shard exclusions after success"
-    fi
+    # On success the exclusion must remain until the controller deletes the
+    # leaving pod. A future memberJoin invocation clears a stale exclusion when
+    # the same pod name is added again.
+    log "Script completed successfully; keeping shard exclusion until node removal"
   fi
   log "Cleanup completed"
   exit $exit_code
