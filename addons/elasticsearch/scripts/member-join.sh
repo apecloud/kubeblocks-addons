@@ -50,9 +50,9 @@ remove_name_from_csv() {
 }
 
 clear_stale_self_exclusion() {
-  local node_name="${POD_NAME:-}"
+  local node_name="${POD_NAME:-${KB_AGENT_POD_NAME:-${HOSTNAME:-}}}"
   if [ -z "$node_name" ]; then
-    echo "ERROR: POD_NAME is empty; cannot prove stale shard exclusion cleanup" >&2
+    echo "ERROR: POD_NAME/KB_AGENT_POD_NAME/HOSTNAME are empty; cannot prove stale shard exclusion cleanup" >&2
     return 1
   fi
 

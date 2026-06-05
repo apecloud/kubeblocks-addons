@@ -164,7 +164,54 @@ assert_member_join_clears_self_only_stale_exclusion_to_null() {
   grep -q '"cluster.routing.allocation.exclude._name":null' "$CURL_SETTINGS_LOG"
 }
 
-assert_member_join_fails_closed_without_pod_name() {
+assert_member_join_uses_kbagent_pod_name_when_pod_name_missing() {
+  CURL_SETTINGS_LOG="$TMP_DIR/join-kbagent-pod-settings.log"
+  SHARD_COUNT_FILE="$TMP_DIR/join-kbagent-pod-shards.count"
+  : > "$CURL_SETTINGS_LOG"
+  printf '0' > "$SHARD_COUNT_FILE"
+
+  PATH="$FAKEBIN:$PATH" \
+  CURL_SETTINGS_LOG="$CURL_SETTINGS_LOG" \
+  SHARD_COUNT_FILE="$SHARD_COUNT_FILE" \
+  MOCK_CLUSTER_SETTINGS_JSON='{"persistent":{"cluster.routing.allocation.exclude._name":"es-ops-data-2,other-node"},"transient":{}}' \
+  KB_AGENT_POD_NAME=es-ops-data-2 \
+  HOSTNAME=wrong-hostname \
+  POD_IP=127.0.0.1 \
+  ELASTIC_USER_PASSWORD=secret \
+  /bin/sh "$ROOT_DIR/scripts/member-join.sh" > "$TMP_DIR/join-kbagent-pod.out" 2> "$TMP_DIR/join-kbagent-pod.err"
+
+  grep -q '"cluster.routing.allocation.exclude._name":"other-node"' "$CURL_SETTINGS_LOG"
+  if grep -q 'es-ops-data-2' "$CURL_SETTINGS_LOG"; then
+    echo "member-join did not remove only the KB_AGENT_POD_NAME stale exclusion" >&2
+    cat "$CURL_SETTINGS_LOG" >&2
+    exit 1
+  fi
+}
+
+assert_member_join_uses_hostname_when_pod_name_envs_missing() {
+  CURL_SETTINGS_LOG="$TMP_DIR/join-hostname-settings.log"
+  SHARD_COUNT_FILE="$TMP_DIR/join-hostname-shards.count"
+  : > "$CURL_SETTINGS_LOG"
+  printf '0' > "$SHARD_COUNT_FILE"
+
+  PATH="$FAKEBIN:$PATH" \
+  CURL_SETTINGS_LOG="$CURL_SETTINGS_LOG" \
+  SHARD_COUNT_FILE="$SHARD_COUNT_FILE" \
+  MOCK_CLUSTER_SETTINGS_JSON='{"persistent":{"cluster.routing.allocation.exclude._name":"es-ops-data-2,other-node"},"transient":{}}' \
+  HOSTNAME=es-ops-data-2 \
+  POD_IP=127.0.0.1 \
+  ELASTIC_USER_PASSWORD=secret \
+  /bin/sh "$ROOT_DIR/scripts/member-join.sh" > "$TMP_DIR/join-hostname.out" 2> "$TMP_DIR/join-hostname.err"
+
+  grep -q '"cluster.routing.allocation.exclude._name":"other-node"' "$CURL_SETTINGS_LOG"
+  if grep -q 'es-ops-data-2' "$CURL_SETTINGS_LOG"; then
+    echo "member-join did not remove only the HOSTNAME stale exclusion" >&2
+    cat "$CURL_SETTINGS_LOG" >&2
+    exit 1
+  fi
+}
+
+assert_member_join_fails_closed_without_pod_identity() {
   CURL_SETTINGS_LOG="$TMP_DIR/join-missing-pod-settings.log"
   SHARD_COUNT_FILE="$TMP_DIR/join-missing-pod-shards.count"
   : > "$CURL_SETTINGS_LOG"
@@ -175,6 +222,9 @@ assert_member_join_fails_closed_without_pod_name() {
   CURL_SETTINGS_LOG="$CURL_SETTINGS_LOG" \
   SHARD_COUNT_FILE="$SHARD_COUNT_FILE" \
   MOCK_CLUSTER_SETTINGS_JSON='{"persistent":{"cluster.routing.allocation.exclude._name":"es-ops-data-2"},"transient":{}}' \
+  POD_NAME= \
+  KB_AGENT_POD_NAME= \
+  HOSTNAME= \
   POD_IP=127.0.0.1 \
   ELASTIC_USER_PASSWORD=secret \
   /bin/sh "$ROOT_DIR/scripts/member-join.sh" > "$TMP_DIR/join-missing-pod.out" 2> "$TMP_DIR/join-missing-pod.err"
@@ -182,10 +232,10 @@ assert_member_join_fails_closed_without_pod_name() {
   set -e
 
   if [ "$rc" -eq 0 ]; then
-    echo "member-join succeeded without POD_NAME" >&2
+    echo "member-join succeeded without pod identity" >&2
     exit 1
   fi
-  grep -q 'POD_NAME is empty' "$TMP_DIR/join-missing-pod.err"
+  grep -q 'POD_NAME/KB_AGENT_POD_NAME/HOSTNAME are empty' "$TMP_DIR/join-missing-pod.err"
   [ ! -s "$CURL_SETTINGS_LOG" ]
 }
 
@@ -218,7 +268,9 @@ assert_member_join_fails_closed_when_settings_read_fails() {
 assert_no_success_clear_on_member_leave
 assert_member_join_clears_only_self_from_stale_exclusion
 assert_member_join_clears_self_only_stale_exclusion_to_null
-assert_member_join_fails_closed_without_pod_name
+assert_member_join_uses_kbagent_pod_name_when_pod_name_missing
+assert_member_join_uses_hostname_when_pod_name_envs_missing
+assert_member_join_fails_closed_without_pod_identity
 assert_member_join_fails_closed_when_settings_read_fails
 
 echo "member lifecycle tests passed"
