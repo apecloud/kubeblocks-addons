@@ -64,6 +64,10 @@ case "$url" in
       printf '%s\n' "$data" >> "${CURL_SETTINGS_LOG:?}"
       printf '{"acknowledged":true}\n'
     else
+      if [ "${MOCK_CLUSTER_SETTINGS_FAIL:-0}" = "1" ]; then
+        printf 'settings read failed\n' >&2
+        exit 28
+      fi
       printf '%s\n' "${MOCK_CLUSTER_SETTINGS_JSON:-{\"persistent\":{},\"transient\":{}}}"
     fi
     ;;
@@ -160,8 +164,61 @@ assert_member_join_clears_self_only_stale_exclusion_to_null() {
   grep -q '"cluster.routing.allocation.exclude._name":null' "$CURL_SETTINGS_LOG"
 }
 
+assert_member_join_fails_closed_without_pod_name() {
+  CURL_SETTINGS_LOG="$TMP_DIR/join-missing-pod-settings.log"
+  SHARD_COUNT_FILE="$TMP_DIR/join-missing-pod-shards.count"
+  : > "$CURL_SETTINGS_LOG"
+  printf '0' > "$SHARD_COUNT_FILE"
+
+  set +e
+  PATH="$FAKEBIN:$PATH" \
+  CURL_SETTINGS_LOG="$CURL_SETTINGS_LOG" \
+  SHARD_COUNT_FILE="$SHARD_COUNT_FILE" \
+  MOCK_CLUSTER_SETTINGS_JSON='{"persistent":{"cluster.routing.allocation.exclude._name":"es-ops-data-2"},"transient":{}}' \
+  POD_IP=127.0.0.1 \
+  ELASTIC_USER_PASSWORD=secret \
+  /bin/sh "$ROOT_DIR/scripts/member-join.sh" > "$TMP_DIR/join-missing-pod.out" 2> "$TMP_DIR/join-missing-pod.err"
+  rc=$?
+  set -e
+
+  if [ "$rc" -eq 0 ]; then
+    echo "member-join succeeded without POD_NAME" >&2
+    exit 1
+  fi
+  grep -q 'POD_NAME is empty' "$TMP_DIR/join-missing-pod.err"
+  [ ! -s "$CURL_SETTINGS_LOG" ]
+}
+
+assert_member_join_fails_closed_when_settings_read_fails() {
+  CURL_SETTINGS_LOG="$TMP_DIR/join-settings-read-fail.log"
+  SHARD_COUNT_FILE="$TMP_DIR/join-settings-read-fail-shards.count"
+  : > "$CURL_SETTINGS_LOG"
+  printf '0' > "$SHARD_COUNT_FILE"
+
+  set +e
+  PATH="$FAKEBIN:$PATH" \
+  CURL_SETTINGS_LOG="$CURL_SETTINGS_LOG" \
+  SHARD_COUNT_FILE="$SHARD_COUNT_FILE" \
+  MOCK_CLUSTER_SETTINGS_FAIL=1 \
+  POD_NAME=es-ops-data-2 \
+  POD_IP=127.0.0.1 \
+  ELASTIC_USER_PASSWORD=secret \
+  /bin/sh "$ROOT_DIR/scripts/member-join.sh" > "$TMP_DIR/join-settings-read-fail.out" 2> "$TMP_DIR/join-settings-read-fail.err"
+  rc=$?
+  set -e
+
+  if [ "$rc" -eq 0 ]; then
+    echo "member-join succeeded after cluster settings read failure" >&2
+    exit 1
+  fi
+  grep -q 'failed to read cluster settings' "$TMP_DIR/join-settings-read-fail.err"
+  [ ! -s "$CURL_SETTINGS_LOG" ]
+}
+
 assert_no_success_clear_on_member_leave
 assert_member_join_clears_only_self_from_stale_exclusion
 assert_member_join_clears_self_only_stale_exclusion_to_null
+assert_member_join_fails_closed_without_pod_name
+assert_member_join_fails_closed_when_settings_read_fails
 
 echo "member lifecycle tests passed"

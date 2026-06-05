@@ -52,14 +52,14 @@ remove_name_from_csv() {
 clear_stale_self_exclusion() {
   local node_name="${POD_NAME:-}"
   if [ -z "$node_name" ]; then
-    log "POD_NAME is empty; skip stale shard exclusion cleanup"
-    return 0
+    echo "ERROR: POD_NAME is empty; cannot prove stale shard exclusion cleanup" >&2
+    return 1
   fi
 
   local settings current remaining payload
   settings=$(curl ${common_options} -s "${endpoint}/_cluster/settings?flat_settings=true&include_defaults=false") || {
-    log "WARNING: failed to read cluster settings; skip stale shard exclusion cleanup"
-    return 0
+    echo "ERROR: failed to read cluster settings; cannot prove stale shard exclusion cleanup" >&2
+    return 1
   }
 
   current=$(echo "$settings" | jq -r '.persistent["cluster.routing.allocation.exclude._name"] // ""') || current=""
