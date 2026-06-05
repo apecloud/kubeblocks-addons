@@ -2541,12 +2541,18 @@ spec:
               done
             else
               # Pod-0, primary unreachable, no slave config: start as primary by default.
-              if ! expose_sql_listener_for_primary_role "default-pod0-primary"; then
-                wait ${MARIADB_PID}
-                exit 1
+              # If the primary write gate fails, do not block forever inside the
+              # bootstrap branch. Keep the pod fail-closed and let the runtime
+              # reconcile loop observe the syncer/DCS decision: if another pod is
+              # elected primary, this pod can configure replication and publish
+              # secondary only after replica health is real.
+              if expose_sql_listener_for_primary_role "default-pod0-primary"; then
+                mark_replication_ready
+                echo "Starting as primary by default (index=0)"
+              else
+                mark_replication_pending
+                echo "Default pod-0 primary publish failed; entering runtime role reconcile loop"
               fi
-              mark_replication_ready
-              echo "Starting as primary by default (index=0)"
             fi
 
             # Background: clear the semi-sync ACK receiver deadlock when detected.

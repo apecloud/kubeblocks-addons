@@ -39,6 +39,14 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
     [ "${before_line}" -lt "${fail_closed_line}" ] && [ "${after_line}" -lt "${fail_closed_line}" ]
   }
 
+  default_pod0_primary_failure_marks_pending_before_runtime_reconcile() {
+    fail_line="$(grep -n 'Default pod-0 primary publish failed; entering runtime role reconcile loop' "$(template_file)" | head -1 | cut -d: -f1)"
+    pending_line="$(awk -v fail_line="${fail_line}" 'NR < fail_line && index($0, "mark_replication_pending") { line = NR } END { if (line) print line }' "$(template_file)")"
+    runtime_line="$(grep -n 'wait_for_mariadbd_with_role_reconcile' "$(template_file)" | tail -1 | cut -d: -f1)"
+    [ -n "${fail_line}" ] && [ -n "${pending_line}" ] && [ -n "${runtime_line}" ] || return 1
+    [ "${pending_line}" -lt "${fail_line}" ] && [ "${fail_line}" -lt "${runtime_line}" ]
+  }
+
   It "defines a merged-CmpD local primary publish readiness gate"
     When call function_contains "local_primary_role_published" ".primary-read-write-ready"
     The status should be success
@@ -111,5 +119,16 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
     When call template_contains "pod-0 accepted syncer primary promotion after blocked self-election"
     The status should be success
     The output should include "accepted syncer primary promotion"
+  End
+
+  It "does not block forever when default pod-0 primary publish fails"
+    When call template_contains "Default pod-0 primary publish failed; entering runtime role reconcile loop"
+    The status should be success
+    The output should include "runtime role reconcile loop"
+  End
+
+  It "keeps default pod-0 primary publish failure pending for runtime reconcile"
+    When call default_pod0_primary_failure_marks_pending_before_runtime_reconcile
+    The status should be success
   End
 End
