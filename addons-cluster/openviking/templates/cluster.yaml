@@ -4,9 +4,6 @@
       componentDef: openviking
       serviceVersion: {{ .Values.version }}
       replicas: {{ .Values.replicas | default 1 }}
-      configs:
-        - name: config
-          externalManaged: true
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
