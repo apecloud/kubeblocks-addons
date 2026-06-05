@@ -32,8 +32,8 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
   }
 
   publish_rejoin_accepts_syncer_primary_before_defensive_fail_closed() {
-    before_line="$(grep -n 'syncer-primary-during-replica-rejoin-before-expose' "$(template_file)" | head -1 | cut -d: -f1)"
-    after_line="$(grep -n 'syncer-primary-during-replica-rejoin-after-expose' "$(template_file)" | head -1 | cut -d: -f1)"
+    before_line="$(grep -n 'replica-rejoin-before-expose-${label}' "$(template_file)" | head -1 | cut -d: -f1)"
+    after_line="$(grep -n 'replica-rejoin-after-expose-${label}' "$(template_file)" | head -1 | cut -d: -f1)"
     fail_closed_line="$(grep -n 'after-expose-not-healthy' "$(template_file)" | head -1 | cut -d: -f1)"
     [ -n "${before_line}" ] && [ -n "${after_line}" ] && [ -n "${fail_closed_line}" ] || return 1
     [ "${before_line}" -lt "${fail_closed_line}" ] && [ "${after_line}" -lt "${fail_closed_line}" ]
@@ -106,6 +106,37 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
     ready_line="$(awk -v recover="${recover_line}" 'NR > recover && index($0, "mark_replication_ready") { print NR; exit }' "$(template_file)")"
     [ -n "${recover_line}" ] && [ -n "${ready_line}" ] || return 1
     [ "${recover_line}" -lt "${ready_line}" ]
+  }
+
+  replica_lock_checks_syncer_primary_around_read_only() {
+    awk '
+      index($0, "set_replica_read_only() {") { fn = 1 }
+      fn && index($0, "before-lock") { before = NR }
+      fn && index($0, "set_fail_closed_read_only \"${label}\"") { readonly = NR }
+      fn && index($0, "after-read-only") { after = NR }
+      fn && index($0, "set-replica-read-only label=${label}") { exit(before && readonly && after && before < readonly && readonly < after ? 0 : 1) }
+      END { exit(before && readonly && after && before < readonly && readonly < after ? 0 : 1) }
+    ' "$(template_file)"
+  }
+
+  publish_rejoin_accepts_syncer_primary_during_lock() {
+    awk '
+      index($0, "publish_replica_after_rejoin_ready() {") { fn = 1 }
+      fn && index($0, "replica-rejoin-before-expose-lock-${label}") { before_lock = NR }
+      fn && index($0, "replica-rejoin-after-expose-lock-${label}") { after_lock = NR }
+      fn && index($0, "recover_semisync_slave_health_after_rejoin") { recover = NR; exit }
+      END { exit(before_lock && after_lock && recover && before_lock < recover && after_lock < recover ? 0 : 1) }
+    ' "$(template_file)"
+  }
+
+  runtime_secondary_reconcile_accepts_syncer_primary_during_lock() {
+    awk '
+      index($0, "reconcile_sql_listener_for_syncer_secondary_once() {") { fn = 1 }
+      fn && index($0, "set_replica_read_only \"runtime-secondary-reconcile\"") { lock = NR }
+      fn && index($0, "runtime-secondary-reconcile-lock") { accept = NR }
+      fn && index($0, "runtime-secondary-listener-reconcile-ready") { ready = NR; exit }
+      END { exit(lock && accept && ready && lock < accept && accept < ready ? 0 : 1) }
+    ' "$(template_file)"
   }
 
   runtime_secondary_reconcile_recovers_semisync_slave_before_ready_marker() {
@@ -218,6 +249,21 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
 
   It "recovers semisync slave health before publishing replica rejoin readiness"
     When call replica_publish_recovers_semisync_slave_before_ready_marker
+    The status should be success
+  End
+
+  It "checks syncer primary before and after fail-closed read_only in replica lock"
+    When call replica_lock_checks_syncer_primary_around_read_only
+    The status should be success
+  End
+
+  It "accepts syncer primary promotion while publish path is inside replica lock"
+    When call publish_rejoin_accepts_syncer_primary_during_lock
+    The status should be success
+  End
+
+  It "accepts syncer primary promotion while runtime secondary reconcile is inside replica lock"
+    When call runtime_secondary_reconcile_accepts_syncer_primary_during_lock
     The status should be success
   End
 

@@ -870,9 +870,9 @@ EOF
       The output should equal "1"
     End
 
-    It "Chart.yaml literal version is current (alpha.15 — ActionSet backup retry + password redaction)"
+    It "Chart.yaml literal version is current (alpha.16 — accept syncer primary during replica lock)"
       chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
-      When call grep -c '^version: 1.2.0-alpha.15$' "${chart_yaml}"
+      When call grep -c '^version: 1.2.0-alpha.16$' "${chart_yaml}"
       The output should equal "1"
     End
 
@@ -2695,7 +2695,7 @@ EOF
         The output should not include "lock_local_root_writes \"sql-listener-\${label}\" || true"
       End
 
-      It "alpha.64 v2: \`publish_replica_after_rejoin_ready\` body uses \`if ! set_replica_read_only; then return 1\` (NOT \`set_replica_read_only || true\`) [product-blocker]"
+      It "alpha.64 v2/v4: \`publish_replica_after_rejoin_ready\` propagates explicit set_replica_read_only rc (NOT swallowed) [product-blocker]"
         When run sh -c '
           awk "
             /^[[:space:]]*publish_replica_after_rejoin_ready\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
@@ -2704,11 +2704,14 @@ EOF
           " '"${CMPD_SOURCE}"'
         '
         The status should be success
-        The output should include "if ! set_replica_read_only"
+        The output should include "set_replica_read_only \"\${label}-before-expose\""
+        The output should include "set_replica_read_only \"\${label}-after-expose\""
+        The output should include 'replica_rejoin_rc=$?'
+        The output should include "return 1"
         The output should not include "set_replica_read_only || true"
       End
 
-      It "alpha.64 v2: \`reconcile_sql_listener_for_syncer_secondary_once\` body uses \`if ! set_replica_read_only\` BEFORE marking ready [product-blocker]"
+      It "alpha.64 v2/v4: \`reconcile_sql_listener_for_syncer_secondary_once\` propagates explicit set_replica_read_only rc before marking ready [product-blocker]"
         When run sh -c '
           awk "
             /^[[:space:]]*reconcile_sql_listener_for_syncer_secondary_once\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
@@ -2717,11 +2720,13 @@ EOF
           " '"${CMPD_SOURCE}"'
         '
         The status should be success
-        The output should include "if ! set_replica_read_only"
+        The output should include "set_replica_read_only \"runtime-secondary-reconcile\""
+        The output should include 'slave_rejoin_rc=$?'
+        The output should include "return 1"
         The output should not include "set_replica_read_only || true"
       End
 
-      It "alpha.64 v2: \`configure_replication_from_primary_service_once\` body uses \`if ! set_replica_read_only\` at entry [product-blocker]"
+      It "alpha.64 v2/v4: \`configure_replication_from_primary_service_once\` propagates explicit set_replica_read_only rc at entry [product-blocker]"
         When run sh -c '
           awk "
             /^[[:space:]]*configure_replication_from_primary_service_once\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
@@ -2730,7 +2735,9 @@ EOF
           " '"${CMPD_SOURCE}"'
         '
         The status should be success
-        The output should include "if ! set_replica_read_only"
+        The output should include "set_replica_read_only \"\${label}-enter\""
+        The output should include 'replica_rejoin_rc=$?'
+        The output should include "return 1"
         The output should not include "set_replica_read_only || true"
       End
     End
@@ -2862,13 +2869,13 @@ EOF
           {
             grep -c "CMPD_EXPLICIT_PRIMARY_GRANT_BODY=" "${CMPD_SOURCE}";
             grep -c "CMPD_SECONDARY_FENCE_GRANT_BODY=" "${CMPD_SOURCE}";
-            grep -c "if ! set_replica_read_only" "${CMPD_SOURCE}";
+            grep -c "set_replica_read_only \"" "${CMPD_SOURCE}";
             grep -c "prestop_lock_failed_both fail_closed=true tier=required" "${CMPD_SOURCE}";
             grep -cE "^[[:space:]]*lock_(local|remote)_root_writes\\b.*\\|\\| true.*# tier=" "${CMPD_SOURCE}";
           } | tr "\n" " "
         '
         # Expected: 1 (CMPD_EXPLICIT_PRIMARY_GRANT_BODY=) + 1 (CMPD_SECONDARY_FENCE_GRANT_BODY=)
-        # + 4 (if ! set_replica_read_only callsites — publish_replica × 2 +
+        # + 4 (set_replica_read_only callsites — publish_replica × 2 +
         #   reconcile_secondary + configure_from_primary; the body of
         #   set_replica_read_only itself is the function definition not a
         #   self-call, so 4 caller patterns)
@@ -2902,7 +2909,7 @@ EOF
       # chart version.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.2.0-alpha.15"
+      The output should equal "version: 1.2.0-alpha.16"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -2963,7 +2970,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.15"
+        The output should equal "version: 1.2.0-alpha.16"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -3103,14 +3110,14 @@ EOF
           {
             grep -c "CMPD_EXPLICIT_PRIMARY_GRANT_BODY=" "${CMPD_SOURCE}";
             grep -c "CMPD_SECONDARY_FENCE_GRANT_BODY=" "${CMPD_SOURCE}";
-            grep -c "if ! set_replica_read_only" "${CMPD_SOURCE}";
+            grep -c "set_replica_read_only \"" "${CMPD_SOURCE}";
             grep -c "prestop_lock_failed_both fail_closed=true tier=required" "${CMPD_SOURCE}";
             grep -cE "^[[:space:]]*lock_(local|remote)_root_writes\\b.*\\|\\| true.*# tier=" "${CMPD_SOURCE}";
             grep -cE "^[[:space:]]*for privilege in \"BINLOG MONITOR\" \"SLAVE MONITOR\"" "${CMPD_SOURCE}";
           } | tr "\n" " "
         '
         The status should be success
-        # Expected: 1 grant body explicit + 1 secondary fence + 4 if-! caller +
+        # Expected: 1 grant body explicit + 1 secondary fence + 4 explicit set_replica_read_only caller +
         # 1 prestop_lock_failed_both + 16 tier-annotated swallow + 2 inline-quoted MONITOR loops
         The output should equal "1 1 4 1 16 2 "
       End
@@ -3140,7 +3147,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.15"
+        The output should equal "version: 1.2.0-alpha.16"
       End
     End
 

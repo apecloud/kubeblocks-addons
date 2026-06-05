@@ -357,13 +357,26 @@ spec:
               # not what we promised, so the caller must NOT publish
               # ready/role. set_fail_closed_read_only also already returns 1
               # on its own failure mode.
+              local label="${1:-replica-read-only}" syncer_primary_rc
+              replica_lock_abort_if_syncer_primary "${label}-before-lock"
+              syncer_primary_rc=$?
+              [ "${syncer_primary_rc}" -eq 2 ] && return 2
               rm -f {{ .Values.dataMountPath }}/.primary-read-write-ready
               local rc=0
-              lock_remote_root_writes "replica-read-only" || rc=1
-              set_fail_closed_read_only "replica-read-only" || rc=1
-              lock_local_root_writes "replica-read-only" || rc=1
+              lock_remote_root_writes "${label}" || rc=1
+              replica_lock_abort_if_syncer_primary "${label}-after-remote-lock"
+              syncer_primary_rc=$?
+              [ "${syncer_primary_rc}" -eq 2 ] && return 2
+              set_fail_closed_read_only "${label}" || rc=1
+              replica_lock_abort_if_syncer_primary "${label}-after-read-only"
+              syncer_primary_rc=$?
+              [ "${syncer_primary_rc}" -eq 2 ] && return 2
+              lock_local_root_writes "${label}" || rc=1
+              replica_lock_abort_if_syncer_primary "${label}-after-local-lock"
+              syncer_primary_rc=$?
+              [ "${syncer_primary_rc}" -eq 2 ] && return 2
               if [ "${rc}" -ne 0 ]; then
-                prestop_watchdog_log "set-replica-read-only label=replica-read-only rc=1 tier=required fail_closed=true"
+                prestop_watchdog_log "set-replica-read-only label=${label} rc=1 tier=required fail_closed=true"
                 return 1
               fi
             }
@@ -560,6 +573,26 @@ spec:
             mark_replication_divergence_pending() {
               mark_replication_pending
               touch {{ .Values.dataMountPath }}/.replication-divergence-pending
+            }
+            replica_lock_abort_if_syncer_primary() {
+              local label="${1:-replica-lock}" role
+              role="$(query_local_syncer_role || true)"
+              if [ "${role}" = "primary" ]; then
+                prestop_watchdog_log "replica-lock-abort-on-dcs-primary label=${label} reason=dcs_promoted_during_replica_lock"
+                return 2
+              fi
+              return 0
+            }
+            accept_syncer_primary_promotion_from_replica_path() {
+              local label="${1:-replica-path}" role
+              role="$(query_local_syncer_role || true)"
+              [ "${role}" = "primary" ] || return 1
+              prestop_watchdog_log "replica-path-accept-dcs-primary label=${label} action=accept-primary-promotion"
+              if expose_sql_listener_for_primary_role "syncer-primary-during-${label}"; then
+                mark_replication_ready
+                return 0
+              fi
+              return 2
             }
             gtid_state_is_covered_by() {
               local local_state="$1"
@@ -1385,12 +1418,24 @@ spec:
               # so propagating rc keeps the caller from publishing
               # ready/role on locking failure.
               local label="$1"
-              local rc=0
+              local rc=0 syncer_primary_rc
               mark_replication_pending
+              replica_lock_abort_if_syncer_primary "${label}-pending-before-lock"
+              syncer_primary_rc=$?
+              [ "${syncer_primary_rc}" -eq 2 ] && return 2
               lock_remote_root_writes "${label}-pending" || rc=1
+              replica_lock_abort_if_syncer_primary "${label}-pending-after-remote-lock"
+              syncer_primary_rc=$?
+              [ "${syncer_primary_rc}" -eq 2 ] && return 2
               set_fail_closed_read_only "${label}-pending" || rc=1
+              replica_lock_abort_if_syncer_primary "${label}-pending-after-read-only"
+              syncer_primary_rc=$?
+              [ "${syncer_primary_rc}" -eq 2 ] && return 2
               "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true # tier=error-recovery
               lock_local_root_writes "${label}-pending" || rc=1
+              replica_lock_abort_if_syncer_primary "${label}-pending-after-local-lock"
+              syncer_primary_rc=$?
+              [ "${syncer_primary_rc}" -eq 2 ] && return 2
               if [ "${rc}" -ne 0 ]; then
                 prestop_watchdog_log "keep-replica-pending label=${label} rc=1 tier=required fail_closed=true"
                 return 1
@@ -1406,17 +1451,19 @@ spec:
               keep_replica_pending_until_healthy "${label}-before-expose"
               replica_rejoin_rc=$?
               if [ "${replica_rejoin_rc}" -eq 2 ]; then
-                prestop_watchdog_log "publish-replica-rejoin label=${label} step=before-expose syncer_role=primary action=accept-primary-promotion"
-                if expose_sql_listener_for_primary_role "syncer-primary-during-replica-rejoin-before-expose-${label}"; then
-                  mark_replication_ready
-                  return 0
-                fi
-                return 2
+                accept_syncer_primary_promotion_from_replica_path "replica-rejoin-before-expose-${label}"
+                return $?
               fi
               if [ "${replica_rejoin_rc}" -ne 0 ]; then
                 return 1
               fi
-              if ! set_replica_read_only; then
+              set_replica_read_only "${label}-before-expose"
+              replica_rejoin_rc=$?
+              if [ "${replica_rejoin_rc}" -eq 2 ]; then
+                accept_syncer_primary_promotion_from_replica_path "replica-rejoin-before-expose-lock-${label}"
+                return $?
+              fi
+              if [ "${replica_rejoin_rc}" -ne 0 ]; then
                 prestop_watchdog_log "publish-replica-rejoin label=${label} step=before-expose rc=1 tier=required fail_closed=true"
                 return 1
               fi
@@ -1424,19 +1471,21 @@ spec:
                 return 1
               fi
               "${LOCAL[@]}" -e "START SLAVE;" 2>/dev/null || true # tier=error-recovery
-              if ! set_replica_read_only; then
+              set_replica_read_only "${label}-after-expose"
+              replica_rejoin_rc=$?
+              if [ "${replica_rejoin_rc}" -eq 2 ]; then
+                accept_syncer_primary_promotion_from_replica_path "replica-rejoin-after-expose-lock-${label}"
+                return $?
+              fi
+              if [ "${replica_rejoin_rc}" -ne 0 ]; then
                 prestop_watchdog_log "publish-replica-rejoin label=${label} step=after-expose rc=1 tier=required fail_closed=true"
                 return 1
               fi
               wait_for_replication_healthy "${label}-after-expose" 120 2
               replica_rejoin_rc=$?
               if [ "${replica_rejoin_rc}" -eq 2 ]; then
-                prestop_watchdog_log "publish-replica-rejoin label=${label} step=after-expose syncer_role=primary action=accept-primary-promotion"
-                if expose_sql_listener_for_primary_role "syncer-primary-during-replica-rejoin-after-expose-${label}"; then
-                  mark_replication_ready
-                  return 0
-                fi
-                return 2
+                accept_syncer_primary_promotion_from_replica_path "replica-rejoin-after-expose-${label}"
+                return $?
               fi
               if [ "${replica_rejoin_rc}" -ne 0 ]; then
                 # tier=fail-path-defensive: replication is already
@@ -1798,9 +1847,15 @@ spec:
               # is not safe; we MUST return 1 so caller does not interpret
               # this iteration as a successful follow attempt.
               local label="${1:-runtime-secondary-follow}"
-              local primary_sid master_gtid local_gtid slave_status
+              local primary_sid master_gtid local_gtid slave_status replica_rejoin_rc
               mark_replication_pending
-              if ! set_replica_read_only; then
+              set_replica_read_only "${label}-enter"
+              replica_rejoin_rc=$?
+              if [ "${replica_rejoin_rc}" -eq 2 ]; then
+                accept_syncer_primary_promotion_from_replica_path "${label}-enter-lock"
+                return $?
+              fi
+              if [ "${replica_rejoin_rc}" -ne 0 ]; then
                 prestop_watchdog_log "configure-replication-from-primary label=${label} step=enter-set-replica-read-only rc=1 tier=required fail_closed=true"
                 return 1
               fi
@@ -1893,11 +1948,17 @@ spec:
               # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required path.
               # mark_replication_ready (line below) is the publish point;
               # set_replica_read_only failure MUST return 1 BEFORE marking ready.
-              local role slave_status
+              local role slave_status slave_rejoin_rc
               [ ! -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ] || return 0
               role="$(query_local_syncer_role || true)"
               [ "${role}" = "secondary" ] || return 0
-              if ! set_replica_read_only; then
+              set_replica_read_only "runtime-secondary-reconcile"
+              slave_rejoin_rc=$?
+              if [ "${slave_rejoin_rc}" -eq 2 ]; then
+                accept_syncer_primary_promotion_from_replica_path "runtime-secondary-reconcile-lock"
+                return $?
+              fi
+              if [ "${slave_rejoin_rc}" -ne 0 ]; then
                 mark_replication_pending
                 prestop_watchdog_log "runtime-secondary-listener-reconcile role=${role} step=set-replica-read-only rc=1 tier=required fail_closed=true"
                 return 1
