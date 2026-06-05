@@ -78,6 +78,7 @@ spec:
             name: mysql
           - containerPort: 3601
             name: ha
+        {{- include "mysql.spec.runtime.startupProbe" . | nindent 8 }}
         env:
           - name: PATH
             value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -89,8 +90,6 @@ spec:
             value: mysql
           - name: KB_WORKLOAD_TYPE
             value: mgr
-          - name: MYSQL_INITDB_SKIP_TZINFO
-            value: "1"
           - name: MYSQL_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
           - name: SERVICE_PORT

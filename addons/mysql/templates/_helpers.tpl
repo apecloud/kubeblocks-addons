@@ -210,7 +210,7 @@ provider: kubeblocks
 serviceKind: mysql
 description: mysql component definition for Kubernetes
 updateStrategy: BestEffortParallel
-
+PodManagementPolicy: OrderedReady
 services:
   - name: default
     roleSelector: primary
@@ -342,6 +342,19 @@ systemAccounts:
   volumeMounts:
     - mountPath: /tools
       name: tools
+{{- end }}
+
+{{- define "mysql.spec.runtime.startupProbe" -}}
+startupProbe:
+  exec:
+    command:
+      - bash
+      - -c
+      - |
+        mysql -u${MYSQL_ADMIN_USER} -p${MYSQL_ADMIN_PASSWORD} -P3306 -h127.0.0.1 -e "select check_ts from kubeblocks.kb_health_check where type=1 limit 1;"
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 60
 {{- end }}
 
 {{/*
@@ -653,8 +666,6 @@ ports:
 env:
   - name: PATH
     value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-  - name: MYSQL_INITDB_SKIP_TZINFO
-    value: "1"
   - name: MYSQL_ROOT_HOST
     value: {{ .Values.auth.rootHost | default "%" | quote }}
   - name: ORC_TOPOLOGY_USER
