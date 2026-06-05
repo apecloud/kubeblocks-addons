@@ -412,12 +412,15 @@ Describe "Valkey Self-Heal Daemon"
       export POD_FQDN="vlk-2.vlk-headless.ns.svc.cluster.local"
       replicaof_calls_file="$(mktemp)"
       dm_info_call_index_file="$(mktemp)"
+      dm_local_info_call_index_file="$(mktemp)"
       printf "0" > "${dm_info_call_index_file}"
+      printf "0" > "${dm_local_info_call_index_file}"
 
       # Stub valkey-cli: differentiates local (127.0.0.1) and remote (quorum
       # target FQDN) calls so the data-plane verification guard can be tested.
       #   - REPLICAOF calls: recorded to replicaof_calls_file.
-      #   - Local INFO calls  (host=127.0.0.1): always return role:master.
+      #   - Local INFO calls  (host=127.0.0.1): return role driven by
+      #       DM_LOCAL_ROLES (comma sequence), default "master".
       #   - Remote INFO calls (host=other):     return role driven by
       #       DM_REMOTE_ROLE (default "master"); "unreachable" → exit 1.
       valkey-cli() {
@@ -435,7 +438,12 @@ Describe "Valkey Self-Heal Daemon"
         idx=$(( $(cat "${dm_info_call_index_file}") + 1 ))
         printf "%s" "${idx}" > "${dm_info_call_index_file}"
         if [ "${target_host}" = "127.0.0.1" ]; then
-          printf "# Replication\r\nrole:master\r\n"
+          local local_idx local_role
+          local_idx=$(( $(cat "${dm_local_info_call_index_file}") + 1 ))
+          printf "%s" "${local_idx}" > "${dm_local_info_call_index_file}"
+          local_role=$(echo "${DM_LOCAL_ROLES:-master}" | cut -d, -f"${local_idx}")
+          is_empty "${local_role}" && local_role="master"
+          printf "# Replication\r\nrole:%s\r\n" "${local_role}"
         else
           local remote_role="${DM_REMOTE_ROLE:-master}"
           [ "${remote_role}" = "unreachable" ] && return 1
@@ -457,10 +465,13 @@ Describe "Valkey Self-Heal Daemon"
     Before "setup"
 
     teardown() {
-      rm -f "${replicaof_calls_file}" "${dm_info_call_index_file}"
+      rm -f "${replicaof_calls_file}" "${dm_info_call_index_file}" "${dm_local_info_call_index_file}"
       unset SENTINEL_COMPONENT_NAME SENTINEL_POD_FQDN_LIST
       unset CURRENT_POD_NAME POD_FQDN
-      unset DM_QUORUM_RESULT DM_REMOTE_ROLE DM_CONFIRM_RESULT
+      unset DM_QUORUM_RESULT DM_REMOTE_ROLE DM_CONFIRM_RESULT DM_LOCAL_ROLES
+      unset DUAL_MASTER_EPOCH_NOW DUAL_MASTER_PROMOTION_GRACE_SECONDS
+      _dual_master_last_role=""
+      _dual_master_last_master_since=""
       unset -f query_sentinel_quorum_for_master
     }
     After "teardown"
@@ -487,6 +498,43 @@ Describe "Valkey Self-Heal Daemon"
       The status should be success
       The stderr should include "skip-quorum-target-not-master"
       The contents of file "${replicaof_calls_file}" should eq ""
+    End
+
+    It "skips demote while a local slave-to-master promotion is inside the grace window"
+      export DM_QUORUM_RESULT="vlk-0.vlk-headless.ns.svc.cluster.local"
+      export DM_REMOTE_ROLE="master"
+      export DM_LOCAL_ROLES="slave,master,master"
+      export DUAL_MASTER_PROMOTION_GRACE_SECONDS="120"
+      exercise_fresh_promotion_in_grace() {
+        export DUAL_MASTER_EPOCH_NOW="1000"
+        dual_master_check_one_round
+        export DUAL_MASTER_EPOCH_NOW="1001"
+        dual_master_check_one_round
+      }
+      When call exercise_fresh_promotion_in_grace
+      The status should be success
+      The stderr should include "skip-fresh-promotion"
+      The contents of file "${replicaof_calls_file}" should eq ""
+    End
+
+    It "allows demote after the promotion grace window expires"
+      export DM_QUORUM_RESULT="vlk-0.vlk-headless.ns.svc.cluster.local"
+      export DM_REMOTE_ROLE="master"
+      export DM_CONFIRM_RESULT="0"
+      export DM_LOCAL_ROLES="slave,master,master,master,master"
+      export DUAL_MASTER_PROMOTION_GRACE_SECONDS="120"
+      exercise_fresh_promotion_after_grace() {
+        export DUAL_MASTER_EPOCH_NOW="1000"
+        dual_master_check_one_round
+        export DUAL_MASTER_EPOCH_NOW="1001"
+        dual_master_check_one_round
+        export DUAL_MASTER_EPOCH_NOW="1122"
+        dual_master_check_one_round
+      }
+      When call exercise_fresh_promotion_after_grace
+      The status should be success
+      The stderr should include "rogue master detected"
+      The contents of file "${replicaof_calls_file}" should include "vlk-0.vlk-headless.ns.svc.cluster.local"
     End
 
     It "issues REPLICAOF and confirms demote when quorum identifies a verified foreign master"
