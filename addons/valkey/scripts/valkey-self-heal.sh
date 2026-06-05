@@ -258,6 +258,9 @@ stall_restart_server_for_recovery() {
 # state for the next round to retry.
 DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS="${DUAL_MASTER_CONFIRM_TIMEOUT_SECONDS:-10}"
 DUAL_MASTER_CONFIRM_POLL_INTERVAL_SECONDS="${DUAL_MASTER_CONFIRM_POLL_INTERVAL_SECONDS:-1}"
+DUAL_MASTER_PROMOTION_GRACE_SECONDS="${DUAL_MASTER_PROMOTION_GRACE_SECONDS:-120}"
+_dual_master_last_role=""
+_dual_master_last_master_since=""
 
 dual_master_confirm_demote() {
   local expected_master_host="$1"
@@ -298,6 +301,14 @@ _dm_hosts_resolve_same() {
   return 1
 }
 
+dual_master_epoch_now() {
+  if ! is_empty "${DUAL_MASTER_EPOCH_NOW:-}"; then
+    echo "${DUAL_MASTER_EPOCH_NOW}"
+    return 0
+  fi
+  date +%s
+}
+
 # dual_master_check_one_round — detect rogue-master state and demote.
 #
 # Evidence anchor: KB-10196 — when KB controller's isExclusive enforcement
@@ -326,6 +337,9 @@ _dm_hosts_resolve_same() {
 #     we are the legitimate master → nothing to do.
 #   - skip-stale-role: re-read local role just before issuing REPLICAOF
 #     (between initial read and decision, sentinel may have re-elected us).
+#   - skip-fresh-promotion: if this daemon just observed a slave -> master
+#     transition, give Sentinel a bounded window to publish +switch-master
+#     before treating the new local master as rogue.
 #   - bounded confirmation: see dual_master_confirm_demote above.
 dual_master_check_one_round() {
   is_empty "${SENTINEL_COMPONENT_NAME}" && return 0
@@ -338,7 +352,16 @@ dual_master_check_one_round() {
   local repl_info role_line
   repl_info=$("${cli_cmd[@]}" info replication 2>/dev/null) || return 0
   role_line=$(cascade_extract_replication_field "${repl_info}" "role")
-  [ "${role_line}" != "master" ] && return 0
+  local previous_role="${_dual_master_last_role:-}"
+  if [ "${role_line}" != "master" ]; then
+    _dual_master_last_role="${role_line:-unknown}"
+    _dual_master_last_master_since=""
+    return 0
+  fi
+  if [ "${previous_role}" = "slave" ] && is_empty "${_dual_master_last_master_since}" ; then
+    _dual_master_last_master_since="$(dual_master_epoch_now)"
+  fi
+  _dual_master_last_role="master"
 
   if ! declare -F query_sentinel_quorum_for_master >/dev/null 2>&1; then
     # Helper not sourced (e.g. shellspec single-file mode).  Stay passive.
@@ -380,8 +403,20 @@ dual_master_check_one_round() {
   current_repl_info=$("${cli_cmd[@]}" info replication 2>/dev/null) || return 0
   current_role=$(cascade_extract_replication_field "${current_repl_info}" "role")
   if [ "${current_role}" != "master" ]; then
+    _dual_master_last_role="${current_role:-unknown}"
+    _dual_master_last_master_since=""
     echo "INFO: skip dual-master demote (skip-stale-role): local role is '${current_role:-unknown}', no longer master." >&2
     return 0
+  fi
+
+  if ! is_empty "${_dual_master_last_master_since}"; then
+    local now age
+    now="$(dual_master_epoch_now)"
+    age=$(( now - _dual_master_last_master_since ))
+    if [ "${age}" -lt "${DUAL_MASTER_PROMOTION_GRACE_SECONDS}" ]; then
+      echo "INFO: skip dual-master demote (skip-fresh-promotion): local role changed from slave to master ${age}s ago; waiting ${DUAL_MASTER_PROMOTION_GRACE_SECONDS}s before demotion decisions." >&2
+      return 0
+    fi
   fi
 
   echo "WARNING: rogue master detected — sentinel-quorum reports real master is '${quorum_master_fqdn}'; demoting self via REPLICAOF." >&2
