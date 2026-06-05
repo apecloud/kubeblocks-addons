@@ -10,6 +10,14 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 4
+        numSymbols: 0
+        letterCase: MixedCases
   services:
     - name: milvus
       serviceName:  # use default name
@@ -30,6 +38,28 @@ spec:
     {{- include "milvus.cluster.serviceRef" . | indent 4 }}
   vars:
     {{- include "milvus.cluster.serviceRefVars" . | indent 4 }}
+    - name: MILVUS_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: root
+          password: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+  tls:
+    volumeName: tls
+    mountPath: /etc/pki/tls
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem
+  lifecycleActions:
+    postProvision:
+      exec:
+        command:
+          - python3
+          - /milvus/scripts/post_provision.py
+        container: proxy
   runtime:
     initContainers:
       {{- include "milvus.initContainer.setup" . | indent 6 }}
@@ -37,7 +67,7 @@ spec:
       - name: proxy
         {{- include "milvus.image" . | indent 8 }}
         args:
-          - /milvus/tools/delegate-run.sh
+          - /milvus/scripts/delegate-run.sh
           - /milvus/tools/run.sh
           - milvus
           - run

@@ -23,7 +23,7 @@ spec:
       - name: datanode
         {{- include "milvus.image" . | indent 8 }}
         args:
-          - /milvus/tools/delegate-run.sh
+          - /milvus/scripts/delegate-run.sh
           - /milvus/tools/run.sh
           - milvus
           - run
