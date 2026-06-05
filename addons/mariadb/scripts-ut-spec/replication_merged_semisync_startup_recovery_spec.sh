@@ -47,6 +47,49 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
     [ "${pending_line}" -lt "${fail_line}" ] && [ "${fail_line}" -lt "${runtime_line}" ]
   }
 
+  stale_prestop_cleanup_clears_role_publish_markers() {
+    awk '
+      index($0, "decision=clear-stale-prestop-fence-on-container-start") { block = 1 }
+      block && index($0, "rm -f {{ .Values.dataMountPath }}/.prestop-fence-started") { rmblock = 1 }
+      rmblock && index($0, "{{ .Values.dataMountPath }}/.sql-listener-ready") { sql = 1 }
+      rmblock && index($0, "{{ .Values.dataMountPath }}/.primary-read-write-ready") { primary = 1 }
+      rmblock && index($0, "{{ .Values.dataMountPath }}/.replication-ready") { replica = 1 }
+      block && index($0, "elif [ -f \"{{ .Values.dataMountPath }}/.prestop-fence-started\" ]; then") { exit }
+      END { exit(sql && primary && replica ? 0 : 1) }
+    ' "$(template_file)"
+  }
+
+  local_primary_role_publish_requires_real_wildcard_listener() {
+    awk '
+      index($0, "local_primary_role_published() {") { fn = 1 }
+      fn && index($0, ".sql-listener-ready") { marker = 1 }
+      fn && index($0, "mariadbd_listen_on_all_interfaces") { listener = 1 }
+      fn && /^            }$/ { exit(marker && listener ? 0 : 1) }
+      END { exit(marker && listener ? 0 : 1) }
+    ' "$(template_file)"
+  }
+
+  primary_reconcile_fast_path_requires_real_wildcard_listener() {
+    awk '
+      index($0, "reconcile_sql_listener_for_syncer_primary_once() {") { fn = 1 }
+      fn && index($0, ".primary-read-write-ready") && index($0, "mariadbd_listen_on_all_interfaces") { found = 1 }
+      fn && index($0, "runtime-primary-listener-reconcile-repair-begin") { exit(found ? 0 : 1) }
+      END { exit(found ? 0 : 1) }
+    ' "$(template_file)"
+  }
+
+  no_slave_startup_loop_reconciles_syncer_primary_even_with_stale_listener_marker() {
+    awk '
+      index($0, "elif [ -n \"${PRIMARY_SID}\" ] || [ \"${POD_INDEX}\" -gt 0 ]; then") { branch = 1 }
+      branch && index($0, "while true; do") { loop = 1 }
+      loop && index($0, "if [ -z \"${PRIMARY_SID}\" ] || [ \"${PRIMARY_SID}\" = \"${SERVICE_ID}\" ]; then") { no_primary = 1 }
+      no_primary && index($0, "if [ ! -f \"{{ .Values.dataMountPath }}/.sql-listener-ready\" ]; then") { stale_guard = 1 }
+      no_primary && index($0, "reconcile_sql_listener_for_syncer_primary_once || true") { reconcile = 1 }
+      no_primary && index($0, "_no_primary_iters=") { exit(reconcile && !stale_guard ? 0 : 1) }
+      END { exit(reconcile && !stale_guard ? 0 : 1) }
+    ' "$(template_file)"
+  }
+
   It "defines a merged-CmpD local primary publish readiness gate"
     When call function_contains "local_primary_role_published" ".primary-read-write-ready"
     The status should be success
@@ -54,6 +97,11 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
 
   It "requires the SQL listener marker before treating local primary as published"
     When call function_contains "local_primary_role_published" ".sql-listener-ready"
+    The status should be success
+  End
+
+  It "requires a real wildcard listener before treating local primary as published"
+    When call local_primary_role_publish_requires_real_wildcard_listener
     The status should be success
   End
 
@@ -67,6 +115,11 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
     When call template_contains "clear-stale-prestop-fence-on-container-start"
     The status should be success
     The output should include "clear-stale-prestop-fence-on-container-start"
+  End
+
+  It "clears stale role and SQL listener markers together with stale PVC preStop markers"
+    When call stale_prestop_cleanup_clears_role_publish_markers
+    The status should be success
   End
 
   It "keeps the preStop fence on later startup attempts in the same container lifecycle"
@@ -83,6 +136,16 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
 
   It "reconciles local syncer primary during the pod-0 no-primary startup loop before blocking self-election"
     When call no_primary_loop_reconciles_syncer_primary_before_block
+    The status should be success
+  End
+
+  It "does not trust .sql-listener-ready without a real wildcard listener in syncer-primary fast path"
+    When call primary_reconcile_fast_path_requires_real_wildcard_listener
+    The status should be success
+  End
+
+  It "runs syncer-primary reconcile even when .sql-listener-ready already exists in the no-slave startup loop"
+    When call no_slave_startup_loop_reconciles_syncer_primary_even_with_stale_listener_marker
     The status should be success
   End
 

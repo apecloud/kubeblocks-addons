@@ -440,10 +440,19 @@ spec:
                   printf '\n'
                 } >> {{ .Values.dataMountPath }}/log/startup-fence.log 2>/dev/null || true
               fi
+              # alpha.12 (r35 T15): preStop can kill mariadbd after a primary
+              # reconcile has written .sql-listener-ready, then kbagent starts
+              # a fresh bootstrap-local-only mariadbd on 127.0.0.1. Those
+              # publish markers describe the old process, not the new one.
+              # Clear them together with the stale preStop fence so startup
+              # must re-prove listener exposure and role readiness.
               rm -f {{ .Values.dataMountPath }}/.prestop-fence-started \
                 {{ .Values.dataMountPath }}/.prestop-fence-complete \
                 {{ .Values.dataMountPath }}/.prestop-fence-failed \
-                {{ .Values.dataMountPath }}/.prestop-fence-watchdog-active
+                {{ .Values.dataMountPath }}/.prestop-fence-watchdog-active \
+                {{ .Values.dataMountPath }}/.sql-listener-ready \
+                {{ .Values.dataMountPath }}/.primary-read-write-ready \
+                {{ .Values.dataMountPath }}/.replication-ready
             elif [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then
               mkdir -p {{ .Values.dataMountPath }}/log 2>/dev/null || true
               {
@@ -2011,7 +2020,8 @@ spec:
             local_primary_role_published() {
               [ ! -f "{{ .Values.dataMountPath }}/master.info" ] && \
               [ -f "{{ .Values.dataMountPath }}/.primary-read-write-ready" ] && \
-              [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]
+              [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] && \
+              mariadbd_listen_on_all_interfaces
             }
             local_user_table_count() {
               "${LOCAL[@]}" -e "
@@ -2043,7 +2053,7 @@ spec:
               if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
                 role="$(query_local_syncer_role || true)"
                 [ "${role}" = "primary" ] || return 0
-                if [ -f "{{ .Values.dataMountPath }}/.primary-read-write-ready" ] && [ ! -f "{{ .Values.dataMountPath }}/.remote-root-fence-role" ] && [ ! -f "{{ .Values.dataMountPath }}/master.info" ]; then
+                if [ -f "{{ .Values.dataMountPath }}/.primary-read-write-ready" ] && [ ! -f "{{ .Values.dataMountPath }}/.remote-root-fence-role" ] && [ ! -f "{{ .Values.dataMountPath }}/master.info" ] && mariadbd_listen_on_all_interfaces; then
                   return 0
                 fi
                 prestop_watchdog_log "runtime-primary-listener-reconcile-repair-begin reason=primary-role-state-drift role=${role}"
@@ -2450,12 +2460,14 @@ spec:
                 PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
                   -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || echo "")
                 if [ -z "${PRIMARY_SID}" ] || [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
-                  if [ ! -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
-                    reconcile_sql_listener_for_syncer_primary_once || true
-                    if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] && [ ! -f "{{ .Values.dataMountPath }}/master.info" ]; then
-                      echo "Starting as primary after syncer promoted this pod"
-                      break
-                    fi
+                  # alpha.12 (r35 T15): .sql-listener-ready can be stale after
+                  # preStop kills the exposed mariadbd and kbagent restarts a
+                  # bootstrap-local-only 127.0.0.1 process. Always let the
+                  # syncer-primary reconciler re-check the real listener state.
+                  reconcile_sql_listener_for_syncer_primary_once || true
+                  if local_primary_role_published; then
+                    echo "Starting as primary after syncer promoted this pod"
+                    break
                   fi
                   _no_primary_iters=$((_no_primary_iters + 1))
                   # Observability: log every 30s so external watchers see we are still waiting
