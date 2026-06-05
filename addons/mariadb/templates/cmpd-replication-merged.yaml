@@ -1548,6 +1548,37 @@ spec:
                 *) return 1 ;;
               esac
             }
+            recover_semisync_slave_health_after_rejoin() {
+              local semisync_enabled
+              semisync_enabled=$("${LOCAL[@]}" -N -s -e \
+                "SELECT @@global.rpl_semi_sync_slave_enabled;" 2>/dev/null || echo "0")
+              [ "${semisync_enabled}" = "1" ] || return 0
+
+              local status deadline
+              deadline=$((SECONDS + 10))
+              while [ $SECONDS -lt $deadline ]; do
+                status=$("${LOCAL[@]}" -N -s -e \
+                  "SHOW STATUS LIKE 'Rpl_semi_sync_slave_status';" 2>/dev/null | awk '{print $2}')
+                [ "${status}" = "ON" ] && return 0
+                sleep 2
+              done
+
+              echo "Rpl_semi_sync_slave_status=OFF after replication rejoin; restarting IO thread"
+              "${LOCAL[@]}" -e "STOP SLAVE IO_THREAD; START SLAVE IO_THREAD;" 2>/dev/null || true
+
+              deadline=$((SECONDS + 15))
+              while [ $SECONDS -lt $deadline ]; do
+                status=$("${LOCAL[@]}" -N -s -e \
+                  "SHOW STATUS LIKE 'Rpl_semi_sync_slave_status';" 2>/dev/null | awk '{print $2}')
+                if [ "${status}" = "ON" ]; then
+                  echo "Rpl_semi_sync_slave_status recovered to ON after IO thread restart"
+                  return 0
+                fi
+                sleep 2
+              done
+
+              echo "WARNING: Rpl_semi_sync_slave_status still OFF after IO thread restart"
+            }
             # alpha.99 (Helen 2026-05-25): removed
             # slave_status_has_kb_health_check_repairable_error +
             # repair_kb_health_check_replication_error functions.
@@ -1692,6 +1723,7 @@ spec:
                 lock_local_root_writes "${label}-after-expose-not-healthy" || true # tier=fail-path-defensive
                 return 1
               fi
+              recover_semisync_slave_health_after_rejoin
               mark_replication_ready
               return 0
             }
@@ -2209,6 +2241,7 @@ spec:
               fi
               slave_status="$(query_slave_status_verbose || true)"
               if slave_status_is_healthy "${slave_status}"; then
+                recover_semisync_slave_health_after_rejoin
                 mark_replication_ready
                 prestop_watchdog_log "runtime-secondary-listener-reconcile-ready role=${role}"
                 return 0

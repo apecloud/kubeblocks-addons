@@ -51,6 +51,13 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     [ "${recover_line}" -lt "${retry_line}" ]
   }
 
+  replica_publish_recovers_semisync_slave_before_ready_marker() {
+    recover_line="$(grep -n 'recover_semisync_slave_health_after_rejoin' "$(template_file)" | tail -2 | head -1 | cut -d: -f1)"
+    ready_line="$(awk -v recover="${recover_line}" 'NR > recover && index($0, "mark_replication_ready") { print NR; exit }' "$(template_file)")"
+    [ -n "${recover_line}" ] && [ -n "${ready_line}" ] || return 1
+    [ "${recover_line}" -lt "${ready_line}" ]
+  }
+
   It "declares an internal local admin before fencing user-facing root"
     When call template_contains 'MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"'
     The status should be success
@@ -310,6 +317,23 @@ Describe "cmpd-semisync.yaml rejoin fence template"
 
   It "accepts syncer primary promotion inside replica rejoin before fail-closing as replica"
     When call publish_rejoin_accepts_syncer_primary_before_defensive_fail_closed
+    The status should be success
+  End
+
+  It "defines semisync slave health recovery after replication rejoin"
+    When call template_contains "recover_semisync_slave_health_after_rejoin()"
+    The status should be success
+    The output should include "recover_semisync_slave_health_after_rejoin"
+  End
+
+  It "restarts the slave IO thread when semisync slave status stays OFF"
+    When call template_contains "STOP SLAVE IO_THREAD; START SLAVE IO_THREAD;"
+    The status should be success
+    The output should include "START SLAVE IO_THREAD"
+  End
+
+  It "recovers semisync slave health before publishing replica rejoin readiness"
+    When call replica_publish_recovers_semisync_slave_before_ready_marker
     The status should be success
   End
 

@@ -101,6 +101,23 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
     ' "$(template_file)"
   }
 
+  replica_publish_recovers_semisync_slave_before_ready_marker() {
+    recover_line="$(grep -n 'recover_semisync_slave_health_after_rejoin' "$(template_file)" | tail -2 | head -1 | cut -d: -f1)"
+    ready_line="$(awk -v recover="${recover_line}" 'NR > recover && index($0, "mark_replication_ready") { print NR; exit }' "$(template_file)")"
+    [ -n "${recover_line}" ] && [ -n "${ready_line}" ] || return 1
+    [ "${recover_line}" -lt "${ready_line}" ]
+  }
+
+  runtime_secondary_reconcile_recovers_semisync_slave_before_ready_marker() {
+    awk '
+      index($0, "reconcile_sql_listener_for_syncer_secondary_once() {") { fn = 1 }
+      fn && index($0, "slave_status_is_healthy") { healthy = NR }
+      fn && index($0, "recover_semisync_slave_health_after_rejoin") { recover = NR }
+      fn && $0 ~ /^[[:space:]]*mark_replication_ready$/ { ready = NR; exit }
+      END { exit(healthy && recover && ready && healthy < recover && recover < ready ? 0 : 1) }
+    ' "$(template_file)"
+  }
+
   It "defines a merged-CmpD local primary publish readiness gate"
     When call function_contains "local_primary_role_published" ".primary-read-write-ready"
     The status should be success
@@ -184,6 +201,28 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
 
   It "accepts syncer primary promotion inside replica rejoin before fail-closing as replica"
     When call publish_rejoin_accepts_syncer_primary_before_defensive_fail_closed
+    The status should be success
+  End
+
+  It "defines semisync slave health recovery after replication rejoin"
+    When call template_contains "recover_semisync_slave_health_after_rejoin()"
+    The status should be success
+    The output should include "recover_semisync_slave_health_after_rejoin"
+  End
+
+  It "restarts the slave IO thread when semisync slave status stays OFF"
+    When call template_contains "STOP SLAVE IO_THREAD; START SLAVE IO_THREAD;"
+    The status should be success
+    The output should include "START SLAVE IO_THREAD"
+  End
+
+  It "recovers semisync slave health before publishing replica rejoin readiness"
+    When call replica_publish_recovers_semisync_slave_before_ready_marker
+    The status should be success
+  End
+
+  It "recovers semisync slave health before runtime secondary ready publication"
+    When call runtime_secondary_reconcile_recovers_semisync_slave_before_ready_marker
     The status should be success
   End
 

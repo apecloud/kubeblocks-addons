@@ -79,8 +79,8 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
   MEMBER_JOIN="${ADDON_ROOT}/scripts/replication-member-join.sh"
 
   Describe "Gate 1: Chart.yaml literal version"
-    It "is exactly 1.2.0-alpha.13 (alpha.13 bump: recover empty existing slave runtime channel)"
-      When call grep -c '^version: 1.2.0-alpha.13$' "${CHART_YAML}"
+    It "is exactly 1.2.0-alpha.14 (alpha.14 bump: recover semisync slave health after rejoin)"
+      When call grep -c '^version: 1.2.0-alpha.14$' "${CHART_YAML}"
       The output should eq "1"
       The status should be success
     End
