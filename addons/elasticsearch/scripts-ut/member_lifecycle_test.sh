@@ -174,6 +174,7 @@ assert_member_join_uses_kbagent_pod_name_when_pod_name_missing() {
   CURL_SETTINGS_LOG="$CURL_SETTINGS_LOG" \
   SHARD_COUNT_FILE="$SHARD_COUNT_FILE" \
   MOCK_CLUSTER_SETTINGS_JSON='{"persistent":{"cluster.routing.allocation.exclude._name":"es-ops-data-2,other-node"},"transient":{}}' \
+  POD_NAME= \
   KB_AGENT_POD_NAME=es-ops-data-2 \
   HOSTNAME=wrong-hostname \
   POD_IP=127.0.0.1 \
@@ -198,6 +199,8 @@ assert_member_join_uses_hostname_when_pod_name_envs_missing() {
   CURL_SETTINGS_LOG="$CURL_SETTINGS_LOG" \
   SHARD_COUNT_FILE="$SHARD_COUNT_FILE" \
   MOCK_CLUSTER_SETTINGS_JSON='{"persistent":{"cluster.routing.allocation.exclude._name":"es-ops-data-2,other-node"},"transient":{}}' \
+  POD_NAME= \
+  KB_AGENT_POD_NAME= \
   HOSTNAME=es-ops-data-2 \
   POD_IP=127.0.0.1 \
   ELASTIC_USER_PASSWORD=secret \
