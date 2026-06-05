@@ -1844,6 +1844,19 @@ spec:
               prestop_watchdog_log "runtime-secondary-follow-configure-not-healthy label=${label}"
               return 1
             }
+            recover_empty_existing_slave_config_once() {
+              local label="${1:-existing-slave-config}"
+              local slave_status
+              slave_status="$(query_slave_status_verbose || true)"
+              [ -z "${slave_status}" ] || return 1
+              prestop_watchdog_log "existing-slave-config-reconfigure-begin label=${label} reason=empty-runtime-slave-status"
+              if configure_replication_from_primary_service_once "${label}-empty-runtime-slave-status"; then
+                prestop_watchdog_log "existing-slave-config-reconfigure-complete label=${label}"
+                return 0
+              fi
+              prestop_watchdog_log "existing-slave-config-reconfigure-defer label=${label}"
+              return 1
+            }
             reconcile_sql_listener_for_syncer_secondary_once() {
               # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required path.
               # mark_replication_ready (line below) is the publish point;
@@ -1976,6 +1989,11 @@ spec:
                       wait ${MARIADB_PID}
                       exit 1
                     fi
+                    if recover_empty_existing_slave_config_once "existing-slave-config-blocked-self-election"; then
+                      echo "Reconfigured replication from Primary Service after existing slave runtime status disappeared"
+                      blocked_self_election_resolved=true
+                      break
+                    fi
                     echo "pod-0 startup: blocked self-election, awaiting syncer promotion or primary Service, retrying in 5s."
                     sleep 5
                   done
@@ -2002,6 +2020,10 @@ spec:
                   if fail_closed_for_gtid_divergence; then
                     wait ${MARIADB_PID}
                     exit 1
+                  fi
+                  if recover_empty_existing_slave_config_once "existing-slave-config"; then
+                    echo "Reconfigured replication from Primary Service after existing slave runtime status disappeared"
+                    break
                   fi
                   echo "Existing slave config is not healthy yet; keeping replication pending and read-only, retrying in 5s."
                   sleep 5

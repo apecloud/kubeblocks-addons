@@ -90,6 +90,17 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
     ' "$(template_file)"
   }
 
+  existing_slave_loop_recovers_empty_runtime_slave_status() {
+    awk '
+      index($0, "if [ -n \"${PRIMARY_SID}\" ] && [ \"${PRIMARY_SID}\" != \"${SERVICE_ID}\" ]; then") { branch = 1 }
+      branch && index($0, "while true; do") { loop = 1 }
+      loop && index($0, "publish_replica_after_rejoin_ready \"existing-slave-config\"") { publish = NR }
+      loop && index($0, "recover_empty_existing_slave_config_once \"existing-slave-config\"") { recover = NR }
+      loop && index($0, "Existing slave config is not healthy yet") { retry = NR; exit }
+      END { exit(publish && recover && retry && publish < recover && recover < retry ? 0 : 1) }
+    ' "$(template_file)"
+  }
+
   It "defines a merged-CmpD local primary publish readiness gate"
     When call function_contains "local_primary_role_published" ".primary-read-write-ready"
     The status should be success
@@ -146,6 +157,16 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
 
   It "runs syncer-primary reconcile even when .sql-listener-ready already exists in the no-slave startup loop"
     When call no_slave_startup_loop_reconciles_syncer_primary_even_with_stale_listener_marker
+    The status should be success
+  End
+
+  It "defines an existing-slave runtime-status recovery helper"
+    When call function_contains "recover_empty_existing_slave_config_once" "empty-runtime-slave-status"
+    The status should be success
+  End
+
+  It "reconfigures existing slave config when runtime slave status disappears"
+    When call existing_slave_loop_recovers_empty_runtime_slave_status
     The status should be success
   End
 
