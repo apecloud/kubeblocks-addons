@@ -39,6 +39,23 @@ spec:
             return 1
           }
           wait_for_mariadb_backup_target;
+          wait_for_backup_privileges() {
+            local max_attempts=30
+            local attempt=1
+            while [ "${attempt}" -le "${max_attempts}" ]; do
+              if mariadb --host="${DP_DB_HOST}" --user="${DP_DB_USER}" --password="${DP_DB_PASSWORD}" \
+                --connect-timeout=2 --skip-ssl -e "SHOW ALL SLAVES STATUS;" >/dev/null 2>&1; then
+                echo "Backup privileges ready: host=${DP_DB_HOST} attempt=${attempt}";
+                return 0
+              fi
+              echo "Waiting for backup privileges (SLAVE MONITOR): host=${DP_DB_HOST} attempt=${attempt}/${max_attempts}";
+              sleep 1;
+              attempt=$((attempt + 1))
+            done
+            echo "Backup privileges not available after ${max_attempts}s — proceeding anyway" >&2;
+            return 0
+          }
+          wait_for_backup_privileges;
           mariadb-backup --backup --slave-info --stream=mbstream --host=${DP_DB_HOST} \
           --user=${DP_DB_USER} --password=${DP_DB_PASSWORD} --datadir=${DATA_DIR} \
           --skip-ssl | datasafed push - "/${DP_BACKUP_NAME}.mbstream";
