@@ -916,9 +916,9 @@ EOF
       The output should equal "1"
     End
 
-    It "Chart.yaml literal version is current (alpha.17 — idempotent duplicate switchover action)"
+    It "Chart.yaml literal version is current (alpha.18 - idempotent duplicate switchover action)"
       chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
-      When call grep -c '^version: 1.2.0-alpha.17$' "${chart_yaml}"
+      When call grep -c '^version: 1.2.0-alpha.18$' "${chart_yaml}"
       The output should equal "1"
     End
 
@@ -2955,7 +2955,7 @@ EOF
       # chart version.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.2.0-alpha.17"
+      The output should equal "version: 1.2.0-alpha.18"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -3016,7 +3016,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.17"
+        The output should equal "version: 1.2.0-alpha.18"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -3193,7 +3193,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.17"
+        The output should equal "version: 1.2.0-alpha.18"
       End
     End
 
