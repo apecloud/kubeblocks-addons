@@ -485,6 +485,52 @@ EOF
         The stderr should include "Switchover failed: syncerctl could not create DCS switchover"
         The contents of file "${TEST_DIR}/calls" should include "rollback"
       End
+
+      It "treats duplicate post-success invocation as idempotent success when final state is already reached"
+        make_zero_status_failing_syncerctl
+        : > "${TEST_DIR}/calls"
+        prepare_current_primary_for_switchover() {
+          return 0
+        }
+        rollback_current_primary_switchover_guard() {
+          record_call "rollback"
+          return 0
+        }
+        query_value() {
+          case "$1:$2" in
+            "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local:SELECT @@global.read_only;"*) echo "0" ;;
+            "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
+          esac
+        }
+        query_slave_status() {
+          case "$1" in
+            "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local") return 0 ;;
+          esac
+          cat <<'EOF'
+Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Last_IO_Errno: 0
+Last_SQL_Errno: 0
+Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
+EOF
+        }
+        remote_root_primary_ready() {
+          return 0
+        }
+        syncer_role_is() {
+          case "$1:$2" in
+            "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local:primary") return 0 ;;
+            "127.0.0.1:secondary") return 0 ;;
+          esac
+          return 1
+        }
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        The status should be success
+        The output should include "Switchover syncerctl output: switchover failed: operation precheck failed: mdb-mariadb-0 is not the primary"
+        The output should include "Switchover idempotent success: desired final state already reached"
+        The stderr should include "Switchover failed: syncerctl did not report success"
+        The contents of file "${TEST_DIR}/calls" should not include "rollback"
+      End
     End
 
     Context "when guarding the old primary before DCS switchover"
@@ -870,9 +916,9 @@ EOF
       The output should equal "1"
     End
 
-    It "Chart.yaml literal version is current (alpha.16 — accept syncer primary during replica lock)"
+    It "Chart.yaml literal version is current (alpha.17 — idempotent duplicate switchover action)"
       chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
-      When call grep -c '^version: 1.2.0-alpha.16$' "${chart_yaml}"
+      When call grep -c '^version: 1.2.0-alpha.17$' "${chart_yaml}"
       The output should equal "1"
     End
 
@@ -2909,7 +2955,7 @@ EOF
       # chart version.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.2.0-alpha.16"
+      The output should equal "version: 1.2.0-alpha.17"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -2970,7 +3016,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.16"
+        The output should equal "version: 1.2.0-alpha.17"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -3147,7 +3193,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.16"
+        The output should equal "version: 1.2.0-alpha.17"
       End
     End
 

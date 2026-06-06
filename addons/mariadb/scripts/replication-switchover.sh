@@ -1683,6 +1683,47 @@ current_follows_candidate() {
   return 1
 }
 
+switchover_final_state_already_reached() {
+  local current_name="$1"
+  local candidate_name="$2"
+  local candidate_fqdn="$3"
+  local read_only
+  local slave_status
+
+  # Duplicate lifecycle-action invocations can arrive after the first call has
+  # already completed the DCS switchover. Accept that path only after observing
+  # the desired database truth directly; absence of an error is not enough.
+  if ! has_mariadb_client; then
+    log_switchover_info "Switchover idempotent closeout skipped: mariadb client unavailable"
+    return 1
+  fi
+
+  if ! candidate_is_primary "${candidate_fqdn}"; then
+    log_switchover_info "Switchover idempotent closeout not satisfied: candidate ${candidate_name} is not positively observed as primary"
+    return 1
+  fi
+
+  read_only=$(query_value "127.0.0.1" "SELECT @@global.read_only;")
+  if [ "${read_only}" != "1" ]; then
+    log_switchover_info "Switchover idempotent closeout not satisfied: current ${current_name} read_only=${read_only:-<empty>} expected=1"
+    return 1
+  fi
+
+  if ! syncer_role_is "127.0.0.1" "secondary"; then
+    log_switchover_info "Switchover idempotent closeout not satisfied: current ${current_name} syncer role is not secondary"
+    return 1
+  fi
+
+  slave_status=$(query_slave_status "127.0.0.1")
+  if ! slave_status_is_ready_for_candidate "${slave_status}" "${candidate_name}" "${candidate_fqdn}"; then
+    log_switchover_info "Switchover idempotent closeout not satisfied: current ${current_name} is not positively following candidate ${candidate_name}"
+    return 1
+  fi
+
+  log_switchover_info "Switchover idempotent success: desired final state already reached current=${current_name} candidate=${candidate_name}; candidate primary observed and current follows candidate"
+  return 0
+}
+
 primary_service_routes_candidate() {
   local candidate_fqdn="$1"
   local candidate_server_id
@@ -2036,6 +2077,9 @@ run_switchover() {
   log_switchover_info "Switchover stage dcs budget=${dcs_budget}s remaining_before=$(remaining_action_budget)s primary=${current_name} candidate=${candidate_name}"
   log_switchover_info "Switchover: creating syncer DCS switchover primary=${current_name} candidate=${candidate_name}"
   if ! syncerctl_switchover "${current_name}" "${candidate_name}" "${dcs_budget}"; then
+    if switchover_final_state_already_reached "${current_name}" "${candidate_name}" "${candidate_fqdn}"; then
+      return 0
+    fi
     rollback_current_primary_switchover_guard || true
     log_switchover_error "Switchover failed: syncerctl could not create DCS switchover"
     return 1
