@@ -78,6 +78,16 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
     ' "$(template_file)"
   }
 
+  secondary_expose_fast_path_requires_real_wildcard_listener() {
+    awk '
+      index($0, "expose_sql_listener_for_safe_role() {") { fn = 1 }
+      fn && index($0, ".sql-listener-ready") && index($0, "mariadbd_listen_on_all_interfaces") { found = 1 }
+      fn && index($0, "sql-listener-expose-stale-marker") { stale = 1 }
+      fn && index($0, "sql-listener-expose-begin") { exit(found && stale ? 0 : 1) }
+      END { exit(found && stale ? 0 : 1) }
+    ' "$(template_file)"
+  }
+
   no_slave_startup_loop_reconciles_syncer_primary_even_with_stale_listener_marker() {
     awk '
       index($0, "elif [ -n \"${PRIMARY_SID}\" ] || [ \"${POD_INDEX}\" -gt 0 ]; then") { branch = 1 }
@@ -139,13 +149,14 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
     ' "$(template_file)"
   }
 
-  runtime_secondary_reconcile_recovers_semisync_slave_before_ready_marker() {
+  runtime_secondary_reconcile_publishes_healthy_slave_through_listener_gate() {
     awk '
       index($0, "reconcile_sql_listener_for_syncer_secondary_once() {") { fn = 1 }
       fn && index($0, "slave_status_is_healthy") { healthy = NR }
-      fn && index($0, "recover_semisync_slave_health_after_rejoin") { recover = NR }
-      fn && $0 ~ /^[[:space:]]*mark_replication_ready$/ { ready = NR; exit }
-      END { exit(healthy && recover && ready && healthy < recover && recover < ready ? 0 : 1) }
+      fn && index($0, "publish_replica_after_rejoin_ready \"runtime-secondary-reconcile\"") { publish = NR }
+      fn && index($0, "runtime-secondary-listener-reconcile-ready") { ready = NR }
+      fn && index($0, "runtime-secondary-listener-reconcile-pending-after-publish") { pending = NR; exit }
+      END { exit(healthy && publish && ready && pending && healthy < publish && publish < ready && ready < pending ? 0 : 1) }
     ' "$(template_file)"
   }
 
@@ -200,6 +211,11 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
 
   It "does not trust .sql-listener-ready without a real wildcard listener in syncer-primary fast path"
     When call primary_reconcile_fast_path_requires_real_wildcard_listener
+    The status should be success
+  End
+
+  It "does not trust .sql-listener-ready without a real wildcard listener in syncer-secondary expose path"
+    When call secondary_expose_fast_path_requires_real_wildcard_listener
     The status should be success
   End
 
@@ -267,8 +283,8 @@ Describe "cmpd-replication-merged.yaml semisync startup recovery"
     The status should be success
   End
 
-  It "recovers semisync slave health before runtime secondary ready publication"
-    When call runtime_secondary_reconcile_recovers_semisync_slave_before_ready_marker
+  It "publishes a healthy runtime secondary through the SQL listener gate"
+    When call runtime_secondary_reconcile_publishes_healthy_slave_through_listener_gate
     The status should be success
   End
 
