@@ -1453,12 +1453,20 @@ fence_current_primary_local_writes_after_dcs() {
   local current_name
   current_name=$(resolve_current_name)
   log_switchover_info "Switchover post-DCS guard: setting current primary ${current_name} read_only=ON before candidate can accept writes"
-  if ! set_local_read_only "ON"; then
-    log_switchover_error "Switchover failed: could not set current primary read_only=ON after DCS switchover was accepted"
-    return 1
-  fi
+  local fence_attempt=1
+  local fence_max=10
+  while [ "${fence_attempt}" -le "${fence_max}" ]; do
+    set_local_read_only "ON" 2>/dev/null || true
+    if local_read_only_is "1"; then
+      log_switchover_info "Switchover post-DCS read_only=ON verified at attempt=${fence_attempt}"
+      break
+    fi
+    log_switchover_info "Switchover post-DCS read_only=ON not yet stable, retrying (attempt=${fence_attempt}/${fence_max})"
+    sleep 1
+    fence_attempt=$((fence_attempt + 1))
+  done
   if ! local_read_only_is "1"; then
-    log_switchover_error "Switchover failed: current primary read_only=ON was not verified after DCS switchover was accepted"
+    log_switchover_error "Switchover failed: current primary read_only=ON was not verified after ${fence_max} attempts"
     return 1
   fi
   # alpha.60 + alpha.124: synchronously revoke user-facing root admin bypass
