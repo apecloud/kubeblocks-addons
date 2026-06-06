@@ -35,11 +35,15 @@ SWITCHOVER_POLL_SECONDS="${SWITCHOVER_POLL_SECONDS:-1}"
 # now_epoch()/initialize_action_clock()/remaining_action_budget()/
 # stage_budget_or_exit() helpers built on `date +%s`, `printf|awk`, and
 # `command -v timeout`; failures of these primitives are fatal so we never
-# silently run with a broken clock or unbounded external calls. Each of the 5
-# stages (prepare/dcs/fence/promote/write) checks the remaining global budget
-# at entry and emits action_deadline_exhausted_<stage> if exhausted.
+# silently run with a broken clock or unbounded external calls. Each stage
+# (prepare/candidate_connect/dcs/fence/promote/ready) checks the remaining
+# global budget at entry and emits action_deadline_exhausted_<stage> if
+# exhausted.
 SWITCHOVER_ACTION_DEADLINE_SECONDS="${SWITCHOVER_ACTION_DEADLINE_SECONDS:-55}"
 SWITCHOVER_PREPARE_STAGE_BUDGET_SECONDS="${SWITCHOVER_PREPARE_STAGE_BUDGET_SECONDS:-10}"
+SWITCHOVER_CANDIDATE_CONNECT_READY_WAIT_SECONDS="${SWITCHOVER_CANDIDATE_CONNECT_READY_WAIT_SECONDS:-12}"
+SWITCHOVER_CANDIDATE_CONNECT_READY_POLL_SECONDS="${SWITCHOVER_CANDIDATE_CONNECT_READY_POLL_SECONDS:-1}"
+SWITCHOVER_CANDIDATE_CONNECT_READY_CONNECT_TIMEOUT_SECONDS="${SWITCHOVER_CANDIDATE_CONNECT_READY_CONNECT_TIMEOUT_SECONDS:-1}"
 SWITCHOVER_DCS_STAGE_BUDGET_SECONDS="${SWITCHOVER_DCS_STAGE_BUDGET_SECONDS:-15}"
 SWITCHOVER_FENCE_STAGE_BUDGET_SECONDS="${SWITCHOVER_FENCE_STAGE_BUDGET_SECONDS:-15}"
 CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS="${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS:-30}"
@@ -276,6 +280,15 @@ run_sql() {
   local sql="$2"
   "${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
     --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+    -P3306 -h"${host}" -N -s -e "${sql}" >/dev/null 2>&1
+}
+
+run_sql_with_connect_timeout() {
+  local host="$1"
+  local connect_timeout="$2"
+  local sql="$3"
+  "${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    --connect-timeout="${connect_timeout}" \
     -P3306 -h"${host}" -N -s -e "${sql}" >/dev/null 2>&1
 }
 
@@ -1884,6 +1897,76 @@ run_syncerctl_getrole_with_timeout() {
   timeout "${wall}" "${SYNCERCTL_BIN}" --host "${fqdn}" --port "${SYNCERCTL_PORT}" getrole 2>&1
 }
 
+wait_candidate_sql_reachable_before_dcs() {
+  # Syncer performs a single candidate read-check inside `switchover`. r59
+  # observed a post-restart window where the runner's prior SQL check passed
+  # but syncer's immediate pre-DCS TCP connect to candidate:3306 got connection
+  # refused. This bounded pre-DCS gate keeps that transient inside the action's
+  # global deadline and fails before touching DCS if the candidate stays closed.
+  local candidate_name="$1"
+  local candidate_fqdn="$2"
+  local stage_budget="$3"
+  local start
+  local now
+  local elapsed=0
+  local attempt=1
+  local last_rc=0
+  local connect_timeout
+  local poll_seconds="${SWITCHOVER_CANDIDATE_CONNECT_READY_POLL_SECONDS}"
+
+  case "${stage_budget}" in
+    ''|*[!0-9]*) stage_budget=0 ;;
+  esac
+  if [ "${stage_budget}" -le 0 ]; then
+    log_switchover_error "Switchover failed: reason=candidate_sql_not_reachable_before_dcs_in_budget candidate=${candidate_name} stage_budget=${stage_budget}s attempts=0 last_rc=not_attempted; fail-closed (DCS not touched)"
+    return 1
+  fi
+  case "${poll_seconds}" in
+    ''|*[!0-9]*) poll_seconds=1 ;;
+  esac
+
+  start=$(now_epoch)
+  if [ -z "${start}" ]; then
+    log_switchover_error "Switchover failed: reason=action_clock_unavailable stage=candidate_connect; fail-closed"
+    return 1
+  fi
+
+  while [ "${elapsed}" -lt "${stage_budget}" ]; do
+    connect_timeout="${SWITCHOVER_CANDIDATE_CONNECT_READY_CONNECT_TIMEOUT_SECONDS}"
+    case "${connect_timeout}" in
+      ''|*[!0-9]*) connect_timeout=1 ;;
+    esac
+    if [ "${connect_timeout}" -lt 1 ]; then
+      connect_timeout=1
+    fi
+    if [ $(( stage_budget - elapsed )) -lt "${connect_timeout}" ]; then
+      connect_timeout=$(( stage_budget - elapsed ))
+      if [ "${connect_timeout}" -lt 1 ]; then
+        connect_timeout=1
+      fi
+    fi
+
+    if run_sql_with_connect_timeout "${candidate_fqdn}" "${connect_timeout}" "SELECT 1;"; then
+      log_switchover_info "Switchover candidate SQL reachable before DCS: candidate=${candidate_name} fqdn=${candidate_fqdn} attempt=${attempt} elapsed=${elapsed}s connect_timeout=${connect_timeout}s"
+      return 0
+    fi
+    last_rc=$?
+    log_switchover_info "Switchover candidate SQL not reachable before DCS: candidate=${candidate_name} fqdn=${candidate_fqdn} attempt=${attempt} elapsed=${elapsed}s connect_timeout=${connect_timeout}s rc=${last_rc}; retrying"
+
+    sleep "${poll_seconds}"
+    attempt=$((attempt + 1))
+    now=$(now_epoch)
+    if [ -z "${now}" ]; then
+      log_switchover_error "Switchover failed: reason=action_clock_unavailable stage=candidate_connect; fail-closed"
+      return 1
+    fi
+    elapsed=$(( now - start ))
+  done
+
+  log_switchover_error "Switchover failed: reason=candidate_sql_not_reachable_before_dcs_in_budget candidate=${candidate_name} stage_budget=${stage_budget}s attempts=$((attempt - 1)) last_rc=${last_rc}; fail-closed (DCS not touched)"
+  return 1
+}
+
 wait_candidate_promoted_via_syncerctl() {
   # alpha.61 (Jack 01:40 review): before testing candidate writability, the
   # action MUST observe that DCS has actually promoted the candidate (i.e.,
@@ -2015,7 +2098,7 @@ wait_candidate_remote_root_primary_ready() {
 }
 
 run_switchover() {
-  # alpha.61 v2 contract (Jack 02:00 review): POSIX wall clock + 5-stage
+  # alpha.61 v2 contract (Jack 02:00 review): POSIX wall clock + staged
   # deadline enforcement. Each stage entry checks the remaining global budget
   # FIRST via stage_budget_or_exit; if exhausted (or wall clock fails), emits
   # action_deadline_exhausted_<stage> and returns 1 BEFORE invoking the stage
@@ -2023,11 +2106,12 @@ run_switchover() {
   #
   # Stages (each with its own action_deadline_exhausted_<stage> sentinel):
   #   1. prepare       - prepare_current_primary_for_switchover
-  #   2. dcs           - syncerctl_switchover (DCS record)
-  #   3. fence         - fence_current_primary_local_writes_after_dcs
+  #   2. candidate_connect - bounded candidate SQL reachability before syncer
+  #   3. dcs           - syncerctl_switchover (DCS record)
+  #   4. fence         - fence_current_primary_local_writes_after_dcs
   #                      (revoke admin-bypass + verify_post_dcs_local_root_write_fenced)
-  #   4. promote       - wait_candidate_promoted_via_syncerctl
-  #   5. ready         - wait_candidate_remote_root_primary_ready
+  #   5. promote       - wait_candidate_promoted_via_syncerctl
+  #   6. ready         - wait_candidate_remote_root_primary_ready
   #
   # External tools that can block:
   #   - syncerctl getrole: wrapped with timeout(1) (initialize_action_clock
@@ -2079,7 +2163,16 @@ run_switchover() {
     return 1
   fi
 
-  # Stage 2: DCS switchover
+  # Stage 2: candidate SQL reachability before syncer precheck touches DCS.
+  local candidate_connect_budget
+  candidate_connect_budget=$(stage_budget_or_exit "candidate_connect" "${SWITCHOVER_CANDIDATE_CONNECT_READY_WAIT_SECONDS}") || return 1
+  log_switchover_info "Switchover stage candidate_connect budget=${candidate_connect_budget}s remaining_before=$(remaining_action_budget)s candidate=${candidate_name}"
+  if ! wait_candidate_sql_reachable_before_dcs "${candidate_name}" "${candidate_fqdn}" "${candidate_connect_budget}"; then
+    rollback_current_primary_switchover_guard || true
+    return 1
+  fi
+
+  # Stage 3: DCS switchover
   local dcs_budget
   dcs_budget=$(stage_budget_or_exit "dcs" "${SWITCHOVER_DCS_STAGE_BUDGET_SECONDS}") || return 1
   log_switchover_info "Switchover stage dcs budget=${dcs_budget}s remaining_before=$(remaining_action_budget)s primary=${current_name} candidate=${candidate_name}"
@@ -2102,7 +2195,7 @@ run_switchover() {
     return 1
   fi
 
-  # Stage 3: fence current primary local writes (revoke + verify)
+  # Stage 4: fence current primary local writes (revoke + verify)
   local fence_budget
   fence_budget=$(stage_budget_or_exit "fence" "${SWITCHOVER_FENCE_STAGE_BUDGET_SECONDS}") || return 1
   log_switchover_info "Switchover stage fence budget=${fence_budget}s remaining_before=$(remaining_action_budget)s"
@@ -2117,7 +2210,7 @@ run_switchover() {
     return 1
   fi
 
-  # Stage 4: candidate promoted via syncerctl
+  # Stage 5: candidate promoted via syncerctl
   local promoted_budget
   promoted_budget=$(stage_budget_or_exit "promote" "${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS}") || return 1
   log_switchover_info "Switchover stage candidate_promoted budget=${promoted_budget}s remaining_before=$(remaining_action_budget)s"
@@ -2125,7 +2218,7 @@ run_switchover() {
     return 1
   fi
 
-  # Stage 5: candidate remote root primary-readiness probe
+  # Stage 6: candidate remote root primary-readiness probe
   local ready_budget
   ready_budget=$(stage_budget_or_exit "ready" "${CANDIDATE_REMOTE_ROOT_PRIMARY_READY_WAIT_SECONDS}") || return 1
   log_switchover_info "Switchover stage candidate_primary_ready budget=${ready_budget}s remaining_before=$(remaining_action_budget)s"
