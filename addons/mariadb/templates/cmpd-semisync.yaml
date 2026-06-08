@@ -2035,6 +2035,14 @@ spec:
               fi
             }
 
+            # Reconcile runtime override files with ConfigMap before starting
+            # mariadbd. A disrupted reconfigureAction (pod killed mid-apply)
+            # can leave stale values in runtime-overrides.d/ that would
+            # override the controller's ConfigMap on next startup.
+            if [ -r /scripts/reconcile-runtime-overrides.sh ]; then
+              sh /scripts/reconcile-runtime-overrides.sh || true
+            fi
+
             # Start local-only until the pod has a safe role. During replacement
             # startup, read_only does not block privileged root writes in MariaDB,
             # so root write privileges are fenced until the pod is a confirmed
