@@ -25,6 +25,22 @@ Describe "PostgreSQL promote standby script tests"
     End
   End
 
+  Describe "warn_if_source_reachable()"
+    It "skips the probe when sourceEndpoint is absent"
+      unset sourceEndpoint
+      When run warn_if_source_reachable
+      The status should be success
+      The output should include "No sourceEndpoint provided"
+    End
+
+    It "warns but succeeds for an invalid sourceEndpoint"
+      sourceEndpoint="invalid"
+      When run warn_if_source_reachable
+      The status should be success
+      The output should include "WARNING: invalid sourceEndpoint"
+    End
+  End
+
   Describe "require_standby_mode()"
     It "rejects a non-standby cluster"
       PG_MODE="primary"
@@ -54,6 +70,14 @@ Describe "PostgreSQL promote standby script tests"
       When run promote_standby
       The status should be success
       The output should include "not Patroni standby leader"
+    End
+  End
+
+  Describe "warn_manual_failback_boundary()"
+    It "documents the manual failback boundary"
+      When run warn_manual_failback_boundary
+      The status should be success
+      The output should include "Automatic failback is not part of pg-promote-standby"
     End
   End
 End

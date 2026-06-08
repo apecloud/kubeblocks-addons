@@ -23,6 +23,26 @@ require_force() {
   fi
 }
 
+warn_if_source_reachable() {
+  local endpoint="${sourceEndpoint:-}"
+  if [ -z "$endpoint" ]; then
+    echo "No sourceEndpoint provided; skipping best-effort source reachability probe."
+    return 0
+  fi
+
+  local host="${endpoint%:*}" port="${endpoint##*:}"
+  if [ -z "$host" ] || [ -z "$port" ] || [ "$host" = "$port" ]; then
+    echo "WARNING: invalid sourceEndpoint '$endpoint'; expected host:port. Skipping source reachability probe."
+    return 0
+  fi
+
+  if timeout 3 bash -c "cat < /dev/null > /dev/tcp/${host}/${port}" 2>/dev/null; then
+    echo "WARNING: sourceEndpoint ${endpoint} is still TCP-reachable while promoting standby. Ensure the source is fenced/stopped to avoid split-brain."
+  else
+    echo "sourceEndpoint ${endpoint} is not TCP-reachable in best-effort probe."
+  fi
+}
+
 require_standby_mode() {
   if ! printf '%s' "${PG_MODE:-}" | tr '[:upper:]' '[:lower:]' | grep -q 'standby'; then
     echo "PG_MODE=${PG_MODE:-<unset>} is not standby; refusing DR standby promotion."
@@ -55,8 +75,18 @@ wait_read_write() {
   return 1
 }
 
+warn_manual_failback_boundary() {
+  cat <<'EOF'
+WARNING: DR standby promotion only activates this Patroni cluster.
+WARNING: The KubeBlocks Cluster spec may still contain PG_MODE=standby and serviceRefs to the old source.
+WARNING: Before restarting the old source, update the promoted Cluster spec to remove standby config and either delete or rebuild the old source as a standby.
+WARNING: Automatic failback is not part of pg-promote-standby.
+EOF
+}
+
 promote_standby() {
   require_force
+  warn_if_source_reachable
   require_standby_mode
 
   if ! is_standby_leader; then
@@ -66,6 +96,7 @@ promote_standby() {
 
   patch_remove_standby_cluster
   wait_read_write
+  warn_manual_failback_boundary
 }
 
 ${__SOURCED__:+false} : || return 0

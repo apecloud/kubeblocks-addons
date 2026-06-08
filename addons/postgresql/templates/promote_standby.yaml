@@ -24,6 +24,12 @@ spec:
             Must be true to acknowledge that the source cluster has been fenced/stopped.
             Promoting a standby cluster while the source is still running can create split-brain.
           type: string
+        sourceEndpoint:
+          description: |
+            Optional best-effort source endpoint probe in host:port form. If the source endpoint
+            is still reachable during promote, the action emits a warning but does not fail.
+            The source may still be draining and the force=true acknowledgement is authoritative.
+          type: string
       required:
         - force
       type: object
@@ -32,6 +38,7 @@ spec:
       failurePolicy: Fail
       parameters:
         - force
+        - sourceEndpoint
       workload:
         podInfoExtractorName: availablePod
         type: Pod
