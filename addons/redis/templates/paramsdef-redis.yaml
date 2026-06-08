@@ -28,4 +28,11 @@ spec:
     - {{ . }}
     {{- end }}
   {{- end}}
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- $dparams := get $pd "dynamicParameters" }}
+    {{- range $dparams }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
 {{- end}}

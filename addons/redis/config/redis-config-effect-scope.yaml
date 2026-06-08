@@ -4,3 +4,63 @@ staticParameters:
   - databases
   - io-threads
   - io-threads-do-reads
+
+## Parameters that can be changed at runtime via CONFIG SET
+dynamicParameters:
+  - acllog-max-len
+  - activerehashing
+  - aof-rewrite-incremental-fsync
+  - aof-timestamp-enabled
+  - aof-use-rdb-preamble
+  - aof-load-truncated
+  - appendfsync
+  - appendonly
+  - auto-aof-rewrite-min-size
+  - auto-aof-rewrite-percentage
+  - dynamic-hz
+  - hash-max-listpack-entries
+  - hash-max-listpack-value
+  - hll-sparse-max-bytes
+  - hz
+  - jemalloc-bg-thread
+  - latency-monitor-threshold
+  - lazyfree-lazy-eviction
+  - lazyfree-lazy-expire
+  - lazyfree-lazy-server-del
+  - lazyfree-lazy-user-del
+  - lazyfree-lazy-user-flush
+  - list-compress-depth
+  - list-max-listpack-size
+  - loglevel
+  - maxclients
+  - maxmemory
+  - maxmemory-policy
+  - no-appendfsync-on-rewrite
+  - notify-keyspace-events
+  - oom-score-adj
+  - oom-score-adj-values
+  - rdb-del-sync-files
+  - rdb-save-incremental-fsync
+  - rdbchecksum
+  - rdbcompression
+  - repl-disable-tcp-nodelay
+  - repl-diskless-load
+  - repl-diskless-sync
+  - repl-diskless-sync-delay
+  - repl-diskless-sync-max-replicas
+  - replica-lazy-flush
+  - replica-priority
+  - replica-read-only
+  - replica-serve-stale-data
+  - set-max-intset-entries
+  - set-proc-title
+  - slowlog-log-slower-than
+  - slowlog-max-len
+  - stop-writes-on-bgsave-error
+  - stream-node-max-bytes
+  - stream-node-max-entries
+  - tcp-backlog
+  - tcp-keepalive
+  - timeout
+  - zset-max-listpack-entries
+  - zset-max-listpack-value
