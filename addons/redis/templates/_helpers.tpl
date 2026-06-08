@@ -193,22 +193,29 @@ Generate scripts configmap
 redis-account.sh: |-
 {{- $.Files.Get "scripts/redis-account.sh" | nindent 2 }}
 {{- end }}
+{{- if $.Files.Get "scripts/reload-parameter.sh" }}
+reload-parameter.sh: |-
+{{- $.Files.Get "scripts/reload-parameter.sh" | nindent 2 }}
+{{- end }}
+{{- if $.Files.Get "scripts/redis-reconfigure-config.sh" }}
+redis-reconfigure-config.sh: |-
+{{- $.Files.Get "scripts/redis-reconfigure-config.sh" | nindent 2 }}
+{{- end }}
 {{- end }}
 
 {{- define "redis.config.reconfigureAction" -}}
 {{- $container := .container | default "redis" -}}
+{{- $dynamicList := .dynamicParams | default "" -}}
 reconfigure:
   exec:
     container: {{ $container }}
     targetPodSelector: All
+    env:
+      - name: DYNAMIC_ALLOWLIST
+        value: "{{ $dynamicList }}"
     command:
-      - /bin/bash
-      - -c
-      - |
-        set -eu
-
-        /scripts/reload-parameter.sh "$1" "$2"
-      - --
+      - /bin/sh
+      - /scripts/redis-reconfigure-config.sh
 {{- end -}}
 
 {{- define "apeDts.reshard.image" -}}
