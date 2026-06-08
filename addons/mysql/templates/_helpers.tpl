@@ -210,7 +210,7 @@ provider: kubeblocks
 serviceKind: mysql
 description: mysql component definition for Kubernetes
 updateStrategy: BestEffortParallel
-PodManagementPolicy: OrderedReady
+podManagementPolicy: OrderedReady
 services:
   - name: default
     roleSelector: primary
