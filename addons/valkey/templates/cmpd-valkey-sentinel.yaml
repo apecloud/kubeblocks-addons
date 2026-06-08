@@ -19,7 +19,7 @@ Architecture note:
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+  name: {{ .sentinelComponentDef }}
   labels:
     {{- include "valkey.labels" $ | nindent 4 }}
   annotations:
@@ -152,19 +152,19 @@ spec:
     - name: VALKEY_COMPONENT_NAME
       valueFrom:
         componentVarRef:
-          compDef: {{ printf "^valkey-%s" .major }}
+          compDef: {{ .componentDef }}
           optional: true
           componentName: Required
     - name: VALKEY_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ printf "^valkey-%s" .major }}
+          compDef: {{ .componentDef }}
           optional: true
           podFQDNs: Required
     - name: VALKEY_DEFAULT_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ printf "^valkey-%s" .major }}
+          compDef: {{ .componentDef }}
           name: default
           optional: true
           password: Required
@@ -191,13 +191,6 @@ spec:
     containers:
       - name: valkey-sentinel
         imagePullPolicy: IfNotPresent
-        resources:
-          requests:
-            cpu: 50m
-            memory: 64Mi
-          limits:
-            cpu: 200m
-            memory: 256Mi
         ports:
           - name: valkey-sentinel
             containerPort: 26379

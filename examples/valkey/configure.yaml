@@ -1,0 +1,17 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: valkey-reconfiguring
+  namespace: demo
+spec:
+  clusterName: valkey-replication
+  type: Reconfiguring
+  force: false
+  reconfigures:
+    - componentName: valkey
+      parameters:
+        - key: maxmemory-policy
+          value: allkeys-lru
+        - key: loglevel
+          value: notice
+  preConditionDeadlineSeconds: 0

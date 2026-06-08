@@ -1,20 +1,11 @@
-{{/*
-One ConfigMap per major version — allows per-version config defaults.
-The file content is stored in config/valkey<major>-config.tpl and loaded
-via Files.Get.  KubeBlocks renders the file as a Go template at runtime,
-injecting the vars[] values as template variables.
-*/}}
-{{- range .Values.valkeyVersions }}
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ printf "valkey%s-config-template-%s" .major $.Chart.Version }}
+  name: {{ include "valkey.configTemplate" . }}
   labels:
-    {{- include "valkey.labels" $ | nindent 4 }}
+    {{- include "valkey.labels" . | nindent 4 }}
   annotations:
-    {{- include "valkey.annotations" $ | nindent 4 }}
+    {{- include "valkey.annotations" . | nindent 4 }}
 data:
   valkey.conf: |-
-    {{- $.Files.Get (printf "config/valkey%s-config.tpl" .major) | nindent 4 }}
-{{- end }}
+    {{- .Files.Get "config/valkey-config.tpl" | nindent 4 }}

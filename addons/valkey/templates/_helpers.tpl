@@ -32,19 +32,18 @@ apps.kubeblocks.io/skip-immutable-check: "true"
 
 {{/*
 Regexp pattern used in ClusterDefinition.topologies[].components[].compDef.
-KubeBlocks matches ComponentDefinition names against this regex, so new Chart
-versions (e.g. valkey-9-0.2.0) are automatically picked up without editing
-ClusterDefinition.
+ComponentDefinition names are major-scoped and intentionally do not include
+Chart.Version; selection order must not depend on SemVer lexicographic sorting.
 */}}
 {{- define "valkey.cmpdRegexpPattern" -}}
-^valkey-\d+
+^valkey-[0-9]+$
 {{- end -}}
 
 {{/*
-Sentinel component regexp pattern — matches valkey-sentinel-8-0.1.0 etc.
+Sentinel component regexp pattern.
 */}}
 {{- define "valkeySentinel.cmpdRegexpPattern" -}}
-^valkey-sentinel-\d+
+^valkey-sentinel-[0-9]+$
 {{- end -}}
 
 {{/*
@@ -56,10 +55,12 @@ valkey-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Config ConfigMap name per major version.
-Usage: {{ printf "valkey%s-config-template-%s" .major $.Chart.Version }}
-(used inline in cmpd.yaml because it needs the loop variable .major)
+Config ConfigMap name. The template is shared across supported Valkey majors
+until an actual major-specific config delta appears.
 */}}
+{{- define "valkey.configTemplate" -}}
+valkey-config-template
+{{- end -}}
 
 {{/*
 Inline helper to build the valkey-cli base command with optional TLS flags.

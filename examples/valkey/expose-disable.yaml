@@ -1,0 +1,16 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: valkey-expose-disable
+  namespace: demo
+spec:
+  clusterName: valkey-replication
+  type: Expose
+  expose:
+    - componentName: valkey
+      services:
+        - name: internet
+          serviceType: LoadBalancer
+          roleSelector: primary
+      switch: Disable
+  preConditionDeadlineSeconds: 0

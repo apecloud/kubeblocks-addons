@@ -1,15 +1,13 @@
 {{/*
-One ComponentDefinition per major version.
-Each CMPD is immutable after creation — we version the name with Chart.Version
-so upgrades create new resources rather than patching existing ones.
-In-use clusters keep pointing at the old CMPD; new clusters use the new one.
+One ComponentDefinition per major version. Names stay stable across chart
+versions so ClusterDefinition selection does not depend on SemVer string order.
 */}}
 {{- range .Values.valkeyVersions }}
 ---
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ printf "%s-%s" .componentDef $.Chart.Version }}
+  name: {{ .componentDef }}
   labels:
     {{- include "valkey.labels" $ | nindent 4 }}
   annotations:
@@ -129,7 +127,7 @@ spec:
   # parameters. Without it, KB skips the whole config lifecycle.
   configs:
     - name: valkey-replication-config
-      template: {{ printf "valkey%s-config-template-%s" .major $.Chart.Version }}
+      template: {{ include "valkey.configTemplate" $ }}
       namespace: {{ $.Release.Namespace }}
       volumeName: valkey-config
       externalManaged: true
@@ -326,33 +324,33 @@ spec:
     - name: SENTINEL_COMPONENT_NAME
       valueFrom:
         componentVarRef:
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          compDef: {{ .sentinelComponentDef }}
           optional: true
           componentName: Required
     - name: SENTINEL_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          compDef: {{ .sentinelComponentDef }}
           optional: true
           podFQDNs: Required
     - name: SENTINEL_POD_NAME_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          compDef: {{ .sentinelComponentDef }}
           optional: true
           podNames: Required
     # Sentinel credentials (used by valkey-start.sh to authenticate SENTINEL commands)
     - name: SENTINEL_USER
       valueFrom:
         credentialVarRef:
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          compDef: {{ .sentinelComponentDef }}
           name: default
           optional: true
           username: Required
     - name: SENTINEL_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          compDef: {{ .sentinelComponentDef }}
           name: default
           optional: true
           password: Required
@@ -360,7 +358,7 @@ spec:
     - name: SENTINEL_HEADLESS_SVC_HOST
       valueFrom:
         serviceVarRef:
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          compDef: {{ .sentinelComponentDef }}
           name: headless
           optional: true
           host: Optional
@@ -568,13 +566,6 @@ spec:
         securityContext:
           runAsNonRoot: true
           runAsUser: 1001
-        resources:
-          requests:
-            cpu: 10m
-            memory: 32Mi
-          limits:
-            cpu: 200m
-            memory: 128Mi
         env:
           # redis_exporter understands the Valkey INFO protocol natively.
           - name: REDIS_ADDR

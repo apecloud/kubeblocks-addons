@@ -31,18 +31,40 @@ spec:
     #   4. Leader reconfigures other replicas to point to new primary
     #   5. Leader updates its own conf + broadcasts to peer sentinels
     #   6. roleProbe in KubeBlocks detects new roles, updates Service routing
-    - name: replication
+    {{- range .Values.valkeyVersions }}
+    - name: {{ printf "replication-%s" .major }}
       components:
         - name: valkey-sentinel
-          compDef: {{ include "valkeySentinel.cmpdRegexpPattern" . }}
+          compDef: {{ .sentinelComponentDef }}
         - name: valkey
-          compDef: {{ include "valkey.cmpdRegexpPattern" . }}
+          compDef: {{ .componentDef }}
       orders:
         provision:
           - valkey-sentinel   # sentinel must be ready before data nodes connect to it
           - valkey
         terminate:
           - valkey            # drain data nodes first so sentinel doesn't trigger spurious failover
+          - valkey-sentinel
+        update:
+          - valkey-sentinel
+          - valkey
+    {{- end }}
+
+    # Default replication topology follows the current default Valkey major.
+    # Users who need a fixed major can select replication-8 or replication-9.
+    {{- $defaultMajor := last .Values.valkeyVersions }}
+    - name: replication
+      components:
+        - name: valkey-sentinel
+          compDef: {{ $defaultMajor.sentinelComponentDef }}
+        - name: valkey
+          compDef: {{ $defaultMajor.componentDef }}
+      orders:
+        provision:
+          - valkey-sentinel
+          - valkey
+        terminate:
+          - valkey
           - valkey-sentinel
         update:
           - valkey-sentinel

@@ -1,0 +1,16 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  generateName: valkey-rebuildinstance-
+  namespace: demo
+spec:
+  type: RebuildInstance
+  clusterName: valkey-replication
+  force: true
+  rebuildFrom:
+    - componentName: valkey
+      backupName: <VALKEY_BACKUP_NAME>
+      inPlace: true
+      instances:
+        - name: valkey-replication-valkey-0
+          targetNodeName: <NODE_NAME>

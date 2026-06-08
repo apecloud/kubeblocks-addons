@@ -9,6 +9,8 @@ metadata:
   annotations:
     {{- include "valkey.annotations" $ | nindent 4 }}
 spec:
+  componentDef: {{ .componentDef }}
+  templateName: valkey-replication-config
   fileName: valkey.conf
   fileFormatConfig:
     format: redis
