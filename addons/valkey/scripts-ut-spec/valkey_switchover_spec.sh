@@ -1107,7 +1107,7 @@ Describe "Valkey Switchover Bash Script Tests"
     Context "when no candidate and wait_for_new_master fails — returns failure"
       It "propagates wait_for_new_master failure instead of ignoring it"
         set_replica_priority() { return 0; }
-        execute_sentinel_failover() { echo "OK"; return 0; }
+        execute_sentinel_failover() { return 0; }
         wait_for_new_master() { return 1; }
         When call switchover_with_sentinel ""
         The status should be failure
