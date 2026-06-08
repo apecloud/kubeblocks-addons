@@ -31,12 +31,12 @@ Describe "Valkey post-restore Sentinel contract"
   End
 
   It "uses current Cluster spec.restore contract in the restore example"
-    When call grep -E "restore:|source:|apiGroup: dataprotection.kubeblocks.io|volumeRestorePolicy: Parallel" "${restore_example}"
+    When call grep -E "restore:|source:|apiGroup: dataprotection.kubeblocks.io|dataprotection.kubeblocks.io/volume-restore-policy: Parallel" "${restore_example}"
     The status should be success
     The stdout should include "restore:"
     The stdout should include "source:"
     The stdout should include "apiGroup: dataprotection.kubeblocks.io"
-    The stdout should include "volumeRestorePolicy: Parallel"
+    The stdout should include "dataprotection.kubeblocks.io/volume-restore-policy: Parallel"
   End
 
   It "does not use the legacy restore annotation in the restore example"

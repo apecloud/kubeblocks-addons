@@ -11,7 +11,7 @@ spec:
       name: valkey-backup-datafile
       namespace: demo
     parameters:
-      volumeRestorePolicy: Parallel
+      dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   clusterDef: valkey
   topology: replication-9
