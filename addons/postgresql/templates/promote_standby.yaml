@@ -1,0 +1,48 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: pg-promote-standby
+spec:
+  podInfoExtractors:
+    - name: availablePod
+      podSelector:
+        multiPodSelectionPolicy: All
+      env:
+        - name: PG_MODE
+          valueFrom:
+            envRef:
+              envName: PG_MODE
+        - name: CURRENT_POD_IP
+          valueFrom:
+            envRef:
+              envName: CURRENT_POD_IP
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        force:
+          description: |
+            Must be true to acknowledge that the source cluster has been fenced/stopped.
+            Promoting a standby cluster while the source is still running can create split-brain.
+          type: string
+      required:
+        - force
+      type: object
+  actions:
+    - name: promote-standby
+      failurePolicy: Fail
+      parameters:
+        - force
+      workload:
+        podInfoExtractorName: availablePod
+        type: Pod
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: promote-standby
+              image: {{ include "postgresql.initImage" . }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/promote_standby.sh" | nindent 18 }}
