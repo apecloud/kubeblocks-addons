@@ -19,8 +19,9 @@
 #   sentinel comp: <cluster>-valkey-sentinel  (standard topology name)
 #
 # Current BackupPolicyTemplate env schema cannot inject cross-component
-# Sentinel credentials. Re-registration is best-effort and can only authenticate
-# when SENTINEL_PASSWORD is supplied by a future explicit contract.
+# Sentinel credentials. Re-registration fails closed when no Sentinel can be
+# configured; passworded Sentinel requires SENTINEL_PASSWORD from a future
+# explicit contract.
 
 set -e
 set -o pipefail
@@ -30,31 +31,33 @@ data_port="${DP_DB_PORT:-6379}"
 primary_discovery_retries="${POST_RESTORE_PRIMARY_DISCOVERY_RETRIES:-24}"
 primary_discovery_interval="${POST_RESTORE_PRIMARY_DISCOVERY_INTERVAL_SECONDS:-5}"
 
+positive_int_or_default() {
+  local value="$1" fallback="$2"
+  case "${value}" in
+    ''|*[!0-9]*) echo "${fallback}" ;;
+    *) [ "${value}" -gt 0 ] && echo "${value}" || echo "${fallback}" ;;
+  esac
+}
+
 # Detect TLS via connection probe on the data pod.
 # Restore jobs do not mount the TLS volume (it may not exist in non-TLS clusters).
-_tls_args=""
-_probe_base="valkey-cli --no-auth-warning -h ${DP_DB_HOST} -p ${data_port}"
-[ -n "${DP_DB_PASSWORD}" ] && _probe_base="${_probe_base} -a ${DP_DB_PASSWORD}"
-if ! ${_probe_base} PING 2>/dev/null | grep -q "PONG"; then
-  if ${_probe_base} --tls --insecure PING 2>/dev/null | grep -q "PONG"; then
-    _tls_args="--tls --insecure"
+_tls_args=()
+_probe_base=(valkey-cli --no-auth-warning -h "${DP_DB_HOST}" -p "${data_port}")
+[ -n "${DP_DB_PASSWORD:-}" ] && _probe_base+=(-a "${DP_DB_PASSWORD}")
+if ! "${_probe_base[@]}" PING 2>/dev/null | grep -q "PONG"; then
+  if "${_probe_base[@]}" --tls --insecure PING 2>/dev/null | grep -q "PONG"; then
+    _tls_args=(--tls --insecure)
     echo "INFO: TLS detected via connection probe — using --tls --insecure"
   fi
 fi
 
 # Build a valkey-cli prefix for the data nodes
-if [ -n "${DP_DB_PASSWORD}" ]; then
-  data_cli_base="valkey-cli --no-auth-warning ${_tls_args} -p ${data_port} -a ${DP_DB_PASSWORD}"
-else
-  data_cli_base="valkey-cli --no-auth-warning ${_tls_args} -p ${data_port}"
-fi
+data_cli_base=(valkey-cli --no-auth-warning "${_tls_args[@]}" -p "${data_port}")
+[ -n "${DP_DB_PASSWORD:-}" ] && data_cli_base+=(-a "${DP_DB_PASSWORD}")
 
 # Build a sentinel cli prefix
-if [ -n "${SENTINEL_PASSWORD}" ]; then
-  sentinel_cli_base="valkey-cli --no-auth-warning ${_tls_args} -p ${sentinel_port} -a ${SENTINEL_PASSWORD}"
-else
-  sentinel_cli_base="valkey-cli --no-auth-warning ${_tls_args} -p ${sentinel_port}"
-fi
+sentinel_cli_base=(valkey-cli --no-auth-warning "${_tls_args[@]}" -p "${sentinel_port}")
+[ -n "${SENTINEL_PASSWORD:-}" ] && sentinel_cli_base+=(-a "${SENTINEL_PASSWORD}")
 
 # ── derive naming convention ─────────────────────────────────────────────────
 # DP_TARGET_POD_NAME / DP_TARGET_NAMESPACE are not guaranteed in postReady jobs.
@@ -80,7 +83,12 @@ fi
 # Strip trailing "-<digits>" to get "<cluster>-<component>"
 comp_prefix="${pod_name%-*}"           # e.g. mycluster-valkey
 cluster_prefix="${comp_prefix%-*}"     # e.g. mycluster
-cluster_domain="${CLUSTER_DOMAIN:-cluster.local}"
+if [ -n "${CLUSTER_DOMAIN:-}" ]; then
+  cluster_domain="${CLUSTER_DOMAIN}"
+else
+  cluster_domain=$(echo "${DP_DB_HOST}" | sed -n 's/.*\.svc\.\(.*\)$/\1/p')
+  cluster_domain="${cluster_domain:-cluster.local}"
+fi
 
 echo "INFO: resolved target context pod=${pod_name} namespace=${namespace} comp=${comp_prefix}"
 
@@ -95,19 +103,22 @@ master_name="${comp_prefix}"
 comp_headless="${comp_prefix}-headless.${namespace}.svc.${cluster_domain}"
 
 find_primary_fqdn() {
-  local max_ordinal="${DATA_REPLICA_COUNT:-5}"
+  local default_scan_limit="${POST_RESTORE_DATA_SCAN_LIMIT:-16}"
+  default_scan_limit=$(positive_int_or_default "${default_scan_limit}" 16)
+  local max_ordinal="${DATA_REPLICA_COUNT:-${default_scan_limit}}"
+  max_ordinal=$(positive_int_or_default "${max_ordinal}" "${default_scan_limit}")
   local ordinal=0 fqdn role consecutive_unreachable=0
   while [ "${ordinal}" -lt "${max_ordinal}" ]; do
     fqdn="${comp_prefix}-${ordinal}.${comp_headless}"
     ordinal=$((ordinal + 1))
 
-    role=$(${data_cli_base} -h "${fqdn}" ROLE 2>/dev/null | head -1 | tr -d '\r\n') || true
+    role=$("${data_cli_base[@]}" -h "${fqdn}" ROLE 2>/dev/null | head -1 | tr -d '\r\n') || true
     if [ "${role}" = "master" ]; then
       echo "${fqdn}"
       return 0
     fi
 
-    role=$(${data_cli_base} -h "${fqdn}" INFO replication 2>/dev/null \
+    role=$("${data_cli_base[@]}" -h "${fqdn}" INFO replication 2>/dev/null \
              | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
     if [ "${role}" = "master" ]; then
       echo "${fqdn}"
@@ -146,34 +157,63 @@ if [ -z "${primary_fqdn}" ]; then
 fi
 
 # ── register primary with each Sentinel pod ──────────────────────────────────
-# Allow override via SENTINEL_REPLICA_COUNT; default to 3.
-sentinel_replica_count="${SENTINEL_REPLICA_COUNT:-3}"
+# SENTINEL_REPLICA_COUNT is an exact contract when provided. Without it, scan a
+# bounded ordinal range and require at least one Sentinel to be configured.
+default_sentinel_scan_limit="${POST_RESTORE_SENTINEL_SCAN_LIMIT:-9}"
+default_sentinel_scan_limit=$(positive_int_or_default "${default_sentinel_scan_limit}" 9)
+expected_sentinel_count="${SENTINEL_REPLICA_COUNT:-}"
+if [ -n "${expected_sentinel_count}" ]; then
+  sentinel_replica_count=$(positive_int_or_default "${expected_sentinel_count}" "${default_sentinel_scan_limit}")
+  expected_sentinel_count="${sentinel_replica_count}"
+else
+  sentinel_replica_count="${default_sentinel_scan_limit}"
+fi
+
 ordinal=0
+configured_sentinel_count=0
+failed_sentinel_count=0
+consecutive_unreachable=0
 while [ "${ordinal}" -lt "${sentinel_replica_count}" ]; do
   sentinel_fqdn="${sentinel_comp}-${ordinal}.${sentinel_headless}"
   ordinal=$((ordinal + 1))
 
   # Check connectivity
-  response=$(${sentinel_cli_base} -h "${sentinel_fqdn}" PING 2>/dev/null) || {
+  response=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" PING 2>/dev/null) || {
     echo "INFO: Sentinel ${sentinel_fqdn} not reachable, skipping."
+    if [ -n "${expected_sentinel_count}" ]; then
+      failed_sentinel_count=$((failed_sentinel_count + 1))
+      continue
+    fi
+    consecutive_unreachable=$((consecutive_unreachable + 1))
+    [ "${consecutive_unreachable}" -ge 2 ] && [ "${configured_sentinel_count}" -gt 0 ] && break
     continue
   }
-  [ "${response}" != "PONG" ] && { echo "INFO: Sentinel ${sentinel_fqdn} not ready, skipping."; continue; }
+  response=$(printf '%s' "${response}" | tr -d '\r\n')
+  if [ "${response}" != "PONG" ]; then
+    echo "WARNING: Sentinel ${sentinel_fqdn} returned unexpected PING response: ${response}" >&2
+    failed_sentinel_count=$((failed_sentinel_count + 1))
+    continue
+  fi
+  consecutive_unreachable=0
+  sentinel_configured=1
 
   # Check if already monitoring
   # get-master-addr-by-name returns "(nil)" when master is not registered,
   # which is non-empty so must be checked explicitly.
-  existing=$(${sentinel_cli_base} -h "${sentinel_fqdn}" \
+  existing=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" \
                SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null) || true
+  existing=$(printf '%s' "${existing}" | tr -d '\r')
   if [ -z "${existing}" ] || [ "${existing}" = "(nil)" ]; then
     echo "INFO: Registering master '${master_name}' (${primary_fqdn}:${data_port}) with ${sentinel_fqdn}"
-    monitor_out=$(${sentinel_cli_base} -h "${sentinel_fqdn}" \
+    monitor_out=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" \
       SENTINEL monitor "${master_name}" "${primary_fqdn}" "${data_port}" 2 2>&1) || {
-      echo "WARNING: SENTINEL monitor command failed on ${sentinel_fqdn}: ${monitor_out}" >&2
-      continue
+      echo "ERROR: SENTINEL monitor command failed on ${sentinel_fqdn}: ${monitor_out}" >&2
+      sentinel_configured=0
     }
+    monitor_out=$(printf '%s' "${monitor_out}" | tr -d '\r\n')
     if [ "${monitor_out}" != "OK" ]; then
-      echo "WARNING: SENTINEL monitor unexpected response from ${sentinel_fqdn}: ${monitor_out}" >&2
+      echo "ERROR: SENTINEL monitor unexpected response from ${sentinel_fqdn}: ${monitor_out}" >&2
+      sentinel_configured=0
     fi
   else
     echo "INFO: Sentinel ${sentinel_fqdn} already monitors '${master_name}' — updating config."
@@ -181,20 +221,44 @@ while [ "${ordinal}" -lt "${sentinel_replica_count}" ]; do
 
   # Apply standard configuration
   # valkey-cli exits 0 even for server errors; capture output and check content.
-  sentinel_set_out=$(${sentinel_cli_base} -h "${sentinel_fqdn}" SENTINEL set "${master_name}" down-after-milliseconds 20000 2>&1) || true
-  [ "${sentinel_set_out}" != "OK" ] && echo "WARNING: failed to set down-after-milliseconds on ${sentinel_fqdn}: ${sentinel_set_out}" >&2
-  sentinel_set_out=$(${sentinel_cli_base} -h "${sentinel_fqdn}" SENTINEL set "${master_name}" failover-timeout 60000 2>&1) || true
-  [ "${sentinel_set_out}" != "OK" ] && echo "WARNING: failed to set failover-timeout on ${sentinel_fqdn}: ${sentinel_set_out}" >&2
-  sentinel_set_out=$(${sentinel_cli_base} -h "${sentinel_fqdn}" SENTINEL set "${master_name}" parallel-syncs 1 2>&1) || true
-  [ "${sentinel_set_out}" != "OK" ] && echo "WARNING: failed to set parallel-syncs on ${sentinel_fqdn}: ${sentinel_set_out}" >&2
-  if [ -n "${DP_DB_PASSWORD}" ]; then
-    sentinel_set_out=$(${sentinel_cli_base} -h "${sentinel_fqdn}" SENTINEL set "${master_name}" auth-user "${DP_DB_USER:-default}" 2>&1) || true
-    [ "${sentinel_set_out}" != "OK" ] && echo "WARNING: failed to set auth-user on ${sentinel_fqdn}: ${sentinel_set_out}" >&2
-    sentinel_set_out=$(${sentinel_cli_base} -h "${sentinel_fqdn}" SENTINEL set "${master_name}" auth-pass "${DP_DB_PASSWORD}" 2>&1) || true
-    [ "${sentinel_set_out}" != "OK" ] && echo "WARNING: failed to set auth-pass on ${sentinel_fqdn}: ${sentinel_set_out}" >&2
+  sentinel_set_out=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" SENTINEL set "${master_name}" down-after-milliseconds 20000 2>&1) || true
+  sentinel_set_out=$(printf '%s' "${sentinel_set_out}" | tr -d '\r\n')
+  [ "${sentinel_set_out}" != "OK" ] && { echo "ERROR: failed to set down-after-milliseconds on ${sentinel_fqdn}: ${sentinel_set_out}" >&2; sentinel_configured=0; }
+  sentinel_set_out=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" SENTINEL set "${master_name}" failover-timeout 60000 2>&1) || true
+  sentinel_set_out=$(printf '%s' "${sentinel_set_out}" | tr -d '\r\n')
+  [ "${sentinel_set_out}" != "OK" ] && { echo "ERROR: failed to set failover-timeout on ${sentinel_fqdn}: ${sentinel_set_out}" >&2; sentinel_configured=0; }
+  sentinel_set_out=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" SENTINEL set "${master_name}" parallel-syncs 1 2>&1) || true
+  sentinel_set_out=$(printf '%s' "${sentinel_set_out}" | tr -d '\r\n')
+  [ "${sentinel_set_out}" != "OK" ] && { echo "ERROR: failed to set parallel-syncs on ${sentinel_fqdn}: ${sentinel_set_out}" >&2; sentinel_configured=0; }
+  if [ -n "${DP_DB_PASSWORD:-}" ]; then
+    sentinel_set_out=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" SENTINEL set "${master_name}" auth-user "${DP_DB_USER:-default}" 2>&1) || true
+    sentinel_set_out=$(printf '%s' "${sentinel_set_out}" | tr -d '\r\n')
+    [ "${sentinel_set_out}" != "OK" ] && { echo "ERROR: failed to set auth-user on ${sentinel_fqdn}: ${sentinel_set_out}" >&2; sentinel_configured=0; }
+    sentinel_set_out=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" SENTINEL set "${master_name}" auth-pass "${DP_DB_PASSWORD}" 2>&1) || true
+    sentinel_set_out=$(printf '%s' "${sentinel_set_out}" | tr -d '\r\n')
+    [ "${sentinel_set_out}" != "OK" ] && { echo "ERROR: failed to set auth-pass on ${sentinel_fqdn}: ${sentinel_set_out}" >&2; sentinel_configured=0; }
   fi
 
-  echo "INFO: Sentinel ${sentinel_fqdn} configured."
+  if [ "${sentinel_configured}" -eq 1 ]; then
+    configured_sentinel_count=$((configured_sentinel_count + 1))
+    echo "INFO: Sentinel ${sentinel_fqdn} configured."
+  else
+    failed_sentinel_count=$((failed_sentinel_count + 1))
+  fi
 done   # end while ordinal < sentinel_replica_count
 
-echo "INFO: Post-restore Sentinel registration complete."
+if [ "${configured_sentinel_count}" -eq 0 ]; then
+  echo "ERROR: no Sentinel pod was configured; postReady cannot report restore success." >&2
+  exit 1
+fi
+
+if [ -n "${expected_sentinel_count}" ] && [ "${configured_sentinel_count}" -lt "${expected_sentinel_count}" ]; then
+  echo "ERROR: configured ${configured_sentinel_count}/${expected_sentinel_count} expected Sentinel pods." >&2
+  exit 1
+fi
+
+if [ "${failed_sentinel_count}" -gt 0 ]; then
+  echo "INFO: Sentinel registration completed with ${configured_sentinel_count} configured and ${failed_sentinel_count} skipped/failed."
+else
+  echo "INFO: Sentinel registration completed with ${configured_sentinel_count} configured."
+fi

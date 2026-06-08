@@ -7,7 +7,7 @@ Backup flow:
 
 Restore flow:
   1. prepareData: pull the archive and extract it into DATA_DIR before the pod starts.
-  2. postReady: best-effort Sentinel monitor re-registration after data restore.
+  2. postReady: fail-closed Sentinel monitor re-registration after data restore.
 
 KubeBlocks DataProtection passes standard DP_* variables into all job containers;
 DATA_DIR is injected from the ActionSet env. Current BackupPolicyTemplate env

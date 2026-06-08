@@ -3,9 +3,15 @@ kind: Cluster
 metadata:
   name: valkey-replication-restore
   namespace: demo
-  annotations:
-    kubeblocks.io/restore-from-backup: '{"valkey":{"name":"valkey-backup-datafile","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: valkey-backup-datafile
+      namespace: demo
+    parameters:
+      volumeRestorePolicy: Parallel
   terminationPolicy: Delete
   clusterDef: valkey
   topology: replication-9
