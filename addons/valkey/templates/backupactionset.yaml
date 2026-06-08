@@ -32,7 +32,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "valkey.defaultImage" . }}
+      image: $(IMAGE)
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -44,19 +44,16 @@ spec:
           {{- .Files.Get "dataprotection/backup.sh" | nindent 10 }}
   restore:
     prepareData:
-      image: {{ include "valkey.defaultImage" . }}
+      image: $(IMAGE)
       command:
         - bash
         - -c
         - |
           {{- .Files.Get "dataprotection/restore.sh" | nindent 10 }}
     postReady:
-      # Re-register the primary with Sentinel (Sentinel's own PVC is not backed up).
-      # This is best-effort because current DP BackupPolicyTemplate env cannot
-      # inject cross-component Sentinel credentials.
       - job:
-          image: {{ include "valkey.defaultImage" . }}
-          onError: Continue
+          image: $(IMAGE)
+          onError: Fail
           runOnTargetPodNode: false
           command:
             - bash

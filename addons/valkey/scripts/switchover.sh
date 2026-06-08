@@ -377,8 +377,14 @@ switchover_with_sentinel() {
     done
     return "${wfnm_rc}"
   else
-    # No candidate: any new master is a valid outcome — best-effort wait only.
-    wait_for_new_master "" "${KB_SWITCHOVER_CURRENT_FQDN}" || true
+    # No candidate: any new master is a valid outcome, but we must confirm one
+    # was actually elected. SENTINEL FAILOVER only means the command was accepted;
+    # without this check the OpsRequest would report success even if no promotion
+    # occurred (e.g. all replicas unreachable).
+    if ! wait_for_new_master "" "${KB_SWITCHOVER_CURRENT_FQDN}"; then
+      echo "ERROR: Sentinel failover accepted but no new primary confirmed" >&2
+      return 1
+    fi
   fi
 }
 

@@ -95,9 +95,11 @@ master_name="${comp_prefix}"
 comp_headless="${comp_prefix}-headless.${namespace}.svc.${cluster_domain}"
 
 find_primary_fqdn() {
-  local ordinal fqdn role
-  for ordinal in 0 1 2 3 4; do
+  local max_ordinal="${DATA_REPLICA_COUNT:-5}"
+  local ordinal=0 fqdn role consecutive_unreachable=0
+  while [ "${ordinal}" -lt "${max_ordinal}" ]; do
     fqdn="${comp_prefix}-${ordinal}.${comp_headless}"
+    ordinal=$((ordinal + 1))
 
     role=$(${data_cli_base} -h "${fqdn}" ROLE 2>/dev/null | head -1 | tr -d '\r\n') || true
     if [ "${role}" = "master" ]; then
@@ -110,6 +112,13 @@ find_primary_fqdn() {
     if [ "${role}" = "master" ]; then
       echo "${fqdn}"
       return 0
+    fi
+
+    if [ -z "${role}" ]; then
+      consecutive_unreachable=$((consecutive_unreachable + 1))
+      [ "${consecutive_unreachable}" -ge 2 ] && break
+    else
+      consecutive_unreachable=0
     fi
   done
   return 1
