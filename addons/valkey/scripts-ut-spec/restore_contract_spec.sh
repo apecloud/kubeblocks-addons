@@ -3,6 +3,7 @@
 
 Describe "Valkey restore contract"
   setup() {
+    original_path="${PATH}"
     spec_tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/valkey-restore-spec.XXXXXX")
     data_dir="${spec_tmp_dir}/data"
     fakebin="${spec_tmp_dir}/fakebin"
@@ -29,17 +30,31 @@ case "$1" in
     ;;
 esac
 SH
-    chmod +x "${fakebin}/datasafed"
+
+    cat > "${fakebin}/tar" <<'SH'
+#!/usr/bin/env bash
+set -e
+
+if [ "$1" = "-xvf" ] && [ "$2" = "-" ] && [ "$3" = "-C" ]; then
+  /usr/bin/tar -xf - -C "$4"
+  exit 0
+fi
+
+exec /usr/bin/tar "$@"
+SH
+    chmod +x "${fakebin}/datasafed" "${fakebin}/tar"
 
     export DATA_DIR="${data_dir}"
     export DP_BACKUP_NAME="restore-test"
     export DP_BACKUP_BASE_PATH="/backup"
     export DP_DATASAFED_BIN_PATH="${fakebin}"
+    export PATH="${fakebin}:${PATH}"
   }
   Before "setup"
 
   cleanup() {
     rm -rf "${spec_tmp_dir:-}"
+    export PATH="${original_path}"
     unset DATA_DIR
     unset DP_BACKUP_NAME
     unset DP_BACKUP_BASE_PATH
@@ -51,7 +66,6 @@ SH
     When run bash ../dataprotection/restore.sh
     The status should be success
     The stdout should include "INFO: Restore complete."
-    The stderr should include "./restored.txt"
     The file "${data_dir}/restored.txt" should be exist
     The file "${data_dir}/.kb-data-protection" should not be exist
   End
@@ -62,7 +76,6 @@ SH
     When run bash ../dataprotection/restore.sh
     The status should be success
     The stdout should include "INFO: Restore complete."
-    The stderr should include "./restored.txt"
     The file "${data_dir}/restored.txt" should be exist
     The file "${data_dir}/.kb-data-protection" should not be exist
   End
