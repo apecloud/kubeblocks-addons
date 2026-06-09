@@ -88,58 +88,58 @@ spec:
         "activedefrag"?: string & "yes" | "no"
         "active-defrag-cycle-max"?: int & >=1 & <=75
         "active-defrag-cycle-min"?: int & >=1 & <=75
-        "active-defrag-ignore-bytes"?: int
+        "active-defrag-ignore-bytes"?: int & >=0
         "active-expire-effort"?: int & >=1 & <=10
         "appendfsync"?: string & "always" | "everysec" | "no"
         "appendonly"?: string & "yes" | "no"
         "auto-aof-rewrite-min-size"?: string
-        "auto-aof-rewrite-percentage"?: int & >=0 & <=100
+        "auto-aof-rewrite-percentage"?: int & >=0
         "databases"?: int & >=1 & <=10000
-        "hash-max-listpack-entries"?: int
-        "hash-max-listpack-value"?: int
+        "hash-max-listpack-entries"?: int & >=0
+        "hash-max-listpack-value"?: int & >=0
         "hll-sparse-max-bytes"?: int & >=1 & <=16000
         "lazyfree-lazy-eviction"?: string & "yes" | "no"
         "lazyfree-lazy-expire"?: string & "yes" | "no"
         "lazyfree-lazy-server-del"?: string & "yes" | "no"
         "lazyfree-lazy-user-del"?: string & "yes" | "no"
-        "lfu-decay-time"?: int
-        "lfu-log-factor"?: int
-        "list-compress-depth"?: int
+        "lfu-decay-time"?: int & >=0
+        "lfu-log-factor"?: int & >=0
+        "list-compress-depth"?: int & >=0
         "list-max-listpack-size"?: int
         "loglevel"?: string & "debug" | "verbose" | "notice" | "warning"
         "maxclients"?: int & >=1 & <=65000
-        "maxmemory"?: int
+        "maxmemory"?: int & >=0
         "maxmemory-policy"?: string & "noeviction" | "allkeys-lru" | "volatile-lru" | "allkeys-random" | "volatile-random" | "volatile-ttl" | "volatile-lfu" | "allkeys-lfu"
         "maxmemory-samples"?: int & >=1 & <=10
-        "min-replicas-max-lag"?: int
-        "min-replicas-to-write"?: int
+        "min-replicas-max-lag"?: int & >=0
+        "min-replicas-to-write"?: int & >=0
         "notify-keyspace-events"?: string
-        "proto-max-bulk-len"?: int
+        "proto-max-bulk-len"?: int & >=1
         "rdb-del-sync-files"?: string & "yes" | "no"
         "rdbchecksum"?: string & "yes" | "no"
         "rdbcompression"?: string & "yes" | "no"
         "replica-lazy-flush"?: string & "yes" | "no"
-        "replica-priority"?: int & >=0 & <=100
+        "replica-priority"?: int & >=0
         "replica-read-only"?: string & "yes" | "no"
         "replica-serve-stale-data"?: string & "yes" | "no"
-        "repl-backlog-size"?: int
-        "repl-backlog-ttl"?: int
+        "repl-backlog-size"?: int & >=0
+        "repl-backlog-ttl"?: int & >=0
         "repl-diskless-load"?: string & "disabled" | "on-empty-db" | "swapdb"
         "repl-diskless-sync"?: string & "yes" | "no"
         "repl-diskless-sync-delay"?: int & >=0
         "repl-disable-tcp-nodelay"?: string & "yes" | "no"
-        "repl-timeout"?: int
+        "repl-timeout"?: int & >=1
         "save"?: string
-        "set-max-intset-entries"?: int
-        "set-max-listpack-entries"?: int
-        "set-max-listpack-value"?: int
+        "set-max-intset-entries"?: int & >=0
+        "set-max-listpack-entries"?: int & >=0
+        "set-max-listpack-value"?: int & >=0
         "slowlog-log-slower-than"?: int
-        "slowlog-max-len"?: int
+        "slowlog-max-len"?: int & >=0
         "stop-writes-on-bgsave-error"?: string & "yes" | "no"
-        "tcp-backlog"?: int
-        "tcp-keepalive"?: int
-        "timeout"?: int
-        "zset-max-listpack-entries"?: int
-        "zset-max-listpack-value"?: int
+        "tcp-backlog"?: int & >=1
+        "tcp-keepalive"?: int & >=0
+        "timeout"?: int & >=0
+        "zset-max-listpack-entries"?: int & >=0
+        "zset-max-listpack-value"?: int & >=0
       }
 {{- end }}
