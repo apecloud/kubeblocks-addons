@@ -156,20 +156,3 @@ Define rocketmq dashboard scripts configMap template name
 {{- define "rocketmq-dashboard.scriptsTemplate" -}}
 rocketmq-dashboard-scripts
 {{- end -}}
-
-{{/*
-Generate scripts configmap
-*/}}
-{{- define "rocketmq.extend.reload.scripts" -}}
-{{- range $path, $_ :=  $.Files.Glob "reloader/**" }}
-{{ $path | base }}: |-
-{{- $.Files.Get $path | nindent 2 }}
-{{- end }}
-{{- end }}
-
-{{/*
-Define rocketmq scripts configMap template name
-*/}}
-{{- define "rocketmq.reloader.scripts" -}}
-rocketmq-reload-tools-script
-{{- end -}}

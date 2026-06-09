@@ -11,21 +11,6 @@ spec:
   fileName: broker.conf
   fileFormatConfig:
     format: props-plus
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - "update-broker-parameter.sh"
-      scriptConfig:
-        scriptConfigMapRef: {{ include "rocketmq.reloader.scripts" . }}
-        namespace: {{ .Release.Namespace }}
-      toolsSetup:
-        mountPoint: /kb_tools
-        toolConfigs:
-          - name: kb-tools
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-            asContainerImage: true
-
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level gaussdb configuration type
