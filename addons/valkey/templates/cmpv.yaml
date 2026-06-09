@@ -1,0 +1,75 @@
+{{/*
+Two ComponentVersion resources: one for the data component, one for sentinel.
+They are separate objects because they declare different compatibilityRules
+(different compDef regexp patterns).
+*/}}
+
+# ── Data component ───────────────────────────────────────────────────────────
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: valkey
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    {{- range .Values.valkeyVersions }}
+    - compDefs:
+        - {{ .componentDef }}
+      releases:
+        {{- range .mirrorVersions }}
+        - {{ .version }}
+        {{- end }}
+    {{- end }}
+
+  releases:
+    {{- range .Values.valkeyVersions }}
+    {{- $valkeyRepo := printf "%s/%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository }}
+    {{- range .mirrorVersions }}
+    - name: {{ .version }}
+      serviceVersion: {{ .version }}
+      images:
+        valkey: {{ $valkeyRepo }}:{{ .imageTag }}
+        metrics: {{ $.Values.metrics.image.registry | default "docker.io" }}/{{ $.Values.metrics.image.repository }}:{{ $.Values.metrics.image.tag }}
+        postProvision: {{ $valkeyRepo }}:{{ .imageTag }}
+        accountProvision: {{ $valkeyRepo }}:{{ .imageTag }}
+        switchover: {{ $valkeyRepo }}:{{ .imageTag }}
+        memberJoin: {{ $valkeyRepo }}:{{ .imageTag }}
+    {{- end }}
+    {{- end }}
+
+---
+# ── Sentinel component ───────────────────────────────────────────────────────
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: valkey-sentinel
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    {{- range .Values.valkeyVersions }}
+    - compDefs:
+        - {{ .sentinelComponentDef }}
+      releases:
+        {{- range .mirrorVersions }}
+        - {{ .version }}
+        {{- end }}
+    {{- end }}
+
+  releases:
+    {{- range .Values.valkeyVersions }}
+    {{- $valkeyRepo := printf "%s/%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository }}
+    {{- range .mirrorVersions }}
+    - name: {{ .version }}
+      serviceVersion: {{ .version }}
+      images:
+        # Sentinel runs as valkey-server --sentinel, so it uses the same image
+        valkey-sentinel: {{ $valkeyRepo }}:{{ .imageTag }}
+        accountProvision: {{ $valkeyRepo }}:{{ .imageTag }}
+    {{- end }}
+    {{- end }}

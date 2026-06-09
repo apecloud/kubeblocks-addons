@@ -1,0 +1,9 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: valkey-backup-datafile
+  namespace: demo
+spec:
+  backupMethod: datafile
+  backupPolicyName: valkey-replication-valkey-backup-policy
+  deletionPolicy: Delete

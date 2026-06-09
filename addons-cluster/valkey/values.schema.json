@@ -1,0 +1,157 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "version": {
+      "title": "Version",
+      "description": "Valkey service version.",
+      "type": "string",
+      "default": "9.0.0"
+    },
+    "mode": {
+      "title": "Mode",
+      "description": "Valkey topology mode.",
+      "type": "string",
+      "default": "replication",
+      "enum": [
+        "standalone",
+        "replication"
+      ]
+    },
+    "replicas": {
+      "title": "Replicas",
+      "description": "The number of data component replicas.",
+      "type": "integer",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 9
+    },
+    "cpu": {
+      "title": "CPU",
+      "description": "CPU cores.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 0.5,
+      "minimum": 0.1,
+      "maximum": 64
+    },
+    "memory": {
+      "title": "Memory(Gi)",
+      "description": "Memory in Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 0.5,
+      "minimum": 0.1,
+      "maximum": 1000
+    },
+    "storage": {
+      "title": "Storage(Gi)",
+      "description": "Data storage size in Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 20,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "storageClassName": {
+      "title": "Storage Class Name",
+      "description": "StorageClass name for the data volume.",
+      "type": "string",
+      "default": ""
+    },
+    "nodePortEnabled": {
+      "title": "NodePort Enabled",
+      "type": "boolean",
+      "default": false
+    },
+    "loadBalancerEnabled": {
+      "title": "LoadBalancer Enabled",
+      "type": "boolean",
+      "default": false
+    },
+    "podAntiAffinityEnabled": {
+      "title": "Pod Anti-Affinity Enabled",
+      "type": "boolean",
+      "default": false
+    },
+    "tlsEnable": {
+      "title": "TLS Enabled",
+      "type": "boolean",
+      "default": false
+    },
+    "customSecretName": {
+      "title": "Default account secret name",
+      "type": "string",
+      "default": ""
+    },
+    "customSecretNamespace": {
+      "title": "Default account secret namespace",
+      "type": "string",
+      "default": ""
+    },
+    "sentinel": {
+      "title": "Valkey Sentinel component",
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Sentinel replicas",
+          "type": "integer",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 9
+        },
+        "cpu": {
+          "title": "Sentinel CPU",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 0.5,
+          "minimum": 0.1,
+          "maximum": 64
+        },
+        "memory": {
+          "title": "Sentinel memory(Gi)",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 0.5,
+          "minimum": 0.1,
+          "maximum": 1000
+        },
+        "storage": {
+          "title": "Sentinel storage(Gi)",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 5,
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "storageClassName": {
+          "title": "Sentinel StorageClass name",
+          "type": "string",
+          "default": ""
+        },
+        "customSecretName": {
+          "title": "Sentinel default account secret name",
+          "type": "string",
+          "default": ""
+        },
+        "customSecretNamespace": {
+          "title": "Sentinel default account secret namespace",
+          "type": "string",
+          "default": ""
+        }
+      }
+    }
+  }
+}
