@@ -1,7 +1,10 @@
-## All parameters need to be restarted
+## Parameters that require restart
 staticParameters:
   - cluster-enabled
   - databases
-  - maxclients
   - io-threads
   - io-threads-do-reads
+
+## Parameters that can be changed at runtime via CONFIG SET
+dynamicParameters:
+  - maxclients

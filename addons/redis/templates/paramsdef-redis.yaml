@@ -28,4 +28,13 @@ spec:
     - {{ . }}
     {{- end }}
   {{- end}}
+
+  ## can be changed at runtime via CONFIG SET
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- $params := get $pd "dynamicParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
 {{- end}}

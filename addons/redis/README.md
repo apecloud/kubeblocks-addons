@@ -563,8 +563,8 @@ kubectl apply -f examples/redis/configure.yaml
 This example will change the `maxclients` to `10001` for the Redis component.
 `maxclients` in Redis specifies the maximum number of simultaneous client connections the server will accept. Once this limit is reached, Redis will start rejecting new connections until existing clients disconnect.
 
-> [!CAUTION]
-> It is defined as a static parameter, which means the Redis component will be restarted after the reconfiguration.
+> [!NOTE]
+> `maxclients` is a dynamic parameter. Redis applies it at runtime via `CONFIG SET` without restarting.
 
 To verify the reconfiguration, you can connect to the Redis pod and check the configuration with the following command:
 
