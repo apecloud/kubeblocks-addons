@@ -54,4 +54,33 @@ Describe "Valkey post-restore Sentinel contract"
     When call grep -F "kubeblocks.io/restore-from-backup" "${restore_example}"
     The status should be failure
   End
+
+  It "uses SENTINEL_POD_FQDN_LIST as authoritative target set when available"
+    When call grep -F 'SENTINEL_POD_FQDN_LIST' "${script_file}"
+    The status should be success
+    The stdout should include "SENTINEL_POD_FQDN_LIST"
+  End
+
+  It "parses SENTINEL_POD_FQDN_LIST into an array with IFS comma split"
+    When call grep -E "IFS=',' read -ra sentinel_fqdn_list" "${script_file}"
+    The status should be success
+    The stdout should include "sentinel_fqdn_list"
+  End
+
+  It "exits with error when SENTINEL_POD_FQDN_LIST is set but empty after parsing"
+    When call grep -F "SENTINEL_POD_FQDN_LIST is set but empty" "${script_file}"
+    The status should be success
+    The stdout should include "SENTINEL_POD_FQDN_LIST is set but empty"
+  End
+
+  It "fails closed when configured count is less than expected count"
+    When call grep -E 'configured.*expected.*Sentinel pods' "${script_file}"
+    The status should be success
+    The stdout should include "expected Sentinel pods"
+  End
+
+  It "does not reference restore-sentinel-acl.sh (dead code removed)"
+    When call test ! -f "../dataprotection/restore-sentinel-acl.sh"
+    The status should be success
+  End
 End
