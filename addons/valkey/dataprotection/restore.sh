@@ -14,11 +14,15 @@ export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_BASE_PATH}"
 mkdir -p "${DATA_DIR}"
 
 # Safety check: refuse to restore into a non-empty data directory.
-# Use -maxdepth 1 to check for any entry (file or directory) directly inside DATA_DIR.
+# Use -maxdepth 1 to check for any real data entry directly inside DATA_DIR.
 placeholder="${DATA_DIR}/.kb-data-protection"
-existing_entries=$(find "${DATA_DIR}" -mindepth 1 -maxdepth 1)
-if [ -n "${existing_entries}" ] && [ ! -f "${placeholder}" ]; then
+unexpected_entries=$(find "${DATA_DIR}" -mindepth 1 -maxdepth 1 ! -name ".kb-data-protection")
+if [ -n "${unexpected_entries}" ]; then
   echo "ERROR: ${DATA_DIR} is not empty. Remove all data before restoring." >&2
+  exit 1
+fi
+if [ -e "${placeholder}" ] && [ ! -f "${placeholder}" ]; then
+  echo "ERROR: ${placeholder} exists but is not a file." >&2
   exit 1
 fi
 touch "${placeholder}"
