@@ -184,10 +184,6 @@ Generate scripts configmap
 redis-account.sh: |-
 {{- $.Files.Get "scripts/redis-account.sh" | nindent 2 }}
 {{- end }}
-{{- if $.Files.Get "scripts/reload-parameter.sh" }}
-reload-parameter.sh: |-
-{{- $.Files.Get "scripts/reload-parameter.sh" | nindent 2 }}
-{{- end }}
 {{- end }}
 
 {{- define "redis.config.reconfigureAction" -}}
@@ -197,19 +193,14 @@ reconfigure:
     container: {{ $container }}
     targetPodSelector: All
     command:
-      - /bin/sh
+      - /bin/bash
       - -c
       - |
-        rc=0
-        tr '\0' '\n' < /proc/self/environ > /tmp/_reconf_env.txt
-        while IFS= read -r line; do
-          key="${line%%=*}"
-          printf '%s\n' "$key" | grep -qE '^[a-z0-9_.-][a-z0-9_.-]*$' || continue
-          value="${line#*=}"
-          /scripts/reload-parameter.sh "$key" "$value" || rc=$?
-        done < /tmp/_reconf_env.txt
-        rm -f /tmp/_reconf_env.txt
-        exit "$rc"
+        set -eu
+        env | cut -d= -f1 | grep -E '^[a-zA-Z0-9_.-]+$' | sort -u | while IFS= read -r param; do
+          [ -n "${param}" ] || continue
+          /scripts/reload-parameter.sh "${param//_/-}" "$(printenv "${param}")"
+        done
 {{- end -}}
 
 {{- define "apeDts.reshard.image" -}}
