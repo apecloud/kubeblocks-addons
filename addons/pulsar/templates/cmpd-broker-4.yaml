@@ -89,7 +89,9 @@ spec:
               set -eu
 
               cd /pulsar 2>/dev/null || cd /opt/pulsar
-              env PULSAR_CLIENT_CONF=/opt/pulsar/conf/client.conf \
+              client_conf="$(pwd)/conf/client.conf"
+
+              env PULSAR_CLIENT_CONF="$client_conf" \
                 bin/pulsar-admin brokers update-dynamic-config --config "$1" --value "$2"
             - --
   scripts:
