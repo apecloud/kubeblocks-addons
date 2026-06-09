@@ -1468,18 +1468,25 @@ fence_current_primary_local_writes_after_dcs() {
   log_switchover_info "Switchover post-DCS guard: setting current primary ${current_name} read_only=ON before candidate can accept writes"
   local fence_attempt=1
   local fence_max=10
+  local syncer_race_hold=3
   while [ "${fence_attempt}" -le "${fence_max}" ]; do
     set_local_read_only "ON" 2>/dev/null || true
     if local_read_only_is "1"; then
-      log_switchover_info "Switchover post-DCS read_only=ON verified at attempt=${fence_attempt}"
-      break
+      log_switchover_info "Switchover post-DCS read_only=ON set at attempt=${fence_attempt}, holding ${syncer_race_hold}s for syncer race window"
+      sleep "${syncer_race_hold}"
+      if local_read_only_is "1"; then
+        log_switchover_info "Switchover post-DCS read_only=ON stable after ${syncer_race_hold}s hold at attempt=${fence_attempt}"
+        break
+      fi
+      log_switchover_info "Switchover post-DCS read_only reverted during hold (syncer race), re-setting (attempt=${fence_attempt}/${fence_max})"
+    else
+      log_switchover_info "Switchover post-DCS read_only=ON not yet confirmed, retrying (attempt=${fence_attempt}/${fence_max})"
     fi
-    log_switchover_info "Switchover post-DCS read_only=ON not yet stable, retrying (attempt=${fence_attempt}/${fence_max})"
     sleep 1
     fence_attempt=$((fence_attempt + 1))
   done
   if ! local_read_only_is "1"; then
-    log_switchover_error "Switchover failed: current primary read_only=ON was not verified after ${fence_max} attempts"
+    log_switchover_error "Switchover failed: current primary read_only=ON was not stable after ${fence_max} attempts"
     return 1
   fi
   # alpha.60 + alpha.124: synchronously revoke user-facing root admin bypass
