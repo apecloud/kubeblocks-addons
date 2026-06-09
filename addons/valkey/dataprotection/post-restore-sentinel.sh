@@ -92,9 +92,8 @@ fi
 
 echo "INFO: resolved target context pod=${pod_name} namespace=${namespace} comp=${comp_prefix}"
 
-# Sentinel component name follows the ClusterDefinition topology:
-# component name "valkey-sentinel" → pod name "<cluster>-valkey-sentinel-<n>"
-sentinel_comp="${cluster_prefix}-valkey-sentinel"
+sentinel_comp_name="${SENTINEL_COMPONENT_NAME:-valkey-sentinel}"
+sentinel_comp="${cluster_prefix}-${sentinel_comp_name}"
 sentinel_headless="${sentinel_comp}-headless.${namespace}.svc.${cluster_domain}"
 # Use full component name as master-name (matches register-to-sentinel logic)
 master_name="${comp_prefix}"
@@ -157,25 +156,40 @@ if [ -z "${primary_fqdn}" ]; then
 fi
 
 # ── register primary with each Sentinel pod ──────────────────────────────────
-# SENTINEL_REPLICA_COUNT is an exact contract when provided. Without it, scan a
-# bounded ordinal range and require at least one Sentinel to be configured.
-default_sentinel_scan_limit="${POST_RESTORE_SENTINEL_SCAN_LIMIT:-9}"
-default_sentinel_scan_limit=$(positive_int_or_default "${default_sentinel_scan_limit}" 9)
-expected_sentinel_count="${SENTINEL_REPLICA_COUNT:-}"
-if [ -n "${expected_sentinel_count}" ]; then
-  sentinel_replica_count=$(positive_int_or_default "${expected_sentinel_count}" "${default_sentinel_scan_limit}")
-  expected_sentinel_count="${sentinel_replica_count}"
+# When SENTINEL_POD_FQDN_LIST is provided, use it as the authoritative target
+# set and require every listed Sentinel to be configured (fail-closed).
+# Otherwise, fall back to ordinal scanning with SENTINEL_REPLICA_COUNT or a
+# bounded scan limit.
+sentinel_fqdn_list=()
+if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
+  IFS=',' read -ra sentinel_fqdn_list <<< "${SENTINEL_POD_FQDN_LIST}"
+  expected_sentinel_count="${#sentinel_fqdn_list[@]}"
+  if [ "${expected_sentinel_count}" -eq 0 ]; then
+    echo "ERROR: SENTINEL_POD_FQDN_LIST is set but empty after parsing." >&2
+    exit 1
+  fi
+  echo "INFO: using SENTINEL_POD_FQDN_LIST (${expected_sentinel_count} entries) as target set."
 else
-  sentinel_replica_count="${default_sentinel_scan_limit}"
+  default_sentinel_scan_limit="${POST_RESTORE_SENTINEL_SCAN_LIMIT:-9}"
+  default_sentinel_scan_limit=$(positive_int_or_default "${default_sentinel_scan_limit}" 9)
+  expected_sentinel_count="${SENTINEL_REPLICA_COUNT:-}"
+  if [ -n "${expected_sentinel_count}" ]; then
+    sentinel_replica_count=$(positive_int_or_default "${expected_sentinel_count}" "${default_sentinel_scan_limit}")
+    expected_sentinel_count="${sentinel_replica_count}"
+  else
+    sentinel_replica_count="${default_sentinel_scan_limit}"
+  fi
+  ordinal=0
+  while [ "${ordinal}" -lt "${sentinel_replica_count}" ]; do
+    sentinel_fqdn_list+=("${sentinel_comp}-${ordinal}.${sentinel_headless}")
+    ordinal=$((ordinal + 1))
+  done
 fi
 
-ordinal=0
 configured_sentinel_count=0
 failed_sentinel_count=0
 consecutive_unreachable=0
-while [ "${ordinal}" -lt "${sentinel_replica_count}" ]; do
-  sentinel_fqdn="${sentinel_comp}-${ordinal}.${sentinel_headless}"
-  ordinal=$((ordinal + 1))
+for sentinel_fqdn in "${sentinel_fqdn_list[@]}"; do
 
   # Check connectivity
   response=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" PING 2>/dev/null) || {
@@ -245,7 +259,7 @@ while [ "${ordinal}" -lt "${sentinel_replica_count}" ]; do
   else
     failed_sentinel_count=$((failed_sentinel_count + 1))
   fi
-done   # end while ordinal < sentinel_replica_count
+done
 
 if [ "${configured_sentinel_count}" -eq 0 ]; then
   echo "ERROR: no Sentinel pod was configured; postReady cannot report restore success." >&2

@@ -33,22 +33,18 @@ export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_BASE_PATH}"
 # Detect TLS via connection probe.
 # The backup job does not mount the TLS volume (it may not exist in non-TLS clusters),
 # so we probe: try a plain connection first; if it fails, retry with --tls --insecure.
-tls_args=""
-_probe_base="valkey-cli --no-auth-warning -h ${DP_DB_HOST} -p ${DP_DB_PORT}"
-[ -n "${DP_DB_PASSWORD}" ] && _probe_base="${_probe_base} -a ${DP_DB_PASSWORD}"
-if ! ${_probe_base} PING 2>/dev/null | grep -q "PONG"; then
-  if ${_probe_base} --tls --insecure PING 2>/dev/null | grep -q "PONG"; then
-    tls_args="--tls --insecure"
+_tls_args=()
+_probe_base=(valkey-cli --no-auth-warning -h "${DP_DB_HOST}" -p "${DP_DB_PORT}")
+[ -n "${DP_DB_PASSWORD:-}" ] && _probe_base+=(-a "${DP_DB_PASSWORD}")
+if ! "${_probe_base[@]}" PING 2>/dev/null | grep -q "PONG"; then
+  if "${_probe_base[@]}" --tls --insecure PING 2>/dev/null | grep -q "PONG"; then
+    _tls_args=(--tls --insecure)
     echo "INFO: TLS detected via connection probe — using --tls --insecure"
   fi
 fi
 
-# Build valkey-cli connection command
-if [ -n "${DP_DB_PASSWORD}" ]; then
-  connect_url="valkey-cli --no-auth-warning ${tls_args} -h ${DP_DB_HOST} -p ${DP_DB_PORT} -a ${DP_DB_PASSWORD}"
-else
-  connect_url="valkey-cli --no-auth-warning ${tls_args} -h ${DP_DB_HOST} -p ${DP_DB_PORT}"
-fi
+connect_base=(valkey-cli --no-auth-warning "${_tls_args[@]}" -h "${DP_DB_HOST}" -p "${DP_DB_PORT}")
+[ -n "${DP_DB_PASSWORD:-}" ] && connect_base+=(-a "${DP_DB_PASSWORD}")
 
 # Save Sentinel ACL only when Sentinel connection variables are explicitly
 # supplied. The current chart's BackupPolicyTemplate does not inject them.
@@ -56,10 +52,9 @@ save_sentinel_acl() {
   [ -z "${SENTINEL_POD_FQDN_LIST}" ] && return 0
   local acl_list=""
   for sentinel_fqdn in $(echo "${SENTINEL_POD_FQDN_LIST}" | tr ',' '\n'); do
-    local s_cli="valkey-cli --no-auth-warning ${tls_args} -h ${sentinel_fqdn} -p ${SENTINEL_SERVICE_PORT:-26379}"
-    [ -n "${SENTINEL_PASSWORD}" ] && s_cli="${s_cli} -a ${SENTINEL_PASSWORD}"
-    acl_list=$(${s_cli} ACL LIST 2>/dev/null) || continue
-    # valkey-cli exits 0 even for protocol errors; skip sentinel if output is an error.
+    local s_cli_base=(valkey-cli --no-auth-warning "${_tls_args[@]}" -h "${sentinel_fqdn}" -p "${SENTINEL_SERVICE_PORT:-26379}")
+    [ -n "${SENTINEL_PASSWORD:-}" ] && s_cli_base+=(-a "${SENTINEL_PASSWORD}")
+    acl_list=$("${s_cli_base[@]}" ACL LIST 2>/dev/null) || continue
     case "${acl_list}" in "(error)"*|"ERR "*) continue ;; esac
     break
   done
@@ -74,8 +69,8 @@ save_sentinel_acl() {
 # Record LASTSAVE timestamp before triggering so we can confirm our BGSAVE
 # completes (not a pre-existing one that was already in progress).
 echo "INFO: Triggering BGSAVE on ${DP_DB_HOST}:${DP_DB_PORT}"
-_lastsave_before=$(${connect_url} LASTSAVE 2>/dev/null) || _lastsave_before=0
-_bgsave_output=$(${connect_url} BGSAVE 2>&1) || {
+_lastsave_before=$("${connect_base[@]}" LASTSAVE 2>/dev/null) || _lastsave_before=0
+_bgsave_output=$("${connect_base[@]}" BGSAVE 2>&1) || {
   echo "ERROR: BGSAVE command failed: ${_bgsave_output}" >&2
   exit 1
 }
@@ -91,7 +86,7 @@ echo "INFO: Waiting for BGSAVE to complete..."
 _bgsave_timeout=300   # 5 minutes max
 _bgsave_elapsed=0
 while [ "${_bgsave_elapsed}" -lt "${_bgsave_timeout}" ]; do
-  persistence_info=$(${connect_url} INFO persistence 2>/dev/null) || {
+  persistence_info=$("${connect_base[@]}" INFO persistence 2>/dev/null) || {
     echo "ERROR: lost connection to Valkey while waiting for BGSAVE" >&2
     exit 1
   }
@@ -104,7 +99,7 @@ while [ "${_bgsave_elapsed}" -lt "${_bgsave_timeout}" ]; do
     fi
     # Confirm the save timestamp advanced past our baseline to ensure
     # we are not capturing a pre-existing BGSAVE completion.
-    _lastsave_now=$(${connect_url} LASTSAVE 2>/dev/null) || _lastsave_now=0
+    _lastsave_now=$("${connect_base[@]}" LASTSAVE 2>/dev/null) || _lastsave_now=0
     if [ "${_lastsave_now}" -gt "${_lastsave_before}" ]; then
       echo "INFO: BGSAVE completed (lastsave=${_lastsave_now})."
       break
