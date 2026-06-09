@@ -202,7 +202,7 @@ reconfigure:
     container: {{ $container }}
     targetPodSelector: All
     command:
-      - /bin/sh
+      - /bin/bash
       - -c
       - |
         set -eu

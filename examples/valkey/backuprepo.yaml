@@ -1,0 +1,16 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupRepo
+metadata:
+  name: valkey-backuprepo
+  annotations:
+    dataprotection.kubeblocks.io/is-default-repo: "true"
+spec:
+  storageProviderRef: oss
+  accessMethod: Tool
+  config:
+    bucket: <your-bucket>
+    region: <your-region>
+  credential:
+    name: <credential-for-backuprepo>
+    namespace: kb-system
+  pvReclaimPolicy: Retain

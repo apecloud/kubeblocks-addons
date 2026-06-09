@@ -1,0 +1,8 @@
+{{- include "valkey-cluster.clusterCommon" . }}
+  componentSpecs:
+  {{- if eq .Values.mode "replication" }}
+  {{- include "valkey-cluster.sentinelComponentSpec" . | nindent 4 }}
+  {{- include "valkey-cluster.componentSpec" . | nindent 4 }}
+  {{- else if eq .Values.mode "standalone" }}
+  {{- include "valkey-cluster.componentSpec" . | nindent 4 }}
+  {{- end }}

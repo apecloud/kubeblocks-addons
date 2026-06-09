@@ -1,0 +1,16 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: valkey-verticalscale
+  namespace: demo
+spec:
+  clusterName: valkey-replication
+  type: VerticalScaling
+  verticalScaling:
+    - componentName: valkey
+      requests:
+        cpu: "1"
+        memory: 1Gi
+      limits:
+        cpu: "1"
+        memory: 1Gi
