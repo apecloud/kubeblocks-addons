@@ -8,3 +8,7 @@ staticParameters:
 ## Parameters that can be changed at runtime via CONFIG SET
 dynamicParameters:
   - maxclients
+  - timeout
+  - loglevel
+  - maxmemory-policy
+  - appendfsync
