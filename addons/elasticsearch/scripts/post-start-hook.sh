@@ -54,6 +54,42 @@ function wait_for_cluster_health() {
     done
 }
 
+function wait_for_local_api() {
+    for _ in $(seq 1 60); do
+        if curl --fail ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/health?local=true" >/dev/null 2>&1; then
+            return 0
+        fi
+        echo "waiting for local elasticsearch API..."
+        sleep 2
+    done
+    return 1
+}
+
+function clear_stale_allocation_exclusion_for_self() {
+    if [ -z "${POD_NAME:-}" ]; then
+        echo "POD_NAME is empty, skip clearing stale shard allocation exclusion"
+        return 0
+    fi
+
+    if ! wait_for_local_api; then
+        echo "local elasticsearch API is not ready, skip clearing stale shard allocation exclusion"
+        return 0
+    fi
+
+    current_exclusion=$(curl --fail ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/settings?include_defaults=false" | jq -r '.persistent.cluster.routing.allocation.exclude._name // empty')
+    if [ "${current_exclusion}" != "${POD_NAME}" ]; then
+        echo "no stale shard allocation exclusion for ${POD_NAME}"
+        return 0
+    fi
+
+    echo "clearing stale shard allocation exclusion for ${POD_NAME}"
+    curl --fail ${COMMON_OPTIONS} -X PUT "${ENDPOINT}/_cluster/settings" -H 'Content-Type: application/json' -d '{"persistent":{"cluster.routing.allocation.exclude._name":null}}'
+}
+
+if [ "${ES_POST_START_UNIT_TEST:-0}" = "1" ]; then
+    return 0 2>/dev/null || exit 0
+fi
+
 # For master nodes: Initialize cluster and create CLUSTER_FORMED_FILE
 # CLUSTER_FORMED_FILE is used to indicate that cluster is already initialized
 # When cluster restarts, elasticsearch.yml needs to be modified to remove INITIAL_MASTER_NODES_BLOCK
@@ -79,9 +115,12 @@ else
 	if grep 'type: single-node' config/elasticsearch.yml > /dev/null 2>&1; then
 		echo "single-node mode, skip cluster formation and user initialization"
 	else
+        clear_stale_allocation_exclusion_for_self
     	exit 0
 	fi
 fi
+
+clear_stale_allocation_exclusion_for_self
 
 # The following operations only need to be performed on master-0
 idx=${POD_NAME##*-}
