@@ -119,7 +119,7 @@ spec:
         "rdbchecksum"?: string & "yes" | "no"
         "rdbcompression"?: string & "yes" | "no"
         "replica-lazy-flush"?: string & "yes" | "no"
-        "replica-priority"?: int & >=0
+        "replica-priority"?: int & >=0 & <=2147483647
         "replica-read-only"?: string & "yes" | "no"
         "replica-serve-stale-data"?: string & "yes" | "no"
         "repl-backlog-size"?: int & >=0
