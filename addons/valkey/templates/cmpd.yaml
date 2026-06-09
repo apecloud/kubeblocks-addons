@@ -177,15 +177,6 @@ spec:
   # variables into every container AND into lifecycleAction exec commands.
   # The $(VAR_NAME) syntax references them in the env[] list below.
   vars:
-    # ── Static flags set per major version ──
-    {{- if eq .major "8" }}
-    - name: IS_VALKEY8
-      value: "true"
-    {{- else if eq .major "9" }}
-    - name: IS_VALKEY9
-      value: "true"
-    {{- end }}
-
     # ── Cluster-scoped ──
     - name: CLUSTER_NAME
       valueFrom:

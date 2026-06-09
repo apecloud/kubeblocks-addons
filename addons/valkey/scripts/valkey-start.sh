@@ -258,57 +258,6 @@ build_replicaof_config() {
   echo "replicaof ${primary_fqdn} ${primary_port}" >> "${CONF_RUNTIME}"
 }
 
-# query_sentinel_for_master — ask each Sentinel pod for the current master
-# address and return it as "<fqdn>" if a match is found in VALKEY_POD_FQDN_LIST.
-# Returns empty string (and exit 0) if no Sentinel responds or the master is
-# not yet registered.
-query_sentinel_for_master() {
-  local sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
-  local master_name="${VALKEY_COMPONENT_NAME}"
-
-  # shellcheck disable=SC2206
-  local sentinel_cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${sentinel_port}")
-  if ! is_empty "${SENTINEL_PASSWORD}"; then
-    sentinel_cli_base+=(-a "${SENTINEL_PASSWORD}")
-  fi
-
-  IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
-  for s_fqdn in "${sentinel_fqdns[@]}"; do
-    local response
-    response=$("${sentinel_cli_base[@]}" -h "${s_fqdn}" \
-                 SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null) || continue
-
-    # Response is two lines: IP/host on line 1, port on line 2.
-    # "(nil)" means master not yet registered with Sentinel — skip silently.
-    local master_addr
-    master_addr=$(echo "${response}" | head -n1 | tr -d '\r\n')
-    if is_empty "${master_addr}" || [ "${master_addr}" = "(nil)" ]; then
-      continue
-    fi
-
-    # Resolve master_addr to an FQDN from our known list.
-    # master_addr may be an IP or a hostname; try to match against pod FQDNs.
-    IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
-    for pod_fqdn in "${pod_fqdns[@]}"; do
-      # Match by IP: resolve each FQDN and compare.
-      local pod_ip
-      pod_ip=$(getent hosts "${pod_fqdn}" 2>/dev/null | awk '{print $1}' | head -n1) || true
-      # Anchor the substring check with "." so "valkey-1" does not match "valkey-11.headless...".
-      if [ "${master_addr}" = "${pod_ip}" ] || [ "${master_addr}" = "${pod_fqdn}" ] || \
-         contains "${pod_fqdn}" "${master_addr}."; then
-        echo "${pod_fqdn}"
-        return 0
-      fi
-    done
-
-    # If we got an address but couldn't match it to a known FQDN, log and continue.
-    echo "WARNING: Sentinel returned master '${master_addr}' but no matching FQDN found." >&2
-  done
-
-  # No Sentinel responded with a usable address.
-  return 0
-}
-
 # query_sentinel_quorum_for_master — query ALL sentinel pods and return the
 # master FQDN only when a strict majority (>= floor(N/2)+1) agree on the same
 # answer.  Returns empty string (exit 0) if no quorum consensus exists yet.
