@@ -92,9 +92,8 @@ fi
 
 echo "INFO: resolved target context pod=${pod_name} namespace=${namespace} comp=${comp_prefix}"
 
-# Sentinel component name follows the ClusterDefinition topology:
-# component name "valkey-sentinel" → pod name "<cluster>-valkey-sentinel-<n>"
-sentinel_comp="${cluster_prefix}-valkey-sentinel"
+sentinel_comp_name="${SENTINEL_COMPONENT_NAME:-valkey-sentinel}"
+sentinel_comp="${cluster_prefix}-${sentinel_comp_name}"
 sentinel_headless="${sentinel_comp}-headless.${namespace}.svc.${cluster_domain}"
 # Use full component name as master-name (matches register-to-sentinel logic)
 master_name="${comp_prefix}"

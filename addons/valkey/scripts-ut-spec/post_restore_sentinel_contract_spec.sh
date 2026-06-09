@@ -18,6 +18,17 @@ Describe "Valkey post-restore Sentinel contract"
     The status should be failure
   End
 
+  It "derives sentinel component name from SENTINEL_COMPONENT_NAME when available"
+    When call grep -F 'SENTINEL_COMPONENT_NAME:-' "${script_file}"
+    The status should be success
+    The stdout should include "SENTINEL_COMPONENT_NAME:-"
+  End
+
+  It "does not hardcode valkey-sentinel as a fixed component name"
+    When call grep -F 'sentinel_comp="${cluster_prefix}-valkey-sentinel"' "${script_file}"
+    The status should be failure
+  End
+
   It "fails closed when Sentinel registration configures zero pods"
     When call grep -F "no Sentinel pod was configured" "${script_file}"
     The status should be success
