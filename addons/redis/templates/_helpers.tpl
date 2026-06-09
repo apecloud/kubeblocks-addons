@@ -202,14 +202,13 @@ reconfigure:
     container: {{ $container }}
     targetPodSelector: All
     command:
-      - /bin/sh
+      - /bin/bash
       - -c
       - |
         set -eu
-
-        env | cut -d= -f1 | grep -E '^[a-z0-9_.-][a-z0-9_.-]*$' | sort -u | while IFS= read -r param; do
+        env | cut -d= -f1 | grep -E '^[a-zA-Z0-9_.-]+$' | sort -u | while IFS= read -r param; do
           [ -n "${param}" ] || continue
-          /scripts/reload-parameter.sh "${param}" "$(printenv "${param}")"
+          /scripts/reload-parameter.sh "${param//_/-}" "$(printenv "${param}")"
         done
 {{- end -}}
 
