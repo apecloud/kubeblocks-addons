@@ -14,6 +14,19 @@ Describe "mariadb backup ActionSet account contract"
     printf "%s/addons/mariadb/templates/backuppolicytemplate.yaml" "$(repo_root)"
   }
 
+  semisync_cmpd_path() {
+    printf "%s/addons/mariadb/templates/cmpd-semisync.yaml" "$(repo_root)"
+  }
+
+  replication_merged_cmpd_path() {
+    printf "%s/addons/mariadb/templates/cmpd-replication-merged.yaml" "$(repo_root)"
+  }
+
+  remote_internal_admin_grants_backup_required_privileges() {
+    grep -qF "GRANT RELOAD, PROCESS ON *.* TO '\${user}'@'%';" "$(semisync_cmpd_path)" &&
+      grep -qF "GRANT RELOAD, PROCESS ON *.* TO '\${user}'@'%';" "$(replication_merged_cmpd_path)"
+  }
+
   selected_account_paths_use_backup_account() {
     awk '
       /mariadb --host="\$\{DP_DB_HOST\}" --user="\$\{BACKUP_DB_USER\}" --password="\$\{BACKUP_DB_PASSWORD\}"/ {
@@ -51,6 +64,11 @@ Describe "mariadb backup ActionSet account contract"
     The status should be success
     The contents of file "$(actionset_path)" should not include "proceeding anyway"
     The contents of file "$(actionset_path)" should include "return 1"
+  End
+
+  It "grants the remote internal backup account the mariabackup-required RELOAD and PROCESS privileges"
+    When call remote_internal_admin_grants_backup_required_privileges
+    The status should be success
   End
 
   It "documents that target.account is only the DP-selected target secret, not necessarily the runtime SQL execution account"
