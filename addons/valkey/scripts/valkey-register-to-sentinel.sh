@@ -125,7 +125,7 @@ register_to_one_sentinel() {
   if is_empty "${master_addr}" || [ "${master_addr}" = "(nil)" ]; then
     echo "Sentinel not yet monitoring '${master_name}' — issuing SENTINEL monitor..."
     call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \
-      SENTINEL monitor "${master_name}" "${primary_host}" "${primary_port}" 2 || return 1
+      SENTINEL monitor "${master_name}" "${primary_host}" "${primary_port}" "${sentinel_monitor_quorum}" || return 1
   else
     echo "Sentinel already monitoring '${master_name}' at ${master_addr}. Skipping monitor."
   fi
@@ -161,7 +161,18 @@ if is_empty "${SENTINEL_POD_FQDN_LIST}"; then
   exit 1
 fi
 
-IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
+sentinel_fqdns=()
+IFS=',' read -ra sentinel_fqdns_raw <<< "${SENTINEL_POD_FQDN_LIST}"
+for sentinel_fqdn in "${sentinel_fqdns_raw[@]}"; do
+  [ -n "${sentinel_fqdn}" ] && sentinel_fqdns+=("${sentinel_fqdn}")
+done
+sentinel_count="${#sentinel_fqdns[@]}"
+if [ "${sentinel_count}" -eq 0 ]; then
+  echo "ERROR: SENTINEL_POD_FQDN_LIST is set but empty after parsing." >&2
+  exit 1
+fi
+sentinel_monitor_quorum=$(( sentinel_count / 2 + 1 ))
+echo "Sentinel monitor quorum: ${sentinel_monitor_quorum}/${sentinel_count}"
 for fqdn in "${sentinel_fqdns[@]}"; do
   register_to_one_sentinel "${fqdn}" || exit 1
 done
