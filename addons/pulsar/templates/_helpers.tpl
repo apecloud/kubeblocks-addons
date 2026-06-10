@@ -296,13 +296,6 @@ pulsar-scripts
 {{- end -}}
 
 {{/*
-Define pulsar tools scripts tpl name
-*/}}
-{{- define "pulsar.toolsScriptsTplName" -}}
-pulsar-tools-script
-{{- end -}}
-
-{{/*
 Define pulsar bookies recovery env tpl name
 */}}
 {{- define "pulsar2.bkRecoveryTplName" -}}

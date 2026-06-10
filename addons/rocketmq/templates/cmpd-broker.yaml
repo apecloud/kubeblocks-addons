@@ -20,6 +20,20 @@ spec:
       volumeName: rocketmq-broker-config
       externalManaged: true
       defaultMode: 0555
+      reconfigure:
+        exec:
+          container: rocketmq-broker
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -eu
+
+              export NAMESRV_ADDR="${ALL_NAMESRV_FQDN//,/:${NAMESRV_PORT};}:${NAMESRV_PORT}"
+              export PATH="$PATH:/opt/java/openjdk/bin"
+              /home/rocketmq/rocketmq-"${ROCKETMQ_VERSION}"/bin/mqadmin \
+                updateBrokerConfig -b "127.0.0.1:${BROKER_PORT}" -k "$1" -v "$2"
+            - --
     - name: {{ include "rocketmq.jxm-exporter.configurationTemplate" . }}
       template: {{ include "rocketmq.jxm-exporter.configurationTemplate" . }}
       volumeName: jmx-config
