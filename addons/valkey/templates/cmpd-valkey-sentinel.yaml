@@ -147,7 +147,7 @@ spec:
     - name: SENTINEL_SERVICE_PORT
       value: "26379"
       expression: {{ `{{if index . "REDIS_SENTINEL_HOST_NETWORK_PORT"}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}{{.SENTINEL_SERVICE_PORT}}{{end}}` | toYaml }}
-    # Cross-component vars — used by ensure_monitor_stanza() in valkey-sentinel-start.sh
+    # Cross-component vars — used by _background_monitor_discovery() in valkey-sentinel-start.sh
     # to auto-discover the master when all sentinels restart simultaneously (upgrade/chaos).
     - name: VALKEY_COMPONENT_NAME
       valueFrom:

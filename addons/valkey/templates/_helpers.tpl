@@ -40,13 +40,6 @@ Chart.Version; selection order must not depend on SemVer lexicographic sorting.
 {{- end -}}
 
 {{/*
-Sentinel component regexp pattern.
-*/}}
-{{- define "valkeySentinel.cmpdRegexpPattern" -}}
-^valkey-sentinel-[0-9]+$
-{{- end -}}
-
-{{/*
 Scripts ConfigMap name — versioned so upgrades create a new ConfigMap
 and old clusters keep using the one they were provisioned with.
 */}}
