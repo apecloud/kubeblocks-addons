@@ -193,7 +193,7 @@ spec:
       exec:
         container: redis-sentinel
         command:
-          - sh
+          - /bin/bash
           - -c
           - /scripts/redis-sentinel-account-provision.sh
     memberLeave:

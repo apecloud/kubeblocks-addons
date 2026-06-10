@@ -156,10 +156,6 @@ spec:
           valueFrom:
             envRef:
               envName: CLUSTER_NAMESPACE
-        - name: CLUSTER_NAMESPACE
-          valueFrom:
-            envRef:
-              envName: CLUSTER_NAMESPACE
         - name: CURRENT_POD_NAME
           valueFrom:
             envRef:
