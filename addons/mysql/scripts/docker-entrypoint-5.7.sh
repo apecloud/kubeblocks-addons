@@ -278,15 +278,26 @@ docker_process_sql() {
 	mysql --defaults-extra-file=<( _mysql_passfile "${passfileArgs[@]}") --protocol=socket -uroot -hlocalhost --socket="${SOCKET}" --comments "$@"
 }
 
+docker_load_timezone_info() {
+	if ! command -v mysql_tzinfo_to_sql >/dev/null 2>&1; then
+		mysql_warn "mysql_tzinfo_to_sql is not available, skipping timezone info loading"
+		return 0
+	fi
+
+	mysql_note "Loading timezone info into database"
+	if { printf 'SET @@SESSION.SQL_LOG_BIN=0;\n'; mysql_tzinfo_to_sql /usr/share/zoneinfo | sed 's/Local time zone must be set--see zic manual page/FCTY/'; } \
+		| docker_process_sql "$@" --database=mysql; then
+		mysql_note "Timezone info loaded"
+	else
+		mysql_warn "Unable to load timezone info into database"
+	fi
+}
+
 # Initializes database with timezone info and root password, plus optional extra db/user
 docker_setup_db() {
 	# Load timezone info into database
 	if [ -z "$MYSQL_INITDB_SKIP_TZINFO" ]; then
-		# sed is for https://bugs.mysql.com/bug.php?id=20545
-		mysql_tzinfo_to_sql /usr/share/zoneinfo \
-			| sed 's/Local time zone must be set--see zic manual page/FCTY/' \
-			| docker_process_sql --dont-use-mysql-root-password --database=mysql
-			# tell docker_process_sql to not use MYSQL_ROOT_PASSWORD since it is not set yet
+		docker_load_timezone_info --dont-use-mysql-root-password
 	fi
 	# Generate random root password
 	if [ -n "$MYSQL_RANDOM_ROOT_PASSWORD" ]; then
@@ -375,6 +386,7 @@ restore_standby_from_xtrabackup() {
   mysql_note "Starting temporary server"
   docker_temp_server_start "$@"
   mysql_note "Temporary server started."
+  docker_load_timezone_info
   PURGED_GTID=""
   while IFS= read -r line; do
      if [[ "$line" == *"GTID of the last change"* ]]; then
