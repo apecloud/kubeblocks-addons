@@ -71,7 +71,7 @@ spec:
             export LD_PRELOAD=/tools/lib/libjemalloc.so.2 
             {{- end }}
             SERVICE_ID=$((${KB_POD_NAME##*-} + 1))
-            docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
+            /scripts/docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
                --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
                --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
                --plugin-load-add=audit_log=audit_log.so \
