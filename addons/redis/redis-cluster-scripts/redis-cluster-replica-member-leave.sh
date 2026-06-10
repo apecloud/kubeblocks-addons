@@ -33,7 +33,6 @@ load_redis_cluster_common_utils() {
 }
 
 # remove_replica_from_shard_if_need removes the current pod from the cluster if it is a replica
-# TODO: remove it from preStop hook and it should be implemented in memberLeave lifecycleAction in KubeBlocks
 remove_replica_from_shard_if_need() {
   # get the cluster nodes info
   cluster_nodes_info=$(get_cluster_nodes_info_with_retry "$KB_LEAVE_MEMBER_POD_FQDN" "$service_port")
