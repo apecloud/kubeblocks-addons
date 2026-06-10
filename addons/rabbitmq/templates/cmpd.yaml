@@ -84,20 +84,10 @@ spec:
       - name: rabbitmq
         command:
           - /bin/sh
-          - -c
-          - |
-            if [ ! -f {{ .Values.dataMountPath }}/enabled_plugins ]; then
-              cp /etc/rabbitmq/enabled_plugins {{ .Values.dataMountPath }}/enabled_plugins
-            fi
-            cp /root/erlang.cookie {{ .Values.dataMountPath }}/.erlang.cookie
-            chown rabbitmq:rabbitmq {{ .Values.dataMountPath }}/.erlang.cookie
-            chmod 400 {{ .Values.dataMountPath }}/.erlang.cookie
-            cat > /etc/rabbitmq/conf.d/10-kubeblocks-default-user.conf <<EOF
-            default_user = ${RABBITMQ_DEFAULT_USER}
-            default_pass = ${RABBITMQ_DEFAULT_PASS}
-            EOF
-            exec /opt/rabbitmq/sbin/rabbitmq-server
+          - /scripts/startup.sh
         env:
+        - name: RABBITMQ_DATA_DIR
+          value: {{ .Values.dataMountPath }}
         - name: POD_NAME
           valueFrom:
             fieldRef:
@@ -172,6 +162,9 @@ spec:
           - mountPath: /etc/rabbitmq/enabled_plugins
             name: rabbitmq-config
             subPath: enabled_plugins
+          - mountPath: /scripts/startup.sh
+            name: rabbitmq-config
+            subPath: startup.sh
           - name: timezone
             mountPath: /etc/localtime
             readOnly: true
