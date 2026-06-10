@@ -18,7 +18,10 @@ provision_sentinel_account() {
     return 1
   fi
 
-  $redis_base_cmd acl save
+  if ! $redis_base_cmd acl save; then
+    echo "sentinel account provision failed: acl save error" >&2
+    return 1
+  fi
 }
 
 ${__SOURCED__:+false} : || return 0

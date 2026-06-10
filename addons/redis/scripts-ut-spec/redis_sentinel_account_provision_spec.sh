@@ -81,9 +81,10 @@ Describe "Redis Sentinel Account Provision Script Tests"
         return 0
       }
 
-      It "returns failure"
+      It "returns failure with acl save error"
         When call provision_sentinel_account
         The status should be failure
+        The stderr should include "acl save error"
       End
     End
   End
