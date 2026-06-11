@@ -210,9 +210,12 @@ reconfigure:
   exec:
     container: {{ $container }}
     targetPodSelector: All
+    timeoutSeconds: 120
     env:
       - name: DYNAMIC_ALLOWLIST
         value: "{{ $dynamicList }}"
+      - name: RECONFIGURE_WAIT_TIMEOUT
+        value: "90"
     command:
       - /bin/sh
       - /scripts/redis-reconfigure-config.sh
