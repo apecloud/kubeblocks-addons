@@ -756,6 +756,38 @@ CONF
       End
     End
 
+    Context "timeout with 0 applied exits non-zero (false green prevention)"
+      setup() {
+        setup_wait_base
+        wait_timeout=4
+        printf '%s\n' "maxmemory 100000" > "$tmp_config"
+      }
+      Before "setup"
+      After "cleanup_wait_base"
+
+      sleep() { :; }
+
+      redis-cli() {
+        local key
+        key=$(_redis_cli_get_key "$@")
+        case "$key" in
+          "'*'"|"*")
+            printf '%s\n' "maxmemory" "100000"
+            ;;
+          maxmemory) printf '%s\n' "maxmemory" "100000" ;;
+        esac
+      }
+
+      reload_parameter() { return 0; }
+
+      It "exits 1 when watch times out and no params were applied"
+        When call reconfigure_from_config_file
+        The status should be failure
+        The stderr should include "config file unchanged after 4s"
+        The stderr should include "watch timed out with 0 params applied"
+      End
+    End
+
     Context "wait=0 skips wait entirely"
       set_called_with=""
 

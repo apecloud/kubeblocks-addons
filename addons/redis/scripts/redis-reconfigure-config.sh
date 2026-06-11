@@ -4,7 +4,7 @@ init_reconfigure_env() {
   config_file="/etc/conf/redis.conf"
   dynamic_allowlist="${DYNAMIC_ALLOWLIST:-}"
   service_port=${SERVICE_PORT:-6379}
-  wait_timeout=${RECONFIGURE_WAIT_TIMEOUT:-45}
+  wait_timeout=${RECONFIGURE_WAIT_TIMEOUT:-180}
   auth_arg=""
   [ -z "${REDIS_DEFAULT_PASSWORD:-}" ] || auth_arg="-a ${REDIS_DEFAULT_PASSWORD}"
 }
@@ -116,6 +116,10 @@ reconfigure_from_config_file() {
 
   if [ "$_rcf_timeout" -gt 0 ]; then
     echo "INFO: config file unchanged after ${_rcf_timeout}s" >&2
+    if [ "$_acd_count" -eq 0 ]; then
+      echo "ERROR: watch timed out with 0 params applied, failing to prevent false green" >&2
+      return 1
+    fi
   fi
   return "$_rcf_rc"
 }
