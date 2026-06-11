@@ -319,17 +319,23 @@ switchover_with_candidate() {
   unset_xtrace_when_ut_mode_false
   set_redis_priorities "$KB_SWITCHOVER_CANDIDATE_FQDN" || return 1
 
+  local switchover_rc=0
   # do switchover
-  execute_sentinel_failover "$CUSTOM_SENTINEL_MASTER_NAME" || return 1
+  execute_sentinel_failover "$CUSTOM_SENTINEL_MASTER_NAME" || switchover_rc=$?
 
   # check switchover result
-  check_switchover_result "$KB_SWITCHOVER_CANDIDATE_FQDN" "" || return 1
+  if [ $switchover_rc -eq 0 ]; then
+    check_switchover_result "$KB_SWITCHOVER_CANDIDATE_FQDN" "" || switchover_rc=$?
+  fi
 
-  # recover all redis replica-priority
-  echo "Recovering all Redis replica-priority..."
-  recover_redis_priorities || return 1
-
+  # recover all redis replica-priority regardless of switchover result
+  recover_redis_priorities
   set_xtrace_when_ut_mode_false
+
+  if [ $switchover_rc -ne 0 ]; then
+    echo "Switchover failed" >&2
+    return 1
+  fi
   echo "All Redis config set replica-priority recovered."
 }
 
@@ -342,8 +348,7 @@ switchover_without_candidate() {
   execute_sentinel_failover "$CUSTOM_SENTINEL_MASTER_NAME" || return 1
 
   # check switchover result using initial_master
-  # if no candidate specified, skip check
-  # check_switchover_result "" "$initial_master" || return 1
+  check_switchover_result "" "$initial_master" || return 1
 }
 
 # This is magic for shellspec ut framework.

@@ -299,6 +299,45 @@ master_host:redis-master"
         The stderr should include "not in secondary role"
         The stdout should equal ""
       End
+
+      It "should recover priorities when failover fails"
+        check_redis_role() {
+          if [ "$1" = "redis2" ]; then
+            echo "secondary"
+          else
+            echo "primary"
+          fi
+        }
+        check_redis_kernel_status() { return 0; }
+        set_redis_priorities() { return 0; }
+        execute_sentinel_failover() { return 1; }
+        recover_redis_priorities() { echo "priorities recovered"; return 0; }
+
+        When call switchover_with_candidate
+        The status should be failure
+        The stdout should include "priorities recovered"
+        The stderr should include "Switchover failed"
+      End
+
+      It "should recover priorities when result check fails"
+        check_redis_role() {
+          if [ "$1" = "redis2" ]; then
+            echo "secondary"
+          else
+            echo "primary"
+          fi
+        }
+        check_redis_kernel_status() { return 0; }
+        set_redis_priorities() { return 0; }
+        execute_sentinel_failover() { return 0; }
+        check_switchover_result() { return 1; }
+        recover_redis_priorities() { echo "priorities recovered"; return 0; }
+
+        When call switchover_with_candidate
+        The status should be failure
+        The stdout should include "priorities recovered"
+        The stderr should include "Switchover failed"
+      End
     End
 
     Context "switchover_without_candidate()"
@@ -334,6 +373,16 @@ master_host:redis-master"
         When call switchover_without_candidate
         The status should be failure
         The stdout should equal ""
+      End
+
+      It "should fail when result verification fails"
+        check_redis_kernel_status() {
+          echo "redis1"
+        }
+        execute_sentinel_failover() { return 0; }
+        check_switchover_result() { return 1; }
+        When call switchover_without_candidate
+        The status should be failure
       End
     End
 

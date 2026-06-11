@@ -78,7 +78,7 @@ get_current_shard_primary() {
   master_host=$(echo "$master_info" | grep "master_host:" | cut -d':' -f2 | tr -d '[:space:]')
   master_port=$(echo "$master_info" | grep "master_port:" | cut -d':' -f2 | tr -d '[:space:]')
 
-  if is_empty "$master_host"|| is_empty "$master_port"; then
+  if is_empty "$master_host" || is_empty "$master_port"; then
     return 1
   fi
 
@@ -223,7 +223,7 @@ switchover_without_candidate() {
   fi
 
   # do switchover
-  do_switchover "$candidate_pod" "$candidate_pod_fqdn" "false" || return 1
+  do_switchover "$candidate_pod" "$candidate_pod_fqdn" "true" || return 1
 }
 
 switchover_with_candidate() {
