@@ -322,6 +322,40 @@ Last_SQL_Errno: 0"
       End
     End
 
+    Context "when semisync pending secondary already has ready marker and SQL replication is healthy"
+      setup_semisync_pending_secondary_mixed_markers_ready() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_REPLICATION_MODE="semisync"
+        export MOCK_SYNCERCTL_ROLE="secondary"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT="Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Last_IO_Errno: 0
+Last_SQL_Errno: 0"
+        export MOCK_MARIADB_READ_ONLY="1"
+        export MOCK_MARIADB_SEMISYNC_MASTER="OFF"
+        export MOCK_MARIADB_SEMISYNC_SLAVE="ON"
+        touch "${TEST_DIR}/.replication-pending"
+        touch "${TEST_DIR}/.replication-ready"
+        touch "${TEST_DIR}/master.info"
+        make_syncerctl
+        make_mariadb_cli
+        mariadbd_listen_on_all_interfaces() { return 0; }
+      }
+      Before "setup_semisync_pending_secondary_mixed_markers_ready"
+
+      It "publishes secondary and clears the stale pending marker"
+        When call check_role
+        The status should be success
+        The output should eq "secondary"
+        The path "${TEST_DIR}/.replication-ready" should be exist
+        The path "${TEST_DIR}/.sql-listener-ready" should be exist
+        The path "${TEST_DIR}/.replication-pending" should not be exist
+      End
+    End
+
     Context "when semisync pending secondary has variable shape but no replication truth"
       setup_semisync_pending_secondary_empty_slave_status() {
         unset MARIADB_ROLEPROBE_SKIP_DB_READY

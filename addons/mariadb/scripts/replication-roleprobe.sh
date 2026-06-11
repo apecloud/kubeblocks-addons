@@ -527,7 +527,11 @@ attempt_marker_self_heal() {
   #      alpha.60 / Round 1c-B style GTID divergence fail-closed)
   #   3. master.info exists (we are configured as a secondary; not in
   #      initial bootstrap or self-election path)
-  #   4. .replication-ready missing (otherwise nothing to heal)
+  #   4. .replication-ready may be present or absent. Older logic treated
+  #      ready=present as "nothing to heal", but alpha.23 r75 C5 proved
+  #      `.replication-pending` can be re-created after ready while SQL
+  #      replication is already healthy; that mixed marker state still blocks
+  #      HA follow forever and must be healed by clearing pending.
   #   5. db_ready (local MariaDB is up and accepting connections)
   #   6. secondary_replication_ready (Slave_IO_Running=Yes,
   #      Slave_SQL_Running=Yes, Last_IO_Errno=0, Last_SQL_Errno=0)
@@ -583,10 +587,10 @@ attempt_marker_self_heal() {
   fi
   reaper_audit_log "cond=3 master_info=present rc=continue"
   if [ -f "$(ready_file)" ]; then
-    reaper_audit_log "cond=4 ready=present rc=bail"
-    return 1
+    reaper_audit_log "cond=4 ready=present rc=continue"
+  else
+    reaper_audit_log "cond=4 ready=absent rc=continue"
   fi
-  reaper_audit_log "cond=4 ready=absent rc=continue"
   if ! db_ready; then
     reaper_audit_log "cond=5 db_ready=false rc=bail"
     return 1

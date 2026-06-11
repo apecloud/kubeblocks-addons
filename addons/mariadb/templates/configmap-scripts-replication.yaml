@@ -52,3 +52,5 @@ data:
   # write-sites converge.
   seed-replication-mode-overrides.sh: |-
     {{- .Files.Get "scripts/seed-replication-mode-overrides.sh" | nindent 4 }}
+  reconcile-runtime-overrides.sh: |-
+    {{- .Files.Get "scripts/reconcile-runtime-overrides.sh" | nindent 4 }}

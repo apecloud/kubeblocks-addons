@@ -1203,6 +1203,7 @@ spec:
                 CREATE USER IF NOT EXISTS '${user}'@'%' IDENTIFIED BY '${password}';
                 ALTER USER '${user}'@'%' ACCOUNT UNLOCK;
                 REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'%';
+                GRANT RELOAD, PROCESS ON *.* TO '${user}'@'%';
                 GRANT REPLICATION CLIENT ON *.* TO '${user}'@'%';
                 GRANT SLAVE MONITOR ON *.* TO '${user}'@'%';
                 GRANT REPLICATION MASTER ADMIN ON *.* TO '${user}'@'%';
@@ -1962,8 +1963,11 @@ spec:
                 mark_replication_pending
                 return 1
               fi
-              if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+              if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ] && mariadbd_listen_on_all_interfaces; then
                 return 0
+              fi
+              if [ -f "{{ .Values.dataMountPath }}/.sql-listener-ready" ]; then
+                prestop_watchdog_log "sql-listener-expose-stale-marker label=${label} reason=listener-not-wildcard"
               fi
               mark_replication_pending
               prestop_watchdog_log "sql-listener-expose-begin label=${label}"
@@ -2285,9 +2289,8 @@ spec:
               return 1
             }
             reconcile_sql_listener_for_syncer_secondary_once() {
-              # alpha.64 v2 (Jack 10:32 HOLD blocker 1): Tier B required path.
-              # mark_replication_ready (line below) is the publish point;
-              # set_replica_read_only failure MUST return 1 BEFORE marking ready.
+              # Tier B required path: a runtime secondary may be published only
+              # after replica fencing and the SQL listener gate both converge.
               local role slave_status slave_rejoin_rc
               [ ! -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ] || return 0
               role="$(query_local_syncer_role || true)"
@@ -2305,10 +2308,12 @@ spec:
               fi
               slave_status="$(query_slave_status_verbose || true)"
               if slave_status_is_healthy "${slave_status}"; then
-                recover_semisync_slave_health_after_rejoin
-                mark_replication_ready
-                prestop_watchdog_log "runtime-secondary-listener-reconcile-ready role=${role}"
-                return 0
+                if publish_replica_after_rejoin_ready "runtime-secondary-reconcile"; then
+                  prestop_watchdog_log "runtime-secondary-listener-reconcile-ready role=${role}"
+                  return 0
+                fi
+                prestop_watchdog_log "runtime-secondary-listener-reconcile-pending-after-publish role=${role}"
+                return 1
               fi
               if configure_replication_from_primary_service_once "runtime-secondary-follow"; then
                 prestop_watchdog_log "runtime-secondary-listener-reconcile-ready-after-configure role=${role}"
@@ -2354,6 +2359,14 @@ spec:
                 prestop_watchdog_log "exit"
               fi
             }
+
+            # Reconcile runtime override files with ConfigMap before starting
+            # mariadbd. A disrupted reconfigureAction (pod killed mid-apply)
+            # can leave stale values in runtime-overrides.d/ that would
+            # override the controller's ConfigMap on next startup.
+            if [ -r /scripts/reconcile-runtime-overrides.sh ]; then
+              sh /scripts/reconcile-runtime-overrides.sh || true
+            fi
 
             # Start local-only until the pod has a safe role. During replacement
             # startup, read_only does not block privileged root writes in MariaDB,
