@@ -79,8 +79,8 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
   MEMBER_JOIN="${ADDON_ROOT}/scripts/replication-member-join.sh"
 
   Describe "Gate 1: Chart.yaml literal version"
-    It "is exactly 1.2.0-alpha.18-pr2803.1 (backup account privilege fix)"
-      When call grep -c '^version: 1.2.0-alpha.18-pr2803.1$' "${CHART_YAML}"
+    It "is exactly 1.2.0-alpha.19 (alpha.19 bump: bounded replication memberLeave)"
+      When call grep -c '^version: 1.2.0-alpha.19$' "${CHART_YAML}"
       The output should eq "1"
       The status should be success
     End
