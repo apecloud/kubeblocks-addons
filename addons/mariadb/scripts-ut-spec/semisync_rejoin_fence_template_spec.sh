@@ -89,6 +89,27 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     ' "$(template_file)"
   }
 
+  runtime_secondary_reconcile_publishes_healthy_slave_through_listener_gate() {
+    awk '
+      index($0, "reconcile_sql_listener_for_syncer_secondary_once() {") { fn = 1 }
+      fn && index($0, "slave_status_is_healthy") { healthy = NR }
+      fn && index($0, "publish_replica_after_rejoin_ready \"runtime-secondary-reconcile\"") { publish = NR }
+      fn && index($0, "runtime-secondary-listener-reconcile-ready") { ready = NR }
+      fn && index($0, "runtime-secondary-listener-reconcile-pending-after-publish") { pending = NR; exit }
+      END { exit(healthy && publish && ready && pending && healthy < publish && publish < ready && ready < pending ? 0 : 1) }
+    ' "$(template_file)"
+  }
+
+  secondary_expose_fast_path_requires_real_wildcard_listener() {
+    awk '
+      index($0, "expose_sql_listener_for_safe_role() {") { fn = 1 }
+      fn && index($0, ".sql-listener-ready") && index($0, "mariadbd_listen_on_all_interfaces") { found = 1 }
+      fn && index($0, "sql-listener-expose-stale-marker") { stale = 1 }
+      fn && index($0, "sql-listener-expose-begin") { exit(found && stale ? 0 : 1) }
+      END { exit(found && stale ? 0 : 1) }
+    ' "$(template_file)"
+  }
+
   It "declares an internal local admin before fencing user-facing root"
     When call template_contains 'MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"'
     The status should be success
@@ -380,6 +401,16 @@ Describe "cmpd-semisync.yaml rejoin fence template"
 
   It "accepts syncer primary promotion while runtime secondary reconcile is inside replica lock"
     When call runtime_secondary_reconcile_accepts_syncer_primary_during_lock
+    The status should be success
+  End
+
+  It "publishes a healthy runtime secondary through the SQL listener gate"
+    When call runtime_secondary_reconcile_publishes_healthy_slave_through_listener_gate
+    The status should be success
+  End
+
+  It "does not trust .sql-listener-ready without a real wildcard listener in syncer-secondary expose path"
+    When call secondary_expose_fast_path_requires_real_wildcard_listener
     The status should be success
   End
 
