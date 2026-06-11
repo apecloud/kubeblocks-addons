@@ -240,16 +240,31 @@ SH
     End
   End
 
-  Describe "zero checkable params"
-    It "fails when CONFIG GET is unreachable even with fresh mtime"
+  Describe "uncheckable params force apply"
+    It "applies when all CONFIG GETs fail even with fresh mtime"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
-      # Verify-cmd returns empty for everything → zero checked
+      # Verify-cmd returns empty for everything → all uncheckable → force apply
       printf '' > "${VERIFY_VALUES}"
-      unset APPLIED_VALUES
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
+    End
+
+    It "forces apply then verify-fails when one param CONFIG GET is broken"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      # bind checkable and matches, maxmemory returns empty everywhere
+      # → pre-check forces apply (not silent rc=0)
+      # → verify also gets empty for maxmemory → VERIFY FAIL → exit 1
+      export VERIFY_EMPTY_KEY=maxmemory
+      printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 268435456" \
+        > "${VERIFY_VALUES}"
       When run bash ../scripts/reload-config.sh
       The status should be failure
-      The stderr should include "no params checkable via CONFIG GET"
+      The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
+      The stderr should include "VERIFY FAIL: maxmemory"
     End
   End
 

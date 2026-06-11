@@ -36,7 +36,7 @@ fi
 # proceed to apply regardless of ConfigMap projection timing.
 
 _needs_apply=false
-_checked=0
+_has_uncheckable=false
 while IFS= read -r line || [ -n "$line" ]; do
   case "$line" in '#'*|'') continue ;; esac
   key=${line%% *}
@@ -46,13 +46,19 @@ while IFS= read -r line || [ -n "$line" ]; do
   _check_deadline
   _actual=""
   _actual=$($_get_cmd CONFIG GET "$key" 2>/dev/null | tail -1) || true
-  [ -z "$_actual" ] && continue
-  _checked=$((_checked + 1))
+  if [ -z "$_actual" ]; then
+    _has_uncheckable=true
+    continue
+  fi
   if [ "$_actual" != "$value" ]; then
     _needs_apply=true
     break
   fi
 done < "$CONFIG_FILE"
+
+if [ "$_needs_apply" = "false" ] && [ "$_has_uncheckable" = "true" ]; then
+  _needs_apply=true
+fi
 
 # ── Phase 2: File matches runtime — verify freshness before rc=0 ─────
 # If every checkable param already matches runtime, succeed only when we
@@ -90,10 +96,6 @@ if [ "$_needs_apply" = "false" ]; then
   fi
 
   if [ "$_fresh" = "true" ] && [ "$_needs_apply" = "false" ]; then
-    if [ "$_checked" -eq 0 ]; then
-      echo "ERROR: no params checkable via CONFIG GET, cannot confirm runtime state" >&2
-      exit 1
-    fi
     rm -f "$MARKER_FILE"
     exit 0
   fi
