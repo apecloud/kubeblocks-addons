@@ -289,7 +289,7 @@ query_sentinel_quorum_for_master() {
 
   for s_fqdn in "${sentinel_fqdns[@]}"; do
     local response master_addr
-    response=$("${sentinel_cli_base[@]}" -h "${s_fqdn}" \
+    response=$(timeout 3 "${sentinel_cli_base[@]}" -h "${s_fqdn}" \
                  SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null) || continue
     master_addr=$(echo "${response}" | head -n1 | tr -d '\r\n')
     is_empty "${master_addr}" && continue
