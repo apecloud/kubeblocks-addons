@@ -273,23 +273,12 @@ Describe "Valkey Start Bash Script Tests"
       After "teardown"
 
       It "uses Sentinel-reported master as replicaof target"
-        # Mock valkey-cli for the sentinel query path; production code dispatches
-        # to two different commands so the mock dispatches by argv:
-        #   - SENTINEL get-master-addr-by-name  → return master FQDN + port
-        #   - other (CONFIG SET / fallbacks)   → no-op
-        valkey-cli() {
-          case "$*" in
-            *"SENTINEL get-master-addr-by-name"*)
-              echo "valkey-0.valkey-headless.default.svc.cluster.local"
-              echo "6379"
-              ;;
-            *) return 0 ;;
-          esac
+        # Mock query_sentinel_quorum_for_master directly: production code wraps
+        # valkey-cli inside `timeout 3 ...` which shell-execs the binary path
+        # and bypasses test-scope shell function mocks.
+        query_sentinel_quorum_for_master() {
+          echo "valkey-0.valkey-headless.default.svc.cluster.local"
         }
-        # Mock verify_pod_role directly: production code wraps the role probe in
-        # `timeout 3 valkey-cli ... info replication`, but `timeout` shell-execs
-        # the binary path and bypasses test-scope shell functions. Mocking the
-        # surrounding helper is more robust for unit tests than hooking timeout.
         verify_pod_role() {
           echo "master"
         }
