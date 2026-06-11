@@ -328,6 +328,101 @@ SH
     End
   End
 
+  Describe "single timeout verify catch"
+    setup_single_timeout_mock() {
+      _st=$(mktemp -d "${TMPDIR:-/tmp}/reload-single-timeout.XXXXXX")
+      mkdir -p "${_st}/conf" "${_st}/bin"
+
+      printf '%s\n' 'maxmemory 268435456' 'maxmemory-policy volatile-lru' \
+        > "${_st}/conf/valkey.conf"
+      ln -sf "${_st}/conf" "${_st}/conf/..data"
+
+      cat > "${_st}/reload-parameter.sh" <<'SH'
+#!/bin/sh
+echo "RELOAD: $1 $2" >> "${RELOAD_LOG}"
+[ -n "${APPLIED_VALUES:-}" ] && echo "$1 $2" >> "$APPLIED_VALUES"
+exit 0
+SH
+      chmod +x "${_st}/reload-parameter.sh"
+
+      # timeout mock: return 124 for TIMEOUT_KEY, passthrough otherwise
+      cat > "${_st}/bin/timeout" <<'SH'
+#!/bin/sh
+shift
+if [ -n "${TIMEOUT_KEY:-}" ] && echo "$2" | grep -q "^${TIMEOUT_KEY}$"; then
+  exit 124
+fi
+exec "$@"
+SH
+      chmod +x "${_st}/bin/timeout"
+
+      cat > "${_st}/bin/stat" <<'SH'
+#!/bin/sh
+echo "${FAKE_MTIME:-0}"
+SH
+      chmod +x "${_st}/bin/stat"
+
+      cat > "${_st}/bin/date" <<'SH'
+#!/bin/sh
+if [ "$1" = "+%s" ]; then echo "${FAKE_NOW:-0}"; else /bin/date "$@"; fi
+SH
+      chmod +x "${_st}/bin/date"
+
+      cat > "${_st}/bin/cksum" <<'SH'
+#!/bin/sh
+/usr/bin/cksum "$@"
+SH
+      chmod +x "${_st}/bin/cksum"
+
+      # verify mock: maxmemory returns OLD value, maxmemory-policy returns new
+      cat > "${_st}/verify-cmd.sh" <<'SH'
+#!/bin/sh
+_key="$3"
+if [ -f "${APPLIED_VALUES:-}" ] 2>/dev/null; then
+  _val=$(grep "^${_key} " "$APPLIED_VALUES" 2>/dev/null | tail -1 | cut -d' ' -f2-)
+  if [ -n "$_val" ]; then echo "$_key"; echo "$_val"; exit 0; fi
+fi
+if [ -f "${VERIFY_VALUES:-/dev/null}" ]; then
+  _val=$(grep "^${_key} " "$VERIFY_VALUES" 2>/dev/null | head -1 | cut -d' ' -f2-)
+  [ -n "$_val" ] && { echo "$_key"; echo "$_val"; exit 0; }
+fi
+echo "$_key"; echo ""; exit 0
+SH
+      chmod +x "${_st}/verify-cmd.sh"
+
+      export PATH="${_st}/bin:${PATH}"
+      export CONFIG_FILE="${_st}/conf/valkey.conf"
+      export DATA_LINK="${_st}/conf/..data"
+      export RELOAD_PARAM_SCRIPT="${_st}/reload-parameter.sh"
+      export RELOAD_VERIFY_CMD="${_st}/verify-cmd.sh"
+      export MARKER_FILE="${_st}/marker"
+      export MAX_WAIT=0
+      export GLOBAL_DEADLINE=9999999999
+      export RELOAD_LOG="${_st}/calls.log"
+      export APPLIED_VALUES="${_st}/applied.txt"
+      rm -f "$APPLIED_VALUES" "$RELOAD_LOG"
+      printf '%s\n' "maxmemory 214748364" "maxmemory-policy volatile-lru" \
+        > "${_st}/verify-kv.txt"
+      export VERIFY_VALUES="${_st}/verify-kv.txt"
+    }
+    Before "setup_single_timeout_mock"
+
+    cleanup_single_timeout() {
+      rm -rf "${_st:-}"
+      unset TIMEOUT_KEY
+    }
+    After "cleanup_single_timeout"
+
+    It "catches single timed-out param via verify"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      export TIMEOUT_KEY=maxmemory
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "VERIFY FAIL: maxmemory"
+    End
+  End
+
   Describe "consecutive timeout abort"
     setup_timeout_mock() {
       _td=$(mktemp -d "${TMPDIR:-/tmp}/reload-timeout.XXXXXX")
@@ -361,11 +456,11 @@ SH
 SH
       chmod +x "${_td}/bin/cksum"
 
-      cat > "${_td}/bin/mktemp" <<'SH'
+      cat > "${_td}/bin/mktemp" <<SH
 #!/bin/sh
 f="${_td}/verify-tmp"
-touch "$f"
-echo "$f"
+touch "\$f"
+echo "\$f"
 SH
       chmod +x "${_td}/bin/mktemp"
 

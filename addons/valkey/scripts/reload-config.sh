@@ -13,6 +13,8 @@ if [ -z "$GLOBAL_DEADLINE" ]; then
   GLOBAL_DEADLINE=$(( $(date +%s) + 50 ))
 fi
 
+_trace() { echo "TRACE: $*" >&2; }
+
 _check_deadline() {
   if [ "$(date +%s)" -ge "$GLOBAL_DEADLINE" ]; then
     echo "ERROR: global deadline exceeded" >&2
@@ -47,10 +49,12 @@ while IFS= read -r line || [ -n "$line" ]; do
   _actual=""
   _actual=$($_get_cmd CONFIG GET "$key" 2>/dev/null | tail -1) || true
   if [ -z "$_actual" ]; then
+    _trace "pre-check ${key}: uncheckable (CONFIG GET empty)"
     _has_uncheckable=true
     continue
   fi
   if [ "$_actual" != "$value" ]; then
+    _trace "pre-check ${key}: diff actual='${_actual}' desired='${value}'"
     _needs_apply=true
     break
   fi
@@ -122,11 +126,13 @@ while IFS= read -r line || [ -n "$line" ]; do
 
   _rc=0
   timeout 5 "$RELOAD_PARAM_SCRIPT" "$key" "$value" || _rc=$?
+  _trace "apply ${key}: rc=${_rc}"
   case "$_rc" in
     0)
       _check_deadline
       _post_val=""
       _post_val=$($_get_cmd CONFIG GET "$key" 2>/dev/null | tail -1) || true
+      _trace "post-SET ${key}: readback='${_post_val}'"
       if [ -n "$_post_val" ]; then
         echo "$key $_post_val" >> "$_verify_file"
       else
@@ -141,7 +147,9 @@ while IFS= read -r line || [ -n "$line" ]; do
       if [ "$_timeouts" -ge 2 ]; then
         echo "ERROR: 2 consecutive timeouts, Valkey likely unresponsive" >&2
         rm -f "$_verify_file"; exit 1
-      fi ;;
+      fi
+      echo "$key $value" >> "$_verify_file"
+      ;;
     *)
       rm -f "$_verify_file"; exit "$_rc" ;;
   esac
@@ -158,13 +166,17 @@ if [ -s "$_verify_file" ]; then
     _vactual=""
     _vactual=$($_get_cmd CONFIG GET "$_vkey" 2>/dev/null | tail -1) || true
     if [ -z "$_vactual" ]; then
+      _trace "verify ${_vkey}: actual='' expected='${_vexpected}' → FAIL (empty)"
       echo "VERIFY FAIL: ${_vkey}: CONFIG GET returned empty or failed" >&2
       _verify_failed=true
       continue
     fi
     if [ "$_vactual" != "$_vexpected" ]; then
+      _trace "verify ${_vkey}: actual='${_vactual}' expected='${_vexpected}' → FAIL"
       echo "VERIFY FAIL: ${_vkey}: runtime='${_vactual}' desired='${_vexpected}'" >&2
       _verify_failed=true
+    else
+      _trace "verify ${_vkey}: actual='${_vactual}' expected='${_vexpected}' → ok"
     fi
   done < "$_verify_file"
 fi

@@ -45,7 +45,7 @@ appenddirname "appendonlydir"
 appendfsync everysec
 no-appendfsync-on-rewrite no
 auto-aof-rewrite-percentage 100
-auto-aof-rewrite-min-size 64mb
+auto-aof-rewrite-min-size 67108864
 aof-use-rdb-preamble yes
 
 # Slow log
