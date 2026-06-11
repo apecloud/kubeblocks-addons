@@ -23,10 +23,11 @@ CONF
 
     ln -sf "${_spec_dir}/conf" "${_spec_dir}/conf/..data"
 
-    # Mock reload-parameter.sh — logs calls, exit 0 (dynamic) by default
+    # Mock reload-parameter.sh — logs calls, optionally tracks applied values
     cat > "${_spec_dir}/reload-parameter.sh" <<'SH'
 #!/bin/sh
 echo "RELOAD: $1 $2" >> "${RELOAD_LOG}"
+[ -n "${APPLIED_VALUES:-}" ] && echo "$1 $2" >> "$APPLIED_VALUES"
 exit "${FAKE_RELOAD_RC:-0}"
 SH
     chmod +x "${_spec_dir}/reload-parameter.sh"
@@ -62,14 +63,20 @@ DATESH
 CKSUMSH
     chmod +x "${_spec_dir}/bin/cksum"
 
-    # Mock verify command — returns expected value (pass-through)
+    # Mock verify command — two-layer: APPLIED_VALUES first, then VERIFY_VALUES
+    # VERIFY_EMPTY_KEY forces empty output for a specific key (for testing)
     cat > "${_spec_dir}/verify-cmd.sh" <<'SH'
 #!/bin/sh
-# Expects: verify-cmd.sh CONFIG GET <key>
-# Returns key then value from VERIFY_VALUES file
 _key="$3"
+if [ "$_key" = "${VERIFY_EMPTY_KEY:-}" ]; then
+  echo "$_key"; echo ""; exit 0
+fi
+if [ -f "${APPLIED_VALUES:-}" ] 2>/dev/null; then
+  _val=$(grep "^${_key} " "$APPLIED_VALUES" 2>/dev/null | tail -1 | cut -d' ' -f2-)
+  [ -n "$_val" ] && { echo "$_key"; echo "$_val"; exit 0; }
+fi
 if [ -f "${VERIFY_VALUES:-/dev/null}" ]; then
-  _val=$(grep "^${_key} " "$VERIFY_VALUES" | head -1 | cut -d' ' -f2-)
+  _val=$(grep "^${_key} " "$VERIFY_VALUES" 2>/dev/null | head -1 | cut -d' ' -f2-)
   [ -n "$_val" ] && { echo "$_key"; echo "$_val"; exit 0; }
 fi
 echo "$_key"
@@ -83,80 +90,108 @@ SH
     export RELOAD_PARAM_SCRIPT="${_spec_dir}/reload-parameter.sh"
     export RELOAD_VERIFY_CMD="${_spec_dir}/verify-cmd.sh"
     export MAX_WAIT=1
-    export APPLY_BUDGET=50
     export MARKER_FILE="${_spec_dir}/marker"
     export RELOAD_LOG="${_spec_dir}/calls.log"
+    export GLOBAL_DEADLINE=9999999999
     rm -f "${RELOAD_LOG}" "${MARKER_FILE}"
 
-    # Default: verify returns matching values
-    cp "${_spec_dir}/conf/valkey.conf" "${_spec_dir}/verify-values.txt"
-    # Strip comments and empty lines, keep key-value pairs
-    grep -v '^#' "${_spec_dir}/verify-values.txt" | grep -v '^$' > "${_spec_dir}/verify-kv.txt" || true
+    # Default: verify returns matching values (runtime == file)
+    printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+      "maxmemory-policy volatile-lru" "maxmemory 268435456" \
+      > "${_spec_dir}/verify-kv.txt"
     export VERIFY_VALUES="${_spec_dir}/verify-kv.txt"
+
+    # Track applied values so verify sees post-CONFIG-SET state
+    export APPLIED_VALUES="${_spec_dir}/applied.txt"
+    rm -f "$APPLIED_VALUES"
   }
   Before "setup"
 
   cleanup() {
     rm -rf "${_spec_dir:-}"
     unset RELOAD_LOG FAKE_MTIME FAKE_NOW CONFIG_FILE DATA_LINK
-    unset RELOAD_PARAM_SCRIPT RELOAD_VERIFY_CMD MAX_WAIT APPLY_BUDGET
-    unset MARKER_FILE FAKE_RELOAD_RC VERIFY_VALUES
+    unset RELOAD_PARAM_SCRIPT RELOAD_VERIFY_CMD MAX_WAIT
+    unset MARKER_FILE FAKE_RELOAD_RC VERIFY_VALUES APPLIED_VALUES
+    unset GLOBAL_DEADLINE VERIFY_EMPTY_KEY
   }
   After "cleanup"
 
-  It "applies parameters and passes verify when projection is fresh"
-    export FAKE_NOW=1000
-    export FAKE_MTIME=995
-    When run bash ../scripts/reload-config.sh
-    The status should be success
-    The contents of file "${RELOAD_LOG}" should include "RELOAD: bind * -::*"
-    The contents of file "${RELOAD_LOG}" should include "RELOAD: tcp-backlog 511"
-    The contents of file "${RELOAD_LOG}" should include "RELOAD: timeout 0"
-    The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory-policy volatile-lru"
-    The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
+  Describe "pre-check detects file differs from runtime"
+    It "applies and verifies when runtime has old values"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      # Runtime has old maxmemory; file has new 268435456
+      printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+        > "${VERIFY_VALUES}"
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
+    End
+
+    It "applies even when mtime is old (Blocker 1 fix)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      # Runtime has old maxmemory — pre-check finds diff, skips freshness
+      printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+        > "${VERIFY_VALUES}"
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
+    End
   End
 
-  It "defers with exit 1 when freshness is unconfirmed"
-    export FAKE_NOW=1000
-    export FAKE_MTIME=500
-    When run bash ../scripts/reload-config.sh
-    The status should be failure
-    The stderr should include "ConfigMap projection not detected"
-    The stderr should include "retry-safe: yes"
+  Describe "file matches runtime"
+    It "succeeds immediately when mtime is fresh"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The file "${RELOAD_LOG}" should not be exist
+    End
+
+    It "defers with exit 1 when mtime is old"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "file matches runtime, freshness unconfirmed"
+      The stderr should include "retry-safe: yes"
+      The file "${MARKER_FILE}" should be exist
+    End
   End
 
-  It "writes marker file on freshness failure"
-    export FAKE_NOW=1000
-    export FAKE_MTIME=500
-    When run bash ../scripts/reload-config.sh
-    The status should be failure
-    The stderr should include "ConfigMap projection not detected"
-    The file "${MARKER_FILE}" should be exist
-  End
+  Describe "marker-based retry detection"
+    It "proceeds when content changed since marker"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      echo "99999 99 stale" > "${MARKER_FILE}"
+      # Runtime has old values — pre-check detects diff
+      printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+        > "${VERIFY_VALUES}"
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
+    End
 
-  It "proceeds on retry when content changed since last failure"
-    export FAKE_NOW=1000
-    export FAKE_MTIME=500
-    # Write a stale marker (different from current content)
-    echo "99999 99 stale" > "${MARKER_FILE}"
-    When run bash ../scripts/reload-config.sh
-    The status should be success
-    The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
-  End
-
-  It "defers again if marker exists and content unchanged"
-    export FAKE_NOW=1000
-    export FAKE_MTIME=500
-    # Write a marker matching current content
-    cksum < "${CONFIG_FILE}" > "${MARKER_FILE}"
-    When run bash ../scripts/reload-config.sh
-    The status should be failure
-    The stderr should include "ConfigMap projection not detected"
+    It "defers when marker exists and content unchanged"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      cksum < "${CONFIG_FILE}" > "${MARKER_FILE}"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "file matches runtime, freshness unconfirmed"
+    End
   End
 
   It "skips comment and empty lines"
     export FAKE_NOW=1000
     export FAKE_MTIME=995
+    printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+      "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+      > "${VERIFY_VALUES}"
     When run bash ../scripts/reload-config.sh
     The status should be success
     The contents of file "${RELOAD_LOG}" should not include "RELOAD: #"
@@ -166,6 +201,9 @@ SH
     export FAKE_NOW=1000
     export FAKE_MTIME=995
     echo "stale marker" > "${MARKER_FILE}"
+    printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+      "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+      > "${VERIFY_VALUES}"
     When run bash ../scripts/reload-config.sh
     The status should be success
     The file "${MARKER_FILE}" should not be exist
@@ -175,7 +213,9 @@ SH
     It "fails when runtime value differs from desired"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
-      # Override verify values so maxmemory returns wrong value
+      # Pre-check: maxmemory differs → apply. Post-apply verify uses
+      # VERIFY_VALUES as fallback (no APPLIED_VALUES tracking).
+      unset APPLIED_VALUES
       printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
         "maxmemory-policy volatile-lru" "maxmemory 214748364" \
         > "${VERIFY_VALUES}"
@@ -183,16 +223,31 @@ SH
       The status should be failure
       The stderr should include "VERIFY FAIL: maxmemory"
     End
-  End
 
-  Describe "apply budget guard"
-    It "aborts when budget is exceeded"
+    It "fails when CONFIG GET returns empty (Blocker 2 fix)"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
-      export APPLY_BUDGET=0
+      # Pre-check triggers via tcp-backlog diff.  VERIFY_EMPTY_KEY makes
+      # verify-cmd return empty for maxmemory in all phases (pre-check
+      # skips it, verify catches it).
+      export VERIFY_EMPTY_KEY=maxmemory
+      printf '%s\n' "bind * -::*" "tcp-backlog 999" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+        > "${VERIFY_VALUES}"
       When run bash ../scripts/reload-config.sh
       The status should be failure
-      The stderr should include "apply budget"
+      The stderr should include "VERIFY FAIL: maxmemory: CONFIG GET returned empty or failed"
+    End
+  End
+
+  Describe "global deadline (Blocker 3 fix)"
+    It "aborts when deadline is already exceeded"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      export GLOBAL_DEADLINE=0
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "global deadline exceeded"
     End
   End
 
@@ -237,13 +292,24 @@ echo "$f"
 SH
       chmod +x "${_td}/bin/mktemp"
 
+      # Verify mock: all params differ (to pass pre-check)
+      cat > "${_td}/verify-cmd.sh" <<'SH'
+#!/bin/sh
+_key="$3"
+echo "$_key"
+echo "DIFFERENT"
+SH
+      chmod +x "${_td}/verify-cmd.sh"
+
       export PATH="${_td}/bin:${PATH}"
       export CONFIG_FILE="${_td}/conf/valkey.conf"
       export DATA_LINK="${_td}/conf/..data"
       export RELOAD_PARAM_SCRIPT="/nonexistent/reload-parameter.sh"
+      export RELOAD_VERIFY_CMD="${_td}/verify-cmd.sh"
       export MARKER_FILE="${_td}/marker"
       export MAX_WAIT=0
-      export APPLY_BUDGET=50
+      export GLOBAL_DEADLINE=9999999999
+      unset APPLIED_VALUES
     }
     Before "setup_timeout_mock"
 
