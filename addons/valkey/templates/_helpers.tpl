@@ -88,9 +88,12 @@ handle the Kubernetes ConfigMap projection race condition.
 */}}
 {{- define "valkey.reconfigureAction" -}}
 reconfigure:
+  timeoutSeconds: 60
   exec:
     container: valkey
     targetPodSelector: All
     command:
       - /scripts/reload-config.sh
+  retryPolicy:
+    maxRetries: 10
 {{- end -}}
