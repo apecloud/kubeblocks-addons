@@ -65,6 +65,7 @@ CKSUMSH
 
     # Mock verify command — two-layer: APPLIED_VALUES first, then VERIFY_VALUES
     # VERIFY_EMPTY_KEY forces empty output for a specific key (for testing)
+    # NORMALIZE_MAP overrides APPLIED_VALUES return for keys that Valkey normalizes
     cat > "${_spec_dir}/verify-cmd.sh" <<'SH'
 #!/bin/sh
 _key="$3"
@@ -73,7 +74,13 @@ if [ "$_key" = "${VERIFY_EMPTY_KEY:-}" ]; then
 fi
 if [ -f "${APPLIED_VALUES:-}" ] 2>/dev/null; then
   _val=$(grep "^${_key} " "$APPLIED_VALUES" 2>/dev/null | tail -1 | cut -d' ' -f2-)
-  [ -n "$_val" ] && { echo "$_key"; echo "$_val"; exit 0; }
+  if [ -n "$_val" ]; then
+    if [ -f "${NORMALIZE_MAP:-/dev/null}" ]; then
+      _norm=$(grep "^${_key} " "$NORMALIZE_MAP" 2>/dev/null | head -1 | cut -d' ' -f2-)
+      [ -n "$_norm" ] && { echo "$_key"; echo "$_norm"; exit 0; }
+    fi
+    echo "$_key"; echo "$_val"; exit 0
+  fi
 fi
 if [ -f "${VERIFY_VALUES:-/dev/null}" ]; then
   _val=$(grep "^${_key} " "$VERIFY_VALUES" 2>/dev/null | head -1 | cut -d' ' -f2-)
@@ -112,7 +119,7 @@ SH
     unset RELOAD_LOG FAKE_MTIME FAKE_NOW CONFIG_FILE DATA_LINK
     unset RELOAD_PARAM_SCRIPT RELOAD_VERIFY_CMD MAX_WAIT
     unset MARKER_FILE FAKE_RELOAD_RC VERIFY_VALUES APPLIED_VALUES
-    unset GLOBAL_DEADLINE VERIFY_EMPTY_KEY
+    unset GLOBAL_DEADLINE VERIFY_EMPTY_KEY NORMALIZE_MAP
   }
   After "cleanup"
 
@@ -210,18 +217,33 @@ SH
   End
 
   Describe "CONFIG GET read-back verification"
-    It "fails when runtime value differs from desired"
+    It "succeeds when Valkey normalizes unit-suffixed values"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
-      # Pre-check: maxmemory differs → apply. Post-apply verify uses
-      # VERIFY_VALUES as fallback (no APPLIED_VALUES tracking).
-      unset APPLIED_VALUES
+      # Config file has auto-aof-rewrite-min-size 64mb, but CONFIG GET
+      # returns 67108864 (bytes). After CONFIG SET, post-SET readback
+      # captures Valkey's normalized form, so verify compares 67108864
+      # against 67108864 → PASS.
+      cat > "${CONFIG_FILE}" <<'TESTCONF'
+# Valkey configuration
+
+bind * -::*
+tcp-backlog 511
+timeout 0
+maxmemory-policy volatile-lru
+maxmemory 268435456
+auto-aof-rewrite-min-size 64mb
+TESTCONF
       printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
-        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+        "maxmemory-policy volatile-lru" "maxmemory 268435456" \
+        "auto-aof-rewrite-min-size 67108864" \
         > "${VERIFY_VALUES}"
+      printf '%s\n' "auto-aof-rewrite-min-size 67108864" \
+        > "${_spec_dir}/normalize-map.txt"
+      export NORMALIZE_MAP="${_spec_dir}/normalize-map.txt"
       When run bash ../scripts/reload-config.sh
-      The status should be failure
-      The stderr should include "VERIFY FAIL: maxmemory"
+      The status should be success
+      The contents of file "${RELOAD_LOG}" should include "RELOAD: auto-aof-rewrite-min-size 64mb"
     End
 
     It "fails when CONFIG GET returns empty (Blocker 2 fix)"

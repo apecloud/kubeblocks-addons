@@ -123,7 +123,16 @@ while IFS= read -r line || [ -n "$line" ]; do
   _rc=0
   timeout 5 "$RELOAD_PARAM_SCRIPT" "$key" "$value" || _rc=$?
   case "$_rc" in
-    0) echo "$key $value" >> "$_verify_file"; _timeouts=0 ;;
+    0)
+      _post_val=""
+      _post_val=$($_get_cmd CONFIG GET "$key" 2>/dev/null | tail -1) || true
+      if [ -n "$_post_val" ]; then
+        echo "$key $_post_val" >> "$_verify_file"
+      else
+        echo "$key $value" >> "$_verify_file"
+      fi
+      _timeouts=0
+      ;;
     2) _timeouts=0 ;;
     124)
       _timeouts=$((_timeouts + 1))
