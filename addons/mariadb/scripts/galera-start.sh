@@ -39,7 +39,7 @@ _any_peer_alive() {
       local cluster_status
       cluster_status=$(timeout 5 mariadb \
         -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
-        -h "${peer}" -N -s \
+        -h "${peer}" -P3306 --ssl=0 -N -s \
         -e "SHOW STATUS LIKE 'wsrep_cluster_status';" 2>/dev/null \
         | awk '{print $2}')
       if [ "${cluster_status}" = "Primary" ]; then
@@ -71,7 +71,7 @@ _wait_for_primary_peer() {
     return 0
   fi
   echo "No peer has Primary component. Waiting for bootstrap node..."
-  local max_wait=120
+  local max_wait="${GALERA_PRIMARY_PEER_WAIT_SECONDS:-120}"
   local elapsed=0
   while [ $elapsed -lt $max_wait ]; do
     sleep 3
@@ -81,8 +81,8 @@ _wait_for_primary_peer() {
       return 0
     fi
   done
-  echo "No Primary peer found after ${max_wait}s. Starting join anyway."
-  return 0
+  echo "No Primary peer found after ${max_wait}s. Deferring join to avoid forming a separate non-Primary Galera partition."
+  return 1
 }
 
 # Run wsrep-recover to extract the last committed position from InnoDB,
@@ -263,5 +263,8 @@ main() {
     exec docker-entrypoint.sh mariadbd "${wsrep_args[@]}"
   fi
 }
+
+# This is magic for shellspec ut framework, do not modify!
+${__SOURCED__:+false} : || return 0
 
 main "$@"
