@@ -7,7 +7,6 @@ RELOAD_PARAM_SCRIPT="${RELOAD_PARAM_SCRIPT:-/scripts/reload-parameter.sh}"
 RELOAD_VERIFY_CMD="${RELOAD_VERIFY_CMD:-}"
 MAX_WAIT="${MAX_WAIT:-15}"
 MARKER_FILE="${MARKER_FILE:-/tmp/.reload-config-marker}"
-SUCCESS_STAMP="${SUCCESS_STAMP:-/tmp/.reload-config-success}"
 GLOBAL_DEADLINE="${GLOBAL_DEADLINE:-}"
 
 if [ -z "$GLOBAL_DEADLINE" ]; then
@@ -77,14 +76,6 @@ fi
 if [ "$_needs_apply" = "false" ]; then
   _fresh=false
   _current_cksum=$(cksum < "$CONFIG_FILE")
-
-  if [ -f "$SUCCESS_STAMP" ]; then
-    _saved_success=$(cat "$SUCCESS_STAMP")
-    if [ "$_current_cksum" = "$_saved_success" ]; then
-      rm -f "$MARKER_FILE"
-      exit 0
-    fi
-  fi
 
   if [ -f "$MARKER_FILE" ]; then
     _saved=$(cat "$MARKER_FILE")
@@ -193,5 +184,4 @@ if [ "$_verify_failed" = "true" ]; then
   exit 1
 fi
 
-cksum < "$CONFIG_FILE" > "$SUCCESS_STAMP"
 rm -f "$MARKER_FILE"

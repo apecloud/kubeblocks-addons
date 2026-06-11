@@ -152,18 +152,8 @@ SH
     End
   End
 
-  Describe "file matches runtime — success stamp"
-    It "succeeds immediately when success stamp matches"
-      export FAKE_NOW=1000
-      export FAKE_MTIME=995
-      cksum < "${CONFIG_FILE}" > "${SUCCESS_STAMP}"
-      When run bash ../scripts/reload-config.sh
-      The status should be success
-      The file "${RELOAD_LOG}" should not be exist
-      The stderr should include "pre-check maxmemory: match"
-    End
-
-    It "defers without success stamp even with fresh mtime"
+  Describe "file matches runtime — freshness gate"
+    It "defers on first all-match (writes marker, rc=1)"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
       When run bash ../scripts/reload-config.sh
@@ -173,13 +163,17 @@ SH
       The file "${MARKER_FILE}" should be exist
     End
 
-    It "defers when success stamp has wrong cksum"
+    It "does NOT exit 0 when stale stamp matches old file before new projection (cross-reconfigure safety)"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
-      echo "99999 99 stale" > "${SUCCESS_STAMP}"
+      # Simulate: prior reconfigure succeeded → stamp written with current file cksum.
+      # New reconfigure triggered but kubelet has NOT projected new ConfigMap yet.
+      # File still old, runtime still old, stamp matches old → must NOT exit 0.
+      cksum < "${CONFIG_FILE}" > "${SUCCESS_STAMP}"
       When run bash ../scripts/reload-config.sh
       The status should be failure
       The stderr should include "file matches runtime, freshness unconfirmed"
+      The stderr should include "retry-safe: yes"
     End
   End
 
@@ -233,8 +227,8 @@ SH
     The stderr should include "pre-check maxmemory: diff"
   End
 
-  Describe "success stamp lifecycle"
-    It "writes success stamp after successful apply+verify"
+  Describe "no cross-reconfigure state leakage"
+    It "does not leave success stamp after apply+verify (gate 4)"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
       printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
@@ -242,21 +236,8 @@ SH
         > "${VERIFY_VALUES}"
       When run bash ../scripts/reload-config.sh
       The status should be success
-      The file "${SUCCESS_STAMP}" should be exist
-      The stderr should include "pre-check maxmemory: diff"
-    End
-
-    It "does not write success stamp on verify failure"
-      export FAKE_NOW=1000
-      export FAKE_MTIME=995
-      export VERIFY_EMPTY_KEY=maxmemory
-      printf '%s\n' "bind * -::*" "tcp-backlog 999" "timeout 0" \
-        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
-        > "${VERIFY_VALUES}"
-      When run bash ../scripts/reload-config.sh
-      The status should be failure
       The file "${SUCCESS_STAMP}" should not be exist
-      The stderr should include "VERIFY FAIL: maxmemory"
+      The stderr should include "pre-check maxmemory: diff"
     End
   End
 
