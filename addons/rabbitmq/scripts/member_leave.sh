@@ -13,7 +13,7 @@ is_node_deleted() {
 
 cleanup() {
     echo "Cleaning up..."
-    rm -f /tmp/member_leave.lock
+    rm -f "$LOCK_FILE"
 }
 
 get_target_node() {
@@ -53,9 +53,19 @@ if [[ -z "$KB_LEAVE_MEMBER_POD_NAME" ]]; then
     exit 1
 fi
 
-if [[ -f /tmp/member_leave.lock ]]; then
-    echo "member_leave.sh is already running"
-    exit 1
+LOCK_FILE="/tmp/member_leave.lock"
+LOCK_MAX_AGE=55
+if [[ -f "$LOCK_FILE" ]]; then
+    lock_mtime=$(stat -c %Y "$LOCK_FILE" 2>/dev/null || echo 0)
+    now=$(date +%s)
+    lock_age=$(( now - lock_mtime ))
+    if (( lock_age > LOCK_MAX_AGE )); then
+        echo "stale lock detected (${lock_age}s old), removing"
+        rm -f "$LOCK_FILE"
+    else
+        echo "member_leave.sh is already running (lock age: ${lock_age}s)"
+        exit 1
+    fi
 fi
 
 CURRENT_POD_NAME=$(echo "${RABBITMQ_NODENAME}"|grep -oP '(?<=rabbit@).*?(?=\.)')
@@ -70,17 +80,14 @@ if [[ -f /tmp/${KB_LEAVE_MEMBER_POD_NAME}_leave.success ]]; then
 fi
 
 
-touch /tmp/member_leave.lock
-# Define the cleanup function
-
-# Set the trap to call the cleanup function on script exit
+touch "$LOCK_FILE"
 trap cleanup EXIT
 
 # the node to leave the cluster
 LEAVE_NODE="${RABBITMQ_NODENAME/$CURRENT_POD_NAME/$KB_LEAVE_MEMBER_POD_NAME}"
 
 # the output of rabbitmqctl cluster_status
-CLUSTER_STATUS=$(rabbitmqctl cluster_status --formatter table)
+CLUSTER_STATUS=$(timeout 10 rabbitmqctl cluster_status --formatter table)
 
 if is_node_deleted "$CLUSTER_STATUS"; then
     echo "Node $KB_LEAVE_MEMBER_POD_NAME has been deleted."
@@ -95,9 +102,8 @@ if [[ $? -ne 0 ]]; then
     exit 1
 fi
 
-# execute forget_cluster_node on the target node
-rabbitmqctl -n $LEAVE_NODE stop_app
-rabbitmqctl -n $TARGET_NODE forget_cluster_node $LEAVE_NODE
+timeout 20 rabbitmqctl -n $LEAVE_NODE stop_app || echo "stop_app failed or timed out, proceeding with forget_cluster_node"
+timeout 20 rabbitmqctl -n $TARGET_NODE forget_cluster_node $LEAVE_NODE
 
 touch /tmp/${KB_LEAVE_MEMBER_POD_NAME}_leave.success
 
