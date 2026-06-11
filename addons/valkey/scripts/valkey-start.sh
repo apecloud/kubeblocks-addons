@@ -139,10 +139,13 @@ build_replicaof_config() {
     # This prevents split-brain caused by scale-in or failover-timeout overlap,
     # where different sentinels transiently hold different master epochs.
     #
-    # Retry up to 12 times (5s apart = 60s total) to cover the sentinel
-    # failover convergence window before falling back to direct pod scan.
+    # Retry up to 6 times (5s apart ≈ 54s total including verify timeouts)
+    # to cover the sentinel failover convergence window before falling back
+    # to direct pod scan.  Must complete within the liveness probe kill
+    # window (initialDelay 30s + failureThreshold×period = 90s) so the
+    # heuristic election fallback (step A-3) has time to run.
     local attempt
-    for attempt in $(seq 1 12); do
+    for attempt in $(seq 1 6); do
       primary_fqdn=$(query_sentinel_quorum_for_master) || true
       if ! is_empty "${primary_fqdn}"; then
         # Verify the quorum-elected pod actually reports role=master right now.
@@ -159,9 +162,9 @@ build_replicaof_config() {
         echo "INFO: quorum elected ${primary_fqdn} but role='${actual_role:-<unreachable>}' — retrying in 5s." >&2
         primary_fqdn=""
       else
-        echo "INFO: sentinel quorum not ready (attempt ${attempt}/12) — retrying in 5s." >&2
+        echo "INFO: sentinel quorum not ready (attempt ${attempt}/6) — retrying in 5s." >&2
       fi
-      if [ "${attempt}" -lt 12 ]; then
+      if [ "${attempt}" -lt 6 ]; then
         sleep_when_ut_mode_false 5
       fi
     done
