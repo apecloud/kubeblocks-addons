@@ -240,7 +240,20 @@ SH
     End
   End
 
-  Describe "global deadline (Blocker 3 fix)"
+  Describe "zero checkable params"
+    It "fails when CONFIG GET is unreachable even with fresh mtime"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      # Verify-cmd returns empty for everything → zero checked
+      printf '' > "${VERIFY_VALUES}"
+      unset APPLIED_VALUES
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "no params checkable via CONFIG GET"
+    End
+  End
+
+  Describe "global deadline"
     It "aborts when deadline is already exceeded"
       export FAKE_NOW=1000
       export FAKE_MTIME=995

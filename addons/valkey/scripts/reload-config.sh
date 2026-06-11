@@ -10,7 +10,7 @@ MARKER_FILE="${MARKER_FILE:-/tmp/.reload-config-marker}"
 GLOBAL_DEADLINE="${GLOBAL_DEADLINE:-}"
 
 if [ -z "$GLOBAL_DEADLINE" ]; then
-  GLOBAL_DEADLINE=$(( $(date +%s) + 55 ))
+  GLOBAL_DEADLINE=$(( $(date +%s) + 50 ))
 fi
 
 _check_deadline() {
@@ -36,6 +36,7 @@ fi
 # proceed to apply regardless of ConfigMap projection timing.
 
 _needs_apply=false
+_checked=0
 while IFS= read -r line || [ -n "$line" ]; do
   case "$line" in '#'*|'') continue ;; esac
   key=${line%% *}
@@ -46,6 +47,7 @@ while IFS= read -r line || [ -n "$line" ]; do
   _actual=""
   _actual=$($_get_cmd CONFIG GET "$key" 2>/dev/null | tail -1) || true
   [ -z "$_actual" ] && continue
+  _checked=$((_checked + 1))
   if [ "$_actual" != "$value" ]; then
     _needs_apply=true
     break
@@ -88,6 +90,10 @@ if [ "$_needs_apply" = "false" ]; then
   fi
 
   if [ "$_fresh" = "true" ] && [ "$_needs_apply" = "false" ]; then
+    if [ "$_checked" -eq 0 ]; then
+      echo "ERROR: no params checkable via CONFIG GET, cannot confirm runtime state" >&2
+      exit 1
+    fi
     rm -f "$MARKER_FILE"
     exit 0
   fi
