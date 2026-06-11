@@ -43,15 +43,57 @@ function reset_password()
 # Function to wait until cluster health becomes green
 # This indicates that all shards are allocated and cluster is fully operational
 function wait_for_cluster_health() {
+    local timeout=${1:-300}
+    local start=$(date +%s)
     while true; do
         result=$(curl ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/health?pretty" | grep 'green')
         if [ $? == 0 ]; then
             echo "cluster is formed"
             break
         fi
-        echo "waiting for cluster to be formed"
+        local elapsed=$(( $(date +%s) - start ))
+        if [ $elapsed -gt $timeout ]; then
+            echo "ERROR: timeout (${timeout}s) waiting for cluster green"
+            exit 1
+        fi
+        echo "waiting for cluster to be formed (${elapsed}s / ${timeout}s)"
         sleep 1
     done
+}
+
+function clear_stale_allocation_exclusion_for_self() {
+    local node_name="${POD_NAME:-${HOSTNAME:-}}"
+    if [ -z "$node_name" ]; then
+        echo "POD_NAME/HOSTNAME empty, skip stale exclusion cleanup"
+        return 0
+    fi
+    local settings
+    settings=$(curl ${COMMON_OPTIONS} -s "${ENDPOINT}/_cluster/settings?flat_settings=true&include_defaults=false") || {
+        echo "failed to read cluster settings, skip stale exclusion cleanup"
+        return 0
+    }
+    local current
+    current=$(echo "$settings" | jq -r '.persistent["cluster.routing.allocation.exclude._name"] // ""') || current=""
+    if [ -z "$current" ]; then
+        return 0
+    fi
+    case ",$current," in
+        *",$node_name,"*)
+            local remaining
+            remaining=$(printf '%s' "$current" | tr ',' '\n' | grep -v "^${node_name}$" | paste -sd ',' -)
+            if [ -n "$remaining" ]; then
+                local payload="{\"persistent\":{\"cluster.routing.allocation.exclude._name\":\"${remaining}\"}}"
+            else
+                local payload='{"persistent":{"cluster.routing.allocation.exclude._name":null}}'
+            fi
+            echo "clearing stale shard allocation exclusion for $node_name"
+            curl ${COMMON_OPTIONS} -s -X PUT "${ENDPOINT}/_cluster/settings" \
+                -H 'Content-Type: application/json' -d "$payload" || echo "WARNING: failed to clear stale exclusion"
+            ;;
+        *)
+            echo "no stale shard allocation exclusion for $node_name"
+            ;;
+    esac
 }
 
 # For master nodes: Initialize cluster and create CLUSTER_FORMED_FILE
@@ -75,10 +117,12 @@ if grep '\- master\|master: true' config/elasticsearch.yml > /dev/null 2>&1; the
         wait_for_cluster_health
         touch ${CLUSTER_FORMED_FILE}
     fi
+    clear_stale_allocation_exclusion_for_self
 else
 	if grep 'type: single-node' config/elasticsearch.yml > /dev/null 2>&1; then
 		echo "single-node mode, skip cluster formation and user initialization"
 	else
+    	clear_stale_allocation_exclusion_for_self
     	exit 0
 	fi
 fi
