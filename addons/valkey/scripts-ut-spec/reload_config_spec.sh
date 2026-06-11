@@ -98,9 +98,10 @@ SH
     export RELOAD_VERIFY_CMD="${_spec_dir}/verify-cmd.sh"
     export MAX_WAIT=1
     export MARKER_FILE="${_spec_dir}/marker"
+    export SUCCESS_STAMP="${_spec_dir}/success-stamp"
     export RELOAD_LOG="${_spec_dir}/calls.log"
     export GLOBAL_DEADLINE=9999999999
-    rm -f "${RELOAD_LOG}" "${MARKER_FILE}"
+    rm -f "${RELOAD_LOG}" "${MARKER_FILE}" "${SUCCESS_STAMP}"
 
     # Default: verify returns matching values (runtime == file)
     printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
@@ -118,7 +119,7 @@ SH
     rm -rf "${_spec_dir:-}"
     unset RELOAD_LOG FAKE_MTIME FAKE_NOW CONFIG_FILE DATA_LINK
     unset RELOAD_PARAM_SCRIPT RELOAD_VERIFY_CMD MAX_WAIT
-    unset MARKER_FILE FAKE_RELOAD_RC VERIFY_VALUES APPLIED_VALUES
+    unset MARKER_FILE SUCCESS_STAMP FAKE_RELOAD_RC VERIFY_VALUES APPLIED_VALUES
     unset GLOBAL_DEADLINE VERIFY_EMPTY_KEY NORMALIZE_MAP FAKE_NOW_COUNTER
   }
   After "cleanup"
@@ -151,24 +152,34 @@ SH
     End
   End
 
-  Describe "file matches runtime"
-    It "succeeds immediately when mtime is fresh"
+  Describe "file matches runtime — success stamp"
+    It "succeeds immediately when success stamp matches"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
+      cksum < "${CONFIG_FILE}" > "${SUCCESS_STAMP}"
       When run bash ../scripts/reload-config.sh
       The status should be success
       The file "${RELOAD_LOG}" should not be exist
       The stderr should include "pre-check maxmemory: match"
     End
 
-    It "defers with exit 1 when mtime is old"
+    It "defers without success stamp even with fresh mtime"
       export FAKE_NOW=1000
-      export FAKE_MTIME=500
+      export FAKE_MTIME=995
       When run bash ../scripts/reload-config.sh
       The status should be failure
       The stderr should include "file matches runtime, freshness unconfirmed"
       The stderr should include "retry-safe: yes"
       The file "${MARKER_FILE}" should be exist
+    End
+
+    It "defers when success stamp has wrong cksum"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      echo "99999 99 stale" > "${SUCCESS_STAMP}"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "file matches runtime, freshness unconfirmed"
     End
   End
 
@@ -220,6 +231,33 @@ SH
     The status should be success
     The file "${MARKER_FILE}" should not be exist
     The stderr should include "pre-check maxmemory: diff"
+  End
+
+  Describe "success stamp lifecycle"
+    It "writes success stamp after successful apply+verify"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+        > "${VERIFY_VALUES}"
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The file "${SUCCESS_STAMP}" should be exist
+      The stderr should include "pre-check maxmemory: diff"
+    End
+
+    It "does not write success stamp on verify failure"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      export VERIFY_EMPTY_KEY=maxmemory
+      printf '%s\n' "bind * -::*" "tcp-backlog 999" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+        > "${VERIFY_VALUES}"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The file "${SUCCESS_STAMP}" should not be exist
+      The stderr should include "VERIFY FAIL: maxmemory"
+    End
   End
 
   Describe "CONFIG GET read-back verification"
