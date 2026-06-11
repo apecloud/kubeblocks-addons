@@ -363,8 +363,7 @@ reconfigure:
         trap 'rm -f "${parameter_file}"' EXIT
         emit_action_parameters > "${parameter_file}"
         if [ ! -s "${parameter_file}" ]; then
-          echo "No reconfigure parameters were injected into action environment" >&2
-          exit 1
+          exit 0
         fi
 
         applied_count=0
@@ -622,8 +621,7 @@ reconfigure:
         fi
 
         if [ ! -s "${parameter_file}" ]; then
-          echo "No reconfigure parameters were injected into action environment" >&2
-          exit 1
+          exit 0
         fi
 
         # alpha.86 v1 — injection defense per Jack guard 3.
