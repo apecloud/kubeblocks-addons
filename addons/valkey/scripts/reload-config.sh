@@ -53,8 +53,9 @@ while IFS= read -r line || [ -n "$line" ]; do
     _has_uncheckable=true
     continue
   fi
-  if [ "$_actual" != "$value" ]; then
-    _trace "pre-check ${key}: diff actual='${_actual}' desired='${value}'"
+  _cmp_val="$value"; _cmp_val="${_cmp_val#\"}"; _cmp_val="${_cmp_val%\"}"
+  if [ "$_actual" != "$_cmp_val" ]; then
+    _trace "pre-check ${key}: diff actual='${_actual}' desired='${_cmp_val}'"
     _needs_apply=true
     break
   else
@@ -62,9 +63,7 @@ while IFS= read -r line || [ -n "$line" ]; do
   fi
 done < "$CONFIG_FILE"
 
-if [ "$_needs_apply" = "false" ] && [ "$_has_uncheckable" = "true" ]; then
-  _needs_apply=true
-fi
+_trace "pre-check result: _needs_apply=${_needs_apply} _has_uncheckable=${_has_uncheckable}"
 
 # ── Phase 2: File matches runtime — verify freshness before rc=0 ─────
 # If every checkable param already matches runtime, succeed only when we
@@ -96,8 +95,8 @@ if [ "$_needs_apply" = "false" ]; then
   fi
 
   if [ "$_fresh" = "true" ] && [ "$_needs_apply" = "false" ]; then
-    rm -f "$MARKER_FILE"
-    exit 0
+    _trace "fresh confirmed but Phase 1 saw no diff — re-applying from current file"
+    _needs_apply=true
   fi
 
   if [ "$_needs_apply" = "false" ]; then
@@ -120,8 +119,9 @@ while IFS= read -r line || [ -n "$line" ]; do
   [ "$key" = "$value" ] && continue
   _check_deadline
 
+  _apply_val="$value"; _apply_val="${_apply_val#\"}"; _apply_val="${_apply_val%\"}"
   _rc=0
-  timeout 5 "$RELOAD_PARAM_SCRIPT" "$key" "$value" || _rc=$?
+  timeout 5 "$RELOAD_PARAM_SCRIPT" "$key" "$_apply_val" || _rc=$?
   _trace "apply ${key}: rc=${_rc}"
   case "$_rc" in
     0)
@@ -132,7 +132,7 @@ while IFS= read -r line || [ -n "$line" ]; do
       if [ -n "$_post_val" ]; then
         echo "$key $_post_val" >> "$_verify_file"
       else
-        echo "$key $value" >> "$_verify_file"
+        echo "$key $_apply_val" >> "$_verify_file"
       fi
       _timeouts=0
       ;;

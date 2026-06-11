@@ -288,32 +288,80 @@ TESTCONF
     End
   End
 
-  Describe "uncheckable params force apply"
-    It "applies when all CONFIG GETs fail even with fresh mtime"
+  Describe "uncheckable params do not bypass freshness gate"
+    It "defers when all CONFIG GETs fail (freshness gate runs)"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
-      # Verify-cmd returns empty for everything → all uncheckable → force apply
+      # Verify-cmd returns empty for everything → all uncheckable
+      # → _needs_apply stays false → Phase 2 freshness gate runs → defers
       printf '' > "${VERIFY_VALUES}"
       When run bash ../scripts/reload-config.sh
-      The status should be success
-      The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
+      The status should be failure
       The stderr should include "pre-check bind: uncheckable"
+      The stderr should include "file matches runtime, freshness unconfirmed"
     End
 
-    It "forces apply then verify-fails when one param CONFIG GET is broken"
+    It "defers when one param CONFIG GET is broken (freshness gate runs)"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
-      # bind checkable and matches, maxmemory returns empty everywhere
-      # → pre-check forces apply (not silent rc=0)
-      # → verify also gets empty for maxmemory → VERIFY FAIL → exit 1
+      # bind/tcp-backlog/timeout/maxmemory-policy match, maxmemory returns empty
+      # → all checkable match, one uncheckable → _needs_apply stays false
+      # → Phase 2 freshness gate runs → defers
       export VERIFY_EMPTY_KEY=maxmemory
       printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
         "maxmemory-policy volatile-lru" "maxmemory 268435456" \
         > "${VERIFY_VALUES}"
       When run bash ../scripts/reload-config.sh
       The status should be failure
-      The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
-      The stderr should include "VERIFY FAIL: maxmemory"
+      The stderr should include "pre-check maxmemory: uncheckable"
+      The stderr should include "file matches runtime, freshness unconfirmed"
+    End
+  End
+
+  Describe "quoted values in config file"
+    It "matches CONFIG GET despite quotes in file (no false diff)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      cat > "${CONFIG_FILE}" <<'TESTCONF'
+# Valkey configuration
+
+bind * -::*
+logfile "/data/running.log"
+maxmemory-policy volatile-lru
+maxmemory 268435456
+TESTCONF
+      # Runtime matches file content (unquoted)
+      printf '%s\n' "bind * -::*" "logfile /data/running.log" \
+        "maxmemory-policy volatile-lru" "maxmemory 268435456" \
+        > "${VERIFY_VALUES}"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      # All params match → Phase 2 freshness gate → defers
+      The stderr should include "pre-check logfile: match"
+      The stderr should include "file matches runtime, freshness unconfirmed"
+    End
+
+    It "strips quotes before CONFIG SET (no runtime corruption)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      cat > "${CONFIG_FILE}" <<'TESTCONF'
+# Valkey configuration
+
+bind * -::*
+logfile "/data/running.log"
+maxmemory-policy volatile-lru
+maxmemory 268435456
+TESTCONF
+      # Runtime has old maxmemory → pre-check detects diff → apply
+      printf '%s\n' "bind * -::*" "logfile /data/running.log" \
+        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+        > "${VERIFY_VALUES}"
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      # Reload should pass unquoted value to reload-parameter.sh
+      The contents of file "${RELOAD_LOG}" should include "RELOAD: logfile /data/running.log"
+      The contents of file "${RELOAD_LOG}" should not include 'RELOAD: logfile "/data/running.log"'
+      The stderr should include "pre-check maxmemory: diff"
     End
   End
 
