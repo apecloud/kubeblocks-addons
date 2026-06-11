@@ -158,13 +158,10 @@ Describe "Valkey Check-Role Bash Script Tests"
   End
 
   Describe "engine-authoritative version trailer (PR #10280 whitespace-token contract)"
-    # check-role.sh now appends a second whitespace-separated token — the
-    # sentinel config-epoch — when at least one reachable sentinel returns
-    # a clean uint64. The controller-side parser (post-PR #10280) splits
-    # stdout on any whitespace and accepts only `<role>` or
-    # `<role> <uint64>`; anything else is rejected outright. So the script
-    # must either emit `primary\n<uint64>` (or `primary <uint64>`) or
-    # legacy single-line output, never a labeled `kb-role-version=` form.
+    # check-role.sh uses sentinel quorum to decide the authoritative role.
+    # The versioned output (role + engine_version) is currently disabled
+    # for KB 1.2.0-alpha.1 compatibility — only the role token is emitted.
+    # The quorum logic and sentinel parser tests remain valid.
     parse_one_sentinel_epoch() {
       local sentinel_out="$1"
       local sline ce_marker="" epoch=""
@@ -259,51 +256,24 @@ Describe "Valkey Check-Role Bash Script Tests"
       End
     End
 
-    Context "second-token emission obeys whitespace-token contract"
-      # The controller's strict parser splits the entire stdout on whitespace
-      # and accepts only `<role>` or `<role> <uint64>`. Anything else is
-      # rejected. So the second token must be the bare numeric epoch — no
-      # `kb-role-version=` prefix.
+    Context "single-token emission (KB 1.2.0-alpha.1 compat, no strings.Fields parser)"
+      # KB 1.2.0-alpha.1 does not include PR #10280's strings.Fields
+      # parser, so the entire stdout becomes the pod label value.
+      # Multi-token output ("primary\n0") fails K8s label validation.
+      # The script now emits only the role token.
       compose_output() {
-        local role="$1" version="$2"
+        local role="$1"
         printf %s "${role}"
-        case "${version}" in
-          ''|*[!0-9]*) : ;;
-          *) printf '\n%s' "${version}" ;;
-        esac
       }
 
-      It "emits whitespace-separated tokens for a clean uint64"
-        When call compose_output "primary" "42"
-        The status should be success
-        The stdout should eq "primary
-42"
-      End
-
-      It "drops second token when version is empty"
-        When call compose_output "secondary" ""
-        The status should be success
-        The stdout should eq "secondary"
-      End
-
-      It "drops second token when version is non-numeric"
-        When call compose_output "primary" "NaN"
+      It "emits only the role token with no trailing content"
+        When call compose_output "primary"
         The status should be success
         The stdout should eq "primary"
       End
 
-      It "splits with strings.Fields-compatible whitespace"
-        # Production uses '\n' between role and version. The controller's
-        # strings.Fields() in Go accepts spaces, tabs, and newlines.
-        out=$(compose_output "primary" "42")
-        # Two tokens after splitting on whitespace
-        When call bash -c "read -ra t <<< \"${out//$'\n'/ }\"; printf '%s\n' \"\${t[0]} \${t[1]} count=\${#t[@]}\""
-        The status should be success
-        The stdout should eq "primary 42 count=2"
-      End
-
       It "never emits the legacy kb-role-version= label form"
-        out=$(compose_output "primary" "42")
+        out=$(compose_output "primary")
         When call grep -q 'kb-role-version=' <<<"${out}"
         The status should be failure
       End
@@ -351,14 +321,14 @@ Describe "Valkey Check-Role Bash Script Tests"
           case "${role_line}" in
             "role:master")
               if [ -n "${local_run_id}" ] && [ "${local_run_id}" = "${sentinel_master_runid}" ]; then
-                printf '%s\n%s' "primary"   "${engine_version}"
+                printf %s "primary"
               else
-                printf '%s\n%s' "secondary" "${engine_version}"
+                printf %s "secondary"
               fi
               return 0
               ;;
             "role:slave")
-              printf '%s\n%s' "secondary" "${engine_version}"
+              printf %s "secondary"
               return 0
               ;;
           esac
@@ -370,25 +340,22 @@ Describe "Valkey Check-Role Bash Script Tests"
         return 0
       }
 
-      It "emits primary <epoch> when local INFO=master and run_id matches sentinel master runid"
+      It "emits primary when local INFO=master and run_id matches sentinel master runid"
         When call decide_role "master" "aaaaaaaa" "aaaaaaaa" "5"
         The status should be success
-        The stdout should eq "primary
-5"
+        The stdout should eq "primary"
       End
 
-      It "emits secondary <epoch> when local INFO=master but run_id does not match sentinel master runid (round-3 race fix)"
+      It "emits secondary when local INFO=master but run_id does not match sentinel master runid (round-3 race fix)"
         When call decide_role "master" "aaaaaaaa" "bbbbbbbb" "5"
         The status should be success
-        The stdout should eq "secondary
-5"
+        The stdout should eq "secondary"
       End
 
-      It "emits secondary <epoch> when local INFO=slave and sentinel reachable"
+      It "emits secondary when local INFO=slave and sentinel reachable"
         When call decide_role "slave" "aaaaaaaa" "bbbbbbbb" "5"
         The status should be success
-        The stdout should eq "secondary
-5"
+        The stdout should eq "secondary"
       End
 
       It "falls back to legacy single token when sentinel master runid is empty"
@@ -408,8 +375,7 @@ Describe "Valkey Check-Role Bash Script Tests"
         # current master, even if its INFO replication says master.
         When call decide_role "master" "" "aaaaaaaa" "5"
         The status should be success
-        The stdout should eq "secondary
-5"
+        The stdout should eq "secondary"
       End
     End
 
