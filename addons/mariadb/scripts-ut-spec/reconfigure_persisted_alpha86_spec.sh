@@ -496,6 +496,22 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
       The output should include 'container: mariadb'
       The output should include 'image: {{ include "mariadb.image" . }}'
     End
+
+    It "base reconfigureAction consumes KB runtime key/value arguments"
+      When call extract_base_helper_body
+      The status should be success
+      The output should include 'emit_action_parameters "$@"'
+      The output should include '- reconfigure'
+      The output should include 'Reconfigure action expects key/value arguments'
+    End
+
+    It "persisted reconfigureAction consumes KB runtime key/value arguments"
+      When call extract_persisted_helper_body
+      The status should be success
+      The output should include 'emit_action_parameters "$@"'
+      The output should include '- reconfigure'
+      The output should include 'Reconfigure action expects key/value arguments'
+    End
   End
 
   Describe "Regression: KB-managed config has NO !includedir (alpha.84 v1 parser FAIL)"

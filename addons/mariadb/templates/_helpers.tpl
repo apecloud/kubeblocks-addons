@@ -348,6 +348,26 @@ reconfigure:
         }
 
         emit_action_parameters() {
+          if [ "$#" -gt 0 ]; then
+            if [ "$#" -ne 2 ]; then
+              echo "Reconfigure action expects key/value arguments, got $#: $*" >&2
+              exit 1
+            fi
+            param_name="$1"
+            param_value="$2"
+            case "${param_name}" in
+{{- range (get $pd "dynamicParameters") }}
+            {{ . }})
+              printf "%s=%s\n" "${param_name}" "${param_value}"
+              ;;
+{{- end }}
+            *)
+              echo "Ignoring non-dynamic reconfigure parameter ${param_name}" >&2
+              ;;
+            esac
+            return 0
+          fi
+
           env | while IFS='=' read -r param_name param_value; do
             case "${param_name}" in
 {{- range (get $pd "dynamicParameters") }}
@@ -361,7 +381,7 @@ reconfigure:
 
         parameter_file="$(mktemp)"
         trap 'rm -f "${parameter_file}"' EXIT
-        emit_action_parameters > "${parameter_file}"
+        emit_action_parameters "$@" > "${parameter_file}"
         if [ ! -s "${parameter_file}" ]; then
           exit 0
         fi
@@ -401,6 +421,7 @@ reconfigure:
           echo "No parameters were applied during reconfigure action" >&2
           exit 1
         fi
+      - reconfigure
 {{- end -}}
 
 {{/*
@@ -551,6 +572,26 @@ reconfigure:
         }
 
         emit_action_parameters() {
+          if [ "$#" -gt 0 ]; then
+            if [ "$#" -ne 2 ]; then
+              echo "Reconfigure action expects key/value arguments, got $#: $*" >&2
+              exit 1
+            fi
+            param_name="$1"
+            param_value="$2"
+            case "${param_name}" in
+{{- range (get $pd "dynamicParameters") }}
+            {{ . }})
+              printf "%s=%s\n" "${param_name}" "${param_value}"
+              ;;
+{{- end }}
+            *)
+              echo "Ignoring non-dynamic reconfigure parameter ${param_name}" >&2
+              ;;
+            esac
+            return 0
+          fi
+
           env | while IFS='=' read -r param_name param_value; do
             case "${param_name}" in
 {{- range (get $pd "dynamicParameters") }}
@@ -579,7 +620,7 @@ reconfigure:
 
         parameter_file="$(mktemp)"
         trap 'rm -f "${parameter_file}"' EXIT
-        emit_action_parameters > "${parameter_file}"
+        emit_action_parameters "$@" > "${parameter_file}"
 
         # alpha.89 v1 commit 12 (Helen 2026-05-20, C3 design mapper) —
         # translate the synthetic `replicationMode` ComponentSpec
@@ -775,6 +816,7 @@ reconfigure:
           echo "No parameters were applied during reconfigure action" >&2
           exit 1
         fi
+      - reconfigure
 {{- end -}}
 
 {{/*
