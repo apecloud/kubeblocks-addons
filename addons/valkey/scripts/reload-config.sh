@@ -124,6 +124,7 @@ while IFS= read -r line || [ -n "$line" ]; do
   timeout 5 "$RELOAD_PARAM_SCRIPT" "$key" "$value" || _rc=$?
   case "$_rc" in
     0)
+      _check_deadline
       _post_val=""
       _post_val=$($_get_cmd CONFIG GET "$key" 2>/dev/null | tail -1) || true
       if [ -n "$_post_val" ]; then

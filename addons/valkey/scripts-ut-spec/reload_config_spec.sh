@@ -119,7 +119,7 @@ SH
     unset RELOAD_LOG FAKE_MTIME FAKE_NOW CONFIG_FILE DATA_LINK
     unset RELOAD_PARAM_SCRIPT RELOAD_VERIFY_CMD MAX_WAIT
     unset MARKER_FILE FAKE_RELOAD_RC VERIFY_VALUES APPLIED_VALUES
-    unset GLOBAL_DEADLINE VERIFY_EMPTY_KEY NORMALIZE_MAP
+    unset GLOBAL_DEADLINE VERIFY_EMPTY_KEY NORMALIZE_MAP FAKE_NOW_COUNTER
   }
   After "cleanup"
 
@@ -298,6 +298,33 @@ TESTCONF
       When run bash ../scripts/reload-config.sh
       The status should be failure
       The stderr should include "global deadline exceeded"
+    End
+
+    It "aborts after CONFIG SET succeeds when deadline is reached before post-SET readback"
+      # Counter-based date: returns 999, 1000, 1001, ... on each +%s call.
+      # Call 1 (pre-check _check_deadline): 999 < 1001 → pass
+      # Call 2 (apply-loop _check_deadline): 1000 < 1001 → pass
+      # Call 3 (post-SET _check_deadline): 1001 >= 1001 → deadline exceeded
+      echo "999" > "${_spec_dir}/now-counter"
+      export FAKE_NOW_COUNTER="${_spec_dir}/now-counter"
+      cat > "${_spec_dir}/bin/date" <<'SH'
+#!/bin/sh
+if [ "$1" = "+%s" ] && [ -f "${FAKE_NOW_COUNTER:-}" ]; then
+  _n=$(cat "$FAKE_NOW_COUNTER")
+  echo "$((_n + 1))" > "$FAKE_NOW_COUNTER"
+  echo "$_n"
+else
+  /bin/date "$@"
+fi
+SH
+      chmod +x "${_spec_dir}/bin/date"
+      export GLOBAL_DEADLINE=1001
+      printf '%s\n' 'maxmemory 268435456' > "${CONFIG_FILE}"
+      printf '%s\n' "maxmemory 214748364" > "${VERIFY_VALUES}"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "global deadline exceeded"
+      The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
     End
   End
 
