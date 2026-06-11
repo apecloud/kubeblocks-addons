@@ -206,6 +206,8 @@ Describe "Redis Reconfigure Config Script Tests"
       service_port=6379
       auth_arg=""
       dynamic_allowlist="maxmemory,hz,loglevel,hash-max-listpack-entries"
+      wait_interval=0
+      wait_max=0
       tmp_config=$(mktemp)
       config_file="$tmp_config"
     }
@@ -613,6 +615,145 @@ CONF
       End
     End
 
+    Context "bounded wait retries until config file changes"
+      set_called_with=""
+      _retry_count=0
+
+      setup() {
+        setup_base
+        wait_interval=1
+        wait_max=10
+
+        set_called_with=""
+        _retry_count=0
+        cat > "$tmp_config" <<'CONF'
+maxmemory 67108864
+hz 10
+CONF
+      }
+      Before "setup"
+
+      After "cleanup_base"
+
+      sleep() { :; }
+
+      redis-cli() {
+        local key
+        key=$(_redis_cli_get_key "$@")
+        case "$key" in
+          "'*'"|"*")
+            printf '%s\n' "maxmemory" "67108864" "hz" "10"
+            ;;
+          maxmemory) printf '%s\n' "maxmemory" "200000" ;;
+        esac
+      }
+
+      sha256sum() {
+        _retry_count=$(( _retry_count + 1 ))
+        if [ "$_retry_count" -ge 3 ]; then
+          printf '%s\n' "maxmemory 200000" > "$tmp_config"
+          echo "newhash  $1"
+        else
+          echo "oldhash  $1"
+        fi
+      }
+
+      reload_parameter() {
+        set_called_with="${set_called_with}${1}=${2};"
+        return 0
+      }
+
+      It "retries and applies changes when config file updates"
+        When call reconfigure_from_config_file
+        The status should be success
+        The variable set_called_with should equal "maxmemory=200000;"
+        The stderr should include "INFO: config file changed after"
+        The stderr should include "INFO: applied 1 parameter(s)"
+      End
+    End
+
+    Context "bounded wait times out gracefully"
+      setup() {
+        setup_base
+        wait_interval=1
+        wait_max=4
+
+        cat > "$tmp_config" <<'CONF'
+maxmemory 67108864
+hz 10
+CONF
+      }
+      Before "setup"
+
+      After "cleanup_base"
+
+      sleep() { :; }
+
+      sha256sum() {
+        echo "samehash  $1"
+      }
+
+      redis-cli() {
+        local key
+        key=$(_redis_cli_get_key "$@")
+        case "$key" in
+          "'*'"|"*")
+            printf '%s\n' "maxmemory" "67108864" "hz" "10"
+            ;;
+        esac
+      }
+
+      reload_parameter() {
+        return 0
+      }
+
+      It "exits 0 with INFO when no diff after timeout"
+        When call reconfigure_from_config_file
+        The status should be success
+        The stderr should include "INFO: no dynamic parameter diff after"
+        The stderr should include "config may already be in sync"
+      End
+    End
+
+    Context "immediate diff skips wait loop"
+      set_called_with=""
+
+      setup() {
+        setup_base
+        wait_interval=1
+        wait_max=60
+
+        set_called_with=""
+        printf '%s\n' "maxmemory 100000" > "$tmp_config"
+      }
+      Before "setup"
+
+      After "cleanup_base"
+
+      redis-cli() {
+        local key
+        key=$(_redis_cli_get_key "$@")
+        case "$key" in
+          "'*'"|"*")
+            printf '%s\n' "maxmemory" "67108864"
+            ;;
+          maxmemory) printf '%s\n' "maxmemory" "100000" ;;
+        esac
+      }
+
+      reload_parameter() {
+        set_called_with="${set_called_with}${1}=${2};"
+        return 0
+      }
+
+      It "applies immediately with 0s wait"
+        When call reconfigure_from_config_file
+        The status should be success
+        The variable set_called_with should equal "maxmemory=100000;"
+        The stderr should include "INFO: applied 1 parameter(s) after 0s wait"
+      End
+    End
+
     Context "post-set verification handles empty value correctly"
       setup() {
         setup_base
@@ -644,7 +785,8 @@ CONF
       It "verifies empty value post-set without false mismatch"
         When call reconfigure_from_config_file
         The status should be success
-        The stderr should equal ""
+        The stderr should not include "ERROR"
+        The stderr should include "INFO: applied 1 parameter(s)"
       End
     End
   End
