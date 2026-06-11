@@ -206,9 +206,10 @@ reconfigure:
       - -c
       - |
         set -eu
-
-        /scripts/reload-parameter.sh "$1" "$2"
-      - --
+        env | cut -d= -f1 | grep -E '^[a-zA-Z0-9_.-]+$' | sort -u | while IFS= read -r param; do
+          [ -n "${param}" ] || continue
+          /scripts/reload-parameter.sh "${param//_/-}" "$(printenv "${param}")"
+        done
 {{- end -}}
 
 {{- define "apeDts.reshard.image" -}}
