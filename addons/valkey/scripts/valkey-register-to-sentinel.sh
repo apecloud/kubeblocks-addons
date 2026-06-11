@@ -105,11 +105,11 @@ register_to_one_sentinel() {
   local sentinel_fqdn="${1}"
   echo "--- Registering with Sentinel ${sentinel_fqdn} ---"
 
-  call_func_with_retry 5 5 check_sentinel_connectivity "${sentinel_fqdn}" || {
+  call_func_with_retry 3 3 check_sentinel_connectivity "${sentinel_fqdn}" || {
     echo "ERROR: Sentinel ${sentinel_fqdn} not reachable" >&2
     return 1
   }
-  call_func_with_retry 5 5 check_data_connectivity || {
+  call_func_with_retry 3 3 check_data_connectivity || {
     echo "ERROR: primary ${primary_host}:${primary_port} not reachable" >&2
     return 1
   }
@@ -124,25 +124,25 @@ register_to_one_sentinel() {
   master_addr=$("${cli[@]}" SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null || true)
   if is_empty "${master_addr}" || [ "${master_addr}" = "(nil)" ]; then
     echo "Sentinel not yet monitoring '${master_name}' — issuing SENTINEL monitor..."
-    call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \
+    call_func_with_retry 3 2 execute_sentinel_cmd "${sentinel_fqdn}" \
       SENTINEL monitor "${master_name}" "${primary_host}" "${primary_port}" 2 || return 1
   else
     echo "Sentinel already monitoring '${master_name}' at ${master_addr}. Skipping monitor."
   fi
 
   # Configure parameters
-  call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \
+  call_func_with_retry 3 2 execute_sentinel_cmd "${sentinel_fqdn}" \
     SENTINEL set "${master_name}" down-after-milliseconds 20000 || return 1
-  call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \
+  call_func_with_retry 3 2 execute_sentinel_cmd "${sentinel_fqdn}" \
     SENTINEL set "${master_name}" failover-timeout 60000 || return 1
-  call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \
+  call_func_with_retry 3 2 execute_sentinel_cmd "${sentinel_fqdn}" \
     SENTINEL set "${master_name}" parallel-syncs 1 || return 1
 
   # Data node auth
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \
+    call_func_with_retry 3 2 execute_sentinel_cmd "${sentinel_fqdn}" \
       SENTINEL set "${master_name}" auth-user "${VALKEY_DEFAULT_USER:-default}" || return 1
-    call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \
+    call_func_with_retry 3 2 execute_sentinel_cmd "${sentinel_fqdn}" \
       SENTINEL set "${master_name}" auth-pass "${VALKEY_DEFAULT_PASSWORD}" || return 1
   fi
 
@@ -150,6 +150,17 @@ register_to_one_sentinel() {
 }
 
 # ── main ─────────────────────────────────────────────────────────────────────
+
+# kbagent enforces a 60s hard timeout on lifecycle actions.
+# Budget 45s to leave margin for process setup/teardown.
+POSTPROVISION_DEADLINE=$((SECONDS + 45))
+
+budget_check() {
+  if [ "$SECONDS" -ge "$POSTPROVISION_DEADLINE" ]; then
+    echo "ERROR: postProvision budget exhausted (${SECONDS}s elapsed, limit 45s)" >&2
+    exit 1
+  fi
+}
 
 if is_empty "${SENTINEL_COMPONENT_NAME}"; then
   echo "No Sentinel component found — standalone topology, nothing to register."
@@ -163,7 +174,8 @@ fi
 
 IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
 for fqdn in "${sentinel_fqdns[@]}"; do
+  budget_check
   register_to_one_sentinel "${fqdn}" || exit 1
 done
 
-echo "All Sentinel pods registered successfully."
+echo "All Sentinel pods registered successfully (${SECONDS}s elapsed)."
