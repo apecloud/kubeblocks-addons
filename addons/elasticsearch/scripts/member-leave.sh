@@ -25,7 +25,7 @@ else
 fi
 
 endpoint="${READINESS_PROBE_PROTOCOL}://${LOOPBACK}:9200"
-common_options="-k --fail --connect-timeout 5 --max-time 10 --retry 1 ${BASIC_AUTH}"
+common_options="-k --fail --connect-timeout 2 --max-time 3 ${BASIC_AUTH}"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
@@ -43,21 +43,20 @@ fi
 node_name="$KB_LEAVE_MEMBER_POD_NAME"
 log "=== memberLeave: preparing node $node_name for removal ==="
 
-version=$(curl ${common_options} -s "${endpoint}" | jq -r .version.number)
-if [ $? != 0 ]; then
-  error_exit "Failed to get Elasticsearch version"
-fi
+version_response=$(curl ${common_options} -s "${endpoint}") || error_exit "Failed to connect to Elasticsearch"
+version=$(echo "$version_response" | jq -r .version.number) || error_exit "Failed to parse Elasticsearch version"
 major_version=${version%%.*}
 log "Elasticsearch version: $version (major: $major_version)"
 
-health=$(curl ${common_options} -s "${endpoint}/_cluster/health" | jq -r '.status')
+health_response=$(curl ${common_options} -s "${endpoint}/_cluster/health") || error_exit "Failed to query cluster health"
+health=$(echo "$health_response" | jq -r '.status') || error_exit "Failed to parse cluster health"
 log "Cluster health: $health"
 if [ "$health" != "green" ] && [ "$health" != "yellow" ]; then
   error_exit "Cluster is not healthy (status: $health). Resolve before scaling down."
 fi
 
-node_info=$(curl ${common_options} -s "${endpoint}/_nodes/${node_name}")
-node_count=$(echo "$node_info" | jq -r '.nodes | length')
+node_info=$(curl ${common_options} -s "${endpoint}/_nodes/${node_name}") || error_exit "Failed to query node info"
+node_count=$(echo "$node_info" | jq -r '.nodes | length') || node_count="0"
 if [ "$node_count" = "0" ]; then
   log "Node $node_name not found in cluster — already removed or not yet joined. Skipping voting exclusion."
   is_master="false"
@@ -86,11 +85,13 @@ if [ "$is_master" = "true" ]; then
   fi
 fi
 
-shard_count=$(curl ${common_options} -s "${endpoint}/_cat/shards?v" | grep "$node_name" | wc -l)
+shards_response=$(curl ${common_options} -s "${endpoint}/_cat/shards?v" 2>/dev/null) || shards_response=""
+shard_count=$(echo "$shards_response" | grep -c "$node_name" || true)
 log "Node $node_name currently has $shard_count shards"
 
-current_exclusion=$(curl ${common_options} -s "${endpoint}/_cluster/settings?flat_settings=true&include_defaults=false" \
-  | jq -r '.persistent["cluster.routing.allocation.exclude._name"] // ""')
+settings_response=$(curl ${common_options} -s "${endpoint}/_cluster/settings?flat_settings=true&include_defaults=false") \
+  || error_exit "Failed to read cluster settings"
+current_exclusion=$(echo "$settings_response" | jq -r '.persistent["cluster.routing.allocation.exclude._name"] // ""')
 
 case ",$current_exclusion," in
   *",$node_name,"*)
