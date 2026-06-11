@@ -134,6 +134,7 @@ SH
       When run bash ../scripts/reload-config.sh
       The status should be success
       The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
+      The stderr should include "pre-check maxmemory: diff"
     End
 
     It "applies even when mtime is old (Blocker 1 fix)"
@@ -146,6 +147,7 @@ SH
       When run bash ../scripts/reload-config.sh
       The status should be success
       The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
+      The stderr should include "pre-check maxmemory: diff"
     End
   End
 
@@ -156,6 +158,7 @@ SH
       When run bash ../scripts/reload-config.sh
       The status should be success
       The file "${RELOAD_LOG}" should not be exist
+      The stderr should include "pre-check maxmemory: match"
     End
 
     It "defers with exit 1 when mtime is old"
@@ -181,6 +184,7 @@ SH
       When run bash ../scripts/reload-config.sh
       The status should be success
       The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
+      The stderr should include "pre-check maxmemory: diff"
     End
 
     It "defers when marker exists and content unchanged"
@@ -202,6 +206,7 @@ SH
     When run bash ../scripts/reload-config.sh
     The status should be success
     The contents of file "${RELOAD_LOG}" should not include "RELOAD: #"
+    The stderr should include "pre-check maxmemory: diff"
   End
 
   It "cleans marker file on success"
@@ -214,6 +219,7 @@ SH
     When run bash ../scripts/reload-config.sh
     The status should be success
     The file "${MARKER_FILE}" should not be exist
+    The stderr should include "pre-check maxmemory: diff"
   End
 
   Describe "CONFIG GET read-back verification"
@@ -244,6 +250,7 @@ TESTCONF
       When run bash ../scripts/reload-config.sh
       The status should be success
       The contents of file "${RELOAD_LOG}" should include "RELOAD: auto-aof-rewrite-min-size 64mb"
+      The stderr should include "pre-check auto-aof-rewrite-min-size: diff"
     End
 
     It "fails when CONFIG GET returns empty (Blocker 2 fix)"
@@ -271,6 +278,7 @@ TESTCONF
       When run bash ../scripts/reload-config.sh
       The status should be success
       The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
+      The stderr should include "pre-check bind: uncheckable"
     End
 
     It "forces apply then verify-fails when one param CONFIG GET is broken"

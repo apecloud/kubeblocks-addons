@@ -57,6 +57,8 @@ while IFS= read -r line || [ -n "$line" ]; do
     _trace "pre-check ${key}: diff actual='${_actual}' desired='${value}'"
     _needs_apply=true
     break
+  else
+    _trace "pre-check ${key}: match actual='${_actual}'"
   fi
 done < "$CONFIG_FILE"
 
