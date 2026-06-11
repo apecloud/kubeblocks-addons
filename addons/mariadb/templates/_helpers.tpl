@@ -379,9 +379,112 @@ reconfigure:
           done | sort -u
         }
 
+        emit_config_parameters() {
+          for config_file in /etc/mysql/conf.d/my.cnf /etc/mysql/my.cnf /etc/mysql/mariadb.cnf; do
+            [ -r "${config_file}" ] || continue
+            while IFS= read -r raw_line || [ -n "${raw_line}" ]; do
+              case "${raw_line}" in
+              ''|'#'*|';'*|'['*)
+                continue
+                ;;
+              *=*)
+                ;;
+              *)
+                continue
+                ;;
+              esac
+
+              param_name="${raw_line%%=*}"
+              param_value="${raw_line#*=}"
+              param_name="$(printf "%s" "${param_name}" | tr '-' '_' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+              param_value="$(printf "%s" "${param_value}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+              case "${param_value}" in
+              \"*\")
+                param_value="${param_value#\"}"
+                param_value="${param_value%\"}"
+                ;;
+              \'*\')
+                param_value="${param_value#\'}"
+                param_value="${param_value%\'}"
+                ;;
+              esac
+
+              case "${param_name}" in
+{{- range (get $pd "dynamicParameters") }}
+              {{ . }})
+                if ! config_value_is_current "${param_name}" "${param_value}"; then
+                  printf "%s=%s\n" "${param_name}" "${param_value}"
+                fi
+                ;;
+{{- end }}
+              esac
+            done < "${config_file}"
+          done | sort -u
+        }
+
+        sql_value_literal() {
+          value="$1"
+          upper_value="$(printf "%s" "${value}" | tr '[:lower:]' '[:upper:]')"
+          case "${upper_value}" in
+          ON|TRUE)
+            printf "1\n"
+            return 0
+            ;;
+          OFF|FALSE)
+            printf "0\n"
+            return 0
+            ;;
+          esac
+
+          if numeric_value="$(to_numeric_value "${value}" 2>/dev/null)"; then
+            printf "%s\n" "${numeric_value}"
+          else
+            escaped_value="$(printf "%s" "${value}" | sed "s/'/''/g")"
+            printf "'%s'\n" "${escaped_value}"
+          fi
+        }
+
+        config_value_is_current() {
+          param_name="$1"
+          param_value="$2"
+          sql_value="$(sql_value_literal "${param_value}")"
+          result="$(mariadb_exec "SELECT IF(@@GLOBAL.\`${param_name}\` <=> ${sql_value}, 1, 0);" 2>/dev/null || true)"
+          [ "${result}" = "1" ]
+        }
+
+        reconfigure_diagnose_not_ready() {
+          phase="$1"
+          ctx="$2"
+          retry_safe="$3"
+          {
+            echo "reconfigure diagnosis:"
+            echo "  action: reconfigure"
+            echo "  phase: ${phase}"
+            echo "${ctx}"
+            echo "  next-retry-safe: ${retry_safe}"
+          } >&2
+        }
+
+        fill_config_parameters_or_defer() {
+          target_file="$1"
+          emit_config_parameters > "${target_file}"
+          if [ -s "${target_file}" ]; then
+            return 0
+          fi
+          ctx="$(printf '  config-files: /etc/mysql/conf.d/my.cnf /etc/mysql/my.cnf /etc/mysql/mariadb.cnf\n  observed: no dynamic config delta between mounted config and current MariaDB runtime')"
+          reconfigure_diagnose_not_ready \
+            "projected-config-not-ready" \
+            "${ctx}" \
+            "yes"
+          return 1
+        }
+
         parameter_file="$(mktemp)"
         trap 'rm -f "${parameter_file}"' EXIT
         emit_action_parameters "$@" > "${parameter_file}"
+        if [ ! -s "${parameter_file}" ]; then
+          fill_config_parameters_or_defer "${parameter_file}" || exit 1
+        fi
         if [ ! -s "${parameter_file}" ]; then
           exit 0
         fi
@@ -603,6 +706,106 @@ reconfigure:
           done | sort -u
         }
 
+        emit_config_parameters() {
+          for config_file in /etc/mysql/conf.d/my.cnf /etc/mysql/my.cnf /etc/mysql/mariadb.cnf; do
+            [ -r "${config_file}" ] || continue
+            while IFS= read -r raw_line || [ -n "${raw_line}" ]; do
+              case "${raw_line}" in
+              ''|'#'*|';'*|'['*)
+                continue
+                ;;
+              *=*)
+                ;;
+              *)
+                continue
+                ;;
+              esac
+
+              param_name="${raw_line%%=*}"
+              param_value="${raw_line#*=}"
+              param_name="$(printf "%s" "${param_name}" | tr '-' '_' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+              param_value="$(printf "%s" "${param_value}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+              case "${param_value}" in
+              \"*\")
+                param_value="${param_value#\"}"
+                param_value="${param_value%\"}"
+                ;;
+              \'*\')
+                param_value="${param_value#\'}"
+                param_value="${param_value%\'}"
+                ;;
+              esac
+
+              case "${param_name}" in
+{{- range (get $pd "dynamicParameters") }}
+              {{ . }})
+                if ! config_value_is_current "${param_name}" "${param_value}"; then
+                  printf "%s=%s\n" "${param_name}" "${param_value}"
+                fi
+                ;;
+{{- end }}
+              esac
+            done < "${config_file}"
+          done | sort -u
+        }
+
+        sql_value_literal() {
+          value="$1"
+          upper_value="$(printf "%s" "${value}" | tr '[:lower:]' '[:upper:]')"
+          case "${upper_value}" in
+          ON|TRUE)
+            printf "1\n"
+            return 0
+            ;;
+          OFF|FALSE)
+            printf "0\n"
+            return 0
+            ;;
+          esac
+
+          if numeric_value="$(to_numeric_value "${value}" 2>/dev/null)"; then
+            printf "%s\n" "${numeric_value}"
+          else
+            escaped_value="$(printf "%s" "${value}" | sed "s/'/''/g")"
+            printf "'%s'\n" "${escaped_value}"
+          fi
+        }
+
+        config_value_is_current() {
+          param_name="$1"
+          param_value="$2"
+          sql_value="$(sql_value_literal "${param_value}")"
+          result="$(mariadb_exec "SELECT IF(@@GLOBAL.\`${param_name}\` <=> ${sql_value}, 1, 0);" 2>/dev/null || true)"
+          [ "${result}" = "1" ]
+        }
+
+        reconfigure_diagnose_not_ready() {
+          phase="$1"
+          ctx="$2"
+          retry_safe="$3"
+          {
+            echo "reconfigure diagnosis:"
+            echo "  action: reconfigure"
+            echo "  phase: ${phase}"
+            echo "${ctx}"
+            echo "  next-retry-safe: ${retry_safe}"
+          } >&2
+        }
+
+        fill_config_parameters_or_defer() {
+          target_file="$1"
+          emit_config_parameters > "${target_file}"
+          if [ -s "${target_file}" ]; then
+            return 0
+          fi
+          ctx="$(printf '  config-files: /etc/mysql/conf.d/my.cnf /etc/mysql/my.cnf /etc/mysql/mariadb.cnf\n  observed: no dynamic config delta between mounted config and current MariaDB runtime')"
+          reconfigure_diagnose_not_ready \
+            "projected-config-not-ready" \
+            "${ctx}" \
+            "yes"
+          return 1
+        }
+
         # alpha.86 v1 — persistence paths and loader. init-syncer
         # creates the dir + loader file with correct group/mode; we
         # idempotently re-check existence in case the volume was
@@ -621,6 +824,9 @@ reconfigure:
         parameter_file="$(mktemp)"
         trap 'rm -f "${parameter_file}"' EXIT
         emit_action_parameters "$@" > "${parameter_file}"
+        if [ ! -s "${parameter_file}" ]; then
+          fill_config_parameters_or_defer "${parameter_file}" || exit 1
+        fi
 
         # alpha.89 v1 commit 12 (Helen 2026-05-20, C3 design mapper) —
         # translate the synthetic `replicationMode` ComponentSpec

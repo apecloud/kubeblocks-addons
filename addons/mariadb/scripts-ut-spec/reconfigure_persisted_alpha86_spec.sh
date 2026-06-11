@@ -505,12 +505,44 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
       The output should include 'Reconfigure action expects key/value arguments'
     End
 
+    It "base reconfigureAction falls back to mounted config when kbagent drops runtime arguments"
+      When call extract_base_helper_body
+      The status should be success
+      The output should include 'fill_config_parameters_or_defer "${parameter_file}" || exit 1'
+      The output should include '/etc/mysql/conf.d/my.cnf'
+      The output should include 'config_value_is_current "${param_name}" "${param_value}"'
+      The output should include 'SELECT IF(@@GLOBAL.\`${param_name}\` <=> ${sql_value}, 1, 0);'
+      The output should include 'reconfigure_diagnose_not_ready'
+      The output should include 'phase: ${phase}'
+      The output should include 'next-retry-safe: ${retry_safe}'
+      The output should include 'projected-config-not-ready'
+      The output should not include 'sleep 2'
+      The output should include '{{- range (get $pd "dynamicParameters") }}'
+      The output should include 'printf "%s=%s\n" "${param_name}" "${param_value}"'
+    End
+
     It "persisted reconfigureAction consumes KB runtime key/value arguments"
       When call extract_persisted_helper_body
       The status should be success
       The output should include 'emit_action_parameters "$@"'
       The output should include '- reconfigure'
       The output should include 'Reconfigure action expects key/value arguments'
+    End
+
+    It "persisted reconfigureAction falls back to mounted config when kbagent drops runtime arguments"
+      When call extract_persisted_helper_body
+      The status should be success
+      The output should include 'fill_config_parameters_or_defer "${parameter_file}" || exit 1'
+      The output should include '/etc/mysql/conf.d/my.cnf'
+      The output should include 'config_value_is_current "${param_name}" "${param_value}"'
+      The output should include 'SELECT IF(@@GLOBAL.\`${param_name}\` <=> ${sql_value}, 1, 0);'
+      The output should include 'reconfigure_diagnose_not_ready'
+      The output should include 'phase: ${phase}'
+      The output should include 'next-retry-safe: ${retry_safe}'
+      The output should include 'projected-config-not-ready'
+      The output should not include 'sleep 2'
+      The output should include '{{- range (get $pd "dynamicParameters") }}'
+      The output should include 'printf "%s=%s\n" "${param_name}" "${param_value}"'
     End
   End
 
