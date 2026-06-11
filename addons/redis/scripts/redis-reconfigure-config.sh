@@ -4,6 +4,7 @@ init_reconfigure_env() {
   config_file="/etc/conf/redis.conf"
   dynamic_allowlist="${DYNAMIC_ALLOWLIST:-}"
   service_port=${SERVICE_PORT:-6379}
+  wait_timeout=${RECONFIGURE_WAIT_TIMEOUT:-90}
   auth_arg=""
   [ -z "${REDIS_DEFAULT_PASSWORD:-}" ] || auth_arg="-a ${REDIS_DEFAULT_PASSWORD}"
 }
@@ -50,18 +51,22 @@ reload_parameter() {
   /scripts/reload-parameter.sh "$@"
 }
 
-reconfigure_from_config_file() {
-  if [ ! -f "$config_file" ]; then
-    echo "ERROR: rendered config not found: $config_file" >&2
-    return 1
+config_file_hash() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$config_file" | awk '{print $1}'
+  else
+    shasum -a 256 "$config_file" | awk '{print $1}'
   fi
+}
 
+apply_config_diff() {
   engine_dump=$(redis-cli ${REDIS_CLI_TLS_CMD:-} -p "$service_port" $auth_arg CONFIG GET '*' 2>/dev/null) || {
     echo "ERROR: redis-cli CONFIG GET * failed" >&2
     return 1
   }
 
-  rc=0
+  _acd_rc=0
+  _acd_count=0
   while IFS= read -r line; do
     case "$line" in '#'*|''|include\ *|loadmodule\ *) continue ;; esac
     key="${line%% *}"
@@ -75,10 +80,44 @@ reconfigure_from_config_file() {
     current=$(engine_value "$key")
     [ "$value" != "$current" ] || continue
 
-    reload_parameter "$key" "$value" || { rc=$?; echo "ERROR: CONFIG SET $key failed" >&2; continue; }
-    verify_engine_state "$key" "$value" || { rc=1; echo "ERROR: post-set verification for $key failed" >&2; }
+    reload_parameter "$key" "$value" || { _acd_rc=$?; echo "ERROR: CONFIG SET $key failed" >&2; continue; }
+    verify_engine_state "$key" "$value" || { _acd_rc=1; echo "ERROR: post-set verification for $key failed" >&2; }
+    _acd_count=$((_acd_count + 1))
   done < "$config_file"
-  return "$rc"
+
+  echo "INFO: applied $_acd_count parameter(s)" >&2
+  return "$_acd_rc"
+}
+
+reconfigure_from_config_file() {
+  if [ ! -f "$config_file" ]; then
+    echo "ERROR: rendered config not found: $config_file" >&2
+    return 1
+  fi
+
+  _rcf_hash=$(config_file_hash)
+  echo "INFO: reconfigure start, config hash=$_rcf_hash" >&2
+
+  apply_config_diff
+  _rcf_rc=$?
+
+  _rcf_timeout=${wait_timeout:-90}
+  _rcf_elapsed=0
+  while [ "$_rcf_elapsed" -lt "$_rcf_timeout" ]; do
+    sleep 2
+    _rcf_elapsed=$((_rcf_elapsed + 2))
+    _rcf_new_hash=$(config_file_hash)
+    if [ "$_rcf_new_hash" != "$_rcf_hash" ]; then
+      echo "INFO: config file updated after ${_rcf_elapsed}s (new hash=$_rcf_new_hash), re-applying" >&2
+      apply_config_diff
+      return $?
+    fi
+  done
+
+  if [ "$_rcf_timeout" -gt 0 ]; then
+    echo "INFO: config file unchanged after ${_rcf_timeout}s" >&2
+  fi
+  return "$_rcf_rc"
 }
 
 ${__SOURCED__:+false} : || return 0

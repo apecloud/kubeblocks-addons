@@ -206,6 +206,7 @@ Describe "Redis Reconfigure Config Script Tests"
       service_port=6379
       auth_arg=""
       dynamic_allowlist="maxmemory,hz,loglevel,hash-max-listpack-entries"
+      wait_timeout=0
       tmp_config=$(mktemp)
       config_file="$tmp_config"
     }
@@ -270,6 +271,7 @@ CONF
         When call reconfigure_from_config_file
         The status should be success
         The variable set_called_with should equal "maxmemory=100000;hz=20;"
+        The stderr should not include "ERROR"
       End
     End
 
@@ -309,6 +311,7 @@ CONF
         When call reconfigure_from_config_file
         The status should be success
         The variable set_called_with should equal ""
+        The stderr should not include "ERROR"
       End
     End
 
@@ -348,6 +351,7 @@ CONF
         When call reconfigure_from_config_file
         The status should be success
         The variable set_called_with should equal ""
+        The stderr should not include "ERROR"
       End
     End
 
@@ -459,6 +463,7 @@ CONF
         When call reconfigure_from_config_file
         The status should be success
         The variable set_called_with should equal "maxmemory=100000;hz=20;"
+        The stderr should not include "ERROR"
       End
     End
 
@@ -494,6 +499,7 @@ CONF
         When call reconfigure_from_config_file
         The status should be success
         The variable set_called_with should equal ""
+        The stderr should not include "ERROR"
       End
     End
 
@@ -532,6 +538,7 @@ CONF
         When call reconfigure_from_config_file
         The status should be success
         The variable set_called_with should equal "hash-max-listpack-entries=256;"
+        The stderr should not include "ERROR"
       End
     End
 
@@ -571,6 +578,7 @@ CONF
         When call reconfigure_from_config_file
         The status should be success
         The variable set_called_with should equal ""
+        The stderr should not include "ERROR"
       End
     End
 
@@ -610,6 +618,7 @@ CONF
         When call reconfigure_from_config_file
         The status should be success
         The variable set_called_with should equal "notify-keyspace-events=Kx;"
+        The stderr should not include "ERROR"
       End
     End
 
@@ -644,7 +653,143 @@ CONF
       It "verifies empty value post-set without false mismatch"
         When call reconfigure_from_config_file
         The status should be success
-        The stderr should equal ""
+        The stderr should not include "ERROR"
+        The stderr should not include "WARN"
+      End
+    End
+  End
+
+  Describe "bounded wait for ConfigMap propagation"
+    tmp_config=""
+
+    setup_wait_base() {
+      service_port=6379
+      auth_arg=""
+      dynamic_allowlist="maxmemory,hz,loglevel,maxmemory-policy"
+      tmp_config=$(mktemp)
+      config_file="$tmp_config"
+    }
+
+    cleanup_wait_base() {
+      [ -z "$tmp_config" ] || rm -f "$tmp_config"
+    }
+
+    Context "file changes during wait triggers re-apply"
+      set_called_with=""
+
+      setup() {
+        setup_wait_base
+        wait_timeout=10
+        set_called_with=""
+        printf '%s\n' "hz 10" > "$tmp_config"
+      }
+      Before "setup"
+      After "cleanup_wait_base"
+
+      sleep() {
+        cat > "$tmp_config" <<'CONF'
+hz 10
+maxmemory 100000
+CONF
+      }
+
+      redis-cli() {
+        local key
+        key=$(_redis_cli_get_key "$@")
+        case "$key" in
+          "'*'"|"*")
+            printf '%s\n' "maxmemory" "67108864" "hz" "10"
+            ;;
+          maxmemory) printf '%s\n' "maxmemory" "100000" ;;
+        esac
+      }
+
+      reload_parameter() {
+        set_called_with="${set_called_with}${1}=${2};"
+        return 0
+      }
+
+      It "re-applies config diff after detecting file update"
+        When call reconfigure_from_config_file
+        The status should be success
+        The variable set_called_with should equal "maxmemory=100000;"
+        The stderr should include "config file updated after"
+        The stderr should include "re-applying"
+      End
+    End
+
+    Context "timeout without file change proceeds with first pass"
+      set_called_with=""
+
+      setup() {
+        setup_wait_base
+        wait_timeout=4
+        set_called_with=""
+        printf '%s\n' "maxmemory 100000" > "$tmp_config"
+      }
+      Before "setup"
+      After "cleanup_wait_base"
+
+      sleep() { :; }
+
+      redis-cli() {
+        local key
+        key=$(_redis_cli_get_key "$@")
+        case "$key" in
+          "'*'"|"*")
+            printf '%s\n' "maxmemory" "67108864"
+            ;;
+          maxmemory) printf '%s\n' "maxmemory" "100000" ;;
+        esac
+      }
+
+      reload_parameter() {
+        set_called_with="${set_called_with}${1}=${2};"
+        return 0
+      }
+
+      It "applies initial diff and logs timeout"
+        When call reconfigure_from_config_file
+        The status should be success
+        The variable set_called_with should equal "maxmemory=100000;"
+        The stderr should include "config file unchanged after 4s"
+      End
+    End
+
+    Context "wait=0 skips wait entirely"
+      set_called_with=""
+
+      setup() {
+        setup_wait_base
+        wait_timeout=0
+        set_called_with=""
+        printf '%s\n' "maxmemory 100000" > "$tmp_config"
+      }
+      Before "setup"
+      After "cleanup_wait_base"
+
+      redis-cli() {
+        local key
+        key=$(_redis_cli_get_key "$@")
+        case "$key" in
+          "'*'"|"*")
+            printf '%s\n' "maxmemory" "67108864"
+            ;;
+          maxmemory) printf '%s\n' "maxmemory" "100000" ;;
+        esac
+      }
+
+      reload_parameter() {
+        set_called_with="${set_called_with}${1}=${2};"
+        return 0
+      }
+
+      It "applies diff without waiting"
+        When call reconfigure_from_config_file
+        The status should be success
+        The variable set_called_with should equal "maxmemory=100000;"
+        The stderr should not include "config file unchanged"
+        The stderr should not include "config file updated"
       End
     End
   End
