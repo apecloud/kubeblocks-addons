@@ -394,14 +394,15 @@ if [ -n "${__check_role_debug_log}" ]; then
   } >> "${__check_role_debug_log}" 2>/dev/null || true
 fi
 
-# printf %s prints the role token with no trailing newline. The versioned
-# output format (role + newline + engine_version) requires the controller's
-# strings.Fields parser from PR #10280; KB 1.2.0-alpha.1 does not include
-# it and would set the entire "primary\n0" as a label value, which fails
-# Kubernetes label validation. Emit only the role token until the target
-# KB version includes PR #10280.
+# printf %s prints the role token with no trailing newline, so when no
+# engine version is appended the stdout stays a single token. When the
+# engine version IS appended below, it follows on a new line; the
+# controller `strings.Fields` parser splits role and version into two
+# tokens and uses only the role token as the Pod label, so embedded
+# newlines no longer fail Kubernetes label validation.
 if [ -n "${authoritative_role}" ]; then
   printf %s "${authoritative_role}"
+  printf '\n%s' "${engine_version}"
 else
   # Legacy single-token fallback. The mode of fallback matters: when
   # Sentinel is *not configured at all* the local INFO is the only

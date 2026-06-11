@@ -130,6 +130,7 @@ spec:
       template: {{ include "valkey.configTemplate" $ }}
       namespace: {{ $.Release.Namespace }}
       volumeName: valkey-config
+      externalManaged: true
       {{- include "valkey.reconfigureAction" $ | nindent 6 }}
 
   # ── Scripts ────────────────────────────────────────────────────────────
@@ -176,6 +177,15 @@ spec:
   # variables into every container AND into lifecycleAction exec commands.
   # The $(VAR_NAME) syntax references them in the env[] list below.
   vars:
+    # ── Static flags set per major version ──
+    {{- if eq .major "8" }}
+    - name: IS_VALKEY8
+      value: "true"
+    {{- else if eq .major "9" }}
+    - name: IS_VALKEY9
+      value: "true"
+    {{- end }}
+
     # ── Cluster-scoped ──
     - name: CLUSTER_NAME
       valueFrom:
@@ -398,10 +408,7 @@ spec:
 
     # postProvision: register the initial primary with all Sentinel pods.
     # Runs only on the primary pod (targetPodSelector: Role).
-    # preCondition: Immediately — RuntimeReady creates a chicken-and-egg:
-    # role probes need sentinel config, but postProvision IS the sentinel
-    # config step. The registration script itself retries sentinel
-    # connectivity, so Immediately is safe.
+    # preCondition: RuntimeReady ensures sentinel is already up before we try to register.
     postProvision:
       exec:
         container: valkey
@@ -427,7 +434,7 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: status.hostIP
-      preCondition: Immediately
+      preCondition: RuntimeReady
 
     # accountProvision: KubeBlocks injects KB_ACCOUNT_NAME, KB_ACCOUNT_PASSWORD,
     # and KB_ACCOUNT_STATEMENT before calling this action.
