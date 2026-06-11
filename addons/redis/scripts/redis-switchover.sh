@@ -329,11 +329,16 @@ switchover_with_candidate() {
   fi
 
   # recover all redis replica-priority regardless of switchover result
-  recover_redis_priorities
+  local recover_rc=0
+  recover_redis_priorities || recover_rc=$?
   set_xtrace_when_ut_mode_false
 
   if [ $switchover_rc -ne 0 ]; then
     echo "Switchover failed" >&2
+    return 1
+  fi
+  if [ $recover_rc -ne 0 ]; then
+    echo "Switchover succeeded but priority recovery failed" >&2
     return 1
   fi
   echo "All Redis config set replica-priority recovered."
