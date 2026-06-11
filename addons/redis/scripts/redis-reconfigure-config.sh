@@ -4,7 +4,7 @@ init_reconfigure_env() {
   config_file="/etc/conf/redis.conf"
   dynamic_allowlist="${DYNAMIC_ALLOWLIST:-}"
   service_port=${SERVICE_PORT:-6379}
-  wait_timeout=${RECONFIGURE_WAIT_TIMEOUT:-90}
+  wait_timeout=${RECONFIGURE_WAIT_TIMEOUT:-45}
   auth_arg=""
   [ -z "${REDIS_DEFAULT_PASSWORD:-}" ] || auth_arg="-a ${REDIS_DEFAULT_PASSWORD}"
 }
