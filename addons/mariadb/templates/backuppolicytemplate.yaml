@@ -12,6 +12,11 @@ spec:
   # selected pod's SQL listener before streaming backup data. The
   # secondary role is the preferred backup target; KubeBlocks falls back
   # to the primary when no pod with role=secondary exists.
+  # `target.account` is still the DataProtection-selected target account
+  # and secret source. The ActionSet may switch to the chart-managed
+  # internal admin account at runtime when that account is exposed in the
+  # backup pod environment, so `mariadb-backup --slave-info` uses the same
+  # monitor/admin privilege path maintained by the addon.
   #
   # Per-topology resolution of target.role under this single BPT:
   #   - replication / replication-merged / semisync: role=secondary

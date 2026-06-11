@@ -959,6 +959,7 @@ spec:
                 CREATE USER IF NOT EXISTS '${user}'@'%' IDENTIFIED BY '${password}';
                 ALTER USER '${user}'@'%' ACCOUNT UNLOCK;
                 REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'%';
+                GRANT RELOAD, PROCESS ON *.* TO '${user}'@'%';
                 GRANT REPLICATION CLIENT ON *.* TO '${user}'@'%';
                 GRANT SLAVE MONITOR ON *.* TO '${user}'@'%';
                 GRANT REPLICATION MASTER ADMIN ON *.* TO '${user}'@'%';

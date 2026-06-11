@@ -20,13 +20,22 @@ spec:
           set -eo pipefail;
           export PATH="$PATH:$DP_DATASAFED_BIN_PATH";
           export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH";
-          echo "DB_HOST=${DP_DB_HOST} DB_USER=${DP_DB_USER} DB_PASSWORD=<redacted> DATA_DIR=${DATA_DIR} BACKUP_DIR=${DP_BACKUP_DIR} BACKUP_NAME=${DP_BACKUP_NAME}";
+          BACKUP_DB_USER="${DP_DB_USER}";
+          BACKUP_DB_PASSWORD="${DP_DB_PASSWORD}";
+          if [ -n "${MARIADB_INTERNAL_ROOT_USER:-}" ] && [ -n "${MARIADB_ROOT_PASSWORD:-}" ]; then
+            BACKUP_DB_USER="${MARIADB_INTERNAL_ROOT_USER}";
+            BACKUP_DB_PASSWORD="${MARIADB_ROOT_PASSWORD}";
+          elif [ -n "${MYSQL_ADMIN_USER:-}" ] && [ -n "${MYSQL_ADMIN_PASSWORD:-}" ]; then
+            BACKUP_DB_USER="${MYSQL_ADMIN_USER}";
+            BACKUP_DB_PASSWORD="${MYSQL_ADMIN_PASSWORD}";
+          fi
+          echo "DB_HOST=${DP_DB_HOST} DB_USER=${DP_DB_USER} BACKUP_DB_USER=${BACKUP_DB_USER} DB_PASSWORD=<redacted> DATA_DIR=${DATA_DIR} BACKUP_DIR=${DP_BACKUP_DIR} BACKUP_NAME=${DP_BACKUP_NAME}";
           wait_for_mariadb_backup_target() {
             local max_attempts=12
             local sleep_seconds=5
             local attempt=1
             while [ "${attempt}" -le "${max_attempts}" ]; do
-              if mariadb --host="${DP_DB_HOST}" --user="${DP_DB_USER}" --password="${DP_DB_PASSWORD}" \
+              if mariadb --host="${DP_DB_HOST}" --user="${BACKUP_DB_USER}" --password="${BACKUP_DB_PASSWORD}" \
                 --connect-timeout=2 --skip-ssl -e "SELECT 1;" >/dev/null 2>&1; then
                 echo "MariaDB backup target reachable: host=${DP_DB_HOST} attempt=${attempt}";
                 return 0
@@ -43,7 +52,7 @@ spec:
             local max_attempts=30
             local attempt=1
             while [ "${attempt}" -le "${max_attempts}" ]; do
-              if mariadb --host="${DP_DB_HOST}" --user="${DP_DB_USER}" --password="${DP_DB_PASSWORD}" \
+              if mariadb --host="${DP_DB_HOST}" --user="${BACKUP_DB_USER}" --password="${BACKUP_DB_PASSWORD}" \
                 --connect-timeout=2 --skip-ssl -e "SHOW ALL SLAVES STATUS;" >/dev/null 2>&1; then
                 echo "Backup privileges ready: host=${DP_DB_HOST} attempt=${attempt}";
                 return 0
@@ -52,12 +61,12 @@ spec:
               sleep 1;
               attempt=$((attempt + 1))
             done
-            echo "Backup privileges not available after ${max_attempts}s — proceeding anyway" >&2;
-            return 0
+            echo "Backup privileges not available after ${max_attempts}s" >&2;
+            return 1
           }
           wait_for_backup_privileges;
           mariadb-backup --backup --slave-info --stream=mbstream --host=${DP_DB_HOST} \
-          --user=${DP_DB_USER} --password=${DP_DB_PASSWORD} --datadir=${DATA_DIR} \
+          --user=${BACKUP_DB_USER} --password=${BACKUP_DB_PASSWORD} --datadir=${DATA_DIR} \
           --skip-ssl | datasafed push - "/${DP_BACKUP_NAME}.mbstream";
           TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}');
           echo "{\"totalSize\":\"${TOTAL_SIZE}\"}" > "${DP_BACKUP_INFO_FILE}"

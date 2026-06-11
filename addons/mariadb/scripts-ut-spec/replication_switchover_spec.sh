@@ -916,9 +916,9 @@ EOF
       The output should equal "1"
     End
 
-    It "Chart.yaml literal version is current (alpha.18 - idempotent duplicate switchover action)"
+    It "Chart.yaml literal version is current (alpha.18-pr2803.1 - backup account privilege fix)"
       chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
-      When call grep -c '^version: 1.2.0-alpha.18$' "${chart_yaml}"
+      When call grep -c '^version: 1.2.0-alpha.18-pr2803.1$' "${chart_yaml}"
       The output should equal "1"
     End
 
@@ -2945,7 +2945,7 @@ EOF
     }
     Before "setup_chart_alpha65_env"
 
-    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.74 [contract-no-regression]"
+    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.18-pr2803.1 [contract-no-regression]"
       # alpha.65 v1 originally locked chart at alpha.65; alpha.66/.67/.68/.69/.70
       # ships bumped further (alpha.66 syncer HA executor; alpha.67 @%
       # write-site zero-priv; alpha.68 @% cross-member health grant
@@ -2955,7 +2955,7 @@ EOF
       # chart version.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.2.0-alpha.18"
+      The output should equal "version: 1.2.0-alpha.18-pr2803.1"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -3010,13 +3010,13 @@ EOF
     Before "setup_chart_alpha66_env"
 
     Context "chart bump for CmpD immutability (per alpha.65 lesson)"
-      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.75 by alpha.75 v1 [contract-no-regression]"
+      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.18-pr2803.1 by PR #2803 [contract-no-regression]"
         # alpha.66/.67/.68/.69/.70 all bumped further under the same CmpD
         # immutability rule. Literal kept in sync with latest chart
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.18"
+        The output should equal "version: 1.2.0-alpha.18-pr2803.1"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -3099,16 +3099,17 @@ EOF
         The output should not include "@'%' ACCOUNT LOCK"
       End
 
-      It "alpha.66 v1: SUPERSEDED by alpha.69 v1 (+alpha.72 v1 +alpha.81 v1) — @'%' grant allowlist now includes 6 grants (REPLICATION CLIENT + REPLICATION MASTER ADMIN + SELECT/INSERT/UPDATE on kubeblocks.kb_health_check + SELECT on mysql.user + SLAVE MONITOR on *.* for kb_internal_root@%; REPLICATION SLAVE on *.* for kb_replicator@%); forbidden classes still hard-banned (no admin bypass)"
+      It "alpha.66 v1: SUPERSEDED by alpha.69 v1 (+alpha.72 v1 +alpha.81 v1 + backup privilege fix) — @'%' grant allowlist includes syncer grants, backup-required RELOAD/PROCESS, narrow kubeblocks/mysql grants, and REPLICATION SLAVE for kb_replicator@%; forbidden broad classes remain hard-banned"
         # alpha.66 v1 originally asserted zero GRANT @'%'; alpha.68 v2
         # explicitly grants 3 cross-member health privs; alpha.69 v1 adds
         # a 4th narrow grant (SELECT ON mysql.user) to satisfy syncer's
         # init_db=mysql handshake; alpha.81 v1 adds a 5th narrow grant
         # (SLAVE MONITOR ON *.*) to satisfy syncer engine's
         # IsSwitchoverDone() SHOW SLAVE STATUS query on MariaDB 11.4+.
-        # This regression test verifies the only GRANT statements to @'%'
-        # are the expected allowlist of 6 (5 for kb_internal_root@%, 1
-        # for kb_replicator@%). We skip lines that start with REVOKE
+        # PR #2803 runtime validation later found mariabackup also requires
+        # RELOAD and PROCESS on the selected remote target account. This
+        # regression test verifies the only GRANT statements to @'%' are the
+        # expected allowlist, including those backup privileges. We skip lines that start with REVOKE
         # (REVOKE clause contains "GRANT OPTION" substring but is not
         # itself a GRANT statement).
         When run sh -c '
@@ -3118,6 +3119,7 @@ EOF
             in_func && /^[[:space:]]*GRANT[[:space:]]/ && /@'\''%'\''/ {
               line = \$0
               if (line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+CLIENT[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
+                  line !~ /GRANT[[:space:]]+RELOAD,[[:space:]]+PROCESS[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
                   line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+MASTER[[:space:]]+ADMIN[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
                   line !~ /GRANT[[:space:]]+SELECT,[[:space:]]+INSERT,[[:space:]]+UPDATE[[:space:]]+ON[[:space:]]+kubeblocks\\.kb_health_check/ &&
                   line !~ /GRANT[[:space:]]+SELECT[[:space:]]+ON[[:space:]]+mysql\\.user/ &&
@@ -3187,13 +3189,13 @@ EOF
     Before "setup_chart_alpha67_env"
 
     Context "chart bump alpha.66 → alpha.67 → alpha.68 (CmpD immutability rule)"
-      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.75 by alpha.75 v1 [contract-no-regression]"
+      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.18-pr2803.1 by PR #2803 [contract-no-regression]"
         # alpha.67/.68/.69 all bumped further under the same CmpD
         # immutability rule. Literal kept in sync with latest chart
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.18"
+        The output should equal "version: 1.2.0-alpha.18-pr2803.1"
       End
     End
 
