@@ -6,8 +6,6 @@
 
 set -eu
 
-RETRY_COUNT=${RETRY_COUNT:-3}
-
 if [ -n "${ELASTIC_USER_PASSWORD:-}" ]; then
   BASIC_AUTH="-u elastic:${ELASTIC_USER_PASSWORD}"
 else
@@ -27,7 +25,7 @@ else
 fi
 
 endpoint="${READINESS_PROBE_PROTOCOL}://${LOOPBACK}:9200"
-common_options="-k --fail --max-time 30 --retry ${RETRY_COUNT} ${BASIC_AUTH}"
+common_options="-k --fail --connect-timeout 5 --max-time 10 --retry 1 ${BASIC_AUTH}"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
@@ -58,7 +56,14 @@ if [ "$health" != "green" ] && [ "$health" != "yellow" ]; then
   error_exit "Cluster is not healthy (status: $health). Resolve before scaling down."
 fi
 
-is_master=$(curl ${common_options} -s "${endpoint}/_nodes/${node_name}" | jq -r '.nodes | to_entries[0].value.roles | contains(["master"])')
+node_info=$(curl ${common_options} -s "${endpoint}/_nodes/${node_name}")
+node_count=$(echo "$node_info" | jq -r '.nodes | length')
+if [ "$node_count" = "0" ]; then
+  log "Node $node_name not found in cluster — already removed or not yet joined. Skipping voting exclusion."
+  is_master="false"
+else
+  is_master=$(echo "$node_info" | jq -r '.nodes | to_entries[0].value.roles | contains(["master"])')
+fi
 if [ "$is_master" = "true" ]; then
   log "Node is master-eligible — adding voting config exclusion"
   if [ "$major_version" -ge 7 ]; then
