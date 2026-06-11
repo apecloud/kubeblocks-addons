@@ -84,14 +84,29 @@ fi
 shard_count=$(curl ${common_options} -s "${endpoint}/_cat/shards?v" | grep "$node_name" | wc -l)
 log "Node $node_name currently has $shard_count shards"
 
-log "Setting shard allocation exclusion for node: $node_name"
-response=$(curl ${common_options} -s -X PUT "${endpoint}/_cluster/settings" \
-  -H 'Content-Type: application/json' \
-  -d "{\"persistent\": {\"cluster.routing.allocation.exclude._name\": \"${node_name}\"}}")
-if [ $? != 0 ]; then
-  error_exit "Failed to set shard allocation exclusion"
-fi
-echo "$response" | jq -r '.acknowledged' | grep -q "true" || error_exit "Shard exclusion not acknowledged"
-log "Shard allocation exclusion set — migration will proceed asynchronously"
+current_exclusion=$(curl ${common_options} -s "${endpoint}/_cluster/settings?flat_settings=true&include_defaults=false" \
+  | jq -r '.persistent["cluster.routing.allocation.exclude._name"] // ""')
+
+case ",$current_exclusion," in
+  *",$node_name,"*)
+    log "Node $node_name already in shard allocation exclusion list — skipping"
+    ;;
+  *)
+    if [ -n "$current_exclusion" ]; then
+      new_exclusion="${current_exclusion},${node_name}"
+    else
+      new_exclusion="$node_name"
+    fi
+    log "Setting shard allocation exclusion: $new_exclusion"
+    response=$(curl ${common_options} -s -X PUT "${endpoint}/_cluster/settings" \
+      -H 'Content-Type: application/json' \
+      -d "{\"persistent\": {\"cluster.routing.allocation.exclude._name\": \"${new_exclusion}\"}}")
+    if [ $? != 0 ]; then
+      error_exit "Failed to set shard allocation exclusion"
+    fi
+    echo "$response" | jq -r '.acknowledged' | grep -q "true" || error_exit "Shard exclusion not acknowledged"
+    log "Shard allocation exclusion set — migration will proceed asynchronously"
+    ;;
+esac
 
 log "=== memberLeave complete (non-blocking) ==="

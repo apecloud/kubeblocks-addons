@@ -61,6 +61,17 @@ function wait_for_cluster_health() {
     done
 }
 
+function wait_for_local_api() {
+    for _ in $(seq 1 60); do
+        if curl --fail ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/health?local=true" >/dev/null 2>&1; then
+            return 0
+        fi
+        echo "waiting for local elasticsearch API..."
+        sleep 2
+    done
+    return 1
+}
+
 function clear_stale_allocation_exclusion_for_self() {
     local node_name="${POD_NAME:-${HOSTNAME:-}}"
     if [ -z "$node_name" ]; then
@@ -122,7 +133,11 @@ else
 	if grep 'type: single-node' config/elasticsearch.yml > /dev/null 2>&1; then
 		echo "single-node mode, skip cluster formation and user initialization"
 	else
-    	clear_stale_allocation_exclusion_for_self
+    	if wait_for_local_api; then
+    	    clear_stale_allocation_exclusion_for_self
+    	else
+    	    echo "local API not ready, skip stale exclusion cleanup"
+    	fi
     	exit 0
 	fi
 fi
