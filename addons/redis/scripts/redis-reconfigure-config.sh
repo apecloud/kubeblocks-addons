@@ -51,11 +51,6 @@ reload_parameter() {
 }
 
 reconfigure_from_config_file() {
-  case "${KB_CONFIG_FILES_UPDATED:-}" in
-    *redis.conf*) ;;
-    *) return 0 ;;
-  esac
-
   if [ ! -f "$config_file" ]; then
     echo "ERROR: rendered config not found: $config_file" >&2
     return 1

@@ -214,42 +214,11 @@ Describe "Redis Reconfigure Config Script Tests"
       [ -z "$tmp_config" ] || rm -f "$tmp_config"
     }
 
-    Context "KB_CONFIG_FILES_UPDATED guard"
-      setup() {
-        setup_base
-      }
-      Before "setup"
-
-      After "cleanup_base"
-
-      It "exits early with success when KB_CONFIG_FILES_UPDATED is empty"
-        export KB_CONFIG_FILES_UPDATED=""
-        When call reconfigure_from_config_file
-        The status should be success
-      End
-
-      It "exits early with success when KB_CONFIG_FILES_UPDATED has other files"
-        export KB_CONFIG_FILES_UPDATED="sentinel.conf:abc123"
-        When call reconfigure_from_config_file
-        The status should be success
-      End
-
-      It "proceeds when KB_CONFIG_FILES_UPDATED contains redis.conf"
-        export KB_CONFIG_FILES_UPDATED="redis.conf:abc123"
-        redis-cli() {
-          printf '%s\n' "maxmemory" "67108864"
-        }
-        printf '%s\n' "maxmemory 67108864" > "$tmp_config"
-        When call reconfigure_from_config_file
-        The status should be success
-      End
-    End
-
     Context "config file missing"
       setup() {
         setup_base
         config_file="/nonexistent/redis.conf"
-        export KB_CONFIG_FILES_UPDATED="redis.conf:abc123"
+
       }
       Before "setup"
 
@@ -267,7 +236,7 @@ Describe "Redis Reconfigure Config Script Tests"
 
       setup() {
         setup_base
-        export KB_CONFIG_FILES_UPDATED="redis.conf:abc123"
+
         set_called_with=""
         cat > "$tmp_config" <<'CONF'
 maxmemory 100000
@@ -309,7 +278,7 @@ CONF
 
       setup() {
         setup_base
-        export KB_CONFIG_FILES_UPDATED="redis.conf:abc123"
+
         set_called_with=""
         cat > "$tmp_config" <<'CONF'
 databases 32
@@ -348,7 +317,7 @@ CONF
 
       setup() {
         setup_base
-        export KB_CONFIG_FILES_UPDATED="redis.conf:abc123"
+
         set_called_with=""
         cat > "$tmp_config" <<'CONF'
 maxmemory 67108864
@@ -385,7 +354,7 @@ CONF
     Context "CONFIG SET failure propagates rc"
       setup() {
         setup_base
-        export KB_CONFIG_FILES_UPDATED="redis.conf:abc123"
+
         printf '%s\n' "maxmemory 100000" > "$tmp_config"
       }
       Before "setup"
@@ -416,7 +385,7 @@ CONF
     Context "post-set verification failure propagates rc"
       setup() {
         setup_base
-        export KB_CONFIG_FILES_UPDATED="redis.conf:abc123"
+
         printf '%s\n' "maxmemory 100000" > "$tmp_config"
       }
       Before "setup"
@@ -454,7 +423,7 @@ CONF
 
       setup() {
         setup_base
-        export KB_CONFIG_FILES_UPDATED="redis.conf:abc123"
+
         set_called_with=""
         cat > "$tmp_config" <<'CONF'
 # this is a comment
@@ -498,7 +467,7 @@ CONF
 
       setup() {
         setup_base
-        export KB_CONFIG_FILES_UPDATED="redis.conf:abc123"
+
         set_called_with=""
         printf '%s\n' "maxmemory" > "$tmp_config"
       }
@@ -533,7 +502,7 @@ CONF
 
       setup() {
         setup_base
-        export KB_CONFIG_FILES_UPDATED="redis.conf:abc123"
+
         set_called_with=""
         printf '%s\n' "hash-max-listpack-entries 256" > "$tmp_config"
       }
@@ -572,7 +541,7 @@ CONF
       setup() {
         setup_base
         dynamic_allowlist="notify-keyspace-events,maxmemory,hz"
-        export KB_CONFIG_FILES_UPDATED="redis.conf:abc123"
+
         set_called_with=""
         cat > "$tmp_config" <<'CONF'
 notify-keyspace-events ""
@@ -611,7 +580,7 @@ CONF
       setup() {
         setup_base
         dynamic_allowlist="notify-keyspace-events,maxmemory,hz"
-        export KB_CONFIG_FILES_UPDATED="redis.conf:abc123"
+
         set_called_with=""
         printf '%s\n' 'notify-keyspace-events "Kx"' > "$tmp_config"
       }
@@ -648,7 +617,7 @@ CONF
       setup() {
         setup_base
         dynamic_allowlist="notify-keyspace-events,maxmemory"
-        export KB_CONFIG_FILES_UPDATED="redis.conf:abc123"
+
         printf '%s\n' 'notify-keyspace-events ""' > "$tmp_config"
       }
       Before "setup"
