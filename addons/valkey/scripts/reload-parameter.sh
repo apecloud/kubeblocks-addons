@@ -33,11 +33,13 @@ fi
 # valkey-cli exits 0 even for protocol errors; capture output and check content.
 # Connection failures also fail closed; the caller should retry the action.
 output=$("${cli_cmd[@]}" CONFIG SET "${valkey_param}" "${param_value}" 2>&1) || true
-# Silently ignore parameters that do not support CONFIG SET (e.g. bind, port).
-# Fail closed for other CONFIG SET errors so invalid dynamic values are surfaced.
+# Exit codes:
+#   0 — CONFIG SET succeeded; caller should verify with CONFIG GET.
+#   2 — static/immutable parameter, silently skipped; no verify needed.
+#   1 — real CONFIG SET error (invalid value, connection failure); fail closed.
 case "${output}" in
-  "OK") ;;   # success
-  *"ERR Unknown option"*|*"not allowed"*|*"can't set"*) ;;
+  "OK") exit 0 ;;
+  *"ERR Unknown option"*|*"not allowed"*|*"can't set"*) exit 2 ;;
   *)
     echo "ERROR: CONFIG SET ${valkey_param} failed: ${output}" >&2
     exit 1
