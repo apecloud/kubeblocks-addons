@@ -99,7 +99,8 @@ SH
     export MAX_WAIT=1
     export RELOAD_LOG="${_spec_dir}/calls.log"
     export GLOBAL_DEADLINE=9999999999
-    rm -f "${RELOAD_LOG}"
+    export MARKER_FILE="${_spec_dir}/applied.marker"
+    rm -f "${RELOAD_LOG}" "${MARKER_FILE}"
 
     # Default: verify returns matching values (runtime == file)
     printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
@@ -119,6 +120,7 @@ SH
     unset RELOAD_PARAM_SCRIPT RELOAD_VERIFY_CMD MAX_WAIT
     unset FAKE_RELOAD_RC VERIFY_VALUES APPLIED_VALUES
     unset GLOBAL_DEADLINE VERIFY_EMPTY_KEY NORMALIZE_MAP FAKE_NOW_COUNTER
+    unset MARKER_FILE
   }
   After "cleanup"
 
@@ -185,6 +187,54 @@ SH
       When run bash ../scripts/reload-config.sh
       The status should be failure
       The stderr should include "file matches runtime, freshness unconfirmed"
+    End
+  End
+
+  Describe "readlink marker — same-projection idempotent close"
+    It "exits 0 on late retry when readlink marker matches (Bug 6 fix)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      # Simulate: prior apply succeeded and wrote marker, controller retries
+      # this pod minutes later. Mtime is stale (500s old) but readlink
+      # marker matches current ..data target → same projection → exit 0.
+      readlink "$DATA_LINK" > "$MARKER_FILE"
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The stderr should include "readlink marker matches"
+    End
+
+    It "deletes stale marker and defers when readlink target changed"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      # Simulate: new ConfigMap projected → ..data readlink changed →
+      # marker stale → delete → falls through to mtime/content polling.
+      echo "/some/old/projection-dir" > "$MARKER_FILE"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "file matches runtime, freshness unconfirmed"
+    End
+
+    It "writes marker after successful apply for future retries"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+        > "${VERIFY_VALUES}"
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The stderr should include "pre-check maxmemory: diff"
+      The path "$MARKER_FILE" should be file
+    End
+
+    It "does not write marker on mtime shortcut (no Phase 4 verification)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      # All params match + mtime fresh → exit 0 via mtime shortcut.
+      # No Phase 3/4 apply+verify → no marker should be written.
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The stderr should include "recent projection heuristic"
+      The path "$MARKER_FILE" should not be file
     End
   End
 
@@ -475,7 +525,8 @@ SH
       export GLOBAL_DEADLINE=9999999999
       export RELOAD_LOG="${_st}/calls.log"
       export APPLIED_VALUES="${_st}/applied.txt"
-      rm -f "$APPLIED_VALUES" "$RELOAD_LOG"
+      export MARKER_FILE="${_st}/applied.marker"
+      rm -f "$APPLIED_VALUES" "$RELOAD_LOG" "$MARKER_FILE"
       printf '%s\n' "maxmemory 214748364" "maxmemory-policy volatile-lru" \
         > "${_st}/verify-kv.txt"
       export VERIFY_VALUES="${_st}/verify-kv.txt"
@@ -484,7 +535,7 @@ SH
 
     cleanup_single_timeout() {
       rm -rf "${_st:-}"
-      unset TIMEOUT_KEY
+      unset TIMEOUT_KEY MARKER_FILE
     }
     After "cleanup_single_timeout"
 
@@ -555,11 +606,13 @@ SH
       export RELOAD_VERIFY_CMD="${_td}/verify-cmd.sh"
       export MAX_WAIT=0
       export GLOBAL_DEADLINE=9999999999
+      export MARKER_FILE="${_td}/applied.marker"
+      rm -f "$MARKER_FILE"
       unset APPLIED_VALUES
     }
     Before "setup_timeout_mock"
 
-    cleanup_timeout() { rm -rf "${_td:-}"; }
+    cleanup_timeout() { rm -rf "${_td:-}"; unset MARKER_FILE; }
     After "cleanup_timeout"
 
     It "aborts after 2 consecutive timeouts"

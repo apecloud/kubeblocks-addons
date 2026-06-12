@@ -7,6 +7,7 @@ RELOAD_PARAM_SCRIPT="${RELOAD_PARAM_SCRIPT:-/scripts/reload-parameter.sh}"
 RELOAD_VERIFY_CMD="${RELOAD_VERIFY_CMD:-}"
 MAX_WAIT="${MAX_WAIT:-15}"
 MTIME_FRESH="${MTIME_FRESH:-10}"
+MARKER_FILE="${MARKER_FILE:-${TMPDIR:-/tmp}/reload-config-applied.marker}"
 GLOBAL_DEADLINE="${GLOBAL_DEADLINE:-}"
 
 if [ -z "$GLOBAL_DEADLINE" ]; then
@@ -86,6 +87,24 @@ _trace "pre-check result: _needs_apply=${_needs_apply} _has_uncheckable=${_has_u
 # while kubelet has not yet projected the second one).
 
 if [ "$_needs_apply" = "false" ]; then
+  # Readlink marker: after a successful Phase 3+4 apply, we write
+  # `readlink ..data` to MARKER_FILE.  On same-projection retries the
+  # target hasn't changed, so we can exit 0 even when mtime is stale.
+  # Bounded-risk: a new OpsRequest whose ConfigMap has not yet been
+  # projected by kubelet will still show the old readlink target —
+  # false PASS window equals kubelet projection latency (Watch mode
+  # typically <5s).  This is irreducible without kbagent passing a
+  # reconfigure generation/identity.
+  if [ -L "$DATA_LINK" ] && [ -f "$MARKER_FILE" ]; then
+    _prev_target=$(cat "$MARKER_FILE" 2>/dev/null)
+    _curr_target=$(readlink "$DATA_LINK" 2>/dev/null)
+    if [ -n "$_prev_target" ] && [ "$_prev_target" = "$_curr_target" ]; then
+      _trace "readlink marker matches — same projection already applied"
+      exit 0
+    fi
+    rm -f "$MARKER_FILE"
+  fi
+
   if [ "$_checked_any" = "true" ] && [ -L "$DATA_LINK" ]; then
     _now=$(date +%s)
     _link_mtime=$(stat -c %Y "$DATA_LINK" 2>/dev/null \
@@ -189,4 +208,8 @@ rm -f "$_verify_file"
 if [ "$_verify_failed" = "true" ]; then
   echo "ERROR: CONFIG GET read-back verification failed" >&2
   exit 1
+fi
+
+if [ -L "$DATA_LINK" ]; then
+  readlink "$DATA_LINK" > "$MARKER_FILE" 2>/dev/null || true
 fi
