@@ -168,32 +168,33 @@ SH
       The stderr should include "recent projection heuristic, runtime matches"
     End
 
-    It "exits 1 when ..data mtime is old and no content change (stale file detection)"
+    It "exits 0 when mtime stale but runtime verified and content stable (Bug 9b)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
       When run bash ../scripts/reload-config.sh
-      The status should be failure
-      The stderr should include "file matches runtime, freshness unconfirmed"
-      The stderr should include "retry-safe: yes"
+      The status should be success
+      The stderr should include "content stable"
+      The stderr should include "wrote marker:"
     End
 
-    It "falls back to old-mtime when stat returns non-numeric (GNU stat -f %m compatibility)"
+    It "falls back to old-mtime when stat returns non-numeric (GNU stat -f %m compat, Bug 9b closes)"
       export FAKE_NOW=1000
       export FAKE_MTIME="Filesystem 0x1234 Type: ext4 Block size: 4096 995"
       When run bash ../scripts/reload-config.sh
-      The status should be failure
-      The stderr should include "file matches runtime, freshness unconfirmed"
+      The status should be success
+      The stderr should include "content stable"
     End
 
-    It "exits 1 when ..data mtime is old even if file matches runtime (cross-reconfigure safety)"
+    It "accepts when mtime stale + runtime verified + content stable (Bug 9b bounded risk)"
       export FAKE_NOW=1000
       export FAKE_MTIME=100
-      # Simulate: prior reconfigure succeeded long ago. New reconfigure triggered
-      # but kubelet has NOT projected new ConfigMap yet. File still old,
-      # runtime still old, ..data mtime is old → must NOT exit 0.
+      # Bounded risk: if kubelet hasn't projected a genuinely new ConfigMap
+      # within MAX_WAIT, this is a false PASS. Residual window = kubelet
+      # projection latency (Watch mode ~5s, MAX_WAIT default 15s).
       When run bash ../scripts/reload-config.sh
-      The status should be failure
-      The stderr should include "file matches runtime, freshness unconfirmed"
+      The status should be success
+      The stderr should include "content stable"
+      The stderr should include "wrote marker:"
     End
   End
 
@@ -220,32 +221,39 @@ SH
       The stderr should include "content-hash marker matches"
     End
 
-    It "deletes stale marker and defers when config content changed"
+    It "invalidates stale marker then writes fresh one after content polling (Bug 9a/9b)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
       echo "$(hostname):${CONFIG_FILE}:99999999" > "$MARKER_FILE"
       When run bash ../scripts/reload-config.sh
-      The status should be failure
-      The stderr should include "file matches runtime, freshness unconfirmed"
+      The status should be success
+      The stderr should include "marker mismatch"
+      The stderr should include "content stable"
+      The stderr should include "wrote marker:"
+      The path "$MARKER_FILE" should be file
     End
 
-    It "deletes marker and defers when hostname identity mismatches"
+    It "invalidates hostname-mismatched marker then writes fresh one (Bug 9a/9b)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
       export FAKE_HOSTNAME="restored-cluster-pod-0"
       echo "old-cluster-pod-0:${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
       When run bash ../scripts/reload-config.sh
-      The status should be failure
-      The stderr should include "file matches runtime, freshness unconfirmed"
+      The status should be success
+      The stderr should include "marker mismatch"
+      The stderr should include "content stable"
+      The path "$MARKER_FILE" should be file
     End
 
-    It "ignores malformed marker and defers"
+    It "invalidates malformed marker then writes fresh one (Bug 9a/9b)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
       echo "garbage-no-colons" > "$MARKER_FILE"
       When run bash ../scripts/reload-config.sh
-      The status should be failure
-      The stderr should include "file matches runtime, freshness unconfirmed"
+      The status should be success
+      The stderr should include "marker mismatch"
+      The stderr should include "content stable"
+      The path "$MARKER_FILE" should be file
     End
 
     It "writes marker after successful apply for future retries"
@@ -283,15 +291,15 @@ SH
       The stderr should include "content-hash marker matches"
     End
 
-    It "fail-closed when cksum returns empty (no false match on empty field)"
+    It "invalidates empty-cksum marker then writes fresh one (Bug 9a/9b)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
-      # Write a marker with empty cksum field — simulates prior write
-      # when cksum was broken. Must not match.
       echo "$(hostname):${CONFIG_FILE}:" > "$MARKER_FILE"
       When run bash ../scripts/reload-config.sh
-      The status should be failure
-      The stderr should include "file matches runtime, freshness unconfirmed"
+      The status should be success
+      The stderr should include "marker mismatch"
+      The stderr should include "content stable"
+      The path "$MARKER_FILE" should be file
     End
 
     It "does not write marker when cksum command fails"
@@ -313,6 +321,69 @@ SH
     End
   End
 
+  Describe "Bug 9: content polling closure + marker resilience"
+    It "preserves marker when _build_marker fails transiently (Bug 9a)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      # Pre-seed valid marker
+      echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
+      # Break cksum so _build_marker returns 1
+      cat > "${_spec_dir}/bin/cksum" <<'SH'
+#!/bin/sh
+exit 1
+SH
+      chmod +x "${_spec_dir}/bin/cksum"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "marker check: _build_marker failed, preserving existing marker"
+      The stderr should include "marker build failed"
+      The path "$MARKER_FILE" should be file
+    End
+
+    It "VScale on pod that missed initial mtime window: Bug 9b writes marker, then VScale matches"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      # First call: stale mtime, no marker → Bug 9b → exit 0 + marker
+      bash ../scripts/reload-config.sh 2>/dev/null
+      [ -f "$MARKER_FILE" ] || { echo "FAIL: marker not written by Bug 9b path"; exit 1; }
+      # Second call: simulate VScale — stale mtime, same config → marker matches → exit 0
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The stderr should include "content-hash marker matches"
+    End
+
+    It "fail-closed when marker write fails on content polling path (Bug 9b gate)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      # Point MARKER_FILE to non-writable path
+      export MARKER_FILE="/nonexistent-dir/marker"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "marker write failed"
+      The stderr should include "retry-safe: yes"
+    End
+
+    It "fail-closed when checked_any=false even with stable content"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      # All params return empty → all uncheckable → checked_any=false
+      printf '' > "${VERIFY_VALUES}"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "file matches runtime, freshness unconfirmed"
+    End
+
+    It "traces no-marker-file when marker absent"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      rm -f "$MARKER_FILE"
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The stderr should include "no marker file at"
+      The stderr should include "content stable"
+    End
+  End
+
   Describe "content-change polling"
     It "applies when runtime has old values (Phase 1 diff path)"
       export FAKE_NOW=1000
@@ -326,12 +397,13 @@ SH
       The stderr should include "pre-check maxmemory: diff"
     End
 
-    It "defers when mtime is old and content unchanged"
+    It "exits 0 when mtime stale + runtime verified + content stable (Bug 9b)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
       When run bash ../scripts/reload-config.sh
-      The status should be failure
-      The stderr should include "file matches runtime, freshness unconfirmed"
+      The status should be success
+      The stderr should include "content stable"
+      The stderr should include "wrote marker:"
     End
   End
 

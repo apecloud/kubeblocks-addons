@@ -106,8 +106,13 @@ if [ "$_needs_apply" = "false" ]; then
         _trace "content-hash marker matches — same config already applied"
         exit 0
       fi
+      _trace "marker mismatch prev='${_prev_marker}' curr='${_curr_marker}' — invalidating"
+      rm -f "$MARKER_FILE"
+    else
+      _trace "marker check: _build_marker failed, preserving existing marker"
     fi
-    rm -f "$MARKER_FILE"
+  else
+    _trace "no marker file at ${MARKER_FILE}"
   fi
 
   if [ "$_checked_any" = "true" ] && [ -L "$DATA_LINK" ]; then
@@ -120,6 +125,9 @@ if [ "$_needs_apply" = "false" ]; then
       _trace "..data age=${_link_age}s <= ${MTIME_FRESH}s — recent projection heuristic, runtime matches"
       if _marker_val=$(_build_marker "$CONFIG_FILE"); then
         echo "$_marker_val" > "$MARKER_FILE" 2>/dev/null || true
+        _trace "wrote marker: ${_marker_val}"
+      else
+        _trace "marker write skipped — _build_marker failed"
       fi
       exit 0
     fi
@@ -135,6 +143,18 @@ if [ "$_needs_apply" = "false" ]; then
   done
 
   if [ "$_needs_apply" = "false" ]; then
+    if [ "$_checked_any" = "true" ]; then
+      _trace "content stable ${MAX_WAIT}s + runtime verified — accepting as applied"
+      if _marker_val=$(_build_marker "$CONFIG_FILE"); then
+        if echo "$_marker_val" > "$MARKER_FILE" 2>/dev/null && [ -f "$MARKER_FILE" ]; then
+          _trace "wrote marker: ${_marker_val}"
+          exit 0
+        fi
+        _trace "marker write failed — cannot guarantee future closure, retry"
+      else
+        _trace "marker build failed — cannot guarantee future closure, retry"
+      fi
+    fi
     echo "ERROR: file matches runtime, freshness unconfirmed after ${MAX_WAIT}s" >&2
     echo "retry-safe: yes" >&2
     exit 1
@@ -220,4 +240,7 @@ fi
 
 if _marker_val=$(_build_marker "$CONFIG_FILE"); then
   echo "$_marker_val" > "$MARKER_FILE" 2>/dev/null || true
+  _trace "wrote marker: ${_marker_val}"
+else
+  _trace "marker write skipped — _build_marker failed"
 fi
