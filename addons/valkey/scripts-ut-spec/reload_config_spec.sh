@@ -63,6 +63,13 @@ DATESH
 CKSUMSH
     chmod +x "${_spec_dir}/bin/cksum"
 
+    # Mock hostname — overridable for identity mismatch tests
+    cat > "${_spec_dir}/bin/hostname" <<'HOSTSH'
+#!/bin/sh
+echo "${FAKE_HOSTNAME:-$(uname -n)}"
+HOSTSH
+    chmod +x "${_spec_dir}/bin/hostname"
+
     # Mock verify command — two-layer: APPLIED_VALUES first, then VERIFY_VALUES
     # VERIFY_EMPTY_KEY forces empty output for a specific key (for testing)
     # NORMALIZE_MAP overrides APPLIED_VALUES return for keys that Valkey normalizes
@@ -120,7 +127,7 @@ SH
     unset RELOAD_PARAM_SCRIPT RELOAD_VERIFY_CMD MAX_WAIT
     unset FAKE_RELOAD_RC VERIFY_VALUES APPLIED_VALUES
     unset GLOBAL_DEADLINE VERIFY_EMPTY_KEY NORMALIZE_MAP FAKE_NOW_COUNTER
-    unset MARKER_FILE
+    unset MARKER_FILE FAKE_HOSTNAME
   }
   After "cleanup"
 
@@ -190,25 +197,52 @@ SH
     End
   End
 
-  Describe "readlink marker — same-projection idempotent close"
-    It "exits 0 on late retry when readlink marker matches (Bug 6 fix)"
+  Describe "content-hash marker — idempotent close"
+    It "exits 0 on late retry when content-hash marker matches (Bug 6 fix)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
-      # Simulate: prior apply succeeded and wrote marker, controller retries
-      # this pod minutes later. Mtime is stale (500s old) but readlink
-      # marker matches current ..data target → same projection → exit 0.
-      readlink "$DATA_LINK" > "$MARKER_FILE"
+      echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
       When run bash ../scripts/reload-config.sh
       The status should be success
-      The stderr should include "readlink marker matches"
+      The stderr should include "content-hash marker matches"
     End
 
-    It "deletes stale marker and defers when readlink target changed"
+    It "exits 0 after pod restart when marker persists and config unchanged (Bug 7 fix)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
-      # Simulate: new ConfigMap projected → ..data readlink changed →
-      # marker stale → delete → falls through to mtime/content polling.
-      echo "/some/old/projection-dir" > "$MARKER_FILE"
+      # Simulate VScale pod restart: marker written on persistent path
+      # during prior apply, readlink changed (new mount) but config
+      # content is identical → cksum matches → exit 0.
+      echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
+      ln -sf "${_spec_dir}/conf-new-mount" "${DATA_LINK}"
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The stderr should include "content-hash marker matches"
+    End
+
+    It "deletes stale marker and defers when config content changed"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      echo "$(hostname):${CONFIG_FILE}:99999999" > "$MARKER_FILE"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "file matches runtime, freshness unconfirmed"
+    End
+
+    It "deletes marker and defers when hostname identity mismatches"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      export FAKE_HOSTNAME="restored-cluster-pod-0"
+      echo "old-cluster-pod-0:${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "file matches runtime, freshness unconfirmed"
+    End
+
+    It "ignores malformed marker and defers"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      echo "garbage-no-colons" > "$MARKER_FILE"
       When run bash ../scripts/reload-config.sh
       The status should be failure
       The stderr should include "file matches runtime, freshness unconfirmed"
@@ -229,8 +263,6 @@ SH
     It "does not write marker on mtime shortcut (no Phase 4 verification)"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
-      # All params match + mtime fresh → exit 0 via mtime shortcut.
-      # No Phase 3/4 apply+verify → no marker should be written.
       When run bash ../scripts/reload-config.sh
       The status should be success
       The stderr should include "recent projection heuristic"
@@ -500,6 +532,12 @@ SH
 SH
       chmod +x "${_st}/bin/cksum"
 
+      cat > "${_st}/bin/hostname" <<'SH'
+#!/bin/sh
+echo "${FAKE_HOSTNAME:-$(uname -n)}"
+SH
+      chmod +x "${_st}/bin/hostname"
+
       # verify mock: maxmemory returns OLD value, maxmemory-policy returns new
       cat > "${_st}/verify-cmd.sh" <<'SH'
 #!/bin/sh
@@ -581,6 +619,12 @@ SH
 /usr/bin/cksum "$@"
 SH
       chmod +x "${_td}/bin/cksum"
+
+      cat > "${_td}/bin/hostname" <<'SH'
+#!/bin/sh
+echo "${FAKE_HOSTNAME:-$(uname -n)}"
+SH
+      chmod +x "${_td}/bin/hostname"
 
       cat > "${_td}/bin/mktemp" <<SH
 #!/bin/sh

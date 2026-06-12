@@ -7,7 +7,7 @@ RELOAD_PARAM_SCRIPT="${RELOAD_PARAM_SCRIPT:-/scripts/reload-parameter.sh}"
 RELOAD_VERIFY_CMD="${RELOAD_VERIFY_CMD:-}"
 MAX_WAIT="${MAX_WAIT:-15}"
 MTIME_FRESH="${MTIME_FRESH:-10}"
-MARKER_FILE="${MARKER_FILE:-${TMPDIR:-/tmp}/reload-config-applied.marker}"
+MARKER_FILE="${MARKER_FILE:-/data/reload-config-applied.marker}"
 GLOBAL_DEADLINE="${GLOBAL_DEADLINE:-}"
 
 if [ -z "$GLOBAL_DEADLINE" ]; then
@@ -87,19 +87,16 @@ _trace "pre-check result: _needs_apply=${_needs_apply} _has_uncheckable=${_has_u
 # while kubelet has not yet projected the second one).
 
 if [ "$_needs_apply" = "false" ]; then
-  # Readlink marker: after a successful Phase 3+4 apply, we write
-  # `readlink ..data` to MARKER_FILE.  On same-projection retries the
-  # target hasn't changed, so we can exit 0 even when mtime is stale.
-  # Bounded-risk: a new OpsRequest whose ConfigMap has not yet been
-  # projected by kubelet will still show the old readlink target —
-  # false PASS window equals kubelet projection latency (Watch mode
-  # typically <5s).  This is irreducible without kbagent passing a
-  # reconfigure generation/identity.
-  if [ -L "$DATA_LINK" ] && [ -f "$MARKER_FILE" ]; then
-    _prev_target=$(cat "$MARKER_FILE" 2>/dev/null)
-    _curr_target=$(readlink "$DATA_LINK" 2>/dev/null)
-    if [ -n "$_prev_target" ] && [ "$_prev_target" = "$_curr_target" ]; then
-      _trace "readlink marker matches — same projection already applied"
+  # Content-hash marker: after a successful Phase 3+4 apply, we write
+  # hostname:path:cksum to MARKER_FILE (persistent path, survives pod
+  # restart).  On retries — same pod (Bug 6) or after VScale/restart
+  # (Bug 7) — if identity, path, and content all match, exit 0.
+  # Identity binding prevents cross-cluster reuse after backup/restore.
+  if [ -f "$MARKER_FILE" ]; then
+    _prev_marker=$(cat "$MARKER_FILE" 2>/dev/null)
+    _curr_marker="$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" 2>/dev/null | cut -d' ' -f1)"
+    if [ -n "$_prev_marker" ] && [ "$_prev_marker" = "$_curr_marker" ]; then
+      _trace "content-hash marker matches — same config already applied"
       exit 0
     fi
     rm -f "$MARKER_FILE"
@@ -210,6 +207,4 @@ if [ "$_verify_failed" = "true" ]; then
   exit 1
 fi
 
-if [ -L "$DATA_LINK" ]; then
-  readlink "$DATA_LINK" > "$MARKER_FILE" 2>/dev/null || true
-fi
+echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" 2>/dev/null | cut -d' ' -f1)" > "$MARKER_FILE" 2>/dev/null || true
