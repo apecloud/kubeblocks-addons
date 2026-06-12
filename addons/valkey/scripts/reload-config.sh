@@ -6,7 +6,7 @@ DATA_LINK="${DATA_LINK:-/etc/conf/..data}"
 RELOAD_PARAM_SCRIPT="${RELOAD_PARAM_SCRIPT:-/scripts/reload-parameter.sh}"
 RELOAD_VERIFY_CMD="${RELOAD_VERIFY_CMD:-}"
 MAX_WAIT="${MAX_WAIT:-15}"
-MARKER_FILE="${MARKER_FILE:-/tmp/.reload-config-marker}"
+MTIME_FRESH="${MTIME_FRESH:-60}"
 GLOBAL_DEADLINE="${GLOBAL_DEADLINE:-}"
 
 if [ -z "$GLOBAL_DEADLINE" ]; then
@@ -71,48 +71,37 @@ _trace "pre-check result: _needs_apply=${_needs_apply} _has_uncheckable=${_has_u
 # proof the match may be coincidental (stale old values == running
 # values) and we must defer so the controller retries after kubelet
 # projects the real update.
+#
+# Primary signal: ..data symlink mtime.  kubelet atomically swaps this
+# symlink on every ConfigMap projection, so a recent mtime proves the
+# mounted file is the intended target — not stale leftovers from a
+# previous reconfigure generation.  This avoids cross-generation marker
+# reuse (the marker was written by the *previous* successful apply and
+# would falsely match a new reconfigure whose ConfigMap has not yet been
+# projected).
 
 if [ "$_needs_apply" = "false" ]; then
-  _fresh=false
-  _current_cksum=$(cksum < "$CONFIG_FILE")
-
-  if [ -f "$MARKER_FILE" ]; then
-    _saved=$(cat "$MARKER_FILE")
-    case "$_saved" in
-      OK:*)
-        _prev_cksum="${_saved#OK:}"
-        if [ "$_current_cksum" = "$_prev_cksum" ]; then
-          _trace "prior apply succeeded with same file — idempotent exit 0"
-          exit 0
-        fi
-        _fresh=true; rm -f "$MARKER_FILE"
-        ;;
-      *)
-        if [ "$_current_cksum" != "$_saved" ]; then
-          _fresh=true; rm -f "$MARKER_FILE"
-        fi
-        ;;
-    esac
+  if [ "$_has_uncheckable" = "false" ] && [ -L "$DATA_LINK" ]; then
+    _now=$(date +%s)
+    _link_mtime=$(stat -f %m "$DATA_LINK" 2>/dev/null \
+                  || stat -c %Y "$DATA_LINK" 2>/dev/null || echo 0)
+    _link_age=$((_now - _link_mtime))
+    if [ "$_link_age" -le "$MTIME_FRESH" ]; then
+      _trace "..data age=${_link_age}s <= ${MTIME_FRESH}s — projection recent, runtime matches"
+      exit 0
+    fi
   fi
 
-  if [ "$_fresh" = "false" ]; then
-    _initial=$(cat "$CONFIG_FILE"); _waited=0
-    while [ "$_waited" -lt "$MAX_WAIT" ]; do
-      _check_deadline; sleep 1; _waited=$((_waited + 1))
-      _current=$(cat "$CONFIG_FILE")
-      if [ "$_current" != "$_initial" ]; then
-        _needs_apply=true; _fresh=true; break
-      fi
-    done
-  fi
-
-  if [ "$_fresh" = "true" ] && [ "$_needs_apply" = "false" ]; then
-    _trace "fresh confirmed but Phase 1 saw no diff — re-applying from current file"
-    _needs_apply=true
-  fi
+  _initial=$(cat "$CONFIG_FILE"); _waited=0
+  while [ "$_waited" -lt "$MAX_WAIT" ]; do
+    _check_deadline; sleep 1; _waited=$((_waited + 1))
+    _current=$(cat "$CONFIG_FILE")
+    if [ "$_current" != "$_initial" ]; then
+      _needs_apply=true; break
+    fi
+  done
 
   if [ "$_needs_apply" = "false" ]; then
-    echo "$_current_cksum" > "$MARKER_FILE"
     echo "ERROR: file matches runtime, freshness unconfirmed after ${MAX_WAIT}s" >&2
     echo "retry-safe: yes" >&2
     exit 1
@@ -196,4 +185,3 @@ if [ "$_verify_failed" = "true" ]; then
   exit 1
 fi
 
-echo "OK:$(cksum < "$CONFIG_FILE")" > "$MARKER_FILE"

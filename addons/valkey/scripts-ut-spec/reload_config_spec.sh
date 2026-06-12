@@ -97,11 +97,9 @@ SH
     export RELOAD_PARAM_SCRIPT="${_spec_dir}/reload-parameter.sh"
     export RELOAD_VERIFY_CMD="${_spec_dir}/verify-cmd.sh"
     export MAX_WAIT=1
-    export MARKER_FILE="${_spec_dir}/marker"
-    export SUCCESS_STAMP="${_spec_dir}/success-stamp"
     export RELOAD_LOG="${_spec_dir}/calls.log"
     export GLOBAL_DEADLINE=9999999999
-    rm -f "${RELOAD_LOG}" "${MARKER_FILE}" "${SUCCESS_STAMP}"
+    rm -f "${RELOAD_LOG}"
 
     # Default: verify returns matching values (runtime == file)
     printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
@@ -119,7 +117,7 @@ SH
     rm -rf "${_spec_dir:-}"
     unset RELOAD_LOG FAKE_MTIME FAKE_NOW CONFIG_FILE DATA_LINK
     unset RELOAD_PARAM_SCRIPT RELOAD_VERIFY_CMD MAX_WAIT
-    unset MARKER_FILE SUCCESS_STAMP FAKE_RELOAD_RC VERIFY_VALUES APPLIED_VALUES
+    unset FAKE_RELOAD_RC VERIFY_VALUES APPLIED_VALUES
     unset GLOBAL_DEADLINE VERIFY_EMPTY_KEY NORMALIZE_MAP FAKE_NOW_COUNTER
   }
   After "cleanup"
@@ -153,36 +151,39 @@ SH
   End
 
   Describe "file matches runtime — freshness gate"
-    It "defers on first all-match (writes marker, rc=1)"
+    It "exits 0 when ..data mtime is recent and all params match runtime (Bug 2 idempotent fix)"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
       When run bash ../scripts/reload-config.sh
-      The status should be failure
-      The stderr should include "file matches runtime, freshness unconfirmed"
-      The stderr should include "retry-safe: yes"
-      The file "${MARKER_FILE}" should be exist
+      The status should be success
+      The stderr should include "projection recent, runtime matches"
     End
 
-    It "does NOT exit 0 when stale stamp matches old file before new projection (cross-reconfigure safety)"
+    It "exits 1 when ..data mtime is old and no content change (stale file detection)"
       export FAKE_NOW=1000
-      export FAKE_MTIME=995
-      # Simulate: prior reconfigure succeeded → stamp written with current file cksum.
-      # New reconfigure triggered but kubelet has NOT projected new ConfigMap yet.
-      # File still old, runtime still old, stamp matches old → must NOT exit 0.
-      cksum < "${CONFIG_FILE}" > "${SUCCESS_STAMP}"
+      export FAKE_MTIME=500
       When run bash ../scripts/reload-config.sh
       The status should be failure
       The stderr should include "file matches runtime, freshness unconfirmed"
       The stderr should include "retry-safe: yes"
+    End
+
+    It "exits 1 when ..data mtime is old even if file matches runtime (cross-reconfigure safety)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=100
+      # Simulate: prior reconfigure succeeded long ago. New reconfigure triggered
+      # but kubelet has NOT projected new ConfigMap yet. File still old,
+      # runtime still old, ..data mtime is old → must NOT exit 0.
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "file matches runtime, freshness unconfirmed"
     End
   End
 
-  Describe "marker-based retry detection"
-    It "proceeds when content changed since marker"
+  Describe "content-change polling"
+    It "applies when runtime has old values (Phase 1 diff path)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
-      echo "99999 99 stale" > "${MARKER_FILE}"
-      # Runtime has old values — pre-check detects diff
       printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
         "maxmemory-policy volatile-lru" "maxmemory 214748364" \
         > "${VERIFY_VALUES}"
@@ -192,10 +193,9 @@ SH
       The stderr should include "pre-check maxmemory: diff"
     End
 
-    It "defers when marker exists and content unchanged"
+    It "defers when mtime is old and content unchanged"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
-      cksum < "${CONFIG_FILE}" > "${MARKER_FILE}"
       When run bash ../scripts/reload-config.sh
       The status should be failure
       The stderr should include "file matches runtime, freshness unconfirmed"
@@ -214,41 +214,25 @@ SH
     The stderr should include "pre-check maxmemory: diff"
   End
 
-  It "writes OK marker on success for idempotent retries"
+  It "successful apply exits cleanly (no persistent state files)"
     export FAKE_NOW=1000
     export FAKE_MTIME=995
-    echo "stale marker" > "${MARKER_FILE}"
     printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
       "maxmemory-policy volatile-lru" "maxmemory 214748364" \
       > "${VERIFY_VALUES}"
     When run bash ../scripts/reload-config.sh
     The status should be success
-    The file "${MARKER_FILE}" should be exist
-    The contents of file "${MARKER_FILE}" should start with "OK:"
     The stderr should include "pre-check maxmemory: diff"
   End
 
-  It "idempotent exit 0 when OK marker matches current file"
+  It "idempotent exit 0 on retry when ..data mtime is recent"
     export FAKE_NOW=1000
     export FAKE_MTIME=995
-    echo "OK:$(cksum < "${CONFIG_FILE}")" > "${MARKER_FILE}"
+    # Simulates Bug 2 retry: prior apply succeeded, controller retries this pod.
+    # File matches runtime (Phase 1 no diff), ..data mtime is recent → exit 0.
     When run bash ../scripts/reload-config.sh
     The status should be success
-    The stderr should include "prior apply succeeded with same file"
-  End
-
-  Describe "no cross-reconfigure state leakage"
-    It "does not leave success stamp after apply+verify (gate 4)"
-      export FAKE_NOW=1000
-      export FAKE_MTIME=995
-      printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
-        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
-        > "${VERIFY_VALUES}"
-      When run bash ../scripts/reload-config.sh
-      The status should be success
-      The file "${SUCCESS_STAMP}" should not be exist
-      The stderr should include "pre-check maxmemory: diff"
-    End
+    The stderr should include "projection recent, runtime matches"
   End
 
   Describe "CONFIG GET read-back verification"
@@ -345,10 +329,10 @@ TESTCONF
         "maxmemory-policy volatile-lru" "maxmemory 268435456" \
         > "${VERIFY_VALUES}"
       When run bash ../scripts/reload-config.sh
-      The status should be failure
-      # All params match → Phase 2 freshness gate → defers
+      The status should be success
+      # All params match + ..data mtime fresh → exit 0 (no false diff, no apply needed)
       The stderr should include "pre-check logfile: match"
-      The stderr should include "file matches runtime, freshness unconfirmed"
+      The stderr should include "projection recent, runtime matches"
     End
 
     It "strips quotes before CONFIG SET (no runtime corruption)"
@@ -480,7 +464,6 @@ SH
       export DATA_LINK="${_st}/conf/..data"
       export RELOAD_PARAM_SCRIPT="${_st}/reload-parameter.sh"
       export RELOAD_VERIFY_CMD="${_st}/verify-cmd.sh"
-      export MARKER_FILE="${_st}/marker"
       export MAX_WAIT=0
       export GLOBAL_DEADLINE=9999999999
       export RELOAD_LOG="${_st}/calls.log"
@@ -563,7 +546,6 @@ SH
       export DATA_LINK="${_td}/conf/..data"
       export RELOAD_PARAM_SCRIPT="/nonexistent/reload-parameter.sh"
       export RELOAD_VERIFY_CMD="${_td}/verify-cmd.sh"
-      export MARKER_FILE="${_td}/marker"
       export MAX_WAIT=0
       export GLOBAL_DEADLINE=9999999999
       unset APPLIED_VALUES
