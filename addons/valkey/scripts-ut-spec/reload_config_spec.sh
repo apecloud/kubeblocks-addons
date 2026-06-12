@@ -214,7 +214,7 @@ SH
     The stderr should include "pre-check maxmemory: diff"
   End
 
-  It "cleans marker file on success"
+  It "writes OK marker on success for idempotent retries"
     export FAKE_NOW=1000
     export FAKE_MTIME=995
     echo "stale marker" > "${MARKER_FILE}"
@@ -223,8 +223,18 @@ SH
       > "${VERIFY_VALUES}"
     When run bash ../scripts/reload-config.sh
     The status should be success
-    The file "${MARKER_FILE}" should not be exist
+    The file "${MARKER_FILE}" should be exist
+    The contents of file "${MARKER_FILE}" should start with "OK:"
     The stderr should include "pre-check maxmemory: diff"
+  End
+
+  It "idempotent exit 0 when OK marker matches current file"
+    export FAKE_NOW=1000
+    export FAKE_MTIME=995
+    echo "OK:$(cksum < "${CONFIG_FILE}")" > "${MARKER_FILE}"
+    When run bash ../scripts/reload-config.sh
+    The status should be success
+    The stderr should include "prior apply succeeded with same file"
   End
 
   Describe "no cross-reconfigure state leakage"

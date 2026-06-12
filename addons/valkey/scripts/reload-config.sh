@@ -78,9 +78,21 @@ if [ "$_needs_apply" = "false" ]; then
 
   if [ -f "$MARKER_FILE" ]; then
     _saved=$(cat "$MARKER_FILE")
-    if [ "$_current_cksum" != "$_saved" ]; then
-      _fresh=true; rm -f "$MARKER_FILE"
-    fi
+    case "$_saved" in
+      OK:*)
+        _prev_cksum="${_saved#OK:}"
+        if [ "$_current_cksum" = "$_prev_cksum" ]; then
+          _trace "prior apply succeeded with same file — idempotent exit 0"
+          exit 0
+        fi
+        _fresh=true; rm -f "$MARKER_FILE"
+        ;;
+      *)
+        if [ "$_current_cksum" != "$_saved" ]; then
+          _fresh=true; rm -f "$MARKER_FILE"
+        fi
+        ;;
+    esac
   fi
 
   if [ "$_fresh" = "false" ]; then
@@ -184,4 +196,4 @@ if [ "$_verify_failed" = "true" ]; then
   exit 1
 fi
 
-rm -f "$MARKER_FILE"
+echo "OK:$(cksum < "$CONFIG_FILE")" > "$MARKER_FILE"
