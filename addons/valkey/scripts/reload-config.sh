@@ -144,7 +144,7 @@ while IFS= read -r line || [ -n "$line" ]; do
         echo "ERROR: 2 consecutive timeouts, Valkey likely unresponsive" >&2
         rm -f "$_verify_file"; exit 1
       fi
-      echo "$key $value" >> "$_verify_file"
+      echo "$key $_apply_val" >> "$_verify_file"
       ;;
     *)
       rm -f "$_verify_file"; exit "$_rc" ;;
