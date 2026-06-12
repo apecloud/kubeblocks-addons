@@ -282,7 +282,7 @@ TESTCONF
     End
   End
 
-  Describe "uncheckable params do not bypass freshness gate"
+  Describe "uncheckable params handling"
     It "defers when all CONFIG GETs fail (freshness gate runs)"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
@@ -295,20 +295,19 @@ TESTCONF
       The stderr should include "file matches runtime, freshness unconfirmed"
     End
 
-    It "defers when one param CONFIG GET is broken (freshness gate runs)"
+    It "succeeds when checkable params match and one static param is uncheckable"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
       # bind/tcp-backlog/timeout/maxmemory-policy match, maxmemory returns empty
-      # → all checkable match, one uncheckable → _needs_apply stays false
-      # → Phase 2 freshness gate runs → defers
+      # → checkable params verified, one uncheckable → mtime fresh → exit 0
       export VERIFY_EMPTY_KEY=maxmemory
       printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
         "maxmemory-policy volatile-lru" "maxmemory 268435456" \
         > "${VERIFY_VALUES}"
       When run bash ../scripts/reload-config.sh
-      The status should be failure
+      The status should be success
       The stderr should include "pre-check maxmemory: uncheckable"
-      The stderr should include "file matches runtime, freshness unconfirmed"
+      The stderr should include "recent projection heuristic, runtime matches"
     End
   End
 

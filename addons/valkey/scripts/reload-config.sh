@@ -39,6 +39,7 @@ fi
 
 _needs_apply=false
 _has_uncheckable=false
+_checked_any=false
 while IFS= read -r line || [ -n "$line" ]; do
   case "$line" in '#'*|'') continue ;; esac
   key=${line%% *}
@@ -57,13 +58,15 @@ while IFS= read -r line || [ -n "$line" ]; do
   if [ "$_actual" != "$_cmp_val" ]; then
     _trace "pre-check ${key}: diff actual='${_actual}' desired='${_cmp_val}'"
     _needs_apply=true
+    _checked_any=true
     break
   else
     _trace "pre-check ${key}: match actual='${_actual}'"
+    _checked_any=true
   fi
 done < "$CONFIG_FILE"
 
-_trace "pre-check result: _needs_apply=${_needs_apply} _has_uncheckable=${_has_uncheckable}"
+_trace "pre-check result: _needs_apply=${_needs_apply} _has_uncheckable=${_has_uncheckable} _checked_any=${_checked_any}"
 
 # ── Phase 2: File matches runtime — verify freshness before rc=0 ─────
 # If every checkable param already matches runtime, succeed only when we
@@ -83,7 +86,7 @@ _trace "pre-check result: _needs_apply=${_needs_apply} _has_uncheckable=${_has_u
 # while kubelet has not yet projected the second one).
 
 if [ "$_needs_apply" = "false" ]; then
-  if [ "$_has_uncheckable" = "false" ] && [ -L "$DATA_LINK" ]; then
+  if [ "$_checked_any" = "true" ] && [ -L "$DATA_LINK" ]; then
     _now=$(date +%s)
     _link_mtime=$(stat -f %m "$DATA_LINK" 2>/dev/null \
                   || stat -c %Y "$DATA_LINK" 2>/dev/null || echo 0)
