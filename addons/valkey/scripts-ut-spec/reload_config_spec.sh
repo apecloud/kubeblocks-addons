@@ -260,13 +260,27 @@ SH
       The path "$MARKER_FILE" should be file
     End
 
-    It "does not write marker on mtime shortcut (no Phase 4 verification)"
+    It "writes marker on mtime shortcut for future VScale use (Bug 8 fix)"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
       When run bash ../scripts/reload-config.sh
       The status should be success
       The stderr should include "recent projection heuristic"
-      The path "$MARKER_FILE" should not be file
+      The path "$MARKER_FILE" should be file
+    End
+
+    It "VScale after mtime shortcut: marker written earlier enables exit 0 with stale mtime"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      # First call: mtime fresh → exit 0 + writes marker
+      bash ../scripts/reload-config.sh 2>/dev/null
+      # Verify marker was written
+      [ -f "$MARKER_FILE" ] || { echo "FAIL: marker not written by mtime shortcut"; exit 1; }
+      # Second call: simulate VScale — stale mtime, same config content
+      export FAKE_MTIME=500
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The stderr should include "content-hash marker matches"
     End
 
     It "fail-closed when cksum returns empty (no false match on empty field)"

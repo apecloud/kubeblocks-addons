@@ -118,6 +118,9 @@ if [ "$_needs_apply" = "false" ]; then
     _link_age=$((_now - _link_mtime))
     if [ "$_link_age" -le "$MTIME_FRESH" ]; then
       _trace "..data age=${_link_age}s <= ${MTIME_FRESH}s — recent projection heuristic, runtime matches"
+      if _marker_val=$(_build_marker "$CONFIG_FILE"); then
+        echo "$_marker_val" > "$MARKER_FILE" 2>/dev/null || true
+      fi
       exit 0
     fi
   fi
