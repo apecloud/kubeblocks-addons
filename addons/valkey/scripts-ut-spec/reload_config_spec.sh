@@ -268,6 +268,35 @@ SH
       The stderr should include "recent projection heuristic"
       The path "$MARKER_FILE" should not be file
     End
+
+    It "fail-closed when cksum returns empty (no false match on empty field)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      # Write a marker with empty cksum field — simulates prior write
+      # when cksum was broken. Must not match.
+      echo "$(hostname):${CONFIG_FILE}:" > "$MARKER_FILE"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "file matches runtime, freshness unconfirmed"
+    End
+
+    It "does not write marker when cksum command fails"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+        > "${VERIFY_VALUES}"
+      # Replace cksum mock with one that always fails
+      cat > "${_spec_dir}/bin/cksum" <<'SH'
+#!/bin/sh
+exit 1
+SH
+      chmod +x "${_spec_dir}/bin/cksum"
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The stderr should include "pre-check maxmemory: diff"
+      The path "$MARKER_FILE" should not be file
+    End
   End
 
   Describe "content-change polling"

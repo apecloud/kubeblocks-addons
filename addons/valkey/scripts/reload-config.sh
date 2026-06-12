@@ -16,6 +16,13 @@ fi
 
 _trace() { echo "TRACE: $*" >&2; }
 
+_build_marker() {
+  _bm_host=$(hostname 2>/dev/null)
+  _bm_cksum=$(cksum "$1" 2>/dev/null | cut -d' ' -f1)
+  [ -n "$_bm_host" ] && [ -n "$1" ] && [ -n "$_bm_cksum" ] || return 1
+  echo "${_bm_host}:${1}:${_bm_cksum}"
+}
+
 _check_deadline() {
   if [ "$(date +%s)" -ge "$GLOBAL_DEADLINE" ]; then
     echo "ERROR: global deadline exceeded" >&2
@@ -94,10 +101,11 @@ if [ "$_needs_apply" = "false" ]; then
   # Identity binding prevents cross-cluster reuse after backup/restore.
   if [ -f "$MARKER_FILE" ]; then
     _prev_marker=$(cat "$MARKER_FILE" 2>/dev/null)
-    _curr_marker="$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" 2>/dev/null | cut -d' ' -f1)"
-    if [ -n "$_prev_marker" ] && [ "$_prev_marker" = "$_curr_marker" ]; then
-      _trace "content-hash marker matches — same config already applied"
-      exit 0
+    if _curr_marker=$(_build_marker "$CONFIG_FILE"); then
+      if [ -n "$_prev_marker" ] && [ "$_prev_marker" = "$_curr_marker" ]; then
+        _trace "content-hash marker matches — same config already applied"
+        exit 0
+      fi
     fi
     rm -f "$MARKER_FILE"
   fi
@@ -207,4 +215,6 @@ if [ "$_verify_failed" = "true" ]; then
   exit 1
 fi
 
-echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" 2>/dev/null | cut -d' ' -f1)" > "$MARKER_FILE" 2>/dev/null || true
+if _marker_val=$(_build_marker "$CONFIG_FILE"); then
+  echo "$_marker_val" > "$MARKER_FILE" 2>/dev/null || true
+fi
