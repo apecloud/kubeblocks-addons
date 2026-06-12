@@ -156,7 +156,7 @@ SH
       export FAKE_MTIME=995
       When run bash ../scripts/reload-config.sh
       The status should be success
-      The stderr should include "projection recent, runtime matches"
+      The stderr should include "recent projection heuristic, runtime matches"
     End
 
     It "exits 1 when ..data mtime is old and no content change (stale file detection)"
@@ -232,7 +232,7 @@ SH
     # File matches runtime (Phase 1 no diff), ..data mtime is recent → exit 0.
     When run bash ../scripts/reload-config.sh
     The status should be success
-    The stderr should include "projection recent, runtime matches"
+    The stderr should include "recent projection heuristic, runtime matches"
   End
 
   Describe "CONFIG GET read-back verification"
@@ -332,7 +332,7 @@ TESTCONF
       The status should be success
       # All params match + ..data mtime fresh → exit 0 (no false diff, no apply needed)
       The stderr should include "pre-check logfile: match"
-      The stderr should include "projection recent, runtime matches"
+      The stderr should include "recent projection heuristic, runtime matches"
     End
 
     It "strips quotes before CONFIG SET (no runtime corruption)"

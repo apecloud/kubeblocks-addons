@@ -6,7 +6,7 @@ DATA_LINK="${DATA_LINK:-/etc/conf/..data}"
 RELOAD_PARAM_SCRIPT="${RELOAD_PARAM_SCRIPT:-/scripts/reload-parameter.sh}"
 RELOAD_VERIFY_CMD="${RELOAD_VERIFY_CMD:-}"
 MAX_WAIT="${MAX_WAIT:-15}"
-MTIME_FRESH="${MTIME_FRESH:-60}"
+MTIME_FRESH="${MTIME_FRESH:-10}"
 GLOBAL_DEADLINE="${GLOBAL_DEADLINE:-}"
 
 if [ -z "$GLOBAL_DEADLINE" ]; then
@@ -72,13 +72,15 @@ _trace "pre-check result: _needs_apply=${_needs_apply} _has_uncheckable=${_has_u
 # values) and we must defer so the controller retries after kubelet
 # projects the real update.
 #
-# Primary signal: ..data symlink mtime.  kubelet atomically swaps this
-# symlink on every ConfigMap projection, so a recent mtime proves the
-# mounted file is the intended target — not stale leftovers from a
-# previous reconfigure generation.  This avoids cross-generation marker
-# reuse (the marker was written by the *previous* successful apply and
-# would falsely match a new reconfigure whose ConfigMap has not yet been
-# projected).
+# Heuristic: ..data symlink mtime.  kubelet atomically swaps this
+# symlink on every ConfigMap projection.  A recent mtime is a strong
+# (but not perfect) indicator that the mounted file reflects the
+# current reconfigure target.  kbagent does not pass a generation or
+# action identity, so no local signal can strictly prove "this
+# reconfigure's target has been projected" vs "previous reconfigure's
+# projection is still recent."  MTIME_FRESH bounds the residual false-
+# positive window (back-to-back reconfigurations < MTIME_FRESH apart
+# while kubelet has not yet projected the second one).
 
 if [ "$_needs_apply" = "false" ]; then
   if [ "$_has_uncheckable" = "false" ] && [ -L "$DATA_LINK" ]; then
@@ -87,7 +89,7 @@ if [ "$_needs_apply" = "false" ]; then
                   || stat -c %Y "$DATA_LINK" 2>/dev/null || echo 0)
     _link_age=$((_now - _link_mtime))
     if [ "$_link_age" -le "$MTIME_FRESH" ]; then
-      _trace "..data age=${_link_age}s <= ${MTIME_FRESH}s — projection recent, runtime matches"
+      _trace "..data age=${_link_age}s <= ${MTIME_FRESH}s — recent projection heuristic, runtime matches"
       exit 0
     fi
   fi
@@ -184,4 +186,3 @@ if [ "$_verify_failed" = "true" ]; then
   echo "ERROR: CONFIG GET read-back verification failed" >&2
   exit 1
 fi
-
