@@ -382,6 +382,33 @@ SH
       The stderr should include "no marker file at"
       The stderr should include "content stable"
     End
+
+    It "fail-closed when mtime shortcut marker write fails"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      # Point MARKER_FILE to non-writable path — mtime fresh but write fails
+      export MARKER_FILE="/nonexistent-dir/marker"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "recent projection heuristic"
+      The stderr should include "marker write failed"
+      The stderr should include "retry-safe: yes"
+    End
+
+    It "Phase 4 marker write failure does not block exit 0 (apply succeeded)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      # Runtime has old maxmemory → pre-check diff → apply → Phase 4
+      printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+        > "${VERIFY_VALUES}"
+      # Point MARKER_FILE to non-writable path
+      export MARKER_FILE="/nonexistent-dir/marker"
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The stderr should include "pre-check maxmemory: diff"
+      The stderr should include "Phase 4: marker write failed"
+    End
   End
 
   Describe "content-change polling"

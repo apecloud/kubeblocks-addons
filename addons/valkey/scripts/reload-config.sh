@@ -23,6 +23,16 @@ _build_marker() {
   echo "${_bm_host}:${1}:${_bm_cksum}"
 }
 
+_write_marker() {
+  _wm_val=$(_build_marker "$1") || { _trace "marker build failed"; return 1; }
+  if echo "$_wm_val" > "$MARKER_FILE" 2>/dev/null && [ -f "$MARKER_FILE" ]; then
+    _trace "wrote marker: ${_wm_val}"
+    return 0
+  fi
+  _trace "marker write failed: ${MARKER_FILE}"
+  return 2
+}
+
 _check_deadline() {
   if [ "$(date +%s)" -ge "$GLOBAL_DEADLINE" ]; then
     echo "ERROR: global deadline exceeded" >&2
@@ -123,13 +133,9 @@ if [ "$_needs_apply" = "false" ]; then
     _link_age=$((_now - _link_mtime))
     if [ "$_link_age" -le "$MTIME_FRESH" ]; then
       _trace "..data age=${_link_age}s <= ${MTIME_FRESH}s — recent projection heuristic, runtime matches"
-      if _marker_val=$(_build_marker "$CONFIG_FILE"); then
-        echo "$_marker_val" > "$MARKER_FILE" 2>/dev/null || true
-        _trace "wrote marker: ${_marker_val}"
-      else
-        _trace "marker write skipped — _build_marker failed"
+      if _write_marker "$CONFIG_FILE"; then
+        exit 0
       fi
-      exit 0
     fi
   fi
 
@@ -145,14 +151,8 @@ if [ "$_needs_apply" = "false" ]; then
   if [ "$_needs_apply" = "false" ]; then
     if [ "$_checked_any" = "true" ]; then
       _trace "content stable ${MAX_WAIT}s + runtime verified — accepting as applied"
-      if _marker_val=$(_build_marker "$CONFIG_FILE"); then
-        if echo "$_marker_val" > "$MARKER_FILE" 2>/dev/null && [ -f "$MARKER_FILE" ]; then
-          _trace "wrote marker: ${_marker_val}"
-          exit 0
-        fi
-        _trace "marker write failed — cannot guarantee future closure, retry"
-      else
-        _trace "marker build failed — cannot guarantee future closure, retry"
+      if _write_marker "$CONFIG_FILE"; then
+        exit 0
       fi
     fi
     echo "ERROR: file matches runtime, freshness unconfirmed after ${MAX_WAIT}s" >&2
@@ -238,9 +238,4 @@ if [ "$_verify_failed" = "true" ]; then
   exit 1
 fi
 
-if _marker_val=$(_build_marker "$CONFIG_FILE"); then
-  echo "$_marker_val" > "$MARKER_FILE" 2>/dev/null || true
-  _trace "wrote marker: ${_marker_val}"
-else
-  _trace "marker write skipped — _build_marker failed"
-fi
+_write_marker "$CONFIG_FILE" || _trace "Phase 4: marker write failed — apply succeeded, future VScale may need retry"
