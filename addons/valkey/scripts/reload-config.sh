@@ -88,8 +88,9 @@ _trace "pre-check result: _needs_apply=${_needs_apply} _has_uncheckable=${_has_u
 if [ "$_needs_apply" = "false" ]; then
   if [ "$_checked_any" = "true" ] && [ -L "$DATA_LINK" ]; then
     _now=$(date +%s)
-    _link_mtime=$(stat -f %m "$DATA_LINK" 2>/dev/null \
-                  || stat -c %Y "$DATA_LINK" 2>/dev/null || echo 0)
+    _link_mtime=$(stat -c %Y "$DATA_LINK" 2>/dev/null \
+                  || stat -f %m "$DATA_LINK" 2>/dev/null || echo 0)
+    case "$_link_mtime" in *[!0-9]*) _link_mtime=0 ;; esac
     _link_age=$((_now - _link_mtime))
     if [ "$_link_age" -le "$MTIME_FRESH" ]; then
       _trace "..data age=${_link_age}s <= ${MTIME_FRESH}s — recent projection heuristic, runtime matches"

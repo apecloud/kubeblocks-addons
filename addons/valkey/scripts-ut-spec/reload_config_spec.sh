@@ -168,6 +168,14 @@ SH
       The stderr should include "retry-safe: yes"
     End
 
+    It "falls back to old-mtime when stat returns non-numeric (GNU stat -f %m compatibility)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME="Filesystem 0x1234 Type: ext4 Block size: 4096 995"
+      When run bash ../scripts/reload-config.sh
+      The status should be failure
+      The stderr should include "file matches runtime, freshness unconfirmed"
+    End
+
     It "exits 1 when ..data mtime is old even if file matches runtime (cross-reconfigure safety)"
       export FAKE_NOW=1000
       export FAKE_MTIME=100
