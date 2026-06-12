@@ -433,6 +433,26 @@ SH
       The stderr should include "bounded-risk close: marker matched"
     End
 
+    It "marker match + delayed projection + fresh mtime still applies (Bug 10 rev2)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=995
+      export MARKER_OBS_WINDOW=3
+      export MAX_WAIT=1
+      echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
+      _new_conf="${CONFIG_FILE}.new"
+      printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 536870912" \
+        "io-threads-do-reads yes" > "$_new_conf"
+      (sleep 1; cp "$_new_conf" "$CONFIG_FILE") &
+      _bg=$!
+      When run bash ../scripts/reload-config.sh
+      wait $_bg 2>/dev/null || true
+      The status should be success
+      The stderr should include "projection detected"
+      The stderr should not include "recent projection heuristic"
+      The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory"
+    End
+
     It "marker match + runtime mismatch still applies (Bug 10 safety)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500

@@ -136,7 +136,9 @@ if [ "$_needs_apply" = "false" ]; then
   else
     _trace "no marker file at ${MARKER_FILE}"
   fi
+fi
 
+if [ "$_needs_apply" = "false" ]; then
   if [ "$_checked_any" = "true" ] && [ -L "$DATA_LINK" ]; then
     _now=$(date +%s)
     _link_mtime=$(stat -c %Y "$DATA_LINK" 2>/dev/null \
