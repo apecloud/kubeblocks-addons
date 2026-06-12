@@ -202,23 +202,24 @@ SH
     It "exits 0 on late retry when content-hash marker matches (Bug 6 fix)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
+      export MARKER_OBS_WINDOW=1
       echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
       When run bash ../scripts/reload-config.sh
       The status should be success
       The stderr should include "content-hash marker matches"
+      The stderr should include "bounded-risk close"
     End
 
     It "exits 0 after pod restart when marker persists and config unchanged (Bug 7 fix)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
-      # Simulate VScale pod restart: marker written on persistent path
-      # during prior apply, readlink changed (new mount) but config
-      # content is identical → cksum matches → exit 0.
+      export MARKER_OBS_WINDOW=1
       echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
       ln -sf "${_spec_dir}/conf-new-mount" "${DATA_LINK}"
       When run bash ../scripts/reload-config.sh
       The status should be success
       The stderr should include "content-hash marker matches"
+      The stderr should include "bounded-risk close"
     End
 
     It "invalidates stale marker then writes fresh one after content polling (Bug 9a/9b)"
@@ -280,6 +281,7 @@ SH
     It "VScale after mtime shortcut: marker written earlier enables exit 0 with stale mtime"
       export FAKE_NOW=1000
       export FAKE_MTIME=995
+      export MARKER_OBS_WINDOW=1
       # First call: mtime fresh → exit 0 + writes marker
       bash ../scripts/reload-config.sh 2>/dev/null
       # Verify marker was written
@@ -289,6 +291,7 @@ SH
       When run bash ../scripts/reload-config.sh
       The status should be success
       The stderr should include "content-hash marker matches"
+      The stderr should include "bounded-risk close"
     End
 
     It "invalidates empty-cksum marker then writes fresh one (Bug 9a/9b)"
@@ -340,16 +343,19 @@ SH
       The path "$MARKER_FILE" should be file
     End
 
-    It "VScale on pod that missed initial mtime window: Bug 9b writes marker, then VScale matches"
+    It "VScale on pod that missed initial mtime window: Bug 9b writes marker, then VScale matches via observation"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
+      export MARKER_OBS_WINDOW=1
       # First call: stale mtime, no marker → Bug 9b → exit 0 + marker
       bash ../scripts/reload-config.sh 2>/dev/null
       [ -f "$MARKER_FILE" ] || { echo "FAIL: marker not written by Bug 9b path"; exit 1; }
-      # Second call: simulate VScale — stale mtime, same config → marker matches → exit 0
+      # Second call: simulate VScale — stale mtime, same config → marker matches →
+      # observation window (1s) → no projection → bounded-risk close → exit 0
       When run bash ../scripts/reload-config.sh
       The status should be success
       The stderr should include "content-hash marker matches"
+      The stderr should include "bounded-risk close"
     End
 
     It "fail-closed when marker write fails on content polling path (Bug 9b gate)"
@@ -393,6 +399,53 @@ SH
       The stderr should include "recent projection heuristic"
       The stderr should include "marker write failed"
       The stderr should include "retry-safe: yes"
+    End
+
+    It "marker match + delayed projection triggers apply (Bug 10)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      export MARKER_OBS_WINDOW=3
+      export MAX_WAIT=1
+      # Pre-seed marker matching current (old) file content
+      echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
+      # Schedule file change after 1s (simulating kubelet projection with new maxmemory)
+      _new_conf="${CONFIG_FILE}.new"
+      printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 536870912" \
+        "io-threads-do-reads yes" > "$_new_conf"
+      (sleep 1; cp "$_new_conf" "$CONFIG_FILE") &
+      _bg=$!
+      When run bash ../scripts/reload-config.sh
+      wait $_bg 2>/dev/null || true
+      The status should be success
+      The stderr should include "projection detected"
+      The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory"
+    End
+
+    It "marker match + no projection = bounded-risk close (Bug 10)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      export MARKER_OBS_WINDOW=1
+      # Pre-seed marker matching current file content
+      echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The stderr should include "bounded-risk close: marker matched"
+    End
+
+    It "marker match + runtime mismatch still applies (Bug 10 safety)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      export MARKER_OBS_WINDOW=1
+      # Runtime has old maxmemory
+      printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+        > "${VERIFY_VALUES}"
+      # Marker won't match because Phase 1 sees diff → _needs_apply=true → skip Phase 2
+      When run bash ../scripts/reload-config.sh
+      The status should be success
+      The stderr should include "pre-check maxmemory: diff"
+      The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory"
     End
 
     It "Phase 4 marker write failure does not block exit 0 (apply succeeded)"

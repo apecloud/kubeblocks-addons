@@ -104,20 +104,32 @@ _trace "pre-check result: _needs_apply=${_needs_apply} _has_uncheckable=${_has_u
 # while kubelet has not yet projected the second one).
 
 if [ "$_needs_apply" = "false" ]; then
-  # Content-hash marker: after a successful Phase 3+4 apply, we write
-  # hostname:path:cksum to MARKER_FILE (persistent path, survives pod
-  # restart).  On retries — same pod (Bug 6) or after VScale/restart
-  # (Bug 7) — if identity, path, and content all match, exit 0.
-  # Identity binding prevents cross-cluster reuse after backup/restore.
+  MARKER_OBS_WINDOW="${MARKER_OBS_WINDOW:-5}"
   if [ -f "$MARKER_FILE" ]; then
     _prev_marker=$(cat "$MARKER_FILE" 2>/dev/null)
     if _curr_marker=$(_build_marker "$CONFIG_FILE"); then
       if [ -n "$_prev_marker" ] && [ "$_prev_marker" = "$_curr_marker" ]; then
-        _trace "content-hash marker matches — same config already applied"
-        exit 0
+        _trace "content-hash marker matches — observing ${MARKER_OBS_WINDOW}s for projection"
+        _obs_waited=0; _obs_initial=$(cat "$CONFIG_FILE")
+        while [ "$_obs_waited" -lt "$MARKER_OBS_WINDOW" ]; do
+          _check_deadline; sleep 1; _obs_waited=$((_obs_waited + 1))
+          if [ "$(cat "$CONFIG_FILE")" != "$_obs_initial" ]; then
+            _trace "projection detected at ${_obs_waited}s — will apply"
+            _needs_apply=true; break
+          fi
+        done
+        if [ "$_needs_apply" = "false" ]; then
+          if [ "$_checked_any" = "true" ]; then
+            _trace "bounded-risk close: marker matched, no projection observed within ${MARKER_OBS_WINDOW}s"
+            if _write_marker "$CONFIG_FILE"; then
+              exit 0
+            fi
+          fi
+        fi
+      else
+        _trace "marker mismatch prev='${_prev_marker}' curr='${_curr_marker}' — invalidating"
+        rm -f "$MARKER_FILE"
       fi
-      _trace "marker mismatch prev='${_prev_marker}' curr='${_curr_marker}' — invalidating"
-      rm -f "$MARKER_FILE"
     else
       _trace "marker check: _build_marker failed, preserving existing marker"
     fi
