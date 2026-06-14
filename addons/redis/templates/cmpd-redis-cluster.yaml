@@ -505,8 +505,12 @@ spec:
       retryPolicy:
         maxRetries: 10
     switchover:
+      timeoutSeconds: -1
       exec:
         container: redis-cluster
+        env:
+          - name: SWITCHOVER_WAIT_TIMEOUT
+            value: "120"
         command:
           - /bin/bash
           - -c

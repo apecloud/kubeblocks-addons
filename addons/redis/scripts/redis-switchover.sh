@@ -110,7 +110,7 @@ check_redis_kernel_status() {
 check_switchover_result() {
   local expected_master="$1"
   local initial_master="$2"
-  local max_wait=300
+  local max_wait=${SWITCHOVER_WAIT_TIMEOUT:-120}
   local wait_interval=5
   local elapsed=0
 
@@ -315,24 +315,27 @@ switchover_with_candidate() {
   local redis_set_switchover_cmd="CONFIG SET replica-priority 1"
   local redis_set_lowest_priority_cmd="CONFIG SET replica-priority 100"
 
-  # set target candidate highest priority to make sure it will be promoted to master
   unset_xtrace_when_ut_mode_false
-  set_redis_priorities "$KB_SWITCHOVER_CANDIDATE_FQDN" || return 1
+  local set_rc=0
+  set_redis_priorities "$KB_SWITCHOVER_CANDIDATE_FQDN" || set_rc=$?
 
   local switchover_rc=0
-  # do switchover
-  execute_sentinel_failover "$CUSTOM_SENTINEL_MASTER_NAME" || switchover_rc=$?
-
-  # check switchover result
-  if [ $switchover_rc -eq 0 ]; then
-    check_switchover_result "$KB_SWITCHOVER_CANDIDATE_FQDN" "" || switchover_rc=$?
+  if [ $set_rc -eq 0 ]; then
+    execute_sentinel_failover "$CUSTOM_SENTINEL_MASTER_NAME" || switchover_rc=$?
+    if [ $switchover_rc -eq 0 ]; then
+      check_switchover_result "$KB_SWITCHOVER_CANDIDATE_FQDN" "" || switchover_rc=$?
+    fi
   fi
 
-  # recover all redis replica-priority regardless of switchover result
+  # recover all redis replica-priority regardless of set/switchover result
   local recover_rc=0
   recover_redis_priorities || recover_rc=$?
   set_xtrace_when_ut_mode_false
 
+  if [ $set_rc -ne 0 ]; then
+    echo "Priority setting failed, attempted recovery" >&2
+    return 1
+  fi
   if [ $switchover_rc -ne 0 ]; then
     echo "Switchover failed" >&2
     return 1

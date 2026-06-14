@@ -168,7 +168,8 @@ do_switchover() {
   fi
 
   # check switchover result
-  max_attempts=60
+  local wait_timeout=${SWITCHOVER_WAIT_TIMEOUT:-120}
+  local max_attempts=$((wait_timeout / 2))
   attempt=0
   while [ $attempt -lt $max_attempts ]; do
     role=$(check_redis_role "$candidate_pod_fqdn" $service_port)

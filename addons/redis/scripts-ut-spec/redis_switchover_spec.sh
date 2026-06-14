@@ -338,6 +338,24 @@ master_host:redis-master"
         The stderr should include "priority recovery failed"
       End
 
+      It "should recover priorities when set_redis_priorities partially fails"
+        check_redis_role() {
+          if [ "$1" = "redis2" ]; then
+            echo "secondary"
+          else
+            echo "primary"
+          fi
+        }
+        check_redis_kernel_status() { return 0; }
+        set_redis_priorities() { return 1; }
+        recover_redis_priorities() { echo "priorities recovered"; return 0; }
+
+        When call switchover_with_candidate
+        The status should be failure
+        The stdout should include "priorities recovered"
+        The stderr should include "Priority setting failed"
+      End
+
       It "should recover priorities when result check fails"
         check_redis_role() {
           if [ "$1" = "redis2" ]; then
