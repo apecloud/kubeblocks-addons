@@ -112,5 +112,7 @@ spec:
       replicas: {{ .Values.monitor.replicas }}
       env:
         {{- include "kafka-cluster.basicEnv" . | nindent 8 }}
+        - name: TLS_ENABLED
+          value: "{{ .Values.tlsEnable }}"
       {{- include "kafka-exporter.resources" . | nindent 6 }}
     {{- end }}
