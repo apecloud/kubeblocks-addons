@@ -103,6 +103,7 @@ _trace "pre-check result: _needs_apply=${_needs_apply} _has_uncheckable=${_has_u
 # positive window (back-to-back reconfigurations < MTIME_FRESH apart
 # while kubelet has not yet projected the second one).
 
+_marker_deferred=false
 if [ "$_needs_apply" = "false" ]; then
   MARKER_OBS_WINDOW="${MARKER_OBS_WINDOW:-5}"
   if [ -f "$MARKER_FILE" ]; then
@@ -120,6 +121,7 @@ if [ "$_needs_apply" = "false" ]; then
         done
         if [ "$_needs_apply" = "false" ]; then
           _trace "marker matched, no projection within ${MARKER_OBS_WINDOW}s — deferring to content polling"
+          _marker_deferred=true
         fi
       else
         _trace "marker mismatch prev='${_prev_marker}' curr='${_curr_marker}' — invalidating"
@@ -134,7 +136,7 @@ if [ "$_needs_apply" = "false" ]; then
 fi
 
 if [ "$_needs_apply" = "false" ]; then
-  if [ "$_checked_any" = "true" ] && [ -L "$DATA_LINK" ]; then
+  if [ "$_marker_deferred" = "false" ] && [ "$_checked_any" = "true" ] && [ -L "$DATA_LINK" ]; then
     _now=$(date +%s)
     _link_mtime=$(stat -c %Y "$DATA_LINK" 2>/dev/null \
                   || stat -f %m "$DATA_LINK" 2>/dev/null || echo 0)
