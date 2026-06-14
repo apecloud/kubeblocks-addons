@@ -20,6 +20,58 @@ mysql_error() {
 	exit 1
 }
 
+mysql_uses_legacy_replication_syntax() {
+  [[ "${MYSQL_MAJOR}" == "5.7" ]]
+}
+
+mysql_reset_replica_sql() {
+  if mysql_uses_legacy_replication_syntax; then
+    cat <<'EOF'
+RESET SLAVE;
+RESET SLAVE ALL;
+EOF
+  else
+    cat <<'EOF'
+RESET REPLICA;
+RESET REPLICA ALL;
+EOF
+  fi
+}
+
+mysql_change_replication_source_sql() {
+  local master_host=$1
+  local master_port=$2
+
+  if mysql_uses_legacy_replication_syntax; then
+    cat <<EOF
+STOP SLAVE;
+CHANGE MASTER TO
+MASTER_AUTO_POSITION=1,
+MASTER_CONNECT_RETRY=1,
+MASTER_RETRY_COUNT=86400,
+MASTER_HOST='$master_host',
+MASTER_PORT=$master_port,
+MASTER_USER='$MYSQL_ROOT_USER',
+MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
+START SLAVE;
+EOF
+  else
+    cat <<EOF
+STOP REPLICA;
+CHANGE REPLICATION SOURCE TO
+SOURCE_AUTO_POSITION=1,
+SOURCE_SSL=1,
+SOURCE_CONNECT_RETRY=1,
+SOURCE_RETRY_COUNT=86400,
+SOURCE_HOST='$master_host',
+SOURCE_PORT=$master_port,
+SOURCE_USER='$MYSQL_ROOT_USER',
+SOURCE_PASSWORD='$MYSQL_ROOT_PASSWORD';
+START REPLICA;
+EOF
+  fi
+}
+
 # create orchestrator user in mysql
 create_mysql_user() {
   mysql_note "Create MySQL User and Grant Permissions..."
@@ -42,8 +94,7 @@ EOF
 register_cluster_in_orchestrator() {
   # reset slave info if any
   mysql -P 3306 -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
-RESET SLAVE;
-RESET SLAVE ALL;
+$(mysql_reset_replica_sql)
 EOF
 
   local instance="${POD_NAME}"
@@ -160,38 +211,11 @@ change_master() {
 
   mysql_note "Change master"
 
-  if [[ "${MYSQL_MAJOR}" == "5.7" ]]; then
-    mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
+  mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
 SET GLOBAL READ_ONLY=1;
 SET GLOBAL SUPER_READ_ONLY=1;
-STOP SLAVE;
-CHANGE MASTER TO
-MASTER_AUTO_POSITION=1,
-MASTER_CONNECT_RETRY=1,
-MASTER_RETRY_COUNT=86400,
-MASTER_HOST='$master_host',
-MASTER_PORT=$master_port,
-MASTER_USER='$MYSQL_ROOT_USER',
-MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
-START SLAVE;
+$(mysql_change_replication_source_sql "$master_host" "$master_port")
 EOF
-  else
-    mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
-SET GLOBAL READ_ONLY=1;
-SET GLOBAL SUPER_READ_ONLY=1;
-STOP SLAVE;
-CHANGE MASTER TO
-SOURCE_AUTO_POSITION=1,
-SOURCE_SSL=1,
-MASTER_CONNECT_RETRY=1,
-MASTER_RETRY_COUNT=86400,
-MASTER_HOST='$master_host',
-MASTER_PORT=$master_port,
-MASTER_USER='$MYSQL_ROOT_USER',
-MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
-START SLAVE;
-EOF
-  fi
   mysql_note "CHANGE MASTER successful for $master_host."
 }
 

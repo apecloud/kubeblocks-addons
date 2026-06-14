@@ -154,8 +154,12 @@ preTerminate:
       - bash
       - -c
       - |
-        /orc-scripts/preterminate.sh 2>> /tmp/preterminate.log
-        if [ $? -ne 0 ]; then
+        timeout 30 /orc-scripts/preterminate.sh 2>> /tmp/preterminate.log
+        rc=$?
+        if [ $rc -eq 124 ]; then
+          echo "ERROR: preterminate timed out after 30s"
+          exit 1
+        elif [ $rc -ne 0 ]; then
           echo "ERROR: Failed to preterminate"
           exit 1
         fi
@@ -177,9 +181,12 @@ accountProvision:
         # rc-save line on any non-zero result.
         { previous_state=$(set +o); set +ex; } 2>/dev/null
         eval statement=\"${KB_ACCOUNT_STATEMENT}\"
-        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement};"
+        timeout 10 mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement};"
         mysql_rc=$?
         eval "$previous_state"
+        if [ $mysql_rc -eq 124 ]; then
+          echo "ERROR: accountProvision mysql command timed out after 10s" >&2
+        fi
         exit $mysql_rc
     targetPodSelector: Role
     matchingKey: primary
@@ -220,8 +227,12 @@ memberLeave:
       - /bin/bash
       - -c
       - |
-        /orc-scripts/member-leave.sh 2>> /tmp/member-leave.log
-        if [ $? -ne 0 ]; then
+        timeout 30 /orc-scripts/member-leave.sh 2>> /tmp/member-leave.log
+        rc=$?
+        if [ $rc -eq 124 ]; then
+          echo "ERROR: member-leave timed out after 30s"
+          exit 1
+        elif [ $rc -ne 0 ]; then
           echo "ERROR: Failed to member leave"
           exit 1
         fi
@@ -231,8 +242,12 @@ switchover:
       - /bin/sh
       - -c
       - |
-        /orc-scripts/switchover.sh 2>> /tmp/switchover.log
-        if [ $? -ne 0 ]; then
+        timeout 60 /orc-scripts/switchover.sh 2>> /tmp/switchover.log
+        rc=$?
+        if [ $rc -eq 124 ]; then
+          echo "ERROR: switchover timed out after 60s"
+          exit 1
+        elif [ $rc -ne 0 ]; then
           echo "ERROR: Failed to switchover"
           exit 1
         fi
