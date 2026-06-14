@@ -178,13 +178,13 @@
       "title": "BrokerHeap",
       "description": "Kafka broker's jvm heap setting.",
       "type": "string",
-      "default": "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+      "default": "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
     },
     "controllerHeap": {
       "title": "ControllerHeap",
       "description": "Kafka controller's jvm heap setting for separated mode",
       "type": "string",
-      "default": "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+      "default": "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
     },
     "nodePortEnabled": {
       "type": "boolean",

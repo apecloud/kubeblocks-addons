@@ -30,9 +30,9 @@ spec:
     - name: KB_KAFKA_ENABLE_SASL_SCRAM
       value: "false"
     - name: KB_KAFKA_BROKER_HEAP
-      value: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
+      value: -XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64
     - name: KB_KAFKA_CONTROLLER_HEAP
-      value: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
+      value: -XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64
     - name: KB_BROKER_DIRECT_POD_ACCESS
       value: "false"
     # By default, broker will store metadata in zookeeper's /$(CLUSTER_NAME) subpath.
