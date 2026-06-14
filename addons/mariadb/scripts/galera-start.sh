@@ -98,6 +98,30 @@ _wsrep_recover_and_bootstrap() {
   echo "grastate.dat updated: safe_to_bootstrap=1 for crash recovery bootstrap."
 }
 
+_mariadbd_pids() {
+  pidof mariadbd 2>/dev/null || pgrep -x mariadbd 2>/dev/null || true
+}
+
+_restart_mariadbd_for_self_heal() {
+  local reason="$1"
+  local pids
+  pids=$(_mariadbd_pids)
+  if [ -z "${pids}" ]; then
+    echo "SELF-HEALING: ${reason}. No mariadbd process found."
+    return 0
+  fi
+
+  echo "SELF-HEALING: ${reason}. Sending SIGTERM to mariadbd pid(s): ${pids}."
+  kill -TERM ${pids} 2>/dev/null || echo "SELF-HEALING: SIGTERM failed for mariadbd pid(s): ${pids}."
+  sleep 5
+
+  pids=$(_mariadbd_pids)
+  if [ -n "${pids}" ]; then
+    echo "SELF-HEALING: mariadbd still running after SIGTERM. Sending SIGKILL to pid(s): ${pids}."
+    kill -KILL ${pids} 2>/dev/null || echo "SELF-HEALING: SIGKILL failed for mariadbd pid(s): ${pids}."
+  fi
+}
+
 # Determine whether this node should bootstrap.
 #
 # ONLY pod-0 may bootstrap — this prevents split-brain when parallel shutdown
@@ -246,10 +270,7 @@ main() {
         if [ -S "${SOCK}" ] && [ -n "${CLUSTER_STATUS}" ] && [ "${CLUSTER_STATUS}" != "Primary" ]; then
           NON_PRIMARY_COUNT=$((NON_PRIMARY_COUNT + 1))
           if [ ${NON_PRIMARY_COUNT} -ge ${NON_PRIMARY_THRESHOLD} ]; then
-            echo "SELF-HEALING: wsrep_cluster_status=${CLUSTER_STATUS} for $((NON_PRIMARY_COUNT * 3))s. Killing mariadbd to force restart."
-            pkill -SIGTERM mariadbd 2>/dev/null || true
-            sleep 5
-            pkill -9 mariadbd 2>/dev/null || true
+            _restart_mariadbd_for_self_heal "wsrep_cluster_status=${CLUSTER_STATUS} for $((NON_PRIMARY_COUNT * 3))s"
             NON_PRIMARY_COUNT=0
           fi
         else
@@ -257,10 +278,7 @@ main() {
           if pgrep -x mariadbd >/dev/null 2>&1 || pidof mariadbd >/dev/null 2>&1; then
             NO_SOCKET_COUNT=$((NO_SOCKET_COUNT + 1))
             if [ ${NO_SOCKET_COUNT} -ge ${NO_SOCKET_THRESHOLD} ]; then
-              echo "SELF-HEALING: mariadbd running without ${SOCK} for $((NO_SOCKET_COUNT * 3))s. Killing mariadbd to force restart."
-              pkill -SIGTERM mariadbd 2>/dev/null || true
-              sleep 5
-              pkill -9 mariadbd 2>/dev/null || true
+              _restart_mariadbd_for_self_heal "mariadbd running without ${SOCK} for $((NO_SOCKET_COUNT * 3))s"
               NO_SOCKET_COUNT=0
             fi
           else

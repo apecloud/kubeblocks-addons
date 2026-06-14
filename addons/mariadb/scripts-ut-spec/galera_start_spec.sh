@@ -33,11 +33,12 @@ Describe "galera-start.sh"
     awk '
       index($0, "NO_SOCKET_COUNT=0") && !counter { counter = NR }
       index($0, "NO_SOCKET_THRESHOLD=\"${GALERA_SOCKETLESS_MARIADBD_THRESHOLD:-30}\"") && !threshold { threshold = NR }
-      index($0, "pgrep -x mariadbd") && !detects { detects = NR }
+      threshold && index($0, "pgrep -x mariadbd") && !detects { detects = NR }
+      index($0, "_restart_mariadbd_for_self_heal") && !helper { helper = NR }
       index($0, "mariadbd running without ${SOCK}") { message = NR }
-      index($0, "pkill -SIGTERM mariadbd") && message && !term { term = NR }
-      index($0, "pkill -9 mariadbd") && message && !kill9 { kill9 = NR }
-      END { exit(counter && threshold && detects && message && term && kill9 && counter < threshold && threshold < detects && detects < message && message < term && term < kill9 ? 0 : 1) }
+      index($0, "kill -TERM ${pids}") && !term { term = NR }
+      index($0, "kill -KILL ${pids}") && !kill9 { kill9 = NR }
+      END { exit(counter && threshold && detects && helper && message && term && kill9 && counter < threshold && threshold < detects && message > detects && term < kill9 ? 0 : 1) }
     ' "$(script_file)"
   }
 
