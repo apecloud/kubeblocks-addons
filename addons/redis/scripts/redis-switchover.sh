@@ -291,6 +291,7 @@ recover_redis_priorities() {
 
   echo "Recovering all Redis replica-priority..."
   for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
+    [ -z "${ORIGINAL_PRIORITIES[$redis_pod_fqdn]+x}" ] && continue
     local redis_set_recover_cmd="CONFIG SET replica-priority ${ORIGINAL_PRIORITIES[$redis_pod_fqdn]}"
     call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "$redis_service_port" "$REDIS_DEFAULT_PASSWORD" "$redis_set_recover_cmd" || return 1
   done
