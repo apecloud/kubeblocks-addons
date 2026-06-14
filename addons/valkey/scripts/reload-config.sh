@@ -119,12 +119,7 @@ if [ "$_needs_apply" = "false" ]; then
           fi
         done
         if [ "$_needs_apply" = "false" ]; then
-          if [ "$_checked_any" = "true" ]; then
-            _trace "bounded-risk close: marker matched, no projection observed within ${MARKER_OBS_WINDOW}s"
-            if _write_marker "$CONFIG_FILE"; then
-              exit 0
-            fi
-          fi
+          _trace "marker matched, no projection within ${MARKER_OBS_WINDOW}s — deferring to content polling"
         fi
       else
         _trace "marker mismatch prev='${_prev_marker}' curr='${_curr_marker}' — invalidating"

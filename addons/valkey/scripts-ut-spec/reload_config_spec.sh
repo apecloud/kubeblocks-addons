@@ -203,23 +203,27 @@ SH
       export FAKE_NOW=1000
       export FAKE_MTIME=500
       export MARKER_OBS_WINDOW=1
+      export MAX_WAIT=1
       echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
       When run bash ../scripts/reload-config.sh
       The status should be success
       The stderr should include "content-hash marker matches"
-      The stderr should include "bounded-risk close"
+      The stderr should include "deferring to content polling"
+      The stderr should include "content stable"
     End
 
     It "exits 0 after pod restart when marker persists and config unchanged (Bug 7 fix)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
       export MARKER_OBS_WINDOW=1
+      export MAX_WAIT=1
       echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
       ln -sf "${_spec_dir}/conf-new-mount" "${DATA_LINK}"
       When run bash ../scripts/reload-config.sh
       The status should be success
       The stderr should include "content-hash marker matches"
-      The stderr should include "bounded-risk close"
+      The stderr should include "deferring to content polling"
+      The stderr should include "content stable"
     End
 
     It "invalidates stale marker then writes fresh one after content polling (Bug 9a/9b)"
@@ -282,6 +286,7 @@ SH
       export FAKE_NOW=1000
       export FAKE_MTIME=995
       export MARKER_OBS_WINDOW=1
+      export MAX_WAIT=1
       # First call: mtime fresh → exit 0 + writes marker
       bash ../scripts/reload-config.sh 2>/dev/null
       # Verify marker was written
@@ -291,7 +296,8 @@ SH
       When run bash ../scripts/reload-config.sh
       The status should be success
       The stderr should include "content-hash marker matches"
-      The stderr should include "bounded-risk close"
+      The stderr should include "deferring to content polling"
+      The stderr should include "content stable"
     End
 
     It "invalidates empty-cksum marker then writes fresh one (Bug 9a/9b)"
@@ -347,15 +353,17 @@ SH
       export FAKE_NOW=1000
       export FAKE_MTIME=500
       export MARKER_OBS_WINDOW=1
+      export MAX_WAIT=1
       # First call: stale mtime, no marker → Bug 9b → exit 0 + marker
       bash ../scripts/reload-config.sh 2>/dev/null
       [ -f "$MARKER_FILE" ] || { echo "FAIL: marker not written by Bug 9b path"; exit 1; }
       # Second call: simulate VScale — stale mtime, same config → marker matches →
-      # observation window (1s) → no projection → bounded-risk close → exit 0
+      # observation window (1s) → no projection → defers to content polling → exit 0
       When run bash ../scripts/reload-config.sh
       The status should be success
       The stderr should include "content-hash marker matches"
-      The stderr should include "bounded-risk close"
+      The stderr should include "deferring to content polling"
+      The stderr should include "content stable"
     End
 
     It "fail-closed when marker write fails on content polling path (Bug 9b gate)"
@@ -422,15 +430,37 @@ SH
       The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory"
     End
 
-    It "marker match + no projection = bounded-risk close (Bug 10)"
+    It "marker match + no projection defers to content polling (Bug 10/11)"
       export FAKE_NOW=1000
       export FAKE_MTIME=500
       export MARKER_OBS_WINDOW=1
+      export MAX_WAIT=1
       # Pre-seed marker matching current file content
       echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
       When run bash ../scripts/reload-config.sh
       The status should be success
-      The stderr should include "bounded-risk close: marker matched"
+      The stderr should include "deferring to content polling"
+      The stderr should include "content stable"
+    End
+
+    It "marker match + late projection caught by content polling (Bug 11)"
+      export FAKE_NOW=1000
+      export FAKE_MTIME=500
+      export MARKER_OBS_WINDOW=1
+      export MAX_WAIT=5
+      echo "$(hostname):${CONFIG_FILE}:$(cksum "$CONFIG_FILE" | cut -d' ' -f1)" > "$MARKER_FILE"
+      _new_conf="${CONFIG_FILE}.new"
+      printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+        "maxmemory-policy volatile-lru" "maxmemory 536870912" \
+        "io-threads-do-reads yes" > "$_new_conf"
+      (sleep 3; cp "$_new_conf" "$CONFIG_FILE") &
+      _bg=$!
+      When run bash ../scripts/reload-config.sh
+      wait $_bg 2>/dev/null || true
+      The status should be success
+      The stderr should include "deferring to content polling"
+      The stderr should not include "content stable"
+      The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory"
     End
 
     It "marker match + delayed projection + fresh mtime still applies (Bug 10 rev2)"
