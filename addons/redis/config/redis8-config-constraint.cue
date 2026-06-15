@@ -699,7 +699,7 @@
 
     "replica-read-only": string & "yes" | "no" | *"yes"
 
-    "repl-diskless-sync ":string & "yes" | "no" | *"yes"
+    "repl-diskless-sync":string & "yes" | "no" | *"yes"
 
     "repl-diskless-sync-delay": int | *5
 
