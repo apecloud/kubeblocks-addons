@@ -602,7 +602,13 @@ function restore_schema_and_sync() {
 		[[ "$mode_info" == "standalone" ]] && unset RESTORE_SCHEMA_ON_CLUSTER
 		local restore_args=(restore_remote "$backup_name" --schema)
 		if [[ -n "${CH_KEEPER_POD_FQDN_LIST:-}" ]]; then
-			restore_args+=(--rbac)
+			export PATH="$PATH:${DP_DATASAFED_BIN_PATH:-}"
+			export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_BASE_PATH}/${DP_BACKUP_NAME}"
+			if datasafed list -f / 2>/dev/null | grep -q "access.tar"; then
+				restore_args+=(--rbac)
+			else
+				DP_log "Skip RBAC restore because no access.tar found in backup"
+			fi
 		else
 			DP_log "Skip RBAC restore because ClickHouse keeper is not configured"
 		fi
