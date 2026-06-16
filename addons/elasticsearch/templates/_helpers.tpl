@@ -319,12 +319,12 @@ runtime:
     - name: install-plugins
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       command:
-        - sh
+        - bash
         - -c
         - |
           set -x
-          sh /mnt/remote-scripts/install-plugins.sh
-          sh /mnt/remote-scripts/prepare-fs.sh
+          bash /mnt/remote-scripts/install-plugins.sh
+          bash /mnt/remote-scripts/prepare-fs.sh
       securityContext:
         allowPrivilegeEscalation: false
         capabilities:
