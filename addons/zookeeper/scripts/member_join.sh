@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [ -z "${KB_JOIN_MEMBER_POD_NAME:-}" ] || [ -z "${KB_JOIN_MEMBER_POD_FQDN:-}" ]; then
-    echo "ERROR: KB_JOIN_MEMBER_POD_NAME and KB_JOIN_MEMBER_POD_FQDN are required"
+    echo "ERROR: KB_JOIN_MEMBER_POD_NAME and KB_JOIN_MEMBER_POD_FQDN are required" >&2
     exit 1
 fi
 
@@ -16,11 +16,33 @@ server_entry="server.${new_member_index}=${new_member_fqdn}:2888:3888:${member_t
 
 echo "Adding ZooKeeper member: $server_entry"
 
-get_dynamic_config() {
-    zkCli.sh << EOF
+get_dynamic_config_or_die() {
+    local output
+    if ! output="$(zkCli.sh << EOF
 addauth digest $ZK_ADMIN_USER:$ZK_ADMIN_PASSWORD
 get /zookeeper/config
 EOF
+)"; then
+        echo "ERROR: failed to read ZooKeeper dynamic config" >&2
+        return 1
+    fi
+
+    if [ -z "$output" ]; then
+        echo "ERROR: invalid ZooKeeper dynamic config output: empty response" >&2
+        return 1
+    fi
+
+    if grep -Eiq "KeeperErrorCode|Exception|NoAuth|AuthFailed|ConnectionLoss|SessionExpired|Connection refused|Unable to connect" <<< "$output"; then
+        echo "ERROR: invalid ZooKeeper dynamic config output: $output" >&2
+        return 1
+    fi
+
+    if ! grep -Eq "^[[:space:]]*server\\.[0-9]+=" <<< "$output"; then
+        echo "ERROR: invalid ZooKeeper dynamic config output: missing server.N entries" >&2
+        return 1
+    fi
+
+    printf '%s\n' "$output"
 }
 
 member_index_exists() {
@@ -28,10 +50,18 @@ member_index_exists() {
 }
 
 member_target_exists() {
-    grep -Fq "server.${new_member_index}=${new_member_fqdn}:"
+    awk -v entry="$server_entry" '
+      {
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+        if ($0 == entry) {
+          found = 1
+        }
+      }
+      END { exit found ? 0 : 1 }
+    '
 }
 
-current_config="$(get_dynamic_config)"
+current_config="$(get_dynamic_config_or_die)"
 
 if member_target_exists <<< "$current_config"; then
     echo "ZooKeeper member server.${new_member_index} already exists"
@@ -39,7 +69,7 @@ if member_target_exists <<< "$current_config"; then
 fi
 
 if member_index_exists <<< "$current_config"; then
-    echo "ERROR: ZooKeeper member server.${new_member_index} already exists with a different endpoint"
+    echo "ERROR: ZooKeeper member server.${new_member_index} already exists with a different endpoint or member type" >&2
     exit 1
 fi
 
@@ -48,9 +78,9 @@ addauth digest $ZK_ADMIN_USER:$ZK_ADMIN_PASSWORD
 reconfig -add $server_entry
 EOF
 
-updated_config="$(get_dynamic_config)"
+updated_config="$(get_dynamic_config_or_die)"
 if ! member_target_exists <<< "$updated_config"; then
-    echo "ERROR: ZooKeeper member server.${new_member_index} was not observed after reconfig -add"
+    echo "ERROR: ZooKeeper member server.${new_member_index} was not observed after reconfig -add" >&2
     exit 1
 fi
 
