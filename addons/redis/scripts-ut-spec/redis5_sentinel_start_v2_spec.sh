@@ -124,6 +124,7 @@ Describe "Redis5 Sentinel Start V2 Script Tests"
       It "removes announce-ip, announce-port, requirepass, and port lines"
         When call reset_redis_sentinel_conf
         The status should be success
+        The stdout should include "reset redis sentinel conf"
         The contents of file "$redis_sentinel_real_conf" should not include "sentinel announce-ip"
         The contents of file "$redis_sentinel_real_conf" should not include "sentinel announce-port"
         The contents of file "$redis_sentinel_real_conf" should not include "requirepass"
@@ -167,6 +168,7 @@ Describe "Redis5 Sentinel Start V2 Script Tests"
       It "removes the custom port line"
         When call reset_redis_sentinel_conf
         The status should be success
+        The stdout should include "reset redis sentinel conf"
         The contents of file "$redis_sentinel_real_conf" should not include "port 36379"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel monitor mymaster"
       End
@@ -230,6 +232,7 @@ Describe "Redis5 Sentinel Start V2 Script Tests"
       It "uses pod IP for announce (Redis 5 no hostname support)"
         When call build_redis_sentinel_conf
         The status should be success
+        The stdout should include "build redis sentinel conf succeeded!"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel announce-ip 10.42.0.5"
         The contents of file "$redis_sentinel_real_conf" should include "sentinel announce-port 26379"
         The contents of file "$redis_sentinel_real_conf" should not include "requirepass"
