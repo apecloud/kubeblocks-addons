@@ -20,58 +20,6 @@ mysql_error() {
 	exit 1
 }
 
-mysql_uses_legacy_replication_syntax() {
-  [[ "${MYSQL_MAJOR}" == "5.7" ]]
-}
-
-mysql_reset_replica_sql() {
-  if mysql_uses_legacy_replication_syntax; then
-    cat <<'EOF'
-RESET SLAVE;
-RESET SLAVE ALL;
-EOF
-  else
-    cat <<'EOF'
-RESET REPLICA;
-RESET REPLICA ALL;
-EOF
-  fi
-}
-
-mysql_change_replication_source_sql() {
-  local master_host=$1
-  local master_port=$2
-
-  if mysql_uses_legacy_replication_syntax; then
-    cat <<EOF
-STOP SLAVE;
-CHANGE MASTER TO
-MASTER_AUTO_POSITION=1,
-MASTER_CONNECT_RETRY=1,
-MASTER_RETRY_COUNT=86400,
-MASTER_HOST='$master_host',
-MASTER_PORT=$master_port,
-MASTER_USER='$MYSQL_ROOT_USER',
-MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
-START SLAVE;
-EOF
-  else
-    cat <<EOF
-STOP REPLICA;
-CHANGE REPLICATION SOURCE TO
-SOURCE_AUTO_POSITION=1,
-SOURCE_SSL=1,
-SOURCE_CONNECT_RETRY=1,
-SOURCE_RETRY_COUNT=86400,
-SOURCE_HOST='$master_host',
-SOURCE_PORT=$master_port,
-SOURCE_USER='$MYSQL_ROOT_USER',
-SOURCE_PASSWORD='$MYSQL_ROOT_PASSWORD';
-START REPLICA;
-EOF
-  fi
-}
-
 # create orchestrator user in mysql
 create_mysql_user() {
   mysql_note "Create MySQL User and Grant Permissions..."
@@ -94,7 +42,8 @@ EOF
 register_cluster_in_orchestrator() {
   # reset slave info if any
   mysql -P 3306 -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
-$(mysql_reset_replica_sql)
+RESET SLAVE;
+RESET SLAVE ALL;
 EOF
 
   local instance="${POD_NAME}"
@@ -211,12 +160,76 @@ change_master() {
 
   mysql_note "Change master"
 
-  mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
+  if [[ "${MYSQL_MAJOR}" == "5.7" ]]; then
+    mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
 SET GLOBAL READ_ONLY=1;
 SET GLOBAL SUPER_READ_ONLY=1;
-$(mysql_change_replication_source_sql "$master_host" "$master_port")
+STOP SLAVE;
+CHANGE MASTER TO
+MASTER_AUTO_POSITION=1,
+MASTER_CONNECT_RETRY=1,
+MASTER_RETRY_COUNT=86400,
+MASTER_HOST='$master_host',
+MASTER_PORT=$master_port,
+MASTER_USER='$MYSQL_ROOT_USER',
+MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
+START SLAVE;
 EOF
+  else
+    mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
+SET GLOBAL READ_ONLY=1;
+SET GLOBAL SUPER_READ_ONLY=1;
+STOP SLAVE;
+CHANGE MASTER TO
+SOURCE_AUTO_POSITION=1,
+SOURCE_SSL=1,
+MASTER_CONNECT_RETRY=1,
+MASTER_RETRY_COUNT=86400,
+MASTER_HOST='$master_host',
+MASTER_PORT=$master_port,
+MASTER_USER='$MYSQL_ROOT_USER',
+MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
+START SLAVE;
+EOF
+  fi
   mysql_note "CHANGE MASTER successful for $master_host."
+}
+
+repair_cluster_alias() {
+  local anchor_instance="$1"
+  local orchestrator_url="${ORC_ENDPOINTS}"
+  local cluster_name_in_orc
+  cluster_name_in_orc=$(/scripts/orchestrator-client -c which-cluster -i "${anchor_instance}" 2>/dev/null) || true
+  if [ -n "$cluster_name_in_orc" ]; then
+    mysql_note "Repairing stale alias: setting ${CLUSTER_NAME} -> ${cluster_name_in_orc}" >&2
+    curl --silent -X GET "http://${orchestrator_url}/api/set-cluster-alias/${cluster_name_in_orc}?alias=${CLUSTER_NAME}" >/dev/null || true
+  fi
+}
+
+is_valid_master_info() {
+  local val="$1"
+  [ -n "$val" ] && ! echo "$val" | grep -qi "error\|unable\|null"
+}
+
+find_cluster_master() {
+  local result=""
+  result=$(/scripts/orchestrator-client -c which-cluster-master -alias "${CLUSTER_NAME}" 2>/dev/null) || true
+  if is_valid_master_info "$result"; then
+    echo "$result"
+    return 0
+  fi
+
+  local pod0_host="${POD_NAME%-*}-0"
+  mysql_note "Alias lookup failed for '${CLUSTER_NAME}' (got '${result:-}'), trying instance-based fallback via $pod0_host" >&2
+  result=$(/scripts/orchestrator-client -c which-cluster-master -i "${pod0_host}" 2>/dev/null) || true
+  if is_valid_master_info "$result"; then
+    repair_cluster_alias "${pod0_host}"
+    echo "$result"
+    return 0
+  fi
+
+  mysql_note "Both alias and instance-based lookups failed. alias='${CLUSTER_NAME}' pod0='${pod0_host}' orc='${ORC_ENDPOINTS}' last='${result:-}'" >&2
+  return 1
 }
 
 setup_master_slave() {
@@ -228,7 +241,7 @@ setup_master_slave() {
 
   start_time=$(date +%s)
 
-  master_info=$(/scripts/orchestrator-client -c which-cluster-master -alias "${CLUSTER_NAME}")
+  master_info=$(find_cluster_master) || true
 
   while [ -z "$master_info" ]; do
     mysql_note "Waiting for master info..."
@@ -250,13 +263,36 @@ setup_master_slave() {
 
     sleep 5
     mysql_note "Checking topology info."
-    master_info=$(/scripts/orchestrator-client -c which-cluster-master -alias "${CLUSTER_NAME}")
+    master_info=$(find_cluster_master) || true
   done
 
   mysql_note "  Master info: $master_info"
   master_from_orc="${master_info%%:*}"
   if [ "$master_from_orc" == "${POD_NAME}" ]; then
-    mysql_note "This instance is the master"
+    # After VScale/restart, ORC failover may be in-flight: old pod-0 went down,
+    # ORC is promoting another pod, but the new pod-0 queried ORC before the
+    # failover committed.  Poll peer pods for up to 30s to detect split-brain.
+    local base_name="${POD_NAME%-*}"
+    local verify_end=$(( $(date +%s) + 30 ))
+    while [ "$(date +%s)" -lt "$verify_end" ]; do
+      sleep 5
+      for i in 1 2 3 4; do
+        local peer="${base_name}-${i}"
+        local peer_master
+        peer_master=$(/scripts/orchestrator-client -c which-cluster-master -i "${peer}" 2>/dev/null) || true
+        if is_valid_master_info "$peer_master"; then
+          local pm_host="${peer_master%%:*}"
+          if [ "$pm_host" != "${POD_NAME}" ] && [ -n "$pm_host" ]; then
+            mysql_note "Split-brain detected: $peer reports master=$pm_host (not ${POD_NAME}). Re-slaving..."
+            create_mysql_user
+            change_master "$pm_host"
+            /scripts/orchestrator-client -c discover -i "${POD_NAME}" 2>/dev/null || true
+            return 0
+          fi
+        fi
+      done
+    done
+    mysql_note "This instance is the master (verified, no split-brain)"
     return 0
   fi
 
@@ -282,7 +318,7 @@ setup_master_slave() {
     sleep 5
     attempt=$((attempt + 1))
 
-    /scripts/orchestrator-client -c discover -i "${master_from_orc}" 2>/dev/null || true
+    /scripts/orchestrator-client -c discover -i "${POD_NAME}" 2>/dev/null || true
   done
   return 0
 }
