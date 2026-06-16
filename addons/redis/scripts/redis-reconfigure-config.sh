@@ -66,7 +66,7 @@ apply_config_diff() {
   }
 
   _acd_rc=0
-  _acd_count=0
+  _rcf_applied_count=0
   while IFS= read -r line; do
     case "$line" in '#'*|''|include\ *|loadmodule\ *) continue ;; esac
     key="${line%% *}"
@@ -82,10 +82,10 @@ apply_config_diff() {
 
     reload_parameter "$key" "$value" || { _acd_rc=$?; echo "ERROR: CONFIG SET $key failed" >&2; continue; }
     verify_engine_state "$key" "$value" || { _acd_rc=1; echo "ERROR: post-set verification for $key failed" >&2; }
-    _acd_count=$((_acd_count + 1))
+    _rcf_applied_count=$((_rcf_applied_count + 1))
   done < "$config_file"
 
-  echo "INFO: applied $_acd_count parameter(s)" >&2
+  echo "INFO: applied $_rcf_applied_count parameter(s)" >&2
   return "$_acd_rc"
 }
 
@@ -116,7 +116,7 @@ reconfigure_from_config_file() {
 
   if [ "$_rcf_timeout" -gt 0 ]; then
     echo "INFO: config file unchanged after ${_rcf_timeout}s" >&2
-    if [ "$_acd_count" -eq 0 ]; then
+    if [ "$_rcf_applied_count" -eq 0 ]; then
       echo "ERROR: watch timed out with 0 params applied, failing to prevent false green" >&2
       return 1
     fi
