@@ -370,7 +370,7 @@ runtime:
     - name: elasticsearch
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       command:
-        - sh
+        - bash
         - -c
         - |
           /mnt/remote-scripts/entrypoint.sh
