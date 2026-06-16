@@ -95,6 +95,7 @@ kibanaVersions:
       - ["8.8.2", "8.8.2", "8.8.2", false]
       - ["8.9.1", "8.9.1", "8.9.1", false]
       - ["8.15.5", "8.15.5", "8.15.5", false]
+      - ["8.19.0", "8.19.0", "8.19.0", false]
 
 # @param zoneAware enable zone awareness
 # @param zoneAware.enabled enable zone awareness
