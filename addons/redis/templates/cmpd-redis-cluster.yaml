@@ -65,7 +65,7 @@ spec:
       podService: true
       disableAutoProvision: true
   updateStrategy: BestEffortParallel
-  podManagementPolicy: OrderedReady
+  podManagementPolicy: Parallel
   volumes:
     - name: data
       needSnapshot: true

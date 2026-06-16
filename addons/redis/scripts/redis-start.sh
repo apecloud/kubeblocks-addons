@@ -351,8 +351,11 @@ is_redis_start_initialized() {
 }
 
 mark_redis_start_initialized() {
-  mkdir -p "$(dirname "$redis_start_initialized_file")" 2>/dev/null || true
-  date +%s > "$redis_start_initialized_file" 2>/dev/null || true
+  local redis_start_initialized_dir
+  redis_start_initialized_dir="$(dirname "$redis_start_initialized_file")"
+  if mkdir -p "$redis_start_initialized_dir" 2>/dev/null; then
+    date +%s > "$redis_start_initialized_file" 2>/dev/null || true
+  fi
 }
 
 syncer_initial_bootstrap_default_primary_allowed() {
