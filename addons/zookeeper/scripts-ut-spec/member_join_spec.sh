@@ -78,4 +78,16 @@ EOF
     The status should be success
     The stdout should include "ZooKeeper member server.3 already exists"
   End
+
+  It "classifies non-contiguous ordinal 4 as an observer"
+    export KB_JOIN_MEMBER_POD_NAME="zookeeper-4"
+    export KB_JOIN_MEMBER_POD_FQDN="zookeeper-4.zookeeper-headless.default.svc.cluster.local"
+    export ZKCLI_GET_OUTPUT="server.0=zookeeper-0.zookeeper-headless.default.svc.cluster.local:2888:3888:participant;2181\nserver.2=zookeeper-2.zookeeper-headless.default.svc.cluster.local:2888:3888:participant;2181"
+    export ZKCLI_GET_OUTPUT_2="server.0=zookeeper-0.zookeeper-headless.default.svc.cluster.local:2888:3888:participant;2181\nserver.2=zookeeper-2.zookeeper-headless.default.svc.cluster.local:2888:3888:participant;2181\nserver.4=zookeeper-4.zookeeper-headless.default.svc.cluster.local:2888:3888:observer;2181"
+
+    When run command bash ../scripts/member_join.sh
+    The status should be success
+    The stdout should include "Adding ZooKeeper member: server.4=zookeeper-4.zookeeper-headless.default.svc.cluster.local:2888:3888:observer;2181"
+    The stdout should include "ZooKeeper member server.4 added"
+  End
 End

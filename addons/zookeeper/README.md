@@ -114,6 +114,18 @@ kubectl apply -f examples/zookeeper/cluster.yaml
 
 ### Horizontal scaling
 
+The Zookeeper component supports 1 to 6 replicas. Pods whose ordinal is `0`,
+`1`, or `2` are rendered and joined as voting `participant` members; ordinals
+`3` and above are rendered and joined as non-voting `observer` members.
+
+> [!NOTE]
+> For clusters created with older chart revisions that marked
+> `zookeeper-dynamic-config` as externally managed, verify the live Component
+> no longer carries a Component-level external config override before relying on
+> this chart's generated dynamic config during horizontal scaling. If such an
+> override remains, remove that stale override or recreate the Component through
+> the upgraded chart before treating horizontal scaling as validated.
+
 #### Scale-out
 
 Horizontal scaling out cluster by adding ONE more `OBSERVER` replica:

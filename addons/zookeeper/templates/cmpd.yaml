@@ -10,6 +10,9 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  replicasLimit:
+    minReplicas: 1
+    maxReplicas: 6
   services:
     - name: default
       spec:
