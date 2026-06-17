@@ -1,6 +1,7 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034
 # shellcheck disable=SC2154
+# shellcheck disable=SC2168
 
 if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
   echo "sync_acl_spec.sh skip all cases because dependency bash version 4 or higher is not installed."
