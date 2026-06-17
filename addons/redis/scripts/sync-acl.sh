@@ -67,7 +67,9 @@ apply_acl_rules() {
       continue
     fi
     rule_part="${user_rule#user $username }"
-    $redis_cmd -h "$target_fqdn" ACL SETUSER "$username" $rule_part >&2
+    if ! $redis_cmd -h "$target_fqdn" ACL SETUSER "$username" $rule_part >&2; then
+      return 1
+    fi
   done <<< "$acl_list"
 
   $redis_cmd -h "$target_fqdn" ACL save >&2

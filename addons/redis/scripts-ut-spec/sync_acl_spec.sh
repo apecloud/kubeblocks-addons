@@ -179,7 +179,7 @@ Describe "Sync ACL Script Tests"
 
       It "propagates the error"
         local acl_list="user baduser on >pass ~* +@all"
-        When run apply_acl_rules "$acl_list" "redis-new.svc" "redis-cli -p 6379"
+        When call apply_acl_rules "$acl_list" "redis-new.svc" "redis-cli -p 6379"
         The status should be failure
       End
     End
@@ -195,7 +195,7 @@ Describe "Sync ACL Script Tests"
 
       It "propagates the error"
         local acl_list="user testuser on >pass ~* +@all"
-        When run apply_acl_rules "$acl_list" "redis-new.svc" "redis-cli -p 6379"
+        When call apply_acl_rules "$acl_list" "redis-new.svc" "redis-cli -p 6379"
         The status should be failure
       End
     End
