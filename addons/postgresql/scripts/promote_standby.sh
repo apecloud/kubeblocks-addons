@@ -31,12 +31,12 @@ warn_if_source_reachable() {
   fi
 
   local host="${endpoint%:*}" port="${endpoint##*:}"
-  if [ -z "$host" ] || [ -z "$port" ] || [ "$host" = "$port" ]; then
+  if [ -z "$host" ] || [ -z "$port" ] || [ "$host" = "$port" ] || ! [[ "$port" =~ ^[0-9]+$ ]]; then
     echo "WARNING: invalid sourceEndpoint '$endpoint'; expected host:port. Skipping source reachability probe."
     return 0
   fi
 
-  if timeout 3 bash -c "cat < /dev/null > /dev/tcp/${host}/${port}" 2>/dev/null; then
+  if timeout 3 bash -c 'cat < /dev/null > "/dev/tcp/$1/$2"' _ "$host" "$port" 2>/dev/null; then
     echo "WARNING: sourceEndpoint ${endpoint} is still TCP-reachable while promoting standby. Ensure the source is fenced/stopped to avoid split-brain."
   else
     echo "sourceEndpoint ${endpoint} is not TCP-reachable in best-effort probe."

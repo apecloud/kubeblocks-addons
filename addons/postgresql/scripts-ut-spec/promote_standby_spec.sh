@@ -39,6 +39,17 @@ Describe "PostgreSQL promote standby script tests"
       The status should be success
       The output should include "WARNING: invalid sourceEndpoint"
     End
+
+    It "does not interpolate sourceEndpoint into the probe shell"
+      injected_file="${TMPDIR:-/tmp}/pg-promote-standby-injected-$$"
+      rm -f "$injected_file"
+      sourceEndpoint="127.0.0.1;touch ${injected_file}:5432"
+      When run warn_if_source_reachable
+      The status should be success
+      The output should include "sourceEndpoint ${sourceEndpoint} is not TCP-reachable"
+      The file "$injected_file" should not be exist
+      rm -f "$injected_file"
+    End
   End
 
   Describe "require_standby_mode()"
