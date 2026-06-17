@@ -346,7 +346,7 @@ secondary_kb_health_check_repair_attempt() {
 }
 
 not_ready() {
-  echo -n "initializing"
+  printf '%s' "initializing"
   return 1
 }
 
@@ -649,12 +649,12 @@ check_role() {
     # must not remain in the primary Service.
     if pending_primary_fail_closed_ready; then
       apply_remote_root_fence "primary" || { not_ready; return $?; }
-      echo -n "primary"
+      printf '%s' "primary"
       return 0
     fi
     if pending_secondary_fail_closed_ready; then
       apply_remote_root_fence "secondary" || { not_ready; return $?; }
-      echo -n "secondary"
+      printf '%s' "secondary"
       return 0
     fi
     not_ready
@@ -679,12 +679,12 @@ check_role() {
       secondary_replication_ready || { not_ready; return $?; }
     fi
     apply_remote_root_fence "secondary" || { not_ready; return $?; }
-    echo -n "secondary"
+    printf '%s' "secondary"
   else
     primary_listener_ready || { not_ready; return $?; }
     primary_read_write_ready || { not_ready; return $?; }
     apply_remote_root_fence "primary" || { not_ready; return $?; }
-    echo -n "primary"
+    printf '%s' "primary"
   fi
 }
 
