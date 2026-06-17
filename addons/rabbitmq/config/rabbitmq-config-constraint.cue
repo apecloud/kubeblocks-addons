@@ -22,8 +22,8 @@
 #RabbitMQParameter: {
 
 	// Maximum number of channels allowed per AMQP 0-9-1 connection.
-	// 0 means unlimited. Default 2048.
-	channel_max?: int & >=0 & <=131072 | *2048
+	// 0 means unlimited. Default 2047. Encoded as 16-bit unsigned in AMQP connection.tune.
+	channel_max?: int & >=0 & <=65535 | *2047
 
 	// Heartbeat timeout value in seconds. Negotiated between client and
 	// server at connection time. 0 disables heartbeats. Default 60.
