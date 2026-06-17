@@ -42,6 +42,9 @@ get_target_node() {
     echo "$TARGET_NODE"
 }
 
+LOCK_FILE="/tmp/member_leave.lock"
+LOCK_MAX_AGE=55
+
 # if test by shellspec include, just return 0
 if [ "${__SOURCED__:+x}" ]; then
   return 0
@@ -52,11 +55,8 @@ if [[ -z "$KB_LEAVE_MEMBER_POD_NAME" ]]; then
     echo "no leave member name provided"
     exit 1
 fi
-
-LOCK_FILE="/tmp/member_leave.lock"
-LOCK_MAX_AGE=55
 if [[ -f "$LOCK_FILE" ]]; then
-    lock_mtime=$(stat -c %Y "$LOCK_FILE" 2>/dev/null || echo 0)
+    lock_mtime=$(stat -c %Y "$LOCK_FILE" 2>/dev/null || stat -f %m "$LOCK_FILE" 2>/dev/null || echo 0)
     now=$(date +%s)
     lock_age=$(( now - lock_mtime ))
     if (( lock_age > LOCK_MAX_AGE )); then
