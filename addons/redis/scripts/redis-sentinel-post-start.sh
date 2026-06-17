@@ -27,6 +27,7 @@ load_common_library() {
 }
 
 acl_set_user_for_redis_sentinel() {
+  set -e
   # set default user password and replication user password
   if [ -n "$SENTINEL_PASSWORD" ]; then
     sentinel_service_port=${SENTINEL_SERVICE_PORT:-26379}
