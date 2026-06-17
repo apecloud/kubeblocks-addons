@@ -9,6 +9,10 @@ fi
 Describe "Redis Account Provision Script Tests"
   Include ../scripts/redis-account-provision.sh
 
+  script_shebang() {
+    sed -n '1p' ../scripts/redis-account-provision.sh
+  }
+
   init() {
     ut_mode="true"
     export SERVICE_PORT="6379"
@@ -17,6 +21,11 @@ Describe "Redis Account Provision Script Tests"
     export KB_ACCOUNT_STATEMENT="ACL SETUSER testuser on >password ~* +@all"
   }
   BeforeAll "init"
+
+  It "keeps the original /bin/sh shebang"
+    When call script_shebang
+    The output should equal "#!/bin/sh"
+  End
 
   cleanup() {
     unset SERVICE_PORT REDIS_DEFAULT_PASSWORD REDIS_CLI_TLS_CMD KB_ACCOUNT_STATEMENT

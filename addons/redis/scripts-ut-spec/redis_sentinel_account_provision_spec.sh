@@ -9,6 +9,10 @@ fi
 Describe "Redis Sentinel Account Provision Script Tests"
   Include ../scripts/redis-sentinel-account-provision.sh
 
+  script_shebang() {
+    sed -n '1p' ../scripts/redis-sentinel-account-provision.sh
+  }
+
   init() {
     ut_mode="true"
     export SENTINEL_SERVICE_PORT="26379"
@@ -17,6 +21,11 @@ Describe "Redis Sentinel Account Provision Script Tests"
     export KB_ACCOUNT_STATEMENT="ACL SETUSER testuser on >password ~* +@all"
   }
   BeforeAll "init"
+
+  It "keeps the original /bin/sh shebang"
+    When call script_shebang
+    The output should equal "#!/bin/sh"
+  End
 
   cleanup() {
     unset SENTINEL_SERVICE_PORT SENTINEL_PASSWORD REDIS_CLI_TLS_CMD KB_ACCOUNT_STATEMENT

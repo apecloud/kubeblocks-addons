@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 ut_mode="false"
 test || __() {
