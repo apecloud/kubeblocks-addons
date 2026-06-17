@@ -10,16 +10,22 @@ Describe "postProvision budget guard"
     The stdout should include 'POSTPROVISION_DEADLINE'
   End
 
+  It "defines a per-sentinel budget estimate"
+    When call grep -F 'PER_SENTINEL_BUDGET=' "${script_file}"
+    The status should be success
+    The stdout should include 'PER_SENTINEL_BUDGET='
+  End
+
   It "checks budget before each sentinel registration"
     When call grep -c 'budget_check' "${script_file}"
     The status should be success
     The stdout should equal "2"
   End
 
-  It "exits 1 with diagnostic stderr when budget is exhausted"
-    When call grep -F 'budget exhausted' "${script_file}"
+  It "budget_check requires minimum remaining time (not just elapsed >= deadline)"
+    When call grep -F 'remaining' "${script_file}"
     The status should be success
-    The stdout should include "budget exhausted"
+    The stdout should include 'remaining'
   End
 
   It "uses connectivity retry 3x3 (max 9s) not 5x5 (25s)"
@@ -46,16 +52,18 @@ Describe "postProvision budget guard"
     The stdout should include "elapsed"
   End
 
-  Describe "budget_check functional test"
+  Describe "budget_check functional test — refuses when remaining < PER_SENTINEL_BUDGET"
     setup() {
       spec_tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/valkey-budget-spec.XXXXXX")
       cat > "${spec_tmp_dir}/budget_test.sh" <<'SCRIPT'
 #!/bin/bash
-SECONDS=100
-POSTPROVISION_DEADLINE=50
+SECONDS=40
+POSTPROVISION_DEADLINE=45
+PER_SENTINEL_BUDGET=12
 budget_check() {
-  if [ "$SECONDS" -ge "$POSTPROVISION_DEADLINE" ]; then
-    echo "ERROR: postProvision budget exhausted (${SECONDS}s elapsed, limit 45s)" >&2
+  local remaining=$(( POSTPROVISION_DEADLINE - SECONDS ))
+  if [ "$remaining" -lt "$PER_SENTINEL_BUDGET" ]; then
+    echo "ERROR: postProvision budget insufficient (${SECONDS}s elapsed, ${remaining}s remaining, need ${PER_SENTINEL_BUDGET}s)" >&2
     exit 1
   fi
 }
@@ -69,11 +77,44 @@ SCRIPT
     cleanup() { rm -rf "${spec_tmp_dir:-}"; }
     After "cleanup"
 
-    It "exits 1 when SECONDS exceeds deadline"
+    It "exits 1 when remaining time < PER_SENTINEL_BUDGET"
       When run bash "${spec_tmp_dir}/budget_test.sh"
       The status should equal 1
-      The stderr should include "budget exhausted"
+      The stderr should include "budget insufficient"
+      The stderr should include "remaining"
       The stdout should be blank
+    End
+  End
+
+  Describe "budget_check functional test — allows when remaining >= PER_SENTINEL_BUDGET"
+    setup() {
+      spec_tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/valkey-budget-spec.XXXXXX")
+      cat > "${spec_tmp_dir}/budget_pass_test.sh" <<'SCRIPT'
+#!/bin/bash
+SECONDS=20
+POSTPROVISION_DEADLINE=45
+PER_SENTINEL_BUDGET=12
+budget_check() {
+  local remaining=$(( POSTPROVISION_DEADLINE - SECONDS ))
+  if [ "$remaining" -lt "$PER_SENTINEL_BUDGET" ]; then
+    echo "ERROR: postProvision budget insufficient (${SECONDS}s elapsed, ${remaining}s remaining, need ${PER_SENTINEL_BUDGET}s)" >&2
+    exit 1
+  fi
+}
+budget_check
+echo "budget ok"
+SCRIPT
+      chmod +x "${spec_tmp_dir}/budget_pass_test.sh"
+    }
+    Before "setup"
+
+    cleanup() { rm -rf "${spec_tmp_dir:-}"; }
+    After "cleanup"
+
+    It "passes when remaining time >= PER_SENTINEL_BUDGET"
+      When run bash "${spec_tmp_dir}/budget_pass_test.sh"
+      The status should equal 0
+      The stdout should include "budget ok"
     End
   End
 End

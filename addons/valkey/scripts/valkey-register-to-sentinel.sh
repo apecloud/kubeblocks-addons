@@ -155,9 +155,12 @@ register_to_one_sentinel() {
 # Budget 45s to leave margin for process setup/teardown.
 POSTPROVISION_DEADLINE=$((SECONDS + 45))
 
+PER_SENTINEL_BUDGET=12
+
 budget_check() {
-  if [ "$SECONDS" -ge "$POSTPROVISION_DEADLINE" ]; then
-    echo "ERROR: postProvision budget exhausted (${SECONDS}s elapsed, limit 45s)" >&2
+  local remaining=$(( POSTPROVISION_DEADLINE - SECONDS ))
+  if [ "$remaining" -lt "$PER_SENTINEL_BUDGET" ]; then
+    echo "ERROR: postProvision budget insufficient (${SECONDS}s elapsed, ${remaining}s remaining, need ${PER_SENTINEL_BUDGET}s)" >&2
     exit 1
   fi
 }
