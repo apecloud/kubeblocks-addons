@@ -1,6 +1,11 @@
 #!/bin/bash
 
-set -e
+# shellcheck disable=SC2034
+ut_mode="false"
+test || __() {
+  set -e;
+}
+
 service_port=${SERVICE_PORT:-6379}
 
 function do_acl_command() {
@@ -129,5 +134,12 @@ function main() {
     fi
     do_acl_command "$host_list" "$REDIS_DEFAULT_USER" "$REDIS_DEFAULT_PASSWORD"
 }
+
+# This is magic for shellspec ut framework.
+# Sometime, functions are defined in a single shell script.
+# You will want to test it. but you do not want to run the script.
+# When included from shellspec, __SOURCED__ variable defined and script
+# end here. The script path is assigned to the __SOURCED__ variable.
+${__SOURCED__:+false} : || return 0
 
 main
