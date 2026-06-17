@@ -381,6 +381,10 @@ spec:
                   - auth-host: md5
                   - auth-local: trust
                   - data-checksums
+          - name: PATRONI_POSTGRESQL_REMOVE_DATA_DIRECTORY_ON_REWIND_FAILURE
+            value: "true"
+          - name: PATRONI_POSTGRESQL_REMOVE_DATA_DIRECTORY_ON_DIVERGED_TIMELINES
+            value: "true"
           - name: ALLOW_NOSSL
             value: "true"
           - name: PGROOT
