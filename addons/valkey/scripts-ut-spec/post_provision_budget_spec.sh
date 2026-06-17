@@ -28,9 +28,16 @@ Describe "postProvision budget guard"
     The stdout should include "call_func_with_retry 3 3"
   End
 
-  It "does not use 5-second retry intervals for sentinel commands"
-    When call grep -E 'call_func_with_retry [0-9]+ 5 execute_sentinel_cmd' "${script_file}"
-    The status should be failure
+  It "uses 5-second retry only for the initial SENTINEL monitor registration"
+    When call grep -c 'call_func_with_retry 3 5 execute_sentinel_cmd' "${script_file}"
+    The status should be success
+    The stdout should equal "1"
+  End
+
+  It "uses 2-second retry for sentinel SET commands (not 5)"
+    When call grep -c 'call_func_with_retry 3 2 execute_sentinel_cmd' "${script_file}"
+    The status should be success
+    The stdout should include "5"
   End
 
   It "prints elapsed time on successful completion"
