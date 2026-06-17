@@ -125,6 +125,7 @@ function get_cluster_host_list() {
 }
 
 function main() {
+    set -e
     env_pre_check
 
     if [ "$SHARD_MODE" = "TRUE" ]; then

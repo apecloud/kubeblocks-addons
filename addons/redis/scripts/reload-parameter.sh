@@ -9,6 +9,7 @@ test || __() {
 service_port=${SERVICE_PORT:-6379}
 
 reload_redis_parameter() {
+  set -e
   local paramName=""
   local paramValue=""
   # shellcheck disable=SC2086

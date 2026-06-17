@@ -17,6 +17,7 @@ convert_to_array() {
 }
 
 build_redis_twemproxy_conf() {
+  set -ex
   ## Check if required environment variables exist
   if [ -z "$REDIS_SERVICE_NAMES" ] || [ -z "$REDIS_SERVICE_PORTS" ]; then
     echo "REDIS_SERVICE_NAMES and REDIS_SERVICE_PORTS must be set"

@@ -7,6 +7,7 @@ test || __() {
 }
 
 acl_set_user_for_redis6_sentinel() {
+  set -e
   # set default user password and replication user password
   if [ -n "$SENTINEL_PASSWORD" ]; then
     # shellcheck disable=SC2086
