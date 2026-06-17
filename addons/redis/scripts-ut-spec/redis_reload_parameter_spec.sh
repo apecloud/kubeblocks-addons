@@ -58,9 +58,7 @@ Describe "Redis Reload Parameter Script Tests"
     End
 
     Context "with empty-string value (double-quoted empty)"
-      redis_cli_args=""
       redis-cli() {
-        redis_cli_args="$*"
         echo "OK"
         return 0
       }
