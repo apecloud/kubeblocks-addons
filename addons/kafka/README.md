@@ -302,16 +302,17 @@ kubectl describe -n demo ops kafka-combined-scale-out
 
 > **Warning**: Combined KRaft mode (`kafka-combine`) does **not** support scale-in. The `memberLeave` action will reject the request because quorum voter removal is not yet implemented — scaling in a combined node that is both broker and controller would break the KRaft quorum. Only broker-only components support scale-in.
 
-The following example scales in a **broker-only** component. For combined mode clusters, use scale-out only.
+The following example scales in a **broker-only** component in a **separated-topology** cluster. For combined mode clusters, use scale-out only.
 
 ```yaml
+# cat examples/kafka/scale-in.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: kafka-broker-scale-in
   namespace: demo
 spec:
-  clusterName: kafka-cluster
+  clusterName: kafka-separated-cluster
   type: HorizontalScaling
   horizontalScaling:
   - componentName: kafka-broker
@@ -330,9 +331,12 @@ Alternatively, you can update the `replicas` field in the `spec.componentSpecs.r
 > **Note**: For combined KRaft mode (`kafka-combine`), only scale-out (increasing replicas) is supported. Scale-in will be rejected by `memberLeave` because quorum voter removal is not implemented.
 
 ```yaml
-# snippet of cluster.yaml — broker-only example
+# snippet of cluster-separated.yaml — broker-only example
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
+metadata:
+  name: kafka-separated-cluster
+  namespace: demo
 spec:
   componentSpecs:
     - name: kafka-broker
