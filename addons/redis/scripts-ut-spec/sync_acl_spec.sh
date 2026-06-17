@@ -180,10 +180,10 @@ Describe "Sync ACL Script Tests"
         return 0
       }
 
-      It "silently continues (set -e unreliable in while loop)"
+      It "propagates the error"
         local acl_list="user baduser on >pass ~* +@all"
         When call apply_acl_rules "$acl_list" "redis-new.svc" "redis-cli -p 6379"
-        The status should be success
+        The status should be failure
         The stderr should include "ERR unknown user"
       End
     End
