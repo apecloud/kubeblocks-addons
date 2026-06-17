@@ -8,7 +8,7 @@ metadata:
   annotations:
     {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
-  componentDef: "^(mongodb|mongo-shard|mongo-config-server)-.*"
+  componentDef: {{ printf "^(%s|%s|%s)$" (include "mongodb.compDefName" .) (include "mongodbShard.compDefName" .) (include "cfgServer.compDefName" .) | quote }}
   templateName: mongodb-config
   fileName: mongodb.conf
   fileFormatConfig:
@@ -37,7 +37,7 @@ metadata:
   annotations:
     {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
-  componentDef: "^mongo-mongos-.*"
+  componentDef: {{ printf "^%s$" (include "mongos.compDefName" .) | quote }}
   templateName: mongodb-config
   fileName: mongos.conf
   fileFormatConfig:
