@@ -12,6 +12,7 @@ member_type="participant"
 if [ "$new_member_index" -ge 3 ]; then
     member_type="observer"
 fi
+server_peer_entry="server.${new_member_index}=${new_member_fqdn}:2888:3888:${member_type}"
 server_entry="server.${new_member_index}=${new_member_fqdn}:2888:3888:${member_type};2181"
 
 echo "Adding ZooKeeper member: $server_entry"
@@ -50,10 +51,11 @@ member_index_exists() {
 }
 
 member_target_exists() {
-    awk -v entry="$server_entry" '
+    awk -v peer_entry="$server_peer_entry" '
       {
         gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
-        if ($0 == entry) {
+        split($0, parts, ";")
+        if (parts[1] == peer_entry) {
           found = 1
         }
       }
