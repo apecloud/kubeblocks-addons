@@ -7,6 +7,7 @@ test || __() {
 }
 
 redis_account_provision() {
+  set -e
   # shellcheck disable=SC2086
   local redis_base_cmd="redis-cli $REDIS_CLI_TLS_CMD -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
   # shellcheck disable=SC2086

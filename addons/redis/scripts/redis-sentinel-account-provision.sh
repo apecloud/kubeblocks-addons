@@ -7,6 +7,7 @@ test || __() {
 }
 
 redis_sentinel_account_provision() {
+  set -e
   # shellcheck disable=SC2086
   local redis_base_cmd="redis-cli $REDIS_CLI_TLS_CMD -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD"
   # shellcheck disable=SC2086
