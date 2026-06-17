@@ -1,10 +1,16 @@
-#!/bin/sh
-set -ex
+#!/bin/bash
+
+# shellcheck disable=SC2034
+ut_mode="false"
+test || __() {
+  set -ex;
+}
 
 convert_to_array() {
   var="$1"
   oldIFS="$IFS"
   IFS=','
+  # shellcheck disable=SC2086
   set -- $var
   IFS="$oldIFS"
   echo "$@"
@@ -35,6 +41,7 @@ build_redis_twemproxy_conf() {
     servers="    - $service_name:$service_port:1"
   else
     echo "service_names_array: $service_names_array, service_ports_array: $service_ports_array"
+    # shellcheck disable=SC2086
     for service_name_entry in $service_names_array; do
       # Extract key and value from service_name_entry
       service_name_key="${service_name_entry%%:*}"
@@ -42,6 +49,7 @@ build_redis_twemproxy_conf() {
 
       echo "service_name_key: $service_name_key, service_name_value: $service_name_value"
       # Find the corresponding port entry
+      # shellcheck disable=SC2086
       for service_port_entry in $service_ports_array; do
         service_port_key="${service_port_entry%%:*}"
         service_port_value="${service_port_entry#*:}"
@@ -61,7 +69,7 @@ build_redis_twemproxy_conf() {
   # All the components' password of redis server must be the same, So we find the first environment variable that starts with REDIS_DEFAULT_PASSWORD
   REDIS_AUTH_PASSWORD=""
   last_value=""
-  set +x
+  [ "$ut_mode" = "true" ] || set +x
   for env_var in $(env | grep -E '^REDIS_DEFAULT_PASSWORD'); do
     value="${env_var#*=}"
     if [ -n "$value" ]; then
@@ -91,9 +99,16 @@ build_redis_twemproxy_conf() {
     echo "  server_failure_limit: 1"
     echo "  servers:"
     printf "%b" "$servers"
-  } > /etc/proxy/nutcracker.conf
-  set -x
+  } > "${TWEMPROXY_CONF_PATH:-/etc/proxy/nutcracker.conf}"
+  [ "$ut_mode" = "true" ] || set -x
   echo "build redis twemproxy conf done!"
 }
+
+# This is magic for shellspec ut framework.
+# Sometime, functions are defined in a single shell script.
+# You will want to test it. but you do not want to run the script.
+# When included from shellspec, __SOURCED__ variable defined and script
+# end here. The script path is assigned to the __SOURCED__ variable.
+${__SOURCED__:+false} : || return 0
 
 build_redis_twemproxy_conf
