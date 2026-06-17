@@ -151,6 +151,7 @@ Describe "Sync ACL Script Tests"
         local acl_list="user default on ~* +@all"
         When call apply_acl_rules "$acl_list" "redis-new.svc" "redis-cli -p 6379"
         The status should be success
+        The stderr should include "OK"
       End
     End
 
@@ -165,6 +166,7 @@ Describe "Sync ACL Script Tests"
         acl_list=$(printf "\ninvalid line\nuser testuser on >pass ~* +@all\n")
         When call apply_acl_rules "$acl_list" "redis-new.svc" "redis-cli -p 6379"
         The status should be success
+        The stderr should include "OK"
       End
     End
 
@@ -182,6 +184,7 @@ Describe "Sync ACL Script Tests"
         local acl_list="user baduser on >pass ~* +@all"
         When call apply_acl_rules "$acl_list" "redis-new.svc" "redis-cli -p 6379"
         The status should be failure
+        The stderr should include "ERR unknown user"
       End
     End
 
@@ -198,6 +201,7 @@ Describe "Sync ACL Script Tests"
         local acl_list="user testuser on >pass ~* +@all"
         When call apply_acl_rules "$acl_list" "redis-new.svc" "redis-cli -p 6379"
         The status should be failure
+        The stderr should include "OK"
       End
     End
   End
