@@ -8,7 +8,7 @@ metadata:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
-  templateName: {{ include "apecloud-mysql.configTplVttabletName" . }}
+  templateName: vttablet-config
   fileName: vttablet.cnf
   fileFormatConfig:
     format: ini

@@ -7,7 +7,7 @@ metadata:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
-  templateName: {{ include "apecloud-mysql.configTplName" . }}
+  templateName: mysql-consensusset-config
   fileName: my.cnf
   fileFormatConfig:
     format: ini
