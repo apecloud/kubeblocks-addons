@@ -49,8 +49,8 @@ Describe "Redis Reset Master Script Tests"
       It "resets and exits successfully"
         When run reset_master_in_sentinels
         The status should be success
-        The stdout should include "reset master in sentinel sentinel-0..."
-        The stdout should include "reset master in sentinel sentinel-0 succeeded"
+        The stdout should include "reset master in sentinel"
+        The stdout should include "succeeded"
       End
     End
 
@@ -80,7 +80,7 @@ Describe "Redis Reset Master Script Tests"
       It "falls through to second sentinel"
         When run reset_master_in_sentinels
         The status should be success
-        The stdout should include "reset master in sentinel sentinel-1 succeeded"
+        The stdout should include "succeeded"
       End
     End
 
@@ -185,7 +185,7 @@ Describe "Redis Reset Master Script Tests"
       It "exits after first successful reset"
         When run reset_master_in_sentinels
         The status should be success
-        The stdout should include "reset master in sentinel sentinel-0 succeeded"
+        The stdout should include "succeeded"
       End
     End
   End

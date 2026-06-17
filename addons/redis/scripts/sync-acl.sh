@@ -50,6 +50,7 @@ fetch_acl_list_from_peers() {
 }
 
 apply_acl_rules() {
+  set -e
   local acl_list="$1"
   local target_fqdn="$2"
   local redis_cmd="$3"
