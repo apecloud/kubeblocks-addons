@@ -9,6 +9,7 @@ test || __() {
 sentinel_service_port=${SENTINEL_SERVICE_PORT:-26379}
 
 reset_master_in_sentinels() {
+  set -e
   if [ -z "${SENTINEL_POD_NAME_LIST}" ]; then
     exit 0
   fi
