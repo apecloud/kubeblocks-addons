@@ -81,6 +81,7 @@ Describe "Redis Twemproxy Setup V2 Script Tests"
         When run build_redis_twemproxy_conf
         The status should be failure
         The stdout should include "REDIS_SERVICE_NAMES and REDIS_SERVICE_PORTS must be set"
+        The stderr should be defined
       End
     End
 
@@ -96,6 +97,7 @@ Describe "Redis Twemproxy Setup V2 Script Tests"
         When run build_redis_twemproxy_conf
         The status should be failure
         The stdout should include "REDIS_SERVICE_NAMES and REDIS_SERVICE_PORTS must be set"
+        The stderr should be defined
       End
     End
 
@@ -111,6 +113,7 @@ Describe "Redis Twemproxy Setup V2 Script Tests"
         When run build_redis_twemproxy_conf
         The status should be failure
         The stdout should include "REDIS_SERVICE_NAMES and REDIS_SERVICE_PORTS must be set"
+        The stderr should be defined
       End
     End
 
@@ -126,6 +129,7 @@ Describe "Redis Twemproxy Setup V2 Script Tests"
         When run build_redis_twemproxy_conf
         The status should be failure
         The stdout should include "No environment variable starting with REDIS_DEFAULT_PASSWORD found"
+        The stderr should be defined
       End
     End
 
@@ -144,6 +148,7 @@ Describe "Redis Twemproxy Setup V2 Script Tests"
         The status should be failure
         The stdout should include "Error conflicting env"
         The stdout should include "all the components' password of redis server must be the same"
+        The stderr should be defined
       End
     End
 
@@ -165,6 +170,7 @@ Describe "Redis Twemproxy Setup V2 Script Tests"
         The stdout should include "listen: 0.0.0.0:22121"
         The stdout should include "hash: fnv1a_64"
         The stdout should include "distribution: ketama"
+        The stderr should be defined
       End
     End
 
@@ -183,6 +189,7 @@ Describe "Redis Twemproxy Setup V2 Script Tests"
         The stdout should include "build redis twemproxy conf done!"
         The stdout should include "- redis-redis0-redis:6379:1"
         The stdout should include "redis_auth: singleshardpw"
+        The stderr should be defined
       End
     End
 
@@ -202,6 +209,7 @@ Describe "Redis Twemproxy Setup V2 Script Tests"
         The stdout should include "- redis-redis0-redis:6379:1"
         The stdout should include "- redis-redis1-redis:6379:1"
         The stdout should include "redis_auth: multishardpw"
+        The stderr should be defined
       End
     End
 
@@ -220,6 +228,7 @@ Describe "Redis Twemproxy Setup V2 Script Tests"
         The stdout should include "- redis-shard0-redis:6379:1"
         The stdout should include "- redis-shard1-redis:6380:1"
         The stdout should include "- redis-shard2-redis:6381:1"
+        The stderr should be defined
       End
     End
 
@@ -237,6 +246,7 @@ Describe "Redis Twemproxy Setup V2 Script Tests"
         When run build_redis_twemproxy_conf
         The status should be success
         The stdout should include "build redis twemproxy conf done!"
+        The stderr should be defined
       End
     End
 
@@ -254,6 +264,7 @@ Describe "Redis Twemproxy Setup V2 Script Tests"
         The status should be success
         The stdout should include "- redis-redis0-redis:6379:1"
         The stdout should not include "- redis-redis1-redis"
+        The stderr should be defined
       End
     End
   End
