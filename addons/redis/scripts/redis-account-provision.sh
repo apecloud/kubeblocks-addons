@@ -14,7 +14,7 @@ provision_account() {
     echo "account provision failed: connection error: $output" >&2
     return 1
   fi
-  if echo "$output" | grep -q "^ERR"; then
+  if echo "$output" | grep -qE "^(ERR|NOAUTH|WRONGPASS|NOPERM)"; then
     echo "account provision failed: $output" >&2
     return 1
   fi

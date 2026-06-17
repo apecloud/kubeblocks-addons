@@ -54,6 +54,31 @@ Describe "Redis Account Provision Script Tests"
       End
     End
 
+    Context "when account statement returns a Redis auth or ACL error with zero exit"
+      redis-cli() {
+        if echo "$*" | grep -q "acl save"; then
+          echo "OK"
+          return 0
+        fi
+        echo "$REDIS_ERROR_REPLY"
+        return 0
+      }
+
+      Parameters
+        "NOAUTH Authentication required."
+        "WRONGPASS invalid username-password pair"
+        "NOPERM this user has no permissions to run the 'acl' command"
+      End
+
+      It "returns failure for $1"
+        REDIS_ERROR_REPLY="$1"
+        When call provision_account
+        The status should be failure
+        The stderr should include "account provision failed"
+        The stderr should include "$1"
+      End
+    End
+
     Context "when redis-cli connection fails on statement"
       redis-cli() {
         if echo "$*" | grep -q "acl save"; then

@@ -14,7 +14,7 @@ provision_sentinel_account() {
     echo "sentinel account provision failed: connection error: $output" >&2
     return 1
   fi
-  if echo "$output" | grep -q "^ERR"; then
+  if echo "$output" | grep -qE "^(ERR|NOAUTH|WRONGPASS|NOPERM)"; then
     echo "sentinel account provision failed: $output" >&2
     return 1
   fi
