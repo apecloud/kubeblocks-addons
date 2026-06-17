@@ -1,52 +1,67 @@
 #!/bin/bash
 
-service_port=${SERVICE_PORT:-6379}
-redis_base_cmd="redis-cli $REDIS_CLI_TLS_CMD -p $service_port -a $REDIS_DEFAULT_PASSWORD"
-if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-   redis_base_cmd="redis-cli $REDIS_CLI_TLS_CMD -p $service_port"
-fi
+# shellcheck disable=SC2034
+ut_mode="false"
+test || __() {
+  set -e;
+}
 
-is_ok=false
-acl_list=""
-# 1. get acl list from other pods
-for pod_fqdn in $(echo "$REDIS_POD_FQDN_LIST" | tr ',' '\n'); do
+sync_acl() {
+  service_port=${SERVICE_PORT:-6379}
+  # shellcheck disable=SC2086
+  redis_base_cmd="redis-cli $REDIS_CLI_TLS_CMD -p $service_port -a $REDIS_DEFAULT_PASSWORD"
+  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+    # shellcheck disable=SC2086
+    redis_base_cmd="redis-cli $REDIS_CLI_TLS_CMD -p $service_port"
+  fi
+
+  is_ok=false
+  acl_list=""
+  for pod_fqdn in $(echo "$REDIS_POD_FQDN_LIST" | tr ',' '\n'); do
     if [[ "$pod_fqdn" == "$KB_JOIN_MEMBER_POD_FQDN" ]]; then
-        continue
+      continue
     fi
+    # shellcheck disable=SC2086
     acl_list=$($redis_base_cmd -h "$pod_fqdn" ACL LIST)
     if [ $? -eq 0 ]; then
-        is_ok=true
-        break
+      is_ok=true
+      break
     fi
-done
+  done
 
-if [ "$is_ok" = false ]; then
+  if [ "$is_ok" = false ]; then
     echo "Failed to get ACL LIST from other pods" >&2
     exit 1
-fi
+  fi
 
-if [ -z "$acl_list" ]; then
+  if [ -z "$acl_list" ]; then
     echo "No ACL rules found in other pods, skip synchronization" >&2
     exit 0
-fi
+  fi
 
-set -e
-# 2. apply acl list to current pod
-while IFS= read -r user_rule; do
+  set -e
+  while IFS= read -r user_rule; do
     [[ -z "$user_rule" ]] && continue
 
     if [[ "$user_rule" =~ ^user[[:space:]]+([^[:space:]]+) ]]; then
-        username="${BASH_REMATCH[1]}"
+      username="${BASH_REMATCH[1]}"
     else
-      # skip invalid user rule
       continue
     fi
 
     if [[ "$username" == "default" ]]; then
-        continue
+      continue
     fi
     rule_part="${user_rule#user $username }"
-    $redis_base_cmd -h $KB_JOIN_MEMBER_POD_FQDN ACL SETUSER "$username" $rule_part >&2
-done <<< "$acl_list"
+    # shellcheck disable=SC2086
+    $redis_base_cmd -h "$KB_JOIN_MEMBER_POD_FQDN" ACL SETUSER "$username" $rule_part >&2
+  done <<< "$acl_list"
 
-$redis_base_cmd -h $KB_JOIN_MEMBER_POD_FQDN ACL save >&2
+  # shellcheck disable=SC2086
+  $redis_base_cmd -h "$KB_JOIN_MEMBER_POD_FQDN" ACL save >&2
+}
+
+# This is magic for shellspec ut framework.
+${__SOURCED__:+false} : || return 0
+
+sync_acl
