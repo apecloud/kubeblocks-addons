@@ -62,8 +62,24 @@ function getToolConfigValue() {
   cat "$toolConfig" | grep "$var" | awk '{print $NF}'
 }
 
+function normalizeBoolValue() {
+  local value
+  value=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+  case "$value" in
+    true | 1 | yes | y | on)
+      echo "true"
+      ;;
+    false | 0 | no | n | off)
+      echo "false"
+      ;;
+    *)
+      echo "$value"
+      ;;
+  esac
+}
+
 function set_backup_config_env() {
-  toolConfig=/etc/datasafed/datasafed.conf
+  toolConfig=${DATASAFED_CONFIG_FILE:-/etc/datasafed/datasafed.conf}
   if [ ! -f ${toolConfig} ]; then
     DP_error_log "Config file not found: ${toolConfig}"
     exit 1
@@ -75,6 +91,7 @@ function set_backup_config_env() {
   local region=""
   local endpoint=""
   local bucket=""
+  local force_path_style=""
 
   IFS=$'\n'
   for line in $(cat ${toolConfig}); do
@@ -91,6 +108,8 @@ function set_backup_config_env() {
       bucket=$(getToolConfigValue "$line")
     elif [[ $line == "provider"* ]]; then
       provider=$(getToolConfigValue "$line")
+    elif [[ $line == "force_path_style"* ]]; then
+      force_path_style=$(getToolConfigValue "$line")
     fi
   done
 
@@ -118,6 +137,9 @@ function set_backup_config_env() {
     export S3_FORCE_PATH_STYLE="true"
   else
     echo "Unsupported provider: $provider"
+  fi
+  if [ -n "$force_path_style" ]; then
+    export S3_FORCE_PATH_STYLE="$(normalizeBoolValue "$force_path_style")"
   fi
   backup_path=$(dirname "$DP_BACKUP_BASE_PATH")
 
@@ -183,11 +205,13 @@ function sync_pbm_storage_config() {
     current_region=$(echo "$check_config" | jq -r '.storage.s3.region')
     current_bucket=$(echo "$check_config" | jq -r '.storage.s3.bucket')
     current_prefix=$(echo "$check_config" | jq -r '.storage.s3.prefix')
+    current_force_path_style=$(echo "$check_config" | jq -r '.storage.s3.forcePathStyle')
     echo "INFO: Current PBM storage endpoint: $current_endpoint"
     echo "INFO: Current PBM storage region: $current_region"
     echo "INFO: Current PBM storage bucket: $current_bucket"
     echo "INFO: Current PBM storage prefix: $current_prefix"
-    if [ "$current_prefix" = "$S3_PREFIX" ] && [ "$current_region" = "$S3_REGION" ] && [ "$current_bucket" = "$S3_BUCKET" ] && [ "$current_endpoint" = "$S3_ENDPOINT" ]; then
+    echo "INFO: Current PBM storage forcePathStyle: $current_force_path_style"
+    if [ "$current_prefix" = "$S3_PREFIX" ] && [ "$current_region" = "$S3_REGION" ] && [ "$current_bucket" = "$S3_BUCKET" ] && [ "$current_endpoint" = "$S3_ENDPOINT" ] && [ "$current_force_path_style" = "${S3_FORCE_PATH_STYLE:-false}" ]; then
       echo "INFO: PBM storage config already exists."
     else
       pbm_config_exists=false
