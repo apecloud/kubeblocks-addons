@@ -13,11 +13,12 @@ primary_host="${OB_COMPONENT_NAME}-0.${SUBDOMAIN}"
 target_host="${primary_host}"
 
 
-primaryCmd="mysql -u root -P${DP_DB_PORT} -h ${primary_host} -p${OB_ROOT_PASSWD} -N -e"
+detect_mysql_bin
+primaryCmd="${OB_MYSQL_BIN} -u root -P${DP_DB_PORT} -h ${primary_host} -p${OB_ROOT_PASSWD} -N -e"
 
 echo "INFO: primary host: ${primary_host}, current pod host: ${DP_DB_HOST}, target host: ${target_host}"
 
-mysql_cmd="mysql -u root -P${DP_DB_PORT} -h ${target_host} -p${OB_ROOT_PASSWD} -N -e"
+mysql_cmd="${OB_MYSQL_BIN} -u root -P${DP_DB_PORT} -h ${target_host} -p${OB_ROOT_PASSWD} -N -e"
 
 OlD_IFS=$IFS
 
@@ -115,9 +116,9 @@ function getRestoreFragment() {
       if [ -z "$line" ]; then
           continue
       fi
-      tenant=`echo ${line} | jq -r ".name"`
+      tenant=$(json_get name "$line")
       if [ "${tenant}" == "${tenantName}" ]; then
-          checkPointTime=`echo ${line} | jq -r ".checkPointTime"`
+          checkPointTime=$(json_get checkPointTime "$line")
           if [ $(date -d "${DP_RESTORE_TIME}" +%s) -gt $(date -d "${checkPointTime}" +%s) ]; then
             echo "TIME='$(date -d "${checkPointTime}" "+%Y-%m-%d %H:%M:%S")'"
             return
@@ -159,23 +160,40 @@ analysisToolConfig
 pullArchiveStatusFile
 # global_comp_index=$(echo $OB_COMPONENT_NAME | awk -F '-' '{print $(NF)}')
 extras=$(cat /dp_downward/status_extras)
-length=$(echo "$extras" | jq length)
+length=$(json_array_len "$extras")
 index=$((length-1))
 for i in $(seq 0 ${index}); do
   if [[ -f ${tenant_restored_signal} ]]; then
     echo "INFO: primary cluster has been restored, skip the restore process."
     continue
   fi
-  tenant_name=$(echo "$extras" | jq -r ".[${i}].name")
-  tenant_id=$(echo "$extras"  | jq -r ".[${i}].tenantId")
-  minRestoreSCN=$(echo "$extras"  | jq -r ".[${i}].minRestoreSCN")
-  poolList=$(echo "$extras"  | jq -r ".[${i}].poolList")
-  archivePath=$(echo "$extras"  | jq -r ".[${i}].archivePath")
+  tenant_name=$(json_array_get "$i" name "$extras")
+  tenant_id=$(json_array_get "$i" tenantId "$extras")
+  minRestoreSCN=$(json_array_get "$i" minRestoreSCN "$extras")
+  poolList=$(json_array_get "$i" poolList "$extras")
+  archivePath=$(json_array_get "$i" archivePath "$extras")
   uri="$(getDestURL data "${tenant_name}"),$(getDestURL restoreFromArchive "${tenant_name}" "${tenant_id}" "${archivePath}")"
   restoreFragment=$(getRestoreFragment "${tenant_name}" "${minRestoreSCN}")
+  existing_role=$(${mysql_cmd} "SELECT tenant_role FROM oceanbase.DBA_OB_TENANTS WHERE tenant_name='${tenant_name}' AND tenant_type='USER';" 2>/dev/null | awk 'NF {print; exit}')
+  if [[ -n "$existing_role" ]]; then
+    case "$existing_role" in
+      PRIMARY)
+        echo "INFO: tenant ${tenant_name} already PRIMARY, skipping RESTORE"
+        ;;
+      STANDBY)
+        echo "INFO: tenant ${tenant_name} already STANDBY (restore completed), skipping RESTORE"
+        ;;
+      RESTORE)
+        echo "INFO: tenant ${tenant_name} in RESTORE state, skipping RESTORE command"
+        ;;
+      *)
+        echo "ERROR: tenant ${tenant_name} exists with unexpected role '${existing_role}'"
+        exit 1
+        ;;
+    esac
+    continue
+  fi
   echo "INFO: start to restore tenant ${tenant_name} until ${restoreFragment}"
-  # TODO: check if the sql executed successfully. if restore time is over than actual time, it will failed.
-  # ERROR 4018 (HY000) at line 1: No enough log for restore
   restoreTenant "${tenant_name}" "SET SESSION ob_query_timeout=1000000000; ALTER SYSTEM RESTORE ${tenant_name} FROM '${uri}' UNTIL ${restoreFragment} WITH 'pool_list=${poolList}'"
   if [ $? -eq 1 ]; then
     exit 1

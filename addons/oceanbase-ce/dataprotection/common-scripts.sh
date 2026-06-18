@@ -7,6 +7,37 @@ region=
 endpoint=
 bucket=
 
+json_get() {
+  local key="$1"
+  echo "$2" | grep -o "\"${key}\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | head -1 | sed 's/.*:[[:space:]]*"\(.*\)"/\1/'
+}
+
+json_array_len() {
+  echo "$1" | grep -o '{' | wc -l | tr -d ' '
+}
+
+json_array_get() {
+  local idx="$1" key="$2"
+  local elem
+  elem=$(echo "$3" | grep -o '{[^}]*}' | sed -n "$((idx+1))p")
+  json_get "$key" "$elem"
+}
+
+OB_MYSQL_BIN=""
+detect_mysql_bin() {
+  if [ -n "$OB_MYSQL_BIN" ]; then
+    return
+  fi
+  for candidate in mysql /usr/bin/mysql obclient /u01/obclient/bin/obclient; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+      OB_MYSQL_BIN="$candidate"
+      return
+    fi
+  done
+  echo "ERROR: no mysql-compatible client found (tried mysql, obclient)"
+  exit 1
+}
+
 # log info file
 function DP_log() {
     msg=$1
@@ -192,5 +223,14 @@ function getDestURL() {
   elif [[ ${host} = "oss"* ]]; then
      destPrefix="oss"
   fi
-  echo "${destPrefix}://${bucket}${destPath}/${tenantName}/${tenantId}?host=${host}&access_id=${access_key_id}&access_key=${secret_access_key}"
+  destUrl="${destPrefix}://${bucket}${destPath}/${tenantName}/${tenantId}?host=${host}&access_id=${access_key_id}&access_key=${secret_access_key}"
+  if [[ ${destPrefix} == "s3" ]]; then
+     storageRegion=${region:-${DP_STORAGE_REGION:-}}
+     if [[ -z ${storageRegion} ]]; then
+        echo "ERROR: s3_region is required for S3-compatible storage"
+        exit 1
+     fi
+     destUrl="${destUrl}&s3_region=${storageRegion}"
+  fi
+  echo "${destUrl}"
 }
