@@ -98,9 +98,6 @@ reconfigure_from_config_file() {
   _rcf_hash=$(config_file_hash)
   echo "INFO: reconfigure start, config hash=$_rcf_hash" >&2
 
-  apply_config_diff
-  _rcf_rc=$?
-
   _rcf_timeout=${wait_timeout:-90}
   _rcf_elapsed=0
   while [ "$_rcf_elapsed" -lt "$_rcf_timeout" ]; do
@@ -108,7 +105,7 @@ reconfigure_from_config_file() {
     _rcf_elapsed=$((_rcf_elapsed + 2))
     _rcf_new_hash=$(config_file_hash)
     if [ "$_rcf_new_hash" != "$_rcf_hash" ]; then
-      echo "INFO: config file updated after ${_rcf_elapsed}s (new hash=$_rcf_new_hash), re-applying" >&2
+      echo "INFO: config file updated after ${_rcf_elapsed}s (new hash=$_rcf_new_hash), applying" >&2
       apply_config_diff
       return $?
     fi
@@ -116,10 +113,14 @@ reconfigure_from_config_file() {
 
   if [ "$_rcf_timeout" -gt 0 ]; then
     echo "INFO: config file unchanged after ${_rcf_timeout}s" >&2
-    if [ "$_rcf_applied_count" -eq 0 ]; then
-      echo "ERROR: watch timed out with 0 params applied, failing to prevent false green" >&2
-      return 1
-    fi
+  fi
+
+  apply_config_diff
+  _rcf_rc=$?
+
+  if [ "$_rcf_applied_count" -eq 0 ] && [ "$_rcf_timeout" -gt 0 ]; then
+    echo "ERROR: watch timed out with 0 params applied, failing to prevent false green" >&2
+    return 1
   fi
   return "$_rcf_rc"
 }

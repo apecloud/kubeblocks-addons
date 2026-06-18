@@ -709,16 +709,16 @@ CONF
         return 0
       }
 
-      It "re-applies config diff after detecting file update"
+      It "applies config diff after detecting file update"
         When call reconfigure_from_config_file
         The status should be success
         The variable set_called_with should equal "maxmemory=100000;"
         The stderr should include "config file updated after"
-        The stderr should include "re-applying"
+        The stderr should include "applying"
       End
     End
 
-    Context "timeout without file change proceeds with first pass"
+    Context "timeout without file change applies after wait"
       set_called_with=""
 
       setup() {
@@ -748,7 +748,7 @@ CONF
         return 0
       }
 
-      It "applies initial diff and logs timeout"
+      It "applies diff after timeout and logs wait"
         When call reconfigure_from_config_file
         The status should be success
         The variable set_called_with should equal "maxmemory=100000;"
