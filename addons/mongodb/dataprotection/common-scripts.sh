@@ -205,11 +205,13 @@ function sync_pbm_storage_config() {
     current_region=$(echo "$check_config" | jq -r '.storage.s3.region')
     current_bucket=$(echo "$check_config" | jq -r '.storage.s3.bucket')
     current_prefix=$(echo "$check_config" | jq -r '.storage.s3.prefix')
+    current_force_path_style=$(echo "$check_config" | jq -r '.storage.s3.forcePathStyle')
     echo "INFO: Current PBM storage endpoint: $current_endpoint"
     echo "INFO: Current PBM storage region: $current_region"
     echo "INFO: Current PBM storage bucket: $current_bucket"
     echo "INFO: Current PBM storage prefix: $current_prefix"
-    if [ "$current_prefix" = "$S3_PREFIX" ] && [ "$current_region" = "$S3_REGION" ] && [ "$current_bucket" = "$S3_BUCKET" ] && [ "$current_endpoint" = "$S3_ENDPOINT" ]; then
+    echo "INFO: Current PBM storage forcePathStyle: $current_force_path_style"
+    if [ "$current_prefix" = "$S3_PREFIX" ] && [ "$current_region" = "$S3_REGION" ] && [ "$current_bucket" = "$S3_BUCKET" ] && [ "$current_endpoint" = "$S3_ENDPOINT" ] && [ "$current_force_path_style" = "${S3_FORCE_PATH_STYLE:-false}" ]; then
       echo "INFO: PBM storage config already exists."
     else
       pbm_config_exists=false
