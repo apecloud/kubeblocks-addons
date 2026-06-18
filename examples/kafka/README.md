@@ -88,7 +88,11 @@ kubectl describe -n demo ops kafka-combined-scale-out
 
 #### [Scale-in](scale-in.yaml)
 
-Horizontal scaling in  `kafka-combine` component in cluster `kafka-combined-cluster` by deleting ONE replica:
+> [!WARNING]
+> Combined KRaft mode (`kafka-combine`) does not support scale-in because quorum voter removal is not implemented.
+> Use a separated-topology cluster with broker-only components for scale-in.
+
+Horizontal scaling in `kafka-broker` component in cluster `kafka-separated-cluster` by deleting ONE replica:
 
 ```bash
 kubectl apply -f examples/kafka/scale-in.yaml
@@ -96,7 +100,7 @@ kubectl apply -f examples/kafka/scale-in.yaml
 
 #### Scale-in/out using Cluster API
 
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
+Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number. For scale-in, use a broker-only component such as `kafka-broker`; combined KRaft mode (`kafka-combine`) only supports scale-out.
 
 ```yaml
 # snippet of cluster.yaml
@@ -104,7 +108,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
   componentSpecs:
-    - name: kafka-combine
+    - name: kafka-broker
       replicas: 1 # Set the number of replicas to your desired number
 ```
 

@@ -106,6 +106,17 @@ spec:
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
+  lifecycleActions:
+    memberLeave:
+      timeoutSeconds: 30
+      exec:
+        container: kafka
+        command:
+          - /bin/sh
+          - -c
+          - |
+            echo "Kafka combined KRaft scale-in is not supported for serviceVersion {{ .Values.defaultServiceVersion.combine }}: removing a combined broker/controller requires Kafka quorum voter convergence that this addon does not implement yet." >&2
+            exit 1
   systemAccounts:
     - name: client
       initAccount: true

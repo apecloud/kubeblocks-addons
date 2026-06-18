@@ -300,29 +300,24 @@ kubectl describe -n demo ops kafka-combined-scale-out
 
 #### Scale-in
 
-Horizontal scaling in  `kafka-combine` component in cluster `kafka-combined-cluster` by deleting ONE replica:
+> **Warning**: Combined KRaft mode (`kafka-combine`) does **not** support scale-in. The `memberLeave` action will reject the request because quorum voter removal is not yet implemented — scaling in a combined node that is both broker and controller would break the KRaft quorum. Only broker-only components support scale-in.
+
+The following example scales in a **broker-only** component in a **separated-topology** cluster. For combined mode clusters, use scale-out only.
 
 ```yaml
 # cat examples/kafka/scale-in.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: kafka-combined-scale-in
+  name: kafka-broker-scale-in
   namespace: demo
 spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: kafka-combined-cluster
+  clusterName: kafka-separated-cluster
   type: HorizontalScaling
-  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
-    # Specifies the name of the Component.
-  - componentName: kafka-combine
-    # Specifies the replica changes for scaling in components
+  - componentName: kafka-broker
     scaleIn:
-      # Specifies the replica changes for the component.
-      # add one more replica to current component
       replicaChanges: 1
-
 ```
 
 ```bash
@@ -333,13 +328,18 @@ kubectl apply -f examples/kafka/scale-in.yaml
 
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
+> **Note**: For combined KRaft mode (`kafka-combine`), only scale-out (increasing replicas) is supported. Scale-in will be rejected by `memberLeave` because quorum voter removal is not implemented.
+
 ```yaml
-# snippet of cluster.yaml
+# snippet of cluster-separated.yaml — broker-only example
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
+metadata:
+  name: kafka-separated-cluster
+  namespace: demo
 spec:
   componentSpecs:
-    - name: kafka-combine
+    - name: kafka-broker
       replicas: 1 # Set the number of replicas to your desired number
 ```
 

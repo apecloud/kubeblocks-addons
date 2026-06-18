@@ -9,6 +9,14 @@ readarray -t lines < <(datasafed pull topics.txt -)
 for line in "${lines[@]}"; do
   read -r topic partitions replication <<< "$line"
   echo "restoring ${topic}..."
-  kafkactl create topic "$topic" --partitions "$partitions" --replication-factor "$replication"
+  create_output="/tmp/kafkactl-create-${topic}.out"
+  if ! kafkactl create topic "$topic" --partitions "$partitions" --replication-factor "$replication" >"${create_output}" 2>&1; then
+    if grep -qi "already exists" "${create_output}"; then
+      echo "topic ${topic} already exists, continuing..."
+    else
+      cat "${create_output}"
+      exit 1
+    fi
+  fi
   datasafed pull "data/${topic}.json" - | kafkactl produce "$topic" --input-format=json
 done
