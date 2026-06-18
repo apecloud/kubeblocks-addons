@@ -232,6 +232,10 @@ else
   sentinel_count="${#reachable_sentinel_fqdn_list[@]}"
 fi
 sentinel_monitor_quorum=$(( sentinel_count / 2 + 1 ))
+if [ -z "${expected_sentinel_count}" ] && [ "${sentinel_monitor_quorum}" -lt 2 ]; then
+  echo "WARNING: partial probe found ${sentinel_count} Sentinel(s); flooring quorum at 2 for safety." >&2
+  sentinel_monitor_quorum=2
+fi
 echo "INFO: using Sentinel monitor quorum ${sentinel_monitor_quorum}/${sentinel_count}."
 
 configured_sentinel_count=0
