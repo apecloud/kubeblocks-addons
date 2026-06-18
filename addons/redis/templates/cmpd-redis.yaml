@@ -386,12 +386,8 @@ spec:
           - -c
           - /scripts/redis-account-provision.sh
     switchover:
-      timeoutSeconds: -1
       exec:
         container: redis
-        env:
-          - name: SWITCHOVER_WAIT_TIMEOUT
-            value: "120"
         command:
           - /bin/bash
           - -c

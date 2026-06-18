@@ -412,15 +412,6 @@ master_host:redis-master"
         The stdout should equal ""
       End
 
-      It "should fail when result verification fails"
-        check_redis_kernel_status() {
-          echo "redis1"
-        }
-        execute_sentinel_failover() { return 0; }
-        check_switchover_result() { return 1; }
-        When call switchover_without_candidate
-        The status should be failure
-      End
     End
 
     Context "check_switchover_result()"

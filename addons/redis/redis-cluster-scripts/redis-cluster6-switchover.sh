@@ -97,7 +97,7 @@ get_all_shards_master() {
   fi
   set_xtrace_when_ut_mode_false
 
-  echo "$cluster_nodes_info" | grep "master" | grep -v "fail" | while read -r line; do
+  echo "$cluster_nodes_info" | grep "master" | while read -r line; do
     node_addr=$(echo "$line" | cut -d' ' -f2 | cut -d'@' -f1)
     echo "$node_addr"
   done
@@ -165,8 +165,7 @@ do_switchover() {
   fi
 
   # check switchover result
-  local wait_timeout=${SWITCHOVER_WAIT_TIMEOUT:-120}
-  local max_attempts=$((wait_timeout / 2))
+  max_attempts=60
   attempt=0
   while [ $attempt -lt $max_attempts ]; do
     role=$(check_redis_role "$candidate_pod_fqdn" $service_port)
