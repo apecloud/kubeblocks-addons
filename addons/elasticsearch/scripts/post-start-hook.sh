@@ -82,11 +82,15 @@ function clear_stale_allocation_exclusion_for_self() {
         return 0
     }
     local current_exclusion
-    current_exclusion=$(echo "$settings_json" | grep -o '"persistent.cluster.routing.allocation.exclude._name" *: *"[^"]*"' | sed 's/.*: *"//;s/"$//')
-    if [ -z "$current_exclusion" ]; then
+    local raw_exclusion
+    raw_exclusion=$(echo "$settings_json" | grep -o '"persistent.cluster.routing.allocation.exclude._name" *: *"[^"]*"' | sed 's/.*: *"//;s/"$//')
+    if [ -z "$raw_exclusion" ]; then
         echo "no shard allocation exclusion set"
         return 0
     fi
+
+    local current_exclusion
+    current_exclusion=$(echo "$raw_exclusion" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | paste -sd ',' -)
 
     case ",$current_exclusion," in
         *",${POD_NAME},"*)
@@ -98,7 +102,7 @@ function clear_stale_allocation_exclusion_for_self() {
     esac
 
     local new_exclusion
-    new_exclusion=$(echo "$current_exclusion" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | grep -v "^${POD_NAME}$" | paste -sd ',' -)
+    new_exclusion=$(echo "$current_exclusion" | tr ',' '\n' | grep -v "^${POD_NAME}$" | paste -sd ',' -)
     if [ -z "$new_exclusion" ]; then
         echo "clearing stale shard allocation exclusion for ${POD_NAME}"
         curl --fail ${COMMON_OPTIONS} -X PUT "${ENDPOINT}/_cluster/settings" -H 'Content-Type: application/json' -d '{"persistent":{"cluster.routing.allocation.exclude._name":null}}'
