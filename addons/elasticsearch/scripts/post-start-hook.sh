@@ -140,12 +140,12 @@ else
 	if grep 'type: single-node' config/elasticsearch.yml > /dev/null 2>&1; then
 		echo "single-node mode, skip cluster formation and user initialization"
 	else
-        clear_stale_allocation_exclusion_for_self
+        clear_stale_allocation_exclusion_for_self || exit 1
     	exit 0
 	fi
 fi
 
-clear_stale_allocation_exclusion_for_self
+clear_stale_allocation_exclusion_for_self || exit 1
 
 # The following operations only need to be performed on master-0
 idx=${POD_NAME##*-}
