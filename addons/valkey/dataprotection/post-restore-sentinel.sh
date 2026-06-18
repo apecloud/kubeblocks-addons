@@ -162,7 +162,11 @@ fi
 # bounded scan limit.
 sentinel_fqdn_list=()
 if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
-  IFS=',' read -ra sentinel_fqdn_list <<< "${SENTINEL_POD_FQDN_LIST}"
+  sentinel_fqdn_list_raw=()
+  IFS=',' read -ra sentinel_fqdn_list_raw <<< "${SENTINEL_POD_FQDN_LIST}"
+  for sentinel_fqdn in "${sentinel_fqdn_list_raw[@]}"; do
+    [ -n "${sentinel_fqdn}" ] && sentinel_fqdn_list+=("${sentinel_fqdn}")
+  done
   expected_sentinel_count="${#sentinel_fqdn_list[@]}"
   if [ "${expected_sentinel_count}" -eq 0 ]; then
     echo "ERROR: SENTINEL_POD_FQDN_LIST is set but empty after parsing." >&2
@@ -186,7 +190,7 @@ else
   done
 fi
 
-configured_sentinel_count=0
+reachable_sentinel_fqdn_list=()
 failed_sentinel_count=0
 consecutive_unreachable=0
 for sentinel_fqdn in "${sentinel_fqdn_list[@]}"; do
@@ -199,7 +203,7 @@ for sentinel_fqdn in "${sentinel_fqdn_list[@]}"; do
       continue
     fi
     consecutive_unreachable=$((consecutive_unreachable + 1))
-    [ "${consecutive_unreachable}" -ge 2 ] && [ "${configured_sentinel_count}" -gt 0 ] && break
+    [ "${consecutive_unreachable}" -ge 2 ] && [ "${#reachable_sentinel_fqdn_list[@]}" -gt 0 ] && break
     continue
   }
   response=$(printf '%s' "${response}" | tr -d '\r\n')
@@ -209,6 +213,33 @@ for sentinel_fqdn in "${sentinel_fqdn_list[@]}"; do
     continue
   fi
   consecutive_unreachable=0
+  reachable_sentinel_fqdn_list+=("${sentinel_fqdn}")
+done
+
+if [ "${#reachable_sentinel_fqdn_list[@]}" -eq 0 ]; then
+  echo "ERROR: no Sentinel pod was reachable; postReady cannot report restore success." >&2
+  exit 1
+fi
+
+if [ -n "${expected_sentinel_count}" ] && [ "${#reachable_sentinel_fqdn_list[@]}" -lt "${expected_sentinel_count}" ]; then
+  echo "ERROR: reached ${#reachable_sentinel_fqdn_list[@]}/${expected_sentinel_count} expected Sentinel pods." >&2
+  exit 1
+fi
+
+if [ -n "${expected_sentinel_count}" ]; then
+  sentinel_count="${expected_sentinel_count}"
+else
+  sentinel_count="${#reachable_sentinel_fqdn_list[@]}"
+fi
+sentinel_monitor_quorum=$(( sentinel_count / 2 + 1 ))
+if [ -z "${expected_sentinel_count}" ] && [ "${sentinel_monitor_quorum}" -lt 2 ]; then
+  echo "WARNING: partial probe found ${sentinel_count} Sentinel(s); flooring quorum at 2 for safety." >&2
+  sentinel_monitor_quorum=2
+fi
+echo "INFO: using Sentinel monitor quorum ${sentinel_monitor_quorum}/${sentinel_count}."
+
+configured_sentinel_count=0
+for sentinel_fqdn in "${reachable_sentinel_fqdn_list[@]}"; do
   sentinel_configured=1
 
   # Check if already monitoring
@@ -220,7 +251,7 @@ for sentinel_fqdn in "${sentinel_fqdn_list[@]}"; do
   if [ -z "${existing}" ] || [ "${existing}" = "(nil)" ]; then
     echo "INFO: Registering master '${master_name}' (${primary_fqdn}:${data_port}) with ${sentinel_fqdn}"
     monitor_out=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" \
-      SENTINEL monitor "${master_name}" "${primary_fqdn}" "${data_port}" 2 2>&1) || {
+      SENTINEL monitor "${master_name}" "${primary_fqdn}" "${data_port}" "${sentinel_monitor_quorum}" 2>&1) || {
       echo "ERROR: SENTINEL monitor command failed on ${sentinel_fqdn}: ${monitor_out}" >&2
       sentinel_configured=0
     }

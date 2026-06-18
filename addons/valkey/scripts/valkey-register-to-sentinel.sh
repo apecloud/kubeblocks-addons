@@ -99,17 +99,37 @@ check_data_connectivity() {
   "${cmd[@]}" PING 2>/dev/null | grep -q "PONG"
 }
 
+# ── helper: step-aware budget guard ─────────────────────────────────────────
+# Worst-case retry sleep = retries * interval (conservative; actual is
+# (retries-1)*interval since the last attempt doesn't sleep on success).
+# Add 1s margin for CLI execution time per phase.
+BUDGET_CONNECTIVITY=10  # call_func_with_retry 3 3 → 3*3=9 + 1
+BUDGET_MONITOR=16       # call_func_with_retry 3 5 → 3*5=15 + 1
+BUDGET_SET=7            # call_func_with_retry 3 2 → 3*2=6 + 1
+
+budget_require() {
+  local needed="${1}"
+  local label="${2:-next step}"
+  local remaining=$(( POSTPROVISION_DEADLINE - SECONDS ))
+  if [ "$remaining" -lt "$needed" ]; then
+    echo "ERROR: postProvision budget insufficient for ${label} (${remaining}s remaining, need ${needed}s)" >&2
+    return 1
+  fi
+}
+
 # ── register with one Sentinel pod ──────────────────────────────────────────
 
 register_to_one_sentinel() {
   local sentinel_fqdn="${1}"
   echo "--- Registering with Sentinel ${sentinel_fqdn} ---"
 
-  call_func_with_retry 5 5 check_sentinel_connectivity "${sentinel_fqdn}" || {
+  budget_require "$BUDGET_CONNECTIVITY" "sentinel connectivity check" || return 1
+  call_func_with_retry 3 3 check_sentinel_connectivity "${sentinel_fqdn}" || {
     echo "ERROR: Sentinel ${sentinel_fqdn} not reachable" >&2
     return 1
   }
-  call_func_with_retry 5 5 check_data_connectivity || {
+  budget_require "$BUDGET_CONNECTIVITY" "data connectivity check" || return 1
+  call_func_with_retry 3 3 check_data_connectivity || {
     echo "ERROR: primary ${primary_host}:${primary_port} not reachable" >&2
     return 1
   }
@@ -124,25 +144,31 @@ register_to_one_sentinel() {
   master_addr=$("${cli[@]}" SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null || true)
   if is_empty "${master_addr}" || [ "${master_addr}" = "(nil)" ]; then
     echo "Sentinel not yet monitoring '${master_name}' — issuing SENTINEL monitor..."
+    budget_require "$BUDGET_MONITOR" "sentinel monitor" || return 1
     call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \
-      SENTINEL monitor "${master_name}" "${primary_host}" "${primary_port}" 2 || return 1
+      SENTINEL monitor "${master_name}" "${primary_host}" "${primary_port}" "${sentinel_monitor_quorum}" || return 1
   else
     echo "Sentinel already monitoring '${master_name}' at ${master_addr}. Skipping monitor."
   fi
 
   # Configure parameters
-  call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \
+  budget_require "$BUDGET_SET" "sentinel set down-after" || return 1
+  call_func_with_retry 3 2 execute_sentinel_cmd "${sentinel_fqdn}" \
     SENTINEL set "${master_name}" down-after-milliseconds 20000 || return 1
-  call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \
+  budget_require "$BUDGET_SET" "sentinel set failover-timeout" || return 1
+  call_func_with_retry 3 2 execute_sentinel_cmd "${sentinel_fqdn}" \
     SENTINEL set "${master_name}" failover-timeout 60000 || return 1
-  call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \
+  budget_require "$BUDGET_SET" "sentinel set parallel-syncs" || return 1
+  call_func_with_retry 3 2 execute_sentinel_cmd "${sentinel_fqdn}" \
     SENTINEL set "${master_name}" parallel-syncs 1 || return 1
 
   # Data node auth
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \
+    budget_require "$BUDGET_SET" "sentinel set auth-user" || return 1
+    call_func_with_retry 3 2 execute_sentinel_cmd "${sentinel_fqdn}" \
       SENTINEL set "${master_name}" auth-user "${VALKEY_DEFAULT_USER:-default}" || return 1
-    call_func_with_retry 3 5 execute_sentinel_cmd "${sentinel_fqdn}" \
+    budget_require "$BUDGET_SET" "sentinel set auth-pass" || return 1
+    call_func_with_retry 3 2 execute_sentinel_cmd "${sentinel_fqdn}" \
       SENTINEL set "${master_name}" auth-pass "${VALKEY_DEFAULT_PASSWORD}" || return 1
   fi
 
@@ -150,6 +176,11 @@ register_to_one_sentinel() {
 }
 
 # ── main ─────────────────────────────────────────────────────────────────────
+
+# kbagent enforces a 60s hard timeout on lifecycle actions.
+# Budget 45s to leave margin for process setup/teardown.
+POSTPROVISION_DEADLINE=$((SECONDS + 45))
+
 
 if is_empty "${SENTINEL_COMPONENT_NAME}"; then
   echo "No Sentinel component found — standalone topology, nothing to register."
@@ -161,9 +192,21 @@ if is_empty "${SENTINEL_POD_FQDN_LIST}"; then
   exit 1
 fi
 
-IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
+sentinel_fqdns=()
+IFS=',' read -ra sentinel_fqdns_raw <<< "${SENTINEL_POD_FQDN_LIST}"
+for sentinel_fqdn in "${sentinel_fqdns_raw[@]}"; do
+  [ -n "${sentinel_fqdn}" ] && sentinel_fqdns+=("${sentinel_fqdn}")
+done
+sentinel_count="${#sentinel_fqdns[@]}"
+if [ "${sentinel_count}" -eq 0 ]; then
+  echo "ERROR: SENTINEL_POD_FQDN_LIST is set but empty after parsing." >&2
+  exit 1
+fi
+sentinel_monitor_quorum=$(( sentinel_count / 2 + 1 ))
+echo "Sentinel monitor quorum: ${sentinel_monitor_quorum}/${sentinel_count}"
 for fqdn in "${sentinel_fqdns[@]}"; do
+  budget_require "$BUDGET_CONNECTIVITY" "next sentinel registration" || exit 1
   register_to_one_sentinel "${fqdn}" || exit 1
 done
 
-echo "All Sentinel pods registered successfully."
+echo "All Sentinel pods registered successfully (${SECONDS}s elapsed)."

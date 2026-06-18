@@ -15,6 +15,7 @@
 # Sentinel FQDN/password values. Sentinel ACL backup is therefore inactive
 # unless those SENTINEL_* variables are supplied by a future explicit contract.
 
+set -e
 set -o pipefail
 
 function handle_exit() {

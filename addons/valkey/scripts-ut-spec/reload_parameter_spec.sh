@@ -48,16 +48,16 @@ SH
     The status should be success
   End
 
-  It "keeps unsupported static parameters non-fatal"
+  It "exits 2 for unsupported static parameters (skip signal)"
     export FAKE_VALKEY_OUTPUT=unknown
     When run bash ../scripts/reload-parameter.sh BIND 0.0.0.0
-    The status should be success
+    The status should equal 2
   End
 
-  It "keeps immutable runtime parameters non-fatal"
+  It "exits 2 for immutable runtime parameters (skip signal)"
     export FAKE_VALKEY_OUTPUT=immutable
     When run bash ../scripts/reload-parameter.sh CLUSTER_ENABLED yes
-    The status should be success
+    The status should equal 2
   End
 
   It "fails closed on invalid enum values"

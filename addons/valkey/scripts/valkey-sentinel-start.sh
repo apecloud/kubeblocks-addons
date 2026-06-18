@@ -175,18 +175,40 @@ _sentinel_cli() {
   "${_scli[@]}" "$@" 2>/dev/null
 }
 
+calculate_sentinel_monitor_quorum() {
+  local sentinel_fqdns_raw=()
+  local sentinel_count=0
+  local sentinel_fqdn
+  local sentinel_monitor_quorum
+
+  IFS=',' read -ra sentinel_fqdns_raw <<< "${SENTINEL_POD_FQDN_LIST:-}"
+  for sentinel_fqdn in "${sentinel_fqdns_raw[@]}"; do
+    [ -n "${sentinel_fqdn}" ] && sentinel_count=$((sentinel_count + 1))
+  done
+
+  if [ "${sentinel_count}" -eq 0 ]; then
+    echo "ERROR: SENTINEL_POD_FQDN_LIST is empty — cannot compute Sentinel monitor quorum." >&2
+    return 1
+  fi
+
+  sentinel_monitor_quorum=$(( sentinel_count / 2 + 1 ))
+  echo "${sentinel_monitor_quorum}"
+}
+
 # _register_monitor — dynamically register the master with the running sentinel
 # via SENTINEL MONITOR + SENTINEL SET auth-pass.
 _register_monitor() {
   local master_fqdn="${1}"
   local data_port="${SERVICE_PORT:-6379}"
   local monitor_name="${VALKEY_COMPONENT_NAME}"
+  local sentinel_monitor_quorum
   if is_empty "${monitor_name}"; then
     echo "ERROR: VALKEY_COMPONENT_NAME is not set — cannot register sentinel monitor." >&2
     return 1
   fi
+  sentinel_monitor_quorum=$(calculate_sentinel_monitor_quorum) || return 1
   echo "INFO: registering master ${master_fqdn}:${data_port} with sentinel as '${monitor_name}'." >&2
-  _sentinel_cli SENTINEL MONITOR "${monitor_name}" "${master_fqdn}" "${data_port}" 2
+  _sentinel_cli SENTINEL MONITOR "${monitor_name}" "${master_fqdn}" "${data_port}" "${sentinel_monitor_quorum}"
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
     _sentinel_cli SENTINEL SET "${monitor_name}" auth-pass "${VALKEY_DEFAULT_PASSWORD}"
   fi

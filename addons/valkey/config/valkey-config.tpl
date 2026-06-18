@@ -45,7 +45,7 @@ appenddirname "appendonlydir"
 appendfsync everysec
 no-appendfsync-on-rewrite no
 auto-aof-rewrite-percentage 100
-auto-aof-rewrite-min-size 64mb
+auto-aof-rewrite-min-size 67108864
 aof-use-rdb-preamble yes
 
 # Slow log
@@ -60,14 +60,13 @@ set-max-intset-entries 512
 zset-max-listpack-entries 128
 zset-max-listpack-value 64
 
-# IO threads -- scale with available CPU, capped at 8.
+# IO threads -- use roughly half of available CPUs, capped at 8.
 # Setting 1 disables multi-threading (same as not setting it).
-# Valkey docs recommend 2-4 for servers with 4+ CPUs.
 {{- $cpu := default 0 $.PHY_CPU | int }}
-{{- if gt $cpu 0 }}
-io-threads {{ min (max $cpu 1) 8 }}
+{{- if gt $cpu 1 }}
+io-threads {{ min (max (div $cpu 2) 1) 8 }}
 {{- else }}
-io-threads 2
+io-threads 1
 {{- end }}
 io-threads-do-reads yes
 

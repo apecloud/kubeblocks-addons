@@ -40,13 +40,6 @@ Chart.Version; selection order must not depend on SemVer lexicographic sorting.
 {{- end -}}
 
 {{/*
-Sentinel component regexp pattern.
-*/}}
-{{- define "valkeySentinel.cmpdRegexpPattern" -}}
-^valkey-sentinel-[0-9]+$
-{{- end -}}
-
-{{/*
 Scripts ConfigMap name — versioned so upgrades create a new ConfigMap
 and old clusters keep using the one they were provisioned with.
 */}}
@@ -89,22 +82,18 @@ Used as a fallback in ActionSet; BackupPolicyTemplate overrides per serviceVersi
 
 {{/*
 Reconfigure action — called by KubeBlocks when config parameters change.
-Iterates all environment variables whose names match a parameter key and
-calls the reload script for each one.
-This is defined as a helper so both the ComponentDefinition template and
-any future versions can include it identically.
+Reads the mounted ConfigMap config file and applies each parameter via
+CONFIG SET through reload-parameter.sh.  Includes a freshness gate to
+handle the Kubernetes ConfigMap projection race condition.
 */}}
 {{- define "valkey.reconfigureAction" -}}
 reconfigure:
+  timeoutSeconds: 60
   exec:
     container: valkey
     targetPodSelector: All
     command:
-      - /bin/bash
-      - -c
-      - |
-        set -eu
-
-        /scripts/reload-parameter.sh "$1" "$2"
-      - --
+      - /scripts/reload-config.sh
+  retryPolicy:
+    maxRetries: 10
 {{- end -}}
