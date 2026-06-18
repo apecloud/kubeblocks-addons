@@ -6,7 +6,7 @@ type: application
 
 version: 1.2.0-alpha.0
 
-appVersion: "4.3.0.1-100000242024032211"
+appVersion: "4.3.5-lts"
 
 maintainers:
   - name: Powerfooi

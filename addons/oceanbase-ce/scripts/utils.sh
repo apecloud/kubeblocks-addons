@@ -1,30 +1,43 @@
 #!/usr/bin/env bash
 
+OB_OBSERVER_BIN=${OB_OBSERVER_BIN:-}
+if [ -z "$OB_OBSERVER_BIN" ]; then
+  if [ -x "/home/admin/oceanbase/bin/observer" ]; then
+    OB_OBSERVER_BIN="/home/admin/oceanbase/bin/observer"
+  elif [ -x "/root/demo/bin/observer" ]; then
+    OB_OBSERVER_BIN="/root/demo/bin/observer"
+    export LD_LIBRARY_PATH="/root/demo/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  fi
+fi
+if [ -n "$OB_OBSERVER_BIN" ]; then
+  echo "OB_OBSERVER_BIN: $OB_OBSERVER_BIN"
+fi
+
 function prepare_dirs {
   # log dir
   mkdir -p /home/admin/log/log
-  ln -sf /home/admin/log/log ${OB_HOME_DIR}/log
+  ln -sfn /home/admin/log/log ${OB_HOME_DIR}/log
 
   mkdir -p  ${OB_HOME_DIR}/store
   # data log dir
   mkdir -p /home/admin/data-log/clog
 
-  ln -sf /home/admin/data-log/clog ${OB_HOME_DIR}/store/clog
+  ln -sfn /home/admin/data-log/clog ${OB_HOME_DIR}/store/clog
   mkdir -p /home/admin/data-log/ilog
-  ln -sf /home/admin/data-log/ilog ${OB_HOME_DIR}/store/ilog
+  ln -sfn /home/admin/data-log/ilog ${OB_HOME_DIR}/store/ilog
 
   mkdir -p /home/admin/data-file/slog
-  ln -sf /home/admin/data-file/slog ${OB_HOME_DIR}/store/slog
+  ln -sfn /home/admin/data-file/slog ${OB_HOME_DIR}/store/slog
   mkdir -p /home/admin/data-file/etc
-  ln -sf /home/admin/data-file/etc ${OB_HOME_DIR}/store/etc
+  ln -sfn /home/admin/data-file/etc ${OB_HOME_DIR}/store/etc
   mkdir -p /home/admin/data-file/sort_dir
-  ln -sf /home/admin/data-file/sort_dir ${OB_HOME_DIR}/store/sort_dir
+  ln -sfn /home/admin/data-file/sort_dir ${OB_HOME_DIR}/store/sort_dir
   mkdir -p /home/admin/data-file/sstable
-  ln -sf /home/admin/data-file/sstable ${OB_HOME_DIR}/store/sstable
+  ln -sfn /home/admin/data-file/sstable ${OB_HOME_DIR}/store/sstable
   # chown -R root:root ${OB_HOME_DIR}
 
   # link /home/admin/workdir/admin dir to /home/admin/oceanbase/admin
-  ln -sf /home/admin/oceanbase/admin ${OB_HOME_DIR}/admin
+  ln -sfn /home/admin/oceanbase/admin ${OB_HOME_DIR}/admin
 }
 
 function clean_dirs {
@@ -58,7 +71,7 @@ function create_ready_flag {
 
 function wait_for_observer_ready {
   echo "Wait for observer on this node to be ready"
-  until nc -z 127.0.0.1 $OB_SERVICE_PORT; do
+  until bash -c "echo > /dev/tcp/127.0.0.1/$OB_SERVICE_PORT" 2>/dev/null; do
     echo "observer on this node is not ready, wait for a moment..."
     sleep 10
   done
@@ -111,8 +124,8 @@ function get_pod_ip {
     replica_hostname=${pod_name}.${SUBDOMAIN}
   fi
   while true; do
-    replica_ip=$(nslookup $replica_hostname | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
-    if [ $? -ne 0 ]; then
+    replica_ip=$(getent hosts $replica_hostname 2>/dev/null | awk '{print $1}')
+    if [ -z "$replica_ip" ]; then
       sleep 5
     else
       echo $replica_ip
@@ -122,6 +135,9 @@ function get_pod_ip {
 }
 
 function start_observer {
+  if [ -z "$OB_OBSERVER_BIN" ] || [ ! -x "$OB_OBSERVER_BIN" ]; then
+    echo "FATAL: observer binary not found" >&2; exit 1
+  fi
   echo "Start observer process as normal server..."
   # if debug mode is enabled, set log level to debug
   local loglevel="INFO"
@@ -142,7 +158,7 @@ function start_observer {
 
   cluster_id=${OB_CLUSTER_ID:-1}
 
-  /home/admin/oceanbase/bin/observer --appname ${OB_COMPONENT_NAME} \
+  $OB_OBSERVER_BIN --appname ${OB_COMPONENT_NAME} \
     --cluster_id ${cluster_id} --zone $ZONE_NAME \
     -I ${curr_pod_ip} \
     --rpc_port ${OB_RPC_PORT} \
@@ -152,9 +168,12 @@ function start_observer {
 }
 
 function start_observer_with_exsting_configs {
+  if [ -z "$OB_OBSERVER_BIN" ] || [ ! -x "$OB_OBSERVER_BIN" ]; then
+    echo "FATAL: observer binary not found" >&2; exit 1
+  fi
   echo "Start observer with existing configs"
   # Start observer w/o any flags
-  /home/admin/oceanbase/bin/observer
+  $OB_OBSERVER_BIN
 }
 
 function update_root_password {
@@ -164,12 +183,12 @@ function update_root_password {
 }
 
 function get_ob_major_version {
-  version=$(/home/admin/oceanbase/bin/observer --version 2>&1  | grep -oP '(\d+\.\d+\.\d+)')
+  version=$($OB_OBSERVER_BIN --version 2>&1  | grep -oP '(\d+\.\d+\.\d+)')
   echo $version
 }
 
 function get_ob_full_version {
-  version=$(/home/admin/oceanbase/bin/observer --version 2>&1  | grep -oP '(\d+\.\d+\.\d+\.\d+)')
+  version=$($OB_OBSERVER_BIN --version 2>&1  | grep -oP '(\d+\.\d+\.\d+\.\d+)')
   echo $version
 }
 

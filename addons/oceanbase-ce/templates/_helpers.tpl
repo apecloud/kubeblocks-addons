@@ -159,7 +159,11 @@ oceanbase-ce-reloadscripts
 Define image
 */}}
 {{- define "oceanbase-ce.observer.repository" -}}
+{{- if .Values.image.observer.image -}}
+{{ .Values.image.observer.image }}
+{{- else -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.observer.repository }}
+{{- end -}}
 {{- end -}}
 
 {{- define "oceanbase-ce.metrics.repository" -}}
