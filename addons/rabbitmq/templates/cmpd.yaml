@@ -32,6 +32,12 @@ spec:
       namespace: {{ .Release.Namespace }}
       defaultMode: 0644
       externalManaged: true
+  scripts:
+    - name: script
+      template: {{ include "rabbitmq.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
   systemAccounts:
     - name: root
       initAccount: true
@@ -163,7 +169,7 @@ spec:
             name: rabbitmq-config
             subPath: enabled_plugins
           - mountPath: /scripts/startup.sh
-            name: rabbitmq-config
+            name: scripts
             subPath: startup.sh
           - name: timezone
             mountPath: /etc/localtime
