@@ -81,7 +81,6 @@ function clear_stale_allocation_exclusion_for_self() {
         echo "failed to read cluster settings, skip clearing stale shard allocation exclusion"
         return 0
     }
-    local current_exclusion
     local raw_exclusion
     raw_exclusion=$(echo "$settings_json" | grep -o '"persistent.cluster.routing.allocation.exclude._name" *: *"[^"]*"' | sed 's/.*: *"//;s/"$//')
     if [ -z "$raw_exclusion" ]; then
