@@ -136,6 +136,10 @@ set_jvm_configuration() {
   if [[ -n "$KB_KAFKA_BROKER_HEAP" ]]; then
     export KAFKA_HEAP_OPTS=${KB_KAFKA_BROKER_HEAP}
     echo "[jvm][KB_KAFKA_BROKER_HEAP]export KAFKA_HEAP_OPTS=${KB_KAFKA_BROKER_HEAP}"
+  elif [[ -n "$KB_KAFKA_CONTAINER_MEMORY_LIMIT_MIB" ]] && [[ "$KB_KAFKA_CONTAINER_MEMORY_LIMIT_MIB" =~ ^[0-9]+$ ]] && [[ "$KB_KAFKA_CONTAINER_MEMORY_LIMIT_MIB" -gt 0 ]]; then
+    local heap_mib=$((KB_KAFKA_CONTAINER_MEMORY_LIMIT_MIB * 50 / 100))
+    export KAFKA_HEAP_OPTS="-XshowSettings:vm -Xmx${heap_mib}m -Xms${heap_mib}m -Ddepth=64"
+    echo "[jvm][KB_KAFKA_CONTAINER_MEMORY_LIMIT_MIB]export KAFKA_HEAP_OPTS=${KAFKA_HEAP_OPTS}"
   fi
   export JMX_PORT=5555
   echo "[jvm][JMX_PORT]export JMX_PORT=5555"

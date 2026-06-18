@@ -107,11 +107,11 @@ monitor:
     memory: 1
 
 ## kafka broker's jvm heap setting
-brokerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
+brokerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64
 
 ## kafka broker's jvm heap setting
 ## only effective when clusterMode='separated'
-controllerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
+controllerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64
 
 ## @param nodePortEnabled
 ## Whether to enable NodePort mode.

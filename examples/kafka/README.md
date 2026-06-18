@@ -352,9 +352,9 @@ spec:
       replicas: 1
       env:
         - name: KB_KAFKA_BROKER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_KAFKA_CONTROLLER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_BROKER_DIRECT_POD_ACCESS # set KB_BROKER_DIRECT_POD_ACCESS to FALSE to disable direct pod access
           value: "false"
 ```

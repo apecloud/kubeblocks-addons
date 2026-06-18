@@ -199,7 +199,13 @@ spec:
             value: "/bitnami/kafka/data"
           - name: KAFKA_HEAP_OPTS
             #value: "-Xmx1024m -Xms1024m"
-            value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+            value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
+          - name: KB_KAFKA_CONTAINER_MEMORY_LIMIT_MIB
+            valueFrom:
+              resourceFieldRef:
+                containerName: kafka
+                resource: limits.memory
+                divisor: 1Mi
           - name: SERVER_PROP_FILE
             value: /scripts/server.properties
           - name: KAFKA_KRAFT_CLUSTER_ID
@@ -264,7 +270,8 @@ spec:
         command:
           - java
         args:
-          - -XX:MaxRAMPercentage=100
+          - -Xmx128m
+          - -Xms64m
           - -XshowSettings:vm
           - -jar
           - jmx_prometheus_httpserver.jar

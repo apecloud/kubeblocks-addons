@@ -83,9 +83,9 @@ spec:
     - name: kafka-combine
       env:
         - name: KB_KAFKA_BROKER_HEAP # use this ENV to set BROKER HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_KAFKA_CONTROLLER_HEAP # use this ENV to set CONTOLLER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
           # Whether to enable direct Pod IP address access mode.
           # - If set to 'true', Kafka clients will connect to Brokers using the Pod IP address directly.
           # - If set to 'false', Kafka clients will connect to Brokers using the Headless Service's FQDN.
@@ -188,9 +188,9 @@ spec:
           memory: "0.5Gi"
       env:
         - name: KB_KAFKA_BROKER_HEAP # use this ENV to set BROKER HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_KAFKA_CONTROLLER_HEAP # use this ENV to set CONTOLLER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
           # Whether to enable direct Pod IP address access mode.
           # - If set to 'true', Kafka clients will connect to Brokers using the Pod IP address directly.
           # - If set to 'false', Kafka clients will connect to Brokers using the Headless Service's FQDN
@@ -653,9 +653,9 @@ spec:
           memory: "0.5Gi"
       env:
         - name: KB_KAFKA_BROKER_HEAP # use this ENV to set BROKER HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_KAFKA_CONTROLLER_HEAP # use this ENV to set CONTOLLER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
           # Whether to enable direct Pod IP address access mode.
           # - If set to 'true', Kafka clients will connect to Brokers using the Pod IP address directly.
           # - If set to 'false', Kafka clients will connect to Brokers using the Headless Service's FQDN
@@ -859,9 +859,9 @@ spec:
       replicas: 1
       env:
         - name: KB_KAFKA_BROKER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_KAFKA_CONTROLLER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_BROKER_DIRECT_POD_ACCESS # set KB_BROKER_DIRECT_POD_ACCESS to FALSE to disable direct pod access
           value: "false"
 ```
