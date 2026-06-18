@@ -4,6 +4,7 @@ staticParameters:
   - databases
   - io-threads
   - io-threads-do-reads
+  - tcp-backlog
 
 ## Parameters that can be changed at runtime via CONFIG SET
 dynamicParameters:
@@ -59,7 +60,6 @@ dynamicParameters:
   - stop-writes-on-bgsave-error
   - stream-node-max-bytes
   - stream-node-max-entries
-  - tcp-backlog
   - tcp-keepalive
   - timeout
   - zset-max-listpack-entries
