@@ -137,5 +137,34 @@ Describe "Redis Account Provision Script Tests"
         The stderr should include "acl save error"
       End
     End
+
+    Context "when account statement fails but ACL save would succeed"
+      redis-cli() {
+        if echo "$*" | grep -q -- "ACL SETUSER"; then
+          echo "statement failed" >&2
+          return 42
+        fi
+        if echo "$*" | grep -q -- "acl save"; then
+          echo "ACL_SAVE_SHOULD_NOT_RUN"
+          return 0
+        fi
+        return 0
+      }
+
+      setup() {
+        export SERVICE_PORT="6379"
+        export REDIS_DEFAULT_PASSWORD="mypass"
+        export KB_ACCOUNT_STATEMENT="ACL SETUSER testuser ON >pw ~* +@all"
+        export REDIS_CLI_TLS_CMD=""
+      }
+      Before "setup"
+
+      It "returns account statement failure and does not mask it with acl save"
+        When run provision_account
+        The status should equal 42
+        The stderr should include "failed to execute KB_ACCOUNT_STATEMENT"
+        The stdout should not include "ACL_SAVE_SHOULD_NOT_RUN"
+      End
+    End
   End
 End
