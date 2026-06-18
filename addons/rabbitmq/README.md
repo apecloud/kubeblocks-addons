@@ -528,17 +528,17 @@ spec:
     parameters:
       # Represents the name of the parameter that is to be updated.
       # `channel_max` is a static parameter in rabbitmq
-    - key: ssl_handshake_timeout
+    - key: channel_max
       # Represents the parameter values that are to be updated.
       # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
-      value: "2000"
+      value: "4096"
 ```
 
 ```bash
 kubectl apply -f examples/rabbitmq/reconfigure.yaml
 ```
 
-This example will change the `channel_max` to `2000`.
+This example will change the `channel_max` to `4096`.
 
 > In RabbitMQ, the `channel_max` parameter is used to set the maximum number of channels that a client can open on a single connection. It is a static parameter, so the change will take effect after restarting the database.
 

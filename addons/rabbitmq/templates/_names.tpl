@@ -24,7 +24,7 @@ Define rabbitmq component definition name
 {{- end -}}
 
 {{/*
-Define rabbitmq pcr definition name
+Define rabbitmq parameters definition name
 */}}
 {{- define "rabbitmq.paramsDefName" -}}
 {{ include "rabbitmq.cmpdNamePrefix" . }}pd

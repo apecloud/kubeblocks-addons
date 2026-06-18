@@ -1,0 +1,27 @@
+{{- $pd := .Files.Get "config/rabbitmq-config-effect-scope.yaml" | fromYaml }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "rabbitmq.paramsDefName" . }}
+  labels:
+    {{- include "rabbitmq.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rabbitmq.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "rabbitmq.cmpdName" . }}
+  templateName: config
+  fileName: rabbitmq.conf
+  fileFormatConfig:
+    format: properties
+  parametersSchema:
+    topLevelKey: RabbitMQParameter
+    cue: |-
+      {{- .Files.Get "config/rabbitmq-config-constraint.cue" | nindent 6 }}
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- $params := get $pd "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
