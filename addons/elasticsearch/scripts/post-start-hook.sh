@@ -76,14 +76,36 @@ function clear_stale_allocation_exclusion_for_self() {
         return 0
     fi
 
-    current_exclusion=$(curl --fail ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/settings?include_defaults=false" | jq -r '.persistent.cluster.routing.allocation.exclude._name // empty')
-    if [ "${current_exclusion}" != "${POD_NAME}" ]; then
-        echo "no stale shard allocation exclusion for ${POD_NAME}"
+    local settings_json
+    settings_json=$(curl --fail ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/settings?include_defaults=false&flat_settings=true" 2>/dev/null) || {
+        echo "failed to read cluster settings, skip clearing stale shard allocation exclusion"
+        return 0
+    }
+    local current_exclusion
+    current_exclusion=$(echo "$settings_json" | grep -o '"persistent.cluster.routing.allocation.exclude._name" *: *"[^"]*"' | sed 's/.*: *"//;s/"$//')
+    if [ -z "$current_exclusion" ]; then
+        echo "no shard allocation exclusion set"
         return 0
     fi
 
-    echo "clearing stale shard allocation exclusion for ${POD_NAME}"
-    curl --fail ${COMMON_OPTIONS} -X PUT "${ENDPOINT}/_cluster/settings" -H 'Content-Type: application/json' -d '{"persistent":{"cluster.routing.allocation.exclude._name":null}}'
+    case ",$current_exclusion," in
+        *",${POD_NAME},"*)
+            ;;
+        *)
+            echo "no stale shard allocation exclusion for ${POD_NAME} (current: ${current_exclusion})"
+            return 0
+            ;;
+    esac
+
+    local new_exclusion
+    new_exclusion=$(echo "$current_exclusion" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | grep -v "^${POD_NAME}$" | paste -sd ',' -)
+    if [ -z "$new_exclusion" ]; then
+        echo "clearing stale shard allocation exclusion for ${POD_NAME}"
+        curl --fail ${COMMON_OPTIONS} -X PUT "${ENDPOINT}/_cluster/settings" -H 'Content-Type: application/json' -d '{"persistent":{"cluster.routing.allocation.exclude._name":null}}'
+    else
+        echo "removing ${POD_NAME} from shard allocation exclusion (remaining: ${new_exclusion})"
+        curl --fail ${COMMON_OPTIONS} -X PUT "${ENDPOINT}/_cluster/settings" -H 'Content-Type: application/json' -d "{\"persistent\":{\"cluster.routing.allocation.exclude._name\":\"${new_exclusion}\"}}"
+    fi
 }
 
 if [ "${ES_POST_START_UNIT_TEST:-0}" = "1" ]; then
