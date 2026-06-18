@@ -6,21 +6,24 @@ test || __() {
 }
 
 provision_sentinel_account() {
-  local redis_base_cmd="redis-cli $REDIS_CLI_TLS_CMD -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD"
-
   local output
-  output=$($redis_base_cmd ${KB_ACCOUNT_STATEMENT} 2>&1)
+  output=$(REDISCLI_AUTH="$SENTINEL_PASSWORD" redis-cli $REDIS_CLI_TLS_CMD -p "$SENTINEL_SERVICE_PORT" ${KB_ACCOUNT_STATEMENT} 2>&1)
   if [ $? -ne 0 ]; then
     echo "sentinel account provision failed: connection error: $output" >&2
     return 1
   fi
-  if echo "$output" | grep -qE "^(ERR|NOAUTH|WRONGPASS|NOPERM)"; then
+  if echo "$output" | grep -qE "(ERR |NOAUTH|WRONGPASS|NOPERM)"; then
     echo "sentinel account provision failed: $output" >&2
     return 1
   fi
 
-  if ! $redis_base_cmd acl save; then
-    echo "sentinel account provision failed: acl save error" >&2
+  output=$(REDISCLI_AUTH="$SENTINEL_PASSWORD" redis-cli $REDIS_CLI_TLS_CMD -p "$SENTINEL_SERVICE_PORT" acl save 2>&1)
+  if [ $? -ne 0 ]; then
+    echo "sentinel account provision failed: acl save connection error: $output" >&2
+    return 1
+  fi
+  if echo "$output" | grep -qE "(ERR |NOAUTH|WRONGPASS|NOPERM)"; then
+    echo "sentinel account provision failed: acl save error: $output" >&2
     return 1
   fi
 }

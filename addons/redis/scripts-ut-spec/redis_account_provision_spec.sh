@@ -33,7 +33,6 @@ Describe "Redis Account Provision Script Tests"
       It "returns success"
         When call provision_account
         The status should be success
-        The output should include "OK"
       End
     End
 
@@ -97,10 +96,27 @@ Describe "Redis Account Provision Script Tests"
       End
     End
 
-    Context "when acl save fails"
+    Context "when acl save connection fails"
       redis-cli() {
         if echo "$*" | grep -q "acl save"; then
           return 1
+        fi
+        echo "OK"
+        return 0
+      }
+
+      It "returns failure with acl save connection error"
+        When call provision_account
+        The status should be failure
+        The stderr should include "acl save connection error"
+      End
+    End
+
+    Context "when acl save returns Redis error with zero exit"
+      redis-cli() {
+        if echo "$*" | grep -q "acl save"; then
+          echo "ERR operation not permitted"
+          return 0
         fi
         echo "OK"
         return 0
