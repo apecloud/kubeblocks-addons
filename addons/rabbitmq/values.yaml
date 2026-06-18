@@ -15,6 +15,7 @@ versions:
     componentDef: "^rabbitmq.*"
     minors:
       # [version, serviceVersion, tag, deprecated]
+      - ["4.3.1", "4.3.1", "4.3.1-management", false]
       - ["4.2.1", "4.2.1", "4.2.1-management", false]
       - ["4.1.6", "4.1.6", "4.1.6-management", false]
       - ["4.0.9", "4.0.9", "4.0.9-management", false]
