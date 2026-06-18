@@ -90,10 +90,7 @@ spec:
     containers:
     - name: redis-twemproxy
       imagePullPolicy: {{ default .Values.redisTwemproxyImage.pullPolicy "IfNotPresent" }}
-      command:
-        - sh
-        - -c
-        - nutcracker -c /etc/proxy/nutcracker.conf -v 4 -m 16384
+      command: [ "/scripts/redis-twemproxy-start.sh" ]
       env:
         - name: CURRENT_POD_NAME
           valueFrom:
