@@ -25,17 +25,42 @@ Describe "Elasticsearch post-start hook"
       curl() {
         case "$*" in
           *"_cluster/health?local=true"*) echo "{\"status\":\"green\"}"; return 0 ;;
-          *"_cluster/settings?include_defaults=false"*) echo "{\"persistent\":{\"cluster\":{\"routing\":{\"allocation\":{\"exclude\":{\"_name\":\"es-ops-data-2\"}}}}}}"; return 0 ;;
+          *"_cluster/settings?include_defaults=false&flat_settings=true"*) echo "{\"persistent.cluster.routing.allocation.exclude._name\":\"es-ops-data-2\"}"; return 0 ;;
           *"_cluster/settings"*) echo "PUT_CLEAR $*"; return 0 ;;
         esac
         return 1
       }
-      jq() { echo "es-ops-data-2"; }
       clear_stale_allocation_exclusion_for_self
     '
     The status should be success
     The output should include "clearing stale shard allocation exclusion for es-ops-data-2"
     The output should include "PUT_CLEAR"
+  End
+
+  It "removes only self from multi-node exclusion list"
+    When run bash -c '
+      source_post_start_hook() {
+        export ES_POST_START_UNIT_TEST=1
+        export POD_NAME=es-ops-data-2
+        export POD_IP=127.0.0.1
+        export TLS_ENABLED=false
+        export ELASTIC_PASSWORD=test-pass
+        . ../scripts/post-start-hook.sh
+      }
+      source_post_start_hook
+      curl() {
+        case "$*" in
+          *"_cluster/health?local=true"*) echo "{\"status\":\"green\"}"; return 0 ;;
+          *"_cluster/settings?include_defaults=false&flat_settings=true"*) echo "{\"persistent.cluster.routing.allocation.exclude._name\":\"es-ops-data-1,es-ops-data-2,es-ops-data-3\"}"; return 0 ;;
+          *"_cluster/settings"*) echo "PUT_UPDATE $*"; return 0 ;;
+        esac
+        return 1
+      }
+      clear_stale_allocation_exclusion_for_self
+    '
+    The status should be success
+    The output should include "removing es-ops-data-2 from shard allocation exclusion"
+    The output should include "PUT_UPDATE"
   End
 
   It "does not clear allocation exclusion when it targets another pod"
@@ -52,17 +77,68 @@ Describe "Elasticsearch post-start hook"
       curl() {
         case "$*" in
           *"_cluster/health?local=true"*) echo "{\"status\":\"green\"}"; return 0 ;;
-          *"_cluster/settings?include_defaults=false"*) echo "{\"persistent\":{\"cluster\":{\"routing\":{\"allocation\":{\"exclude\":{\"_name\":\"es-ops-data-1\"}}}}}}"; return 0 ;;
+          *"_cluster/settings?include_defaults=false&flat_settings=true"*) echo "{\"persistent.cluster.routing.allocation.exclude._name\":\"es-ops-data-1\"}"; return 0 ;;
           *"_cluster/settings"*) echo "PUT_CLEAR $*"; return 0 ;;
         esac
         return 1
       }
-      jq() { echo "es-ops-data-1"; }
       clear_stale_allocation_exclusion_for_self
     '
     The status should be success
     The output should include "no stale shard allocation exclusion for es-ops-data-2"
     The output should not include "PUT_CLEAR"
+  End
+
+  It "skips when multi-node exclusion list does not contain self"
+    When run bash -c '
+      source_post_start_hook() {
+        export ES_POST_START_UNIT_TEST=1
+        export POD_NAME=es-ops-data-2
+        export POD_IP=127.0.0.1
+        export TLS_ENABLED=false
+        export ELASTIC_PASSWORD=test-pass
+        . ../scripts/post-start-hook.sh
+      }
+      source_post_start_hook
+      curl() {
+        case "$*" in
+          *"_cluster/health?local=true"*) echo "{\"status\":\"green\"}"; return 0 ;;
+          *"_cluster/settings?include_defaults=false&flat_settings=true"*) echo "{\"persistent.cluster.routing.allocation.exclude._name\":\"es-ops-data-1,es-ops-data-3\"}"; return 0 ;;
+          *"_cluster/settings"*) echo "PUT_UNEXPECTED $*"; return 0 ;;
+        esac
+        return 1
+      }
+      clear_stale_allocation_exclusion_for_self
+    '
+    The status should be success
+    The output should include "no stale shard allocation exclusion for es-ops-data-2"
+    The output should not include "PUT_UNEXPECTED"
+  End
+
+  It "skips when no exclusion setting exists"
+    When run bash -c '
+      source_post_start_hook() {
+        export ES_POST_START_UNIT_TEST=1
+        export POD_NAME=es-ops-data-2
+        export POD_IP=127.0.0.1
+        export TLS_ENABLED=false
+        export ELASTIC_PASSWORD=test-pass
+        . ../scripts/post-start-hook.sh
+      }
+      source_post_start_hook
+      curl() {
+        case "$*" in
+          *"_cluster/health?local=true"*) echo "{\"status\":\"green\"}"; return 0 ;;
+          *"_cluster/settings?include_defaults=false&flat_settings=true"*) echo "{}"; return 0 ;;
+          *"_cluster/settings"*) echo "PUT_UNEXPECTED $*"; return 0 ;;
+        esac
+        return 1
+      }
+      clear_stale_allocation_exclusion_for_self
+    '
+    The status should be success
+    The output should include "no shard allocation exclusion set"
+    The output should not include "PUT_UNEXPECTED"
   End
 
   It "leaves stale allocation exclusion untouched when local API is not ready"
@@ -85,7 +161,6 @@ Describe "Elasticsearch post-start hook"
         esac
         return 1
       }
-      jq() { echo "es-ops-data-2"; }
       clear_stale_allocation_exclusion_for_self
     '
     The status should be success
