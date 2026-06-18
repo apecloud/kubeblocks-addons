@@ -83,6 +83,7 @@ Describe "Redis Start Bash Script Tests"
         build_replicaof_config() { :; }
         rebuild_redis_acl_file() { :; }
         build_redis_default_accounts() { :; }
+        mark_redis_start_initialized() { :; }
       }
       Before "setup"
 
