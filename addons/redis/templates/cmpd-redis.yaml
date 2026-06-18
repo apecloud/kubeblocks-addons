@@ -382,7 +382,7 @@ spec:
       exec:
         container: redis
         command:
-          - sh
+          - /bin/bash
           - -c
           - /scripts/redis-account-provision.sh
     switchover:
