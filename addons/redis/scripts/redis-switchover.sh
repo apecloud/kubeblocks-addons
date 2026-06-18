@@ -291,6 +291,7 @@ recover_redis_priorities() {
 
   echo "Recovering all Redis replica-priority..."
   for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
+    [ -z "${ORIGINAL_PRIORITIES[$redis_pod_fqdn]+x}" ] && continue
     local redis_set_recover_cmd="CONFIG SET replica-priority ${ORIGINAL_PRIORITIES[$redis_pod_fqdn]}"
     call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "$redis_service_port" "$REDIS_DEFAULT_PASSWORD" "$redis_set_recover_cmd" || return 1
   done
@@ -315,21 +316,35 @@ switchover_with_candidate() {
   local redis_set_switchover_cmd="CONFIG SET replica-priority 1"
   local redis_set_lowest_priority_cmd="CONFIG SET replica-priority 100"
 
-  # set target candidate highest priority to make sure it will be promoted to master
   unset_xtrace_when_ut_mode_false
-  set_redis_priorities "$KB_SWITCHOVER_CANDIDATE_FQDN" || return 1
+  local set_rc=0
+  set_redis_priorities "$KB_SWITCHOVER_CANDIDATE_FQDN" || set_rc=$?
 
-  # do switchover
-  execute_sentinel_failover "$CUSTOM_SENTINEL_MASTER_NAME" || return 1
+  local switchover_rc=0
+  if [ $set_rc -eq 0 ]; then
+    execute_sentinel_failover "$CUSTOM_SENTINEL_MASTER_NAME" || switchover_rc=$?
+    if [ $switchover_rc -eq 0 ]; then
+      check_switchover_result "$KB_SWITCHOVER_CANDIDATE_FQDN" "" || switchover_rc=$?
+    fi
+  fi
 
-  # check switchover result
-  check_switchover_result "$KB_SWITCHOVER_CANDIDATE_FQDN" "" || return 1
-
-  # recover all redis replica-priority
-  echo "Recovering all Redis replica-priority..."
-  recover_redis_priorities || return 1
-
+  # recover all redis replica-priority regardless of set/switchover result
+  local recover_rc=0
+  recover_redis_priorities || recover_rc=$?
   set_xtrace_when_ut_mode_false
+
+  if [ $set_rc -ne 0 ]; then
+    echo "Priority setting failed, attempted recovery" >&2
+    return 1
+  fi
+  if [ $switchover_rc -ne 0 ]; then
+    echo "Switchover failed" >&2
+    return 1
+  fi
+  if [ $recover_rc -ne 0 ]; then
+    echo "Switchover succeeded but priority recovery failed" >&2
+    return 1
+  fi
   echo "All Redis config set replica-priority recovered."
 }
 
