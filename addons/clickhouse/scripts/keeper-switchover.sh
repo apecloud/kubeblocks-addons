@@ -5,57 +5,52 @@ source /scripts/common.sh
 leader_fqdn="$KB_SWITCHOVER_CURRENT_FQDN"
 candidate_fqdn="${KB_SWITCHOVER_CANDIDATE_FQDN:-}"
 
-if [ $COMPONENT_REPLICAS -lt 2 ]; then
+[[ $COMPONENT_REPLICAS -lt 2 ]] && {
+	echo "Skip: Keeper switchover requires at least 2 replicas."
 	exit 0
-fi
+}
 
-if [ -z $candidate_fqdn ]; then
-	echo "No candidate specified, exit."
+[[ -n "$candidate_fqdn" ]] || {
+	echo "ERROR: ClickHouse Keeper switchover requires KB_SWITCHOVER_CANDIDATE_FQDN." >&2
+	exit 1
+}
+
+function die() {
+	echo "ERROR: $*" >&2
+	exit 1
+}
+
+bin_path="/opt/bitnami/clickhouse/bin"
+version=$("$bin_path/clickhouse-keeper" --version 2>/dev/null || "$bin_path/clickhouse" --version 2>/dev/null) || die "failed to determine ClickHouse Keeper version."
+major=$(awk 'match($0, /[0-9]+\./) { print substr($0, RSTART, RLENGTH - 1); exit }' <<<"$version")
+[[ "${major:-0}" -ge 24 ]] || die "Keeper switchover requires ClickHouse >= 24 (rqld support)."
+
+[[ "$KB_SWITCHOVER_ROLE" == "leader" ]] || {
+	echo "Switchover already completed: action is not running on the leader, current role: ${KB_SWITCHOVER_ROLE:-unknown}."
 	exit 0
-fi
+}
 
-if [ "$KB_SWITCHOVER_ROLE" != "leader" ]; then
-	echo "switchover not triggered for primary, nothing to do, exit 0."
+current_leader_fqdn=$(find_leader "${CH_KEEPER_POD_FQDN_LIST}") || die "failed to find current Keeper leader."
+[[ "$current_leader_fqdn" == "$candidate_fqdn" ]] && {
+	echo "Switchover already completed: candidate $candidate_fqdn is leader."
 	exit 0
-fi
+}
+[[ "$current_leader_fqdn" == "$leader_fqdn" ]] || die "Expected current leader $leader_fqdn, but got $current_leader_fqdn"
 
-# 1. Get current config
-config=$(get_config "$leader_fqdn")
-
-# 2. Change the priority of the candidate to 8, and the others to 1
-pre_leader=$(echo "$config" | grep "$leader_fqdn")
-pre_leader=${pre_leader%;*}";1"
-pre_leader_config_name=$(echo "$pre_leader" | cut -d'=' -f1)
-pre_leader_config_id=$(echo "$pre_leader_config_name" | cut -d'.' -f2)
-# server.1=ch-cluster-ch-keeper-0.ch-cluster-ch-keeper-headless.default.svc.cluster.local:9234;participant;1
-while IFS= read -r line; do
-	if [[ "$line" == server.*";participant;"* ]]; then
-		line_fqdn=$(echo "$line" | cut -d'=' -f2 | cut -d':' -f1)
-		original_priority="${line##*;}"
-		base_config="${line%;*}"
-		new_priority=""
-		if echo "$line_fqdn" | grep -q "$candidate_fqdn"; then
-			[[ "$original_priority" -ne 8 ]] && new_priority=8
-		else
-			[[ "$original_priority" -ne 1 ]] && new_priority=1
-		fi
-		[[ -n "$new_priority" ]] && retry_keeper_operation \
-			"keeper_run '$leader_fqdn' 'reconfig add \"$base_config;$new_priority\"'" \
-			"echo \"\$(get_config '$leader_fqdn')\" | grep -q \"$base_config;$new_priority\""
-	fi
-done <<<"$config"
-
-# 3. Remove the leader from the config, remove once, because only the leader can remove itself
-keeper_run "$leader_fqdn" "reconfig remove '$pre_leader_config_id'"
-
-# 4. Re-add after pre leader reboot
 retry_keeper_operation \
-	"keeper_run '$candidate_fqdn' 'reconfig add \"$pre_leader\"'" \
-	"get_config '$candidate_fqdn' | grep -q '$pre_leader'"
+	"candidate_mode=\$(get_mode '$candidate_fqdn')" \
+	"[[ \"\$candidate_mode\" == \"follower\" ]]" || die "candidate $candidate_fqdn is not a stable follower, current mode: ${candidate_mode:-unknown}"
+[[ "$candidate_mode" == "follower" ]] || die "candidate $candidate_fqdn is not a stable follower, current mode: ${candidate_mode:-unknown}"
 
-# 5. Check if the candidate is the leader
 retry_keeper_operation \
-	"mode=\$(get_mode_by_keeper '$candidate_fqdn')" \
-	"[[ \"\$mode\" == \"leader\" ]]"
+	"leader_zxid=\$(get_zxid '$leader_fqdn'); candidate_zxid=\$(get_zxid '$candidate_fqdn')" \
+	"[[ -n \"\$leader_zxid\" && \"\$leader_zxid\" == \"\$candidate_zxid\" ]]" || die "candidate $candidate_fqdn is not caught up with leader $leader_fqdn (leader_zxid=${leader_zxid:-unknown}, candidate_zxid=${candidate_zxid:-unknown})"
+[[ -n "$leader_zxid" && "$leader_zxid" == "$candidate_zxid" ]] || die "candidate $candidate_fqdn is not caught up with leader $leader_fqdn (leader_zxid=${leader_zxid:-unknown}, candidate_zxid=${candidate_zxid:-unknown})"
+
+send_4lw "$candidate_fqdn" "rqld" | grep -q "Sent leadership request" || die "failed to request leadership from candidate $candidate_fqdn"
+
+retry_keeper_operation \
+	"new_leader_fqdn=\$(find_leader '${CH_KEEPER_POD_FQDN_LIST}')" \
+	"[[ \"\$new_leader_fqdn\" == \"$candidate_fqdn\" ]]" || die "Switchover timeout."
 
 echo "Switchover completed successfully"

@@ -63,6 +63,45 @@ Describe "Redis Start Bash Script Tests"
     End
   End
 
+  Describe "build_redis_conf()"
+    Context "when redis.conf already contains stale loadmodule from CONFIG REWRITE"
+      setup() {
+        # Simulate a redis.conf that was written by CONFIG REWRITE after a prior run.
+        # This reproduces the CrashLoopBackOff trigger: emptyDir survives container
+        # restart, so the file is not empty when the script runs again.
+        # See: https://github.com/apecloud/kubeblocks-addons/issues/2686
+        echo "loadmodule /opt/redis-stack/lib/redisearch.so" > "$redis_real_conf"
+        echo "loadmodule /opt/redis-stack/lib/redistimeseries.so" >> "$redis_real_conf"
+        echo "" > "$redis_acl_file"
+        redis_template_conf="/etc/conf/redis.conf"
+        load_redis_template_conf() {
+          echo "include $redis_template_conf" >> "$redis_real_conf"
+        }
+        build_announce_ip_and_port() { :; }
+        build_redis_service_port() { :; }
+        build_redis_tls_config() { :; }
+        build_replicaof_config() { :; }
+        rebuild_redis_acl_file() { :; }
+        build_redis_default_accounts() { :; }
+      }
+      Before "setup"
+
+      un_setup() {
+        rm -f "$redis_real_conf"
+      }
+      After "un_setup"
+
+      It "truncates stale loadmodule lines before building new config"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        When call build_redis_conf
+        The status should be success
+        The contents of file "$redis_real_conf" should not include "loadmodule /opt/redis-stack/lib/redisearch.so"
+        The contents of file "$redis_real_conf" should not include "loadmodule /opt/redis-stack/lib/redistimeseries.so"
+        The contents of file "$redis_real_conf" should include "include $redis_template_conf"
+      End
+    End
+  End
+
   Describe "build_redis_default_accounts()"
     Context 'when all environment variables exist'
       setup() {
@@ -470,12 +509,28 @@ Describe "Redis Start Bash Script Tests"
       setup() {
         primary=""
         primary_port=""
+        unset COMPONENT_REPLICAS
+        unset SYNCER_SENTINEL_RETRY_TIMES
+        unset SYNCER_SENTINEL_RETRY_DELAY_SECOND
+        unset REDIS_START_INITIALIZED_FILE
+        rm -f ./redis-start-initialized
         unset SENTINEL_COMPONENT_NAME
       }
       Before "setup"
 
-      It "gets default primary node if SENTINEL_COMPONENT_NAME is not set"
+      un_setup() {
+        unset COMPONENT_REPLICAS
+        unset SYNCER_SENTINEL_RETRY_TIMES
+        unset SYNCER_SENTINEL_RETRY_DELAY_SECOND
+        unset REDIS_START_INITIALIZED_FILE
+        rm -f ./redis-start-initialized
+        unset SENTINEL_COMPONENT_NAME
+      }
+      After "un_setup"
+
+      It "gets default primary node for single-replica component"
         Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        export COMPONENT_REPLICAS="1"
         get_default_initialize_primary_node() {
           # shellcheck disable=SC2034
           primary="fake-primary"
@@ -484,9 +539,315 @@ Describe "Redis Start Bash Script Tests"
         }
         When call init_or_get_primary_from_redis_sentinel
         The status should be success
-        The stdout should include "SENTINEL_COMPONENT_NAME env is not set, try to use default primary node"
+        The stdout should include "SENTINEL_COMPONENT_NAME env is not set and component has one replica, use default primary node"
         The variable primary should eq "fake-primary"
         The variable primary_port should eq "fake-primary-port"
+      End
+
+      It "uses syncer Fake Sentinel master info for multi-replica syncer mode when available"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        export COMPONENT_REPLICAS="2"
+        build_syncer_get_master_addr_by_name_command() {
+          echo "echo 'redis-1.redis-headless.default 6379'"
+        }
+        When call init_or_get_primary_from_redis_sentinel
+        The status should be success
+        The stdout should include "SENTINEL_COMPONENT_NAME env is not set, try to get primary from syncer Fake Sentinel."
+        The stdout should include "syncer Fake Sentinel has master info: redis-1.redis-headless.default 6379"
+        The variable primary should eq "redis-1.redis-headless.default"
+        The variable primary_port should eq "6379"
+      End
+
+      It "uses conservative replica target for multi-replica syncer mode when no stable master exists"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        export COMPONENT_REPLICAS="2"
+        export SYNCER_SENTINEL_RETRY_TIMES="1"
+        export SYNCER_SENTINEL_RETRY_DELAY_SECOND="0"
+        export REDIS_START_INITIALIZED_FILE="./redis-start-initialized"
+        export CURRENT_POD_NAME="redis-1"
+        export REDIS_POD_NAME_LIST="redis-0,redis-1"
+        build_syncer_get_master_addr_by_name_command() {
+          echo "false"
+        }
+        syncer_dcs_leader_status() {
+          echo "syncer DCS leader configmap redis-leader is not found."
+          return 1
+        }
+        When call init_or_get_primary_from_redis_sentinel
+        The status should be success
+        The stdout should include "syncer Fake Sentinel has no stable master info, start as conservative replica until syncer promotes or follows."
+        The stdout should include "use conservative replicaof target: 127.0.0.1 1"
+        The stderr should include "Function 'get_master_addr_by_name_from_syncer' failed after 1 retries."
+        The variable primary should eq "127.0.0.1"
+        The variable primary_port should eq "1"
+      End
+
+      It "allows only the default pod to bootstrap primary when no start marker exists"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        export COMPONENT_REPLICAS="2"
+        export SYNCER_SENTINEL_RETRY_TIMES="1"
+        export SYNCER_SENTINEL_RETRY_DELAY_SECOND="0"
+        export REDIS_START_INITIALIZED_FILE="./redis-start-initialized"
+        export CURRENT_POD_NAME="redis-0"
+        export REDIS_POD_NAME_LIST="redis-0,redis-1"
+        get_default_initialize_primary_node() {
+          # shellcheck disable=SC2034
+          primary="fake-bootstrap-primary"
+          # shellcheck disable=SC2034
+          primary_port="fake-bootstrap-primary-port"
+        }
+        build_syncer_get_master_addr_by_name_command() {
+          echo "false"
+        }
+        syncer_dcs_leader_status() {
+          echo "syncer DCS leader configmap redis-leader is not found."
+          return 1
+        }
+        When call init_or_get_primary_from_redis_sentinel
+        The status should be success
+        The stdout should include "current pod redis-0 is default bootstrap primary and syncer DCS leader is not found."
+        The stdout should include "syncer has no master info and current pod is allowed to use default primary for initial bootstrap."
+        The stderr should include "Function 'get_master_addr_by_name_from_syncer' failed after 1 retries."
+        The variable primary should eq "fake-bootstrap-primary"
+        The variable primary_port should eq "fake-bootstrap-primary-port"
+      End
+
+      It "allows default pod bootstrap when start marker exists but syncer DCS leader is confirmed not found"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        export COMPONENT_REPLICAS="2"
+        export SYNCER_SENTINEL_RETRY_TIMES="1"
+        export SYNCER_SENTINEL_RETRY_DELAY_SECOND="0"
+        export REDIS_START_INITIALIZED_FILE="./redis-start-initialized"
+        redis_start_initialized_file="$REDIS_START_INITIALIZED_FILE"
+        export CURRENT_POD_NAME="redis-0"
+        export REDIS_POD_NAME_LIST="redis-0,redis-1"
+        echo "already-ran" > "$REDIS_START_INITIALIZED_FILE"
+        get_default_initialize_primary_node() {
+          # shellcheck disable=SC2034
+          primary="fake-bootstrap-primary"
+          # shellcheck disable=SC2034
+          primary_port="fake-bootstrap-primary-port"
+        }
+        build_syncer_get_master_addr_by_name_command() {
+          echo "false"
+        }
+        syncer_dcs_leader_status() {
+          echo "syncer DCS leader configmap redis-leader is not found."
+          return 1
+        }
+        When call init_or_get_primary_from_redis_sentinel
+        The status should be success
+        The stdout should include "redis start marker exists but syncer DCS leader is confirmed not found"
+        The stdout should include "current pod redis-0 is default bootstrap primary and syncer DCS leader is not found."
+        The stderr should include "Function 'get_master_addr_by_name_from_syncer' failed after 1 retries."
+        The variable primary should eq "fake-bootstrap-primary"
+        The variable primary_port should eq "fake-bootstrap-primary-port"
+      End
+
+      It "does not bootstrap default pod when syncer DCS leader already exists"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        export COMPONENT_REPLICAS="2"
+        export SYNCER_SENTINEL_RETRY_TIMES="1"
+        export SYNCER_SENTINEL_RETRY_DELAY_SECOND="0"
+        export REDIS_START_INITIALIZED_FILE="./redis-start-initialized"
+        export CURRENT_POD_NAME="redis-0"
+        export REDIS_POD_NAME_LIST="redis-0,redis-1"
+        build_syncer_get_master_addr_by_name_command() {
+          echo "false"
+        }
+        syncer_dcs_leader_status() {
+          echo "syncer DCS leader configmap redis-leader exists with leader redis-1."
+          return 0
+        }
+        When call init_or_get_primary_from_redis_sentinel
+        The status should be success
+        The stdout should include "syncer DCS leader already exists, skip default bootstrap primary."
+        The stdout should include "use conservative replicaof target: 127.0.0.1 1"
+        The stderr should include "Function 'get_master_addr_by_name_from_syncer' failed after 1 retries."
+        The variable primary should eq "127.0.0.1"
+        The variable primary_port should eq "1"
+      End
+
+      It "does not bootstrap default pod when syncer DCS leader status is unknown"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        export COMPONENT_REPLICAS="2"
+        export SYNCER_SENTINEL_RETRY_TIMES="1"
+        export SYNCER_SENTINEL_RETRY_DELAY_SECOND="0"
+        export REDIS_START_INITIALIZED_FILE="./redis-start-initialized"
+        export CURRENT_POD_NAME="redis-0"
+        export REDIS_POD_NAME_LIST="redis-0,redis-1"
+        build_syncer_get_master_addr_by_name_command() {
+          echo "false"
+        }
+        syncer_dcs_leader_status() {
+          echo "failed to query syncer DCS leader configmap redis-leader: timeout"
+          return 2
+        }
+        When call init_or_get_primary_from_redis_sentinel
+        The status should be success
+        The stdout should include "syncer DCS leader status is unknown, skip default bootstrap primary."
+        The stdout should include "use conservative replicaof target: 127.0.0.1 1"
+        The stderr should include "Function 'get_master_addr_by_name_from_syncer' failed after 1 retries."
+        The variable primary should eq "127.0.0.1"
+        The variable primary_port should eq "1"
+      End
+    End
+
+    Describe "syncer_dcs_leader_status()"
+      setup_fake_syncerctl() {
+        fake_bin="./fake-bin"
+        mkdir -p "$fake_bin"
+        cat > "$fake_bin/timeout" <<'EOF'
+#!/bin/sh
+shift
+exec "$@"
+EOF
+        chmod +x "$fake_bin/timeout"
+        export OLD_PATH="$PATH"
+        export PATH="$PWD/$fake_bin:$PATH"
+        export REDIS_COMPONENT_NAME="redis"
+        export CLUSTER_NAMESPACE="default"
+      }
+      Before "setup_fake_syncerctl"
+
+      cleanup_fake_syncerctl() {
+        export PATH="$OLD_PATH"
+        rm -rf ./fake-bin
+        unset OLD_PATH
+        unset REDIS_COMPONENT_NAME
+        unset CLUSTER_NAMESPACE
+      }
+      After "cleanup_fake_syncerctl"
+
+      It "uses syncerctl as the primary path and returns found"
+        cat > ./fake-bin/syncerctl <<'EOF'
+#!/bin/sh
+echo "syncer DCS leader configmap redis-leader exists with leader redis-0."
+exit 0
+EOF
+        chmod +x ./fake-bin/syncerctl
+        When call syncer_dcs_leader_status
+        The status should be success
+        The stdout should include "syncer DCS leader configmap redis-leader exists with leader redis-0."
+        The stdout should not include "fallback to python3"
+      End
+
+      It "uses syncerctl not_found to allow default pod bootstrap without python3"
+        cat > ./fake-bin/syncerctl <<'EOF'
+#!/bin/sh
+echo "syncer DCS leader configmap redis-leader is not found."
+exit 1
+EOF
+        chmod +x ./fake-bin/syncerctl
+        When call syncer_dcs_leader_status
+        The status should be failure
+        The stdout should include "syncer DCS leader configmap redis-leader is not found."
+        The stdout should not include "fallback to python3"
+      End
+
+      It "treats syncerctl failure as unknown"
+        cat > ./fake-bin/syncerctl <<'EOF'
+#!/bin/sh
+echo "temporary api error"
+exit 2
+EOF
+        chmod +x ./fake-bin/syncerctl
+        When call syncer_dcs_leader_status
+        The status should eq 2
+        The stdout should include "temporary api error"
+        The stdout should include "syncerctl failed to query syncer DCS leader configmap redis-leader, status is unknown."
+      End
+
+      It "returns unknown when syncerctl and python3 are both absent"
+        rm -f ./fake-bin/syncerctl
+        export PATH="$PWD/$fake_bin"
+        When call syncer_dcs_leader_status
+        The status should eq 2
+        The stdout should include "syncerctl is not available, fallback to python3 for syncer DCS leader status."
+        The stdout should include "python3 is not available, syncer DCS leader status is unknown."
+      End
+    End
+
+    Context "syncer bootstrap with syncerctl DCS leader status"
+      setup() {
+        fake_bin="./fake-bin"
+        mkdir -p "$fake_bin"
+        cat > "$fake_bin/timeout" <<'EOF'
+#!/bin/sh
+shift
+exec "$@"
+EOF
+        chmod +x "$fake_bin/timeout"
+        export OLD_PATH="$PATH"
+        export PATH="$PWD/$fake_bin:$PATH"
+        export COMPONENT_REPLICAS="2"
+        export SYNCER_SENTINEL_RETRY_TIMES="1"
+        export SYNCER_SENTINEL_RETRY_DELAY_SECOND="0"
+        export REDIS_START_INITIALIZED_FILE="./redis-start-initialized"
+        export REDIS_COMPONENT_NAME="redis"
+        export CURRENT_POD_NAME="redis-0"
+        export REDIS_POD_NAME_LIST="redis-0,redis-1"
+        rm -f "$REDIS_START_INITIALIZED_FILE"
+      }
+      Before "setup"
+
+      cleanup() {
+        export PATH="$OLD_PATH"
+        rm -rf ./fake-bin
+        rm -f ./redis-start-initialized
+        unset OLD_PATH
+        unset COMPONENT_REPLICAS
+        unset SYNCER_SENTINEL_RETRY_TIMES
+        unset SYNCER_SENTINEL_RETRY_DELAY_SECOND
+        unset REDIS_START_INITIALIZED_FILE
+        unset REDIS_COMPONENT_NAME
+        unset CURRENT_POD_NAME
+        unset REDIS_POD_NAME_LIST
+      }
+      After "cleanup"
+
+      build_syncer_get_master_addr_by_name_command() {
+        echo "false"
+      }
+
+      get_default_initialize_primary_node() {
+        # shellcheck disable=SC2034
+        primary="fake-bootstrap-primary"
+        # shellcheck disable=SC2034
+        primary_port="fake-bootstrap-primary-port"
+      }
+
+      It "bootstraps only default pod when syncerctl reports leader not found"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        cat > ./fake-bin/syncerctl <<'EOF'
+#!/bin/sh
+echo "syncer DCS leader configmap redis-leader is not found."
+exit 1
+EOF
+        chmod +x ./fake-bin/syncerctl
+        When call init_or_get_primary_from_redis_sentinel
+        The status should be success
+        The stdout should include "current pod redis-0 is default bootstrap primary and syncer DCS leader is not found."
+        The stderr should include "Function 'get_master_addr_by_name_from_syncer' failed after 1 retries."
+        The variable primary should eq "fake-bootstrap-primary"
+        The variable primary_port should eq "fake-bootstrap-primary-port"
+      End
+
+      It "uses conservative replica target when syncerctl reports unknown"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        cat > ./fake-bin/syncerctl <<'EOF'
+#!/bin/sh
+echo "temporary api error"
+exit 2
+EOF
+        chmod +x ./fake-bin/syncerctl
+        When call init_or_get_primary_from_redis_sentinel
+        The status should be success
+        The stdout should include "syncer DCS leader status is unknown, skip default bootstrap primary."
+        The stdout should include "use conservative replicaof target: 127.0.0.1 1"
+        The stderr should include "Function 'get_master_addr_by_name_from_syncer' failed after 1 retries."
+        The variable primary should eq "127.0.0.1"
+        The variable primary_port should eq "1"
       End
     End
 

@@ -5,7 +5,7 @@ on:
     paths:
       - "examples/**"
     branches:
-      - '**'
+      - 'release-*'
     tags-ignore:
       - '**'
 

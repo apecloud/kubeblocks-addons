@@ -24,6 +24,7 @@ defaultServiceVersion:
 redisVersions:
   - major: "5"
     componentDef: "redis-5"
+    syncerComponentDef: "redis-syncer-5"
     clusterComponentDef: "redis-cluster-5"
     serviceVersion: "5.0.12"
     sentinelComponentDef: "redis-sentinel-5"
@@ -34,6 +35,7 @@ redisVersions:
         imageTag: "5.0.12"
   - major: "6"
     componentDef: "redis-6"
+    syncerComponentDef: "redis-syncer-6"
     serviceVersion: "6.2.17"
     clusterComponentDef: "redis-cluster-6"
     sentinelComponentDef: "redis-sentinel-6"
@@ -53,6 +55,7 @@ redisVersions:
         repository: "redis"
   - major: "7"
     componentDef: "redis-7"
+    syncerComponentDef: "redis-syncer-7"
     serviceVersion: "7.2.11"
     clusterComponentDef: "redis-cluster-7"
     sentinelComponentDef: "redis-sentinel-7"
@@ -87,6 +90,7 @@ redisVersions:
         repository: "redis"
   - major: "8"
     componentDef: "redis-8"
+    syncerComponentDef: "redis-syncer-8"
     serviceVersion: "8.2.2"
     clusterComponentDef: "redis-cluster-8"
     sentinelComponentDef: "redis-sentinel-8"
@@ -134,6 +138,9 @@ image:
     repository: apecloud/ape-dts
     tag: 2.0.26-alpha.16
     reshardTag: 2.0.26-alpha.16
+  syncer:
+    repository: apecloud/syncer
+    tag: 0.7.4
 
 ceImage:
   registry:
@@ -149,7 +156,7 @@ dbctlImage:
   registry:
   repository: apecloud/dbctl
   pullPolicy: IfNotPresent
-  tag: 0.2.2
+  tag: 0.2.3
 
 redisTwemproxyImage:
   # if the value of redisTwemproxyImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default

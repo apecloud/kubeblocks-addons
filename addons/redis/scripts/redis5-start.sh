@@ -24,8 +24,7 @@ primary=""
 primary_port="6379"
 redis_template_conf="/etc/conf/redis.conf"
 redis_real_conf="/etc/redis/redis.conf"
-redis_acl_file="/data/users.acl"
-redis_acl_file_bak="/data/users.acl.bak"
+redis_start_initialized_file="${REDIS_START_INITIALIZED_FILE:-/data/.kb_redis_start_initialized}"
 retry_times=3
 retry_delay_second=2
 
@@ -107,9 +106,10 @@ build_replicaof_config() {
 init_or_get_primary_from_redis_sentinel() {
   # check redis sentinel component env
   if ! env_exist SENTINEL_COMPONENT_NAME; then
-    # return default primary node if redis sentinel component name is not set
-    echo "SENTINEL_COMPONENT_NAME env is not set, try to use default primary node."
-    get_default_initialize_primary_node
+    # In syncer-managed replication, there is no external Sentinel component.
+    # Avoid lexicographic bootstrap as primary for multi-replica clusters because
+    # it can emit a transient primary role before syncer has aligned with DCS.
+    init_or_get_primary_from_syncer
     return
   fi
 
@@ -228,6 +228,225 @@ retry_get_master_addr_by_name_from_sentinel() {
   fi
 }
 
+init_or_get_primary_from_syncer() {
+  local component_replicas="${COMPONENT_REPLICAS:-1}"
+  if ! [[ "$component_replicas" =~ ^[0-9]+$ ]]; then
+    component_replicas=1
+  fi
+
+  if [ "$component_replicas" -le 1 ]; then
+    echo "SENTINEL_COMPONENT_NAME env is not set and component has one replica, use default primary node."
+    get_default_initialize_primary_node
+    return
+  fi
+
+  echo "SENTINEL_COMPONENT_NAME env is not set, try to get primary from syncer Fake Sentinel."
+  local syncer_retry_times="${SYNCER_SENTINEL_RETRY_TIMES:-6}"
+  local syncer_retry_delay_second="${SYNCER_SENTINEL_RETRY_DELAY_SECOND:-2}"
+  if retry_get_master_addr_by_name_from_syncer "$syncer_retry_times" "$syncer_retry_delay_second"; then
+    primary="${REDIS_SENTINEL_PRIMARY_INFO[0]}"
+    primary_port="${REDIS_SENTINEL_PRIMARY_INFO[1]}"
+    echo "syncer Fake Sentinel has master info: $primary $primary_port"
+    return
+  fi
+
+  echo "syncer Fake Sentinel has no stable master info, start as conservative replica until syncer promotes or follows."
+  if syncer_initial_bootstrap_default_primary_allowed; then
+    echo "syncer has no master info and current pod is allowed to use default primary for initial bootstrap."
+    get_default_initialize_primary_node
+    return
+  fi
+  set_conservative_replicaof_target
+}
+
+build_syncer_get_master_addr_by_name_command() {
+  local timeout_value="${SYNCER_SENTINEL_QUERY_TIMEOUT:-2}"
+  local syncer_sentinel_host="${SYNCER_SENTINEL_HOST:-127.0.0.1}"
+  local syncer_sentinel_port="${SYNCER_SENTINEL_PORT:-26379}"
+  echo "timeout $timeout_value redis-cli -h $syncer_sentinel_host -p $syncer_sentinel_port sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
+}
+
+get_master_addr_by_name_from_syncer() {
+  local master_addr_by_name_command
+  unset_xtrace_when_ut_mode_false
+  master_addr_by_name_command=$(build_syncer_get_master_addr_by_name_command)
+  echo "execute syncer get-master-addr-by-name command: $master_addr_by_name_command"
+  output=$(eval "$master_addr_by_name_command")
+  exit_code=$?
+  set_xtrace_when_ut_mode_false
+
+  if [ $exit_code -eq 0 ]; then
+    read -r -d '' -a REDIS_SENTINEL_PRIMARY_INFO <<< "$output"
+    if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -eq 2 ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
+      echo "Successfully retrieved primary info from syncer Fake Sentinel"
+      return 0
+    fi
+    echo "Empty primary info retrieved from syncer Fake Sentinel"
+    return 1
+  fi
+
+  if [ $exit_code -eq 124 ]; then
+    echo "Timeout occurred while retrieving primary info from syncer Fake Sentinel. Retrying..."
+  else
+    echo "Error occurred while retrieving primary info from syncer Fake Sentinel. Retrying..."
+  fi
+  return 1
+}
+
+retry_get_master_addr_by_name_from_syncer() {
+  local max_retry="$1"
+  local retry_delay="$2"
+  if call_func_with_retry "$max_retry" "$retry_delay" get_master_addr_by_name_from_syncer; then
+    return 0
+  fi
+  echo "Failed to retrieve primary info from syncer Fake Sentinel after $max_retry retries."
+  return 1
+}
+
+set_conservative_replicaof_target() {
+  primary="${SYNCER_CONSERVATIVE_REPLICAOF_HOST:-127.0.0.1}"
+  primary_port="${SYNCER_CONSERVATIVE_REPLICAOF_PORT:-1}"
+  echo "use conservative replicaof target: $primary $primary_port"
+}
+
+is_redis_start_initialized() {
+  [ -f "$redis_start_initialized_file" ]
+}
+
+mark_redis_start_initialized() {
+  mkdir -p "$(dirname "$redis_start_initialized_file")" 2>/dev/null || true
+  date +%s > "$redis_start_initialized_file" 2>/dev/null || true
+}
+
+syncer_initial_bootstrap_default_primary_allowed() {
+  local dcs_leader_status
+  syncer_dcs_leader_status
+  dcs_leader_status=$?
+
+  if [ "$dcs_leader_status" -eq 0 ]; then
+    echo "syncer DCS leader already exists, skip default bootstrap primary."
+    return 1
+  fi
+
+  if [ "$dcs_leader_status" -ne 1 ]; then
+    echo "syncer DCS leader status is unknown, skip default bootstrap primary."
+    return 1
+  fi
+
+  if is_redis_start_initialized; then
+    echo "redis start marker exists but syncer DCS leader is confirmed not found: $redis_start_initialized_file"
+  fi
+
+  local min_lex_pod
+  min_lex_pod=$(min_lexicographical_order_pod "$REDIS_POD_NAME_LIST")
+  if equals "$CURRENT_POD_NAME" "$min_lex_pod"; then
+    echo "current pod $CURRENT_POD_NAME is default bootstrap primary and syncer DCS leader is not found."
+    return 0
+  fi
+
+  echo "current pod $CURRENT_POD_NAME is not default bootstrap primary: $min_lex_pod"
+  return 1
+}
+
+syncer_dcs_leader_status() {
+  local leader_configmap_name="${SYNCER_DCS_LEADER_CONFIGMAP_NAME:-${REDIS_COMPONENT_NAME}-leader}"
+  local query_timeout="${SYNCER_DCS_QUERY_TIMEOUT:-2}"
+  if command -v syncerctl >/dev/null 2>&1; then
+    syncerctl_dcs_leader_status "$leader_configmap_name" "$query_timeout"
+    return $?
+  fi
+
+  echo "syncerctl is not available, fallback to python3 for syncer DCS leader status."
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "python3 is not available, syncer DCS leader status is unknown."
+    return 2
+  fi
+
+  timeout "$query_timeout" python3 - "$leader_configmap_name" <<'PY'
+import json
+import os
+import ssl
+import sys
+import urllib.error
+import urllib.request
+
+name = sys.argv[1]
+host = os.environ.get("KUBERNETES_SERVICE_HOST")
+port = os.environ.get("KUBERNETES_SERVICE_PORT", "443")
+token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+namespace_path = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+namespace = os.environ.get("CLUSTER_NAMESPACE")
+try:
+    if not namespace:
+        with open(namespace_path, encoding="utf-8") as f:
+            namespace = f.read().strip()
+    with open(token_path, encoding="utf-8") as f:
+        token = f.read().strip()
+    if not host or not namespace or not token:
+        raise RuntimeError("missing kubernetes service account context")
+
+    url = f"https://{host}:{port}/api/v1/namespaces/{namespace}/configmaps/{name}"
+    context = ssl.create_default_context(cafile=ca_path)
+    request = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    with urllib.request.urlopen(request, context=context, timeout=2) as response:
+        obj = json.loads(response.read().decode("utf-8"))
+    leader = obj.get("metadata", {}).get("annotations", {}).get("leader", "")
+    if leader:
+        print(f"syncer DCS leader configmap {name} exists with leader {leader}.")
+        sys.exit(0)
+    print(f"syncer DCS leader configmap {name} exists but leader is empty.")
+    sys.exit(1)
+except urllib.error.HTTPError as e:
+    if e.code == 404:
+        print(f"syncer DCS leader configmap {name} is not found.")
+        sys.exit(1)
+    print(f"failed to query syncer DCS leader configmap {name}: HTTP {e.code}")
+    sys.exit(2)
+except Exception as e:
+    print(f"failed to query syncer DCS leader configmap {name}: {e}")
+    sys.exit(2)
+PY
+  local exit_code=$?
+  if [ "$exit_code" -eq 124 ]; then
+    echo "query syncer DCS leader configmap $leader_configmap_name timed out, status is unknown."
+    return 2
+  fi
+  if [ "$exit_code" -eq 0 ] || [ "$exit_code" -eq 1 ]; then
+    return "$exit_code"
+  fi
+  return 2
+}
+
+syncerctl_dcs_leader_status() {
+  local leader_configmap_name="$1"
+  local query_timeout="$2"
+  local namespace="${CLUSTER_NAMESPACE:-${KB_NAMESPACE:-${POD_NAMESPACE:-}}}"
+  local output
+  local exit_code
+  local args=(dcs-leader-status --configmap "$leader_configmap_name")
+  if [ -n "$namespace" ]; then
+    args+=(--namespace "$namespace")
+  fi
+
+  if output=$(timeout "$query_timeout" syncerctl "${args[@]}" 2>&1); then
+    exit_code=0
+  else
+    exit_code=$?
+  fi
+  echo "$output"
+
+  if [ "$exit_code" -eq 124 ]; then
+    echo "query syncer DCS leader configmap $leader_configmap_name by syncerctl timed out, status is unknown."
+    return 2
+  fi
+  if [ "$exit_code" -eq 0 ] || [ "$exit_code" -eq 1 ]; then
+    return "$exit_code"
+  fi
+  echo "syncerctl failed to query syncer DCS leader configmap $leader_configmap_name, status is unknown."
+  return 2
+}
+
 get_default_initialize_primary_node() {
   # TODO: if has advertise svc and port, we should use it as default primary node info instead of the fqdn
   min_lex_pod=$(min_lexicographical_order_pod "$REDIS_POD_NAME_LIST")
@@ -320,12 +539,16 @@ parse_redis_announce_addr() {
 
 # build redis.conf
 build_redis_conf() {
+  # Truncate before building to guarantee a clean slate on every container start.
+  # See: https://github.com/apecloud/kubeblocks-addons/issues/2686
+  > "$redis_real_conf"
   load_redis_template_conf
   build_announce_ip_and_port
   build_redis_service_port
   build_replicaof_config
-  rebuild_redis_acl_file
+  # Redis 5 has no ACL support; account config is handled by requirepass/masterauth.
   build_redis_default_accounts
+  mark_redis_start_initialized
 }
 
 # This is magic for shellspec ut framework.

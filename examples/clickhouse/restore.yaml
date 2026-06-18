@@ -36,7 +36,7 @@ spec:
                 storage: 10Gi
   shardings:
     - name: clickhouse
-      shards: 3
+      shards: 2
       template:
         name: clickhouse
         componentDef: clickhouse-1

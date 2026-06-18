@@ -69,16 +69,6 @@ mysql_query_rules=
 		flagIN=0
 		match_digest="^SELECT"
 		rule_id=2
-	},
-	{
-		re_modifiers="CASELESS"
-		destination_hostgroup=1
-		active=1
-		rule_id=3
-		match_digest=".*"
-		apply=1
-		negate_match_pattern=0
-		flagIN=0
 	}
 )
 
