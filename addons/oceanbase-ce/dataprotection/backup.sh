@@ -265,7 +265,7 @@ ${mysql_cmd} "select tenant_id, backup_set_id from oceanbase.CDB_OB_BACKUP_JOB_H
       tenantJson=$(buildJsonString "$tenantJson" "minRestoreSCN" ${res[5]})
       tenantJson=$(buildJsonString "$tenantJson" "minRestoreTime" "${res[6]}")
       status=${res[7]}
-      if [[ $status -ne "SUCCESS" ]];then
+      if [[ "${status}" != "SUCCESS" ]];then
           tenantJson=$(buildJsonString "$tenantJson" "failureMessage" "${res[8]}: ${res[9]}")
       fi
       # record time zone
