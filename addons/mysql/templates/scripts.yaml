@@ -17,6 +17,16 @@ data:
     {{- .Files.Get "scripts/cluster-info.sql" | nindent 4 }}
   mysql-entrypoint.sh: |-
     {{- .Files.Get "scripts/mysql-entrypoint.sh" | nindent 4 }}
+  mysql-startup-57.sh: |-
+    {{- include "mysql.startup.script57" . | nindent 4 }}
+  mysql-startup-80.sh: |-
+    {{- include "mysql.startup.script80" . | nindent 4 }}
+  mysql-startup-84.sh: |-
+    {{- include "mysql.startup.script84" . | nindent 4 }}
+  mysql-startup-80-mgr.sh: |-
+    {{- include "mysql.startup.script80Mgr" . | nindent 4 }}
+  mysql-startup-84-mgr.sh: |-
+    {{- include "mysql.startup.script84Mgr" . | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap

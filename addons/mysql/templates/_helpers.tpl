@@ -274,6 +274,75 @@ chown -R mysql:root {{ .Values.dataMountPath }}
 SERVICE_ID=$((${POD_NAME##*-} + 1))
 {{ end }}
 
+{{- define "mysql.startup.archLdPreloadGuard" -}}
+ARCH=$(uname -m)
+if [[ "$ARCH" == "arm64" || "$ARCH" == "aarch64" ]]; then
+  echo "ARM system detected. Skipping jemalloc configuration."
+  export LD_PRELOAD=""
+fi
+{{- end }}
+
+{{- define "mysql.startup.common" -}}
+{{- include "mysql.startup.archLdPreloadGuard" . }}
+{{ include "mysql.spec.runtime.entrypoint" . }}
+{{- end }}
+
+{{- define "mysql.startup.script57" -}}
+#!/bin/bash
+{{ include "mysql.startup.common" . }}
+docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
+  --ignore-db-dir=lost+found \
+  --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
+  --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
+  --plugin-load-add=audit_log=audit_log.so \
+  --log-bin=/var/lib/mysql/binlog/${POD_NAME}-bin \
+  --skip-slave-start=ON
+{{- end }}
+
+{{- define "mysql.startup.script80" -}}
+#!/bin/bash
+{{ include "mysql.startup.common" . }}
+docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
+   --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
+   --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
+   --plugin-load-add=audit_log=audit_log.so \
+   --log-bin=/var/lib/mysql/binlog/${POD_NAME}-bin \
+   --skip-slave-start=ON
+{{- end }}
+
+{{- define "mysql.startup.script84" -}}
+#!/bin/bash
+{{ include "mysql.startup.common" . }}
+docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
+   --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
+   --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
+   --log-bin=/var/lib/mysql/binlog/${POD_NAME}-bin \
+   --skip-slave-start=ON
+{{- end }}
+
+{{- define "mysql.startup.script80Mgr" -}}
+#!/bin/bash
+{{ include "mysql.startup.common" . }}
+docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
+   --report-host ${POD_NAME}.${CLUSTER_COMPONENT_NAME}-headless \
+   --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
+   --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
+   --plugin-load-add=audit_log=audit_log.so \
+   --log-bin=/var/lib/mysql/binlog/${POD_NAME}-bin \
+   --skip-slave-start=ON
+{{- end }}
+
+{{- define "mysql.startup.script84Mgr" -}}
+#!/bin/bash
+{{ include "mysql.startup.common" . }}
+docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
+   --report-host ${POD_NAME}.${CLUSTER_COMPONENT_NAME}-headless \
+   --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
+   --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
+   --log-bin=/var/lib/mysql/binlog/${POD_NAME}-bin \
+   --skip-slave-start=ON
+{{- end }}
+
 {{- define "mysql.spec.runtime.common" -}}
 - command:
     - cp
