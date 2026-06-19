@@ -168,9 +168,8 @@ Describe "Redis Reconfigure Config Script Tests"
       It "returns success with INFO about normalization"
         When call verify_engine_state "auto-aof-rewrite-min-size" "64mb"
         The status should be success
-        The stderr should include "INFO: CONFIG SET auto-aof-rewrite-min-size applied"
-        The stderr should include "engine reports '67108864'"
-        The stderr should include "rendered '64mb'"
+        The stderr should include "INFO: CONFIG SET auto-aof-rewrite-min-size applied; engine reports '67108864' (rendered '64mb')"
+        The stderr should not include "ERROR"
       End
     End
 

@@ -28,6 +28,21 @@ normalize_value() {
   esac
 }
 
+to_bytes() {
+  case "$1" in
+    *[kK][bB]) echo $(( ${1%[kK][bB]} * 1024 )) ;;
+    *[mM][bB]) echo $(( ${1%[mM][bB]} * 1024 * 1024 )) ;;
+    *[gG][bB]) echo $(( ${1%[gG][bB]} * 1024 * 1024 * 1024 )) ;;
+    *) echo "$1" ;;
+  esac
+}
+
+values_match() {
+  [ "$1" = "$2" ] && return 0
+  [ "$(to_bytes "$1")" = "$(to_bytes "$2")" ] && return 0
+  return 1
+}
+
 verify_engine_state() {
   _vf_check=$(redis-cli ${REDIS_CLI_TLS_CMD:-} -p "$service_port" $auth_arg CONFIG GET "$1" 2>/dev/null | awk '
     NR==1 { found=1 }
@@ -40,9 +55,12 @@ verify_engine_state() {
     echo "ERROR: CONFIG GET $1 returned nothing after SET" >&2
     return 1
   fi
-  if [ "$_vf_actual" != "$2" ]; then
+  if ! values_match "$_vf_actual" "$2"; then
     echo "ERROR: CONFIG SET $1 readback mismatch: engine reports '$_vf_actual', expected '$2'" >&2
     return 1
+  fi
+  if [ "$_vf_actual" != "$2" ]; then
+    echo "INFO: CONFIG SET $1 applied; engine reports '$_vf_actual' (rendered '$2')" >&2
   fi
   return 0
 }
