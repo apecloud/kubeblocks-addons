@@ -3,6 +3,9 @@
 init_reconfigure_env() {
   config_file="/etc/conf/redis.conf"
   dynamic_allowlist="${DYNAMIC_ALLOWLIST:-}"
+  freshness_check="${REDIS_RECONFIGURE_FRESHNESS_CHECK:-true}"
+  projection_fresh_age_seconds="${REDIS_RECONFIGURE_PROJECTION_FRESH_AGE_SECONDS:-10}"
+  projection_wait_seconds="${REDIS_RECONFIGURE_PROJECTION_WAIT_SECONDS:-15}"
   service_port=${SERVICE_PORT:-6379}
   auth_arg=""
   [ -z "${REDIS_DEFAULT_PASSWORD:-}" ] || auth_arg="-a ${REDIS_DEFAULT_PASSWORD}"
@@ -69,6 +72,69 @@ reload_parameter() {
   /scripts/reload-parameter.sh "$@"
 }
 
+now_seconds() {
+  date +%s
+}
+
+file_mtime() {
+  stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null
+}
+
+readlink_target() {
+  readlink "$1" 2>/dev/null
+}
+
+config_fingerprint() {
+  cksum "$1" 2>/dev/null | awk '{print $1 ":" $2}'
+}
+
+ensure_projected_config_fresh() {
+  freshness_check="${freshness_check:-true}"
+  projection_fresh_age_seconds="${projection_fresh_age_seconds:-10}"
+  projection_wait_seconds="${projection_wait_seconds:-15}"
+
+  [ "$freshness_check" = "false" ] && return 0
+
+  _epcf_current=$(config_fingerprint "$config_file") || {
+    echo "ERROR: cannot fingerprint rendered config: $config_file" >&2
+    return 1
+  }
+
+  _epcf_config_dir=$(dirname "$config_file")
+  _epcf_data_link="${_epcf_config_dir}/..data"
+  if [ ! -L "$_epcf_data_link" ]; then
+    echo "ERROR: projected config freshness check failed: $_epcf_data_link is not a symlink, mounted='$_epcf_current', retry-safe: yes" >&2
+    return 1
+  fi
+
+  _epcf_initial_link=$(readlink_target "$_epcf_data_link")
+  _epcf_mtime=$(file_mtime "$_epcf_data_link") || _epcf_mtime=""
+  _epcf_now=$(now_seconds)
+  if [ -n "$_epcf_mtime" ]; then
+    _epcf_age=$((_epcf_now - _epcf_mtime))
+    if [ "$_epcf_age" -le "$projection_fresh_age_seconds" ]; then
+      return 0
+    fi
+  else
+    _epcf_age="unknown"
+  fi
+
+  _epcf_waited=0
+  while [ "$_epcf_waited" -lt "$projection_wait_seconds" ]; do
+    sleep 1
+    _epcf_waited=$((_epcf_waited + 1))
+    _epcf_link=$(readlink_target "$_epcf_data_link")
+    _epcf_after=$(config_fingerprint "$config_file") || _epcf_after=""
+    if [ "$_epcf_link" != "$_epcf_initial_link" ] || [ "$_epcf_after" != "$_epcf_current" ]; then
+      echo "INFO: projected config changed after ${_epcf_waited}s; proceeding with reconfigure" >&2
+      return 0
+    fi
+  done
+
+  echo "ERROR: projected config did not refresh after ${projection_wait_seconds}s: dataLink='${_epcf_initial_link}', age='${_epcf_age}', mounted='${_epcf_current}', retry-safe: yes" >&2
+  return 1
+}
+
 apply_config_diff() {
   engine_dump=$(redis-cli ${REDIS_CLI_TLS_CMD:-} -p "$service_port" $auth_arg CONFIG GET '*' 2>/dev/null) || {
     echo "ERROR: redis-cli CONFIG GET * failed" >&2
@@ -105,6 +171,7 @@ reconfigure_from_config_file() {
     return 1
   fi
 
+  ensure_projected_config_fresh || return 1
   apply_config_diff
 }
 
