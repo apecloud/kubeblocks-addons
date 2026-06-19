@@ -362,7 +362,6 @@ Describe "Redis Reconfigure Config Script Tests"
         tmp_dir=$(mktemp -d)
         tmp_config="$tmp_dir/redis.conf"
         config_file="$tmp_config"
-        marker_file="$tmp_dir/marker"
         ln -s "..2026_06_20_00_00_00.000000000" "$tmp_dir/..data"
 
         set_called_with=""
@@ -422,7 +421,6 @@ Describe "Redis Reconfigure Config Script Tests"
         tmp_dir=$(mktemp -d)
         tmp_config="$tmp_dir/redis.conf"
         config_file="$tmp_config"
-        marker_file="$tmp_dir/marker"
         ln -s "..2026_06_20_00_00_00.000000000" "$tmp_dir/..data"
 
         set_called_with=""
@@ -471,7 +469,7 @@ Describe "Redis Reconfigure Config Script Tests"
       End
     End
 
-    Context "old stable already-applied file has marker"
+    Context "old stable already-applied file has stale marker"
       set_called_with=""
       tmp_dir=""
       mock_now=100
@@ -485,12 +483,11 @@ Describe "Redis Reconfigure Config Script Tests"
         tmp_dir=$(mktemp -d)
         tmp_config="$tmp_dir/redis.conf"
         config_file="$tmp_config"
-        marker_file="$tmp_dir/marker"
         ln -s "..2026_06_20_00_00_00.000000000" "$tmp_dir/..data"
 
         set_called_with=""
         printf '%s\n' "maxmemory-policy volatile-lru" > "$tmp_config"
-        config_fingerprint "$tmp_config" > "$marker_file"
+        config_fingerprint "$tmp_config" > "$tmp_dir/marker"
       }
       Before "setup"
 
@@ -523,13 +520,12 @@ Describe "Redis Reconfigure Config Script Tests"
         return 0
       }
 
-      It "accepts the no-op as converged without requiring a fresh ..data mtime"
+      It "does not trust a previous marker as current request target proof"
         When call reconfigure_from_config_file
-        The status should be success
+        The status should be failure
         The variable set_called_with should equal ""
-        The stderr should include "INFO: projected config already applied according to marker"
-        The stderr should include "INFO: applied 0 parameter"
-        The stderr should not include "ERROR"
+        The stderr should include "ERROR: projected config did not refresh"
+        The stderr should not include "INFO: applied 0 parameter"
       End
     End
 
@@ -547,7 +543,6 @@ Describe "Redis Reconfigure Config Script Tests"
         tmp_dir=$(mktemp -d)
         tmp_config="$tmp_dir/redis.conf"
         config_file="$tmp_config"
-        marker_file="$tmp_dir/marker"
         ln -s "..2026_06_20_00_00_00.000000000" "$tmp_dir/..data"
         printf '%s\n' "maxmemory-policy volatile-lru" > "$tmp_config"
         projection_wait_seconds=1
