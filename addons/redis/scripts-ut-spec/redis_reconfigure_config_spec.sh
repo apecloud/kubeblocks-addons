@@ -250,6 +250,7 @@ Describe "Redis Reconfigure Config Script Tests"
         When call ensure_projected_config_fresh
         The status should be success
         The variable sleep_called should equal 0
+        The stderr should include "INFO: projected config is fresh"
       End
     End
 
@@ -356,10 +357,12 @@ Describe "Redis Reconfigure Config Script Tests"
       setup() {
         setup_base
         freshness_check=true
+        dynamic_allowlist="maxmemory-policy"
         projection_wait_seconds=0
         tmp_dir=$(mktemp -d)
         tmp_config="$tmp_dir/redis.conf"
         config_file="$tmp_config"
+        marker_file="$tmp_dir/marker"
         ln -s "..2026_06_20_00_00_00.000000000" "$tmp_dir/..data"
 
         set_called_with=""
@@ -405,7 +408,7 @@ Describe "Redis Reconfigure Config Script Tests"
       End
     End
 
-    Context "stale projected file different from engine"
+    Context "old stable target file different from engine"
       set_called_with=""
       tmp_dir=""
       mock_now=100
@@ -414,14 +417,16 @@ Describe "Redis Reconfigure Config Script Tests"
       setup() {
         setup_base
         freshness_check=true
+        dynamic_allowlist="maxmemory-policy"
         projection_wait_seconds=0
         tmp_dir=$(mktemp -d)
         tmp_config="$tmp_dir/redis.conf"
         config_file="$tmp_config"
+        marker_file="$tmp_dir/marker"
         ln -s "..2026_06_20_00_00_00.000000000" "$tmp_dir/..data"
 
         set_called_with=""
-        printf '%s\n' "maxmemory-policy volatile-lru" > "$tmp_config"
+        printf '%s\n' "maxmemory-policy allkeys-lru" > "$tmp_config"
       }
       Before "setup"
 
@@ -444,6 +449,9 @@ Describe "Redis Reconfigure Config Script Tests"
         key=$(_redis_cli_get_key "$@")
         case "$key" in
           "'*'"|"*")
+            printf '%s\n' "maxmemory-policy" "volatile-lru"
+            ;;
+          maxmemory-policy)
             printf '%s\n' "maxmemory-policy" "allkeys-lru"
             ;;
         esac
@@ -454,11 +462,74 @@ Describe "Redis Reconfigure Config Script Tests"
         return 0
       }
 
-      It "still exits non-zero before CONFIG SET"
+      It "applies without waiting for freshness because mounted target differs from engine"
         When call reconfigure_from_config_file
-        The status should be failure
+        The status should be success
+        The variable set_called_with should equal "maxmemory-policy=allkeys-lru;"
+        The stderr should include "INFO: applied 1 parameter"
+        The stderr should not include "ERROR: projected config did not refresh"
+      End
+    End
+
+    Context "old stable already-applied file has marker"
+      set_called_with=""
+      tmp_dir=""
+      mock_now=100
+      mock_mtime=0
+
+      setup() {
+        setup_base
+        freshness_check=true
+        dynamic_allowlist="maxmemory-policy"
+        projection_wait_seconds=0
+        tmp_dir=$(mktemp -d)
+        tmp_config="$tmp_dir/redis.conf"
+        config_file="$tmp_config"
+        marker_file="$tmp_dir/marker"
+        ln -s "..2026_06_20_00_00_00.000000000" "$tmp_dir/..data"
+
+        set_called_with=""
+        printf '%s\n' "maxmemory-policy volatile-lru" > "$tmp_config"
+        config_fingerprint "$tmp_config" > "$marker_file"
+      }
+      Before "setup"
+
+      cleanup() {
+        cleanup_base
+        [ -z "$tmp_dir" ] || rm -rf "$tmp_dir"
+      }
+      After "cleanup"
+
+      now_seconds() {
+        echo "$mock_now"
+      }
+
+      file_mtime() {
+        echo "$mock_mtime"
+      }
+
+      redis-cli() {
+        local key
+        key=$(_redis_cli_get_key "$@")
+        case "$key" in
+          "'*'"|"*")
+            printf '%s\n' "maxmemory-policy" "volatile-lru"
+            ;;
+        esac
+      }
+
+      reload_parameter() {
+        set_called_with="${set_called_with}${1}=${2};"
+        return 0
+      }
+
+      It "accepts the no-op as converged without requiring a fresh ..data mtime"
+        When call reconfigure_from_config_file
+        The status should be success
         The variable set_called_with should equal ""
-        The stderr should include "ERROR: projected config did not refresh"
+        The stderr should include "INFO: projected config already applied according to marker"
+        The stderr should include "INFO: applied 0 parameter"
+        The stderr should not include "ERROR"
       End
     End
 
@@ -476,6 +547,7 @@ Describe "Redis Reconfigure Config Script Tests"
         tmp_dir=$(mktemp -d)
         tmp_config="$tmp_dir/redis.conf"
         config_file="$tmp_config"
+        marker_file="$tmp_dir/marker"
         ln -s "..2026_06_20_00_00_00.000000000" "$tmp_dir/..data"
         printf '%s\n' "maxmemory-policy volatile-lru" > "$tmp_config"
         projection_wait_seconds=1

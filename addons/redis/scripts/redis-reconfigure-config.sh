@@ -4,6 +4,7 @@ init_reconfigure_env() {
   config_file="/etc/conf/redis.conf"
   dynamic_allowlist="${DYNAMIC_ALLOWLIST:-}"
   freshness_check="${REDIS_RECONFIGURE_FRESHNESS_CHECK:-true}"
+  marker_file="${REDIS_RECONFIGURE_MARKER_FILE:-/data/.redis-reconfigure-config.fingerprint}"
   projection_fresh_age_seconds="${REDIS_RECONFIGURE_PROJECTION_FRESH_AGE_SECONDS:-10}"
   projection_wait_seconds="${REDIS_RECONFIGURE_PROJECTION_WAIT_SECONDS:-15}"
   service_port=${SERVICE_PORT:-6379}
@@ -88,10 +89,27 @@ config_fingerprint() {
   cksum "$1" 2>/dev/null | awk '{print $1 ":" $2}'
 }
 
+marker_matches() {
+  [ -n "$1" ] || return 1
+  [ -f "$marker_file" ] || return 1
+  [ "$(cat "$marker_file" 2>/dev/null)" = "$1" ]
+}
+
+write_marker() {
+  [ -n "$1" ] || return 0
+  _wm_dir=$(dirname "$marker_file")
+  mkdir -p "$_wm_dir" 2>/dev/null || true
+  if ! printf '%s\n' "$1" > "$marker_file" 2>/dev/null; then
+    echo "WARN: failed to write reconfigure marker: $marker_file" >&2
+  fi
+}
+
 ensure_projected_config_fresh() {
   freshness_check="${freshness_check:-true}"
+  marker_file="${marker_file:-/data/.redis-reconfigure-config.fingerprint}"
   projection_fresh_age_seconds="${projection_fresh_age_seconds:-10}"
   projection_wait_seconds="${projection_wait_seconds:-15}"
+  projection_changed=false
 
   [ "$freshness_check" = "false" ] && return 0
 
@@ -113,6 +131,7 @@ ensure_projected_config_fresh() {
   if [ -n "$_epcf_mtime" ]; then
     _epcf_age=$((_epcf_now - _epcf_mtime))
     if [ "$_epcf_age" -le "$projection_fresh_age_seconds" ]; then
+      echo "INFO: projected config is fresh: dataLink='${_epcf_initial_link}', age='${_epcf_age}', mounted='${_epcf_current}'" >&2
       return 0
     fi
   else
@@ -126,6 +145,7 @@ ensure_projected_config_fresh() {
     _epcf_link=$(readlink_target "$_epcf_data_link")
     _epcf_after=$(config_fingerprint "$config_file") || _epcf_after=""
     if [ "$_epcf_link" != "$_epcf_initial_link" ] || [ "$_epcf_after" != "$_epcf_current" ]; then
+      projection_changed=true
       echo "INFO: projected config changed after ${_epcf_waited}s; proceeding with reconfigure" >&2
       return 0
     fi
@@ -143,6 +163,8 @@ apply_config_diff() {
 
   _acd_rc=0
   _rcf_applied_count=0
+  _rcf_checkable_count=0
+  _rcf_config_fingerprint=$(config_fingerprint "$config_file") || _rcf_config_fingerprint=""
   while IFS= read -r line; do
     case "$line" in '#'*|''|include\ *|loadmodule\ *) continue ;; esac
     key="${line%% *}"
@@ -153,6 +175,7 @@ apply_config_diff() {
     is_dynamic "$key" || continue
     engine_has_key "$key" || continue
 
+    _rcf_checkable_count=$((_rcf_checkable_count + 1))
     current=$(engine_value "$key")
     values_match "$value" "$current" && continue
 
@@ -160,6 +183,28 @@ apply_config_diff() {
     verify_engine_state "$key" "$value" || { _acd_rc=1; echo "ERROR: post-set verification for $key failed" >&2; }
     _rcf_applied_count=$((_rcf_applied_count + 1))
   done < "$config_file"
+
+  if [ "$_acd_rc" -ne 0 ]; then
+    echo "INFO: applied $_rcf_applied_count parameter(s)" >&2
+    return "$_acd_rc"
+  fi
+
+  if [ "$_rcf_applied_count" -gt 0 ]; then
+    [ "$freshness_check" = "false" ] || write_marker "$_rcf_config_fingerprint"
+  elif [ "$_rcf_checkable_count" -gt 0 ] && [ "$freshness_check" != "false" ]; then
+    projection_changed=false
+    if marker_matches "$_rcf_config_fingerprint"; then
+      echo "INFO: projected config already applied according to marker: $_rcf_config_fingerprint" >&2
+    elif ensure_projected_config_fresh; then
+      if [ "$projection_changed" = "true" ]; then
+        apply_config_diff
+        return $?
+      fi
+      write_marker "$_rcf_config_fingerprint"
+    else
+      return 1
+    fi
+  fi
 
   echo "INFO: applied $_rcf_applied_count parameter(s)" >&2
   return "$_acd_rc"
@@ -171,7 +216,6 @@ reconfigure_from_config_file() {
     return 1
   fi
 
-  ensure_projected_config_fresh || return 1
   apply_config_diff
 }
 
