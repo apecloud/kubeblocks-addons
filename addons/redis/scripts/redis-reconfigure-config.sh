@@ -4,7 +4,6 @@ init_reconfigure_env() {
   config_file="/etc/conf/redis.conf"
   dynamic_allowlist="${DYNAMIC_ALLOWLIST:-}"
   service_port=${SERVICE_PORT:-6379}
-  wait_timeout=${RECONFIGURE_WAIT_TIMEOUT:-180}
   auth_arg=""
   [ -z "${REDIS_DEFAULT_PASSWORD:-}" ] || auth_arg="-a ${REDIS_DEFAULT_PASSWORD}"
 }
@@ -51,14 +50,6 @@ reload_parameter() {
   /scripts/reload-parameter.sh "$@"
 }
 
-config_file_hash() {
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$config_file" | awk '{print $1}'
-  else
-    shasum -a 256 "$config_file" | awk '{print $1}'
-  fi
-}
-
 apply_config_diff() {
   engine_dump=$(redis-cli ${REDIS_CLI_TLS_CMD:-} -p "$service_port" $auth_arg CONFIG GET '*' 2>/dev/null) || {
     echo "ERROR: redis-cli CONFIG GET * failed" >&2
@@ -95,34 +86,7 @@ reconfigure_from_config_file() {
     return 1
   fi
 
-  _rcf_hash=$(config_file_hash)
-  echo "INFO: reconfigure start, config hash=$_rcf_hash" >&2
-
-  _rcf_timeout=${wait_timeout:-90}
-  _rcf_elapsed=0
-  while [ "$_rcf_elapsed" -lt "$_rcf_timeout" ]; do
-    sleep 2
-    _rcf_elapsed=$((_rcf_elapsed + 2))
-    _rcf_new_hash=$(config_file_hash)
-    if [ "$_rcf_new_hash" != "$_rcf_hash" ]; then
-      echo "INFO: config file updated after ${_rcf_elapsed}s (new hash=$_rcf_new_hash), applying" >&2
-      apply_config_diff
-      return $?
-    fi
-  done
-
-  if [ "$_rcf_timeout" -gt 0 ]; then
-    echo "INFO: config file unchanged after ${_rcf_timeout}s" >&2
-  fi
-
   apply_config_diff
-  _rcf_rc=$?
-
-  if [ "$_rcf_applied_count" -eq 0 ] && [ "$_rcf_timeout" -gt 0 ]; then
-    echo "ERROR: watch timed out with 0 params applied, failing to prevent false green" >&2
-    return 1
-  fi
-  return "$_rcf_rc"
 }
 
 ${__SOURCED__:+false} : || return 0

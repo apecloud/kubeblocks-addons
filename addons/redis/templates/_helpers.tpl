@@ -207,15 +207,12 @@ redis-reconfigure-config.sh: |-
 {{- $container := .container | default "redis" -}}
 {{- $dynamicList := .dynamicParams | default "" -}}
 reconfigure:
-  timeoutSeconds: -1
   exec:
     container: {{ $container }}
     targetPodSelector: All
     env:
       - name: DYNAMIC_ALLOWLIST
         value: "{{ $dynamicList }}"
-      - name: RECONFIGURE_WAIT_TIMEOUT
-        value: "180"
     command:
       - /bin/sh
       - /scripts/redis-reconfigure-config.sh
