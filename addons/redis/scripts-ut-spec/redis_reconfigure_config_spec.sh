@@ -580,6 +580,44 @@ CONF
       End
     End
 
+    Context "normalized memory value is idempotent (64mb == 67108864)"
+      set_called_with=""
+
+      setup() {
+        setup_base
+        dynamic_allowlist="auto-aof-rewrite-min-size,maxmemory"
+
+        set_called_with=""
+        printf '%s\n' 'auto-aof-rewrite-min-size 64mb' > "$tmp_config"
+      }
+      Before "setup"
+
+      After "cleanup_base"
+
+      redis-cli() {
+        local key
+        key=$(_redis_cli_get_key "$@")
+        case "$key" in
+          "'*'"|"*")
+            printf '%s\n' "auto-aof-rewrite-min-size" "67108864"
+            ;;
+        esac
+      }
+
+      reload_parameter() {
+        set_called_with="${set_called_with}${1}=${2};"
+        return 0
+      }
+
+      It "skips CONFIG SET when rendered 64mb equals engine 67108864"
+        When call reconfigure_from_config_file
+        The status should be success
+        The variable set_called_with should equal ""
+        The stderr should include "applied 0 parameter"
+        The stderr should not include "ERROR"
+      End
+    End
+
     Context "quoted empty to non-empty triggers reload"
       set_called_with=""
 

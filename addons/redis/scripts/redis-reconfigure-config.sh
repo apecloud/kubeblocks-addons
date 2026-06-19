@@ -88,7 +88,7 @@ apply_config_diff() {
     engine_has_key "$key" || continue
 
     current=$(engine_value "$key")
-    [ "$value" != "$current" ] || continue
+    values_match "$value" "$current" && continue
 
     reload_parameter "$key" "$value" || { _acd_rc=$?; echo "ERROR: CONFIG SET $key failed" >&2; continue; }
     verify_engine_state "$key" "$value" || { _acd_rc=1; echo "ERROR: post-set verification for $key failed" >&2; }
