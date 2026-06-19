@@ -656,6 +656,43 @@ CONF
         The stderr should not include "WARN"
       End
     End
+
+    Context "CONFIG SET OK but CONFIG GET returns old value exits non-zero"
+      setup() {
+        setup_base
+        dynamic_allowlist="maxmemory-policy"
+
+        printf '%s\n' 'maxmemory-policy allkeys-lru' > "$tmp_config"
+      }
+      Before "setup"
+
+      After "cleanup_base"
+
+      redis-cli() {
+        local key
+        key=$(_redis_cli_get_key "$@")
+        case "$key" in
+          "'*'"|"*")
+            printf '%s\n' "maxmemory-policy" "volatile-lru"
+            ;;
+          maxmemory-policy)
+            printf '%s\n' "maxmemory-policy" "volatile-lru"
+            ;;
+        esac
+      }
+
+      reload_parameter() {
+        return 0
+      }
+
+      It "fails when readback does not match target"
+        When call reconfigure_from_config_file
+        The status should be failure
+        The stderr should include "readback mismatch"
+        The stderr should include "engine reports 'volatile-lru'"
+        The stderr should include "expected 'allkeys-lru'"
+      End
+    End
   End
 
 End

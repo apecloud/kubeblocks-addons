@@ -41,7 +41,8 @@ verify_engine_state() {
     return 1
   fi
   if [ "$_vf_actual" != "$2" ]; then
-    echo "INFO: CONFIG SET $1 applied; engine reports '$_vf_actual' (rendered '$2')" >&2
+    echo "ERROR: CONFIG SET $1 readback mismatch: engine reports '$_vf_actual', expected '$2'" >&2
+    return 1
   fi
   return 0
 }
