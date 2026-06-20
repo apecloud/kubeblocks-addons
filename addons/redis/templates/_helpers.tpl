@@ -215,11 +215,7 @@ reconfigure:
         value: "{{ $dynamicList }}"
     command:
       - /bin/sh
-      - -c
-      - |
-        set -eu
-        /scripts/redis-reconfigure-config.sh "$1" "$2"
-      - --
+      - /scripts/redis-reconfigure-config.sh
 {{- end -}}
 
 {{- define "apeDts.reshard.image" -}}
