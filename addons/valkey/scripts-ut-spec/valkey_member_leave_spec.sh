@@ -230,17 +230,17 @@ Describe "Valkey Member-Leave Bash Script Tests"
     End
   End
 
-  Describe "no-sentinel primary-leave safety — exits non-zero"
+  Describe "no-sentinel fail-closed safety — exits non-zero unless confirmed replica"
     member_leave_script="../scripts/valkey-member-leave.sh"
 
-    It "has an exit 1 path for primary leaving with no sentinel"
-      When call grep -c "no reachable Sentinel and the leaving pod is the primary" "${member_leave_script}"
+    It "exits 0 only when confirmed replica (slave) and no sentinel reachable"
+      When call grep -c "leaving pod is a confirmed replica" "${member_leave_script}"
       The status should be success
       The stdout should not eq "0"
     End
 
-    It "only exits 0 for non-primary when no sentinel is reachable"
-      When call grep -c "leaving pod is not the primary" "${member_leave_script}"
+    It "exits 1 for master or unknown role when no sentinel reachable"
+      When call grep -c "cannot ensure safe failover" "${member_leave_script}"
       The status should be success
       The stdout should not eq "0"
     End

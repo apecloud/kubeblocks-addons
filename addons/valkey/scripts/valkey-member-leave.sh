@@ -106,12 +106,12 @@ for s in "${sentinel_fqdns[@]}"; do
 done
 
 if is_empty "${sentinel_fqdn}"; then
-  if [ "${leaving_role}" = "master" ]; then
-    echo "ERROR: no reachable Sentinel and the leaving pod is the primary — cannot trigger failover safely." >&2
-    exit 1
+  if [ "${leaving_role}" = "slave" ]; then
+    echo "WARNING: no reachable Sentinel — skipping (leaving pod is a confirmed replica)." >&2
+    exit 0
   fi
-  echo "WARNING: no reachable Sentinel — skipping (leaving pod is not the primary)." >&2
-  exit 0
+  echo "ERROR: no reachable Sentinel and the leaving pod role is ${leaving_role:-unknown} — cannot ensure safe failover." >&2
+  exit 1
 fi
 
 echo "Using sentinel ${sentinel_fqdn} (config-epoch=${best_epoch})"
