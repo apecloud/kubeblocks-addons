@@ -106,7 +106,11 @@ for s in "${sentinel_fqdns[@]}"; do
 done
 
 if is_empty "${sentinel_fqdn}"; then
-  echo "WARNING: no reachable Sentinel — skipping." >&2
+  if [ "${leaving_role}" = "master" ]; then
+    echo "ERROR: no reachable Sentinel and the leaving pod is the primary — cannot trigger failover safely." >&2
+    exit 1
+  fi
+  echo "WARNING: no reachable Sentinel — skipping (leaving pod is not the primary)." >&2
   exit 0
 fi
 
