@@ -161,6 +161,7 @@ Describe "Valkey Sync-ACL Bash Script Tests"
           "valkey-0.headless.default.svc.cluster.local" \
           "valkey-1.headless.default.svc.cluster.local"
         The status should be failure
+        The stdout should include "Syncing ACL"
         The stderr should include "ERROR: ACL SAVE failed"
       End
     End
@@ -187,6 +188,7 @@ Describe "Valkey Sync-ACL Bash Script Tests"
           "valkey-0.headless.default.svc.cluster.local" \
           "valkey-1.headless.default.svc.cluster.local"
         The status should be failure
+        The stdout should include "Syncing ACL"
         The stderr should include "ERROR: failed to set ACL for monitor"
         The stderr should include "ERROR: ACL sync completed with 1 failure(s)"
       End
