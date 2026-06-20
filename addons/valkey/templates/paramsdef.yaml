@@ -24,6 +24,8 @@ spec:
     - logfile
     - aclfile
     - tcp-backlog
+    - io-threads
+    - io-threads-do-reads
   dynamicParameters:
     - acllog-max-len
     - activedefrag
