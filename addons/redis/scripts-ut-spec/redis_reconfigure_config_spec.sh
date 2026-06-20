@@ -6,21 +6,6 @@ if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
   exit 0
 fi
 
-# Helper to extract the CONFIG GET key from redis-cli args.
-# redis-cli [-tls] -p PORT [-a PASS] CONFIG GET <key>
-# The last 3 args are always: CONFIG GET <key>
-_redis_cli_get_key() {
-  local n=$#
-  local key="${!n}"
-  local prev=$((n - 1))
-  local get="${!prev}"
-  local prev2=$((n - 2))
-  local config="${!prev2}"
-  if [ "$config" = "CONFIG" ] && [ "$get" = "GET" ]; then
-    echo "$key"
-  fi
-}
-
 Describe "Redis Reconfigure Config Script Tests"
   Include ../scripts/redis-reconfigure-config.sh
 
@@ -70,664 +55,259 @@ Describe "Redis Reconfigure Config Script Tests"
     End
   End
 
-  Describe "engine_has_key()"
-    setup() {
-      engine_dump=$(printf '%s\n' "maxmemory" "67108864" "hz" "10" "loglevel" "notice" "hash-max-listpack-entries" "512")
-    }
-    Before "setup"
+  Describe "to_bytes()"
+    It "converts kb"
+      When call to_bytes "64kb"
+      The output should equal "65536"
+    End
 
-    It "returns success for existing key"
-      When call engine_has_key "maxmemory"
+    It "converts mb"
+      When call to_bytes "64mb"
+      The output should equal "67108864"
+    End
+
+    It "converts gb"
+      When call to_bytes "2gb"
+      The output should equal "2147483648"
+    End
+
+    It "leaves plain numbers unchanged"
+      When call to_bytes "67108864"
+      The output should equal "67108864"
+    End
+
+    It "leaves non-memory strings unchanged"
+      When call to_bytes "notice"
+      The output should equal "notice"
+    End
+  End
+
+  Describe "values_match()"
+    It "matches identical values"
+      When call values_match "67108864" "67108864"
       The status should be success
     End
 
-    It "returns failure for missing key"
-      When call engine_has_key "databases"
+    It "matches 64mb against 67108864"
+      When call values_match "67108864" "64mb"
+      The status should be success
+    End
+
+    It "matches 64mb against 67108864 (reverse)"
+      When call values_match "64mb" "67108864"
+      The status should be success
+    End
+
+    It "rejects non-matching values"
+      When call values_match "100" "200"
       The status should be failure
     End
 
-    It "handles hyphenated keys"
-      When call engine_has_key "hash-max-listpack-entries"
+    It "matches empty values"
+      When call values_match "" ""
       The status should be success
     End
   End
 
-  Describe "engine_value()"
-    setup() {
-      engine_dump=$(printf '%s\n' "maxmemory" "67108864" "hz" "10" "loglevel" "notice" "notify-keyspace-events" "")
-    }
-    Before "setup"
-
-    It "returns the value for a known key"
-      When call engine_value "maxmemory"
-      The output should equal "67108864"
-    End
-
-    It "returns the value for another key"
-      When call engine_value "hz"
-      The output should equal "10"
-    End
-
-    It "returns empty string for a key with empty value"
-      When call engine_value "notify-keyspace-events"
-      The output should equal ""
-    End
-  End
-
-  Describe "normalize_value()"
-    It "strips surrounding double quotes"
-      When call normalize_value '"appendonly.aof"'
-      The output should equal "appendonly.aof"
-    End
-
-    It "converts quoted empty string to empty"
-      When call normalize_value '""'
-      The output should equal ""
-    End
-
-    It "leaves unquoted values unchanged"
-      When call normalize_value "notice"
-      The output should equal "notice"
-    End
-
-    It "leaves numeric values unchanged"
-      When call normalize_value "67108864"
-      The output should equal "67108864"
-    End
-
-    It "leaves multi-token values unchanged"
-      When call normalize_value "0 200 800"
-      The output should equal "0 200 800"
-    End
-  End
-
-  Describe "verify_engine_state()"
-    setup() {
-      service_port=6379
-      auth_arg=""
-    }
-    Before "setup"
-
-    Context "when CONFIG GET returns the expected value"
-      redis-cli() {
-        printf '%s\n' "maxmemory" "67108864"
-      }
-
-      It "returns success with no INFO output"
-        When call verify_engine_state "maxmemory" "67108864"
-        The status should be success
-        The stderr should equal ""
-      End
-    End
-
-    Context "when CONFIG GET returns a normalized value"
-      redis-cli() {
-        printf '%s\n' "auto-aof-rewrite-min-size" "67108864"
-      }
-
-      It "returns success with INFO about normalization"
-        When call verify_engine_state "auto-aof-rewrite-min-size" "64mb"
-        The status should be success
-        The stderr should include "INFO: CONFIG SET auto-aof-rewrite-min-size applied; engine reports '67108864' (rendered '64mb')"
-        The stderr should not include "ERROR"
-      End
-    End
-
-    Context "when CONFIG GET returns empty value"
-      redis-cli() {
-        printf '%s\n' "notify-keyspace-events" ""
-      }
-
-      It "returns success when expected value is also empty"
-        When call verify_engine_state "notify-keyspace-events" ""
-        The status should be success
-        The stderr should equal ""
-      End
-    End
-
-    Context "when CONFIG GET returns nothing"
-      redis-cli() {
-        return 0
-      }
-
-      It "returns failure with ERROR"
-        When call verify_engine_state "nonexistent" "value"
-        The status should be failure
-        The stderr should include "ERROR: CONFIG GET nonexistent returned nothing after SET"
-      End
-    End
-  End
-
-  Describe "reconfigure_from_config_file()"
-    tmp_config=""
-
+  Describe "reconfigure_parameter()"
     setup_base() {
       service_port=6379
       auth_arg=""
-      dynamic_allowlist="maxmemory,hz,loglevel,hash-max-listpack-entries"
-      tmp_config=$(mktemp)
-      config_file="$tmp_config"
+      dynamic_allowlist="maxmemory,hz,loglevel,hash-max-listpack-entries,maxmemory-policy,notify-keyspace-events,save"
     }
 
-    cleanup_base() {
-      [ -z "$tmp_config" ] || rm -f "$tmp_config"
-    }
-
-    Context "config file missing"
+    Context "non-dynamic parameter is skipped"
       setup() {
         setup_base
-        config_file="/nonexistent/redis.conf"
-
       }
       Before "setup"
 
-      After "cleanup_base"
+      It "returns success with INFO message"
+        When call reconfigure_parameter "databases" "32"
+        The status should be success
+        The stderr should include "INFO: databases not in DYNAMIC_ALLOWLIST"
+      End
+    End
+
+    Context "CONFIG SET succeeds and readback matches"
+      setup() {
+        setup_base
+      }
+      Before "setup"
+
+      redis-cli() {
+        case "$*" in
+          *"CONFIG SET"*)
+            echo "OK"
+            ;;
+          *"CONFIG GET"*)
+            printf '%s\n' "maxmemory" "67108864"
+            ;;
+        esac
+      }
+
+      It "applies and verifies successfully"
+        When call reconfigure_parameter "maxmemory" "67108864"
+        The status should be success
+        The stderr should include "INFO: CONFIG SET maxmemory applied"
+        The stderr should not include "ERROR"
+      End
+    End
+
+    Context "CONFIG SET returns error"
+      setup() {
+        setup_base
+      }
+      Before "setup"
+
+      redis-cli() {
+        case "$*" in
+          *"CONFIG SET"*)
+            echo "(error) ERR Unsupported CONFIG parameter: badparam"
+            ;;
+        esac
+      }
 
       It "returns failure with error message"
-        When call reconfigure_from_config_file
+        When call reconfigure_parameter "maxmemory" "invalid"
         The status should be failure
-        The stderr should include "ERROR: rendered config not found"
+        The stderr should include "ERROR: CONFIG SET maxmemory"
       End
     End
 
-    Context "dynamic intersection — only dynamic keys processed"
-      set_called_with=""
-
+    Context "readback mismatch is fail-closed"
       setup() {
         setup_base
-
-        set_called_with=""
-        cat > "$tmp_config" <<'CONF'
-maxmemory 100000
-databases 16
-hz 20
-cluster-enabled yes
-CONF
       }
       Before "setup"
 
-      After "cleanup_base"
-
       redis-cli() {
-        local key
-        key=$(_redis_cli_get_key "$@")
-        case "$key" in
-          "'*'"|"*")
-            printf '%s\n' "maxmemory" "67108864" "databases" "16" "hz" "10" "cluster-enabled" "yes"
+        case "$*" in
+          *"CONFIG SET"*)
+            echo "OK"
             ;;
-          maxmemory) printf '%s\n' "maxmemory" "100000" ;;
-          hz) printf '%s\n' "hz" "20" ;;
-        esac
-      }
-
-      reload_parameter() {
-        set_called_with="${set_called_with}${1}=${2};"
-        return 0
-      }
-
-      It "only CONFIG SETs dynamic keys that differ from engine"
-        When call reconfigure_from_config_file
-        The status should be success
-        The variable set_called_with should equal "maxmemory=100000;hz=20;"
-        The stderr should not include "ERROR"
-      End
-    End
-
-    Context "static keys are skipped"
-      set_called_with=""
-
-      setup() {
-        setup_base
-
-        set_called_with=""
-        cat > "$tmp_config" <<'CONF'
-databases 32
-cluster-enabled yes
-io-threads 8
-CONF
-      }
-      Before "setup"
-
-      After "cleanup_base"
-
-      redis-cli() {
-        local key
-        key=$(_redis_cli_get_key "$@")
-        case "$key" in
-          "'*'"|"*")
-            printf '%s\n' "databases" "16" "cluster-enabled" "yes" "io-threads" "4"
+          *"CONFIG GET"*)
+            printf '%s\n' "maxmemory-policy" "volatile-lru"
             ;;
         esac
       }
 
-      reload_parameter() {
-        set_called_with="${set_called_with}${1}=${2};"
-        return 0
-      }
-
-      It "does not CONFIG SET any static-only keys"
-        When call reconfigure_from_config_file
-        The status should be success
-        The variable set_called_with should equal ""
-        The stderr should not include "ERROR"
-      End
-    End
-
-    Context "unchanged values are skipped"
-      set_called_with=""
-
-      setup() {
-        setup_base
-
-        set_called_with=""
-        cat > "$tmp_config" <<'CONF'
-maxmemory 67108864
-hz 10
-loglevel notice
-CONF
-      }
-      Before "setup"
-
-      After "cleanup_base"
-
-      redis-cli() {
-        local key
-        key=$(_redis_cli_get_key "$@")
-        case "$key" in
-          "'*'"|"*")
-            printf '%s\n' "maxmemory" "67108864" "hz" "10" "loglevel" "notice"
-            ;;
-        esac
-      }
-
-      reload_parameter() {
-        set_called_with="${set_called_with}${1}=${2};"
-        return 0
-      }
-
-      It "does not CONFIG SET values that already match engine"
-        When call reconfigure_from_config_file
-        The status should be success
-        The variable set_called_with should equal ""
-        The stderr should not include "ERROR"
-      End
-    End
-
-    Context "CONFIG SET failure propagates rc"
-      setup() {
-        setup_base
-
-        printf '%s\n' "maxmemory 100000" > "$tmp_config"
-      }
-      Before "setup"
-
-      After "cleanup_base"
-
-      redis-cli() {
-        local key
-        key=$(_redis_cli_get_key "$@")
-        case "$key" in
-          "'*'"|"*")
-            printf '%s\n' "maxmemory" "67108864"
-            ;;
-        esac
-      }
-
-      reload_parameter() {
-        return 1
-      }
-
-      It "returns non-zero when reload_parameter fails"
-        When call reconfigure_from_config_file
+      It "returns failure when readback differs"
+        When call reconfigure_parameter "maxmemory-policy" "allkeys-lru"
         The status should be failure
-        The stderr should include "ERROR: CONFIG SET maxmemory failed"
+        The stderr should include "readback mismatch"
+        The stderr should include "engine='volatile-lru'"
+        The stderr should include "expected='allkeys-lru'"
       End
     End
 
-    Context "post-set verification failure propagates rc"
+    Context "CONFIG GET returns nothing after SET"
       setup() {
         setup_base
-
-        printf '%s\n' "maxmemory 100000" > "$tmp_config"
       }
       Before "setup"
 
-      After "cleanup_base"
-
       redis-cli() {
-        local key
-        key=$(_redis_cli_get_key "$@")
-        case "$key" in
-          "'*'"|"*")
-            printf '%s\n' "maxmemory" "67108864"
+        case "$*" in
+          *"CONFIG SET"*)
+            echo "OK"
             ;;
-          maxmemory)
-            # Return nothing to simulate verification failure
+          *"CONFIG GET"*)
             return 0
             ;;
         esac
       }
 
-      reload_parameter() {
-        return 0
-      }
-
-      It "returns non-zero when post-set verification fails"
-        When call reconfigure_from_config_file
+      It "returns failure with error"
+        When call reconfigure_parameter "maxmemory" "67108864"
         The status should be failure
         The stderr should include "ERROR: CONFIG GET maxmemory returned nothing after SET"
-        The stderr should include "ERROR: post-set verification for maxmemory failed"
       End
     End
 
-    Context "comments and blank lines are skipped"
-      set_called_with=""
-
+    Context "memory value normalization — 64mb readback as 67108864"
       setup() {
         setup_base
-
-        set_called_with=""
-        cat > "$tmp_config" <<'CONF'
-# this is a comment
-maxmemory 100000
-
-include /etc/redis/extra.conf
-loadmodule /opt/redis/modules/bf.so
-hz 20
-CONF
       }
       Before "setup"
 
-      After "cleanup_base"
-
       redis-cli() {
-        local key
-        key=$(_redis_cli_get_key "$@")
-        case "$key" in
-          "'*'"|"*")
-            printf '%s\n' "maxmemory" "67108864" "hz" "10"
+        case "$*" in
+          *"CONFIG SET"*)
+            echo "OK"
             ;;
-          maxmemory) printf '%s\n' "maxmemory" "100000" ;;
-          hz) printf '%s\n' "hz" "20" ;;
-        esac
-      }
-
-      reload_parameter() {
-        set_called_with="${set_called_with}${1}=${2};"
-        return 0
-      }
-
-      It "processes only uncommented config lines"
-        When call reconfigure_from_config_file
-        The status should be success
-        The variable set_called_with should equal "maxmemory=100000;hz=20;"
-        The stderr should not include "ERROR"
-      End
-    End
-
-    Context "key-only lines (no value) are skipped"
-      set_called_with=""
-
-      setup() {
-        setup_base
-
-        set_called_with=""
-        printf '%s\n' "maxmemory" > "$tmp_config"
-      }
-      Before "setup"
-
-      After "cleanup_base"
-
-      redis-cli() {
-        local key
-        key=$(_redis_cli_get_key "$@")
-        case "$key" in
-          "'*'"|"*")
+          *"CONFIG GET"*)
             printf '%s\n' "maxmemory" "67108864"
             ;;
         esac
       }
 
-      reload_parameter() {
-        set_called_with="${set_called_with}${1}=${2};"
-        return 0
-      }
-
-      It "skips lines where key equals the full line"
-        When call reconfigure_from_config_file
+      It "passes when engine normalizes 64mb to 67108864"
+        When call reconfigure_parameter "maxmemory" "64mb"
         The status should be success
-        The variable set_called_with should equal ""
+        The stderr should include "INFO: CONFIG SET maxmemory applied"
         The stderr should not include "ERROR"
       End
     End
 
-    Context "hyphenated keys work through full flow"
-      set_called_with=""
-
+    Context "empty value parameter"
       setup() {
         setup_base
-
-        set_called_with=""
-        printf '%s\n' "hash-max-listpack-entries 256" > "$tmp_config"
       }
       Before "setup"
 
-      After "cleanup_base"
-
       redis-cli() {
-        local key
-        key=$(_redis_cli_get_key "$@")
-        case "$key" in
-          "'*'"|"*")
-            printf '%s\n' "hash-max-listpack-entries" "512"
+        case "$*" in
+          *"CONFIG SET"*)
+            echo "OK"
             ;;
-          hash-max-listpack-entries)
-            printf '%s\n' "hash-max-listpack-entries" "256"
-            ;;
-        esac
-      }
-
-      reload_parameter() {
-        set_called_with="${set_called_with}${1}=${2};"
-        return 0
-      }
-
-      It "correctly processes hyphenated parameter names"
-        When call reconfigure_from_config_file
-        The status should be success
-        The variable set_called_with should equal "hash-max-listpack-entries=256;"
-        The stderr should not include "ERROR"
-      End
-    End
-
-    Context "quoted empty value is idempotent when engine already empty"
-      set_called_with=""
-
-      setup() {
-        setup_base
-        dynamic_allowlist="notify-keyspace-events,maxmemory,hz"
-
-        set_called_with=""
-        cat > "$tmp_config" <<'CONF'
-notify-keyspace-events ""
-maxmemory 67108864
-CONF
-      }
-      Before "setup"
-
-      After "cleanup_base"
-
-      redis-cli() {
-        local key
-        key=$(_redis_cli_get_key "$@")
-        case "$key" in
-          "'*'"|"*")
-            printf '%s\n' "notify-keyspace-events" "" "maxmemory" "67108864"
-            ;;
-        esac
-      }
-
-      reload_parameter() {
-        set_called_with="${set_called_with}${1}=${2};"
-        return 0
-      }
-
-      It "does not reload when quoted empty matches engine empty"
-        When call reconfigure_from_config_file
-        The status should be success
-        The variable set_called_with should equal ""
-        The stderr should not include "ERROR"
-      End
-    End
-
-    Context "normalized memory value is idempotent (64mb == 67108864)"
-      set_called_with=""
-
-      setup() {
-        setup_base
-        dynamic_allowlist="auto-aof-rewrite-min-size,maxmemory"
-
-        set_called_with=""
-        printf '%s\n' 'auto-aof-rewrite-min-size 64mb' > "$tmp_config"
-      }
-      Before "setup"
-
-      After "cleanup_base"
-
-      redis-cli() {
-        local key
-        key=$(_redis_cli_get_key "$@")
-        case "$key" in
-          "'*'"|"*")
-            printf '%s\n' "auto-aof-rewrite-min-size" "67108864"
-            ;;
-        esac
-      }
-
-      reload_parameter() {
-        set_called_with="${set_called_with}${1}=${2};"
-        return 0
-      }
-
-      It "skips CONFIG SET when rendered 64mb equals engine 67108864"
-        When call reconfigure_from_config_file
-        The status should be success
-        The variable set_called_with should equal ""
-        The stderr should include "applied 0 parameter"
-        The stderr should not include "ERROR"
-      End
-    End
-
-    Context "quoted empty to non-empty triggers reload"
-      set_called_with=""
-
-      setup() {
-        setup_base
-        dynamic_allowlist="notify-keyspace-events,maxmemory,hz"
-
-        set_called_with=""
-        printf '%s\n' 'notify-keyspace-events "Kx"' > "$tmp_config"
-      }
-      Before "setup"
-
-      After "cleanup_base"
-
-      redis-cli() {
-        local key
-        key=$(_redis_cli_get_key "$@")
-        case "$key" in
-          "'*'"|"*")
-            printf '%s\n' "notify-keyspace-events" ""
-            ;;
-          notify-keyspace-events)
-            printf '%s\n' "notify-keyspace-events" "Kx"
-            ;;
-        esac
-      }
-
-      reload_parameter() {
-        set_called_with="${set_called_with}${1}=${2};"
-        return 0
-      }
-
-      It "reloads when rendered quoted value differs from engine empty"
-        When call reconfigure_from_config_file
-        The status should be success
-        The variable set_called_with should equal "notify-keyspace-events=Kx;"
-        The stderr should not include "ERROR"
-      End
-    End
-
-    Context "post-set verification handles empty value correctly"
-      setup() {
-        setup_base
-        dynamic_allowlist="notify-keyspace-events,maxmemory"
-
-        printf '%s\n' 'notify-keyspace-events ""' > "$tmp_config"
-      }
-      Before "setup"
-
-      After "cleanup_base"
-
-      redis-cli() {
-        local key
-        key=$(_redis_cli_get_key "$@")
-        case "$key" in
-          "'*'"|"*")
-            printf '%s\n' "notify-keyspace-events" "Kx"
-            ;;
-          notify-keyspace-events)
+          *"CONFIG GET"*)
             printf '%s\n' "notify-keyspace-events" ""
             ;;
         esac
       }
 
-      reload_parameter() {
-        return 0
-      }
-
-      It "verifies empty value post-set without false mismatch"
-        When call reconfigure_from_config_file
+      It "handles empty value correctly"
+        When call reconfigure_parameter "notify-keyspace-events" ""
         The status should be success
         The stderr should not include "ERROR"
-        The stderr should not include "WARN"
       End
     End
 
-    Context "CONFIG SET OK but CONFIG GET returns old value exits non-zero"
+    Context "multi-word value (save parameter)"
       setup() {
         setup_base
-        dynamic_allowlist="maxmemory-policy"
-
-        printf '%s\n' 'maxmemory-policy allkeys-lru' > "$tmp_config"
       }
       Before "setup"
 
-      After "cleanup_base"
-
       redis-cli() {
-        local key
-        key=$(_redis_cli_get_key "$@")
-        case "$key" in
-          "'*'"|"*")
-            printf '%s\n' "maxmemory-policy" "volatile-lru"
+        case "$*" in
+          *"CONFIG SET"*)
+            echo "OK"
             ;;
-          maxmemory-policy)
-            printf '%s\n' "maxmemory-policy" "volatile-lru"
+          *"CONFIG GET"*)
+            printf '%s\n' "save" "3600 1 300 100"
             ;;
         esac
       }
 
-      reload_parameter() {
-        return 0
-      }
+      It "passes with multi-word value"
+        When call reconfigure_parameter "save" "3600 1 300 100"
+        The status should be success
+        The stderr should include "INFO: CONFIG SET save applied"
+      End
+    End
 
-      It "fails when readback does not match target"
-        When call reconfigure_from_config_file
+    Context "missing parameter name"
+      setup() {
+        setup_base
+      }
+      Before "setup"
+
+      It "fails with error"
+        When run reconfigure_parameter
         The status should be failure
-        The stderr should include "readback mismatch"
-        The stderr should include "engine reports 'volatile-lru'"
-        The stderr should include "expected 'allkeys-lru'"
+        The stderr should include "missing parameter name"
       End
     End
   End
