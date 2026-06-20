@@ -59,6 +59,19 @@ build_sentinel_cli() {
   fi
 }
 
+# Fail-closed safety check: when no Sentinel is reachable, only allow
+# member-leave to succeed if the leaving pod is a confirmed replica.
+# Returns 0 for slave, 1 for master/unknown/empty.
+no_sentinel_safety_check() {
+  local role="$1"
+  if [ "${role}" = "slave" ]; then
+    echo "WARNING: no reachable Sentinel — skipping (leaving pod is a confirmed replica)." >&2
+    return 0
+  fi
+  echo "ERROR: no reachable Sentinel and the leaving pod role is ${role:-unknown} — cannot ensure safe failover." >&2
+  return 1
+}
+
 # This is magic for shellspec ut framework, do not modify!
 ${__SOURCED__:+false} : || return 0
 
@@ -106,12 +119,8 @@ for s in "${sentinel_fqdns[@]}"; do
 done
 
 if is_empty "${sentinel_fqdn}"; then
-  if [ "${leaving_role}" = "slave" ]; then
-    echo "WARNING: no reachable Sentinel — skipping (leaving pod is a confirmed replica)." >&2
-    exit 0
-  fi
-  echo "ERROR: no reachable Sentinel and the leaving pod role is ${leaving_role:-unknown} — cannot ensure safe failover." >&2
-  exit 1
+  no_sentinel_safety_check "${leaving_role}"
+  exit $?
 fi
 
 echo "Using sentinel ${sentinel_fqdn} (config-epoch=${best_epoch})"

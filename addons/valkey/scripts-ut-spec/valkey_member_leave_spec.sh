@@ -230,19 +230,29 @@ Describe "Valkey Member-Leave Bash Script Tests"
     End
   End
 
-  Describe "no-sentinel fail-closed safety — exits non-zero unless confirmed replica"
-    member_leave_script="../scripts/valkey-member-leave.sh"
-
-    It "exits 0 only when confirmed replica (slave) and no sentinel reachable"
-      When call grep -c "leaving pod is a confirmed replica" "${member_leave_script}"
+  Describe "no_sentinel_safety_check()"
+    It "returns 0 (success) for slave — confirmed replica is safe to leave"
+      When call no_sentinel_safety_check "slave"
       The status should be success
-      The stdout should not eq "0"
+      The stderr should include "leaving pod is a confirmed replica"
     End
 
-    It "exits 1 for master or unknown role when no sentinel reachable"
-      When call grep -c "cannot ensure safe failover" "${member_leave_script}"
-      The status should be success
-      The stdout should not eq "0"
+    It "returns 1 (failure) for master — cannot ensure safe failover"
+      When call no_sentinel_safety_check "master"
+      The status should be failure
+      The stderr should include "cannot ensure safe failover"
+    End
+
+    It "returns 1 (failure) for unknown role — fail-closed"
+      When call no_sentinel_safety_check "unknown"
+      The status should be failure
+      The stderr should include "cannot ensure safe failover"
+    End
+
+    It "returns 1 (failure) for empty role — fail-closed"
+      When call no_sentinel_safety_check ""
+      The status should be failure
+      The stderr should include "cannot ensure safe failover"
     End
   End
 End
