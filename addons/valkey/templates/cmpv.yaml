@@ -37,6 +37,8 @@ spec:
         accountProvision: {{ $valkeyRepo }}:{{ .imageTag }}
         switchover: {{ $valkeyRepo }}:{{ .imageTag }}
         memberJoin: {{ $valkeyRepo }}:{{ .imageTag }}
+        memberLeave: {{ $valkeyRepo }}:{{ .imageTag }}
+        roleProbe: {{ $valkeyRepo }}:{{ .imageTag }}
     {{- end }}
     {{- end }}
 
