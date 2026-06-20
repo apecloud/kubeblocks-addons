@@ -107,7 +107,7 @@ Describe "Valkey Sync-ACL Bash Script Tests"
     End
 
     Context "when ACL LIST fails"
-      It "returns failure and logs a warning"
+      It "returns failure and logs an error"
         valkey-cli() {
           case "$@" in
             *"ACL LIST"*)
@@ -120,7 +120,7 @@ Describe "Valkey Sync-ACL Bash Script Tests"
           "valkey-1.headless.default.svc.cluster.local"
         The status should be failure
         The stdout should include "Syncing ACL"
-        The stderr should include "WARNING"
+        The stderr should include "ERROR"
       End
     End
 
@@ -146,7 +146,7 @@ Describe "Valkey Sync-ACL Bash Script Tests"
     End
 
     Context "when ACL SAVE fails"
-      It "prints a warning but does not fail the sync"
+      It "returns failure when ACL SAVE fails"
         valkey-cli() {
           case "$@" in
             *"ACL LIST"*)
@@ -160,9 +160,35 @@ Describe "Valkey Sync-ACL Bash Script Tests"
         When call sync_acl_to_replica \
           "valkey-0.headless.default.svc.cluster.local" \
           "valkey-1.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "ACL sync complete"
-        The stderr should include "WARNING: ACL SAVE failed"
+        The status should be failure
+        The stderr should include "ERROR: ACL SAVE failed"
+      End
+    End
+
+    Context "when ACL SETUSER fails for some users"
+      It "returns failure with partial sync error count"
+        valkey-cli() {
+          case "$@" in
+            *"ACL LIST"*)
+              printf "user default on nopass ~* &* +@all\nuser app on >apppass ~* +@all\nuser monitor on >monpass ~* +@read\n"
+              ;;
+            *"ACL SETUSER app"*)
+              echo "OK"
+              ;;
+            *"ACL SETUSER monitor"*)
+              echo "ERR unknown command"
+              ;;
+            *"ACL SAVE"*)
+              echo "OK"
+              ;;
+          esac
+        }
+        When call sync_acl_to_replica \
+          "valkey-0.headless.default.svc.cluster.local" \
+          "valkey-1.headless.default.svc.cluster.local"
+        The status should be failure
+        The stderr should include "ERROR: failed to set ACL for monitor"
+        The stderr should include "ERROR: ACL sync completed with 1 failure(s)"
       End
     End
   End
