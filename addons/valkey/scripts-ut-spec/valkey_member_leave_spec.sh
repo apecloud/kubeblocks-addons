@@ -229,4 +229,20 @@ Describe "Valkey Member-Leave Bash Script Tests"
       The stdout should not eq ""
     End
   End
+
+  Describe "no-sentinel primary-leave safety — exits non-zero"
+    member_leave_script="../scripts/valkey-member-leave.sh"
+
+    It "has an exit 1 path for primary leaving with no sentinel"
+      When call grep -c "no reachable Sentinel and the leaving pod is the primary" "${member_leave_script}"
+      The status should be success
+      The stdout should not eq "0"
+    End
+
+    It "only exits 0 for non-primary when no sentinel is reachable"
+      When call grep -c "leaving pod is not the primary" "${member_leave_script}"
+      The status should be success
+      The stdout should not eq "0"
+    End
+  End
 End
