@@ -477,8 +477,9 @@ spec:
         targetPodSelector: Any
 
     # memberLeave: called when a pod is being removed (scale-in / eviction).
-    # Triggers a Sentinel failover if the leaving pod is the primary, then
-    # issues SENTINEL RESET to clean up stale replica entries.
+    # Triggers a Sentinel failover if the leaving pod is the primary.
+    # Sentinel naturally marks the removed pod as s_down after
+    # down-after-milliseconds (SENTINEL RESET is intentionally NOT called).
     memberLeave:
       exec:
         container: valkey
