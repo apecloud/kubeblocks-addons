@@ -11,6 +11,7 @@ spec:
   description: RustFS is an S3-compatible high-performance distributed object storage system.
   serviceKind: rustfs
   serviceVersion: {{ include "rustfs.defaultServiceVersion" . }}
+  podManagementPolicy: Parallel
   minReadySeconds: 10
   replicasLimit:
     minReplicas: 1
