@@ -144,7 +144,7 @@ spec:
               PROTOCOL="https"
             fi
             URL="${PROTOCOL}://127.0.0.1:9000/minio/health/live"
-            if wget -q -O /dev/null "$URL" 2>/dev/null || curl -sf "$URL" >/dev/null 2>&1; then
+            if wget -q --no-check-certificate -O /dev/null "$URL" 2>/dev/null || curl -sfk "$URL" >/dev/null 2>&1; then
               echo -n "readwrite"
             else
               echo -n "notready"
