@@ -225,23 +225,6 @@ apply_config_diff() {
     record_applied_marker
   fi
 
-  if [ "$_rcf_applied_count" -eq 0 ] && [ "$_rcf_checkable_count" -gt 0 ] && [ "$freshness_check" != "false" ]; then
-    if consume_applied_marker; then
-      echo "INFO: applied $_rcf_applied_count parameter(s)" >&2
-      return 0
-    fi
-
-    projection_changed=false
-    if ensure_projected_config_fresh; then
-      if [ "$projection_changed" = "true" ]; then
-        apply_config_diff
-        return $?
-      fi
-    else
-      return 1
-    fi
-  fi
-
   echo "INFO: applied $_rcf_applied_count parameter(s)" >&2
   return "$_acd_rc"
 }
@@ -250,6 +233,16 @@ reconfigure_from_config_file() {
   if [ ! -f "$config_file" ]; then
     echo "ERROR: rendered config not found: $config_file" >&2
     return 1
+  fi
+
+  if [ "$freshness_check" != "false" ]; then
+    if ! ensure_projected_config_fresh; then
+      if consume_applied_marker; then
+        echo "INFO: applied 0 parameter(s)" >&2
+        return 0
+      fi
+      return 1
+    fi
   fi
 
   apply_config_diff

@@ -410,7 +410,7 @@ Describe "Redis Reconfigure Config Script Tests"
       End
     End
 
-    Context "old stable target file different from engine"
+    Context "stale projection with diffs is blocked"
       set_called_with=""
       tmp_dir=""
       mock_now=100
@@ -464,12 +464,74 @@ Describe "Redis Reconfigure Config Script Tests"
         return 0
       }
 
-      It "applies without waiting for freshness because mounted target differs from engine"
+      It "exits non-zero before CONFIG SET when projection is stale"
+        When call reconfigure_from_config_file
+        The status should be failure
+        The variable set_called_with should equal ""
+        The stderr should include "ERROR: projected config did not refresh"
+      End
+    End
+
+    Context "fresh projection with diffs applies normally"
+      set_called_with=""
+      tmp_dir=""
+      mock_now=100
+      mock_mtime=95
+
+      setup() {
+        setup_base
+        freshness_check=true
+        dynamic_allowlist="maxmemory-policy"
+        projection_wait_seconds=3
+        tmp_dir=$(mktemp -d)
+        tmp_config="$tmp_dir/redis.conf"
+        config_file="$tmp_config"
+        applied_marker_file="$tmp_dir/marker"
+        ln -s "..2026_06_20_00_00_00.000000000" "$tmp_dir/..data"
+
+        set_called_with=""
+        printf '%s\n' "maxmemory-policy allkeys-lru" > "$tmp_config"
+      }
+      Before "setup"
+
+      cleanup() {
+        cleanup_base
+        [ -z "$tmp_dir" ] || rm -rf "$tmp_dir"
+      }
+      After "cleanup"
+
+      now_seconds() {
+        echo "$mock_now"
+      }
+
+      file_mtime() {
+        echo "$mock_mtime"
+      }
+
+      redis-cli() {
+        local key
+        key=$(_redis_cli_get_key "$@")
+        case "$key" in
+          "'*'"|"*")
+            printf '%s\n' "maxmemory-policy" "volatile-lru"
+            ;;
+          maxmemory-policy)
+            printf '%s\n' "maxmemory-policy" "allkeys-lru"
+            ;;
+        esac
+      }
+
+      reload_parameter() {
+        set_called_with="${set_called_with}${1}=${2};"
+        return 0
+      }
+
+      It "applies diffs after freshness check passes"
         When call reconfigure_from_config_file
         The status should be success
         The variable set_called_with should equal "maxmemory-policy=allkeys-lru;"
+        The stderr should include "INFO: projected config is fresh"
         The stderr should include "INFO: applied 1 parameter"
-        The stderr should not include "ERROR: projected config did not refresh"
         The path "$tmp_dir/marker" should be file
       End
     End
