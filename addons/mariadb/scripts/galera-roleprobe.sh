@@ -15,13 +15,13 @@
 # every few seconds based on wsrep_local_state. This script just reads it.
 #
 # Mapping from wsrep_local_state to KubeBlocks role:
-#   4 (Synced) -> "primary"   (writable, full Galera member)
-#   anything else -> "secondary" (Joining/Donor/Joined — not writable)
+#   4 + Primary component -> "primary" (writable, full Galera member)
+#   anything else -> probe failure (Joining/Donor/Joined is not rollout-ready)
 #
-# When the role file does not yet exist (early bootstrap, before mariadbd
-# binds the local socket), publish "secondary" so KubeBlocks does not elect
-# the node primary prematurely. The file appears within a few seconds after
-# bootstrap completes.
+# Do not publish "secondary" for early bootstrap or SST/joiner states. For a
+# Serial member update, KubeBlocks treats any role label as enough to continue
+# the next pod. Publishing secondary before the node has rejoined can let a
+# static-parameter restart take down multiple Galera members and lose quorum.
 
 set -eu
 
@@ -30,13 +30,13 @@ ROLE_FILE="${DATA_DIR}/.galera-role"
 
 if [ -f "${ROLE_FILE}" ]; then
   role=$(cat "${ROLE_FILE}" 2>/dev/null || true)
-  case "${role}" in
-    primary|secondary)
-      printf "%s" "${role}"
-      exit 0
-      ;;
-  esac
+  if [ "${role}" = "primary" ]; then
+    printf "%s" "${role}"
+    exit 0
+  fi
+  echo "galera role not rollout-ready: ${role:-empty}" >&2
+  exit 1
 fi
 
-printf "secondary"
-exit 0
+echo "galera role not ready: ${ROLE_FILE} missing" >&2
+exit 1

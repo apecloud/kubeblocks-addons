@@ -21,6 +21,35 @@ Describe "galera-start.sh"
 
   Include ../scripts/galera-start.sh
 
+  script_file() {
+    printf "%s/addons/mariadb/scripts/galera-start.sh" "${SHELLSPEC_CWD:?}"
+  }
+
+  script_contains() {
+    grep -F "$1" "$(script_file)"
+  }
+
+  socketless_self_heal_kills_mariadbd() {
+    awk '
+      index($0, "NO_SOCKET_COUNT=0") && !counter { counter = NR }
+      index($0, "NO_SOCKET_THRESHOLD=\"${GALERA_SOCKETLESS_MARIADBD_THRESHOLD:-30}\"") && !threshold { threshold = NR }
+      threshold && index($0, "pgrep -x mariadbd") && !detects { detects = NR }
+      index($0, "_restart_mariadbd_for_self_heal") && !helper { helper = NR }
+      index($0, "mariadbd running without ${SOCK}") { message = NR }
+      index($0, "kill -TERM ${pids}") && !term { term = NR }
+      index($0, "kill -KILL ${pids}") && !kill9 { kill9 = NR }
+      END { exit(counter && threshold && detects && helper && message && term && kill9 && counter < threshold && threshold < detects && message > detects && term < kill9 ? 0 : 1) }
+    ' "$(script_file)"
+  }
+
+  socket_available_resets_socketless_counter() {
+    awk '
+      index($0, "if [ -S \"${SOCK}\" ]; then") { socket = NR }
+      socket && index($0, "NO_SOCKET_COUNT=0") { reset = NR; exit }
+      END { exit(socket && reset && socket < reset ? 0 : 1) }
+    ' "$(script_file)"
+  }
+
   Describe "_any_peer_alive()"
     It "queries peer wsrep status with TLS disabled"
       timeout() {
@@ -50,6 +79,24 @@ Describe "galera-start.sh"
       When call _wait_for_primary_peer
       The status should be failure
       The output should include "Deferring join to avoid forming a separate non-Primary Galera partition"
+    End
+  End
+
+  Describe "socketless mariadbd self-heal"
+    It "self-heals when mariadbd runs without creating the local socket"
+      When call socketless_self_heal_kills_mariadbd
+      The status should be success
+    End
+
+    It "resets socketless self-heal once the MariaDB socket exists"
+      When call socket_available_resets_socketless_counter
+      The status should be success
+    End
+
+    It "keeps socketless self-heal threshold configurable"
+      When call script_contains "GALERA_SOCKETLESS_MARIADBD_THRESHOLD"
+      The status should be success
+      The output should include "GALERA_SOCKETLESS_MARIADBD_THRESHOLD"
     End
   End
 End

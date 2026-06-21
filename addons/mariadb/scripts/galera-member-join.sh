@@ -20,6 +20,7 @@
 
 DATA_DIR="${DATA_DIR:-/var/lib/mysql}"
 SYNCED_FILE="${DATA_DIR}/.galera-synced"
+ROLE_FILE="${DATA_DIR}/.galera-role"
 
 galera_member_join_diagnose_not_ready() {
     phase="$1"
@@ -47,14 +48,28 @@ if [ ! -d "${DATA_DIR}" ]; then
 fi
 
 if [ -f "${SYNCED_FILE}" ]; then
-    echo "Galera node synced (${SYNCED_FILE} present). Member join complete."
-    exit 0
+    role="$(cat "${ROLE_FILE}" 2>/dev/null || true)"
+    if [ "${role}" = "primary" ]; then
+        echo "Galera node synced (${SYNCED_FILE} present, role=primary). Member join complete."
+        exit 0
+    fi
+
+    galera_member_join_diagnose_not_ready \
+        "synced-marker-stale-or-role-not-primary" \
+        "  data_dir_exists: yes
+  synced_marker_present: yes
+  role_file: ${ROLE_FILE}
+  role: ${role:-<missing>}
+  hint: galera-start.sh must observe current wsrep_local_state=4 and wsrep_cluster_status=Primary before memberJoin can close." \
+        "yes"
+    exit 1
 fi
 
 galera_member_join_diagnose_not_ready \
     "sst-not-yet-synced" \
     "  data_dir_exists: yes
   synced_marker_present: no
+  role_file: ${ROLE_FILE}
   hint: galera-start.sh writes this marker once wsrep_local_state reaches 4 (Synced); SST may still be in progress." \
     "yes"
 exit 1

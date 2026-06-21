@@ -98,6 +98,30 @@ _wsrep_recover_and_bootstrap() {
   echo "grastate.dat updated: safe_to_bootstrap=1 for crash recovery bootstrap."
 }
 
+_mariadbd_pids() {
+  pidof mariadbd 2>/dev/null || pgrep -x mariadbd 2>/dev/null || true
+}
+
+_restart_mariadbd_for_self_heal() {
+  local reason="$1"
+  local pids
+  pids=$(_mariadbd_pids)
+  if [ -z "${pids}" ]; then
+    echo "SELF-HEALING: ${reason}. No mariadbd process found."
+    return 0
+  fi
+
+  echo "SELF-HEALING: ${reason}. Sending SIGTERM to mariadbd pid(s): ${pids}."
+  kill -TERM ${pids} 2>/dev/null || echo "SELF-HEALING: SIGTERM failed for mariadbd pid(s): ${pids}."
+  sleep 5
+
+  pids=$(_mariadbd_pids)
+  if [ -n "${pids}" ]; then
+    echo "SELF-HEALING: mariadbd still running after SIGTERM. Sending SIGKILL to pid(s): ${pids}."
+    kill -KILL ${pids} 2>/dev/null || echo "SELF-HEALING: SIGKILL failed for mariadbd pid(s): ${pids}."
+  fi
+}
+
 # Determine whether this node should bootstrap.
 #
 # ONLY pod-0 may bootstrap — this prevents split-brain when parallel shutdown
@@ -194,8 +218,12 @@ main() {
   # so role flapping (state transitions Synced → Donor/Joining → Synced)
   # is reflected in the file in near real time.
   #
-  # Self-healing: if wsrep_cluster_status stays non-Primary for 90s after
-  # the socket is available, the node is stuck in a dead partition (e.g.
+  # Self-healing: if wsrep_cluster_status stays non-Primary/Disconnected for
+  # 90s after the socket is available, the node is stuck in a dead partition.
+  # If mariadbd is running for 90s without creating the local socket, it is
+  # stuck before SQL accept readiness, commonly during a failed SST/join.
+  # In both cases, kill mariadbd so the container restarts and re-evaluates
+  # whether to join the current Primary component (e.g.
   # pod-1/2 formed a 2-node non-Primary group after losing pod-0 mid-SST
   # during a TOCTOU race in parallel restart). Kill mariadbd to force a
   # container restart; galera-start.sh will re-evaluate and join the now-
@@ -207,10 +235,13 @@ main() {
     SYNCED_ONCE=0
     NON_PRIMARY_COUNT=0
     NON_PRIMARY_THRESHOLD=30  # 30 × 3s = 90s
+    NO_SOCKET_COUNT=0
+    NO_SOCKET_THRESHOLD="${GALERA_SOCKETLESS_MARIADBD_THRESHOLD:-30}"  # 30 × 3s = 90s
     while true; do
       STATE=""
       CLUSTER_STATUS=""
       if [ -S "${SOCK}" ]; then
+        NO_SOCKET_COUNT=0
         STATE=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
           -S "${SOCK}" -N -s \
           -e "SHOW STATUS LIKE 'wsrep_local_state';" 2>/dev/null \
@@ -220,7 +251,7 @@ main() {
           -e "SHOW STATUS LIKE 'wsrep_cluster_status';" 2>/dev/null \
           | awk '{print $2}')
       fi
-      if [ "${STATE}" = "4" ]; then
+      if [ "${STATE}" = "4" ] && [ "${CLUSTER_STATUS}" = "Primary" ]; then
         printf "primary" > "${DATA_DIR}/.galera-role.tmp" \
           && chown mysql:mysql "${DATA_DIR}/.galera-role.tmp" 2>/dev/null \
           ; mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
@@ -231,20 +262,28 @@ main() {
         fi
         NON_PRIMARY_COUNT=0
       else
+        rm -f "${DATA_DIR}/.galera-synced" 2>/dev/null || true
+        SYNCED_ONCE=0
         printf "secondary" > "${DATA_DIR}/.galera-role.tmp" \
           && chown mysql:mysql "${DATA_DIR}/.galera-role.tmp" 2>/dev/null \
           ; mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
-        if [ -S "${SOCK}" ] && [ "${CLUSTER_STATUS}" = "non-Primary" ]; then
+        if [ -S "${SOCK}" ] && [ -n "${CLUSTER_STATUS}" ] && [ "${CLUSTER_STATUS}" != "Primary" ]; then
           NON_PRIMARY_COUNT=$((NON_PRIMARY_COUNT + 1))
           if [ ${NON_PRIMARY_COUNT} -ge ${NON_PRIMARY_THRESHOLD} ]; then
-            echo "SELF-HEALING: wsrep_cluster_status=non-Primary for $((NON_PRIMARY_COUNT * 3))s. Killing mariadbd to force restart."
-            pkill -SIGTERM mariadbd 2>/dev/null || true
-            sleep 5
-            pkill -9 mariadbd 2>/dev/null || true
+            _restart_mariadbd_for_self_heal "wsrep_cluster_status=${CLUSTER_STATUS} for $((NON_PRIMARY_COUNT * 3))s"
             NON_PRIMARY_COUNT=0
           fi
         else
           NON_PRIMARY_COUNT=0
+          if pgrep -x mariadbd >/dev/null 2>&1 || pidof mariadbd >/dev/null 2>&1; then
+            NO_SOCKET_COUNT=$((NO_SOCKET_COUNT + 1))
+            if [ ${NO_SOCKET_COUNT} -ge ${NO_SOCKET_THRESHOLD} ]; then
+              _restart_mariadbd_for_self_heal "mariadbd running without ${SOCK} for $((NO_SOCKET_COUNT * 3))s"
+              NO_SOCKET_COUNT=0
+            fi
+          else
+            NO_SOCKET_COUNT=0
+          fi
         fi
       fi
       sleep 3
