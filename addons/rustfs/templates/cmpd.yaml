@@ -37,7 +37,7 @@ spec:
       template: {{ include "rustfs.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: rustfs-config
-      defaultMode: 0777
+      defaultMode: 0644
       restartOnFileChange: true
   scripts:
     - name: script
@@ -112,7 +112,7 @@ spec:
       updatePriority: 1
       participatesInQuorum: false
     - name: notready
-      updatePriority: 1
+      updatePriority: 0
       participatesInQuorum: false
   policyRules:
     - apiGroups:
@@ -182,9 +182,9 @@ spec:
           - name: RUSTFS_CONSOLE_ENABLE
             value: "true"
           - name: RUSTFS_ADDRESS
-            value: "0.0.0.0:9000"
+            value: "0.0.0.0:$(RUSTFS_API_PORT)"
           - name: RUSTFS_CONSOLE_ADDRESS
-            value: "0.0.0.0:9001"
+            value: "0.0.0.0:$(RUSTFS_CONSOLE_PORT)"
           - name: SERVICE_PORT
             value: "9000"
         volumeMounts:

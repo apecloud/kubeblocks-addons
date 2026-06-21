@@ -1,6 +1,6 @@
 # Default values for rustfs cluster
 
-replicas: 2
+replicas: 4
 
 buckets: ""
 
