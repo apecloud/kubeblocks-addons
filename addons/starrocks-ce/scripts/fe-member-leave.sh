@@ -67,7 +67,7 @@ if [[ "${leader_host}" == "${KB_LEAVE_MEMBER_POD_NAME}"* ]]; then
   log "waiting for leadership transfer (timeout ${LEADER_TRANSFER_TIMEOUT_SECS}s)"
   elapsed=0
   while true; do
-    new_leader=$(query_frontends | grep 'LEADER' | awk '{print $2}')
+    new_leader=$(query_frontends | awk '$7 == "LEADER" {print $2}')
     if [[ -n "${new_leader}" && "${new_leader}" != "${KB_LEAVE_MEMBER_POD_NAME}"* ]]; then
       leader_host=${new_leader}
       log "leadership transferred to ${leader_host}"
