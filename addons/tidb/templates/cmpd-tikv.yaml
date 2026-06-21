@@ -78,7 +78,6 @@ spec:
       template: {{ include "tidb.tikv.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
-      externalManaged: true
   lifecycleActions:
     memberLeave:
       exec:

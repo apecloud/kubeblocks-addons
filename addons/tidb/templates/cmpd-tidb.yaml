@@ -90,7 +90,6 @@ spec:
       template: {{ include "tidb.tidb.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
-      externalManaged: true
   systemAccounts:
     - name: root
       initAccount: true
