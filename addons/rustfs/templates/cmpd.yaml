@@ -164,7 +164,7 @@ spec:
       - name: rustfs
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
-          - /bin/bash
+          - /bin/sh
           - -c
           - /scripts/startup.sh
         ports:

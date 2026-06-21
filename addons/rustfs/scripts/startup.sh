@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 replicas_history_file="/rustfs-config/RUSTFS_REPLICAS_HISTORY"
 writable_certs_path="/data/.rustfs/certs"
@@ -23,8 +23,9 @@ setup_tls_certs() {
 
 init_buckets() {
   local buckets=$1
-  IFS=',' read -ra BUCKET_ARRAY <<< "$buckets"
-  for bucket in "${BUCKET_ARRAY[@]}"; do
+  local old_ifs="$IFS"
+  IFS=','
+  for bucket in $buckets; do
     directory="/data/$bucket"
     if mkdir -p "$directory"; then
       echo "Successfully init bucket: $directory"
@@ -32,6 +33,7 @@ init_buckets() {
       echo "Failed to init bucket: $directory"
     fi
   done
+  IFS="$old_ifs"
 }
 
 read_replicas_history() {
@@ -51,15 +53,17 @@ generate_volumes_env() {
   fi
 
   prev=0
-  IFS=',' read -ra REPLICAS_INDEX_ARRAY <<< "$replicas"
-  for cur in "${REPLICAS_INDEX_ARRAY[@]}"; do
+  local old_ifs="$IFS"
+  IFS=','
+  for cur in $replicas; do
     if [ $prev -eq 0 ]; then
-      volumes+=" $protocol://$RUSTFS_COMPONENT_NAME-{0...$((cur-1))}.$RUSTFS_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN:${RUSTFS_API_PORT}/data"
+      volumes="$volumes $protocol://$RUSTFS_COMPONENT_NAME-{0...$((cur-1))}.$RUSTFS_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN:${RUSTFS_API_PORT}/data"
     else
-      volumes+=" $protocol://$RUSTFS_COMPONENT_NAME-{$prev...$((cur-1))}.$RUSTFS_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN:${RUSTFS_API_PORT}/data"
+      volumes="$volumes $protocol://$RUSTFS_COMPONENT_NAME-{$prev...$((cur-1))}.$RUSTFS_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN:${RUSTFS_API_PORT}/data"
     fi
     prev=$cur
   done
+  IFS="$old_ifs"
   echo "$volumes"
 }
 
