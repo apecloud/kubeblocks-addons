@@ -143,8 +143,11 @@ spec:
             if [ "$TLS_ENABLED" = "true" ]; then
               PROTOCOL="https"
             fi
-            URL="${PROTOCOL}://127.0.0.1:9000/minio/health/live"
-            if wget -q --no-check-certificate -O /dev/null "$URL" 2>/dev/null || curl -sfk "$URL" >/dev/null 2>&1; then
+            BASE="${PROTOCOL}://127.0.0.1:9000"
+            if wget -q --no-check-certificate -O /dev/null "${BASE}/minio/health/live" 2>/dev/null \
+              || wget -q --no-check-certificate -O /dev/null "${BASE}/health" 2>/dev/null \
+              || curl -sfk "${BASE}/minio/health/live" >/dev/null 2>&1 \
+              || curl -sfk "${BASE}/health" >/dev/null 2>&1; then
               echo -n "readwrite"
             else
               echo -n "notready"
