@@ -1,18 +1,17 @@
 #!/bin/bash
 
 replicas_history_file="/rustfs-config/RUSTFS_REPLICAS_HISTORY"
-data_dir="/data"
 writable_certs_path="/data/.rustfs/certs"
 
 setup_tls_certs() {
   if [ "$TLS_ENABLED" = "true" ] && [ -f ${CERTS_PATH}/ca.crt ]; then
     echo "Setting up TLS certificates for RustFS..."
 
-    mkdir -p ${writable_certs_path}/CAs
+    mkdir -p ${writable_certs_path}
 
     cp -L ${CERTS_PATH}/tls.crt ${writable_certs_path}/tls.crt
     cp -L ${CERTS_PATH}/tls.key ${writable_certs_path}/tls.key
-    cp -L ${CERTS_PATH}/ca.crt ${writable_certs_path}/CAs/ca.crt
+    cp -L ${CERTS_PATH}/ca.crt ${writable_certs_path}/ca.crt
 
     chmod 600 ${writable_certs_path}/tls.key
 
@@ -26,7 +25,7 @@ init_buckets() {
   local buckets=$1
   IFS=',' read -ra BUCKET_ARRAY <<< "$buckets"
   for bucket in "${BUCKET_ARRAY[@]}"; do
-    directory="$data_dir/$bucket"
+    directory="/data/$bucket"
     if mkdir -p "$directory"; then
       echo "Successfully init bucket: $directory"
     else
@@ -42,27 +41,35 @@ read_replicas_history() {
   echo "$content"
 }
 
-generate_server_pool() {
+generate_volumes_env() {
   local replicas=$1
-  local server=""
+  local volumes=""
+  local protocol="http"
+
+  if [ "$TLS_ENABLED" = "true" ]; then
+    protocol="https"
+  fi
+
   prev=0
   IFS=',' read -ra REPLICAS_INDEX_ARRAY <<< "$replicas"
   for cur in "${REPLICAS_INDEX_ARRAY[@]}"; do
     if [ $prev -eq 0 ]; then
-      server+=" $HTTP_PROTOCOL://$RUSTFS_COMPONENT_NAME-{0...$((cur-1))}.$RUSTFS_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN:${RUSTFS_API_PORT}/data"
+      volumes+=" $protocol://$RUSTFS_COMPONENT_NAME-{0...$((cur-1))}.$RUSTFS_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN:${RUSTFS_API_PORT}/data"
     else
-      server+=" $HTTP_PROTOCOL://$RUSTFS_COMPONENT_NAME-{$prev...$((cur-1))}.$RUSTFS_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN:${RUSTFS_API_PORT}/data"
+      volumes+=" $protocol://$RUSTFS_COMPONENT_NAME-{$prev...$((cur-1))}.$RUSTFS_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN:${RUSTFS_API_PORT}/data"
     fi
     prev=$cur
   done
-  echo "$server"
+  echo "$volumes"
 }
 
-build_startup_cmd() {
+startup() {
   if [ ! -f "$replicas_history_file" ]; then
     echo "rustfs config doesn't exist" >&2
-    return 1
+    exit 1
   fi
+
+  setup_tls_certs
 
   buckets="$RUSTFS_BUCKETS"
   if [ -n "$buckets" ]; then
@@ -70,41 +77,21 @@ build_startup_cmd() {
   fi
 
   replicas=$(read_replicas_history "$replicas_history_file")
-  echo "the rustfs replicas history is $replicas" >&2
+  echo "the rustfs replicas history is $replicas"
 
-  # Single node mode: just use local data path
+  # Single node mode: use local data path
   if [ "$replicas" = "1" ]; then
-    cmd="/app/rustfs --address :$RUSTFS_API_PORT --console-address :$RUSTFS_CONSOLE_PORT"
-    echo "$cmd"
-    return 0
-  fi
-
-  server=$(generate_server_pool $replicas)
-  echo "the rustfs server pool is $server" >&2
-
-  export RUSTFS_VOLUMES="$server"
-  cmd="/app/rustfs --address :$RUSTFS_API_PORT --console-address :$RUSTFS_CONSOLE_PORT"
-  echo "$cmd"
-  return 0
-}
-
-startup() {
-  if [ "$TLS_ENABLED" = "true" ]; then
-    export HTTP_PROTOCOL="https"
+    export RUSTFS_VOLUMES="/data"
   else
-    export HTTP_PROTOCOL="http"
+    # Distributed mode: generate volume endpoints
+    volumes=$(generate_volumes_env "$replicas")
+    export RUSTFS_VOLUMES="$volumes"
+    echo "RustFS distributed volumes: $RUSTFS_VOLUMES"
   fi
 
-  setup_tls_certs
-
-  cmd=$(build_startup_cmd)
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "Failed to build startup command" >&2
-    exit 1
-  fi
-  echo "Starting RustFS server with command: $cmd"
-  eval "$cmd"
+  # RUSTFS_ADDRESS and RUSTFS_CONSOLE_ADDRESS are already set via container env
+  echo "Starting RustFS server (RUSTFS_VOLUMES=$RUSTFS_VOLUMES)"
+  exec /app/rustfs
 }
 
 # This is magic for shellspec ut framework.
