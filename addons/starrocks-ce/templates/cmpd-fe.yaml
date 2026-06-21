@@ -12,6 +12,15 @@ spec:
   # The FE can only perform leader election when the majority of members are active.
   updateStrategy: Parallel
   serviceKind: starrocks-fe
+  lifecycleActions:
+    memberLeave:
+      exec:
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/fe-member-leave.sh
+        targetPodSelector: Any
+        container: fe
   services:
   - name: fe
     serviceName: fe
