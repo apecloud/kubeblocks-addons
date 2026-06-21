@@ -6,6 +6,8 @@ init_reconfigure_env() {
   freshness_check="${REDIS_RECONFIGURE_FRESHNESS_CHECK:-true}"
   projection_fresh_age_seconds="${REDIS_RECONFIGURE_PROJECTION_FRESH_AGE_SECONDS:-10}"
   projection_wait_seconds="${REDIS_RECONFIGURE_PROJECTION_WAIT_SECONDS:-15}"
+  applied_marker_file="${REDIS_RECONFIGURE_APPLIED_MARKER_FILE:-/tmp/.kb_redis_reconfigure_applied_fingerprint}"
+  applied_marker_max_age_seconds="${REDIS_RECONFIGURE_APPLIED_MARKER_MAX_AGE_SECONDS:-120}"
   service_port=${SERVICE_PORT:-6379}
   auth_arg=""
   [ -z "${REDIS_DEFAULT_PASSWORD:-}" ] || auth_arg="-a ${REDIS_DEFAULT_PASSWORD}"
@@ -86,6 +88,54 @@ readlink_target() {
 
 config_fingerprint() {
   cksum "$1" 2>/dev/null | awk '{print $1 ":" $2}'
+}
+
+current_projection_token() {
+  _cpt_fingerprint=$(config_fingerprint "$config_file") || return 1
+  _cpt_config_dir=$(dirname "$config_file")
+  _cpt_data_link="${_cpt_config_dir}/..data"
+  _cpt_target=$(readlink_target "$_cpt_data_link") || _cpt_target=""
+  printf '%s|%s\n' "$_cpt_fingerprint" "$_cpt_target"
+}
+
+record_applied_marker() {
+  [ -n "${applied_marker_file:-}" ] || return 0
+
+  _ram_token=$(current_projection_token) || return 0
+  _ram_dir=$(dirname "$applied_marker_file")
+  mkdir -p "$_ram_dir" 2>/dev/null || return 0
+  _ram_tmp="${applied_marker_file}.$$"
+  {
+    printf '%s\n' "$_ram_token"
+    now_seconds
+  } > "$_ram_tmp" 2>/dev/null && mv "$_ram_tmp" "$applied_marker_file" 2>/dev/null || {
+    rm -f "$_ram_tmp" 2>/dev/null || true
+    return 0
+  }
+}
+
+consume_applied_marker() {
+  [ -n "${applied_marker_file:-}" ] || return 1
+  [ -f "$applied_marker_file" ] || return 1
+
+  _cam_expected=$(current_projection_token) || return 1
+  _cam_token=$(sed -n '1p' "$applied_marker_file" 2>/dev/null)
+  _cam_written_at=$(sed -n '2p' "$applied_marker_file" 2>/dev/null)
+  [ "$_cam_token" = "$_cam_expected" ] || return 1
+
+  case "$_cam_written_at" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+
+  _cam_now=$(now_seconds)
+  _cam_age=$((_cam_now - _cam_written_at))
+  if [ "$_cam_age" -gt "${applied_marker_max_age_seconds:-600}" ]; then
+    return 1
+  fi
+
+  rm -f "$applied_marker_file" 2>/dev/null || true
+  echo "INFO: mounted config already applied by previous action invocation: token='${_cam_expected}', markerAge='${_cam_age}'" >&2
+  return 0
 }
 
 ensure_projected_config_fresh() {
@@ -171,7 +221,16 @@ apply_config_diff() {
     return "$_acd_rc"
   fi
 
+  if [ "$_rcf_applied_count" -gt 0 ]; then
+    record_applied_marker
+  fi
+
   if [ "$_rcf_applied_count" -eq 0 ] && [ "$_rcf_checkable_count" -gt 0 ] && [ "$freshness_check" != "false" ]; then
+    if consume_applied_marker; then
+      echo "INFO: applied $_rcf_applied_count parameter(s)" >&2
+      return 0
+    fi
+
     projection_changed=false
     if ensure_projected_config_fresh; then
       if [ "$projection_changed" = "true" ]; then

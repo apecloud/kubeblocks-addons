@@ -323,6 +323,8 @@ Describe "Redis Reconfigure Config Script Tests"
       freshness_check=false
       projection_fresh_age_seconds=10
       projection_wait_seconds=0
+      applied_marker_file=""
+      applied_marker_max_age_seconds=600
       tmp_config=$(mktemp)
       config_file="$tmp_config"
     }
@@ -362,6 +364,7 @@ Describe "Redis Reconfigure Config Script Tests"
         tmp_dir=$(mktemp -d)
         tmp_config="$tmp_dir/redis.conf"
         config_file="$tmp_config"
+        applied_marker_file="$tmp_dir/marker"
         ln -s "..2026_06_20_00_00_00.000000000" "$tmp_dir/..data"
 
         set_called_with=""
@@ -421,6 +424,7 @@ Describe "Redis Reconfigure Config Script Tests"
         tmp_dir=$(mktemp -d)
         tmp_config="$tmp_dir/redis.conf"
         config_file="$tmp_config"
+        applied_marker_file="$tmp_dir/marker"
         ln -s "..2026_06_20_00_00_00.000000000" "$tmp_dir/..data"
 
         set_called_with=""
@@ -466,10 +470,11 @@ Describe "Redis Reconfigure Config Script Tests"
         The variable set_called_with should equal "maxmemory-policy=allkeys-lru;"
         The stderr should include "INFO: applied 1 parameter"
         The stderr should not include "ERROR: projected config did not refresh"
+        The path "$tmp_dir/marker" should be file
       End
     End
 
-    Context "old stable already-applied file has stale marker"
+    Context "old stable already-applied file has an expired marker"
       set_called_with=""
       tmp_dir=""
       mock_now=100
@@ -480,14 +485,17 @@ Describe "Redis Reconfigure Config Script Tests"
         freshness_check=true
         dynamic_allowlist="maxmemory-policy"
         projection_wait_seconds=0
+        applied_marker_max_age_seconds=10
         tmp_dir=$(mktemp -d)
         tmp_config="$tmp_dir/redis.conf"
         config_file="$tmp_config"
+        applied_marker_file="$tmp_dir/marker"
         ln -s "..2026_06_20_00_00_00.000000000" "$tmp_dir/..data"
 
         set_called_with=""
         printf '%s\n' "maxmemory-policy volatile-lru" > "$tmp_config"
-        config_fingerprint "$tmp_config" > "$tmp_dir/marker"
+        current_projection_token > "$applied_marker_file"
+        printf '%s\n' 0 >> "$applied_marker_file"
       }
       Before "setup"
 
@@ -520,12 +528,75 @@ Describe "Redis Reconfigure Config Script Tests"
         return 0
       }
 
-      It "does not trust a previous marker as current request target proof"
+      It "does not trust an expired previous marker as current request target proof"
         When call reconfigure_from_config_file
         The status should be failure
         The variable set_called_with should equal ""
         The stderr should include "ERROR: projected config did not refresh"
         The stderr should not include "INFO: applied 0 parameter"
+      End
+    End
+
+    Context "controller retry after successful apply"
+      set_called_with=""
+      tmp_dir=""
+      mock_now=100
+      mock_mtime=0
+
+      setup() {
+        setup_base
+        freshness_check=true
+        dynamic_allowlist="maxmemory-policy"
+        projection_wait_seconds=0
+        tmp_dir=$(mktemp -d)
+        tmp_config="$tmp_dir/redis.conf"
+        config_file="$tmp_config"
+        applied_marker_file="$tmp_dir/marker"
+        ln -s "..2026_06_21_04_39_50.3648217067" "$tmp_dir/..data"
+
+        set_called_with=""
+        printf '%s\n' "maxmemory-policy allkeys-lru" > "$tmp_config"
+        current_projection_token > "$applied_marker_file"
+        printf '%s\n' 95 >> "$applied_marker_file"
+      }
+      Before "setup"
+
+      cleanup() {
+        cleanup_base
+        [ -z "$tmp_dir" ] || rm -rf "$tmp_dir"
+      }
+      After "cleanup"
+
+      now_seconds() {
+        echo "$mock_now"
+      }
+
+      file_mtime() {
+        echo "$mock_mtime"
+      }
+
+      redis-cli() {
+        local key
+        key=$(_redis_cli_get_key "$@")
+        case "$key" in
+          "'*'"|"*")
+            printf '%s\n' "maxmemory-policy" "allkeys-lru"
+            ;;
+        esac
+      }
+
+      reload_parameter() {
+        set_called_with="${set_called_with}${1}=${2};"
+        return 0
+      }
+
+      It "accepts one same-fingerprint retry after a verified apply"
+        When call reconfigure_from_config_file
+        The status should be success
+        The variable set_called_with should equal ""
+        The stderr should include "INFO: mounted config already applied by previous action invocation"
+        The stderr should include "INFO: applied 0 parameter"
+        The path "$tmp_dir/marker" should not be exist
       End
     End
 
