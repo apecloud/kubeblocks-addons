@@ -57,12 +57,10 @@ generate_volumes_env() {
   IFS=','
   for cur in $replicas; do
     local base="$RUSTFS_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN:${RUSTFS_API_PORT}/data"
-    if [ $((cur - prev)) -eq 1 ]; then
+    if [ $prev -eq $((cur - 1)) ]; then
       volumes="$volumes $protocol://$RUSTFS_COMPONENT_NAME-${prev}.${base}"
-    elif [ $prev -eq 0 ]; then
-      volumes="$volumes $protocol://$RUSTFS_COMPONENT_NAME-{0...$((cur-1))}.${base}"
     else
-      volumes="$volumes $protocol://$RUSTFS_COMPONENT_NAME-{$prev...$((cur-1))}.${base}"
+      volumes="$volumes $protocol://$RUSTFS_COMPONENT_NAME-{${prev}...$((cur-1))}.${base}"
     fi
     prev=$cur
   done
