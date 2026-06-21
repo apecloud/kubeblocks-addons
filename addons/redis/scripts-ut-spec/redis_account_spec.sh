@@ -380,6 +380,50 @@ Describe "Redis Account Script Tests"
       End
     End
 
+    Context "when CLUSTER NODES has mixed announced hostnames"
+      redis-cli() {
+        printf "abc123 10.0.0.1:6379@16379, master - 0 0 1 connected 0-5460\n"
+        printf "def456 10.0.0.2:6379@16379,host2.ns.svc master - 0 0 2 connected 5461-10922\n"
+        return 0
+      }
+
+      It "falls back to the node address with cluster bus suffix when announced hostname is empty"
+        export CURRENT_POD_NAME="redis-shard-0"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard"
+        export CLUSTER_NAMESPACE="default"
+        export CLUSTER_DOMAIN="cluster.local"
+        export REDIS_DEFAULT_USER="default"
+        export REDIS_DEFAULT_PASSWORD="password123"
+        export REDIS_CLI_TLS_CMD=""
+        service_port=6379
+        When call get_cluster_host_list
+        The status should be success
+        The variable host_list should equal "10.0.0.1:6379@16379,host2.ns.svc"
+      End
+    End
+
+    Context "when CLUSTER NODES has no announced hostnames"
+      redis-cli() {
+        printf "abc123 10.0.0.1:6379@16379, master - 0 0 1 connected 0-5460\n"
+        printf "def456 10.0.0.2:6379@16379, slave abc123 0 0 2 connected\n"
+        return 0
+      }
+
+      It "uses the node addresses with cluster bus suffix instead of returning an empty host list"
+        export CURRENT_POD_NAME="redis-shard-0"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard"
+        export CLUSTER_NAMESPACE="default"
+        export CLUSTER_DOMAIN="cluster.local"
+        export REDIS_DEFAULT_USER="default"
+        export REDIS_DEFAULT_PASSWORD="password123"
+        export REDIS_CLI_TLS_CMD=""
+        service_port=6379
+        When call get_cluster_host_list
+        The status should be success
+        The variable host_list should equal "10.0.0.1:6379@16379,10.0.0.2:6379@16379"
+      End
+    End
+
     Context "when CLUSTER NODES returns empty or only failed nodes"
       redis-cli() {
         printf "abc123 10.0.0.1:6379@16379,host1.ns.svc master,fail - 0 0 1 connected 0-5460\n"
