@@ -1,0 +1,11 @@
+RustFS cluster has been created successfully.
+
+To access the RustFS S3 API:
+  kubectl port-forward svc/{{ include "kblib.clusterName" . }}-rustfs 9000:9000
+
+To access the RustFS Console:
+  kubectl port-forward svc/{{ include "kblib.clusterName" . }}-rustfs 9001:9001
+
+Get your credentials:
+  export RUSTFS_ACCESS_KEY=$(kubectl get secret {{ include "kblib.clusterName" . }}-rustfs-account-root -o jsonpath='{.data.username}' | base64 -d)
+  export RUSTFS_SECRET_KEY=$(kubectl get secret {{ include "kblib.clusterName" . }}-rustfs-account-root -o jsonpath='{.data.password}' | base64 -d)

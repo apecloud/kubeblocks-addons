@@ -1,0 +1,199 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "rustfs.cmpdName" . }}
+  labels:
+    {{- include "rustfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rustfs.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: RustFS is an S3-compatible high-performance distributed object storage system.
+  serviceKind: rustfs
+  serviceVersion: {{ include "rustfs.defaultServiceVersion" . }}
+  minReadySeconds: 10
+  replicasLimit:
+    minReplicas: 1
+    maxReplicas: 32
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        letterCase: MixedCases
+  services:
+  - name: default
+    spec:
+      ports:
+        - name: api
+          port: 9000
+          targetPort: api
+        - name: console
+          port: 9001
+          targetPort: console
+  configs:
+    - name: config
+      template: {{ include "rustfs.configTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: rustfs-config
+      defaultMode: 0777
+      restartOnFileChange: true
+  scripts:
+    - name: script
+      template: {{ include "rustfs.scriptTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: rustfs-script
+      defaultMode: 0555
+  volumes:
+    - name: data
+      needSnapshot: true
+  vars:
+    - name: RUSTFS_ACCESS_KEY
+      valueFrom:
+        credentialVarRef:
+          name: root
+          optional: false
+          username: Required
+    - name: RUSTFS_SECRET_KEY
+      valueFrom:
+        credentialVarRef:
+          name: root
+          optional: false
+          password: Required
+    - name: RUSTFS_COMP_REPLICAS
+      valueFrom:
+        componentVarRef:
+          compDef: rustfs
+          optional: false
+          replicas: Required
+    - name: RUSTFS_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: rustfs
+          optional: false
+          componentName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: rustfs
+          optional: false
+          shortName: Required
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain | quote }}
+    - name: CERTS_PATH
+      value: {{ .Values.certsPath | quote }}
+    - name: RUSTFS_API_PORT
+      value: {{ .Values.rustfsAPIPort | quote }}
+    - name: RUSTFS_CONSOLE_PORT
+      value: {{ .Values.rustfsConsolePort | quote }}
+    - name: SERVICE_PORT
+      value: "9000"
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+  tls:
+    volumeName: tls
+    mountPath: {{ .Values.certsPath | quote }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
+  roles:
+    - name: readwrite
+      updatePriority: 1
+      participatesInQuorum: false
+    - name: notready
+      updatePriority: 1
+      participatesInQuorum: false
+  policyRules:
+    - apiGroups:
+        - ""
+      resources:
+        - configmaps
+      verbs:
+        - create
+        - get
+        - patch
+  lifecycleActions:
+    memberLeave:
+      exec:
+        command:
+          - /bin/sh
+          - -c
+          - |
+            echo "RustFS does not support scale-in: removing nodes from a distributed erasure-coding pool is not supported and would cause data loss." >&2
+            exit 1
+    roleProbe:
+      exec:
+        command:
+          - /bin/sh
+          - -c
+          - |
+            PROTOCOL="http"
+            if [ "$TLS_ENABLED" = "true" ]; then
+              PROTOCOL="https"
+            fi
+            if curl -sf ${PROTOCOL}://127.0.0.1:9000/minio/health/live >/dev/null 2>&1; then
+              echo -n "readwrite"
+            else
+              echo -n "notready"
+            fi
+  runtime:
+    initContainers:
+      - name: init
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /bin/sh
+          - -ce
+          - /scripts/replicas-history-config.sh
+        volumeMounts:
+          - name: rustfs-script
+            mountPath: /scripts
+          - name: rustfs-replicas-config
+            mountPath: /rustfs-config
+    containers:
+      - name: rustfs
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/startup.sh
+        ports:
+          - name: api
+            protocol: TCP
+            containerPort: {{ .Values.rustfsAPIPort }}
+          - name: console
+            protocol: TCP
+            containerPort: {{ .Values.rustfsConsolePort }}
+        env:
+          - name: RUSTFS_ACCESS_KEY
+            value: $(RUSTFS_ACCESS_KEY)
+          - name: RUSTFS_SECRET_KEY
+            value: $(RUSTFS_SECRET_KEY)
+          - name: RUSTFS_CONSOLE_ENABLE
+            value: "true"
+          - name: RUSTFS_ADDRESS
+            value: "0.0.0.0:9000"
+          - name: RUSTFS_CONSOLE_ADDRESS
+            value: "0.0.0.0:9001"
+          - name: SERVICE_PORT
+            value: "9000"
+        volumeMounts:
+          - name: data
+            mountPath: /data
+          - name: rustfs-script
+            mountPath: /scripts
+          - name: rustfs-replicas-config
+            mountPath: /rustfs-config
+    volumes:
+      - name: rustfs-replicas-config
+        emptyDir: {}

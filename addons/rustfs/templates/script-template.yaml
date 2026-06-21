@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rustfs.scriptTplName" . }}
+  labels:
+    {{- include "rustfs.labels" . | nindent 4 }}
+data:
+{{ (.Files.Glob "scripts/*.sh").AsConfig | indent 2 }}
