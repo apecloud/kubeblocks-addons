@@ -91,10 +91,10 @@ spec:
           - bash
           - -c
           - |
-            RESULT=$(/pd-ctl member 2>/dev/null || true)
+            RESULT=$(timeout 2 /pd-ctl member 2>/dev/null || true)
             if ! echo "$RESULT" | jq -e '.leader.name' >/dev/null 2>&1; then
                 for fqdn in $(echo "$PD_POD_FQDN_LIST" | tr ',' ' '); do
-                    RESULT=$(/pd-ctl -u "http://${fqdn}:2379" member 2>/dev/null || true)
+                    RESULT=$(timeout 2 /pd-ctl -u "http://${fqdn}:2379" member 2>/dev/null || true)
                     if echo "$RESULT" | jq -e '.leader.name' >/dev/null 2>&1; then
                         break
                     fi
@@ -103,6 +103,10 @@ spec:
             fi
             LEADER_NAME=$(echo "$RESULT" | jq -r '.leader.name // empty' 2>/dev/null)
             if [ -z "$LEADER_NAME" ]; then
+                exit 1
+            fi
+            IS_MEMBER=$(echo "$RESULT" | jq -r --arg h "$HOSTNAME" '.members[]?.name // empty | select(. == $h)' 2>/dev/null)
+            if [ -z "$IS_MEMBER" ]; then
                 exit 1
             fi
             if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
