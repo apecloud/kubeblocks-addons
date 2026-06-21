@@ -67,6 +67,26 @@ generate_volumes_env() {
   echo "$volumes"
 }
 
+wait_for_peers_dns() {
+  local headless="$RUSTFS_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN"
+  local replicas_count=$1
+  local i=0
+  echo "Waiting for all peer DNS records to resolve ($replicas_count peers)..."
+  while [ $i -lt $replicas_count ]; do
+    local peer="$RUSTFS_COMPONENT_NAME-${i}.${headless}"
+    local attempts=0
+    while ! getent hosts "$peer" >/dev/null 2>&1; do
+      attempts=$((attempts + 1))
+      if [ $((attempts % 10)) -eq 0 ]; then
+        echo "Still waiting for DNS: $peer (attempt $attempts)..."
+      fi
+      sleep 2
+    done
+    i=$((i + 1))
+  done
+  echo "All peer DNS records resolved."
+}
+
 startup() {
   if [ ! -f "$replicas_history_file" ]; then
     echo "rustfs config doesn't exist" >&2
@@ -85,17 +105,23 @@ startup() {
 
   # Single node mode: use local data path
   if [ "$replicas" = "1" ]; then
-    export RUSTFS_VOLUMES="/data"
+    RUSTFS_VOLUMES="/data"
   else
     # Distributed mode: generate volume endpoints
-    volumes=$(generate_volumes_env "$replicas")
-    export RUSTFS_VOLUMES="$volumes"
+    RUSTFS_VOLUMES=$(generate_volumes_env "$replicas")
     echo "RustFS distributed volumes: $RUSTFS_VOLUMES"
+
+    # Wait for all peer DNS records before starting (chicken-and-egg with StatefulSet sequential creation)
+    local last_replica
+    local old_ifs="$IFS"
+    IFS=','
+    for last_replica in $replicas; do :; done
+    IFS="$old_ifs"
+    wait_for_peers_dns "$last_replica"
   fi
 
-  # RUSTFS_ADDRESS and RUSTFS_CONSOLE_ADDRESS are already set via container env
-  echo "Starting RustFS server (RUSTFS_VOLUMES=$RUSTFS_VOLUMES)"
-  exec /app/rustfs
+  echo "Starting RustFS server (volumes=$RUSTFS_VOLUMES)"
+  exec /usr/bin/rustfs $RUSTFS_VOLUMES
 }
 
 # This is magic for shellspec ut framework.
