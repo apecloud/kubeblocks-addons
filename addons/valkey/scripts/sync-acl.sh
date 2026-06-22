@@ -79,15 +79,16 @@ sync_acl_to_replica() {
   # valkey-cli exits 0 even for server errors; check output for error prefix.
   local acl_list
   acl_list=$("${src_cli[@]}" ACL LIST 2>&1) || {
-    echo "WARNING: could not read ACL LIST from ${src_fqdn}: ${acl_list}" >&2
+    echo "ERROR: could not read ACL LIST from ${src_fqdn}: ${acl_list}" >&2
     return 1
   }
   case "${acl_list}" in
     "(error)"*|"ERR "*)
-      echo "WARNING: ACL LIST from ${src_fqdn} returned error: ${acl_list}" >&2
+      echo "ERROR: ACL LIST from ${src_fqdn} returned error: ${acl_list}" >&2
       return 1 ;;
   esac
 
+  local sync_failures=0
   while IFS= read -r rule; do
     [ -z "${rule}" ] && continue
     # Format: "user <name> <flags...>"
@@ -111,7 +112,8 @@ sync_acl_to_replica() {
     set +f
     case "${setuser_out}" in
       *"ERR"*|*"WRONGTYPE"*|*"error"*)
-        echo "  WARNING: failed to set ACL for ${username}: ${setuser_out}" >&2 ;;
+        echo "  ERROR: failed to set ACL for ${username}: ${setuser_out}" >&2
+        sync_failures=$((sync_failures + 1)) ;;
     esac
   done <<< "${acl_list}"
 
@@ -120,7 +122,13 @@ sync_acl_to_replica() {
   local acl_save_out
   acl_save_out=$("${dst_cli[@]}" ACL SAVE 2>&1) || true
   if [ "${acl_save_out}" != "OK" ]; then
-    echo "WARNING: ACL SAVE failed on ${dst_fqdn}: ${acl_save_out} — rules applied in memory only, will be lost on restart" >&2
+    echo "ERROR: ACL SAVE failed on ${dst_fqdn}: ${acl_save_out} — rules applied in memory only, will be lost on restart" >&2
+    return 1
+  fi
+
+  if [ "${sync_failures}" -gt 0 ]; then
+    echo "ERROR: ACL sync completed with ${sync_failures} failure(s) — replica ACL state is incomplete." >&2
+    return 1
   fi
   echo "ACL sync complete."
 }
