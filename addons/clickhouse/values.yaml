@@ -9,7 +9,8 @@ fullnameOverride: ""
 ##
 commonLabels: {}
 
-logConfigs: {}
+logConfigs:
+  error: /bitnami/clickhouse/log/*.err.log
 
 commonAnnotations: {}
 

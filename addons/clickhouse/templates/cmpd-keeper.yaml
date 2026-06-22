@@ -116,11 +116,13 @@ spec:
           - name: tcp-secure
             targetPort: tcp-secure
             port: 9440
+  {{- if not (empty .Values.logConfigs) }}
   logConfigs:
     {{- range $name, $pattern := .Values.logConfigs }}
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
+  {{- end }}
   exporter:
     scrapePath: /metrics
     scrapePort: "8001"
