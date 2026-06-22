@@ -95,8 +95,31 @@ reconfigure:
       - |
         set -eu
 
-        /scripts/{{ .script }} "$1" "$2"
-      - --
+        env_file="/tmp/oceanbase-reconfigure-env.$$"
+        trap 'rm -f "$env_file"' EXIT
+        tr '\0' '\n' < /proc/self/environ > "$env_file"
+
+        rc=0
+        matched=0
+        while IFS= read -r line; do
+          paramName="${line%%=*}"
+          paramValue="${line#*=}"
+          [ "$paramName" != "$line" ] || continue
+          case "$paramName" in
+            ""|"_"|KB_*|*[!abcdefghijklmnopqrstuvwxyz0123456789_]*)
+              continue
+              ;;
+          esac
+
+          matched=$((matched + 1))
+          /scripts/{{ .script }} "$paramName" "$paramValue" || rc=$?
+        done < "$env_file"
+
+        if [ "$matched" -eq 0 ]; then
+          echo "no reconfigure parameters found in kbagent environment" >&2
+          exit 1
+        fi
+        exit "$rc"
 {{- end -}}
 
 
