@@ -347,6 +347,7 @@ Milvus user config - standalone
   volumeName: milvus-config
   namespace: {{.Release.Namespace}}
   defaultMode: 420
+  externalManaged: true
   restartOnFileChange: true
 - name: scripts
   template: {{ include "milvus-scripts.configTemplateName" . }}
