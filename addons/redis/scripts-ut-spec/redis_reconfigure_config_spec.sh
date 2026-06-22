@@ -383,6 +383,13 @@ Describe "Redis Reconfigure Config (argv-based)"
         The stdout should include "OK"
         The stderr should include "applied and verified"
       End
+
+      It "normalizes literal double-quote pair to empty string"
+        When call apply_parameter "notify-keyspace-events" '""'
+        The status should be success
+        The stdout should include "OK"
+        The stderr should include "applied and verified"
+      End
     End
   End
 

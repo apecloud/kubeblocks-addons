@@ -27,6 +27,7 @@ values_match() {
 apply_parameter() {
   _ap_key="$1"
   _ap_value="$2"
+  [ "$_ap_value" = '""' ] && _ap_value=""
 
   # shellcheck disable=SC2086
   redis-cli ${REDIS_CLI_TLS_CMD:-} -p "$service_port" $auth_arg CONFIG SET "$_ap_key" "$_ap_value" || {
