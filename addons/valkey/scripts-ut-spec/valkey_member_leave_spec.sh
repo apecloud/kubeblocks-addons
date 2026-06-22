@@ -229,4 +229,30 @@ Describe "Valkey Member-Leave Bash Script Tests"
       The stdout should not eq ""
     End
   End
+
+  Describe "no_sentinel_safety_check()"
+    It "returns 0 (success) for slave — confirmed replica is safe to leave"
+      When call no_sentinel_safety_check "slave"
+      The status should be success
+      The stderr should include "leaving pod is a confirmed replica"
+    End
+
+    It "returns 1 (failure) for master — cannot ensure safe failover"
+      When call no_sentinel_safety_check "master"
+      The status should be failure
+      The stderr should include "cannot ensure safe failover"
+    End
+
+    It "returns 1 (failure) for unknown role — fail-closed"
+      When call no_sentinel_safety_check "unknown"
+      The status should be failure
+      The stderr should include "cannot ensure safe failover"
+    End
+
+    It "returns 1 (failure) for empty role — fail-closed"
+      When call no_sentinel_safety_check ""
+      The status should be failure
+      The stderr should include "cannot ensure safe failover"
+    End
+  End
 End
