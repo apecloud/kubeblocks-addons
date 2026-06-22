@@ -130,6 +130,7 @@ spec:
       volumeName: config
       namespace: {{ .Release.Namespace }}
       restartOnFileChange: false
+      externalManaged: true
     - name: clickhouse-client-tpl
       template: {{ include "clickhouse.clientTplName" . }}
       volumeName: client-config
