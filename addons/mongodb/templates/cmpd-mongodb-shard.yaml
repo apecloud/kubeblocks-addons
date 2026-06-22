@@ -16,7 +16,7 @@ spec:
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0400
-      externalManaged: true
+      externalManaged: false
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}
     - name: {{ $name }}
@@ -106,17 +106,6 @@ spec:
         targetPodSelector: Role
         matchingKey: primary
       preCondition: RuntimeReady
-      retryPolicy:
-        maxRetries: 10
-    preTerminate:
-      exec:
-        container: mongodb
-        command:
-          - /bin/bash
-          - -c
-          - /scripts/mongodb-shard-manage.sh --pre-terminate >> /tmp/pre-terminate.log 2>&1
-        targetPodSelector: Role
-        matchingKey: primary
       retryPolicy:
         maxRetries: 10
   runtime:
