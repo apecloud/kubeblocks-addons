@@ -202,13 +202,8 @@ reconfigure:
     container: {{ $container }}
     targetPodSelector: All
     command:
-      - /bin/bash
-      - -c
-      - |
-        set -eu
-
-        /scripts/reload-parameter.sh "$1" "$2"
-      - --
+      - /bin/sh
+      - /scripts/redis-reconfigure-config.sh
 {{- end -}}
 
 {{- define "apeDts.reshard.image" -}}
