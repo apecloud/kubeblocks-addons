@@ -15,7 +15,7 @@ spec:
   serviceKind: starrocks-fe
   replicasLimit:
     minReplicas: 3
-    maxReplicas: 128
+    maxReplicas: 16384
   lifecycleActions:
     memberLeave:
       exec:
