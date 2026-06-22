@@ -490,6 +490,7 @@ reconfigure:
         fi
 
         applied_count=0
+        skipped_count=0
         while IFS= read -r assignment; do
           [ -n "${assignment}" ] || continue
           case "${assignment}" in
@@ -515,11 +516,26 @@ reconfigure:
             echo "Set parameter ${param_name} to value ${param_value}"
             applied_count=$((applied_count + 1))
           else
-            echo "Failed to set parameter ${param_name}=${param_value}: ${output}" >&2
-            exit 1
+            # Classify MariaDB SQL errors that are caused by bad user input.
+            # These should not be retried indefinitely by the controller.
+            error_code=$(printf '%s' "${output}" | grep -oE 'ERROR [0-9]+' | head -1 | awk '{print $2}')
+            case "${error_code}" in
+              1231|1193|1064)
+                echo "[SKIP] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}" >&2
+                skipped_count=$((skipped_count + 1))
+                ;;
+              *)
+                echo "Failed to set parameter ${param_name}=${param_value}: ${output}" >&2
+                exit 1
+                ;;
+            esac
           fi
         done < "${parameter_file}"
 
+        if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -gt 0 ]; then
+          echo "No parameters applied; ${skipped_count} had user-input errors (engine rejected)" >&2
+          exit 1
+        fi
         if [ "${applied_count}" -eq 0 ]; then
           echo "No parameters were applied during reconfigure action" >&2
           exit 1
@@ -908,6 +924,7 @@ reconfigure:
         }
 
         applied_count=0
+        skipped_count=0
         while IFS= read -r assignment; do
           [ -n "${assignment}" ] || continue
           case "${assignment}" in
@@ -954,8 +971,19 @@ reconfigure:
             echo "Set parameter ${param_name} to value ${param_value}"
             applied_count=$((applied_count + 1))
           else
-            echo "Failed to set parameter ${param_name}=${param_value}: ${output}" >&2
-            exit 1
+            # Classify MariaDB SQL errors that are caused by bad user input.
+            error_code=$(printf '%s' "${output}" | grep -oE 'ERROR [0-9]+' | head -1 | awk '{print $2}')
+            case "${error_code}" in
+              1231|1193|1064)
+                echo "[SKIP] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}" >&2
+                skipped_count=$((skipped_count + 1))
+                continue
+                ;;
+              *)
+                echo "Failed to set parameter ${param_name}=${param_value}: ${output}" >&2
+                exit 1
+                ;;
+            esac
           fi
 
           # alpha.86 v1 — persist the override AFTER SET GLOBAL succeeds.
@@ -1018,6 +1046,10 @@ reconfigure:
           #     than catching the same issue at write time.
         done < "${parameter_file}"
 
+        if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -gt 0 ]; then
+          echo "No parameters applied; ${skipped_count} had user-input errors (engine rejected)" >&2
+          exit 1
+        fi
         if [ "${applied_count}" -eq 0 ]; then
           echo "No parameters were applied during reconfigure action" >&2
           exit 1
