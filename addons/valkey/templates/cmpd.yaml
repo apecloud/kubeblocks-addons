@@ -446,6 +446,8 @@ spec:
           - sh
           - -c
           - /scripts/account-provision.sh
+        targetPodSelector: Role
+        matchingKey: primary
 
     # switchover: when Sentinel is present, delegates to SENTINEL FAILOVER.
     # When absent (standalone), performs a direct REPLICAOF NO ONE.
