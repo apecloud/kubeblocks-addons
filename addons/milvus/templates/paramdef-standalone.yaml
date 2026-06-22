@@ -1,0 +1,40 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: milvus-standalone-pd-{{ .Chart.Version }}
+  labels:
+    {{- include "milvus.labels" . | nindent 4 }}
+  annotations:
+    {{- include "milvus.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "milvus-standalone.cmpdRegexpPattern" . }}
+  templateName: config
+  fileName: user.yaml
+  fileFormatConfig:
+    format: yaml
+  parametersSchema:
+    topLevelKey: MilvusStandaloneParameter
+    cue: |-
+      #MilvusStandaloneParameter: {
+        ...
+        log?: {
+          ...
+          level?: string & ("debug" | "info" | "warn" | "error" | "panic" | "fatal") | *"info"
+        }
+        proxy?: {
+          ...
+          maxNameLength?: int & >=1 & <=32768 | *255
+          maxFieldNum?: int & >=1 & <=2048 | *64
+          maxDimension?: int & >=1 & <=32768 | *32768
+        }
+        common?: {
+          ...
+          gracefulTime?: int & >=0 & <=600000 | *5000
+        }
+      }
+  staticParameters:
+    - log.level
+    - proxy.maxNameLength
+    - proxy.maxFieldNum
+    - proxy.maxDimension
+    - common.gracefulTime
