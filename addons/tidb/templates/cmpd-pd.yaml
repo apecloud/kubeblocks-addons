@@ -63,7 +63,6 @@ spec:
       template: {{ include "tidb.pd.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
-      externalManaged: true
       reconfigure:
         exec:
           container: pd
@@ -87,17 +86,13 @@ spec:
       participatesInQuorum: true
   lifecycleActions:
     roleProbe:
+      timeoutSeconds: 5
       exec:
         command:
           - bash
           - -c
           - |
-            LEADER_NAME=$(/pd-ctl member | jq -r '.leader.name')
-            if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
-                echo -n "leader"
-            else
-                echo -n "follower"
-            fi
+            {{- .Files.Get "scripts/pd_role_probe.sh" | nindent 12 }}
     memberLeave:
       exec:
         command:
