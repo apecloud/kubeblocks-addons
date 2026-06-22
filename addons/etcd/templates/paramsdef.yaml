@@ -8,12 +8,11 @@ metadata:
     {{- include "etcd.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "etcd3.cmpdName" . }}
-  templateName: {{ include "etcd3.configTemplate" . }}
+  templateName: config
   fileName: etcd.conf
   fileFormatConfig:
     format: yaml
   staticParameters:
-    - wal-dir
     - snapshot-count
     - heartbeat-interval
     - election-timeout
@@ -23,7 +22,6 @@ spec:
     - max-wals
     - auto-compaction-mode
     - auto-compaction-retention
-    - cipher-suites
     - tls-min-version
     - tls-max-version
     - proxy
@@ -33,15 +31,9 @@ spec:
     - proxy-write-timeout
     - proxy-read-timeout
     - enable-pprof
-    - cors
-    - discovery
-    - discovery-fallback
-    - discovery-proxy
-    - discovery-srv
     - self-signed-cert-validity
     - log-level
     - logger
-    - log-outputs
   parametersSchema:
     topLevelKey: EtcdParameter
     cue: |-
