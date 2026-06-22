@@ -116,7 +116,7 @@ spec:
           - name: tcp-secure
             targetPort: tcp-secure
             port: 9440
-  {{- if .Values.logConfigs }}
+  {{- if not (empty .Values.logConfigs) }}
   logConfigs:
     {{- range $name, $pattern := .Values.logConfigs }}
     - name: {{ $name }}

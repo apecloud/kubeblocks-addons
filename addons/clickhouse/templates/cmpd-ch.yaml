@@ -94,7 +94,7 @@ spec:
       - name: shared-tools
         emptyDir: {}
   updateStrategy: BestEffortParallel
-  {{- if .Values.logConfigs }}
+  {{- if not (empty .Values.logConfigs) }}
   logConfigs:
     {{- range $name, $pattern := .Values.logConfigs }}
     - name: {{ $name }}
