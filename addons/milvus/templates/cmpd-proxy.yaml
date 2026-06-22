@@ -20,7 +20,6 @@ spec:
         letterCase: MixedCases
   services:
     - name: milvus
-      serviceName:  # use default name
       spec:
         type: ClusterIP
         ports:
