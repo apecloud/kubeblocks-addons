@@ -13,6 +13,9 @@ spec:
   updateStrategy: Parallel
   podManagementPolicy: Parallel
   serviceKind: starrocks-fe
+  replicasLimit:
+    minReplicas: 3
+    maxReplicas: 128
   lifecycleActions:
     memberLeave:
       exec:
