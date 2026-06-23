@@ -26,4 +26,4 @@ check_sentinel_ok() {
   fi
 }
 
-call_func_with_retry 3 3 check_sentinel_ok || exit 1
+call_func_with_retry 2 1 check_sentinel_ok || exit 1
