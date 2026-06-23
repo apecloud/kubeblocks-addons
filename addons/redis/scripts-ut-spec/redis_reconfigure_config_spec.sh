@@ -64,6 +64,28 @@ Describe "Redis Reconfigure Config (argv-based)"
     End
   End
 
+  Describe "normalize_tokens()"
+    It "passes plain numbers through"
+      When call normalize_tokens "replica 268435456 67108864 60"
+      The output should eq "replica 268435456 67108864 60"
+    End
+
+    It "converts memory units to bytes"
+      When call normalize_tokens "replica 256mb 64mb 60"
+      The output should eq "replica 268435456 67108864 60"
+    End
+
+    It "handles mixed units"
+      When call normalize_tokens "pubsub 32mb 8mb 60"
+      The output should eq "pubsub 33554432 8388608 60"
+    End
+
+    It "passes all-zero tuple through"
+      When call normalize_tokens "normal 0 0 0"
+      The output should eq "normal 0 0 0"
+    End
+  End
+
   Describe "values_match()"
     It "matches identical strings"
       When call values_match "100" "100"
@@ -395,6 +417,70 @@ Describe "Redis Reconfigure Config (argv-based)"
         The stdout should include "OK"
         The stderr should include "applied and verified"
         The variable _captured_set_args should eq "client-output-buffer-limit|normal 0 0 0"
+      End
+    End
+
+    Context "subkey parameter with memory units (replica 256mb 64mb 60)"
+      _captured_set_args=""
+      redis-cli() {
+        local op
+        op=$(_redis_cli_operation "$@")
+        case "$op" in
+          SET)
+            local n=$#
+            local val="${!n}"
+            local prev=$((n - 1))
+            local key="${!prev}"
+            _captured_set_args="$key|$val"
+            echo "OK"; return 0
+            ;;
+          GET)
+            printf 'client-output-buffer-limit\nnormal 0 0 0 replica 268435456 67108864 60 pubsub 33554432 8388608 60\n'
+            return 0
+            ;;
+        esac
+      }
+
+      setup() {
+        service_port=6379
+        auth_arg=""
+        _captured_set_args=""
+      }
+      Before "setup"
+
+      It "matches memory-unit value against bytes readback"
+        When call apply_parameter "client-output-buffer-limit replica" "256mb 64mb 60"
+        The status should be success
+        The stdout should include "OK"
+        The stderr should include "applied and verified"
+        The variable _captured_set_args should eq "client-output-buffer-limit|replica 256mb 64mb 60"
+      End
+    End
+
+    Context "subkey parameter with memory units (pubsub 32mb 8mb 60)"
+      redis-cli() {
+        local op
+        op=$(_redis_cli_operation "$@")
+        case "$op" in
+          SET) echo "OK"; return 0 ;;
+          GET)
+            printf 'client-output-buffer-limit\nnormal 0 0 0 replica 268435456 67108864 60 pubsub 33554432 8388608 60\n'
+            return 0
+            ;;
+        esac
+      }
+
+      setup() {
+        service_port=6379
+        auth_arg=""
+      }
+      Before "setup"
+
+      It "matches pubsub memory-unit value against bytes readback"
+        When call apply_parameter "client-output-buffer-limit pubsub" "32mb 8mb 60"
+        The status should be success
+        The stdout should include "OK"
+        The stderr should include "applied and verified"
       End
     End
 

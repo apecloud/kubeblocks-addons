@@ -18,6 +18,15 @@ to_bytes() {
   esac
 }
 
+normalize_tokens() {
+  set -- $1
+  _nt_out=""
+  for _nt_tok; do
+    _nt_out="${_nt_out:+$_nt_out }$(to_bytes "$_nt_tok")"
+  done
+  echo "$_nt_out"
+}
+
 values_match() {
   [ "$1" = "$2" ] && return 0
   [ "$(to_bytes "$1")" = "$(to_bytes "$2")" ] && return 0
@@ -47,10 +56,11 @@ apply_parameter() {
 
   _ap_actual=$(redis-cli ${REDIS_CLI_TLS_CMD:-} -p "$service_port" $auth_arg CONFIG GET "$_ap_key" 2>/dev/null | awk 'NR==2 {print}')
   if [ -n "$_ap_subkey" ]; then
-    _ap_expected="$_ap_value"
-    case "$_ap_actual" in
-      *"$_ap_expected"*) ;;
-      *) echo "ERROR: CONFIG SET $_ap_key readback does not contain '$_ap_expected'" >&2; return 1 ;;
+    _ap_norm_expected="$(normalize_tokens "$_ap_value")"
+    _ap_norm_actual="$(normalize_tokens "$_ap_actual")"
+    case "$_ap_norm_actual" in
+      *"$_ap_norm_expected"*) ;;
+      *) echo "ERROR: CONFIG SET $_ap_key readback does not contain '$_ap_value'" >&2; return 1 ;;
     esac
   else
     if [ -z "$_ap_actual" ] && [ -n "$_ap_value" ]; then
