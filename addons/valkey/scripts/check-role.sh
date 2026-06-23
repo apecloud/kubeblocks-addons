@@ -247,7 +247,7 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
     sentinel_query_success_count=0
     sentinel_master_config_count=0
     for s in "${sentinel_fqdns[@]}"; do
-      sentinel_out=$(valkey-cli --no-auth-warning -h "${s}" -p "${sentinel_port}" "${sentinel_auth_args[@]}" ${sentinel_tls_args} sentinel masters 2>/dev/null) || continue
+      sentinel_out=$(timeout 1 valkey-cli --no-auth-warning -h "${s}" -p "${sentinel_port}" "${sentinel_auth_args[@]}" ${sentinel_tls_args} sentinel masters 2>/dev/null) || continue
       sentinel_query_success_count=$((sentinel_query_success_count + 1))
       sentinel_has_master_config=0
       ce_marker=""
