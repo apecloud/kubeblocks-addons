@@ -520,7 +520,8 @@ reconfigure:
             # These should not be retried indefinitely by the controller.
             error_code=$(printf '%s' "${output}" | grep -oE 'ERROR [0-9]+' | head -1 | awk '{print $2}')
             case "${error_code}" in
-              1231|1193|1064)
+              1231|1232|1193|1064)
+                echo "[SKIP] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}"
                 echo "[SKIP] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}" >&2
                 skipped_count=$((skipped_count + 1))
                 ;;
@@ -533,8 +534,9 @@ reconfigure:
         done < "${parameter_file}"
 
         if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -gt 0 ]; then
+          echo "No parameters applied; ${skipped_count} had user-input errors (engine rejected)"
           echo "No parameters applied; ${skipped_count} had user-input errors (engine rejected)" >&2
-          exit 1
+          exit 0
         fi
         if [ "${applied_count}" -eq 0 ]; then
           echo "No parameters were applied during reconfigure action" >&2
@@ -974,7 +976,8 @@ reconfigure:
             # Classify MariaDB SQL errors that are caused by bad user input.
             error_code=$(printf '%s' "${output}" | grep -oE 'ERROR [0-9]+' | head -1 | awk '{print $2}')
             case "${error_code}" in
-              1231|1193|1064)
+              1231|1232|1193|1064)
+                echo "[SKIP] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}"
                 echo "[SKIP] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}" >&2
                 skipped_count=$((skipped_count + 1))
                 continue
@@ -1048,7 +1051,7 @@ reconfigure:
 
         if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -gt 0 ]; then
           echo "No parameters applied; ${skipped_count} had user-input errors (engine rejected)" >&2
-          exit 1
+          exit 0
         fi
         if [ "${applied_count}" -eq 0 ]; then
           echo "No parameters were applied during reconfigure action" >&2
