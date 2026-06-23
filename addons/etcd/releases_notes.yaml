@@ -1,4 +1,12 @@
 releases:
+  - version: "1.2.0-alpha.2"
+    released_at: ""
+    status: "alpha"
+    notes: "Fix switchover.sh stale LEADER_POD_FQDN guard — replace with request-scoped HOSTNAME check and runtime is_leader verification. Chart version bumped from 1.2.0-alpha.1 for CmpD immutable field safety."
+    git_branch: "main"
+    git_tag: ""
+    commit_sha: ""
+    breaking_changes: "CmpD name changes from etcd-3-1.2.0-alpha.1 to etcd-3-1.2.0-alpha.2."
   - version: "1.2.0-alpha.1"
     released_at: ""
     status: "alpha"
