@@ -27,7 +27,17 @@ values_match() {
 apply_parameter() {
   _ap_key="$1"
   _ap_value="$2"
+  _ap_subkey=""
   [ "$_ap_value" = '""' ] && _ap_value=""
+
+  # Handle subkey parameters: "client-output-buffer-limit normal" -> key + subkey
+  case "$_ap_key" in
+    *" "*)
+      _ap_subkey="${_ap_key#* }"
+      _ap_key="${_ap_key%% *}"
+      _ap_value="${_ap_subkey} ${_ap_value}"
+      ;;
+  esac
 
   # shellcheck disable=SC2086
   redis-cli ${REDIS_CLI_TLS_CMD:-} -p "$service_port" $auth_arg CONFIG SET "$_ap_key" "$_ap_value" || {
@@ -36,13 +46,21 @@ apply_parameter() {
   }
 
   _ap_actual=$(redis-cli ${REDIS_CLI_TLS_CMD:-} -p "$service_port" $auth_arg CONFIG GET "$_ap_key" 2>/dev/null | awk 'NR==2 {print}')
-  if [ -z "$_ap_actual" ] && [ -n "$_ap_value" ]; then
-    echo "ERROR: CONFIG GET $_ap_key returned nothing after SET" >&2
-    return 1
-  fi
-  if ! values_match "$_ap_actual" "$_ap_value"; then
-    echo "ERROR: CONFIG SET $_ap_key readback mismatch: engine='$_ap_actual', expected='$_ap_value'" >&2
-    return 1
+  if [ -n "$_ap_subkey" ]; then
+    _ap_expected="$_ap_value"
+    case "$_ap_actual" in
+      *"$_ap_expected"*) ;;
+      *) echo "ERROR: CONFIG SET $_ap_key readback does not contain '$_ap_expected'" >&2; return 1 ;;
+    esac
+  else
+    if [ -z "$_ap_actual" ] && [ -n "$_ap_value" ]; then
+      echo "ERROR: CONFIG GET $_ap_key returned nothing after SET" >&2
+      return 1
+    fi
+    if ! values_match "$_ap_actual" "$_ap_value"; then
+      echo "ERROR: CONFIG SET $_ap_key readback mismatch: engine='$_ap_actual', expected='$_ap_value'" >&2
+      return 1
+    fi
   fi
 
   echo "INFO: CONFIG SET $_ap_key='$_ap_value' applied and verified" >&2
