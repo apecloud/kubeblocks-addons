@@ -907,96 +907,13 @@ kubectl apply -f examples/clickhouse/volumeexpand.yaml
 ### Reconfigure
 
 > [!NOTE]
-> This reconfigure section is applicable for ClickHouse Addons v1.0.1.
-> Those who are using ClickHouse Addons v1.0.2 and above, please refer to [Using Config Templates](../addons/clickhouse/README.md#using-config-templates) for more details.
-
-
-Reconfigure parameters with the specified components in the cluster
-
-```yaml
-# cat examples/clickhouse/configure.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: ch-reconfiguring
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: clickhouse-cluster
-  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
-  force: false
-  # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
-  reconfigures:
-    # Specifies the name of the Component.
-  - componentName: clickhouse
-    parameters:
-      # Represents the name of the parameter that is to be updated.
-    - key: clickhouse.profiles.web.max_bytes_to_read
-      # Represents the parameter values that are to be updated.
-      # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
-      value: '200000000000'
-  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
-  preConditionDeadlineSeconds: 0
-  type: Reconfiguring
-```
-
-```bash
-kubectl apply -f examples/clickhouse/configure.yaml
-```
-
-This example will change the `max_bytes_to_read` to `200000000000`.
-To verify the configuration, you can connect to the ClickHouse server and run the following command:
-
-```bash
-# connect to the clickhouse pod
-kubectl exec -it clickhouse-cluster-clickhouse-0 -- /bin/bash
-```
-
-and check the configuration:
-
-```bash
-# connect to the clickhouse server
-clickhouse-client --user $CLICKHOUSE_ADMIN_USER --password $CLICKHOUSE_ADMIN_PASSWORD
-> set profile='web';
-> select name,value from system.settings where name like 'max_bytes%';
-```
-
-<details>
-<summary>Explanation of the configuration</summary>
-The `user.xml` file is an xml file that contains the configuration of the ClickHouse server.
-
-```xml
-<clickhouse>
-  <profiles>
-    <default>
-      <!-- The maximum number of threads when running a single query. -->
-      <max_threads>8</max_threads>
-    </default>
-    <web>
-      <max_rows_to_read>1000000000</max_rows_to_read>
-      <max_bytes_to_read>100000000000</max_bytes_to_read>
-    </web>
-  </profiles>
-</clickhouse>
-```
-
-When updating the configuration, the key we set in the `configure.yaml` file should be the same as the key in the `user.xml` file, for example:
-
-```yaml
-# snippet of configure.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-spec:
-  reconfigures:
-  - componentName: clickhouse
-    parameters:
-    - key: clickhouse.profiles.web.max_bytes_to_read
-      value: '200000000000'
-```
-
-To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profiles.web.max_bytes_to_read` w.r.t the `user.xml` file.
-
-</details>
+> OpsRequest `Reconfiguring` with `reconfigures[*].parameters[*]` is not supported by this addon.
+> ClickHouse XML configuration uses dynamic node names, for example quota names under
+> `<quotas>`, cluster names under `<remote_servers>`, and profile names under `<profiles>`.
+> KubeBlocks ParametersDefinition requires stable parameter paths, so this model cannot
+> safely represent ClickHouse XML configuration.
+>
+> Use custom config templates for ClickHouse configuration instead.
 
 
 ### Using Config Templates

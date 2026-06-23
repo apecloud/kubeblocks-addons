@@ -103,56 +103,6 @@ Define clickhouse-keeper component definition regex pattern
 {{- end }}
 
 {{/*
-=== PARAMETER DEFINITIONS ===
-*/}}
-
-{{/*
-Define clickhouse config parameter definition name
-*/}}
-{{- define "clickhouse.paramsDefName" -}}
-clickhouse-pd
-{{- end }}
-
-{{/*
-Define clickhouse user parameter definition name
-*/}}
-{{- define "clickhouse.userParamsDefinition" -}}
-clickhouse-user-pd
-{{- end }}
-
-{{/*
-Define clickhouse config parameter definition name
-*/}}
-{{- define "clickhouse.configParamsDefinition" -}}
-clickhouse-config-pd
-{{- end }}
-
-{{/*
-Define clickhouse keeper parameter definition name
-*/}}
-{{- define "clickhouse.keeperParamsDefinition" -}}
-clickhouse-keeper-pd
-{{- end }}
-
-{{/*
-=== PARAMETER CONFIGURATION RULES ===
-*/}}
-
-{{/*
-Define clickhouse keeper PCR with chart version
-*/}}
-{{- define "clickhouse.keeperPcr" -}}
-clickhouse-keeper-pcr-{{ .Chart.Version }}
-{{- end }}
-
-{{/*
-Define clickhouse PCR with chart version
-*/}}
-{{- define "clickhouse.pcr" -}}
-clickhouse-pcr-{{ .Chart.Version }}
-{{- end }}
-
-{{/*
 === CONFIGURATION TEMPLATES ===
 */}}
 
