@@ -65,21 +65,29 @@ function wait_for_local_api() {
     return 1
 }
 
-function clear_stale_allocation_exclusion_for_self() {
-    if [ -z "${POD_NAME:-}" ]; then
-        echo "POD_NAME is empty, skip clearing stale shard allocation exclusion"
-        return 0
-    fi
+STALE_EXCLUSION_MARKER="/tmp/stale-exclusion-cleanup.pending"
 
-    if ! wait_for_local_api; then
-        echo "local elasticsearch API is not ready, skip clearing stale shard allocation exclusion"
-        return 0
-    fi
+function verify_exclusion_cleared() {
+    local verify_json
+    verify_json=$(curl --fail ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/settings?include_defaults=false&flat_settings=true" 2>/dev/null) || return 1
+    local verify_exclusion
+    verify_exclusion=$(echo "$verify_json" | grep -o '"persistent.cluster.routing.allocation.exclude._name" *: *"[^"]*"' | sed 's/.*: *"//;s/"$//')
+    local verify_normalized
+    verify_normalized=$(echo "$verify_exclusion" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | paste -sd ',' -)
+    case ",$verify_normalized," in
+        *",${POD_NAME},"*)
+            echo "readback verify failed: ${POD_NAME} still in exclusion after PUT (current: ${verify_normalized})" >&2
+            return 1
+            ;;
+    esac
+    return 0
+}
 
+function try_clear_stale_exclusion() {
     local settings_json
     settings_json=$(curl --fail ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/settings?include_defaults=false&flat_settings=true" 2>/dev/null) || {
-        echo "failed to read cluster settings, skip clearing stale shard allocation exclusion"
-        return 0
+        echo "failed to read cluster settings" >&2
+        return 1
     }
     local raw_exclusion
     raw_exclusion=$(echo "$settings_json" | grep -o '"persistent.cluster.routing.allocation.exclude._name" *: *"[^"]*"' | sed 's/.*: *"//;s/"$//')
@@ -104,10 +112,34 @@ function clear_stale_allocation_exclusion_for_self() {
     new_exclusion=$(echo "$current_exclusion" | tr ',' '\n' | grep -v "^${POD_NAME}$" | paste -sd ',' -)
     if [ -z "$new_exclusion" ]; then
         echo "clearing stale shard allocation exclusion for ${POD_NAME}"
-        curl --fail ${COMMON_OPTIONS} -X PUT "${ENDPOINT}/_cluster/settings" -H 'Content-Type: application/json' -d '{"persistent":{"cluster.routing.allocation.exclude._name":null}}'
+        curl --fail ${COMMON_OPTIONS} -X PUT "${ENDPOINT}/_cluster/settings" -H 'Content-Type: application/json' -d '{"persistent":{"cluster.routing.allocation.exclude._name":null}}' || return 1
     else
         echo "removing ${POD_NAME} from shard allocation exclusion (remaining: ${new_exclusion})"
-        curl --fail ${COMMON_OPTIONS} -X PUT "${ENDPOINT}/_cluster/settings" -H 'Content-Type: application/json' -d "{\"persistent\":{\"cluster.routing.allocation.exclude._name\":\"${new_exclusion}\"}}"
+        curl --fail ${COMMON_OPTIONS} -X PUT "${ENDPOINT}/_cluster/settings" -H 'Content-Type: application/json' -d "{\"persistent\":{\"cluster.routing.allocation.exclude._name\":\"${new_exclusion}\"}}" || return 1
+    fi
+
+    verify_exclusion_cleared
+}
+
+function clear_stale_allocation_exclusion_for_self() {
+    if [ -z "${POD_NAME:-}" ]; then
+        echo "POD_NAME is empty, skip clearing stale shard allocation exclusion"
+        return 0
+    fi
+
+    if ! wait_for_local_api; then
+        echo "local elasticsearch API is not ready, writing marker for readiness probe cleanup"
+        touch "${STALE_EXCLUSION_MARKER}"
+        return 0
+    fi
+
+    if try_clear_stale_exclusion; then
+        rm -f "${STALE_EXCLUSION_MARKER}"
+        return 0
+    else
+        echo "stale exclusion cleanup failed, writing marker for readiness probe retry" >&2
+        touch "${STALE_EXCLUSION_MARKER}"
+        return 1
     fi
 }
 
