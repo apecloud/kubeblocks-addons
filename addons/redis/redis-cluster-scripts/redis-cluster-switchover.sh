@@ -223,7 +223,7 @@ switchover_without_candidate() {
   fi
 
   # do switchover
-  do_switchover "$candidate_pod" "$candidate_pod_fqdn" "false" || return 1
+  do_switchover "$candidate_pod" "$candidate_pod_fqdn" "true" || return 1
 }
 
 switchover_with_candidate() {
