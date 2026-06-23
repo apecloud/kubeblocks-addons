@@ -398,7 +398,7 @@ Describe "Redis Reconfigure Config (argv-based)"
             echo "OK"; return 0
             ;;
           GET)
-            printf 'client-output-buffer-limit\nnormal 0 0 0 replica 268435456 67108864 60 pubsub 33554432 8388608 60\n'
+            printf 'client-output-buffer-limit\nnormal 0 0 0 slave 268435456 67108864 60 pubsub 33554432 8388608 60\n'
             return 0
             ;;
         esac
@@ -420,7 +420,7 @@ Describe "Redis Reconfigure Config (argv-based)"
       End
     End
 
-    Context "subkey parameter with memory units (replica 256mb 64mb 60)"
+    Context "subkey replica with slave alias in readback (Redis returns slave for replica)"
       _captured_set_args=""
       redis-cli() {
         local op
@@ -435,7 +435,7 @@ Describe "Redis Reconfigure Config (argv-based)"
             echo "OK"; return 0
             ;;
           GET)
-            printf 'client-output-buffer-limit\nnormal 0 0 0 replica 268435456 67108864 60 pubsub 33554432 8388608 60\n'
+            printf 'client-output-buffer-limit\nnormal 0 0 0 slave 268435456 67108864 60 pubsub 33554432 8388608 60\n'
             return 0
             ;;
         esac
@@ -448,12 +448,39 @@ Describe "Redis Reconfigure Config (argv-based)"
       }
       Before "setup"
 
-      It "matches memory-unit value against bytes readback"
+      It "matches replica memory-unit value against slave bytes readback"
         When call apply_parameter "client-output-buffer-limit replica" "256mb 64mb 60"
         The status should be success
         The stdout should include "OK"
         The stderr should include "applied and verified"
         The variable _captured_set_args should eq "client-output-buffer-limit|replica 256mb 64mb 60"
+      End
+    End
+
+    Context "subkey replica with replica in readback (Redis 7+)"
+      redis-cli() {
+        local op
+        op=$(_redis_cli_operation "$@")
+        case "$op" in
+          SET) echo "OK"; return 0 ;;
+          GET)
+            printf 'client-output-buffer-limit\nnormal 0 0 0 replica 268435456 67108864 60 pubsub 33554432 8388608 60\n'
+            return 0
+            ;;
+        esac
+      }
+
+      setup() {
+        service_port=6379
+        auth_arg=""
+      }
+      Before "setup"
+
+      It "matches replica memory-unit value against replica bytes readback"
+        When call apply_parameter "client-output-buffer-limit replica" "256mb 64mb 60"
+        The status should be success
+        The stdout should include "OK"
+        The stderr should include "applied and verified"
       End
     End
 
@@ -464,7 +491,7 @@ Describe "Redis Reconfigure Config (argv-based)"
         case "$op" in
           SET) echo "OK"; return 0 ;;
           GET)
-            printf 'client-output-buffer-limit\nnormal 0 0 0 replica 268435456 67108864 60 pubsub 33554432 8388608 60\n'
+            printf 'client-output-buffer-limit\nnormal 0 0 0 slave 268435456 67108864 60 pubsub 33554432 8388608 60\n'
             return 0
             ;;
         esac
@@ -491,7 +518,7 @@ Describe "Redis Reconfigure Config (argv-based)"
         case "$op" in
           SET) echo "OK"; return 0 ;;
           GET)
-            printf 'client-output-buffer-limit\nnormal 0 0 0 replica 268435456 67108864 60 pubsub 33554432 8388608 60\n'
+            printf 'client-output-buffer-limit\nnormal 0 0 0 slave 268435456 67108864 60 pubsub 33554432 8388608 60\n'
             return 0
             ;;
         esac

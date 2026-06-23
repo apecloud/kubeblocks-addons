@@ -58,10 +58,23 @@ apply_parameter() {
   if [ -n "$_ap_subkey" ]; then
     _ap_norm_expected="$(normalize_tokens "$_ap_value")"
     _ap_norm_actual="$(normalize_tokens "$_ap_actual")"
+    _ap_readback_ok=0
     case "$_ap_norm_actual" in
-      *"$_ap_norm_expected"*) ;;
-      *) echo "ERROR: CONFIG SET $_ap_key readback does not contain '$_ap_value'" >&2; return 1 ;;
+      *"$_ap_norm_expected"*) _ap_readback_ok=1 ;;
     esac
+    if [ "$_ap_readback_ok" = 0 ]; then
+      case "$_ap_subkey" in
+        replica) _ap_alias_expected="slave ${_ap_norm_expected#replica }" ;;
+        slave)   _ap_alias_expected="replica ${_ap_norm_expected#slave }" ;;
+        *)       _ap_alias_expected="" ;;
+      esac
+      [ -n "$_ap_alias_expected" ] && case "$_ap_norm_actual" in
+        *"$_ap_alias_expected"*) _ap_readback_ok=1 ;;
+      esac
+    fi
+    [ "$_ap_readback_ok" = 1 ] || {
+      echo "ERROR: CONFIG SET $_ap_key readback does not contain '$_ap_value'" >&2; return 1
+    }
   else
     if [ -z "$_ap_actual" ] && [ -n "$_ap_value" ]; then
       echo "ERROR: CONFIG GET $_ap_key returned nothing after SET" >&2
