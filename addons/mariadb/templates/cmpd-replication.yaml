@@ -39,6 +39,7 @@ spec:
       template: mariadb-replication-config-template
       volumeName: mariadb-config
       namespace: {{ .Release.Namespace }}
+      externalManaged: true
       {{- include "mariadb.config.reconfigureAction" . | nindent 6 }}
   scripts:
     - name: {{ include "mariadb.replication.scriptConfigMapName" . }}

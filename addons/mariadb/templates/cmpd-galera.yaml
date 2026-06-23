@@ -41,6 +41,7 @@ spec:
       template: mariadb-galera-config-template
       volumeName: mariadb-config
       namespace: {{ .Release.Namespace }}
+      externalManaged: true
       {{- include "mariadb.config.reconfigureAction" . | nindent 6 }}
   scripts:
     - name: {{ include "mariadb.galera.scriptConfigMapName" . }}

@@ -16,6 +16,7 @@ spec:
       template: mariadb-standalone-config-template
       volumeName: mariadb-config
       namespace: {{ .Release.Namespace }}
+      externalManaged: true
       {{- include "mariadb.config.reconfigureAction" . | nindent 6 }}
   runtime:
     containers:
