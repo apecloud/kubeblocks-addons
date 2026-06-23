@@ -13,50 +13,24 @@ spec:
   fileFormatConfig:
     format: yaml
   staticParameters:
-    - snapshot-count
-    - heartbeat-interval
-    - election-timeout
-    - quota-backend-bytes
-    - strict-reconfig-check
-    - max-snapshots
-    - max-wals
     - auto-compaction-mode
     - auto-compaction-retention
-    - tls-min-version
-    - tls-max-version
-    - proxy
-    - proxy-failure-wait
-    - proxy-refresh-interval
-    - proxy-dial-timeout
-    - proxy-write-timeout
-    - proxy-read-timeout
-    - enable-pprof
-    - self-signed-cert-validity
     - log-level
     - logger
+    - enable-pprof
+    - snapshot-count
+    - max-snapshots
+    - max-wals
   parametersSchema:
     topLevelKey: EtcdParameter
     cue: |-
       #EtcdParameter: {
-        "snapshot-count"?: int & >=0
-        "heartbeat-interval"?: int & >=50
-        "election-timeout"?: int & >=500
-        "quota-backend-bytes"?: int & >=0
-        "strict-reconfig-check"?: bool
-        "max-snapshots"?: int & >=0
-        "max-wals"?: int & >=0
         "auto-compaction-mode"?: string & "periodic" | "revision"
         "auto-compaction-retention"?: string
-        "tls-min-version"?: string & "TLS1.2" | "TLS1.3"
-        "tls-max-version"?: string & "TLS1.2" | "TLS1.3"
-        "proxy"?: string & "on" | "readonly" | "off"
-        "proxy-failure-wait"?: int & >=0
-        "proxy-refresh-interval"?: int & >=0
-        "proxy-dial-timeout"?: int & >=0
-        "proxy-write-timeout"?: int & >=0
-        "proxy-read-timeout"?: int & >=0
-        "enable-pprof"?: bool
-        "self-signed-cert-validity"?: int & >=1
         "log-level"?: string & "debug" | "info" | "warn" | "error" | "panic" | "fatal"
         "logger"?: string & "zap"
+        "enable-pprof"?: bool
+        "snapshot-count"?: int & >=0
+        "max-snapshots"?: int & >=0
+        "max-wals"?: int & >=0
       }
