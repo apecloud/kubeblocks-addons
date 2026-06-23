@@ -55,51 +55,27 @@ apply_acl() {
 # Apply on the local primary first.
 apply_acl "127.0.0.1" "primary(local)"
 
-# For multi-node deployments, discover connected replicas via INFO
-# REPLICATION and push the ACL to each.  Fail-closed: if we cannot confirm
-# that every expected replica received the ACL, the action fails so
-# KubeBlocks can surface the inconsistency.
-expected_replicas=$(( ${COMPONENT_REPLICAS:-1} - 1 ))
-if [ "${expected_replicas}" -le 0 ]; then
-  exit 0
-fi
-
-deadline=$((SECONDS + 30))
-online_ips=()
-
-while [ $SECONDS -lt $deadline ]; do
-  build_cli "127.0.0.1"
-  repl_info=$("${_cli[@]}" INFO REPLICATION 2>&1) || {
-    echo "INFO: INFO REPLICATION failed, retrying..." >&2
-    sleep 3
-    continue
-  }
-  repl_info="${repl_info//$'\r'/}"
-
-  online_ips=()
-  while IFS= read -r line; do
-    case "${line}" in
-      slave[0-9]*:*)
-        ip=$(echo "${line}" | sed 's/.*ip=\([^,]*\).*/\1/')
-        state=$(echo "${line}" | sed 's/.*state=\([^,]*\).*/\1/')
-        if [ "${state}" = "online" ]; then
-          online_ips+=("${ip}")
-        fi
-        ;;
-    esac
-  done <<< "${repl_info}"
-
-  if [ ${#online_ips[@]} -ge ${expected_replicas} ]; then
-    break
-  fi
-  echo "INFO: waiting for replicas (online=${#online_ips[@]} expected=${expected_replicas})..." >&2
-  sleep 3
-done
-
-if [ ${#online_ips[@]} -lt ${expected_replicas} ]; then
-  echo "ERROR: not enough online replicas after 30s (online=${#online_ips[@]} expected=${expected_replicas})" >&2
+# Discover connected replicas via INFO REPLICATION and push the ACL to each.
+# Uses only real-time data from the engine — no stale env vars.
+build_cli "127.0.0.1"
+repl_info=$("${_cli[@]}" INFO REPLICATION 2>&1) || {
+  echo "ERROR: INFO REPLICATION failed" >&2
   exit 1
-fi
+}
+repl_info="${repl_info//$'\r'/}"
+
+online_ips=()
+while IFS= read -r line; do
+  case "${line}" in
+    slave[0-9]*:*)
+      ip=$(echo "${line}" | sed 's/.*ip=\([^,]*\).*/\1/')
+      state=$(echo "${line}" | sed 's/.*state=\([^,]*\).*/\1/')
+      if [ "${state}" = "online" ]; then
+        online_ips+=("${ip}")
+      fi
+      ;;
+  esac
+done <<< "${repl_info}"
 
 for ip in "${online_ips[@]}"; do
   apply_acl "${ip}" "replica(${ip})"
