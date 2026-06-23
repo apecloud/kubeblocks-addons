@@ -205,7 +205,7 @@ Describe "Elasticsearch post-start hook"
       [ -f /tmp/stale-exclusion-cleanup.pending ] && echo "MARKER_PRESENT"
       exit $rc
     '
-    The status should be failure
+    The status should be success
     The output should include "clearing stale shard allocation exclusion for es-ops-data-2"
     The output should include "MARKER_PRESENT"
     The error should include "stale exclusion cleanup failed"
@@ -223,8 +223,6 @@ Describe "Elasticsearch post-start hook"
         . ../scripts/post-start-hook.sh
       }
       source_post_start_hook
-      seq() { echo 1; }
-      sleep() { :; }
       curl() {
         case "$*" in
           *"_cluster/health?local=true"*) return 1 ;;
@@ -243,7 +241,7 @@ Describe "Elasticsearch post-start hook"
     The output should not include "UNEXPECTED_SETTINGS_CALL"
   End
 
-  It "returns failure when readback verify finds exclusion still present"
+  It "writes marker and returns success when readback verify finds exclusion still present"
     When run bash -c '
       rm -f /tmp/stale-exclusion-cleanup.pending
       source_post_start_hook() {
@@ -268,7 +266,7 @@ Describe "Elasticsearch post-start hook"
       [ -f /tmp/stale-exclusion-cleanup.pending ] && echo "MARKER_PRESENT"
       exit $rc
     '
-    The status should be failure
+    The status should be success
     The error should include "readback verify failed"
     The output should include "MARKER_PRESENT"
     The error should include "stale exclusion cleanup failed"

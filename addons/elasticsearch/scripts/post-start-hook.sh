@@ -127,7 +127,7 @@ function clear_stale_allocation_exclusion_for_self() {
         return 0
     fi
 
-    if ! wait_for_local_api; then
+    if ! curl --fail ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/health?local=true" >/dev/null 2>&1; then
         echo "local elasticsearch API is not ready, writing marker for readiness probe cleanup"
         touch "${STALE_EXCLUSION_MARKER}"
         return 0
@@ -139,7 +139,7 @@ function clear_stale_allocation_exclusion_for_self() {
     else
         echo "stale exclusion cleanup failed, writing marker for readiness probe retry" >&2
         touch "${STALE_EXCLUSION_MARKER}"
-        return 1
+        return 0
     fi
 }
 
