@@ -16,7 +16,7 @@ spec:
   componentSpecs:
     - name: etcd
       componentDef: etcd
-      serviceVersion: 3.6.1
+      serviceVersion: 3.6.12
       disableExporter: false
       replicas: 3
       resources:

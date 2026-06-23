@@ -13,7 +13,7 @@ spec:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
     - name: IMAGE_TAG
-      value: v3.6.1
+      value: v{{ .Chart.AppVersion }}
   backupType: Full
   backup:
     backupData:

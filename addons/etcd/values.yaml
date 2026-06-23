@@ -51,3 +51,5 @@ etcdVersions:
     imageTag: v3.5.15
   - version: 3.6.1
     imageTag: v3.6.1
+  - version: 3.6.12
+    imageTag: v3.6.12
