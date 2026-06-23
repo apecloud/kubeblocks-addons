@@ -1,6 +1,9 @@
 nameOverride: ""
 fullnameOverride: ""
 
+extra:
+  keepResource: true
+
 clusterDomain: ".cluster.local"
 
 # volume backup
