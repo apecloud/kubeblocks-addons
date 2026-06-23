@@ -39,7 +39,6 @@ spec:
       template: mariadb-semisync-config-template
       volumeName: mariadb-config
       namespace: {{ .Release.Namespace }}
-      externalManaged: true
       {{- /* alpha.86 v1 (Helen 2026-05-19) — semisync uses the persisted
              variant of reconfigureAction so SET GLOBAL values also land in
              /var/lib/mysql/runtime-overrides.d/<param>.cnf, which mariadbd
