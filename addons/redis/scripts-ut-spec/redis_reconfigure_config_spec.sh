@@ -568,6 +568,30 @@ Describe "Redis Reconfigure Config (argv-based)"
         The stderr should include "applied and verified"
       End
     End
+
+    Context "CONFIG GET fails"
+      redis-cli() {
+        local op
+        op=$(_redis_cli_operation "$@")
+        case "$op" in
+          SET) echo "OK"; return 0 ;;
+          GET) echo "NOAUTH Authentication required."; return 1 ;;
+        esac
+      }
+
+      setup() {
+        service_port=6379
+        auth_arg=""
+      }
+      Before "setup"
+
+      It "returns failure when CONFIG GET returns error"
+        When call apply_parameter "notify-keyspace-events" ""
+        The status should be failure
+        The stdout should include "OK"
+        The stderr should include "CONFIG GET notify-keyspace-events failed"
+      End
+    End
   End
 
   Describe "init_reconfigure_env()"

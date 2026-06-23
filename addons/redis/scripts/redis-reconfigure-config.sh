@@ -54,7 +54,12 @@ apply_parameter() {
     return 1
   }
 
-  _ap_actual=$(redis-cli ${REDIS_CLI_TLS_CMD:-} -p "$service_port" $auth_arg CONFIG GET "$_ap_key" 2>/dev/null | awk 'NR==2 {print}')
+  # shellcheck disable=SC2086
+  _ap_get_output=$(redis-cli ${REDIS_CLI_TLS_CMD:-} -p "$service_port" $auth_arg CONFIG GET "$_ap_key" 2>/dev/null) || {
+    echo "ERROR: CONFIG GET $_ap_key failed (redis-cli exit $?)" >&2
+    return 1
+  }
+  _ap_actual=$(printf '%s\n' "$_ap_get_output" | awk 'NR==2 {print}')
   if [ -n "$_ap_subkey" ]; then
     _ap_norm_expected="$(normalize_tokens "$_ap_value")"
     _ap_norm_actual="$(normalize_tokens "$_ap_actual")"
