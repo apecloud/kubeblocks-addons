@@ -24,7 +24,7 @@ Describe "Etcd Switchover Script Tests"
     ut_mode="true"
 
     # Setup test environment variables
-    export LEADER_POD_FQDN="etcd-0.etcd-headless.default.svc.cluster.local"
+    export HOSTNAME="etcd-0"
     export KB_SWITCHOVER_CURRENT_FQDN="etcd-0.etcd-headless.default.svc.cluster.local"
     export KB_SWITCHOVER_CANDIDATE_FQDN="etcd-1.etcd-headless.default.svc.cluster.local"
     export PEER_ENDPOINT=""
@@ -46,11 +46,10 @@ Describe "Etcd Switchover Script Tests"
       return 1
     }
 
-    # Simple is_leader function
+    # Default: etcd-0 is leader
     is_leader() {
       case "$1" in
         "etcd-0.etcd-headless.default.svc.cluster.local:2379") return 0 ;;
-        "etcd-1.etcd-headless.default.svc.cluster.local:2379") return 0 ;;
         *) return 1 ;;
       esac
     }
@@ -87,7 +86,6 @@ Describe "Etcd Switchover Script Tests"
       esac
     }
 
-    # Define switchover functions
     switchover_with_candidate() {
       local current_pod_name candidate_pod_name current_endpoint candidate_endpoint candidate_id
 
@@ -97,14 +95,17 @@ Describe "Etcd Switchover Script Tests"
       current_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$current_pod_name" "$KB_SWITCHOVER_CURRENT_FQDN")
       candidate_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$candidate_pod_name" "$KB_SWITCHOVER_CANDIDATE_FQDN")
 
-      if ! is_leader "$current_endpoint:2379"; then
-          if is_leader "$candidate_endpoint:2379"; then
-              log "Leader has already changed, no switchover needed"
-              return 0
-          else
-              error_exit "Current node is not leader, and candidate is not leader either."
-              return 1
-          fi
+      local current_is_leader=false candidate_is_leader=false
+      is_leader "$current_endpoint:2379" && current_is_leader=true
+      is_leader "$candidate_endpoint:2379" && candidate_is_leader=true
+
+      if [[ "$current_is_leader" == "false" ]]; then
+        if [[ "$candidate_is_leader" == "true" ]]; then
+          log "Leader has already changed to candidate, no switchover needed"
+          return 0
+        fi
+        error_exit "Current ($current_pod_name) is not leader and candidate ($candidate_pod_name) is not leader either"
+        return 1
       fi
 
       candidate_id=$(get_member_id_hex "$candidate_endpoint:2379")
@@ -119,8 +120,8 @@ Describe "Etcd Switchover Script Tests"
       current_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$current_pod_name" "$KB_SWITCHOVER_CURRENT_FQDN")
 
       if ! is_leader "$current_endpoint:2379"; then
-        error_exit "Current node is not leader, cannot perform automatic switchover"
-        return 1
+        log "Current ($current_pod_name) is no longer leader, switchover already happened"
+        return 0
       fi
 
       leader_id=$(get_member_id "$current_endpoint:2379")
@@ -134,8 +135,9 @@ Describe "Etcd Switchover Script Tests"
     }
 
     switchover() {
-      if [[ "$LEADER_POD_FQDN" != "$KB_SWITCHOVER_CURRENT_FQDN" ]]; then
-        log "switchover action not triggered for leader pod. Exiting."
+      local current_pod_name="${KB_SWITCHOVER_CURRENT_FQDN%%.*}"
+      if [[ "$HOSTNAME" != "$current_pod_name" ]]; then
+        log "This pod ($HOSTNAME) is not the switchover current ($current_pod_name). Skipping."
         return 0
       fi
 
@@ -152,7 +154,7 @@ Describe "Etcd Switchover Script Tests"
 
   cleanup() {
     rm -f $common_library_file
-    unset ut_mode LEADER_POD_FQDN KB_SWITCHOVER_CURRENT_FQDN KB_SWITCHOVER_CANDIDATE_FQDN PEER_ENDPOINT
+    unset ut_mode HOSTNAME KB_SWITCHOVER_CURRENT_FQDN KB_SWITCHOVER_CANDIDATE_FQDN PEER_ENDPOINT
     unset -f get_endpoint_adapt_lb log error_exit is_leader get_member_id_hex get_member_id exec_etcdctl
     unset -f switchover_with_candidate switchover_without_candidate switchover
   }
@@ -176,16 +178,52 @@ Describe "Etcd Switchover Script Tests"
       The stdout should include "Switchover completed successfully"
     End
 
-    It "skips switchover when not triggered for leader pod"
-      export LEADER_POD_FQDN="etcd-1.etcd-headless.default.svc.cluster.local"
+    It "skips switchover when HOSTNAME does not match current pod"
+      export HOSTNAME="etcd-2"
 
       When call switchover
       The status should be success
-      The stdout should include "switchover action not triggered for leader pod"
+      The stdout should include "This pod (etcd-2) is not the switchover current (etcd-0). Skipping."
     End
 
-    It "handles switchover failure"
-      # Override exec_etcdctl to fail move-leader command
+    It "skips switchover when stale LEADER_POD_FQDN would have blocked (regression)"
+      # Simulates the T06 root cause: HOSTNAME matches current (this IS the leader pod),
+      # but a hypothetical stale LEADER_POD_FQDN no longer matters
+      export HOSTNAME="etcd-0"
+      export LEADER_POD_FQDN="etcd-2.etcd-headless.default.svc.cluster.local"
+
+      When call switchover
+      The status should be success
+      The stdout should include "Leadership transferred"
+      The stdout should include "completed successfully"
+    End
+
+    It "returns idempotent success when candidate is already leader"
+      # current is not leader, candidate is leader — idempotent
+      is_leader() {
+        case "$1" in
+          "etcd-1.etcd-headless.default.svc.cluster.local:2379") return 0 ;;
+          *) return 1 ;;
+        esac
+      }
+      export KB_SWITCHOVER_CANDIDATE_FQDN="etcd-1.etcd-headless.default.svc.cluster.local"
+
+      When call switchover
+      The status should be success
+      The stdout should include "Leader has already changed to candidate"
+    End
+
+    It "fails when neither current nor candidate is leader"
+      is_leader() { return 1; }
+      export KB_SWITCHOVER_CANDIDATE_FQDN="etcd-1.etcd-headless.default.svc.cluster.local"
+
+      When call switchover
+      The status should be failure
+      The stderr should include "is not leader and candidate"
+      The stderr should include "is not leader either"
+    End
+
+    It "handles move-leader failure"
       exec_etcdctl() {
         local endpoint="$1"; shift
         if [ "$1" = "move-leader" ]; then
