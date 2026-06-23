@@ -1,0 +1,120 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: hdfs-datanode-standalone
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.apiVersion" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceKind: hdfs-datanode-standalone
+  runtime:
+    hostNetwork: {{ .Values.runtime.datanode.hostNetwork }}
+    hostPID: {{ .Values.runtime.datanode.hostPID }}
+    dnsPolicy: {{ .Values.runtime.datanode.dnsPolicy }}
+    initContainers:
+      - name: hadoop-common
+        imagePullPolicy: IfNotPresent
+        command:
+          - /bin/bash
+        args:
+          - -ec
+          - |
+            cp -r {{ .Values.runtime.hadoopSoftwareDir }}/* {{ .Values.runtime.hadoopHome }}
+            mkdir -p {{ .Values.hdfs.paths.datanodeDataDir }}
+            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.runtime.hadoopHome }}
+            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.hdfs.paths.datanodeDataDir }}
+        securityContext:
+          runAsUser: {{ .Values.securityContext.initRunAsUser }}
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: hdfs-data-0
+            mountPath: {{ .Values.hdfs.paths.datanodeDataDir }}
+            subPath: data0
+    containers:
+      - name: hdfs-datanode
+        image: {{ include "hadoop.dataNodeImage" . | quote }}
+        imagePullPolicy: {{ .Values.dataNode.image.pullPolicy }}
+        env:
+          - name: DEBUG_MODEL
+            value: {{ .Values.runtime.debug | quote }}
+        livenessProbe:
+          failureThreshold: {{ .Values.probes.datanode.liveness.failureThreshold }}
+          initialDelaySeconds: {{ .Values.probes.datanode.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.datanode.liveness.periodSeconds }}
+          successThreshold: 1
+          timeoutSeconds: {{ .Values.probes.datanode.liveness.timeoutSeconds }}
+          exec:
+            command:
+              - /bin/bash
+              - /kubeblocks/scripts/check-data-status.sh
+        readinessProbe:
+          failureThreshold: {{ .Values.probes.datanode.readiness.failureThreshold }}
+          initialDelaySeconds: {{ .Values.probes.datanode.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.datanode.readiness.periodSeconds }}
+          successThreshold: 1
+          timeoutSeconds: {{ .Values.probes.datanode.readiness.timeoutSeconds }}
+          exec:
+            command:
+              - /bin/bash
+              - /kubeblocks/scripts/check-data-status.sh
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/core-site.xml
+            subPath: core-site.xml
+          - name: datanode-config
+            mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: datanode-config
+            mountPath: {{ .Values.runtime.configDir }}/log4j.properties
+            subPath: log4j.properties
+          - name: hdfs-data-0
+            mountPath: {{ .Values.hdfs.paths.datanodeDataDir }}
+            subPath: data0
+          - name: scripts
+            mountPath: {{ .Values.runtime.scriptsDir }}
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          privileged: {{ .Values.securityContext.privileged }}
+          allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+          capabilities:
+{{ toYaml .Values.securityContext.capabilities | nindent 12 }}
+          seccompProfile:
+{{ toYaml .Values.securityContext.seccompProfile | nindent 12 }}
+    securityContext:
+      fsGroupChangePolicy: {{ .Values.securityContext.fsGroupChangePolicy }}
+      fsGroup: {{ .Values.securityContext.fsGroup }}
+    volumes:
+      - name: hadoop-common
+        emptyDir: {}
+  updateStrategy: {{ .Values.updateStrategy }}
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.extra.clusterDomain }}
+  configs:
+    - name: datanode-config
+      template: datanode-standalone-config-template
+      volumeName: datanode-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.config.defaultMode }}
+  scripts:
+    - name: hadoop-scripts
+      template: hadoop-scripts
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.scripts.defaultMode }}
