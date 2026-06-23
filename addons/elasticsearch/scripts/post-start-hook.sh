@@ -54,17 +54,6 @@ function wait_for_cluster_health() {
     done
 }
 
-function wait_for_local_api() {
-    for _ in $(seq 1 60); do
-        if curl --fail ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/health?local=true" >/dev/null 2>&1; then
-            return 0
-        fi
-        echo "waiting for local elasticsearch API..."
-        sleep 2
-    done
-    return 1
-}
-
 STALE_EXCLUSION_MARKER="/tmp/stale-exclusion-cleanup.pending"
 
 function verify_exclusion_cleared() {
