@@ -1,4 +1,12 @@
 releases:
+  - version: "1.2.0-alpha.1"
+    released_at: ""
+    status: "alpha"
+    notes: "Add B-small ParametersDefinition (8 staticParameters) for Reconfiguring support. Chart version bumped from 1.2.0-alpha.0 to avoid existing-install helm upgrade modifying immutable CmpD spec.configs fields."
+    git_branch: "main"
+    git_tag: ""
+    commit_sha: ""
+    breaking_changes: "CmpD name changes from etcd-3-1.2.0-alpha.0 to etcd-3-1.2.0-alpha.1. Existing clusters referencing the old CmpD name are unaffected but new clusters will use the new CmpD."
   - version: "1.0.1"
     released_at: "2025-09-11"
     status: "stable"
