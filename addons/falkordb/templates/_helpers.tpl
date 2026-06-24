@@ -147,12 +147,17 @@ Generate scripts configmap
 falkordb-account.sh: |-
 {{- $.Files.Get "scripts/falkordb-account.sh" | nindent 2 }}
 {{- end }}
+{{- if $.Files.Get "scripts/reload-parameter.sh" }}
+reload-parameter.sh: |-
+{{- $.Files.Get "scripts/reload-parameter.sh" | nindent 2 }}
+{{- end }}
 {{- end }}
 
 {{- define "falkordb.config.reconfigureAction" -}}
+{{- $container := .container | default "falkordb" -}}
 reconfigure:
   exec:
-    container: falkordb
+    container: {{ $container }}
     targetPodSelector: All
     command:
       - /bin/sh
