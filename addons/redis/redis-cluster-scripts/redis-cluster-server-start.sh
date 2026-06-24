@@ -678,10 +678,14 @@ build_redis_cluster_service_port() {
 build_redis_tls_config() {
   if [ "$TLS_ENABLED" == "true" ]; then
     TLS_MOUNT_PATH=${TLS_MOUNT_PATH:-/etc/pki/tls}
+    local ca_cert_file="$TLS_MOUNT_PATH/ca.crt"
+    if [ -f "/data/ca-bundle.crt" ]; then
+      ca_cert_file="/data/ca-bundle.crt"
+    fi
     {
       echo "tls-cert-file $TLS_MOUNT_PATH/tls.crt"
       echo "tls-key-file $TLS_MOUNT_PATH/tls.key"
-      echo "tls-ca-cert-file $TLS_MOUNT_PATH/ca.crt"
+      echo "tls-ca-cert-file $ca_cert_file"
       echo "tls-auth-clients no"
       echo "tls-replication yes"
       echo "tls-cluster yes"
@@ -780,6 +784,61 @@ build_redis_conf() {
   build_redis_default_accounts
 }
 
+apply_cross_shard_ca_bundle_background() {
+  [ "${TLS_ENABLED}" != "true" ] && return 0
+
+  local ca_bundle="/data/ca-bundle.crt"
+  local ca_bundle_key="__TLS_CA_BUNDLE_BASE64__"
+  local port="${SERVICE_PORT:-6379}"
+
+  if ! check_redis_server_ready_with_retry "127.0.0.1" "$port"; then
+    return 1
+  fi
+
+  if [ -f "$ca_bundle" ]; then
+    unset_xtrace_when_ut_mode_false
+    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+      redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" CONFIG SET tls-ca-cert-file "$ca_bundle" > /dev/null 2>&1
+    else
+      redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG SET tls-ca-cert-file "$ca_bundle" > /dev/null 2>&1
+    fi
+    set_xtrace_when_ut_mode_false
+    echo "apply_cross_shard_ca_bundle: applied existing CA bundle"
+    return 0
+  fi
+
+  local waited=0
+  while [ $waited -lt 300 ]; do
+    local encoded
+    unset_xtrace_when_ut_mode_false
+    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+      encoded=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h 127.0.0.1 -p "$port" GET "$ca_bundle_key" 2>/dev/null)
+    else
+      encoded=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" GET "$ca_bundle_key" 2>/dev/null)
+    fi
+    set_xtrace_when_ut_mode_false
+
+    if [ -n "$encoded" ]; then
+      echo "$encoded" | base64 -d > "$ca_bundle"
+      unset_xtrace_when_ut_mode_false
+      if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+        redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" CONFIG SET tls-ca-cert-file "$ca_bundle" > /dev/null 2>&1
+        redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" DEL "$ca_bundle_key" > /dev/null 2>&1
+      else
+        redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG SET tls-ca-cert-file "$ca_bundle" > /dev/null 2>&1
+        redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" DEL "$ca_bundle_key" > /dev/null 2>&1
+      fi
+      set_xtrace_when_ut_mode_false
+      echo "apply_cross_shard_ca_bundle: applied CA bundle from post-provision"
+      return 0
+    fi
+
+    sleep 2
+    waited=$((waited + 2))
+  done
+  return 0
+}
+
 # This is magic for shellspec ut framework.
 # Sometime, functions are defined in a single shell script.
 # You will want to test it. but you do not want to run the script.
@@ -793,4 +852,5 @@ parse_redis_cluster_shard_announce_addr
 build_redis_conf
 # TODO: move to memberJoin action in the future
 scale_redis_cluster_replica &
+apply_cross_shard_ca_bundle_background &
 start_redis_server

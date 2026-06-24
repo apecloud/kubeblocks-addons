@@ -515,6 +515,157 @@ check_cluster_initialized() {
   return 1
 }
 
+build_cross_shard_ca_bundle() {
+  if [ "${TLS_ENABLED}" != "true" ]; then
+    return 0
+  fi
+
+  local tls_mount_path="${TLS_MOUNT_PATH:-/etc/pki/tls}"
+  local local_ca="${tls_mount_path}/ca.crt"
+  local ca_bundle_path="/data/ca-bundle.crt"
+  local ca_exchange_key="__TLS_PEER_CA__"
+  local ca_bundle_key="__TLS_CA_BUNDLE_BASE64__"
+  local service_port="${SERVICE_PORT:-6379}"
+
+  if [ ! -f "$local_ca" ]; then
+    return 0
+  fi
+
+  echo "=== Building cross-shard TLS CA bundle ==="
+
+  local encoded_local_ca
+  encoded_local_ca=$(base64 < "$local_ca" | tr -d '\n')
+  local local_fingerprint
+  local_fingerprint=$(sha256sum "$local_ca" | awk '{print $1}')
+  echo "Local CA sha256: $local_fingerprint"
+  echo "Local cert sha256: $(sha256sum "${tls_mount_path}/tls.crt" | awk '{print $1}')"
+
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" SET "$ca_exchange_key" "$encoded_local_ca" > /dev/null
+  else
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" SET "$ca_exchange_key" "$encoded_local_ca" > /dev/null
+  fi
+  set_xtrace_when_ut_mode_false
+
+  cp "$local_ca" "$ca_bundle_path"
+  local fingerprints="$local_fingerprint"
+  local new_ca_count=0
+
+  for pod_fqdn in $(echo "$KB_CLUSTER_POD_FQDN_LIST" | tr ',' ' '); do
+    local pod_name=${pod_fqdn%%.*}
+    if [ "$pod_name" = "$CURRENT_POD_NAME" ]; then
+      continue
+    fi
+    local pod_ordinal
+    pod_ordinal=$(extract_obj_ordinal "$pod_name") || continue
+    if [ "$pod_ordinal" != "0" ]; then
+      continue
+    fi
+
+    local peer_port
+    peer_port=$(get_pod_service_port_by_network_mode "$pod_name")
+
+    local peer_encoded_ca=""
+    local attempts=0
+    while [ -z "$peer_encoded_ca" ] && [ $attempts -lt 30 ]; do
+      unset_xtrace_when_ut_mode_false
+      if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+        peer_encoded_ca=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h "$pod_fqdn" -p "$peer_port" GET "$ca_exchange_key" 2>/dev/null)
+      else
+        peer_encoded_ca=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h "$pod_fqdn" -p "$peer_port" -a "$REDIS_DEFAULT_PASSWORD" GET "$ca_exchange_key" 2>/dev/null)
+      fi
+      set_xtrace_when_ut_mode_false
+      if [ -z "$peer_encoded_ca" ]; then
+        echo "Waiting for CA from $pod_fqdn (${attempts}/30)..."
+        sleep_when_ut_mode_false 2
+        attempts=$((attempts + 1))
+      fi
+    done
+
+    if [ -z "$peer_encoded_ca" ]; then
+      echo "Error: timed out waiting for CA from $pod_fqdn" >&2
+      return 1
+    fi
+
+    local peer_ca_decoded
+    peer_ca_decoded=$(echo "$peer_encoded_ca" | base64 -d)
+    local peer_fingerprint
+    peer_fingerprint=$(echo "$peer_ca_decoded" | sha256sum | awk '{print $1}')
+    echo "Peer $pod_fqdn CA sha256: $peer_fingerprint"
+
+    if echo "$fingerprints" | grep -q "$peer_fingerprint"; then
+      echo "Peer $pod_fqdn CA is same, skipping"
+    else
+      echo "$peer_ca_decoded" >> "$ca_bundle_path"
+      fingerprints="${fingerprints} ${peer_fingerprint}"
+      new_ca_count=$((new_ca_count + 1))
+    fi
+  done
+
+  if [ $new_ca_count -eq 0 ]; then
+    echo "All shards share the same CA, no bundle needed"
+    rm -f "$ca_bundle_path"
+    return 0
+  fi
+
+  echo "CA bundle: $((new_ca_count + 1)) unique CAs at $ca_bundle_path"
+
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" CONFIG SET tls-ca-cert-file "$ca_bundle_path" > /dev/null
+  else
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG SET tls-ca-cert-file "$ca_bundle_path" > /dev/null
+  fi
+  local config_set_rc=$?
+  set_xtrace_when_ut_mode_false
+  echo "CONFIG SET tls-ca-cert-file rc=$config_set_rc"
+
+  local readback
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    readback=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h 127.0.0.1 -p "$service_port" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
+  else
+    readback=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
+  fi
+  set_xtrace_when_ut_mode_false
+  echo "CONFIG GET tls-ca-cert-file readback: $readback"
+  if [ "$readback" != "$ca_bundle_path" ]; then
+    echo "Error: tls-ca-cert-file readback mismatch, expected $ca_bundle_path" >&2
+    return 1
+  fi
+
+  local encoded_bundle
+  encoded_bundle=$(base64 < "$ca_bundle_path" | tr -d '\n')
+  for pod_fqdn in $(echo "$KB_CLUSTER_POD_FQDN_LIST" | tr ',' ' '); do
+    local pod_name=${pod_fqdn%%.*}
+    if [ "$pod_name" = "$CURRENT_POD_NAME" ]; then
+      continue
+    fi
+    local peer_port
+    peer_port=$(get_pod_service_port_by_network_mode "$pod_name")
+    unset_xtrace_when_ut_mode_false
+    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+      redis-cli $REDIS_CLI_TLS_CMD -h "$pod_fqdn" -p "$peer_port" SET "$ca_bundle_key" "$encoded_bundle" > /dev/null 2>&1
+    else
+      redis-cli $REDIS_CLI_TLS_CMD -h "$pod_fqdn" -p "$peer_port" -a "$REDIS_DEFAULT_PASSWORD" SET "$ca_bundle_key" "$encoded_bundle" > /dev/null 2>&1
+    fi
+    set_xtrace_when_ut_mode_false
+  done
+  echo "Distributed CA bundle to all pods"
+
+  # Clean up exchange keys
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" DEL "$ca_exchange_key" > /dev/null 2>&1
+  else
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" DEL "$ca_exchange_key" > /dev/null 2>&1
+  fi
+  set_xtrace_when_ut_mode_false
+
+  return 0
+}
+
 build_redis_cluster_create_command() {
   local primary_nodes="$1"
   unset_xtrace_when_ut_mode_false

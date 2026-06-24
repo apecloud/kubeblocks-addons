@@ -1024,6 +1024,13 @@ initialize_or_scale_out_redis_cluster() {
   # TODO: remove random sleep, it's a workaround for the multi components initialization parallelism issue
   sleep_random_second_when_ut_mode_false 10 1
 
+  # Exchange CA certs across shards so cluster bus TLS handshake can succeed.
+  # KubeBlocks creates per-Component CAs; without this, server-to-server
+  # certificate validation fails and gossip messages are never exchanged.
+  if ! build_cross_shard_ca_bundle; then
+    echo "Warning: failed to build cross-shard CA bundle, cluster bus TLS may fail" >&2
+  fi
+
   # if the cluster is not initialized, initialize it
   if ! check_cluster_initialized "$KB_CLUSTER_POD_FQDN_LIST"; then
     echo "Redis Cluster not initialized, initializing..."
@@ -1067,10 +1074,14 @@ if [ $# -eq 1 ]; then
     exit 0
     ;;
   --post-provision)
+    exec > >(tee -a /data/post-provision.log) 2>&1
+    echo "=== post-provision start: $(date -u +%Y-%m-%dT%H:%M:%SZ) pod=$CURRENT_POD_NAME ==="
     if initialize_or_scale_out_redis_cluster; then
       echo "Redis Cluster initialized or scale out shard successfully"
+      echo "=== post-provision end: $(date -u +%Y-%m-%dT%H:%M:%SZ) rc=0 ==="
     else
       echo "Failed to initialize or scale out Redis Cluster shard" >&2
+      echo "=== post-provision end: $(date -u +%Y-%m-%dT%H:%M:%SZ) rc=1 ==="
       exit 1
     fi
     exit 0
