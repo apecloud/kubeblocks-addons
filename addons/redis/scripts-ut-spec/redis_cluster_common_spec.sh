@@ -594,6 +594,8 @@ Describe "Redis Cluster Common Bash Script Tests"
             *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
             *"CLUSTER ADDSLOTS"*) return 0 ;;
             *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
             *) return 1 ;;
           esac
         }
@@ -617,6 +619,8 @@ Describe "Redis Cluster Common Bash Script Tests"
             *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
             *"CLUSTER ADDSLOTS"*) return 0 ;;
             *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
             *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
             *SET*) return 0 ;;
             *GET*_PEER_CA*) echo ""; return 0 ;;
@@ -644,6 +648,8 @@ Describe "Redis Cluster Common Bash Script Tests"
             *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
             *"CLUSTER ADDSLOTS"*) return 0 ;;
             *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
             *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
             *SET*) return 0 ;;
             *GET*_PEER_CA*) echo "CLUSTERDOWN Hash slot not served"; return 0 ;;
@@ -672,6 +678,8 @@ Describe "Redis Cluster Common Bash Script Tests"
             *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
             *"CLUSTER ADDSLOTS"*) return 0 ;;
             *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
             *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
             *SET*) return 0 ;;
             *GET*_PEER_CA*)
@@ -704,6 +712,8 @@ Describe "Redis Cluster Common Bash Script Tests"
             *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
             *"CLUSTER ADDSLOTS"*) return 0 ;;
             *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
             *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
             *SET*_PEER_CA*) return 0 ;;
             *GET*_PEER_CA*)
@@ -736,6 +746,8 @@ Describe "Redis Cluster Common Bash Script Tests"
             *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
             *"CLUSTER ADDSLOTS"*) return 0 ;;
             *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
             *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
             *SET*_PEER_CA*) return 0 ;;
             *GET*_PEER_CA*)
@@ -759,6 +771,46 @@ Describe "Redis Cluster Common Bash Script Tests"
       End
     End
 
+    Context "when full-coverage restore fails on success path"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "returns non-zero when cluster-require-full-coverage restore fails"
+        coverage_restore_call_count=0
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*no*)
+              return 0
+              ;;
+            *"CONFIG SET"*cluster-require-full-coverage*yes*)
+              return 1
+              ;;
+            *DEL*_PEER_CA*) return 0 ;;
+            *SET*_PEER_CA*) return 0 ;;
+            *GET*_PEER_CA*)
+              echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZBS0VfRElGRkVSRU5UX1BFRVIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
+              return 0
+              ;;
+            *"CONFIG SET"*) return 0 ;;
+            *"CONFIG GET"*) echo "tls-ca-cert-file"; echo "./test_data/ca-bundle.crt"; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        openssl() { return 0; }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The output should include "CA bundle:"
+        The stderr should include "failed to restore cluster-require-full-coverage"
+      End
+    End
+
     Context "when FLUSHSLOTS fails on success path"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
@@ -769,6 +821,8 @@ Describe "Redis Cluster Common Bash Script Tests"
             *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
             *"CLUSTER ADDSLOTS"*) return 0 ;;
             *"CLUSTER FLUSHSLOTS"*) return 1 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
             *DEL*_PEER_CA*) return 0 ;;
             *SET*_PEER_CA*) return 0 ;;
             *GET*_PEER_CA*)

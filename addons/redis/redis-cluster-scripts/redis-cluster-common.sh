@@ -541,6 +541,16 @@ build_cross_shard_ca_bundle() {
 
   local redis_cli="redis-cli $REDIS_CLI_TLS_CMD"
 
+  local saved_full_coverage
+  saved_full_coverage=$(_get_cluster_require_full_coverage "$service_port")
+  saved_full_coverage="${saved_full_coverage:-yes}"
+  echo "Saved cluster-require-full-coverage: $saved_full_coverage"
+
+  if ! _set_cluster_require_full_coverage "$service_port" "no"; then
+    echo "Error: failed to set cluster-require-full-coverage no" >&2
+    return 1
+  fi
+
   local exchange_slot
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
@@ -565,6 +575,7 @@ build_cross_shard_ca_bundle() {
   if [ $set_rc -ne 0 ]; then
     echo "Error: failed to publish local CA to $ca_exchange_key (rc=$set_rc)" >&2
     _flush_pre_init_slots "$service_port"
+    _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
     return 1
   fi
 
@@ -618,6 +629,7 @@ build_cross_shard_ca_bundle() {
       echo "Error: timed out waiting for CA from $pod_fqdn" >&2
       _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
       _flush_pre_init_slots "$service_port"
+      _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
       return 1
     fi
 
@@ -642,6 +654,11 @@ build_cross_shard_ca_bundle() {
     _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
     if ! _flush_pre_init_slots "$service_port"; then
       echo "Error: CLUSTER FLUSHSLOTS failed after same-CA detection" >&2
+      _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
+      return 1
+    fi
+    if ! _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"; then
+      echo "Error: failed to restore cluster-require-full-coverage after same-CA detection" >&2
       return 1
     fi
     return 0
@@ -662,6 +679,7 @@ build_cross_shard_ca_bundle() {
     echo "Error: CONFIG SET tls-ca-cert-file failed" >&2
     _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
     _flush_pre_init_slots "$service_port"
+    _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
     return 1
   fi
 
@@ -678,12 +696,18 @@ build_cross_shard_ca_bundle() {
     echo "Error: tls-ca-cert-file readback mismatch, expected $ca_bundle_path" >&2
     _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
     _flush_pre_init_slots "$service_port"
+    _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
     return 1
   fi
 
   _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
   if ! _flush_pre_init_slots "$service_port"; then
     echo "Error: CLUSTER FLUSHSLOTS failed after CA bundle build" >&2
+    _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
+    return 1
+  fi
+  if ! _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"; then
+    echo "Error: failed to restore cluster-require-full-coverage after CA bundle build" >&2
     return 1
   fi
 
@@ -732,6 +756,32 @@ _flush_pre_init_slots() {
   flush_rc=$?
   set_xtrace_when_ut_mode_false
   return $flush_rc
+}
+
+_get_cluster_require_full_coverage() {
+  local port="$1"
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    redis-cli $REDIS_CLI_TLS_CMD --raw -h 127.0.0.1 -p "$port" CONFIG GET cluster-require-full-coverage 2>/dev/null | tail -1
+  else
+    redis-cli $REDIS_CLI_TLS_CMD --raw -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG GET cluster-require-full-coverage 2>/dev/null | tail -1
+  fi
+  set_xtrace_when_ut_mode_false
+}
+
+_set_cluster_require_full_coverage() {
+  local port="$1"
+  local value="$2"
+  local rc
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" CONFIG SET cluster-require-full-coverage "$value" > /dev/null 2>&1
+  else
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG SET cluster-require-full-coverage "$value" > /dev/null 2>&1
+  fi
+  rc=$?
+  set_xtrace_when_ut_mode_false
+  return $rc
 }
 
 _cleanup_ca_exchange_key() {
