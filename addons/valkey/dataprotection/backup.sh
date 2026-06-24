@@ -123,7 +123,7 @@ save_sentinel_acl || \
   echo "WARNING: Sentinel ACL save failed — ACL rules will not be restored after a cluster restore." >&2
 
 echo "INFO: Data archived successfully."
-TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}') || true
+TOTAL_SIZE=$(datasafed stat "${DP_BACKUP_NAME}.tar.zst" | grep TotalSize | awk '{print $2}') || true
 if [ -z "${TOTAL_SIZE}" ]; then
   echo "WARNING: could not parse TotalSize from datasafed stat — reporting 0" >&2
   TOTAL_SIZE=0
