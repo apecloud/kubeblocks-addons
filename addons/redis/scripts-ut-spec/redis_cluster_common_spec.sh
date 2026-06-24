@@ -623,6 +623,34 @@ Describe "Redis Cluster Common Bash Script Tests"
       End
     End
 
+    Context "when CONFIG SET fails"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "returns non-zero on CONFIG SET failure and cleans up exchange key"
+        redis-cli() {
+          case "$*" in
+            *DEL*__KB_TLS_PEER_CA__*) touch "./test_data/del_called"; return 0 ;;
+            *SET*__KB_TLS_PEER_CA__*) return 0 ;;
+            *GET*__KB_TLS_PEER_CA__*)
+              echo "RVZJTF9QRUVSX0NB"
+              return 0
+              ;;
+            *"CONFIG SET"*) return 1 ;;
+            *) return 0 ;;
+          esac
+        }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The output should include "CA bundle:"
+        The path "./test_data/del_called" should be exist
+        The stderr should include "CONFIG SET tls-ca-cert-file failed"
+      End
+    End
+
     Context "when CONFIG SET readback mismatches"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
