@@ -593,6 +593,7 @@ build_cross_shard_ca_bundle() {
 
     if [ -z "$peer_encoded_ca" ]; then
       echo "Error: timed out waiting for CA from $pod_fqdn" >&2
+      _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
       return 1
     fi
 
@@ -631,6 +632,7 @@ build_cross_shard_ca_bundle() {
   echo "CONFIG SET tls-ca-cert-file rc=$config_set_rc"
   if [ $config_set_rc -ne 0 ]; then
     echo "Error: CONFIG SET tls-ca-cert-file failed" >&2
+    _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
     return 1
   fi
 
@@ -645,6 +647,7 @@ build_cross_shard_ca_bundle() {
   echo "CONFIG GET tls-ca-cert-file readback: $readback"
   if [ "$readback" != "$ca_bundle_path" ]; then
     echo "Error: tls-ca-cert-file readback mismatch, expected $ca_bundle_path" >&2
+    _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
     return 1
   fi
 
@@ -673,6 +676,7 @@ build_cross_shard_ca_bundle() {
   done
   if [ $distribute_failures -gt 0 ]; then
     echo "Error: failed to distribute CA bundle to $distribute_failures pod(s)" >&2
+    _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
     return 1
   fi
   echo "Distributed CA bundle to all pods"

@@ -604,9 +604,10 @@ Describe "Redis Cluster Common Bash Script Tests"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
 
-      It "returns non-zero on peer CA timeout"
+      It "returns non-zero on peer CA timeout and cleans up exchange key"
         redis-cli() {
           case "$*" in
+            *DEL*__KB_TLS_PEER_CA__*) touch "./test_data/del_called"; return 0 ;;
             *SET*) return 0 ;;
             *GET*) echo ""; return 0 ;;
           esac
@@ -617,6 +618,7 @@ Describe "Redis Cluster Common Bash Script Tests"
         When call build_cross_shard_ca_bundle
         The status should be failure
         The output should include "Waiting for CA from rds-shard-def-0.svc"
+        The path "./test_data/del_called" should be exist
         The stderr should include "timed out waiting for CA"
       End
     End
@@ -625,9 +627,10 @@ Describe "Redis Cluster Common Bash Script Tests"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
 
-      It "returns non-zero on readback mismatch"
+      It "returns non-zero on readback mismatch and cleans up exchange key"
         redis-cli() {
           case "$*" in
+            *DEL*__KB_TLS_PEER_CA__*) touch "./test_data/del_called"; return 0 ;;
             *SET*__KB_TLS_PEER_CA__*) return 0 ;;
             *GET*__KB_TLS_PEER_CA__*)
               echo "RVZJTF9QRUVSX0NB"
@@ -644,6 +647,7 @@ Describe "Redis Cluster Common Bash Script Tests"
         When call build_cross_shard_ca_bundle
         The status should be failure
         The output should include "CA bundle:"
+        The path "./test_data/del_called" should be exist
         The stderr should include "readback mismatch"
       End
     End
@@ -652,9 +656,10 @@ Describe "Redis Cluster Common Bash Script Tests"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
 
-      It "returns non-zero when distributing to peer fails"
+      It "returns non-zero when distributing to peer fails and cleans up exchange key"
         redis-cli() {
           case "$*" in
+            *DEL*__KB_TLS_PEER_CA__*) touch "./test_data/del_called"; return 0 ;;
             *SET*__KB_TLS_PEER_CA__*) return 0 ;;
             *GET*__KB_TLS_PEER_CA__*)
               echo "RVZJTF9QRUVSX0NB"
@@ -676,6 +681,7 @@ Describe "Redis Cluster Common Bash Script Tests"
         When call build_cross_shard_ca_bundle
         The status should be failure
         The output should include "CA bundle:"
+        The path "./test_data/del_called" should be exist
         The stderr should include "failed to distribute CA bundle"
       End
     End
