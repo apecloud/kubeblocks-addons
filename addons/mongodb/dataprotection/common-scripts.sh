@@ -35,6 +35,45 @@ function buildJsonString() {
 
 # Save backup status info file for syncing progress.
 # timeFormat: %Y-%m-%dT%H:%M:%SZ
+
+# syncerctl_exec runs syncerctl inside the target MongoDB pod via kubectl exec.
+# The MongoDB pod has /tools/syncerctl (copied by init-syncer) and syncer
+# listens on 127.0.0.1:3601, so syncerctl uses default host/port.
+# DP_TARGET_POD_NAME is injected by KubeBlocks dataprotection.
+function syncerctl_exec() {
+  if [ -z "$DP_TARGET_POD_NAME" ]; then
+    echo "ERROR: DP_TARGET_POD_NAME is not set" >&2
+    exit 1
+  fi
+  kubectl exec -n "$CLUSTER_NAMESPACE" "$DP_TARGET_POD_NAME" -c mongodb -- /tools/syncerctl "$@"
+}
+
+# syncerctl_backup_start triggers a backup via syncer and returns the JSON response.
+function syncerctl_backup_start() {
+  local backup_type="$1"
+  local compression="$2"
+  syncerctl_exec backup start --type "$backup_type" --compression "$compression"
+}
+
+# syncerctl_backup_status polls backup status by op_id.
+function syncerctl_backup_status() {
+  local op_id="$1"
+  syncerctl_exec backup status --op-id "$op_id"
+}
+
+# syncerctl_restore_start triggers a restore via syncer and returns the JSON response.
+function syncerctl_restore_start() {
+  local backup_name="$1"
+  shift
+  syncerctl_exec restore start --backup-name "$backup_name" "$@"
+}
+
+# syncerctl_restore_status polls restore status by op_id.
+function syncerctl_restore_status() {
+  local op_id="$1"
+  syncerctl_exec restore status --op-id "$op_id"
+}
+
 function DP_save_backup_status_info() {
     export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
     export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"

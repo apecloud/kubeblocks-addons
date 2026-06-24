@@ -10,24 +10,14 @@ export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 trap handle_exit EXIT
 
 function enable_pitr() {
-  local current_pitr_conf=$(pbm config --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.pitr')
-  local current_pitr_enabled=$(echo $current_pitr_conf | jq -r '.enabled')
-  local current_oplog_span_min=$(echo $current_pitr_conf | jq -r '.oplogSpanMin')
-  local current_pitr_compression=$(echo $current_pitr_conf | jq -r '.compression')
-
-  if [ "$current_pitr_enabled" != "true" ] || [ "$current_oplog_span_min" != "$PBM_OPLOG_SPAN_MIN_MINUTES" ] || [ "$current_pitr_compression" != "$PBM_COMPRESSION" ]; then
-    echo "INFO: Pitr config is not equal to the current config, updating..."
-    wait_for_other_operations "backup"
-
-    pbm config --mongodb-uri "$PBM_MONGODB_URI" --set pitr.enabled=true --set pitr.oplogSpanMin=$PBM_OPLOG_SPAN_MIN_MINUTES --set pitr.compression=$PBM_COMPRESSION
-    echo "INFO: Pitr config updated."
-  fi
+  syncerctl_exec pitr enable --oplog-span-min "$PBM_OPLOG_SPAN_MIN_MINUTES" --compression "$PBM_COMPRESSION"
+  echo "INFO: PITR enabled via syncerctl."
 }
 
 function disable_pitr() {
-  echo "INFO: Disabling Pitr..."
-  pbm config --set pitr.enabled=false --mongodb-uri "$PBM_MONGODB_URI"
-  echo "INFO: Pitr disabled."
+  echo "INFO: Disabling PITR via syncerctl..."
+  syncerctl_exec pitr disable
+  echo "INFO: PITR disabled."
 }
 
 function upload_continuous_backup_info() {

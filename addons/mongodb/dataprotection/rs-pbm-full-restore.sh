@@ -12,10 +12,10 @@ export_logs_start_time_env
 
 trap handle_restore_exit EXIT
 
+# The ActionSet job renders PBM storage config from datasafed, and restore
+# targets must force PBM to resync metadata before syncer starts the restore.
 wait_for_other_operations
-
 sync_pbm_storage_config
-
 sync_pbm_config_from_storage
 
 extras=$(cat /dp_downward/status_extras)
@@ -27,6 +27,7 @@ if [ -z "$backup_type" ] || [ -z "$backup_name" ]; then
     exit 1
 fi
 
+# Get backup info for replset name mapping
 get_describe_backup_info
 
 rs_name=$(echo "$describe_result" | jq -r '.replsets[0].name')
@@ -35,10 +36,42 @@ echo "INFO: Replica set mappings: $mappings"
 
 process_restore_start_signal
 
-wait_for_other_operations
+# Trigger restore via syncerctl instead of direct pbm restore
+echo "INFO: Starting restore via syncerctl..."
+restore_result=$(syncerctl_exec restore start --backup-name "$backup_name" --replset-remapping "$mappings")
+restore_name=$(echo "$restore_result" | jq -r '.op_id')
 
-restore_name=$(pbm restore $backup_name --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" -o json | jq -r '.name')
-
-wait_for_restoring
+# Poll restore status via syncerctl
+echo "INFO: Waiting for restore completion..."
+retry_interval=5
+attempt=0
+max_retries=60
+set +e
+while true; do
+  restore_status_result=$(syncerctl_exec restore status --op-id "$restore_name" 2>&1)
+  if [ $? -eq 0 ] && [ -n "$restore_status_result" ]; then
+    status=$(echo "$restore_status_result" | jq -r '.status')
+    echo "INFO: Restore $restore_name status: $status"
+    if [ "$status" = "done" ]; then
+      break
+    elif [ "$status" = "error" ]; then
+      echo "ERROR: Restore failed"
+      set -e
+      exit 1
+    fi
+  else
+    echo "INFO: Failed to get restore status, retrying..."
+    attempt=$((attempt+1))
+  fi
+  sleep $retry_interval
+  if [ $attempt -gt $max_retries ]; then
+    echo "ERROR: Restore status polling exceeded $max_retries retries"
+    set -e
+    exit 1
+  fi
+done
+set -e
 
 process_restore_end_signal
+
+echo "INFO: Restore completed."

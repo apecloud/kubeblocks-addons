@@ -65,9 +65,38 @@ echo "INFO: Starting restore..."
 
 wait_for_other_operations
 
-restore_name=$(pbm restore --time="$recovery_target_time" --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" -o json | jq -r '.name')
+restore_result=$(syncerctl_exec restore start --pitr-target "$recovery_target_time" --replset-remapping "$mappings")
+restore_name=$(echo "$restore_result" | jq -r '.op_id')
 
-wait_for_restoring
+echo "INFO: Waiting for restore completion..."
+retry_interval=5
+attempt=0
+max_retries=60
+set +e
+while true; do
+  restore_status_result=$(syncerctl_exec restore status --op-id "$restore_name" 2>&1)
+  if [ $? -eq 0 ] && [ -n "$restore_status_result" ]; then
+    status=$(echo "$restore_status_result" | jq -r '.status')
+    echo "INFO: Restore $restore_name status: $status"
+    if [ "$status" = "done" ]; then
+      break
+    elif [ "$status" = "error" ]; then
+      echo "ERROR: PITR restore failed"
+      set -e
+      exit 1
+    fi
+  else
+    echo "INFO: Failed to get restore status, retrying..."
+    attempt=$((attempt+1))
+  fi
+  sleep $retry_interval
+  if [ $attempt -gt $max_retries ]; then
+    echo "ERROR: Restore status polling exceeded $max_retries retries"
+    set -e
+    exit 1
+  fi
+done
+set -e
 
 process_restore_end_signal
 

@@ -193,6 +193,12 @@ spec:
             value: "true"
           - name: PBM_AGENT_SIDECAR_SLEEP
             value: "5"
+          - name: SYNCER_BACKUP_ENABLED
+            value: "true"
+          - name: PBM_BIN
+            value: /tools/pbm
+          - name: PBM_AGENT_BIN
+            value: /tools/pbm-agent
           - name: PBM_MONGODB_URI
             value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
           # syncer uses the env to wait dns ready
