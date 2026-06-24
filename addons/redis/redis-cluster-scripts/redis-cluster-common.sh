@@ -522,9 +522,9 @@ build_cross_shard_ca_bundle() {
 
   local tls_mount_path="${TLS_MOUNT_PATH:-/etc/pki/tls}"
   local local_ca="${tls_mount_path}/ca.crt"
-  local ca_bundle_path="/data/ca-bundle.crt"
-  local ca_exchange_key="__TLS_PEER_CA__"
-  local ca_bundle_key="__TLS_CA_BUNDLE_BASE64__"
+  local ca_bundle_path="${DATA_DIR:-/data}/ca-bundle.crt"
+  local ca_exchange_key="__KB_TLS_PEER_CA__"
+  local ca_bundle_key="__KB_TLS_CA_BUNDLE_BASE64__"
   local service_port="${SERVICE_PORT:-6379}"
 
   if [ ! -f "$local_ca" ]; then
@@ -540,13 +540,21 @@ build_cross_shard_ca_bundle() {
   echo "Local CA sha256: $local_fingerprint"
   echo "Local cert sha256: $(sha256sum "${tls_mount_path}/tls.crt" | awk '{print $1}')"
 
+  local redis_cli="redis-cli $REDIS_CLI_TLS_CMD"
+
+  local set_rc
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" SET "$ca_exchange_key" "$encoded_local_ca" > /dev/null
+    $redis_cli -h 127.0.0.1 -p "$service_port" SET "$ca_exchange_key" "$encoded_local_ca" > /dev/null
   else
-    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" SET "$ca_exchange_key" "$encoded_local_ca" > /dev/null
+    $redis_cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" SET "$ca_exchange_key" "$encoded_local_ca" > /dev/null
   fi
+  set_rc=$?
   set_xtrace_when_ut_mode_false
+  if [ $set_rc -ne 0 ]; then
+    echo "Error: failed to publish local CA to $ca_exchange_key (rc=$set_rc)" >&2
+    return 1
+  fi
 
   cp "$local_ca" "$ca_bundle_path"
   local fingerprints="$local_fingerprint"
@@ -571,9 +579,9 @@ build_cross_shard_ca_bundle() {
     while [ -z "$peer_encoded_ca" ] && [ $attempts -lt 30 ]; do
       unset_xtrace_when_ut_mode_false
       if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-        peer_encoded_ca=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h "$pod_fqdn" -p "$peer_port" GET "$ca_exchange_key" 2>/dev/null)
+        peer_encoded_ca=$($redis_cli --raw -h "$pod_fqdn" -p "$peer_port" GET "$ca_exchange_key" 2>/dev/null)
       else
-        peer_encoded_ca=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h "$pod_fqdn" -p "$peer_port" -a "$REDIS_DEFAULT_PASSWORD" GET "$ca_exchange_key" 2>/dev/null)
+        peer_encoded_ca=$($redis_cli --raw -h "$pod_fqdn" -p "$peer_port" -a "$REDIS_DEFAULT_PASSWORD" GET "$ca_exchange_key" 2>/dev/null)
       fi
       set_xtrace_when_ut_mode_false
       if [ -z "$peer_encoded_ca" ]; then
@@ -606,6 +614,7 @@ build_cross_shard_ca_bundle() {
   if [ $new_ca_count -eq 0 ]; then
     echo "All shards share the same CA, no bundle needed"
     rm -f "$ca_bundle_path"
+    _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
     return 0
   fi
 
@@ -613,20 +622,24 @@ build_cross_shard_ca_bundle() {
 
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" CONFIG SET tls-ca-cert-file "$ca_bundle_path" > /dev/null
+    $redis_cli -h 127.0.0.1 -p "$service_port" CONFIG SET tls-ca-cert-file "$ca_bundle_path" > /dev/null
   else
-    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG SET tls-ca-cert-file "$ca_bundle_path" > /dev/null
+    $redis_cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG SET tls-ca-cert-file "$ca_bundle_path" > /dev/null
   fi
   local config_set_rc=$?
   set_xtrace_when_ut_mode_false
   echo "CONFIG SET tls-ca-cert-file rc=$config_set_rc"
+  if [ $config_set_rc -ne 0 ]; then
+    echo "Error: CONFIG SET tls-ca-cert-file failed" >&2
+    return 1
+  fi
 
   local readback
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    readback=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h 127.0.0.1 -p "$service_port" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
+    readback=$($redis_cli --raw -h 127.0.0.1 -p "$service_port" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
   else
-    readback=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
+    readback=$($redis_cli --raw -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
   fi
   set_xtrace_when_ut_mode_false
   echo "CONFIG GET tls-ca-cert-file readback: $readback"
@@ -637,6 +650,7 @@ build_cross_shard_ca_bundle() {
 
   local encoded_bundle
   encoded_bundle=$(base64 < "$ca_bundle_path" | tr -d '\n')
+  local distribute_failures=0
   for pod_fqdn in $(echo "$KB_CLUSTER_POD_FQDN_LIST" | tr ',' ' '); do
     local pod_name=${pod_fqdn%%.*}
     if [ "$pod_name" = "$CURRENT_POD_NAME" ]; then
@@ -646,24 +660,38 @@ build_cross_shard_ca_bundle() {
     peer_port=$(get_pod_service_port_by_network_mode "$pod_name")
     unset_xtrace_when_ut_mode_false
     if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-      redis-cli $REDIS_CLI_TLS_CMD -h "$pod_fqdn" -p "$peer_port" SET "$ca_bundle_key" "$encoded_bundle" > /dev/null 2>&1
+      $redis_cli -h "$pod_fqdn" -p "$peer_port" SET "$ca_bundle_key" "$encoded_bundle" > /dev/null 2>&1
     else
-      redis-cli $REDIS_CLI_TLS_CMD -h "$pod_fqdn" -p "$peer_port" -a "$REDIS_DEFAULT_PASSWORD" SET "$ca_bundle_key" "$encoded_bundle" > /dev/null 2>&1
+      $redis_cli -h "$pod_fqdn" -p "$peer_port" -a "$REDIS_DEFAULT_PASSWORD" SET "$ca_bundle_key" "$encoded_bundle" > /dev/null 2>&1
     fi
+    local dist_rc=$?
     set_xtrace_when_ut_mode_false
+    if [ $dist_rc -ne 0 ]; then
+      echo "Error: failed to distribute CA bundle to $pod_fqdn (rc=$dist_rc)" >&2
+      distribute_failures=$((distribute_failures + 1))
+    fi
   done
+  if [ $distribute_failures -gt 0 ]; then
+    echo "Error: failed to distribute CA bundle to $distribute_failures pod(s)" >&2
+    return 1
+  fi
   echo "Distributed CA bundle to all pods"
 
-  # Clean up exchange keys
-  unset_xtrace_when_ut_mode_false
-  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" DEL "$ca_exchange_key" > /dev/null 2>&1
-  else
-    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" DEL "$ca_exchange_key" > /dev/null 2>&1
-  fi
-  set_xtrace_when_ut_mode_false
+  _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
 
   return 0
+}
+
+_cleanup_ca_exchange_key() {
+  local key="$1"
+  local port="$2"
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" DEL "$key" > /dev/null 2>&1
+  else
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" DEL "$key" > /dev/null 2>&1
+  fi
+  set_xtrace_when_ut_mode_false
 }
 
 build_redis_cluster_create_command() {

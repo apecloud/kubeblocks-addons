@@ -900,4 +900,87 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       End
     End
   End
+
+  Describe "apply_cross_shard_ca_bundle_background()"
+    setup_bg() {
+      export TLS_ENABLED="true"
+      export SERVICE_PORT="6379"
+      export REDIS_DEFAULT_PASSWORD=""
+      export REDIS_CLI_TLS_CMD=""
+      export DATA_DIR="./test_data_bg"
+      mkdir -p "$DATA_DIR"
+    }
+
+    un_setup_bg() {
+      unset TLS_ENABLED SERVICE_PORT REDIS_DEFAULT_PASSWORD REDIS_CLI_TLS_CMD DATA_DIR
+      rm -rf ./test_data_bg 2>/dev/null
+    }
+
+    Context "when TLS is disabled"
+      Before "setup_bg"
+      After "un_setup_bg"
+
+      It "returns 0 immediately"
+        TLS_ENABLED="false"
+        When call apply_cross_shard_ca_bundle_background
+        The status should be success
+      End
+    End
+
+    Context "when existing bundle CONFIG SET fails"
+      Before "setup_bg"
+      After "un_setup_bg"
+
+      It "returns non-zero on CONFIG SET failure"
+        echo "FAKE_BUNDLE" > ./test_data_bg/ca-bundle.crt
+        check_redis_server_ready_with_retry() { return 0; }
+        redis-cli() { return 1; }
+
+        When call apply_cross_shard_ca_bundle_background
+        The status should be failure
+        The stderr should include "CONFIG SET failed on existing bundle"
+      End
+    End
+
+    Context "when existing bundle readback mismatches"
+      Before "setup_bg"
+      After "un_setup_bg"
+
+      It "returns non-zero on readback mismatch"
+        echo "FAKE_BUNDLE" > ./test_data_bg/ca-bundle.crt
+        check_redis_server_ready_with_retry() { return 0; }
+        redis-cli() {
+          case "$*" in
+            *"CONFIG SET"*) return 0 ;;
+            *"CONFIG GET"*) echo "tls-ca-cert-file"; echo "/wrong/path.crt"; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+
+        When call apply_cross_shard_ca_bundle_background
+        The status should be failure
+        The stderr should include "readback mismatch"
+      End
+    End
+
+    Context "when bundle key CONFIG SET fails"
+      Before "setup_bg"
+      After "un_setup_bg"
+
+      It "keeps bundle key for retry and returns non-zero"
+        check_redis_server_ready_with_retry() { return 0; }
+        redis-cli() {
+          case "$*" in
+            *GET*__KB_TLS_CA_BUNDLE_BASE64__*) echo "RkFLRQ=="; return 0 ;;
+            *"CONFIG SET"*) return 1 ;;
+            *) return 0 ;;
+          esac
+        }
+
+        When call apply_cross_shard_ca_bundle_background
+        The status should be failure
+        The stderr should include "keeping bundle key for retry"
+      End
+    End
+  End
 End

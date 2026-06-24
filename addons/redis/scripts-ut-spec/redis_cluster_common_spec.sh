@@ -547,4 +547,137 @@ Describe "Redis Cluster Common Bash Script Tests"
       End
     End
   End
+
+  Describe "build_cross_shard_ca_bundle()"
+    ca_bundle_setup() {
+      export TLS_ENABLED="true"
+      export TLS_MOUNT_PATH="./test_tls"
+      export SERVICE_PORT="6379"
+      export REDIS_DEFAULT_PASSWORD=""
+      export REDIS_CLI_TLS_CMD=""
+      export CURRENT_POD_NAME="rds-shard-abc-0"
+      export KB_CLUSTER_POD_FQDN_LIST="rds-shard-abc-0.svc,rds-shard-def-0.svc"
+      export DATA_DIR="./test_data"
+      mkdir -p ./test_tls "$DATA_DIR"
+      echo "-----BEGIN CERTIFICATE-----" > ./test_tls/ca.crt
+      echo "MIIFAKE_LOCAL" >> ./test_tls/ca.crt
+      echo "-----END CERTIFICATE-----" >> ./test_tls/ca.crt
+      echo "-----BEGIN CERTIFICATE-----" > ./test_tls/tls.crt
+      echo "MIIFAKE_CERT" >> ./test_tls/tls.crt
+      echo "-----END CERTIFICATE-----" >> ./test_tls/tls.crt
+    }
+
+    ca_bundle_cleanup() {
+      unset TLS_ENABLED TLS_MOUNT_PATH SERVICE_PORT REDIS_DEFAULT_PASSWORD
+      unset REDIS_CLI_TLS_CMD CURRENT_POD_NAME KB_CLUSTER_POD_FQDN_LIST DATA_DIR
+      rm -rf ./test_tls ./test_data 2>/dev/null
+    }
+
+    Context "when TLS is disabled"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "returns 0 immediately"
+        TLS_ENABLED="false"
+        When call build_cross_shard_ca_bundle
+        The status should be success
+      End
+    End
+
+    Context "when local CA publish fails"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "returns non-zero when SET fails"
+        redis-cli() { return 1; }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The output should include "Building cross-shard TLS CA bundle"
+        The stderr should include "failed to publish local CA"
+      End
+    End
+
+    Context "when peer CA times out"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "returns non-zero on peer CA timeout"
+        redis-cli() {
+          case "$*" in
+            *SET*) return 0 ;;
+            *GET*) echo ""; return 0 ;;
+          esac
+        }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The output should include "Waiting for CA from rds-shard-def-0.svc"
+        The stderr should include "timed out waiting for CA"
+      End
+    End
+
+    Context "when CONFIG SET readback mismatches"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "returns non-zero on readback mismatch"
+        redis-cli() {
+          case "$*" in
+            *SET*__KB_TLS_PEER_CA__*) return 0 ;;
+            *GET*__KB_TLS_PEER_CA__*)
+              echo "RVZJTF9QRUVSX0NB"
+              return 0
+              ;;
+            *"CONFIG SET"*) return 0 ;;
+            *"CONFIG GET"*) echo "tls-ca-cert-file"; echo "/wrong/path"; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The output should include "CA bundle:"
+        The stderr should include "readback mismatch"
+      End
+    End
+
+    Context "when bundle distribution fails"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "returns non-zero when distributing to peer fails"
+        redis-cli() {
+          case "$*" in
+            *SET*__KB_TLS_PEER_CA__*) return 0 ;;
+            *GET*__KB_TLS_PEER_CA__*)
+              echo "RVZJTF9QRUVSX0NB"
+              return 0
+              ;;
+            *"CONFIG SET"*) return 0 ;;
+            *"CONFIG GET"*)
+              echo "tls-ca-cert-file"
+              echo "./test_data/ca-bundle.crt"
+              return 0
+              ;;
+            *SET*__KB_TLS_CA_BUNDLE_BASE64__*) return 1 ;;
+            *) return 0 ;;
+          esac
+        }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The output should include "CA bundle:"
+        The stderr should include "failed to distribute CA bundle"
+      End
+    End
+  End
 End

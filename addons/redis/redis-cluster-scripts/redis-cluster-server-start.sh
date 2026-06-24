@@ -678,9 +678,10 @@ build_redis_cluster_service_port() {
 build_redis_tls_config() {
   if [ "$TLS_ENABLED" == "true" ]; then
     TLS_MOUNT_PATH=${TLS_MOUNT_PATH:-/etc/pki/tls}
+    local data_dir="${DATA_DIR:-/data}"
     local ca_cert_file="$TLS_MOUNT_PATH/ca.crt"
-    if [ -f "/data/ca-bundle.crt" ]; then
-      ca_cert_file="/data/ca-bundle.crt"
+    if [ -f "$data_dir/ca-bundle.crt" ]; then
+      ca_cert_file="$data_dir/ca-bundle.crt"
     fi
     {
       echo "tls-cert-file $TLS_MOUNT_PATH/tls.crt"
@@ -787,22 +788,41 @@ build_redis_conf() {
 apply_cross_shard_ca_bundle_background() {
   [ "${TLS_ENABLED}" != "true" ] && return 0
 
-  local ca_bundle="/data/ca-bundle.crt"
-  local ca_bundle_key="__TLS_CA_BUNDLE_BASE64__"
+  local ca_bundle="${DATA_DIR:-/data}/ca-bundle.crt"
+  local ca_bundle_key="__KB_TLS_CA_BUNDLE_BASE64__"
   local port="${SERVICE_PORT:-6379}"
+  local redis_cli="redis-cli $REDIS_CLI_TLS_CMD"
 
   if ! check_redis_server_ready_with_retry "127.0.0.1" "$port"; then
     return 1
   fi
 
   if [ -f "$ca_bundle" ]; then
+    local config_rc
     unset_xtrace_when_ut_mode_false
     if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-      redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" CONFIG SET tls-ca-cert-file "$ca_bundle" > /dev/null 2>&1
+      $redis_cli -h 127.0.0.1 -p "$port" CONFIG SET tls-ca-cert-file "$ca_bundle" > /dev/null 2>&1
     else
-      redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG SET tls-ca-cert-file "$ca_bundle" > /dev/null 2>&1
+      $redis_cli -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG SET tls-ca-cert-file "$ca_bundle" > /dev/null 2>&1
+    fi
+    config_rc=$?
+    set_xtrace_when_ut_mode_false
+    if [ $config_rc -ne 0 ]; then
+      echo "apply_cross_shard_ca_bundle: CONFIG SET failed on existing bundle (rc=$config_rc)" >&2
+      return 1
+    fi
+    local readback
+    unset_xtrace_when_ut_mode_false
+    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+      readback=$($redis_cli --raw -h 127.0.0.1 -p "$port" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
+    else
+      readback=$($redis_cli --raw -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
     fi
     set_xtrace_when_ut_mode_false
+    if [ "$readback" != "$ca_bundle" ]; then
+      echo "apply_cross_shard_ca_bundle: readback mismatch, expected $ca_bundle got $readback" >&2
+      return 1
+    fi
     echo "apply_cross_shard_ca_bundle: applied existing CA bundle"
     return 0
   fi
@@ -812,21 +832,44 @@ apply_cross_shard_ca_bundle_background() {
     local encoded
     unset_xtrace_when_ut_mode_false
     if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-      encoded=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h 127.0.0.1 -p "$port" GET "$ca_bundle_key" 2>/dev/null)
+      encoded=$($redis_cli --raw -h 127.0.0.1 -p "$port" GET "$ca_bundle_key" 2>/dev/null)
     else
-      encoded=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" GET "$ca_bundle_key" 2>/dev/null)
+      encoded=$($redis_cli --raw -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" GET "$ca_bundle_key" 2>/dev/null)
     fi
     set_xtrace_when_ut_mode_false
 
     if [ -n "$encoded" ]; then
       echo "$encoded" | base64 -d > "$ca_bundle"
+      local config_rc
       unset_xtrace_when_ut_mode_false
       if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-        redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" CONFIG SET tls-ca-cert-file "$ca_bundle" > /dev/null 2>&1
-        redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" DEL "$ca_bundle_key" > /dev/null 2>&1
+        $redis_cli -h 127.0.0.1 -p "$port" CONFIG SET tls-ca-cert-file "$ca_bundle" > /dev/null 2>&1
       else
-        redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG SET tls-ca-cert-file "$ca_bundle" > /dev/null 2>&1
-        redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" DEL "$ca_bundle_key" > /dev/null 2>&1
+        $redis_cli -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG SET tls-ca-cert-file "$ca_bundle" > /dev/null 2>&1
+      fi
+      config_rc=$?
+      set_xtrace_when_ut_mode_false
+      if [ $config_rc -ne 0 ]; then
+        echo "apply_cross_shard_ca_bundle: CONFIG SET failed (rc=$config_rc), keeping bundle key for retry" >&2
+        return 1
+      fi
+      local readback
+      unset_xtrace_when_ut_mode_false
+      if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+        readback=$($redis_cli --raw -h 127.0.0.1 -p "$port" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
+      else
+        readback=$($redis_cli --raw -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
+      fi
+      set_xtrace_when_ut_mode_false
+      if [ "$readback" != "$ca_bundle" ]; then
+        echo "apply_cross_shard_ca_bundle: readback mismatch, expected $ca_bundle got $readback, keeping bundle key" >&2
+        return 1
+      fi
+      unset_xtrace_when_ut_mode_false
+      if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+        $redis_cli -h 127.0.0.1 -p "$port" DEL "$ca_bundle_key" > /dev/null 2>&1
+      else
+        $redis_cli -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" DEL "$ca_bundle_key" > /dev/null 2>&1
       fi
       set_xtrace_when_ut_mode_false
       echo "apply_cross_shard_ca_bundle: applied CA bundle from post-provision"

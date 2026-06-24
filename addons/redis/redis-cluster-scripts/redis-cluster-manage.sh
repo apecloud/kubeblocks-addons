@@ -1028,7 +1028,8 @@ initialize_or_scale_out_redis_cluster() {
   # KubeBlocks creates per-Component CAs; without this, server-to-server
   # certificate validation fails and gossip messages are never exchanged.
   if ! build_cross_shard_ca_bundle; then
-    echo "Warning: failed to build cross-shard CA bundle, cluster bus TLS may fail" >&2
+    echo "Error: failed to build cross-shard CA bundle, aborting cluster create" >&2
+    return 1
   fi
 
   # if the cluster is not initialized, initialize it
