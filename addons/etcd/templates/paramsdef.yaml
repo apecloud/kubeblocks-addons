@@ -1,0 +1,36 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "etcd3.paramsDefinition" . }}
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+  annotations:
+    {{- include "etcd.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "etcd3.cmpdName" . }}
+  templateName: config
+  fileName: etcd.conf
+  fileFormatConfig:
+    format: yaml
+  staticParameters:
+    - auto-compaction-mode
+    - auto-compaction-retention
+    - log-level
+    - logger
+    - enable-pprof
+    - snapshot-count
+    - max-snapshots
+    - max-wals
+  parametersSchema:
+    topLevelKey: EtcdParameter
+    cue: |-
+      #EtcdParameter: {
+        "auto-compaction-mode"?: string & "periodic" | "revision"
+        "auto-compaction-retention"?: string
+        "log-level"?: string & "debug" | "info" | "warn" | "error" | "panic" | "fatal"
+        "logger"?: string & "zap"
+        "enable-pprof"?: bool
+        "snapshot-count"?: int & >=0
+        "max-snapshots"?: int & >=0
+        "max-wals"?: int & >=0
+      }
