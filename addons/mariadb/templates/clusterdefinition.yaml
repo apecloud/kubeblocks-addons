@@ -1,0 +1,40 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: mariadb
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  topologies:
+    - name: standalone
+      components:
+        - name: mariadb
+          compDef: {{ include "mariadb.cmpdName" . }}
+      default: true
+    # `replication` is the single canonical primary/secondary topology
+    # (alpha.89 — topology merge under weston 2026-05-19 Option B
+    # msg `d8ecfae7`). The async vs semisync behavior is currently
+    # selected at addon install/render time by the Helm value
+    # `replication.mode`, which is wired to
+    # `MARIADB_REPLICATION_MODE` on the merged CmpD. It is NOT a
+    # per-Cluster topology selector. The current chart does not expose
+    # any user-facing mode parameter named `replicationMode`.
+    #
+    # Breaking change relative to alpha.88: the old `async` /
+    # `semisync` topology names are NOT listed here. Existing Cluster
+    # CRs with `spec.topology=async` / `=semisync` will not match this
+    # ClusterDefinition's topologies after upgrade and must be migrated
+    # manually by the user (active migration path is the main route;
+    # any auto-rebind by KB controller on a topology compDef rename is
+    # exploratory and verified separately by the upgrade gate N=1,
+    # NOT a release-notes promise — Jack design Gate 6).
+    - name: replication
+      components:
+        - name: mariadb
+          compDef: {{ include "mariadb.replication.merged.cmpdName" . }}
+    - name: galera
+      components:
+        - name: mariadb
+          compDef: {{ include "mariadb.galera.cmpdName" . }}

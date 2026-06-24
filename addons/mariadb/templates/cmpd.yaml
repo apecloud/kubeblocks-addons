@@ -11,13 +11,87 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Values.defaultServiceVersion.mariadb }}
+  configs:
+    - name: mariadb-standalone-config
+      template: mariadb-standalone-config-template
+      volumeName: mariadb-config
+      namespace: {{ .Release.Namespace }}
+      externalManaged: true
+      {{- include "mariadb.config.reconfigureAction" . | nindent 6 }}
   runtime:
     containers:
       - name: mariadb
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - bash
+          - -c
+          - |
+            # alpha.104 (Jack 2026-05-29): provision the internal admin
+            # account kb_internal_root before mariadbd starts. The shared
+            # reconfigure helper in _helpers.tpl uses kb_internal_root for
+            # dynamic SET GLOBAL (alpha.83 v1: user-facing root has SUPER
+            # stripped under the security hardening path used by the
+            # replication topologies). standalone topology previously did
+            # not create kb_internal_root, which the PR #2689 CLI fix
+            # exposed at task442-full-n1-alpha103-r1-0226 standalone T4
+            # reconfigure (`ERROR 1045 (28000): Access denied for user
+            # 'kb_internal_root'@'127.0.0.1' (using password: YES)`). The
+            # provisioning runs only on first-init (docker-entrypoint.sh
+            # processes /docker-entrypoint-initdb.d/*.sh exactly once when
+            # the datadir is fresh); CREATE USER IF NOT EXISTS + ALTER USER
+            # keep it idempotent if the script is re-run for any reason.
+            # Same MARIADB_ROOT_PASSWORD secret as the root account per the
+            # chart-wide convention (root and kb_internal_root share the
+            # password, no extra secret indirection).
+            mkdir -p /docker-entrypoint-initdb.d
+            cat > /docker-entrypoint-initdb.d/01-kb-internal-root.sh <<'INITDB_EOF'
+            #!/bin/bash
+            set -eu
+            # alpha.111 P0a URGENT Phase 2 hygiene wrap: bracket all binlog-
+            # affecting DDL/DCL in SET SESSION sql_log_bin=0/1 per chart-wide
+            # FLUSH PRIVILEGES wrap audit completeness pattern. This initdb
+            # script runs ONCE at cluster T0 (mariadbd fresh datadir init)
+            # BEFORE any secondary joins, so unwrapped emit was historically
+            # not orphan source — but wrap maintained for chart-wide hygiene
+            # consistency and to prevent future regressions if invocation
+            # path expands.
+            mariadb -h localhost -u root -p"${MARIADB_ROOT_PASSWORD}" <<-SQL
+              SET SESSION sql_log_bin=0;
+              CREATE USER IF NOT EXISTS 'kb_internal_root'@'localhost' IDENTIFIED BY '${MARIADB_ROOT_PASSWORD}';
+              ALTER USER 'kb_internal_root'@'localhost' IDENTIFIED BY '${MARIADB_ROOT_PASSWORD}';
+              ALTER USER 'kb_internal_root'@'localhost' ACCOUNT UNLOCK;
+              GRANT ALL PRIVILEGES ON *.* TO 'kb_internal_root'@'localhost' WITH GRANT OPTION;
+              CREATE USER IF NOT EXISTS 'kb_internal_root'@'127.0.0.1' IDENTIFIED BY '${MARIADB_ROOT_PASSWORD}';
+              ALTER USER 'kb_internal_root'@'127.0.0.1' IDENTIFIED BY '${MARIADB_ROOT_PASSWORD}';
+              ALTER USER 'kb_internal_root'@'127.0.0.1' ACCOUNT UNLOCK;
+              GRANT ALL PRIVILEGES ON *.* TO 'kb_internal_root'@'127.0.0.1' WITH GRANT OPTION;
+              FLUSH PRIVILEGES;
+              SET SESSION sql_log_bin=1;
+            SQL
+            INITDB_EOF
+            chmod +x /docker-entrypoint-initdb.d/01-kb-internal-root.sh
+
+            # Copy TLS certs to data dir (root:root 600 mounts are unreadable by mysql user)
+            if [ "${TLS_ENABLED:-false}" = "true" ] && [ -d /etc/pki/mariadb-ssl ]; then
+              mkdir -p /var/lib/mysql/tls
+              cp -L /etc/pki/mariadb-ssl/ca.crt  /var/lib/mysql/tls/
+              cp -L /etc/pki/mariadb-ssl/tls.crt /var/lib/mysql/tls/
+              cp -L /etc/pki/mariadb-ssl/tls.key /var/lib/mysql/tls/
+              chown -R mysql:mysql /var/lib/mysql/tls 2>/dev/null || true
+              chmod 644 /var/lib/mysql/tls/ca.crt /var/lib/mysql/tls/tls.crt
+              chmod 600 /var/lib/mysql/tls/tls.key
+              exec /usr/local/bin/docker-entrypoint.sh mariadbd \
+                "--ssl-ca=/var/lib/mysql/tls/ca.crt" \
+                "--ssl-cert=/var/lib/mysql/tls/tls.crt" \
+                "--ssl-key=/var/lib/mysql/tls/tls.key"
+            else
+              exec /usr/local/bin/docker-entrypoint.sh mariadbd
+            fi
         volumeMounts:
           - mountPath: /var/lib/mysql
             name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mariadb-config
         ports:
           - containerPort: 3306
             name: mariadb
@@ -33,6 +107,13 @@ spec:
         env:
           - name: "DATA_SOURCE_NAME"
             value: "$(MARIADB_MONITOR_USER):$(MARIADB_MONITOR_PASSWORD)@(localhost:3306)/"
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: mariadb
+            port: 3306
+            targetPort: mariadb
   vars:
     - name: MARIADB_ROOT_USER
       value: root
@@ -46,14 +127,17 @@ spec:
       value: $(MARIADB_ROOT_USER)
     - name: MARIADB_MONITOR_PASSWORD
       value: $(MARIADB_ROOT_PASSWORD)
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+  tls:
+    volumeName: tls
+    mountPath: /etc/pki/mariadb-ssl
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
   volumes:
     - name: data
       needSnapshot: true
-  systemAccounts:
-    - name: root
-      initAccount: true
-      passwordGenerationPolicy:
-        length: 10
-        numDigits: 3
-        numSymbols: 4
-        letterCase: MixedCases
+  {{- include "mariadb.standalone.spec.systemAccounts" . | nindent 2 }}

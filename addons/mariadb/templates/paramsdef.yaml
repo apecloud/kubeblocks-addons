@@ -1,0 +1,255 @@
+{{- $pd := .Files.Get "config/mariadb-config-effect-scope.yaml" | fromYaml }}
+# ParametersDefinition for standalone MariaDB
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: mariadb-standalone-pd
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.standalone.cmpdRegexpPattern" . | quote }}
+  templateName: mariadb-standalone-config
+  fileName: my.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: mysqld
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- range (get $pd "staticParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- range (get $pd "dynamicParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+
+---
+# ParametersDefinition for replication MariaDB
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: mariadb-replication-pd
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.replication.cmpdRegexpPattern" . | quote }}
+  templateName: mariadb-replication-config
+  fileName: my.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: mysqld
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- range (get $pd "staticParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- range (get $pd "dynamicParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+
+---
+# ParametersDefinition for semisync MariaDB
+#
+# alpha.84 v1 (Helen 2026-05-19) — semisync topology previously had NO
+# ParametersDefinition. paramsdef.yaml declared standalone / replication /
+# galera but not semisync; replication PD `componentDef` regex
+# `^mariadb-replication-` did not match `^mariadb-semisync-` cmpd. With no
+# matching PD, the KB Configure controller treats dynamic parameters
+# (slow_query_log, long_query_time, etc.) as unknown-effect and falls back
+# to rolling restart, which on semisync triggers switchover/promote and
+# causes the new primary's mysqld to restart inside the container — losing
+# the `SET GLOBAL` runtime state applied by reconfigureAction. The fresh
+# clean-r1 evidence packet (`9502a88f...`) showed pod1 mysqld process-level
+# restart at 20:42:33 (k8s container restartCount=0, but mariadbd PID
+# changed via switchover promote path), reading old my.cnf from the
+# ConfigMap volume that had not yet propagated kubelet's sync.
+#
+# This semisync PD aligns with replication PD shape:
+#   componentDef: ^mariadb-semisync-
+#   templateName: mariadb-semisync-config  (matches cmpd-semisync.yaml's
+#     configs[0].name; NOT the ConfigMap object name
+#     `mariadb-semisync-config-template`, which is the Helm template
+#     identifier — see Galera comment for the same trap)
+#   fileName: my.cnf
+# Same staticParameters / dynamicParameters scope as other topologies
+# (sourced from `config/mariadb-config-effect-scope.yaml`).
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: mariadb-semisync-pd
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.semisync.cmpdRegexpPattern" . | quote }}
+  templateName: mariadb-semisync-config
+  fileName: my.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: mysqld
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- range (get $pd "staticParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- range (get $pd "dynamicParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+
+---
+# ParametersDefinition for the merged replication CmpD
+# (alpha.89 — topology merge under weston 2026-05-19 Option B).
+#
+# Binds to the new `mariadb-replication-merged-…` CmpD via
+# `^mariadb-replication-merged-` regex. The regex does NOT overlap
+# with `^mariadb-replication-` (old async CmpD) or `^mariadb-semisync-`
+# (old semisync CmpD); the `-merged-` middle segment ensures the
+# match is exclusive (Jack design Gate 3 — single PD per CmpD, no
+# double-match across PDs).
+#
+# `templateName` must match the merged CmpD's configspec name
+# (`spec.configs[].name` in cmpd-replication-merged.yaml). alpha.89
+# v1 commit 2 (Helen 2026-05-19) renamed that configspec from
+# `mariadb-semisync-config` to `mariadb-replication-config`; this PD
+# tracks the rename so the binding stays consistent across the three
+# files (cmpd configspec name / PD templateName / PCR templateName).
+# alpha.89 v1 commit 8 (Helen 2026-05-19) flipped the underlying
+# ConfigMap object template from `mariadb-semisync-config-template`
+# to `mariadb-replication-config-template` (async defaults). PD
+# parameter resolution now operates against the async ConfigMap;
+# the four `rpl_semi_sync_*` variables are absent from the default
+# my.cnf and only land when a Cluster CR explicitly sets them via
+# `spec.componentSpecs[].parameters` (validated by the CUE schema
+# declared below at commit 3 v2).
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: mariadb-replication-merged-pd
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.replication.merged.cmpdRegexpPattern" . | quote }}
+  templateName: mariadb-replication-config
+  fileName: my.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: mysqld
+  # alpha.91 (Helen 2026-05-24, live N=1 first-blocker fix from
+  # vcluster mariadb-test5 run mdb-async-39059 kubeblocks-tests
+  # async suite) — parametersSchema is removed.
+  #
+  # alpha.89 v1 commit 3 v2 added a CUE-based parametersSchema with
+  # only the 4 rpl_semi_sync_* engine vars declared as typed CUE
+  # fields, with `[string]: _` open marker on top to let other
+  # parameters pass CUE validation. Live behavioral test against
+  # KB controller (image apecloud/kubeblocks:1.0.0) reveals that
+  # KB's reconfigure validator only registers keys from the CUE
+  # schema's OpenAPI `properties` set, NOT the `additionalProperties`
+  # produced by the open marker. KB source:
+  # pkg/parameters/parameter_schema.go:50 — `props := openapi
+  # .FlattenSchema(schema.Properties[openapi.DefaultSchemaName])
+  # .Properties` — only enumerates properties; subsequent
+  # `FindParameterSchema()` returns false for any key not in props,
+  # and reconfigure fails with "parameter X not found in
+  # parameters schema" (parameter_utils.go:158).
+  #
+  # Effect on live cluster: ALL reconfigure OpsRequests against
+  # common dynamic params (long_query_time, wait_timeout,
+  # innodb_lock_wait_timeout, sync_binlog, back_log) fail at
+  # KB controller validate-phase. The 239 params declared in
+  # `dynamicParameters` / `staticParameters` lists are NOT
+  # consulted by the reconfigure path once a parametersSchema is
+  # present — the lists are used only for restart-vs-runtime
+  # classification, not for known-parameter whitelisting.
+  #
+  # Fix: drop the parametersSchema. This restores alpha.85
+  # reconfigure behavior (all `dynamicParameters` / `staticParameters`
+  # are reconfigurable; per-parameter type / range validation is
+  # deferred to mariadbd's own SET GLOBAL handling).
+  #
+  # Class 4 fail-closed for the 4 rpl_semi_sync_* engine vars is
+  # still enforced by the three other layers:
+  #   1. Helm template-time validator (`replication.mode
+  #      .validate` in _helpers.tpl) rejects invalid `replication
+  #      .mode` Helm values at `helm render` time.
+  #   2. Startup seeder (`scripts/seed-replication-mode-overrides
+  #      .sh`) writes the 4 real `rpl_semi_sync_*` engine
+  #      variables to `runtime-overrides.d/` BEFORE mariadbd
+  #      starts.
+  #   3. Reconfigure mapper (`scripts/replication-mode-mapper.sh`)
+  #      strips synthetic `replicationMode` / `replicationmode` from
+  #      the parameter list BEFORE SET GLOBAL.
+  #
+  # Degraded path: a user OpsRequest that directly sets
+  # `rpl_semi_sync_master_enabled=MAYBE` will now reach mariadbd's
+  # SET GLOBAL which rejects unknown enum values, producing a Failed
+  # OpsRequest at the action layer rather than at the validator
+  # layer. Engine-layer fail (loud, with mariadbd-side error
+  # message) is acceptable for this single corner case; the bulk
+  # protection sits in the 3 layers above.
+  #
+  # Re-introducing parametersSchema would require enumerating ALL
+  # 239 dynamic+static MariaDB params with their type constraints
+  # (similar to mysql8-config-constraint.cue's 426 declarations),
+  # deferred to a separate alpha pending bandwidth.
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- range (get $pd "staticParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- range (get $pd "dynamicParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+
+---
+# ParametersDefinition for Galera MariaDB
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: mariadb-galera-pd
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.galera.cmpdRegexpPattern" . | quote }}
+  # NOTE: must match galera CmpD configspec name (cmpd-galera.yaml configs[0].name = "mariadb-galera-config"),
+  # NOT the ConfigMap name (which is "mariadb-galera-config-template").
+  # Pre-alpha.13 had typo "mariadb-galera-config-template" → ComponentParameter never resolved →
+  # per-cluster ConfigMap never created → comp.Spec.Configs[].configMap nil → synthesize merge wiped Template →
+  # precheck failed → cluster stuck Creating. See Galera C2 N=10 first-blocker evidence pack
+  # mariadb-galera-c2-n10-20260504-031318 (sha256 2461e99b...).
+  templateName: mariadb-galera-config
+  fileName: my.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: mysqld
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- range (get $pd "staticParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- range (get $pd "dynamicParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
