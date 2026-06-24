@@ -27,6 +27,28 @@ function setStorageVar() {
   export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
 }
 
+function ensurePDAddress() {
+  if [[ -n "${PD_ADDRESS:-}" ]]; then
+    export PD_ADDRESS
+    return 0
+  fi
+
+  local firstPD="${PD_POD_FQDN_LIST%%,*}"
+  if [[ -n "$firstPD" ]]; then
+    if [[ "$firstPD" == *:* ]]; then
+      PD_ADDRESS="$firstPD"
+    else
+      PD_ADDRESS="$firstPD:2379"
+    fi
+    export PD_ADDRESS
+    echo "PD_ADDRESS is empty; derived PD_ADDRESS=$PD_ADDRESS from PD_POD_FQDN_LIST"
+    return 0
+  fi
+
+  echo "PD_ADDRESS is required but empty; set PD_ADDRESS or PD_POD_FQDN_LIST" >&2
+  return 1
+}
+
 # Save backup status info file for syncing progress.
 # timeFormat: %Y-%m-%dT%H:%M:%SZ
 function DP_save_backup_status_info() {

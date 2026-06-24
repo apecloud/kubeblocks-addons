@@ -12,6 +12,23 @@ spec:
   updateStrategy: BestEffortParallel
   minReadySeconds: 30
   vars:
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: PD_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "tidb.pd7.compDefName" . }}
+          host: Required
+    - name: PD_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "tidb.pd7.compDefName" . }}
+          port:
+            name: client
+    - name: PD_ADDRESS
+      value: "$(PD_HOST).$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain }}:$(PD_PORT)"
     - name: PD_LEADER_POD_NAME
       valueFrom:
         componentVarRef:
