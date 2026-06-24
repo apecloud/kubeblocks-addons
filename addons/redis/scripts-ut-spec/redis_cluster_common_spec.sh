@@ -811,6 +811,48 @@ Describe "Redis Cluster Common Bash Script Tests"
       End
     End
 
+    Context "when CONFIG GET cluster-require-full-coverage returns empty"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "aborts before setting full-coverage to no"
+        redis-cli() {
+          case "$*" in
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo ""; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The output should include "Building cross-shard TLS CA bundle"
+        The stderr should include "unexpected value"
+      End
+    End
+
+    Context "when CONFIG GET cluster-require-full-coverage returns unexpected value"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "aborts on non-yes/no value"
+        redis-cli() {
+          case "$*" in
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "maybe"; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The output should include "Building cross-shard TLS CA bundle"
+        The stderr should include "unexpected value"
+      End
+    End
+
     Context "when FLUSHSLOTS fails on success path"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"

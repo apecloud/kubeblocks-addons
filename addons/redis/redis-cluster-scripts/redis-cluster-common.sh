@@ -543,7 +543,10 @@ build_cross_shard_ca_bundle() {
 
   local saved_full_coverage
   saved_full_coverage=$(_get_cluster_require_full_coverage "$service_port")
-  saved_full_coverage="${saved_full_coverage:-yes}"
+  if [ "$saved_full_coverage" != "yes" ] && [ "$saved_full_coverage" != "no" ]; then
+    echo "Error: CONFIG GET cluster-require-full-coverage returned unexpected value: '$saved_full_coverage'" >&2
+    return 1
+  fi
   echo "Saved cluster-require-full-coverage: $saved_full_coverage"
 
   if ! _set_cluster_require_full_coverage "$service_port" "no"; then
