@@ -976,6 +976,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
             *) return 0 ;;
           esac
         }
+        openssl() { return 0; }
 
         When call apply_cross_shard_ca_bundle_background
         The status should be failure

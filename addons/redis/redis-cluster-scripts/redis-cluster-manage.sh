@@ -1037,7 +1037,10 @@ initialize_or_scale_out_redis_cluster() {
     echo "Redis Cluster not initialized, initializing..."
     if initialize_redis_cluster; then
       echo "Redis Cluster initialized successfully"
-      distribute_ca_bundle_to_cluster
+      if ! distribute_ca_bundle_to_cluster; then
+        echo "Error: failed to distribute CA bundle to cluster" >&2
+        return 1
+      fi
     else
       echo "Failed to initialize Redis Cluster" >&2
       return 1

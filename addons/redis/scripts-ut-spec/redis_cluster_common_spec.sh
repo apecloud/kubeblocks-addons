@@ -662,6 +662,38 @@ Describe "Redis Cluster Common Bash Script Tests"
       End
     End
 
+    Context "when peer returns cert-shaped but invalid x509 data"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "rejects invalid x509 and times out"
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
+            *SET*) return 0 ;;
+            *GET*_PEER_CA*)
+              echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCm5vdC1hLXJlYWwtY2VydAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+              return 0
+              ;;
+            *) return 0 ;;
+          esac
+        }
+        openssl() { return 1; }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The output should include "Waiting for CA from rds-shard-def-0.svc"
+        The path "./test_data/del_called" should be exist
+        The stderr should include "invalid x509 certificate"
+        The stderr should include "timed out waiting for CA"
+      End
+    End
+
     Context "when CONFIG SET fails"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
@@ -682,6 +714,7 @@ Describe "Redis Cluster Common Bash Script Tests"
             *) return 0 ;;
           esac
         }
+        openssl() { return 0; }
         extract_obj_ordinal() { echo "0"; }
         get_pod_service_port_by_network_mode() { echo "6379"; }
 
@@ -714,6 +747,7 @@ Describe "Redis Cluster Common Bash Script Tests"
             *) return 0 ;;
           esac
         }
+        openssl() { return 0; }
         extract_obj_ordinal() { echo "0"; }
         get_pod_service_port_by_network_mode() { echo "6379"; }
 
@@ -722,6 +756,38 @@ Describe "Redis Cluster Common Bash Script Tests"
         The output should include "CA bundle:"
         The path "./test_data/del_called" should be exist
         The stderr should include "readback mismatch"
+      End
+    End
+
+    Context "when FLUSHSLOTS fails on success path"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "returns non-zero when FLUSHSLOTS fails after successful bundle build"
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) return 1 ;;
+            *DEL*_PEER_CA*) return 0 ;;
+            *SET*_PEER_CA*) return 0 ;;
+            *GET*_PEER_CA*)
+              echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZBS0VfRElGRkVSRU5UX1BFRVIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
+              return 0
+              ;;
+            *"CONFIG SET"*) return 0 ;;
+            *"CONFIG GET"*) echo "tls-ca-cert-file"; echo "./test_data/ca-bundle.crt"; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        openssl() { return 0; }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The output should include "CA bundle:"
+        The stderr should include "CLUSTER FLUSHSLOTS failed"
       End
     End
   End

@@ -839,9 +839,11 @@ apply_cross_shard_ca_bundle_background() {
     set_xtrace_when_ut_mode_false
 
     if [ -n "$encoded" ]; then
-      local pem_check
-      pem_check=$(echo "$encoded" | base64 -d 2>/dev/null | head -1)
-      if ! echo "$pem_check" | grep -q "BEGIN CERTIFICATE"; then
+      local pem_decoded
+      pem_decoded=$(echo "$encoded" | base64 -d 2>/dev/null)
+      if ! echo "$pem_decoded" | head -1 | grep -q "BEGIN CERTIFICATE"; then
+        encoded=""
+      elif ! echo "$pem_decoded" | openssl x509 -noout 2>/dev/null; then
         encoded=""
       fi
     fi

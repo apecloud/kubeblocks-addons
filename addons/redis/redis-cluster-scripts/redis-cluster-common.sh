@@ -597,10 +597,13 @@ build_cross_shard_ca_bundle() {
       fi
       set_xtrace_when_ut_mode_false
       if [ -n "$peer_encoded_ca" ]; then
-        local pem_check
-        pem_check=$(echo "$peer_encoded_ca" | base64 -d 2>/dev/null | head -1)
-        if ! echo "$pem_check" | grep -q "BEGIN CERTIFICATE"; then
+        local pem_decoded
+        pem_decoded=$(echo "$peer_encoded_ca" | base64 -d 2>/dev/null)
+        if ! echo "$pem_decoded" | head -1 | grep -q "BEGIN CERTIFICATE"; then
           echo "Warning: peer $pod_fqdn returned non-PEM data, retrying..." >&2
+          peer_encoded_ca=""
+        elif ! echo "$pem_decoded" | openssl x509 -noout 2>/dev/null; then
+          echo "Warning: peer $pod_fqdn returned invalid x509 certificate, retrying..." >&2
           peer_encoded_ca=""
         fi
       fi
@@ -637,7 +640,10 @@ build_cross_shard_ca_bundle() {
     echo "All shards share the same CA, no bundle needed"
     rm -f "$ca_bundle_path"
     _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
-    _flush_pre_init_slots "$service_port"
+    if ! _flush_pre_init_slots "$service_port"; then
+      echo "Error: CLUSTER FLUSHSLOTS failed after same-CA detection" >&2
+      return 1
+    fi
     return 0
   fi
 
@@ -676,7 +682,10 @@ build_cross_shard_ca_bundle() {
   fi
 
   _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
-  _flush_pre_init_slots "$service_port"
+  if ! _flush_pre_init_slots "$service_port"; then
+    echo "Error: CLUSTER FLUSHSLOTS failed after CA bundle build" >&2
+    return 1
+  fi
 
   return 0
 }
@@ -713,13 +722,16 @@ distribute_ca_bundle_to_cluster() {
 
 _flush_pre_init_slots() {
   local port="$1"
+  local flush_rc
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
     redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" CLUSTER FLUSHSLOTS > /dev/null 2>&1
   else
     redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" CLUSTER FLUSHSLOTS > /dev/null 2>&1
   fi
+  flush_rc=$?
   set_xtrace_when_ut_mode_false
+  return $flush_rc
 }
 
 _cleanup_ca_exchange_key() {
