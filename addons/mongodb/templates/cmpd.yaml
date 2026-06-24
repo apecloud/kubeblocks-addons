@@ -356,3 +356,6 @@ spec:
         ports:
           - mongodb
           - ha
+      - container: exporter
+        ports:
+          - exporter
