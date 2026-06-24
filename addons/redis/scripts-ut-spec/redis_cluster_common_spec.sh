@@ -1015,5 +1015,45 @@ Describe "Redis Cluster Common Bash Script Tests"
         The stderr should include "failed to read nonce"
       End
     End
+
+    Context "when stale ACK from previous attempt exists but current nonce differs"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "times out because code only queries for current-nonce ACK key"
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
+            *DEL*) return 0 ;;
+            *SET*_PEER_CA*) return 0 ;;
+            *SET*_NONCE*) return 0 ;;
+            *SET*_ACK_*) return 0 ;;
+            *GET*_PEER_CA*)
+              echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZBS0VfRElGRkVSRU5UX1BFRVIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
+              return 0
+              ;;
+            *GET*_NONCE*) echo "peer_nonce_42"; return 0 ;;
+            *"CONFIG SET"*) return 0 ;;
+            *"CONFIG GET"*) echo "tls-ca-cert-file"; echo "./test_data/ca-bundle.crt"; return 0 ;;
+            *GET*_ACK_*peer_nonce_42*) echo ""; return 0 ;;
+            *GET*_ACK_*) echo "1"; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        openssl() { return 0; }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The output should include "CA bundle:"
+        The output should include "Waiting for peer ACKs"
+        The stderr should include "timed out waiting for peer ACKs"
+      End
+    End
   End
 End
