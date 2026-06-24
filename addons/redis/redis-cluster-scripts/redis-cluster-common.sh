@@ -566,6 +566,25 @@ build_cross_shard_ca_bundle() {
   set_xtrace_when_ut_mode_false
   echo "Pre-init slot allocation: exchange=$exchange_slot"
 
+  local attempt_nonce="${RANDOM}${RANDOM}"
+  local nonce_key="{__KB_TLS__}_NONCE"
+  local nonce_set_rc
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    $redis_cli -h 127.0.0.1 -p "$service_port" SET "$nonce_key" "$attempt_nonce" > /dev/null
+  else
+    $redis_cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" SET "$nonce_key" "$attempt_nonce" > /dev/null
+  fi
+  nonce_set_rc=$?
+  set_xtrace_when_ut_mode_false
+  if [ $nonce_set_rc -ne 0 ]; then
+    echo "Error: failed to set attempt nonce" >&2
+    _flush_pre_init_slots "$service_port"
+    _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
+    return 1
+  fi
+  echo "Attempt nonce: $attempt_nonce"
+
   local set_rc
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
@@ -577,6 +596,7 @@ build_cross_shard_ca_bundle() {
   set_xtrace_when_ut_mode_false
   if [ $set_rc -ne 0 ]; then
     echo "Error: failed to publish local CA to $ca_exchange_key (rc=$set_rc)" >&2
+    _cleanup_ca_exchange_key "$nonce_key" "$service_port"
     _flush_pre_init_slots "$service_port"
     _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
     return 1
@@ -588,6 +608,7 @@ build_cross_shard_ca_bundle() {
   local peer_fqdns=()
   local peer_ports=()
   local peer_names=()
+  local peer_nonces=()
 
   for pod_fqdn in $(echo "$KB_CLUSTER_POD_FQDN_LIST" | tr ',' ' '); do
     local pod_name=${pod_fqdn%%.*}
@@ -637,10 +658,29 @@ build_cross_shard_ca_bundle() {
     if [ -z "$peer_encoded_ca" ]; then
       echo "Error: timed out waiting for CA from $pod_fqdn" >&2
       _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+      _cleanup_ca_exchange_key "$nonce_key" "$service_port"
       _flush_pre_init_slots "$service_port"
       _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
       return 1
     fi
+
+    local peer_nonce=""
+    unset_xtrace_when_ut_mode_false
+    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+      peer_nonce=$($redis_cli --raw -h "$pod_fqdn" -p "$peer_port" GET "$nonce_key" 2>/dev/null)
+    else
+      peer_nonce=$($redis_cli --raw -h "$pod_fqdn" -p "$peer_port" -a "$REDIS_DEFAULT_PASSWORD" GET "$nonce_key" 2>/dev/null)
+    fi
+    set_xtrace_when_ut_mode_false
+    if [ -z "$peer_nonce" ]; then
+      echo "Error: failed to read nonce from $pod_fqdn" >&2
+      _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+      _cleanup_ca_exchange_key "$nonce_key" "$service_port"
+      _flush_pre_init_slots "$service_port"
+      _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
+      return 1
+    fi
+    peer_nonces+=("$peer_nonce")
 
     local peer_ca_decoded
     peer_ca_decoded=$(echo "$peer_encoded_ca" | base64 -d)
@@ -675,6 +715,7 @@ build_cross_shard_ca_bundle() {
     if [ $config_set_rc -ne 0 ]; then
       echo "Error: CONFIG SET tls-ca-cert-file failed" >&2
       _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+      _cleanup_ca_exchange_key "$nonce_key" "$service_port"
       _flush_pre_init_slots "$service_port"
       _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
       return 1
@@ -692,23 +733,25 @@ build_cross_shard_ca_bundle() {
     if [ "$readback" != "$ca_bundle_path" ]; then
       echo "Error: tls-ca-cert-file readback mismatch, expected $ca_bundle_path" >&2
       _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+      _cleanup_ca_exchange_key "$nonce_key" "$service_port"
       _flush_pre_init_slots "$service_port"
       _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
       return 1
     fi
   fi
 
-  # ACK barrier: each pod writes an ACK key on every peer's Redis after
-  # collecting all CAs, then waits for peers to write their ACK on this
-  # pod's Redis. No pod flushes its slot until all peers have confirmed,
-  # preventing the fast-cleanup race that caused r4 CLUSTERDOWN.
+  # ACK barrier: nonce-scoped to prevent stale ACKs from previous failed
+  # attempts polluting the current barrier. Each pod's ACK key includes its
+  # own nonce; peers read the nonce during CA exchange and only wait for
+  # ACK keys matching the current attempt's nonce.
   local ack_key_prefix="{__KB_TLS__}_ACK"
-  local my_ack_key="${ack_key_prefix}_${CURRENT_POD_NAME}"
+  local my_ack_key="${ack_key_prefix}_${CURRENT_POD_NAME}_${attempt_nonce}"
 
   for i in "${!peer_fqdns[@]}"; do
     if ! _write_ack_to_peer "${peer_fqdns[$i]}" "${peer_ports[$i]}" "$my_ack_key"; then
       echo "Error: failed to write ACK to ${peer_fqdns[$i]}" >&2
       _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+      _cleanup_ca_exchange_key "$nonce_key" "$service_port"
       _flush_pre_init_slots "$service_port"
       _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
       return 1
@@ -717,14 +760,15 @@ build_cross_shard_ca_bundle() {
   echo "ACK sent to ${#peer_fqdns[@]} peers"
 
   local expected_ack_keys=()
-  for name in "${peer_names[@]}"; do
-    expected_ack_keys+=("${ack_key_prefix}_${name}")
+  for i in "${!peer_names[@]}"; do
+    expected_ack_keys+=("${ack_key_prefix}_${peer_names[$i]}_${peer_nonces[$i]}")
   done
 
   if ! _wait_for_peer_acks "$service_port" "${expected_ack_keys[@]}"; then
     _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
-    for name in "${peer_names[@]}"; do
-      _cleanup_ca_exchange_key "${ack_key_prefix}_${name}" "$service_port"
+    _cleanup_ca_exchange_key "$nonce_key" "$service_port"
+    for i in "${!peer_names[@]}"; do
+      _cleanup_ca_exchange_key "${ack_key_prefix}_${peer_names[$i]}_${peer_nonces[$i]}" "$service_port"
     done
     _flush_pre_init_slots "$service_port"
     _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
@@ -732,8 +776,9 @@ build_cross_shard_ca_bundle() {
   fi
 
   _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
-  for name in "${peer_names[@]}"; do
-    _cleanup_ca_exchange_key "${ack_key_prefix}_${name}" "$service_port"
+  _cleanup_ca_exchange_key "$nonce_key" "$service_port"
+  for i in "${!peer_names[@]}"; do
+    _cleanup_ca_exchange_key "${ack_key_prefix}_${peer_names[$i]}_${peer_nonces[$i]}" "$service_port"
   done
   if ! _flush_pre_init_slots "$service_port"; then
     echo "Error: CLUSTER FLUSHSLOTS failed after CA exchange" >&2
@@ -850,7 +895,7 @@ _wait_for_peer_acks() {
   local port="$1"
   shift
   local ack_keys=("$@")
-  local max_attempts=60
+  local max_attempts=30
   local attempt=0
 
   while [ $attempt -lt $max_attempts ]; do
