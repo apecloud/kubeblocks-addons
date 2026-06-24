@@ -1,0 +1,55 @@
+# Local-test Cluster for the OpenViking addon.
+#
+# This manifest provisions a bare OpenViking cluster. After it is Running,
+# use OpsRequest to configure embedding and VLM providers:
+#
+#   1. kubectl apply -f cluster-with-config.yaml
+#   2. wait until the cluster is Running
+#   3. kubectl apply -f configure.yaml          # multi-key reconfigure
+#      kubectl apply -f reconfigure-loglevel.yaml  # single-key reconfigure
+#   4. observe ConfigMap rewrite + pod restart, then re-check ov.conf
+#
+# NOTE: replace the placeholder API keys in configure.yaml before applying.
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: openviking-cluster
+  namespace: demo
+spec:
+  # Valid options are: [DoNotTerminate, Delete, WipeOut]
+  terminationPolicy: Delete
+  services:
+    - name: http
+      serviceName: openviking-http
+      spec:
+        type: ClusterIP
+        ports:
+          - port: 1933
+            targetPort: 1933
+      componentSelector: openviking
+  componentSpecs:
+    - name: openviking
+      componentDef: openviking
+      serviceVersion: 0.3.12
+      # OpenViking uses RocksDB and does not support multi-pod sharing.
+      replicas: 1
+      configs:
+        - name: config
+          configMap:
+            name: openviking-config-template-0.1.0
+      resources:
+        limits:
+          cpu: "2"
+          memory: "4Gi"
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi

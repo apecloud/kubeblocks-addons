@@ -1,0 +1,15 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: openviking-reconfigure-loglevel
+  namespace: demo
+spec:
+  clusterName: openviking-cluster
+  force: false
+  reconfigures:
+    - componentName: openviking
+      parameters:
+        - key: log.level
+          value: "DEBUG"
+  preConditionDeadlineSeconds: 0
+  type: Reconfiguring

@@ -1,0 +1,23 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: openviking
+  labels:
+    {{- include "openviking.labels" . | nindent 4 }}
+  annotations:
+    {{- include "openviking.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        {{- range .Values.openvikingVersions }}
+        - {{ .version }}
+        {{- end }}
+      compDefs:
+        - {{ include "openviking.cmpdRegexpPattern" . }}
+  releases:
+  {{- range .Values.openvikingVersions }}
+    - name: {{ .version }}
+      serviceVersion: {{ .version }}
+      images:
+        openviking: {{ include "openviking.repository" $ }}:{{ .imageTag }}
+  {{- end }}

@@ -1,0 +1,65 @@
+OpenViking addon ({{ .Chart.Name }} v{{ .Chart.Version }}) installed.
+
+To create an OpenViking cluster, install the matching cluster chart:
+
+  helm install openviking-cluster ../../addons-cluster/openviking
+
+Or apply a Cluster CR directly. Example:
+
+  apiVersion: apps.kubeblocks.io/v1
+  kind: Cluster
+  metadata:
+    name: openviking-demo
+    namespace: default
+  spec:
+    terminationPolicy: Delete
+    componentSpecs:
+      - name: openviking
+        componentDef: {{ include "openviking.cmpdName" . }}
+        serviceVersion: {{ .Chart.AppVersion }}
+        replicas: 1
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes: [ReadWriteOnce]
+              resources:
+                requests:
+                  storage: 20Gi
+
+After the cluster is Running, the OpenViking HTTP API is exposed
+on port {{ .Values.servicePort }} via the cluster's `http` service:
+
+  kubectl -n default port-forward svc/openviking-demo-openviking-http {{ .Values.servicePort }}:{{ .Values.servicePort }}
+  curl http://localhost:{{ .Values.servicePort }}/health
+
+!! IMPORTANT: Security Notice !!
+
+The default root_api_key is set to "CHANGE_ME". You MUST change it
+before exposing the service to any network. Use an OpsRequest:
+
+  kubectl apply -f - <<EOF
+  apiVersion: operations.kubeblocks.io/v1alpha1
+  kind: OpsRequest
+  metadata:
+    name: ov-set-apikey
+    namespace: default
+  spec:
+    clusterName: openviking-demo
+    type: Reconfiguring
+    reconfigures:
+      - componentName: openviking
+        parameters:
+          - key: server.root_api_key
+            value: YOUR_STRONG_KEY
+  EOF
+
+You can also configure embedding and VLM providers the same way:
+
+  kubectl apply -f examples/openviking/configure.yaml

@@ -1,0 +1,28 @@
+apiVersion: v2
+name: openviking-cluster
+description: An OpenViking cluster Helm chart for KubeBlocks
+type: application
+
+# Chart version - bump on chart/template changes.
+version: 0.1.0
+
+# Application (OpenViking) version being deployed.
+appVersion: "0.1.0"
+
+dependencies:
+  - name: kblib
+    version: 0.1.2
+    repository: file://../kblib
+    alias: extra
+
+home: https://github.com/volcengine/OpenViking
+keywords:
+  - openviking
+  - rag
+  - semantic-search
+  - mcp
+  - knowledge-base
+
+maintainers:
+  - name: OpenViking Contributors
+    url: https://github.com/volcengine/OpenViking
