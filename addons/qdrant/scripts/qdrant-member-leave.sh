@@ -49,6 +49,13 @@ if [ $? -ne 0 ] || [ "$peers_type" != "object" ]; then
   exit 1
 fi
 
+# Log peer URIs for diagnosis before attempting match.
+echo "KB_LEAVE_MEMBER_POD_NAME=${KB_LEAVE_MEMBER_POD_NAME}"
+echo "KB_LEAVE_MEMBER_POD_FQDN=${KB_LEAVE_MEMBER_POD_FQDN}"
+peer_uris=$(echo "$cluster_info" | $JQ -r '.result.peers | to_entries[] | "\(.key): \(.value.uri)"')
+echo "cluster peers:"
+echo "$peer_uris"
+
 # Find the leaving peer's ID by matching KB_LEAVE_MEMBER_POD_NAME in peer URIs.
 # Two-step: first confirm peers is valid (above), then match. Only "valid peers +
 # zero matches" is idempotent exit 0; parse failures always exit 1.

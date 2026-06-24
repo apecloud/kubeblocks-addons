@@ -71,6 +71,7 @@ spec:
       value: {{ .Values.tlsMountPath }}
   lifecycleActions:
     memberLeave:
+      timeoutSeconds: 300
       exec:
         command:
           - /bin/bash
