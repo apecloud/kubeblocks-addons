@@ -31,6 +31,79 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
   }
   AfterAll 'cleanup'
 
+  Describe "init_environment()"
+    Context "when KB main provides declared shard variables without legacy KB_CLUSTER lists"
+      init_environment_and_print_vars() {
+        init_environment
+        echo "KB_CLUSTER_POD_NAME_LIST=$KB_CLUSTER_POD_NAME_LIST"
+        echo "KB_CLUSTER_POD_IP_LIST=$KB_CLUSTER_POD_IP_LIST"
+        echo "KB_CLUSTER_COMPONENT_POD_NAME_LIST=$KB_CLUSTER_COMPONENT_POD_NAME_LIST"
+        echo "KB_CLUSTER_COMPONENT_POD_IP_LIST=$KB_CLUSTER_COMPONENT_POD_IP_LIST"
+        echo "KB_CLUSTER_COMPONENT_LIST=$KB_CLUSTER_COMPONENT_LIST"
+        echo "KB_CLUSTER_COMPONENT_UNDELETED_LIST=$KB_CLUSTER_COMPONENT_UNDELETED_LIST"
+      }
+
+      setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        export ALL_SHARDS_COMPONENT_SHORT_NAMES="shard-fgt:shard-fgt,shard-2qk:shard-2qk,shard-r7s:shard-r7s"
+        export ALL_SHARDS_POD_NAME_LIST=""
+        export ALL_SHARDS_POD_NAME_LIST_SHARD_FGT="fdb-cl-debug-shard-fgt-0,fdb-cl-debug-shard-fgt-1"
+        export ALL_SHARDS_POD_NAME_LIST_SHARD_2QK="fdb-cl-debug-shard-2qk-0,fdb-cl-debug-shard-2qk-1"
+        export ALL_SHARDS_POD_NAME_LIST_SHARD_R7S="fdb-cl-debug-shard-r7s-0,fdb-cl-debug-shard-r7s-1"
+        export ALL_SHARDS_POD_FQDN_LIST=""
+        export ALL_SHARDS_POD_FQDN_LIST_SHARD_FGT="fdb-cl-debug-shard-fgt-0.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local,fdb-cl-debug-shard-fgt-1.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local"
+        export ALL_SHARDS_POD_FQDN_LIST_SHARD_2QK="fdb-cl-debug-shard-2qk-0.fdb-cl-debug-shard-2qk-headless.default.svc.cluster.local,fdb-cl-debug-shard-2qk-1.fdb-cl-debug-shard-2qk-headless.default.svc.cluster.local"
+        export ALL_SHARDS_POD_FQDN_LIST_SHARD_R7S="fdb-cl-debug-shard-r7s-0.fdb-cl-debug-shard-r7s-headless.default.svc.cluster.local,fdb-cl-debug-shard-r7s-1.fdb-cl-debug-shard-r7s-headless.default.svc.cluster.local"
+        export CURRENT_SHARD_POD_NAME_LIST="fdb-cl-debug-shard-fgt-0,fdb-cl-debug-shard-fgt-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="fdb-cl-debug-shard-fgt-0.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local,fdb-cl-debug-shard-fgt-1.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset ALL_SHARDS_COMPONENT_SHORT_NAMES
+        unset ALL_SHARDS_POD_NAME_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_SHARD_FGT
+        unset ALL_SHARDS_POD_NAME_LIST_SHARD_2QK
+        unset ALL_SHARDS_POD_NAME_LIST_SHARD_R7S
+        unset ALL_SHARDS_POD_FQDN_LIST
+        unset ALL_SHARDS_POD_FQDN_LIST_SHARD_FGT
+        unset ALL_SHARDS_POD_FQDN_LIST_SHARD_2QK
+        unset ALL_SHARDS_POD_FQDN_LIST_SHARD_R7S
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+      }
+      After "un_setup"
+
+      It "synthesizes legacy KB_CLUSTER variables from declared shard variables"
+        When call init_environment_and_print_vars
+        The status should be success
+        The output should include "KB_CLUSTER_POD_NAME_LIST=fdb-cl-debug-shard-2qk-0,fdb-cl-debug-shard-2qk-1,fdb-cl-debug-shard-fgt-0,fdb-cl-debug-shard-fgt-1,fdb-cl-debug-shard-r7s-0,fdb-cl-debug-shard-r7s-1"
+        The output should include "KB_CLUSTER_POD_IP_LIST=fdb-cl-debug-shard-2qk-0.fdb-cl-debug-shard-2qk-headless.default.svc.cluster.local,fdb-cl-debug-shard-2qk-1.fdb-cl-debug-shard-2qk-headless.default.svc.cluster.local,fdb-cl-debug-shard-fgt-0.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local,fdb-cl-debug-shard-fgt-1.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local,fdb-cl-debug-shard-r7s-0.fdb-cl-debug-shard-r7s-headless.default.svc.cluster.local,fdb-cl-debug-shard-r7s-1.fdb-cl-debug-shard-r7s-headless.default.svc.cluster.local"
+        The output should include "KB_CLUSTER_COMPONENT_POD_NAME_LIST=fdb-cl-debug-shard-fgt-0,fdb-cl-debug-shard-fgt-1"
+        The output should include "KB_CLUSTER_COMPONENT_POD_IP_LIST=fdb-cl-debug-shard-fgt-0.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local,fdb-cl-debug-shard-fgt-1.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local"
+        The output should include "KB_CLUSTER_COMPONENT_LIST=shard-fgt,shard-2qk,shard-r7s"
+        The output should include "KB_CLUSTER_COMPONENT_UNDELETED_LIST=shard-fgt,shard-2qk,shard-r7s"
+      End
+    End
+  End
+
   Describe "init_other_components_and_pods_info()"
     It "initializes other components and pods info correctly"
       export KB_CLUSTER_COMPONENT_LIST="component1,component2,component3"
