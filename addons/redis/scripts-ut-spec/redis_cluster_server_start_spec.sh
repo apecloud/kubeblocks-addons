@@ -971,7 +971,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         check_redis_server_ready_with_retry() { return 0; }
         redis-cli() {
           case "$*" in
-            *GET*__KB_TLS_CA_BUNDLE_BASE64__*) echo "RkFLRQ=="; return 0 ;;
+            *GET*_CA_BUNDLE*) echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZBS0VfQlVORExFCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"; return 0 ;;
             *"CONFIG SET"*) return 1 ;;
             *) return 0 ;;
           esac

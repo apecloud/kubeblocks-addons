@@ -523,8 +523,7 @@ build_cross_shard_ca_bundle() {
   local tls_mount_path="${TLS_MOUNT_PATH:-/etc/pki/tls}"
   local local_ca="${tls_mount_path}/ca.crt"
   local ca_bundle_path="${DATA_DIR:-/data}/ca-bundle.crt"
-  local ca_exchange_key="__KB_TLS_PEER_CA__"
-  local ca_bundle_key="__KB_TLS_CA_BUNDLE_BASE64__"
+  local ca_exchange_key="{__KB_TLS__}_PEER_CA"
   local service_port="${SERVICE_PORT:-6379}"
 
   if [ ! -f "$local_ca" ]; then
@@ -542,6 +541,18 @@ build_cross_shard_ca_bundle() {
 
   local redis_cli="redis-cli $REDIS_CLI_TLS_CMD"
 
+  local exchange_slot
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    exchange_slot=$($redis_cli -h 127.0.0.1 -p "$service_port" CLUSTER KEYSLOT "$ca_exchange_key" 2>/dev/null)
+    $redis_cli -h 127.0.0.1 -p "$service_port" CLUSTER ADDSLOTS "$exchange_slot" > /dev/null 2>&1
+  else
+    exchange_slot=$($redis_cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CLUSTER KEYSLOT "$ca_exchange_key" 2>/dev/null)
+    $redis_cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CLUSTER ADDSLOTS "$exchange_slot" > /dev/null 2>&1
+  fi
+  set_xtrace_when_ut_mode_false
+  echo "Pre-init slot allocation: exchange=$exchange_slot"
+
   local set_rc
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
@@ -553,6 +564,7 @@ build_cross_shard_ca_bundle() {
   set_xtrace_when_ut_mode_false
   if [ $set_rc -ne 0 ]; then
     echo "Error: failed to publish local CA to $ca_exchange_key (rc=$set_rc)" >&2
+    _flush_pre_init_slots "$service_port"
     return 1
   fi
 
@@ -584,6 +596,14 @@ build_cross_shard_ca_bundle() {
         peer_encoded_ca=$($redis_cli --raw -h "$pod_fqdn" -p "$peer_port" -a "$REDIS_DEFAULT_PASSWORD" GET "$ca_exchange_key" 2>/dev/null)
       fi
       set_xtrace_when_ut_mode_false
+      if [ -n "$peer_encoded_ca" ]; then
+        local pem_check
+        pem_check=$(echo "$peer_encoded_ca" | base64 -d 2>/dev/null | head -1)
+        if ! echo "$pem_check" | grep -q "BEGIN CERTIFICATE"; then
+          echo "Warning: peer $pod_fqdn returned non-PEM data, retrying..." >&2
+          peer_encoded_ca=""
+        fi
+      fi
       if [ -z "$peer_encoded_ca" ]; then
         echo "Waiting for CA from $pod_fqdn (${attempts}/30)..."
         sleep_when_ut_mode_false 2
@@ -594,6 +614,7 @@ build_cross_shard_ca_bundle() {
     if [ -z "$peer_encoded_ca" ]; then
       echo "Error: timed out waiting for CA from $pod_fqdn" >&2
       _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+      _flush_pre_init_slots "$service_port"
       return 1
     fi
 
@@ -616,6 +637,7 @@ build_cross_shard_ca_bundle() {
     echo "All shards share the same CA, no bundle needed"
     rm -f "$ca_bundle_path"
     _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+    _flush_pre_init_slots "$service_port"
     return 0
   fi
 
@@ -633,6 +655,7 @@ build_cross_shard_ca_bundle() {
   if [ $config_set_rc -ne 0 ]; then
     echo "Error: CONFIG SET tls-ca-cert-file failed" >&2
     _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+    _flush_pre_init_slots "$service_port"
     return 1
   fi
 
@@ -648,42 +671,55 @@ build_cross_shard_ca_bundle() {
   if [ "$readback" != "$ca_bundle_path" ]; then
     echo "Error: tls-ca-cert-file readback mismatch, expected $ca_bundle_path" >&2
     _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+    _flush_pre_init_slots "$service_port"
     return 1
   fi
+
+  _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+  _flush_pre_init_slots "$service_port"
+
+  return 0
+}
+
+distribute_ca_bundle_to_cluster() {
+  [ "${TLS_ENABLED}" != "true" ] && return 0
+
+  local ca_bundle_path="${DATA_DIR:-/data}/ca-bundle.crt"
+  local ca_bundle_key="{__KB_TLS__}_CA_BUNDLE"
+  local service_port="${SERVICE_PORT:-6379}"
+  local redis_cli="redis-cli $REDIS_CLI_TLS_CMD"
+
+  [ ! -f "$ca_bundle_path" ] && return 0
 
   local encoded_bundle
   encoded_bundle=$(base64 < "$ca_bundle_path" | tr -d '\n')
-  local distribute_failures=0
-  for pod_fqdn in $(echo "$KB_CLUSTER_POD_FQDN_LIST" | tr ',' ' '); do
-    local pod_name=${pod_fqdn%%.*}
-    if [ "$pod_name" = "$CURRENT_POD_NAME" ]; then
-      continue
-    fi
-    local peer_port
-    peer_port=$(get_pod_service_port_by_network_mode "$pod_name")
-    unset_xtrace_when_ut_mode_false
-    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-      $redis_cli -h "$pod_fqdn" -p "$peer_port" SET "$ca_bundle_key" "$encoded_bundle" > /dev/null 2>&1
-    else
-      $redis_cli -h "$pod_fqdn" -p "$peer_port" -a "$REDIS_DEFAULT_PASSWORD" SET "$ca_bundle_key" "$encoded_bundle" > /dev/null 2>&1
-    fi
-    local dist_rc=$?
-    set_xtrace_when_ut_mode_false
-    if [ $dist_rc -ne 0 ]; then
-      echo "Error: failed to distribute CA bundle to $pod_fqdn (rc=$dist_rc)" >&2
-      distribute_failures=$((distribute_failures + 1))
-    fi
-  done
-  if [ $distribute_failures -gt 0 ]; then
-    echo "Error: failed to distribute CA bundle to $distribute_failures pod(s)" >&2
-    _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+
+  local set_rc
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    $redis_cli -c -h 127.0.0.1 -p "$service_port" SET "$ca_bundle_key" "$encoded_bundle" > /dev/null
+  else
+    $redis_cli -c -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" SET "$ca_bundle_key" "$encoded_bundle" > /dev/null
+  fi
+  set_rc=$?
+  set_xtrace_when_ut_mode_false
+  if [ $set_rc -ne 0 ]; then
+    echo "Warning: failed to distribute CA bundle key to cluster (rc=$set_rc)" >&2
     return 1
   fi
-  echo "Distributed CA bundle to all pods"
-
-  _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
-
+  echo "Distributed CA bundle key to cluster"
   return 0
+}
+
+_flush_pre_init_slots() {
+  local port="$1"
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" CLUSTER FLUSHSLOTS > /dev/null 2>&1
+  else
+    redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" CLUSTER FLUSHSLOTS > /dev/null 2>&1
+  fi
+  set_xtrace_when_ut_mode_false
 }
 
 _cleanup_ca_exchange_key() {

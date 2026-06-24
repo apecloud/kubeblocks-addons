@@ -789,7 +789,7 @@ apply_cross_shard_ca_bundle_background() {
   [ "${TLS_ENABLED}" != "true" ] && return 0
 
   local ca_bundle="${DATA_DIR:-/data}/ca-bundle.crt"
-  local ca_bundle_key="__KB_TLS_CA_BUNDLE_BASE64__"
+  local ca_bundle_key="{__KB_TLS__}_CA_BUNDLE"
   local port="${SERVICE_PORT:-6379}"
   local redis_cli="redis-cli $REDIS_CLI_TLS_CMD"
 
@@ -832,12 +832,19 @@ apply_cross_shard_ca_bundle_background() {
     local encoded
     unset_xtrace_when_ut_mode_false
     if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-      encoded=$($redis_cli --raw -h 127.0.0.1 -p "$port" GET "$ca_bundle_key" 2>/dev/null)
+      encoded=$($redis_cli -c --raw -h 127.0.0.1 -p "$port" GET "$ca_bundle_key" 2>/dev/null)
     else
-      encoded=$($redis_cli --raw -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" GET "$ca_bundle_key" 2>/dev/null)
+      encoded=$($redis_cli -c --raw -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" GET "$ca_bundle_key" 2>/dev/null)
     fi
     set_xtrace_when_ut_mode_false
 
+    if [ -n "$encoded" ]; then
+      local pem_check
+      pem_check=$(echo "$encoded" | base64 -d 2>/dev/null | head -1)
+      if ! echo "$pem_check" | grep -q "BEGIN CERTIFICATE"; then
+        encoded=""
+      fi
+    fi
     if [ -n "$encoded" ]; then
       echo "$encoded" | base64 -d > "$ca_bundle"
       local config_rc

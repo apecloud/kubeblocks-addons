@@ -589,7 +589,14 @@ Describe "Redis Cluster Common Bash Script Tests"
       After "ca_bundle_cleanup"
 
       It "returns non-zero when SET fails"
-        redis-cli() { return 1; }
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *) return 1 ;;
+          esac
+        }
         extract_obj_ordinal() { echo "0"; }
         get_pod_service_port_by_network_mode() { echo "6379"; }
 
@@ -607,9 +614,13 @@ Describe "Redis Cluster Common Bash Script Tests"
       It "returns non-zero on peer CA timeout and cleans up exchange key"
         redis-cli() {
           case "$*" in
-            *DEL*__KB_TLS_PEER_CA__*) touch "./test_data/del_called"; return 0 ;;
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
             *SET*) return 0 ;;
-            *GET*) echo ""; return 0 ;;
+            *GET*_PEER_CA*) echo ""; return 0 ;;
+            *) return 0 ;;
           esac
         }
         extract_obj_ordinal() { echo "0"; }
@@ -623,6 +634,34 @@ Describe "Redis Cluster Common Bash Script Tests"
       End
     End
 
+    Context "when peer returns non-PEM data"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "rejects CLUSTERDOWN and times out"
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
+            *SET*) return 0 ;;
+            *GET*_PEER_CA*) echo "CLUSTERDOWN Hash slot not served"; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The output should include "Waiting for CA from rds-shard-def-0.svc"
+        The path "./test_data/del_called" should be exist
+        The stderr should include "non-PEM data"
+        The stderr should include "timed out waiting for CA"
+      End
+    End
+
     Context "when CONFIG SET fails"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
@@ -630,10 +669,13 @@ Describe "Redis Cluster Common Bash Script Tests"
       It "returns non-zero on CONFIG SET failure and cleans up exchange key"
         redis-cli() {
           case "$*" in
-            *DEL*__KB_TLS_PEER_CA__*) touch "./test_data/del_called"; return 0 ;;
-            *SET*__KB_TLS_PEER_CA__*) return 0 ;;
-            *GET*__KB_TLS_PEER_CA__*)
-              echo "RVZJTF9QRUVSX0NB"
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
+            *SET*_PEER_CA*) return 0 ;;
+            *GET*_PEER_CA*)
+              echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZBS0VfRElGRkVSRU5UX1BFRVIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
               return 0
               ;;
             *"CONFIG SET"*) return 1 ;;
@@ -658,10 +700,13 @@ Describe "Redis Cluster Common Bash Script Tests"
       It "returns non-zero on readback mismatch and cleans up exchange key"
         redis-cli() {
           case "$*" in
-            *DEL*__KB_TLS_PEER_CA__*) touch "./test_data/del_called"; return 0 ;;
-            *SET*__KB_TLS_PEER_CA__*) return 0 ;;
-            *GET*__KB_TLS_PEER_CA__*)
-              echo "RVZJTF9QRUVSX0NB"
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
+            *SET*_PEER_CA*) return 0 ;;
+            *GET*_PEER_CA*)
+              echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZBS0VfRElGRkVSRU5UX1BFRVIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
               return 0
               ;;
             *"CONFIG SET"*) return 0 ;;
@@ -677,40 +722,6 @@ Describe "Redis Cluster Common Bash Script Tests"
         The output should include "CA bundle:"
         The path "./test_data/del_called" should be exist
         The stderr should include "readback mismatch"
-      End
-    End
-
-    Context "when bundle distribution fails"
-      Before "ca_bundle_setup"
-      After "ca_bundle_cleanup"
-
-      It "returns non-zero when distributing to peer fails and cleans up exchange key"
-        redis-cli() {
-          case "$*" in
-            *DEL*__KB_TLS_PEER_CA__*) touch "./test_data/del_called"; return 0 ;;
-            *SET*__KB_TLS_PEER_CA__*) return 0 ;;
-            *GET*__KB_TLS_PEER_CA__*)
-              echo "RVZJTF9QRUVSX0NB"
-              return 0
-              ;;
-            *"CONFIG SET"*) return 0 ;;
-            *"CONFIG GET"*)
-              echo "tls-ca-cert-file"
-              echo "./test_data/ca-bundle.crt"
-              return 0
-              ;;
-            *SET*__KB_TLS_CA_BUNDLE_BASE64__*) return 1 ;;
-            *) return 0 ;;
-          esac
-        }
-        extract_obj_ordinal() { echo "0"; }
-        get_pod_service_port_by_network_mode() { echo "6379"; }
-
-        When call build_cross_shard_ca_bundle
-        The status should be failure
-        The output should include "CA bundle:"
-        The path "./test_data/del_called" should be exist
-        The stderr should include "failed to distribute CA bundle"
       End
     End
   End
