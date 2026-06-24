@@ -585,6 +585,9 @@ build_cross_shard_ca_bundle() {
   cp "$local_ca" "$ca_bundle_path"
   local fingerprints="$local_fingerprint"
   local new_ca_count=0
+  local peer_fqdns=()
+  local peer_ports=()
+  local peer_names=()
 
   for pod_fqdn in $(echo "$KB_CLUSTER_POD_FQDN_LIST" | tr ',' ' '); do
     local pod_name=${pod_fqdn%%.*}
@@ -599,6 +602,9 @@ build_cross_shard_ca_bundle() {
 
     local peer_port
     peer_port=$(get_pod_service_port_by_network_mode "$pod_name")
+    peer_fqdns+=("$pod_fqdn")
+    peer_ports+=("$peer_port")
+    peer_names+=("$pod_name")
 
     local peer_encoded_ca=""
     local attempts=0
@@ -654,63 +660,88 @@ build_cross_shard_ca_bundle() {
   if [ $new_ca_count -eq 0 ]; then
     echo "All shards share the same CA, no bundle needed"
     rm -f "$ca_bundle_path"
-    _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
-    if ! _flush_pre_init_slots "$service_port"; then
-      echo "Error: CLUSTER FLUSHSLOTS failed after same-CA detection" >&2
+  else
+    echo "CA bundle: $((new_ca_count + 1)) unique CAs at $ca_bundle_path"
+
+    unset_xtrace_when_ut_mode_false
+    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+      $redis_cli -h 127.0.0.1 -p "$service_port" CONFIG SET tls-ca-cert-file "$ca_bundle_path" > /dev/null
+    else
+      $redis_cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG SET tls-ca-cert-file "$ca_bundle_path" > /dev/null
+    fi
+    local config_set_rc=$?
+    set_xtrace_when_ut_mode_false
+    echo "CONFIG SET tls-ca-cert-file rc=$config_set_rc"
+    if [ $config_set_rc -ne 0 ]; then
+      echo "Error: CONFIG SET tls-ca-cert-file failed" >&2
+      _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+      _flush_pre_init_slots "$service_port"
       _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
       return 1
     fi
-    if ! _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"; then
-      echo "Error: failed to restore cluster-require-full-coverage after same-CA detection" >&2
+
+    local readback
+    unset_xtrace_when_ut_mode_false
+    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+      readback=$($redis_cli --raw -h 127.0.0.1 -p "$service_port" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
+    else
+      readback=$($redis_cli --raw -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
+    fi
+    set_xtrace_when_ut_mode_false
+    echo "CONFIG GET tls-ca-cert-file readback: $readback"
+    if [ "$readback" != "$ca_bundle_path" ]; then
+      echo "Error: tls-ca-cert-file readback mismatch, expected $ca_bundle_path" >&2
+      _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+      _flush_pre_init_slots "$service_port"
+      _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
       return 1
     fi
-    return 0
   fi
 
-  echo "CA bundle: $((new_ca_count + 1)) unique CAs at $ca_bundle_path"
+  # ACK barrier: each pod writes an ACK key on every peer's Redis after
+  # collecting all CAs, then waits for peers to write their ACK on this
+  # pod's Redis. No pod flushes its slot until all peers have confirmed,
+  # preventing the fast-cleanup race that caused r4 CLUSTERDOWN.
+  local ack_key_prefix="{__KB_TLS__}_ACK"
+  local my_ack_key="${ack_key_prefix}_${CURRENT_POD_NAME}"
 
-  unset_xtrace_when_ut_mode_false
-  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    $redis_cli -h 127.0.0.1 -p "$service_port" CONFIG SET tls-ca-cert-file "$ca_bundle_path" > /dev/null
-  else
-    $redis_cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG SET tls-ca-cert-file "$ca_bundle_path" > /dev/null
-  fi
-  local config_set_rc=$?
-  set_xtrace_when_ut_mode_false
-  echo "CONFIG SET tls-ca-cert-file rc=$config_set_rc"
-  if [ $config_set_rc -ne 0 ]; then
-    echo "Error: CONFIG SET tls-ca-cert-file failed" >&2
+  for i in "${!peer_fqdns[@]}"; do
+    if ! _write_ack_to_peer "${peer_fqdns[$i]}" "${peer_ports[$i]}" "$my_ack_key"; then
+      echo "Error: failed to write ACK to ${peer_fqdns[$i]}" >&2
+      _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+      _flush_pre_init_slots "$service_port"
+      _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
+      return 1
+    fi
+  done
+  echo "ACK sent to ${#peer_fqdns[@]} peers"
+
+  local expected_ack_keys=()
+  for name in "${peer_names[@]}"; do
+    expected_ack_keys+=("${ack_key_prefix}_${name}")
+  done
+
+  if ! _wait_for_peer_acks "$service_port" "${expected_ack_keys[@]}"; then
     _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
-    _flush_pre_init_slots "$service_port"
-    _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
-    return 1
-  fi
-
-  local readback
-  unset_xtrace_when_ut_mode_false
-  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    readback=$($redis_cli --raw -h 127.0.0.1 -p "$service_port" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
-  else
-    readback=$($redis_cli --raw -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CONFIG GET tls-ca-cert-file 2>/dev/null | tail -1)
-  fi
-  set_xtrace_when_ut_mode_false
-  echo "CONFIG GET tls-ca-cert-file readback: $readback"
-  if [ "$readback" != "$ca_bundle_path" ]; then
-    echo "Error: tls-ca-cert-file readback mismatch, expected $ca_bundle_path" >&2
-    _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+    for name in "${peer_names[@]}"; do
+      _cleanup_ca_exchange_key "${ack_key_prefix}_${name}" "$service_port"
+    done
     _flush_pre_init_slots "$service_port"
     _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
     return 1
   fi
 
   _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+  for name in "${peer_names[@]}"; do
+    _cleanup_ca_exchange_key "${ack_key_prefix}_${name}" "$service_port"
+  done
   if ! _flush_pre_init_slots "$service_port"; then
-    echo "Error: CLUSTER FLUSHSLOTS failed after CA bundle build" >&2
+    echo "Error: CLUSTER FLUSHSLOTS failed after CA exchange" >&2
     _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
     return 1
   fi
   if ! _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"; then
-    echo "Error: failed to restore cluster-require-full-coverage after CA bundle build" >&2
+    echo "Error: failed to restore cluster-require-full-coverage after CA exchange" >&2
     return 1
   fi
 
@@ -797,6 +828,58 @@ _cleanup_ca_exchange_key() {
     redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" DEL "$key" > /dev/null 2>&1
   fi
   set_xtrace_when_ut_mode_false
+}
+
+_write_ack_to_peer() {
+  local peer_fqdn="$1"
+  local peer_port="$2"
+  local ack_key="$3"
+  local rc
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    redis-cli $REDIS_CLI_TLS_CMD -h "$peer_fqdn" -p "$peer_port" SET "$ack_key" "1" > /dev/null 2>&1
+  else
+    redis-cli $REDIS_CLI_TLS_CMD -h "$peer_fqdn" -p "$peer_port" -a "$REDIS_DEFAULT_PASSWORD" SET "$ack_key" "1" > /dev/null 2>&1
+  fi
+  rc=$?
+  set_xtrace_when_ut_mode_false
+  return $rc
+}
+
+_wait_for_peer_acks() {
+  local port="$1"
+  shift
+  local ack_keys=("$@")
+  local max_attempts=60
+  local attempt=0
+
+  while [ $attempt -lt $max_attempts ]; do
+    local all_acked=true
+    for ack_key in "${ack_keys[@]}"; do
+      local val
+      unset_xtrace_when_ut_mode_false
+      if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+        val=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h 127.0.0.1 -p "$port" GET "$ack_key" 2>/dev/null)
+      else
+        val=$(redis-cli $REDIS_CLI_TLS_CMD --raw -h 127.0.0.1 -p "$port" -a "$REDIS_DEFAULT_PASSWORD" GET "$ack_key" 2>/dev/null)
+      fi
+      set_xtrace_when_ut_mode_false
+      if [ -z "$val" ]; then
+        all_acked=false
+        break
+      fi
+    done
+    if [ "$all_acked" = "true" ]; then
+      echo "All peer ACKs received"
+      return 0
+    fi
+    echo "Waiting for peer ACKs (${attempt}/${max_attempts})..."
+    sleep_when_ut_mode_false 2
+    attempt=$((attempt + 1))
+  done
+
+  echo "Error: timed out waiting for peer ACKs" >&2
+  return 1
 }
 
 build_redis_cluster_create_command() {
