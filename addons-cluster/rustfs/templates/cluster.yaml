@@ -10,9 +10,11 @@ spec:
     - componentDef: rustfs
       name: rustfs
       replicas: {{ .Values.replicas }}
+      {{- with .Values.buckets }}
       env:
       - name: RUSTFS_BUCKETS
-        value: {{ .Values.buckets }}
+        value: {{ . | quote }}
+      {{- end }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
