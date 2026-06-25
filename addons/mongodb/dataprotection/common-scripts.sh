@@ -36,36 +36,27 @@ function buildJsonString() {
 # Save backup status info file for syncing progress.
 # timeFormat: %Y-%m-%dT%H:%M:%SZ
 
-# KUBECTL_BIN_DIR is where ensure_kubectl downloads kubectl when the ActionSet
-# job pod image does not include it (e.g. percona-backup-mongodb). The directory
-# is added to PATH so subsequent kubectl calls work unchanged.
-KUBECTL_BIN_DIR="${MOUNT_DIR:-/tmp}/bin"
-KUBECTL_BIN="$KUBECTL_BIN_DIR/kubectl"
+# KUBECTL_BIN is the location where the CMPD init-kubectl container copies
+# kubectl into the shared data volume. ActionSet jobs that mount the data
+# volume and set runOnTargetPodNode=true can use this binary.
+KUBECTL_DATA_BIN="${MOUNT_DIR}/tmp/bin/kubectl"
 
-# ensure_kubectl makes the kubectl CLI available. If kubectl is already on PATH
-# it is a no-op. Otherwise it downloads the official kubectl binary once per job
-# pod. This is a short-term workaround until a dedicated mongodb-dp-tools image
-# (bundling pbm + kubectl) is built and referenced by the ActionSet templates.
+# ensure_kubectl makes the kubectl CLI available. It checks PATH first, then
+# the data-volume copy placed by CMPD init-kubectl. If neither is available it
+# fails with a clear error and does NOT download from the internet, per project
+# constraint: no extra self-built images except syncer.
 function ensure_kubectl() {
   if command -v kubectl >/dev/null 2>&1; then
     return 0
   fi
-  if [ -x "$KUBECTL_BIN" ]; then
-    export PATH="$KUBECTL_BIN_DIR:$PATH"
+  if [ -x "$KUBECTL_DATA_BIN" ]; then
+    export PATH="$(dirname "$KUBECTL_DATA_BIN"):$PATH"
     return 0
   fi
 
-  echo "INFO: kubectl not found in PATH, downloading to $KUBECTL_BIN"
-  mkdir -p "$KUBECTL_BIN_DIR"
-  local version="${KUBECTL_VERSION:-v1.29.0}"
-  local url="https://dl.k8s.io/release/${version}/bin/linux/amd64/kubectl"
-  if ! curl -fsSL --retry 3 --retry-delay 2 -o "$KUBECTL_BIN" "$url"; then
-    echo "ERROR: failed to download kubectl from $url" >&2
-    return 1
-  fi
-  chmod +x "$KUBECTL_BIN"
-  export PATH="$KUBECTL_BIN_DIR:$PATH"
-  echo "INFO: kubectl downloaded successfully"
+  echo "ERROR: kubectl not found in PATH and not available at ${KUBECTL_DATA_BIN}" >&2
+  echo "ERROR: ensure the ActionSet job mounts the data volume and runOnTargetPodNode=true, or use an image that includes kubectl" >&2
+  return 1
 }
 
 # syncerctl_exec runs syncerctl inside the target MongoDB pod via kubectl exec.
