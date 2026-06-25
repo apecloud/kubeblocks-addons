@@ -629,7 +629,7 @@ build_cross_shard_ca_bundle() {
 
     local peer_encoded_ca=""
     local attempts=0
-    while [ -z "$peer_encoded_ca" ] && [ $attempts -lt 30 ]; do
+    while [ -z "$peer_encoded_ca" ] && [ $attempts -lt 90 ]; do
       unset_xtrace_when_ut_mode_false
       if is_empty "$REDIS_DEFAULT_PASSWORD"; then
         peer_encoded_ca=$($redis_cli --raw -h "$pod_fqdn" -p "$peer_port" GET "$ca_exchange_key" 2>/dev/null)
@@ -649,7 +649,7 @@ build_cross_shard_ca_bundle() {
         fi
       fi
       if [ -z "$peer_encoded_ca" ]; then
-        echo "Waiting for CA from $pod_fqdn (${attempts}/30)..."
+        echo "Waiting for CA from $pod_fqdn (${attempts}/90)..."
         sleep_when_ut_mode_false 2
         attempts=$((attempts + 1))
       fi
