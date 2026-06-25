@@ -186,6 +186,7 @@ spec:
       exec:
         container: valkey-sentinel
         command: [sh, -c, /scripts/valkey-sentinel-account-provision.sh]
+        targetPodSelector: All
 
   runtime:
     containers:
