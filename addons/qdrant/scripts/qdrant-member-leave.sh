@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 
-set -x
-set -o errtrace
-set -o nounset
-set -o pipefail
+set -euo pipefail
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
@@ -13,7 +10,16 @@ load_common_library() {
 }
 
 load_common_library
+CURRENT_POD_NAME="${CURRENT_POD_NAME:-${HOSTNAME:-}}"
+if [ -z "$CURRENT_POD_NAME" ]; then
+  echo "CURRENT_POD_NAME is required"
+  exit 1
+fi
 current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$QDRANT_POD_FQDN_LIST" "$CURRENT_POD_NAME")
+JQ_BIN="${QDRANT_JQ_BIN:-/qdrant/tools/jq}"
+if [ ! -x "$JQ_BIN" ]; then
+  JQ_BIN=jq
+fi
 
 if [ "${TLS_ENABLED:-}" = "true" ]; then
   SCHEME="https"
@@ -23,73 +29,80 @@ else
   CURL_TLS=""
 fi
 
-curl $CURL_TLS ${SCHEME}://${current_pod_fqdn}:6333/cluster | grep $KB_LEAVE_MEMBER_POD_NAME
-# if the member is not in the cluster, exit directly
-if [ $? -ne 0 ]; then
-  echo "member ${KB_LEAVE_MEMBER_POD_NAME} is not in the cluster"
-  exit 0
-fi
+current_peer_uri=${SCHEME}://${current_pod_fqdn}:6333
 
-leave_peer_uri=${SCHEME}://${KB_LEAVE_MEMBER_POD_FQDN}:6333
-cluster_info=`curl $CURL_TLS -s ${leave_peer_uri}/cluster`
-leave_peer_id=`echo "${cluster_info}"| jq -r .result.peer_id`
-leader_peer_id=`echo "${cluster_info}" | jq -r .result.raft_info.leader`
+leaving_peer_filter() {
+  "$JQ_BIN" -r \
+    --arg pod "$KB_LEAVE_MEMBER_POD_NAME" \
+    --arg fqdn "${KB_LEAVE_MEMBER_POD_FQDN:-}" \
+    '
+      .result.peers
+      | to_entries[]
+      | select(
+          (.value.uri | contains("://" + $pod + "."))
+          or ($fqdn != "" and (.value.uri | contains("://" + $fqdn)))
+        )
+      | .key
+    '
+}
 
-move_shards() {
-    cols=`curl $CURL_TLS -s ${leave_peer_uri}/collections`
-    col_count=`echo ${cols} | jq -r '.result.collections | length'`
-    if [[ ${col_count} -eq 0 ]]; then
-        echo "no collections found in the cluster"
-        return
-    fi
-    col_names=`echo ${cols} | jq -r '.result.collections[].name'`
-    for col_name in ${col_names}; do
-        col_cluster_info=`curl $CURL_TLS -s ${leave_peer_uri}/collections/${col_name}/cluster`
-        col_shard_count=`echo ${col_cluster_info} | jq -r '.result.local_shards[] | length'`
-        if [[ ${col_shard_count} -eq 0 ]]; then
-            echo "no shards found in collection ${col_name}"
-            continue
-        fi
+leaving_peer_id_from_cluster() {
+  printf "%s" "$1" | leaving_peer_filter | head -n 1
+}
 
-        leave_shard_ids=`echo ${col_cluster_info} | jq -r '.result.local_shards[].shard_id'`
-        for shard_id in ${leave_shard_ids}; do
-            echo "move shard ${shard_id} in col_name ${col_name} from ${leave_peer_id} to ${leader_peer_id}"
-            curl $CURL_TLS -s -X POST -H "Content-Type: application/json" \
-                -d '{"move_shard":{"shard_id": '${shard_id}',"to_peer_id": '${leader_peer_id}',"from_peer_id": '${leave_peer_id}}}'' \
-                ${leave_peer_uri}/collections/${col_name}/cluster
-        done
+is_leaving_peer_removed() {
+  local current_cluster_info leave_peer_id
 
-        while true; do
-            col_cluster_info=`curl $CURL_TLS -s ${leave_peer_uri}/collections/${col_name}/cluster`
-            leave_shard_ids=`echo ${col_cluster_info} | jq -r '.result.local_shards[].shard_id'`
-            if [ -z "${leave_shard_ids}" ]; then
-                echo "all shards in collection ${col_name} has been moved"
-                break
-            fi
-            sleep 1
-        done
-    done
+  if ! current_cluster_info="$(qdrant_curl -sf "${current_peer_uri}/cluster")"; then
+    echo "failed to query qdrant cluster while checking member ${KB_LEAVE_MEMBER_POD_NAME}"
+    return 1
+  fi
+
+  leave_peer_id="$(leaving_peer_id_from_cluster "$current_cluster_info")"
+  [ -z "$leave_peer_id" ] || [ "$leave_peer_id" = "null" ]
 }
 
 remove_peer() {
-    echo "remove peer ${leave_peer_id} from cluster"
-    curl $CURL_TLS -v -XDELETE ${leave_peer_uri}/cluster/peer/${leave_peer_id}
+  current_cluster_info="$(qdrant_curl -sf "${current_peer_uri}/cluster")"
+  leave_peer_id="$(leaving_peer_id_from_cluster "$current_cluster_info")"
+
+  if [ -z "$leave_peer_id" ] || [ "$leave_peer_id" = "null" ]; then
+    echo "member ${KB_LEAVE_MEMBER_POD_NAME} is not in the qdrant cluster"
+    return 0
+  fi
+
+  echo "remove peer ${leave_peer_id} for member ${KB_LEAVE_MEMBER_POD_NAME} from cluster"
+  if qdrant_curl -sf -XDELETE "${current_peer_uri}/cluster/peer/${leave_peer_id}"; then
+    return 0
+  fi
+
+  current_cluster_info="$(qdrant_curl -sf "${current_peer_uri}/cluster")"
+  if ! printf "%s" "$current_cluster_info" | "$JQ_BIN" -e --arg peer_id "$leave_peer_id" '.result.peers | has($peer_id)' >/dev/null; then
+    echo "peer ${leave_peer_id} is already removed"
+    return 0
+  fi
+
+  echo "failed to remove peer ${leave_peer_id}; it may still own shards"
+  return 1
 }
 
 leave_member() {
-    echo "scaling in, we need to move local shards to other peers and remove local peer from the cluster"
-    echo "cluster info: ${cluster_info}"
-    move_shards
-    remove_peer
+  echo "scaling in, remove qdrant peer membership for ${KB_LEAVE_MEMBER_POD_NAME}"
+  remove_peer
 }
 
-# lock file to prevent concurrent leave_member
-# flock will return 1 if the lock is already held by another process, this is expected
+leave_member_lock_file="/var/lock/qdrant-leave-member-${KB_LEAVE_MEMBER_POD_NAME}.lock"
+
+# lock file to prevent duplicate leave_member for the same pod without blocking the lifecycle action
 (
-  flock -n -x 9
-  if [ $? != 0 ]; then
-    echo "member is already in leaving"
+  if ! flock -n -x 9; then
+    echo "qdrant member leave is already running for ${KB_LEAVE_MEMBER_POD_NAME}"
+    if is_leaving_peer_removed; then
+      echo "member ${KB_LEAVE_MEMBER_POD_NAME} is already removed from the qdrant cluster"
+      exit 0
+    fi
+    echo "member ${KB_LEAVE_MEMBER_POD_NAME} is still in the qdrant cluster, retry member leave later"
     exit 1
   fi
-  set -o errexit && leave_member
-) 9>/var/lock/qdrant-leave-member-lock
+  leave_member
+) 9>"${leave_member_lock_file}"
