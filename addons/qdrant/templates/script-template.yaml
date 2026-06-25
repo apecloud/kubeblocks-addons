@@ -15,3 +15,9 @@ data:
     {{- .Files.Get "scripts/qdrant-setup.sh" | nindent 4 }}
   member-leave.sh: |-
     {{- .Files.Get "scripts/qdrant-member-leave.sh" | nindent 4 }}
+  liveness-probe.sh: |-
+    {{- .Files.Get "scripts/qdrant-liveness-probe.sh" | nindent 4 }}
+  readiness-probe.sh: |-
+    {{- .Files.Get "scripts/qdrant-readiness-probe.sh" | nindent 4 }}
+  startup-probe.sh: |-
+    {{- .Files.Get "scripts/qdrant-startup-probe.sh" | nindent 4 }}
