@@ -489,28 +489,27 @@ _local_root_write_probe_127() {
   # one of the 5 valid values (1044/1290/1142/0/other) — fail-closed
   # `probe_result_malformed` / `probe_result_malformed_errno` otherwise
   # (Jack 05:24 instrumentation 1).
+  #
+  # alpha.127+ fix: replaced mutating INSERT/DELETE probe with read-only
+  # SHOW GRANTS check to eliminate orphan GTID writes on the demoted primary.
+  # Mirrors the pattern used by verify_post_dcs_local_root_write_fenced().
   __PROBE_OUT=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
     --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
-    -P3306 -h127.0.0.1 -N -s -e "
-      CREATE DATABASE IF NOT EXISTS kubeblocks;
-      CREATE TABLE IF NOT EXISTS ${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE}(probe_id VARCHAR(128) PRIMARY KEY, check_ts BIGINT);
-      INSERT INTO ${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE}(probe_id, check_ts)
-        VALUES ('switchover_local_root_probe', UNIX_TIMESTAMP());
-      DELETE FROM ${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE} WHERE probe_id='switchover_local_root_probe';
-    " 2>&1)
+    -P3306 -h127.0.0.1 -N -s -e "SHOW GRANTS FOR '${MARIADB_ROOT_USER}'@'127.0.0.1';" 2>&1)
   __PROBE_RC=$?
-  case "${__PROBE_OUT}" in
-    *1044*) __PROBE_ERRNO=1044 ;;
-    *1290*) __PROBE_ERRNO=1290 ;;
-    *1142*) __PROBE_ERRNO=1142 ;;  # Permission for table itself; accepted as fenced
-    *)
-      if [ "${__PROBE_RC}" -eq 0 ]; then
-        __PROBE_ERRNO=0
-      else
-        __PROBE_ERRNO=other
-      fi
-      ;;
-  esac
+  if [ "${__PROBE_RC}" -ne 0 ]; then
+    case "${__PROBE_OUT}" in
+      *1044*) __PROBE_ERRNO=1044 ;;
+      *1141*) __PROBE_ERRNO=1044 ;;
+      *) __PROBE_ERRNO=other ;;
+    esac
+    return
+  fi
+  if echo "${__PROBE_OUT}" | grep -qiE 'ALL PRIVILEGES|INSERT|UPDATE|DELETE|CREATE'; then
+    __PROBE_ERRNO=0
+  else
+    __PROBE_ERRNO=1290
+  fi
 }
 
 _filter_grants_keep_unmatched() {
