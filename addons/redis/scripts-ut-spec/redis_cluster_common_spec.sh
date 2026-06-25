@@ -1016,6 +1016,52 @@ Describe "Redis Cluster Common Bash Script Tests"
       End
     End
 
+    Context "when peer publishes CA after attempt 60 (beyond old 30-attempt limit)"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "succeeds because 90-attempt window covers late-publishing peers"
+        echo "0" > "./test_data/ca_get_count"
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
+            *DEL*) return 0 ;;
+            *SET*_PEER_CA*) return 0 ;;
+            *SET*_NONCE*) return 0 ;;
+            *SET*_ACK_*) return 0 ;;
+            *GET*_PEER_CA*)
+              local cnt; cnt=$(cat "./test_data/ca_get_count")
+              cnt=$((cnt + 1))
+              echo "$cnt" > "./test_data/ca_get_count"
+              if [ $cnt -le 60 ]; then
+                echo ""; return 0
+              fi
+              echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZBS0VfRElGRkVSRU5UX1BFRVIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
+              return 0
+              ;;
+            *GET*_NONCE*) echo "peer_nonce_42"; return 0 ;;
+            *GET*_ACK_*) echo "1"; return 0 ;;
+            *"CONFIG SET"*) return 0 ;;
+            *"CONFIG GET"*) echo "tls-ca-cert-file"; echo "./test_data/ca-bundle.crt"; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        openssl() { return 0; }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be success
+        The output should include "Waiting for CA from rds-shard-def-0.svc"
+        The output should include "CA bundle:"
+        The output should include "All peer ACKs received"
+      End
+    End
+
     Context "when stale ACK from previous attempt exists but current nonce differs"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
