@@ -102,10 +102,36 @@ function resolve_target_pod() {
 # resolve_restore_target_pod ensures DP_TARGET_POD_NAME points at the pod that
 # should drive a restore. For a sharded cluster this is the config-server
 # primary; for a replicaset it is the replicaset primary.
+#
+# ActionSet restore postReady jobs do not inherit CMPD vars, so CLUSTER_NAME and
+# CLUSTER_NAMESPACE may be unset. In that case we derive them from the
+# KubeBlocks-injected DP_DB_HOST (which names the restore-driving pod) and
+# POD_NAMESPACE (downward API injected into every job pod).
 function resolve_restore_target_pod() {
-  if [ -n "$DP_TARGET_POD_NAME" ]; then
+  if [ -n "$DP_TARGET_POD_NAME" ] && [ -n "${CLUSTER_NAMESPACE:-}" ]; then
     return 0
   fi
+
+  if [ -z "${DP_TARGET_POD_NAME:-}" ] && [ -n "${DP_DB_HOST:-}" ]; then
+    DP_TARGET_POD_NAME=${DP_DB_HOST%%.*}
+    export DP_TARGET_POD_NAME
+  fi
+
+  if [ -z "${CLUSTER_NAMESPACE:-}" ] && [ -n "${POD_NAMESPACE:-}" ]; then
+    CLUSTER_NAMESPACE=$POD_NAMESPACE
+    export CLUSTER_NAMESPACE
+  fi
+
+  if [ -z "${CLUSTER_NAME:-}" ] && [ -n "${DP_TARGET_POD_NAME:-}" ]; then
+    # Sharded restore: the driving pod is <cluster>-config-server-0.
+    CLUSTER_NAME=${DP_TARGET_POD_NAME%-config-server-0}
+    export CLUSTER_NAME
+  fi
+
+  if [ -n "$DP_TARGET_POD_NAME" ] && [ -n "${CLUSTER_NAMESPACE:-}" ]; then
+    return 0
+  fi
+
   if [ -z "$CLUSTER_NAME" ] || [ -z "$CLUSTER_NAMESPACE" ]; then
     echo "ERROR: DP_TARGET_POD_NAME is not set and CLUSTER_NAME/CLUSTER_NAMESPACE are missing" >&2
     return 1
