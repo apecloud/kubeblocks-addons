@@ -11,6 +11,10 @@ fi
 Describe "Redis Twemproxy Setup V2 Script Tests"
   Include ../scripts/redis-twemproxy-setup-v2.sh
 
+  script_shebang() {
+    sed -n '1p' ../scripts/redis-twemproxy-setup-v2.sh
+  }
+
   init() {
     ut_mode="true"
     TWEMPROXY_CONF_DIR=$(mktemp -d)
@@ -23,6 +27,11 @@ Describe "Redis Twemproxy Setup V2 Script Tests"
 
   BeforeAll "init"
   AfterAll "cleanup"
+
+  It "keeps the busybox init-container compatible /bin/sh shebang"
+    When call script_shebang
+    The output should equal "#!/bin/sh"
+  End
 
   reset_env() {
     unset REDIS_SERVICE_NAMES

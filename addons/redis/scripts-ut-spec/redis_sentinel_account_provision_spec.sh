@@ -9,6 +9,10 @@ fi
 Describe "Redis Sentinel Account Provision Script Tests"
   Include ../scripts/redis-sentinel-account-provision.sh
 
+  script_shebang() {
+    sed -n '1p' ../scripts/redis-sentinel-account-provision.sh
+  }
+
   init() {
     ut_mode="true"
     export SENTINEL_SERVICE_PORT="26379"
@@ -17,6 +21,11 @@ Describe "Redis Sentinel Account Provision Script Tests"
     export KB_ACCOUNT_STATEMENT="ACL SETUSER testuser on >password ~* +@all"
   }
   BeforeAll "init"
+
+  It "keeps the original /bin/sh shebang"
+    When call script_shebang
+    The output should equal "#!/bin/sh"
+  End
 
   cleanup() {
     unset SENTINEL_SERVICE_PORT SENTINEL_PASSWORD REDIS_CLI_TLS_CMD KB_ACCOUNT_STATEMENT
@@ -126,6 +135,35 @@ Describe "Redis Sentinel Account Provision Script Tests"
         When call provision_sentinel_account
         The status should be failure
         The stderr should include "acl save error"
+      End
+    End
+
+    Context "when account statement fails but ACL save would succeed"
+      redis-cli() {
+        if echo "$*" | grep -q -- "ACL SETUSER"; then
+          echo "statement failed" >&2
+          return 42
+        fi
+        if echo "$*" | grep -q -- "acl save"; then
+          echo "ACL_SAVE_SHOULD_NOT_RUN"
+          return 0
+        fi
+        return 0
+      }
+
+      setup() {
+        export SENTINEL_SERVICE_PORT="26379"
+        export SENTINEL_PASSWORD="sentpw"
+        export KB_ACCOUNT_STATEMENT="ACL SETUSER testuser ON >pw ~* +@all"
+        export REDIS_CLI_TLS_CMD=""
+      }
+      Before "setup"
+
+      It "returns account statement failure and does not mask it with acl save"
+        When run provision_sentinel_account
+        The status should equal 42
+        The stderr should include "failed to execute KB_ACCOUNT_STATEMENT"
+        The stdout should not include "ACL_SAVE_SHOULD_NOT_RUN"
       End
     End
   End
