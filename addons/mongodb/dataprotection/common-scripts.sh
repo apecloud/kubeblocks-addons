@@ -112,7 +112,9 @@ function resolve_restore_target_pod() {
   fi
   local selector="app.kubernetes.io/instance=$CLUSTER_NAME,kubeblocks.io/role=primary"
   if [ -n "${CFG_SERVER_REPLICA_SET_NAME:-}" ]; then
-    selector="${selector},app.kubernetes.io/component=$CFG_SERVER_REPLICA_SET_NAME"
+    # KubeBlocks v1 uses apps.kubeblocks.io/component-name for the component
+    # short name; app.kubernetes.io/component is the compDefName.
+    selector="${selector},apps.kubeblocks.io/component-name=$CFG_SERVER_REPLICA_SET_NAME"
   fi
   local retry_count=0
   local max_retries=30
