@@ -68,14 +68,18 @@ Describe "alpha.89 merged CmpD default-async ConfigMap template"
   End
 
   Describe "merged CmpD runtime semisync guard"
+    entrypoint_path() {
+      printf "%s/addons/mariadb/scripts/replication-entrypoint.sh" "$(repo_root)"
+    }
+
     It "declares the MARIADB_REPLICATION_MODE based semisync env helper before primary listener exposure"
-      helper_line=$(grep -n '^            is_semisync_mode_env() {' "$(cmpd_path)" | cut -d: -f1)
-      expose_line=$(grep -n '^            expose_sql_listener_for_primary_role() {' "$(cmpd_path)" | cut -d: -f1)
+      helper_line=$(grep -n 'is_semisync_mode_env() {' "$(entrypoint_path)" | cut -d: -f1)
+      expose_line=$(grep -n 'expose_sql_listener_for_primary_role() {' "$(entrypoint_path)" | cut -d: -f1)
       test -n "${helper_line}" && test -n "${expose_line}" && test "${helper_line}" -lt "${expose_line}"
     End
 
     It "routes primary listener semisync reset through the guarded helper"
-      count=$(grep -c 'reset_semisync_master_ack_receiver_if_enabled "primary-' "$(cmpd_path)")
+      count=$(grep -c 'reset_semisync_master_ack_receiver_if_enabled "primary-' "$(entrypoint_path)")
       The variable count should equal 2
     End
 
@@ -85,7 +89,7 @@ Describe "alpha.89 merged CmpD default-async ConfigMap template"
         /if is_semisync_mode_env; then/ { in_guard=1 }
         in_guard && /SET GLOBAL rpl_semi_sync_master_enabled=0; SET GLOBAL rpl_semi_sync_master_enabled=1;/ { found_guarded=1 }
         END { exit !(found_log && found_guarded) }
-      ' "$(cmpd_path)"
+      ' "$(entrypoint_path)"
     End
   End
 
