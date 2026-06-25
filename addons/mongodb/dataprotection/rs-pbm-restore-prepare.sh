@@ -12,16 +12,13 @@ fi
 
 set_backup_config_env
 
-echo "INFO: Ensuring restore-coord ConfigMap exists with expected members and storage config."
+echo "INFO: Ensuring restore-coord ConfigMap exists with storage config."
 
-expected_members=$(fqdns_to_pod_names "${MONGODB_POD_FQDN_LIST:-}")
-if [ -z "$expected_members" ] && [ -n "${DP_TARGET_POD_NAME:-}" ]; then
-  expected_members="$DP_TARGET_POD_NAME"
-fi
-if [ -z "$expected_members" ]; then
-  echo "ERROR: cannot determine expected members for restore-coord ConfigMap" >&2
-  exit 1
-fi
+# The canonical expected-member list is discovered by the syncer dp-leader from
+# Kubernetes pod labels, because CMPD vars do not reliably propagate into
+# restore ActionSet job containers. We pass only the local target pod (if known)
+# as a fallback so the leader has at least one member to wait on.
+expected_members="${DP_TARGET_POD_NAME:-}"
 
 storage_config=$(pbm_storage_config_yaml)
 ensure_restore_coord "$expected_members" "$storage_config"

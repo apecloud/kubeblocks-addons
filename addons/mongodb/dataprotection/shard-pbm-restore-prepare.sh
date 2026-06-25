@@ -89,26 +89,13 @@ if [[ "$(echo -e "$version\n6.0.3" | sort -V | head -n1)" != "6.0.3" ]]; then
 fi
 echo "INFO: AutoSplit is disabled."
 
-# Ensure the restore-coord ConfigMap contains the config-server pod members (and
-# any shard FQDN list available to this job). The per-component prepareData jobs
-# already appended their own pods; this call merges without overwriting.
-echo "INFO: Ensuring restore-coord ConfigMap includes config-server members."
-expected_members=""
-if [ -n "${CFG_SERVER_POD_FQDN_LIST:-}" ]; then
-  expected_members=$(fqdns_to_pod_names "$CFG_SERVER_POD_FQDN_LIST")
-fi
-if [ -n "${MONGODB_POD_FQDN_LIST:-}" ]; then
-  shard_members=$(fqdns_to_pod_names "$MONGODB_POD_FQDN_LIST")
-  if [ -n "$shard_members" ]; then
-    if [ -n "$expected_members" ]; then
-      expected_members="${expected_members},${shard_members}"
-    else
-      expected_members="$shard_members"
-    fi
-  fi
-fi
+# Ensure the restore-coord ConfigMap exists with the storage config. The
+# canonical expected-member list is discovered by the syncer dp-leader from
+# Kubernetes pod labels, because CMPD vars do not reliably propagate into
+# restore ActionSet job containers.
+echo "INFO: Ensuring restore-coord ConfigMap exists with storage config."
 
 storage_config=$(pbm_storage_config_yaml)
-ensure_restore_coord "$expected_members" "$storage_config"
+ensure_restore_coord "" "$storage_config"
 
 echo "INFO: Restore coordination prepared."
