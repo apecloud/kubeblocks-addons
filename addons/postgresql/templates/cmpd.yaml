@@ -228,8 +228,8 @@ spec:
     keyFile: key.pem
   lifecycleActions:
     roleProbe:
-      periodSeconds: 1
-      timeoutSeconds: 1
+      periodSeconds: 5
+      timeoutSeconds: 5
       http:
         port: "5001"
         path: "/v1.0/getrole"
