@@ -22,7 +22,7 @@ spec:
     - name: qdrant
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [1.10.0,1.5.0,1.7.3,1.8.1,1.8.4]
+      # Valid options are: [1.5.0,1.7.3,1.8.1,1.8.4,1.10.0,1.11.5,1.12.6,1.13.6,1.14.1,1.15.5,1.16.3,1.17.1,1.18.2]
       serviceVersion: 1.10.0
       # Update `replicas` to your need.
       # Recommended values are: [3,5,7]
