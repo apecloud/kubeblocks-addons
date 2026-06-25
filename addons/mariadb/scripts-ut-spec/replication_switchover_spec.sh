@@ -666,9 +666,9 @@ EOF
       The status should be success
       The output should include "detected repairable kubeblocks health check replication error"
       The contents of file "${TEST_DIR}/calls" should include "best_effort=STOP SLAVE SQL_THREAD;"
-      The contents of file "${TEST_DIR}/calls" should include "set_read_only=OFF"
       The contents of file "${TEST_DIR}/calls" should include "CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check"
-      The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
+      The contents of file "${TEST_DIR}/calls" should not include "set_read_only=OFF"
+      The contents of file "${TEST_DIR}/calls" should not include "set_read_only=ON"
       The contents of file "${TEST_DIR}/calls" should include "best_effort=START SLAVE SQL_THREAD;"
       The contents of file "${TEST_DIR}/slave-status-count" should eq "2"
     End
