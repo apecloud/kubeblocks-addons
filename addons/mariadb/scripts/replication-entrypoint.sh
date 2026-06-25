@@ -33,7 +33,7 @@ chgrp 1000 ${DATA_DIR} && chmod g+w ${DATA_DIR}
 # empty `runtime-overrides.d/` so this block is also safe
 # on fresh bootstrap.
 mkdir -p ${DATA_DIR}/runtime-overrides.d
-printf '!includedir %s/runtime-overrides.d/\n' '${DATA_DIR}' > ${DATA_DIR}/runtime-overrides.cnf
+printf '!includedir %s/runtime-overrides.d/\n' "${DATA_DIR}" > ${DATA_DIR}/runtime-overrides.cnf
 chgrp 1000 ${DATA_DIR}/runtime-overrides.d 2>/dev/null || true
 chmod 0770 ${DATA_DIR}/runtime-overrides.d 2>/dev/null || true
 chgrp 1000 ${DATA_DIR}/runtime-overrides.cnf 2>/dev/null || true
