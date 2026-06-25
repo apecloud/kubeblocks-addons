@@ -38,7 +38,7 @@ function buildJsonString() {
 
 # KUBECTL_BIN is the location where the CMPD init-kubectl container copies
 # kubectl into the shared data volume. ActionSet jobs that mount the data
-# volume and set runOnTargetPodNode=true can use this binary.
+# volume and runOnTargetPodNode=true can use this binary.
 KUBECTL_DATA_BIN="${MOUNT_DIR}/tmp/bin/kubectl"
 
 # ensure_kubectl makes the kubectl CLI available. It checks PATH first, then
@@ -99,6 +99,47 @@ function resolve_target_pod() {
   return 1
 }
 
+# resolve_restore_target_pod ensures DP_TARGET_POD_NAME points at the pod that
+# should drive a restore. For a sharded cluster this is the config-server
+# primary; for a replicaset it is the replicaset primary.
+function resolve_restore_target_pod() {
+  if [ -n "$DP_TARGET_POD_NAME" ]; then
+    return 0
+  fi
+  if [ -z "$CLUSTER_NAME" ] || [ -z "$CLUSTER_NAMESPACE" ]; then
+    echo "ERROR: DP_TARGET_POD_NAME is not set and CLUSTER_NAME/CLUSTER_NAMESPACE are missing" >&2
+    return 1
+  fi
+  local selector="app.kubernetes.io/instance=$CLUSTER_NAME,kubeblocks.io/role=primary"
+  if [ -n "${CFG_SERVER_REPLICA_SET_NAME:-}" ]; then
+    selector="${selector},app.kubernetes.io/component=$CFG_SERVER_REPLICA_SET_NAME"
+  fi
+  local retry_count=0
+  local max_retries=30
+  while [ $retry_count -lt $max_retries ]; do
+    DP_TARGET_POD_NAME=$(kubectl get pod -n "$CLUSTER_NAMESPACE" \
+      -l "$selector" \
+      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    if [ -n "$DP_TARGET_POD_NAME" ]; then
+      export DP_TARGET_POD_NAME
+      return 0
+    fi
+    retry_count=$((retry_count+1))
+    echo "INFO: restore target pod for $CLUSTER_NAME not ready yet, retrying... ($retry_count/$max_retries)" >&2
+    sleep 2
+  done
+  echo "ERROR: cannot find restore target pod for cluster $CLUSTER_NAME in namespace $CLUSTER_NAMESPACE" >&2
+  return 1
+}
+
+# syncerctl_restore_exec runs syncerctl inside the restore-driving pod (config-
+# server primary for sharded clusters, replicaset primary otherwise).
+function syncerctl_restore_exec() {
+  ensure_kubectl || exit 1
+  resolve_restore_target_pod || exit 1
+  kubectl exec -n "$CLUSTER_NAMESPACE" "$DP_TARGET_POD_NAME" -c mongodb -- /tools/syncerctl "$@"
+}
+
 # syncerctl_backup_start triggers a backup via syncer and returns the JSON response.
 function syncerctl_backup_start() {
   local backup_type="$1"
@@ -116,13 +157,13 @@ function syncerctl_backup_status() {
 function syncerctl_restore_start() {
   local backup_name="$1"
   shift
-  syncerctl_exec restore start --backup-name "$backup_name" "$@"
+  syncerctl_restore_exec restore start --backup-name "$backup_name" "$@"
 }
 
 # syncerctl_restore_status polls restore status by op_id.
 function syncerctl_restore_status() {
   local op_id="$1"
-  syncerctl_exec restore status --op-id "$op_id"
+  syncerctl_restore_exec restore status --op-id "$op_id"
 }
 
 function DP_save_backup_status_info() {
@@ -333,17 +374,11 @@ EOF
   fi
 }
 
-# write_pbm_storage_config_yaml writes the PBM storage config (including PITR
-# disabled) to the supplied path without contacting MongoDB. It is used by the
-# restore prepareData job to materialize the config into the shared data volume
-# before the mongodb container starts.
-function write_pbm_storage_config_yaml() {
-  local output_path="$1"
-  local tmp_path="${output_path}.tmp"
-  local old_umask
-  old_umask=$(umask)
-  umask 077
-  cat > "$tmp_path" <<EOF
+# pbm_storage_config_yaml prints the PBM storage config (with PITR disabled) to
+# stdout. The restore prepareData jobs write this YAML into the restore-coord
+# ConfigMap so the syncer leader can apply it before starting PBM restore.
+function pbm_storage_config_yaml() {
+  cat <<EOF
 storage:
   type: s3
   s3:
@@ -363,9 +398,109 @@ backup:
 pitr:
   enabled: false
 EOF
-  chmod 600 "$tmp_path"
-  mv "$tmp_path" "$output_path"
-  umask "$old_umask"
+}
+
+# fqdns_to_pod_names extracts the pod name portion from a comma-separated list
+# of Kubernetes pod FQDNs (<pod>.<service>.<namespace>.svc).
+function fqdns_to_pod_names() {
+  local fqdns="$1"
+  local out=""
+  local sep=""
+  local fqdn
+  IFS=',' read -ra fqdn_array <<< "$fqdns"
+  for fqdn in "${fqdn_array[@]}"; do
+    fqdn=$(echo "$fqdn" | xargs)
+    if [ -z "$fqdn" ]; then
+      continue
+    fi
+    local pod_name="${fqdn%%.*}"
+    if [ -n "$pod_name" ]; then
+      out="${out}${sep}${pod_name}"
+      sep=","
+    fi
+  done
+  echo "$out"
+}
+
+# merge_members combines two comma-separated member lists, removing duplicates.
+function merge_members() {
+  local existing="$1"
+  local new="$2"
+  local seen=""
+  local out=""
+  local sep=""
+  local m
+  for m in $(echo "$existing" | tr ',' '\n'; echo "$new" | tr ',' '\n'); do
+    m=$(echo "$m" | xargs)
+    if [ -z "$m" ]; then
+      continue
+    fi
+    if [[ "$seen" == *"|$m|"* ]]; then
+      continue
+    fi
+    seen="${seen}|${m}|"
+    out="${out}${sep}${m}"
+    sep=","
+  done
+  echo "$out"
+}
+
+# ensure_restore_coord creates or patches the restore-coord ConfigMap with the
+# supplied expected member pod names and PBM storage config YAML. Multiple
+# component prepareData jobs can call this concurrently; member lists are merged
+# and the storage config is overwritten with the same content.
+function ensure_restore_coord() {
+  local members_csv="$1"
+  local storage_config="$2"
+  ensure_kubectl || exit 1
+
+  local cm_name="${CLUSTER_NAME}-restore-coord"
+  local cm_namespace="${CLUSTER_NAMESPACE}"
+  local max_retries=5
+  local retry_count=0
+
+  while [ $retry_count -lt $max_retries ]; do
+    if kubectl get configmap "$cm_name" -n "$cm_namespace" >/dev/null 2>&1; then
+      local current_members
+      current_members=$(kubectl get configmap "$cm_name" -n "$cm_namespace" -o jsonpath='{.data.expected-members}' 2>/dev/null || true)
+      local merged_members
+      merged_members=$(merge_members "$current_members" "$members_csv")
+      local patch
+      patch=$(jq -n \
+        --arg members "$merged_members" \
+        --arg storage "$storage_config" \
+        '{"data":{"expected-members":$members,"pbm-storage-config":$storage}}')
+      if kubectl patch configmap "$cm_name" -n "$cm_namespace" --type merge -p "$patch" >/dev/null 2>&1; then
+        echo "INFO: Updated restore-coord ConfigMap ${cm_name} with members: ${merged_members}"
+        return 0
+      fi
+      echo "INFO: restore-coord ConfigMap patch conflict, retrying... ($((retry_count+1))/$max_retries)"
+    else
+      local indented_config
+      indented_config=$(echo "$storage_config" | sed 's/^/    /')
+      if kubectl apply -f - <<EOF >/dev/null 2>&1
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${cm_name}
+  namespace: ${cm_namespace}
+data:
+  expected-members: "${members_csv}"
+  pbm-storage-config: |
+${indented_config}
+EOF
+      then
+        echo "INFO: Created restore-coord ConfigMap ${cm_name} with members: ${members_csv}"
+        return 0
+      fi
+      echo "INFO: restore-coord ConfigMap create race, retrying... ($((retry_count+1))/$max_retries)"
+    fi
+    retry_count=$((retry_count+1))
+    sleep 1
+  done
+
+  echo "ERROR: failed to ensure restore-coord ConfigMap ${cm_name} after $max_retries retries" >&2
+  return 1
 }
 
 function print_pbm_logs_by_event() {
@@ -467,90 +602,5 @@ function sync_pbm_config_from_storage() {
   wait_for_other_operations
 
   echo "INFO: PBM config synced from storage."
-}
-
-function create_restore_signal() {
-    ensure_kubectl || exit 1
-    phase=$1
-    kubectl apply -f - <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: $dp_cm_name
-  namespace: $dp_cm_namespace
-  labels:
-    app.kubernetes.io/instance: $CLUSTER_NAME
-    apps.kubeblocks.io/restore-mongodb-shard: $phase
-  ownerReferences:
-    - apiVersion: apps.kubeblocks.io/v1
-      blockOwnerDeletion: true
-      controller: true
-      kind: Cluster
-      name: $CLUSTER_NAME
-      uid: $CLUSTER_UID
-EOF
-}
-
-function process_restore_start_signal() {
-    ensure_kubectl || exit 1
-    echo "INFO: Waiting for prepare restore start signal..."
-    dp_cm_name="$CLUSTER_NAME-restore-signal"
-    dp_cm_namespace="$CLUSTER_NAMESPACE"
-    while true; do
-        set +e
-        kubectl_get_result=$(kubectl get configmap $dp_cm_name -n $dp_cm_namespace -o json 2>&1)
-        kubectl_get_exit_code=$?
-        set -e
-        # Wait for the restore signal ConfigMap to be created or updated
-        if [[ "$kubectl_get_exit_code" -ne 0 ]]; then
-            if [[ "$kubectl_get_result" == *"not found"* ]]; then
-                create_restore_signal "start"
-            fi
-        else
-            annotation_value=$(echo "$kubectl_get_result" | jq -r '.metadata.labels["apps.kubeblocks.io/restore-mongodb-shard"] // empty')
-            if [[ "$annotation_value" == "start" ]]; then
-                break
-            elif [[ "$annotation_value" == "end" ]]; then
-                echo "INFO: Restore completed, exiting."
-                exit 0
-            else
-                echo "INFO: Restore start signal is $annotation_value, updating..."
-                create_restore_signal "start"
-            fi
-        fi
-        sleep 1
-    done
-    sleep 5
-    echo "INFO: Prepare restore start signal completed."
-}
-
-function process_restore_end_signal() {
-    ensure_kubectl || exit 1
-    echo "INFO: Waiting for prepare restore end signal..."
-    sleep 5
-    dp_cm_name="$CLUSTER_NAME-restore-signal"
-    dp_cm_namespace="$CLUSTER_NAMESPACE"
-    while true; do
-        set +e
-        kubectl_get_result=$(kubectl get configmap $dp_cm_name -n $dp_cm_namespace -o json 2>&1)
-        kubectl_get_exit_code=$?
-        set -e
-        # Wait for the restore signal ConfigMap to be created or updated
-        if [[ "$kubectl_get_exit_code" -ne 0 ]]; then
-            if [[ "$kubectl_get_result" == *"not found"* ]]; then
-                create_restore_signal "end"
-            fi
-        else
-            annotation_value=$(echo "$kubectl_get_result" | jq -r '.metadata.labels["apps.kubeblocks.io/restore-mongodb-shard"] // empty')
-            if [[ "$annotation_value" == "end" ]]; then
-                break
-            else
-                echo "INFO: Restore end signal is $annotation_value, updating..."
-                create_restore_signal "end"
-            fi
-        fi
-        sleep 1
-    done
-    echo "INFO: Prepare restore end signal completed."
 }
 

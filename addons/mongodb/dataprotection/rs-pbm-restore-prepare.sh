@@ -2,13 +2,6 @@
 set -e
 set -o pipefail
 
-mkdir -p ${MOUNT_DIR}/tmp
-
-# Materialize PBM storage config into the shared data volume before the restore
-# cluster pods start. The mongodb container startup path will apply this config
-# to the local mongod before starting the temporary pbm-agent, preventing the
-# agent from resyncing against the source cluster's prefix before storage config
-# is available.
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
@@ -18,9 +11,19 @@ if ! command -v set_backup_config_env >/dev/null 2>&1; then
 fi
 
 set_backup_config_env
-PBM_STORAGE_CONFIG_PATH="${MOUNT_DIR}/tmp/pbm_storage_config.yaml"
-echo "INFO: Writing PBM storage config to ${PBM_STORAGE_CONFIG_PATH}"
-write_pbm_storage_config_yaml "$PBM_STORAGE_CONFIG_PATH"
-echo "INFO: PBM storage config materialized."
 
-cd ${MOUNT_DIR}/tmp && touch mongodb_pbm.backup
+echo "INFO: Ensuring restore-coord ConfigMap exists with expected members and storage config."
+
+expected_members=$(fqdns_to_pod_names "${MONGODB_POD_FQDN_LIST:-}")
+if [ -z "$expected_members" ] && [ -n "${DP_TARGET_POD_NAME:-}" ]; then
+  expected_members="$DP_TARGET_POD_NAME"
+fi
+if [ -z "$expected_members" ]; then
+  echo "ERROR: cannot determine expected members for restore-coord ConfigMap" >&2
+  exit 1
+fi
+
+storage_config=$(pbm_storage_config_yaml)
+ensure_restore_coord "$expected_members" "$storage_config"
+
+echo "INFO: Restore coordination prepared."

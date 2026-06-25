@@ -204,16 +204,6 @@ spec:
           # syncer uses the env to wait dns ready
           - name: KB_POD_FQDN
             value: "$(POD_NAME).$(CLUSTER_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc"
-          # If a prepared PBM storage config exists (restore cluster), syncer
-          # skips launching its own pbm-agent and lets the setup script apply
-          # the config and start a temporary pbm-agent after mongod is ready.
-          - name: PBM_STORAGE_CONFIG_PATH
-            value: {{ .Values.dataMountPath }}/tmp/pbm_storage_config.yaml
-          # Path to the restore flag created by the replicaset setup script for
-          # restore clusters. Syncer uses this together with PBM_STORAGE_CONFIG_PATH
-          # to decide whether to defer its own pbm-agent launch.
-          - name: PBM_RESTORE_FLAG_PATH
-            value: {{ .Values.dataMountPath }}/tmp/mongodb_pbm.backup
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -231,39 +221,16 @@ spec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
-            - /bin/bash
-            - -c
-            - |
-              # For normal clusters, start the backup agent immediately. For
-              # restore clusters, wait until the restore flag (created by
-              # prepareData / setup script) is removed, so the temporary
-              # pbm-agent started by the mongodb container owns the restore.
-              export PATH="${PBM_DATA_MOUNT_POINT}/tmp/bin:${PATH}"
-              RESTORE_FLAG="${PBM_RESTORE_FLAG_PATH:-${PBM_DATA_MOUNT_POINT}/tmp/mongodb_pbm.backup}"
-
-              for i in $(seq 1 10); do
-                if [ -f "$RESTORE_FLAG" ]; then
-                  break
-                fi
-                sleep 1
-              done
-
-              if [ ! -f "$RESTORE_FLAG" ]; then
-                echo "INFO: No restore flag, starting backup agent immediately."
-                exec pbm-agent-entrypoint
-              fi
-
-              echo "INFO: Restore flag detected, waiting for restore completion..."
-              while [ -f "$RESTORE_FLAG" ]; do
-                echo "Waiting for restore..."
-                sleep 5
-              done
-              exec pbm-agent-entrypoint
+          - /bin/bash
+          - -c
+          - /scripts/backup-agent-setup.sh
         env:
           - name: PATH
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-          - name: PBM_RESTORE_FLAG_PATH
-            value: {{ .Values.dataMountPath }}/tmp/mongodb_pbm.backup
+          - name: KB_WORKLOAD_TYPE
+            value: pbm-agent
+          - name: SYNCER_BACKUP_ENABLED
+            value: "true"
           - name: PBM_AGENT_MONGODB_USERNAME
             value: $(MONGODB_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
@@ -276,13 +243,13 @@ spec:
             value: "5"
           - name: PBM_MONGODB_URI
             value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
-          - name: PBM_DATA_MOUNT_POINT
-            value: {{ .Values.dataMountPath }}
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
           - name: scripts
             mountPath: /scripts
+          - mountPath: /tools
+            name: tools
       - name: exporter
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:

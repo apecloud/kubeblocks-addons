@@ -2,6 +2,16 @@
 set -e
 set -o pipefail
 
+export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
+export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
+
+# shellcheck source=common-scripts.sh
+if ! command -v ensure_restore_coord >/dev/null 2>&1; then
+  . "$(dirname "$0")/common-scripts.sh"
+fi
+
+set_backup_config_env
+
 client_path=$(whereis mongosh | awk '{print $2}')
 CLIENT="mongosh"
 if [ -z "$client_path" ]; then
@@ -57,7 +67,7 @@ for i in "${!shardsvr_array[@]}"; do
         echo "INFO: Shard $shard_name does not exist, retrying... (attempt $((retry_count+1))/$MAX_RETRIES)"
         retry_count=$((retry_count+1))
         if [ $retry_count -ge $MAX_RETRIES ]; then
-            echo "ERROR: Shard $shard_name failed to become ready after $MAX_RETRIES attempts." >&2
+            echo "ERROR: Shard $shard_name failed to become ready after $MAX_RETRIES retries." >&2
             exit 1
         fi
         sleep 2
@@ -78,3 +88,27 @@ if [[ "$(echo -e "$version\n6.0.3" | sort -V | head -n1)" != "6.0.3" ]]; then
     $CLUSTER_MONGO "sh.disableAutoSplit()"
 fi
 echo "INFO: AutoSplit is disabled."
+
+# Ensure the restore-coord ConfigMap contains the config-server pod members (and
+# any shard FQDN list available to this job). The per-component prepareData jobs
+# already appended their own pods; this call merges without overwriting.
+echo "INFO: Ensuring restore-coord ConfigMap includes config-server members."
+expected_members=""
+if [ -n "${CFG_SERVER_POD_FQDN_LIST:-}" ]; then
+  expected_members=$(fqdns_to_pod_names "$CFG_SERVER_POD_FQDN_LIST")
+fi
+if [ -n "${MONGODB_POD_FQDN_LIST:-}" ]; then
+  shard_members=$(fqdns_to_pod_names "$MONGODB_POD_FQDN_LIST")
+  if [ -n "$shard_members" ]; then
+    if [ -n "$expected_members" ]; then
+      expected_members="${expected_members},${shard_members}"
+    else
+      expected_members="$shard_members"
+    fi
+  fi
+fi
+
+storage_config=$(pbm_storage_config_yaml)
+ensure_restore_coord "$expected_members" "$storage_config"
+
+echo "INFO: Restore coordination prepared."
