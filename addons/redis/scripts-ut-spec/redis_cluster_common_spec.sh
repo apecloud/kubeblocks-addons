@@ -1062,6 +1062,98 @@ Describe "Redis Cluster Common Bash Script Tests"
       End
     End
 
+    Context "when 4-shard cluster with 3 peers all publish CA after attempt 60"
+      ca_bundle_4shard_setup() {
+        export TLS_ENABLED="true"
+        export TLS_MOUNT_PATH="./test_tls"
+        export SERVICE_PORT="6379"
+        export REDIS_DEFAULT_PASSWORD=""
+        export REDIS_CLI_TLS_CMD=""
+        export CURRENT_POD_NAME="rds-shard-abc-0"
+        export KB_CLUSTER_POD_FQDN_LIST="rds-shard-abc-0.svc,rds-shard-def-0.svc,rds-shard-ghi-0.svc,rds-shard-jkl-0.svc"
+        export DATA_DIR="./test_data"
+        mkdir -p ./test_tls "$DATA_DIR"
+        echo "-----BEGIN CERTIFICATE-----" > ./test_tls/ca.crt
+        echo "MIIFAKE_LOCAL" >> ./test_tls/ca.crt
+        echo "-----END CERTIFICATE-----" >> ./test_tls/ca.crt
+        echo "-----BEGIN CERTIFICATE-----" > ./test_tls/tls.crt
+        echo "MIIFAKE_CERT" >> ./test_tls/tls.crt
+        echo "-----END CERTIFICATE-----" >> ./test_tls/tls.crt
+      }
+      ca_bundle_4shard_cleanup() {
+        unset TLS_ENABLED TLS_MOUNT_PATH SERVICE_PORT REDIS_DEFAULT_PASSWORD
+        unset REDIS_CLI_TLS_CMD CURRENT_POD_NAME KB_CLUSTER_POD_FQDN_LIST DATA_DIR
+        rm -rf ./test_tls ./test_data 2>/dev/null
+      }
+
+      Before "ca_bundle_4shard_setup"
+      After "ca_bundle_4shard_cleanup"
+
+      It "succeeds within 90 rounds proving budget does not scale with peer count"
+        echo "0" > "./test_data/ca_get_def"
+        echo "0" > "./test_data/ca_get_ghi"
+        echo "0" > "./test_data/ca_get_jkl"
+        echo "0" > "./test_data/sleep_count"
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
+            *DEL*) return 0 ;;
+            *SET*_PEER_CA*) return 0 ;;
+            *SET*_NONCE*) return 0 ;;
+            *SET*_ACK_*) return 0 ;;
+            *def*_PEER_CA*)
+              local cnt; cnt=$(cat "./test_data/ca_get_def")
+              cnt=$((cnt + 1)); echo "$cnt" > "./test_data/ca_get_def"
+              if [ $cnt -le 60 ]; then echo ""; return 0; fi
+              echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZBS0VfRElGRkVSRU5UX0RFRgotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+              return 0
+              ;;
+            *ghi*_PEER_CA*)
+              local cnt; cnt=$(cat "./test_data/ca_get_ghi")
+              cnt=$((cnt + 1)); echo "$cnt" > "./test_data/ca_get_ghi"
+              if [ $cnt -le 60 ]; then echo ""; return 0; fi
+              echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZBS0VfRElGRkVSRU5UX0dISQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+              return 0
+              ;;
+            *jkl*_PEER_CA*)
+              local cnt; cnt=$(cat "./test_data/ca_get_jkl")
+              cnt=$((cnt + 1)); echo "$cnt" > "./test_data/ca_get_jkl"
+              if [ $cnt -le 60 ]; then echo ""; return 0; fi
+              echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZBS0VfRElGRkVSRU5UX0pLTAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+              return 0
+              ;;
+            *GET*_PEER_CA*) echo ""; return 0 ;;
+            *GET*_NONCE*) echo "peer_nonce_42"; return 0 ;;
+            *GET*_ACK_*) echo "1"; return 0 ;;
+            *"CONFIG SET"*) return 0 ;;
+            *"CONFIG GET"*) echo "tls-ca-cert-file"; echo "./test_data/ca-bundle.crt"; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        openssl() { return 0; }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+        sleep_when_ut_mode_false() {
+          local cnt; cnt=$(cat "./test_data/sleep_count")
+          cnt=$((cnt + 1)); echo "$cnt" > "./test_data/sleep_count"
+        }
+
+        When call build_cross_shard_ca_bundle
+        The status should be success
+        The output should include "Collected CA from rds-shard-def-0.svc (1/3)"
+        The output should include "Collected CA from rds-shard-ghi-0.svc (2/3)"
+        The output should include "Collected CA from rds-shard-jkl-0.svc (3/3)"
+        The output should include "Waiting for CA from 3 peer(s)"
+        The output should include "CA bundle: 4 unique CAs"
+        The output should include "All peer ACKs received"
+        The contents of file "./test_data/sleep_count" should equal "60"
+      End
+    End
+
     Context "when stale ACK from previous attempt exists but current nonce differs"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
