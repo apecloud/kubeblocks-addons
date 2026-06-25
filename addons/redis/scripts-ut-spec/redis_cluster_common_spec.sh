@@ -1210,6 +1210,31 @@ Describe "Redis Cluster Common Bash Script Tests"
       End
     End
 
+    Context "when ADDSLOTS rc is non-zero with unrecognized output"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "fails on non-zero rc even without ERR or already-busy in output"
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) echo "Could not connect to Redis"; return 1 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The stderr should include "CLUSTER ADDSLOTS 12345 failed"
+        The stderr should include "rc=1"
+        The output should include "Retaining CA exchange state"
+      End
+    End
+
     Context "when ADDSLOTS returns unexpected error"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
@@ -1229,7 +1254,7 @@ Describe "Redis Cluster Common Bash Script Tests"
 
         When call build_cross_shard_ca_bundle
         The status should be failure
-        The stderr should include "CLUSTER ADDSLOTS 12345 failed unexpectedly"
+        The stderr should include "CLUSTER ADDSLOTS 12345 failed"
         The stderr should include "Invalid or out of range slot"
         The output should include "Retaining CA exchange state"
       End

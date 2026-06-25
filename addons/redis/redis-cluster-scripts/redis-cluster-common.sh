@@ -555,6 +555,7 @@ build_cross_shard_ca_bundle() {
 
   local exchange_slot
   local addslot_output
+  local addslot_rc
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
     exchange_slot=$($redis_cli -h 127.0.0.1 -p "$service_port" CLUSTER KEYSLOT "$ca_exchange_key" 2>/dev/null)
@@ -563,6 +564,7 @@ build_cross_shard_ca_bundle() {
     exchange_slot=$($redis_cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CLUSTER KEYSLOT "$ca_exchange_key" 2>/dev/null)
     addslot_output=$($redis_cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CLUSTER ADDSLOTS "$exchange_slot" 2>&1)
   fi
+  addslot_rc=$?
   set_xtrace_when_ut_mode_false
   if echo "$addslot_output" | grep -qi "already busy"; then
     local myself_slots
@@ -580,12 +582,12 @@ build_cross_shard_ca_bundle() {
       echo "Retaining CA exchange state (slot/full-coverage=no) for retry"
       return 1
     fi
-  elif echo "$addslot_output" | grep -qi "err"; then
-    echo "Error: CLUSTER ADDSLOTS $exchange_slot failed unexpectedly: $addslot_output" >&2
+  elif [ $addslot_rc -eq 0 ] && ! echo "$addslot_output" | grep -qi "err"; then
+    echo "Pre-init slot allocation: exchange=$exchange_slot (fresh)"
+  else
+    echo "Error: CLUSTER ADDSLOTS $exchange_slot failed (rc=$addslot_rc, output: $addslot_output)" >&2
     echo "Retaining CA exchange state (slot/full-coverage=no) for retry"
     return 1
-  else
-    echo "Pre-init slot allocation: exchange=$exchange_slot (fresh)"
   fi
 
   local attempt_nonce="${RANDOM}${RANDOM}"
