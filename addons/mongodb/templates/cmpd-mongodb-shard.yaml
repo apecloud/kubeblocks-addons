@@ -248,6 +248,13 @@ spec:
             value: pbm-agent
           - name: KB_ENGINE_TYPE
             value: mongodb
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: KB_NAMESPACE
+            value: $(POD_NAMESPACE)
           - name: SYNCER_BACKUP_ENABLED
             value: "true"
           - name: PBM_AGENT_MONGODB_USERNAME
