@@ -229,6 +229,8 @@ spec:
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: KB_WORKLOAD_TYPE
             value: pbm-agent
+          - name: KB_ENGINE_TYPE
+            value: mongodb
           - name: SYNCER_BACKUP_ENABLED
             value: "true"
           - name: PBM_AGENT_MONGODB_USERNAME
