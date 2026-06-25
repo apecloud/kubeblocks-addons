@@ -27,7 +27,8 @@ if [ -z "$backup_type" ] || [ -z "$backup_name" ]; then
     exit 1
 fi
 
-get_describe_backup_info
+# Get backup info for replset name mapping via syncerctl.
+describe_result=$(syncerctl_exec backup status --op-id "$backup_name")
 
 configsvr_name=$(echo "$describe_result" | jq -r '.replsets[] | select(.configsvr == true) | .name')
 echo "INFO: Config server replica set name: $configsvr_name"

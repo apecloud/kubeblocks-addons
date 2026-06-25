@@ -27,9 +27,8 @@ if [ -z "$backup_type" ] || [ -z "$backup_name" ]; then
     exit 1
 fi
 
-# Get backup info for replset name mapping
-get_describe_backup_info
-
+# Get backup info for replset name mapping via syncerctl.
+describe_result=$(syncerctl_exec backup status --op-id "$backup_name")
 rs_name=$(echo "$describe_result" | jq -r '.replsets[0].name')
 mappings="$MONGODB_REPLICA_SET_NAME=$rs_name"
 echo "INFO: Replica set mappings: $mappings"
