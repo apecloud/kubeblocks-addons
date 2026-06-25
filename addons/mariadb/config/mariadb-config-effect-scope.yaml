@@ -3,6 +3,7 @@
 ## dynamicParameters: modifications are applied via SET GLOBAL without restart.
 
 staticParameters:
+  - back_log
   - basedir
   - bind_address
   - character_sets_dir
@@ -43,7 +44,6 @@ dynamicParameters:
   - auto_increment_offset
   - autocommit
   - automatic_sp_privileges
-  - back_log
   - big_tables
   - binlog_annotate_row_events
   - binlog_cache_size
