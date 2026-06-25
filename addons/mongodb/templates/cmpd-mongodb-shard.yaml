@@ -254,14 +254,8 @@ spec:
         env:
           - name: PATH
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-          - name: CLUSTER_NAME
-            valueFrom:
-              clusterVarRef:
-                clusterName: Required
-          - name: CLUSTER_NAMESPACE
-            valueFrom:
-              clusterVarRef:
-                namespace: Required
+          - name: PBM_RESTORE_FLAG_PATH
+            value: {{ .Values.dataMountPath }}/tmp/mongodb_pbm.backup
           - name: PBM_AGENT_MONGODB_USERNAME
             value: $(MONGODB_ADMIN_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD

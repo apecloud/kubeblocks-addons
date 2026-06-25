@@ -235,38 +235,35 @@ spec:
             - -c
             - |
               # For normal clusters, start the backup agent immediately. For
-              # restore clusters, wait until the restore flag (created by the
-              # replicaset setup script) appears and is removed, so the temporary
+              # restore clusters, wait until the restore flag (created by
+              # prepareData / setup script) is removed, so the temporary
               # pbm-agent started by the mongodb container owns the restore.
               export PATH="${PBM_DATA_MOUNT_POINT}/tmp/bin:${PATH}"
-              restore_source=$(kubectl get clusters.apps.kubeblocks.io "${CLUSTER_NAME}" -n "${CLUSTER_NAMESPACE}" -o jsonpath='{.spec.restore.source.name}' 2>/dev/null || true)
-              if [ -z "$restore_source" ]; then
-                echo "INFO: Not a restore cluster, starting backup agent immediately."
-                exec pbm-agent-entrypoint
-              fi
-              echo "INFO: Restore cluster detected, waiting for restore flag..."
-              for i in $(seq 1 60); do
-                if [ -f "${PBM_DATA_MOUNT_POINT}/tmp/mongodb_pbm.backup" ]; then
+              RESTORE_FLAG="${PBM_RESTORE_FLAG_PATH:-${PBM_DATA_MOUNT_POINT}/tmp/mongodb_pbm.backup}"
+
+              for i in $(seq 1 10); do
+                if [ -f "$RESTORE_FLAG" ]; then
                   break
                 fi
                 sleep 1
               done
-              while [ -f "${PBM_DATA_MOUNT_POINT}/tmp/mongodb_pbm.backup" ]; do
-                echo "Waiting for restore...";
-                sleep 5;
+
+              if [ ! -f "$RESTORE_FLAG" ]; then
+                echo "INFO: No restore flag, starting backup agent immediately."
+                exec pbm-agent-entrypoint
+              fi
+
+              echo "INFO: Restore flag detected, waiting for restore completion..."
+              while [ -f "$RESTORE_FLAG" ]; do
+                echo "Waiting for restore..."
+                sleep 5
               done
               exec pbm-agent-entrypoint
         env:
           - name: PATH
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-          - name: CLUSTER_NAME
-            valueFrom:
-              clusterVarRef:
-                clusterName: Required
-          - name: CLUSTER_NAMESPACE
-            valueFrom:
-              clusterVarRef:
-                namespace: Required
+          - name: PBM_RESTORE_FLAG_PATH
+            value: {{ .Values.dataMountPath }}/tmp/mongodb_pbm.backup
           - name: PBM_AGENT_MONGODB_USERNAME
             value: $(MONGODB_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
