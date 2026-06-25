@@ -81,16 +81,22 @@ function resolve_target_pod() {
     echo "ERROR: DP_TARGET_POD_NAME is not set and CLUSTER_NAME/CLUSTER_NAMESPACE are missing" >&2
     return 1
   fi
-  echo "INFO: DP_TARGET_POD_NAME not set, resolving primary pod for cluster $CLUSTER_NAME"
-  DP_TARGET_POD_NAME=$(kubectl get pod -n "$CLUSTER_NAMESPACE" \
-    -l "app.kubernetes.io/instance=$CLUSTER_NAME,kubeblocks.io/role=primary" \
-    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-  if [ -z "$DP_TARGET_POD_NAME" ]; then
-    echo "ERROR: cannot find primary pod for cluster $CLUSTER_NAME in namespace $CLUSTER_NAMESPACE" >&2
-    return 1
-  fi
-  echo "INFO: resolved target pod: $DP_TARGET_POD_NAME"
-  export DP_TARGET_POD_NAME
+  local retry_count=0
+  local max_retries=30
+  while [ $retry_count -lt $max_retries ]; do
+    DP_TARGET_POD_NAME=$(kubectl get pod -n "$CLUSTER_NAMESPACE" \
+      -l "app.kubernetes.io/instance=$CLUSTER_NAME,kubeblocks.io/role=primary" \
+      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    if [ -n "$DP_TARGET_POD_NAME" ]; then
+      export DP_TARGET_POD_NAME
+      return 0
+    fi
+    retry_count=$((retry_count+1))
+    echo "INFO: primary pod for $CLUSTER_NAME not ready yet, retrying... ($retry_count/$max_retries)" >&2
+    sleep 2
+  done
+  echo "ERROR: cannot find primary pod for cluster $CLUSTER_NAME in namespace $CLUSTER_NAMESPACE" >&2
+  return 1
 }
 
 # syncerctl_backup_start triggers a backup via syncer and returns the JSON response.
@@ -319,10 +325,40 @@ restore:
 backup:
   timeouts:
     startingStatus: 60
+pitr:
+  enabled: false
 EOF
     sleep 5
     echo "INFO: PBM storage configuration completed."
   fi
+}
+
+# write_pbm_storage_config_yaml writes the PBM storage config (including PITR
+# disabled) to the supplied path without contacting MongoDB. It is used by the
+# restore prepareData job to materialize the config into the shared data volume
+# before the mongodb container starts.
+function write_pbm_storage_config_yaml() {
+  local output_path="$1"
+  cat > "$output_path" <<EOF
+storage:
+  type: s3
+  s3:
+    region: ${S3_REGION}
+    bucket: ${S3_BUCKET}
+    prefix: ${S3_PREFIX}
+    endpointUrl: ${S3_ENDPOINT}
+    forcePathStyle: ${S3_FORCE_PATH_STYLE:-false}
+    credentials:
+      access-key-id: ${S3_ACCESS_KEY}
+      secret-access-key: ${S3_SECRET_KEY}
+restore:
+  numDownloadWorkers: ${PBM_RESTORE_DOWNLOAD_WORKERS:-4}
+backup:
+  timeouts:
+    startingStatus: 60
+pitr:
+  enabled: false
+EOF
 }
 
 function print_pbm_logs_by_event() {

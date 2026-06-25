@@ -97,8 +97,13 @@ function process_restore_signal() {
                     echo "INFO: Restore $annotation_value signal received, starting restore..."
                     break
                 fi
+                # Waiting for the signal to advance from start to end; keep looping.
+                echo "INFO: Restore signal is start, waiting for end signal..."
             elif [[ "$annotation_value" == "end" ]]; then
                 echo "INFO: Restore completed, exiting."
+                if [[ "$target_signal" != "end" ]]; then
+                    echo "INFO: Already at end signal, finishing restore setup..."
+                fi
                 if [[ "$process" == mongos* ]]; then
                     kill_process "mongos"
                 else

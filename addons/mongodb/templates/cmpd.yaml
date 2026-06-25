@@ -204,6 +204,11 @@ spec:
           # syncer uses the env to wait dns ready
           - name: KB_POD_FQDN
             value: "$(POD_NAME).$(CLUSTER_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc"
+          # If a prepared PBM storage config exists (restore cluster), syncer
+          # skips launching its own pbm-agent and lets the setup script apply
+          # the config and start a temporary pbm-agent after mongod is ready.
+          - name: PBM_STORAGE_CONFIG_PATH
+            value: {{ .Values.dataMountPath }}/tmp/pbm_storage_config.yaml
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -224,6 +229,15 @@ spec:
             - /bin/bash
             - -c
             - |
+              # Wait briefly for the PBM restore flag to appear (created by the
+              # replicaset setup script for restore clusters), then wait until it
+              # is removed before starting the normal backup agent.
+              for i in $(seq 1 60); do
+                if [ -f $PBM_DATA_MOUNT_POINT/tmp/mongodb_pbm.backup ]; then
+                  break
+                fi
+                sleep 1
+              done
               while [ -f $PBM_DATA_MOUNT_POINT/tmp/mongodb_pbm.backup ]; do
                 echo "Waiting for restore...";
                 sleep 5;
