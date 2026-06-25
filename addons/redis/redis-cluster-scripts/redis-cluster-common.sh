@@ -541,13 +541,12 @@ build_cross_shard_ca_bundle() {
 
   local redis_cli="redis-cli $REDIS_CLI_TLS_CMD"
 
-  local saved_full_coverage
-  saved_full_coverage=$(_get_cluster_require_full_coverage "$service_port")
-  if [ "$saved_full_coverage" != "yes" ] && [ "$saved_full_coverage" != "no" ]; then
-    echo "Error: CONFIG GET cluster-require-full-coverage returned unexpected value: '$saved_full_coverage'" >&2
+  local current_full_coverage
+  current_full_coverage=$(_get_cluster_require_full_coverage "$service_port")
+  if [ "$current_full_coverage" != "yes" ] && [ "$current_full_coverage" != "no" ]; then
+    echo "Error: CONFIG GET cluster-require-full-coverage returned unexpected value: '$current_full_coverage'" >&2
     return 1
   fi
-  echo "Saved cluster-require-full-coverage: $saved_full_coverage"
 
   if ! _set_cluster_require_full_coverage "$service_port" "no"; then
     echo "Error: failed to set cluster-require-full-coverage no" >&2
@@ -579,8 +578,6 @@ build_cross_shard_ca_bundle() {
   set_xtrace_when_ut_mode_false
   if [ $nonce_set_rc -ne 0 ]; then
     echo "Error: failed to set attempt nonce" >&2
-    _flush_pre_init_slots "$service_port"
-    _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
     return 1
   fi
   echo "Attempt nonce: $attempt_nonce"
@@ -597,8 +594,6 @@ build_cross_shard_ca_bundle() {
   if [ $set_rc -ne 0 ]; then
     echo "Error: failed to publish local CA to $ca_exchange_key (rc=$set_rc)" >&2
     _cleanup_ca_exchange_key "$nonce_key" "$service_port"
-    _flush_pre_init_slots "$service_port"
-    _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
     return 1
   fi
 
@@ -674,10 +669,7 @@ build_cross_shard_ca_bundle() {
         echo "Error: timed out waiting for CA from ${peer_fqdns[$i]}" >&2
       fi
     done
-    _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
     _cleanup_ca_exchange_key "$nonce_key" "$service_port"
-    _flush_pre_init_slots "$service_port"
-    _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
     return 1
   fi
 
@@ -692,10 +684,7 @@ build_cross_shard_ca_bundle() {
     set_xtrace_when_ut_mode_false
     if [ -z "$peer_nonce" ]; then
       echo "Error: failed to read nonce from ${peer_fqdns[$i]}" >&2
-      _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
       _cleanup_ca_exchange_key "$nonce_key" "$service_port"
-      _flush_pre_init_slots "$service_port"
-      _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
       return 1
     fi
     peer_nonces+=("$peer_nonce")
@@ -732,10 +721,7 @@ build_cross_shard_ca_bundle() {
     echo "CONFIG SET tls-ca-cert-file rc=$config_set_rc"
     if [ $config_set_rc -ne 0 ]; then
       echo "Error: CONFIG SET tls-ca-cert-file failed" >&2
-      _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
       _cleanup_ca_exchange_key "$nonce_key" "$service_port"
-      _flush_pre_init_slots "$service_port"
-      _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
       return 1
     fi
 
@@ -750,10 +736,7 @@ build_cross_shard_ca_bundle() {
     echo "CONFIG GET tls-ca-cert-file readback: $readback"
     if [ "$readback" != "$ca_bundle_path" ]; then
       echo "Error: tls-ca-cert-file readback mismatch, expected $ca_bundle_path" >&2
-      _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
       _cleanup_ca_exchange_key "$nonce_key" "$service_port"
-      _flush_pre_init_slots "$service_port"
-      _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
       return 1
     fi
   fi
@@ -768,10 +751,7 @@ build_cross_shard_ca_bundle() {
   for i in "${!peer_fqdns[@]}"; do
     if ! _write_ack_to_peer "${peer_fqdns[$i]}" "${peer_ports[$i]}" "$my_ack_key"; then
       echo "Error: failed to write ACK to ${peer_fqdns[$i]}" >&2
-      _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
       _cleanup_ca_exchange_key "$nonce_key" "$service_port"
-      _flush_pre_init_slots "$service_port"
-      _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
       return 1
     fi
   done
@@ -783,13 +763,7 @@ build_cross_shard_ca_bundle() {
   done
 
   if ! _wait_for_peer_acks "$service_port" "${expected_ack_keys[@]}"; then
-    _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
     _cleanup_ca_exchange_key "$nonce_key" "$service_port"
-    for i in "${!peer_names[@]}"; do
-      _cleanup_ca_exchange_key "${ack_key_prefix}_${peer_names[$i]}_${peer_nonces[$i]}" "$service_port"
-    done
-    _flush_pre_init_slots "$service_port"
-    _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
     return 1
   fi
 
@@ -800,10 +774,10 @@ build_cross_shard_ca_bundle() {
   done
   if ! _flush_pre_init_slots "$service_port"; then
     echo "Error: CLUSTER FLUSHSLOTS failed after CA exchange" >&2
-    _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
+    _set_cluster_require_full_coverage "$service_port" "yes"
     return 1
   fi
-  if ! _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"; then
+  if ! _set_cluster_require_full_coverage "$service_port" "yes"; then
     echo "Error: failed to restore cluster-require-full-coverage after CA exchange" >&2
     return 1
   fi

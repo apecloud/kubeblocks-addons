@@ -614,12 +614,11 @@ Describe "Redis Cluster Common Bash Script Tests"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
 
-      It "returns non-zero on peer CA timeout and cleans up exchange key"
+      It "returns non-zero on peer CA timeout and preserves CA for retry"
         redis-cli() {
           case "$*" in
             *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
             *"CLUSTER ADDSLOTS"*) return 0 ;;
-            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
             *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
             *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
             *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
@@ -634,7 +633,7 @@ Describe "Redis Cluster Common Bash Script Tests"
         When call build_cross_shard_ca_bundle
         The status should be failure
         The output should include "Waiting for CA from"
-        The path "./test_data/del_called" should be exist
+        The path "./test_data/del_called" should not be exist
         The stderr should include "timed out waiting for CA"
       End
     End
@@ -643,12 +642,11 @@ Describe "Redis Cluster Common Bash Script Tests"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
 
-      It "rejects CLUSTERDOWN and times out"
+      It "rejects CLUSTERDOWN and times out preserving CA for retry"
         redis-cli() {
           case "$*" in
             *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
             *"CLUSTER ADDSLOTS"*) return 0 ;;
-            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
             *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
             *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
             *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
@@ -663,7 +661,7 @@ Describe "Redis Cluster Common Bash Script Tests"
         When call build_cross_shard_ca_bundle
         The status should be failure
         The output should include "Waiting for CA from"
-        The path "./test_data/del_called" should be exist
+        The path "./test_data/del_called" should not be exist
         The stderr should include "non-PEM data"
         The stderr should include "timed out waiting for CA"
       End
@@ -673,12 +671,11 @@ Describe "Redis Cluster Common Bash Script Tests"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
 
-      It "rejects invalid x509 and times out"
+      It "rejects invalid x509 and times out preserving CA for retry"
         redis-cli() {
           case "$*" in
             *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
             *"CLUSTER ADDSLOTS"*) return 0 ;;
-            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
             *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
             *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
             *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
@@ -697,7 +694,7 @@ Describe "Redis Cluster Common Bash Script Tests"
         When call build_cross_shard_ca_bundle
         The status should be failure
         The output should include "Waiting for CA from"
-        The path "./test_data/del_called" should be exist
+        The path "./test_data/del_called" should not be exist
         The stderr should include "invalid x509 certificate"
         The stderr should include "timed out waiting for CA"
       End
@@ -707,15 +704,13 @@ Describe "Redis Cluster Common Bash Script Tests"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
 
-      It "returns non-zero on CONFIG SET failure and cleans up exchange key"
+      It "returns non-zero on CONFIG SET failure preserving CA for retry"
         redis-cli() {
           case "$*" in
             *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
             *"CLUSTER ADDSLOTS"*) return 0 ;;
-            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
             *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
             *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
-            *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
             *DEL*_NONCE*) return 0 ;;
             *SET*_PEER_CA*) return 0 ;;
             *SET*_NONCE*) return 0 ;;
@@ -735,7 +730,6 @@ Describe "Redis Cluster Common Bash Script Tests"
         When call build_cross_shard_ca_bundle
         The status should be failure
         The output should include "CA bundle:"
-        The path "./test_data/del_called" should be exist
         The stderr should include "CONFIG SET tls-ca-cert-file failed"
       End
     End
@@ -744,15 +738,13 @@ Describe "Redis Cluster Common Bash Script Tests"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
 
-      It "returns non-zero on readback mismatch and cleans up exchange key"
+      It "returns non-zero on readback mismatch preserving CA for retry"
         redis-cli() {
           case "$*" in
             *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
             *"CLUSTER ADDSLOTS"*) return 0 ;;
-            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
             *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
             *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
-            *DEL*_PEER_CA*) touch "./test_data/del_called"; return 0 ;;
             *DEL*_NONCE*) return 0 ;;
             *SET*_PEER_CA*) return 0 ;;
             *SET*_NONCE*) return 0 ;;
@@ -773,7 +765,6 @@ Describe "Redis Cluster Common Bash Script Tests"
         When call build_cross_shard_ca_bundle
         The status should be failure
         The output should include "CA bundle:"
-        The path "./test_data/del_called" should be exist
         The stderr should include "readback mismatch"
       End
     End
