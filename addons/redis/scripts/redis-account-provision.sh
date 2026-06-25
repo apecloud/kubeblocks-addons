@@ -2,7 +2,7 @@
 
 ut_mode="false"
 test || __() {
-  set -ex;
+  set -e;
 }
 
 provision_account() {
