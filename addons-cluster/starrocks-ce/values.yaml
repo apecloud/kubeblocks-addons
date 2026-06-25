@@ -3,7 +3,7 @@
 version: 3.3.0
 
 fe:
-  replicas: 1
+  replicas: 3
   resources: {}
   storageClassName:
   storage: 20

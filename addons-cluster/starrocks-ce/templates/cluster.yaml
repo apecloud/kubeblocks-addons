@@ -12,7 +12,7 @@ spec:
     - name: fe
       {{- include "kblib.componentMonitor" . | indent 6 }}
       serviceVersion: {{ include "starrocks.version" . }}
-      replicas: {{ .Values.fe.replicas | default 1 }}
+      replicas: {{ .Values.fe.replicas | default 3 }}
       {{- with .Values.fe.resources }}
       resources:
         {{- with .limits }}
