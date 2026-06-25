@@ -66,15 +66,6 @@ spec:
         {{- .Files.Get "dataprotection/rs-pbm-restore-prepare.sh" | nindent 8 }}
     postReady:
     - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(PSM_IMAGE_TAG)
-        runOnTargetPodNode: false
-        command:
-          - bash
-          - -c
-          - |
-            {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 12 }}
-            {{- .Files.Get "dataprotection/shard-pbm-restore-prepare.sh" | nindent 12 }}
-    - job:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
         runOnTargetPodNode: true
         command:
