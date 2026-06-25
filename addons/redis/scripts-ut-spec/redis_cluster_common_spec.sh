@@ -633,7 +633,7 @@ Describe "Redis Cluster Common Bash Script Tests"
 
         When call build_cross_shard_ca_bundle
         The status should be failure
-        The output should include "Waiting for CA from rds-shard-def-0.svc"
+        The output should include "Waiting for CA from"
         The path "./test_data/del_called" should be exist
         The stderr should include "timed out waiting for CA"
       End
@@ -662,7 +662,7 @@ Describe "Redis Cluster Common Bash Script Tests"
 
         When call build_cross_shard_ca_bundle
         The status should be failure
-        The output should include "Waiting for CA from rds-shard-def-0.svc"
+        The output should include "Waiting for CA from"
         The path "./test_data/del_called" should be exist
         The stderr should include "non-PEM data"
         The stderr should include "timed out waiting for CA"
@@ -696,7 +696,7 @@ Describe "Redis Cluster Common Bash Script Tests"
 
         When call build_cross_shard_ca_bundle
         The status should be failure
-        The output should include "Waiting for CA from rds-shard-def-0.svc"
+        The output should include "Waiting for CA from"
         The path "./test_data/del_called" should be exist
         The stderr should include "invalid x509 certificate"
         The stderr should include "timed out waiting for CA"
@@ -1056,7 +1056,7 @@ Describe "Redis Cluster Common Bash Script Tests"
 
         When call build_cross_shard_ca_bundle
         The status should be success
-        The output should include "Waiting for CA from rds-shard-def-0.svc"
+        The output should include "Waiting for CA from"
         The output should include "CA bundle:"
         The output should include "All peer ACKs received"
       End

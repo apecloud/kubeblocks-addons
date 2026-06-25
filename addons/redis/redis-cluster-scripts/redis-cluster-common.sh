@@ -609,6 +609,7 @@ build_cross_shard_ca_bundle() {
   local peer_ports=()
   local peer_names=()
   local peer_nonces=()
+  local peer_encoded_cas=()
 
   for pod_fqdn in $(echo "$KB_CLUSTER_POD_FQDN_LIST" | tr ',' ' '); do
     local pod_name=${pod_fqdn%%.*}
@@ -626,54 +627,71 @@ build_cross_shard_ca_bundle() {
     peer_fqdns+=("$pod_fqdn")
     peer_ports+=("$peer_port")
     peer_names+=("$pod_name")
+    peer_encoded_cas+=("")
+  done
 
-    local peer_encoded_ca=""
-    local attempts=0
-    while [ -z "$peer_encoded_ca" ] && [ $attempts -lt 90 ]; do
+  local total_peers=${#peer_fqdns[@]}
+  local collected=0
+  local attempts=0
+  while [ $collected -lt $total_peers ] && [ $attempts -lt 90 ]; do
+    for i in "${!peer_fqdns[@]}"; do
+      if [ -n "${peer_encoded_cas[$i]}" ]; then continue; fi
+      local peer_encoded_ca=""
       unset_xtrace_when_ut_mode_false
       if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-        peer_encoded_ca=$($redis_cli --raw -h "$pod_fqdn" -p "$peer_port" GET "$ca_exchange_key" 2>/dev/null)
+        peer_encoded_ca=$($redis_cli --raw -h "${peer_fqdns[$i]}" -p "${peer_ports[$i]}" GET "$ca_exchange_key" 2>/dev/null)
       else
-        peer_encoded_ca=$($redis_cli --raw -h "$pod_fqdn" -p "$peer_port" -a "$REDIS_DEFAULT_PASSWORD" GET "$ca_exchange_key" 2>/dev/null)
+        peer_encoded_ca=$($redis_cli --raw -h "${peer_fqdns[$i]}" -p "${peer_ports[$i]}" -a "$REDIS_DEFAULT_PASSWORD" GET "$ca_exchange_key" 2>/dev/null)
       fi
       set_xtrace_when_ut_mode_false
       if [ -n "$peer_encoded_ca" ]; then
         local pem_decoded
         pem_decoded=$(echo "$peer_encoded_ca" | base64 -d 2>/dev/null)
         if ! echo "$pem_decoded" | head -1 | grep -q "BEGIN CERTIFICATE"; then
-          echo "Warning: peer $pod_fqdn returned non-PEM data, retrying..." >&2
+          echo "Warning: peer ${peer_fqdns[$i]} returned non-PEM data, retrying..." >&2
           peer_encoded_ca=""
         elif ! echo "$pem_decoded" | openssl x509 -noout 2>/dev/null; then
-          echo "Warning: peer $pod_fqdn returned invalid x509 certificate, retrying..." >&2
+          echo "Warning: peer ${peer_fqdns[$i]} returned invalid x509 certificate, retrying..." >&2
           peer_encoded_ca=""
         fi
       fi
-      if [ -z "$peer_encoded_ca" ]; then
-        echo "Waiting for CA from $pod_fqdn (${attempts}/90)..."
-        sleep_when_ut_mode_false 2
-        attempts=$((attempts + 1))
+      if [ -n "$peer_encoded_ca" ]; then
+        peer_encoded_cas[$i]="$peer_encoded_ca"
+        collected=$((collected + 1))
+        echo "Collected CA from ${peer_fqdns[$i]} ($collected/$total_peers)"
       fi
     done
-
-    if [ -z "$peer_encoded_ca" ]; then
-      echo "Error: timed out waiting for CA from $pod_fqdn" >&2
-      _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
-      _cleanup_ca_exchange_key "$nonce_key" "$service_port"
-      _flush_pre_init_slots "$service_port"
-      _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
-      return 1
+    if [ $collected -lt $total_peers ]; then
+      echo "Waiting for CA from $((total_peers - collected)) peer(s) (${attempts}/90)..."
+      sleep_when_ut_mode_false 2
+      attempts=$((attempts + 1))
     fi
+  done
 
+  if [ $collected -lt $total_peers ]; then
+    for i in "${!peer_fqdns[@]}"; do
+      if [ -z "${peer_encoded_cas[$i]}" ]; then
+        echo "Error: timed out waiting for CA from ${peer_fqdns[$i]}" >&2
+      fi
+    done
+    _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
+    _cleanup_ca_exchange_key "$nonce_key" "$service_port"
+    _flush_pre_init_slots "$service_port"
+    _set_cluster_require_full_coverage "$service_port" "$saved_full_coverage"
+    return 1
+  fi
+
+  for i in "${!peer_fqdns[@]}"; do
     local peer_nonce=""
     unset_xtrace_when_ut_mode_false
     if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-      peer_nonce=$($redis_cli --raw -h "$pod_fqdn" -p "$peer_port" GET "$nonce_key" 2>/dev/null)
+      peer_nonce=$($redis_cli --raw -h "${peer_fqdns[$i]}" -p "${peer_ports[$i]}" GET "$nonce_key" 2>/dev/null)
     else
-      peer_nonce=$($redis_cli --raw -h "$pod_fqdn" -p "$peer_port" -a "$REDIS_DEFAULT_PASSWORD" GET "$nonce_key" 2>/dev/null)
+      peer_nonce=$($redis_cli --raw -h "${peer_fqdns[$i]}" -p "${peer_ports[$i]}" -a "$REDIS_DEFAULT_PASSWORD" GET "$nonce_key" 2>/dev/null)
     fi
     set_xtrace_when_ut_mode_false
     if [ -z "$peer_nonce" ]; then
-      echo "Error: failed to read nonce from $pod_fqdn" >&2
+      echo "Error: failed to read nonce from ${peer_fqdns[$i]}" >&2
       _cleanup_ca_exchange_key "$ca_exchange_key" "$service_port"
       _cleanup_ca_exchange_key "$nonce_key" "$service_port"
       _flush_pre_init_slots "$service_port"
@@ -683,13 +701,13 @@ build_cross_shard_ca_bundle() {
     peer_nonces+=("$peer_nonce")
 
     local peer_ca_decoded
-    peer_ca_decoded=$(echo "$peer_encoded_ca" | base64 -d)
+    peer_ca_decoded=$(echo "${peer_encoded_cas[$i]}" | base64 -d)
     local peer_fingerprint
     peer_fingerprint=$(echo "$peer_ca_decoded" | sha256sum | awk '{print $1}')
-    echo "Peer $pod_fqdn CA sha256: $peer_fingerprint"
+    echo "Peer ${peer_fqdns[$i]} CA sha256: $peer_fingerprint"
 
     if echo "$fingerprints" | grep -q "$peer_fingerprint"; then
-      echo "Peer $pod_fqdn CA is same, skipping"
+      echo "Peer ${peer_fqdns[$i]} CA is same, skipping"
     else
       echo "$peer_ca_decoded" >> "$ca_bundle_path"
       fingerprints="${fingerprints} ${peer_fingerprint}"
