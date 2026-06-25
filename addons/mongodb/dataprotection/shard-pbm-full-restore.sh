@@ -2,11 +2,27 @@
 set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH:$MOUNT_DIR/tmp/bin"
+export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 # shellcheck source=common-scripts.sh
 if ! command -v syncerctl_restore_start >/dev/null 2>&1; then
   . "$(dirname "$0")/common-scripts.sh"
 fi
+
+# CMPD vars are not inherited by ActionSet restore postReady jobs. Derive the
+# cluster name/namespace and target pod from the KubeBlocks-injected DP_DB_HOST
+# and POD_NAMESPACE before we touch the restore-coord ConfigMap.
+ensure_restore_cluster_env
+set_backup_config_env
+
+# When KubeBlocks restores volumes via the PVC populator, the ActionSet
+# prepareData script is not executed, so the restore-coord ConfigMap is never
+# created. The postReady job must create it before asking the syncer leader to
+# drive the restore.
+echo "INFO: Ensuring restore-coord ConfigMap exists with storage config."
+storage_config=$(pbm_storage_config_yaml)
+ensure_restore_coord "" "$storage_config"
+echo "INFO: Restore coordination prepared."
 
 # wait_for_restore_op_id polls the restore-coord ConfigMap for the op-id that
 # the syncer leader writes after it actually starts PBM restore.

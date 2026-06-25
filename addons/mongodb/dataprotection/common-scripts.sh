@@ -194,6 +194,27 @@ function syncerctl_restore_status() {
   syncerctl_restore_exec restore status --op-id "$op_id"
 }
 
+# ensure_restore_cluster_env fills CLUSTER_NAME, CLUSTER_NAMESPACE, and
+# DP_TARGET_POD_NAME when CMPD vars are not inherited by ActionSet restore jobs.
+# KubeBlocks injects DP_DB_HOST (FQDN of the restore-driving pod) and POD_NAMESPACE
+# into restore postReady job pods.
+function ensure_restore_cluster_env() {
+  if [ -z "${DP_TARGET_POD_NAME:-}" ] && [ -n "${DP_DB_HOST:-}" ]; then
+    DP_TARGET_POD_NAME=${DP_DB_HOST%%.*}
+    export DP_TARGET_POD_NAME
+  fi
+  if [ -z "${CLUSTER_NAMESPACE:-}" ] && [ -n "${POD_NAMESPACE:-}" ]; then
+    CLUSTER_NAMESPACE=$POD_NAMESPACE
+    export CLUSTER_NAMESPACE
+  fi
+  if [ -z "${CLUSTER_NAME:-}" ] && [ -n "${DP_TARGET_POD_NAME:-}" ]; then
+    # The driving pod for a sharded restore is <cluster>-config-server-0.
+    CLUSTER_NAME=${DP_TARGET_POD_NAME%-config-server-0}
+    export CLUSTER_NAME
+  fi
+}
+
+
 function DP_save_backup_status_info() {
     export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
     export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
