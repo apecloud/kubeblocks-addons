@@ -169,8 +169,6 @@ spec:
         containerPort: 6335
       command: ["/qdrant/scripts/setup.sh"]
       env:
-      - name: QDRANT__TELEMETRY_DISABLED
-        value: "true"
       - name: SERVICE_PORT
         value: "6333"
       - name: CLUSTER_DOMAIN
