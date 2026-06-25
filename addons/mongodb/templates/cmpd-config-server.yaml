@@ -218,6 +218,14 @@ spec:
         env:
           - name: PATH
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: CLUSTER_NAME
+            valueFrom:
+              clusterVarRef:
+                clusterName: Required
+          - name: CLUSTER_NAMESPACE
+            valueFrom:
+              clusterVarRef:
+                namespace: Required
           - name: PBM_MONGODB_REPLICA_SET
             value: $(CLUSTER_COMPONENT_NAME)
           - name: PBM_AGENT_SIDECAR
