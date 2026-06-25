@@ -36,11 +36,44 @@ function buildJsonString() {
 # Save backup status info file for syncing progress.
 # timeFormat: %Y-%m-%dT%H:%M:%SZ
 
+# KUBECTL_BIN_DIR is where ensure_kubectl downloads kubectl when the ActionSet
+# job pod image does not include it (e.g. percona-backup-mongodb). The directory
+# is added to PATH so subsequent kubectl calls work unchanged.
+KUBECTL_BIN_DIR="${MOUNT_DIR:-/tmp}/bin"
+KUBECTL_BIN="$KUBECTL_BIN_DIR/kubectl"
+
+# ensure_kubectl makes the kubectl CLI available. If kubectl is already on PATH
+# it is a no-op. Otherwise it downloads the official kubectl binary once per job
+# pod. This is a short-term workaround until a dedicated mongodb-dp-tools image
+# (bundling pbm + kubectl) is built and referenced by the ActionSet templates.
+function ensure_kubectl() {
+  if command -v kubectl >/dev/null 2>&1; then
+    return 0
+  fi
+  if [ -x "$KUBECTL_BIN" ]; then
+    export PATH="$KUBECTL_BIN_DIR:$PATH"
+    return 0
+  fi
+
+  echo "INFO: kubectl not found in PATH, downloading to $KUBECTL_BIN"
+  mkdir -p "$KUBECTL_BIN_DIR"
+  local version="${KUBECTL_VERSION:-v1.29.0}"
+  local url="https://dl.k8s.io/release/${version}/bin/linux/amd64/kubectl"
+  if ! curl -fsSL --retry 3 --retry-delay 2 -o "$KUBECTL_BIN" "$url"; then
+    echo "ERROR: failed to download kubectl from $url" >&2
+    return 1
+  fi
+  chmod +x "$KUBECTL_BIN"
+  export PATH="$KUBECTL_BIN_DIR:$PATH"
+  echo "INFO: kubectl downloaded successfully"
+}
+
 # syncerctl_exec runs syncerctl inside the target MongoDB pod via kubectl exec.
 # The MongoDB pod has /tools/syncerctl (copied by init-syncer) and syncer
 # listens on 127.0.0.1:3601, so syncerctl uses default host/port.
 # DP_TARGET_POD_NAME is injected by KubeBlocks dataprotection.
 function syncerctl_exec() {
+  ensure_kubectl || exit 1
   if [ -z "$DP_TARGET_POD_NAME" ]; then
     echo "ERROR: DP_TARGET_POD_NAME is not set" >&2
     exit 1
@@ -382,6 +415,7 @@ function sync_pbm_config_from_storage() {
 }
 
 function create_restore_signal() {
+    ensure_kubectl || exit 1
     phase=$1
     kubectl apply -f - <<EOF
 apiVersion: v1
@@ -403,6 +437,7 @@ EOF
 }
 
 function process_restore_start_signal() {
+    ensure_kubectl || exit 1
     echo "INFO: Waiting for prepare restore start signal..."
     dp_cm_name="$CLUSTER_NAME-restore-signal"
     dp_cm_namespace="$CLUSTER_NAMESPACE"
@@ -435,6 +470,7 @@ function process_restore_start_signal() {
 }
 
 function process_restore_end_signal() {
+    ensure_kubectl || exit 1
     echo "INFO: Waiting for prepare restore end signal..."
     sleep 5
     dp_cm_name="$CLUSTER_NAME-restore-signal"

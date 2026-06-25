@@ -1,0 +1,22 @@
+# mongodb-dp-tools bundles the Percona Backup for MongoDB CLI and kubectl
+# so that KubeBlocks dataprotection ActionSet job pods can both talk to PBM
+# and exec into MongoDB pods to run syncerctl.
+#
+# The base image is the same percona-backup-mongodb image already used by the
+# addon for init-pbm-agent and backup sidecars, so pbm/pbm-agent binaries stay
+# in their original locations.
+
+ARG PBM_IMAGE=docker.io/apecloud/percona-backup-mongodb:2.9.1
+ARG KUBECTL_IMAGE=docker.io/apecloud/kubectl:1.29
+
+FROM ${KUBECTL_IMAGE} AS kubectl
+
+FROM ${PBM_IMAGE}
+
+LABEL maintainer="ApeCloud"
+
+COPY --from=kubectl /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/kubectl
+
+# Keep the same entrypoint behavior as the base image.
+ENTRYPOINT []
+CMD ["/bin/bash"]
