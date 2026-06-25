@@ -3,7 +3,6 @@
 ## dynamicParameters: modifications are applied via SET GLOBAL without restart.
 
 staticParameters:
-  - back_log
   - basedir
   - bind_address
   - character_sets_dir
@@ -31,7 +30,6 @@ staticParameters:
   - log_bin
   - log_bin_basename
   - log_error
-  - max_connections
   - open_files_limit
   - port
   - server_id
@@ -45,6 +43,7 @@ dynamicParameters:
   - auto_increment_offset
   - autocommit
   - automatic_sp_privileges
+  - back_log
   - big_tables
   - binlog_annotate_row_events
   - binlog_cache_size
@@ -157,6 +156,7 @@ dynamicParameters:
   - low_priority_updates
   - max_allowed_packet
   - max_connect_errors
+  - max_connections
   - max_delayed_threads
   - max_error_count
   - max_heap_table_size
