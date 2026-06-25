@@ -1,0 +1,30 @@
+## Kubernetes cluster domain
+clusterDomain: cluster.local
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  registry: docker.io
+  repository: rustfs/rustfs
+  pullPolicy: IfNotPresent
+
+## @param versions RustFS versions configuration
+versions:
+  - version: "1.0.0-beta.8"
+    tag: "1.0.0-beta.8"
+    serviceVersion: "1.0.0-beta.8"
+    isDefault: true
+
+## Internal port number for RustFS S3 API
+rustfsAPIPort: "9000"
+
+## Internal port number for RustFS Console
+rustfsConsolePort: "9001"
+
+## TLS certificate path
+certsPath: "/etc/rustfs/certs/"
+
+## kblib required values
+extra:
+  keepResource: false

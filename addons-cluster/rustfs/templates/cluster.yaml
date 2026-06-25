@@ -1,0 +1,20 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  componentSpecs:
+    - componentDef: rustfs
+      name: rustfs
+      replicas: {{ .Values.replicas }}
+      {{- with .Values.buckets }}
+      env:
+      - name: RUSTFS_BUCKETS
+        value: {{ . | quote }}
+      {{- end }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}

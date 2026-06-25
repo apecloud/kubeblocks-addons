@@ -1,0 +1,25 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: rustfs
+  labels:
+    {{- include "rustfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rustfs.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+      {{- range .Values.versions }}
+        - {{ .serviceVersion }}
+      {{- end }}
+      compDefs:
+        - {{ include "rustfs.cmpdRegexpPattern" . }}
+  releases:
+  {{- range .Values.versions }}
+    - name: {{ .serviceVersion }}
+      serviceVersion: {{ .serviceVersion }}
+      images:
+        rustfs: {{ $.Values.image.registry | default "docker.io" }}/{{ $.Values.image.repository }}:{{ .tag }}
+        roleProbe: {{ $.Values.image.registry | default "docker.io" }}/{{ $.Values.image.repository }}:{{ .tag }}
+        init: {{ $.Values.image.registry | default "docker.io" }}/apecloud/kubeblocks-tools:1.0.0
+  {{- end }}
