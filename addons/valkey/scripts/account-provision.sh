@@ -65,17 +65,26 @@ repl_info=$("${_cli[@]}" INFO REPLICATION 2>&1) || {
 repl_info="${repl_info//$'\r'/}"
 
 online_ips=()
+slave_count=0
 while IFS= read -r line; do
   case "${line}" in
     slave[0-9]*:*)
+      slave_count=$((slave_count + 1))
       ip=$(echo "${line}" | sed 's/.*ip=\([^,]*\).*/\1/')
       state=$(echo "${line}" | sed 's/.*state=\([^,]*\).*/\1/')
       if [ "${state}" = "online" ]; then
         online_ips+=("${ip}")
+      else
+        echo "WARNING: replica ${ip} state=${state}, skipping ACL push" >&2
       fi
       ;;
   esac
 done <<< "${repl_info}"
+
+if [ "${slave_count}" -gt 0 ] && [ "${#online_ips[@]}" -eq 0 ]; then
+  echo "ERROR: ${slave_count} replica(s) connected but none in online state — cannot propagate ACL" >&2
+  exit 1
+fi
 
 for ip in "${online_ips[@]}"; do
   apply_acl "${ip}" "replica(${ip})"
