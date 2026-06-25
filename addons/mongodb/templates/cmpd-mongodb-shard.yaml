@@ -221,6 +221,16 @@ spec:
           # syncer uses the env to wait dns ready
           - name: KB_POD_FQDN
             value: "$(POD_NAME).$(CLUSTER_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+          # If a prepared PBM storage config exists (restore cluster), syncer
+          # skips launching its own pbm-agent and lets the setup script apply
+          # the config and start a temporary pbm-agent after mongod is ready.
+          - name: PBM_STORAGE_CONFIG_PATH
+            value: {{ .Values.dataMountPath }}/tmp/pbm_storage_config.yaml
+          # Path to the restore flag created by the shard setup script for
+          # restore clusters. Syncer uses this together with PBM_STORAGE_CONFIG_PATH
+          # to decide whether to defer its own pbm-agent launch.
+          - name: PBM_RESTORE_FLAG_PATH
+            value: {{ .Values.dataMountPath }}/tmp/mongodb_pbm.backup
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
