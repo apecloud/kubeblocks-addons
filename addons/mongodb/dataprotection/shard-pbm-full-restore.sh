@@ -24,6 +24,12 @@ storage_config=$(pbm_storage_config_yaml)
 ensure_restore_coord "" "$storage_config"
 echo "INFO: Restore coordination prepared."
 
+# Apply the storage config directly on the restore-driving pod so the backup
+# metadata required for replset remapping is available before we call restore
+# start. The syncer leader will re-apply the same config during the preparing
+# phase.
+apply_restore_pbm_config || exit 1
+
 # wait_for_restore_op_id polls the restore-coord ConfigMap for the op-id that
 # the syncer leader writes after it actually starts PBM restore.
 function wait_for_restore_op_id() {
@@ -67,8 +73,11 @@ while [ $retry_count -lt $max_retries ]; do
   if [ -n "$describe_result" ]; then
     found=$(echo "$describe_result" | jq -r '.found // empty')
     if [ "$found" = "true" ]; then
-      configsvr_name=$(echo "$describe_result" | jq -r '[.replsets[] | select(.configsvr == true) | .name] | join(",")')
-      shardsvr_names=$(echo "$describe_result" | jq -r '[.replsets[] | select(.configsvr != true) | .name] | join(",")')
+      # PBM physical backup replset entries mark the config server with `iscs`
+      # (and sometimes `configsvr` depending on version). Accept both keys so
+      # the config server is not misclassified as a shard.
+      configsvr_name=$(echo "$describe_result" | jq -r '[.replsets[] | select((.configsvr == true) or (.iscs == true)) | .name] | join(",")')
+      shardsvr_names=$(echo "$describe_result" | jq -r '[.replsets[] | select((.configsvr != true) and (.iscs != true)) | .name] | join(",")')
       if [ -n "$configsvr_name" ] && [ -n "$shardsvr_names" ]; then
         break
       fi

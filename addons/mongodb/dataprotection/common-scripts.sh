@@ -449,6 +449,31 @@ pitr:
 EOF
 }
 
+# apply_restore_pbm_config loads the prepared storage config into PBM on the
+# restore-driving pod and force-resyncs the metadata. ActionSet postReady jobs
+# need backup metadata (replset names) before they can start the restore, but
+# the syncer leader only applies the storage config after restore coordination
+# has begun. Calling this before the first `syncerctl backup status` breaks the
+# deadlock.
+function apply_restore_pbm_config() {
+  ensure_kubectl || return 1
+  resolve_restore_target_pod || return 1
+
+  echo "INFO: Applying PBM storage config on ${DP_TARGET_POD_NAME} so backup metadata is visible."
+  if ! pbm_storage_config_yaml | kubectl exec -i -n "$CLUSTER_NAMESPACE" "$DP_TARGET_POD_NAME" -c mongodb -- /tools/pbm config --file /dev/stdin >/dev/null; then
+    echo "ERROR: failed to apply PBM storage config on ${DP_TARGET_POD_NAME}" >&2
+    return 1
+  fi
+
+  echo "INFO: Force-resyncing PBM storage metadata."
+  if ! kubectl exec -n "$CLUSTER_NAMESPACE" "$DP_TARGET_POD_NAME" -c mongodb -- /tools/pbm config --force-resync >/dev/null; then
+    echo "ERROR: failed to force-resync PBM storage config" >&2
+    return 1
+  fi
+
+  echo "INFO: PBM storage config applied and resynced."
+}
+
 # fqdns_to_pod_names extracts the pod name portion from a comma-separated list
 # of Kubernetes pod FQDNs (<pod>.<service>.<namespace>.svc).
 function fqdns_to_pod_names() {
