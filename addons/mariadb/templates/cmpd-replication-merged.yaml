@@ -310,7 +310,7 @@ spec:
 
             POD_INDEX="${POD_NAME##*-}"
             SERVICE_ID=$((POD_INDEX + 1))
-            PRIMARY_HOST="${CLUSTER_NAME}-${COMPONENT_NAME}.${CLUSTER_NAMESPACE}.svc.cluster.local"
+            PRIMARY_HOST="${CLUSTER_NAME}-${COMPONENT_NAME}.${CLUSTER_NAMESPACE}.svc.${CLUSTER_DOMAIN:-cluster.local}"
             SOCK="/run/mysqld/mysqld.sock"
             MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
             # alpha.64 v1 (Jack 09:35 RED root cause + 10:01 v2 design ack):
