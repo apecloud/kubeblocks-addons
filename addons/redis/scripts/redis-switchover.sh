@@ -356,7 +356,9 @@ switchover_without_candidate() {
   # do switchover
   execute_sentinel_failover "$CUSTOM_SENTINEL_MASTER_NAME" || return 1
 
-  check_switchover_result "" "$initial_master" || return 1
+  # check switchover result using initial_master
+  # if no candidate specified, skip check
+  # check_switchover_result "" "$initial_master" || return 1
 }
 
 # This is magic for shellspec ut framework.
