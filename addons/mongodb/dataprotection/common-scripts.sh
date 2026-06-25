@@ -339,7 +339,11 @@ EOF
 # before the mongodb container starts.
 function write_pbm_storage_config_yaml() {
   local output_path="$1"
-  cat > "$output_path" <<EOF
+  local tmp_path="${output_path}.tmp"
+  local old_umask
+  old_umask=$(umask)
+  umask 077
+  cat > "$tmp_path" <<EOF
 storage:
   type: s3
   s3:
@@ -359,6 +363,9 @@ backup:
 pitr:
   enabled: false
 EOF
+  chmod 600 "$tmp_path"
+  mv "$tmp_path" "$output_path"
+  umask "$old_umask"
 }
 
 function print_pbm_logs_by_event() {

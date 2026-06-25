@@ -53,6 +53,7 @@ spec:
       - bash
       - -c
       - |
+        {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/rs-pbm-restore-prepare.sh" | nindent 8 }}
     postReady:
     - job:

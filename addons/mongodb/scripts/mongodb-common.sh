@@ -116,6 +116,10 @@ function process_restore_signal() {
                     echo "INFO: Removing backup file $pbm_backupfile"
                     rm "$pbm_backupfile"
                 fi
+                if [ -n "$PBM_STORAGE_CONFIG_PATH" ] && [ -f "$PBM_STORAGE_CONFIG_PATH" ]; then
+                    echo "INFO: Removing prepared PBM storage config $PBM_STORAGE_CONFIG_PATH"
+                    rm -f "$PBM_STORAGE_CONFIG_PATH"
+                fi
                 exec $process
                 exit 0
             else

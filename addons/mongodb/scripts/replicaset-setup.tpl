@@ -69,10 +69,14 @@ done
 PBM_STORAGE_CONFIG_PATH="$MONGODB_ROOT/tmp/pbm_storage_config.yaml"
 if [ -f "$PBM_STORAGE_CONFIG_PATH" ]; then
   echo "INFO: Applying prepared PBM storage config from $PBM_STORAGE_CONFIG_PATH"
-  pbm config --mongodb-uri "$PBM_MONGODB_URI" --file "$PBM_STORAGE_CONFIG_PATH"
+  until pbm config --mongodb-uri "$PBM_MONGODB_URI" --file "$PBM_STORAGE_CONFIG_PATH"; do
+    echo "ERROR: failed to apply PBM storage config, retrying..."
+    sleep 2
+  done
   echo "INFO: PBM storage config applied."
 else
-  echo "WARN: Prepared PBM storage config not found at $PBM_STORAGE_CONFIG_PATH; falling back to post-ready job configuration."
+  echo "ERROR: Prepared PBM storage config not found at $PBM_STORAGE_CONFIG_PATH; restore cannot proceed."
+  exit 1
 fi
 
 echo "INFO: Startup backup agent for restore."

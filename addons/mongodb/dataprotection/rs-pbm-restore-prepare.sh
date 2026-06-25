@@ -13,7 +13,9 @@ export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 # shellcheck source=common-scripts.sh
-. "$(dirname "$0")/common-scripts.sh"
+if ! command -v set_backup_config_env >/dev/null 2>&1; then
+  . "$(dirname "$0")/common-scripts.sh"
+fi
 
 set_backup_config_env
 PBM_STORAGE_CONFIG_PATH="${MOUNT_DIR}/tmp/pbm_storage_config.yaml"
