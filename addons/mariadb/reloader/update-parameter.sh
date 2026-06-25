@@ -37,12 +37,8 @@ else
 fi
 
 if [[ ${status} -ne 0 ]]; then
-    if grep -q "ERROR 1045 (28000)" <<<"${output}"; then
-        echo "Failed to set parameter ${param_name} to value ${param_value}: ${output}" >&2
-        exit 1
-    fi
-    echo "Skipping parameter ${param_name}=${param_value}: ${output}" >&2
-    exit 0
+    echo "Failed to set parameter ${param_name} to value ${param_value}: ${output}" >&2
+    exit 1
 fi
 
 echo "Set parameter ${param_name} to value ${param_value}"
