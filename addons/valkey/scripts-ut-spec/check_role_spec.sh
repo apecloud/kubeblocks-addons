@@ -953,6 +953,16 @@ Describe "Valkey Check-Role Bash Script Tests"
     End
   End
 
+  Describe "per-sentinel timeout guard"
+    check_role_script="../scripts/check-role.sh"
+
+    It "wraps the sentinel masters query with timeout"
+      When call grep -E 'timeout [0-9]+ valkey-cli.*sentinel masters' "${check_role_script}"
+      The status should be success
+      The stdout should include "timeout"
+    End
+  End
+
   Describe "fork-safety contract — no pipeline parsing of INFO replication"
     # Background: `valkey-cli ... info replication | grep ... | tr ...`
     # spawns three subprocess children per probe call. When kbagent
