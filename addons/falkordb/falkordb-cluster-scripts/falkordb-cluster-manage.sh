@@ -45,6 +45,53 @@ init_environment(){
   if [[ -z "${ALL_SHARDS_ADVERTISED_BUS_PORT}" ]]; then
     ALL_SHARDS_ADVERTISED_BUS_PORT="${ALL_SHARDS_LB_ADVERTISED_BUS_PORT}"
   fi
+
+  local all_shards_pods
+  local all_shards_pod_fqdns
+  local all_shards_components
+  all_shards_pods=$(get_all_shards_pods 2>/dev/null || true)
+  all_shards_pod_fqdns=$(get_all_shards_pod_fqdns 2>/dev/null || true)
+  all_shards_components=$(get_all_shards_components 2>/dev/null || true)
+
+  if [[ -z "${KB_CLUSTER_POD_NAME_LIST}" && -n "$all_shards_pods" ]]; then
+    KB_CLUSTER_POD_NAME_LIST="$all_shards_pods"
+  fi
+  # The legacy "*_IP_LIST" values are used as redis-cli -h endpoints in
+  # the default network path. KB main exposes declared pod FQDN lists here.
+  if [[ -z "${KB_CLUSTER_POD_IP_LIST}" && -n "$all_shards_pod_fqdns" ]]; then
+    KB_CLUSTER_POD_IP_LIST="$all_shards_pod_fqdns"
+  fi
+  if [[ -z "${KB_CLUSTER_POD_HOST_IP_LIST}" && -n "${KB_CLUSTER_POD_IP_LIST}" ]]; then
+    KB_CLUSTER_POD_HOST_IP_LIST="${KB_CLUSTER_POD_IP_LIST}"
+  fi
+  if [[ -z "${KB_CLUSTER_COMPONENT_POD_NAME_LIST}" && -n "${CURRENT_SHARD_POD_NAME_LIST}" ]]; then
+    KB_CLUSTER_COMPONENT_POD_NAME_LIST="${CURRENT_SHARD_POD_NAME_LIST}"
+  fi
+  if [[ -z "${KB_CLUSTER_COMPONENT_POD_IP_LIST}" && -n "${CURRENT_SHARD_POD_FQDN_LIST}" ]]; then
+    KB_CLUSTER_COMPONENT_POD_IP_LIST="${CURRENT_SHARD_POD_FQDN_LIST}"
+  fi
+  if [[ -z "${KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST}" && -n "${KB_CLUSTER_COMPONENT_POD_IP_LIST}" ]]; then
+    KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="${KB_CLUSTER_COMPONENT_POD_IP_LIST}"
+  fi
+  if [[ -z "${KB_CLUSTER_COMPONENT_LIST}" && -n "$all_shards_components" ]]; then
+    KB_CLUSTER_COMPONENT_LIST="$all_shards_components"
+  fi
+  if [[ -z "${KB_CLUSTER_COMPONENT_UNDELETED_LIST}" && -n "${KB_CLUSTER_COMPONENT_LIST}" ]]; then
+    KB_CLUSTER_COMPONENT_UNDELETED_LIST="${KB_CLUSTER_COMPONENT_LIST}"
+  fi
+  if [[ -z "${KB_CLUSTER_COMPONENT_DELETING_LIST+x}" ]]; then
+    KB_CLUSTER_COMPONENT_DELETING_LIST=""
+  fi
+
+  export KB_CLUSTER_POD_NAME_LIST
+  export KB_CLUSTER_POD_IP_LIST
+  export KB_CLUSTER_POD_HOST_IP_LIST
+  export KB_CLUSTER_COMPONENT_POD_NAME_LIST
+  export KB_CLUSTER_COMPONENT_POD_IP_LIST
+  export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+  export KB_CLUSTER_COMPONENT_LIST
+  export KB_CLUSTER_COMPONENT_UNDELETED_LIST
+  export KB_CLUSTER_COMPONENT_DELETING_LIST
 }
 
 load_redis_cluster_common_utils() {
@@ -1059,8 +1106,8 @@ ${__SOURCED__:+false} : || return 0
 
 # main
 if [ $# -eq 1 ]; then
-  init_environment
   load_redis_cluster_common_utils
+  init_environment
   case $1 in
   --help)
     echo "Usage: $0 [options]"
