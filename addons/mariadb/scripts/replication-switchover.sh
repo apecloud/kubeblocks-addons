@@ -1647,40 +1647,14 @@ clear_local_kb_health_check_table() {
 
 repair_kb_health_check_replication_error() {
   local slave_status="$1"
-  local old_read_only
   if ! slave_status_has_kb_health_check_repairable_error "${slave_status}"; then
     return 1
   fi
   log_switchover_info "Switchover old-primary follow repair: detected repairable kubeblocks health check replication error"
   run_local_sql_best_effort "STOP SLAVE SQL_THREAD;"
-  old_read_only=$(query_value "127.0.0.1" "SELECT @@global.read_only;")
-  case "${old_read_only}" in
-    0)
-      ;;
-    *)
-      if ! set_local_read_only "OFF"; then
-        log_switchover_error "Switchover old-primary follow repair: failed to temporarily open local read_only for health check repair"
-        return 1
-      fi
-      ;;
-  esac
   if ! clear_local_kb_health_check_table "prepared-local-kb-health-check-after-switchover-replication-error"; then
-    case "${old_read_only}" in
-      0) ;;
-      *) set_local_read_only "ON" || true ;;
-    esac
     return 1
   fi
-  case "${old_read_only}" in
-    0)
-      ;;
-    *)
-      if ! set_local_read_only "ON"; then
-        log_switchover_error "Switchover old-primary follow repair: failed to restore local read_only after health check repair"
-        return 1
-      fi
-      ;;
-  esac
   run_local_sql_best_effort "START SLAVE SQL_THREAD;"
   return 0
 }
