@@ -57,7 +57,7 @@ function purge_pitr_chunks() {
   pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI"
   wait_for_other_operations "backup"
 
-  pitr_chunks_result=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.backups.pitrChunks')
+  pitr_chunks_result=$(syncerctl_exec pitr chunks)
   pitr_chunks_arr=$(echo "$pitr_chunks_result" | jq -r '.pitrChunks')
   if [ -z "$pitr_chunks_arr" ] || [ "$pitr_chunks_arr" = "null" ] || [ "$pitr_chunks_arr" = "[]" ]; then
     echo "INFO: No no base snapshot chunks found."
@@ -70,7 +70,7 @@ function purge_pitr_chunks() {
   fi
   first_chunk_end=$(echo "$filtered_sorted_chunks" | jq -r '.[0].range.end')
   purge_time=$(date -u -d "@${first_chunk_end}" +"%Y-%m-%dT%H:%M:%S")
-  pbm cleanup --older-than "$purge_time" --mongodb-uri "$PBM_MONGODB_URI" --wait --yes
+  syncerctl_exec pitr cleanup --older-than "$purge_time"
   echo "INFO: PBM chunks purged."
 }
 

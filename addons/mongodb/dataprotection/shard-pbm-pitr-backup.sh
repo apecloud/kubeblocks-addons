@@ -21,9 +21,9 @@ function disable_pitr() {
 }
 
 function upload_continuous_backup_info() {
-  local status_result=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json)
+  local chunks_result=$(syncerctl_exec pitr chunks)
   echo "INFO: Uploading continuous backup info..."
-  local pitr_chunks_result=$(echo "$status_result" | jq -r '.backups.pitrChunks')
+  local pitr_chunks_result=$(echo "$chunks_result" | jq -r '.')
   echo "INFO: Continuous backup result:"
   echo "$(echo $pitr_chunks_result | jq)"
   local pitr_chunks_arr=$(echo "$pitr_chunks_result" | jq -r '.pitrChunks')
@@ -46,7 +46,7 @@ function upload_continuous_backup_info() {
   local backup_type="continuous"
   local extras=$(buildJsonString "" "backup_type" "$backup_type")
 
-  local pitr_nodes=$(echo "$status_result" | jq -r '.pitr.nodes?[]?')
+  local pitr_nodes=$(echo "$chunks_result" | jq -r '.nodes?[]?')
   local shardsvr=""
   local configsvr=""
   while IFS= read -r node; do
@@ -64,12 +64,6 @@ function upload_continuous_backup_info() {
       fi
     fi
   done <<< "$pitr_nodes"
-  if [ -z "$shardsvr" ]; then
-    shardsvr=$(echo "$status_result" | jq -r '[.cluster[].rs | select(contains("config-server") | not)] | join(",")')
-  fi
-  if [ -z "$configsvr" ]; then
-    configsvr=$(echo "$status_result" | jq -r '[.cluster[].rs | select(contains("config-server"))] | join(",")')
-  fi
   extras=$(buildJsonString $extras "shardsvr" "$shardsvr")
   extras=$(buildJsonString $extras "configsvr" "$configsvr")
   DP_save_backup_status_info "$total_size" "$start_time" "$end_time" "" "{$extras}"
@@ -101,7 +95,7 @@ function purge_pitr_chunks() {
   # resync wait flag might don't work
   wait_for_other_operations "backup"
 
-  local pitr_chunks_result=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.backups.pitrChunks')
+  local pitr_chunks_result=$(syncerctl_exec pitr chunks)
   local pitr_chunks_arr=$(echo "$pitr_chunks_result" | jq -r '.pitrChunks')
   if [ -z "$pitr_chunks_arr" ] || [ "$pitr_chunks_arr" = "null" ] || [ "$pitr_chunks_arr" = "[]" ]; then
     echo "INFO: No no base snapshot chunks found."
@@ -116,7 +110,7 @@ function purge_pitr_chunks() {
   echo "$(echo $filtered_sorted_chunks | jq)"
   local first_chunk_end=$(echo "$filtered_sorted_chunks" | jq -r '.[0].range.end')
   purge_time=$(date -u -d "@${first_chunk_end}" +"%Y-%m-%dT%H:%M:%S")
-  pbm cleanup --older-than $purge_time --mongodb-uri "$PBM_MONGODB_URI" --wait --yes
+  syncerctl_exec pitr cleanup --older-than "$purge_time"
   echo "INFO: No base snapshot chunks cleaned up."
 }
 
