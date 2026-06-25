@@ -28,13 +28,8 @@ Describe "replication memberLeave lifecycle action"
     The status should be success
   End
 
-  It "wraps syncerctl leave in a command timeout below the lifecycle budget"
-    When call member_leave_block_contains 'timeout 30 /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"'
-    The status should be success
-  End
-
-  It "does not retain an unbounded syncerctl leave command"
-    When call member_leave_block_not_contains '- /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"'
+  It "invokes the external member-leave script"
+    When call member_leave_block_contains '/scripts/replication-member-leave.sh'
     The status should be success
   End
 End
