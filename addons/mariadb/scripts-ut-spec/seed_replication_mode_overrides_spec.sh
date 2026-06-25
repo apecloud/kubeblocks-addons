@@ -208,7 +208,7 @@ Describe "alpha.89 commit 13 v2 seed-replication-mode-overrides.sh"
 
   Describe "script mount + cmpd wire-up (static contract)"
     cmpd_merged_path() {
-      printf "%s/addons/mariadb/templates/cmpd-replication-merged.yaml" "$(repo_root)"
+      printf "%s/addons/mariadb/templates/cmpd-replication.yaml" "$(repo_root)"
     }
 
     configmap_path() {
@@ -221,7 +221,7 @@ Describe "alpha.89 commit 13 v2 seed-replication-mode-overrides.sh"
       The output should equal "2"
     End
 
-    It "cmpd-replication-merged.yaml invokes the seeder before mariadbd start"
+    It "cmpd-replication.yaml invokes the seeder before mariadbd start"
       # The seeder must be sourced/invoked in the container command
       # body. Lock that it appears exactly once as a code line (the
       # explanatory comment textually references the script name).
@@ -230,7 +230,7 @@ Describe "alpha.89 commit 13 v2 seed-replication-mode-overrides.sh"
       The output should equal "1"
     End
 
-    It "cmpd-replication-merged.yaml fails the container on seeder non-zero rc"
+    It "cmpd-replication.yaml fails the container on seeder non-zero rc"
       When call grep -c 'refusing to start mariadbd' "$(cmpd_merged_path)"
       The status should be success
       The output should equal "2"
@@ -240,13 +240,13 @@ Describe "alpha.89 commit 13 v2 seed-replication-mode-overrides.sh"
     # `6e6eab69`) — when MARIADB_REPLICATION_MODE is non-empty the
     # seeder script MUST be readable; missing script with non-empty
     # mode must fail-closed (no silent fallback to async).
-    It "cmpd-replication-merged.yaml fail-closes on missing seeder script when mode is non-empty (Jack B3 fix)"
+    It "cmpd-replication.yaml fail-closes on missing seeder script when mode is non-empty (Jack B3 fix)"
       When call grep -c 'set but seeder script /scripts/seed-replication-mode-overrides.sh is missing or unreadable' "$(cmpd_merged_path)"
       The status should be success
       The output should equal "1"
     End
 
-    It "cmpd-replication-merged.yaml gates the missing-script check on non-empty MARIADB_REPLICATION_MODE"
+    It "cmpd-replication.yaml gates the missing-script check on non-empty MARIADB_REPLICATION_MODE"
       When call grep -cE 'if \[ -n "\$\{MARIADB_REPLICATION_MODE:-\}" \]' "$(cmpd_merged_path)"
       The status should be success
       The output should equal "1"

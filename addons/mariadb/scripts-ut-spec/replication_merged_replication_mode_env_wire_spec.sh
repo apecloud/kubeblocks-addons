@@ -37,7 +37,7 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
   }
 
   cmpd_merged_path() {
-    printf "%s/addons/mariadb/templates/cmpd-replication-merged.yaml" "$(repo_root)"
+    printf "%s/addons/mariadb/templates/cmpd-replication.yaml" "$(repo_root)"
   }
 
   clusterdefinition_path() {
@@ -92,12 +92,12 @@ Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICA
     End
 
     It "_helpers.tpl documents the merged mode as install/render-time rather than per-Cluster"
-      When call grep -q 'Current mode selection is install/render-time only' "$(helper_path)"
+      When call grep -q 'install-time mode' "$(helper_path)"
       The status should be success
     End
   End
 
-  Describe "cmpd-replication-merged.yaml wires MARIADB_REPLICATION_MODE env from Helm value"
+  Describe "cmpd-replication.yaml wires MARIADB_REPLICATION_MODE env from Helm value"
     It "declares a MARIADB_REPLICATION_MODE env entry in the merged CmpD"
       When call grep -c 'name: MARIADB_REPLICATION_MODE' "$(cmpd_merged_path)"
       The status should be success

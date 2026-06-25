@@ -24,7 +24,7 @@
 Describe "alpha.86 reconfigureAction.persisted semisync gates"
   ADDON_ROOT="${SHELLSPEC_CWD:?}/addons/mariadb"
   HELPERS_TPL="${ADDON_ROOT}/templates/_helpers.tpl"
-  CMPD_SEMISYNC="${ADDON_ROOT}/templates/cmpd-semisync.yaml"
+  CMPD_SEMISYNC="${ADDON_ROOT}/templates/cmpd-replication.yaml"
   CMPD_STANDALONE="${ADDON_ROOT}/templates/cmpd.yaml"
   CMPD_REPLICATION="${ADDON_ROOT}/templates/cmpd-replication.yaml"
   CMPD_GALERA="${ADDON_ROOT}/templates/cmpd-galera.yaml"
@@ -57,7 +57,7 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
 
   extract_init_syncer_command_body() {
     # Init container "init-syncer" body; the third occurrence of the
-    # bash -c heredoc-style block in cmpd-semisync.yaml. We use the
+    # bash -c heredoc-style block in cmpd-replication.yaml. We use the
     # marker line "cp -r /bin/syncer /bin/syncerctl /tools/" to locate
     # it; that line is unique to this init container.
     awk '
@@ -437,27 +437,18 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
     End
   End
 
-  Describe "Cross-topology scope: persisted variant is SEMISYNC ONLY"
-    It "cmpd-semisync.yaml includes the persisted variant"
+  Describe "Cross-topology scope: persisted variant presence"
+    # After CMPD consolidation (PR #2933), cmpd-replication.yaml is the
+    # single canonical CMPD. It includes the persisted variant (merged
+    # from the former semisync CMPD). Other topologies still do not.
+    It "cmpd-replication.yaml includes the persisted variant"
       When call grep -c 'mariadb.config.reconfigureAction.persisted' "${CMPD_SEMISYNC}"
       The status should be success
-      The output should equal "1"
-    End
-
-    It "cmpd-semisync.yaml does NOT include the bare base helper"
-      When call grep -c '"mariadb\.config\.reconfigureAction"' "${CMPD_SEMISYNC}"
-      The status should be failure
-      The output should equal "0"
+      The output should be present
     End
 
     It "cmpd.yaml (standalone) does NOT include the persisted variant"
       When call grep -c 'mariadb.config.reconfigureAction.persisted' "${CMPD_STANDALONE}"
-      The status should be failure
-      The output should equal "0"
-    End
-
-    It "cmpd-replication.yaml does NOT include the persisted variant"
-      When call grep -c 'mariadb.config.reconfigureAction.persisted' "${CMPD_REPLICATION}"
       The status should be failure
       The output should equal "0"
     End

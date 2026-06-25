@@ -10,11 +10,11 @@
 # Static gates protecting the semisync replication-user-path
 # convergence introduced in alpha.72 v1:
 #   1. Chart.yaml literal alpha.72.
-#   2a. cmpd-semisync.yaml carries env MYSQL_REPLICATION_USER=
+#   2a. cmpd-replication.yaml carries env MYSQL_REPLICATION_USER=
 #       kb_replicator + MARIADB_REPLICATION_USER=kb_replicator.
 #   2b. cmpd-replication.yaml is intentionally NOT extended with these
 #       env (alpha.72 v1 scope cap).
-#   3a. cmpd-semisync.yaml inline CHANGE MASTER uses
+#   3a. cmpd-replication.yaml inline CHANGE MASTER uses
 #       ${MARIADB_REPLICATION_USER:-kb_replicator}.
 #   3b. cmpd-replication.yaml inline CHANGE MASTER keeps
 #       ${MARIADB_ROOT_USER} (pre-alpha.72 behavior preserved).
@@ -22,7 +22,7 @@
 #       chained fallback ${MARIADB_REPLICATION_USER:-${MARIADB_ROOT_USER}}:
 #       semisync pods (env set) use kb_replicator; replication pods
 #       (env not set) fall through to MARIADB_ROOT_USER (root).
-#   4. ensure_internal_local_admin (cmpd-semisync.yaml only) creates the
+#   4. ensure_internal_local_admin (cmpd-replication.yaml only) creates the
 #      kb_replicator@'%' user with the idempotent convergence chain
 #      in the same SQL block as kb_internal_root (NOT an atomic
 #      transaction — MariaDB DDL/GRANT statements are not
@@ -74,7 +74,7 @@
 Describe "alpha.72 v1 replication user path convergence (static gates)"
   ADDON_ROOT="${SHELLSPEC_CWD:?}/addons/mariadb"
   CHART_YAML="${ADDON_ROOT}/Chart.yaml"
-  CMPD_SEMISYNC="${ADDON_ROOT}/templates/cmpd-semisync.yaml"
+  CMPD_SEMISYNC="${ADDON_ROOT}/templates/cmpd-replication.yaml"
   CMPD_REPLICATION="${ADDON_ROOT}/templates/cmpd-replication.yaml"
   MEMBER_JOIN="${ADDON_ROOT}/scripts/replication-member-join.sh"
 
@@ -93,42 +93,29 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
   End
 
   Describe "Gate 2: env present in both CmpDs"
-    It "cmpd-semisync.yaml declares MYSQL_REPLICATION_USER=kb_replicator (syncer reads)"
+    It "cmpd-replication.yaml declares MYSQL_REPLICATION_USER=kb_replicator (syncer reads)"
       When call grep -c 'name: MYSQL_REPLICATION_USER' "${CMPD_SEMISYNC}"
       The output should eq "1"
       The status should be success
     End
 
-    It "cmpd-semisync.yaml declares MARIADB_REPL_USER=kb_replicator (chart shell reads; renamed from MARIADB_REPLICATION_USER to avoid triggering mariadb image entrypoint CREATE USER binlog side-effect)"
+    It "cmpd-replication.yaml declares MARIADB_REPL_USER=kb_replicator (chart shell reads; renamed from MARIADB_REPLICATION_USER to avoid triggering mariadb image entrypoint CREATE USER binlog side-effect)"
       When call grep -c 'name: MARIADB_REPL_USER' "${CMPD_SEMISYNC}"
       The output should eq "1"
       The status should be success
     End
 
-    It "cmpd-semisync.yaml does NOT declare MARIADB_REPLICATION_USER env (alpha.74 v1: this env triggers mariadb 11.4 image entrypoint to run CREATE USER kb_replicator at initdb time without IF NOT EXISTS, causing SQL replay 1396 on secondary START SLAVE per alpha.73 v1 N=1 partial RED root cause)"
+    It "cmpd-replication.yaml does NOT declare MARIADB_REPLICATION_USER env (alpha.74 v1: this env triggers mariadb 11.4 image entrypoint to run CREATE USER kb_replicator at initdb time without IF NOT EXISTS, causing SQL replay 1396 on secondary START SLAVE per alpha.73 v1 N=1 partial RED root cause)"
       When call grep -c 'name: MARIADB_REPLICATION_USER' "${CMPD_SEMISYNC}"
       The output should eq "0"
       The status should be failure
     End
 
-    # alpha.72 v1 (Jack HOLD `c74a3b44` 22:46 Option 1 scope-cap): cmpd-
-    # replication.yaml is intentionally NOT extended in alpha.72 v1. Read
-    # paths in replication-member-join.sh use a chained fallback
-    # `${MARIADB_REPLICATION_USER:-${MARIADB_ROOT_USER}}` so replication
-    # topology preserves pre-alpha.72 behavior (root). alpha.72 v1 scope is
-    # SEMISYNC TOPOLOGY ONLY; replication topology kb_replicator
-    # convergence deferred to alpha.73+.
-    It "cmpd-replication.yaml is intentionally NOT extended with MYSQL_REPLICATION_USER (alpha.72 v1 scope = semisync only)"
-      When call grep -c 'name: MYSQL_REPLICATION_USER' "${CMPD_REPLICATION}"
-      The output should eq "0"
-      The status should be failure
-    End
-
-    It "cmpd-replication.yaml is intentionally NOT extended with MARIADB_REPLICATION_USER (alpha.72 v1 scope = semisync only)"
-      When call grep -c 'name: MARIADB_REPLICATION_USER' "${CMPD_REPLICATION}"
-      The output should eq "0"
-      The status should be failure
-    End
+    # [REMOVED] alpha.72 v1 scope-cap tests: after CMPD consolidation (PR #2933),
+    # cmpd-replication.yaml is the single canonical CMPD and includes all
+    # features from both old replication and semisync CMPDs. The scope-cap
+    # assertions (MYSQL_REPLICATION_USER absent, MARIADB_REPLICATION_USER
+    # absent) no longer apply.
   End
 
   Describe "Gate 3: no MASTER_USER='\${MARIADB_ROOT_USER}' anywhere"
@@ -144,33 +131,25 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
       The status should be success
     End
 
-    It "cmpd-semisync.yaml inline CHANGE MASTER does not use MARIADB_ROOT_USER as MASTER_USER"
+    It "cmpd-replication.yaml inline CHANGE MASTER does not use MARIADB_ROOT_USER as MASTER_USER"
       When call grep -c "MASTER_USER='\${MARIADB_ROOT_USER}'" "${CMPD_SEMISYNC}"
       The output should eq "0"
       The status should be failure
     End
 
-    It "cmpd-semisync.yaml inline CHANGE MASTER uses MARIADB_REPL_USER fallback to kb_replicator (renamed env per alpha.74 v1)"
+    It "cmpd-replication.yaml inline CHANGE MASTER uses MARIADB_REPL_USER fallback to kb_replicator (renamed env per alpha.74 v1)"
       When call grep -c "MASTER_USER='\${MARIADB_REPL_USER:-kb_replicator}'" "${CMPD_SEMISYNC}"
       The output should be present
       The status should be success
     End
 
-    # alpha.72 v1 Option 1 scope-cap: cmpd-replication.yaml inline
-    # CHANGE MASTER intentionally keeps MARIADB_ROOT_USER (root) since
-    # alpha.72 v1 doesn't extend replication topology bootstrap with
-    # kb_replicator write site. Replication-member-join.sh (shared by
-    # both topologies) uses chained fallback so semisync pods (env set)
-    # use kb_replicator and replication pods (env not set) fall through
-    # to MARIADB_ROOT_USER.
-    It "cmpd-replication.yaml inline CHANGE MASTER keeps MARIADB_ROOT_USER as MASTER_USER (alpha.72 v1 scope cap)"
-      When call grep -c "MASTER_USER='\${MARIADB_ROOT_USER}'" "${CMPD_REPLICATION}"
-      The output should be present
-      The status should be success
-    End
+    # [REMOVED] alpha.72 v1 scope-cap test: after CMPD consolidation (PR #2933),
+    # the single CMPD uses MARIADB_REPL_USER fallback, not MARIADB_ROOT_USER.
+    # The assertion that MASTER_USER='${MARIADB_ROOT_USER}' is present no
+    # longer applies.
   End
 
-  Describe "Gate 4: kb_replicator write site idempotent convergence chain (cmpd-semisync.yaml ensure_internal_local_admin)"
+  Describe "Gate 4: kb_replicator write site idempotent convergence chain (cmpd-replication.yaml ensure_internal_local_admin)"
     It "creates kb_replicator with CREATE USER IF NOT EXISTS"
       When call grep -c "CREATE USER IF NOT EXISTS '\${replication_user}'@'%'" "${CMPD_SEMISYNC}"
       The output should eq "1"
@@ -221,40 +200,33 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
     # MARIADB_REPLICATION_PASSWORD or MARIADB_REPLICATION_PASSWORD_HASH
     # not found to create replication user for master". alpha.73 v1
     # supplies the matching _PASSWORD envs referencing $(MARIADB_ROOT_PASSWORD).
-    It "cmpd-semisync.yaml declares MARIADB_REPL_PASSWORD (renamed from MARIADB_REPLICATION_PASSWORD; mariadb entrypoint no longer reads it so initdb does NOT auto-create kb_replicator)"
+    It "cmpd-replication.yaml declares MARIADB_REPL_PASSWORD (renamed from MARIADB_REPLICATION_PASSWORD; mariadb entrypoint no longer reads it so initdb does NOT auto-create kb_replicator)"
       When call grep -c 'name: MARIADB_REPL_PASSWORD' "${CMPD_SEMISYNC}"
       The output should eq "1"
       The status should be success
     End
 
-    It "cmpd-semisync.yaml does NOT declare MARIADB_REPLICATION_PASSWORD env (alpha.74 v1: paired removal so mariadb entrypoint USER/PASSWORD contract is not triggered at all)"
+    It "cmpd-replication.yaml does NOT declare MARIADB_REPLICATION_PASSWORD env (alpha.74 v1: paired removal so mariadb entrypoint USER/PASSWORD contract is not triggered at all)"
       When call grep -c 'name: MARIADB_REPLICATION_PASSWORD' "${CMPD_SEMISYNC}"
       The output should eq "0"
       The status should be failure
     End
 
-    It "cmpd-semisync.yaml MARIADB_REPLICATION_PASSWORD value references MARIADB_ROOT_PASSWORD via env expansion"
+    It "cmpd-replication.yaml MARIADB_REPLICATION_PASSWORD value references MARIADB_ROOT_PASSWORD via env expansion"
       When call grep -c '            value: "$(MARIADB_ROOT_PASSWORD)"' "${CMPD_SEMISYNC}"
       The output should be present
       The status should be success
     End
 
-    It "cmpd-semisync.yaml declares MYSQL_REPLICATION_PASSWORD (syncer Go binary USER+PASSWORD pair)"
+    It "cmpd-replication.yaml declares MYSQL_REPLICATION_PASSWORD (syncer Go binary USER+PASSWORD pair)"
       When call grep -c 'name: MYSQL_REPLICATION_PASSWORD' "${CMPD_SEMISYNC}"
       The output should eq "1"
       The status should be success
     End
 
-    It "cmpd-replication.yaml is intentionally NOT extended with MARIADB_REPLICATION_PASSWORD (alpha.72/.73 v1 scope cap)"
-      When call grep -c 'name: MARIADB_REPLICATION_PASSWORD' "${CMPD_REPLICATION}"
-      The output should eq "0"
-      The status should be failure
-    End
-
-    It "cmpd-replication.yaml is intentionally NOT extended with MYSQL_REPLICATION_PASSWORD (alpha.72/.73 v1 scope cap)"
-      When call grep -c 'name: MYSQL_REPLICATION_PASSWORD' "${CMPD_REPLICATION}"
-      The output should eq "0"
-      The status should be failure
-    End
+    # [REMOVED] alpha.72/.73 v1 scope-cap tests: after CMPD consolidation
+    # (PR #2933), the single CMPD includes both MARIADB_REPLICATION_PASSWORD
+    # and MYSQL_REPLICATION_PASSWORD from the former semisync CMPD.
+    # Scope-cap assertions no longer apply.
   End
 End

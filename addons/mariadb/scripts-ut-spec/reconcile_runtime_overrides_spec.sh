@@ -228,17 +228,17 @@ EOF
       The output should eq "2"
     End
 
-    It "cmpd-semisync.yaml invokes reconcile-runtime-overrides.sh"
+    It "cmpd-replication.yaml invokes reconcile-runtime-overrides.sh"
       cmpd_path() {
-        printf "%s/addons/mariadb/templates/cmpd-semisync.yaml" "$(repo_root)"
+        printf "%s/addons/mariadb/templates/cmpd-replication.yaml" "$(repo_root)"
       }
       When call grep -c 'reconcile-runtime-overrides.sh' "$(cmpd_path)"
       The output should not eq "0"
     End
 
-    It "cmpd-replication-merged.yaml invokes reconcile-runtime-overrides.sh"
+    It "cmpd-replication.yaml invokes reconcile-runtime-overrides.sh"
       cmpd_path() {
-        printf "%s/addons/mariadb/templates/cmpd-replication-merged.yaml" "$(repo_root)"
+        printf "%s/addons/mariadb/templates/cmpd-replication.yaml" "$(repo_root)"
       }
       When call grep -c 'reconcile-runtime-overrides.sh' "$(cmpd_path)"
       The output should not eq "0"

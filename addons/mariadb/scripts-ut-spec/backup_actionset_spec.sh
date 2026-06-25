@@ -15,11 +15,11 @@ Describe "mariadb backup ActionSet account contract"
   }
 
   semisync_cmpd_path() {
-    printf "%s/addons/mariadb/templates/cmpd-semisync.yaml" "$(repo_root)"
+    printf "%s/addons/mariadb/templates/cmpd-replication.yaml" "$(repo_root)"
   }
 
   replication_merged_cmpd_path() {
-    printf "%s/addons/mariadb/templates/cmpd-replication-merged.yaml" "$(repo_root)"
+    printf "%s/addons/mariadb/templates/cmpd-replication.yaml" "$(repo_root)"
   }
 
   remote_internal_admin_grants_backup_required_privileges() {

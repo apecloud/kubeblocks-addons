@@ -86,6 +86,21 @@ spec:
           - /bin/sh
           - -c
           - MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY=true /scripts/replication-roleprobe.sh
+    memberJoin:
+      timeoutSeconds: 60
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - /scripts/replication-member-join.sh
+    memberLeave:
+      timeoutSeconds: 50
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - -c
+          - timeout 30 /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
     switchover:
       # KB kbagent enforces a hardcoded maxActionCallTimeout of 60s
       # (pkg/kbagent/service/action_utils.go), so any value above 60 is silently

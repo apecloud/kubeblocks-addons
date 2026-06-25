@@ -1,9 +1,9 @@
 # shellcheck shell=sh
 # Static checks for semisync rejoin fences in the rendered runtime template.
 
-Describe "cmpd-semisync.yaml rejoin fence template"
+Describe "cmpd-replication.yaml rejoin fence template"
   template_file() {
-    printf "%s/addons/mariadb/templates/cmpd-semisync.yaml" "${SHELLSPEC_CWD:?}"
+    printf "%s/addons/mariadb/templates/cmpd-replication.yaml" "${SHELLSPEC_CWD:?}"
   }
 
   template_contains() {
@@ -330,11 +330,8 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The output should include "fresh-bootstrap-grace"
   End
 
-  It "defers syncer primary promotion when the Primary Service already reaches a peer"
-    When call template_contains "runtime-primary-listener-reconcile-defer reason=primary-service-routes-to-peer"
-    The status should be success
-    The output should include "primary-service-routes-to-peer"
-  End
+  # [REMOVED] Test for "primary-service-routes-to-peer" — this pattern was
+  # removed during CMPD consolidation (PR #2933).
 
   It "repairs a syncer primary whose SQL listener is exposed before local write access is ready"
     When call function_contains "reconcile_sql_listener_for_syncer_primary_once" "primary-role-state-drift"
@@ -490,10 +487,8 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The status should be success
   End
 
-  It "defines fresh replica health check table preparation before SQL-thread replication"
-    When call function_contains "clear_local_kb_health_check_table" "CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check"
-    The status should be success
-  End
+  # [REMOVED] Test for clear_local_kb_health_check_table — this function was
+  # removed during CMPD consolidation (PR #2933).
 
   It "starts fresh replica IO before local health cleanup"
     When call template_contains "START SLAVE IO_THREAD;"
@@ -507,26 +502,11 @@ Describe "cmpd-semisync.yaml rejoin fence template"
     The output should include "START SLAVE SQL_THREAD"
   End
 
-  It "repairs kubeblocks health check replication errors before publishing replica readiness"
-    When call function_contains "repair_kb_health_check_replication_error" "prepared-local-kb-health-check-after-replication-error"
-    The status should be success
-  End
-
-  It "temporarily opens read_only while repairing local health check rows"
-    When call function_contains "with_local_read_write_for_health_check_repair" "SET GLOBAL read_only = 0"
-    The status should be success
-  End
-
-  It "treats missing kubeblocks health table as repairable during fresh follow"
-    When call function_contains "slave_status_has_kb_health_check_repairable_error" "Last_SQL_Errno: 1146"
-    The status should be success
-  End
-
-  It "keeps failed fresh health cleanup locally fenced"
-    When call template_contains "lock_local_root_writes \"fresh-health-check-cleanup-failed\""
-    The status should be success
-    The output should include "fresh-health-check-cleanup-failed"
-  End
+  # [REMOVED] Tests for repair_kb_health_check_replication_error,
+  # with_local_read_write_for_health_check_repair,
+  # slave_status_has_kb_health_check_repairable_error, and
+  # "fresh-health-check-cleanup-failed" — these functions/patterns were
+  # removed during CMPD consolidation (PR #2933).
 
   It "uses the internal admin for preStop SQL so root can stay fenced"
     When call template_contains "mariadb -u\"\${INTERNAL_ROOT_USER}\" -p\"\${MARIADB_ROOT_PASSWORD}\""
