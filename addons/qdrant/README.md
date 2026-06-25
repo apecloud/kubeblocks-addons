@@ -24,6 +24,14 @@ Qdrant is an open source (Apache-2.0 licensed), vector similarity search engine 
 | 1.7 | 1.7.3 |
 | 1.8 | 1.8.1,1.8.4 |
 | 1.10| 1.10.0 |
+| 1.11| 1.11.5 |
+| 1.12| 1.12.6 |
+| 1.13| 1.13.6 |
+| 1.14| 1.14.1 |
+| 1.15| 1.15.5 |
+| 1.16| 1.16.3 |
+| 1.17| 1.17.1 |
+| 1.18| 1.18.2 |
 
 ## Prerequisites
 
@@ -70,7 +78,7 @@ spec:
     - name: qdrant
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [1.10.0,1.5.0,1.7.3,1.8.1,1.8.4]
+      # Valid options are: [1.5.0,1.7.3,1.8.1,1.8.4,1.10.0,1.11.5,1.12.6,1.13.6,1.14.1,1.15.5,1.16.3,1.17.1,1.18.2]
       serviceVersion: 1.10.0
       # Update `replicas` to your need.
       # Recommended values are: [3,5,7]
@@ -105,6 +113,41 @@ spec:
 
 ```bash
 kubectl apply -f examples/qdrant/cluster.yaml
+```
+
+#### Create with API key
+
+Create a Qdrant cluster with `service.api_key` rendered into `config.yaml` by the KubeBlocks configuration variables API:
+
+```bash
+kubectl apply -f examples/qdrant/cluster-with-api-key.yaml
+```
+
+#### Configure telemetry
+
+Qdrant telemetry is disabled by default in `config.yaml`. You can override it through the KubeBlocks configuration variables API:
+
+```yaml
+configs:
+  - name: qdrant-config-template
+    variables:
+      telemetry_disabled: "false"
+```
+
+#### Create with TLS
+
+Create a Qdrant cluster with TLS enabled by the KubeBlocks Cluster TLS API:
+
+```bash
+kubectl apply -f examples/qdrant/cluster-with-tls.yaml
+```
+
+#### Create with TLS and API key
+
+Create a Qdrant cluster with both TLS and `service.api_key` enabled:
+
+```bash
+kubectl apply -f examples/qdrant/cluster-with-tls-and-api-key.yaml
 ```
 
 ### Horizontal scaling
