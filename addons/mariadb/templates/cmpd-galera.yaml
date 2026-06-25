@@ -98,9 +98,7 @@ spec:
           - -c
           - |
             set -ex
-            ALL_DB='*.*'
-            eval statement=\"${KB_ACCOUNT_STATEMENT}\"
-            mariadb -u${MARIADB_ROOT_USER} -p${MARIADB_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+            mariadb -u${MARIADB_ROOT_USER} -p${MARIADB_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${KB_ACCOUNT_STATEMENT}"
     roleProbe:
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: 5
