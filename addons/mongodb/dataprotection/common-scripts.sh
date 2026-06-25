@@ -71,14 +71,35 @@ function ensure_kubectl() {
 # syncerctl_exec runs syncerctl inside the target MongoDB pod via kubectl exec.
 # The MongoDB pod has /tools/syncerctl (copied by init-syncer) and syncer
 # listens on 127.0.0.1:3601, so syncerctl uses default host/port.
-# DP_TARGET_POD_NAME is injected by KubeBlocks dataprotection.
+# DP_TARGET_POD_NAME is injected by KubeBlocks dataprotection. If it is missing
+# (e.g. in postReady jobs), the primary pod is resolved from the cluster label.
 function syncerctl_exec() {
   ensure_kubectl || exit 1
-  if [ -z "$DP_TARGET_POD_NAME" ]; then
-    echo "ERROR: DP_TARGET_POD_NAME is not set" >&2
-    exit 1
-  fi
+  resolve_target_pod || exit 1
   kubectl exec -n "$CLUSTER_NAMESPACE" "$DP_TARGET_POD_NAME" -c mongodb -- /tools/syncerctl "$@"
+}
+
+# resolve_target_pod ensures DP_TARGET_POD_NAME is set. It prefers the
+# KubeBlocks-injected env var and falls back to looking up the pod labelled
+# kubeblocks.io/role=primary for this cluster.
+function resolve_target_pod() {
+  if [ -n "$DP_TARGET_POD_NAME" ]; then
+    return 0
+  fi
+  if [ -z "$CLUSTER_NAME" ] || [ -z "$CLUSTER_NAMESPACE" ]; then
+    echo "ERROR: DP_TARGET_POD_NAME is not set and CLUSTER_NAME/CLUSTER_NAMESPACE are missing" >&2
+    return 1
+  fi
+  echo "INFO: DP_TARGET_POD_NAME not set, resolving primary pod for cluster $CLUSTER_NAME"
+  DP_TARGET_POD_NAME=$(kubectl get pod -n "$CLUSTER_NAMESPACE" \
+    -l "app.kubernetes.io/instance=$CLUSTER_NAME,kubeblocks.io/role=primary" \
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+  if [ -z "$DP_TARGET_POD_NAME" ]; then
+    echo "ERROR: cannot find primary pod for cluster $CLUSTER_NAME in namespace $CLUSTER_NAMESPACE" >&2
+    return 1
+  fi
+  echo "INFO: resolved target pod: $DP_TARGET_POD_NAME"
+  export DP_TARGET_POD_NAME
 }
 
 # syncerctl_backup_start triggers a backup via syncer and returns the JSON response.
