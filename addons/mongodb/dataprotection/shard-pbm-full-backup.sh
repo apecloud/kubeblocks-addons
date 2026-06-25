@@ -66,7 +66,12 @@ echo "INFO: Backup description result:"
 echo "$describe_result" | jq
 last_write_time=$(echo "$describe_result" | jq -r '.last_transition_ts // .start_ts // empty')
 extras=$(buildJsonString $extras "last_write_time" "$last_write_time")
-start_time=$(echo "$describe_result" | jq -r '.start_ts // .op_id')
+start_ts=$(echo "$describe_result" | jq -r '.start_ts // empty')
+if [ -n "$start_ts" ]; then
+  start_time=$(date -u -d "@$start_ts" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -r "$start_ts" +"%Y-%m-%dT%H:%M:%SZ")
+else
+  start_time=$(echo "$describe_result" | jq -r '.op_id')
+fi
 end_unix_time=$(echo "$describe_result" | jq -r '.last_transition_ts // empty')
 if [ -n "$end_unix_time" ]; then
   end_time=$(date -u -d "@$((end_unix_time + 2))" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u +"%Y-%m-%dT%H:%M:%SZ")
