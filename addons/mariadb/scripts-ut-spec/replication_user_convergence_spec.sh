@@ -76,6 +76,7 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
   CHART_YAML="${ADDON_ROOT}/Chart.yaml"
   CMPD_SEMISYNC="${ADDON_ROOT}/templates/cmpd-replication.yaml"
   CMPD_REPLICATION="${ADDON_ROOT}/templates/cmpd-replication.yaml"
+  CMPD_ENTRYPOINT="${ADDON_ROOT}/scripts/replication-entrypoint.sh"
   MEMBER_JOIN="${ADDON_ROOT}/scripts/replication-member-join.sh"
 
   Describe "Gate 1: Chart.yaml literal version"
@@ -138,7 +139,7 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
     End
 
     It "cmpd-replication.yaml inline CHANGE MASTER uses MARIADB_REPL_USER fallback to kb_replicator (renamed env per alpha.74 v1)"
-      When call grep -c "MASTER_USER='\${MARIADB_REPL_USER:-kb_replicator}'" "${CMPD_SEMISYNC}"
+      When call grep -cF "MASTER_USER='\${MARIADB_REPL_USER:-kb_replicator}'" "${CMPD_ENTRYPOINT}"
       The output should be present
       The status should be success
     End
@@ -151,43 +152,43 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
 
   Describe "Gate 4: kb_replicator write site idempotent convergence chain (cmpd-replication.yaml ensure_internal_local_admin)"
     It "creates kb_replicator with CREATE USER IF NOT EXISTS"
-      When call grep -c "CREATE USER IF NOT EXISTS '\${replication_user}'@'%'" "${CMPD_SEMISYNC}"
+      When call grep -cF "CREATE USER IF NOT EXISTS '\${replication_user}'@'%'" "${CMPD_ENTRYPOINT}"
       The output should eq "1"
       The status should be success
     End
 
     It "applies ALTER UNLOCK (idempotent unlock after CREATE)"
-      When call grep -c "ALTER USER '\${replication_user}'@'%' ACCOUNT UNLOCK" "${CMPD_SEMISYNC}"
+      When call grep -cF "ALTER USER '\${replication_user}'@'%' ACCOUNT UNLOCK" "${CMPD_ENTRYPOINT}"
       The output should eq "1"
       The status should be success
     End
 
     It "applies REVOKE ALL PRIVILEGES (clears any prior leaked grants)"
-      When call grep -c "REVOKE ALL PRIVILEGES, GRANT OPTION FROM '\${replication_user}'@'%'" "${CMPD_SEMISYNC}"
+      When call grep -cF "REVOKE ALL PRIVILEGES, GRANT OPTION FROM '\${replication_user}'@'%'" "${CMPD_ENTRYPOINT}"
       The output should eq "1"
       The status should be success
     End
 
     It "grants exactly REPLICATION SLAVE ON *.* (no admin bypass priv, no broad grants)"
-      When call grep -c "GRANT REPLICATION SLAVE ON \*\.\* TO '\${replication_user}'@'%'" "${CMPD_SEMISYNC}"
+      When call grep -cF "GRANT REPLICATION SLAVE ON *.* TO '\${replication_user}'@'%'" "${CMPD_ENTRYPOINT}"
       The output should eq "1"
       The status should be success
     End
 
     It "does NOT grant REPLICATION SLAVE to kb_internal_root@'%' (admin role must not leak slave priv)"
-      When call grep -c "GRANT REPLICATION SLAVE ON \*\.\* TO '\${user}'@'%'" "${CMPD_SEMISYNC}"
+      When call grep -cF "GRANT REPLICATION SLAVE ON *.* TO '\${user}'@'%'" "${CMPD_ENTRYPOINT}"
       The output should eq "0"
       The status should be failure
     End
 
     It "does NOT grant ALL PRIVILEGES to kb_replicator@'%' (no admin bypass)"
-      When call grep -c "GRANT ALL PRIVILEGES ON \*\.\* TO '\${replication_user}'@'%'" "${CMPD_SEMISYNC}"
+      When call grep -cF "GRANT ALL PRIVILEGES ON *.* TO '\${replication_user}'@'%'" "${CMPD_ENTRYPOINT}"
       The output should eq "0"
       The status should be failure
     End
 
     It "uses shell var (replication_user) sourced from MARIADB_REPL_USER fallback to kb_replicator"
-      When call grep -c 'replication_user="\$(sql_quote "\${MARIADB_REPL_USER:-kb_replicator}")"' "${CMPD_SEMISYNC}"
+      When call grep -cF 'replication_user="$(sql_quote "${MARIADB_REPL_USER:-kb_replicator}")"' "${CMPD_ENTRYPOINT}"
       The output should eq "1"
       The status should be success
     End

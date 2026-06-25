@@ -208,7 +208,7 @@ Describe "alpha.89 commit 13 v2 seed-replication-mode-overrides.sh"
 
   Describe "script mount + cmpd wire-up (static contract)"
     cmpd_merged_path() {
-      printf "%s/addons/mariadb/templates/cmpd-replication.yaml" "$(repo_root)"
+      printf "%s/addons/mariadb/scripts/replication-entrypoint.sh" "$(repo_root)"
     }
 
     configmap_path() {
