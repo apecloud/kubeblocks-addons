@@ -219,6 +219,11 @@ spec:
                 fieldPath: metadata.namespace
           - name: KB_NAMESPACE
             value: $(POD_NAMESPACE)
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
           - name: SYNCER_BACKUP_ENABLED
             value: "true"
           - name: PBM_MONGODB_REPLICA_SET
