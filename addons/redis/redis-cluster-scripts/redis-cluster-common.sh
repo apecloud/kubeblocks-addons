@@ -565,7 +565,21 @@ build_cross_shard_ca_bundle() {
   fi
   set_xtrace_when_ut_mode_false
   if echo "$addslot_output" | grep -qi "already busy"; then
-    echo "Pre-init slot allocation: exchange=$exchange_slot (already owned, reusing from previous attempt)"
+    local myself_slots
+    unset_xtrace_when_ut_mode_false
+    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+      myself_slots=$($redis_cli -h 127.0.0.1 -p "$service_port" CLUSTER NODES 2>/dev/null | grep "myself" | awk '{for(i=9;i<=NF;i++) print $i}')
+    else
+      myself_slots=$($redis_cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CLUSTER NODES 2>/dev/null | grep "myself" | awk '{for(i=9;i<=NF;i++) print $i}')
+    fi
+    set_xtrace_when_ut_mode_false
+    if echo "$myself_slots" | grep -q "^${exchange_slot}$"; then
+      echo "Pre-init slot allocation: exchange=$exchange_slot (already owned by local node, reusing from previous attempt)"
+    else
+      echo "Error: CLUSTER ADDSLOTS $exchange_slot busy but not owned by local node (local slots: $myself_slots)" >&2
+      echo "Retaining CA exchange state (slot/full-coverage=no) for retry"
+      return 1
+    fi
   elif echo "$addslot_output" | grep -qi "err"; then
     echo "Error: CLUSTER ADDSLOTS $exchange_slot failed unexpectedly: $addslot_output" >&2
     echo "Retaining CA exchange state (slot/full-coverage=no) for retry"

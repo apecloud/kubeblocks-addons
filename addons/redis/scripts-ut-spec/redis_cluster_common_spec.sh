@@ -1145,15 +1145,16 @@ Describe "Redis Cluster Common Bash Script Tests"
       End
     End
 
-    Context "when ADDSLOTS returns already busy from previous attempt"
+    Context "when ADDSLOTS returns already busy and slot is owned by local node"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
 
-      It "treats already-busy as reuse from previous attempt and continues"
+      It "verifies local ownership via CLUSTER NODES and continues"
         redis-cli() {
           case "$*" in
             *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
             *"CLUSTER ADDSLOTS"*) echo "ERR Slot 12345 is already busy"; return 0 ;;
+            *"CLUSTER NODES"*) echo "abc123 127.0.0.1:6379@16379 myself,master - 0 0 0 connected 12345"; return 0 ;;
             *"CLUSTER FLUSHSLOTS"*) return 0 ;;
             *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
             *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
@@ -1178,9 +1179,34 @@ Describe "Redis Cluster Common Bash Script Tests"
 
         When call build_cross_shard_ca_bundle
         The status should be success
-        The output should include "already owned, reusing from previous attempt"
+        The output should include "already owned by local node, reusing from previous attempt"
         The output should include "CA bundle:"
         The output should include "All peer ACKs received"
+      End
+    End
+
+    Context "when ADDSLOTS returns already busy but slot not owned by local node"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "fails because local node does not own the busy slot"
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) echo "ERR Slot 12345 is already busy"; return 0 ;;
+            *"CLUSTER NODES"*) echo "abc123 127.0.0.1:6379@16379 myself,master - 0 0 0 connected 999"; return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The stderr should include "busy but not owned by local node"
+        The output should include "Retaining CA exchange state"
       End
     End
 
@@ -1319,6 +1345,7 @@ Describe "Redis Cluster Common Bash Script Tests"
               fi
               return 0
               ;;
+            *"CLUSTER NODES"*) echo "abc123 127.0.0.1:6379@16379 myself,master - 0 0 0 connected 12345"; return 0 ;;
             *"CLUSTER FLUSHSLOTS"*) return 0 ;;
             *"CONFIG GET"*cluster-require-full-coverage*)
               echo "cluster-require-full-coverage"
@@ -1357,7 +1384,7 @@ Describe "Redis Cluster Common Bash Script Tests"
         The output should include "attempt1_rc=1"
         The output should include "attempt2_rc=0"
         The output should include "Retaining CA exchange state"
-        The output should include "already owned, reusing from previous attempt"
+        The output should include "already owned by local node, reusing from previous attempt"
         The output should include "CA bundle:"
         The output should include "All peer ACKs received"
         The stderr should include "timed out waiting for CA"
