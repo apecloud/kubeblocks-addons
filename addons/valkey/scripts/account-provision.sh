@@ -75,14 +75,14 @@ while IFS= read -r line; do
       if [ "${state}" = "online" ]; then
         online_ips+=("${ip}")
       else
-        echo "WARNING: replica ${ip} state=${state}, skipping ACL push" >&2
+        echo "WARNING: replica ${ip} state=${state}, not online" >&2
       fi
       ;;
   esac
 done <<< "${repl_info}"
 
-if [ "${slave_count}" -gt 0 ] && [ "${#online_ips[@]}" -eq 0 ]; then
-  echo "ERROR: ${slave_count} replica(s) connected but none in online state — cannot propagate ACL" >&2
+if [ "${slave_count}" -gt 0 ] && [ "${#online_ips[@]}" -ne "${slave_count}" ]; then
+  echo "ERROR: ${slave_count} replica(s) connected but only ${#online_ips[@]} online — cannot guarantee all replicas receive ACL" >&2
   exit 1
 fi
 
