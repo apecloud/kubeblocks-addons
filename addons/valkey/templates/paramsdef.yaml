@@ -14,13 +14,17 @@ spec:
   fileName: valkey.conf
   fileFormatConfig:
     format: redis
+  immutableParameters:
+    - dir
+    - dbfilename
+    - appendfilename
+    - appenddirname
   staticParameters:
     - bind
     - port
     - tls-port
     - daemonize
     - databases
-    - dir
     - logfile
     - aclfile
     - tcp-backlog
