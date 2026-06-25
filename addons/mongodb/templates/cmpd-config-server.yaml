@@ -226,6 +226,8 @@ spec:
                 fieldPath: metadata.name
           - name: SYNCER_BACKUP_ENABLED
             value: "true"
+          - name: SYNCER_DISABLE_HTTP_SERVER
+            value: "true"
           - name: PBM_MONGODB_REPLICA_SET
             value: $(CLUSTER_COMPONENT_NAME)
           - name: PBM_AGENT_SIDECAR

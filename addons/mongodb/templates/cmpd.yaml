@@ -245,6 +245,8 @@ spec:
                 fieldPath: metadata.name
           - name: SYNCER_BACKUP_ENABLED
             value: "true"
+          - name: SYNCER_DISABLE_HTTP_SERVER
+            value: "true"
           - name: PBM_AGENT_MONGODB_USERNAME
             value: $(MONGODB_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
