@@ -286,7 +286,7 @@ ${mysql_cmd} "select tenant_id, backup_set_id from oceanbase.CDB_OB_BACKUP_JOB_H
       tenantJson=$(buildJsonString "$tenantJson" "poolList" "${pool_list}")
       echo "{${tenantJson}}" >> ${tenantFile}
       saveEndTime "${res[5]}" "${res[6]}"
-      waitArchiveCheckpoint "${tenant_id}" "${tenantName}" "${res[5]}"
+      waitArchiveCheckpoint "${tenant_id}" "${tenantName}" "${res[5]}" || true
     done
 
     ${mysql_cmd} "SELECT r.name, u.name as unit_name, r.unit_count, r.zone_list FROM oceanbase.DBA_OB_RESOURCE_POOLS r, oceanbase.DBA_OB_UNIT_CONFIGS u where u.UNIT_CONFIG_ID = r.UNIT_CONFIG_ID and r.TENANT_ID=${tenant_id};" | while IFS=$'\t' read -a pool; do
@@ -294,11 +294,6 @@ ${mysql_cmd} "select tenant_id, backup_set_id from oceanbase.CDB_OB_BACKUP_JOB_H
        echo "create resource pool if not exists ${pool[0]} UNIT=${pool[1]}, UNIT_NUM=${pool[2]}, ZONE_LIST=$(covertStringToOBArray ${pool[3]});" >> ${resourcePoolSQLFile}
     done
 done
-
-if [[ -f ${archiveCheckpointFailedFile} ]]; then
-   cat ${archiveCheckpointFailedFile}
-   exit 1
-fi
 
 # step 7 ==> close tenant archive if the tenant did not have archive enabled before this backup.
 if [[ -f $noArchivedTenantsFiles ]]; then
@@ -312,6 +307,10 @@ if [[ -f $noArchivedTenantsFiles ]]; then
    done
 fi
 
+if [[ -f ${archiveCheckpointFailedFile} ]]; then
+   cat ${archiveCheckpointFailedFile}
+   exit 1
+fi
 
 # step 8===> get extras infos
 extras=""
