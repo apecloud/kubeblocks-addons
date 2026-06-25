@@ -70,6 +70,9 @@ addons-cluster/oceanbase-ce/ @Powerfooi @shanshanying @leon-ape @apecloud/kb-rev
 addons/opensearch/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/opensearch/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
+addons/openviking/ @OpenViking_Contributors @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/openviking/ @OpenViking_Contributors @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+
 addons/orchestrator/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/orchestrator/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
