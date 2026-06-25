@@ -20,6 +20,8 @@ local_sql() {
 
 echo "memberLeave: stopping replication on ${POD_NAME:-this node}..."
 
+# best-effort: exit 0 regardless — blocking scale-in is worse than stale config.
+# memberJoin unconditionally overwrites replication config on rejoin.
 if ! local_sql -e "STOP SLAVE;" 2>&1; then
   echo "memberLeave: STOP SLAVE failed (pod is departing; not fatal)"
 fi
