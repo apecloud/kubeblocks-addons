@@ -22,7 +22,7 @@ Accepted values:
   "async"   — install-time mode = async.
   "semisync" — install-time mode = semisync.
 
-Called from `cmpd-replication-merged.yaml` (the only place the value
+Called from `cmpd-replication.yaml` (the only place the value
 is consumed). Other CmpDs do not declare the env entry and are not
 affected.
 */}}
@@ -110,57 +110,10 @@ mariadb-replication-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define mariadb-semisync component definition name
-*/}}
-{{- define "mariadb.semisync.cmpdName" -}}
-mariadb-semisync-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
 Define mariadb-galera component definition name
 */}}
 {{- define "mariadb.galera.cmpdName" -}}
 mariadb-galera-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define mariadb-replication-merged component definition name.
-
-alpha.89 v1 (Helen 2026-05-19, Jack design review non-blocking
-clarification) — new CmpD for topology merge (weston 2026-05-19
-14:12 Option B). The merged CmpD consolidates the old
-`mariadb-replication` (async) and `mariadb-semisync` CmpDs into one.
-Current mode selection is install/render-time only: the Helm value
-`replication.mode` is validated by
-`mariadb.replication.mode.validate` and wired to the merged CmpD as
-`MARIADB_REPLICATION_MODE`. The current chart does not expose any
-per-Cluster mode parameter named `replicationMode`.
-
-The new CmpD name is `mariadb-replication-merged-{ChartVersion}`.
-It still starts with `mariadb-replication-`, but disambiguation from
-the old replication CmpD lives in two places: the `-merged-` infix
-in this new name, and the narrowed `^mariadb-replication-[0-9]`
-regex on the old CmpD's PD (see
-`mariadb.replication.cmpdRegexpPattern` above). A separate regex
-`^mariadb-replication-merged-` binds the merged CmpD's PD. The
-`replication_merged_pd_regex_disambiguation_spec.sh` ShellSpec
-locks the resulting mutual exclusion across all five CmpD names.
-
-A new CmpD name (rather than reusing the old exact CmpD name) is
-required so KB does not see this as a mutation of the existing
-immutable CmpD spec — see Chart.yaml header for the immutability
-rule.
-*/}}
-{{- define "mariadb.replication.merged.cmpdName" -}}
-mariadb-replication-merged-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Regexp pattern for the merged replication CmpD (matches names that
-start with the merged prefix; used by ParametersDefinition).
-*/}}
-{{- define "mariadb.replication.merged.cmpdRegexpPattern" -}}
-^mariadb-replication-merged-
 {{- end -}}
 
 {{/*
@@ -179,25 +132,10 @@ Define mariadb standalone component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define mariadb-replication component definition regular expression name prefix.
-
-alpha.89 v1 (Helen 2026-05-19, Jack design review Blocker 1) — narrowed
-from `^mariadb-replication-` to `^mariadb-replication-[0-9]` so the
-old replication CmpD regex does NOT also match the new merged CmpD
-name `mariadb-replication-merged-{ChartVersion}`. The chart-version
-suffix on the old CmpD name always starts with a digit (e.g.
-`mariadb-replication-1.1.1-alpha.89`), so requiring a digit
-immediately after the `replication-` prefix is a safe disambiguator.
+Define mariadb-replication component definition regular expression name prefix
 */}}
 {{- define "mariadb.replication.cmpdRegexpPattern" -}}
-^mariadb-replication-[0-9]
-{{- end -}}
-
-{{/*
-Define mariadb-semisync component definition regular expression name prefix
-*/}}
-{{- define "mariadb.semisync.cmpdRegexpPattern" -}}
-^mariadb-semisync-
+^mariadb-replication-
 {{- end -}}
 
 {{/*
@@ -284,7 +222,7 @@ reconfigure:
         # The MARIADB_ROOT_PASSWORD env shared with the internal admin (chart
         # provisions identical passwords); we keep the same env to avoid a new
         # secret indirection. Default fallback to kb_internal_root mirrors the
-        # preStop hook convention in cmpd-semisync.yaml.
+        # preStop hook convention in cmpd-replication.yaml.
         mariadb_exec() {
           query="$1"
           INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
@@ -545,7 +483,7 @@ Why a separate variant and not a flag in the base helper: standalone /
 replication / galera cmpds neither have init-syncer create the loader
 file nor pass `--defaults-extra-file` to mariadbd; adding persistence
 writes there would produce dead files mariadbd never loads (the
-non-empty-unenforced class). cmpd-semisync.yaml is the single caller of
+non-empty-unenforced class). cmpd-replication.yaml is the single caller of
 the persisted variant.
 
 Jack 5-guard enforcement (peer review msg `a13b8850`); Guard 5
@@ -1085,11 +1023,11 @@ systemAccounts:
 {{- end -}}
 
 {{/*
-System accounts for semisync + replication-merged topologies (Phase A account-model RFC; design review issue 3 from 2026-05-31 audit).
+System accounts for replication topology (Phase A account-model RFC; design review issue 3 from 2026-05-31 audit).
 
 Phase A scope is DECLARATIVE ONLY. kb_internal_root and kb_replicator are declared as KubeBlocks-managed systemAccounts with `initAccount: true` so KB controller materializes a placeholder Secret per account and tracks the lifecycle hook, but does NOT execute `accountProvision.statement.create` SQL against the engine. Per `transformer_component_account_provision.go:161-167`, `initAccount: true` short-circuits the provision exec path.
 
-DB-side runtime behavior is still owned by chart scripts: chart's `ensure_internal_local_admin` (cmpd-semisync.yaml + cmpd-replication-merged.yaml) and initdb (cmpd.yaml) continue to inline-create + maintain kb_internal_root and kb_replicator using `${MARIADB_ROOT_PASSWORD}`. The `kb_internal_root` @'%' allowlist is intentionally narrow: backup-required RELOAD/PROCESS, replication monitor/admin grants needed by syncer and mariabackup, narrow kubeblocks table grants, and SELECT mysql.user. `kb_replicator` remains REPLICATION SLAVE only.
+DB-side runtime behavior is still owned by chart scripts: chart's `ensure_internal_local_admin` (cmpd-replication.yaml) and initdb (cmpd.yaml) continue to inline-create + maintain kb_internal_root and kb_replicator using `${MARIADB_ROOT_PASSWORD}`. The `kb_internal_root` @'%' allowlist is intentionally narrow: backup-required RELOAD/PROCESS, replication monitor/admin grants needed by syncer and mariabackup, narrow kubeblocks table grants, and SELECT mysql.user. `kb_replicator` remains REPLICATION SLAVE only.
 
 Phase A's only behavior delta is that KB controller now materializes a Secret per declared account and tracks `Component.status.conditions[SystemAccountProvision]`. The KB-managed Secret password is random (per passwordGenerationPolicy below) and INTENTIONALLY DIFFERENT from the DB-side password (= MARIADB_ROOT_PASSWORD). No external consumer reads these two Secrets in Phase A; alpha.110 also did not expose them.
 
