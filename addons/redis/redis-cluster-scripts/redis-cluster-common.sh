@@ -554,16 +554,25 @@ build_cross_shard_ca_bundle() {
   fi
 
   local exchange_slot
+  local addslot_output
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
     exchange_slot=$($redis_cli -h 127.0.0.1 -p "$service_port" CLUSTER KEYSLOT "$ca_exchange_key" 2>/dev/null)
-    $redis_cli -h 127.0.0.1 -p "$service_port" CLUSTER ADDSLOTS "$exchange_slot" > /dev/null 2>&1
+    addslot_output=$($redis_cli -h 127.0.0.1 -p "$service_port" CLUSTER ADDSLOTS "$exchange_slot" 2>&1)
   else
     exchange_slot=$($redis_cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CLUSTER KEYSLOT "$ca_exchange_key" 2>/dev/null)
-    $redis_cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CLUSTER ADDSLOTS "$exchange_slot" > /dev/null 2>&1
+    addslot_output=$($redis_cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CLUSTER ADDSLOTS "$exchange_slot" 2>&1)
   fi
   set_xtrace_when_ut_mode_false
-  echo "Pre-init slot allocation: exchange=$exchange_slot"
+  if echo "$addslot_output" | grep -qi "already busy"; then
+    echo "Pre-init slot allocation: exchange=$exchange_slot (already owned, reusing from previous attempt)"
+  elif echo "$addslot_output" | grep -qi "err"; then
+    echo "Error: CLUSTER ADDSLOTS $exchange_slot failed unexpectedly: $addslot_output" >&2
+    echo "Retaining CA exchange state (slot/full-coverage=no) for retry"
+    return 1
+  else
+    echo "Pre-init slot allocation: exchange=$exchange_slot (fresh)"
+  fi
 
   local attempt_nonce="${RANDOM}${RANDOM}"
   local nonce_key="{__KB_TLS__}_NONCE"
@@ -578,6 +587,7 @@ build_cross_shard_ca_bundle() {
   set_xtrace_when_ut_mode_false
   if [ $nonce_set_rc -ne 0 ]; then
     echo "Error: failed to set attempt nonce" >&2
+    echo "Retaining CA exchange state (CA key/slot/full-coverage=no) for retry"
     return 1
   fi
   echo "Attempt nonce: $attempt_nonce"
@@ -593,6 +603,7 @@ build_cross_shard_ca_bundle() {
   set_xtrace_when_ut_mode_false
   if [ $set_rc -ne 0 ]; then
     echo "Error: failed to publish local CA to $ca_exchange_key (rc=$set_rc)" >&2
+    echo "Retaining CA exchange state (CA key/slot/full-coverage=no) for retry"
     _cleanup_ca_exchange_key "$nonce_key" "$service_port"
     return 1
   fi
@@ -669,6 +680,7 @@ build_cross_shard_ca_bundle() {
         echo "Error: timed out waiting for CA from ${peer_fqdns[$i]}" >&2
       fi
     done
+    echo "Retaining CA exchange state (CA key/slot/full-coverage=no) for retry"
     _cleanup_ca_exchange_key "$nonce_key" "$service_port"
     return 1
   fi
@@ -684,6 +696,7 @@ build_cross_shard_ca_bundle() {
     set_xtrace_when_ut_mode_false
     if [ -z "$peer_nonce" ]; then
       echo "Error: failed to read nonce from ${peer_fqdns[$i]}" >&2
+      echo "Retaining CA exchange state (CA key/slot/full-coverage=no) for retry"
       _cleanup_ca_exchange_key "$nonce_key" "$service_port"
       return 1
     fi
@@ -721,6 +734,7 @@ build_cross_shard_ca_bundle() {
     echo "CONFIG SET tls-ca-cert-file rc=$config_set_rc"
     if [ $config_set_rc -ne 0 ]; then
       echo "Error: CONFIG SET tls-ca-cert-file failed" >&2
+      echo "Retaining CA exchange state (CA key/slot/full-coverage=no) for retry"
       _cleanup_ca_exchange_key "$nonce_key" "$service_port"
       return 1
     fi
@@ -736,6 +750,7 @@ build_cross_shard_ca_bundle() {
     echo "CONFIG GET tls-ca-cert-file readback: $readback"
     if [ "$readback" != "$ca_bundle_path" ]; then
       echo "Error: tls-ca-cert-file readback mismatch, expected $ca_bundle_path" >&2
+      echo "Retaining CA exchange state (CA key/slot/full-coverage=no) for retry"
       _cleanup_ca_exchange_key "$nonce_key" "$service_port"
       return 1
     fi
@@ -751,6 +766,7 @@ build_cross_shard_ca_bundle() {
   for i in "${!peer_fqdns[@]}"; do
     if ! _write_ack_to_peer "${peer_fqdns[$i]}" "${peer_ports[$i]}" "$my_ack_key"; then
       echo "Error: failed to write ACK to ${peer_fqdns[$i]}" >&2
+      echo "Retaining CA exchange state (CA key/slot/full-coverage=no) for retry"
       _cleanup_ca_exchange_key "$nonce_key" "$service_port"
       return 1
     fi
@@ -763,6 +779,7 @@ build_cross_shard_ca_bundle() {
   done
 
   if ! _wait_for_peer_acks "$service_port" "${expected_ack_keys[@]}"; then
+    echo "Retaining CA exchange state (CA key/slot/full-coverage=no) for retry"
     _cleanup_ca_exchange_key "$nonce_key" "$service_port"
     return 1
   fi

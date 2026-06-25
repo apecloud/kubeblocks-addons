@@ -1145,6 +1145,225 @@ Describe "Redis Cluster Common Bash Script Tests"
       End
     End
 
+    Context "when ADDSLOTS returns already busy from previous attempt"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "treats already-busy as reuse from previous attempt and continues"
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) echo "ERR Slot 12345 is already busy"; return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
+            *DEL*) return 0 ;;
+            *SET*_PEER_CA*) return 0 ;;
+            *SET*_NONCE*) return 0 ;;
+            *SET*_ACK_*) return 0 ;;
+            *GET*_PEER_CA*)
+              echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZBS0VfRElGRkVSRU5UX1BFRVIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
+              return 0
+              ;;
+            *GET*_NONCE*) echo "peer_nonce_42"; return 0 ;;
+            *GET*_ACK_*) echo "1"; return 0 ;;
+            *"CONFIG SET"*) return 0 ;;
+            *"CONFIG GET"*) echo "tls-ca-cert-file"; echo "./test_data/ca-bundle.crt"; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        openssl() { return 0; }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be success
+        The output should include "already owned, reusing from previous attempt"
+        The output should include "CA bundle:"
+        The output should include "All peer ACKs received"
+      End
+    End
+
+    Context "when ADDSLOTS returns unexpected error"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "fails and logs the unexpected error"
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) echo "ERR Invalid or out of range slot"; return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The stderr should include "CLUSTER ADDSLOTS 12345 failed unexpectedly"
+        The stderr should include "Invalid or out of range slot"
+        The output should include "Retaining CA exchange state"
+      End
+    End
+
+    Context "when failure path preserves CA exchange state with retry log"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "logs retaining message and does not delete CA or restore full-coverage on timeout"
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*no*) return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*yes*) touch "./test_data/coverage_restored"; return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) touch "./test_data/flushslots_called"; return 0 ;;
+            *DEL*_PEER_CA*) touch "./test_data/ca_del_called"; return 0 ;;
+            *SET*) return 0 ;;
+            *GET*_PEER_CA*) echo ""; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be failure
+        The output should include "Retaining CA exchange state"
+        The stderr should include "timed out waiting for CA"
+        The path "./test_data/ca_del_called" should not be exist
+        The path "./test_data/flushslots_called" should not be exist
+        The path "./test_data/coverage_restored" should not be exist
+      End
+    End
+
+    Context "when success path performs full cleanup"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "deletes CA key, nonce, ACKs, flushes slots, and restores coverage on success"
+        redis-cli() {
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*) return 0 ;;
+            *"CLUSTER FLUSHSLOTS"*) touch "./test_data/flushslots_called"; return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*) echo "cluster-require-full-coverage"; echo "yes"; return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*no*) return 0 ;;
+            *"CONFIG SET"*cluster-require-full-coverage*yes*) touch "./test_data/coverage_restored"; return 0 ;;
+            *DEL*_PEER_CA*) touch "./test_data/ca_del_called"; return 0 ;;
+            *DEL*_NONCE*) touch "./test_data/nonce_del_called"; return 0 ;;
+            *DEL*_ACK_*) touch "./test_data/ack_del_called"; return 0 ;;
+            *SET*_PEER_CA*) return 0 ;;
+            *SET*_NONCE*) return 0 ;;
+            *SET*_ACK_*) return 0 ;;
+            *GET*_PEER_CA*)
+              echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZBS0VfRElGRkVSRU5UX1BFRVIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
+              return 0
+              ;;
+            *GET*_NONCE*) echo "peer_nonce_42"; return 0 ;;
+            *GET*_ACK_*) echo "1"; return 0 ;;
+            *"CONFIG SET"*) return 0 ;;
+            *"CONFIG GET"*) echo "tls-ca-cert-file"; echo "./test_data/ca-bundle.crt"; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        openssl() { return 0; }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call build_cross_shard_ca_bundle
+        The status should be success
+        The output should include "CA bundle:"
+        The output should include "All peer ACKs received"
+        The path "./test_data/ca_del_called" should be exist
+        The path "./test_data/nonce_del_called" should be exist
+        The path "./test_data/ack_del_called" should be exist
+        The path "./test_data/flushslots_called" should be exist
+        The path "./test_data/coverage_restored" should be exist
+      End
+    End
+
+    Context "when retry-persistent recovery across two attempts"
+      Before "ca_bundle_setup"
+      After "ca_bundle_cleanup"
+
+      It "attempt1 fails preserving state, attempt2 succeeds with persisted CA and new nonce"
+        echo "1" > "./test_data/attempt"
+        retry_wrapper() {
+          # Attempt 1: peer CA not available -> timeout -> return 1
+          echo "1" > "./test_data/attempt"
+          build_cross_shard_ca_bundle
+          local rc1=$?
+          echo "attempt1_rc=$rc1"
+
+          # Attempt 2: peer CA available, ADDSLOTS already busy from attempt1
+          echo "2" > "./test_data/attempt"
+          build_cross_shard_ca_bundle
+          local rc2=$?
+          echo "attempt2_rc=$rc2"
+
+          return $rc2
+        }
+
+        redis-cli() {
+          local attempt; attempt=$(cat "./test_data/attempt")
+          case "$*" in
+            *"CLUSTER KEYSLOT"*) echo "12345"; return 0 ;;
+            *"CLUSTER ADDSLOTS"*)
+              if [ "$attempt" = "2" ]; then
+                echo "ERR Slot 12345 is already busy"
+              fi
+              return 0
+              ;;
+            *"CLUSTER FLUSHSLOTS"*) return 0 ;;
+            *"CONFIG GET"*cluster-require-full-coverage*)
+              echo "cluster-require-full-coverage"
+              if [ "$attempt" = "2" ]; then
+                echo "no"
+              else
+                echo "yes"
+              fi
+              return 0
+              ;;
+            *"CONFIG SET"*cluster-require-full-coverage*) return 0 ;;
+            *DEL*) return 0 ;;
+            *SET*_PEER_CA*) return 0 ;;
+            *SET*_NONCE*) return 0 ;;
+            *SET*_ACK_*) return 0 ;;
+            *GET*_PEER_CA*)
+              if [ "$attempt" = "1" ]; then
+                echo ""; return 0
+              fi
+              echo "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZBS0VfRElGRkVSRU5UX1BFRVIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
+              return 0
+              ;;
+            *GET*_NONCE*) echo "peer_nonce_42"; return 0 ;;
+            *GET*_ACK_*) echo "1"; return 0 ;;
+            *"CONFIG SET"*) return 0 ;;
+            *"CONFIG GET"*) echo "tls-ca-cert-file"; echo "./test_data/ca-bundle.crt"; return 0 ;;
+            *) return 0 ;;
+          esac
+        }
+        openssl() { return 0; }
+        extract_obj_ordinal() { echo "0"; }
+        get_pod_service_port_by_network_mode() { echo "6379"; }
+
+        When call retry_wrapper
+        The status should be success
+        The output should include "attempt1_rc=1"
+        The output should include "attempt2_rc=0"
+        The output should include "Retaining CA exchange state"
+        The output should include "already owned, reusing from previous attempt"
+        The output should include "CA bundle:"
+        The output should include "All peer ACKs received"
+        The stderr should include "timed out waiting for CA"
+      End
+    End
+
     Context "when stale ACK from previous attempt exists but current nonce differs"
       Before "ca_bundle_setup"
       After "ca_bundle_cleanup"
