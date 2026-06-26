@@ -71,9 +71,9 @@ spec:
       value: {{ .Values.tlsMountPath }}
   lifecycleActions:
     memberLeave:
-      timeoutSeconds: 30
+      timeoutSeconds: 60
       retryPolicy:
-        maxRetries: 3
+        maxRetries: 120
         retryInterval: 5
       exec:
         command:
