@@ -94,11 +94,19 @@ spec:
       exec:
         container: mariadb
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
           - |
             set -ex
-            mariadb -u${MARIADB_ROOT_USER} -p${MARIADB_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${KB_ACCOUNT_STATEMENT}"
+            ALL_DB='*.*'
+            p_name='${KB_ACCOUNT_NAME}'
+            p_pass='${KB_ACCOUNT_PASSWORD}'
+            p_alldb='${ALL_DB}'
+            stmt=${KB_ACCOUNT_STATEMENT}
+            stmt=${stmt//$p_name/$KB_ACCOUNT_NAME}
+            stmt=${stmt//$p_pass/$KB_ACCOUNT_PASSWORD}
+            stmt=${stmt//$p_alldb/$ALL_DB}
+            mariadb -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -e "${stmt}"
     roleProbe:
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: 5
