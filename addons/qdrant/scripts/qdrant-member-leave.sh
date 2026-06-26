@@ -113,7 +113,7 @@ drain_operations_for_collection() {
         if ($shard.shard_key // null) == null then $object else $object + {shard_key: $shard.shard_key} end;
       def desired_peer($uri):
         ($desired_pods | split(",") | map(select(. != ""))) as $pods
-        | if ($pods | length) == 0 then true else any($pods[]; $uri | contains("://" + . + ".")) end;
+        | if ($pods | length) == 0 then true else any($pods[]; . as $pod | $uri | contains("://" + $pod + ".")) end;
 
       . as $info
       | ($current_cluster.result.peers
