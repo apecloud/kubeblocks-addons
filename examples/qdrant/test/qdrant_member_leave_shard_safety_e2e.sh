@@ -3,16 +3,17 @@
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-demo}"
-CLUSTER_NAME="${CLUSTER_NAME:-qdrant-memberleave-shard-safety}"
-API_KEY="${QDRANT_API_KEY:-qdrant-shard-safety-key}"
+CLUSTER_NAME="${CLUSTER_NAME:-qdrant-memberleave-shard-drain}"
+API_KEY="${QDRANT_API_KEY:-qdrant-shard-drain-key}"
 API_KEY_ENABLED="${API_KEY_ENABLED:-true}"
 QDRANT_TLS_ENABLED="${QDRANT_TLS_ENABLED:-false}"
 SERVICE_VERSION="${SERVICE_VERSION:-1.18.2}"
 STORAGE_CLASS_NAME="${STORAGE_CLASS_NAME:-}"
 STORAGE_SIZE="${STORAGE_SIZE:-20Gi}"
-QDRANT_COLLECTION="${QDRANT_COLLECTION:-memberleave-shard-safety}"
+QDRANT_COLLECTION="${QDRANT_COLLECTION:-memberleave-shard-drain}"
+QDRANT_POINT_SOURCE="${QDRANT_POINT_SOURCE:-memberleave-shard-drain}"
+QDRANT_POINT_COUNT="${QDRANT_POINT_COUNT:-18}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-900}"
-SCALE_IN_SAFETY_SECONDS="${SCALE_IN_SAFETY_SECONDS:-120}"
 SKIP_CLEANUP="${SKIP_CLEANUP:-false}"
 
 TMP_DIR="$(mktemp -d)"
@@ -211,6 +212,83 @@ wait_for_leaving_peer_with_shards() {
   return 1
 }
 
+seed_points() {
+  local payload
+
+  payload="$(jq -n \
+    --arg source "$QDRANT_POINT_SOURCE" \
+    --argjson count "$QDRANT_POINT_COUNT" '
+      {
+        points: [
+          range(1; $count + 1) as $id
+          | {
+              id: $id,
+              vector: [($id / 100), 0.2, 0.3, 0.4],
+              payload: {
+                source: $source,
+                seq: $id
+              }
+            }
+        ]
+      }
+    ')"
+
+  qdrant_curl -X PUT "${QDRANT_SCHEME}://localhost:6333/collections/${QDRANT_COLLECTION}/points?wait=true" \
+    -H "Content-Type: application/json" \
+    -d "$payload" >/dev/null
+}
+
+point_count() {
+  qdrant_curl -X POST "${QDRANT_SCHEME}://localhost:6333/collections/${QDRANT_COLLECTION}/points/count" \
+    -H "Content-Type: application/json" \
+    -d '{"exact":true}' \
+    | jq -r '.result.count'
+}
+
+points_digest() {
+  local limit
+
+  limit=$((QDRANT_POINT_COUNT + 5))
+  qdrant_curl -X POST "${QDRANT_SCHEME}://localhost:6333/collections/${QDRANT_COLLECTION}/points/scroll" \
+    -H "Content-Type: application/json" \
+    -d "{\"limit\":${limit},\"with_payload\":true,\"with_vector\":true}" \
+    | jq -c --arg source "$QDRANT_POINT_SOURCE" '
+        [
+          .result.points[]
+          | select(.payload.source == $source)
+          | {
+              id,
+              payload: {
+                source: .payload.source,
+                seq: .payload.seq
+              },
+              vector
+            }
+        ]
+        | sort_by(.id)
+      '
+}
+
+wait_for_point_count() {
+  local expected_count="$1"
+  local deadline
+  local actual_count
+
+  deadline="$(deadline_after "$TIMEOUT_SECONDS")"
+
+  while [ "$(now_seconds)" -lt "$deadline" ]; do
+    actual_count="$(point_count 2>/dev/null || true)"
+    if [ "$actual_count" = "$expected_count" ]; then
+      return 0
+    fi
+    sleep 5
+  done
+
+  echo "ERROR: timed out waiting for ${expected_count} qdrant point(s)" >&2
+  point_count >&2 || true
+  return 1
+}
+
 create_scale_in_opsrequest() {
   local ops_name="${CLUSTER_NAME}-scale-in-1"
 
@@ -232,33 +310,53 @@ EOF
   kubectl apply -f "${TMP_DIR}/${ops_name}.yaml"
 }
 
-assert_scale_in_not_succeed() {
+wait_for_scale_in_succeed() {
   local ops_name="${CLUSTER_NAME}-scale-in-1"
   local deadline
   local phase
 
-  deadline="$(deadline_after "$SCALE_IN_SAFETY_SECONDS")"
+  deadline="$(deadline_after "$TIMEOUT_SECONDS")"
 
   while [ "$(now_seconds)" -lt "$deadline" ]; do
     phase="$(kubectl -n "$NAMESPACE" get "opsrequest/${ops_name}" -o "jsonpath={.status.phase}" 2>/dev/null || true)"
     case "$phase" in
       Succeed)
-        echo "ERROR: opsrequest/${ops_name} succeeded even though a leaving peer owns shards" >&2
+        return 0
+        ;;
+      Failed|Cancelled|Aborted)
+        echo "ERROR: opsrequest/${ops_name} ended with phase ${phase}" >&2
         kubectl -n "$NAMESPACE" get "opsrequest/${ops_name}" -oyaml >&2 || true
         collection_cluster_info >&2 || true
         return 1
-        ;;
-      Failed|Cancelled)
-        echo "INFO: opsrequest/${ops_name} ended with phase ${phase}; shard safety was preserved"
-        return 0
         ;;
     esac
     sleep 5
   done
 
-  echo "INFO: opsrequest/${ops_name} did not succeed within ${SCALE_IN_SAFETY_SECONDS}s; shard safety was preserved"
+  echo "ERROR: timed out waiting for opsrequest/${ops_name} to succeed" >&2
   kubectl -n "$NAMESPACE" get "opsrequest/${ops_name}" -oyaml >&2 || true
-  return 0
+  collection_cluster_info >&2 || true
+  return 1
+}
+
+assert_points_consistent() {
+  local expected_digest="$1"
+  local actual_count
+  local actual_digest
+
+  wait_for_point_count "$QDRANT_POINT_COUNT"
+  actual_count="$(point_count)"
+  actual_digest="$(points_digest)"
+  if [ "$actual_count" != "$QDRANT_POINT_COUNT" ]; then
+    echo "ERROR: expected ${QDRANT_POINT_COUNT} qdrant point(s), got ${actual_count}" >&2
+    return 1
+  fi
+  if [ "$actual_digest" != "$expected_digest" ]; then
+    echo "ERROR: qdrant point digest changed after scale-in" >&2
+    echo "expected: ${expected_digest}" >&2
+    echo "actual:   ${actual_digest}" >&2
+    return 1
+  fi
 }
 
 write_cluster_manifest() {
@@ -331,10 +429,18 @@ qdrant_curl -X PUT "${QDRANT_SCHEME}://localhost:6333/collections/${QDRANT_COLLE
   -H "Content-Type: application/json" \
   -d '{"vectors":{"size":4,"distance":"Cosine"},"shard_number":6,"replication_factor":1,"write_consistency_factor":1}' >/dev/null
 
+echo "INFO: writing ${QDRANT_POINT_COUNT} qdrant point(s)"
+seed_points
+wait_for_point_count "$QDRANT_POINT_COUNT"
+expected_digest="$(points_digest)"
+
 wait_for_leaving_peer_with_shards
 
-echo "INFO: verifying qdrant scale-in does not succeed while leaving peers own shards"
+echo "INFO: verifying qdrant memberLeave drains shards before removing peers"
 create_scale_in_opsrequest
-assert_scale_in_not_succeed
+wait_for_scale_in_succeed
+wait_for_qdrant_ready_pod_count 1
+wait_for_qdrant_peer_count 1
+assert_points_consistent "$expected_digest"
 
-echo "INFO: qdrant memberLeave shard-safety e2e passed"
+echo "INFO: qdrant memberLeave shard-drain e2e passed"

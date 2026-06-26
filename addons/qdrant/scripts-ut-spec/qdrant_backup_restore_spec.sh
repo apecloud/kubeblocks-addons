@@ -247,6 +247,17 @@ EOF
     The status should be success
   End
 
+  It "uses the packaged curl binary for qdrant member leave actions"
+    When run grep -c 'QDRANT_CURL_BIN="${QDRANT_CURL_BIN:-/qdrant/tools/curl}"' ../scripts/qdrant-member-leave.sh
+    The status should be success
+    The output should eq 1
+  End
+
+  It "uses a non-leaving qdrant peer as the member leave API endpoint"
+    When run sh -c "grep -q 'select_qdrant_api_peer_fqdn' ../scripts/qdrant-member-leave.sh && grep -q 'KB_LEAVE_MEMBER_POD_NAME' ../scripts/qdrant-member-leave.sh && grep -q 'current_peer_uri=.*api_peer_fqdn' ../scripts/qdrant-member-leave.sh"
+    The status should be success
+  End
+
   It "serializes concurrent qdrant member leave actions"
     When run grep -c 'flock -n -x 9' ../scripts/qdrant-member-leave.sh
     The status should be success
@@ -263,10 +274,24 @@ EOF
     The status should be success
   End
 
-  It "does not block qdrant member leave on shard movement"
-    When run sh -c "grep -E -c 'while true|sleep [0-9]|move_shards|local_shards' ../scripts/qdrant-member-leave.sh || true"
+  It "drains qdrant shards before removing the leaving peer"
+    When run sh -c "grep -q 'drain_peer_shards' ../scripts/qdrant-member-leave.sh && grep -q 'move_shard' ../scripts/qdrant-member-leave.sh && grep -q 'drop_replica' ../scripts/qdrant-member-leave.sh && grep -q 'wait_for_peer_drain' ../scripts/qdrant-member-leave.sh && sed -n '/remove_peer()/,/^}/p' ../scripts/qdrant-member-leave.sh | awk '/drain_peer_shards/{drain=NR} /-XDELETE/{remove=NR} END{exit !(drain && remove && drain < remove)}'"
     The status should be success
-    The output should eq 0
+  End
+
+  It "moves qdrant shards only to desired peers when pod variables are available"
+    When run sh -c "grep -q 'desired_peer' ../scripts/qdrant-member-leave.sh && grep -q 'map(select(desired_peer(.value.uri)))' ../scripts/qdrant-member-leave.sh && grep -Fq '. as \$pod | \$uri | contains(\"://\" + \$pod + \".\")' ../scripts/qdrant-member-leave.sh"
+    The status should be success
+  End
+
+  It "prefers lower-ordinal qdrant peers as shard drain targets"
+    When run sh -c "grep -q 'def pod_ordinal' ../scripts/qdrant-member-leave.sh && grep -q 'ordinal: pod_ordinal(.value.uri)' ../scripts/qdrant-member-leave.sh && grep -q 'sort_by(if .preferred then 0 else 1 end, .ordinal' ../scripts/qdrant-member-leave.sh"
+    The status should be success
+  End
+
+  It "counts local qdrant shards on the leaving peer before remove"
+    When run sh -c "grep -Fq '(if ((' ../scripts/qdrant-member-leave.sh && grep -Fq 'else empty end),' ../scripts/qdrant-member-leave.sh && grep -Fq 'remote_shards[]?' ../scripts/qdrant-member-leave.sh"
+    The status should be success
   End
 
   It "makes qdrant member leave retry-safe when the leaving pod is already gone"
@@ -285,8 +310,8 @@ EOF
     The output should eq 1
   End
 
-  It "bounds and retries the qdrant member leave lifecycle action"
-    When run sh -c "sed -n '/memberLeave:/,/logConfigs:/p' ../templates/cmpd.yaml | grep -q 'timeoutSeconds: 30' && sed -n '/memberLeave:/,/logConfigs:/p' ../templates/cmpd.yaml | grep -q 'maxRetries: 3' && sed -n '/memberLeave:/,/logConfigs:/p' ../templates/cmpd.yaml | grep -q 'retryInterval: 5'"
+  It "bounds and retries qdrant member leave long enough for shard migration"
+    When run sh -c "sed -n '/memberLeave:/,/logConfigs:/p' ../templates/cmpd.yaml | grep -q 'timeoutSeconds: 60' && sed -n '/memberLeave:/,/logConfigs:/p' ../templates/cmpd.yaml | grep -q 'maxRetries: 120' && sed -n '/memberLeave:/,/logConfigs:/p' ../templates/cmpd.yaml | grep -q 'retryInterval: 5'"
     The status should be success
   End
 
@@ -296,8 +321,8 @@ EOF
     The output should eq 3
   End
 
-  It "covers qdrant member leave shard-safety in live e2e"
-    When run sh -c "test -f ../../../examples/qdrant/test/qdrant_member_leave_shard_safety_e2e.sh && grep -q 'wait_for_leaving_peer_with_shards' ../../../examples/qdrant/test/qdrant_member_leave_shard_safety_e2e.sh && grep -q 'assert_scale_in_not_succeed' ../../../examples/qdrant/test/qdrant_member_leave_shard_safety_e2e.sh && grep -q -- '--wait=false' ../../../examples/qdrant/test/qdrant_member_leave_shard_safety_e2e.sh"
+  It "covers qdrant member leave shard-drain success and data consistency in live e2e"
+    When run sh -c "test -f ../../../examples/qdrant/test/qdrant_member_leave_shard_safety_e2e.sh && grep -q 'wait_for_leaving_peer_with_shards' ../../../examples/qdrant/test/qdrant_member_leave_shard_safety_e2e.sh && grep -q 'wait_for_scale_in_succeed' ../../../examples/qdrant/test/qdrant_member_leave_shard_safety_e2e.sh && grep -q 'assert_points_consistent' ../../../examples/qdrant/test/qdrant_member_leave_shard_safety_e2e.sh && ! grep -q 'assert_scale_in_not_succeed' ../../../examples/qdrant/test/qdrant_member_leave_shard_safety_e2e.sh && grep -q -- '--wait=false' ../../../examples/qdrant/test/qdrant_member_leave_shard_safety_e2e.sh"
     The status should be success
   End
 
