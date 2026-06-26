@@ -31,7 +31,6 @@ staticParameters:
   - log_bin
   - log_bin_basename
   - log_error
-  - max_connections
   - open_files_limit
   - port
   - server_id
@@ -157,6 +156,7 @@ dynamicParameters:
   - low_priority_updates
   - max_allowed_packet
   - max_connect_errors
+  - max_connections
   - max_delayed_threads
   - max_error_count
   - max_heap_table_size
