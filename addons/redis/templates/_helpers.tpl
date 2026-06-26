@@ -193,6 +193,10 @@ Generate scripts configmap
 redis-account.sh: |-
 {{- $.Files.Get "scripts/redis-account.sh" | nindent 2 }}
 {{- end }}
+{{- if $.Files.Get "scripts/redis-reconfigure-config.sh" }}
+redis-reconfigure-config.sh: |-
+{{- $.Files.Get "scripts/redis-reconfigure-config.sh" | nindent 2 }}
+{{- end }}
 {{- end }}
 
 {{- define "apeDts.reshard.image" -}}
