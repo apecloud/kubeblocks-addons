@@ -123,23 +123,23 @@ drain_operations_for_collection() {
         | map({id: .key, uri: .value.uri, preferred: desired_peer(.value.uri)})
         | sort_by(if .preferred then 0 else 1 end, (.id | tonumber? // .id))) as $candidate_peers
       | ([
-          if (($info.result.peer_id | tostring) == $leave_peer_id) then
+          (if (($info.result.peer_id | tostring) == $leave_peer_id) then
             $info.result.local_shards[]? | {shard_id, shard_key: shard_key_value}
-          else empty end,
-          $info.result.remote_shards[]?
+          else empty end),
+          ($info.result.remote_shards[]?
             | select((.peer_id | tostring) == $leave_peer_id)
-            | {shard_id, shard_key: shard_key_value}
+            | {shard_id, shard_key: shard_key_value})
         ] | unique_by([.shard_id, (.shard_key // "")]))[] as $shard
       | ([
-          if (($info.result.peer_id | tostring) != $leave_peer_id) then
+          (if (($info.result.peer_id | tostring) != $leave_peer_id) then
             $info.result.local_shards[]?
               | select(same_shard($shard))
               | {peer_id: ($info.result.peer_id | tostring), state: (.state // "Active")}
-          else empty end,
-          $info.result.remote_shards[]?
+          else empty end),
+          ($info.result.remote_shards[]?
             | select((.peer_id | tostring) != $leave_peer_id)
             | select(same_shard($shard))
-            | {peer_id: (.peer_id | tostring), state: (.state // "Active")}
+            | {peer_id: (.peer_id | tostring), state: (.state // "Active")})
         ] | unique_by(.peer_id)) as $other_replicas
       | ([$other_replicas[] | select(.state == "Active") | .peer_id] | unique) as $active_replica_owners
       | ([$other_replicas[] | .peer_id] | unique) as $all_replica_owners
@@ -188,10 +188,10 @@ collection_peer_shard_count() {
   printf "%s" "$collection_info" | "$JQ_BIN" -r --arg leave_peer_id "$leave_peer_id" '
     . as $info
     | [
-        if (($info.result.peer_id | tostring) == $leave_peer_id) then
+        (if (($info.result.peer_id | tostring) == $leave_peer_id) then
           $info.result.local_shards[]?
-        else empty end,
-        $info.result.remote_shards[]? | select((.peer_id | tostring) == $leave_peer_id)
+        else empty end),
+        ($info.result.remote_shards[]? | select((.peer_id | tostring) == $leave_peer_id))
       ]
     | length
   '
