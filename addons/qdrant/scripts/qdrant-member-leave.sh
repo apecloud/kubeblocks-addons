@@ -114,14 +114,16 @@ drain_operations_for_collection() {
       def desired_peer($uri):
         ($desired_pods | split(",") | map(select(. != ""))) as $pods
         | if ($pods | length) == 0 then true else any($pods[]; . as $pod | $uri | contains("://" + $pod + ".")) end;
+      def pod_ordinal($uri):
+        try ($uri | capture(".*-(?<ordinal>[0-9]+)\\.") | .ordinal | tonumber) catch 999999;
 
       . as $info
       | ($current_cluster.result.peers
         | to_entries
         | map(select(.key != $leave_peer_id))
         | map(select(desired_peer(.value.uri)))
-        | map({id: .key, uri: .value.uri, preferred: desired_peer(.value.uri)})
-        | sort_by(if .preferred then 0 else 1 end, (.id | tonumber? // .id))) as $candidate_peers
+        | map({id: .key, uri: .value.uri, preferred: desired_peer(.value.uri), ordinal: pod_ordinal(.value.uri)})
+        | sort_by(if .preferred then 0 else 1 end, .ordinal, (.id | tonumber? // .id))) as $candidate_peers
       | ([
           (if (($info.result.peer_id | tostring) == $leave_peer_id) then
             $info.result.local_shards[]? | {shard_id, shard_key: shard_key_value}
