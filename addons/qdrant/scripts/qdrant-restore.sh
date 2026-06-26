@@ -32,10 +32,10 @@ for snapshot in $(datasafed list /) ; do
   datasafed pull "${snapshot}" "${SNAPSHOT_DIR}/${snapshot}"
 
   while true; do
-    qdrant_curl -sS -f -X POST "${QDRANT_SCHEME}://${DP_DB_HOST}:6333/collections/${collection_name}/snapshots/upload?priority=snapshot" \
+    if qdrant_curl -sS -f -X POST "${QDRANT_SCHEME}://${DP_DB_HOST}:6333/collections/${collection_name}/snapshots/upload?priority=snapshot" \
       -H 'Content-Type:multipart/form-data' \
-      -F "snapshot=@${SNAPSHOT_DIR}/${snapshot}" > /tmp/qdrant-restore.log 2>&1
-    if grep -q '"status":"ok"' /tmp/qdrant-restore.log; then
+      -F "snapshot=@${SNAPSHOT_DIR}/${snapshot}" > /tmp/qdrant-restore.log 2>&1 \
+      && grep -q '"status":"ok"' /tmp/qdrant-restore.log; then
       echo "restore collection ${collection_name} successfully"
       break
     else
