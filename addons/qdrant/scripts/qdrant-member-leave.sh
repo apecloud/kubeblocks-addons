@@ -10,6 +10,33 @@ load_common_library() {
 }
 
 load_common_library
+
+select_qdrant_api_peer_fqdn() {
+  local pod_fqdns="$1"
+  local leaving_pod="$2"
+  local fallback_fqdn=""
+  local pod_fqdn
+  local pod_name
+  local old_ifs
+
+  old_ifs="$IFS"
+  IFS=","
+  for pod_fqdn in $pod_fqdns; do
+    [ -n "$pod_fqdn" ] || continue
+    [ -n "$fallback_fqdn" ] || fallback_fqdn="$pod_fqdn"
+    pod_name="${pod_fqdn%%.*}"
+    if [ -n "$leaving_pod" ] && [ "$pod_name" = "$leaving_pod" ]; then
+      continue
+    fi
+    IFS="$old_ifs"
+    echo "$pod_fqdn"
+    return 0
+  done
+  IFS="$old_ifs"
+
+  echo "$fallback_fqdn"
+}
+
 CURRENT_POD_NAME="${CURRENT_POD_NAME:-${HOSTNAME:-}}"
 if [ -z "$CURRENT_POD_NAME" ]; then
   echo "CURRENT_POD_NAME is required"
@@ -22,6 +49,10 @@ fi
 if [ -z "$current_pod_fqdn" ]; then
   echo "failed to resolve a live qdrant peer from QDRANT_POD_FQDN_LIST"
   exit 1
+fi
+api_peer_fqdn="$(select_qdrant_api_peer_fqdn "$QDRANT_POD_FQDN_LIST" "${KB_LEAVE_MEMBER_POD_NAME:-}")"
+if [ -z "$api_peer_fqdn" ]; then
+  api_peer_fqdn="$current_pod_fqdn"
 fi
 JQ_BIN="${QDRANT_JQ_BIN:-/qdrant/tools/jq}"
 if [ ! -x "$JQ_BIN" ]; then
@@ -44,7 +75,7 @@ else
   CURL_TLS=""
 fi
 
-current_peer_uri=${SCHEME}://${current_pod_fqdn}:6333
+current_peer_uri=${SCHEME}://${api_peer_fqdn}:6333
 
 now_seconds() {
   date +%s
