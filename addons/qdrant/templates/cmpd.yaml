@@ -107,12 +107,15 @@ spec:
       livenessProbe:
         exec:
           command:
-          - /bin/sh
+          - /bin/bash
           - -c
           - |
-            scheme=http; tlsArgs=""
-            [ "${TLS_ENABLED}" = "true" ] && scheme=https && tlsArgs="-k"
-            /qdrant/tools/curl -sf $tlsArgs ${scheme}://localhost:6333/ > /dev/null
+            set -e
+            scheme=http; CURL_TLS=""
+            [ "${TLS_ENABLED}" = "true" ] && scheme=https && CURL_TLS="-k"
+            QDRANT_CURL_BIN=/qdrant/tools/curl
+            . /qdrant/scripts/common.sh
+            qdrant_curl -sf ${scheme}://localhost:6333/ > /dev/null
         failureThreshold: 3
         periodSeconds: 15
         successThreshold: 1
@@ -120,12 +123,15 @@ spec:
       readinessProbe:
         exec:
           command:
-          - /bin/sh
+          - /bin/bash
           - -c
           - |
-            scheme=http; tlsArgs=""
-            [ "${TLS_ENABLED}" = "true" ] && scheme=https && tlsArgs="-k"
-            consensus_status=$(/qdrant/tools/curl -sf $tlsArgs ${scheme}://localhost:6333/cluster | /qdrant/tools/jq -r .result.consensus_thread_status.consensus_thread_status)
+            set -e
+            scheme=http; CURL_TLS=""
+            [ "${TLS_ENABLED}" = "true" ] && scheme=https && CURL_TLS="-k"
+            QDRANT_CURL_BIN=/qdrant/tools/curl
+            . /qdrant/scripts/common.sh
+            consensus_status=$(qdrant_curl -sf ${scheme}://localhost:6333/cluster | /qdrant/tools/jq -r .result.consensus_thread_status.consensus_thread_status)
             if [ "$consensus_status" != "working" ]; then
               echo "consensus stopped"
               exit 1
@@ -138,12 +144,15 @@ spec:
       startupProbe:
         exec:
           command:
-          - /bin/sh
+          - /bin/bash
           - -c
           - |
-            scheme=http; tlsArgs=""
-            [ "${TLS_ENABLED}" = "true" ] && scheme=https && tlsArgs="-k"
-            /qdrant/tools/curl -sf $tlsArgs ${scheme}://localhost:6333/ > /dev/null
+            set -e
+            scheme=http; CURL_TLS=""
+            [ "${TLS_ENABLED}" = "true" ] && scheme=https && CURL_TLS="-k"
+            QDRANT_CURL_BIN=/qdrant/tools/curl
+            . /qdrant/scripts/common.sh
+            qdrant_curl -sf ${scheme}://localhost:6333/ > /dev/null
         failureThreshold: 60
         periodSeconds: 30
         successThreshold: 1
@@ -170,8 +179,6 @@ spec:
         containerPort: 6335
       command: ["/qdrant/scripts/setup.sh"]
       env:
-      - name: QDRANT__TELEMETRY_DISABLED
-        value: "true"
       - name: SERVICE_PORT
         value: "6333"
       - name: CLUSTER_DOMAIN
@@ -181,8 +188,6 @@ spec:
           fieldRef:
             apiVersion: v1
             fieldPath: metadata.name
-      - name: TLS_ENABLED
-        value: "$(TLS_ENABLED)"
       - name: TLS_MOUNT_PATH
         value: {{ .Values.tlsMountPath | quote }}
     dnsPolicy: ClusterFirst
