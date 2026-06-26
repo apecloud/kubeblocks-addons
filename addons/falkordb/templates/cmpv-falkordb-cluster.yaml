@@ -28,6 +28,7 @@ spec:
       accountProvision: {{ $falkordbRepository }}:{{ .imageTag }}
       switchover: {{ $falkordbRepository }}:{{ .imageTag }}
       preTerminate: {{ $falkordbRepository }}:{{ .imageTag }}
+      shardRemove: {{ $falkordbRepository }}:{{ .imageTag }}
       memberLeave: {{ $falkordbRepository }}:{{ .imageTag }}
       memberJoin: {{ $falkordbRepository }}:{{ .imageTag }}
       metrics: {{ include "metrics.repository" $ }}:{{ $.Values.metrics.image.tag }}

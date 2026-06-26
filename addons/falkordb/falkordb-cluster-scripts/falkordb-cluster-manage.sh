@@ -31,6 +31,7 @@ declare -gA initialize_pod_name_to_advertise_host_port_map
 # declare the global variables for scale out redis cluster shard
 declare -gA scale_out_shard_default_primary_node
 declare -gA scale_out_shard_default_other_nodes
+network_mode="default"
 
 init_environment(){
   if [[ -z "${CURRENT_SHARD_ADVERTISED_PORT}" ]]; then
@@ -46,148 +47,28 @@ init_environment(){
     ALL_SHARDS_ADVERTISED_BUS_PORT="${ALL_SHARDS_LB_ADVERTISED_BUS_PORT}"
   fi
 
-  local all_shards_pods
-  local all_shards_pod_fqdns
-  local all_shards_components
-  all_shards_pods=$(get_all_shards_pods 2>/dev/null || true)
-  all_shards_pod_fqdns=$(get_all_shards_pod_fqdns 2>/dev/null || true)
-  all_shards_components=$(get_all_shards_components 2>/dev/null || true)
-
-  if [[ -z "${KB_CLUSTER_POD_NAME_LIST}" && -n "$all_shards_pods" ]]; then
-    KB_CLUSTER_POD_NAME_LIST="$all_shards_pods"
-  fi
-  # The legacy "*_IP_LIST" values are used as redis-cli -h endpoints in
-  # the default network path. KB main exposes declared pod FQDN lists here.
-  if [[ -z "${KB_CLUSTER_POD_IP_LIST}" && -n "$all_shards_pod_fqdns" ]]; then
-    KB_CLUSTER_POD_IP_LIST="$all_shards_pod_fqdns"
-  fi
-  if [[ -z "${KB_CLUSTER_POD_HOST_IP_LIST}" && -n "${KB_CLUSTER_POD_IP_LIST}" ]]; then
-    KB_CLUSTER_POD_HOST_IP_LIST="${KB_CLUSTER_POD_IP_LIST}"
-  fi
-  if [[ -z "${KB_CLUSTER_COMPONENT_POD_NAME_LIST}" && -n "${CURRENT_SHARD_POD_NAME_LIST}" ]]; then
-    KB_CLUSTER_COMPONENT_POD_NAME_LIST="${CURRENT_SHARD_POD_NAME_LIST}"
-  fi
-  if [[ -z "${KB_CLUSTER_COMPONENT_POD_IP_LIST}" && -n "${CURRENT_SHARD_POD_FQDN_LIST}" ]]; then
-    KB_CLUSTER_COMPONENT_POD_IP_LIST="${CURRENT_SHARD_POD_FQDN_LIST}"
-  fi
-  if [[ -z "${KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST}" && -n "${KB_CLUSTER_COMPONENT_POD_IP_LIST}" ]]; then
-    KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="${KB_CLUSTER_COMPONENT_POD_IP_LIST}"
-  fi
-  if [[ -z "${KB_CLUSTER_COMPONENT_LIST}" && -n "$all_shards_components" ]]; then
-    KB_CLUSTER_COMPONENT_LIST="$all_shards_components"
-  fi
-  if [[ -z "${KB_CLUSTER_COMPONENT_UNDELETED_LIST}" && -n "${KB_CLUSTER_COMPONENT_LIST}" ]]; then
-    KB_CLUSTER_COMPONENT_UNDELETED_LIST="${KB_CLUSTER_COMPONENT_LIST}"
-  fi
-  if [[ -z "${KB_CLUSTER_COMPONENT_DELETING_LIST+x}" ]]; then
-    KB_CLUSTER_COMPONENT_DELETING_LIST=""
+  if [[ -n "$ALL_SHARDS_ADVERTISED_PORT" ]]; then
+    network_mode="advertised_svc"
+  elif [[ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ]]; then
+    network_mode="host_network"
   fi
 
-  export KB_CLUSTER_POD_NAME_LIST
-  export KB_CLUSTER_POD_IP_LIST
-  export KB_CLUSTER_POD_HOST_IP_LIST
-  export KB_CLUSTER_COMPONENT_POD_NAME_LIST
-  export KB_CLUSTER_COMPONENT_POD_IP_LIST
-  export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
-  export KB_CLUSTER_COMPONENT_LIST
-  export KB_CLUSTER_COMPONENT_UNDELETED_LIST
-  export KB_CLUSTER_COMPONENT_DELETING_LIST
-}
+  ALL_SHARDS_POD_NAME_LIST_COMBINED=$(get_all_shards_pods 2>/dev/null || true)
+  ALL_SHARDS_POD_FQDN_LIST_COMBINED=$(get_all_shards_pod_fqdns 2>/dev/null || true)
+  ALL_SHARDS_COMPONENT_LIST=$(get_all_shards_components 2>/dev/null || true)
+  ALL_SHARDS_UNDELETED_COMPONENT_LIST="${ALL_SHARDS_UNDELETED_COMPONENT_LIST:-$ALL_SHARDS_COMPONENT_LIST}"
+  ALL_SHARDS_DELETING_COMPONENT_LIST="${ALL_SHARDS_DELETING_COMPONENT_LIST:-}"
+  CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="${CURRENT_SHARD_POD_NAME_LIST:-}"
+  CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="${CURRENT_SHARD_POD_FQDN_LIST:-}"
 
-component_list_contains_exact() {
-  local component_list="$1"
-  local component="$2"
-
-  if [[ -z "$component_list" || -z "$component" ]]; then
-    return 1
-  fi
-
-  IFS=',' read -ra components <<< "$component_list"
-  for item in "${components[@]}"; do
-    if [[ "$item" == "$component" ]]; then
-      return 0
-    fi
-  done
-  return 1
-}
-
-component_matches_remove_shard_name() {
-  local remove_shard_name="$1"
-  local component_name="$2"
-  local component_short_name="$3"
-
-  if [[ -z "$remove_shard_name" || -z "$component_name" ]]; then
-    return 1
-  fi
-  if [[ "$remove_shard_name" == "$component_name" ]]; then
-    return 0
-  fi
-  if [[ -n "$component_short_name" && "$remove_shard_name" == "$component_short_name" ]]; then
-    return 0
-  fi
-  if [[ "$component_name" == *-"$remove_shard_name" ]]; then
-    return 0
-  fi
-  return 1
-}
-
-component_list_without_exact() {
-  local component_list="$1"
-  local component="$2"
-  local result=""
-
-  if [[ -z "$component_list" || -z "$component" ]]; then
-    return 0
-  fi
-
-  IFS=',' read -ra components <<< "$component_list"
-  for item in "${components[@]}"; do
-    if [[ -z "$item" || "$item" == "$component" ]]; then
-      continue
-    fi
-    if [[ -z "$result" ]]; then
-      result="$item"
-    else
-      result="$result,$item"
-    fi
-  done
-  echo "$result"
-}
-
-detect_scale_in_context() {
-  if ! is_empty "$KB_CLUSTER_COMPONENT_IS_SCALING_IN"; then
-    return 0
-  fi
-
-  if component_matches_remove_shard_name "$KB_REMOVE_SHARD_NAME" "$CURRENT_SHARD_COMPONENT_NAME" "$CURRENT_SHARD_COMPONENT_SHORT_NAME"; then
-    KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
-    export KB_CLUSTER_COMPONENT_IS_SCALING_IN
-    if is_empty "$KB_CLUSTER_COMPONENT_DELETING_LIST"; then
-      KB_CLUSTER_COMPONENT_DELETING_LIST="$CURRENT_SHARD_COMPONENT_NAME"
-      export KB_CLUSTER_COMPONENT_DELETING_LIST
-    fi
-    if is_empty "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"; then
-      KB_CLUSTER_COMPONENT_UNDELETED_LIST=$(component_list_without_exact "$KB_CLUSTER_COMPONENT_LIST" "$CURRENT_SHARD_COMPONENT_NAME")
-      export KB_CLUSTER_COMPONENT_UNDELETED_LIST
-    fi
-    echo "Detected scale-in context from KB_REMOVE_SHARD_NAME"
-    return 0
-  fi
-
-  if ! component_list_contains_exact "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$CURRENT_SHARD_COMPONENT_NAME"; then
-    return 1
-  fi
-  if component_list_contains_exact "$KB_CLUSTER_COMPONENT_UNDELETED_LIST" "$CURRENT_SHARD_COMPONENT_NAME"; then
-    return 1
-  fi
-  if is_empty "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"; then
-    return 1
-  fi
-
-  KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
-  export KB_CLUSTER_COMPONENT_IS_SCALING_IN
-  echo "Detected scale-in context from KB_CLUSTER_COMPONENT_DELETING_LIST/UNDELETED_LIST"
-  return 0
+  export ALL_SHARDS_POD_NAME_LIST_COMBINED
+  export ALL_SHARDS_POD_FQDN_LIST_COMBINED
+  export ALL_SHARDS_COMPONENT_LIST
+  export ALL_SHARDS_UNDELETED_COMPONENT_LIST
+  export ALL_SHARDS_DELETING_COMPONENT_LIST
+  export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+  export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+  export network_mode
 }
 
 load_redis_cluster_common_utils() {
@@ -215,16 +96,14 @@ check_initialize_nodes_ready() {
 # initialize the other component and pods info
 init_other_components_and_pods_info() {
   local current_component="$1"
-  local all_pod_ip_list="$2"
-  local all_pod_name_list="$3"
-  local all_component_list="$4"
-  local all_deleting_component_list="$5"
-  local all_undeleted_component_list="$6"
+  local all_pod_fqdn_list="$2"
+  local all_component_list="$3"
+  local all_deleting_component_list="$4"
+  local all_undeleted_component_list="$5"
 
   other_components=()
   other_deleting_components=()
   other_undeleted_components=()
-  other_undeleted_component_pod_ips=()
   other_undeleted_component_pod_names=()
   other_undeleted_component_nodes=()
   echo "init other components and pods info, current component: $current_component"
@@ -255,38 +134,32 @@ init_other_components_and_pods_info() {
   done
 
   # filter out the pods of the given component
-  IFS=',' read -ra pod_ips <<< "$all_pod_ip_list"
-  IFS=',' read -ra pod_names <<< "$all_pod_name_list"
-  for index in "${!pod_ips[@]}"; do
-    if echo "${pod_names[$index]}" | grep "$current_component-"; then
-      echo "skip the pod ${pod_names[$index]} as it belongs the component $current_component"
+  for pod_fqdn in $(echo "$all_pod_fqdn_list" | tr ',' '\n'); do
+    pod_name=${pod_fqdn%%.*}
+    if echo "$pod_name" | grep "$current_component-"; then
+      echo "skip the pod $pod_name as it belongs the component $current_component"
       continue
     fi
 
     # skip the pod belongs to the deleting component
     for deleting_comp in "${deleting_components[@]}"; do
-      if echo "${pod_names[$index]}" | grep "$deleting_comp-"; then
-        echo "skip the pod ${pod_names[$index]} as it belongs the deleting component $deleting_comp"
+      if echo "$pod_name" | grep "$deleting_comp-"; then
+        echo "skip the pod $pod_name as it belongs the deleting component $deleting_comp"
         continue 2
       fi
     done
 
-    other_undeleted_component_pod_ips+=("${pod_ips[$index]}")
-    other_undeleted_component_pod_names+=("${pod_names[$index]}")
+    other_undeleted_component_pod_names+=("$pod_name")
 
     local service_port
-    service_port=$(get_pod_service_port_by_network_mode "${pod_names[$index]}")
+    service_port=$(get_pod_service_port_by_network_mode "$pod_name")
 
-    # TODO: resolve the pod fqdn from the Vars
-    pod_name_prefix=$(extract_pod_name_prefix "${pod_names[$index]}")
-    pod_fqdn="${pod_names[$index]}.$pod_name_prefix-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN"
     other_undeleted_component_nodes+=("$pod_fqdn:$service_port")
   done
 
   echo "other_components: ${other_components[*]}"
   echo "other_deleting_components: ${other_deleting_components[*]}"
   echo "other_undeleted_components: ${other_undeleted_components[*]}"
-  echo "other_undeleted_component_pod_ips: ${other_undeleted_component_pod_ips[*]}"
   echo "other_undeleted_component_pod_names: ${other_undeleted_component_pod_names[*]}"
   echo "other_undeleted_component_nodes: ${other_undeleted_component_nodes[*]}"
 }
@@ -450,8 +323,12 @@ get_current_comp_nodes_for_scale_in() {
 
 # init the current shard component default primary and secondary nodes for scale out shard.
 # TODO: if advertised address is enable and instanceTemplate is specified, the pod service could not be parsed from the pod ordinal.
-# TODO: remove the dependency of the built-in envs like KB_CLUSTER_COMPONENT_XXXX
 init_current_comp_default_nodes_for_scale_out() {
+  if is_empty "$CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE" || is_empty "$CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE"; then
+    echo "Error: Required environment variable CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE and CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE are not set when initializing current shard default nodes" >&2
+    return 1
+  fi
+
   # categorize the scale out node map
   categorize_scale_out_node_map() {
     local pod_name="$1"
@@ -467,8 +344,21 @@ init_current_comp_default_nodes_for_scale_out() {
 
   # handle the advertised service network mode (currently only support NodePort service type
   handle_advertised_svc_network_mode() {
-    local pod_name="$1"
+    local pod_fqdn="$1"
     local pod_name_ordinal="$2"
+    local pod_name=${pod_fqdn%%.*}
+
+    local pod_host_ip
+    local pod_service_port
+    pod_service_port=$(get_pod_service_port_by_network_mode "$pod_name") || {
+      echo "Failed to get service port for pod: $pod_name" >&2
+      return 1
+    }
+    pod_host_ip=$(redis_config_get "$pod_fqdn" "$pod_service_port" "$REDIS_DEFAULT_PASSWORD" "config get cluster-announce-ip" | sed -n '2p')
+    if is_empty "$pod_host_ip"; then
+      echo "Failed to get host ip of pod $pod_name" >&2
+      return 1
+    fi
 
     local old_ifs="$IFS"
     IFS=','
@@ -485,14 +375,11 @@ init_current_comp_default_nodes_for_scale_out() {
       advertised_svc_ordinal=$(extract_obj_ordinal "$advertised_svc")
 
       if [ "$pod_name_ordinal" == "$advertised_svc_ordinal" ]; then
-        local pod_host_ip
         lb_host=$(extract_lb_host_by_svc_name "${advertised_svc}")
         if ! is_empty "$lb_host"; then
             echo "Found load balancer host for svcName '$advertised_svc', value is '$lb_host'."
             pod_host_ip="$lb_host"
             advertised_port="6379"
-        else
-            pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST")
         fi
         status=$?
         if is_empty "$pod_host_ip" || [ $status -ne 0 ]; then
@@ -515,11 +402,17 @@ init_current_comp_default_nodes_for_scale_out() {
 
   # handle the host network mode
   handle_host_network_mode() {
-    local pod_name="$1"
+    local pod_fqdn="$1"
     local pod_name_ordinal="$2"
+    local pod_name=${pod_fqdn%%.*}
 
     local pod_host_ip
-    pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST")
+    local pod_service_port
+    pod_service_port=$(get_pod_service_port_by_network_mode "$pod_name") || {
+      echo "Failed to get service port for pod: $pod_name" >&2
+      return 1
+    }
+    pod_host_ip=$(redis_config_get "$pod_fqdn" "$pod_service_port" "$REDIS_DEFAULT_PASSWORD" "config get cluster-announce-ip" | sed -n '2p')
     if is_empty "$pod_host_ip"; then
       echo "Failed to get host ip of pod $pod_name in host network mode" >&2
       return 1
@@ -531,15 +424,14 @@ init_current_comp_default_nodes_for_scale_out() {
 
   # handle the default network mode
   handle_default_network_mode() {
-    local pod_name="$1"
+    local pod_fqdn="$1"
     local pod_name_ordinal="$2"
+    local pod_name=${pod_fqdn%%.*}
 
-    local pod_fqdn
     local port="$SERVICE_PORT"
 
-    pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$pod_name")
     if is_empty "$pod_fqdn"; then
-      echo "Error: Failed to get pod $pod_name fqdn from list: $CURRENT_SHARD_POD_FQDN_LIST" >&2
+      echo "Error: Failed to get pod $pod_name fqdn from current shard pod FQDN list" >&2
       return 1
     fi
 
@@ -549,18 +441,18 @@ init_current_comp_default_nodes_for_scale_out() {
 
   process_pod_by_network_mode() {
     local network_mode="$1"
-    local pod_name="$2"
+    local pod_fqdn="$2"
     local pod_name_ordinal="$3"
 
     case "$network_mode" in
       "advertised_svc")
-        handle_advertised_svc_network_mode "$pod_name" "$pod_name_ordinal"
+        handle_advertised_svc_network_mode "$pod_fqdn" "$pod_name_ordinal"
         ;;
       "host_network")
-        handle_host_network_mode "$pod_name" "$pod_name_ordinal"
+        handle_host_network_mode "$pod_fqdn" "$pod_name_ordinal"
         ;;
       *)
-        handle_default_network_mode "$pod_name" "$pod_name_ordinal"
+        handle_default_network_mode "$pod_fqdn" "$pod_name_ordinal"
         ;;
     esac
     return $?
@@ -568,7 +460,7 @@ init_current_comp_default_nodes_for_scale_out() {
 
   local min_lexicographical_pod_name
   local min_lexicographical_pod_ordinal
-  min_lexicographical_pod_name=$(min_lexicographical_order_pod "$KB_CLUSTER_COMPONENT_POD_NAME_LIST")
+  min_lexicographical_pod_name=$(min_lexicographical_order_pod "$CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE")
   min_lexicographical_pod_ordinal=$(extract_obj_ordinal "$min_lexicographical_pod_name")
   if is_empty "$min_lexicographical_pod_ordinal"; then
     echo "Failed to get the ordinal of the min lexicographical pod $min_lexicographical_pod_name in init_current_comp_default_nodes_for_scale_out" >&2
@@ -583,10 +475,12 @@ init_current_comp_default_nodes_for_scale_out() {
     network_mode="host_network"
   fi
 
-  for pod_name in $(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' ' '); do
+  for pod_fqdn in $(echo "$CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE" | tr ',' ' '); do
+    local pod_name
     local pod_name_ordinal
+    pod_name=${pod_fqdn%%.*}
     pod_name_ordinal=$(extract_obj_ordinal "$pod_name")
-    process_pod_by_network_mode "$network_mode" "$pod_name" "$pod_name_ordinal" || return 1
+    process_pod_by_network_mode "$network_mode" "$pod_fqdn" "$pod_name_ordinal" || return 1
   done
   return 0
 }
@@ -594,6 +488,11 @@ init_current_comp_default_nodes_for_scale_out() {
 # initialize the redis cluster primary and secondary nodes, use the min lexicographical pod of each shard as the primary nodes by default.
 gen_initialize_redis_cluster_node() {
   local is_primary=$1
+
+  if is_empty "$ALL_SHARDS_POD_NAME_LIST_COMBINED" || is_empty "$ALL_SHARDS_POD_FQDN_LIST_COMBINED"; then
+    echo "Error: Required environment variable ALL_SHARDS_POD_NAME_LIST_COMBINED and ALL_SHARDS_POD_FQDN_LIST_COMBINED are not set when generating redis cluster nodes" >&2
+    return 1
+  fi
 
   categorize_node_maps() {
     local pod_name="$1"
@@ -626,15 +525,25 @@ gen_initialize_redis_cluster_node() {
 
   # Initialize node with advertised service configuration
   initialize_advertised_svc_node() {
-    local pod_name="$1"
+    local pod_fqdn="$1"
     local pod_name_ordinal="$2"
     local is_primary="$3"
+    local pod_name=${pod_fqdn%%.*}
 
     local pod_host_ip
-    pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_HOST_IP_LIST") || {
+    local pod_service_port
+    pod_service_port=$(get_pod_service_port_by_network_mode "$pod_name") || {
+      echo "Failed to get service port for pod: $pod_name" >&2
+      return 1
+    }
+    pod_host_ip=$(redis_config_get "$pod_fqdn" "$pod_service_port" "$REDIS_DEFAULT_PASSWORD" "config get cluster-announce-ip" | sed -n '2p') || {
       echo "Failed to get host IP for pod: $pod_name" >&2
       return 1
     }
+    if is_empty "$pod_host_ip"; then
+      echo "Failed to get host IP for pod: $pod_name" >&2
+      return 1
+    fi
 
     ## the value format of ALL_SHARDS_ADVERTISED_PORT is "shard-98x@falkordb-shard-98x-falkordb-advertised-0:32024,falkordb-shard-98x-falkordb-advertised-1:31318.shard-cq7@falkordb-shard-cq7-falkordb-advertised-0:31828,falkordb-shard-cq7-falkordb-advertised-1:32000"
     local old_ifs="$IFS"
@@ -691,20 +600,24 @@ gen_initialize_redis_cluster_node() {
 
   # Initialize node with host network configuration
   initialize_host_network_node() {
-    local pod_name="$1"
+    local pod_fqdn="$1"
     local is_primary="$2"
+    local pod_name=${pod_fqdn%%.*}
 
     local pod_host_ip
-    pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_HOST_IP_LIST") || {
-      echo "Failed to get host IP for pod: $pod_name" >&2
-      return 1
-    }
-
     local service_port
     service_port=$(get_pod_service_port_by_network_mode "${pod_name}") || {
       echo "Failed to get service port for pod: $pod_name" >&2
       return 1
     }
+    pod_host_ip=$(redis_config_get "$pod_fqdn" "$service_port" "$REDIS_DEFAULT_PASSWORD" "config get cluster-announce-ip" | sed -n '2p') || {
+      echo "Failed to get host IP for pod: $pod_name" >&2
+      return 1
+    }
+    if is_empty "$pod_host_ip"; then
+      echo "Failed to get host IP for pod: $pod_name" >&2
+      return 1
+    fi
 
     categorize_node_maps "$pod_name" "$pod_host_ip" "$service_port" "$is_primary"
     return 0
@@ -712,8 +625,9 @@ gen_initialize_redis_cluster_node() {
 
   # Initialize node with default network configuration
   initialize_default_network_node() {
-    local pod_name="$1"
+    local pod_fqdn="$1"
     local is_primary="$2"
+    local pod_name=${pod_fqdn%%.*}
 
     local service_port
     service_port=$(get_pod_service_port_by_network_mode "${pod_name}") || {
@@ -721,25 +635,8 @@ gen_initialize_redis_cluster_node() {
       return 1
     }
 
-    local all_shard_pod_fqdns
-    all_shard_pod_fqdns=$(get_all_shards_pod_fqdns) || {
-      echo "Failed to get all shard pod FQDNs" >&2
-      return 1
-    }
-
-    if is_empty "$all_shard_pod_fqdns"; then
-      echo "Failed to get all shard pod FQDNs" >&2
-      return 1
-    fi
-
-    local pod_fqdn
-    pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$all_shard_pod_fqdns" "$pod_name") || {
-      echo "Failed to get FQDN for pod: $pod_name" >&2
-      return 1
-    }
-
     if is_empty "$pod_fqdn"; then
-      echo "Failed to get pod $pod_name fqdn from list: $all_shard_pod_fqdns" >&2
+      echo "Failed to get pod $pod_name fqdn from list: $ALL_SHARDS_POD_FQDN_LIST_COMBINED" >&2
       return 1
     fi
 
@@ -758,7 +655,7 @@ gen_initialize_redis_cluster_node() {
   # get and validate the min lexicographical pod name and ordinal
   local min_lexicographical_pod_name
   local min_lexicographical_pod_ordinal
-  min_lexicographical_pod_name=$(min_lexicographical_order_pod "$KB_CLUSTER_POD_NAME_LIST")
+  min_lexicographical_pod_name=$(min_lexicographical_order_pod "$ALL_SHARDS_POD_NAME_LIST_COMBINED")
   min_lexicographical_pod_ordinal=$(extract_obj_ordinal "$min_lexicographical_pod_name")
   if is_empty "$min_lexicographical_pod_ordinal"; then
     echo "Failed to get the ordinal of the min lexicographical pod $min_lexicographical_pod_name in gen_initialize_redis_cluster_node" >&2
@@ -766,8 +663,10 @@ gen_initialize_redis_cluster_node() {
   fi
 
   local pod_name
-  for pod_name in $(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' ' '); do
+  local pod_fqdn
+  for pod_fqdn in $(echo "$ALL_SHARDS_POD_FQDN_LIST_COMBINED" | tr ',' ' '); do
     local pod_name_ordinal
+    pod_name=${pod_fqdn%%.*}
     pod_name_ordinal=$(extract_obj_ordinal "$pod_name") || continue
 
     # skip pods based on primary/secondary role
@@ -777,13 +676,13 @@ gen_initialize_redis_cluster_node() {
     # initialize pod based on network mode
     case "$network_mode" in
       "advertised_svc")
-        initialize_advertised_svc_node "$pod_name" "$pod_name_ordinal" "$is_primary" || return 1
+        initialize_advertised_svc_node "$pod_fqdn" "$pod_name_ordinal" "$is_primary" || return 1
         ;;
       "host_network")
-        initialize_host_network_node "$pod_name" "$is_primary" || return 1
+        initialize_host_network_node "$pod_fqdn" "$is_primary" || return 1
         ;;
       "default")
-        initialize_default_network_node "$pod_name" "$is_primary" || return 1
+        initialize_default_network_node "$pod_fqdn" "$is_primary" || return 1
         ;;
     esac
   done
@@ -799,8 +698,8 @@ gen_initialize_redis_cluster_secondary_nodes() {
 }
 
 initialize_redis_cluster() {
-  if is_empty "$KB_CLUSTER_POD_NAME_LIST" || is_empty "$KB_CLUSTER_POD_HOST_IP_LIST"; then
-    echo "Error: Required environment variable KB_CLUSTER_POD_NAME_LIST and KB_CLUSTER_POD_HOST_IP_LIST are not set when initializing redis cluster" >&2
+  if is_empty "$ALL_SHARDS_POD_NAME_LIST_COMBINED" || is_empty "$ALL_SHARDS_POD_FQDN_LIST_COMBINED"; then
+    echo "Error: Required environment variable ALL_SHARDS_POD_NAME_LIST_COMBINED and ALL_SHARDS_POD_FQDN_LIST_COMBINED are not set when initializing redis cluster" >&2
     return 1
   fi
 
@@ -942,12 +841,12 @@ check_current_shard_other_nodes_are_joined() {
 }
 
 scale_out_redis_cluster_shard() {
-  if is_empty "$CURRENT_SHARD_COMPONENT_SHORT_NAME" || is_empty "$KB_CLUSTER_POD_NAME_LIST" || is_empty "$KB_CLUSTER_POD_HOST_IP_LIST" || is_empty "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" || is_empty "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST"; then
-    echo "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, KB_CLUSTER_POD_NAME_LIST, KB_CLUSTER_POD_HOST_IP_LIST, KB_CLUSTER_COMPONENT_POD_NAME_LIST and KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set when scale out redis cluster shard" >&2
+  if is_empty "$CURRENT_SHARD_COMPONENT_SHORT_NAME" || is_empty "$ALL_SHARDS_POD_NAME_LIST_COMBINED" || is_empty "$ALL_SHARDS_POD_FQDN_LIST_COMBINED" || is_empty "$CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE" || is_empty "$CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE"; then
+    echo "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, ALL_SHARDS_POD_NAME_LIST_COMBINED, ALL_SHARDS_POD_FQDN_LIST_COMBINED, CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE and CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE are not set when scale out redis cluster shard" >&2
     return 1
   fi
 
-  init_other_components_and_pods_info "$CURRENT_SHARD_COMPONENT_SHORT_NAME" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_LIST" "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"
+  init_other_components_and_pods_info "$CURRENT_SHARD_COMPONENT_SHORT_NAME" "$ALL_SHARDS_POD_FQDN_LIST_COMBINED" "$ALL_SHARDS_COMPONENT_LIST" "$ALL_SHARDS_DELETING_COMPONENT_LIST" "$ALL_SHARDS_UNDELETED_COMPONENT_LIST"
   if init_current_comp_default_nodes_for_scale_out; then
     echo "FalkorDB cluster scale out shard default primary and secondary nodes successfully"
   else
@@ -1022,8 +921,8 @@ scale_out_redis_cluster_shard() {
   local shard_count
   local slots_per_shard
   total_slots=16384
-  current_comp_pod_count=$(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' '\n' | grep -c "^$CURRENT_SHARD_COMPONENT_NAME-")
-  all_comp_pod_count=$(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' '\n' | grep -c ".*")
+  current_comp_pod_count=$(echo "$CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE" | tr ',' '\n' | grep -c "^$CURRENT_SHARD_COMPONENT_NAME-")
+  all_comp_pod_count=$(echo "$ALL_SHARDS_POD_NAME_LIST_COMBINED" | tr ',' '\n' | grep -c ".*")
   shard_count=$((all_comp_pod_count / current_comp_pod_count))
   slots_per_shard=$((total_slots / shard_count))
   if scale_out_shard_reshard "$primary_node_with_port" "$mapping_primary_cluster_id" "$slots_per_shard"; then
@@ -1047,21 +946,17 @@ sync_acl_for_redis_cluster_shard() {
   is_ok=false
   acl_list=""
   # 1. get acl list from other pods
-  for pod_name in $(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' ' '); do
-    pod_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_IP_LIST")
-    if is_empty "$pod_ip"; then
-      echo "Failed to get the host ip of the pod $pod_name"
-      continue
-    fi
-
-    cluster_info=$(get_cluster_info_with_retry "$pod_ip" "$SERVICE_PORT")
+  for pod_fqdn in $(echo "$ALL_SHARDS_POD_FQDN_LIST_COMBINED" | tr ',' ' '); do
+    pod_name=${pod_fqdn%%.*}
+    pod_service_port=$(get_pod_service_port_by_network_mode "$pod_name")
+    cluster_info=$(get_cluster_info_with_retry "$pod_fqdn" "$pod_service_port")
     status=$?
     if [ $status -ne 0 ]; then
       continue
     fi
     cluster_state=$(echo "$cluster_info" | awk -F: '/cluster_state/{print $2}' | tr -d '[:space:]')
     if is_empty "$cluster_state" || equals "$cluster_state" "ok"; then
-       acl_list=$($redis_base_cmd -h "$pod_ip" ACL LIST)
+       acl_list=$($redis_base_cmd -h "$pod_fqdn" -p "$pod_service_port" ACL LIST)
        is_ok=true
        break
     fi
@@ -1101,30 +996,21 @@ sync_acl_for_redis_cluster_shard() {
 }
 
 scale_in_redis_cluster_shard() {
-  if ! detect_scale_in_context; then
-    echo "The KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set and current component is not exclusively in KB_CLUSTER_COMPONENT_DELETING_LIST, skip scaling in"
-    return 0
-  fi
-
-  if is_empty "$CURRENT_SHARD_COMPONENT_SHORT_NAME" || is_empty "$KB_CLUSTER_POD_NAME_LIST" || is_empty "$KB_CLUSTER_POD_HOST_IP_LIST" || is_empty "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" || is_empty "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST"; then
-    echo "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, KB_CLUSTER_POD_NAME_LIST, KB_CLUSTER_POD_HOST_IP_LIST, KB_CLUSTER_COMPONENT_POD_NAME_LIST and KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set when scale in redis cluster shard" >&2
+  if is_empty "$CURRENT_SHARD_COMPONENT_SHORT_NAME" || is_empty "$ALL_SHARDS_POD_NAME_LIST_COMBINED" || is_empty "$ALL_SHARDS_POD_FQDN_LIST_COMBINED" || is_empty "$CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE" || is_empty "$CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE"; then
+    echo "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, ALL_SHARDS_POD_NAME_LIST_COMBINED, ALL_SHARDS_POD_FQDN_LIST_COMBINED, CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE and CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE are not set when scale in redis cluster shard" >&2
     return 1
   fi
 
   # init information for the other components and pods
-  init_other_components_and_pods_info "$CURRENT_SHARD_COMPONENT_SHORT_NAME" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_LIST" "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"
+  init_other_components_and_pods_info "$CURRENT_SHARD_COMPONENT_SHORT_NAME" "$ALL_SHARDS_POD_FQDN_LIST_COMBINED" "$ALL_SHARDS_COMPONENT_LIST" "$ALL_SHARDS_DELETING_COMPONENT_LIST" "$ALL_SHARDS_UNDELETED_COMPONENT_LIST"
   available_node=$(find_exist_available_node)
-  if is_empty "$available_node"; then
-    echo "No stable available FalkorDB Cluster node found before scaling in shard" >&2
-    return 1
-  fi
   available_node_fqdn=$(echo "$available_node" | awk -F ':' '{print $1}')
   available_node_port=$(echo "$available_node" | awk -F ':' '{print $2}')
   get_current_comp_nodes_for_scale_in "$available_node_fqdn" "$available_node_port"
 
   # Check if the number of shards in the cluster is less than 3 after scaling down.
   current_comp_pod_count=0
-  for pod_name in $(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' ' '); do
+  for pod_name in $(echo "$CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE" | tr ',' ' '); do
     if [[ "$pod_name" == "$CURRENT_SHARD_COMPONENT_NAME"* ]]; then
       current_comp_pod_count=$((current_comp_pod_count + 1))
     fi
@@ -1169,13 +1055,13 @@ initialize_or_scale_out_redis_cluster() {
   # TODO: remove random sleep, it's a workaround for the multi components initialization parallelism issue
   sleep_random_second_when_ut_mode_false 10 1
 
-  if is_empty "$KB_CLUSTER_POD_IP_LIST" || is_empty "$KB_CLUSTER_POD_NAME_LIST"; then
-    echo "Error: Required environment variable KB_CLUSTER_POD_IP_LIST and KB_CLUSTER_POD_NAME_LIST and SERVICE_PORT is not set." >&2
+  if is_empty "$ALL_SHARDS_POD_FQDN_LIST_COMBINED" || is_empty "$ALL_SHARDS_POD_NAME_LIST_COMBINED"; then
+    echo "Error: Required environment variable ALL_SHARDS_POD_FQDN_LIST_COMBINED and ALL_SHARDS_POD_NAME_LIST_COMBINED and SERVICE_PORT is not set." >&2
     return 1
   fi
 
   # if the cluster is not initialized, initialize it
-  if ! check_cluster_initialized "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST"; then
+  if ! check_cluster_initialized "$ALL_SHARDS_POD_FQDN_LIST_COMBINED"; then
     echo "FalkorDB Cluster not initialized, initializing..."
     if initialize_redis_cluster; then
       echo "FalkorDB Cluster initialized successfully"
