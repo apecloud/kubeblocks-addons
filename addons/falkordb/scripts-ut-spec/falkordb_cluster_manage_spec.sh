@@ -1597,6 +1597,72 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       End
     End
 
+    Context "when shardRemove action identifies the removed shard"
+      find_exist_available_node() {
+        echo "falkordb-shard-7hy-0.namespace.svc.cluster.local:6379"
+      }
+
+      get_current_comp_nodes_for_scale_in() {
+        current_comp_primary_node=("falkordb-shard-98x-0.namespace.svc.cluster.local:6379")
+        current_comp_other_nodes=("falkordb-shard-98x-1.namespace.svc.cluster.local:6379")
+      }
+
+      get_cluster_id() {
+        echo "cluster_id_123"
+      }
+
+      scale_in_shard_rebalance_to_zero() {
+        return 0
+      }
+
+      scale_in_shard_del_node() {
+        return 0
+      }
+
+      setup() {
+        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
+        export KB_REMOVE_SHARD_NAME="98x"
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export CURRENT_SHARD_COMPONENT_NAME="falkordb-shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1,falkordb-shard-kpl-0,falkordb-shard-kpl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6,10.42.0.7,10.42.0.8"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6,172.42.0.7,172.42.0.8"
+        export KB_CLUSTER_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST=""
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
+        unset KB_REMOVE_SHARD_NAME
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset CURRENT_SHARD_COMPONENT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "runs scale-in cleanup and derives deleting lists from KB_REMOVE_SHARD_NAME"
+        When call scale_in_redis_cluster_shard
+        The status should be success
+        The output should include "Detected scale-in context from KB_REMOVE_SHARD_NAME"
+        The output should include "FalkorDB cluster scale in shard rebalance to zero successfully"
+        The output should include "FalkorDB cluster scale in shard delete node falkordb-shard-98x-0.namespace.svc.cluster.local:6379 successfully"
+        The output should include "FalkorDB cluster scale in shard delete node falkordb-shard-98x-1.namespace.svc.cluster.local:6379 successfully"
+      End
+    End
+
     Context "when required environment variables are not set"
       setup() {
         export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
