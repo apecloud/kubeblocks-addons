@@ -1509,21 +1509,91 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
   End
 
   Describe "scale_in_redis_cluster_shard()"
-    Context "when KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set"
+    Context "when no scale-in signal is set"
       setup() {
-        export KB_CLUSTER_COMPONENT_IS_SCALING_IN=""
+        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
+        export CURRENT_SHARD_COMPONENT_NAME="falkordb-shard-98x"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="falkordb-shard-98x,falkordb-shard-7hy"
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
+        unset CURRENT_SHARD_COMPONENT_NAME
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
       }
       After "un_setup"
 
-      It "returns 0 when KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set"
+      It "returns 0 and skips scale-in cleanup"
         When call scale_in_redis_cluster_shard
         The status should be success
-        The output should include "The KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set, skip scaling in"
+        The output should include "The KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set and current component is not exclusively in KB_CLUSTER_COMPONENT_DELETING_LIST, skip scaling in"
+      End
+    End
+
+    Context "when legacy KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set but deleting lists identify scale-in target"
+      find_exist_available_node() {
+        echo "falkordb-shard-7hy-0.namespace.svc.cluster.local:6379"
+      }
+
+      get_current_comp_nodes_for_scale_in() {
+        current_comp_primary_node=("falkordb-shard-98x-0.namespace.svc.cluster.local:6379")
+        current_comp_other_nodes=("falkordb-shard-98x-1.namespace.svc.cluster.local:6379")
+      }
+
+      get_cluster_id() {
+        echo "cluster_id_123"
+      }
+
+      scale_in_shard_rebalance_to_zero() {
+        return 0
+      }
+
+      scale_in_shard_del_node() {
+        return 0
+      }
+
+      setup() {
+        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export CURRENT_SHARD_COMPONENT_NAME="falkordb-shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1,falkordb-shard-kpl-0,falkordb-shard-kpl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6,10.42.0.7,10.42.0.8"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6,172.42.0.7,172.42.0.8"
+        export KB_CLUSTER_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST="falkordb-shard-98x"
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset CURRENT_SHARD_COMPONENT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "runs scale-in cleanup without the legacy scaling-in flag"
+        When call scale_in_redis_cluster_shard
+        The status should be success
+        The output should include "Detected scale-in context from KB_CLUSTER_COMPONENT_DELETING_LIST/UNDELETED_LIST"
+        The output should include "FalkorDB cluster scale in shard rebalance to zero successfully"
+        The output should include "FalkorDB cluster scale in shard delete node falkordb-shard-98x-0.namespace.svc.cluster.local:6379 successfully"
+        The output should include "FalkorDB cluster scale in shard delete node falkordb-shard-98x-1.namespace.svc.cluster.local:6379 successfully"
       End
     End
 
