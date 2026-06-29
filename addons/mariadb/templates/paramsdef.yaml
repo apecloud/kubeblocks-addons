@@ -30,7 +30,7 @@ spec:
 ---
 # ParametersDefinition for replication MariaDB
 #
-# Binds to the replication CmpD via `^mariadb-replication-` regex.
+# Binds to the merged replication CmpD via `^mariadb-replication-merged-` regex.
 # `templateName` must match the CmpD's configspec name
 # (`spec.configs[].name` in cmpd-replication.yaml).
 apiVersion: parameters.kubeblocks.io/v1alpha1
