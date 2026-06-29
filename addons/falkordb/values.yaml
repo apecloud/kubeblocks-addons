@@ -19,6 +19,8 @@ falkordbVersions:
     mirrorVersions:
       - version: "4.12.5"
         imageTag: "v4.12.5"
+      - version: "4.14.12"
+        imageTag: "v4.14.12"
 
 image:
   # refer: https://redis.io/docs/stack/
