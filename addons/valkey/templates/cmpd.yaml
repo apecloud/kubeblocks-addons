@@ -41,7 +41,7 @@ spec:
 
   replicasLimit:
     minReplicas: 1
-    maxReplicas: 128
+    maxReplicas: 16384
 
   # ── TLS ────────────────────────────────────────────────────────────────
   tls:
