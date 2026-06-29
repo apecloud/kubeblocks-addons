@@ -117,6 +117,49 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
         The output should include "ALL_SHARDS_UNDELETED_COMPONENT_LIST=shard-fgt,shard-2qk,shard-r7s"
       End
     End
+
+    Context "when shardRemove identifies the deleted shard"
+      init_environment_and_print_shard_remove_vars() {
+        init_environment
+        echo "ALL_SHARDS_COMPONENT_LIST=$ALL_SHARDS_COMPONENT_LIST"
+        echo "ALL_SHARDS_DELETING_COMPONENT_LIST=$ALL_SHARDS_DELETING_COMPONENT_LIST"
+        echo "ALL_SHARDS_UNDELETED_COMPONENT_LIST=$ALL_SHARDS_UNDELETED_COMPONENT_LIST"
+      }
+
+      setup() {
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
+        export KB_REMOVE_SHARD_NAME="98x"
+        export CURRENT_SHARD_COMPONENT_NAME="falkordb-sharding-shard-98x"
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export ALL_SHARDS_COMPONENT_SHORT_NAMES="shard-98x:shard-98x,shard-7hy:shard-7hy,shard-jwl:shard-jwl,shard-kpl:shard-kpl"
+        export CURRENT_SHARD_POD_NAME_LIST="falkordb-sharding-shard-98x-0,falkordb-sharding-shard-98x-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="falkordb-sharding-shard-98x-0.falkordb-sharding-shard-98x-headless.default.svc.cluster.local,falkordb-sharding-shard-98x-1.falkordb-sharding-shard-98x-headless.default.svc.cluster.local"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_REMOVE_SHARD_NAME
+        unset CURRENT_SHARD_COMPONENT_NAME
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset ALL_SHARDS_COMPONENT_SHORT_NAMES
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
+      }
+      After "un_setup"
+
+      It "derives deleting and undeleted component lists from KB_REMOVE_SHARD_NAME"
+        When call init_environment_and_print_shard_remove_vars
+        The status should be success
+        The output should include "ALL_SHARDS_COMPONENT_LIST=shard-98x,shard-7hy,shard-jwl,shard-kpl"
+        The output should include "ALL_SHARDS_DELETING_COMPONENT_LIST=shard-98x"
+        The output should include "ALL_SHARDS_UNDELETED_COMPONENT_LIST=shard-7hy,shard-jwl,shard-kpl"
+      End
+    End
   End
 
   Describe "init_other_components_and_pods_info()"

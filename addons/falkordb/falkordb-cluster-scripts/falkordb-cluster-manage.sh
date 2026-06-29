@@ -33,6 +33,66 @@ declare -gA scale_out_shard_default_primary_node
 declare -gA scale_out_shard_default_other_nodes
 network_mode="default"
 
+component_list_contains_exact() {
+  local component_list="$1"
+  local component="$2"
+
+  if [[ -z "$component_list" || -z "$component" ]]; then
+    return 1
+  fi
+
+  IFS=',' read -ra components <<< "$component_list"
+  for item in "${components[@]}"; do
+    if [[ "$item" == "$component" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+component_matches_remove_shard_name() {
+  local remove_shard_name="$1"
+  local component_name="$2"
+  local component_short_name="$3"
+
+  if [[ -z "$remove_shard_name" || -z "$component_name" ]]; then
+    return 1
+  fi
+  if [[ "$remove_shard_name" == "$component_name" ]]; then
+    return 0
+  fi
+  if [[ -n "$component_short_name" && "$remove_shard_name" == "$component_short_name" ]]; then
+    return 0
+  fi
+  if [[ "$component_name" == *-"$remove_shard_name" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+component_list_without_exact() {
+  local component_list="$1"
+  local component="$2"
+  local result=""
+
+  if [[ -z "$component_list" || -z "$component" ]]; then
+    return 0
+  fi
+
+  IFS=',' read -ra components <<< "$component_list"
+  for item in "${components[@]}"; do
+    if [[ -z "$item" || "$item" == "$component" ]]; then
+      continue
+    fi
+    if [[ -z "$result" ]]; then
+      result="$item"
+    else
+      result="$result,$item"
+    fi
+  done
+  echo "$result"
+}
+
 init_environment(){
   if [[ -z "${CURRENT_SHARD_ADVERTISED_PORT}" ]]; then
     CURRENT_SHARD_ADVERTISED_PORT="${CURRENT_SHARD_LB_ADVERTISED_PORT}"
@@ -60,6 +120,14 @@ init_environment(){
   ALL_SHARDS_DELETING_COMPONENT_LIST="${ALL_SHARDS_DELETING_COMPONENT_LIST:-}"
   CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="${CURRENT_SHARD_POD_NAME_LIST:-}"
   CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="${CURRENT_SHARD_POD_FQDN_LIST:-}"
+
+  if component_matches_remove_shard_name "${KB_REMOVE_SHARD_NAME:-}" "${CURRENT_SHARD_COMPONENT_NAME:-}" "${CURRENT_SHARD_COMPONENT_SHORT_NAME:-}"; then
+    ALL_SHARDS_DELETING_COMPONENT_LIST="${ALL_SHARDS_DELETING_COMPONENT_LIST:-$CURRENT_SHARD_COMPONENT_SHORT_NAME}"
+    if component_list_contains_exact "$ALL_SHARDS_UNDELETED_COMPONENT_LIST" "$CURRENT_SHARD_COMPONENT_SHORT_NAME"; then
+      ALL_SHARDS_UNDELETED_COMPONENT_LIST=$(component_list_without_exact "$ALL_SHARDS_UNDELETED_COMPONENT_LIST" "$CURRENT_SHARD_COMPONENT_SHORT_NAME")
+    fi
+    echo "Detected shardRemove context from KB_REMOVE_SHARD_NAME"
+  fi
 
   export ALL_SHARDS_POD_NAME_LIST_COMBINED
   export ALL_SHARDS_POD_FQDN_LIST_COMBINED
