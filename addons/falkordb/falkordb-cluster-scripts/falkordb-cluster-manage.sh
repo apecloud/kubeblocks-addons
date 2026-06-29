@@ -94,6 +94,102 @@ init_environment(){
   export KB_CLUSTER_COMPONENT_DELETING_LIST
 }
 
+component_list_contains_exact() {
+  local component_list="$1"
+  local component="$2"
+
+  if [[ -z "$component_list" || -z "$component" ]]; then
+    return 1
+  fi
+
+  IFS=',' read -ra components <<< "$component_list"
+  for item in "${components[@]}"; do
+    if [[ "$item" == "$component" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+component_matches_remove_shard_name() {
+  local remove_shard_name="$1"
+  local component_name="$2"
+  local component_short_name="$3"
+
+  if [[ -z "$remove_shard_name" || -z "$component_name" ]]; then
+    return 1
+  fi
+  if [[ "$remove_shard_name" == "$component_name" ]]; then
+    return 0
+  fi
+  if [[ -n "$component_short_name" && "$remove_shard_name" == "$component_short_name" ]]; then
+    return 0
+  fi
+  if [[ "$component_name" == *-"$remove_shard_name" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+component_list_without_exact() {
+  local component_list="$1"
+  local component="$2"
+  local result=""
+
+  if [[ -z "$component_list" || -z "$component" ]]; then
+    return 0
+  fi
+
+  IFS=',' read -ra components <<< "$component_list"
+  for item in "${components[@]}"; do
+    if [[ -z "$item" || "$item" == "$component" ]]; then
+      continue
+    fi
+    if [[ -z "$result" ]]; then
+      result="$item"
+    else
+      result="$result,$item"
+    fi
+  done
+  echo "$result"
+}
+
+detect_scale_in_context() {
+  if ! is_empty "$KB_CLUSTER_COMPONENT_IS_SCALING_IN"; then
+    return 0
+  fi
+
+  if component_matches_remove_shard_name "$KB_REMOVE_SHARD_NAME" "$CURRENT_SHARD_COMPONENT_NAME" "$CURRENT_SHARD_COMPONENT_SHORT_NAME"; then
+    KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
+    export KB_CLUSTER_COMPONENT_IS_SCALING_IN
+    if is_empty "$KB_CLUSTER_COMPONENT_DELETING_LIST"; then
+      KB_CLUSTER_COMPONENT_DELETING_LIST="$CURRENT_SHARD_COMPONENT_NAME"
+      export KB_CLUSTER_COMPONENT_DELETING_LIST
+    fi
+    if is_empty "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"; then
+      KB_CLUSTER_COMPONENT_UNDELETED_LIST=$(component_list_without_exact "$KB_CLUSTER_COMPONENT_LIST" "$CURRENT_SHARD_COMPONENT_NAME")
+      export KB_CLUSTER_COMPONENT_UNDELETED_LIST
+    fi
+    echo "Detected scale-in context from KB_REMOVE_SHARD_NAME"
+    return 0
+  fi
+
+  if ! component_list_contains_exact "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$CURRENT_SHARD_COMPONENT_NAME"; then
+    return 1
+  fi
+  if component_list_contains_exact "$KB_CLUSTER_COMPONENT_UNDELETED_LIST" "$CURRENT_SHARD_COMPONENT_NAME"; then
+    return 1
+  fi
+  if is_empty "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"; then
+    return 1
+  fi
+
+  KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
+  export KB_CLUSTER_COMPONENT_IS_SCALING_IN
+  echo "Detected scale-in context from KB_CLUSTER_COMPONENT_DELETING_LIST/UNDELETED_LIST"
+  return 0
+}
+
 load_redis_cluster_common_utils() {
   # the common.sh and falkordb-cluster-common.sh scripts are defined in the falkordb-cluster-scripts-template configmap
   # and are mounted to the same path which defined in the cmpd.spec.scripts
@@ -1005,9 +1101,8 @@ sync_acl_for_redis_cluster_shard() {
 }
 
 scale_in_redis_cluster_shard() {
-  # check KB_CLUSTER_COMPONENT_IS_SCALING_IN env
-  if is_empty "$KB_CLUSTER_COMPONENT_IS_SCALING_IN"; then
-    echo "The KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set, skip scaling in"
+  if ! detect_scale_in_context; then
+    echo "The KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set and current component is not exclusively in KB_CLUSTER_COMPONENT_DELETING_LIST, skip scaling in"
     return 0
   fi
 
@@ -1019,6 +1114,10 @@ scale_in_redis_cluster_shard() {
   # init information for the other components and pods
   init_other_components_and_pods_info "$CURRENT_SHARD_COMPONENT_SHORT_NAME" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_LIST" "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"
   available_node=$(find_exist_available_node)
+  if is_empty "$available_node"; then
+    echo "No stable available FalkorDB Cluster node found before scaling in shard" >&2
+    return 1
+  fi
   available_node_fqdn=$(echo "$available_node" | awk -F ':' '{print $1}')
   available_node_port=$(echo "$available_node" | awk -F ':' '{print $2}')
   get_current_comp_nodes_for_scale_in "$available_node_fqdn" "$available_node_port"

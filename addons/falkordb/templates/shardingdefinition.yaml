@@ -14,3 +14,14 @@ spec:
     maxShards: 64
   provisionStrategy: Parallel
   updateStrategy: Parallel
+  lifecycleActions:
+    shardRemove:
+      timeoutSeconds: 600
+      exec:
+        container: falkordb-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/falkordb-cluster-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
+      retryPolicy:
+        maxRetries: 10

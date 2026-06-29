@@ -45,11 +45,11 @@ spec:
             args:
               - |
                 POD_FQDN=$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN
-                REDIS_URL="falkordb://${REDIS_DEFAULT_USER}:${REDIS_DEFAULT_PASSWORD}@${POD_FQDN}"
+                REDIS_URL="redis://${REDIS_DEFAULT_USER}:${REDIS_DEFAULT_PASSWORD}@${POD_FQDN}"
                 echo ${REDIS_URL}
                 cat <<EOF > /tmp/reshard.ini
                 [extractor]
-                db_type=falkordb
+                db_type=redis
                 extract_type=reshard
                 url=${REDIS_URL}
                 [sinker]
