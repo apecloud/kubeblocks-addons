@@ -14,8 +14,8 @@
 	// Determines whether to force PD to start as a new cluster and modify the number of Raft members to `1`
 	"force-new-cluster": bool | *false
 
-	// The interval at which PD updates the physical time of TSO. In a default update interval of TSO physical time, PD provides at most 262144 TSOs. To get more TSOs, you can reduce the value of this configuration item. The minimum value is `1ms`. Decreasing this configuration item might increase the CPU usage of PD. According to the test, compared with the interval of `50ms`, the [CPU usage](https://man7.org/linux/man-pages/man1/top.1.html) of PD will increase by about 10% when the interval is `1ms`.
-	"tso-update-physical-interval": string & >=0 | *"50ms"
+	// The interval at which PD updates the TSO physical time. The default is `"50ms"`; decreasing it can provide more TSOs but increases PD CPU usage. Minimum value: `"1ms"`.
+	"tso-update-physical-interval": string | *"50ms"
 
 	// The memory limit ratio for a PD instance. The value `0` means no memory limit.
 	"pd-server.server-memory-limit": float & >=0 & <=0.99 | *0
