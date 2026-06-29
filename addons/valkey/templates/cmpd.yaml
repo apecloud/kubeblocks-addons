@@ -39,6 +39,10 @@ spec:
   # This dampens false positives during cluster formation.
   minReadySeconds: 10
 
+  replicasLimit:
+    minReplicas: 1
+    maxReplicas: 16384
+
   # ── TLS ────────────────────────────────────────────────────────────────
   tls:
     volumeName: tls
