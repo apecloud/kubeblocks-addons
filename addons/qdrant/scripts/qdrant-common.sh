@@ -36,10 +36,25 @@ qdrant_effective_api_key() {
 }
 
 qdrant_curl() {
+  qdrant_xtrace_enabled=0
+  case "$-" in
+    *x*)
+      qdrant_xtrace_enabled=1
+      set +x
+      ;;
+  esac
+
   api_key="$(qdrant_effective_api_key)"
   if [ -n "$api_key" ]; then
-    "${QDRANT_CURL_BIN:-curl}" $CURL_TLS -H "api-key: ${api_key}" "$@"
+    "${QDRANT_CURL_BIN:-curl}" ${CURL_TLS:-} -H "api-key: ${api_key}" "$@"
   else
-    "${QDRANT_CURL_BIN:-curl}" $CURL_TLS "$@"
+    "${QDRANT_CURL_BIN:-curl}" ${CURL_TLS:-} "$@"
   fi
+  qdrant_curl_rc=$?
+
+  if [ "$qdrant_xtrace_enabled" = "1" ]; then
+    set -x
+  fi
+
+  return "$qdrant_curl_rc"
 }
