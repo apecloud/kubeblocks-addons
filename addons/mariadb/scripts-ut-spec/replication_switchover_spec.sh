@@ -2072,6 +2072,29 @@ EOF
         The output should include "reason_hash=sha256"
       End
 
+      It "alpha.127 v2: 127.0.0.1 SHOW GRANTS rc=0 with no write grants is accepted as read-only fenced"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+case "$*" in
+  *"-ukb_internal_root"*"SHOW GRANTS"*)
+    echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'127.0.0.1'"
+    exit 0
+    ;;
+  *"-uroot"*"SHOW GRANTS"*)
+    echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'127.0.0.1'"
+    exit 0
+    ;;
+esac
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_is_fenced "127.0.0.1"
+        The status should be success
+        The output should include "write_probe_rc=0"
+        The output should include "write_probe_errno=1290"
+        The output should include "reason=ok_by_local_probe:1290"
+      End
+
       It "alpha.62 v1: localhost host → grants-only path (no socket probe), reason=ok_by_grants_only:localhost_socket_not_attempted"
         cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
 #!/bin/sh

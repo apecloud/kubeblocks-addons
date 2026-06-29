@@ -685,7 +685,12 @@ _verify_host_is_fenced() {
       esac
       write_rc="${__PROBE_RC}"
       write_errno="${__PROBE_ERRNO}"
-      case "${write_rc}" in
+      case "${write_errno}" in
+        1044|1290|1142)
+          reason="ok_by_local_probe:${write_errno}"
+          log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
+          return 0
+          ;;
         0)
           reason="writable_unexpected"
           log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
@@ -695,21 +700,12 @@ _verify_host_is_fenced() {
           return 1
           ;;
         *)
-          case "${write_errno}" in
-            1044|1290|1142)
-              reason="ok_by_local_probe:${write_errno}"
-              log_switchover_info "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
-              return 0
-              ;;
-            *)
-              reason="probe_account_mismatch"
-              log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
-              log_switchover_error "remote_root_fence_verify host=${host} probe_dump_begin"
-              log_switchover_error "${__PROBE_OUT}"
-              log_switchover_error "remote_root_fence_verify host=${host} probe_dump_end"
-              return 1
-              ;;
-          esac
+          reason="probe_account_mismatch"
+          log_switchover_error "remote_root_fence_verify host=${host} verified_host=${host} probe_host=${probe_host} grants_query_rc=0 ${grants_sha_field} grants_bypass=none grants_ignored_count=${__GRANTS_IGNORED_COUNT} write_probe_attempted=true write_probe_rc=${write_rc} write_probe_errno=${write_errno} reason=${reason}"
+          log_switchover_error "remote_root_fence_verify host=${host} probe_dump_begin"
+          log_switchover_error "${__PROBE_OUT}"
+          log_switchover_error "remote_root_fence_verify host=${host} probe_dump_end"
+          return 1
           ;;
       esac
       ;;
