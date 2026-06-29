@@ -106,7 +106,7 @@ mariadb-{{ .Chart.Version }}
 Define mariadb-replication component definition name
 */}}
 {{- define "mariadb.replication.cmpdName" -}}
-mariadb-replication-{{ .Chart.Version }}
+mariadb-replication-merged-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -135,7 +135,7 @@ Define mariadb standalone component definition regular expression name prefix
 Define mariadb-replication component definition regular expression name prefix
 */}}
 {{- define "mariadb.replication.cmpdRegexpPattern" -}}
-^mariadb-replication-
+^mariadb-replication-merged-
 {{- end -}}
 
 {{/*
