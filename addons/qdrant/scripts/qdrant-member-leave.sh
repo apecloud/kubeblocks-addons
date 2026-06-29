@@ -14,7 +14,8 @@ load_common_library() {
 
 load_common_library
 
-CURL=/qdrant/tools/curl
+QDRANT_CURL_BIN="${QDRANT_CURL_BIN:-/qdrant/tools/curl}"
+export QDRANT_CURL_BIN
 JQ=/qdrant/tools/jq
 
 if [ "${TLS_ENABLED:-}" = "true" ]; then
@@ -36,7 +37,7 @@ fi
 control_uri=${SCHEME}://${control_fqdn}:6333
 
 # Query cluster state from a live peer.
-cluster_info=$($CURL $CURL_TLS -sf --max-time 10 ${control_uri}/cluster)
+cluster_info=$(qdrant_curl -sf --max-time 10 ${control_uri}/cluster)
 if [ $? -ne 0 ] || [ -z "$cluster_info" ]; then
   echo "ERROR: failed to query cluster info from ${control_uri}"
   exit 1
@@ -96,7 +97,7 @@ leave_peer_uri=${SCHEME}://${KB_LEAVE_MEMBER_POD_FQDN}:6333
 move_shards() {
     local cols col_count col_names
 
-    cols=$($CURL $CURL_TLS -sf ${control_uri}/collections)
+    cols=$(qdrant_curl -sf ${control_uri}/collections)
     if [ $? -ne 0 ]; then
       echo "ERROR: failed to list collections from ${control_uri}"
       return 1
@@ -112,7 +113,7 @@ move_shards() {
     for col_name in ${col_names}; do
         # Query the leaving peer for its local shards (still alive during memberLeave).
         local col_cluster_info
-        col_cluster_info=$($CURL $CURL_TLS -sf ${leave_peer_uri}/collections/${col_name}/cluster)
+        col_cluster_info=$(qdrant_curl -sf ${leave_peer_uri}/collections/${col_name}/cluster)
         if [ $? -ne 0 ]; then
           echo "ERROR: failed to get collection cluster info from leaving peer for ${col_name}"
           return 1
@@ -128,7 +129,7 @@ move_shards() {
         for shard_id in ${leave_shard_ids}; do
             echo "move shard ${shard_id} in ${col_name} from peer ${leave_peer_id} to peer ${leader_peer_id}"
             # Submit move_shard via control endpoint (cluster-wide API).
-            $CURL $CURL_TLS -sf -X POST -H "Content-Type: application/json" \
+            qdrant_curl -sf -X POST -H "Content-Type: application/json" \
                 -d '{"move_shard":{"shard_id": '${shard_id}',"to_peer_id": '${leader_peer_id}',"from_peer_id": '${leave_peer_id}}}'' \
                 ${control_uri}/collections/${col_name}/cluster
             if [ $? -ne 0 ]; then
@@ -139,7 +140,7 @@ move_shards() {
 
         # Wait for all shards to finish moving off the leaving peer.
         while true; do
-            col_cluster_info=$($CURL $CURL_TLS -sf ${leave_peer_uri}/collections/${col_name}/cluster 2>/dev/null) || true
+            col_cluster_info=$(qdrant_curl -sf ${leave_peer_uri}/collections/${col_name}/cluster 2>/dev/null) || true
             if [ -n "$col_cluster_info" ]; then
               leave_shard_ids=$(echo ${col_cluster_info} | $JQ -r '.result.local_shards[].shard_id')
               if [ -z "${leave_shard_ids}" ]; then
@@ -148,7 +149,7 @@ move_shards() {
               fi
             else
               # Leaving peer unreachable during transfer — verify from control endpoint.
-              col_cluster_info=$($CURL $CURL_TLS -sf ${control_uri}/collections/${col_name}/cluster)
+              col_cluster_info=$(qdrant_curl -sf ${control_uri}/collections/${col_name}/cluster)
               if [ $? -ne 0 ]; then
                 echo "ERROR: cannot check shard status for ${col_name} from either endpoint"
                 return 1
@@ -171,7 +172,7 @@ move_shards() {
 remove_peer() {
     echo "remove peer ${leave_peer_id} from cluster"
     # Use control endpoint — the leaving peer may be unreachable after shard migration.
-    $CURL $CURL_TLS -sf -v -XDELETE ${control_uri}/cluster/peer/${leave_peer_id}
+    qdrant_curl -sf -v -XDELETE ${control_uri}/cluster/peer/${leave_peer_id}
     if [ $? -ne 0 ]; then
       echo "ERROR: failed to remove peer ${leave_peer_id} from cluster"
       return 1
