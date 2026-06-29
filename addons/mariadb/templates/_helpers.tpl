@@ -521,8 +521,8 @@ reconfigure:
             error_code=$(printf '%s' "${output}" | grep -oE 'ERROR [0-9]+' | head -1 | awk '{print $2}')
             case "${error_code}" in
               1231|1232|1193|1064)
-                echo "[SKIP] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}"
-                echo "[SKIP] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}" >&2
+                echo "[REJECT] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}"
+                echo "[REJECT] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}" >&2
                 skipped_count=$((skipped_count + 1))
                 ;;
               *)
@@ -533,10 +533,10 @@ reconfigure:
           fi
         done < "${parameter_file}"
 
-        if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -gt 0 ]; then
-          echo "No parameters applied; ${skipped_count} had user-input errors (engine rejected)"
-          echo "No parameters applied; ${skipped_count} had user-input errors (engine rejected)" >&2
-          exit 0
+        if [ "${skipped_count}" -gt 0 ]; then
+          echo "${skipped_count} parameter(s) were rejected by engine; failing reconfigure to avoid accepting invalid rendered config"
+          echo "${skipped_count} parameter(s) were rejected by engine; failing reconfigure to avoid accepting invalid rendered config" >&2
+          exit 1
         fi
         if [ "${applied_count}" -eq 0 ]; then
           echo "No parameters were applied during reconfigure action" >&2
@@ -977,8 +977,8 @@ reconfigure:
             error_code=$(printf '%s' "${output}" | grep -oE 'ERROR [0-9]+' | head -1 | awk '{print $2}')
             case "${error_code}" in
               1231|1232|1193|1064)
-                echo "[SKIP] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}"
-                echo "[SKIP] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}" >&2
+                echo "[REJECT] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}"
+                echo "[REJECT] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}" >&2
                 skipped_count=$((skipped_count + 1))
                 continue
                 ;;
@@ -1049,9 +1049,9 @@ reconfigure:
           #     than catching the same issue at write time.
         done < "${parameter_file}"
 
-        if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -gt 0 ]; then
-          echo "No parameters applied; ${skipped_count} had user-input errors (engine rejected)" >&2
-          exit 0
+        if [ "${skipped_count}" -gt 0 ]; then
+          echo "${skipped_count} parameter(s) were rejected by engine; failing reconfigure to avoid accepting invalid rendered config" >&2
+          exit 1
         fi
         if [ "${applied_count}" -eq 0 ]; then
           echo "No parameters were applied during reconfigure action" >&2
