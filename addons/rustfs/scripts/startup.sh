@@ -4,16 +4,34 @@ replicas_history_file="/rustfs-config/RUSTFS_REPLICAS_HISTORY"
 writable_certs_path="/data/.rustfs/certs"
 
 setup_tls_certs() {
-  if [ "$TLS_ENABLED" = "true" ] && [ -f ${CERTS_PATH}/ca.crt ]; then
+  if [ "${TLS_ENABLED:-}" = "true" ]; then
     echo "Setting up TLS certificates for RustFS..."
 
-    mkdir -p ${writable_certs_path}
+    for cert_file in ca.crt tls.crt tls.key; do
+      if [ ! -r "${CERTS_PATH}/${cert_file}" ]; then
+        echo "TLS certificate source file is missing or unreadable: ${CERTS_PATH}/${cert_file}" >&2
+        exit 1
+      fi
+    done
 
-    cp -L ${CERTS_PATH}/tls.crt ${writable_certs_path}/tls.crt
-    cp -L ${CERTS_PATH}/tls.key ${writable_certs_path}/tls.key
-    cp -L ${CERTS_PATH}/ca.crt ${writable_certs_path}/ca.crt
+    mkdir -p "${writable_certs_path}" || {
+      echo "Failed to create writable TLS certificate directory: ${writable_certs_path}" >&2
+      exit 1
+    }
 
-    chmod 600 ${writable_certs_path}/tls.key
+    cp -L "${CERTS_PATH}/tls.crt" "${writable_certs_path}/rustfs_cert.pem" || exit 1
+    cp -L "${CERTS_PATH}/tls.key" "${writable_certs_path}/rustfs_key.pem" || exit 1
+    cp -L "${CERTS_PATH}/ca.crt" "${writable_certs_path}/ca.crt" || exit 1
+
+    chmod 0644 "${writable_certs_path}/rustfs_cert.pem" "${writable_certs_path}/ca.crt" || exit 1
+    chmod 0600 "${writable_certs_path}/rustfs_key.pem" || exit 1
+
+    for cert_file in rustfs_cert.pem rustfs_key.pem ca.crt; do
+      if [ ! -s "${writable_certs_path}/${cert_file}" ]; then
+        echo "TLS certificate target file is missing or empty: ${writable_certs_path}/${cert_file}" >&2
+        exit 1
+      fi
+    done
 
     export RUSTFS_TLS_PATH=${writable_certs_path}
 
