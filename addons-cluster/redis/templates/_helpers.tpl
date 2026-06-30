@@ -17,11 +17,11 @@ Define redis cluster shardingSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.shardingSpec" }}
 - name: shard
+  shardingDef: redis-cluster
   shards: {{ .Values.redisCluster.shardCount }}
   template:
     name: redis
     {{- include "redis-cluster.tls" . | indent 4 }}
-    componentDef: redis-cluster
     replicas: {{ .Values.replicas }}
     {{- if .Values.podAntiAffinityEnabled }}
     {{- include "redis-cluster.shardingSchedulingPolicy" . | indent 2 }}
