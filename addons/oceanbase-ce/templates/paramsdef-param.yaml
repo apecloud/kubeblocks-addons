@@ -19,6 +19,15 @@ spec:
       scriptConfig:
         scriptConfigMapRef: {{ include "oceanbase-ce.scripts.reload" . }}
         namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_reload_tools
+        toolConfigs:
+          - name: kb-reload-tools
+            command:
+              - cp
+              - /bin/ob-tools
+              - /kb_reload_tools/obtools
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.obtools.repository }}:{{ .Values.image.obtools.tag }}
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level mysql configuration type

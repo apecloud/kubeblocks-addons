@@ -1,7 +1,11 @@
 #!/bin/sh
 set -ex
 
-OB_CLI="/kb_tools/obtools"
+if [ -x "/kb_reload_tools/obtools" ]; then
+  OB_CLI="/kb_reload_tools/obtools"
+else
+  OB_CLI="/kb_tools/obtools"
+fi
 paramName="${1:?missing config}"
 paramValue="${2:?missing value}"
 
