@@ -43,7 +43,7 @@ build_cli() {
   fi
 }
 
-# Find the current primary by polling each pod's role
+# Find the current primary by polling each pod's role.
 find_primary_fqdn() {
   IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
   for fqdn in "${pod_fqdns[@]}"; do
@@ -56,14 +56,8 @@ find_primary_fqdn() {
       return 0
     fi
   done
-  # No pod confirmed as master (e.g. cluster initialising or mid-failover).
-  # Fall back to lexicographic heuristic only on fresh clusters; warn so operators
-  # know the ACL sync may use a replica as source if a failover is in progress.
-  local primary_pod primary_fqdn
-  primary_pod=$(min_lexicographical_order_pod "${VALKEY_POD_NAME_LIST}")
-  primary_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "${VALKEY_POD_FQDN_LIST}" "${primary_pod}")
-  echo "WARNING: no pod reported role:master — falling back to lexicographic heuristic (${primary_fqdn}); ACL sync may use stale data if a failover is in progress" >&2
-  echo "${primary_fqdn}"
+  echo "ERROR: no pod reported role:master — refusing to guess an ACL source." >&2
+  return 1
 }
 
 # Copy all non-default ACL rules from source to target
@@ -144,10 +138,10 @@ if is_empty "${KB_JOIN_MEMBER_POD_FQDN}"; then
   exit 0
 fi
 
-primary_fqdn=$(find_primary_fqdn)
+primary_fqdn=$(find_primary_fqdn) || exit 1
 if is_empty "${primary_fqdn}"; then
-  echo "WARNING: could not determine primary — skipping ACL sync." >&2
-  exit 0
+  echo "ERROR: could not determine primary — refusing to skip ACL sync." >&2
+  exit 1
 fi
 
 # Don't sync from/to the same pod.

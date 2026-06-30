@@ -61,6 +61,12 @@ Describe "Valkey post-restore Sentinel contract"
     The stdout should include "SENTINEL_POD_FQDN_LIST"
   End
 
+  It "fails closed when SENTINEL_POD_FQDN_LIST is missing"
+    When call grep -F "SENTINEL_POD_FQDN_LIST is not set" "${script_file}"
+    The status should be success
+    The stdout should include "SENTINEL_POD_FQDN_LIST is not set"
+  End
+
   It "parses SENTINEL_POD_FQDN_LIST into an array with IFS comma split"
     When call grep -E "IFS=',' read -ra sentinel_fqdn_list" "${script_file}"
     The status should be success
@@ -77,6 +83,11 @@ Describe "Valkey post-restore Sentinel contract"
     When call grep -E 'configured.*expected.*Sentinel pods' "${script_file}"
     The status should be success
     The stdout should include "expected Sentinel pods"
+  End
+
+  It "does not use ordinal scan fallback for unknown Sentinel targets"
+    When call grep -E "POST_RESTORE_SENTINEL_SCAN_LIMIT|sentinel_replica_count|partial probe found" "${script_file}"
+    The status should be failure
   End
 
   It "does not reference restore-sentinel-acl.sh (dead code removed)"

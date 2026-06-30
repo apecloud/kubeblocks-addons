@@ -156,39 +156,24 @@ if [ -z "${primary_fqdn}" ]; then
 fi
 
 # ── register primary with each Sentinel pod ──────────────────────────────────
-# When SENTINEL_POD_FQDN_LIST is provided, use it as the authoritative target
-# set and require every listed Sentinel to be configured (fail-closed).
-# Otherwise, fall back to ordinal scanning with SENTINEL_REPLICA_COUNT or a
-# bounded scan limit.
+# SENTINEL_POD_FQDN_LIST is the authoritative target set. Restore must not
+# report success after configuring only a guessed subset of Sentinel pods.
 sentinel_fqdn_list=()
-if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
-  sentinel_fqdn_list_raw=()
-  IFS=',' read -ra sentinel_fqdn_list_raw <<< "${SENTINEL_POD_FQDN_LIST}"
-  for sentinel_fqdn in "${sentinel_fqdn_list_raw[@]}"; do
-    [ -n "${sentinel_fqdn}" ] && sentinel_fqdn_list+=("${sentinel_fqdn}")
-  done
-  expected_sentinel_count="${#sentinel_fqdn_list[@]}"
-  if [ "${expected_sentinel_count}" -eq 0 ]; then
-    echo "ERROR: SENTINEL_POD_FQDN_LIST is set but empty after parsing." >&2
-    exit 1
-  fi
-  echo "INFO: using SENTINEL_POD_FQDN_LIST (${expected_sentinel_count} entries) as target set."
-else
-  default_sentinel_scan_limit="${POST_RESTORE_SENTINEL_SCAN_LIMIT:-9}"
-  default_sentinel_scan_limit=$(positive_int_or_default "${default_sentinel_scan_limit}" 9)
-  expected_sentinel_count="${SENTINEL_REPLICA_COUNT:-}"
-  if [ -n "${expected_sentinel_count}" ]; then
-    sentinel_replica_count=$(positive_int_or_default "${expected_sentinel_count}" "${default_sentinel_scan_limit}")
-    expected_sentinel_count="${sentinel_replica_count}"
-  else
-    sentinel_replica_count="${default_sentinel_scan_limit}"
-  fi
-  ordinal=0
-  while [ "${ordinal}" -lt "${sentinel_replica_count}" ]; do
-    sentinel_fqdn_list+=("${sentinel_comp}-${ordinal}.${sentinel_headless}")
-    ordinal=$((ordinal + 1))
-  done
+if [ -z "${SENTINEL_POD_FQDN_LIST:-}" ]; then
+  echo "ERROR: SENTINEL_POD_FQDN_LIST is not set; cannot prove all Sentinel pods are reconfigured after restore." >&2
+  exit 1
 fi
+sentinel_fqdn_list_raw=()
+IFS=',' read -ra sentinel_fqdn_list_raw <<< "${SENTINEL_POD_FQDN_LIST}"
+for sentinel_fqdn in "${sentinel_fqdn_list_raw[@]}"; do
+  [ -n "${sentinel_fqdn}" ] && sentinel_fqdn_list+=("${sentinel_fqdn}")
+done
+expected_sentinel_count="${#sentinel_fqdn_list[@]}"
+if [ "${expected_sentinel_count}" -eq 0 ]; then
+  echo "ERROR: SENTINEL_POD_FQDN_LIST is set but empty after parsing." >&2
+  exit 1
+fi
+echo "INFO: using SENTINEL_POD_FQDN_LIST (${expected_sentinel_count} entries) as target set."
 
 reachable_sentinel_fqdn_list=()
 failed_sentinel_count=0
@@ -232,10 +217,6 @@ else
   sentinel_count="${#reachable_sentinel_fqdn_list[@]}"
 fi
 sentinel_monitor_quorum=$(( sentinel_count / 2 + 1 ))
-if [ -z "${expected_sentinel_count}" ] && [ "${sentinel_monitor_quorum}" -lt 2 ]; then
-  echo "WARNING: partial probe found ${sentinel_count} Sentinel(s); flooring quorum at 2 for safety." >&2
-  sentinel_monitor_quorum=2
-fi
 echo "INFO: using Sentinel monitor quorum ${sentinel_monitor_quorum}/${sentinel_count}."
 
 configured_sentinel_count=0

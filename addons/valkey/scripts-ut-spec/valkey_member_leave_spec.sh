@@ -113,12 +113,13 @@ Describe "Valkey Member-Leave Bash Script Tests"
       }
       After "teardown"
 
-      It "exits early with 'nothing to do'"
-        # Simulate the main guard that checks for Sentinel
-        check_no_sentinel() {
-          is_empty "${SENTINEL_COMPONENT_NAME}" || is_empty "${SENTINEL_POD_FQDN_LIST}"
+      It "uses the no-Sentinel fail-closed safety check instead of a success-only early exit"
+        member_leave_script="../scripts/valkey-member-leave.sh"
+        no_sentinel_guard_contract() {
+          ! grep -F "No Sentinel component — nothing to do on member leave." "${member_leave_script}" >/dev/null &&
+            grep -F "no_sentinel_safety_check" "${member_leave_script}" >/dev/null
         }
-        When call check_no_sentinel
+        When call no_sentinel_guard_contract
         The status should be success
       End
     End
@@ -227,6 +228,22 @@ Describe "Valkey Member-Leave Bash Script Tests"
       When call grep -E "never call SENTINEL RESET|SENTINEL RESET is intentionally NOT called|never called on member leave" "${member_leave_script}"
       The status should be success
       The stdout should not eq ""
+    End
+  End
+
+  Describe "master memberLeave fail-closed contract"
+    member_leave_script="../scripts/valkey-member-leave.sh"
+
+    It "treats a rejected SENTINEL FAILOVER as an error, not a warning-only success"
+      When call grep -F "ERROR: SENTINEL FAILOVER rejected" "${member_leave_script}"
+      The status should be success
+      The stdout should include "ERROR: SENTINEL FAILOVER rejected"
+    End
+
+    It "refuses memberLeave success when no new master is confirmed"
+      When call grep -F "refusing memberLeave success while the leaving pod is still master" "${member_leave_script}"
+      The status should be success
+      The stdout should include "refusing memberLeave success"
     End
   End
 

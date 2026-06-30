@@ -304,10 +304,10 @@ Describe "Valkey Switchover Bash Script Tests"
     End
 
     Context "when a replica fails to repoint"
-      It "logs a WARNING but still returns success (non-fatal)"
+      It "logs a WARNING and returns failure"
         call_func_with_retry() { return 1; }
         When call repoint_replicas "valkey-1.headless.default.svc.cluster.local"
-        The status should be success
+        The status should be failure
         The stdout should include "Repointing"
         The stderr should include "WARNING"
         The stderr should include "failed to repoint"
@@ -1113,6 +1113,21 @@ Describe "Valkey Switchover Bash Script Tests"
         The status should be failure
         The stderr should include "no new primary confirmed"
       End
+    End
+  End
+
+  Describe "no-Sentinel switchover contract"
+    switchover_script="../scripts/switchover.sh"
+
+    It "fails closed instead of using manual best-effort promotion"
+      When call grep -F "switchover is unsupported without Sentinel" "${switchover_script}"
+      The status should be success
+      The stdout should include "unsupported without Sentinel"
+    End
+
+    It "does not leave manual confirmation failures as best-effort success"
+      When call grep -F "wait_until_master \"${target_fqdn}\" 10 || true" "${switchover_script}"
+      The status should be failure
     End
   End
 End

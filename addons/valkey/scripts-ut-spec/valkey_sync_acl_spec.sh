@@ -56,7 +56,7 @@ Describe "Valkey Sync-ACL Bash Script Tests"
       End
     End
 
-    Context "when no pod reports role:master (fallback to lexicographic heuristic)"
+    Context "when no pod reports role:master"
       setup() {
         export VALKEY_POD_NAME_LIST="valkey-2,valkey-0,valkey-1"
         export VALKEY_POD_FQDN_LIST="valkey-2.headless.default.svc.cluster.local,valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
@@ -69,14 +69,14 @@ Describe "Valkey Sync-ACL Bash Script Tests"
       }
       After "teardown"
 
-      It "falls back to lexicographic minimum pod (valkey-0)"
+      It "fails closed instead of guessing a lexicographic ACL source"
         valkey-cli() {
           printf "role:slave\r\n"
         }
         When call find_primary_fqdn
-        The status should be success
-        The stdout should eq "valkey-0.headless.default.svc.cluster.local"
-        The stderr should include "no pod reported role:master"
+        The status should be failure
+        The stdout should eq ""
+        The stderr should include "refusing to guess"
       End
     End
   End

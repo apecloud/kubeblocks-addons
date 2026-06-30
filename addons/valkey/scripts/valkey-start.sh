@@ -192,8 +192,16 @@ build_replicaof_config() {
       if ! is_empty "${primary_fqdn}"; then
         : # already logged above
       else
-        # Step A-3: no peer is a master yet.  Elect the lowest-ordinal pod as
-        # the bootstrap primary, then verify it is actually reporting role:master.
+        # Step A-3: no peer is a master yet. Only a fresh data directory may
+        # bootstrap by lexicographic order. If this pod has existing data,
+        # guessing a primary while Sentinel cannot prove one can create a
+        # second master after restart/restore.
+        if ! is_fresh_bootstrap_data_dir; then
+          echo "ERROR: Sentinel topology has no trusted master and ${DATA_DIR:-/data} contains existing data — refusing lexicographic primary guess." >&2
+          return 1
+        fi
+        # Elect the lowest-ordinal pod as the bootstrap primary, then verify it
+        # is actually reporting role:master.
         # During rolling restarts the lexicographic pod may itself be a slave
         # (sentinel already failed over to a different pod); connecting to it
         # would create a cascading topology that sentinel will not auto-correct.
@@ -259,6 +267,15 @@ build_replicaof_config() {
   fi
 
   echo "replicaof ${primary_fqdn} ${primary_port}" >> "${CONF_RUNTIME}"
+}
+
+is_fresh_bootstrap_data_dir() {
+  local dir="${DATA_DIR:-/data}"
+  [ ! -e "${dir}/dump.rdb" ] || return 1
+  [ ! -e "${dir}/appendonly.aof" ] || return 1
+  [ ! -d "${dir}/appendonlydir" ] || return 1
+  [ ! -e "${dir}/nodes.conf" ] || return 1
+  return 0
 }
 
 # query_sentinel_quorum_for_master — query ALL sentinel pods and return the

@@ -14,10 +14,9 @@
 #   its own conf.  If a specific candidate is requested we first set its
 #   replica-priority to 1 (highest) so Sentinel picks it.
 #
-# When Sentinel is absent (standalone replication):
-#   Manual approach:
-#     1. REPLICAOF NO ONE on the target.
-#     2. REPLICAOF <new-primary> on all other pods.
+# When Sentinel is absent:
+#   Fail closed. Valkey standalone/no-Sentinel topology has no HA coordinator
+#   that can prove the new primary and replica routing converged.
 
 # shellcheck disable=SC2034
 ut_mode="false"
@@ -101,13 +100,17 @@ repoint_one() {
 
 repoint_replicas() {
   local new_primary_fqdn="${1}"
+  local failures=0
   IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
   for fqdn in "${pod_fqdns[@]}"; do
     [ "${fqdn}" = "${new_primary_fqdn}" ] && continue   # skip the new primary itself
     echo "Repointing ${fqdn} → ${new_primary_fqdn}..."
-    call_func_with_retry 3 3 repoint_one "${fqdn}" "${new_primary_fqdn}" "${port}" || \
+    call_func_with_retry 3 3 repoint_one "${fqdn}" "${new_primary_fqdn}" "${port}" || {
       echo "WARNING: failed to repoint ${fqdn} to ${new_primary_fqdn} — it may remain pointing at the old primary" >&2
+      failures=$((failures + 1))
+    }
   done
+  [ "${failures}" -eq 0 ]
 }
 
 pick_any_secondary() {
@@ -394,12 +397,6 @@ ${__SOURCED__:+false} : || return 0
 # ── main ────────────────────────────────────────────────────────────────────
 load_common_library
 
-# Nothing to do for single-replica clusters
-if [ "${COMPONENT_REPLICAS}" -lt 2 ]; then
-  echo "Only one replica — nothing to switch over."
-  exit 0
-fi
-
 # Only act when KubeBlocks asks us to transfer the primary role
 if [ "${KB_SWITCHOVER_ROLE}" != "primary" ]; then
   echo "switchover not for primary role (got '${KB_SWITCHOVER_ROLE}') — exiting."
@@ -414,22 +411,6 @@ if ! is_empty "${SENTINEL_COMPONENT_NAME}" && ! is_empty "${SENTINEL_POD_FQDN_LI
   exit 0
 fi
 
-# ── Manual path (no Sentinel) ──
-target_fqdn="${KB_SWITCHOVER_CANDIDATE_FQDN}"
-if is_empty "${target_fqdn}"; then
-  target_fqdn=$(pick_any_secondary)
-  if is_empty "${target_fqdn}"; then
-    echo "ERROR: no available secondary found" >&2
-    exit 1
-  fi
-fi
-
-echo "Manual switchover: ${KB_SWITCHOVER_CURRENT_FQDN} → ${target_fqdn}"
-
-promote_replica "${target_fqdn}"
-# wait_until_master is best-effort: repoint_replicas must always run even on
-# timeout to avoid leaving replicas pointed at the old (demoted) primary.
-wait_until_master "${target_fqdn}" 10 || true
-repoint_replicas "${target_fqdn}"
-
-echo "Manual switchover complete. New primary: ${target_fqdn}"
+# ── No-Sentinel path ──
+echo "ERROR: switchover is unsupported without Sentinel; refusing manual best-effort promotion." >&2
+exit 1

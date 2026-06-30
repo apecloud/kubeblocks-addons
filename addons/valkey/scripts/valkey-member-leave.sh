@@ -13,7 +13,8 @@
 #   - If the leaving pod is the current primary: trigger SENTINEL FAILOVER
 #     first so Sentinel promotes a new primary before this pod goes away.
 #
-# When Sentinel is absent (standalone): nothing to do.
+# When Sentinel is absent: fail closed unless the leaving pod is confirmed to
+# be a replica. A primary leave without Sentinel cannot be made safe here.
 #
 # Note: SENTINEL RESET is intentionally NOT called from this script. See the
 # detailed comment above the master-leave block for rationale.
@@ -79,8 +80,16 @@ ${__SOURCED__:+false} : || return 0
 load_common_library
 
 if is_empty "${SENTINEL_COMPONENT_NAME}" || is_empty "${SENTINEL_POD_FQDN_LIST}"; then
-  echo "No Sentinel component — nothing to do on member leave."
-  exit 0
+  if is_empty "${KB_LEAVE_MEMBER_POD_FQDN}"; then
+    echo "ERROR: no Sentinel component and KB_LEAVE_MEMBER_POD_FQDN is not set — cannot prove memberLeave is safe." >&2
+    exit 1
+  fi
+  build_data_cli "${KB_LEAVE_MEMBER_POD_FQDN}"
+  leaving_role=$("${_data_cli_cmd[@]}" INFO replication 2>/dev/null \
+                   | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
+  echo "Leaving pod: ${KB_LEAVE_MEMBER_POD_FQDN}, role: ${leaving_role:-unknown}"
+  no_sentinel_safety_check "${leaving_role}"
+  exit $?
 fi
 
 if is_empty "${KB_LEAVE_MEMBER_POD_FQDN}"; then
@@ -209,7 +218,8 @@ if [ "${leaving_role}" = "master" ]; then
     echo "SENTINEL FAILOVER response: ${failover_out}"
     case "${failover_out}" in
       *"ERR"*|*"error"*|*"BUSY"*)
-        echo "WARNING: SENTINEL FAILOVER rejected — ${failover_out}" >&2 ;;
+        echo "ERROR: SENTINEL FAILOVER rejected — ${failover_out}" >&2
+        exit 1 ;;
     esac
     # Wait up to 30 s for a new primary to emerge
     failover_done=false
@@ -230,7 +240,8 @@ if [ "${leaving_role}" = "master" ]; then
       fi
     done
     if [ "${failover_done}" = "false" ]; then
-      echo "WARNING: failover still in progress after 30s — KubeBlocks pod removal will proceed; sentinel will reach consistency via natural pod-down detection." >&2
+      echo "ERROR: failover still in progress after 30s — refusing memberLeave success while the leaving pod is still master." >&2
+      exit 1
     fi
   else
     echo "Sentinel already reports a different master — skipping SENTINEL FAILOVER. Sentinel will self-clean when the pod is deleted by KubeBlocks."

@@ -41,7 +41,6 @@ spec:
 
   replicasLimit:
     minReplicas: 1
-    maxReplicas: 16384
 
   # ── TLS ────────────────────────────────────────────────────────────────
   tls:
@@ -452,8 +451,9 @@ spec:
           - /scripts/account-provision.sh
         targetPodSelector: All
 
-    # switchover: when Sentinel is present, delegates to SENTINEL FAILOVER.
-    # When absent (standalone), performs a direct REPLICAOF NO ONE.
+    # switchover: supported only when Sentinel is present. Without Sentinel
+    # there is no authoritative HA coordinator, so the action fails closed
+    # instead of attempting a manual best-effort promotion.
     # timeoutSeconds: -1 disables the kbagent-layer exec timeout so that the
     # Sentinel priority-cache polling (up to 30s) and the wait_for_new_master
     # confirmation (up to 300s) are not cut short.
