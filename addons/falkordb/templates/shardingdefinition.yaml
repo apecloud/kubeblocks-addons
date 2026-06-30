@@ -14,14 +14,19 @@ spec:
     maxShards: 64
   provisionStrategy: Parallel
   updateStrategy: Parallel
+  systemAccounts:
+    - name: default
+      shared: true
   lifecycleActions:
     shardRemove:
       timeoutSeconds: 600
       exec:
+        image: {{ include "falkordb4.image" . }}
         container: falkordb-cluster
         command:
           - /bin/bash
           - -c
-          - /scripts/falkordb-cluster-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
+          - |
+            /scripts/falkordb-cluster-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
       retryPolicy:
         maxRetries: 10
