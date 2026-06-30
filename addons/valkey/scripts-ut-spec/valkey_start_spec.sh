@@ -327,16 +327,34 @@ Describe "Valkey Start Bash Script Tests"
         The stderr should include "electing bootstrap primary"
       End
 
-      It "fails closed instead of guessing when data already exists"
+      It "allows lexicographic election for full-cluster restart when data already exists"
         touch "${DATA_DIR}/dump.rdb"
         query_sentinel_quorum_for_master() { echo ""; }
         scan_pods_for_master() { echo ""; }
+        verify_pod_role() { echo ""; }
         When call build_replicaof_config
-        The status should be failure
-        The stderr should include "refusing lexicographic primary guess"
+        The status should be success
+        The stderr should include "treating as full-cluster restart"
+        The stderr should include "electing bootstrap primary"
       End
 
       It "fails closed when any peer is already a slave even if this pod data dir is fresh"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "reports role:slave"
+        The stderr should include "refusing lexicographic primary guess"
+      End
+
+      It "fails closed when any peer is already a slave even if this pod data dir has existing data"
+        touch "${DATA_DIR}/dump.rdb"
         query_sentinel_quorum_for_master() { echo ""; }
         scan_pods_for_master() { echo ""; }
         verify_pod_role() {
