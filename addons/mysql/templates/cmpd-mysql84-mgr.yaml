@@ -42,7 +42,7 @@ spec:
           - -c
           - |
             {{- include "mysql.spec.runtime.entrypoint" . | nindent 12 }}
-            docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
+            /scripts/docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
                --report-host ${POD_NAME}.${CLUSTER_COMPONENT_NAME}-headless \
                --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
                --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \

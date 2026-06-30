@@ -147,6 +147,27 @@ docker_temp_server_start() {
 	fi
 }
 
+docker_temp_server_start_skip_grants() {
+	if [ "${MYSQL_MAJOR}" = '5.7' ]; then
+		"$@" --skip-networking --skip-grant-tables --default-time-zone=SYSTEM --socket="${SOCKET}" &
+		mysql_note "Waiting for server startup with grant tables disabled"
+		local i
+		for i in {30..0}; do
+			if docker_process_sql --dont-use-mysql-root-password --database=mysql <<<'SELECT 1' &> /dev/null; then
+				break
+			fi
+			sleep 1
+		done
+		if [ "$i" = 0 ]; then
+			mysql_error "Unable to start server."
+		fi
+	else
+		if ! "$@" --daemonize --skip-networking --skip-grant-tables --default-time-zone=SYSTEM --socket="${SOCKET}"; then
+			mysql_error "Unable to start server."
+		fi
+	fi
+}
+
 # Stop the server. When using a local socket file mysqladmin will block until
 # the shutdown is complete.
 docker_temp_server_stop() {
@@ -353,6 +374,58 @@ _mysql_passfile() {
 	fi
 }
 
+mysql_sql_literal() {
+	local value="${1:-}"
+	printf '%s' "$value" | sed "s/\\\\/\\\\\\\\/g; s/'/''/g"
+}
+
+mysql_require_restored_account_value() {
+	local name="$1" value="${2:-}"
+	if [ -z "$value" ]; then
+		mysql_error "Required restore account value ${name} is empty; refusing to reset restored MySQL system accounts."
+	fi
+}
+
+mysql_print_alter_restored_account_sql() {
+	local user="${1:-}" password="${2:-}" host="${3:-}"
+	mysql_require_restored_account_value "user" "$user" || return
+	mysql_require_restored_account_value "password" "$password" || return
+	mysql_require_restored_account_value "host" "$host" || return
+
+	local escaped_user escaped_password escaped_host
+	escaped_user="$(mysql_sql_literal "$user")"
+	escaped_password="$(mysql_sql_literal "$password")"
+	escaped_host="$(mysql_sql_literal "$host")"
+
+	cat <<-EOSQL
+		ALTER USER '${escaped_user}'@'${escaped_host}' IDENTIFIED BY '${escaped_password}';
+	EOSQL
+}
+
+mysql_reset_restored_system_accounts() {
+	if [ ! -f "${DATADIR}/.restore_new_cluster" ]; then
+		return
+	fi
+
+	mysql_require_restored_account_value "MYSQL_ROOT_USER" "${MYSQL_ROOT_USER:-}" || return
+	mysql_require_restored_account_value "MYSQL_ROOT_PASSWORD" "${MYSQL_ROOT_PASSWORD:-}" || return
+	mysql_require_restored_account_value "MYSQL_ADMIN_USER" "${MYSQL_ADMIN_USER:-}" || return
+	mysql_require_restored_account_value "MYSQL_ADMIN_PASSWORD" "${MYSQL_ADMIN_PASSWORD:-}" || return
+	mysql_require_restored_account_value "MYSQL_REPLICATION_USER" "${MYSQL_REPLICATION_USER:-}" || return
+	mysql_require_restored_account_value "MYSQL_REPLICATION_PASSWORD" "${MYSQL_REPLICATION_PASSWORD:-}" || return
+
+	mysql_note "Resetting restored MySQL system accounts from target cluster secrets."
+	{
+		cat <<-'EOSQL'
+			FLUSH PRIVILEGES;
+		EOSQL
+		mysql_print_alter_restored_account_sql "${MYSQL_ROOT_USER}" "${MYSQL_ROOT_PASSWORD}" "localhost"
+		mysql_print_alter_restored_account_sql "${MYSQL_ROOT_USER}" "${MYSQL_ROOT_PASSWORD}" "${MYSQL_ROOT_HOST:-%}"
+		mysql_print_alter_restored_account_sql "${MYSQL_ADMIN_USER}" "${MYSQL_ADMIN_PASSWORD}" "%"
+		mysql_print_alter_restored_account_sql "${MYSQL_REPLICATION_USER}" "${MYSQL_REPLICATION_PASSWORD}" "%"
+	} | docker_process_sql --dont-use-mysql-root-password --database=mysql
+}
+
 # Mark root user as expired so the password must be changed before anything
 # else can be done (only supported for 5.6+)
 mysql_expire_root_user() {
@@ -365,31 +438,36 @@ mysql_expire_root_user() {
 
 
 restore_standby_from_xtrabackup() {
-  if [ ! -f ${DATADIR}/.xtrabackup_restore ]; then
+  if [ ! -f "${DATADIR}/.xtrabackup_restore" ]; then
     return
   fi
-  if [ ! -f ${DATADIR}/xtrabackup_info ]; then
+  if [ ! -f "${DATADIR}/xtrabackup_info" ]; then
     return
   fi
   mysql_note "start to restore standby from xtrabackup."
   mysql_note "Starting temporary server"
-  docker_temp_server_start "$@"
+  if [ -f "${DATADIR}/.restore_new_cluster" ]; then
+    docker_temp_server_start_skip_grants "$@"
+  else
+    docker_temp_server_start "$@"
+  fi
   mysql_note "Temporary server started."
+  mysql_reset_restored_system_accounts
   PURGED_GTID=""
   while IFS= read -r line; do
      if [[ "$line" == *"GTID of the last change"* ]]; then
-       PURGED_GTID=$(echo ${line} | grep "binlog_pos" | awk -F "GTID of the last change '" '{print $2}' | awk -F "'" '{print $1}')
+       PURGED_GTID=$(echo "${line}" | grep "binlog_pos" | awk -F "GTID of the last change '" '{print $2}' | awk -F "'" '{print $1}')
        continue
      fi
      if [[ ! -z "${PURGED_GTID}" ]]; then
        if [[ "$line" != *"="* ]]; then
-          NEXT_GTID=$(echo ${line} | awk -F "'" '{print $1}')
+          NEXT_GTID=$(echo "${line}" | awk -F "'" '{print $1}')
           PURGED_GTID="${PURGED_GTID}${NEXT_GTID}"
           continue
        fi
        break
      fi
-  done < ${DATADIR}/xtrabackup_info
+  done < "${DATADIR}/xtrabackup_info"
   mysql_note "set the gtid_purged ${PURGED_GTID}."
 	docker_process_sql --database=mysql <<-EOSQL
 		STOP SLAVE;
@@ -397,7 +475,7 @@ restore_standby_from_xtrabackup() {
 		SET GLOBAL gtid_purged = '${PURGED_GTID}';
 	EOSQL
   mysql_note "restore standby from xtrabackup successfully."
-  rm -rf ${DATADIR}/.xtrabackup_restore
+  rm -rf "${DATADIR}/.xtrabackup_restore"
   mysql_note "Stopping temporary server"
   docker_temp_server_stop
   mysql_note "Temporary server stopped"
