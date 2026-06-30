@@ -108,6 +108,7 @@ spec:
     caFile: ca.crt
     certFile: tls.crt
     keyFile: tls.key
+    defaultMode: 0644
   roles:
     - name: readwrite
       updatePriority: 1
