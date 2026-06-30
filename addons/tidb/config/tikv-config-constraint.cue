@@ -240,8 +240,8 @@
 	// Enables or disables `prevote`. Enabling this feature helps reduce jitter on the system after recovery from network partition.
 	"raftstore.prevote": bool | *true
 
-	// The storage capacity, which is the maximum size allowed to store data. If `capacity` is left unspecified, the capacity of the current disk prevails. To deploy multiple TiKV instances on the same physical disk, add this parameter to the TiKV configuration. For details, see [Key parameters of the hybrid deployment](/hybrid-deployment-topology.md#key-parameters). Unit: KiB|MiB|GiB
-	"raftstore.capacity": string | *"0"
+	// The storage capacity, which is the maximum size allowed to store data. TiKV parses this as ReadableSize, so it accepts non-negative integers such as `0` and size strings such as `"10GiB"`. If `capacity` is left unspecified, the capacity of the current disk prevails. The template default is `0`.
+	"raftstore.capacity": int | string | *0
 
 	// The path to the Raft library, which is `storage.data-dir/raft` by default
 	"raftstore.raftdb-path": string
@@ -512,8 +512,8 @@
 	// Default value:When `storage.engine="raft-kv"`, the default value is `"4GiB"`.When `storage.engine="partitioned-raft-kv"`, the default value is `1`.
 	"raftdb.max-total-wal-size": string
 
-	// Controls whether to enable the readahead feature during RocksDB compaction and specify the size of readahead data. If you use mechanical disks, it is recommended to set the value to `2MiB` at least. Unit: B|KiB|MiB|GiB. Default value: 0
-	"raftdb.compaction-readahead-size": string
+	// Controls whether to enable readahead during RocksDB compaction and specifies the readahead size. TiKV parses this as ReadableSize, so it accepts non-negative integers such as `0` and size strings such as `"2MiB"`. The template default is `0`, which disables readahead.
+	"raftdb.compaction-readahead-size": int | string | *0
 
 	// The maximum buffer size used in WritableFileWrite. Unit: B|KiB|MiB|GiB
 	"raftdb.writable-file-max-buffer-size": string | *"1MiB"
@@ -580,6 +580,7 @@
 	"raft-engine.memory-limit": string
 
 	// Specifies the Raft Engine log file format version. Valid values are `1` and `2`; version `2` supports log recycling and requires TiKV v6.3.0 or later. The template default is `2`.
+	// Changing this value can cause TiKV to fail to start. Follow the documented downgrade/upgrade steps before modifying it.
 	"raft-engine.format-version": int | *2
 
 	// Determines whether to recycle stale log files in Raft Engine. When it is enabled, logically purged log files will be reserved for recycling. This reduces the long tail latency on write workloads.
