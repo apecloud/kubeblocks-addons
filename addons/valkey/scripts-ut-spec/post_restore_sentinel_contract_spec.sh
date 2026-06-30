@@ -67,10 +67,16 @@ Describe "Valkey post-restore Sentinel contract"
     The stdout should include "getent hosts"
   End
 
-  It "requires at least the chart-minimum Sentinel endpoints from DNS fallback"
-    When call grep -F "POST_RESTORE_SENTINEL_MIN_COUNT:-3" "${script_file}"
+  It "requires the chart-expected Sentinel endpoint count from DNS fallback"
+    When call grep -F "POST_RESTORE_SENTINEL_EXPECTED_COUNT:-3" "${script_file}"
     The status should be success
-    The stdout should include "POST_RESTORE_SENTINEL_MIN_COUNT:-3"
+    The stdout should include "POST_RESTORE_SENTINEL_EXPECTED_COUNT:-3"
+  End
+
+  It "rejects DNS fallback when discovered count differs from expected count"
+    When call grep -F 'discovered_sentinel_count}" -ne "${expected_sentinel_count}' "${script_file}"
+    The status should be success
+    The stdout should include "expected_sentinel_count"
   End
 
   It "parses SENTINEL_POD_FQDN_LIST into an array with IFS comma split"

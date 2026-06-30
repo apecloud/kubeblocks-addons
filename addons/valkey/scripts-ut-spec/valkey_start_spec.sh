@@ -335,6 +335,21 @@ Describe "Valkey Start Bash Script Tests"
         The status should be failure
         The stderr should include "refusing lexicographic primary guess"
       End
+
+      It "fails closed when any peer is already a slave even if this pod data dir is fresh"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "reports role:slave"
+        The stderr should include "refusing lexicographic primary guess"
+      End
     End
   End
 End

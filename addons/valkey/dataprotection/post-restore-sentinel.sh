@@ -19,9 +19,8 @@
 #   sentinel comp: <cluster>-valkey-sentinel  (standard topology name)
 #
 # Current BackupPolicyTemplate env schema cannot inject cross-component
-# Sentinel credentials. Re-registration uses an explicit Sentinel target list
-# when supplied; otherwise it uses the DNS-published endpoints of the Sentinel
-# headless service and requires at least the chart's minimum Sentinel count.
+# Sentinel credentials. The chart currently supports exactly 3 Sentinel
+# replicas, so the DNS fallback has an independent expected count.
 
 set -e
 set -o pipefail
@@ -158,7 +157,8 @@ fi
 # ── register primary with each Sentinel pod ──────────────────────────────────
 # SENTINEL_POD_FQDN_LIST is the authoritative target set when supplied.
 # Otherwise, the Sentinel headless service DNS endpoints are the runtime target
-# set available to this DataProtection job. Restore must not report success
+# set available to this DataProtection job, and the expected count comes from
+# the chart's fixed Sentinel replicas contract. Restore must not report success
 # after configuring only a guessed or partial subset of Sentinel pods.
 sentinel_fqdn_list=()
 expected_sentinel_count=""
@@ -175,16 +175,16 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
   fi
   echo "INFO: using SENTINEL_POD_FQDN_LIST (${expected_sentinel_count} entries) as target set."
 else
+  expected_sentinel_count=$(positive_int_or_default "${POST_RESTORE_SENTINEL_EXPECTED_COUNT:-3}" 3)
   while read -r sentinel_ip _; do
     [ -n "${sentinel_ip}" ] && sentinel_fqdn_list+=("${sentinel_ip}")
   done < <(getent hosts "${sentinel_headless}" 2>/dev/null | awk '!seen[$1]++ { print $1 }')
-  expected_sentinel_count="${#sentinel_fqdn_list[@]}"
-  min_sentinel_count=$(positive_int_or_default "${POST_RESTORE_SENTINEL_MIN_COUNT:-3}" 3)
-  if [ "${expected_sentinel_count}" -lt "${min_sentinel_count}" ]; then
-    echo "ERROR: discovered ${expected_sentinel_count}/${min_sentinel_count} minimum Sentinel endpoint(s) from ${sentinel_headless}; refusing partial post-restore registration." >&2
+  discovered_sentinel_count="${#sentinel_fqdn_list[@]}"
+  if [ "${discovered_sentinel_count}" -ne "${expected_sentinel_count}" ]; then
+    echo "ERROR: discovered ${discovered_sentinel_count}/${expected_sentinel_count} expected Sentinel endpoint(s) from ${sentinel_headless}; refusing partial post-restore registration." >&2
     exit 1
   fi
-  echo "INFO: using ${expected_sentinel_count} DNS-discovered Sentinel endpoint(s) from ${sentinel_headless} as target set."
+  echo "INFO: using ${discovered_sentinel_count}/${expected_sentinel_count} DNS-discovered Sentinel endpoint(s) from ${sentinel_headless} as target set."
 fi
 
 reachable_sentinel_fqdn_list=()

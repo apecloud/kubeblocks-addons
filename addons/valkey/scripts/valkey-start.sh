@@ -192,12 +192,19 @@ build_replicaof_config() {
       if ! is_empty "${primary_fqdn}"; then
         : # already logged above
       else
-        # Step A-3: no peer is a master yet. Only a fresh data directory may
-        # bootstrap by lexicographic order. If this pod has existing data,
+        # Step A-3: no peer is a master yet. Only a fresh component bootstrap
+        # may use lexicographic order. If this pod has existing data, or any
+        # peer already reports role:slave, this is not a pure first bootstrap;
         # guessing a primary while Sentinel cannot prove one can create a
         # second master after restart/restore.
         if ! is_fresh_bootstrap_data_dir; then
           echo "ERROR: Sentinel topology has no trusted master and ${DATA_DIR:-/data} contains existing data — refusing lexicographic primary guess." >&2
+          return 1
+        fi
+        local known_slave_fqdn
+        known_slave_fqdn=$(find_known_slave_pod) || true
+        if ! is_empty "${known_slave_fqdn}"; then
+          echo "ERROR: Sentinel topology has no trusted master but ${known_slave_fqdn} reports role:slave — refusing lexicographic primary guess." >&2
           return 1
         fi
         # Elect the lowest-ordinal pod as the bootstrap primary, then verify it
@@ -389,6 +396,20 @@ scan_pods_for_master() {
     role=$(timeout 3 "${cli_base[@]}" -h "${pod_fqdn}" info replication 2>/dev/null \
       | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
     if [ "${role}" = "master" ]; then
+      echo "${pod_fqdn}"
+      return 0
+    fi
+  done
+  return 0
+}
+
+find_known_slave_pod() {
+  IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
+  for pod_fqdn in "${pod_fqdns[@]}"; do
+    contains "${pod_fqdn}" "${CURRENT_POD_NAME}." && continue
+    local role
+    role=$(verify_pod_role "${pod_fqdn}") || true
+    if [ "${role}" = "slave" ]; then
       echo "${pod_fqdn}"
       return 0
     fi

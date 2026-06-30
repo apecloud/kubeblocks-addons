@@ -12,10 +12,10 @@ Describe "Valkey replicasLimit contract"
     The stdout should not include "maxReplicas"
   End
 
-  It "keeps Sentinel lower bound but does not declare an unproven max"
+  It "keeps Sentinel fixed at the validated three-replica contract"
     When call bash -c "grep -A3 'replicasLimit:' '${sentinel_cmpd}'"
     The status should be success
     The stdout should include "minReplicas: 3"
-    The stdout should not include "maxReplicas"
+    The stdout should include "maxReplicas: 3"
   End
 End
