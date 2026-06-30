@@ -17,6 +17,7 @@ Define redis cluster shardingSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.shardingSpec" }}
 - name: shard
+  shardingDef: redis-cluster
   shards: {{ .Values.redisCluster.shardCount }}
   template:
     name: redis
