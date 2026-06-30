@@ -61,10 +61,16 @@ Describe "Valkey post-restore Sentinel contract"
     The stdout should include "SENTINEL_POD_FQDN_LIST"
   End
 
-  It "fails closed when SENTINEL_POD_FQDN_LIST is missing"
-    When call grep -F "SENTINEL_POD_FQDN_LIST is not set" "${script_file}"
+  It "discovers Sentinel targets from headless service DNS when explicit list is missing"
+    When call grep -F 'getent hosts "${sentinel_headless}"' "${script_file}"
     The status should be success
-    The stdout should include "SENTINEL_POD_FQDN_LIST is not set"
+    The stdout should include "getent hosts"
+  End
+
+  It "requires at least the chart-minimum Sentinel endpoints from DNS fallback"
+    When call grep -F "POST_RESTORE_SENTINEL_MIN_COUNT:-3" "${script_file}"
+    The status should be success
+    The stdout should include "POST_RESTORE_SENTINEL_MIN_COUNT:-3"
   End
 
   It "parses SENTINEL_POD_FQDN_LIST into an array with IFS comma split"

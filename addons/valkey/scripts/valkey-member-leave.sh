@@ -73,6 +73,26 @@ no_sentinel_safety_check() {
   return 1
 }
 
+sentinel_master_state() {
+  # Prints one of:
+  #   leaving   - Sentinel still reports the leaving pod as master
+  #   different - Sentinel reports another concrete master
+  #   unknown   - Sentinel has no concrete master answer
+  local sm
+  sm=$("${s_cli[@]}" SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null \
+         | head -n1 | tr -d '\r\n') || true
+  if is_empty "${sm}" || [ "${sm}" = "(nil)" ]; then
+    echo "unknown"
+    return 0
+  fi
+  if contains "${sm}" "${KB_LEAVE_MEMBER_POD_NAME}." || \
+     { ! is_empty "${leaving_ip}" && [ "${sm}" = "${leaving_ip}" ]; }; then
+    echo "leaving"
+    return 0
+  fi
+  echo "different"
+}
+
 # This is magic for shellspec ut framework, do not modify!
 ${__SOURCED__:+false} : || return 0
 
@@ -139,21 +159,6 @@ s_cli=("${_sentinel_cli_cmd[@]}")
 # Resolve the leaving pod's IP once for all comparisons below.
 leaving_ip=$(getent hosts "${leaving_fqdn}" 2>/dev/null | awk '{print $1}' | head -n1) || true
 
-_sentinel_master_is_leaving() {
-  # Returns 0 (true) when the chosen sentinel reports the leaving pod as master.
-  local sm
-  sm=$("${s_cli[@]}" SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null \
-         | head -n1 | tr -d '\r\n') || true
-  if is_empty "${sm}" || [ "${sm}" = "(nil)" ]; then
-    return 1   # sentinel doesn't know — treat as "not leaving"
-  fi
-  if contains "${sm}" "${KB_LEAVE_MEMBER_POD_NAME}." || \
-     { ! is_empty "${leaving_ip}" && [ "${sm}" = "${leaving_ip}" ]; }; then
-    return 0   # still points at the leaving pod
-  fi
-  return 1
-}
-
 # Policy: never call SENTINEL RESET on member leave.
 #
 # SENTINEL RESET tells a sentinel to drop its known-replica AND known-sentinel
@@ -211,7 +216,8 @@ if [ "${leaving_role}" = "master" ]; then
   # KubeBlocks calls switchover before memberLeave; if the chosen sentinel
   # already reports a different master the failover is done — skip FAILOVER
   # (sentinel auto-cleans when the pod actually goes away).
-  if _sentinel_master_is_leaving; then
+  sentinel_state=$(sentinel_master_state)
+  if [ "${sentinel_state}" = "leaving" ]; then
     echo "Leaving pod is the primary per sentinel — triggering SENTINEL FAILOVER first..."
     # valkey-cli exits 0 even for protocol errors; capture output and log it.
     failover_out=$("${s_cli[@]}" SENTINEL FAILOVER "${master_name}" 2>&1) || true
@@ -243,8 +249,11 @@ if [ "${leaving_role}" = "master" ]; then
       echo "ERROR: failover still in progress after 30s — refusing memberLeave success while the leaving pod is still master." >&2
       exit 1
     fi
-  else
+  elif [ "${sentinel_state}" = "different" ]; then
     echo "Sentinel already reports a different master — skipping SENTINEL FAILOVER. Sentinel will self-clean when the pod is deleted by KubeBlocks."
+  else
+    echo "ERROR: Sentinel returned no concrete master for ${master_name}; refusing memberLeave success while leaving pod is locally master." >&2
+    exit 1
   fi
 fi
 

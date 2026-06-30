@@ -19,9 +19,9 @@
 #   sentinel comp: <cluster>-valkey-sentinel  (standard topology name)
 #
 # Current BackupPolicyTemplate env schema cannot inject cross-component
-# Sentinel credentials. Re-registration fails closed when no Sentinel can be
-# configured; passworded Sentinel requires SENTINEL_PASSWORD from a future
-# explicit contract.
+# Sentinel credentials. Re-registration uses an explicit Sentinel target list
+# when supplied; otherwise it uses the DNS-published endpoints of the Sentinel
+# headless service and requires at least the chart's minimum Sentinel count.
 
 set -e
 set -o pipefail
@@ -156,24 +156,36 @@ if [ -z "${primary_fqdn}" ]; then
 fi
 
 # ── register primary with each Sentinel pod ──────────────────────────────────
-# SENTINEL_POD_FQDN_LIST is the authoritative target set. Restore must not
-# report success after configuring only a guessed subset of Sentinel pods.
+# SENTINEL_POD_FQDN_LIST is the authoritative target set when supplied.
+# Otherwise, the Sentinel headless service DNS endpoints are the runtime target
+# set available to this DataProtection job. Restore must not report success
+# after configuring only a guessed or partial subset of Sentinel pods.
 sentinel_fqdn_list=()
-if [ -z "${SENTINEL_POD_FQDN_LIST:-}" ]; then
-  echo "ERROR: SENTINEL_POD_FQDN_LIST is not set; cannot prove all Sentinel pods are reconfigured after restore." >&2
-  exit 1
+expected_sentinel_count=""
+if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
+  sentinel_fqdn_list_raw=()
+  IFS=',' read -ra sentinel_fqdn_list_raw <<< "${SENTINEL_POD_FQDN_LIST}"
+  for sentinel_fqdn in "${sentinel_fqdn_list_raw[@]}"; do
+    [ -n "${sentinel_fqdn}" ] && sentinel_fqdn_list+=("${sentinel_fqdn}")
+  done
+  expected_sentinel_count="${#sentinel_fqdn_list[@]}"
+  if [ "${expected_sentinel_count}" -eq 0 ]; then
+    echo "ERROR: SENTINEL_POD_FQDN_LIST is set but empty after parsing." >&2
+    exit 1
+  fi
+  echo "INFO: using SENTINEL_POD_FQDN_LIST (${expected_sentinel_count} entries) as target set."
+else
+  while read -r sentinel_ip _; do
+    [ -n "${sentinel_ip}" ] && sentinel_fqdn_list+=("${sentinel_ip}")
+  done < <(getent hosts "${sentinel_headless}" 2>/dev/null | awk '!seen[$1]++ { print $1 }')
+  expected_sentinel_count="${#sentinel_fqdn_list[@]}"
+  min_sentinel_count=$(positive_int_or_default "${POST_RESTORE_SENTINEL_MIN_COUNT:-3}" 3)
+  if [ "${expected_sentinel_count}" -lt "${min_sentinel_count}" ]; then
+    echo "ERROR: discovered ${expected_sentinel_count}/${min_sentinel_count} minimum Sentinel endpoint(s) from ${sentinel_headless}; refusing partial post-restore registration." >&2
+    exit 1
+  fi
+  echo "INFO: using ${expected_sentinel_count} DNS-discovered Sentinel endpoint(s) from ${sentinel_headless} as target set."
 fi
-sentinel_fqdn_list_raw=()
-IFS=',' read -ra sentinel_fqdn_list_raw <<< "${SENTINEL_POD_FQDN_LIST}"
-for sentinel_fqdn in "${sentinel_fqdn_list_raw[@]}"; do
-  [ -n "${sentinel_fqdn}" ] && sentinel_fqdn_list+=("${sentinel_fqdn}")
-done
-expected_sentinel_count="${#sentinel_fqdn_list[@]}"
-if [ "${expected_sentinel_count}" -eq 0 ]; then
-  echo "ERROR: SENTINEL_POD_FQDN_LIST is set but empty after parsing." >&2
-  exit 1
-fi
-echo "INFO: using SENTINEL_POD_FQDN_LIST (${expected_sentinel_count} entries) as target set."
 
 reachable_sentinel_fqdn_list=()
 failed_sentinel_count=0

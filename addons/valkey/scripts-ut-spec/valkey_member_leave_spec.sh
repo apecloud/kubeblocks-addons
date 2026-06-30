@@ -245,6 +245,23 @@ Describe "Valkey Member-Leave Bash Script Tests"
       The status should be success
       The stdout should include "refusing memberLeave success"
     End
+
+    It "treats empty Sentinel master answers as unknown instead of already-safe"
+      export master_name="mycluster-valkey"
+      export KB_LEAVE_MEMBER_POD_NAME="valkey-0"
+      leaving_ip=""
+      s_cli=(valkey-cli)
+      valkey-cli() { printf "(nil)\n"; }
+      When call sentinel_master_state
+      The status should be success
+      The stdout should eq "unknown"
+    End
+
+    It "has an explicit error for unknown Sentinel master while local role is master"
+      When call grep -F "Sentinel returned no concrete master" "${member_leave_script}"
+      The status should be success
+      The stdout should include "Sentinel returned no concrete master"
+    End
   End
 
   Describe "no_sentinel_safety_check()"
