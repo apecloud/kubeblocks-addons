@@ -204,19 +204,19 @@ Describe "FalkorDB Cluster Common Bash Script Tests"
       }
 
       setup() {
-        export KB_CLUSTER_POD_IP_LIST="172.0.0.1,172.0.0.2"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="172.0.0.1,172.0.0.2"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_IP_LIST
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
         unset SERVICE_PORT
       }
       After "un_setup"
 
       It "returns 0 when cluster is initialized"
-        When call check_cluster_initialized "$KB_CLUSTER_POD_IP_LIST" "$SERVICE_PORT"
+        When call check_cluster_initialized "$ALL_SHARDS_POD_FQDN_LIST_COMBINED"
         The status should be success
         The output should include "FalkorDB Cluster already initialized"
       End
@@ -229,41 +229,41 @@ Describe "FalkorDB Cluster Common Bash Script Tests"
       }
 
       setup() {
-        export KB_CLUSTER_POD_IP_LIST="172.0.0.1,172.0.0.2"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="172.0.0.1,172.0.0.2"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_IP_LIST
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
         unset SERVICE_PORT
       }
       After "un_setup"
 
       It "returns 1 when cluster is not initialized"
-        When call check_cluster_initialized "$KB_CLUSTER_POD_IP_LIST" "$SERVICE_PORT"
+        When call check_cluster_initialized "$ALL_SHARDS_POD_FQDN_LIST_COMBINED"
         The status should be failure
         The stderr should include "FalkorDB Cluster not initialized"
       End
     End
 
-    Context "returns 1 when cluster_node_list or cluster_pod_name_list is empty"
+    Context "returns 1 when cluster_pod_fqdn_list is empty"
       setup() {
-        export KB_CLUSTER_POD_IP_LIST=""
-        export KB_CLUSTER_POD_NAME_LIST=""
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED=""
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED=""
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_POD_NAME_LIST
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
       }
       After "un_setup"
 
-      It "returns 1 when cluster_node_list or cluster_pod_name_list is empty"
-        When run check_cluster_initialized "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST"
+      It "returns 1 when cluster_pod_fqdn_list is empty"
+        When run check_cluster_initialized "$ALL_SHARDS_POD_FQDN_LIST_COMBINED"
         The status should be failure
-        The stderr should include "Error: Required environment variable cluster_pod_ip_list or cluster_pod_name_list is not set."
+        The stderr should include "Error: Required environment variable cluster_pod_fqdn_list is not set."
       End
     End
   End
