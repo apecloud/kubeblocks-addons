@@ -2049,8 +2049,8 @@ case "$*" in
     echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'127.0.0.1'"
     exit 0
     ;;
-  *"-uroot"*"INSERT"*)
-    echo "ERROR 1044 (42000): Access denied for user 'root'@'127.0.0.1' to database 'kubeblocks'"
+  *"-uroot"*"SHOW GRANTS"*)
+    echo "ERROR 1044 (42000): Access denied for user 'root'@'127.0.0.1' to database 'mysql'"
     exit 1
     ;;
 esac
@@ -2070,6 +2070,29 @@ EOF
         # alpha.62 v1 emitted "grants_sha=unavailable:hash_tool_unavailable").
         The output should include "grants_sha="
         The output should include "reason_hash=sha256"
+      End
+
+      It "alpha.127 v2: 127.0.0.1 SHOW GRANTS rc=0 with no write grants is accepted as read-only fenced"
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+case "$*" in
+  *"-ukb_internal_root"*"SHOW GRANTS"*)
+    echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'127.0.0.1'"
+    exit 0
+    ;;
+  *"-uroot"*"SHOW GRANTS"*)
+    echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'127.0.0.1'"
+    exit 0
+    ;;
+esac
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call _verify_host_is_fenced "127.0.0.1"
+        The status should be success
+        The output should include "write_probe_rc=0"
+        The output should include "write_probe_errno=1290"
+        The output should include "reason=ok_by_local_probe:1290"
       End
 
       It "alpha.62 v1: localhost host → grants-only path (no socket probe), reason=ok_by_grants_only:localhost_socket_not_attempted"
@@ -2135,7 +2158,8 @@ case "$*" in
     echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'127.0.0.1'"
     exit 0
     ;;
-  *"-uroot"*"INSERT"*)
+  *"-uroot"*"SHOW GRANTS"*)
+    echo "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'127.0.0.1'"
     exit 0
     ;;
 esac
@@ -2405,17 +2429,17 @@ EOF
       It "alpha.63 v1: 127.0.0.1 with multi-line SQL stderr containing 1044 → __PROBE_ERRNO=1044 correctly extracted (alpha.62 RED root cause closed)"
         cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
 #!/bin/sh
-# Simulate alpha.62 RED scenario: mariadb client INSERT returns multi-line SQL stderr containing 1044.
+# Simulate alpha.62 RED scenario: mariadb client SHOW GRANTS returns multi-line SQL stderr containing 1044.
 case "$*" in
   *"-ukb_internal_root"*"SHOW GRANTS"*)
     echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'127.0.0.1'"
     echo "GRANT PROXY ON ''@'%' TO 'root'@'127.0.0.1' WITH GRANT OPTION"
     exit 0
     ;;
-  *"-uroot"*"INSERT"*)
+  *"-uroot"*"SHOW GRANTS"*)
     cat <<MULTILINE
-ERROR 1044 (42000) at line 3: Access denied for user 'root'@'127.0.0.1'
-to database 'kubeblocks'
+ERROR 1044 (42000): Access denied for user 'root'@'127.0.0.1'
+to database 'mysql'
 MULTILINE
     exit 1
     ;;
