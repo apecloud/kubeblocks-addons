@@ -155,6 +155,18 @@
     <buffer_size_rows_flush_threshold>524288</buffer_size_rows_flush_threshold>
     <flush_on_crash>false</flush_on_crash>
   </query_log>
+  <session_log>
+    <database>system</database>
+    <table>session_log</table>
+    <partition_by>event_date</partition_by>
+    <order_by>event_time</order_by>
+    <ttl>event_date + INTERVAL 7 day</ttl>
+    <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+    <max_size_rows>1048576</max_size_rows>
+    <reserved_size_rows>8192</reserved_size_rows>
+    <buffer_size_rows_flush_threshold>524288</buffer_size_rows_flush_threshold>
+    <flush_on_crash>false</flush_on_crash>
+  </session_log>
   <!-- User directories configuration -->
   <!-- see https://github.com/ClickHouse/ClickHouse/issues/78830 -->
   <user_directories replace="replace">
