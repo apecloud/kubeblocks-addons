@@ -13,7 +13,8 @@
 #   - If the leaving pod is the current primary: trigger SENTINEL FAILOVER
 #     first so Sentinel promotes a new primary before this pod goes away.
 #
-# When Sentinel is absent (standalone): nothing to do.
+# When Sentinel is absent: fail closed unless the leaving pod is confirmed to
+# be a replica. A primary leave without Sentinel cannot be made safe here.
 #
 # Note: SENTINEL RESET is intentionally NOT called from this script. See the
 # detailed comment above the master-leave block for rationale.
@@ -72,6 +73,26 @@ no_sentinel_safety_check() {
   return 1
 }
 
+sentinel_master_state() {
+  # Prints one of:
+  #   leaving   - Sentinel still reports the leaving pod as master
+  #   different - Sentinel reports another concrete master
+  #   unknown   - Sentinel has no concrete master answer
+  local sm
+  sm=$("${s_cli[@]}" SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null \
+         | head -n1 | tr -d '\r\n') || true
+  if is_empty "${sm}" || [ "${sm}" = "(nil)" ]; then
+    echo "unknown"
+    return 0
+  fi
+  if contains "${sm}" "${KB_LEAVE_MEMBER_POD_NAME}." || \
+     { ! is_empty "${leaving_ip}" && [ "${sm}" = "${leaving_ip}" ]; }; then
+    echo "leaving"
+    return 0
+  fi
+  echo "different"
+}
+
 # This is magic for shellspec ut framework, do not modify!
 ${__SOURCED__:+false} : || return 0
 
@@ -79,8 +100,16 @@ ${__SOURCED__:+false} : || return 0
 load_common_library
 
 if is_empty "${SENTINEL_COMPONENT_NAME}" || is_empty "${SENTINEL_POD_FQDN_LIST}"; then
-  echo "No Sentinel component — nothing to do on member leave."
-  exit 0
+  if is_empty "${KB_LEAVE_MEMBER_POD_FQDN}"; then
+    echo "ERROR: no Sentinel component and KB_LEAVE_MEMBER_POD_FQDN is not set — cannot prove memberLeave is safe." >&2
+    exit 1
+  fi
+  build_data_cli "${KB_LEAVE_MEMBER_POD_FQDN}"
+  leaving_role=$("${_data_cli_cmd[@]}" INFO replication 2>/dev/null \
+                   | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
+  echo "Leaving pod: ${KB_LEAVE_MEMBER_POD_FQDN}, role: ${leaving_role:-unknown}"
+  no_sentinel_safety_check "${leaving_role}"
+  exit $?
 fi
 
 if is_empty "${KB_LEAVE_MEMBER_POD_FQDN}"; then
@@ -129,21 +158,6 @@ s_cli=("${_sentinel_cli_cmd[@]}")
 
 # Resolve the leaving pod's IP once for all comparisons below.
 leaving_ip=$(getent hosts "${leaving_fqdn}" 2>/dev/null | awk '{print $1}' | head -n1) || true
-
-_sentinel_master_is_leaving() {
-  # Returns 0 (true) when the chosen sentinel reports the leaving pod as master.
-  local sm
-  sm=$("${s_cli[@]}" SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null \
-         | head -n1 | tr -d '\r\n') || true
-  if is_empty "${sm}" || [ "${sm}" = "(nil)" ]; then
-    return 1   # sentinel doesn't know — treat as "not leaving"
-  fi
-  if contains "${sm}" "${KB_LEAVE_MEMBER_POD_NAME}." || \
-     { ! is_empty "${leaving_ip}" && [ "${sm}" = "${leaving_ip}" ]; }; then
-    return 0   # still points at the leaving pod
-  fi
-  return 1
-}
 
 # Policy: never call SENTINEL RESET on member leave.
 #
@@ -202,14 +216,16 @@ if [ "${leaving_role}" = "master" ]; then
   # KubeBlocks calls switchover before memberLeave; if the chosen sentinel
   # already reports a different master the failover is done — skip FAILOVER
   # (sentinel auto-cleans when the pod actually goes away).
-  if _sentinel_master_is_leaving; then
+  sentinel_state=$(sentinel_master_state)
+  if [ "${sentinel_state}" = "leaving" ]; then
     echo "Leaving pod is the primary per sentinel — triggering SENTINEL FAILOVER first..."
     # valkey-cli exits 0 even for protocol errors; capture output and log it.
     failover_out=$("${s_cli[@]}" SENTINEL FAILOVER "${master_name}" 2>&1) || true
     echo "SENTINEL FAILOVER response: ${failover_out}"
     case "${failover_out}" in
       *"ERR"*|*"error"*|*"BUSY"*)
-        echo "WARNING: SENTINEL FAILOVER rejected — ${failover_out}" >&2 ;;
+        echo "ERROR: SENTINEL FAILOVER rejected — ${failover_out}" >&2
+        exit 1 ;;
     esac
     # Wait up to 30 s for a new primary to emerge
     failover_done=false
@@ -230,10 +246,14 @@ if [ "${leaving_role}" = "master" ]; then
       fi
     done
     if [ "${failover_done}" = "false" ]; then
-      echo "WARNING: failover still in progress after 30s — KubeBlocks pod removal will proceed; sentinel will reach consistency via natural pod-down detection." >&2
+      echo "ERROR: failover still in progress after 30s — refusing memberLeave success while the leaving pod is still master." >&2
+      exit 1
     fi
-  else
+  elif [ "${sentinel_state}" = "different" ]; then
     echo "Sentinel already reports a different master — skipping SENTINEL FAILOVER. Sentinel will self-clean when the pod is deleted by KubeBlocks."
+  else
+    echo "ERROR: Sentinel returned no concrete master for ${master_name}; refusing memberLeave success while leaving pod is locally master." >&2
+    exit 1
   fi
 fi
 

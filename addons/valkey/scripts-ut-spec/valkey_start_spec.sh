@@ -289,5 +289,85 @@ Describe "Valkey Start Bash Script Tests"
         The contents of file "${CONF_RUNTIME}" should include "replicaof valkey-0.valkey-headless.default.svc.cluster.local 6379"
       End
     End
+
+    Context "when Sentinel topology has no trusted master"
+      setup() {
+        : > "${CONF_RUNTIME}"
+        valkey_start_data_dir=$(mktemp -d "${TMPDIR:-/tmp}/valkey-start-data.XXXXXX")
+        export DATA_DIR="${valkey_start_data_dir}"
+        export SENTINEL_COMPONENT_NAME="valkey-sentinel"
+        export SENTINEL_POD_FQDN_LIST="sentinel-0.sentinel-headless.default.svc.cluster.local"
+        export CURRENT_POD_NAME="valkey-0"
+        export VALKEY_POD_NAME_LIST="valkey-0,valkey-1"
+        export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-1.valkey-headless.default.svc.cluster.local"
+        export SERVICE_PORT="6379"
+        export VALKEY_COMPONENT_NAME="mycluster-valkey"
+      }
+      Before "setup"
+
+      teardown() {
+        rm -rf "${valkey_start_data_dir:-}"
+        unset DATA_DIR
+        unset SENTINEL_COMPONENT_NAME
+        unset SENTINEL_POD_FQDN_LIST
+        unset CURRENT_POD_NAME
+        unset VALKEY_POD_NAME_LIST
+        unset VALKEY_POD_FQDN_LIST
+        unset SERVICE_PORT
+        unset VALKEY_COMPONENT_NAME
+      }
+      After "teardown"
+
+      It "allows lexicographic bootstrap only for a fresh data directory"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() { echo ""; }
+        When call build_replicaof_config
+        The status should be success
+        The stderr should include "electing bootstrap primary"
+      End
+
+      It "allows lexicographic election for full-cluster restart when data already exists"
+        touch "${DATA_DIR}/dump.rdb"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() { echo ""; }
+        When call build_replicaof_config
+        The status should be success
+        The stderr should include "treating as full-cluster restart"
+        The stderr should include "electing bootstrap primary"
+      End
+
+      It "fails closed when any peer is already a slave even if this pod data dir is fresh"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "reports role:slave"
+        The stderr should include "refusing lexicographic primary guess"
+      End
+
+      It "fails closed when any peer is already a slave even if this pod data dir has existing data"
+        touch "${DATA_DIR}/dump.rdb"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "reports role:slave"
+        The stderr should include "refusing lexicographic primary guess"
+      End
+    End
   End
 End

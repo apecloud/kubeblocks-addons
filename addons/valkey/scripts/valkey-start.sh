@@ -192,8 +192,23 @@ build_replicaof_config() {
       if ! is_empty "${primary_fqdn}"; then
         : # already logged above
       else
-        # Step A-3: no peer is a master yet.  Elect the lowest-ordinal pod as
-        # the bootstrap primary, then verify it is actually reporting role:master.
+        # Step A-3: no peer is a master yet. Fresh component bootstrap and
+        # clean full-component restart both need one pod to seed the topology
+        # by lexicographic order. Existing data alone is not unsafe: Stop/Start
+        # preserves PVC data while every data pod is down. The unsafe signal is
+        # observing an already-running slave while Sentinel cannot prove the
+        # master; guessing then can create a second master after restart/restore.
+        local known_slave_fqdn
+        known_slave_fqdn=$(find_known_slave_pod) || true
+        if ! is_empty "${known_slave_fqdn}"; then
+          echo "ERROR: Sentinel topology has no trusted master but ${known_slave_fqdn} reports role:slave — refusing lexicographic primary guess." >&2
+          return 1
+        fi
+        if ! is_fresh_bootstrap_data_dir; then
+          echo "INFO: Sentinel topology has no trusted master and ${DATA_DIR:-/data} contains existing data, but no running peer role was observed — treating as full-cluster restart." >&2
+        fi
+        # Elect the lowest-ordinal pod as the bootstrap primary, then verify it
+        # is actually reporting role:master.
         # During rolling restarts the lexicographic pod may itself be a slave
         # (sentinel already failed over to a different pod); connecting to it
         # would create a cascading topology that sentinel will not auto-correct.
@@ -259,6 +274,15 @@ build_replicaof_config() {
   fi
 
   echo "replicaof ${primary_fqdn} ${primary_port}" >> "${CONF_RUNTIME}"
+}
+
+is_fresh_bootstrap_data_dir() {
+  local dir="${DATA_DIR:-/data}"
+  [ ! -e "${dir}/dump.rdb" ] || return 1
+  [ ! -e "${dir}/appendonly.aof" ] || return 1
+  [ ! -d "${dir}/appendonlydir" ] || return 1
+  [ ! -e "${dir}/nodes.conf" ] || return 1
+  return 0
 }
 
 # query_sentinel_quorum_for_master — query ALL sentinel pods and return the
@@ -372,6 +396,20 @@ scan_pods_for_master() {
     role=$(timeout 3 "${cli_base[@]}" -h "${pod_fqdn}" info replication 2>/dev/null \
       | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
     if [ "${role}" = "master" ]; then
+      echo "${pod_fqdn}"
+      return 0
+    fi
+  done
+  return 0
+}
+
+find_known_slave_pod() {
+  IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
+  for pod_fqdn in "${pod_fqdns[@]}"; do
+    contains "${pod_fqdn}" "${CURRENT_POD_NAME}." && continue
+    local role
+    role=$(verify_pod_role "${pod_fqdn}") || true
+    if [ "${role}" = "slave" ]; then
       echo "${pod_fqdn}"
       return 0
     fi

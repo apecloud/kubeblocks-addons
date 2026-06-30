@@ -14,10 +14,9 @@
 #   its own conf.  If a specific candidate is requested we first set its
 #   replica-priority to 1 (highest) so Sentinel picks it.
 #
-# When Sentinel is absent (standalone replication):
-#   Manual approach:
-#     1. REPLICAOF NO ONE on the target.
-#     2. REPLICAOF <new-primary> on all other pods.
+# When Sentinel is absent:
+#   Fail closed. Valkey standalone/no-Sentinel topology has no HA coordinator
+#   that can prove the new primary and replica routing converged.
 
 # shellcheck disable=SC2034
 ut_mode="false"
@@ -101,13 +100,17 @@ repoint_one() {
 
 repoint_replicas() {
   local new_primary_fqdn="${1}"
+  local failures=0
   IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
   for fqdn in "${pod_fqdns[@]}"; do
     [ "${fqdn}" = "${new_primary_fqdn}" ] && continue   # skip the new primary itself
     echo "Repointing ${fqdn} → ${new_primary_fqdn}..."
-    call_func_with_retry 3 3 repoint_one "${fqdn}" "${new_primary_fqdn}" "${port}" || \
+    call_func_with_retry 3 3 repoint_one "${fqdn}" "${new_primary_fqdn}" "${port}" || {
       echo "WARNING: failed to repoint ${fqdn} to ${new_primary_fqdn} — it may remain pointing at the old primary" >&2
+      failures=$((failures + 1))
+    }
   done
+  [ "${failures}" -eq 0 ]
 }
 
 pick_any_secondary() {
@@ -183,6 +186,20 @@ set_replica_priority() {
   call_func_with_retry 3 3 _do_set_replica_priority "${fqdn}" "${prio}"
 }
 
+sentinel_observed_replica_priority() {
+  local sentinel_fqdn="${1}" replica_fqdn="${2}"
+  local replica_host="${replica_fqdn%%.*}"
+  sentinel_cli_for "${sentinel_fqdn}"
+  "${_sentinel_cli[@]}" SENTINEL REPLICAS "${VALKEY_COMPONENT_NAME}" 2>/dev/null \
+    | tr -d '"' \
+    | sed 's/.*) //' \
+    | awk -v cand="${replica_host}." '
+        prev == "name" { in_cand = (index($0, cand) > 0) }
+        in_cand && prev == "slave-priority" { print; exit }
+        { prev = $0 }
+      '
+}
+
 execute_sentinel_failover() {
   local master_name="${VALKEY_COMPONENT_NAME}"
   IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
@@ -223,21 +240,7 @@ wait_sentinel_sees_priority() {
     local confirmed=0 total=${#sentinel_fqdns[@]}
     for s_fqdn in "${sentinel_fqdns[@]}"; do
       local prio
-      sentinel_cli_for "${s_fqdn}"
-      # Parse SENTINEL REPLICAS output:
-      #   tr -d '"'       — strip valkey-cli string quotes
-      #   sed 's/.*) //'  — strip leading array-index prefixes like "  3) "
-      #   awk             — find the replica matching candidate_host, extract slave-priority
-      #                     Uses index()+literal "." suffix (e.g. "valkey-1.")
-      #                     to avoid "valkey-1" substring-matching "valkey-10".
-      prio=$("${_sentinel_cli[@]}" SENTINEL REPLICAS "${VALKEY_COMPONENT_NAME}" 2>/dev/null \
-        | tr -d '"' \
-        | sed 's/.*) //' \
-        | awk -v cand="${candidate_host}." '
-            prev == "name" { in_cand = (index($0, cand) > 0) }
-            in_cand && prev == "slave-priority" { print; exit }
-            { prev = $0 }
-          ') || true
+      prio=$(sentinel_observed_replica_priority "${s_fqdn}" "${candidate_host}.") || true
       if [ "${prio}" = "${expected_prio}" ]; then
         confirmed=$((confirmed + 1))
       fi
@@ -252,6 +255,42 @@ wait_sentinel_sees_priority() {
   # after 30s, issuing SENTINEL FAILOVER now risks promoting the wrong replica.
   # Returning 1 causes the targeted switchover to fail fast so the caller can retry.
   echo "ERROR: Sentinel did not reflect priority=${expected_prio} for ${candidate_fqdn} within 30s — aborting targeted switchover" >&2
+  return 1
+}
+
+wait_sentinel_sees_priority_bias() {
+  local candidate_fqdn="${1}" all_fqdns_csv="${2}"
+  local candidate_pod="${candidate_fqdn%%.*}"
+  local current_pod="${KB_SWITCHOVER_CURRENT_FQDN%%.*}"
+  local deadline=$((SECONDS + 30))
+
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
+    IFS=',' read -ra all_fqdns <<< "${all_fqdns_csv}"
+    local total=0 confirmed=0
+    for s_fqdn in "${sentinel_fqdns[@]}"; do
+      for fqdn in "${all_fqdns[@]}"; do
+        local pod expected_prio observed_prio
+        pod="${fqdn%%.*}"
+        # The current master is not listed in SENTINEL REPLICAS before failover.
+        [ "${pod}" = "${current_pod}" ] && continue
+        expected_prio="100"
+        [ "${pod}" = "${candidate_pod}" ] && expected_prio="1"
+        total=$((total + 1))
+        observed_prio=$(sentinel_observed_replica_priority "${s_fqdn}" "${fqdn}") || true
+        if [ "${observed_prio}" = "${expected_prio}" ]; then
+          confirmed=$((confirmed + 1))
+        fi
+      done
+    done
+    if [ "${total}" -gt 0 ] && [ "${confirmed}" -eq "${total}" ]; then
+      echo "All Sentinel replica priority caches confirmed targeted bias for ${candidate_fqdn}."
+      return 0
+    fi
+    sleep_when_ut_mode_false 1
+  done
+
+  echo "ERROR: Sentinel did not confirm full targeted priority bias for ${candidate_fqdn} within 30s — aborting targeted switchover" >&2
   return 1
 }
 
@@ -315,32 +354,40 @@ switchover_with_sentinel() {
       echo "ERROR: candidate ${candidate_fqdn} has role='${candidate_role}', expected 'slave' — aborting switchover" >&2
       return 1
     elif is_empty "${candidate_role}"; then
-      echo "WARNING: could not determine role of ${candidate_fqdn} after retries — proceeding without role pre-check" >&2
+      echo "ERROR: could not determine role of ${candidate_fqdn} after retries — aborting targeted switchover" >&2
+      return 1
     fi
 
     echo "Biasing Sentinel toward candidate ${candidate_fqdn}..."
-    # Set candidate priority to 1 (best), all others to 100 (lowest).
-    # If priority cannot be set (e.g. transient TLS connection failure), log a
-    # warning and continue without bias — Sentinel will still elect a new primary.
     IFS=',' read -ra all_fqdns <<< "$(pod_fqdns_with_candidate "${candidate_fqdn}")"
+    priority_failed=0
     for fqdn in "${all_fqdns[@]}"; do
       # Append "." so "valkey-1." is not a substring of "valkey-11.headless..." (substring false positive).
       if contains "${fqdn}" "${candidate_fqdn%%.*}."; then
         if ! set_replica_priority "${fqdn}" 1; then
-          echo "WARNING: failed to set priority on candidate ${fqdn} — proceeding without priority bias" >&2
-          # Do not abort: let Sentinel proceed and pick whichever candidate it prefers.
+          echo "ERROR: failed to set priority on candidate ${fqdn} — aborting targeted switchover" >&2
+          priority_failed=1
         fi
       else
-        set_replica_priority "${fqdn}" 100 || true
+        if ! set_replica_priority "${fqdn}" 100; then
+          echo "ERROR: failed to normalize priority on ${fqdn} — aborting targeted switchover" >&2
+          priority_failed=1
+        fi
       fi
     done
+    if [ "${priority_failed}" -ne 0 ]; then
+      for fqdn in "${all_fqdns[@]}"; do
+        set_replica_priority "${fqdn}" 100 || true
+      done
+      return 1
+    fi
 
-    # Wait for Sentinel's replica-info cache to reflect the new priority before
+    # Wait for Sentinel's replica-info cache to reflect the full priority bias before
     # issuing FAILOVER.  Sentinel refreshes its replica cache every ~10 seconds;
-    # without this wait, FAILOVER may be issued while the cache still shows the
-    # old priority=100, causing Sentinel to pick the wrong replica.
-    echo "Waiting for Sentinel to reflect priority bias on ${candidate_fqdn}..."
-    if ! wait_sentinel_sees_priority "${candidate_fqdn}" "1"; then
+    # without this wait, FAILOVER may be issued while another replica still has
+    # stale priority=1, causing Sentinel to pick the wrong replica.
+    echo "Waiting for Sentinel to reflect full priority bias on ${candidate_fqdn}..."
+    if ! wait_sentinel_sees_priority_bias "${candidate_fqdn}" "$(IFS=','; echo "${all_fqdns[*]}")"; then
       # Sentinel did not reflect the priority in time — restore before aborting
       # so the bias is never left in place after a failed switchover attempt.
       IFS=',' read -ra all_fqdns <<< "$(pod_fqdns_with_candidate "${candidate_fqdn}")"
@@ -394,12 +441,6 @@ ${__SOURCED__:+false} : || return 0
 # ── main ────────────────────────────────────────────────────────────────────
 load_common_library
 
-# Nothing to do for single-replica clusters
-if [ "${COMPONENT_REPLICAS}" -lt 2 ]; then
-  echo "Only one replica — nothing to switch over."
-  exit 0
-fi
-
 # Only act when KubeBlocks asks us to transfer the primary role
 if [ "${KB_SWITCHOVER_ROLE}" != "primary" ]; then
   echo "switchover not for primary role (got '${KB_SWITCHOVER_ROLE}') — exiting."
@@ -414,22 +455,6 @@ if ! is_empty "${SENTINEL_COMPONENT_NAME}" && ! is_empty "${SENTINEL_POD_FQDN_LI
   exit 0
 fi
 
-# ── Manual path (no Sentinel) ──
-target_fqdn="${KB_SWITCHOVER_CANDIDATE_FQDN}"
-if is_empty "${target_fqdn}"; then
-  target_fqdn=$(pick_any_secondary)
-  if is_empty "${target_fqdn}"; then
-    echo "ERROR: no available secondary found" >&2
-    exit 1
-  fi
-fi
-
-echo "Manual switchover: ${KB_SWITCHOVER_CURRENT_FQDN} → ${target_fqdn}"
-
-promote_replica "${target_fqdn}"
-# wait_until_master is best-effort: repoint_replicas must always run even on
-# timeout to avoid leaving replicas pointed at the old (demoted) primary.
-wait_until_master "${target_fqdn}" 10 || true
-repoint_replicas "${target_fqdn}"
-
-echo "Manual switchover complete. New primary: ${target_fqdn}"
+# ── No-Sentinel path ──
+echo "ERROR: switchover is unsupported without Sentinel; refusing manual best-effort promotion." >&2
+exit 1

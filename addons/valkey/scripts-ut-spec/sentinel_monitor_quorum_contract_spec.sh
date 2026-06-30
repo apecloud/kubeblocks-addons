@@ -28,10 +28,9 @@ Describe "Valkey Sentinel monitor quorum contract"
     The stdout should include '[ -n "${sentinel_fqdn}" ]'
   End
 
-  It "floors quorum at 2 when expected count is unknown in post-restore fallback"
+  It "does not compute quorum from an unknown post-restore Sentinel subset"
     When call grep -F 'sentinel_monitor_quorum}" -lt 2' "${post_restore_script}"
-    The status should be success
-    The stdout should include "-lt 2"
+    The status should be failure
   End
 
   It "uses the computed quorum in each SENTINEL monitor path"
