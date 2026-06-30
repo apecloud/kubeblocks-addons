@@ -404,7 +404,7 @@
 	"raftstore.apply-max-batch-size": int & <=10240 | *256
 
 	// The allowable number of threads in the pool that flushes data to the disk, which is the size of the Apply thread pool. When you modify the size of this thread pool, refer to [Performance tuning for TiKV thread pools](/tune-tikv-thread-performance.md#performance-tuning-for-tikv-thread-pools). Value ranges: `[1, CPU * 10]`. `CPU` means the number of your CPU cores.
-	"raftstore.apply-pool-size": int | >=1 | *2
+	"raftstore.apply-pool-size": int & >=1 | *2
 
 	// Raft state machines process requests for flushing logs into the disk in batches by the BatchSystem. This configuration item specifies the maximum number of Raft state machines that can process the requests in one batch. If `hibernate-regions` is enabled, the default value is `256`. If `hibernate-regions` is disabled, the default value is `1024`.
 	"raftstore.store-max-batch-size": int & >=0 & <=10240
