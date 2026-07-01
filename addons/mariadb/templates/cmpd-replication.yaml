@@ -97,10 +97,14 @@ spec:
       timeoutSeconds: 50
       exec:
         container: mariadb
+        env:
+          - name: MYSQL_ADMIN_USER
+            value: "kb_internal_root"
+          - name: MYSQL_ADMIN_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
         command:
           - /bin/sh
-          - -c
-          - timeout 30 /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
+          - /scripts/replication-member-leave.sh
     switchover:
       # KB kbagent enforces a hardcoded maxActionCallTimeout of 60s
       # (pkg/kbagent/service/action_utils.go), so any value above 60 is silently
