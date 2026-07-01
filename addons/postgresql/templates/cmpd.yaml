@@ -10,6 +10,7 @@ metadata:
   annotations:
     {{- include "postgresql.annotations" $ | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks
   description: A PostgreSQL (with Patroni HA) component definition for Kubernetes
   serviceKind: postgresql

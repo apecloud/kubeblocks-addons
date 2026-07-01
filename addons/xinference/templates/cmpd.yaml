@@ -7,6 +7,7 @@ metadata:
   annotations:
     {{- include "xinference.annotations" . | nindent 4 }}
 spec:
+  podUpdatePolicy: PreferInPlace
   provider: kubeblocks
   description: Xinference is a powerful and versatile library designed to serve language, speech recognition, and multimodal models.
   serviceKind: xinference
