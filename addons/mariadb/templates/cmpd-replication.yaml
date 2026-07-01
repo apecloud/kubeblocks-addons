@@ -114,6 +114,13 @@ spec:
       timeoutSeconds: 60
       exec:
         container: mariadb
+        env:
+          - name: MARIADB_ROOT_USER
+            value: "$(MARIADB_ROOT_USER)"
+          - name: MARIADB_ROOT_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          - name: MARIADB_INTERNAL_ROOT_USER
+            value: "kb_internal_root"
         command:
           - /bin/sh
           - /scripts/replication-switchover.sh
