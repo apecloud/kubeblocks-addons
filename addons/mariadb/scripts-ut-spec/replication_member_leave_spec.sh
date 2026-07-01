@@ -45,6 +45,18 @@ Describe "replication memberLeave lifecycle action"
     The output should not include "not fatal"
   End
 
+  It "uses internal admin credentials for cleanup when they are available"
+    When call grep -F 'MEMBER_LEAVE_SQL_USER="${MYSQL_ADMIN_USER:-${MARIADB_ROOT_USER}}"' "${ADDON_ROOT}/scripts/replication-member-leave.sh"
+    The status should be success
+    The output should equal 'MEMBER_LEAVE_SQL_USER="${MYSQL_ADMIN_USER:-${MARIADB_ROOT_USER}}"'
+  End
+
+  It "passes the selected memberLeave cleanup credential to the local SQL client"
+    When call grep -F '"-u${MEMBER_LEAVE_SQL_USER}" "-p${MEMBER_LEAVE_SQL_PASSWORD}"' "${ADDON_ROOT}/scripts/replication-member-leave.sh"
+    The status should be success
+    The output should include '"-u${MEMBER_LEAVE_SQL_USER}" "-p${MEMBER_LEAVE_SQL_PASSWORD}"'
+  End
+
   It "does not silently ignore STOP SLAVE or RESET SLAVE ALL with || true"
     When call grep -E 'STOP SLAVE|RESET SLAVE ALL' "${ADDON_ROOT}/scripts/replication-member-leave.sh"
     The output should not include "|| true"
