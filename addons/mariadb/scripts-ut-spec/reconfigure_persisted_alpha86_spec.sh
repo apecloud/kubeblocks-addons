@@ -537,6 +537,27 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
     End
   End
 
+  Describe "Rejected user-input SQL errors do not keep reconfigure on the failing path"
+    It "base reconfigureAction skips classified engine rejects without exiting 1"
+      When call extract_base_helper_body
+      The status should be success
+      The output should include 'skipped_count=$((skipped_count + 1))'
+      The output should include 'parameter(s) were rejected by engine and skipped'
+      The output should include 'if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -eq 0 ]; then'
+      The output should not include 'failing reconfigure to avoid accepting invalid rendered config'
+    End
+
+    It "persisted reconfigureAction skips classified engine rejects without writing overrides or exiting 1"
+      When call extract_persisted_helper_body
+      The status should be success
+      The output should include 'skipped_count=$((skipped_count + 1))'
+      The output should include 'continue'
+      The output should include 'parameter(s) were rejected by engine and skipped'
+      The output should include 'if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -eq 0 ]; then'
+      The output should not include 'failing reconfigure to avoid accepting invalid rendered config'
+    End
+  End
+
   Describe "Regression: KB-managed config has NO !includedir (alpha.84 v1 parser FAIL)"
     It "config/mariadb-semisync.tpl does NOT contain !includedir (mariadbd loads via --defaults-extra-file instead)"
       # alpha.84 v1 put !includedir into KB-managed my.cnf, which KB
