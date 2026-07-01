@@ -51,6 +51,26 @@ Describe "replication memberLeave lifecycle action"
     The output should equal 'MEMBER_LEAVE_SQL_USER="${MYSQL_ADMIN_USER:-${MARIADB_ROOT_USER}}"'
   End
 
+  It "injects MYSQL_ADMIN_USER into the kbagent memberLeave action env"
+    When call member_leave_block_contains 'name: MYSQL_ADMIN_USER'
+    The status should be success
+  End
+
+  It "sets memberLeave MYSQL_ADMIN_USER to kb_internal_root"
+    When call member_leave_block_contains 'value: "kb_internal_root"'
+    The status should be success
+  End
+
+  It "injects MYSQL_ADMIN_PASSWORD into the kbagent memberLeave action env"
+    When call member_leave_block_contains 'name: MYSQL_ADMIN_PASSWORD'
+    The status should be success
+  End
+
+  It "sets memberLeave MYSQL_ADMIN_PASSWORD from the root password secret"
+    When call member_leave_block_contains 'value: "$(MARIADB_ROOT_PASSWORD)"'
+    The status should be success
+  End
+
   It "passes the selected memberLeave cleanup credential to the local SQL client"
     When call grep -F '"-u${MEMBER_LEAVE_SQL_USER}" "-p${MEMBER_LEAVE_SQL_PASSWORD}"' "${ADDON_ROOT}/scripts/replication-member-leave.sh"
     The status should be success

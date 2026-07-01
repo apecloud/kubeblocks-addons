@@ -97,6 +97,11 @@ spec:
       timeoutSeconds: 50
       exec:
         container: mariadb
+        env:
+          - name: MYSQL_ADMIN_USER
+            value: "kb_internal_root"
+          - name: MYSQL_ADMIN_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
         command:
           - /bin/sh
           - /scripts/replication-member-leave.sh
