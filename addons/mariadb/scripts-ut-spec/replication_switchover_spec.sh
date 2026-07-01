@@ -247,6 +247,9 @@ EOF
         local_remote_root_is_fenced_for_secondary() {
           return 0
         }
+        candidate_remote_root_has_explicit_primary_grant() {
+          return 0
+        }
         query_value() {
           case "$1:$2" in
             "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local:SELECT @@server_id;"*) echo "2" ;;
@@ -297,6 +300,9 @@ EOF
           return 0
         }
         local_remote_root_is_fenced_for_secondary() {
+          return 0
+        }
+        candidate_remote_root_has_explicit_primary_grant() {
           return 0
         }
         query_value() {
@@ -365,6 +371,9 @@ EOF
           return 0
         }
         local_remote_root_is_fenced_for_secondary() {
+          return 0
+        }
+        candidate_remote_root_has_explicit_primary_grant() {
           return 0
         }
         query_value() {
@@ -449,6 +458,39 @@ EOF
         The output should include "Switchover post-DCS guard passed"
         The stderr should include "reason=candidate_remote_root_primary_not_ready_in_budget"
         The stderr should include "fail-closed"
+      End
+
+      It "alpha.129 contract: fails closed when candidate read_only is open but remote root primary grants are still fenced"
+        export CANDIDATE_REMOTE_ROOT_PRIMARY_READY_WAIT_SECONDS=1
+        export SWITCHOVER_POLL_SECONDS=1
+        make_syncerctl
+        prepare_current_primary_for_switchover() { return 0; }
+        verify_post_dcs_local_root_write_fenced() { return 0; }
+        revoke_user_facing_root_admin_privileges_for_secondary() { return 0; }
+        wait_candidate_promoted_via_syncerctl() { return 0; }
+        query_value() {
+          case "$1:$2" in
+            "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local:SELECT @@global.read_only;"*) echo "0" ;;
+            "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
+          esac
+        }
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+case "$*" in
+  *"SHOW GRANTS"*)
+    echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'%'"
+    exit 0
+    ;;
+esac
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        The status should be failure
+        The output should include "Switchover stage candidate_primary_ready budget=1s"
+        The stderr should include "candidate_remote_root_explicit_primary_grant_verify"
+        The stderr should include "reason=core_write_priv_missing"
+        The stderr should include "reason=candidate_remote_root_primary_not_ready_in_budget"
       End
     End
 
