@@ -6,7 +6,10 @@ log_slave_updates = ON
 gtid_strict_mode = OFF
 skip_slave_start = 1
 
-# Semi-sync is built-in to MariaDB 11.4 (no plugin .so files needed).
+# Semi-sync plugins: required for MariaDB 10.6; harmless no-op on 11.4+ where semi-sync is built-in.
+plugin_load_add = semisync_master.so
+plugin_load_add = semisync_slave.so
+
 # Enable both master and slave sides; MariaDB uses the appropriate one based on role.
 rpl_semi_sync_master_enabled = ON
 rpl_semi_sync_slave_enabled = ON
