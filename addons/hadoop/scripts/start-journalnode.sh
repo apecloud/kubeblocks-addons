@@ -7,8 +7,8 @@ set -o pipefail
 : "${HADOOP_HOME:=/opt/hadoop}"
 : "${HADOOP_CONF_DIR:=${HADOOP_HOME}/etc/hadoop}"
 : "${HADOOP_LOG_DIR:=/var/log/hadoop}"
-export HADOOP_HOME HADOOP_CONF_DIR HADOOP_LOG_DIR
-export HADOOP_PID_DIR=/var/run/hadoop
+: "${HADOOP_PID_DIR:=/tmp/hadoop}"
+export HADOOP_HOME HADOOP_CONF_DIR HADOOP_LOG_DIR HADOOP_PID_DIR
 mkdir -p "${HADOOP_LOG_DIR}" "${HADOOP_PID_DIR}"
 
 USER=$(whoami)
