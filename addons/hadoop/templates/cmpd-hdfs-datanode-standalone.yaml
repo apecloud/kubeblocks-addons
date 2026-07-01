@@ -14,9 +14,12 @@ spec:
     hostNetwork: {{ .Values.runtime.datanode.hostNetwork }}
     hostPID: {{ .Values.runtime.datanode.hostPID }}
     dnsPolicy: {{ .Values.runtime.datanode.dnsPolicy }}
+    terminationGracePeriodSeconds: 120
     initContainers:
       - name: hadoop-common
         imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: {{ .Values.securityContext.initRunAsUser }}
         command:
           - /bin/bash
         args:
@@ -26,8 +29,6 @@ spec:
             mkdir -p {{ .Values.hdfs.paths.datanodeDataDir }}
             chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.runtime.hadoopHome }}
             chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.hdfs.paths.datanodeDataDir }}
-        securityContext:
-          runAsUser: {{ .Values.securityContext.initRunAsUser }}
         volumeMounts:
           - name: hadoop-common
             mountPath: {{ .Values.runtime.hadoopHome }}
@@ -38,9 +39,42 @@ spec:
       - name: hdfs-datanode
         image: {{ include "hadoop.dataNodeImage" . | quote }}
         imagePullPolicy: {{ .Values.dataNode.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/start-datanode.sh
         env:
           - name: DEBUG_MODEL
             value: {{ .Values.runtime.debug | quote }}
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_FQDN
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']
+          - name: HADOOP_HOME
+            value: {{ .Values.runtime.hadoopHome }}
+          - name: HADOOP_CONF_DIR
+            value: {{ .Values.runtime.configDir }}
+          - name: HADOOP_LOG_DIR
+            value: {{ .Values.runtime.hadoopLogDir }}
+        ports:
+          - containerPort: {{ .Values.hdfs.ports.datanode.data }}
+            name: data
+          - containerPort: {{ .Values.hdfs.ports.datanode.ipc }}
+            name: ipc
+          - containerPort: {{ .Values.hdfs.ports.datanode.http }}
+            name: http
+        startupProbe:
+          failureThreshold: 30
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-data-status.sh
         livenessProbe:
           failureThreshold: {{ .Values.probes.datanode.liveness.failureThreshold }}
           initialDelaySeconds: {{ .Values.probes.datanode.liveness.initialDelaySeconds }}
@@ -50,7 +84,7 @@ spec:
           exec:
             command:
               - /bin/bash
-              - /kubeblocks/scripts/check-data-status.sh
+              - {{ .Values.runtime.scriptsDir }}/check-data-status.sh
         readinessProbe:
           failureThreshold: {{ .Values.probes.datanode.readiness.failureThreshold }}
           initialDelaySeconds: {{ .Values.probes.datanode.readiness.initialDelaySeconds }}
@@ -60,13 +94,25 @@ spec:
           exec:
             command:
               - /bin/bash
-              - /kubeblocks/scripts/check-data-status.sh
+              - {{ .Values.runtime.scriptsDir }}/check-data-status.sh
         volumeMounts:
           - name: hadoop-common
             mountPath: {{ .Values.runtime.hadoopHome }}
           - name: hadoop-core-config
             mountPath: {{ .Values.runtime.configDir }}/core-site.xml
             subPath: core-site.xml
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
+            subPath: hadoop-env.sh
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-metrics2.properties
+            subPath: hadoop-metrics2.properties
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.include
+            subPath: dfs.include
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.exclude
+            subPath: dfs.exclude
           - name: datanode-config
             mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
             subPath: hdfs-site.xml
@@ -76,6 +122,8 @@ spec:
           - name: hdfs-data-0
             mountPath: {{ .Values.hdfs.paths.datanodeDataDir }}
             subPath: data0
+          - name: hadoop-logs
+            mountPath: {{ .Values.runtime.hadoopLogDir }}
           - name: scripts
             mountPath: {{ .Values.runtime.scriptsDir }}
         securityContext:
@@ -94,6 +142,8 @@ spec:
     volumes:
       - name: hadoop-common
         emptyDir: {}
+      - name: hadoop-logs
+        emptyDir: {}
   updateStrategy: {{ .Values.updateStrategy }}
   vars:
     - name: CLUSTER_NAME
@@ -106,6 +156,27 @@ spec:
           namespace: Required
     - name: CLUSTER_DOMAIN
       value: {{ .Values.extra.clusterDomain }}
+    - name: HDFS_CONF_DIR
+      value: {{ .Values.runtime.configDir }}
+    - name: HDFS_DATANODE_DATA_DIR
+      value: {{ .Values.hdfs.paths.datanodeDataDir | quote }}
+    - name: HDFS_DATANODE_HANDLER_COUNT
+      value: {{ .Values.hdfs.datanode.handlerCount | quote }}
+    - name: HDFS_NAMENODE_RPC_PORT
+      value: {{ .Values.hdfs.ports.namenode.rpc | quote }}
+    - name: HDFS_NAMENODE_HTTP_PORT
+      value: {{ .Values.hdfs.ports.namenode.http | quote }}
+    - name: HDFS_REPLICATION
+      value: "1"
+    - name: HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY
+      value: "NEVER"
+    - name: HDFS_PERMISSIONS_ENABLED
+      value: {{ .Values.hdfs.permissions.enabled | quote }}
+    - name: POD_FQDN
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']
+          apiVersion: v1
   configs:
     - name: datanode-config
       template: datanode-standalone-config-template

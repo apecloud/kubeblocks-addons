@@ -1,7 +1,13 @@
+{{- $isCluster := eq .Values.topology "cluster" }}
+{{- $isStandalone := eq .Values.topology "standalone" }}
+{{- if not (or $isCluster $isStandalone) }}
+{{- fail "topology must be either 'cluster' or 'standalone'" }}
+{{- end }}
 {{- include "hbase-cluster.clusterCommon" . }}
   clusterDef: hbase
-  topology: hbase-cluster
+  topology: {{ .Values.topology }}
   componentSpecs:
+{{- if $isCluster }}
     - name: hmaster
       componentDef: hbase-hmaster-2.5
       serviceVersion: 2.5.6
@@ -15,21 +21,18 @@
               component: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.component }}
               service: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.service }}
               port: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.port }}
-        - name: hadoop-namenode
-          namespace: {{ .Values.serviceRefs.hadoopNamenode.namespace }}
+        - name: hdfs-namenode
+          namespace: {{ .Values.serviceRefs.hdfsNamenode.namespace }}
           clusterServiceSelector:
-            cluster: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.cluster }}
+            cluster: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.cluster }}
             service:
-              component: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.service.component }}
-              service: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.service.service }}
-              port: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.service.port }}
-      env:
-        - name: "HADOOP_CLUSTER_NAME"
-          value: {{ .Values.hadoopClusterName | quote }}
-        - name: "HBASE_ROOT_DIR"
-          value: {{ .Values.hbaseRootDir | default "hbase" | quote }}
-        - name: "HBASE_ZK_PARENT"
-          value: {{ .Values.hbaseZkParent | default "/hbase" | quote }}
+              component: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.service.component }}
+              service: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.service.service }}
+              port: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.service.port }}
+      configs:
+        - name: hbase-config
+          variables:
+            HDFS_NAMESERVICE: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.cluster | quote }}
       resources:
         requests:
           cpu: {{ .Values.resources.hmaster.requests.cpu | quote }}
@@ -37,22 +40,14 @@
         limits:
           cpu: {{ .Values.resources.hmaster.limits.cpu | quote }}
           memory: {{ .Values.resources.hmaster.limits.memory }}
-      volumes:
-        - name: hadoop-core-config
-          configMap:
-            name: {{ .Values.hadoopClusterName }}-hadoop-core-hadoop-core-config
-        - name: hadoop-hdfs-config
-          configMap:
-            name: {{ .Values.hadoopClusterName }}-namenode-namenode-config
-      volumeClaimTemplates:
-        - name: hbase-log
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ .Values.storage.hbaseLog }}
-            storageClassName: {{ .Values.storage.storageClassName }}
+      schedulingPolicy:
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                apps.kubeblocks.io/component-name: hmaster
     - name: hregionserver
       componentDef: hbase-hregionserver-2.5
       serviceVersion: 2.5.6
@@ -66,21 +61,18 @@
               component: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.component }}
               service: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.service }}
               port: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.port }}
-        - name: hadoop-namenode
-          namespace: {{ .Values.serviceRefs.hadoopNamenode.namespace }}
+        - name: hdfs-namenode
+          namespace: {{ .Values.serviceRefs.hdfsNamenode.namespace }}
           clusterServiceSelector:
-            cluster: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.cluster }}
+            cluster: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.cluster }}
             service:
-              component: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.service.component }}
-              service: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.service.service }}
-              port: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.service.port }}
-      env:
-        - name: "HADOOP_CLUSTER_NAME"
-          value: {{ .Values.hadoopClusterName | quote }}
-        - name: "HBASE_ROOT_DIR"
-          value: {{ .Values.hbaseRootDir | default "hbase" | quote }}
-        - name: "HBASE_ZK_PARENT"
-          value: {{ .Values.hbaseZkParent | default "/hbase" | quote }}
+              component: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.service.component }}
+              service: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.service.service }}
+              port: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.service.port }}
+      configs:
+        - name: hbase-config
+          variables:
+            HDFS_NAMESERVICE: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.cluster | quote }}
       resources:
         requests:
           cpu: {{ .Values.resources.hregionserver.requests.cpu | quote }}
@@ -88,19 +80,44 @@
         limits:
           cpu: {{ .Values.resources.hregionserver.limits.cpu | quote }}
           memory: {{ .Values.resources.hregionserver.limits.memory }}
-      volumes:
-        - name: hadoop-core-config
-          configMap:
-            name: {{ .Values.hadoopClusterName }}-hadoop-core-hadoop-core-config
-        - name: hadoop-hdfs-config
-          configMap:
-            name: {{ .Values.hadoopClusterName }}-namenode-namenode-config
+      schedulingPolicy:
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                apps.kubeblocks.io/component-name: hregionserver
+{{- else }}
+    - name: hbase-standalone
+      componentDef: hbase-standalone-2.5
+      serviceVersion: 2.5.6
+      replicas: 1
+      serviceRefs:
+        - name: hbase-zookeeper
+          namespace: {{ .Values.serviceRefs.hbaseZookeeper.namespace }}
+          clusterServiceSelector:
+            cluster: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.cluster }}
+            service:
+              component: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.component }}
+              service: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.service }}
+              port: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.port }}
+      resources:
+        requests:
+          cpu: {{ .Values.resources.hbasestandalone.requests.cpu | quote }}
+          memory: {{ .Values.resources.hbasestandalone.requests.memory }}
+        limits:
+          cpu: {{ .Values.resources.hbasestandalone.limits.cpu | quote }}
+          memory: {{ .Values.resources.hbasestandalone.limits.memory }}
       volumeClaimTemplates:
-        - name: hbase-temp-data
+        - name: data
           spec:
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.storage.hbaseTempData }}
+                storage: {{ .Values.storage.standalone.data }}
+{{- if .Values.storage.storageClassName }}
             storageClassName: {{ .Values.storage.storageClassName }}
+{{- end }}
+{{- end }}

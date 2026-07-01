@@ -17,14 +17,17 @@
         <name>dfs.nameservices</name>
         <value>{{- .CLUSTER_NAME }}</value>
     </property>
+
     <property>
         <name>dfs.namenode.name.dir</name>
         <value>{{- .HDFS_NAMENODE_NAME_DIR }}</value>
     </property>
+
     <property>
         <name>dfs.ha.namenodes.{{- .CLUSTER_NAME }}</name>
         <value>nn0,nn1</value>
     </property>
+
     <property>
         <name>dfs.namenode.rpc-address.{{- .CLUSTER_NAME }}.nn0</name>
         <value>{{- .CLUSTER_NAME }}-namenode-0.{{- .CLUSTER_NAME }}-namenode-headless.{{-
@@ -35,6 +38,7 @@
         <value>{{- .CLUSTER_NAME }}-namenode-1.{{- .CLUSTER_NAME }}-namenode-headless.{{-
             .NAMESPACE }}.svc.{{- .CLUSTER_DOMAIN }}:{{- .HDFS_NAMENODE_RPC_PORT }}</value>
     </property>
+
     <property>
         <name>dfs.namenode.http-address.{{- .CLUSTER_NAME }}.nn0</name>
         <value>{{- .CLUSTER_NAME }}-namenode-0.{{- .CLUSTER_NAME }}-namenode-headless.{{-
@@ -45,102 +49,173 @@
         <value>{{- .CLUSTER_NAME }}-namenode-1.{{- .CLUSTER_NAME }}-namenode-headless.{{-
             .NAMESPACE }}.svc.{{- .CLUSTER_DOMAIN }}:{{- .HDFS_NAMENODE_HTTP_PORT }}</value>
     </property>
+
+    <property>
+        <name>dfs.namenode.rpc-bind-host</name>
+        <value>0.0.0.0</value>
+    </property>
+    <property>
+        <name>dfs.namenode.http-bind-host</name>
+        <value>0.0.0.0</value>
+    </property>
+
     <property>
         <name>dfs.namenode.shared.edits.dir</name>
-        <value>
-            {{- $journalnode_fqdns }}
-        </value>
+        <value>{{- $journalnode_fqdns }}</value>
     </property>
+
     <property>
         <name>dfs.client.failover.proxy.provider.{{- .CLUSTER_NAME }}</name>
         <value>org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider</value>
     </property>
+
     <property>
         <name>dfs.ha.fencing.methods</name>
         <value>{{- .HDFS_HA_FENCING_METHODS }}</value>
     </property>
+
+    <property>
+        <name>dfs.ha.fencing.ssh.private-key-files</name>
+        <value>/var/lib/hadoop-hdfs/.ssh/id_dsa</value>
+    </property>
+
+    <property>
+        <name>dfs.ha.fencing.ssh.connect-timeout</name>
+        <value>30000</value>
+    </property>
+
     <property>
         <name>dfs.ha.automatic-failover.enabled</name>
         <value>{{- .HDFS_HA_AUTOMATIC_FAILOVER_ENABLED }}</value>
     </property>
+
     <property>
-        <name>dfs.permissions.enable</name>
+        <name>dfs.ha.failover-controller.active-standby-elector.zk.op.retries</name>
+        <value>{{- .HDFS_HA_ZOOKEEPER_OPERATION_RETRIES }}</value>
+    </property>
+
+    <property>
+        <name>dfs.permissions.enabled</name>
         <value>{{- .HDFS_PERMISSIONS_ENABLED }}</value>
     </property>
+
+    <property>
+        <name>dfs.permissions.superusergroup</name>
+        <value>hadoop</value>
+    </property>
+
     <property>
         <name>dfs.namenode.datanode.registration.ip-hostname-check</name>
         <value>{{- .HDFS_REGISTRATION_IP_HOSTNAME_CHECK }}</value>
     </property>
+
     <property>
         <name>dfs.replication</name>
         <value>{{- .HDFS_REPLICATION }}</value>
     </property>
+
+    <property>
+        <name>dfs.replication.max</name>
+        <value>{{- .HDFS_REPLICATION_MAX }}</value>
+    </property>
+
     <property>
         <name>dfs.client.block.write.replace-datanode-on-failure.policy</name>
         <value>{{- .HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY }}</value>
     </property>
 
-    <!-- 2. 自动故障转移相关的 ZK 配置 -->
     <property>
-        <name>dfs.ha.automatic-failover.enabled</name>
-        <value>{{- .HDFS_HA_AUTOMATIC_FAILOVER_ENABLED }}</value>
+        <name>dfs.namenode.handler.count</name>
+        <value>{{- .HDFS_NAMENODE_HANDLER_COUNT }}</value>
     </property>
 
     <property>
-        <name>ha.zookeeper.quorum</name>
-        <value>{{- .ZOOKEEPER_ENDPOINTS }}</value>
-    </property>
-    <property>
-        <name>ha.zookeeper.parent-znode</name>
-        <value>{{- .HDFS_HA_ZOOKEEPER_PARENT_ZNODE_PREFIX }}/{{- .CLUSTER_NAME }}{{- if eq
-            .HDFS_HA_ZOOKEEPER_INCLUDE_CLUSTER_UID "true" }}-{{- .CLUSTER_UID }}{{- end }}</value>
+        <name>dfs.namenode.service.handler.count</name>
+        <value>{{- .HDFS_NAMENODE_HANDLER_COUNT }}</value>
     </property>
 
-    <!-- 3. ZK 会话超时设置 -->
     <property>
-        <name>ha.zookeeper.session-timeout.ms</name>
-        <value>{{- .HDFS_HA_ZOOKEEPER_SESSION_TIMEOUT_MS }}</value>
+        <name>dfs.hosts</name>
+        <value>{{- .HDFS_CONF_DIR }}/dfs.include</value>
     </property>
 
-    <!-- 4. ZK 重试次数 -->
     <property>
-        <name>ha.failover-controller.active-standby-elector.zk.op.retries</name>
-        <value>{{- .HDFS_HA_ZOOKEEPER_OPERATION_RETRIES }}</value>
+        <name>dfs.hosts.exclude</name>
+        <value>{{- .HDFS_CONF_DIR }}/dfs.exclude</value>
     </property>
 
-    <!-- IPC 连接保持时间 -->
     <property>
-        <name>ipc.client.connection.maxidletime</name>
-        <value>{{- .HDFS_IPC_CLIENT_CONNECTION_MAX_IDLE_TIME_MS }}</value>
+        <name>dfs.webhdfs.enabled</name>
+        <value>false</value>
     </property>
 
-    <!-- IPC 连接超时时间 -->
     <property>
-        <name>ipc.client.connect.timeout</name>
-        <value>{{- .HDFS_IPC_CLIENT_CONNECT_TIMEOUT_MS }}</value>
+        <name>dfs.datanode.block-pinning.enabled</name>
+        <value>true</value>
     </property>
 
-    <!-- IPC 连接池大小 -->
     <property>
-        <name>ipc.client.connection.pool.size</name>
-        <value>{{- .HDFS_IPC_CLIENT_CONNECTION_POOL_SIZE }}</value>
+        <name>dfs.namenode.avoid.read.stale.datanode</name>
+        <value>true</value>
     </property>
 
-    <!-- 连接重试间隔 -->
     <property>
-        <name>ipc.client.connect.retry.interval</name>
-        <value>{{- .HDFS_IPC_CLIENT_CONNECT_RETRY_INTERVAL_MS }}</value>
+        <name>dfs.namenode.avoid.write.stale.datanode</name>
+        <value>true</value>
     </property>
 
-    <!-- 保持连接存活配置 -->
     <property>
-        <name>ipc.client.ping</name>
-        <value>{{- .HDFS_IPC_CLIENT_PING }}</value>
+        <name>dfs.namenode.resource.du.reserved</name>
+        <value>1073741824</value>
     </property>
 
-    <!-- 心跳间隔 -->
     <property>
-        <name>ipc.ping.interval</name>
-        <value>{{- .HDFS_IPC_PING_INTERVAL_MS }}</value>
+        <name>dfs.client.retry.policy.enabled</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>dfs.client.retry.policy.spec</name>
+        <value>1000,1</value>
+    </property>
+
+    <property>
+        <name>dfs.namenode.stale.datanode.interval</name>
+        <value>30000</value>
+    </property>
+
+    <property>
+        <name>dfs.ha.log-roll.period</name>
+        <value>120</value>
+    </property>
+
+    <property>
+        <name>dfs.ha.tail-edits.period</name>
+        <value>60</value>
+    </property>
+
+    <property>
+        <name>dfs.image.transfer.bandwidthPerSec</name>
+        <value>0</value>
+    </property>
+
+    <property>
+        <name>dfs.namenode.num.checkpoints.retained</name>
+        <value>2</value>
+    </property>
+
+    <property>
+        <name>dfs.namenode.num.extra.edits.retained</name>
+        <value>1000000</value>
+    </property>
+
+    <property>
+        <name>dfs.journalnode.http-address</name>
+        <value>0.0.0.0:8480</value>
+    </property>
+
+    <property>
+        <name>dfs.journalnode.rpc-address</name>
+        <value>0.0.0.0:8485</value>
     </property>
 </configuration>

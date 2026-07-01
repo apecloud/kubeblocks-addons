@@ -4,51 +4,58 @@ replicas:
   core: 1
   journalnode: 3
   namenode: 2
-  datanode: 1
+  datanode: 3
 
 resources:
   core:
     requests:
-      cpu: "0.5"
-      memory: 0.5Gi
+      cpu: "100m"
+      memory: 256Mi
     limits:
-      cpu: "0.5"
-      memory: 2Gi
+      cpu: "500m"
+      memory: 1Gi
   journalnode:
     requests:
-      cpu: "0.5"
-      memory: 0.5Gi
+      cpu: "500m"
+      memory: 1Gi
     limits:
-      cpu: "0.5"
+      cpu: "2"
       memory: 2Gi
   namenode:
     requests:
-      cpu: "0.5"
-      memory: 0.5Gi
-    limits:
-      cpu: "0.5"
+      cpu: "1"
       memory: 2Gi
+    limits:
+      cpu: "4"
+      memory: 4Gi
   datanode:
     requests:
-      cpu: "0.5"
-      memory: 0.5Gi
+      cpu: "500m"
+      memory: 1Gi
     limits:
-      cpu: "0.5"
+      cpu: "2"
       memory: 2Gi
+  zkfc:
+    requests:
+      cpu: "100m"
+      memory: 256Mi
+    limits:
+      cpu: "500m"
+      memory: 512Mi
 
 storage:
   journalnode:
-    size: 10Gi
+    size: 20Gi
     storageClassName: ""
     accessModes:
       - ReadWriteOnce
   namenode:
-    size: 10Gi
+    size: 50Gi
     storageClassName: ""
     accessModes:
       - ReadWriteOnce
   datanode:
-    size: 30Gi
+    size: 100Gi
     storageClassName: ""
     accessModes:
       - ReadWriteOnce
@@ -65,16 +72,16 @@ hdfs:
     namenodeMetadataDir: /hadoop/dfs/metadata
     datanodeDataDir: /hadoop/dfs/data0
     journalnodeEditsDir: /hadoop/dfs/journal
-  replication: 1
+  replication: 3
   client:
-    replaceDatanodeOnFailurePolicy: NEVER
+    replaceDatanodeOnFailurePolicy: DEFAULT
   permissions:
     enabled: false
   registration:
     ipHostnameCheck: false
   ha:
     automaticFailoverEnabled: true
-    fencingMethods: "shell(/bin/true)"
+    fencingMethods: "sshfence\nshell(/bin/true)"
     zookeeper:
       parentZnodePrefix: /hadoop-ha
       includeClusterUID: true
@@ -87,6 +94,17 @@ hdfs:
     clientConnectRetryIntervalMs: 1000
     clientPing: true
     pingIntervalMs: 30000
+  trash:
+    interval: 1440
+  jvm:
+    namenodeHeapSize: "2g"
+    datanodeHeapSize: "1g"
+    journalnodeHeapSize: "1g"
+    zkfcHeapSize: "256m"
+  datanode:
+    handlerCount: 64
+  namenode:
+    handlerCount: 64
 
 serviceRefs:
   hadoopZookeeper:

@@ -16,5 +16,4 @@ spec:
     - name: 2.5.6
       serviceVersion: 2.5.6
       images:
-        init-regionserver: {{ include "hbase.initImage" . | quote }}
         hbase-hregionserver: {{ include "hbase.hregionserverImage" . | quote }}

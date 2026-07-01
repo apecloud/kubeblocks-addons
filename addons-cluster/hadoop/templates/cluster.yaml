@@ -19,11 +19,37 @@
               component: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.component }}
               service: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.service }}
               port: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.port }}
+      configs:
+        - name: hadoop-core-config
+          variables:
+            HDFS_TRASH_INTERVAL: {{ .Values.hdfs.trash.interval | quote }}
+            HDFS_NAMENODE_HEAP: {{ .Values.hdfs.jvm.namenodeHeapSize | quote }}
+            HDFS_DATANODE_HEAP: {{ .Values.hdfs.jvm.datanodeHeapSize | quote }}
+            HDFS_JOURNALNODE_HEAP: {{ .Values.hdfs.jvm.journalnodeHeapSize | quote }}
+            HDFS_ZKFC_HEAP: {{ .Values.hdfs.jvm.zkfcHeapSize | quote }}
+            HDFS_HA_ZOOKEEPER_SESSION_TIMEOUT_MS: {{ .Values.hdfs.ha.zookeeper.sessionTimeoutMs | quote }}
+            HDFS_IPC_CLIENT_CONNECTION_MAX_IDLE_TIME_MS: {{ .Values.hdfs.ipc.clientConnectionMaxIdleTimeMs | quote }}
+            HDFS_IPC_CLIENT_CONNECT_TIMEOUT_MS: {{ .Values.hdfs.ipc.clientConnectTimeoutMs | quote }}
+            HDFS_IPC_CLIENT_CONNECTION_POOL_SIZE: {{ .Values.hdfs.ipc.clientConnectionPoolSize | quote }}
+            HDFS_IPC_CLIENT_CONNECT_RETRY_INTERVAL_MS: {{ .Values.hdfs.ipc.clientConnectRetryIntervalMs | quote }}
+            HDFS_IPC_CLIENT_PING: {{ .Values.hdfs.ipc.clientPing | quote }}
+            HDFS_IPC_PING_INTERVAL_MS: {{ .Values.hdfs.ipc.pingIntervalMs | quote }}
 {{- else }}
       configs:
         - name: hadoop-core-config
           variables:
             HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.ports.namenode.rpc | quote }}
+            HDFS_TRASH_INTERVAL: {{ .Values.hdfs.trash.interval | quote }}
+            HDFS_NAMENODE_HEAP: {{ .Values.hdfs.jvm.namenodeHeapSize | quote }}
+            HDFS_DATANODE_HEAP: {{ .Values.hdfs.jvm.datanodeHeapSize | quote }}
+            HDFS_JOURNALNODE_HEAP: {{ .Values.hdfs.jvm.journalnodeHeapSize | quote }}
+            HDFS_ZKFC_HEAP: {{ .Values.hdfs.jvm.zkfcHeapSize | quote }}
+            HDFS_IPC_CLIENT_CONNECTION_MAX_IDLE_TIME_MS: {{ .Values.hdfs.ipc.clientConnectionMaxIdleTimeMs | quote }}
+            HDFS_IPC_CLIENT_CONNECT_TIMEOUT_MS: {{ .Values.hdfs.ipc.clientConnectTimeoutMs | quote }}
+            HDFS_IPC_CLIENT_CONNECTION_POOL_SIZE: {{ .Values.hdfs.ipc.clientConnectionPoolSize | quote }}
+            HDFS_IPC_CLIENT_CONNECT_RETRY_INTERVAL_MS: {{ .Values.hdfs.ipc.clientConnectRetryIntervalMs | quote }}
+            HDFS_IPC_CLIENT_PING: {{ .Values.hdfs.ipc.clientPing | quote }}
+            HDFS_IPC_PING_INTERVAL_MS: {{ .Values.hdfs.ipc.pingIntervalMs | quote }}
 {{- end }}
       replicas: {{ .Values.replicas.core }}
       resources:
@@ -50,6 +76,14 @@
         limits:
           cpu: {{ .Values.resources.journalnode.limits.cpu | quote }}
           memory: {{ .Values.resources.journalnode.limits.memory }}
+      schedulingPolicy:
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                apps.kubeblocks.io/component-name: journalnode
       volumes:
         - name: hadoop-core-config
           configMap:
@@ -85,26 +119,24 @@
             HDFS_NAMENODE_NAME_DIR: {{ .Values.hdfs.paths.namenodeMetadataDir | quote }}
             HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.ports.namenode.rpc | quote }}
             HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.ports.namenode.http | quote }}
-            HDFS_REPLICATION: {{ .Values.hdfs.replication | quote }}
-            HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY: {{ .Values.hdfs.client.replaceDatanodeOnFailurePolicy | quote }}
+            HDFS_NAMENODE_HANDLER_COUNT: {{ .Values.hdfs.namenode.handlerCount | quote }}
             HDFS_PERMISSIONS_ENABLED: {{ .Values.hdfs.permissions.enabled | quote }}
             HDFS_REGISTRATION_IP_HOSTNAME_CHECK: {{ .Values.hdfs.registration.ipHostnameCheck | quote }}
 {{- if $isCluster }}
+            HDFS_REPLICATION: {{ .Values.hdfs.replication | quote }}
+            HDFS_REPLICATION_MAX: {{ .Values.hdfs.replicationMax | quote }}
+            HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY: {{ .Values.hdfs.client.replaceDatanodeOnFailurePolicy | quote }}
             HDFS_JOURNALNODE_RPC_PORT: {{ .Values.hdfs.ports.journalnode.rpc | quote }}
             HDFS_HA_AUTOMATIC_FAILOVER_ENABLED: {{ .Values.hdfs.ha.automaticFailoverEnabled | quote }}
             HDFS_HA_FENCING_METHODS: {{ .Values.hdfs.ha.fencingMethods | quote }}
-            HDFS_HA_ZOOKEEPER_PARENT_ZNODE_PREFIX: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
-            HDFS_HA_ZOOKEEPER_INCLUDE_CLUSTER_UID: {{ .Values.hdfs.ha.zookeeper.includeClusterUID | quote }}
             HDFS_HA_ZOOKEEPER_SESSION_TIMEOUT_MS: {{ .Values.hdfs.ha.zookeeper.sessionTimeoutMs | quote }}
             HDFS_HA_ZOOKEEPER_OPERATION_RETRIES: {{ .Values.hdfs.ha.zookeeper.operationRetries | quote }}
-            HDFS_IPC_CLIENT_CONNECTION_MAX_IDLE_TIME_MS: {{ .Values.hdfs.ipc.clientConnectionMaxIdleTimeMs | quote }}
-            HDFS_IPC_CLIENT_CONNECT_TIMEOUT_MS: {{ .Values.hdfs.ipc.clientConnectTimeoutMs | quote }}
-            HDFS_IPC_CLIENT_CONNECTION_POOL_SIZE: {{ .Values.hdfs.ipc.clientConnectionPoolSize | quote }}
-            HDFS_IPC_CLIENT_CONNECT_RETRY_INTERVAL_MS: {{ .Values.hdfs.ipc.clientConnectRetryIntervalMs | quote }}
-            HDFS_IPC_CLIENT_PING: {{ .Values.hdfs.ipc.clientPing | quote }}
-            HDFS_IPC_PING_INTERVAL_MS: {{ .Values.hdfs.ipc.pingIntervalMs | quote }}
+{{- else }}
+            HDFS_REPLICATION: "1"
+            HDFS_REPLICATION_MAX: "1"
+            HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY: "NEVER"
 {{- end }}
-      replicas: {{ .Values.replicas.namenode }}
+      replicas: {{ ternary (.Values.replicas.namenode | int) 1 $isCluster }}
       resources:
         requests:
           cpu: {{ .Values.resources.namenode.requests.cpu | quote }}
@@ -112,6 +144,16 @@
         limits:
           cpu: {{ .Values.resources.namenode.limits.cpu | quote }}
           memory: {{ .Values.resources.namenode.limits.memory }}
+{{- if $isCluster }}
+      schedulingPolicy:
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                apps.kubeblocks.io/component-name: namenode
+{{- end }}
       volumes:
         - name: hadoop-core-config
           configMap:
@@ -135,9 +177,18 @@
             HDFS_DATANODE_DATA_DIR: {{ .Values.hdfs.paths.datanodeDataDir | quote }}
             HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.ports.namenode.rpc | quote }}
             HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.ports.namenode.http | quote }}
+            HDFS_DATANODE_HANDLER_COUNT: {{ .Values.hdfs.datanode.handlerCount | quote }}
+            HDFS_PERMISSIONS_ENABLED: {{ .Values.hdfs.permissions.enabled | quote }}
+{{- if $isCluster }}
             HDFS_REPLICATION: {{ .Values.hdfs.replication | quote }}
+            HDFS_REPLICATION_MAX: {{ .Values.hdfs.replicationMax | quote }}
             HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY: {{ .Values.hdfs.client.replaceDatanodeOnFailurePolicy | quote }}
-      replicas: {{ .Values.replicas.datanode }}
+{{- else }}
+            HDFS_REPLICATION: "1"
+            HDFS_REPLICATION_MAX: "1"
+            HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY: "NEVER"
+{{- end }}
+      replicas: {{ ternary (.Values.replicas.datanode | int) 1 $isCluster }}
       resources:
         requests:
           cpu: {{ .Values.resources.datanode.requests.cpu | quote }}
@@ -145,6 +196,16 @@
         limits:
           cpu: {{ .Values.resources.datanode.limits.cpu | quote }}
           memory: {{ .Values.resources.datanode.limits.memory }}
+{{- if $isCluster }}
+      schedulingPolicy:
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                apps.kubeblocks.io/component-name: datanode
+{{- end }}
       volumes:
         - name: hadoop-core-config
           configMap:

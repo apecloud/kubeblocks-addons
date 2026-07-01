@@ -47,6 +47,7 @@ runtime:
   hadoopSoftwareDir: /opt/software/hadoop-3.3.4
   configDir: /hadoop/conf
   scriptsDir: /kubeblocks/scripts
+  hadoopLogDir: /var/log/hadoop
   datanode:
     hostNetwork: true
     hostPID: true
@@ -55,6 +56,40 @@ runtime:
     waitZkToReady: false
 
 hdfs:
+  replication: 3
+  replicationMax: 6
+  permissions:
+    enabled: false
+    superusergroup: supergroup
+  registration:
+    ipHostnameCheck: false
+  client:
+    replaceDatanodeOnFailurePolicy: DEFAULT
+  namenode:
+    handlerCount: 64
+  datanode:
+    handlerCount: 64
+  ha:
+    automaticFailoverEnabled: true
+    fencingMethods: "sshfence\nshell(/bin/true)"
+    zookeeper:
+      sessionTimeoutMs: 60000
+      operationRetries: 3
+      parentZnodePrefix: /hadoop-ha
+  trash:
+    interval: 1440
+  ipc:
+    clientConnectionMaxIdleTimeMs: 300000
+    clientConnectTimeoutMs: 20000
+    clientConnectionPoolSize: 8
+    clientConnectRetryIntervalMs: 1000
+    clientPing: true
+    pingIntervalMs: 30000
+  jvm:
+    namenodeHeapSize: "3g"
+    datanodeHeapSize: "1g"
+    journalnodeHeapSize: "1g"
+    zkfcHeapSize: "512m"
   ports:
     namenode:
       rpc: 8020
@@ -63,6 +98,8 @@ hdfs:
       rpc: 8485
       http: 8480
     datanode:
+      data: 9866
+      ipc: 9867
       http: 9864
   paths:
     namenodeMetadataDir: /hadoop/dfs/metadata
@@ -89,12 +126,12 @@ probes:
   namenode:
     liveness:
       failureThreshold: 6
-      initialDelaySeconds: 30
+      initialDelaySeconds: 60
       periodSeconds: 10
       timeoutSeconds: 5
     readiness:
       failureThreshold: 6
-      initialDelaySeconds: 5
+      initialDelaySeconds: 30
       periodSeconds: 10
       timeoutSeconds: 5
   journalnode:
@@ -105,7 +142,7 @@ probes:
       timeoutSeconds: 5
     readiness:
       failureThreshold: 6
-      initialDelaySeconds: 5
+      initialDelaySeconds: 10
       periodSeconds: 10
       timeoutSeconds: 5
   datanode:
@@ -116,7 +153,7 @@ probes:
       timeoutSeconds: 5
     readiness:
       failureThreshold: 6
-      initialDelaySeconds: 5
+      initialDelaySeconds: 10
       periodSeconds: 10
       timeoutSeconds: 5
 

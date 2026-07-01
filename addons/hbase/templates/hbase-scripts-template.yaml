@@ -5,5 +5,13 @@ metadata:
   labels:
     {{- include "hbase.labels" . | nindent 4 }}
 data:
-  hbase-config-setup.sh: |-
-    {{- .Files.Get "scripts/hbase-config-setup.tpl" | nindent 4 }}
+  start-hmaster.sh: |-
+    {{- .Files.Get "scripts/start-hmaster.sh" | nindent 4 }}
+  start-hregionserver.sh: |-
+    {{- .Files.Get "scripts/start-hregionserver.sh" | nindent 4 }}
+  init-hdfs-root-layout.sh: |-
+    {{- .Files.Get "scripts/init-hdfs-root-layout.sh" | nindent 4 }}
+  check-hmaster-status.sh: |-
+    {{- .Files.Get "scripts/check-hmaster-status.sh" | nindent 4 }}
+  check-hregionserver-status.sh: |-
+    {{- .Files.Get "scripts/check-hregionserver-status.sh" | nindent 4 }}

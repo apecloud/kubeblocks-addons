@@ -1,0 +1,138 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+        <name>hbase.cluster.distributed</name>
+        <value>false</value>
+    </property>
+
+    <property>
+        <name>hbase.rootdir</name>
+        <value>file://{{ .HBASE_DATA_DIR }}/hbase</value>
+    </property>
+
+    <property>
+        <name>hbase.zookeeper.quorum</name>
+        <value>{{ .ZOOKEEPER_QUORUM }}</value>
+    </property>
+
+    <property>
+        <name>hbase.zookeeper.property.clientPort</name>
+        <value>{{ .ZOOKEEPER_CLIENT_PORT }}</value>
+    </property>
+
+    <property>
+        <name>zookeeper.znode.parent</name>
+        <value>{{ .HBASE_ZK_PARENT }}</value>
+    </property>
+
+    <property>
+        <name>zookeeper.session.timeout</name>
+        <value>30000</value>
+    </property>
+
+    <property>
+        <name>hbase.zookeeper.property.tickTime</name>
+        <value>6000</value>
+    </property>
+
+    <property>
+        <name>hbase.zookeeper.property.4lw.commands.whitelist</name>
+        <value>*</value>
+    </property>
+
+    <property>
+        <name>hbase.zookeeper.property.maxClientCnxns</name>
+        <value>4000</value>
+    </property>
+
+    <property>
+        <name>hbase.zookeeper.property.autopurge.purgeInterval</name>
+        <value>1</value>
+    </property>
+
+    <property>
+        <name>hbase.zookeeper.property.autopurge.snapRetainCount</name>
+        <value>3</value>
+    </property>
+
+    <property>
+        <name>hbase.master.port</name>
+        <value>16000</value>
+    </property>
+
+    <property>
+        <name>hbase.master.info.port</name>
+        <value>16010</value>
+    </property>
+
+    <property>
+        <name>hbase.regionserver.port</name>
+        <value>16020</value>
+    </property>
+
+    <property>
+        <name>hbase.regionserver.info.port</name>
+        <value>16030</value>
+    </property>
+
+    <property>
+        <name>hbase.tmp.dir</name>
+        <value>{{ .HBASE_TMP_DIR }}</value>
+    </property>
+
+    <property>
+        <name>hbase.regionserver.handler.count</name>
+        <value>30</value>
+    </property>
+
+    <property>
+        <name>hbase.hstore.flusher.count</name>
+        <value>2</value>
+    </property>
+
+    <property>
+        <name>hbase.client.scanner.caching</name>
+        <value>100</value>
+    </property>
+
+    <property>
+        <name>hbase.hregion.max.filesize</name>
+        <value>10737418240</value>
+    </property>
+
+    <property>
+        <name>hbase.hregion.memstore.flush.size</name>
+        <value>134217728</value>
+    </property>
+
+    <property>
+        <name>hbase.unsafe.stream.capability.enforce</name>
+        <value>false</value>
+    </property>
+
+    <property>
+        <name>hbase.procedure.store.wal.use.hsync</name>
+        <value>false</value>
+    </property>
+
+    <property>
+        <name>hbase.wal.provider</name>
+        <value>filesystem</value>
+    </property>
+
+    <property>
+        <name>hbase.replication</name>
+        <value>false</value>
+    </property>
+
+    <property>
+        <name>hbase.security.authentication</name>
+        <value>simple</value>
+    </property>
+
+    <property>
+        <name>hbase.security.authorization</name>
+        <value>false</value>
+    </property>
+</configuration>

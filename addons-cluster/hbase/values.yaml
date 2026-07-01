@@ -1,56 +1,54 @@
-# HBase Configuration
-nameOverride: ""
-fullnameOverride: ""
+topology: cluster
 
-# Replicas for each component
 replicas:
   hmaster: 2
   hregionserver: 2
 
-# Resource requirements for each component
 resources:
   hmaster:
     requests:
-      cpu: "0.1"
-      memory: 0.5Gi
+      cpu: "0.5"
+      memory: 1Gi
     limits:
-      cpu: "1"
-      memory: 2Gi
+      cpu: "2"
+      memory: 4Gi
   hregionserver:
     requests:
-      cpu: "0.1"
+      cpu: "0.5"
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 6Gi
+  hbasestandalone:
+    requests:
+      cpu: "0.2"
       memory: 0.5Gi
     limits:
       cpu: "1"
-      memory: 2Gi
+      memory: 1Gi
 
-# Storage requirements for each component
 storage:
-  hbaseLog: 2Gi
-  hbaseTempData: 10Gi
-  storageClassName: "local-path"
+  storageClassName: ""
+  standalone:
+    data: 20Gi
 
-# Service references for external dependencies
 serviceRefs:
   hbaseZookeeper:
-    namespace: default
+    namespace: kubeblocks
     clusterServiceSelector:
-      cluster: zkcluster
+      cluster: zk
       service:
         component: zookeeper
         service: headless
         port: client
-  hadoopNamenode:
-    namespace: default
+  hdfsNamenode:
+    namespace: kubeblocks
     clusterServiceSelector:
-      cluster: hdfscluster
+      cluster: hdfs
       service:
         component: namenode
         service: headless
         port: client
-
-# Hadoop cluster name (required for HDFS root path)
-hadoopClusterName: hdfscluster
 
 extra:
   terminationPolicy: Delete

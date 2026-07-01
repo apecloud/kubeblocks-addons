@@ -1,23 +1,30 @@
 #!/usr/bin/env bash
-
-# Exit on error. Append "|| true" if you expect an error.
 set -o errexit
-# Exit on error inside any functions or subshells.
 set -o errtrace
-# Do not allow use of undefined vars. Use ${VAR:-} to use an undefined VAR
 set -o nounset
-# Catch an error in command pipes. e.g. mysqldump fails (but gzip succeeds)
-# in `mysqldump |gzip`
 set -o pipefail
-# Turn on traces, useful while debugging.
-set -o xtrace
 
-# Check if datanode registered with the namenode and got non-null cluster ID.
-_PORTS="9870"
-_URL_PATH="jmx?qry=Hadoop:service=NameNode,name=NameNodeInfo"
-_CLUSTER_ID=""
-for _PORT in $_PORTS; do
-  _CLUSTER_ID+=$(curl -s http://localhost:${_PORT}/$_URL_PATH |  \
-      grep ClusterId) || true
-done
-echo $_CLUSTER_ID | grep -q -v null
+: "${HADOOP_HOME:=/opt/hadoop}"
+: "${HADOOP_CONF_DIR:=${HADOOP_HOME}/etc/hadoop}"
+export HADOOP_HOME HADOOP_CONF_DIR
+
+_NN_HTTP_PORT=9870
+
+CLUSTER_ID_RESP=$(curl -s --connect-timeout 5 --max-time 10 "http://localhost:${_NN_HTTP_PORT}/jmx?qry=Hadoop:service=NameNode,name=NameNodeInfo" 2>/dev/null || echo "")
+if echo "${CLUSTER_ID_RESP}" | grep -q '"ClusterId"'; then
+    NN_STATUS=$(curl -s --connect-timeout 5 --max-time 10 "http://localhost:${_NN_HTTP_PORT}/jmx?qry=Hadoop:service=NameNode,name=NameNodeStatus" 2>/dev/null || echo "")
+    STATE=$(echo "${NN_STATUS}" | grep -o '"State"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"State"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+    if [[ -z "$STATE" ]]; then
+        echo "NameNode is up but state could not be determined, considering alive"
+        exit 0
+    fi
+    if [[ "$STATE" == "active" || "$STATE" == "standby" ]]; then
+        echo "NameNode is ${STATE}"
+        exit 0
+    fi
+    echo "NameNode is in unexpected state: ${STATE}"
+    exit 1
+fi
+
+echo "NameNode JMX not ready yet"
+exit 1

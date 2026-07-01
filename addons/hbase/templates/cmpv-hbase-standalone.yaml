@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
-  name: hbase-hmaster
+  name: hbase-standalone
   labels:
     {{- include "hbase.labels" . | nindent 4 }}
   annotations:
@@ -9,12 +9,11 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - hbase-hmaster-2.5
+        - hbase-standalone-2.5
       releases:
         - 2.5.6
   releases:
     - name: 2.5.6
       serviceVersion: 2.5.6
       images:
-        init-hdfs-root-layout: {{ include "hbase.hmasterImage" . | quote }}
-        hbase-hmaster: {{ include "hbase.hmasterImage" . | quote }}
+        hbase-standalone: {{ include "hbase.hbaseStandaloneImage" . | quote }}

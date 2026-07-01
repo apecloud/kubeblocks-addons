@@ -19,9 +19,12 @@ spec:
           - name: http
             port: {{ .Values.hdfs.ports.journalnode.http }}
   runtime:
+    terminationGracePeriodSeconds: 60
     initContainers:
       - name: hadoop-common
         imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: {{ .Values.securityContext.initRunAsUser }}
         command:
           - /bin/bash
         args:
@@ -31,8 +34,6 @@ spec:
             mkdir -p {{ .Values.hdfs.paths.journalnodeEditsDir }}
             chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.hdfs.paths.journalnodeEditsDir }}
             chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.runtime.hadoopHome }}
-        securityContext:
-          runAsUser: {{ .Values.securityContext.initRunAsUser }}
         volumeMounts:
           - name: hadoop-common
             mountPath: {{ .Values.runtime.hadoopHome }}
@@ -43,16 +44,32 @@ spec:
       - name: hdfs-journalnode
         image: {{ include "hadoop.journalNodeImage" . | quote }}
         imagePullPolicy: {{ .Values.journalNode.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/start-journalnode.sh
+        env:
+          - name: DEBUG_MODEL
+            value: {{ .Values.runtime.debug | quote }}
+          - name: HADOOP_HOME
+            value: {{ .Values.runtime.hadoopHome }}
+          - name: HADOOP_CONF_DIR
+            value: {{ .Values.runtime.configDir }}
+          - name: HADOOP_LOG_DIR
+            value: {{ .Values.runtime.hadoopLogDir }}
         ports:
           - containerPort: {{ .Values.hdfs.ports.journalnode.rpc }}
             name: jn
           - containerPort: {{ .Values.hdfs.ports.journalnode.http }}
             name: http
-        env:
-          - name: DEBUG_MODEL
-            value: {{ .Values.runtime.debug | quote }}
-          - name: WAIT_ZK_TO_READY
-            value: {{ .Values.runtime.journalnode.waitZkToReady | quote }}
+        startupProbe:
+          failureThreshold: 30
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-journal-status.sh
         livenessProbe:
           failureThreshold: {{ .Values.probes.journalnode.liveness.failureThreshold }}
           initialDelaySeconds: {{ .Values.probes.journalnode.liveness.initialDelaySeconds }}
@@ -62,7 +79,7 @@ spec:
           exec:
             command:
               - /bin/bash
-              - /kubeblocks/scripts/check-journal-status.sh
+              - {{ .Values.runtime.scriptsDir }}/check-journal-status.sh
         readinessProbe:
           failureThreshold: {{ .Values.probes.journalnode.readiness.failureThreshold }}
           initialDelaySeconds: {{ .Values.probes.journalnode.readiness.initialDelaySeconds }}
@@ -72,7 +89,7 @@ spec:
           exec:
             command:
               - /bin/bash
-              - /kubeblocks/scripts/check-journal-status.sh
+              - {{ .Values.runtime.scriptsDir }}/check-journal-status.sh
         volumeMounts:
           - name: hadoop-common
             mountPath: {{ .Values.runtime.hadoopHome }}
@@ -82,12 +99,26 @@ spec:
           - name: hadoop-core-config
             mountPath: {{ .Values.runtime.configDir }}/core-site.xml
             subPath: core-site.xml
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
+            subPath: hadoop-env.sh
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-metrics2.properties
+            subPath: hadoop-metrics2.properties
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.include
+            subPath: dfs.include
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.exclude
+            subPath: dfs.exclude
           - name: journalnode-config
             mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
             subPath: hdfs-site.xml
           - name: journalnode-config
             mountPath: {{ .Values.runtime.configDir }}/log4j.properties
             subPath: log4j.properties
+          - name: hadoop-logs
+            mountPath: {{ .Values.runtime.hadoopLogDir }}
           - name: scripts
             mountPath: {{ .Values.runtime.scriptsDir }}
         securityContext:
@@ -106,6 +137,8 @@ spec:
     volumes:
       - name: hadoop-common
         emptyDir: {}
+      - name: hadoop-logs
+        emptyDir: {}
   updateStrategy: {{ .Values.updateStrategy }}
   vars:
     - name: CLUSTER_NAME
@@ -121,6 +154,18 @@ spec:
         componentVarRef:
           optional: false
           podFQDNs: Required
+    - name: HDFS_CONF_DIR
+      value: {{ .Values.runtime.configDir }}
+    - name: HDFS_JOURNALNODE_EDITS_DIR
+      value: {{ .Values.hdfs.paths.journalnodeEditsDir | quote }}
+    - name: HDFS_JOURNALNODE_RPC_PORT
+      value: {{ .Values.hdfs.ports.journalnode.rpc | quote }}
+    - name: HDFS_JOURNALNODE_HTTP_PORT
+      value: {{ .Values.hdfs.ports.journalnode.http | quote }}
+    - name: HDFS_PERMISSIONS_ENABLED
+      value: {{ .Values.hdfs.permissions.enabled | quote }}
+    - name: HDFS_REPLICATION
+      value: {{ .Values.hdfs.replication | quote }}
   configs:
     - name: journalnode-config
       template: journalnode-config-template

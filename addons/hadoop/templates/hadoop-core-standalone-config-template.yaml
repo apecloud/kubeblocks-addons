@@ -7,5 +7,13 @@ metadata:
 data:
   core-site.xml: |-
     {{- .Files.Get "config/core-site-standalone.tpl" | nindent 4 }}
+  hadoop-env.sh: |-
+    {{- .Files.Get "config/hadoop-env.sh.tpl" | nindent 4 }}
+  hadoop-metrics2.properties: |-
+    {{- .Files.Get "config/hadoop-metrics2.properties.tpl" | nindent 4 }}
+  dfs.include: |
+    {{- .Files.Get "config/dfs.include" | nindent 4 }}
+  dfs.exclude: |
+    {{- .Files.Get "config/dfs.exclude" | nindent 4 }}
   log4j.properties: |-
     {{- .Files.Get "config/log4j.properties" | nindent 4 }}

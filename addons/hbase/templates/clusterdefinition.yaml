@@ -19,3 +19,13 @@ spec:
         provision:
           - hmaster
           - hregionserver
+        terminate:
+          - hregionserver
+          - hmaster
+        update:
+          - hregionserver
+          - hmaster
+    - name: hbase-standalone
+      components:
+        - name: hbase-standalone
+          compDef: {{ include "hbase.hbaseStandaloneCmpdRegexPattern" . }}

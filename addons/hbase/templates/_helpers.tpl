@@ -50,6 +50,10 @@ Component definition regex patterns
 ^hbase-hregionserver-\d+\.?\d*$
 {{- end }}
 
+{{- define "hbase.hbaseStandaloneCmpdRegexPattern" -}}
+^hbase-standalone-\d+\.?\d*$
+{{- end }}
+
 {{/*
 Image references
 */}}
@@ -61,6 +65,6 @@ Image references
 {{ .Values.hregionserver.image.registry }}/{{ .Values.hregionserver.image.repository }}:{{ .Values.hregionserver.image.tag }}
 {{- end }}
 
-{{- define "hbase.initImage" -}}
-{{ .Values.init.image.registry }}/{{ .Values.init.image.repository }}:{{ .Values.init.image.tag }}
+{{- define "hbase.hbaseStandaloneImage" -}}
+{{ .Values.hbasestandalone.image.registry }}/{{ .Values.hbasestandalone.image.repository }}:{{ .Values.hbasestandalone.image.tag }}
 {{- end }}
