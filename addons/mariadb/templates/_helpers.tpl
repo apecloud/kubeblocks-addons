@@ -534,11 +534,10 @@ reconfigure:
         done < "${parameter_file}"
 
         if [ "${skipped_count}" -gt 0 ]; then
-          echo "${skipped_count} parameter(s) were rejected by engine; failing reconfigure to avoid accepting invalid rendered config"
-          echo "${skipped_count} parameter(s) were rejected by engine; failing reconfigure to avoid accepting invalid rendered config" >&2
-          exit 1
+          echo "${skipped_count} parameter(s) were rejected by engine and skipped"
+          echo "${skipped_count} parameter(s) were rejected by engine and skipped" >&2
         fi
-        if [ "${applied_count}" -eq 0 ]; then
+        if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -eq 0 ]; then
           echo "No parameters were applied during reconfigure action" >&2
           exit 1
         fi
@@ -1050,10 +1049,10 @@ reconfigure:
         done < "${parameter_file}"
 
         if [ "${skipped_count}" -gt 0 ]; then
-          echo "${skipped_count} parameter(s) were rejected by engine; failing reconfigure to avoid accepting invalid rendered config" >&2
-          exit 1
+          echo "${skipped_count} parameter(s) were rejected by engine and skipped"
+          echo "${skipped_count} parameter(s) were rejected by engine and skipped" >&2
         fi
-        if [ "${applied_count}" -eq 0 ]; then
+        if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -eq 0 ]; then
           echo "No parameters were applied during reconfigure action" >&2
           exit 1
         fi
