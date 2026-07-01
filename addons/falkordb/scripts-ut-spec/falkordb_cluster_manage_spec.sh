@@ -1429,6 +1429,11 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
         return 0
       }
 
+      check_node_in_cluster() {
+        echo "check_node_in_cluster args: $1 $2 $3"
+        return 1
+      }
+
       secondary_replicated_to_primary() {
         return 1
       }
@@ -1467,6 +1472,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
         The error should include "Failed to scale out shard secondary node falkordb-shard-98x-1"
         The stdout should include "FalkorDB cluster scale out shard primary node falkordb-shard-98x-0 successfully"
         The stdout should include "primary_node_with_port: 10.42.0.1:6379, primary_node_fqdn: 10.42.0.1, mapping_primary_cluster_id: cluster_id_123"
+        The stdout should include "check_node_in_cluster args: 10.42.0.1 6379 falkordb-shard-98x-1"
       End
     End
 
