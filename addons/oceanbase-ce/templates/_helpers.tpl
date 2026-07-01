@@ -275,7 +275,12 @@ configs:
     namespace: {{ .Release.Namespace }}
     defaultMode: 0555
     externalManaged: true
-    {{- include "oceanbase-ce.config.reconfigureAction" (dict "script" "update-parameters.sh") | nindent 4 }}
+    # reconfigure for oceanbase-config is handled by ParametersDefinition
+    # reloadAction.shellTrigger (config-manager sidecar path).
+    # Do NOT add reconfigure.exec here on KB 1.0.x — it is ignored by the
+    # controller and creates a conflicting dual-path with the PD reloadAction.
+    # When migrating to KB 1.2+, remove PD reloadAction and restore
+    # reconfigure.exec here (see addon-reconfigure-pd-to-cmpd-migration-guide.md).
 scripts:
   - name: oceanbase-scripts
     template: {{ include "oceanbase-ce.scripts.bootscripts" .}}
