@@ -1,0 +1,27 @@
+name: Release Elasticsearch Plugin Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      VERSION:
+        description: 'The version of elasticsearch plugin image'
+        required: true
+        default: '0.1.1'
+      BUILDX_PLATFORMS:
+        description: 'buildx platforms'
+        required: false
+        default: 'linux/amd64,linux/arm64'
+
+run-name: release elasticsearch plugin image ${{ inputs.VERSION }}
+
+jobs:
+  release-elasticsearch-plugin-image:
+    uses: apecloud/apecloud-cd/.github/workflows/release-image-cache2.yml@v0.1.96
+    with:
+      IMG: "apecloud/elasticsearch-plugins"
+      VERSION: "${{ inputs.VERSION }}"
+      APECD_REF: "v0.1.96"
+      DOCKERFILE_PATH: "./addons/elasticsearch/plugins/Dockerfile"
+      REMOVE_PREFIX: false
+      BUILDX_PLATFORMS: "${{ inputs.BUILDX_PLATFORMS }}"
+    secrets: inherit
