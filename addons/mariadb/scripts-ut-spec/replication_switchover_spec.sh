@@ -904,21 +904,21 @@ EOF
   End
 
   # alpha.75 v1 bootstrap probe table contract — ensure_internal_local_admin
-  # in cmpd-semisync.yaml MUST create kubeblocks.kb_post_dcs_fence_probe
+  # in cmpd-replication.yaml MUST create kubeblocks.kb_post_dcs_fence_probe
   # (alongside kubeblocks.kb_health_check) at bootstrap time via INTERNAL_LOCAL
   # with sql_log_bin=0. This is the prerequisite for the verifier strip in
   # alpha.75 v1 hard gate 1-2.
   Describe "alpha.75 v1: ensure_internal_local_admin probe table bootstrap"
-    cmpd_path="${SHELLSPEC_CWD:?}/addons/mariadb/templates/cmpd-semisync.yaml"
+    cmpd_path="${SHELLSPEC_CWD:?}/addons/mariadb/templates/cmpd-replication.yaml"
 
-    It "cmpd-semisync.yaml ensure_internal_local_admin body contains CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe [product-blocker]"
+    It "cmpd-replication.yaml ensure_internal_local_admin body contains CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe [product-blocker]"
       When call grep -c 'CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe' "${cmpd_path}"
       The output should equal "1"
     End
 
-    It "Chart.yaml literal version is current (alpha.25 - replication merged topology)"
+    It "Chart.yaml literal version is current (alpha.26 - replication merged topology)"
       chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
-      When call grep -c '^version: 1.2.0-alpha.25$' "${chart_yaml}"
+      When call grep -c '^version: 1.2.0-alpha.26$' "${chart_yaml}"
       The output should equal "1"
     End
 
@@ -979,7 +979,7 @@ EOF
     End
 
     It "alpha.78 v1: wait_for_replication_healthy checks syncer role per iteration AT THE TOP OF THE LOOP and exits with return 2 when role=primary [product-blocker]"
-      # cmpd-semisync.yaml wait_for_replication_healthy MUST include a
+      # cmpd-replication.yaml wait_for_replication_healthy MUST include a
       # query_local_syncer_role check inside the while loop, BEFORE the
       # existing slave_status_is_healthy probe. When the check returns
       # "primary", function MUST return 2 (distinct from the timeout return 1
@@ -1000,7 +1000,7 @@ EOF
             # return 2 must be between syncer check and slave check
             if (!(syncer_line <= ret2_line && ret2_line < slave_check_line)) { printf \"return 2 must follow syncer check before slave check: syncer=%d ret2=%d slave=%d\\n\", syncer_line, ret2_line, slave_check_line; exit 1 }
           }
-        " "${CMPD_SOURCE:-../templates/cmpd-semisync.yaml}"
+        " "${CMPD_SOURCE:-../templates/cmpd-replication.yaml}"
       '
       The status should be success
     End
@@ -1012,7 +1012,7 @@ EOF
           in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
           in_func && \$0 ~ /rejoin-replication-exit-on-dcs-primary/ { found = 1 }
           END { if (!found) { print \"missing rejoin-replication-exit-on-dcs-primary sentinel\"; exit 1 } }
-        " "${CMPD_SOURCE:-../templates/cmpd-semisync.yaml}"
+        " "${CMPD_SOURCE:-../templates/cmpd-replication.yaml}"
       '
       The status should be success
     End
@@ -1025,7 +1025,7 @@ EOF
           in_func && \$0 ~ /rejoin-replication-not-healthy/ { timeout_found = 1 }
           in_func && \$0 ~ /^[[:space:]]+return 1\$/ { ret1_found = 1 }
           END { if (!timeout_found || !ret1_found) { print \"missing timeout sentinel or return 1\"; exit 1 } }
-        " "${CMPD_SOURCE:-../templates/cmpd-semisync.yaml}"
+        " "${CMPD_SOURCE:-../templates/cmpd-replication.yaml}"
       '
       The status should be success
     End
@@ -1038,7 +1038,7 @@ EOF
           in_func && \$0 ~ /rejoin-replication-healthy[^-]/ { healthy_found = 1 }
           in_func && \$0 ~ /^[[:space:]]+return 0\$/ { ret0_found = 1 }
           END { if (!healthy_found || !ret0_found) { print \"missing healthy sentinel or return 0\"; exit 1 } }
-        " "${CMPD_SOURCE:-../templates/cmpd-semisync.yaml}"
+        " "${CMPD_SOURCE:-../templates/cmpd-replication.yaml}"
       '
       The status should be success
     End
@@ -2510,7 +2510,7 @@ EOF
   # The spec runs with --execdir @specfile, so the script lives at
   # ../scripts/replication-switchover.sh relative to scripts-ut-spec/.
   # alpha.64 v1 (Jack 09:35 RED root cause + 10:01-10:13 design ack):
-  # cmpd-semisync.yaml runtime sql-listener-fence UNLOCK/LOCK paths must NOT
+  # cmpd-replication.yaml runtime sql-listener-fence UNLOCK/LOCK paths must NOT
   # introduce admin-bypass privileges to user-facing root. Verifier on switchover
   # path correctly fail-closed; the actual fix is at the cmpd-yaml grant
   # write site. ShellSpec covers: cmpd constants strong-bind, rendered manifest
@@ -2518,12 +2518,12 @@ EOF
   # class separation (kb_internal_root admin grant remains legit, not flagged).
   Describe "alpha.64 v1 cmpd-semisync grant body contract"
     setup_cmpd_alpha64_env() {
-      # Source-file grep is sufficient for these contracts — cmpd-semisync.yaml
+      # Source-file grep is sufficient for these contracts — cmpd-replication.yaml
       # has no helm template directives in the GRANT statement bodies (only
       # in dataMountPath etc. paths), so source vs rendered diff doesn't
       # change the negative-grep semantics. This avoids dependency on helm
       # being installed in the test environment.
-      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
     }
     Before "setup_cmpd_alpha64_env"
 
@@ -2532,7 +2532,7 @@ EOF
         # Strong-bind invariant: cmpd-side primary grant body MUST contain
         # the same core write privs that switchover.sh's
         # remote_root_has_explicit_primary_grant verifier requires.
-        When call grep -E "CMPD_EXPLICIT_PRIMARY_GRANT_BODY=" ../templates/cmpd-semisync.yaml
+        When call grep -E "CMPD_EXPLICIT_PRIMARY_GRANT_BODY=" ../templates/cmpd-replication.yaml
         The status should be success
         The output should include "INSERT"
         The output should include "UPDATE"
@@ -2542,7 +2542,7 @@ EOF
       End
 
       It "alpha.64 v1: CMPD_SECONDARY_FENCE_GRANT_BODY does NOT contain admin-bypass privileges (SUPER/READ_ONLY ADMIN/BINLOG ADMIN/CONNECTION ADMIN/ALL PRIVILEGES) [product-blocker]"
-        When call grep -E "CMPD_SECONDARY_FENCE_GRANT_BODY=" ../templates/cmpd-semisync.yaml
+        When call grep -E "CMPD_SECONDARY_FENCE_GRANT_BODY=" ../templates/cmpd-replication.yaml
         The status should be success
         The output should not include "SUPER"
         The output should not include "READ_ONLY ADMIN"
@@ -2552,7 +2552,7 @@ EOF
       End
 
       It "alpha.64 v1: CMPD_OPTIONAL_MONITOR_PRIVS contains only MONITOR types (BINLOG MONITOR / SLAVE MONITOR), no admin-bypass [product-blocker]"
-        When call grep -E "CMPD_OPTIONAL_MONITOR_PRIVS=" ../templates/cmpd-semisync.yaml
+        When call grep -E "CMPD_OPTIONAL_MONITOR_PRIVS=" ../templates/cmpd-replication.yaml
         The status should be success
         The output should include "BINLOG MONITOR"
         The output should include "SLAVE MONITOR"
@@ -2614,14 +2614,14 @@ EOF
       It "alpha.64 v1: Tier A monitor priv grant emits tier=monitor-best-effort 1227_swallowed=true fields (allowed continue, log only) [review-tightening]"
         # Verify the source has Tier A logging pattern. Field order is
         # tier=monitor-best-effort 1227_swallowed=true (single line emit).
-        When call grep -E "tier=monitor-best-effort 1227_swallowed=true" ../templates/cmpd-semisync.yaml
+        When call grep -E "tier=monitor-best-effort 1227_swallowed=true" ../templates/cmpd-replication.yaml
         The status should be success
         The output should include "tier=monitor-best-effort 1227_swallowed=true"
       End
 
       It "alpha.64 v1: Tier B required grant emits fail_closed=true + tier=required field (must return 1, caller skip ready/role) [product-blocker]"
         # Verify the source has Tier B logging pattern with fail_closed marker.
-        When call grep -E "tier=required.*fail_closed=true" ../templates/cmpd-semisync.yaml
+        When call grep -E "tier=required.*fail_closed=true" ../templates/cmpd-replication.yaml
         The status should be success
         The output should include "fail_closed=true"
       End
@@ -2631,7 +2631,7 @@ EOF
       It "alpha.64 v1: live-gate runtime contract documented — prestop-watchdog.log fresh stable window must NOT contain admin-bypass MONITOR-loop entries [product-blocker]"
         # This is documentation/marker assertion: the source must contain a
         # comment defining the live-gate runtime contract for closeout reviewers.
-        When call grep -E "alpha.64 v1.*Jack 09:35 RED" ../templates/cmpd-semisync.yaml
+        When call grep -E "alpha.64 v1.*Jack 09:35 RED" ../templates/cmpd-replication.yaml
         The status should be success
         The output should include "alpha.64 v1"
       End
@@ -2650,12 +2650,12 @@ EOF
   #   the live-gate runtime negative gate.
   Describe "alpha.64 v2 cmpd-semisync Tier B caller propagation contract"
     setup_cmpd_alpha64v2_env() {
-      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
     }
     Before "setup_cmpd_alpha64v2_env"
 
     Context "tier annotation auditable list (per Jack 10:38 review-checkpoint 3)"
-      It "alpha.64 v2: every \`lock_(local|remote)_root_writes ... || true\` in cmpd-semisync.yaml carries an inline \`# tier=...\` annotation (one of the 4 allowed tiers) [product-blocker]"
+      It "alpha.64 v2: every \`lock_(local|remote)_root_writes ... || true\` in cmpd-replication.yaml carries an inline \`# tier=...\` annotation (one of the 4 allowed tiers) [product-blocker]"
         # Negative test: any line matching the required-pattern with `|| true`
         # but no inline `# tier=` token is a violation. We grep matching lines
         # and assert each one ends with the tier annotation.
@@ -2672,7 +2672,7 @@ EOF
         The output should equal ""
       End
 
-      It "alpha.64 v2: NO \`set_replica_read_only || true\` callsite remains in cmpd-semisync.yaml (Tier B required: caller MUST check rc) [product-blocker]"
+      It "alpha.64 v2: NO \`set_replica_read_only || true\` callsite remains in cmpd-replication.yaml (Tier B required: caller MUST check rc) [product-blocker]"
         # Jack 10:32 blocker 1: set_replica_read_only is the publish-gate;
         # caller must use \`if ! set_replica_read_only; then return 1; fi\`.
         When run sh -c '
@@ -2686,7 +2686,7 @@ EOF
         The output should equal ""
       End
 
-      It "alpha.64 v2: NO \`lock_local_root_for_prestop ... || true\` callsite remains in cmpd-semisync.yaml (Tier B required: preStop double-failure MUST emit fail-closed token) [product-blocker]"
+      It "alpha.64 v2: NO \`lock_local_root_for_prestop ... || true\` callsite remains in cmpd-replication.yaml (Tier B required: preStop double-failure MUST emit fail-closed token) [product-blocker]"
         # Jack 10:32 blocker 2: the trailing `|| true` was masking double-failure
         # of socket+tcp paths; v2 replaces with explicit `if ! ... ; then ... fi`
         # and a `prestop_lock_failed_both fail_closed=true` log token.
@@ -2818,7 +2818,7 @@ EOF
         # in healthy install windows; it only appears when both socket and
         # tcp lock paths failed (1227 swallowed but observability + caller
         # contract preserved).
-        When call grep -F "prestop_lock_failed_both fail_closed=true tier=required" ../templates/cmpd-semisync.yaml
+        When call grep -F "prestop_lock_failed_both fail_closed=true tier=required" ../templates/cmpd-replication.yaml
         The status should be success
         The output should include "prestop_lock_failed_both fail_closed=true tier=required"
       End
@@ -2848,7 +2848,7 @@ EOF
   # The constant remains for documentation + ShellSpec strong-bind.
   Describe "alpha.64 v3 cmpd-semisync multi-word MONITOR priv loop"
     setup_cmpd_alpha64v3_env() {
-      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
     }
     Before "setup_cmpd_alpha64v3_env"
 
@@ -2925,7 +2925,7 @@ EOF
         # rationale, so closeout reviewers know to grep for standalone
         # single-word tokens (privilege=BINLOG / privilege=MONITOR /
         # privilege=SLAVE) on prestop-watchdog.log fresh stable window.
-        When call grep -E "alpha.64 v3.*Jack 11:14.*live-gate RED" ../templates/cmpd-semisync.yaml
+        When call grep -E "alpha.64 v3.*Jack 11:14.*live-gate RED" ../templates/cmpd-replication.yaml
         The status should be success
         The output should include "alpha.64 v3"
       End
@@ -2949,9 +2949,10 @@ EOF
         #   reconcile_secondary + configure_from_primary; the body of
         #   set_replica_read_only itself is the function definition not a
         #   self-call, so 4 caller patterns)
-        # + 1 (prestop_lock_failed_both literal in preStop block) + 16 (tier-annotated swallow lines)
+        # + 1 (prestop_lock_failed_both literal in preStop block) + 14 (tier-annotated swallow lines;
+        #   reduced from 16 after CMPD consolidation PR #2933)
         The status should be success
-        The output should equal "1 1 4 1 16 "
+        The output should equal "1 1 4 1 14 "
       End
     End
   End
@@ -2965,17 +2966,17 @@ EOF
   Describe "alpha.65 v1 chart version bump for CmpD immutability"
     setup_chart_alpha65_env() {
       export CHART_FILE="../Chart.yaml"
-      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
     }
     Before "setup_chart_alpha65_env"
 
-    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.25 [contract-no-regression]"
+    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.26 [contract-no-regression]"
       # alpha.65 v1 originally locked chart at alpha.65; subsequent alphas
       # bumped further under the SAME CmpD immutability rule. Literal
       # kept in sync with latest chart version.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.2.0-alpha.25"
+      The output should equal "version: 1.2.0-alpha.26"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -2996,8 +2997,8 @@ EOF
     # the in-package spec file because helm package does NOT canonicalize
     # ShellSpec source files), PR body, Slock handoff thread, and the
     # post-fresh-switchover-GREEN sediment doc backlog.
-    It "alpha.65 v1: cmpd-semisync.yaml content unchanged from alpha.64 v3 (CmpD spec preserved; only Chart.yaml differs) [contract-no-regression]"
-      # alpha.65 v1 must reuse alpha.64 v3 cmpd-semisync.yaml content
+    It "alpha.65 v1: cmpd-replication.yaml content unchanged from alpha.64 v3 (CmpD spec preserved; only Chart.yaml differs) [contract-no-regression]"
+      # alpha.65 v1 must reuse alpha.64 v3 cmpd-replication.yaml content
       # verbatim. The v3 root-cause comment marker proves the v3 fix is still
       # in place; the v1+v2 grant body / caller propagation invariants are
       # also still present (covered by alpha.64 v3 contract-no-regression
@@ -3025,18 +3026,18 @@ EOF
   Describe "alpha.66 v1 syncer HA executor + chart bump"
     setup_chart_alpha66_env() {
       export CHART_FILE="../Chart.yaml"
-      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
     }
     Before "setup_chart_alpha66_env"
 
     Context "chart bump for CmpD immutability (per alpha.65 lesson)"
-      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.25 [contract-no-regression]"
+      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.26 [contract-no-regression]"
         # Subsequent alphas all bumped further under the same CmpD
         # immutability rule. Literal kept in sync with latest chart
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.25"
+        The output should equal "version: 1.2.0-alpha.26"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -3141,7 +3142,7 @@ EOF
               if (line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+CLIENT[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
                   line !~ /GRANT[[:space:]]+RELOAD,[[:space:]]+PROCESS[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
                   line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+MASTER[[:space:]]+ADMIN[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
-                  line !~ /GRANT[[:space:]]+SELECT,[[:space:]]+INSERT,[[:space:]]+UPDATE[[:space:]]+ON[[:space:]]+kubeblocks\\.kb_health_check/ &&
+                  line !~ /GRANT[[:space:]]+SELECT,[[:space:]]+INSERT,[[:space:]]+UPDATE[[:space:]]+ON[[:space:]]+kubeblocks\\./ &&
                   line !~ /GRANT[[:space:]]+SELECT[[:space:]]+ON[[:space:]]+mysql\\.user/ &&
                   line !~ /GRANT[[:space:]]+SLAVE[[:space:]]+MONITOR[[:space:]]+ON[[:space:]]+\\*\\.\\*/ &&
                   line !~ /GRANT[[:space:]]+REPLICATION[[:space:]]+SLAVE[[:space:]]+ON[[:space:]]+\\*\\.\\*/) {
@@ -3171,7 +3172,7 @@ EOF
     Context "alpha.64 v1+v2+v3 + alpha.65 contract no-regression spot-check"
       It "alpha.66 v1: alpha.64 v1+v2+v3 cmpd-side invariants all preserved unchanged [contract-no-regression]"
         # Spot-check: same invariant counts as alpha.65 v2 (chart only changed,
-        # cmpd-semisync.yaml grant body / caller propagation / tier annotation /
+        # cmpd-replication.yaml grant body / caller propagation / tier annotation /
         # multi-word loop all preserved). The new ensure_internal_local_admin
         # @'%' addition is the only intentional cmpd content delta.
         When run sh -c '
@@ -3186,8 +3187,9 @@ EOF
         '
         The status should be success
         # Expected: 1 grant body explicit + 1 secondary fence + 4 explicit set_replica_read_only caller +
-        # 1 prestop_lock_failed_both + 16 tier-annotated swallow + 2 inline-quoted MONITOR loops
-        The output should equal "1 1 4 1 16 2 "
+        # 1 prestop_lock_failed_both + 14 tier-annotated swallow (reduced from 16 after CMPD
+        # consolidation PR #2933) + 2 inline-quoted MONITOR loops
+        The output should equal "1 1 4 1 14 2 "
       End
     End
   End
@@ -3204,18 +3206,18 @@ EOF
   Describe "alpha.67 v1 ensure_internal_local_admin write-site zero-priv enforcement"
     setup_chart_alpha67_env() {
       export CHART_FILE="../Chart.yaml"
-      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
     }
     Before "setup_chart_alpha67_env"
 
     Context "chart bump alpha.66 → alpha.67 → alpha.68 (CmpD immutability rule)"
-      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.25 [contract-no-regression]"
+      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.26 [contract-no-regression]"
         # Subsequent alphas all bumped further under the same CmpD
         # immutability rule. Literal kept in sync with latest chart
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.25"
+        The output should equal "version: 1.2.0-alpha.26"
       End
     End
 
@@ -3257,7 +3259,7 @@ EOF
   # kubeblocks.*) are still hard-banned.
   Describe "alpha.68 v2 ensure_internal_local_admin cross-member health grant allowlist"
     setup_chart_alpha68_env() {
-      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
     }
     Before "setup_chart_alpha68_env"
 
@@ -3300,7 +3302,7 @@ EOF
         The output should include "GRANT REPLICATION MASTER ADMIN ON *.* TO"
       End
 
-      It "alpha.68 v2: ensure_internal_local_admin body grants SELECT, INSERT, UPDATE on kubeblocks.kb_health_check to kb_internal_root@'%' (ReadCheck + WriteCheck cross-member health) [product-blocker]"
+      It "alpha.68 v2: ensure_internal_local_admin body grants SELECT, INSERT, UPDATE on kubeblocks to kb_internal_root@'%' (ReadCheck + WriteCheck cross-member health) [product-blocker]"
         When run sh -c '
           awk "
             /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
@@ -3309,7 +3311,7 @@ EOF
           " '"${CMPD_SOURCE}"'
         '
         The status should be success
-        The output should include "GRANT SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check TO"
+        The output should include "GRANT SELECT, INSERT, UPDATE ON kubeblocks."
       End
 
       It "alpha.68 v2: ensure_internal_local_admin SQL ordering — CREATE @'%' < ALTER UNLOCK @'%' < REVOKE @'%' < grant allowlist [product-blocker]"
@@ -3400,7 +3402,7 @@ EOF
         The output should include "@'127.0.0.1' WITH GRANT OPTION"
       End
 
-      It "alpha.68 v2: cmpd-semisync.yaml retains alpha.64 v3 root-cause comment marker (proves CmpD content alpha.64 v3 + alpha.65 + alpha.66 + alpha.67 design preserved) [contract-no-regression]"
+      It "alpha.68 v2: cmpd-replication.yaml retains alpha.64 v3 root-cause comment marker (proves CmpD content alpha.64 v3 + alpha.65 + alpha.66 + alpha.67 design preserved) [contract-no-regression]"
         When call grep -E "alpha.64 v3.*Jack 11:14.*live-gate RED" "${CMPD_SOURCE}"
         The status should be success
         The output should include "alpha.64 v3"
@@ -3431,7 +3433,7 @@ EOF
   # REPLICATION CLIENT grant and is allowed.
   Describe "alpha.69 v1 ensure_internal_local_admin bootstrap SQL ordering + mysql.user narrow grant"
     setup_chart_alpha69_env() {
-      export CMPD_SOURCE="../templates/cmpd-semisync.yaml"
+      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
     }
     Before "setup_chart_alpha69_env"
 
@@ -3493,7 +3495,7 @@ EOF
       End
     End
 
-    Context "1146/1044 fix SQL ordering — CREATE DATABASE < CREATE TABLE < CREATE USER @'%' < UNLOCK < REVOKE < REPL CLIENT < REPL MASTER ADMIN < SELECT/INSERT/UPDATE on kb_health_check < SELECT on mysql.user (per Jack 18:20 ACCEPT)"
+    Context "1146/1044 fix SQL ordering — CREATE DATABASE < CREATE TABLE < CREATE USER @'%' < UNLOCK < REVOKE < REPL CLIENT < REPL MASTER ADMIN < SELECT/INSERT/UPDATE on kubeblocks < SELECT on mysql.user (per Jack 18:20 ACCEPT)"
       It "alpha.69 v1: full 9-step SQL ordering in ensure_internal_local_admin [product-blocker]"
         # Each statement appears in the order listed; reordering would
         # defeat one of the contracts (1146 fix requires CREATE DB/TABLE
@@ -3502,7 +3504,10 @@ EOF
         # We scope to the ensure_internal_local_admin function body
         # using awk; other CREATE DATABASE / CREATE TABLE occurrences
         # exist in primary_local_root_write_ready / primary_internal_
-        # root_write_ready / clear_local_kb_health_check_table.
+        # root_write_ready. After CMPD consolidation (PR #2933), the
+        # grant target is kubeblocks.* (broader) and the CREATE TABLE
+        # uses kubeblocks.kb_post_dcs_fence_probe instead of
+        # kubeblocks.kb_health_check.
         When run sh -c '
           awk "
             /^[[:space:]]*ensure_internal_local_admin\\(\\)[[:space:]]*\\{/ { in_func = 1; next }
@@ -3510,13 +3515,13 @@ EOF
             in_func && \$0 ~ /^[[:space:]]*#/ { next }
             in_func {
               if (\$0 ~ /CREATE DATABASE IF NOT EXISTS kubeblocks/ && !create_db_line) create_db_line = NR
-              if (\$0 ~ /CREATE TABLE IF NOT EXISTS kubeblocks\\.kb_health_check/ && !create_table_line) create_table_line = NR
+              if (\$0 ~ /CREATE TABLE IF NOT EXISTS kubeblocks\\./ && !create_table_line) create_table_line = NR
               if (\$0 ~ /CREATE USER IF NOT EXISTS .*@.%. IDENTIFIED BY/ && !create_user_line) create_user_line = NR
               if (\$0 ~ /ALTER USER .*@.%. ACCOUNT UNLOCK/ && !unlock_line) unlock_line = NR
               if (\$0 ~ /REVOKE ALL PRIVILEGES, GRANT OPTION FROM .*@.%./ && !revoke_line) revoke_line = NR
               if (\$0 ~ /GRANT REPLICATION CLIENT ON [*]\\.[*] TO/ && !repl_client_line) repl_client_line = NR
               if (\$0 ~ /GRANT REPLICATION MASTER ADMIN ON [*]\\.[*] TO/ && !repl_master_line) repl_master_line = NR
-              if (\$0 ~ /GRANT SELECT, INSERT, UPDATE ON kubeblocks\\.kb_health_check TO/ && !health_grant_line) health_grant_line = NR
+              if (\$0 ~ /GRANT SELECT, INSERT, UPDATE ON kubeblocks\\./ && !health_grant_line) health_grant_line = NR
               if (\$0 ~ /GRANT SELECT ON mysql\\.user TO/ && !mysql_grant_line) mysql_grant_line = NR
             }
             END {

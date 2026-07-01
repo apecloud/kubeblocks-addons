@@ -2,7 +2,7 @@
 
 # Lock that the merged CmpD's configspec name is consistent across
 # the two files that bind on it:
-#   - cmpd-replication-merged.yaml `spec.configs[].name`
+#   - cmpd-replication.yaml `spec.configs[].name`
 #   - paramsdef.yaml `mariadb-replication-merged-pd` `spec.templateName`
 #
 # KB 1.2 addon API uses ParametersDefinition exclusively;
@@ -25,12 +25,12 @@ Describe "alpha.89 merged CmpD configspec name two-way consistency"
         print $0
         exit
       }
-    ' "$(repo_root)/addons/mariadb/templates/cmpd-replication-merged.yaml"
+    ' "$(repo_root)/addons/mariadb/templates/cmpd-replication.yaml"
   }
 
   merged_pd_template_name() {
     awk '
-      /^[[:space:]]+name:[[:space:]]+mariadb-replication-merged-pd[[:space:]]*$/ { in_block=1; next }
+      /^[[:space:]]+name:[[:space:]]+mariadb-replication-pd[[:space:]]*$/ { in_block=1; next }
       in_block && /^---[[:space:]]*$/ { in_block=0; next }
       in_block && /^[[:space:]]+templateName:[[:space:]]+/ {
         sub(/^[[:space:]]+templateName:[[:space:]]+/, "", $0)

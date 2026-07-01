@@ -19,7 +19,7 @@ spec:
   # monitor/admin privilege path maintained by the addon.
   #
   # Per-topology resolution of target.role under this single BPT:
-  #   - replication / replication-merged / semisync: role=secondary
+  #   - replication: role=secondary
   #     (avoids primary replication / write latency impact)
   #   - galera: secondary role is not defined (all synced Galera nodes
   #     report role=primary by design), so KubeBlocks resolves through

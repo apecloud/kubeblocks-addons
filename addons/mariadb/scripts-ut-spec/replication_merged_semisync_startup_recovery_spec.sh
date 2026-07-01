@@ -1,9 +1,9 @@
 # shellcheck shell=sh
 # Static gates for semisync recovery behavior in the merged replication CmpD.
 
-Describe "cmpd-replication-merged.yaml semisync startup recovery"
+Describe "cmpd-replication.yaml semisync startup recovery"
   template_file() {
-    printf "%s/addons/mariadb/templates/cmpd-replication-merged.yaml" "${SHELLSPEC_CWD:?}"
+    printf "%s/addons/mariadb/templates/cmpd-replication.yaml" "${SHELLSPEC_CWD:?}"
   }
 
   template_contains() {

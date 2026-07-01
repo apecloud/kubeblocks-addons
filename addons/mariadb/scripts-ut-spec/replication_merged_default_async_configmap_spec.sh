@@ -20,7 +20,7 @@ Describe "alpha.89 merged CmpD default-async ConfigMap template"
   }
 
   cmpd_path() {
-    printf "%s/addons/mariadb/templates/cmpd-replication-merged.yaml" "$(repo_root)"
+    printf "%s/addons/mariadb/templates/cmpd-replication.yaml" "$(repo_root)"
   }
 
   async_tpl_path() {

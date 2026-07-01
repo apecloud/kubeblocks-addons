@@ -7,34 +7,10 @@ metadata:
   annotations:
     {{- include "mariadb.annotations" . | nindent 4 }}
 spec:
-  # NOTE on release evidence (see addon-api/12b-claimed-only-acceptance):
-  # As of this chart bump, only the following (CmpD, release) pairs have a
-  # recorded evidence-supported install + smoke chain:
-  #   - standalone cmpd                                                       10.6.15
-  #   - replication / semisync / replication-merged cmpd                      11.4.10
-  #   - galera cmpd                                                           11.4.10
-  # The other releases listed below (11.4.5, 11.4.8, 11.8.4, 12.0.2) are
-  # API-compatible declarations and have NOT been exercised end-to-end.
-  # Treat them as "declared but unverified" until a recorded test artifact
-  # exercises the install + smoke + lifecycle path on the matching release.
   compatibilityRules:
     - compDefs:
         - {{ include "mariadb.standalone.cmpdRegexpPattern" . }}
         - {{ include "mariadb.replication.cmpdRegexpPattern" . }}
-        - {{ include "mariadb.semisync.cmpdRegexpPattern" . }}
-        # alpha.89 v1 commit 15 (Helen 2026-05-20, live N=1 first
-        # blocker from vcluster `mariadb-test5` rerun) — bind the
-        # merged replication CmpD to the same release set so the
-        # InstanceSet gets the engine / exporter / init-syncer
-        # images. Without this entry the rendered live InstanceSet
-        # leaves the mariadb / exporter / init-syncer image fields
-        # empty (Pod create fails with "spec.containers[*].image:
-        # Required value", controller log "ImageUtil parse image
-        # failed, image="""). The merged regex is more specific
-        # than `^mariadb-replication-[0-9]` (matches digits only),
-        # so adding the merged pattern alongside the existing three
-        # does not over-match.
-        - {{ include "mariadb.replication.merged.cmpdRegexpPattern" . }}
       releases:
         - 10.6.15
         - 11.4.5
