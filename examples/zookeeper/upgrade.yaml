@@ -1,0 +1,15 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: zk-upgrade
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: zookeeper-cluster
+  type: Upgrade
+  upgrade:
+    components:
+    - componentName: zookeeper
+      # Specifies the desired service version of the component.
+      # Run `kubectl get componentversion zookeeper` to list available versions.
+      serviceVersion: "3.9.4"

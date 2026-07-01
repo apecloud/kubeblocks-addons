@@ -6,25 +6,11 @@ metadata:
   labels:
     {{- include "oceanbase-ce.labels" . | nindent 4}}
 spec:
+  componentDef: {{ include "oceanbase-ce.compDefName" . }}
+  templateName: oceanbase-sysvars
   fileName: oceanbase.sysvars
-
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - "update-sysvars.sh"
-      scriptConfig:
-        scriptConfigMapRef: {{ include "oceanbase-ce.scripts.reload" . }}
-        namespace: {{ .Release.Namespace }}
-      toolsSetup:
-        mountPoint: /kb_tools
-        toolConfigs:
-          - name: kb-tools
-            command:
-              - cp
-              - /bin/ob-tools
-              - /kb_tools/obtools
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.obtools.repository }}:{{ .Values.image.obtools.tag }}
+  fileFormatConfig:
+    format: properties
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:

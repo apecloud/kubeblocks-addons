@@ -5,12 +5,11 @@ metadata:
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
 spec:
-  reloadAction:
-    autoTrigger:
-      processName: ""
-
+  componentDef: {{ include "clickhouse.cmpdName" . }}
+  templateName: clickhouse-user-tpl
   fileName: user.xml
-
+  fileFormatConfig:
+    format: xml
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level clickhouse user configuration type

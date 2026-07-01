@@ -7,6 +7,8 @@ metadata:
 data:
   docker-entrypoint.sh: |-
     {{- .Files.Get "scripts/docker-entrypoint-5.7.sh" | nindent 4 }}
+  update-parameter.sh: |-
+    {{- .Files.Get "scripts/update-parameter.sh" | nindent 4 }}
   mysql-orchestrator-register.sh: |-
     {{- .Files.Get "scripts/mysql-orchestrator-register.sh" | nindent 4 }}
   init-mysql-instance-for-orc.sh: |-
@@ -17,16 +19,6 @@ data:
     {{- .Files.Get "scripts/cluster-info.sql" | nindent 4 }}
   mysql-entrypoint.sh: |-
     {{- .Files.Get "scripts/mysql-entrypoint.sh" | nindent 4 }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: mysql-reconfigure-script
-  labels:
-    {{- include "mysql.labels" . | nindent 4 }}
-data:
-  {{- include "mysql.extend.reload.scripts" . | nindent 2 }}
-
 ---
 apiVersion: v1
 kind: ConfigMap

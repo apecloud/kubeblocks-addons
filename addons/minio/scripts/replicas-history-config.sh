@@ -46,8 +46,10 @@ get_cm_key_new_value() {
   if [ -z "$cur" ]; then
     printf "[%s]" "$replicas"
   else
-    last=$(echo "$cur" | awk -F, '{print $NF}')
-    if [ "$last" = "$replicas" ]; then
+    # MinIO only supports scale-out: only append if replicas exceeds current max.
+    # Scale-in must not be recorded; doing so generates invalid pool ranges on restart.
+    max=$(echo "$cur" | tr ',' '\n' | awk 'BEGIN{m=0} {if($1+0>m)m=$1+0} END{print m}')
+    if [ "$replicas" -le "$max" ]; then
       printf "[%s]" "$cur"
     else
       printf "[%s,%s]" "$cur" "$replicas"

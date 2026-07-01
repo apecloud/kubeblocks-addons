@@ -65,12 +65,12 @@ spec:
       volumeName: postgresql-config
       defaultMode: 0777
       externalManaged: true
+      {{- include "postgresql.config.reconfigureAction" $ | nindent 6 }}
     - name: pgbouncer-configuration
       template: {{ include "pgbouncer.configurationTemplate" $ }}
       namespace: {{ $.Release.Namespace }}
       volumeName: pgbouncer-config
       defaultMode: 0777
-      externalManaged: true
     - name: postgresql-custom-metrics
       template: {{ include "postgresql.metricsConfiguration" (dict "major" .major "root" $) }}
       namespace: {{ $.Release.Namespace }}
@@ -188,6 +188,10 @@ spec:
       valueFrom:
         tlsVarRef:
           enabled: Optional
+    - name: POSTGRESQL_MEMORY_LIMIT
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required
   systemAccounts:
     - name: postgres
       initAccount: true
@@ -374,6 +378,7 @@ spec:
                 initdb:
                   - auth-host: md5
                   - auth-local: trust
+                  - data-checksums
           - name: ALLOW_NOSSL
             value: "true"
           - name: PGROOT

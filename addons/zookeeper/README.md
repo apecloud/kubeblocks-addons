@@ -136,8 +136,8 @@ spec:
     # Specifies the replica changes for scaling out components
     scaleOut:
       # Specifies the replica changes for the component.
-      # add one more replica to current component
-      replicaChanges: 1
+      # add two more replicas: 3 -> 5 (always keep an odd number for quorum)
+      replicaChanges: 2
 
 ```
 
@@ -191,8 +191,8 @@ spec:
     # Specifies the replica changes for scaling out components
     scaleIn:
       # Specifies the replica changes for the component.
-      # add one more replica to current component
-      replicaChanges: 1
+      # remove two replicas: 5 -> 3 (always keep an odd number for quorum)
+      replicaChanges: 2
 
 ```
 

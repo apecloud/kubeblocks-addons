@@ -6,22 +6,11 @@ metadata:
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "vanilla-postgresql14.compDefName" . }}
+  templateName: vanilla-postgresql-configuration
   fileName: postgresql.conf
-
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - "update-parameter.sh"
-      scriptConfig:
-        scriptConfigMapRef: {{ include "vanilla-postgresql.reloader.scripts" . }}
-        namespace: {{ .Release.Namespace }}
-      toolsSetup:
-        mountPoint: /kb_tools
-        toolConfigs:
-          - name: kb-tools
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor07 }}
-            asContainerImage: true
+  fileFormatConfig:
+    format: properties
 
   mergeReloadAndRestart: false
   reloadStaticParamsBeforeRestart: true

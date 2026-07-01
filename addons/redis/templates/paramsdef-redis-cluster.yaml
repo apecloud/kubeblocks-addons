@@ -1,6 +1,4 @@
 {{- range .Values.redisVersions }}
-{{- $defaultRepository := .repository -}}
-{{- $redisImage := printf "%s/%s:%s" ( $.Values.image.registry | default "docker.io" ) ( .repository | default $defaultRepository ) .defaultImageTag }}
 {{- $pd := $.Files.Get "config/redis-config-effect-scope.yaml" | fromYaml }}
 ---
 apiVersion: parameters.kubeblocks.io/v1alpha1
@@ -10,29 +8,11 @@ metadata:
   labels:
     {{- include "redis.labels" $ | nindent 4 }}
 spec:
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - "reload-parameter.sh"
-      scriptConfig:
-        scriptConfigMapRef: redis-reload-tools-script
-        namespace: {{ $.Release.Namespace }}
-      toolsSetup:
-        mountPoint: /kb_tools
-        toolConfigs:
-          - name: kb-tools
-            asContainerImage: true
-            image: {{ $redisImage }}
-            imageMappings:
-            {{- range .mirrorVersions }}
-            {{- $redisRepository := printf "%s/%s" ( $.Values.image.registry | default "docker.io" ) ( .repository | default $defaultRepository ) }}
-            - serviceVersions:
-                - {{ .version }}
-              image: {{ $redisRepository }}:{{ .imageTag }}
-            {{- end }}
-
+  componentDef: {{ printf "%s-%s" .clusterComponentDef  $.Chart.Version }}
+  templateName: redis-cluster-config
   fileName: redis.conf
+  fileFormatConfig:
+    format: redis
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     topLevelKey: RedisParameter

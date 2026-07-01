@@ -6,7 +6,11 @@ metadata:
   labels:
     {{- include "rocketmq.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "rocketmq.compDefRocketMQBroker4" . }}
+  templateName: rocketmq-broker-config
   fileName: broker.conf
+  fileFormatConfig:
+    format: props-plus
   reloadAction:
     shellTrigger:
       sync: true

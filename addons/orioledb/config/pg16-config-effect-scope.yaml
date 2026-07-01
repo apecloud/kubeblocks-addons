@@ -22,7 +22,6 @@ staticParameters:
   - superuser_reserved_connections
 
 immutableParameters:
-  - archive_timeout
   - backtrace_functions
   - config_file
   - cron.use_background_workers

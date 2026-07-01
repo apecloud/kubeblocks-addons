@@ -14,6 +14,12 @@ data:
     {{- include "kblib.strings.split" $ | nindent 4 }}
     {{- include "kblib.logs.format_log_content" $ | nindent 4 }}
     {{- include "kblib.logs.setup_logging" $ | nindent 4 }}
+  update-parameter.sh: |-
+    {{- .Files.Get "reloader/update-parameter.sh" | nindent 4 }}
+  restart-parameter.yaml: |-
+    {{- .Files.Get "reloader/restart-parameter.yaml" | nindent 4 }}
+  patroni-parameter.yaml: |-
+    {{- .Files.Get "reloader/patroni-parameter.yaml" | nindent 4 }}
   {{- with include "postgresql.extend.scripts" . }}
   {{- . | nindent 2 }}
   {{- end }}

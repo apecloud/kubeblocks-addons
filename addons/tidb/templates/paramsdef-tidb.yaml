@@ -5,7 +5,11 @@ metadata:
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
 spec:
+  componentDef: {{ include "tidb.tidb7.compDefName" . }}
+  templateName: tidb-configuration
   fileName: tidb.toml
+  fileFormatConfig:
+    format: toml
 
   parametersSchema:
     topLevelKey: TIDBParameter

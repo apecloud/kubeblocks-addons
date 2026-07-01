@@ -10,21 +10,12 @@ metadata:
   annotations:
     {{- include "postgresql.annotations" $ | nindent 4 }}
 spec:
+  componentDef: {{ include "postgresql.componentDefByMajor" (dict "major" .major "root" $) }}
+  serviceVersion: {{ .serviceVersion }}
+  templateName: postgresql-configuration
   fileName: postgresql.conf
-
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - "update-parameter.sh"
-      scriptConfig:
-        scriptConfigMapRef: {{ include "postgresql.patroniReloadScriptsTemplate" $ }}
-        namespace: {{ $.Release.Namespace }}
-
-    ## update patroni master
-    targetPodSelector:
-      matchLabels:
-        "kubeblocks.io/role": "primary"
+  fileFormatConfig:
+    format: properties
 
   mergeReloadAndRestart: false
 

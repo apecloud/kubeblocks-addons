@@ -15,6 +15,7 @@ spec:
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
       externalManaged: true
+      {{- include "mysql.config.reconfigureAction" . | nindent 6 }}
   {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   runtime:
     initContainers:

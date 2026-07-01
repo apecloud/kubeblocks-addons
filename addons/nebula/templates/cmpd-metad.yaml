@@ -18,6 +18,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-metad
       externalManaged: true
+      {{- include "nebula.config.reconfigureAction" (dict "container" "metad") | nindent 6 }}
   scripts:
     - name: nebula-scripts
       template: {{ include "nebula.scriptsTemplateName" . }}
