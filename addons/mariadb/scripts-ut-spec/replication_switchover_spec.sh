@@ -3048,6 +3048,42 @@ EOF
     End
 
     Context "syncer executor contract (per Jack 12:34 design HOLD blocker 1+2)"
+      It "switchover action injects MARIADB_ROOT_USER for kbagent execution"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*switchover:[[:space:]]*$/ { in_block = 1 }
+            in_block && /^[[:space:]]*runtime:[[:space:]]*$/ { exit }
+            in_block { print }
+          " ../templates/cmpd-replication.yaml | grep -A1 "name: MARIADB_ROOT_USER" | grep -F "value: \"\$(MARIADB_ROOT_USER)\""
+        '
+        The status should be success
+        The output should include 'value: "$(MARIADB_ROOT_USER)"'
+      End
+
+      It "switchover action injects MARIADB_ROOT_PASSWORD for kbagent execution"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*switchover:[[:space:]]*$/ { in_block = 1 }
+            in_block && /^[[:space:]]*runtime:[[:space:]]*$/ { exit }
+            in_block { print }
+          " ../templates/cmpd-replication.yaml | grep -A1 "name: MARIADB_ROOT_PASSWORD" | grep -F "value: \"\$(MARIADB_ROOT_PASSWORD)\""
+        '
+        The status should be success
+        The output should include 'value: "$(MARIADB_ROOT_PASSWORD)"'
+      End
+
+      It "switchover action injects MARIADB_INTERNAL_ROOT_USER for local admin SQL"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*switchover:[[:space:]]*$/ { in_block = 1 }
+            in_block && /^[[:space:]]*runtime:[[:space:]]*$/ { exit }
+            in_block { print }
+          " ../templates/cmpd-replication.yaml | grep -A1 "name: MARIADB_INTERNAL_ROOT_USER" | grep -F "value: \"kb_internal_root\""
+        '
+        The status should be success
+        The output should include 'value: "kb_internal_root"'
+      End
+
       It "alpha.66 v1: chart env contains MYSQL_ADMIN_USER literal kb_internal_root (NOT \$\(MARIADB_INTERNAL_ROOT_USER\) — env order risk closed) [product-blocker]"
         # Literal value avoids the K8s env expansion order ambiguity that
         # Jack flagged as Blocker 2 in the v1 HOLD review.
