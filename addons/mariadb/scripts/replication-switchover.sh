@@ -803,6 +803,75 @@ _verify_host_has_explicit_primary_grant() {
   return 0
 }
 
+candidate_remote_root_has_explicit_primary_grant() {
+  # Same contract as remote_root_has_explicit_primary_grant(), but read through
+  # the candidate's user-facing remote root session. This keeps the first
+  # switchover from returning success while the promoted primary is still in the
+  # secondary-fence grant shape, which would make the next switchback fail in
+  # rollback.
+  local candidate_fqdn="$1"
+  local label="${2:-candidate-remote-root-primary-ready}"
+  local grants rc grants_sha_field core_priv_present="none" bypass_residual="none" reason=""
+
+  remote_root_host_is_local && return 0
+  if [ -z "${MARIADB_CLIENT_BIN}" ] || [ ! -x "${MARIADB_CLIENT_BIN}" ]; then
+    log_switchover_error "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_query_rc=unavailable core_priv_present=unknown reason=mariadb_client_unavailable"
+    return 1
+  fi
+
+  grants=$("${MARIADB_CLIENT_BIN}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    --connect-timeout="${MARIADB_CONNECT_TIMEOUT_SECONDS}" \
+    -P3306 -h"${candidate_fqdn}" -N -s -e "SHOW GRANTS FOR CURRENT_USER;" 2>&1)
+  rc=$?
+  grants_sha_field=$(split_grants_sha_field "$(compute_grants_sha "${grants}")")
+  if [ "${rc}" -ne 0 ]; then
+    reason="grants_query_failed"
+    log_switchover_error "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_query_rc=${rc} ${grants_sha_field} core_priv_present=unknown reason=${reason}"
+    log_switchover_error "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_dump_begin"
+    log_switchover_error "${grants}"
+    log_switchover_error "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_dump_end"
+    return 1
+  fi
+
+  case "${grants}" in
+    *"GRANT ALL PRIVILEGES ON *.*"*|*"ALL PRIVILEGES"*)
+      reason="all_privileges_residual"
+      log_switchover_error "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_query_rc=0 ${grants_sha_field} core_priv_present=unknown reason=${reason}"
+      log_switchover_error "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_dump_begin"
+      log_switchover_error "${grants}"
+      log_switchover_error "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_dump_end"
+      return 1
+      ;;
+  esac
+
+  bypass_residual=$(printf '%s' "${grants}" | grep -oE "READ_ONLY ADMIN|SUPER|BINLOG ADMIN|CONNECTION ADMIN" | sort -u | tr '\n' ',' | sed 's/,$//')
+  if [ -n "${bypass_residual}" ]; then
+    reason="admin_bypass_residual:${bypass_residual}"
+    log_switchover_error "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_query_rc=0 ${grants_sha_field} core_priv_present=unknown reason=${reason}"
+    log_switchover_error "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_dump_begin"
+    log_switchover_error "${grants}"
+    log_switchover_error "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_dump_end"
+    return 1
+  fi
+
+  core_priv_present=$(printf '%s' "${grants}" | grep -oE "${SWITCHOVER_PRIMARY_CORE_WRITE_PRIVS}" | sort -u | tr '\n' ',' | sed 's/,$//')
+  [ -z "${core_priv_present}" ] && core_priv_present="none"
+  local core_count
+  core_count=$(printf '%s\n' "${core_priv_present}" | tr ',' '\n' | grep -cE "^(INSERT|UPDATE|DELETE|CREATE|DROP)$" || true)
+  if [ "${core_count}" -lt 5 ]; then
+    reason="core_write_priv_missing:expected=INSERT,UPDATE,DELETE,CREATE,DROP got=${core_priv_present}"
+    log_switchover_error "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_query_rc=0 ${grants_sha_field} core_priv_present=${core_priv_present} reason=${reason}"
+    log_switchover_error "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_dump_begin"
+    log_switchover_error "${grants}"
+    log_switchover_error "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_dump_end"
+    return 1
+  fi
+
+  reason="ok"
+  log_switchover_info "candidate_remote_root_explicit_primary_grant_verify label=${label} host=${candidate_fqdn} grants_query_rc=0 ${grants_sha_field} core_priv_present=${core_priv_present} reason=${reason}"
+  return 0
+}
+
 remote_root_has_explicit_primary_grant() {
   # alpha.62 v1 (Jack 04:08 review DRIFT B): replaced legacy full-access
   # rollback verifier (which required GRANT ALL PRIVILEGES). Since alpha.60
@@ -858,6 +927,7 @@ remote_root_primary_ready() {
   read_only=$(query_value "${host}" "SELECT @@global.read_only;")
   case "${read_only}" in
     0|OFF|off)
+      candidate_remote_root_has_explicit_primary_grant "${host}" "${label}" || return 1
       log_switchover_info "Switchover candidate remote root primary-readiness probe label=${label} host=${host} read_only=${read_only} rc=0"
       return 0
       ;;

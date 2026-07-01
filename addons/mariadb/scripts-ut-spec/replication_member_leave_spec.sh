@@ -28,13 +28,63 @@ Describe "replication memberLeave lifecycle action"
     The status should be success
   End
 
-  It "wraps syncerctl leave in a command timeout below the lifecycle budget"
-    When call member_leave_block_contains 'timeout 30 /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"'
+  It "invokes the external member-leave script"
+    When call member_leave_block_contains '/scripts/replication-member-leave.sh'
     The status should be success
   End
 
-  It "does not retain an unbounded syncerctl leave command"
-    When call member_leave_block_not_contains '- /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"'
+  It "fails closed when STOP SLAVE cleanup fails"
+    When call grep -F "memberLeave: STOP SLAVE failed; refusing to report cleanup success" "${ADDON_ROOT}/scripts/replication-member-leave.sh"
     The status should be success
+    The output should not include "not fatal"
+  End
+
+  It "fails closed when RESET SLAVE ALL cleanup fails"
+    When call grep -F "memberLeave: RESET SLAVE ALL failed; refusing to report cleanup success" "${ADDON_ROOT}/scripts/replication-member-leave.sh"
+    The status should be success
+    The output should not include "not fatal"
+  End
+
+  It "uses internal admin credentials for cleanup when they are available"
+    When call grep -F 'MEMBER_LEAVE_SQL_USER="${MYSQL_ADMIN_USER:-${MARIADB_ROOT_USER}}"' "${ADDON_ROOT}/scripts/replication-member-leave.sh"
+    The status should be success
+    The output should equal 'MEMBER_LEAVE_SQL_USER="${MYSQL_ADMIN_USER:-${MARIADB_ROOT_USER}}"'
+  End
+
+  It "injects MYSQL_ADMIN_USER into the kbagent memberLeave action env"
+    When call member_leave_block_contains 'name: MYSQL_ADMIN_USER'
+    The status should be success
+  End
+
+  It "sets memberLeave MYSQL_ADMIN_USER to kb_internal_root"
+    When call member_leave_block_contains 'value: "kb_internal_root"'
+    The status should be success
+  End
+
+  It "injects MYSQL_ADMIN_PASSWORD into the kbagent memberLeave action env"
+    When call member_leave_block_contains 'name: MYSQL_ADMIN_PASSWORD'
+    The status should be success
+  End
+
+  It "sets memberLeave MYSQL_ADMIN_PASSWORD from the root password secret"
+    When call member_leave_block_contains 'value: "$(MARIADB_ROOT_PASSWORD)"'
+    The status should be success
+  End
+
+  It "passes the selected memberLeave cleanup credential to the local SQL client"
+    When call grep -F '"-u${MEMBER_LEAVE_SQL_USER}" "-p${MEMBER_LEAVE_SQL_PASSWORD}"' "${ADDON_ROOT}/scripts/replication-member-leave.sh"
+    The status should be success
+    The output should include '"-u${MEMBER_LEAVE_SQL_USER}" "-p${MEMBER_LEAVE_SQL_PASSWORD}"'
+  End
+
+  It "does not silently ignore STOP SLAVE or RESET SLAVE ALL with || true"
+    When call grep -E 'STOP SLAVE|RESET SLAVE ALL' "${ADDON_ROOT}/scripts/replication-member-leave.sh"
+    The output should not include "|| true"
+  End
+
+  It "returns the cleanup failure rc after attempting both statements"
+    When call grep -F 'exit "${cleanup_rc}"' "${ADDON_ROOT}/scripts/replication-member-leave.sh"
+    The status should be success
+    The output should equal '  exit "${cleanup_rc}"'
   End
 End

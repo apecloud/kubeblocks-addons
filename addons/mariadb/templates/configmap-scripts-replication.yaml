@@ -12,6 +12,8 @@ data:
     {{- .Files.Get "scripts/replication-roleprobe.sh" | nindent 4 }}
   replication-member-join.sh: |-
     {{- .Files.Get "scripts/replication-member-join.sh" | nindent 4 }}
+  replication-member-leave.sh: |-
+    {{- .Files.Get "scripts/replication-member-leave.sh" | nindent 4 }}
   replication-switchover.sh: |-
     {{- .Files.Get "scripts/replication-switchover.sh" | nindent 4 }}
   # alpha.89 v1 commit 5 (Helen 2026-05-19, C1 path lifecycle wiring) —
@@ -54,3 +56,7 @@ data:
     {{- .Files.Get "scripts/seed-replication-mode-overrides.sh" | nindent 4 }}
   reconcile-runtime-overrides.sh: |-
     {{- .Files.Get "scripts/reconcile-runtime-overrides.sh" | nindent 4 }}
+  replication-entrypoint.sh: |-
+    {{- .Files.Get "scripts/replication-entrypoint.sh" | nindent 4 }}
+  replication-prestop.sh: |-
+    {{- .Files.Get "scripts/replication-prestop.sh" | nindent 4 }}
