@@ -1378,17 +1378,19 @@ metadata:
   namespace: demo
 spec:
   terminationPolicy: Delete
+  clusterDef: falkordb
+  topology: cluster
   # Specifies a list of ShardingSpec objects that configure the sharding topology for components of a Cluster. Each ShardingSpec corresponds to a group of components organized into shards, with each shard containing multiple replicas. Components within a shard are based on a common ClusterComponentSpec template, ensuring that all components in a shard have identical configurations as per the template. This field supports dynamic scaling by facilitating the addition or removal of shards based on the specified number in each ShardingSpec. Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster. ShardingSpec defines how KubeBlocks manage dynamic provisioned shards. A typical design pattern for distributed databases is to distribute data across multiple shards, with each shard consisting of multiple replicas. Therefore, KubeBlocks supports representing a shard with a Component and dynamically instantiating Components using a template when shards are added. When shards are removed, the corresponding Components are also deleted.
   shardings:
     # Represents the common parent part of all shard names. This identifier is included as part of the Service DNS name and must comply with IANA service naming rules. It is used to generate the names of underlying Components following the pattern `$(shardingSpec.name)-$(ShardID)`. ShardID is a random string that is appended to the Name to generate unique identifiers for each shard. For example, if the sharding specification name is "my-shard" and the ShardID is "abc", the resulting component name would be "my-shard-abc". Note that the name defined in component template(`shardingSpec.template.name`) will be disregarded when generating the component names of the shards. The `shardingSpec.name` field takes precedence.
   - name: shard
-    # Specifies the desired number of shards. Users can declare the desired number of shards through this field. KubeBlocks dynamically creates and deletes Components based on the difference between the desired and actual number of shards. KubeBlocks provides lifecycle management for sharding, including: - Executing the postProvision Action defined in the ComponentDefinition when the number of shards increases. This allows for custom actions to be performed after a new shard is provisioned. - Executing the preTerminate Action defined in the ComponentDefinition when the number of shards decreases. This enables custom cleanup or data migration tasks to be executed before a shard is terminated. Resources and data associated with the corresponding Component will also be deleted.
+    shardingDef: falkordb-cluster
+    # Specifies the desired number of shards. Users can declare the desired number of shards through this field. KubeBlocks dynamically creates and deletes Components based on the difference between the desired and actual number of shards. KubeBlocks provides lifecycle management for sharding, including: - Executing the postProvision Action defined in the ComponentDefinition when the number of shards increases. This allows for custom actions to be performed after a new shard is provisioned. - Executing the shardRemove Action defined in the ShardingDefinition when the number of shards decreases. This enables custom cleanup or data migration tasks to be executed before a shard is terminated. Resources and data associated with the corresponding Component will also be deleted.
     # The number of shards should be no less than 3
     shards: 3
     # The template for generating Components for shards, where each shard consists of one Component. This field is of type ClusterComponentSpec, which encapsulates all the required details and definitions for creating and managing the Components. KubeBlocks uses this template to generate a set of identical Components or shards. All the generated Components will have the same specifications and definitions as specified in the `template` field. This allows for the creation of multiple Components with consistent configurations, enabling sharding and distribution of workloads across Components.
     template:
       name: falkordb
-      componentDef: falkordb-cluster-4
       disableExporter: true
       replicas: 2
       resources:
@@ -1433,12 +1435,14 @@ You may change the number of shards and replicas in the yaml file.
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
+  clusterDef: falkordb
+  topology: cluster
   shardings:
   - name: shard
+    shardingDef: falkordb-cluster
     shards: 3  # set the desired number of shards.
     template:
       name: falkordb
-      componentDef: falkordb-cluster-4
       replicas: 2 # set the desired number of replicas for each shard.
       serviceVersion: 4.12.5
       # Component-level services override services defined in
@@ -1467,12 +1471,14 @@ Similarly to add or remove shards, you can update the `shardings` field in the `
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
+  clusterDef: falkordb
+  topology: cluster
   shardings:
   - name: shard
+    shardingDef: falkordb-cluster
     shards: 3 # increase or decrease the number of shards.
     template:
       name: falkordb
-      componentDef: falkordb-cluster-4
       replicas: 2 # set the desired number of replicas for each shard.
       serviceVersion: 4.12.5
       stop: false # set to `true` to stop all components

@@ -17,11 +17,11 @@ Define falkordb cluster shardingSpec with ComponentDefinition.
 */}}
 {{- define "falkordb-cluster.shardingSpec" }}
 - name: shard
+  shardingDef: falkordb-cluster
   shards: {{ .Values.falkordbCluster.shardCount }}
   template:
     name: falkordb
     {{- include "redis-cluster.tls" . | indent 4 }}
-    componentDef: falkordb-cluster
     replicas: {{ .Values.replicas }}
     {{- if .Values.podAntiAffinityEnabled }}
     {{- include "falkordb-cluster.shardingSchedulingPolicy" . | indent 2 }}
