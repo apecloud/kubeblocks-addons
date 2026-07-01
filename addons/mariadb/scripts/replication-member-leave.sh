@@ -13,8 +13,11 @@ if ! command -v "${MARIADB_CLI}" >/dev/null 2>&1; then
   fi
 fi
 
+MEMBER_LEAVE_SQL_USER="${MYSQL_ADMIN_USER:-${MARIADB_ROOT_USER}}"
+MEMBER_LEAVE_SQL_PASSWORD="${MYSQL_ADMIN_PASSWORD:-${MARIADB_ROOT_PASSWORD}}"
+
 local_sql() {
-  "${MARIADB_CLI}" "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+  "${MARIADB_CLI}" "-u${MEMBER_LEAVE_SQL_USER}" "-p${MEMBER_LEAVE_SQL_PASSWORD}" \
     -P3306 -h127.0.0.1 --connect-timeout=5 -N -s "$@"
 }
 
