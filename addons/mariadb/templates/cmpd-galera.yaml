@@ -97,10 +97,21 @@ spec:
           - /bin/sh
           - -c
           - |
-            set -ex
+            set -e
             ALL_DB='*.*'
-            eval statement=\"${KB_ACCOUNT_STATEMENT}\"
-            mariadb -u${MARIADB_ROOT_USER} -p${MARIADB_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+            escape_sed_replacement() {
+              printf '%s' "$1" | sed 's/[|\/&]/\\&/g'
+            }
+            account_name="$(escape_sed_replacement "${KB_ACCOUNT_NAME}")"
+            account_password="$(escape_sed_replacement "${KB_ACCOUNT_PASSWORD}")"
+            all_db="$(escape_sed_replacement "${ALL_DB}")"
+            statement="$(
+              printf '%s' "${KB_ACCOUNT_STATEMENT}" | sed \
+                -e "s"'|\${KB_ACCOUNT_NAME}|'"${account_name}"'|g' \
+                -e "s"'|\${KB_ACCOUNT_PASSWORD}|'"${account_password}"'|g' \
+                -e "s"'|\${ALL_DB}|'"${all_db}"'|g'
+            )"
+            mariadb -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -e "${statement}"
     roleProbe:
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: 5
