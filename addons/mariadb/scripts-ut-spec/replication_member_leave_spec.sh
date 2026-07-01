@@ -33,20 +33,26 @@ Describe "replication memberLeave lifecycle action"
     The status should be success
   End
 
-  It "logs STOP SLAVE failures instead of masking them with shell || true"
-    When call grep -F "memberLeave: STOP SLAVE failed" "${ADDON_ROOT}/scripts/replication-member-leave.sh"
+  It "fails closed when STOP SLAVE cleanup fails"
+    When call grep -F "memberLeave: STOP SLAVE failed; refusing to report cleanup success" "${ADDON_ROOT}/scripts/replication-member-leave.sh"
     The status should be success
-    The output should include "not fatal"
+    The output should not include "not fatal"
   End
 
-  It "logs RESET SLAVE ALL failures instead of masking them with shell || true"
-    When call grep -F "memberLeave: RESET SLAVE ALL failed" "${ADDON_ROOT}/scripts/replication-member-leave.sh"
+  It "fails closed when RESET SLAVE ALL cleanup fails"
+    When call grep -F "memberLeave: RESET SLAVE ALL failed; refusing to report cleanup success" "${ADDON_ROOT}/scripts/replication-member-leave.sh"
     The status should be success
-    The output should include "not fatal"
+    The output should not include "not fatal"
   End
 
   It "does not silently ignore STOP SLAVE or RESET SLAVE ALL with || true"
     When call grep -E 'STOP SLAVE|RESET SLAVE ALL' "${ADDON_ROOT}/scripts/replication-member-leave.sh"
     The output should not include "|| true"
+  End
+
+  It "returns the cleanup failure rc after attempting both statements"
+    When call grep -F 'exit "${cleanup_rc}"' "${ADDON_ROOT}/scripts/replication-member-leave.sh"
+    The status should be success
+    The output should equal '  exit "${cleanup_rc}"'
   End
 End
