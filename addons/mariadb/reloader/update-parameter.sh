@@ -37,6 +37,14 @@ else
 fi
 
 if [[ ${status} -ne 0 ]]; then
+    error_code=$(printf '%s' "${output}" | grep -oE 'ERROR [0-9]+' | head -1 | awk '{print $2}')
+    case "${error_code}" in
+        1231|1232|1193|1064)
+            echo "[REJECT] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}"
+            echo "[REJECT] parameter ${param_name}=${param_value} rejected by engine (error ${error_code}): ${output}" >&2
+            exit 0
+            ;;
+    esac
     echo "Failed to set parameter ${param_name} to value ${param_value}: ${output}" >&2
     exit 1
 fi
