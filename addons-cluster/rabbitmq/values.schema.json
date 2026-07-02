@@ -76,6 +76,32 @@
       "title": "Storage Class Name",
       "description": "Storage class name of the data volume",
       "type": "string"
+    },
+    "tls": {
+      "title": "TLS",
+      "description": "RabbitMQ TLS settings. Enabling TLS adds AMQPS and HTTPS management endpoints while preserving plaintext compatibility ports.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enable TLS",
+          "type": "boolean",
+          "default": false
+        },
+        "issuer": {
+          "title": "TLS issuer",
+          "type": "string",
+          "default": "UserProvided",
+          "enum": [
+            "KubeBlocks",
+            "UserProvided"
+          ]
+        },
+        "secretName": {
+          "title": "TLS Secret Name",
+          "description": "Existing TLS Secret name for UserProvided issuer; if empty, the example chart generates one.",
+          "type": "string"
+        }
+      }
     }
   }
 }
