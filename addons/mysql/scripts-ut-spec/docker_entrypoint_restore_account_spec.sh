@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034
 
-Describe "MySQL docker entrypoint restore account reset"
+Describe "MySQL docker entrypoint restore account preservation"
   Include ../scripts/docker-entrypoint-5.7.sh
 
   setup_restore_dir() {
@@ -27,7 +27,7 @@ Describe "MySQL docker entrypoint restore account reset"
 
   BeforeEach "setup_restore_dir"
 
-  It "resets restored new-cluster system accounts before xtrabackup GTID handling"
+  It "preserves backup-restored system accounts during new-cluster xtrabackup GTID handling"
     mysql_note() {
       echo "$*"
     }
@@ -50,10 +50,13 @@ Describe "MySQL docker entrypoint restore account reset"
     The output should not include "normal start"
     The output should not include "targetRootPass"
     The output should not include "targetAdminPass"
+    The output should not include "targetReplicaPass"
     The contents of file "${SQL_LOG}" should not include "CREATE USER"
-    The contents of file "${SQL_LOG}" should include "ALTER USER 'root'@'localhost' IDENTIFIED BY 'targetRootPass'"
-    The contents of file "${SQL_LOG}" should include "ALTER USER 'kbadmin'@'%' IDENTIFIED BY 'targetAdminPass'"
-    The contents of file "${SQL_LOG}" should include "ALTER USER 'kbreplicator'@'%' IDENTIFIED BY 'targetReplicaPass'"
+    The contents of file "${SQL_LOG}" should not include "ALTER USER"
+    The contents of file "${SQL_LOG}" should not include "targetRootPass"
+    The contents of file "${SQL_LOG}" should not include "targetAdminPass"
+    The contents of file "${SQL_LOG}" should not include "targetReplicaPass"
+    The contents of file "${SQL_LOG}" should include "SET GLOBAL gtid_purged"
     The path "${TEST_DATADIR}/.xtrabackup_restore" should not be exist
   End
 
@@ -81,43 +84,5 @@ Describe "MySQL docker entrypoint restore account reset"
     The output should include "normal start mysqld"
     The output should not include "skip-grants start"
     The contents of file "${SQL_LOG}" should not include "ALTER USER"
-  End
-
-  It "fails fast when a required restored account credential is empty"
-    MYSQL_ROOT_PASSWORD=""
-    mysql_error() {
-      echo "$*" >&2
-      return 1
-    }
-    mysql_note() {
-      echo "$*"
-    }
-    docker_process_sql() {
-      cat >> "${SQL_LOG}"
-    }
-
-    When call mysql_reset_restored_system_accounts
-    The status should be failure
-    The stderr should include "MYSQL_ROOT_PASSWORD"
-    The contents of file "${SQL_LOG}" should equal ""
-  End
-
-  It "escapes quote and backslash characters in restored account secret literals"
-    MYSQL_ROOT_PASSWORD="pa'ss\\word"
-    MYSQL_ADMIN_PASSWORD="ad'min\\word"
-    MYSQL_REPLICATION_PASSWORD="rep'lica\\word"
-    mysql_note() {
-      echo "$*"
-    }
-    docker_process_sql() {
-      cat >> "${SQL_LOG}"
-    }
-
-    When call mysql_reset_restored_system_accounts
-    The status should be success
-    The output should include "Resetting restored MySQL system accounts"
-    The contents of file "${SQL_LOG}" should include "ALTER USER 'root'@'localhost' IDENTIFIED BY 'pa''ss\\\\word'"
-    The contents of file "${SQL_LOG}" should include "ALTER USER 'kbadmin'@'%' IDENTIFIED BY 'ad''min\\\\word'"
-    The contents of file "${SQL_LOG}" should include "ALTER USER 'kbreplicator'@'%' IDENTIFIED BY 'rep''lica\\\\word'"
   End
 End

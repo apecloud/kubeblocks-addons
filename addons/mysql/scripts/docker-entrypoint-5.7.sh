@@ -374,58 +374,6 @@ _mysql_passfile() {
 	fi
 }
 
-mysql_sql_literal() {
-	local value="${1:-}"
-	printf '%s' "$value" | sed "s/\\\\/\\\\\\\\/g; s/'/''/g"
-}
-
-mysql_require_restored_account_value() {
-	local name="$1" value="${2:-}"
-	if [ -z "$value" ]; then
-		mysql_error "Required restore account value ${name} is empty; refusing to reset restored MySQL system accounts."
-	fi
-}
-
-mysql_print_alter_restored_account_sql() {
-	local user="${1:-}" password="${2:-}" host="${3:-}"
-	mysql_require_restored_account_value "user" "$user" || return
-	mysql_require_restored_account_value "password" "$password" || return
-	mysql_require_restored_account_value "host" "$host" || return
-
-	local escaped_user escaped_password escaped_host
-	escaped_user="$(mysql_sql_literal "$user")"
-	escaped_password="$(mysql_sql_literal "$password")"
-	escaped_host="$(mysql_sql_literal "$host")"
-
-	cat <<-EOSQL
-		ALTER USER '${escaped_user}'@'${escaped_host}' IDENTIFIED BY '${escaped_password}';
-	EOSQL
-}
-
-mysql_reset_restored_system_accounts() {
-	if [ ! -f "${DATADIR}/.restore_new_cluster" ]; then
-		return
-	fi
-
-	mysql_require_restored_account_value "MYSQL_ROOT_USER" "${MYSQL_ROOT_USER:-}" || return
-	mysql_require_restored_account_value "MYSQL_ROOT_PASSWORD" "${MYSQL_ROOT_PASSWORD:-}" || return
-	mysql_require_restored_account_value "MYSQL_ADMIN_USER" "${MYSQL_ADMIN_USER:-}" || return
-	mysql_require_restored_account_value "MYSQL_ADMIN_PASSWORD" "${MYSQL_ADMIN_PASSWORD:-}" || return
-	mysql_require_restored_account_value "MYSQL_REPLICATION_USER" "${MYSQL_REPLICATION_USER:-}" || return
-	mysql_require_restored_account_value "MYSQL_REPLICATION_PASSWORD" "${MYSQL_REPLICATION_PASSWORD:-}" || return
-
-	mysql_note "Resetting restored MySQL system accounts from target cluster secrets."
-	{
-		cat <<-'EOSQL'
-			FLUSH PRIVILEGES;
-		EOSQL
-		mysql_print_alter_restored_account_sql "${MYSQL_ROOT_USER}" "${MYSQL_ROOT_PASSWORD}" "localhost"
-		mysql_print_alter_restored_account_sql "${MYSQL_ROOT_USER}" "${MYSQL_ROOT_PASSWORD}" "${MYSQL_ROOT_HOST:-%}"
-		mysql_print_alter_restored_account_sql "${MYSQL_ADMIN_USER}" "${MYSQL_ADMIN_PASSWORD}" "%"
-		mysql_print_alter_restored_account_sql "${MYSQL_REPLICATION_USER}" "${MYSQL_REPLICATION_PASSWORD}" "%"
-	} | docker_process_sql --dont-use-mysql-root-password --database=mysql
-}
-
 # Mark root user as expired so the password must be changed before anything
 # else can be done (only supported for 5.6+)
 mysql_expire_root_user() {
@@ -452,7 +400,6 @@ restore_standby_from_xtrabackup() {
     docker_temp_server_start "$@"
   fi
   mysql_note "Temporary server started."
-  mysql_reset_restored_system_accounts
   PURGED_GTID=""
   while IFS= read -r line; do
      if [[ "$line" == *"GTID of the last change"* ]]; then
