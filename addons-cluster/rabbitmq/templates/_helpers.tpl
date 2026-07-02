@@ -11,3 +11,19 @@ replicas: 1
 replicas: {{ max .Values.replicas 3 }}
 {{- end }}
 {{- end }}
+
+{{- define "rabbitmq-cluster.tls" }}
+tls: {{ .Values.tls.enabled }}
+{{- if .Values.tls.enabled }}
+issuer:
+  name: {{ .Values.tls.issuer }}
+{{- if eq .Values.tls.issuer "UserProvided" }}
+  secretRef:
+    name: {{ .Values.tls.secretName | default (printf "%s-tls" (include "kblib.clusterName" .)) }}
+    namespace: {{ .Release.Namespace }}
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+{{- end }}
+{{- end }}
+{{- end }}

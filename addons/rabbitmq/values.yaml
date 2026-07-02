@@ -53,6 +53,8 @@ logCollector:
 
 dataMountPath: /var/lib/rabbitmq
 
+tlsMountPath: /etc/pki/tls
+
 
 ## @param enabledClusterVersions specifies the enabled cluster versions, if not set, all cluster versions are enabled
 ## and will be rendered, installed. Otherwise, only the specified cluster versions will be rendered and installed.

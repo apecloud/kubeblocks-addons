@@ -43,6 +43,20 @@ cluster_name                               = {{ .KB_CLUSTER_NAME }}
 {{- $rabbitmq_port := 5672 }}
 listeners.tcp.1 = :::{{ $rabbitmq_port }}
 
+{{- if eq (index $ "TLS_ENABLED") "true" }}
+listeners.ssl.default = 5671
+ssl_options.cacertfile = {{ .TLS_MOUNT_PATH }}/ca.crt
+ssl_options.certfile = {{ .TLS_MOUNT_PATH }}/tls.crt
+ssl_options.keyfile = {{ .TLS_MOUNT_PATH }}/tls.key
+ssl_options.verify = verify_none
+ssl_options.fail_if_no_peer_cert = false
+
+management.ssl.port = 15671
+management.ssl.cacertfile = {{ .TLS_MOUNT_PATH }}/ca.crt
+management.ssl.certfile = {{ .TLS_MOUNT_PATH }}/tls.crt
+management.ssl.keyfile = {{ .TLS_MOUNT_PATH }}/tls.key
+{{- end }}
+
 {{- if gt (div $phy_memory 5) (mul 2 $GiB) }}
 total_memory_available_override_value = {{ sub $phy_memory (mul 2 $GiB) }}
 {{- else if gt $phy_memory 0 }}
