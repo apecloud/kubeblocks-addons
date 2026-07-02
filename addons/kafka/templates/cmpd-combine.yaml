@@ -181,8 +181,6 @@ spec:
             value: "240000"
           - name: ALLOW_PLAINTEXT_LISTENER
             value: "yes"
-          - name: JMX_PORT
-            value: "5555"
           - name: KAFKA_VOLUME_DIR
             value: "/bitnami/kafka"
           - name: KAFKA_CFG_METADATA_LOG_DIR
