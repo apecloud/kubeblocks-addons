@@ -195,8 +195,26 @@ calculate_sentinel_monitor_quorum() {
   echo "${sentinel_monitor_quorum}"
 }
 
+# _sentinel_set_or_warn — apply one SENTINEL SET and log a warning when the
+# sentinel does not answer OK. The discovery loop only verifies the monitor
+# registration itself, so a failed SET leaves the engine default in effect;
+# the warning makes that state diagnosable instead of silent.
+_sentinel_set_or_warn() {
+  local name="${1}"
+  shift
+  local output
+  output=$(_sentinel_cli SENTINEL SET "${name}" "$@")
+  output="${output//$'\r'/}"
+  if [ "${output}" != "OK" ]; then
+    echo "WARNING: SENTINEL SET ${name} ${1} returned '${output:-<empty>}' — engine default remains in effect." >&2
+  fi
+}
+
 # _register_monitor — dynamically register the master with the running sentinel
-# via SENTINEL MONITOR + SENTINEL SET auth-pass.
+# via SENTINEL MONITOR + SENTINEL SET.
+# Applies the same failover tunables as valkey-register-to-sentinel.sh and
+# post-restore-sentinel.sh, so failover timing does not depend on which
+# registration path happened to run first.
 _register_monitor() {
   local master_fqdn="${1}"
   local data_port="${SERVICE_PORT:-6379}"
@@ -209,8 +227,12 @@ _register_monitor() {
   sentinel_monitor_quorum=$(calculate_sentinel_monitor_quorum) || return 1
   echo "INFO: registering master ${master_fqdn}:${data_port} with sentinel as '${monitor_name}'." >&2
   _sentinel_cli SENTINEL MONITOR "${monitor_name}" "${master_fqdn}" "${data_port}" "${sentinel_monitor_quorum}"
+  _sentinel_set_or_warn "${monitor_name}" down-after-milliseconds 20000
+  _sentinel_set_or_warn "${monitor_name}" failover-timeout 60000
+  _sentinel_set_or_warn "${monitor_name}" parallel-syncs 1
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    _sentinel_cli SENTINEL SET "${monitor_name}" auth-pass "${VALKEY_DEFAULT_PASSWORD}"
+    _sentinel_set_or_warn "${monitor_name}" auth-user "${VALKEY_DEFAULT_USER:-default}"
+    _sentinel_set_or_warn "${monitor_name}" auth-pass "${VALKEY_DEFAULT_PASSWORD}"
   fi
 }
 
@@ -259,6 +281,9 @@ _background_monitor_discovery() {
     sleep 5
   done
 }
+
+# This is magic for shellspec ut framework, do not modify!
+${__SOURCED__:+false} : || return 0
 
 # ── main ────────────────────────────────────────────────────────────────
 load_common_library

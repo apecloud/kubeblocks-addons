@@ -104,6 +104,28 @@ Describe "Valkey Sync-ACL Bash Script Tests"
         The stdout should include "ACL SETUSER app"
         The stdout should include "ACL sync complete"
       End
+
+      It "does not print ACL rule payloads (password material) to logs"
+        valkey-cli() {
+          case "$@" in
+            *"ACL LIST"*)
+              printf "user default on nopass ~* &* +@all\nuser app on >apppass ~* +@all\n"
+              ;;
+            *"ACL SETUSER"*)
+              echo "OK"
+              ;;
+            *"ACL SAVE"*)
+              echo "OK"
+              ;;
+          esac
+        }
+        When call sync_acl_to_replica \
+          "valkey-0.headless.default.svc.cluster.local" \
+          "valkey-1.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should not include "apppass"
+        The stderr should not include "apppass"
+      End
     End
 
     Context "when ACL LIST fails"

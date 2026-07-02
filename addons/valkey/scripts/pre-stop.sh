@@ -4,8 +4,7 @@
 # Learning note:
 #   Kubernetes calls preStop before sending SIGTERM.  For a Valkey primary,
 #   we trigger a BGSAVE to flush the RDB so the data is durable before the
-#   pod exits.  We also optionally initiate a REPLICAOF NO ONE on ourselves
-#   to detach cleanly (though Kubernetes will terminate us regardless).
+#   pod exits.
 #
 #   We do NOT block indefinitely here — the terminationGracePeriodSeconds
 #   on the Pod spec provides the hard deadline.
