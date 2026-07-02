@@ -106,4 +106,103 @@ Describe "Valkey post-restore Sentinel contract"
     When call test ! -f "../dataprotection/restore-sentinel-acl.sh"
     The status should be success
   End
+
+  It "guards credentialed sentinel registration behind SENTINEL_PASSWORD"
+    When call grep -F 'if [ -n "${SENTINEL_PASSWORD:-}" ]; then' "${script_file}"
+    The status should be success
+    The stdout should include 'SENTINEL_PASSWORD'
+  End
+
+  It "delegates sentinel registration to the self-discovery loop when SENTINEL_PASSWORD is absent"
+    When call grep -F "delegated to the Sentinel self-discovery loop" "${script_file}"
+    The status should be success
+    The stdout should include "self-discovery loop"
+  End
+
+  It "never issues sentinel commands on the credential-less path"
+    # The no-credential branch must only call verify_replication_converged;
+    # any SENTINEL command there would fail with NOAUTH.
+    When call grep -F "verify_replication_converged || exit 1" "${script_file}"
+    The status should be success
+    The stdout should include "verify_replication_converged"
+  End
+End
+
+Describe "post-restore-sentinel behavioral tests"
+  Include ../dataprotection/post-restore-sentinel.sh
+
+  init() {
+    convergence_retries=2
+    convergence_interval=0
+  }
+  BeforeAll "init"
+
+  Describe "verify_replication_converged()"
+    It "succeeds when the primary is master with all expected replicas attached"
+      primary_fqdn="valkey-0.h.ns.svc"
+      reachable_data_fqdns=(a b c)
+      mock_cli() { printf "role:master\r\nconnected_slaves:2\r\n"; }
+      data_cli_base=(mock_cli)
+      When call verify_replication_converged
+      The status should be success
+      The stdout should include "replication converged"
+    End
+
+    It "succeeds for a single restored pod with no replicas"
+      primary_fqdn="valkey-0.h.ns.svc"
+      reachable_data_fqdns=(a)
+      mock_cli() { printf "role:master\r\nconnected_slaves:0\r\n"; }
+      data_cli_base=(mock_cli)
+      When call verify_replication_converged
+      The status should be success
+      The stdout should include "replication converged"
+    End
+
+    It "fails closed when replicas never attach"
+      primary_fqdn="valkey-0.h.ns.svc"
+      reachable_data_fqdns=(a b c)
+      mock_cli() { printf "role:master\r\nconnected_slaves:0\r\n"; }
+      data_cli_base=(mock_cli)
+      When call verify_replication_converged
+      The status should be failure
+      The stdout should include "waiting for replication convergence"
+      The stderr should include "did not converge"
+    End
+  End
+
+  Describe "find_primary_fqdn()"
+    It "returns the master FQDN and records every reachable data pod"
+      comp_prefix="mycluster-valkey"
+      comp_headless="mycluster-valkey-headless.ns.svc.cluster.local"
+      DATA_REPLICA_COUNT=3
+      mock_cli() {
+        case "$*" in
+          *"mycluster-valkey-1."*ROLE*) echo "master" ;;
+          *ROLE*) echo "slave" ;;
+        esac
+      }
+      data_cli_base=(mock_cli)
+      _fp_wrapper() {
+        find_primary_fqdn && echo "reachable=${#reachable_data_fqdns[@]}"
+      }
+      When call _fp_wrapper
+      The status should be success
+      The stdout should include "mycluster-valkey-1.mycluster-valkey-headless.ns.svc.cluster.local"
+      The stdout should include "reachable=3"
+    End
+
+    It "fails when no pod reports master"
+      comp_prefix="mycluster-valkey"
+      comp_headless="mycluster-valkey-headless.ns.svc.cluster.local"
+      DATA_REPLICA_COUNT=2
+      mock_cli() {
+        case "$*" in
+          *ROLE*) echo "slave" ;;
+        esac
+      }
+      data_cli_base=(mock_cli)
+      When call find_primary_fqdn
+      The status should be failure
+    End
+  End
 End
