@@ -181,9 +181,11 @@ spec:
           optional: true
     - name: TLS_MOUNT_PATH
       value: {{ $.Values.tlsMountPath }}
+    # Verify the server certificate against the mounted CA instead of
+    # skipping verification (see cmpd.yaml for the SAN contract).
     - name: VALKEY_CLI_TLS_ARGS
       value: ""
-      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else}}{{end}}` | toYaml }}
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --cacert {{.TLS_MOUNT_PATH}}/ca.crt{{else}}{{end}}` | toYaml }}
 
   lifecycleActions:
     accountProvision:
