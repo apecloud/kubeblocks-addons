@@ -8,7 +8,7 @@ spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
     - name: rabbitmq
-      componentDef: rabbitmq
+      componentDef: rabbitmq-{{ .Chart.Version }}
       serviceVersion: {{ .Values.version }}
       {{- include "rabbitmq-cluster.replicaCount" . | indent 6 }}
       {{- include "rabbitmq-cluster.tls" . | indent 6 }}
