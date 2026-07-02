@@ -51,3 +51,24 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "clustername" -}}
 {{ include "tidb-cluster.fullname" .}}
 {{- end}}
+
+{{- define "tidb-cluster.enableTLSBetweenComponentsEnv" -}}
+- name: KB_ENABLE_TLS_BETWEEN_COMPONENTS
+  {{- if .Values.extra.enableTLSBetweenComponents }}
+  value: "true"
+  {{- else }}
+  value: "false"
+  {{- end }}
+{{- end }}
+
+{{- define "tidb-cluster.TLSBetweenComponentsSecretName" -}}
+{{ include "kblib.clusterName" . }}-components-tls
+{{- end }}
+
+{{- define "tidb-cluster.TLSBetweenComponentsVolumes" -}}
+{{- if .Values.extra.enableTLSBetweenComponents }}
+- name: component-tls
+  secret:
+    secretName: {{ include "tidb-cluster.TLSBetweenComponentsSecretName" . }}
+{{- end }}
+{{- end }}

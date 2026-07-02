@@ -18,8 +18,10 @@ spec:
     cue: |-
       {{- .Files.Get "config/pd-config-constraint.cue" | nindent 6 }}
 
+  # pd won't honor dynamic configs in config file once it is initialized
+  mergeReloadAndRestart: false
+
   dynamicParameters:
-    - log.level
     - cluster-version
     - schedule.max-merge-region-size
     - schedule.max-merge-region-keys
@@ -28,6 +30,7 @@ spec:
     - schedule.max-snapshot-count
     - schedule.max-pending-peer-count
     - schedule.max-store-down-time
+    - schedule.max-store-preparing-time
     - schedule.leader-schedule-policy
     - schedule.leader-schedule-limit
     - schedule.region-schedule-limit
@@ -45,13 +48,39 @@ spec:
     - schedule.enable-location-replacement
     - schedule.enable-cross-table-merge
     - schedule.enable-one-way-merge
+    - schedule.region-score-formula-version
+    - schedule.scheduler-max-waiting-operator
+    - schedule.enable-debug-metrics
+    - schedule.enable-heartbeat-concurrent-runner
+    - schedule.enable-heartbeat-breakdown-metrics
+    - schedule.enable-joint-consensus
+    - schedule.hot-regions-write-interval
+    - schedule.hot-regions-reserved-days
+    - schedule.max-movable-hot-peer-size
+    - schedule.store-limit-version
+    - schedule.patrol-region-worker-count
     - replication.max-replicas
     - replication.location-labels
     - replication.enable-placement-rules
     - replication.strictly-match-label
+    - replication.isolation-level
     - pd-server.use-region-storage
     - pd-server.max-gap-reset-ts
     - pd-server.key-type
     - pd-server.metric-storage
     - pd-server.dashboard-address
+    - pd-server.flow-round-by-digit
+    - pd-server.min-resolved-ts-persistence-interval
+    - pd-server.server-memory-limit
+    - pd-server.server-memory-limit-gc-trigger
+    - pd-server.enable-gogc-tuner
+    - pd-server.gc-tuner-threshold
     - replication-mode.replication-mode
+    - replication-mode.dr-auto-sync.label-key
+    - replication-mode.dr-auto-sync.primary
+    - replication-mode.dr-auto-sync.dr
+    - replication-mode.dr-auto-sync.primary-replicas
+    - replication-mode.dr-auto-sync.dr-replicas
+    - replication-mode.dr-auto-sync.wait-store-timeout
+    - replication-mode.dr-auto-sync.wait-recover-timeout
+    - replication-mode.dr-auto-sync.pause-region-split

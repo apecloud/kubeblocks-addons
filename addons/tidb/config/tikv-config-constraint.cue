@@ -81,8 +81,8 @@
 	// Determines whether to process requests in batches
 	"server.enable-request-batch": bool | *true
 
-	// Specifies server attributes, such as `{ zone = "us-west-1", disk = "ssd" }`.
-	"server.labels": string | *"{}"
+	// Specifies server labels as key-value pairs, such as `{ zone = "us-west-1", disk = "ssd" }`. The template default is `{}`.
+	"server.labels": {[string]: string} | *{}
 
 	// The working thread count of the background pool, including endpoint threads, BR threads, split-check threads, Region threads, and other threads of delay-insensitive tasks.
 	// Default value: when the number of CPU cores is less than 16, the default value is 2; otherwise, the default value is 3.
@@ -103,8 +103,8 @@
 	// The minimal working thread count of the unified read pool
 	"readpool.unified.min-thread-count": int | *1
 
-	// The maximum working thread count of the unified read pool or the UnifyReadPool thread pool. When you modify the size of this thread pool, refer to [Performance tuning for TiKV thread pools](/tune-tikv-thread-performance.md#performance-tuning-for-tikv-thread-pools). Value range: `[min-thread-count, MAX(4, CPU quota * 10)]`. `MAX(4, CPU quota * 10)` takes the greater value out of `4` and the `CPU quota * 10`.
-	"readpool.unified.max-thread-count": string | *"MAX"
+	// The maximum working thread count of the unified read pool. The template default is `4`; the upstream default is `MAX(4, CPU * 0.8)`. Value range: `[min-thread-count, MAX(4, CPU quota * 10)]`.
+	"readpool.unified.max-thread-count": int & >=1 | *4
 
 	// The stack size of the threads in the unified thread pool. Type: Integer + Unit. Unit: KiB|MiB|GiB
 	"readpool.unified.stack-size": string | *"10MiB"
@@ -115,9 +115,8 @@
 	// Controls whether to automatically adjust the thread pool size. When it is enabled, the read performance of TiKV is optimized by automatically adjusting the UnifyReadPool thread pool size based on the current CPU usage. The possible range of the thread pool is `[max-thread-count, MAX(4, CPU)]`. The maximum value is the same as the one of [`max-thread-count`](#max-thread-count).
 	"readpool.unified.auto-adjust-pool-size": bool | *false
 
-	// Determines whether to use the unified thread pool (configured in [`readpool.unified`](#readpoolunified)) for storage requests. If the value of this parameter is `false`, a separate thread pool is used, which is configured through the rest parameters in this section (`readpool.storage`).
-	// Default value: If this section (readpool.storage) has no other configurations, the default value is true. Otherwise, for the backward compatibility, the default value is false. Change the configuration in readpool.unified as needed before enabling this option.
-	"readpool.storage.use-unified-pool": string
+	// Determines whether to use the unified read pool for storage requests. If `false`, storage requests use the separate `readpool.storage` thread pool. The template default is `true`.
+	"readpool.storage.use-unified-pool": bool | *true
 
 	// The allowable number of concurrent threads that handle high-priority `read` requests. When `8` ≤ `cpu num` ≤ `16`, the default value is `cpu_num * 0.5`; when `cpu num` is smaller than `8`, the default value is `4`; when `cpu num` is greater than `16`, the default value is `8`.
 	"readpool.storage.high-concurrency": int & >=1
@@ -241,8 +240,8 @@
 	// Enables or disables `prevote`. Enabling this feature helps reduce jitter on the system after recovery from network partition.
 	"raftstore.prevote": bool | *true
 
-	// The storage capacity, which is the maximum size allowed to store data. If `capacity` is left unspecified, the capacity of the current disk prevails. To deploy multiple TiKV instances on the same physical disk, add this parameter to the TiKV configuration. For details, see [Key parameters of the hybrid deployment](/hybrid-deployment-topology.md#key-parameters). Unit: KiB|MiB|GiB
-	"raftstore.capacity": string | *"0"
+	// The storage capacity, which is the maximum size allowed to store data. TiKV parses this as ReadableSize, so it accepts non-negative integers such as `0` and size strings such as `"10GiB"`. If `capacity` is left unspecified, the capacity of the current disk prevails. The template default is `0`.
+	"raftstore.capacity": int | string | *0
 
 	// The path to the Raft library, which is `storage.data-dir/raft` by default
 	"raftstore.raftdb-path": string
@@ -280,9 +279,8 @@
 	// The soft limit on the maximum allowable count of residual Raft logs
 	"raftstore.raft-log-gc-threshold": int & >=1 | *50
 
-	// The hard limit on the allowable number of residual Raft logs
-	// Default value: the log number that can be accommodated in the 3/4 Region size
-	"raftstore.raft-log-gc-count-limit": string
+	// The hard limit on the allowable number of residual Raft logs. The template default is `73728`; the upstream default is calculated from three-fourths of the Region size, assuming each log is 1 KiB. Minimum value: `0`.
+	"raftstore.raft-log-gc-count-limit": int & >=0 | *73728
 
 	// The hard limit on the allowable size of residual Raft logs
 	// Default value: 3/4 of the Region size
@@ -309,9 +307,8 @@
 	// The time interval at which to check whether it is necessary to manually trigger RocksDB compaction. `0` means that this feature is disabled.
 	"raftstore.region-compact-check-interval": string | *"5m"
 
-	// The number of Regions checked at one time for each round of manual compaction
-	// Default value:When `storage.engine="raft-kv"`, the default value is `100`.When `storage.engine="partitioned-raft-kv"`, the default value is `5`.
-	"raftstore.region-compact-check-step": string
+	// The number of Regions checked at one time for each round of manual compaction. The template default is `100`. Minimum value: `0`.
+	"raftstore.region-compact-check-step": int & >=0 | *100
 
 	// The number of tombstones required to trigger RocksDB compaction
 	"raftstore.region-compact-min-tombstones": int & >=0 | *10000
@@ -407,7 +404,7 @@
 	"raftstore.apply-max-batch-size": int & <=10240 | *256
 
 	// The allowable number of threads in the pool that flushes data to the disk, which is the size of the Apply thread pool. When you modify the size of this thread pool, refer to [Performance tuning for TiKV thread pools](/tune-tikv-thread-performance.md#performance-tuning-for-tikv-thread-pools). Value ranges: `[1, CPU * 10]`. `CPU` means the number of your CPU cores.
-	"raftstore.apply-pool-size": int | >=1 | *2
+	"raftstore.apply-pool-size": int & >=1 | *2
 
 	// Raft state machines process requests for flushing logs into the disk in batches by the BatchSystem. This configuration item specifies the maximum number of Raft state machines that can process the requests in one batch. If `hibernate-regions` is enabled, the default value is `256`. If `hibernate-regions` is disabled, the default value is `1024`.
 	"raftstore.store-max-batch-size": int & >=0 & <=10240
@@ -415,8 +412,8 @@
 	// The allowable number of threads in the pool that processes Raft, which is the size of the Raftstore thread pool. When you modify the size of this thread pool, refer to [Performance tuning for TiKV thread pools](/tune-tikv-thread-performance.md#performance-tuning-for-tikv-thread-pools). Value ranges: `[1, CPU * 10]`. `CPU` means the number of your CPU cores.
 	"raftstore.store-pool-size": int | *2
 
-	// The allowable number of threads that process Raft I/O tasks, which is the size of the StoreWriter thread pool. When you modify the size of this thread pool, refer to [Performance tuning for TiKV thread pools](/tune-tikv-thread-performance.md#performance-tuning-for-tikv-thread-pools).
-	"raftstore.store-io-pool-size": float & >=0 | *0
+	// The allowable number of threads that process Raft I/O tasks, which is the size of the StoreWriter thread pool. The template default is `0`, which disables the dedicated Raft I/O pool. Minimum value: `0`.
+	"raftstore.store-io-pool-size": int & >=0 | *0
 
 	// The allowable number of threads that drive `future`
 	"raftstore.future-poll-size": int | *1
@@ -427,7 +424,7 @@
 	// At a certain interval, TiKV inspects the latency of the Raftstore component. This parameter specifies the interval of the inspection. If the latency exceeds this value, this inspection is marked as timeout. Judges whether the TiKV node is slow based on the ratio of timeout inspection.
 	"raftstore.inspect-interval": string | *"100ms"
 
-	// Determines the threshold at which Raft data is written into the disk. If the data size is larger than the value of this configuration item, the data is written to the disk. When the value of `store-io-pool-size` is `0`, this configuration item does not take effect.
+	// Determines the threshold at which Raft data is written to disk. If the data size is larger than this value, the data is written to disk. This takes effect only when `store-io-pool-size` is greater than `0`.
 	"raftstore.raft-write-size-limit": string | *"1MiB"
 
 	// Determines the interval at which the minimum resolved timestamp is reported to the PD leader. If this value is set to `0`, it means that the reporting is disabled. Unit: second
@@ -461,9 +458,8 @@
 	// The size of the newly split Region. This value is an estimate. Unit: KiB|MiB|GiB
 	"coprocessor.region-split-size": string | *"96MiB"
 
-	// The maximum allowable number of keys in a Region. When this value is exceeded, the Region splits into many.
-	// Default value: region-split-keys / 2 * 3
-	"coprocessor.region-max-keys": string
+	// The maximum allowable number of keys in a Region. When this value is exceeded, the Region is split. The template default is `1440000`, which is `region-split-keys / 2 * 3`.
+	"coprocessor.region-max-keys": int | *1440000
 
 	// The number of keys in the newly split Region. This value is an estimate.
 	"coprocessor.region-split-keys": int | *960000
@@ -480,7 +476,10 @@
 	// The size of a bucket when `enable-region-bucket` is true.
 	"coprocessor-v2.region-bucket-size": string | *"50MiB"
 
-	// rocksdb config is currently removed due to its complexity to parse
+	// most rocksdb config is currently removed due to its complexity to parse
+
+	// The total number of files that RocksDB can open
+	"rocksdb.max-open-files": int & >=-1 | *20000
 
 	// The number of background threads in RocksDB. When you modify the size of the RocksDB thread pool, refer to [Performance tuning for TiKV thread pools](/tune-tikv-thread-performance.md#performance-tuning-for-tikv-thread-pools).
 	"raftdb.max-background-jobs": int & >=2 | *4
@@ -489,7 +488,7 @@
 	"raftdb.max-sub-compactions": int & >=1 | *2
 
 	// The total number of files that RocksDB can open
-	"raftdb.max-open-files": int & >=-1 | *40960
+	"raftdb.max-open-files": int & >=-1 | *20000
 
 	// The maximum size of a RocksDB Manifest file. Unit: B|KiB|MiB|GiB
 	"raftdb.max-manifest-file-size": string | *"20MiB"
@@ -513,8 +512,8 @@
 	// Default value:When `storage.engine="raft-kv"`, the default value is `"4GiB"`.When `storage.engine="partitioned-raft-kv"`, the default value is `1`.
 	"raftdb.max-total-wal-size": string
 
-	// Controls whether to enable the readahead feature during RocksDB compaction and specify the size of readahead data. If you use mechanical disks, it is recommended to set the value to `2MiB` at least. Unit: B|KiB|MiB|GiB. Default value: 0
-	"raftdb.compaction-readahead-size": string
+	// Controls whether to enable readahead during RocksDB compaction and specifies the readahead size. TiKV parses this as ReadableSize, so it accepts non-negative integers such as `0` and size strings such as `"2MiB"`. The template default is `0`, which disables readahead.
+	"raftdb.compaction-readahead-size": int | string | *0
 
 	// The maximum buffer size used in WritableFileWrite. Unit: B|KiB|MiB|GiB
 	"raftdb.writable-file-max-buffer-size": string | *"1MiB"
@@ -580,8 +579,9 @@
 	// Default value: Total machine memory * 15%
 	"raft-engine.memory-limit": string
 
-	// Disable Raft Engine by setting [`enable`](/tikv-configuration-file.md#enable-1) to `false` and restart TiKV to make the configuration take effect. Set `format-version` to `1`. Enable Raft Engine by setting `enable` to `true` and restart TiKV to make the configuration take effect.
-	"raft-engine.format-version": string
+	// Specifies the Raft Engine log file format version. Valid values are `1` and `2`; version `2` supports log recycling and requires TiKV v6.3.0 or later. The template default is `2`.
+	// Changing this value can cause TiKV to fail to start. Follow the documented downgrade/upgrade steps before modifying it.
+	"raft-engine.format-version": int | *2
 
 	// Determines whether to recycle stale log files in Raft Engine. When it is enabled, logically purged log files will be reserved for recycling. This reduces the long tail latency on write workloads.
 	"raft-engine.enable-log-recycle": bool | *true
@@ -628,14 +628,14 @@
 	// The window size of Stream channel. When the channel is full, the stream is blocked.
 	"import.stream-channel-window": int | *128
 
-	// Starting from v6.5.0, PITR supports directly accessing backup log files in memory and restoring data. This configuration item specifies the ratio of memory available for PITR to the total memory of TiKV. Value range: [0.0, 0.5]
-	"import.memory-use-ratio": float & >=0.0 & <=0.5 | *"0.3"
+	// Specifies the ratio of TiKV memory available for PITR to directly access backup log files during restore. Value range: `[0.0, 0.5]`.
+	"import.memory-use-ratio": float & >=0.0 & <=0.5 | *0.3
 
 	// The number of keys to be garbage-collected in one batch
 	"gc.batch-keys": int | *512
 
-	// The maximum bytes that GC worker can write to RocksDB in one second. If the value is set to `0`, there is no limit.
-	"gc.max-write-bytes-per-sec": int | *0
+	// The maximum bytes that the GC worker can write to RocksDB per second. The template and upstream default are `"0"`, which means no limit.
+	"gc.max-write-bytes-per-sec": string | *"0"
 
 	// Controls whether to enable the GC in Compaction Filter feature
 	"gc.enable-compaction-filter": bool | *true
@@ -646,8 +646,8 @@
 	// The number of GC threads when `enable-compaction-filter` is `false`.
 	"gc.num-threads": int | *1
 
-	// The number of worker threads to process backup. Value range: `[1, CPU]`
-	"backup.num-threads": string | *"MIN"
+	// The number of worker threads used to process backup. The template default is `8`; the upstream default is `MIN(CPU * 0.5, 8)`. Value range: `[1, CPU]`.
+	"backup.num-threads": int & >=1 | *8
 
 	// The number of data ranges to back up in one batch
 	"backup.batch-size": int | *8
