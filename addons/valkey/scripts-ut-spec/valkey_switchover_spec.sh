@@ -1086,6 +1086,44 @@ Describe "Valkey Switchover Bash Script Tests"
       End
     End
 
+    Context "when pods carry user-configured replica-priority values"
+      It "restores the captured original priorities instead of hardcoded 100"
+        get_role() { echo "slave"; }
+        get_replica_priority() {
+          case "${1}" in
+            valkey-0.*) echo "42" ;;
+            valkey-1.*) echo "25" ;;
+            *) echo "100" ;;
+          esac
+        }
+        set_replica_priority() { echo "SET_PRIO:${1}:${2}"; return 0; }
+        wait_sentinel_sees_priority_bias() { return 0; }
+        execute_sentinel_failover() { echo "OK"; return 0; }
+        wait_for_new_master() { return 0; }
+        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
+        The status should be success
+        # Bias still uses 1/100 so Sentinel deterministically picks the candidate...
+        The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:1"
+        The stdout should include "SET_PRIO:valkey-0.headless.default.svc.cluster.local:100"
+        # ...but the restore puts back the captured user values, not 100.
+        The stdout should include "SET_PRIO:valkey-0.headless.default.svc.cluster.local:42"
+        The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:25"
+      End
+
+      It "falls back to 100 when a pod's current priority cannot be read"
+        get_role() { echo "slave"; }
+        get_replica_priority() { echo ""; }
+        set_replica_priority() { echo "SET_PRIO:${1}:${2}"; return 0; }
+        wait_sentinel_sees_priority_bias() { return 0; }
+        execute_sentinel_failover() { echo "OK"; return 0; }
+        wait_for_new_master() { return 0; }
+        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include "SET_PRIO:valkey-0.headless.default.svc.cluster.local:100"
+        The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:100"
+      End
+    End
+
     Context "when successful candidate is absent from stale VALKEY_POD_FQDN_LIST"
       It "restores the requested candidate after wait_for_new_master"
         restore_order=""
