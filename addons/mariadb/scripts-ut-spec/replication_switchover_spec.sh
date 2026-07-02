@@ -247,6 +247,9 @@ EOF
         local_remote_root_is_fenced_for_secondary() {
           return 0
         }
+        candidate_remote_root_has_explicit_primary_grant() {
+          return 0
+        }
         query_value() {
           case "$1:$2" in
             "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local:SELECT @@server_id;"*) echo "2" ;;
@@ -297,6 +300,9 @@ EOF
           return 0
         }
         local_remote_root_is_fenced_for_secondary() {
+          return 0
+        }
+        candidate_remote_root_has_explicit_primary_grant() {
           return 0
         }
         query_value() {
@@ -365,6 +371,9 @@ EOF
           return 0
         }
         local_remote_root_is_fenced_for_secondary() {
+          return 0
+        }
+        candidate_remote_root_has_explicit_primary_grant() {
           return 0
         }
         query_value() {
@@ -449,6 +458,39 @@ EOF
         The output should include "Switchover post-DCS guard passed"
         The stderr should include "reason=candidate_remote_root_primary_not_ready_in_budget"
         The stderr should include "fail-closed"
+      End
+
+      It "alpha.129 contract: fails closed when candidate read_only is open but remote root primary grants are still fenced"
+        export CANDIDATE_REMOTE_ROOT_PRIMARY_READY_WAIT_SECONDS=1
+        export SWITCHOVER_POLL_SECONDS=1
+        make_syncerctl
+        prepare_current_primary_for_switchover() { return 0; }
+        verify_post_dcs_local_root_write_fenced() { return 0; }
+        revoke_user_facing_root_admin_privileges_for_secondary() { return 0; }
+        wait_candidate_promoted_via_syncerctl() { return 0; }
+        query_value() {
+          case "$1:$2" in
+            "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local:SELECT @@global.read_only;"*) echo "0" ;;
+            "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
+          esac
+        }
+        cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+case "$*" in
+  *"SHOW GRANTS"*)
+    echo "GRANT SELECT, PROCESS, RELOAD, REPLICATION SLAVE, REPLICATION CLIENT, REPLICATION MASTER ADMIN ON *.* TO 'root'@'%'"
+    exit 0
+    ;;
+esac
+exit 0
+EOF
+        chmod +x "${MARIADB_CLIENT_BIN}"
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        The status should be failure
+        The output should include "Switchover stage candidate_primary_ready budget=1s"
+        The stderr should include "candidate_remote_root_explicit_primary_grant_verify"
+        The stderr should include "reason=core_write_priv_missing"
+        The stderr should include "reason=candidate_remote_root_primary_not_ready_in_budget"
       End
     End
 
@@ -909,7 +951,7 @@ EOF
   # with sql_log_bin=0. This is the prerequisite for the verifier strip in
   # alpha.75 v1 hard gate 1-2.
   Describe "alpha.75 v1: ensure_internal_local_admin probe table bootstrap"
-    cmpd_path="${SHELLSPEC_CWD:?}/addons/mariadb/templates/cmpd-replication.yaml"
+    cmpd_path="${SHELLSPEC_CWD:?}/addons/mariadb/scripts/replication-entrypoint.sh"
 
     It "cmpd-replication.yaml ensure_internal_local_admin body contains CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe [product-blocker]"
       When call grep -c 'CREATE TABLE IF NOT EXISTS kubeblocks.kb_post_dcs_fence_probe' "${cmpd_path}"
@@ -1000,7 +1042,7 @@ EOF
             # return 2 must be between syncer check and slave check
             if (!(syncer_line <= ret2_line && ret2_line < slave_check_line)) { printf \"return 2 must follow syncer check before slave check: syncer=%d ret2=%d slave=%d\\n\", syncer_line, ret2_line, slave_check_line; exit 1 }
           }
-        " "${CMPD_SOURCE:-../templates/cmpd-replication.yaml}"
+        " "${CMPD_SOURCE:-../scripts/replication-entrypoint.sh}"
       '
       The status should be success
     End
@@ -1012,7 +1054,7 @@ EOF
           in_func && /^[[:space:]]*\\}[[:space:]]*\$/ { in_func = 0 }
           in_func && \$0 ~ /rejoin-replication-exit-on-dcs-primary/ { found = 1 }
           END { if (!found) { print \"missing rejoin-replication-exit-on-dcs-primary sentinel\"; exit 1 } }
-        " "${CMPD_SOURCE:-../templates/cmpd-replication.yaml}"
+        " "${CMPD_SOURCE:-../scripts/replication-entrypoint.sh}"
       '
       The status should be success
     End
@@ -1025,7 +1067,7 @@ EOF
           in_func && \$0 ~ /rejoin-replication-not-healthy/ { timeout_found = 1 }
           in_func && \$0 ~ /^[[:space:]]+return 1\$/ { ret1_found = 1 }
           END { if (!timeout_found || !ret1_found) { print \"missing timeout sentinel or return 1\"; exit 1 } }
-        " "${CMPD_SOURCE:-../templates/cmpd-replication.yaml}"
+        " "${CMPD_SOURCE:-../scripts/replication-entrypoint.sh}"
       '
       The status should be success
     End
@@ -1038,7 +1080,7 @@ EOF
           in_func && \$0 ~ /rejoin-replication-healthy[^-]/ { healthy_found = 1 }
           in_func && \$0 ~ /^[[:space:]]+return 0\$/ { ret0_found = 1 }
           END { if (!healthy_found || !ret0_found) { print \"missing healthy sentinel or return 0\"; exit 1 } }
-        " "${CMPD_SOURCE:-../templates/cmpd-replication.yaml}"
+        " "${CMPD_SOURCE:-../scripts/replication-entrypoint.sh}"
       '
       The status should be success
     End
@@ -2523,7 +2565,7 @@ EOF
       # in dataMountPath etc. paths), so source vs rendered diff doesn't
       # change the negative-grep semantics. This avoids dependency on helm
       # being installed in the test environment.
-      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
+      export CMPD_SOURCE="../scripts/replication-entrypoint.sh"
     }
     Before "setup_cmpd_alpha64_env"
 
@@ -2532,7 +2574,7 @@ EOF
         # Strong-bind invariant: cmpd-side primary grant body MUST contain
         # the same core write privs that switchover.sh's
         # remote_root_has_explicit_primary_grant verifier requires.
-        When call grep -E "CMPD_EXPLICIT_PRIMARY_GRANT_BODY=" ../templates/cmpd-replication.yaml
+        When call grep -E "CMPD_EXPLICIT_PRIMARY_GRANT_BODY=" ../scripts/replication-entrypoint.sh
         The status should be success
         The output should include "INSERT"
         The output should include "UPDATE"
@@ -2542,7 +2584,7 @@ EOF
       End
 
       It "alpha.64 v1: CMPD_SECONDARY_FENCE_GRANT_BODY does NOT contain admin-bypass privileges (SUPER/READ_ONLY ADMIN/BINLOG ADMIN/CONNECTION ADMIN/ALL PRIVILEGES) [product-blocker]"
-        When call grep -E "CMPD_SECONDARY_FENCE_GRANT_BODY=" ../templates/cmpd-replication.yaml
+        When call grep -E "CMPD_SECONDARY_FENCE_GRANT_BODY=" ../scripts/replication-entrypoint.sh
         The status should be success
         The output should not include "SUPER"
         The output should not include "READ_ONLY ADMIN"
@@ -2552,7 +2594,7 @@ EOF
       End
 
       It "alpha.64 v1: CMPD_OPTIONAL_MONITOR_PRIVS contains only MONITOR types (BINLOG MONITOR / SLAVE MONITOR), no admin-bypass [product-blocker]"
-        When call grep -E "CMPD_OPTIONAL_MONITOR_PRIVS=" ../templates/cmpd-replication.yaml
+        When call grep -E "CMPD_OPTIONAL_MONITOR_PRIVS=" ../scripts/replication-entrypoint.sh
         The status should be success
         The output should include "BINLOG MONITOR"
         The output should include "SLAVE MONITOR"
@@ -2614,14 +2656,14 @@ EOF
       It "alpha.64 v1: Tier A monitor priv grant emits tier=monitor-best-effort 1227_swallowed=true fields (allowed continue, log only) [review-tightening]"
         # Verify the source has Tier A logging pattern. Field order is
         # tier=monitor-best-effort 1227_swallowed=true (single line emit).
-        When call grep -E "tier=monitor-best-effort 1227_swallowed=true" ../templates/cmpd-replication.yaml
+        When call grep -E "tier=monitor-best-effort 1227_swallowed=true" ../scripts/replication-entrypoint.sh
         The status should be success
         The output should include "tier=monitor-best-effort 1227_swallowed=true"
       End
 
       It "alpha.64 v1: Tier B required grant emits fail_closed=true + tier=required field (must return 1, caller skip ready/role) [product-blocker]"
         # Verify the source has Tier B logging pattern with fail_closed marker.
-        When call grep -E "tier=required.*fail_closed=true" ../templates/cmpd-replication.yaml
+        When call grep -E "tier=required.*fail_closed=true" ../scripts/replication-entrypoint.sh
         The status should be success
         The output should include "fail_closed=true"
       End
@@ -2631,7 +2673,7 @@ EOF
       It "alpha.64 v1: live-gate runtime contract documented — prestop-watchdog.log fresh stable window must NOT contain admin-bypass MONITOR-loop entries [product-blocker]"
         # This is documentation/marker assertion: the source must contain a
         # comment defining the live-gate runtime contract for closeout reviewers.
-        When call grep -E "alpha.64 v1.*Jack 09:35 RED" ../templates/cmpd-replication.yaml
+        When call grep -E "alpha.64 v1.*Jack 09:35 RED" ../scripts/replication-entrypoint.sh
         The status should be success
         The output should include "alpha.64 v1"
       End
@@ -2650,7 +2692,7 @@ EOF
   #   the live-gate runtime negative gate.
   Describe "alpha.64 v2 cmpd-semisync Tier B caller propagation contract"
     setup_cmpd_alpha64v2_env() {
-      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
+      export CMPD_SOURCE="../scripts/replication-entrypoint.sh"
     }
     Before "setup_cmpd_alpha64v2_env"
 
@@ -2818,7 +2860,7 @@ EOF
         # in healthy install windows; it only appears when both socket and
         # tcp lock paths failed (1227 swallowed but observability + caller
         # contract preserved).
-        When call grep -F "prestop_lock_failed_both fail_closed=true tier=required" ../templates/cmpd-replication.yaml
+        When call grep -F "prestop_lock_failed_both fail_closed=true tier=required" ../scripts/replication-prestop.sh
         The status should be success
         The output should include "prestop_lock_failed_both fail_closed=true tier=required"
       End
@@ -2831,7 +2873,7 @@ EOF
             /prestop_log \"begin pod=/ { in_block = 1 }
             in_block && /if \\[ -x \\/tools\\/syncerctl \\]/ { in_block = 0 }
             in_block { print }
-          " '"${CMPD_SOURCE}"'
+          " ../scripts/replication-prestop.sh
         '
         The status should be success
         The output should include "if ! lock_local_root_for_prestop"
@@ -2848,7 +2890,7 @@ EOF
   # The constant remains for documentation + ShellSpec strong-bind.
   Describe "alpha.64 v3 cmpd-semisync multi-word MONITOR priv loop"
     setup_cmpd_alpha64v3_env() {
-      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
+      export CMPD_SOURCE="../scripts/replication-entrypoint.sh"
     }
     Before "setup_cmpd_alpha64v3_env"
 
@@ -2925,7 +2967,7 @@ EOF
         # rationale, so closeout reviewers know to grep for standalone
         # single-word tokens (privilege=BINLOG / privilege=MONITOR /
         # privilege=SLAVE) on prestop-watchdog.log fresh stable window.
-        When call grep -E "alpha.64 v3.*Jack 11:14.*live-gate RED" ../templates/cmpd-replication.yaml
+        When call grep -E "alpha.64 v3.*Jack 11:14.*live-gate RED" ../scripts/replication-entrypoint.sh
         The status should be success
         The output should include "alpha.64 v3"
       End
@@ -2940,7 +2982,7 @@ EOF
             grep -c "CMPD_EXPLICIT_PRIMARY_GRANT_BODY=" "${CMPD_SOURCE}";
             grep -c "CMPD_SECONDARY_FENCE_GRANT_BODY=" "${CMPD_SOURCE}";
             grep -c "set_replica_read_only \"" "${CMPD_SOURCE}";
-            grep -c "prestop_lock_failed_both fail_closed=true tier=required" "${CMPD_SOURCE}";
+            grep -c "prestop_lock_failed_both fail_closed=true tier=required" ../scripts/replication-prestop.sh;
             grep -cE "^[[:space:]]*lock_(local|remote)_root_writes\\b.*\\|\\| true.*# tier=" "${CMPD_SOURCE}";
           } | tr "\n" " "
         '
@@ -2949,7 +2991,7 @@ EOF
         #   reconcile_secondary + configure_from_primary; the body of
         #   set_replica_read_only itself is the function definition not a
         #   self-call, so 4 caller patterns)
-        # + 1 (prestop_lock_failed_both literal in preStop block) + 14 (tier-annotated swallow lines;
+        # + 1 (prestop_lock_failed_both literal in preStop script) + 14 (tier-annotated swallow lines;
         #   reduced from 16 after CMPD consolidation PR #2933)
         The status should be success
         The output should equal "1 1 4 1 14 "
@@ -2966,7 +3008,7 @@ EOF
   Describe "alpha.65 v1 chart version bump for CmpD immutability"
     setup_chart_alpha65_env() {
       export CHART_FILE="../Chart.yaml"
-      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
+      export CMPD_SOURCE="../scripts/replication-entrypoint.sh"
     }
     Before "setup_chart_alpha65_env"
 
@@ -3026,7 +3068,7 @@ EOF
   Describe "alpha.66 v1 syncer HA executor + chart bump"
     setup_chart_alpha66_env() {
       export CHART_FILE="../Chart.yaml"
-      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
+      export CMPD_SOURCE="../scripts/replication-entrypoint.sh"
     }
     Before "setup_chart_alpha66_env"
 
@@ -3048,6 +3090,42 @@ EOF
     End
 
     Context "syncer executor contract (per Jack 12:34 design HOLD blocker 1+2)"
+      It "switchover action injects MARIADB_ROOT_USER for kbagent execution"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*switchover:[[:space:]]*$/ { in_block = 1 }
+            in_block && /^[[:space:]]*runtime:[[:space:]]*$/ { exit }
+            in_block { print }
+          " ../templates/cmpd-replication.yaml | grep -A1 "name: MARIADB_ROOT_USER" | grep -F "value: \"\$(MARIADB_ROOT_USER)\""
+        '
+        The status should be success
+        The output should include 'value: "$(MARIADB_ROOT_USER)"'
+      End
+
+      It "switchover action injects MARIADB_ROOT_PASSWORD for kbagent execution"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*switchover:[[:space:]]*$/ { in_block = 1 }
+            in_block && /^[[:space:]]*runtime:[[:space:]]*$/ { exit }
+            in_block { print }
+          " ../templates/cmpd-replication.yaml | grep -A1 "name: MARIADB_ROOT_PASSWORD" | grep -F "value: \"\$(MARIADB_ROOT_PASSWORD)\""
+        '
+        The status should be success
+        The output should include 'value: "$(MARIADB_ROOT_PASSWORD)"'
+      End
+
+      It "switchover action injects MARIADB_INTERNAL_ROOT_USER for local admin SQL"
+        When run sh -c '
+          awk "
+            /^[[:space:]]*switchover:[[:space:]]*$/ { in_block = 1 }
+            in_block && /^[[:space:]]*runtime:[[:space:]]*$/ { exit }
+            in_block { print }
+          " ../templates/cmpd-replication.yaml | grep -A1 "name: MARIADB_INTERNAL_ROOT_USER" | grep -F "value: \"kb_internal_root\""
+        '
+        The status should be success
+        The output should include 'value: "kb_internal_root"'
+      End
+
       It "alpha.66 v1: chart env contains MYSQL_ADMIN_USER literal kb_internal_root (NOT \$\(MARIADB_INTERNAL_ROOT_USER\) — env order risk closed) [product-blocker]"
         # Literal value avoids the K8s env expansion order ambiguity that
         # Jack flagged as Blocker 2 in the v1 HOLD review.
@@ -3055,7 +3133,7 @@ EOF
           awk "
             /^[[:space:]]*-[[:space:]]*name:[[:space:]]*MYSQL_ADMIN_USER/ { found_name = 1; next }
             found_name && /^[[:space:]]*value:/ { print; found_name = 0 }
-          " '"${CMPD_SOURCE}"'
+          " ../templates/cmpd-replication.yaml
         '
         The status should be success
         The output should include "kb_internal_root"
@@ -3067,7 +3145,7 @@ EOF
           awk "
             /^[[:space:]]*-[[:space:]]*name:[[:space:]]*MYSQL_ADMIN_PASSWORD/ { found_name = 1; next }
             found_name && /^[[:space:]]*value:/ { print; found_name = 0 }
-          " '"${CMPD_SOURCE}"'
+          " ../templates/cmpd-replication.yaml
         '
         The status should be success
         The output should include "MARIADB_ROOT_PASSWORD"
@@ -3078,7 +3156,7 @@ EOF
           awk "
             /^[[:space:]]*-[[:space:]]*name:[[:space:]]*KB_SERVICE_USER/ { found_name = 1; next }
             found_name && /^[[:space:]]*value:/ { print; found_name = 0 }
-          " '"${CMPD_SOURCE}"'
+          " ../templates/cmpd-replication.yaml
         '
         The status should be success
         The output should include "MARIADB_ROOT_USER"
@@ -3180,14 +3258,14 @@ EOF
             grep -c "CMPD_EXPLICIT_PRIMARY_GRANT_BODY=" "${CMPD_SOURCE}";
             grep -c "CMPD_SECONDARY_FENCE_GRANT_BODY=" "${CMPD_SOURCE}";
             grep -c "set_replica_read_only \"" "${CMPD_SOURCE}";
-            grep -c "prestop_lock_failed_both fail_closed=true tier=required" "${CMPD_SOURCE}";
+            grep -c "prestop_lock_failed_both fail_closed=true tier=required" ../scripts/replication-prestop.sh;
             grep -cE "^[[:space:]]*lock_(local|remote)_root_writes\\b.*\\|\\| true.*# tier=" "${CMPD_SOURCE}";
             grep -cE "^[[:space:]]*for privilege in \"BINLOG MONITOR\" \"SLAVE MONITOR\"" "${CMPD_SOURCE}";
           } | tr "\n" " "
         '
         The status should be success
         # Expected: 1 grant body explicit + 1 secondary fence + 4 explicit set_replica_read_only caller +
-        # 1 prestop_lock_failed_both + 14 tier-annotated swallow (reduced from 16 after CMPD
+        # 1 prestop_lock_failed_both (in prestop script) + 14 tier-annotated swallow (reduced from 16 after CMPD
         # consolidation PR #2933) + 2 inline-quoted MONITOR loops
         The output should equal "1 1 4 1 14 2 "
       End
@@ -3206,7 +3284,7 @@ EOF
   Describe "alpha.67 v1 ensure_internal_local_admin write-site zero-priv enforcement"
     setup_chart_alpha67_env() {
       export CHART_FILE="../Chart.yaml"
-      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
+      export CMPD_SOURCE="../scripts/replication-entrypoint.sh"
     }
     Before "setup_chart_alpha67_env"
 
@@ -3259,7 +3337,7 @@ EOF
   # kubeblocks.*) are still hard-banned.
   Describe "alpha.68 v2 ensure_internal_local_admin cross-member health grant allowlist"
     setup_chart_alpha68_env() {
-      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
+      export CMPD_SOURCE="../scripts/replication-entrypoint.sh"
     }
     Before "setup_chart_alpha68_env"
 
@@ -3433,7 +3511,7 @@ EOF
   # REPLICATION CLIENT grant and is allowed.
   Describe "alpha.69 v1 ensure_internal_local_admin bootstrap SQL ordering + mysql.user narrow grant"
     setup_chart_alpha69_env() {
-      export CMPD_SOURCE="../templates/cmpd-replication.yaml"
+      export CMPD_SOURCE="../scripts/replication-entrypoint.sh"
     }
     Before "setup_chart_alpha69_env"
 

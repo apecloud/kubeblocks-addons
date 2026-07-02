@@ -25,6 +25,7 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
   ADDON_ROOT="${SHELLSPEC_CWD:?}/addons/mariadb"
   HELPERS_TPL="${ADDON_ROOT}/templates/_helpers.tpl"
   CMPD_SEMISYNC="${ADDON_ROOT}/templates/cmpd-replication.yaml"
+  CMPD_ENTRYPOINT="${ADDON_ROOT}/scripts/replication-entrypoint.sh"
   CMPD_STANDALONE="${ADDON_ROOT}/templates/cmpd.yaml"
   CMPD_REPLICATION="${ADDON_ROOT}/templates/cmpd-replication.yaml"
   CMPD_GALERA="${ADDON_ROOT}/templates/cmpd-galera.yaml"
@@ -52,7 +53,7 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
       /^[[:space:]]*start_mariadbd_process\(\) \{/ { in_func = 1; print; next }
       in_func && /^[[:space:]]*\}[[:space:]]*$/ { print; exit }
       in_func { print }
-    ' "${CMPD_SEMISYNC}"
+    ' "${CMPD_ENTRYPOINT}"
   }
 
   extract_init_syncer_command_body() {
@@ -82,33 +83,33 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
       awk '
         /chown -R mysql:mysql / { in_block = 1 }
         in_block { print }
-        /^[[:space:]]+rm -f .* .replication-ready/ { in_block = 0 }
-      ' "${CMPD_SEMISYNC}"
+        /^[[:space:]]*rm -f .* .replication-ready/ { in_block = 0 }
+      ' "${CMPD_ENTRYPOINT}"
     }
 
     It "main container re-applies chgrp 1000 on runtime-overrides.d AFTER chown -R"
       When call main_container_bash_script
       The status should be success
       The output should include "chown -R mysql:mysql"
-      The output should include "chgrp 1000 {{ .Values.dataMountPath }}/runtime-overrides.d"
+      The output should include 'chgrp 1000 ${DATA_DIR}/runtime-overrides.d'
     End
 
     It "main container re-applies chmod 0770 (g+rwx) on runtime-overrides.d AFTER chown -R"
       When call main_container_bash_script
       The status should be success
-      The output should include "chmod 0770 {{ .Values.dataMountPath }}/runtime-overrides.d"
+      The output should include 'chmod 0770 ${DATA_DIR}/runtime-overrides.d'
     End
 
     It "main container re-applies chgrp 1000 on runtime-overrides.cnf loader AFTER chown -R"
       When call main_container_bash_script
       The status should be success
-      The output should include "chgrp 1000 {{ .Values.dataMountPath }}/runtime-overrides.cnf"
+      The output should include 'chgrp 1000 ${DATA_DIR}/runtime-overrides.cnf'
     End
 
     It "main container re-applies chmod 0660 on runtime-overrides.cnf loader AFTER chown -R"
       When call main_container_bash_script
       The status should be success
-      The output should include "chmod 0660 {{ .Values.dataMountPath }}/runtime-overrides.cnf"
+      The output should include 'chmod 0660 ${DATA_DIR}/runtime-overrides.cnf'
     End
 
     It "main container always overwrites loader to canonical content (recovers from corruption; Jack 07:03 B2 follow-up)"
@@ -129,10 +130,10 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
       # AFTER-chown-R chgrp is what protects the kbagent permission
       # contract.
       When run sh -c '
-        chown_line=$(grep -n "chown -R mysql:mysql" "'${CMPD_SEMISYNC}'" | head -1 | cut -d: -f1)
+        chown_line=$(grep -n "chown -R mysql:mysql" "'${CMPD_ENTRYPOINT}'" | head -1 | cut -d: -f1)
         # Find all chgrp 1000 lines for the runtime-overrides dir and
         # take the LAST one (assumed to be the main container re-fixup).
-        chgrp_line=$(grep -n "chgrp 1000 {{ \.Values\.dataMountPath }}/runtime-overrides\.d" "'${CMPD_SEMISYNC}'" | tail -1 | cut -d: -f1)
+        chgrp_line=$(grep -n "chgrp 1000 \${DATA_DIR}/runtime-overrides\.d" "'${CMPD_ENTRYPOINT}'" | tail -1 | cut -d: -f1)
         if [ -n "${chown_line}" ] && [ -n "${chgrp_line}" ] && [ "${chgrp_line}" -gt "${chown_line}" ]; then
           echo "OK"
         else
@@ -189,7 +190,7 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
     It "start_mariadbd_process function body includes the --defaults-extra-file flag"
       When call extract_start_mariadbd_function_body
       The status should be success
-      The output should include "--defaults-extra-file={{ .Values.dataMountPath }}/runtime-overrides.cnf"
+      The output should include '--defaults-extra-file=${DATA_DIR}/runtime-overrides.cnf'
     End
 
     It "the --defaults-extra-file flag appears immediately after the mariadbd command (positional first arg)"
@@ -209,7 +210,7 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
             }
             exit
           }
-        " "'${CMPD_SEMISYNC}'"
+        " "'${CMPD_ENTRYPOINT}'"
       '
       The status should be success
       The output should equal "OK"
@@ -217,8 +218,8 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
 
     It "the --defaults-extra-file flag precedes --server-id in source order"
       When run sh -c '
-        defaults_line=$(grep -n "defaults-extra-file=" "'${CMPD_SEMISYNC}'" | head -1 | cut -d: -f1)
-        server_id_line=$(grep -n -- "--server-id=" "'${CMPD_SEMISYNC}'" | head -1 | cut -d: -f1)
+        defaults_line=$(grep -n "defaults-extra-file=" "'${CMPD_ENTRYPOINT}'" | head -1 | cut -d: -f1)
+        server_id_line=$(grep -n -- "--server-id=" "'${CMPD_ENTRYPOINT}'" | head -1 | cut -d: -f1)
         if [ -n "${defaults_line}" ] && [ -n "${server_id_line}" ] && [ "${defaults_line}" -lt "${server_id_line}" ]; then
           echo "OK"
         else

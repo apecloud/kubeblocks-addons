@@ -3,7 +3,7 @@
 
 Describe "cmpd-replication.yaml semisync startup recovery"
   template_file() {
-    printf "%s/addons/mariadb/templates/cmpd-replication.yaml" "${SHELLSPEC_CWD:?}"
+    printf "%s/addons/mariadb/scripts/replication-entrypoint.sh" "${SHELLSPEC_CWD:?}"
   }
 
   template_contains() {
@@ -50,11 +50,11 @@ Describe "cmpd-replication.yaml semisync startup recovery"
   stale_prestop_cleanup_clears_role_publish_markers() {
     awk '
       index($0, "decision=clear-stale-prestop-fence-on-container-start") { block = 1 }
-      block && index($0, "rm -f {{ .Values.dataMountPath }}/.prestop-fence-started") { rmblock = 1 }
-      rmblock && index($0, "{{ .Values.dataMountPath }}/.sql-listener-ready") { sql = 1 }
-      rmblock && index($0, "{{ .Values.dataMountPath }}/.primary-read-write-ready") { primary = 1 }
-      rmblock && index($0, "{{ .Values.dataMountPath }}/.replication-ready") { replica = 1 }
-      block && index($0, "elif [ -f \"{{ .Values.dataMountPath }}/.prestop-fence-started\" ]; then") { exit }
+      block && index($0, "rm -f ${DATA_DIR}/.prestop-fence-started") { rmblock = 1 }
+      rmblock && index($0, "${DATA_DIR}/.sql-listener-ready") { sql = 1 }
+      rmblock && index($0, "${DATA_DIR}/.primary-read-write-ready") { primary = 1 }
+      rmblock && index($0, "${DATA_DIR}/.replication-ready") { replica = 1 }
+      block && index($0, "elif [ -f \"${DATA_DIR}/.prestop-fence-started\" ]; then") { exit }
       END { exit(sql && primary && replica ? 0 : 1) }
     ' "$(template_file)"
   }
@@ -93,7 +93,7 @@ Describe "cmpd-replication.yaml semisync startup recovery"
       index($0, "elif [ -n \"${PRIMARY_SID}\" ] || [ \"${POD_INDEX}\" -gt 0 ]; then") { branch = 1 }
       branch && index($0, "while true; do") { loop = 1 }
       loop && index($0, "if [ -z \"${PRIMARY_SID}\" ] || [ \"${PRIMARY_SID}\" = \"${SERVICE_ID}\" ]; then") { no_primary = 1 }
-      no_primary && index($0, "if [ ! -f \"{{ .Values.dataMountPath }}/.sql-listener-ready\" ]; then") { stale_guard = 1 }
+      no_primary && index($0, "if [ ! -f \"${DATA_DIR}/.sql-listener-ready\" ]; then") { stale_guard = 1 }
       no_primary && index($0, "reconcile_sql_listener_for_syncer_primary_once || true") { reconcile = 1 }
       no_primary && index($0, "_no_primary_iters=") { exit(reconcile && !stale_guard ? 0 : 1) }
       END { exit(reconcile && !stale_guard ? 0 : 1) }
@@ -193,7 +193,7 @@ Describe "cmpd-replication.yaml semisync startup recovery"
   End
 
   It "keeps the preStop fence on later startup attempts in the same container lifecycle"
-    When call template_contains 'elif [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then'
+    When call template_contains 'elif [ -f "${DATA_DIR}/.prestop-fence-started" ]; then'
     The status should be success
     The output should include ".prestop-fence-started"
   End

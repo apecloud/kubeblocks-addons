@@ -56,3 +56,7 @@ data:
     {{- .Files.Get "scripts/seed-replication-mode-overrides.sh" | nindent 4 }}
   reconcile-runtime-overrides.sh: |-
     {{- .Files.Get "scripts/reconcile-runtime-overrides.sh" | nindent 4 }}
+  replication-entrypoint.sh: |-
+    {{- .Files.Get "scripts/replication-entrypoint.sh" | nindent 4 }}
+  replication-prestop.sh: |-
+    {{- .Files.Get "scripts/replication-prestop.sh" | nindent 4 }}

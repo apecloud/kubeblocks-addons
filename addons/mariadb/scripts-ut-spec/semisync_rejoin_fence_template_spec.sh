@@ -3,7 +3,11 @@
 
 Describe "cmpd-replication.yaml rejoin fence template"
   template_file() {
-    printf "%s/addons/mariadb/templates/cmpd-replication.yaml" "${SHELLSPEC_CWD:?}"
+    printf "%s/addons/mariadb/scripts/replication-entrypoint.sh" "${SHELLSPEC_CWD:?}"
+  }
+
+  prestop_file() {
+    printf "%s/addons/mariadb/scripts/replication-prestop.sh" "${SHELLSPEC_CWD:?}"
   }
 
   template_contains() {
@@ -155,7 +159,7 @@ Describe "cmpd-replication.yaml rejoin fence template"
   End
 
   It "keeps the preStop fence on later startup attempts in the same container lifecycle"
-    When call template_contains 'elif [ -f "{{ .Values.dataMountPath }}/.prestop-fence-started" ]; then'
+    When call template_contains 'elif [ -f "${DATA_DIR}/.prestop-fence-started" ]; then'
     The status should be success
     The output should include ".prestop-fence-started"
   End
@@ -308,7 +312,7 @@ Describe "cmpd-replication.yaml rejoin fence template"
   End
 
   It "locks local root persistently in preStop"
-    When call template_contains "lock_local_root_for_prestop \"prestop\" \"socket\""
+    When call grep -F "lock_local_root_for_prestop \"prestop\" \"socket\"" "$(prestop_file)"
     The status should be success
     The output should include "lock_local_root_for_prestop"
   End
@@ -509,7 +513,7 @@ Describe "cmpd-replication.yaml rejoin fence template"
   # removed during CMPD consolidation (PR #2933).
 
   It "uses the internal admin for preStop SQL so root can stay fenced"
-    When call template_contains "mariadb -u\"\${INTERNAL_ROOT_USER}\" -p\"\${MARIADB_ROOT_PASSWORD}\""
+    When call grep -F "mariadb -u\"\${INTERNAL_ROOT_USER}\" -p\"\${MARIADB_ROOT_PASSWORD}\"" "$(prestop_file)"
     The status should be success
     The output should include "INTERNAL_ROOT_USER"
   End
