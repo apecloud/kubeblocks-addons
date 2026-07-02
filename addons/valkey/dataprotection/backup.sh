@@ -32,8 +32,10 @@ trap handle_exit EXIT
 export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_BASE_PATH}"
 
 # Detect TLS via connection probe.
-# The backup job does not mount the TLS volume (it may not exist in non-TLS clusters),
-# so we probe: try a plain connection first; if it fails, retry with --tls --insecure.
+# The backup job does not mount the TLS volume (it may not exist in non-TLS
+# clusters), so we probe: plain connection first, then --tls --insecure.
+# --insecure is intentional HERE ONLY: no CA file is available in this execution face,
+# so certificate verification is impossible; in-cluster CLIs verify via --cacert.
 _tls_args=()
 _probe_base=(valkey-cli --no-auth-warning -h "${DP_DB_HOST}" -p "${DP_DB_PORT}")
 [ -n "${DP_DB_PASSWORD:-}" ] && _probe_base+=(-a "${DP_DB_PASSWORD}")

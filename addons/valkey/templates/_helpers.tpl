@@ -57,7 +57,7 @@ valkey-config-template
 
 {{/*
 Inline helper to build the valkey-cli base command with optional TLS flags.
-Produces a variable assignment: VALKEY_CLI_TLS_ARGS="--tls --insecure"
+Produces a variable assignment: VALKEY_CLI_TLS_ARGS="--tls --cacert <mount>/ca.crt"
 This is used inside shell scripts rather than as a Helm template.
 */}}
 

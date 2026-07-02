@@ -319,10 +319,13 @@ spec:
       expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}rediss://localhost:{{.SERVICE_PORT}}{{else}}redis://localhost:{{.SERVICE_PORT}}{{end}}` | toYaml }}
     {{- end }}
 
-    # ── TLS CLI flag (empty when TLS is off) ──
+    # ── TLS CLI flags (empty when TLS is off) ──
+    # Verify the server certificate against the mounted CA instead of
+    # skipping verification: the cluster chart issues certs whose SANs
+    # cover the per-component pod FQDNs and service names.
     - name: VALKEY_CLI_TLS_ARGS
       value: ""
-      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else}}{{end}}` | toYaml }}
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --cacert {{.TLS_MOUNT_PATH}}/ca.crt{{else}}{{end}}` | toYaml }}
 
     # ── Sentinel cross-component references (optional — absent in standalone) ──
     # compDef uses a regexp prefix; KubeBlocks resolves the concrete name at runtime.
