@@ -41,9 +41,10 @@ spec:
 
   replicasLimit:
     minReplicas: 1
-    # Current tested scale contract: default 3 data pods with one-pod
-    # horizontal scale-out to 4, then scale-in back to 3.
-    maxReplicas: 4
+    # Declared scale contract: up to 5 data pods (1 primary + 4 replicas),
+    # a common upper bound for Sentinel-managed Redis-family replication.
+    # Raise only together with scale e2e evidence for the new bound.
+    maxReplicas: 5
 
   # ── TLS ────────────────────────────────────────────────────────────────
   tls:
