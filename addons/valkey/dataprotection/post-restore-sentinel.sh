@@ -19,9 +19,8 @@
 #   sentinel comp: <cluster>-valkey-sentinel  (standard topology name)
 #
 # Current BackupPolicyTemplate env schema cannot inject cross-component
-# Sentinel credentials. Re-registration fails closed when no Sentinel can be
-# configured; passworded Sentinel requires SENTINEL_PASSWORD from a future
-# explicit contract.
+# Sentinel credentials. The chart currently supports exactly 3 Sentinel
+# replicas, so the DNS fallback has an independent expected count.
 
 set -e
 set -o pipefail
@@ -156,11 +155,13 @@ if [ -z "${primary_fqdn}" ]; then
 fi
 
 # ── register primary with each Sentinel pod ──────────────────────────────────
-# When SENTINEL_POD_FQDN_LIST is provided, use it as the authoritative target
-# set and require every listed Sentinel to be configured (fail-closed).
-# Otherwise, fall back to ordinal scanning with SENTINEL_REPLICA_COUNT or a
-# bounded scan limit.
+# SENTINEL_POD_FQDN_LIST is the authoritative target set when supplied.
+# Otherwise, the Sentinel headless service DNS endpoints are the runtime target
+# set available to this DataProtection job, and the expected count comes from
+# the chart's fixed Sentinel replicas contract. Restore must not report success
+# after configuring only a guessed or partial subset of Sentinel pods.
 sentinel_fqdn_list=()
+expected_sentinel_count=""
 if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
   sentinel_fqdn_list_raw=()
   IFS=',' read -ra sentinel_fqdn_list_raw <<< "${SENTINEL_POD_FQDN_LIST}"
@@ -174,20 +175,16 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
   fi
   echo "INFO: using SENTINEL_POD_FQDN_LIST (${expected_sentinel_count} entries) as target set."
 else
-  default_sentinel_scan_limit="${POST_RESTORE_SENTINEL_SCAN_LIMIT:-9}"
-  default_sentinel_scan_limit=$(positive_int_or_default "${default_sentinel_scan_limit}" 9)
-  expected_sentinel_count="${SENTINEL_REPLICA_COUNT:-}"
-  if [ -n "${expected_sentinel_count}" ]; then
-    sentinel_replica_count=$(positive_int_or_default "${expected_sentinel_count}" "${default_sentinel_scan_limit}")
-    expected_sentinel_count="${sentinel_replica_count}"
-  else
-    sentinel_replica_count="${default_sentinel_scan_limit}"
+  expected_sentinel_count=$(positive_int_or_default "${POST_RESTORE_SENTINEL_EXPECTED_COUNT:-3}" 3)
+  while read -r sentinel_ip _; do
+    [ -n "${sentinel_ip}" ] && sentinel_fqdn_list+=("${sentinel_ip}")
+  done < <(getent hosts "${sentinel_headless}" 2>/dev/null | awk '!seen[$1]++ { print $1 }')
+  discovered_sentinel_count="${#sentinel_fqdn_list[@]}"
+  if [ "${discovered_sentinel_count}" -ne "${expected_sentinel_count}" ]; then
+    echo "ERROR: discovered ${discovered_sentinel_count}/${expected_sentinel_count} expected Sentinel endpoint(s) from ${sentinel_headless}; refusing partial post-restore registration." >&2
+    exit 1
   fi
-  ordinal=0
-  while [ "${ordinal}" -lt "${sentinel_replica_count}" ]; do
-    sentinel_fqdn_list+=("${sentinel_comp}-${ordinal}.${sentinel_headless}")
-    ordinal=$((ordinal + 1))
-  done
+  echo "INFO: using ${discovered_sentinel_count}/${expected_sentinel_count} DNS-discovered Sentinel endpoint(s) from ${sentinel_headless} as target set."
 fi
 
 reachable_sentinel_fqdn_list=()
@@ -232,10 +229,6 @@ else
   sentinel_count="${#reachable_sentinel_fqdn_list[@]}"
 fi
 sentinel_monitor_quorum=$(( sentinel_count / 2 + 1 ))
-if [ -z "${expected_sentinel_count}" ] && [ "${sentinel_monitor_quorum}" -lt 2 ]; then
-  echo "WARNING: partial probe found ${sentinel_count} Sentinel(s); flooring quorum at 2 for safety." >&2
-  sentinel_monitor_quorum=2
-fi
 echo "INFO: using Sentinel monitor quorum ${sentinel_monitor_quorum}/${sentinel_count}."
 
 configured_sentinel_count=0

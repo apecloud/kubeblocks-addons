@@ -61,6 +61,24 @@ Describe "Valkey post-restore Sentinel contract"
     The stdout should include "SENTINEL_POD_FQDN_LIST"
   End
 
+  It "discovers Sentinel targets from headless service DNS when explicit list is missing"
+    When call grep -F 'getent hosts "${sentinel_headless}"' "${script_file}"
+    The status should be success
+    The stdout should include "getent hosts"
+  End
+
+  It "requires the chart-expected Sentinel endpoint count from DNS fallback"
+    When call grep -F "POST_RESTORE_SENTINEL_EXPECTED_COUNT:-3" "${script_file}"
+    The status should be success
+    The stdout should include "POST_RESTORE_SENTINEL_EXPECTED_COUNT:-3"
+  End
+
+  It "rejects DNS fallback when discovered count differs from expected count"
+    When call grep -F 'discovered_sentinel_count}" -ne "${expected_sentinel_count}' "${script_file}"
+    The status should be success
+    The stdout should include "expected_sentinel_count"
+  End
+
   It "parses SENTINEL_POD_FQDN_LIST into an array with IFS comma split"
     When call grep -E "IFS=',' read -ra sentinel_fqdn_list" "${script_file}"
     The status should be success
@@ -77,6 +95,11 @@ Describe "Valkey post-restore Sentinel contract"
     When call grep -E 'configured.*expected.*Sentinel pods' "${script_file}"
     The status should be success
     The stdout should include "expected Sentinel pods"
+  End
+
+  It "does not use ordinal scan fallback for unknown Sentinel targets"
+    When call grep -E "POST_RESTORE_SENTINEL_SCAN_LIMIT|sentinel_replica_count|partial probe found" "${script_file}"
+    The status should be failure
   End
 
   It "does not reference restore-sentinel-acl.sh (dead code removed)"

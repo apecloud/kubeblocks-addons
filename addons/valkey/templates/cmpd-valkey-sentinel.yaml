@@ -38,7 +38,7 @@ spec:
 
   replicasLimit:
     minReplicas: 3
-    maxReplicas: 16384
+    maxReplicas: 3
 
   # Sentinel state is persisted in the data volume so the conf survives restarts.
   volumes:
