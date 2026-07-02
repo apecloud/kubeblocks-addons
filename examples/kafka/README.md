@@ -74,11 +74,12 @@ When the cluster creation is done, refer to a secret named `$(CLUSTER_NAME)$-kaf
 
 > [!IMPORTANT]
 > As per the Kafka documentation, the number of KRaft replicas should be odd to avoid split-brain scenarios.
-> Make sure the number of KRaft replicas, i.e. Controller replicas,  is always odd after Horizontal Scaling, either in Separated or Combined mode.
+> Make sure the number of KRaft replicas, i.e. Controller replicas, is always odd after Horizontal Scaling.
+> Combined KRaft mode (`kafka-combine`) rejects online scale-out and scale-in because quorum voter add/remove convergence is not implemented in this addon. Use separated topology and scale broker-only components for online horizontal scaling.
 
 #### [Scale-out](scale-out.yaml)
 
-Horizontal scaling out `kafka-combine` component in cluster `kafka-combined-cluster` by adding ONE more replica:
+Horizontal scaling out the `kafka-broker` component in separated-topology cluster `kafka-separated-cluster` by adding ONE more replica:
 
 ```bash
 kubectl apply -f examples/kafka/scale-out.yaml
@@ -87,7 +88,7 @@ kubectl apply -f examples/kafka/scale-out.yaml
 After applying the operation, you will see a new pod created. You can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe -n demo ops kafka-combined-scale-out
+kubectl describe -n demo ops kafka-broker-scale-out
 ```
 
 #### [Scale-in](scale-in.yaml)
@@ -104,7 +105,7 @@ kubectl apply -f examples/kafka/scale-in.yaml
 
 #### Scale-in/out using Cluster API
 
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number. For scale-in, use a broker-only component such as `kafka-broker`; combined KRaft mode (`kafka-combine`) only supports scale-out.
+Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number. Use a broker-only component such as `kafka-broker`; combined KRaft mode (`kafka-combine`) rejects online scale-in and scale-out.
 
 ```yaml
 # snippet of cluster.yaml

@@ -267,23 +267,25 @@ When the cluster creation is done, refer to a secret named `$(CLUSTER_NAME)$-kaf
 
 #### Scale-out
 
-Horizontal scaling out `kafka-combine` component in cluster `kafka-combined-cluster` by adding ONE more replica:
+> **Warning**: Combined KRaft mode (`kafka-combine`) does **not** support online horizontal scale-out for serviceVersion 3.3.2. Adding a combined node requires the Kafka controller quorum membership and per-broker metadata view to converge; this addon does not implement that workflow yet. The `memberJoin` action will reject combined-mode scale-out. Use separated topology and scale broker-only components when you need online broker scale-out.
+
+Horizontal scaling out the broker-only `kafka-broker` component in cluster `kafka-separated-cluster` by adding ONE more replica:
 
 ```yaml
 # cat examples/kafka/scale-out.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: kafka-combined-scale-out
+  name: kafka-broker-scale-out
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: kafka-combined-cluster
+  clusterName: kafka-separated-cluster
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-  - componentName: kafka-combine
+  - componentName: kafka-broker
     # Specifies the replica changes for scaling in components
     scaleOut:
       # Specifies the replica changes for the component.
@@ -299,14 +301,14 @@ kubectl apply -f examples/kafka/scale-out.yaml
 After applying the operation, you will see a new pod created. You can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe -n demo ops kafka-combined-scale-out
+kubectl describe -n demo ops kafka-broker-scale-out
 ```
 
 #### Scale-in
 
 > **Warning**: Combined KRaft mode (`kafka-combine`) does **not** support scale-in. The `memberLeave` action will reject the request because quorum voter removal is not yet implemented — scaling in a combined node that is both broker and controller would break the KRaft quorum. Only broker-only components support scale-in.
 
-The following example scales in a **broker-only** component in a **separated-topology** cluster. For combined mode clusters, use scale-out only.
+The following example scales in a **broker-only** component in a **separated-topology** cluster. Combined mode clusters reject online scale-in and scale-out; use separated topology when online horizontal scaling is required.
 
 ```yaml
 # cat examples/kafka/scale-in.yaml
@@ -332,7 +334,7 @@ kubectl apply -f examples/kafka/scale-in.yaml
 
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
-> **Note**: For combined KRaft mode (`kafka-combine`), only scale-out (increasing replicas) is supported. Scale-in will be rejected by `memberLeave` because quorum voter removal is not implemented.
+> **Note**: For combined KRaft mode (`kafka-combine`), online scale-out and scale-in are both rejected by lifecycle actions because quorum voter add/remove convergence is not implemented in this addon. Use separated topology and scale broker-only components for online horizontal scaling.
 
 ```yaml
 # snippet of cluster-separated.yaml — broker-only example
