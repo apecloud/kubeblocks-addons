@@ -1,7 +1,24 @@
 package io.kubeblocks.kafka;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.internals.BrokerSecurityConfigs;
+import org.apache.kafka.coordinator.group.GroupCoordinatorConfig;
+import org.apache.kafka.coordinator.transaction.TransactionLogConfigs;
+import org.apache.kafka.coordinator.transaction.TransactionStateManagerConfigs;
+import org.apache.kafka.network.SocketServerConfigs;
+import org.apache.kafka.raft.QuorumConfig;
+import org.apache.kafka.security.PasswordEncoderConfigs;
+import org.apache.kafka.server.config.DelegationTokenManagerConfigs;
 import org.apache.kafka.server.config.AbstractKafkaConfig;
+import org.apache.kafka.server.config.KRaftConfigs;
+import org.apache.kafka.server.config.QuotaConfigs;
+import org.apache.kafka.server.config.ReplicationConfigs;
+import org.apache.kafka.server.config.ServerConfigs;
+import org.apache.kafka.server.config.ShareGroupConfig;
+import org.apache.kafka.server.config.ZkConfigs;
+import org.apache.kafka.server.log.remote.storage.RemoteLogManagerConfig;
+import org.apache.kafka.server.metrics.MetricConfigs;
+import org.apache.kafka.storage.internals.log.CleanerConfig;
 import org.apache.kafka.storage.internals.log.LogConfig;
 
 import java.io.IOException;
@@ -13,16 +30,74 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
 
 public final class KafkaConfigCue {
-    private static final List<ConfigSource> SOURCES = List.of(
-            new ConfigSource("Broker", () -> new ConfigDef(AbstractKafkaConfig.CONFIG_DEF)),
-            // new ConfigSource("Topic", LogConfig::configDefCopy));
+    private static final Set<String> DISABLED_CONFIGS = Set.of(
+            "advertised.listeners",
+            "process.roles",
+            "ssl.keystore.type"
+        );
+    private static final Set<String> SHARED_KRAFT_CONFIGS = Set.of(
+            KRaftConfigs.PROCESS_ROLES_CONFIG,
+            KRaftConfigs.NODE_ID_CONFIG,
+            KRaftConfigs.CONTROLLER_LISTENER_NAMES_CONFIG,
+            KRaftConfigs.SASL_MECHANISM_CONTROLLER_PROTOCOL_CONFIG,
+            KRaftConfigs.SERVER_MAX_STARTUP_TIME_MS_CONFIG);
+    private static final Set<String> BROKER_KRAFT_CONFIGS = Set.of(
+            KRaftConfigs.INITIAL_BROKER_REGISTRATION_TIMEOUT_MS_CONFIG,
+            KRaftConfigs.BROKER_HEARTBEAT_INTERVAL_MS_CONFIG,
+            KRaftConfigs.BROKER_SESSION_TIMEOUT_MS_CONFIG);
+    private static final Set<String> CONTROLLER_KRAFT_CONFIGS = Set.of(
+            KRaftConfigs.METADATA_LOG_DIR_CONFIG,
+            KRaftConfigs.METADATA_SNAPSHOT_MAX_INTERVAL_MS_CONFIG,
+            KRaftConfigs.METADATA_SNAPSHOT_MAX_NEW_RECORD_BYTES_CONFIG,
+            KRaftConfigs.METADATA_LOG_SEGMENT_MIN_BYTES_CONFIG,
+            KRaftConfigs.METADATA_LOG_SEGMENT_BYTES_CONFIG,
+            KRaftConfigs.METADATA_LOG_SEGMENT_MILLIS_CONFIG,
+            KRaftConfigs.METADATA_MAX_RETENTION_BYTES_CONFIG,
+            KRaftConfigs.METADATA_MAX_RETENTION_MILLIS_CONFIG,
+            KRaftConfigs.METADATA_MAX_IDLE_INTERVAL_MS_CONFIG,
+            KRaftConfigs.MIGRATION_ENABLED_CONFIG,
+            KRaftConfigs.MIGRATION_METADATA_MIN_BATCH_SIZE_CONFIG,
+            KRaftConfigs.ELR_ENABLED_CONFIG);
+    private static final Set<String> CONTROLLER_SERVER_CONFIGS = Set.of(
+            "delete.topic.enable");
+    private static final List<ScopedConfigSource> SOURCES = List.of(
+            new ScopedConfigSource(Scope.BROKER, RemoteLogManagerConfig::configDef),
+            new ScopedConfigSource(Scope.BROKER, () -> ZkConfigs.CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> withoutConfigs(ServerConfigs.CONFIG_DEF, CONTROLLER_SERVER_CONFIGS)),
+            new ScopedConfigSource(Scope.CONTROLLER, () -> filteredConfigDef(ServerConfigs.CONFIG_DEF, CONTROLLER_SERVER_CONFIGS)),
+            new ScopedConfigSource(Scope.SHARED, () -> filteredConfigDef(KRaftConfigs.CONFIG_DEF, SHARED_KRAFT_CONFIGS)),
+            new ScopedConfigSource(Scope.BROKER, () -> filteredConfigDef(KRaftConfigs.CONFIG_DEF, BROKER_KRAFT_CONFIGS)),
+            new ScopedConfigSource(Scope.CONTROLLER, () -> filteredConfigDef(KRaftConfigs.CONFIG_DEF, CONTROLLER_KRAFT_CONFIGS)),
+            new ScopedConfigSource(Scope.SHARED, () -> SocketServerConfigs.CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> ReplicationConfigs.CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> GroupCoordinatorConfig.GROUP_COORDINATOR_CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> GroupCoordinatorConfig.NEW_GROUP_CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> GroupCoordinatorConfig.OFFSET_MANAGEMENT_CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> GroupCoordinatorConfig.CONSUMER_GROUP_CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> GroupCoordinatorConfig.SHARE_GROUP_CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> CleanerConfig.CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> LogConfig.SERVER_CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> ShareGroupConfig.CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> TransactionLogConfigs.CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> TransactionStateManagerConfigs.CONFIG_DEF),
+            new ScopedConfigSource(Scope.CONTROLLER, () -> QuorumConfig.CONFIG_DEF),
+            new ScopedConfigSource(Scope.SHARED, () -> MetricConfigs.CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> QuotaConfigs.CONFIG_DEF),
+            new ScopedConfigSource(Scope.SHARED, () -> BrokerSecurityConfigs.CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> DelegationTokenManagerConfigs.CONFIG_DEF),
+            new ScopedConfigSource(Scope.BROKER, () -> PasswordEncoderConfigs.CONFIG_DEF)
+            // new ScopedConfigSource(Scope.TOPIC, LogConfig::configDefCopy)
+    );
 
     private KafkaConfigCue() {
     }
@@ -41,40 +116,157 @@ public final class KafkaConfigCue {
     static String render() {
         StringBuilder out = new StringBuilder();
         out.append("package kafka\n\n");
-        out.append("// Generated from Kafka ConfigDef metadata.\n");
+        out.append("// Generated from Kafka ConfigDef metadata, using tools/gen-cue.\n");
         out.append("// Dotted Kafka property names are intentionally kept as flat quoted fields.\n\n");
 
-        for (ConfigSource source : SOURCES) {
-            renderDefinition(out, source.definitionName(), source.configDef());
-            out.append('\n');
-        }
+        Map<Scope, Map<String, ConfigDef.ConfigKey>> keys = collectConfigKeys(SOURCES);
+        validateScopedConfigsMatchKafka(keys, AbstractKafkaConfig.CONFIG_DEF);
+        renderScopedDefinitions(out, keys, DISABLED_CONFIGS);
 
         return out.toString();
     }
 
     static String renderForTest(String definitionName, ConfigDef configDef) {
         StringBuilder out = new StringBuilder();
-        renderDefinition(out, definitionName, configDef);
+        renderDefinition(out, definitionName, configDef, Set.of());
         return out.toString();
     }
 
-    private static void renderDefinition(StringBuilder out, String definitionName, ConfigDef configDef) {
-        out.append("#").append(definitionName).append(": {\n");
-        Set<String> names = new TreeSet<>(configDef.configKeys().keySet());
-        for (String name : names) {
-            ConfigDef.ConfigKey key = configDef.configKeys().get(name);
-            renderKey(out, key);
+    static String renderForTest(String definitionName, ConfigDef configDef, Set<String> disabledConfigs) {
+        StringBuilder out = new StringBuilder();
+        renderDefinition(out, definitionName, configDef, disabledConfigs);
+        return out.toString();
+    }
+
+    static String renderScopedDefinitionsForTest(ConfigDef shared, ConfigDef controller, ConfigDef broker) {
+        List<ScopedConfigSource> sources = List.of(
+                new ScopedConfigSource(Scope.SHARED, () -> shared),
+                new ScopedConfigSource(Scope.CONTROLLER, () -> controller),
+                new ScopedConfigSource(Scope.BROKER, () -> broker));
+        StringBuilder out = new StringBuilder();
+        renderScopedDefinitions(out, collectConfigKeys(sources), Set.of());
+        return out.toString();
+    }
+
+    private static void renderScopedDefinitions(
+            StringBuilder out,
+            Map<Scope, Map<String, ConfigDef.ConfigKey>> keys,
+            Set<String> disabledConfigs) {
+        validateDisabledConfigs(disabledConfigs, keys);
+        renderDefinition(out, "Shared", keys.get(Scope.SHARED), disabledConfigs);
+        out.append('\n');
+        renderRoleDefinition(out, "Controller", keys.get(Scope.CONTROLLER), disabledConfigs);
+        out.append('\n');
+        renderRoleDefinition(out, "Broker", keys.get(Scope.BROKER), disabledConfigs);
+        out.append('\n');
+        out.append("#Combined: #Controller & #Broker\n");
+    }
+
+    private static Map<Scope, Map<String, ConfigDef.ConfigKey>> collectConfigKeys(List<ScopedConfigSource> sources) {
+        Map<Scope, Map<String, ConfigDef.ConfigKey>> keys = new EnumMap<>(Scope.class);
+        for (Scope scope : Scope.values()) {
+            keys.put(scope, new LinkedHashMap<>());
         }
+        for (ScopedConfigSource source : sources) {
+            for (Map.Entry<String, ConfigDef.ConfigKey> entry : source.configDef().configKeys().entrySet()) {
+                keys.get(source.scope()).putIfAbsent(entry.getKey(), entry.getValue());
+            }
+        }
+        return keys;
+    }
+
+    private static void validateDisabledConfigs(
+            Set<String> disabledConfigs,
+            Map<Scope, Map<String, ConfigDef.ConfigKey>> keys) {
+        Set<String> knownConfigs = new TreeSet<>();
+        for (Map<String, ConfigDef.ConfigKey> scopedKeys : keys.values()) {
+            knownConfigs.addAll(scopedKeys.keySet());
+        }
+        Set<String> unknownConfigs = new TreeSet<>(disabledConfigs);
+        unknownConfigs.removeAll(knownConfigs);
+        if (!unknownConfigs.isEmpty()) {
+            throw new IllegalStateException("Disabled configs are not defined by Kafka: " + unknownConfigs);
+        }
+    }
+
+    private static void validateScopedConfigsMatchKafka(
+            Map<Scope, Map<String, ConfigDef.ConfigKey>> keys,
+            ConfigDef kafkaConfigDef) {
+        Set<String> scopedConfigs = configNames(keys);
+        Set<String> kafkaConfigs = new TreeSet<>(kafkaConfigDef.configKeys().keySet());
+
+        Set<String> unclassifiedConfigs = new TreeSet<>(kafkaConfigs);
+        unclassifiedConfigs.removeAll(scopedConfigs);
+        Set<String> unknownConfigs = new TreeSet<>(scopedConfigs);
+        unknownConfigs.removeAll(kafkaConfigs);
+
+        if (!unclassifiedConfigs.isEmpty() || !unknownConfigs.isEmpty()) {
+            throw new IllegalStateException(
+                    "Scoped Kafka configs do not match AbstractKafkaConfig.CONFIG_DEF. "
+                            + "Unclassified Kafka configs: " + unclassifiedConfigs
+                            + "; unknown scoped configs: " + unknownConfigs);
+        }
+    }
+
+    private static Set<String> configNames(Map<Scope, Map<String, ConfigDef.ConfigKey>> keys) {
+        Set<String> names = new TreeSet<>();
+        for (Map<String, ConfigDef.ConfigKey> scopedKeys : keys.values()) {
+            names.addAll(scopedKeys.keySet());
+        }
+        return names;
+    }
+
+    private static void renderRoleDefinition(
+        StringBuilder out,
+        String definitionName,
+        Map<String, ConfigDef.ConfigKey> keys,
+        Set<String> disabledConfigs) {
+        out.append("#").append(definitionName).append(": #Shared & {\n");
+        renderKeys(out, keys, disabledConfigs);
+        out.append("\t...\n");
         out.append("}\n");
     }
 
-    private static void renderKey(StringBuilder out, ConfigDef.ConfigKey key) {
+    private static void renderDefinition(
+            StringBuilder out,
+            String definitionName,
+            ConfigDef configDef,
+            Set<String> disabledConfigs) {
+        renderDefinition(out, definitionName, configDef.configKeys(), disabledConfigs);
+    }
+
+    private static void renderDefinition(
+            StringBuilder out,
+            String definitionName,
+            Map<String, ConfigDef.ConfigKey> keys,
+            Set<String> disabledConfigs) {
+        out.append("#").append(definitionName).append(": {\n");
+        renderKeys(out, keys, disabledConfigs);
+        out.append("}\n");
+    }
+
+    private static void renderKeys(
+            StringBuilder out,
+            Map<String, ConfigDef.ConfigKey> keys,
+            Set<String> disabledConfigs) {
+        Set<String> names = new TreeSet<>(keys.keySet());
+        for (String name : names) {
+            ConfigDef.ConfigKey key = keys.get(name);
+            renderKey(out, key, disabledConfigs.contains(name));
+        }
+    }
+
+    private static void renderKey(StringBuilder out, ConfigDef.ConfigKey key, boolean disabled) {
         if (key.internalConfig) {
             return;
         }
 
         renderComment(out, key);
-        out.append('\t').append(cueString(key.name));
+        out.append('\t');
+        if (disabled) {
+            out.append("// ");
+        }
+        out.append(cueString(key.name));
         if (key.hasDefault()) {
             out.append("?");
         }
@@ -338,7 +530,39 @@ public final class KafkaConfigCue {
         return text.replaceAll("\\s+", " ").strip();
     }
 
-    record ConfigSource(String definitionName, Supplier<ConfigDef> supplier) {
+    private static ConfigDef filteredConfigDef(ConfigDef source, Set<String> names) {
+        ConfigDef filtered = new ConfigDef();
+        for (String name : names) {
+            ConfigDef.ConfigKey key = source.configKeys().get(name);
+            if (key == null) {
+                throw new IllegalStateException("Kafka ConfigDef no longer contains expected key: " + name);
+            }
+            define(filtered, key);
+        }
+        return filtered;
+    }
+
+    private static ConfigDef withoutConfigs(ConfigDef source, Set<String> excludedNames) {
+        ConfigDef filtered = new ConfigDef();
+        for (ConfigDef.ConfigKey key : source.configKeys().values()) {
+            if (!excludedNames.contains(key.name)) {
+                define(filtered, key);
+            }
+        }
+        return filtered;
+    }
+
+    private static void define(ConfigDef configDef, ConfigDef.ConfigKey key) {
+        configDef.define(key);
+    }
+
+    enum Scope {
+        SHARED,
+        CONTROLLER,
+        BROKER
+    }
+
+    record ScopedConfigSource(Scope scope, Supplier<ConfigDef> supplier) {
         ConfigDef configDef() {
             return supplier.get();
         }

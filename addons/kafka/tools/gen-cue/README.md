@@ -7,7 +7,7 @@ constraint schemas.
 
 ```bash
 mvn test
-mvn compile exec:java -Dexec.args="--output kafka_config_schema.cue"
+mvn compile exec:java -Dexec.args="--output ../../configs/kafka-server-constraint.cue"
 ```
 
 Pick a Kafka version with:
