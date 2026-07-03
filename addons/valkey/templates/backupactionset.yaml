@@ -1,12 +1,14 @@
 {{/*
-ActionSet for Valkey physical (RDB+AOF) backup and restore.
+ActionSet for Valkey RDB+ACL snapshot backup and restore.
 
 Backup flow:
   1. backupData: run BGSAVE on the target pod (secondary preferred), wait for
-     completion, tar the entire /data directory and push with zstd compression.
+     completion, archive dump.rdb plus users.acl when present, and push with
+     zstd compression.
 
 Restore flow:
-  1. prepareData: pull the archive and extract it into DATA_DIR before the pod starts.
+  1. prepareData: pull the archive, extract it into DATA_DIR, and seed the
+     multipart AOF manifest/base/incr files from dump.rdb before the pod starts.
   2. postReady: fail-closed Sentinel monitor re-registration after data restore.
 
 KubeBlocks DataProtection passes standard DP_* variables into all job containers;

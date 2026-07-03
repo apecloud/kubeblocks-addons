@@ -22,6 +22,20 @@ case "$1" in
     rm -rf "${tmp}"
     mkdir -p "${tmp}/src"
     printf 'restored\n' > "${tmp}/src/restored.txt"
+    if [ "${FAKE_DATASAFED_OMIT_RDB:-}" != "1" ]; then
+      if [ "${FAKE_DATASAFED_EMPTY_RDB:-}" = "1" ]; then
+        : > "${tmp}/src/dump.rdb"
+      else
+        printf 'valkey-rdb\n' > "${tmp}/src/dump.rdb"
+      fi
+    fi
+    if [ "${FAKE_DATASAFED_INCLUDE_AOF:-}" = "1" ]; then
+      mkdir -p "${tmp}/src/appendonlydir"
+      printf 'existing manifest\n' > "${tmp}/src/appendonlydir/appendonly.aof.manifest"
+    fi
+    if [ "${FAKE_DATASAFED_INCLUDE_ROOT_AOF:-}" = "1" ]; then
+      printf 'existing aof\n' > "${tmp}/src/appendonly.aof"
+    fi
     tar -cf - -C "${tmp}/src" .
     rm -rf "${tmp}"
     ;;
@@ -59,6 +73,10 @@ SH
     unset DP_BACKUP_NAME
     unset DP_BACKUP_BASE_PATH
     unset DP_DATASAFED_BIN_PATH
+    unset FAKE_DATASAFED_INCLUDE_AOF
+    unset FAKE_DATASAFED_INCLUDE_ROOT_AOF
+    unset FAKE_DATASAFED_OMIT_RDB
+    unset FAKE_DATASAFED_EMPTY_RDB
   }
   After "cleanup"
 
@@ -67,7 +85,19 @@ SH
     The status should be success
     The stdout should include "INFO: Restore complete."
     The file "${data_dir}/restored.txt" should be exist
+    The file "${data_dir}/appendonlydir/appendonly.aof.manifest" should be exist
+    The file "${data_dir}/appendonlydir/appendonly.aof.1.base.rdb" should be exist
+    The file "${data_dir}/appendonlydir/appendonly.aof.1.incr.aof" should be exist
     The file "${data_dir}/.kb-data-protection" should not be exist
+  End
+
+  It "seeds a multipart AOF manifest from the restored RDB"
+    When run bash ../dataprotection/restore.sh
+    The status should be success
+    The stdout should include "INFO: Seeded multipart AOF manifest from restored dump.rdb."
+    The contents of file "${data_dir}/appendonlydir/appendonly.aof.manifest" should include "file appendonly.aof.1.base.rdb seq 1 type b"
+    The contents of file "${data_dir}/appendonlydir/appendonly.aof.manifest" should include "file appendonly.aof.1.incr.aof seq 1 type i"
+    The contents of file "${data_dir}/appendonlydir/appendonly.aof.1.base.rdb" should include "valkey-rdb"
   End
 
   It "restores when only the data-protection placeholder exists"
@@ -88,5 +118,43 @@ SH
     The status should be failure
     The stderr should include "ERROR: ${data_dir} is not empty"
     The file "${data_dir}/restored.txt" should not be exist
+  End
+
+  It "fails closed when the restored archive is missing dump.rdb"
+    export FAKE_DATASAFED_OMIT_RDB=1
+
+    When run bash ../dataprotection/restore.sh
+    The status should be failure
+    The stdout should include "INFO: Restoring from restore-test.tar.zst..."
+    The stderr should include "ERROR: restored archive must contain a non-empty dump.rdb."
+  End
+
+  It "fails closed when the restored dump.rdb is empty"
+    export FAKE_DATASAFED_EMPTY_RDB=1
+
+    When run bash ../dataprotection/restore.sh
+    The status should be failure
+    The stdout should include "INFO: Restoring from restore-test.tar.zst..."
+    The stderr should include "ERROR: restored archive must contain a non-empty dump.rdb."
+  End
+
+  It "fails closed when the restored archive already contains an AOF directory"
+    export FAKE_DATASAFED_INCLUDE_AOF=1
+
+    When run bash ../dataprotection/restore.sh
+    The status should be failure
+    The stdout should include "INFO: Restoring from restore-test.tar.zst..."
+    The stderr should include "ERROR: restored archive already contains AOF state"
+    The stderr should include "appendonlydir"
+  End
+
+  It "fails closed when the restored archive already contains root AOF state"
+    export FAKE_DATASAFED_INCLUDE_ROOT_AOF=1
+
+    When run bash ../dataprotection/restore.sh
+    The status should be failure
+    The stdout should include "INFO: Restoring from restore-test.tar.zst..."
+    The stderr should include "ERROR: restored archive already contains AOF state"
+    The stderr should include "appendonly.aof"
   End
 End

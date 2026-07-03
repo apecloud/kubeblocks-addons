@@ -1,5 +1,5 @@
 #!/bin/bash
-# backup.sh — physical (RDB+AOF) backup for Valkey.
+# backup.sh — physical RDB+ACL snapshot backup for Valkey.
 #
 # KubeBlocks DataProtection injects:
 #   DP_DB_HOST           — target pod hostname/FQDN
@@ -121,9 +121,9 @@ cd "${DATA_DIR}" || { echo "ERROR: cannot cd to DATA_DIR '${DATA_DIR}'" >&2; exi
 # appendonlydir/ while tar runs, so a wholesale copy captures a torn AOF
 # manifest/segment set; on startup the engine PREFERS the AOF over the RDB,
 # which would make restore fidelity ride on that racy copy instead of the
-# consistent BGSAVE snapshot we just waited for. With no AOF manifest in
-# the restored data directory, the engine loads dump.rdb and seeds a fresh
-# AOF from it, making the BGSAVE moment the well-defined restore point.
+# consistent BGSAVE snapshot we just waited for. restore.prepareData seeds
+# a multipart AOF manifest from dump.rdb before Valkey starts, making the
+# BGSAVE moment the well-defined restore point even with appendonly enabled.
 if [ ! -f "./dump.rdb" ]; then
   echo "ERROR: dump.rdb not found in ${DATA_DIR} after BGSAVE" >&2
   exit 1
