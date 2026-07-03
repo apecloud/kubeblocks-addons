@@ -1,0 +1,29 @@
+apiVersion: v2
+name: doltdb
+description: DoltDB is a MySQL-compatible SQL database with Git-style versioning.
+version: 0.1.0
+appVersion: "2.1.10"
+type: application
+keywords:
+  - database
+  - mysql
+  - version-control
+  - doltdb
+
+home: https://www.dolthub.com
+sources:
+  - https://github.com/dolthub/dolt
+
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+
+maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks-addons
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/model: "database"
+  addon.kubeblocks.io/provider: "community"

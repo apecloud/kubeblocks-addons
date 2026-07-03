@@ -1,0 +1,8 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: doltdb-stop
+  namespace: demo
+spec:
+  clusterName: doltdb-cluster
+  type: Stop

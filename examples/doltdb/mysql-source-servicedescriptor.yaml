@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: external-mysql-source-auth
+  namespace: demo
+type: Opaque
+stringData:
+  username: repl_user
+  password: replace-me
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ServiceDescriptor
+metadata:
+  name: external-mysql-source
+  namespace: demo
+spec:
+  # The DoltDB addon currently declares mysql-source for serviceKind=mysql only.
+  # MariaDB-specific serviceKind=mariadb binding is not implemented.
+  serviceKind: mysql
+  serviceVersion: "8.0"
+  host:
+    value: mysql.example.svc
+  port:
+    value: "3306"
+  auth:
+    username:
+      valueFrom:
+        secretKeyRef:
+          name: external-mysql-source-auth
+          key: username
+    password:
+      valueFrom:
+        secretKeyRef:
+          name: external-mysql-source-auth
+          key: password

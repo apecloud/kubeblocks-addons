@@ -1,0 +1,221 @@
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "doltdb.replicationCmpdName" . }}
+  labels:
+    {{- include "doltdb.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "doltdb.annotations" $ | nindent 4 }}
+    apps.kubeblocks.io/skip-immutable-check: "true"
+spec:
+  provider: kubeblocks
+  description: {{ $.Chart.Description }} Direct-to-standby replication component definition.
+  serviceKind: doltdb
+  serviceVersion: {{ include "doltdb.defaultServiceVersion" $ }}
+  podManagementPolicy: Parallel
+  minReadySeconds: 10
+  replicasLimit:
+    minReplicas: 2
+    maxReplicas: 6
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+      isExclusive: true
+    - name: standby
+      updatePriority: 1
+      participatesInQuorum: false
+  available:
+    withRole: primary
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        letterCase: MixedCases
+  services:
+    - name: default
+      serviceName: doltdb
+      roleSelector: primary
+      spec:
+        ports:
+          - name: mysql
+            port: {{ $.Values.port }}
+            targetPort: mysql
+  volumes:
+    - name: data
+  configs:
+    - name: doltdb-server-config
+      template: {{ include "doltdb.configTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: doltdb-server-config
+      defaultMode: 0444
+      externalManaged: false
+      restartOnFileChange: true
+      variables:
+        - name: DOLT_LOG_LEVEL
+          defaultValue: "info"
+          description: Dolt SQL server log level.
+        - name: DOLT_LOG_FORMAT
+          defaultValue: "text"
+          description: Dolt SQL server log format.
+        - name: DOLT_READ_ONLY
+          defaultValue: "false"
+          description: Whether to start the SQL server in read-only mode.
+        - name: DOLT_AUTOCOMMIT
+          defaultValue: "true"
+          description: Default autocommit behavior.
+        - name: DOLT_TRANSACTION_COMMIT
+          defaultValue: "false"
+          description: Whether transactions automatically create Dolt commits.
+        - name: DOLT_AUTO_GC_ENABLED
+          defaultValue: "true"
+          description: Whether automatic Dolt garbage collection is enabled.
+        - name: DOLT_MAX_CONNECTIONS
+          defaultValue: "1000"
+          description: Maximum SQL server connections.
+        - name: DOLT_BACK_LOG
+          defaultValue: "50"
+          description: Listener backlog.
+        - name: DOLT_MAX_CONNECTIONS_TIMEOUT_MILLIS
+          defaultValue: "60000"
+          description: Maximum connection timeout in milliseconds.
+        - name: DOLT_READ_TIMEOUT_MILLIS
+          defaultValue: "28800000"
+          description: Read timeout in milliseconds.
+        - name: DOLT_WRITE_TIMEOUT_MILLIS
+          defaultValue: "28800000"
+          description: Write timeout in milliseconds.
+  scripts:
+    - name: doltdb-scripts
+      template: {{ include "doltdb.scriptsTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  vars:
+    - name: DOLT_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: root
+          optional: false
+          password: Required
+    - name: DOLT_ROOT_HOST
+      value: {{ $.Values.rootHost | quote }}
+    - name: DOLT_SQL_PORT
+      value: {{ $.Values.port | quote }}
+    - name: DOLT_METRICS_HOST
+      value: {{ $.Values.metrics.host | quote }}
+    - name: DOLT_METRICS_PORT
+      value: {{ $.Values.metrics.port | quote }}
+    - name: DOLT_METRICS_LABEL_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: DOLT_METRICS_LABEL_CLUSTER
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: DOLT_METRICS_LABEL_COMPONENT
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: DOLT_CONFIG_TEMPLATE_PATH
+      value: {{ printf "%s/server.yaml" $.Values.configMountPath | quote }}
+    - name: DOLT_GENERATED_CONFIG_PATH
+      value: {{ $.Values.generatedConfigPath | quote }}
+    - name: DOLT_CLUSTER_MODE
+      value: "true"
+    - name: DOLT_REMOTESAPI_PORT
+      value: {{ $.Values.remotesapiPort | quote }}
+    - name: DOLT_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: DOLT_CLUSTER_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+          optional: true
+    - name: TLS_MOUNT_PATH
+      value: {{ $.Values.tlsMountPath | quote }}
+  tls:
+    volumeName: tls
+    mountPath: {{ $.Values.tlsMountPath }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: {{ $.Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ $.Values.roleProbe.timeoutSeconds }}
+      exec:
+        container: doltdb
+        command:
+          - /scripts/doltdb-role-probe.sh
+    switchover:
+      timeoutSeconds: -1
+      exec:
+        container: doltdb
+        command:
+          - /scripts/doltdb-switchover.sh
+  runtime:
+    containers:
+      - name: doltdb
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
+        ports:
+          - name: mysql
+            protocol: TCP
+            containerPort: {{ $.Values.port }}
+          - name: remotesapi
+            protocol: TCP
+            containerPort: {{ $.Values.remotesapiPort }}
+          - name: metrics
+            protocol: TCP
+            containerPort: {{ $.Values.metrics.port }}
+        command:
+          - /scripts/doltdb-start.sh
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: DOLT_SERVER_TIMEOUT
+            value: "300"
+        volumeMounts:
+          - name: data
+            mountPath: {{ $.Values.dataMountPath }}
+          - name: doltdb-server-config
+            mountPath: {{ $.Values.configMountPath }}
+          - name: scripts
+            mountPath: /scripts
+        startupProbe:
+          exec:
+            command:
+              - /scripts/doltdb-sql-probe.sh
+          failureThreshold: 60
+          periodSeconds: 5
+          timeoutSeconds: 3
+        readinessProbe:
+          exec:
+            command:
+              - /scripts/doltdb-sql-probe.sh
+          failureThreshold: 3
+          periodSeconds: 10
+          timeoutSeconds: 3
+        livenessProbe:
+          exec:
+            command:
+              - /scripts/doltdb-sql-probe.sh
+          failureThreshold: 6
+          periodSeconds: 20
+          timeoutSeconds: 3
