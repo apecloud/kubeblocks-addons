@@ -23,7 +23,7 @@ package kafka
 	"control.plane.listener.name"?: *null | string | null
 
 	// A comma-separated list of the names of the listeners used by the controller. This is required if running in KRaft mode. When communicating with the controller quorum, the broker will always use the first listener in this list. Note: The ZooKeeper-based controller should not set this configuration.
-	"controller.listener.names"?: *null | string | null
+	// "controller.listener.names"?: *null | string | null
 
 	// The metrics polling interval (in seconds) which can be used in kafka.metrics.reporters implementations.
 	"kafka.metrics.polling.interval.secs"?: *10 | int & >=1 & <=2147483647
@@ -32,10 +32,10 @@ package kafka
 	"kafka.metrics.reporters"?: *[] | [...string]
 
 	// Map between listener names and security protocols. This must be defined for the same security protocol to be usable in more than one port or IP. For example, internal and external traffic can be separated even if SSL is required for both. Concretely, the user could define listeners with names INTERNAL and EXTERNAL and this property as: INTERNAL:SSL,EXTERNAL:SSL. As shown, key and value are separated by a colon and map entries are separated by commas. Each listener name should only appear once in the map. Different security (SSL and SASL) settings can be configured for each listener by adding a normalised prefix (the listener name is lowercased) to the config name. For example, to set a different keystore for the INTERNAL listener, a config with name listener.name.internal.ssl.keystore.location would be set. If the config for the listener name is not set, the config will fallback to the generic config (i.e. ssl.keystore.location). Note that in KRaft a default mapping from the listener names defined by controller.listener.names to PLAINTEXT is assumed if no explicit mapping is provided and no other security protocol is in use.
-	"listener.security.protocol.map"?: *"SASL_SSL:SASL_SSL,PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT" | string
+	// "listener.security.protocol.map"?: *"SASL_SSL:SASL_SSL,PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT" | string
 
 	// Listener List - Comma-separated list of URIs we will listen on and the listener names. If the listener name is not a security protocol, listener.security.protocol.map must also be set. Listener names and port numbers must be unique unless %n one listener is an IPv4 address and the other listener is %n an IPv6 address (for the same port).%n Specify hostname as 0.0.0.0 to bind to all interfaces.%n Leave hostname empty to bind to default interface.%n Examples of legal listener lists:%n PLAINTEXT://myhost:9092,SSL://:9091%n CLIENT://0.0.0.0:9092,REPLICATION://localhost:9093%n PLAINTEXT://127.0.0.1:9092,SSL://[::1]:9092%n
-	"listeners"?: *"PLAINTEXT://:9092" | string
+	// "listeners"?: *"PLAINTEXT://:9092" | string
 
 	// The maximum connection creation rate we allow in the broker at any time. Listener-level limits may also be configured by prefixing the config name with the listener prefix, for example, listener.name.internal.max.connection.creation.rate.Broker-wide connection rate limit should be configured based on broker capacity while listener limits should be configured based on application requirements. New connections will be throttled if either the listener or the broker limit is reached, with the exception of inter-broker listener. Connections on the inter-broker listener will be throttled only when the listener-level rate limit is reached.
 	"max.connection.creation.rate"?: *2147483647 | int & >=0 & <=2147483647
@@ -62,7 +62,7 @@ package kafka
 	"metrics.sample.window.ms"?: *30000 | int & >=1 & <=9223372036854775807
 
 	// The node ID associated with the roles this process is playing when process.roles is non-empty. This is required configuration when running in KRaft mode.
-	"node.id"?: *-1 | int & >=-2147483648 & <=2147483647
+	// "node.id"?: *-1 | int & >=-2147483648 & <=2147483647
 
 	// The number of threads that the server uses for receiving requests from the network and sending responses to the network. Noted: each listener (except for controller listener) creates its own thread pool.
 	"num.network.threads"?: *3 | int & >=1 & <=2147483647
@@ -273,7 +273,7 @@ package kafka
 
 	// validator: non-empty list
 	// List of endpoints to use for bootstrapping the cluster metadata. The endpoints are specified in comma-separated list of {host}:{port} entries. For example: localhost:9092,localhost:9093,localhost:9094.
-	"controller.quorum.bootstrap.servers"?: *[] | [...string]
+	// "controller.quorum.bootstrap.servers"?: *[] | [...string]
 
 	// Maximum time in milliseconds before starting new elections. This is used in the binary exponential backoff mechanism that helps prevent gridlocked elections
 	"controller.quorum.election.backoff.max.ms"?: *1000 | int & >=-2147483648 & <=2147483647
@@ -292,7 +292,7 @@ package kafka
 
 	// validator: non-empty list
 	// Map of id/endpoint information for the set of voters in a comma-separated list of {id}@{host}:{port} entries. For example: 1@localhost:9092,2@localhost:9093,3@localhost:9094
-	"controller.quorum.voters"?: *[] | [...string]
+	// "controller.quorum.voters"?: *[] | [...string]
 
 	// Enables delete topic. Delete topic through the admin tool will have no effect if this config is turned off
 	"delete.topic.enable"?: *true | bool
@@ -523,7 +523,7 @@ package kafka
 	"initial.broker.registration.timeout.ms"?: *60000 | int & >=-2147483648 & <=2147483647
 
 	// Name of listener used for communication between brokers. If this is unset, the listener name is defined by security.inter.broker.protocolIt is an error to set this and security.inter.broker.protocol properties at the same time.
-	"inter.broker.listener.name"?: *null | string | null
+	// "inter.broker.listener.name"?: *null | string | null
 
 	// validator: [0.8.0, 0.8.1, 0.8.2, 0.9.0, 0.10.0-IV0, 0.10.0-IV1, 0.10.1-IV0, 0.10.1-IV1, 0.10.1-IV2, 0.10.2-IV0, 0.11.0-IV0, 0.11.0-IV1, 0.11.0-IV2, 1.0-IV0, 1.1-IV0, 2.0-IV0, 2.0-IV1, 2.1-IV0, 2.1-IV1, 2.1-IV2, 2.2-IV0, 2.2-IV1, 2.3-IV0, 2.3-IV1, 2.4-IV0, 2.4-IV1, 2.5-IV0, 2.6-IV0, 2.7-IV0, 2.7-IV1, 2.7-IV2, 2.8-IV0, 2.8-IV1, 3.0-IV0, 3.0-IV1, 3.1-IV0, 3.2-IV0, 3.3-IV0, 3.3-IV1, 3.3-IV2, 3.3-IV3, 3.4-IV0, 3.5-IV0, 3.5-IV1, 3.5-IV2, 3.6-IV0, 3.6-IV1, 3.6-IV2, 3.7-IV0, 3.7-IV1, 3.7-IV2, 3.7-IV3, 3.7-IV4, 3.8-IV0, 3.9-IV0, 4.0-IV0, 4.0-IV1]
 	// Specify which version of the inter-broker protocol will be used. . This is typically bumped after all brokers were upgraded to a new version. Example of some valid values are: 0.8.0, 0.8.1, 0.8.1.1, 0.8.2, 0.8.2.0, 0.8.2.1, 0.9.0.0, 0.9.0.1 Check MetadataVersion for the full list.

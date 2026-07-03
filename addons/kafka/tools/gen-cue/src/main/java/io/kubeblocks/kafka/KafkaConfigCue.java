@@ -40,10 +40,18 @@ import java.util.TreeSet;
 import java.util.function.Supplier;
 
 public final class KafkaConfigCue {
+    // these configs will be managed by kubeblocks
     private static final Set<String> DISABLED_CONFIGS = Set.of(
             "advertised.listeners",
             "process.roles",
-            "ssl.keystore.type"
+            "ssl.keystore.type",
+            "node.id",
+            "controller.quorum.bootstrap.servers",
+            "controller.quorum.voters",
+            "listeners",
+            "controller.listener.names",
+            "inter.broker.listener.name",
+            "listener.security.protocol.map"
         );
     private static final Set<String> SHARED_KRAFT_CONFIGS = Set.of(
             KRaftConfigs.PROCESS_ROLES_CONFIG,
