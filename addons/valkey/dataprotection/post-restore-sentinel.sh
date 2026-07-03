@@ -52,6 +52,14 @@ positive_int_or_default() {
   esac
 }
 
+positive_int_or_empty() {
+  local value="$1"
+  case "${value}" in
+    ''|*[!0-9]*) return 1 ;;
+    *) [ "${value}" -gt 0 ] && echo "${value}" || return 1 ;;
+  esac
+}
+
 # Detect TLS via connection probe on the data pod.
 # Restore jobs do not mount the TLS volume (it may not exist in non-TLS
 # clusters), so probe: try plain first, then --tls --insecure.
@@ -170,12 +178,35 @@ discover_primary() {
 }
 
 # ── data-plane convergence check (no Sentinel credentials needed) ────────────
-# Poll the discovered primary until it reports role:master and at least
-# (reachable data pods - 1) connected replicas. This proves the restored
-# replication group re-formed; Sentinel monitor registration itself is owned
-# by the Sentinel startup self-discovery loop, which has the credentials.
+# Poll the discovered primary until it reports role:master and at least the
+# explicitly expected restored replica count attached. A partial discovery set
+# must not become the success contract, because postReady can run before every
+# restored replica is reachable. For HA restores without Sentinel credentials,
+# pass DATA_REPLICA_COUNT (or POST_RESTORE_DATA_EXPECTED_COUNT) via restore-env.
+resolve_expected_data_pod_count() {
+  local configured_count="${POST_RESTORE_DATA_EXPECTED_COUNT:-${DATA_REPLICA_COUNT:-}}"
+  if [ -n "${configured_count}" ]; then
+    expected_data_pod_count=$(positive_int_or_empty "${configured_count}") || {
+      echo "ERROR: expected data pod count must be a positive integer, got '${configured_count}'." >&2
+      return 1
+    }
+    return 0
+  fi
+
+  local sentinel_endpoint_count=0
+  sentinel_endpoint_count=$(getent hosts "${sentinel_headless}" 2>/dev/null | awk '!seen[$1]++ {c++} END {print c+0}') || sentinel_endpoint_count=0
+  if [ "${sentinel_endpoint_count}" -gt 0 ]; then
+    echo "ERROR: Sentinel endpoints exist but DATA_REPLICA_COUNT/POST_RESTORE_DATA_EXPECTED_COUNT is not set; refusing to infer restored replica convergence from a partial data scan." >&2
+    return 1
+  fi
+
+  expected_data_pod_count="${#reachable_data_fqdns[@]}"
+}
+
 verify_replication_converged() {
-  local expected_replicas=$(( ${#reachable_data_fqdns[@]} - 1 ))
+  local expected_data_pod_count expected_replicas
+  resolve_expected_data_pod_count || return 1
+  expected_replicas=$(( expected_data_pod_count - 1 ))
   [ "${expected_replicas}" -lt 0 ] && expected_replicas=0
   local attempt=1
   while [ "${attempt}" -le "${convergence_retries}" ]; do

@@ -42,12 +42,13 @@ Describe "Valkey post-restore Sentinel contract"
   End
 
   It "uses current Cluster spec.restore contract in the restore example"
-    When call grep -E "restore:|source:|apiGroup: dataprotection.kubeblocks.io|dataprotection.kubeblocks.io/volume-restore-policy: Parallel" "${restore_example}"
+    When call grep -E "restore:|source:|apiGroup: dataprotection.kubeblocks.io|dataprotection.kubeblocks.io/volume-restore-policy: Parallel|DATA_REPLICA_COUNT" "${restore_example}"
     The status should be success
     The stdout should include "restore:"
     The stdout should include "source:"
     The stdout should include "apiGroup: dataprotection.kubeblocks.io"
     The stdout should include "dataprotection.kubeblocks.io/volume-restore-policy: Parallel"
+    The stdout should include "DATA_REPLICA_COUNT"
   End
 
   It "does not use the legacy restore annotation in the restore example"
@@ -167,6 +168,38 @@ Describe "post-restore-sentinel behavioral tests"
       The status should be failure
       The stdout should include "waiting for replication convergence"
       The stderr should include "did not converge"
+    End
+
+    It "does not let a partial primary-only discovery become a zero-replica success"
+      primary_fqdn="valkey-0.h.ns.svc"
+      DATA_REPLICA_COUNT=3
+      reachable_data_fqdns=(a)
+      mock_cli() { printf "role:master\r\nconnected_slaves:0\r\n"; }
+      data_cli_base=(mock_cli)
+      When call verify_replication_converged
+      The status should be failure
+      The stdout should include "connected_slaves=0/2"
+      The stderr should include "did not converge"
+    End
+
+    It "requires an explicit expected data count for credential-less HA restores"
+      primary_fqdn="valkey-0.h.ns.svc"
+      sentinel_headless="s-headless.ns.svc.cluster.local"
+      unset DATA_REPLICA_COUNT
+      unset POST_RESTORE_DATA_EXPECTED_COUNT
+      reachable_data_fqdns=(a)
+      mock_cli() { printf "role:master\r\nconnected_slaves:0\r\n"; }
+      data_cli_base=(mock_cli)
+      _vrc_with_sentinel_dns() {
+        getent() {
+          [ "$1" = "hosts" ] && printf "10.0.0.1 %s\n" "$2"
+        }
+        verify_replication_converged
+      }
+      When call _vrc_with_sentinel_dns
+      The status should be failure
+      The stderr should include "DATA_REPLICA_COUNT"
+      The stderr should include "partial data scan"
     End
   End
 
