@@ -21,12 +21,27 @@
 #      clickhouse `sync_user_xml`, mariadb-galera wsrep monitor, and
 #      postgresql `restart_for_pending_restart_flag`. All proven.
 #
+# Why these loops exist next to Sentinel (justification boundary, measured
+# in the engine-level lab recorded in issue #2991):
+#   Sentinel DOES auto-correct instances it knows about: `+fix-slave-config`
+#   repaired a cascade slave in ~60s and `+convert-to-slave` demoted a
+#   self-promoted known replica in ~13s (valkey 8.1.3, 3 sentinels,
+#   down-after 20000). But Sentinel discovers replicas ONLY through the
+#   monitored master's INFO replication — an instance that never attached
+#   to the monitored master (exactly what a KubeBlocks bootstrap race or
+#   lexicographic self-election can produce) is invisible to Sentinel
+#   forever and never receives +convert-to-slave / +fix-slave-config.
+#   These loops are the backstop for that Sentinel-blind case; for
+#   Sentinel-known instances the guards below (e.g. the 120s promotion
+#   grace) intentionally let Sentinel win first so the two control loops
+#   never fight.
+#
 # What it does (per CHECK_INTERVAL_SECONDS, after INITIAL_DELAY_SECONDS):
 #   1) Cascade-topology repair — if this pod is `role:slave`, query the
-#      configured master; if that master is itself a slave (cascade
-#      topology Sentinel does NOT auto-correct), issue REPLICAOF directly
-#      to the real master at the head of the chain. Three guards
-#      (PR #2615 semantics):
+#      configured master; if that master is itself a slave, issue REPLICAOF
+#      directly to the real master at the head of the chain. Sentinel fixes
+#      this itself (~60s) when it knows the slave; this loop covers slaves
+#      Sentinel never discovered. Three guards (PR #2615 semantics):
 #        - skip-stale-role: re-read local role just before issuing REPLICAOF
 #        - skip-self-target: cascade chain may fold back to ourselves
 #        - remote-master-unreachable: timeout-bounded INFO; skip on timeout
@@ -35,6 +50,7 @@
 #      longer than STALL_THRESHOLD_SECONDS, send SIGTERM to PID 1 to trigger
 #      a container restart. This handles the diskless-sync race that leaves
 #      a slave permanently stuck in full-sync after rapid A→B→C failover.
+#      No Sentinel-native equivalent: a stalled slave still answers PING.
 #
 # Stderr is captured by the kubelet from the valkey container's main
 # process (after exec) and surfaced via `kubectl logs <pod> -c valkey`.
@@ -313,12 +329,17 @@ dual_master_epoch_now() {
 #
 # Evidence anchor: KB-10196 — when KB controller's isExclusive enforcement
 # clears the K8s role label on a duplicate-primary pod, sentinel correctly
-# elects a single master via quorum, but Sentinel protocol only reconfigures
-# slaves; it does NOT issue REPLICAOF to demote a self-claimed master that
-# was not the elected one.  This function fills that gap from the addon
-# side: each pod periodically asks sentinel-quorum "who is master?" and,
-# if it sees itself running as master while quorum says someone else is
-# master, issues REPLICAOF against itself to demote.
+# elects a single master via quorum. Sentinel DOES demote a self-claimed
+# master it knows about (+convert-to-slave, ~13s in the issue #2991 lab),
+# but it only knows instances discovered through the monitored master's
+# INFO replication — a pod that self-promoted without ever attaching to
+# the monitored master (bootstrap race) is invisible to Sentinel and never
+# gets demoted.  This function fills that Sentinel-blind gap from the
+# addon side: each pod periodically asks sentinel-quorum "who is master?"
+# and, if it sees itself running as master while quorum says someone else
+# is master, issues REPLICAOF against itself to demote. The 120s promotion
+# grace below guarantees Sentinel's own +convert-to-slave always gets the
+# first chance for Sentinel-known cases.
 #
 # Guards (Bob2 review angles + reviewer feedback):
 #   - skip-no-sentinel: SENTINEL_COMPONENT_NAME / SENTINEL_POD_FQDN_LIST
