@@ -11,6 +11,7 @@ spec:
       name: redis-replication-backup
       namespace: demo
     parameters:
+      dataprotection.kubeblocks.io/source-target-name: redis
       dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   clusterDef: redis
