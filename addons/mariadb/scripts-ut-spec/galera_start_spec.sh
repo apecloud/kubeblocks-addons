@@ -15,7 +15,7 @@ Describe "galera-start.sh"
   cleanup() {
     rm -rf "${TEST_DIR}"
     unset DATA_DIR POD_NAME MARIADB_ROOT_USER MARIADB_ROOT_PASSWORD PEER_FQDNS
-    unset GALERA_PRIMARY_PEER_WAIT_SECONDS
+    unset GALERA_PRIMARY_PEER_WAIT_SECONDS GALERA_BOOTSTRAP_DEFER_REASON
   }
   AfterEach "cleanup"
 
@@ -27,6 +27,14 @@ Describe "galera-start.sh"
 
   script_contains() {
     grep -F "$1" "$(script_file)"
+  }
+
+  write_grastate() {
+    cat > "${DATA_DIR}/grastate.dat" <<EOF
+uuid:    631a68d0-7697-11f1-923e-42be04dfa95f
+seqno:   ${1}
+safe_to_bootstrap: ${2}
+EOF
   }
 
   socketless_self_heal_kills_mariadbd() {
@@ -79,6 +87,75 @@ Describe "galera-start.sh"
       When call _wait_for_primary_peer
       The status should be failure
       The output should include "Deferring join to avoid forming a separate non-Primary Galera partition"
+    End
+  End
+
+  Describe "should_bootstrap()"
+    It "refuses pod-0 crash recovery bootstrap when local grastate is not safe"
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate 7 0
+      _any_peer_alive() {
+        return 1
+      }
+      mariadbd() {
+        printf "WSREP: Recovered position: 631a68d0-7697-11f1-923e-42be04dfa95f:7\n"
+      }
+
+      When call should_bootstrap
+      The status should be failure
+      The output should include "Refusing automatic Galera crash recovery bootstrap"
+      The output should include "wsrep-recover: seqno=7"
+      The contents of file "${DATA_DIR}/grastate.dat" should include "safe_to_bootstrap: 0"
+      The variable GALERA_BOOTSTRAP_DEFER_REASON should include "latest seqno"
+    End
+
+    It "allows pod-0 bootstrap when grastate is already safe"
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate 9 1
+      _any_peer_alive() {
+        return 1
+      }
+
+      When call should_bootstrap
+      The status should be success
+      The output should include "grastate.dat: safe_to_bootstrap=1"
+    End
+
+    It "allows non-pod-0 bootstrap when Galera marks it safe after clean shutdown"
+      POD_NAME="mdb-galera-mariadb-1"
+      write_grastate 9 1
+      _any_peer_alive() {
+        return 1
+      }
+
+      When call should_bootstrap
+      The status should be success
+      The output should include "grastate.dat: safe_to_bootstrap=1"
+    End
+
+    It "keeps fresh seqno=-1 bootstrap single-owner on pod-0"
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate -1 1
+      _any_peer_alive() {
+        return 1
+      }
+
+      When call should_bootstrap
+      The status should be success
+      The output should include "Fresh grastate.dat seqno=-1, pod-0 will bootstrap"
+    End
+
+    It "prevents non-pod-0 fresh seqno=-1 bootstrap"
+      POD_NAME="mdb-galera-mariadb-1"
+      write_grastate -1 1
+      _any_peer_alive() {
+        return 1
+      }
+
+      When call should_bootstrap
+      The status should be failure
+      The output should include "Fresh grastate.dat seqno=-1"
+      The output should include "will wait for pod-0 bootstrap"
     End
   End
 
