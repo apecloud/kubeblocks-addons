@@ -3,8 +3,6 @@ package io.kubeblocks.kafka;
 import org.apache.kafka.common.config.ConfigDef;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class KafkaConfigCueTest {
@@ -21,7 +19,7 @@ class KafkaConfigCueTest {
         String cue = KafkaConfigCue.renderForTest("Test", def);
 
         assertTrue(cue.contains("\"required.string\": string"));
-        assertTrue(cue.contains("\"optional.int\"?: *3 | int & >=-2147483648 & <=2147483647 & >=1"));
+        assertTrue(cue.contains("\"optional.int\"?: *3 | int & >=1 & <=2147483647"));
         assertTrue(cue.contains("\"optional.long\"?: *4 | int & >=-9223372036854775808 & <=9223372036854775807"));
         assertTrue(cue.contains("\"optional.short\"?: *5 | int & >=-32768 & <=32767"));
         assertTrue(cue.contains("\"enum.string\"?: *\"a\" | string & (\"a\" | \"b\")"));
@@ -30,12 +28,11 @@ class KafkaConfigCueTest {
 
     @Test
     void rendersRealKafkaSources() {
-        String cue = KafkaConfigCue.render(List.of("producer", "consumer", "admin", "streams", "topic", "broker"));
+        String cue = KafkaConfigCue.render();
 
-        assertTrue(cue.contains("#Producer"));
-        assertTrue(cue.contains("\"bootstrap.servers\""));
+        assertTrue(cue.contains("#Topic"));
+        assertTrue(cue.contains("#Broker"));
         assertTrue(cue.contains("\"retention.ms\""));
-        assertTrue(cue.contains("\"application.id\""));
         assertTrue(cue.contains("\"num.network.threads\""));
     }
 }

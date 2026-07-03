@@ -13,7 +13,7 @@ mvn compile exec:java -Dexec.args="--output kafka_config_schema.cue"
 Pick a Kafka version with:
 
 ```bash
-mvn -Dkafka.version=3.9.0 compile exec:java -Dexec.args="--include broker,topic,group --output kafka_config_schema.cue"
+mvn -Dkafka.version=3.9.0 compile exec:java -Dexec.args="--output kafka_config_schema.cue"
 ```
 
 The first version intentionally ignores Kafka configs that require private

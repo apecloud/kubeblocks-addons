@@ -1,47 +1,35 @@
 package io.kubeblocks.kafka;
 
-import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.server.config.AbstractKafkaConfig;
 import org.apache.kafka.storage.internals.log.LogConfig;
-import org.apache.kafka.streams.StreamsConfig;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
 
 public final class KafkaConfigCue {
-    private static final LinkedHashMap<String, ConfigSource> SOURCES = new LinkedHashMap<>();
-
-    static {
-        SOURCES.put("broker", new ConfigSource("Broker", () -> new ConfigDef(AbstractKafkaConfig.CONFIG_DEF)));
-        SOURCES.put("topic", new ConfigSource("Topic", LogConfig::configDefCopy));
-        // SOURCES.put("producer", new ConfigSource("Producer", ProducerConfig::configDef));
-        // SOURCES.put("consumer", new ConfigSource("Consumer", ConsumerConfig::configDef));
-        // SOURCES.put("admin", new ConfigSource("Admin", AdminClientConfig::configDef));
-        // SOURCES.put("streams", new ConfigSource("Streams", StreamsConfig::configDef));
-    }
+    private static final List<ConfigSource> SOURCES = List.of(
+            new ConfigSource("Broker", () -> new ConfigDef(AbstractKafkaConfig.CONFIG_DEF)),
+            new ConfigSource("Topic", LogConfig::configDefCopy));
 
     private KafkaConfigCue() {
     }
 
     public static void main(String[] args) throws IOException {
         CliOptions options = CliOptions.parse(args);
-        String cue = render(options.includes());
+        String cue = render();
 
         if (options.output() == null) {
             System.out.print(cue);
@@ -50,18 +38,13 @@ public final class KafkaConfigCue {
         }
     }
 
-    static String render(List<String> includes) {
+    static String render() {
         StringBuilder out = new StringBuilder();
         out.append("package kafka\n\n");
         out.append("// Generated from Kafka ConfigDef metadata.\n");
         out.append("// Dotted Kafka property names are intentionally kept as flat quoted fields.\n\n");
 
-        for (String include : includes) {
-            ConfigSource source = SOURCES.get(include);
-            if (source == null) {
-                throw new IllegalArgumentException(
-                        "Unknown config set '" + include + "'. Known sets: " + SOURCES.keySet());
-            }
+        for (ConfigSource source : SOURCES) {
             renderDefinition(out, source.definitionName(), source.configDef());
             out.append('\n');
         }
@@ -97,17 +80,13 @@ public final class KafkaConfigCue {
         }
         out.append(": ");
 
-        String constraint = baseConstraint(key);
-        String validatorConstraint = validatorConstraint(key);
+        String constraint = constraint(key);
         String defaultValue = key.hasDefault() ? defaultValue(key) : null;
 
         if (defaultValue != null) {
             out.append("*").append(defaultValue).append(" | ");
         }
         out.append(constraint);
-        if (!validatorConstraint.isEmpty()) {
-            out.append(" & ").append(validatorConstraint);
-        }
         if (key.hasDefault() && key.defaultValue == null) {
             out.append(" | null");
         }
@@ -115,7 +94,7 @@ public final class KafkaConfigCue {
     }
 
     private static void renderComment(StringBuilder out, ConfigDef.ConfigKey key) {
-        if (key.validator != null && validatorConstraint(key).isEmpty()) {
+        if (key.validator != null && !handlesValidator(key)) {
             out.append('\t').append("// validator: ").append(oneLine(key.validator.toString())).append('\n');
         }
         if (key.documentation != null && !key.documentation.isBlank()) {
@@ -123,10 +102,16 @@ public final class KafkaConfigCue {
         }
     }
 
-    private static String baseConstraint(ConfigDef.ConfigKey key) {
+    private static String constraint(ConfigDef.ConfigKey key) {
         if (key.type == ConfigDef.Type.LIST) {
             String elementConstraint = listElementConstraint(key);
             return "[..." + elementConstraint + "]";
+        }
+        if (isRangeValidator(key.validator) && isNumeric(key.type)) {
+            return numericConstraint(key.type, key.validator);
+        }
+        if (isEnumValidator(key.validator) && isStringLike(key.type)) {
+            return scalarType(key.type) + " & (" + enumConstraint(enumValues(key.validator)) + ")";
         }
         return scalarType(key.type);
     }
@@ -148,26 +133,21 @@ public final class KafkaConfigCue {
             return "string";
         }
 
-        String validator = key.validator.toString();
-        if (looksLikeEnum(validator)) {
-            return "(" + enumConstraint(enumValues(validator)) + ")";
+        if (isEnumValidator(key.validator)) {
+            return "(" + enumConstraint(enumValues(key.validator)) + ")";
         }
         return "string";
     }
 
-    private static String validatorConstraint(ConfigDef.ConfigKey key) {
-        if (key.validator == null || key.type == ConfigDef.Type.LIST) {
-            return "";
+    private static boolean handlesValidator(ConfigDef.ConfigKey key) {
+        if (key.validator == null) {
+            return false;
         }
-
-        String validator = key.validator.toString();
-        if (looksLikeEnum(validator) && isStringLike(key.type)) {
-            return "(" + enumConstraint(enumValues(validator)) + ")";
+        if (key.type == ConfigDef.Type.LIST) {
+            return isEnumValidator(key.validator);
         }
-        if (looksLikeRange(validator) && isNumeric(key.type)) {
-            return rangeConstraint(validator);
-        }
-        return "";
+        return (isEnumValidator(key.validator) && isStringLike(key.type))
+                || (isRangeValidator(key.validator) && isNumeric(key.type));
     }
 
     private static boolean isStringLike(ConfigDef.Type type) {
@@ -179,23 +159,19 @@ public final class KafkaConfigCue {
                 || type == ConfigDef.Type.DOUBLE;
     }
 
-    private static boolean looksLikeEnum(String value) {
-        return value.startsWith("[") && value.endsWith("]") && !value.contains("...");
+    private static boolean isEnumValidator(ConfigDef.Validator validator) {
+        return validator instanceof ConfigDef.ValidString || validator instanceof ConfigDef.ValidList;
     }
 
-    private static boolean looksLikeRange(String value) {
-        return value.startsWith("[") && value.endsWith("]") && value.contains("...");
+    private static boolean isRangeValidator(ConfigDef.Validator validator) {
+        return validator instanceof ConfigDef.Range;
     }
 
-    private static List<String> enumValues(String validator) {
-        String inner = validator.substring(1, validator.length() - 1).trim();
-        if (inner.isEmpty()) {
-            return List.of();
+    private static List<String> enumValues(ConfigDef.Validator validator) {
+        if (validator instanceof ConfigDef.ValidList) {
+            validator = readTypedField(validator, "validString", ConfigDef.ValidString.class);
         }
-        return Arrays.stream(inner.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
+        return readStringListField(validator, "validStrings");
     }
 
     private static String enumConstraint(List<String> values) {
@@ -209,19 +185,105 @@ public final class KafkaConfigCue {
         return String.join(" | ", quoted);
     }
 
-    private static String rangeConstraint(String validator) {
-        String inner = validator.substring(1, validator.length() - 1);
-        String[] rawParts = inner.split(",", -1);
-        List<String> parts = Arrays.stream(rawParts).map(String::trim).toList();
-        List<String> constraints = new ArrayList<>();
-        if (!parts.isEmpty() && !parts.get(0).isEmpty() && !parts.get(0).equals("...")) {
-            constraints.add(">=" + parts.get(0));
+    private static String numericConstraint(ConfigDef.Type type, ConfigDef.Validator validator) {
+        String scalar = scalarType(type);
+        if (type == ConfigDef.Type.DOUBLE) {
+            String range = NumericRange.fromValidator(validator).toCueConstraint();
+            if (range.isEmpty()) {
+                return scalar;
+            }
+            return scalar + " & " + range;
         }
-        String upper = parts.get(parts.size() - 1);
-        if (!upper.isEmpty() && !upper.equals("...")) {
-            constraints.add("<=" + upper);
+        NumericRange range = NumericRange.forType(type).merge(NumericRange.fromValidator(validator));
+        String rangeConstraint = range.toCueConstraint();
+        if (rangeConstraint.isEmpty()) {
+            return scalar;
         }
-        return String.join(" & ", constraints);
+        return "int & " + rangeConstraint;
+    }
+
+    private record NumericRange(String lower, String upper) {
+        static NumericRange forType(ConfigDef.Type type) {
+            return switch (type) {
+                case INT -> new NumericRange(String.valueOf(Integer.MIN_VALUE), String.valueOf(Integer.MAX_VALUE));
+                case SHORT -> new NumericRange(String.valueOf(Short.MIN_VALUE), String.valueOf(Short.MAX_VALUE));
+                case LONG -> new NumericRange(String.valueOf(Long.MIN_VALUE), String.valueOf(Long.MAX_VALUE));
+                default -> new NumericRange(null, null);
+            };
+        }
+
+        static NumericRange fromValidator(ConfigDef.Validator validator) {
+            Number min = readTypedField(validator, "min", Number.class);
+            Number max = readTypedField(validator, "max", Number.class);
+            return new NumericRange(numberString(min), numberString(max));
+        }
+
+        NumericRange merge(NumericRange other) {
+            return new NumericRange(maxLower(lower, other.lower), minUpper(upper, other.upper));
+        }
+
+        String toCueConstraint() {
+            List<String> constraints = new ArrayList<>();
+            if (lower != null) {
+                constraints.add(">=" + lower);
+            }
+            if (upper != null) {
+                constraints.add("<=" + upper);
+            }
+            return String.join(" & ", constraints);
+        }
+
+        private static String maxLower(String left, String right) {
+            if (left == null) {
+                return right;
+            }
+            if (right == null) {
+                return left;
+            }
+            return new BigDecimal(left).compareTo(new BigDecimal(right)) >= 0 ? left : right;
+        }
+
+        private static String minUpper(String left, String right) {
+            if (left == null) {
+                return right;
+            }
+            if (right == null) {
+                return left;
+            }
+            return new BigDecimal(left).compareTo(new BigDecimal(right)) <= 0 ? left : right;
+        }
+    }
+
+    private static String numberString(Number number) {
+        return number == null ? null : number.toString();
+    }
+
+    private static List<String> readStringListField(Object target, String name) {
+        Object value = readField(target, name);
+        if (!(value instanceof List<?> list)) {
+            throw new IllegalStateException(
+                    "Kafka validator field is not a list: " + target.getClass().getName() + "." + name);
+        }
+        List<String> values = new ArrayList<>();
+        for (Object item : list) {
+            values.add(Objects.toString(item, ""));
+        }
+        return List.copyOf(values);
+    }
+
+    private static <T> T readTypedField(Object target, String name, Class<T> type) {
+        return type.cast(readField(target, name));
+    }
+
+    private static Object readField(Object target, String name) {
+        try {
+            Field field = target.getClass().getDeclaredField(name);
+            field.setAccessible(true);
+            return field.get(target);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(
+                    "Cannot read Kafka validator field " + target.getClass().getName() + "." + name, e);
+        }
     }
 
     private static String defaultValue(ConfigDef.ConfigKey key) {
@@ -287,9 +349,8 @@ public final class KafkaConfigCue {
         }
     }
 
-    record CliOptions(List<String> includes, Path output) {
+    record CliOptions(Path output) {
         static CliOptions parse(String[] args) {
-            List<String> includes = new ArrayList<>(SOURCES.keySet());
             Path output = null;
 
             for (int i = 0; i < args.length; i++) {
@@ -299,12 +360,6 @@ public final class KafkaConfigCue {
                         usage(System.out);
                         System.exit(0);
                     }
-                    case "--include" -> {
-                        if (++i >= args.length) {
-                            throw new IllegalArgumentException("--include requires a comma-separated value");
-                        }
-                        includes = parseIncludes(args[i]);
-                    }
                     case "--output", "-o" -> {
                         if (++i >= args.length) {
                             throw new IllegalArgumentException("--output requires a path");
@@ -312,9 +367,7 @@ public final class KafkaConfigCue {
                         output = Path.of(args[i]);
                     }
                     default -> {
-                        if (arg.startsWith("--include=")) {
-                            includes = parseIncludes(arg.substring("--include=".length()));
-                        } else if (arg.startsWith("--output=")) {
+                        if (arg.startsWith("--output=")) {
                             output = Path.of(arg.substring("--output=".length()));
                         } else {
                             throw new IllegalArgumentException("Unknown argument: " + arg);
@@ -323,28 +376,12 @@ public final class KafkaConfigCue {
                 }
             }
 
-            return new CliOptions(includes, output);
-        }
-
-        private static List<String> parseIncludes(String value) {
-            List<String> includes = Arrays.stream(value.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .map(s -> s.toLowerCase(Locale.ROOT))
-                    .toList();
-            for (String include : includes) {
-                if (!SOURCES.containsKey(include)) {
-                    throw new IllegalArgumentException(
-                            "Unknown config set '" + include + "'. Known sets: " + SOURCES.keySet());
-                }
-            }
-            return includes;
+            return new CliOptions(output);
         }
 
         private static void usage(OutputStream out) {
             PrintStream print = new PrintStream(out, true, StandardCharsets.UTF_8);
-            print.println(
-                    "Usage: kafka-config-cue [--include broker,topic,producer,consumer,admin,streams] [--output FILE]");
+            print.println("Usage: kafka-config-cue [--output FILE]");
         }
     }
 }
