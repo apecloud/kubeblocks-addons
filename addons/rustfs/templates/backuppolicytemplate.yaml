@@ -1,0 +1,22 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: rustfs-backup-policy-template
+  labels:
+    {{- include "rustfs.labels" . | nindent 4 }}
+spec:
+  serviceKind: rustfs
+  compDefs:
+    - {{ include "rustfs.cmpdRegexpPattern" . }}
+  target:
+    role: readwrite
+    account: root
+  backupMethods:
+    - name: s3-full
+      snapshotVolumes: false
+      actionSetName: rustfs-s3-full-br
+  schedules:
+    - backupMethod: s3-full
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
