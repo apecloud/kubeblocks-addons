@@ -3,6 +3,7 @@ package io.kubeblocks.kafka;
 import org.apache.kafka.common.config.ConfigDef;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class KafkaConfigCueTest {
@@ -24,6 +25,30 @@ class KafkaConfigCueTest {
         assertTrue(cue.contains("\"optional.short\"?: *5 | int & >=-32768 & <=32767"));
         assertTrue(cue.contains("\"enum.string\"?: *\"a\" | string & (\"a\" | \"b\")"));
         assertTrue(cue.contains("\"enum.list\"?: *[\"a\", \"b\"] | [...(\"a\" | \"b\")]"));
+    }
+
+    @Test
+    void rendersValidatorCommentOnlyWhenConstraintDoesNotRepresentIt() {
+        ConfigDef.Validator customValidator = new ConfigDef.Validator() {
+            @Override
+            public void ensureValid(String name, Object value) {
+            }
+
+            @Override
+            public String toString() {
+                return "custom-validator";
+            }
+        };
+        ConfigDef def = new ConfigDef()
+            .define("bounded.int", ConfigDef.Type.INT, 3, ConfigDef.Range.atLeast(1), ConfigDef.Importance.MEDIUM, "Bounded")
+            .define("enum.string", ConfigDef.Type.STRING, "a", ConfigDef.ValidString.in("a", "b"), ConfigDef.Importance.LOW, "Enum")
+            .define("custom.string", ConfigDef.Type.STRING, "x", customValidator, ConfigDef.Importance.LOW, "Custom");
+
+        String cue = KafkaConfigCue.renderForTest("Test", def);
+
+        assertFalse(cue.contains("// validator: [1,...]"));
+        assertFalse(cue.contains("// validator: [a,b]"));
+        assertTrue(cue.contains("// validator: custom-validator"));
     }
 
     @Test

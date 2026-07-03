@@ -22,7 +22,7 @@ import java.util.function.Supplier;
 public final class KafkaConfigCue {
     private static final List<ConfigSource> SOURCES = List.of(
             new ConfigSource("Broker", () -> new ConfigDef(AbstractKafkaConfig.CONFIG_DEF)),
-            new ConfigSource("Topic", LogConfig::configDefCopy));
+            // new ConfigSource("Topic", LogConfig::configDefCopy));
 
     private KafkaConfigCue() {
     }
@@ -81,10 +81,9 @@ public final class KafkaConfigCue {
         out.append(": ");
 
         String constraint = constraint(key);
-        String defaultValue = key.hasDefault() ? defaultValue(key) : null;
 
-        if (defaultValue != null) {
-            out.append("*").append(defaultValue).append(" | ");
+        if (key.hasDefault()) {
+            out.append("*").append(defaultValue(key)).append(" | ");
         }
         out.append(constraint);
         if (key.hasDefault() && key.defaultValue == null) {
@@ -215,7 +214,7 @@ public final class KafkaConfigCue {
         static NumericRange fromValidator(ConfigDef.Validator validator) {
             Number min = readTypedField(validator, "min", Number.class);
             Number max = readTypedField(validator, "max", Number.class);
-            return new NumericRange(numberString(min), numberString(max));
+            return new NumericRange(min == null ? null : min.toString(), max == null ? null : max.toString());
         }
 
         NumericRange merge(NumericRange other) {
@@ -252,10 +251,6 @@ public final class KafkaConfigCue {
             }
             return new BigDecimal(left).compareTo(new BigDecimal(right)) <= 0 ? left : right;
         }
-    }
-
-    private static String numberString(Number number) {
-        return number == null ? null : number.toString();
     }
 
     private static List<String> readStringListField(Object target, String name) {
