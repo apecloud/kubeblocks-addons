@@ -414,7 +414,10 @@ spec:
 
     # postProvision: register the initial primary with all Sentinel pods.
     # Runs only on the primary pod (targetPodSelector: Role).
-    # preCondition: RuntimeReady ensures sentinel is already up before we try to register.
+    # preCondition: RuntimeReady means the action runs once this component's
+    # runtime is ready; sentinel being up first is guaranteed by the
+    # ClusterDefinition orders.provision (sentinel before valkey), not by
+    # this preCondition.
     postProvision:
       exec:
         container: valkey

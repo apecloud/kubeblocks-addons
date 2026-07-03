@@ -186,7 +186,7 @@ build_replicaof_config() {
         fi
         if [ "${scan_attempt}" -lt 3 ]; then
           echo "INFO: pod scan empty (attempt ${scan_attempt}/3) — retrying in 3s." >&2
-          sleep 3
+          sleep_when_ut_mode_false 3
         fi
       done
       if ! is_empty "${primary_fqdn}"; then

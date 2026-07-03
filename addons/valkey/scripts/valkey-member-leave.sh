@@ -230,7 +230,7 @@ if [ "${leaving_role}" = "master" ]; then
     # Wait up to 30 s for a new primary to emerge
     failover_done=false
     for _ in $(seq 1 10); do
-      sleep 3
+      sleep_when_ut_mode_false 3
       new_master=$("${s_cli[@]}" SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null \
                      | head -n1 | tr -d '\r\n') || true
       # Accept the failover as complete when Sentinel reports a master that is

@@ -96,7 +96,9 @@ sync_acl_to_replica() {
     local rule_flags
     rule_flags="${rule#user "${username}" }"
 
-    echo "  → ACL SETUSER ${username} ${rule_flags}"
+    # Rule flags contain password material (#<sha256> / ><plain> tokens) —
+    # log only the username, never the rule payload.
+    echo "  → ACL SETUSER ${username} (rules redacted)"
     local setuser_out
     # Disable glob expansion so ~* and &* in rule_flags are not expanded by the shell.
     # shellcheck disable=SC2086

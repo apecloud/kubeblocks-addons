@@ -52,81 +52,6 @@ get_role() {
   "${_cli[@]}" info replication 2>/dev/null | grep "^role:" | tr -d '\r\n' | cut -d: -f2
 }
 
-promote_replica() {
-  local target_fqdn="${1}"
-  echo "Promoting ${target_fqdn} to primary..."
-  local output
-  build_cli "${target_fqdn}"
-  # valkey-cli exits 0 even for protocol errors; capture output and check content.
-  output=$("${_cli[@]}" REPLICAOF NO ONE 2>&1) || {
-    echo "ERROR: REPLICAOF NO ONE failed on ${target_fqdn}: ${output}" >&2
-    return 1
-  }
-  if [ "${output}" != "OK" ]; then
-    echo "ERROR: REPLICAOF NO ONE on ${target_fqdn} returned unexpected response: ${output}" >&2
-    return 1
-  fi
-}
-
-wait_until_master() {
-  local fqdn="${1}" max_wait="${2:-10}"
-  local elapsed=0
-  while [ "${elapsed}" -lt "${max_wait}" ]; do
-    local role
-    role=$(get_role "${fqdn}") || true
-    [ "${role}" = "master" ] && return 0
-    sleep_when_ut_mode_false 1
-    elapsed=$((elapsed + 1))
-  done
-  echo "WARNING: ${fqdn} did not confirm master role within ${max_wait}s" >&2
-  return 1
-}
-
-repoint_one() {
-  # Wrapped as a named function so call_func_with_retry can call it by name.
-  local fqdn="${1}" new_primary="${2}" target_port="${3}"
-  local output
-  build_cli "${fqdn}"
-  # valkey-cli exits 0 even for protocol errors; capture output and check content.
-  output=$("${_cli[@]}" REPLICAOF "${new_primary}" "${target_port}" 2>&1) || {
-    echo "ERROR: REPLICAOF command failed on ${fqdn}: ${output}" >&2
-    return 1
-  }
-  if [ "${output}" != "OK" ]; then
-    echo "ERROR: REPLICAOF ${new_primary}:${target_port} on ${fqdn} returned: ${output}" >&2
-    return 1
-  fi
-}
-
-repoint_replicas() {
-  local new_primary_fqdn="${1}"
-  local failures=0
-  IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
-  for fqdn in "${pod_fqdns[@]}"; do
-    [ "${fqdn}" = "${new_primary_fqdn}" ] && continue   # skip the new primary itself
-    echo "Repointing ${fqdn} → ${new_primary_fqdn}..."
-    call_func_with_retry 3 3 repoint_one "${fqdn}" "${new_primary_fqdn}" "${port}" || {
-      echo "WARNING: failed to repoint ${fqdn} to ${new_primary_fqdn} — it may remain pointing at the old primary" >&2
-      failures=$((failures + 1))
-    }
-  done
-  [ "${failures}" -eq 0 ]
-}
-
-pick_any_secondary() {
-  IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
-  for fqdn in "${pod_fqdns[@]}"; do
-    [ "${fqdn}" = "${KB_SWITCHOVER_CURRENT_FQDN}" ] && continue
-    local role
-    role=$(get_role "${fqdn}") || continue
-    if [ "${role}" = "slave" ]; then
-      echo "${fqdn}"
-      return 0
-    fi
-  done
-  echo ""
-}
-
 pod_fqdns_with_candidate() {
   # VALKEY_POD_FQDN_LIST is rendered into pod environment at pod creation time.
   # After scale-out, old primary pods can still have a stale list that does not
@@ -219,9 +144,9 @@ execute_sentinel_failover() {
   return 1
 }
 
-wait_sentinel_sees_priority() {
-  # Poll until ALL Sentinels report that the candidate replica's slave-priority
-  # matches expected_prio, or until the deadline is reached.
+wait_sentinel_sees_priority_bias() {
+  # Poll until ALL Sentinels report the full priority bias (candidate=1,
+  # everyone else=100), or until the deadline is reached.
   #
   # Why ALL Sentinels: CONFIG SET replica-priority propagates into each
   # Sentinel's replica cache independently (~10s refresh cycle per Sentinel).
@@ -229,36 +154,7 @@ wait_sentinel_sees_priority() {
   # that receives the FAILOVER command may still have a stale cache and pick the
   # wrong replica.  Requiring ALL Sentinels to confirm ensures that whichever
   # Sentinel is chosen by execute_sentinel_failover has up-to-date priority data.
-  local candidate_fqdn="${1}" expected_prio="${2}"
-  local candidate_host="${candidate_fqdn%%.*}"   # e.g. "valkey-1"
-  # 30s covers 3 Sentinel info-refresh cycles (~10s each), giving ample time for
-  # CONFIG SET replica-priority to propagate into every Sentinel's replica cache.
-  local deadline=$((SECONDS + 30))
-
-  while [ "${SECONDS}" -lt "${deadline}" ]; do
-    IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
-    local confirmed=0 total=${#sentinel_fqdns[@]}
-    for s_fqdn in "${sentinel_fqdns[@]}"; do
-      local prio
-      prio=$(sentinel_observed_replica_priority "${s_fqdn}" "${candidate_host}.") || true
-      if [ "${prio}" = "${expected_prio}" ]; then
-        confirmed=$((confirmed + 1))
-      fi
-    done
-    if [ "${confirmed}" -eq "${total}" ]; then
-      echo "All ${total} Sentinel(s) confirmed: ${candidate_fqdn} slave-priority=${expected_prio}."
-      return 0
-    fi
-    sleep_when_ut_mode_false 1
-  done
-  # Abort rather than proceed: if not all Sentinels have the updated priority
-  # after 30s, issuing SENTINEL FAILOVER now risks promoting the wrong replica.
-  # Returning 1 causes the targeted switchover to fail fast so the caller can retry.
-  echo "ERROR: Sentinel did not reflect priority=${expected_prio} for ${candidate_fqdn} within 30s — aborting targeted switchover" >&2
-  return 1
-}
-
-wait_sentinel_sees_priority_bias() {
+  # 30s covers 3 Sentinel info-refresh cycles (~10s each).
   local candidate_fqdn="${1}" all_fqdns_csv="${2}"
   local candidate_pod="${candidate_fqdn%%.*}"
   local current_pod="${KB_SWITCHOVER_CURRENT_FQDN%%.*}"
