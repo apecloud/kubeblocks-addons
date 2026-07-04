@@ -18,6 +18,15 @@ function pending_restart_parameters_values() {
   echo $result
 }
 
+# decide whether the current pod should restart now: only when it has
+# pending_restart, and either no leader is pending or the pending leader
+# is the current pod (the leader restarts first, secondaries follow).
+function need_restart_for_pending() {
+  local pending_restart=$1
+  local leader_pending_restart_pod=$2
+  [[ "${pending_restart}" == "true" && ( -z "${leader_pending_restart_pod}" || "${leader_pending_restart_pod}" == "${CURRENT_POD_NAME}" ) ]]
+}
+
 function restart_for_pending_restart_flag() {
   while true; do
     sleep 5
@@ -64,7 +73,7 @@ function restart_for_pending_restart_flag() {
     # Re-check pending_restart to avoid duplicate restarts
     sleep 5
     pending_restart=$(curl --connect-timeout 3 -s http://localhost:8008 | jq -r .pending_restart)
-    if [[ "${pending_restart}" == "true" && (-z $leader_pending_restart_pod || "${leader_pod}" == "${CURRENT_POD_NAME}") ]]; then
+    if need_restart_for_pending "${pending_restart}" "${leader_pending_restart_pod}"; then
       # if leader pod is not pending_restart or current pod is leader pod, restart it
       echo "$(date) ${CURRENT_POD_NAME} is pending restart, restart it"
       curl -XPOST http://localhost:8008/restart
@@ -100,7 +109,7 @@ init_etcd_dcs_config_if_needed() {
 }
 
 regenerate_spilo_configuration_and_start_postgres() {
-  restart_for_pending_restart_flag 2>&1 >> /home/postgres/.kb_set_up.log &
+  restart_for_pending_restart_flag >> /home/postgres/.kb_set_up.log 2>&1 &
   echo "$(date) restart_for_pending_restart_flag PID=$!" >> /home/postgres/.kb_set_up.log
   if [ -f "${RESTORE_DATA_DIR}"/kb_restore.signal ]; then
       chown -R postgres "${RESTORE_DATA_DIR}"
