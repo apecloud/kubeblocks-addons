@@ -21,4 +21,17 @@ Describe "Valkey backup contract"
     When call grep -E '^\$\{connect_url\}|\$\{_probe_base\}[^@]' "${script_file}"
     The status should be failure
   End
+
+  It "archives only the BGSAVE snapshot and the ACL file"
+    When call grep -F 'tar -cvf - "${backup_files[@]}"' "${script_file}"
+    The status should be success
+    The stdout should include 'backup_files'
+  End
+
+  It "does not archive the live data directory wholesale (torn-AOF risk)"
+    # Tarring ./ captures appendonlydir/ mid-write; on restore the engine
+    # prefers the AOF over the consistent BGSAVE RDB.
+    When call grep -F 'tar -cvf - ./ ' "${script_file}"
+    The status should be failure
+  End
 End

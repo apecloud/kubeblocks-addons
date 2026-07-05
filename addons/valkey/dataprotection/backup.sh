@@ -1,5 +1,5 @@
 #!/bin/bash
-# backup.sh — physical (RDB+AOF) backup for Valkey.
+# backup.sh — physical RDB+ACL snapshot backup for Valkey.
 #
 # KubeBlocks DataProtection injects:
 #   DP_DB_HOST           — target pod hostname/FQDN
@@ -114,10 +114,23 @@ if [ "${_bgsave_elapsed}" -ge "${_bgsave_timeout}" ]; then
   exit 1
 fi
 
-echo "INFO: Archiving data directory..."
+echo "INFO: Archiving consistent snapshot artifacts..."
 cd "${DATA_DIR}" || { echo "ERROR: cannot cd to DATA_DIR '${DATA_DIR}'" >&2; exit 1; }
-# Archive the entire data directory (includes dump.rdb, appendonlydir/, users.acl)
-tar -cvf - ./ | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst" || exit 1
+# Archive ONLY the BGSAVE-produced RDB plus the ACL file — NOT the whole
+# data directory. With appendonly enabled the server keeps writing
+# appendonlydir/ while tar runs, so a wholesale copy captures a torn AOF
+# manifest/segment set; on startup the engine PREFERS the AOF over the RDB,
+# which would make restore fidelity ride on that racy copy instead of the
+# consistent BGSAVE snapshot we just waited for. restore.prepareData seeds
+# a multipart AOF manifest from dump.rdb before Valkey starts, making the
+# BGSAVE moment the well-defined restore point even with appendonly enabled.
+if [ ! -f "./dump.rdb" ]; then
+  echo "ERROR: dump.rdb not found in ${DATA_DIR} after BGSAVE" >&2
+  exit 1
+fi
+backup_files=("./dump.rdb")
+[ -f "./users.acl" ] && backup_files+=("./users.acl")
+tar -cvf - "${backup_files[@]}" | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst" || exit 1
 
 save_sentinel_acl || \
   echo "WARNING: Sentinel ACL save failed — ACL rules will not be restored after a cluster restore." >&2
