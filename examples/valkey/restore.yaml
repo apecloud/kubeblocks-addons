@@ -12,6 +12,7 @@ spec:
       namespace: demo
     parameters:
       dataprotection.kubeblocks.io/volume-restore-policy: Parallel
+      dataprotection.kubeblocks.io/restore-env: '{"DATA_REPLICA_COUNT":"3","POST_RESTORE_SENTINEL_EXPECTED_COUNT":"3"}'
   terminationPolicy: Delete
   clusterDef: valkey
   topology: replication-9

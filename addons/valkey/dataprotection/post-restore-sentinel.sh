@@ -158,8 +158,11 @@ fi
 # SENTINEL_POD_FQDN_LIST is the authoritative target set when supplied.
 # Otherwise, the Sentinel headless service DNS endpoints are the runtime target
 # set available to this DataProtection job. When POST_RESTORE_SENTINEL_EXPECTED_COUNT
-# is explicitly set, the discovered count must match; when unset, the DNS-discovered
-# count is accepted as authoritative (postReady runs after all pods are Ready).
+# is explicitly set, the discovered count must match exactly. When unset, the
+# DNS-discovered count is used — this assumes component orchestration guarantees
+# all Sentinel pods are Ready before postReady runs; if that assumption fails
+# (e.g. node eviction during restore), the explicit env var is the safety net.
+# Even-count discovery is refused as a signal of partial visibility.
 sentinel_fqdn_list=()
 expected_sentinel_count=""
 if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
@@ -199,7 +202,12 @@ else
     fi
     echo "INFO: using ${discovered_sentinel_count}/${expected_sentinel_count} DNS-discovered Sentinel endpoint(s) from ${sentinel_headless} as target set."
   else
+    if [ $((discovered_sentinel_count % 2)) -eq 0 ]; then
+      echo "ERROR: DNS discovered ${discovered_sentinel_count} Sentinel endpoint(s) — even count suggests partial discovery from an odd-replica deployment. Set POST_RESTORE_SENTINEL_EXPECTED_COUNT explicitly in your restore env to proceed safely (e.g. POST_RESTORE_SENTINEL_EXPECTED_COUNT=3 or =5)." >&2
+      exit 1
+    fi
     expected_sentinel_count="${discovered_sentinel_count}"
+    echo "WARNING: Sentinel expected count inferred from DNS (${discovered_sentinel_count}). For HA restores, explicitly set POST_RESTORE_SENTINEL_EXPECTED_COUNT in restore env to guarantee full-cluster registration."
     echo "INFO: using ${discovered_sentinel_count} DNS-discovered Sentinel endpoint(s) from ${sentinel_headless} as target set."
   fi
 fi
