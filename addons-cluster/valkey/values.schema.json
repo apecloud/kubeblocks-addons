@@ -24,7 +24,7 @@
       "type": "integer",
       "default": 3,
       "minimum": 1,
-      "maximum": 9
+      "maximum": 5
     },
     "cpu": {
       "title": "CPU",
@@ -103,8 +103,8 @@
           "title": "Sentinel replicas",
           "type": "integer",
           "default": 3,
-          "minimum": 1,
-          "maximum": 9
+          "minimum": 3,
+          "maximum": 5
         },
         "cpu": {
           "title": "Sentinel CPU",
