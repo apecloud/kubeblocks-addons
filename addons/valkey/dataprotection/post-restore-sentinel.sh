@@ -63,6 +63,8 @@ positive_int_or_empty() {
 # Detect TLS via connection probe on the data pod.
 # Restore jobs do not mount the TLS volume (it may not exist in non-TLS
 # clusters), so probe: try plain first, then --tls --insecure.
+# --insecure is intentional HERE ONLY: no CA file is available in this execution face,
+# so certificate verification is impossible; in-cluster CLIs verify via --cacert.
 detect_tls_args() {
   _tls_args=()
   local _probe_base=(valkey-cli --no-auth-warning -h "${DP_DB_HOST}" -p "${data_port}")
