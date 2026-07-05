@@ -55,6 +55,18 @@ Describe "Valkey post-restore Sentinel contract"
     The status should be failure
   End
 
+  It "uses EnvVar array format (not object) for restore-env annotation"
+    When call grep -F '"name":"DATA_REPLICA_COUNT","value"' "${restore_example}"
+    The status should be success
+    The stdout should include '"name":"DATA_REPLICA_COUNT"'
+  End
+
+  It "documents POST_RESTORE_SENTINEL_EXPECTED_COUNT in the restore example"
+    When call grep -F 'POST_RESTORE_SENTINEL_EXPECTED_COUNT' "${restore_example}"
+    The status should be success
+    The stdout should include "POST_RESTORE_SENTINEL_EXPECTED_COUNT"
+  End
+
   It "uses SENTINEL_POD_FQDN_LIST as authoritative target set when available"
     When call grep -F 'SENTINEL_POD_FQDN_LIST' "${script_file}"
     The status should be success
