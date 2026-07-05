@@ -221,6 +221,20 @@ restore_replica_priorities() {
   done
 }
 
+# captured_replica_priority — look up the pre-bias value recorded by
+# capture_replica_priorities. Prints the captured value, or 100 when the
+# fqdn was never captured (defensive default, same as capture's fallback).
+captured_replica_priority() {
+  local fqdn="${1}" i
+  for i in "${!_orig_prio_fqdns[@]}"; do
+    if [ "${_orig_prio_fqdns[$i]}" = "${fqdn}" ]; then
+      echo "${_orig_prio_values[$i]}"
+      return 0
+    fi
+  done
+  echo "100"
+}
+
 sentinel_observed_replica_priority() {
   local sentinel_fqdn="${1}" replica_fqdn="${2}"
   local replica_host="${replica_fqdn%%.*}"
@@ -310,6 +324,8 @@ wait_sentinel_sees_priority_bias() {
         # The current master is not listed in SENTINEL REPLICAS before failover.
         [ "${pod}" = "${current_pod}" ] && continue
         expected_prio="100"
+        # Never-promote replicas keep their captured 0 (bias skipped, #3016).
+        [ "$(captured_replica_priority "${fqdn}")" = "0" ] && expected_prio="0"
         [ "${pod}" = "${candidate_pod}" ] && expected_prio="1"
         total=$((total + 1))
         observed_prio=$(sentinel_observed_replica_priority "${s_fqdn}" "${fqdn}") || true
@@ -402,11 +418,24 @@ switchover_with_sentinel() {
     for fqdn in "${all_fqdns[@]}"; do
       # Append "." so "valkey-1." is not a substring of "valkey-11.headless..." (substring false positive).
       if contains "${fqdn}" "${candidate_fqdn%%.*}."; then
+        if [ "$(captured_replica_priority "${fqdn}")" = "0" ]; then
+          echo "WARNING: candidate ${fqdn} has replica-priority=0 (never-promote); explicit targeted switchover overrides it for this operation." >&2
+        fi
         if ! set_replica_priority "${fqdn}" 1; then
           echo "ERROR: failed to set priority on candidate ${fqdn} — aborting targeted switchover" >&2
           priority_failed=1
         fi
       else
+        # replica-priority 0 means NEVER promote (backup/delayed replicas).
+        # Biasing it to 100 would make it promotable for the whole window —
+        # if the candidate dies mid-failover Sentinel could promote a
+        # never-promote replica (issue #3016). Leave 0 untouched: the
+        # candidate at priority 1 always outranks any positive priority,
+        # and 0 stays out of the election entirely.
+        if [ "$(captured_replica_priority "${fqdn}")" = "0" ]; then
+          echo "Preserving never-promote replica-priority=0 on ${fqdn} (bias skipped)."
+          continue
+        fi
         if ! set_replica_priority "${fqdn}" 100; then
           echo "ERROR: failed to normalize priority on ${fqdn} — aborting targeted switchover" >&2
           priority_failed=1
