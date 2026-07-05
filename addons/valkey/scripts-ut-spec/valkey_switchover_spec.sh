@@ -1110,6 +1110,46 @@ Describe "Valkey Switchover Bash Script Tests"
         The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:25"
       End
 
+      It "preserves never-promote (priority 0) replicas through bias and restore"
+        get_role() { echo "slave"; }
+        get_replica_priority() {
+          case "${1}" in
+            valkey-0.*) echo "0" ;;     # never-promote replica
+            *) echo "100" ;;
+          esac
+        }
+        set_replica_priority() { echo "SET_PRIO:${1}:${2}"; return 0; }
+        wait_sentinel_sees_priority_bias() { return 0; }
+        execute_sentinel_failover() { echo "OK"; return 0; }
+        wait_for_new_master() { return 0; }
+        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
+        The status should be success
+        The stdout should include "Preserving never-promote replica-priority=0 on valkey-0.headless.default.svc.cluster.local"
+        # The 0-replica must NEVER be written to 100 — not during bias, not later.
+        The stdout should not include "SET_PRIO:valkey-0.headless.default.svc.cluster.local:100"
+        # Candidate bias still applies, and restore writes back the captured 0.
+        The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:1"
+        The stdout should include "SET_PRIO:valkey-0.headless.default.svc.cluster.local:0"
+      End
+
+      It "warns but proceeds when the explicit candidate itself has priority 0"
+        get_role() { echo "slave"; }
+        get_replica_priority() {
+          case "${1}" in
+            valkey-1.*) echo "0" ;;
+            *) echo "100" ;;
+          esac
+        }
+        set_replica_priority() { echo "SET_PRIO:${1}:${2}"; return 0; }
+        wait_sentinel_sees_priority_bias() { return 0; }
+        execute_sentinel_failover() { echo "OK"; return 0; }
+        wait_for_new_master() { return 0; }
+        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
+        The status should be success
+        The stderr should include "never-promote"
+        The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:1"
+      End
+
       It "falls back to 100 when a pod's current priority cannot be read"
         get_role() { echo "slave"; }
         get_replica_priority() { echo ""; }
