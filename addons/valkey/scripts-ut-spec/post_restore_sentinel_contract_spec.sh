@@ -67,13 +67,19 @@ Describe "Valkey post-restore Sentinel contract"
     The stdout should include "getent hosts"
   End
 
-  It "requires the chart-expected Sentinel endpoint count from DNS fallback"
-    When call grep -F "POST_RESTORE_SENTINEL_EXPECTED_COUNT:-3" "${script_file}"
+  It "accepts DNS-discovered Sentinel count as authoritative when env var is unset"
+    When call grep -F 'expected_sentinel_count="${discovered_sentinel_count}"' "${script_file}"
     The status should be success
-    The stdout should include "POST_RESTORE_SENTINEL_EXPECTED_COUNT:-3"
+    The stdout should include "expected_sentinel_count"
   End
 
-  It "rejects DNS fallback when discovered count differs from expected count"
+  It "enforces count match only when POST_RESTORE_SENTINEL_EXPECTED_COUNT is explicitly set"
+    When call grep -F 'POST_RESTORE_SENTINEL_EXPECTED_COUNT:-' "${script_file}"
+    The status should be success
+    The stdout should include "POST_RESTORE_SENTINEL_EXPECTED_COUNT"
+  End
+
+  It "rejects DNS fallback when explicitly-set expected count differs from discovered"
     When call grep -F 'discovered_sentinel_count}" -ne "${expected_sentinel_count}' "${script_file}"
     The status should be success
     The stdout should include "expected_sentinel_count"

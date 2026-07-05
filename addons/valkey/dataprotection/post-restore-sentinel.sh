@@ -157,9 +157,9 @@ fi
 # ── register primary with each Sentinel pod ──────────────────────────────────
 # SENTINEL_POD_FQDN_LIST is the authoritative target set when supplied.
 # Otherwise, the Sentinel headless service DNS endpoints are the runtime target
-# set available to this DataProtection job, and the expected count comes from
-# the chart's fixed Sentinel replicas contract. Restore must not report success
-# after configuring only a guessed or partial subset of Sentinel pods.
+# set available to this DataProtection job. When POST_RESTORE_SENTINEL_EXPECTED_COUNT
+# is explicitly set, the discovered count must match; when unset, the DNS-discovered
+# count is accepted as authoritative (postReady runs after all pods are Ready).
 sentinel_fqdn_list=()
 expected_sentinel_count=""
 if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
@@ -175,16 +175,33 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
   fi
   echo "INFO: using SENTINEL_POD_FQDN_LIST (${expected_sentinel_count} entries) as target set."
 else
-  expected_sentinel_count=$(positive_int_or_default "${POST_RESTORE_SENTINEL_EXPECTED_COUNT:-3}" 3)
-  while read -r sentinel_ip _; do
-    [ -n "${sentinel_ip}" ] && sentinel_fqdn_list+=("${sentinel_ip}")
-  done < <(getent hosts "${sentinel_headless}" 2>/dev/null | awk '!seen[$1]++ { print $1 }')
+  local_dns_attempt=0
+  while [ "${local_dns_attempt}" -lt 3 ]; do
+    sentinel_fqdn_list=()
+    while read -r sentinel_ip _; do
+      [ -n "${sentinel_ip}" ] && sentinel_fqdn_list+=("${sentinel_ip}")
+    done < <(getent hosts "${sentinel_headless}" 2>/dev/null | awk '!seen[$1]++ { print $1 }')
+    [ "${#sentinel_fqdn_list[@]}" -gt 0 ] && break
+    local_dns_attempt=$((local_dns_attempt + 1))
+    echo "INFO: DNS returned 0 Sentinel endpoints, retrying (${local_dns_attempt}/3)..."
+    sleep 5
+  done
   discovered_sentinel_count="${#sentinel_fqdn_list[@]}"
-  if [ "${discovered_sentinel_count}" -ne "${expected_sentinel_count}" ]; then
-    echo "ERROR: discovered ${discovered_sentinel_count}/${expected_sentinel_count} expected Sentinel endpoint(s) from ${sentinel_headless}; refusing partial post-restore registration." >&2
+  if [ "${discovered_sentinel_count}" -eq 0 ]; then
+    echo "ERROR: discovered 0 Sentinel endpoint(s) from ${sentinel_headless} after retries; cannot proceed." >&2
     exit 1
   fi
-  echo "INFO: using ${discovered_sentinel_count}/${expected_sentinel_count} DNS-discovered Sentinel endpoint(s) from ${sentinel_headless} as target set."
+  if [ -n "${POST_RESTORE_SENTINEL_EXPECTED_COUNT:-}" ]; then
+    expected_sentinel_count=$(positive_int_or_default "${POST_RESTORE_SENTINEL_EXPECTED_COUNT}" 3)
+    if [ "${discovered_sentinel_count}" -ne "${expected_sentinel_count}" ]; then
+      echo "ERROR: discovered ${discovered_sentinel_count}/${expected_sentinel_count} expected Sentinel endpoint(s) from ${sentinel_headless}; refusing partial post-restore registration." >&2
+      exit 1
+    fi
+    echo "INFO: using ${discovered_sentinel_count}/${expected_sentinel_count} DNS-discovered Sentinel endpoint(s) from ${sentinel_headless} as target set."
+  else
+    expected_sentinel_count="${discovered_sentinel_count}"
+    echo "INFO: using ${discovered_sentinel_count} DNS-discovered Sentinel endpoint(s) from ${sentinel_headless} as target set."
+  fi
 fi
 
 reachable_sentinel_fqdn_list=()
