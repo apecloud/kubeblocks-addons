@@ -10,4 +10,5 @@ spec:
   # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
   restart:
     # Specifies the name of the Component.
+  # 2026-06-02 Reason: align OpsRequest examples with the Cluster component name; Purpose: keep Stage 1 examples directly applicable to examples/yashandb/cluster.yaml.
   - componentName: yashan-comp

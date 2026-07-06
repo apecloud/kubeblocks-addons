@@ -1,0 +1,19 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: yashandb-expose-enable
+  namespace: demo
+spec:
+  type: Expose
+  clusterName: yashandb-cluster
+  # 2026-06-02 Reason: add expose example while avoiding role selectors before roleProbe exists; Purpose: expose the standalone YashanDB service through standard KubeBlocks OpsRequest.
+  expose:
+  - componentName: yashan-comp
+    services:
+    - name: internet
+      serviceType: LoadBalancer
+      annotations:
+        service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: internet
+        service.beta.kubernetes.io/alibaba-cloud-loadbalancer-charge-type: ""
+        service.beta.kubernetes.io/alibaba-cloud-loadbalancer-spec: slb.s1.small
+    switch: Enable

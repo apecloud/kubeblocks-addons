@@ -1,0 +1,31 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: yashandb-cluster-restore
+  namespace: demo
+  annotations:
+    # 2026-06-02 Reason: add Stage 3B restore example for a new cluster; Purpose: let KubeBlocks prepare the backup data before YashanDB startup-time restore.
+    kubeblocks.io/restore-from-backup: '{"yashan-comp":{"name":"yashandb-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: yashan-comp
+      # 2026-06-22 Reason: native Configure is delivered through a new immutable ComponentDefinition revision; Purpose: keep restore examples aligned with fresh addon installs.
+      # 2026-06-23 Reason: restored example clusters must use the same current ComponentDefinition as fresh examples; Purpose: keep restore validation aligned with the PR-facing addon revision.
+      componentDef: yashandb-1.1.0-alpha.29
+      replicas: 1
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+      resources:
+        limits:
+          cpu: "1"
+          memory: "4Gi"
+        requests:
+          cpu: "1"
+          memory: "4Gi"

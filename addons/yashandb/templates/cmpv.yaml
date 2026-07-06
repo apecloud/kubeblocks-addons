@@ -10,6 +10,9 @@ spec:
   compatibilityRules:
     - releases:
         - 23.1.1-100
+        {{- range .Values.image.extraReleases }}
+        - {{ .serviceVersion }}
+        {{- end }}
       compDefs:
         - {{ include "yashandb.cmpdRegexpPattern" . }}
   releases:
@@ -17,4 +20,17 @@ spec:
       serviceVersion: 23.1.1-100
       images:
         volume-permissions: {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository }}:1.35
-        yashandb-container: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:23.1.1.100
+        # 2026-06-17 Reason: keep the expected image aligned with the imported vendor archive tag; Purpose: avoid InstanceSet image-mismatch readiness blocking.
+        yashandb-container: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        # 2026-06-24 Reason: the YCM 23.5.13.3 arm64 package provides the exporter runtime contract but not an addon image tag; Purpose: keep image replacement value-driven.
+        yashandb-exporter: {{ include "yashandb.metricsImage" . }}
+    {{- range .Values.image.extraReleases }}
+    # 2026-06-29 Reason: KubeBlocks upgrade validation requires a distinct registered serviceVersion and image; Purpose: keep optional upgrade candidates explicit instead of silently changing the default release.
+    # Time: 2026-06-29.
+    - name: {{ .name | default .serviceVersion }}
+      serviceVersion: {{ .serviceVersion }}
+      images:
+        volume-permissions: {{ $.Values.busyboxImage.registry | default ( $.Values.image.registry | default "docker.io" ) }}/{{ $.Values.busyboxImage.repository }}:{{ $.Values.busyboxImage.tag | default "1.35" }}
+        yashandb-container: {{ .image }}
+        yashandb-exporter: {{ include "yashandb.metricsImage" $ }}
+    {{- end }}

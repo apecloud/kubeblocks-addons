@@ -6,8 +6,9 @@ metadata:
 spec:
   terminationPolicy: Delete
   componentSpecs:
-    - name: yashan
-      componentDef: yashandb
+    - name: yashan-comp
+      # 2026-06-23 Reason: PR examples should create clusters from the current immutable addon revision; Purpose: avoid users starting from stale alpha ComponentDefinitions after validation fixes.
+      componentDef: yashandb-1.1.0-alpha.29
       # Only supports Standalone YashanDB at the moment
       # Must set replcias to 1.
       replicas: 1
@@ -22,7 +23,7 @@ spec:
       resources:
         limits:
           cpu: "1"
-          memory: "1Gi"
+          memory: "4Gi"
         requests:
           cpu: "1"
-          memory: "1Gi"
+          memory: "4Gi"

@@ -1,0 +1,32 @@
+{{- $pd := .Files.Get "configs/yashandb-config-effect-scope.yaml" | fromYaml }}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "yashandb.paramsDefName" . }}
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+spec:
+  # 2026-06-03 Reason: bind Stage 5A parameter constraints to the existing YashanDB ComponentDefinition family; Purpose: let Configure OpsRequests validate install.ini fields without adding dynamic reload.
+  componentDef: {{ include "yashandb.cmpdRegexpPattern" . | quote }}
+  templateName: {{ include "yashandb.configTplName" . }}
+  fileName: install.ini
+  fileFormatConfig:
+    format: ini
+  parametersSchema:
+    topLevelKey: YashanDBParameter
+    cue: |-
+      {{- .Files.Get "configs/yashandb-config-constraint.cue" | nindent 6 }}
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- $params := get $pd "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- $params := get $pd "dynamicParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}

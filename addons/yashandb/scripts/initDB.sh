@@ -29,6 +29,8 @@ YASDB_TEMP_FILE="${YASDB_MOUNT_HOME}/.temp.ini"
 YASDB_INSTALL_FILE="${YASDB_MOUNT_HOME}/install.ini"
 INSTALL_INI_FILE="${YASDB_INSTALL_FILE}"
 START_LOG_FILE="${YASDB_DATA}/log/start.log"
+YASDB_RESTORE_MARKER="${YASDB_MOUNT_HOME}/.restore_new_cluster"
+YASDB_RESTORE_DIR="${YASDB_MOUNT_HOME}/restore/${DP_BACKUP_NAME:-}"
 
 # Load environment files
 source_env_files() {
@@ -52,7 +54,8 @@ setup_install_files() {
   s_i=$(sed -n -e '/\<instance\>/=' "$INSTALL_INI_FILE")
   n_i=$((s_i + 1))
 
-  sed -n "${n_i},${e_i} p" "$INSTALL_INI_FILE" >>"$YASDB_DATA"/config/yasdb.ini
+  # 2026-06-17 Reason: container restarts can re-enter initialization after a partial failure; Purpose: keep yasdb.ini idempotent and avoid duplicate DB_BLOCK_SIZE entries.
+  sed -n "${n_i},${e_i} p" "$INSTALL_INI_FILE" >"$YASDB_DATA"/config/yasdb.ini
 }
 
 # Setup password file
@@ -122,6 +125,55 @@ EOF
   return 1
 }
 
+wait_for_database_open() {
+  local i=0
+
+  while ((i < 60)); do
+    sleep 1
+    if [ "$("$YASQL_BIN" sys/"$YASDB_PASSWORD" -c "select open_mode from v\$database" | grep -c READ_WRITE)" -eq 1 ]; then
+      echo "Database open succeed!"
+      return 0
+    fi
+    ((i++))
+  done
+
+  echo "Failed to open restored database. please check logfile $START_LOG_FILE."
+  return 1
+}
+
+restore_database() {
+  local restore_dir
+
+  restore_dir="${YASDB_RESTORE_DIR}"
+  if [ -f "$YASDB_RESTORE_MARKER" ]; then
+    restore_dir="$(cat "$YASDB_RESTORE_MARKER")"
+  fi
+
+  if [ -z "$restore_dir" ] || [ ! -d "$restore_dir" ]; then
+    echo "restore directory is missing: $restore_dir"
+    return 1
+  fi
+
+  start_yasdb_process || return 1
+
+  # 2026-06-02 Reason: YashanDB restore requires a NOMOUNT database; Purpose: restore a new cluster from the backup prepared by dataprotection/restore.sh before normal open startup.
+  "${YASQL_BIN}" sys/"$YASDB_PASSWORD" >>"$START_LOG_FILE" <<EOF
+restore database from '${restore_dir}';
+exit;
+EOF
+
+  rm -f "$YASDB_RESTORE_MARKER"
+  echo "Database restore command submitted from ${restore_dir}."
+
+  # 2026-06-18 Reason: real restore proof left the database mounted while KubeBlocks marked the cluster ready; Purpose: open the restored database before readiness and business SQL validation.
+  "${YASQL_BIN}" sys/"$YASDB_PASSWORD" >>"$START_LOG_FILE" <<EOF
+alter database open;
+exit;
+EOF
+
+  wait_for_database_open || return 1
+}
+
 # Install sample schema if requested
 install_sample_schema() {
   if [[ "${INSTALL_SIMPLE_SCHEMA_SALES,,}" == "y" ]]; then
@@ -133,6 +185,12 @@ main() {
   source_env_files
   setup_install_files
   setup_password
+
+  if [ -f "$YASDB_RESTORE_MARKER" ]; then
+    restore_database || exit 1
+    sleep infinity
+  fi
+
   start_yasdb_process || exit 1
   create_database || exit 1
   install_sample_schema
