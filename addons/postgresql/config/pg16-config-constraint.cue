@@ -935,7 +935,7 @@
 	ssl_max_protocol_version?: string & "TLSv1" | "TLSv1.1" | "TLSv1.2"
 
 	// Sets the minimum SSL/TLS protocol version to use.
-	ssl_min_protocol_version?: string & "TLSv1" | "TLSv1.1" | "TLSv1.2"
+	ssl_min_protocol_version?: string & "TLSv1" | "TLSv1.1" | "TLSv1.2" | "TLSv1.3"
 
 	// Causes ... strings to treat backslashes literally.
 	standard_conforming_strings?: bool & false | true
