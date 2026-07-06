@@ -163,7 +163,7 @@ Claim boundary:
 
 ### Create
 
-Create a YashanDB cluster of version `23.4.1.109` with ONE replica.
+Create a YashanDB cluster with service version `23.4.1-109` and the default `23.4.1.109` image tag with ONE replica.
 
 > [!NOTE]
 > This example uses the default addon image version. For enterprise image tags, please contact the vendor and keep `ComponentVersion.serviceVersion` aligned with the actual image version.

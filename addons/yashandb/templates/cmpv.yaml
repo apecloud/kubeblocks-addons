@@ -9,17 +9,17 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - 23.4.1.109
+        - 23.4.1-109
         {{- range .Values.image.extraReleases }}
         - {{ .serviceVersion }}
         {{- end }}
       compDefs:
         - {{ include "yashandb.cmpdRegexpPattern" . }}
   releases:
-    # 2026-07-06 Reason: the default release must match the default YashanDB image version; Purpose: avoid KubeBlocks resolving a stale serviceVersion while running the 23.4.1.109 image.
+    # 2026-07-06 Reason: KubeBlocks rejects four-segment dotted version strings while the vendor image tag uses 23.4.1.109; Purpose: expose a semver-compatible serviceVersion that maps to the default 23.4.1.109 image.
     # Time: 2026-07-06.
-    - name: 23.4.1.109
-      serviceVersion: 23.4.1.109
+    - name: 23.4.1-109
+      serviceVersion: 23.4.1-109
       images:
         volume-permissions: {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository }}:1.35
         # 2026-06-17 Reason: keep the expected image aligned with the imported vendor archive tag; Purpose: avoid InstanceSet image-mismatch readiness blocking.
