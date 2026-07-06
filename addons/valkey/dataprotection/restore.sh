@@ -72,6 +72,37 @@ seed_multipart_aof_from_rdb() {
   echo "INFO: Seeded multipart AOF manifest from restored dump.rdb."
 }
 
+# Cluster (sharding) restore guard: v1 supports SAME shard count only —
+# keys restored onto a shard that does not own their hash slots are
+# silently unreachable, so a mismatch must stop before the pod starts.
+# Enforcement is engine-truth (cluster-meta embedded at backup time)
+# compared against RESTORE_TARGET_SHARDS when the operator provides it
+# via dataprotection.kubeblocks.io/restore-env; without the env we can
+# only warn (DP jobs cannot see target sharding vars — platform gap,
+# kubeblocks#10540).
+verify_cluster_shard_count() {
+  local meta="${DATA_DIR}/cluster-meta" source_shards
+  [ -f "${meta}" ] || return 0
+  source_shards=$(grep '^source_shards=' "${meta}" | cut -d= -f2)
+  rm -f "${meta}"   # metadata, not engine data — never leave it in DATA_DIR
+  case "${source_shards}" in
+    ''|*[!0-9]*)
+      echo "ERROR: cluster-meta present but source_shards is invalid ('${source_shards}')." >&2
+      exit 1 ;;
+  esac
+  if [ -n "${RESTORE_TARGET_SHARDS:-}" ]; then
+    if [ "${RESTORE_TARGET_SHARDS}" != "${source_shards}" ]; then
+      echo "ERROR: shard count mismatch — backup taken from ${source_shards} shard(s), target declares ${RESTORE_TARGET_SHARDS}. v1 cluster restore requires the SAME shard count; refusing before any pod starts." >&2
+      exit 1
+    fi
+    echo "INFO: cluster restore shard count verified (${source_shards})."
+  else
+    echo "WARNING: cluster backup (source_shards=${source_shards}) restored without RESTORE_TARGET_SHARDS — same-shard-count is the operator's responsibility; set it via restore-env to enforce."
+  fi
+}
+
+verify_cluster_shard_count
+
 seed_multipart_aof_from_rdb
 
 rm -f "${placeholder}" && sync

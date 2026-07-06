@@ -36,6 +36,9 @@ case "$1" in
     if [ "${FAKE_DATASAFED_INCLUDE_ROOT_AOF:-}" = "1" ]; then
       printf 'existing aof\n' > "${tmp}/src/appendonly.aof"
     fi
+    if [ -n "${FAKE_DATASAFED_CLUSTER_META:-}" ]; then
+      printf 'source_shards=%s\n' "${FAKE_DATASAFED_CLUSTER_META}" > "${tmp}/src/cluster-meta"
+    fi
     tar -cf - -C "${tmp}/src" .
     rm -rf "${tmp}"
     ;;
@@ -77,6 +80,8 @@ SH
     unset FAKE_DATASAFED_INCLUDE_ROOT_AOF
     unset FAKE_DATASAFED_OMIT_RDB
     unset FAKE_DATASAFED_EMPTY_RDB
+    unset FAKE_DATASAFED_CLUSTER_META
+    unset RESTORE_TARGET_SHARDS
   }
   After "cleanup"
 
@@ -156,5 +161,35 @@ SH
     The stdout should include "INFO: Restoring from restore-test.tar.zst..."
     The stderr should include "ERROR: restored archive already contains AOF state"
     The stderr should include "appendonly.aof"
+  End
+  It "rejects a cluster restore when target shard count differs (fail-fast)"
+    export FAKE_DATASAFED_CLUSTER_META=3
+    export RESTORE_TARGET_SHARDS=4
+
+    When run bash ../dataprotection/restore.sh
+    The status should be failure
+    The stdout should include "INFO: Restoring from restore-test.tar.zst..."
+    The stderr should include "shard count mismatch"
+    The stderr should include "backup taken from 3 shard(s), target declares 4"
+  End
+
+  It "verifies and cleans cluster-meta when shard counts match"
+    export FAKE_DATASAFED_CLUSTER_META=3
+    export RESTORE_TARGET_SHARDS=3
+
+    When run bash ../dataprotection/restore.sh
+    The status should be success
+    The stdout should include "cluster restore shard count verified (3)"
+    The file "${data_dir}/cluster-meta" should not be exist
+  End
+
+  It "warns loudly when cluster-meta exists but no target count is provided"
+    export FAKE_DATASAFED_CLUSTER_META=5
+
+    When run bash ../dataprotection/restore.sh
+    The status should be success
+    The stdout should include "WARNING"
+    The stdout should include "source_shards=5"
+    The file "${data_dir}/cluster-meta" should not be exist
   End
 End

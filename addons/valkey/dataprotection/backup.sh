@@ -132,6 +132,22 @@ if [ ! -f "./dump.rdb" ]; then
 fi
 backup_files=("./dump.rdb")
 [ -f "./users.acl" ] && backup_files+=("./users.acl")
+
+# Cluster (sharding) mode: embed the source shard count as engine truth
+# (master lines in CLUSTER NODES) so restore can verify the same-shard-count
+# v1 boundary. Sentinel/standalone targets skip this (cluster_enabled:0).
+_cluster_enabled=$("${connect_base[@]}" INFO cluster 2>/dev/null | grep "^cluster_enabled:" | tr -d "\\r" | cut -d: -f2)
+if [ "${_cluster_enabled}" = "1" ]; then
+  _source_shards=$("${connect_base[@]}" CLUSTER NODES 2>/dev/null | tr -d "\r" | awk '$3 ~ /master/' | grep -c . || true)
+  if [ -z "${_source_shards}" ] || [ "${_source_shards}" -lt 1 ]; then
+    echo "ERROR: cluster mode detected but could not count source shards from CLUSTER NODES." >&2
+    exit 1
+  fi
+  printf 'source_shards=%s
+' "${_source_shards}" > ./cluster-meta
+  backup_files+=("./cluster-meta")
+  echo "INFO: cluster mode — embedded cluster-meta (source_shards=${_source_shards})."
+fi
 tar -cvf - "${backup_files[@]}" | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst" || exit 1
 
 save_sentinel_acl || \
