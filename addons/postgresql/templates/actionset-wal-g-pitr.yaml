@@ -20,8 +20,6 @@ spec:
       value: $(VOLUME_DATA_DIR)/pgroot/data/pg_wal
     - name: LOG_ARCHIVE_SECONDS
       value: "5"
-    - name: IMAGE_TAG
-      value: 14.8.0-pgvector-v0.6.1
     - name: TARGET_POD_ROLE
       # TODO input by backup policy
       value: primary
