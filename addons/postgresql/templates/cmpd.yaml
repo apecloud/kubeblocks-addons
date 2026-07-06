@@ -452,7 +452,7 @@ spec:
             port: tcp-pgbouncer
         env:
           - name: PGBOUNCER_AUTH_TYPE
-            value: md5
+            value: scram-sha-256
           - name: POSTGRESQL_USERNAME
             value: $(POSTGRES_USER)
           - name: POSTGRESQL_PASSWORD
