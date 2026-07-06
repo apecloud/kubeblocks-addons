@@ -3,7 +3,8 @@
 #   - in-cluster networking only (clients must be cluster-aware; no
 #     NodePort/LB direct-to-shard access)
 #   - shards 3..32, replicas per shard 1..5
-#   - restore: same shard count only (see restore-sharding.yaml)
+#   - restore of cluster backups: NOT supported in v1 (refused at restore
+#     time; slot-aware restore is a planned follow-up)
 # Each shard is one Valkey master plus (replicas-1) replicas; the 16384
 # hash slots are evenly distributed across shards at creation.
 apiVersion: apps.kubeblocks.io/v1
