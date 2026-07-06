@@ -296,17 +296,7 @@ attach_all_replicas() {
     fi
     for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$' | sort); do
       [ "${fqdn}" = "${first}" ] && continue
-      # already a member? (idempotency: skip nodes the master already knows)
-      build_cli "${first}"
-      if "${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | grep -q "${fqdn}"; then
-        continue
-      fi
-      build_cluster_cli
-      add_out=$("${_ccli[@]}" --cluster add-node "${fqdn}:${SERVICE_PORT}" "${first}:${SERVICE_PORT}" --cluster-slave --cluster-master-id "${master_id}" 2>&1) || {
-        classify formation-add-replica no "add replica ${fqdn} to shard ${shard} failed: ${add_out}"
-        return 1
-      }
-      echo "attached ${fqdn} as replica of shard ${shard} (master ${master_id})."
+      ensure_replica_bound "${first}" "${fqdn}" "${master_id}" "${shard}" || return 1
     done
   done < <(each_shard_fqdn_list)
 }
@@ -381,19 +371,44 @@ verify_or_join() {
 }
 
 attach_shard_replicas_to() {
-  local master_fqdn="${1}" master_id="${2}" fqdn add_out
+  local master_fqdn="${1}" master_id="${2}" fqdn
   for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$' | sort); do
     [ "${fqdn}" = "${master_fqdn}" ] && continue
-    build_cli "${master_fqdn}"
-    if "${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | grep -q "${fqdn}"; then
-      continue
-    fi
+    ensure_replica_bound "${master_fqdn}" "${fqdn}" "${master_id}" "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" || return 1
+  done
+}
+
+# Idempotent replica binding (round-2 review): visibility alone never
+# skips. Absent -> add-node --cluster-slave. Present but wrong role/parent
+# -> engine-native repair via CLUSTER REPLICATE on the pod itself (safe:
+# the target owns no slots as a would-be replica; REPLICATE is refused by
+# the engine if it did). Present and bound -> done.
+ensure_replica_bound() {
+  local via="${1}" fqdn="${2}" master_id="${3}" shard="${4}"
+  local line flags parent out
+  build_cli "${via}"
+  line=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | grep -F "${fqdn}" | head -1)
+  if [ -z "${line}" ]; then
     build_cluster_cli
-    add_out=$("${_ccli[@]}" --cluster add-node "${fqdn}:${SERVICE_PORT}" "${master_fqdn}:${SERVICE_PORT}" --cluster-slave --cluster-master-id "${master_id}" 2>&1) || {
-      classify join-add-replica no "add replica ${fqdn} failed: ${add_out}"
+    out=$("${_ccli[@]}" --cluster add-node "${fqdn}:${SERVICE_PORT}" "${via}:${SERVICE_PORT}" --cluster-slave --cluster-master-id "${master_id}" 2>&1) || {
+      classify attach-add-node no "add replica ${fqdn} to shard ${shard} failed: ${out}"
       return 1
     }
-  done
+    echo "attached ${fqdn} as replica of shard ${shard} (master ${master_id})."
+    return 0
+  fi
+  flags=$(echo "${line}" | awk '{print $3}')
+  parent=$(echo "${line}" | awk '{print $4}')
+  if echo "${flags}" | grep -q slave && [ "${parent}" = "${master_id}" ]; then
+    return 0
+  fi
+  # visible but wrong role or wrong parent: repair on the pod itself
+  build_cli "${fqdn}"
+  out=$("${_cli[@]}" CLUSTER REPLICATE "${master_id}" 2>&1) || {
+    classify attach-replicate no "CLUSTER REPLICATE ${master_id} on ${fqdn} failed: ${out}"
+    return 1
+  }
+  echo "repaired ${fqdn}: now replicating shard ${shard} master ${master_id}."
 }
 
 post_provision() {
