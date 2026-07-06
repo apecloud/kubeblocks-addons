@@ -282,6 +282,30 @@ Describe "valkey-cluster-manage.sh"
       The contents of file "${calls}" should include "FORGET:vk-abc-1.h:dead2"
     End
 
+    It "unions old ids across ALL remaining pods (residue known to one pod only)"
+      # review blocker: collecting ids from a single vantage misses a
+      # residue line that only one remaining pod still holds.
+      mock_cli() {
+        local host="${1}" f="${2}"; shift 2
+        case "$*" in
+          PING) echo PONG ;;
+          FLUSHALL|"CLUSTER RESET HARD") echo OK ;;
+          "CLUSTER MYID") echo "" ;;
+          "CLUSTER FORGET"*) echo "FORGET:${host}:${3}" >> "${f}"; echo OK ;;
+          "CLUSTER NODES")
+            printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
+            # only the SECOND remaining pod still sees the residue
+            if [ "${host}" = "vk-abc-1.h" ] && [ "$(grep -c FORGET "${f}" 2>/dev/null)" -lt 2 ]; then
+              printf 'dead2 vk-def-1.h:6379@16379 slave,fail dead1 0 0 2 disconnected\n'
+            fi ;;
+        esac
+      }
+      When call purge_shard_from_cluster
+      The status should be success
+      The contents of file "${calls}" should include "FORGET:vk-abc-0.h:dead2"
+      The contents of file "${calls}" should include "FORGET:vk-abc-1.h:dead2"
+    End
+
     It "cannot succeed while resurrection residue persists (retry-safe defer)"
       mock_cli() {
         local host="${1}" f="${2}"; shift 2

@@ -137,13 +137,67 @@ Describe "valkey-cluster-member.sh"
   Before "mb_env"
   After "mb_clean"
 
-  It "closes leave as effective when the member is already absent"
-    export KB_LEAVE_MEMBER_POD_FQDN="vk-s-9.h.ns.svc"
+  It "purges residue even when the vantage cannot see the member (no blind early close)"
+    # review blocker: one blind vantage proves nothing about other pods'
+    # tables — an fqdn-bearing fail line on another remaining pod must
+    # still be forgotten before the leave can close.
+    export KB_LEAVE_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
+    export ALL_SHARDS_POD_FQDN_LIST_SHARD_S="vk-s-0.h.ns.svc,vk-s-1.h.ns.svc"
+    export ALL_SHARDS_POD_FQDN_LIST_SHARD_T="vk-t-0.h.ns.svc"
+    mb_calls=$(mktemp)
     shard_vantage() { echo "vk-s-0.h.ns.svc"; }
     node_line_of() { echo ""; }
+    build_cli() { _cli=(mock_blind_cli "${1}" "${mb_calls}"); }
+    mock_blind_cli() {
+      local host="${1}" f="${2}"; shift 2
+      case "$*" in
+        PING) [ "${host}" = "vk-s-1.h.ns.svc" ] && return 1; echo PONG ;;
+        "CLUSTER FORGET"*) echo "FORGET:${host}:${3}" >> "${f}"; echo OK ;;
+        "CLUSTER NODES")
+          if [ "$(grep -c FORGET "${f}" 2>/dev/null)" -lt 2 ]; then
+            printf 'tid2 vk-s-1.h.ns.svc:6379@16379 slave,fail mid1 0 0 5 disconnected\n'
+          fi
+          printf 'mid1 vk-s-0.h.ns.svc:6379@16379 master - 0 0 5 connected 0-16383\n' ;;
+      esac
+    }
     When run member_leave
     The status should be success
-    The stdout should include "leave already effective"
+    The stdout should include "reset, forgotten, absence-proven"
+    The contents of file "${mb_calls}" should include "FORGET:vk-s-0.h.ns.svc:tid2"
+    The contents of file "${mb_calls}" should include "FORGET:vk-t-0.h.ns.svc:tid2"
+  End
+
+  It "catches id-only noaddr residue via the target's own MYID (fqdn check alone would false-close)"
+    export KB_LEAVE_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
+    export ALL_SHARDS_POD_FQDN_LIST_SHARD_S="vk-s-0.h.ns.svc,vk-s-1.h.ns.svc"
+    mb_calls=$(mktemp)
+    shard_vantage() { echo "vk-s-0.h.ns.svc"; }
+    node_line_of() { echo ""; }
+    build_cli() { _cli=(mock_noaddr_cli "${1}" "${mb_calls}"); }
+    mock_noaddr_cli() {
+      local host="${1}" f="${2}"; shift 2
+      case "$*" in
+        PING) echo PONG ;;
+        FLUSHALL) echo OK ;;
+        "CLUSTER MYID") echo "tid2" ;;
+        "CLUSTER RESET HARD") echo OK ;;
+        "CLUSTER FORGET"*) echo "FORGET:${host}:${3}" >> "${f}"; echo OK ;;
+        "CLUSTER NODES")
+          if [ "${host}" = "vk-s-1.h.ns.svc" ]; then
+            printf 'tid2 :0@0 myself,slave mid1 0 0 5 connected\n'
+          elif [ "$(grep -c FORGET "${f}" 2>/dev/null)" -lt 1 ]; then
+            # id-only residue: NO fqdn in the line
+            printf 'tid2 :0@0 slave,fail,noaddr mid1 0 0 5 disconnected\n'
+            printf 'mid1 vk-s-0.h.ns.svc:6379@16379 master - 0 0 5 connected 0-16383\n'
+          else
+            printf 'mid1 vk-s-0.h.ns.svc:6379@16379 master - 0 0 5 connected 0-16383\n'
+          fi ;;
+      esac
+    }
+    When run member_leave
+    The status should be success
+    The stdout should include "reset, forgotten, absence-proven"
+    The contents of file "${mb_calls}" should include "FORGET:vk-s-0.h.ns.svc:tid2"
   End
 
   It "refuses to delete a master with no replica to fail over to"
@@ -164,20 +218,25 @@ Describe "valkey-cluster-member.sh"
     export ALL_SHARDS_POD_FQDN_LIST_SHARD_T="vk-t-0.h.ns.svc"
     mb_calls=$(mktemp)
     shard_vantage() { echo "vk-s-0.h.ns.svc"; }
-    # target present as replica at first; absent from every host after sweep
-    node_line_of() {
-      if [ "$(grep -c FORGET "${mb_calls}" 2>/dev/null)" -ge 2 ]; then echo ""; else
-        echo "tid2 vk-s-1.h.ns.svc:6379@16379 slave mid1 0 0 5 connected"
-      fi
-    }
+    node_line_of() { echo "tid2 vk-s-1.h.ns.svc:6379@16379 slave mid1 0 0 5 connected"; }
     build_cli() { _cli=(mock_leave_cli "${1}" "${mb_calls}"); }
     mock_leave_cli() {
       local host="${1}" f="${2}"; shift 2
       case "$*" in
         PING) echo PONG ;;
         FLUSHALL) echo OK ;;
+        "CLUSTER MYID") echo "tid2" ;;
         "CLUSTER RESET HARD") echo "RESET:${host}" >> "${f}"; echo OK ;;
         "CLUSTER FORGET"*) echo "FORGET:${host}:${3}" >> "${f}"; echo OK ;;
+        "CLUSTER NODES")
+          if [ "${host}" = "vk-s-1.h.ns.svc" ]; then
+            printf 'tid2 vk-s-1.h.ns.svc:6379@16379 myself,slave mid1 0 0 5 connected\n'
+          elif [ "$(grep -c FORGET "${f}" 2>/dev/null)" -lt 2 ]; then
+            printf 'tid2 vk-s-1.h.ns.svc:6379@16379 slave mid1 0 0 5 connected\n'
+            printf 'mid1 vk-s-0.h.ns.svc:6379@16379 master - 0 0 5 connected 0-16383\n'
+          else
+            printf 'mid1 vk-s-0.h.ns.svc:6379@16379 master - 0 0 5 connected 0-16383\n'
+          fi ;;
       esac
     }
     When run member_leave
@@ -193,8 +252,21 @@ Describe "valkey-cluster-member.sh"
     export ALL_SHARDS_POD_FQDN_LIST_SHARD_S="vk-s-0.h.ns.svc,vk-s-1.h.ns.svc"
     shard_vantage() { echo "vk-s-0.h.ns.svc"; }
     node_line_of() { echo "tid2 vk-s-1.h.ns.svc:6379@16379 slave,fail mid1 0 0 5 disconnected"; }
-    build_cli() { _cli=(mock_stuck); }
-    mock_stuck() { case "$*" in PING) echo PONG;; *) echo OK;; esac; }
+    build_cli() { _cli=(mock_stuck "${1}"); }
+    mock_stuck() {
+      local host="${1}"; shift
+      case "$*" in
+        PING) echo PONG ;;
+        "CLUSTER MYID") echo "tid2" ;;
+        "CLUSTER NODES")
+          if [ "${host}" = "vk-s-1.h.ns.svc" ]; then
+            printf 'tid2 vk-s-1.h.ns.svc:6379@16379 myself,slave mid1 0 0 5 connected\n'
+          else
+            printf 'tid2 vk-s-1.h.ns.svc:6379@16379 slave,fail mid1 0 0 5 disconnected\n'
+          fi ;;
+        *) echo OK ;;
+      esac
+    }
     When run member_leave
     The status should be failure
     The stderr should include "phase=leave-confirm"

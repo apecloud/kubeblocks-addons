@@ -537,17 +537,37 @@ purge_shard_from_cluster() {
     return 1
   fi
 
-  # old ids of this shard as currently seen (any state, incl fail/noaddr)
-  local nodes ids id
-  build_cli "${remaining[0]}"
-  nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
-  ids=$(echo "${nodes}" | grep -E "${pattern}" | awk '{print $1}')
-
-  # 1) neutralize reachable leaving pods: identity death, not shutdown
+  # old ids of this shard: UNION across every remaining pod's view (a
+  # residue line can be visible from one pod only) plus each reachable
+  # leaving pod's own MYID read BEFORE reset (id-only noaddr residue
+  # carries no fqdn, so views alone can miss it).
+  local nodes ids="" id host
+  for host in "${remaining[@]}"; do
+    build_cli "${host}"
+    nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
+    ids="${ids} $(echo "${nodes}" | grep -E "${pattern}" | awk '{print $1}')"
+  done
   for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$' | sort); do
     build_cli "${fqdn}"
     if "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
-      "${_cli[@]}" FLUSHALL >/dev/null 2>&1 || true  # replicas refuse (harmless); master owns 0 slots
+      id=$("${_cli[@]}" CLUSTER MYID 2>/dev/null | tr -d '\r')
+      [ -n "${id}" ] && ids="${ids} ${id}"
+    fi
+  done
+  ids=$(echo "${ids}" | tr ' ' '\n' | grep -v '^$' | sort -u)
+
+  # 1) neutralize reachable leaving pods: identity death, not shutdown.
+  # Explicit RESET precondition (design contract): a leaving pod whose
+  # own myself line still claims master+slots is never reset — that is
+  # a drain failure, not a cleanup step.
+  for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$' | sort); do
+    build_cli "${fqdn}"
+    if "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
+      if self_claims_master_with_slots; then
+        classify remove-slots-nonzero yes "${fqdn} still claims master with slots — refusing reset"
+        return 1
+      fi
+      "${_cli[@]}" FLUSHALL >/dev/null 2>&1 || true  # replicas refuse (harmless); master proven slotless
       "${_cli[@]}" CLUSTER RESET HARD >/dev/null 2>&1 || {
         classify remove-reset yes "CLUSTER RESET HARD on ${fqdn} failed"
         return 1
@@ -556,7 +576,7 @@ purge_shard_from_cluster() {
   done
 
   # 2) forget the old ids on every remaining node
-  local host out
+  local out
   for host in "${remaining[@]}"; do
     build_cli "${host}"
     for id in ${ids}; do
@@ -583,6 +603,17 @@ purge_shard_from_cluster() {
     fi
   done
   return 0
+}
+
+# The current pod's own cluster view: does it claim to be a master that
+# still owns slot ranges? (Engine truth read on the node itself; used as
+# the explicit RESET precondition.) Caller must have built _cli first.
+self_claims_master_with_slots() {
+  local line
+  line=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | awk '$3 ~ /myself/')
+  [ -z "${line}" ] && return 1
+  echo "${line}" | awk '{print $3}' | grep -q master || return 1
+  [ -n "$(echo "${line}" | awk '{for(i=9;i<=NF;i++) printf "%s", $i}')" ]
 }
 
 # CLUSTER NODES lines whose address matches any pod of the current shard.

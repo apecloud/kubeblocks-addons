@@ -145,55 +145,88 @@ member_leave() {
     classify env-contract no "KB_LEAVE_MEMBER_POD_FQDN is required for --leave"
     exit 1
   fi
-  local via target_line target_id target_flags
+  local via target_line
   via=$(shard_vantage "${target}") || exit 1
   target_line=$(node_line_of "${via}" "${target}")
-  if [ -z "${target_line}" ]; then
-    echo "member ${target} not in cluster view — leave already effective."
-    exit 0
-  fi
-  target_id=$(echo "${target_line}" | awk '{print $1}')
-  target_flags=$(echo "${target_line}" | awk '{print $3}')
-
-  if echo "${target_flags}" | grep -q master; then
+  if [ -n "${target_line}" ] && echo "${target_line}" | awk '{print $3}' | grep -q master; then
     demote_master_before_leave "${via}" "${target}" || exit 1
   fi
+  # No early "already effective" return: a vantage that cannot see the
+  # target proves nothing about OTHER remaining pods' tables (review
+  # blocker — same class as shardRemove's already-removed hole). Every
+  # leave, present or absent, goes through the purge + absence proof.
+  purge_member_from_cluster "${target}" || exit 1
+  echo "member ${target} removed from cluster (reset, forgotten, absence-proven)."
+  exit 0
+}
 
-  # Residue-free leave (r4 CT06 family): --cluster del-node SHUTDOWNs the
-  # node; the KB-managed pod restarts with its old nodes.conf and can
-  # re-handshake back before KB terminates it. Instead: destroy the
-  # leaving node's identity on itself, FORGET its old id on every
-  # remaining cluster pod, and positively prove absence before rc=0.
+# Residue-free member removal, same contract as the manage script's
+# purge_shard_from_cluster: collect old ids (target's own MYID pre-reset
+# + UNION of fqdn-matching lines from every remaining pod), destroy the
+# leaving node's identity, FORGET every old id on every remaining pod,
+# then prove BOTH old fqdn and old ids absent from every remaining pod.
+purge_member_from_cluster() {
+  local target="${1}" remaining host ids="" id line nodes out
+  remaining=$(all_cluster_pods_except "${target}")
+  if [ -z "${remaining}" ]; then
+    classify env-contract no "ALL_SHARDS_POD_FQDN_LIST_* roster empty — cannot purge ${target} cluster-wide (no fallback)"
+    return 1
+  fi
+
+  build_cli "${target}"
+  if "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
+    # explicit RESET precondition: never reset a node whose own view
+    # still claims master+slots (demote/drain failed upstream)
+    line=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | awk '$3 ~ /myself/')
+    if echo "${line}" | awk '{print $3}' | grep -q master && \
+       [ -n "$(echo "${line}" | awk '{for(i=9;i<=NF;i++) printf "%s", $i}')" ]; then
+      classify leave-orphan-guard no "${target} still claims master with slots — refusing reset"
+      return 1
+    fi
+    id=$("${_cli[@]}" CLUSTER MYID 2>/dev/null | tr -d '\r')
+    [ -n "${id}" ] && ids="${ids} ${id}"
+  fi
+  for host in ${remaining}; do
+    build_cli "${host}"
+    nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
+    ids="${ids} $(echo "${nodes}" | grep -F "${target}" | awk '{print $1}')"
+  done
+  ids=$(echo "${ids}" | tr ' ' '\n' | grep -v '^$' | sort -u)
+
   build_cli "${target}"
   if "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
     "${_cli[@]}" FLUSHALL >/dev/null 2>&1 || true  # refused on replicas (harmless)
     "${_cli[@]}" CLUSTER RESET HARD >/dev/null 2>&1 || {
       classify leave-reset yes "CLUSTER RESET HARD on ${target} failed"
-      exit 1
+      return 1
     }
   fi
-  local remaining host out
-  remaining=$(all_cluster_pods_except "${target}")
-  if [ -z "${remaining}" ]; then
-    classify env-contract no "ALL_SHARDS_POD_FQDN_LIST_* roster empty — cannot FORGET ${target_id} cluster-wide (no fallback)"
-    exit 1
-  fi
+
   for host in ${remaining}; do
     build_cli "${host}"
-    out=$("${_cli[@]}" CLUSTER FORGET "${target_id}" 2>&1) || true
-    case "${out}" in
-      OK*|*"Unknown node"*) ;;
-      *) classify leave-forget yes "FORGET ${target_id} on ${host} failed: ${out}"; exit 1 ;;
-    esac
+    for id in ${ids}; do
+      out=$("${_cli[@]}" CLUSTER FORGET "${id}" 2>&1) || true
+      case "${out}" in
+        OK*|*"Unknown node"*) ;;
+        *) classify leave-forget yes "FORGET ${id} on ${host} failed: ${out}"; return 1 ;;
+      esac
+    done
   done
+
+  local residue
   for host in ${remaining}; do
-    if [ -n "$(node_line_of "${host}" "${target}")" ]; then
-      classify leave-confirm yes "${target} still in cluster view from ${host} after FORGET sweep"
-      exit 1
+    build_cli "${host}"
+    nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
+    residue=$(echo "${nodes}" | grep -F "${target}" || true)
+    for id in ${ids}; do
+      residue="${residue}$(echo "${nodes}" | awk -v i="${id}" '$1==i')"
+    done
+    if [ -n "${residue}" ]; then
+      classify leave-confirm yes "${target} residue (old fqdn or old id) still visible from ${host}"
+      return 1
     fi
   done
-  echo "member ${target} removed from cluster (reset, forgotten, absence-proven)."
-  exit 0
+  return 0
 }
 
 # Every pod of every shard (KB roster env), excluding one FQDN. The
