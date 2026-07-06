@@ -231,6 +231,13 @@ purge_member_from_cluster() {
 
 # Every pod of every shard (KB roster env), excluding one FQDN. The
 # leaving node lives in EVERY node table, so FORGET must sweep them all.
+# DNS existence check; getent-less images degrade to "resolvable" so
+# behavior falls back to the strict defer path, never a weaker proof.
+host_resolves() {
+  command -v getent >/dev/null 2>&1 || return 0
+  getent hosts "${1}" >/dev/null 2>&1
+}
+
 all_cluster_pods_except() {
   local except="${1}" var value fqdn
   while IFS='=' read -r var value; do
@@ -239,7 +246,7 @@ all_cluster_pods_except() {
       # skip roster members that no longer resolve (departed concurrently
       # in the same scale-in operation — their node tables are gone);
       # resolvable-but-down members still count and defer downstream.
-      if command -v getent >/dev/null 2>&1 && ! getent hosts "${fqdn}" >/dev/null 2>&1; then
+      if ! host_resolves "${fqdn}"; then
         continue
       fi
       echo "${fqdn}"

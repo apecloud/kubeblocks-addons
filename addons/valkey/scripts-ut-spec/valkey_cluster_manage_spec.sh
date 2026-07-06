@@ -309,6 +309,10 @@ Describe "valkey-cluster-manage.sh"
         printf 'SHARD_DEF vk-def-0.h,vk-def-1.h\n'
       }
       build_cli() { _cli=(mock_cli "${1}" "${calls}"); }
+      # CI runs on Linux where getent EXISTS and fails for these fake
+      # hostnames — without this stub every roster host would be
+      # filtered as "departed" (macOS has no getent, hiding the issue).
+      host_resolves() { return 0; }
     }
     Before "purge_env"
 

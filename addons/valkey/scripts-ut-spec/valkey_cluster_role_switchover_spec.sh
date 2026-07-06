@@ -132,6 +132,9 @@ Describe "valkey-cluster-member.sh"
     export CURRENT_SHARD_POD_FQDN_LIST="vk-s-0.h.ns.svc,vk-s-1.h.ns.svc"
     export SERVICE_PORT=6379
     ut_mode="true"
+    # fake spec hostnames must count as resolvable on Linux CI (getent
+    # exists there and would filter the whole roster as departed)
+    host_resolves() { return 0; }
   }
   mb_clean() { unset CURRENT_SHARD_POD_FQDN_LIST KB_LEAVE_MEMBER_POD_FQDN KB_JOIN_MEMBER_POD_FQDN; }
   Before "mb_env"
