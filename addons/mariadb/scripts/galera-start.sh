@@ -85,17 +85,19 @@ _wait_for_primary_peer() {
   return 1
 }
 
-# Run wsrep-recover to extract the last committed position from InnoDB,
-# then mark grastate.dat safe_to_bootstrap=1 so MariaDB will accept
-# --wsrep-new-cluster on the next exec.
-_wsrep_recover_and_bootstrap() {
+# Run wsrep-recover to extract the last committed position from InnoDB.
+# This is local evidence only. It is not enough to decide the cluster-wide
+# latest node after a full crash, because this pod cannot read peer PVCs.
+_wsrep_recover_seqno() {
   local recover_output
   recover_output=$(mariadbd --wsrep-recover 2>&1) || true
   local recovered_seqno
   recovered_seqno=$(echo "$recover_output" | grep 'Recovered position' | sed 's/.*://' | tail -1)
   echo "wsrep-recover: seqno=${recovered_seqno:-unknown}"
-  sed -i 's/^safe_to_bootstrap: 0/safe_to_bootstrap: 1/' "${DATA_DIR}/grastate.dat"
-  echo "grastate.dat updated: safe_to_bootstrap=1 for crash recovery bootstrap."
+}
+
+_grastate_seqno() {
+  awk -F: '/^seqno:/ { gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit }' "${DATA_DIR}/grastate.dat"
 }
 
 _mariadbd_pids() {
@@ -124,41 +126,55 @@ _restart_mariadbd_for_self_heal() {
 
 # Determine whether this node should bootstrap.
 #
-# ONLY pod-0 may bootstrap — this prevents split-brain when parallel shutdown
-# (podManagementPolicy=Parallel) causes multiple nodes to have safe_to_bootstrap=1.
-# Galera uses synchronous replication, so all nodes have identical committed data;
-# pod-0 is always a safe bootstrap candidate.
+# ONLY an already safe bootstrap state may bootstrap automatically. Galera may
+# mark any pod safe after a clean full shutdown, not necessarily pod-0. Full
+# crash recovery with safe_to_bootstrap=0 is intentionally fail-closed: this pod
+# only knows its own recovered seqno and cannot prove that it is the latest node.
 #
-# Bootstrap if ALL of: this is pod-0, AND no peer is already running, AND one of:
+# Bootstrap if ALL of: no peer is already running, AND one of:
 #   (a) Fresh cluster: no initialized data directory yet.
-#   (b) Restart after clean shutdown: grastate.dat has safe_to_bootstrap=1.
-#   (c) Full cluster crash recovery: grastate.dat has safe_to_bootstrap=0.
-#       Runs wsrep-recover to validate InnoDB consistency before bootstrap.
+#   (b) Restart after clean shutdown: local grastate.dat has safe_to_bootstrap=1.
+# Refuse automatic bootstrap for:
+#   (c) Full cluster crash recovery: pod-0 grastate.dat has safe_to_bootstrap=0.
+#       Runs wsrep-recover for local evidence, then defers instead of guessing
+#       pod-0 is the latest node.
 should_bootstrap() {
   local pod_index="${POD_NAME##*-}"
 
   if [ -f "${DATA_DIR}/grastate.dat" ]; then
-    # Non-pod-0 never bootstraps — always join.
-    if [ "$pod_index" != "0" ]; then
-      if grep -q "^safe_to_bootstrap: 1" "${DATA_DIR}/grastate.dat"; then
-        echo "Non-pod-0: safe_to_bootstrap=1 ignored (single-owner bootstrap). Will join."
-      fi
-      return 1
-    fi
-
-    # Pod-0: if any peer is already running, join instead of bootstrapping.
+    # If any peer is already running, join instead of bootstrapping.
     # This handles single-pod restart and rolling restart correctly.
     if _any_peer_alive; then
-      echo "Peers alive. Pod-0 will join existing cluster."
+      echo "Peers alive. ${POD_NAME} will join existing cluster."
       return 1
     fi
 
-    # Pod-0, no peers alive: this is a full cluster restart.
+    # No peers alive: this is a full cluster restart. Fresh Galera PVCs may
+    # already contain grastate.dat with safe_to_bootstrap=1 and seqno=-1. That
+    # state is not a clean shutdown election result, so keep initial bootstrap
+    # single-owner on pod-0; otherwise every pod can bootstrap its own Primary.
+    local grastate_seqno
+    grastate_seqno=$(_grastate_seqno)
+    if [ "${grastate_seqno}" = "-1" ]; then
+      if [ "$pod_index" = "0" ]; then
+        echo "Fresh grastate.dat seqno=-1, pod-0 will bootstrap."
+        return 0
+      fi
+      echo "Fresh grastate.dat seqno=-1, ${POD_NAME} will wait for pod-0 bootstrap."
+      return 1
+    fi
+
     if grep -q "^safe_to_bootstrap: 1" "${DATA_DIR}/grastate.dat"; then
-      echo "grastate.dat: safe_to_bootstrap=1, pod-0 will bootstrap."
+      echo "grastate.dat: safe_to_bootstrap=1, ${POD_NAME} will bootstrap."
     else
-      echo "No peers alive. Pod-0 crash recovery bootstrap..."
-      _wsrep_recover_and_bootstrap
+      if [ "$pod_index" = "0" ]; then
+        echo "No peers alive and local grastate.dat is not safe_to_bootstrap."
+        _wsrep_recover_seqno
+        GALERA_BOOTSTRAP_DEFER_REASON="latest seqno unknown; refuse pod-0-only crash recovery bootstrap"
+        export GALERA_BOOTSTRAP_DEFER_REASON
+        echo "Refusing automatic Galera crash recovery bootstrap: latest node cannot be proven from this pod. Manual latest-seqno election is required."
+      fi
+      return 1
     fi
     return 0
   fi
@@ -294,6 +310,10 @@ main() {
     echo "Starting Galera cluster bootstrap (--wsrep-new-cluster)..."
     exec docker-entrypoint.sh mariadbd "${wsrep_args[@]}" --wsrep-new-cluster
   else
+    if [ -n "${GALERA_BOOTSTRAP_DEFER_REASON:-}" ]; then
+      echo "Galera bootstrap deferred: ${GALERA_BOOTSTRAP_DEFER_REASON}"
+      exit 1
+    fi
     local pod_index="${POD_NAME##*-}"
     if [ "$pod_index" != "0" ]; then
       _wait_for_primary_peer

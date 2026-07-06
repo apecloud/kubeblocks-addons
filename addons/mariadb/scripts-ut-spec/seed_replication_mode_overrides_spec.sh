@@ -23,6 +23,10 @@ Describe "alpha.89 commit 13 v2 seed-replication-mode-overrides.sh"
     printf "%s/addons/mariadb/scripts/seed-replication-mode-overrides.sh" "$(repo_root)"
   }
 
+  file_mtime_seconds() {
+    stat -c "%Y" "$1" 2>/dev/null || stat -f "%m" "$1"
+  }
+
   setup() {
     tmpdir=$(mktemp -d -t mariadb-seed-XXXXXX)
     overrides_dir="${tmpdir}/overrides"
@@ -179,10 +183,10 @@ Describe "alpha.89 commit 13 v2 seed-replication-mode-overrides.sh"
       export MARIADB_REPLICATION_MODE
       __SOURCED__=1 . "$(script_path)"
       seed_replication_mode_overrides
-      first_mtime=$(stat -f "%m" "${overrides_dir}/rpl_semi_sync_master_enabled.cnf" 2>/dev/null || stat -c "%Y" "${overrides_dir}/rpl_semi_sync_master_enabled.cnf")
+      first_mtime=$(file_mtime_seconds "${overrides_dir}/rpl_semi_sync_master_enabled.cnf")
       sleep 1
       seed_replication_mode_overrides
-      second_mtime=$(stat -f "%m" "${overrides_dir}/rpl_semi_sync_master_enabled.cnf" 2>/dev/null || stat -c "%Y" "${overrides_dir}/rpl_semi_sync_master_enabled.cnf")
+      second_mtime=$(file_mtime_seconds "${overrides_dir}/rpl_semi_sync_master_enabled.cnf")
       When call test "${first_mtime}" = "${second_mtime}"
       The status should be success
     End
