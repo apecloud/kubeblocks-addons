@@ -38,7 +38,10 @@ spec:
 
   replicasLimit:
     minReplicas: 3
-    maxReplicas: 3
+    # 3 or 5 Sentinels are the standard production deployments. The API
+    # cannot express "odd only"; even counts (4) are accepted but add no
+    # quorum value over 3 — documented in the cluster chart values.
+    maxReplicas: 5
 
   # Sentinel state is persisted in the data volume so the conf survives restarts.
   volumes:
