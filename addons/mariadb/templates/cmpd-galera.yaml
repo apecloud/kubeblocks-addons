@@ -135,12 +135,14 @@ spec:
         command:
           - /bin/sh
           - /scripts/galera-member-join.sh
-    memberLeave:
-      exec:
-        container: mariadb
-        command:
-          - /bin/sh
-          - /scripts/galera-member-leave.sh
+    # No memberLeave action: Galera evicts a departed node natively via
+    # keepalive timeout (down-after group-communication), so no database-
+    # internal removal step is required. The previous memberLeave ran in the
+    # kbagent execution face (no mariadb client, all SQL `2>/dev/null || true`),
+    # so its claimed FLUSH TABLES / wsrep_desync=ON never executed — a silent
+    # no-op. The graceful-leave that does matter at shutdown (final seqno +
+    # safe_to_bootstrap, clean InnoDB flush) is handled by the mariadb
+    # container preStop below, which runs in-container against 127.0.0.1.
   runtime:
     # Allow enough time for Galera to write grastate.dat on clean shutdown.
     # 30s (default) is insufficient when InnoDB has dirty pages to flush.
