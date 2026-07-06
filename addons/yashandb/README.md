@@ -163,11 +163,10 @@ Claim boundary:
 
 ### Create
 
-Create a yashandb cluster of version 'yashandb-personal:23.1.1.100' with ONE replica.
+Create a YashanDB cluster of version `23.4.1.109` with ONE replica.
 
 > [!NOTE]
-> This is a personal version of YashanDB, for the enterprise version, please contact the vendor.
-> The personal version is only for testing and development purposes, and it runs in Standalone mode with only one replica.
+> This example uses the default addon image version. For enterprise image tags, please contact the vendor and keep `ComponentVersion.serviceVersion` aligned with the actual image version.
 
 ```yaml
 # cat examples/yashandb/cluster.yaml

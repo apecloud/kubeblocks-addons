@@ -31,7 +31,9 @@ spec:
       template: {{ include "yashandb.configTplName" . }}
       volumeName: {{ include "yashandb.configEntryName" . }}
       namespace: {{ .Release.Namespace }}
-      # 2026-06-22 Reason: KubeBlocks 1.0.2 treats externalManaged config entries as externally supplied and then skips the template lookup; Purpose: keep template rendering active while lifecycleActions.reconfigure owns parameter application.
+      # 2026-07-06 Reason: current KubeBlocks parameter API binds ComponentParameter through external-managed config items; Purpose: ensure Configure creates configItemDetails for install.ini.
+      # Time: 2026-07-06.
+      externalManaged: true
       restartOnFileChange: true
   scripts:
     - name: yashandb-scripts
