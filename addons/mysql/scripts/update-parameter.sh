@@ -8,8 +8,12 @@ function mysql_exec() {
 paramName="${1:?missing param name}"
 paramValue="${2:?missing value}"
 
+# loose_-prefixed parameters keep MySQL's loose semantics: absence of the
+# variable (plugin not loaded) is tolerated, any other failure is not.
+is_loose=false
 if echo "${paramName}" | grep -q "^loose_"; then
-    paramName=${paramName//"loose_"/}
+    paramName=${paramName#loose_}
+    is_loose=true
 fi
 paramName=$(echo "${paramName}" | tr '-' '_')
 
@@ -39,12 +43,25 @@ else
 fi
 
 if [ $status -ne 0 ]; then
-    if echo "${ret}" | grep -q "ERROR 1045 (28000)"; then
-        echo "Failed to set parameter ${paramName} to value ${paramValue}, result: ${ret}"
-        exit 1
+    # Reconfigure must not judge success by this single SET GLOBAL alone:
+    # some parameters cannot be applied online and legitimately land here.
+    # Tolerate exactly those, loudly; fail everything else so the Ops does
+    # not report success for a value that was never applied.
+    if echo "${ret}" | grep -q "ERROR 1238 "; then
+        # Read-only variable: it cannot change online. The framework has
+        # already persisted it into the rendered my.cnf, so it takes effect
+        # on the next restart.
+        echo "Parameter ${paramName} is read-only (ERROR 1238); it will take effect after the next restart."
+        exit 0
     fi
-    # Ignore other errors
-else
-    echo "Set parameter ${paramName} to value ${paramValue}, result: ${ret}"
+    if [ "${is_loose}" = "true" ] && echo "${ret}" | grep -q "ERROR 1193 "; then
+        # loose_ parameter whose plugin is not loaded: absence is tolerated
+        # by MySQL's loose semantics, mirror that here.
+        echo "Parameter loose_${paramName} is unknown on this instance (plugin not loaded); skipped."
+        exit 0
+    fi
+    echo "Failed to set parameter ${paramName} to value ${paramValue}, result: ${ret}" >&2
+    exit 1
 fi
+echo "Set parameter ${paramName} to value ${paramValue}"
 
