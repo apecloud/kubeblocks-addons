@@ -84,7 +84,7 @@ rustfs_save_backup_size() {
   total_size=0
   datasafed stat / 2>/dev/null > "${TMPDIR:-/tmp}/rustfs-datasafed-stat.txt" || true
   while IFS=' ' read -r key value _; do
-    if [ "${key}" = "TotalSize" ] && [ -n "${value}" ]; then
+    if [ "${key}" = "TotalSize:" ] && [ -n "${value}" ]; then
       total_size="${value}"
       break
     fi

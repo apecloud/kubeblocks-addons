@@ -89,7 +89,7 @@ case "${cmd}" in
     mkdir -p "$(dirname "${dest_path}")"
     cp "${src}" "${dest_path}" ;;
   stat)
-    echo "TotalSize 11" ;;
+    echo "TotalSize: 11" ;;
   list)
     if [ "${1:-}" = "-f" ]; then
       shift 2
