@@ -1,0 +1,76 @@
+{{- $pd := .Files.Get "config/mysql8-config-effect-scope.yaml" | fromYaml }}
+{{- /* System variables removed in MySQL 8.4.0: setting any of them must be
+       rejected by the schema, and they must not appear in the static/dynamic/
+       immutable classification lists. */}}
+{{- $removed84 := list
+      "default_authentication_plugin"
+      "expire_logs_days"
+      "binlog_transaction_dependency_tracking"
+      "transaction_write_set_extraction"
+      "slave_rows_search_algorithms"
+      "master_info_repository"
+      "relay_log_info_repository"
+      "log_bin_use_v1_row_events" }}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "mysql.paramsDefName84" . }}
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ printf "^%s(?:-mgr)?-8\\.4-%s$" (include "mysql.cmpdNamePrefix" .) .Chart.Version | quote }}
+  templateName: mysql-replication-config
+  fileName: my.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: mysqld
+  parametersSchema:
+    topLevelKey: MysqlParameter
+    cue: |-
+      {{- .Files.Get "config/mysql8-config-constraint.cue" | nindent 6 }}
+
+      #MysqlParameter: {
+        // Removed in MySQL 8.4.0. default_authentication_plugin is superseded
+        // by authentication_policy.
+        default_authentication_plugin?: _|_
+        authentication_policy?: string
+        // Removed in MySQL 8.4.0. Superseded by binlog_expire_logs_seconds.
+        expire_logs_days?: _|_
+        binlog_transaction_dependency_tracking?: _|_
+        transaction_write_set_extraction?: _|_
+        slave_rows_search_algorithms?: _|_
+        master_info_repository?: _|_
+        relay_log_info_repository?: _|_
+        log_bin_use_v1_row_events?: _|_
+      }
+
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- $params := get $pd "staticParameters" }}
+    {{- range $params }}
+    {{- if not (has . $removed84) }}
+    - {{ . }}
+    {{- end }}
+    {{- end }}
+  {{- end}}
+
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- $params := get $pd "dynamicParameters" }}
+    {{- range $params }}
+    {{- if not (has . $removed84) }}
+    - {{ . }}
+    {{- end }}
+    {{- end }}
+  {{- end}}
+
+  {{- if hasKey $pd "immutableParameters" }}
+  immutableParameters:
+    {{- $params := get $pd "immutableParameters" }}
+    {{- range $params }}
+    {{- if not (has . $removed84) }}
+    - {{ . }}
+    {{- end }}
+    {{- end }}
+  {{- end}}
