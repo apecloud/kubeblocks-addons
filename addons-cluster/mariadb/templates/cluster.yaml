@@ -6,9 +6,15 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  # Select the topology from the mariadb ClusterDefinition so `mode` actually
+  # picks the component definition. `componentDef: mariadb` alone is a name
+  # prefix that matches all three CmpDs (mariadb-*, mariadb-replication-merged-*,
+  # mariadb-galera-*), so it could not deterministically select replication or
+  # galera. clusterDef + topology resolves the correct compDef per topology.
+  clusterDef: mariadb
+  topology: {{ .Values.mode }}
   componentSpecs:
     - name: mariadb
-      componentDef: mariadb
       replicas: {{ include "mariadb-cluster.replicas" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}

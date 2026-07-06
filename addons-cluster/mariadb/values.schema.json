@@ -4,20 +4,22 @@
   "properties": {
     "mode": {
       "title": "Mode",
-      "description": "Cluster topology mode.",
+      "description": "Cluster topology mode. Maps to a topology in the mariadb ClusterDefinition: standalone (single node), replication (primary/secondary), or galera (multi-primary wsrep).",
       "type": "string",
       "default": "standalone",
       "enum": [
-        "standalone"
+        "standalone",
+        "replication",
+        "galera"
       ]
     },
     "replicas": {
       "title": "Replicas",
-      "description": "The number of replicas, for standalone mode, the replicas is 1.",
+      "description": "The number of replicas. standalone is always 1 (this value is ignored for standalone); replication needs at least 2; galera needs an odd number, at least 3, for quorum.",
       "type": "integer",
       "default": 1,
       "minimum": 1,
-      "maximum": 1
+      "maximum": 5
     },
     "cpu": {
       "title": "CPU",

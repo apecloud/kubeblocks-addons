@@ -11,5 +11,3 @@ data:
     {{- .Files.Get "scripts/galera-roleprobe.sh" | nindent 4 }}
   galera-member-join.sh: |-
     {{- .Files.Get "scripts/galera-member-join.sh" | nindent 4 }}
-  galera-member-leave.sh: |-
-    {{- .Files.Get "scripts/galera-member-leave.sh" | nindent 4 }}
