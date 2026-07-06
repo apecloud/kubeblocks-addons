@@ -109,6 +109,11 @@ spec:
       serviceVersion: {{ .version }}
       images:
         valkey-cluster: {{ $valkeyRepo }}:{{ .imageTag }}
+        roleProbe: {{ $valkeyRepo }}:{{ .imageTag }}
+        switchover: {{ $valkeyRepo }}:{{ .imageTag }}
+        memberJoin: {{ $valkeyRepo }}:{{ .imageTag }}
+        memberLeave: {{ $valkeyRepo }}:{{ .imageTag }}
+        postProvision: {{ $valkeyRepo }}:{{ .imageTag }}
     {{- end }}
     {{- end }}
     {{- end }}

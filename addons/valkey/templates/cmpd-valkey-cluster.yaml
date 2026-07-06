@@ -3,9 +3,8 @@ ComponentDefinition for Valkey Cluster (sharding) mode — one definition per
 shard; ShardingDefinition stamps N shard components out of it.
 
 Phase A boundary (issue #3021): templates + config + server start only.
-  - No roles / roleProbe yet: cluster-mode role detection (CLUSTER NODES) and
-    switchover land together in phase C as one contract; declaring roles
-    without a probe would leave pods permanently unlabeled.
+  - Phase C (issue #3037) added roles + roleProbe + switchover + member
+    join/leave (all intra-shard, engine-native CLUSTER commands).
   - Phase B (issue #3026) added postProvision formation and shardRemove.
 v1 boundary: Valkey 9 only; in-cluster networking only (pod-FQDN announce,
 no NodePort/LB advertise).
@@ -40,6 +39,16 @@ spec:
   volumes:
     - name: data
       needSnapshot: true
+
+  # Per-shard roles: exactly one primary (slot owner) + replicas. Quorum is
+  # the engine's own (cluster config epochs) — not K8s-level.
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
 
   services:
     # Per-shard ClusterIP service. Cluster-mode clients are expected to be
@@ -165,6 +174,53 @@ spec:
       value: {{ $.Values.tlsMountPath }}
 
   lifecycleActions:
+    # Role probe: pure read of this node's CLUSTER NODES myself line;
+    # emits "<role> <config-epoch>" (epoch = anti-replay version token).
+    # Unknown state exits non-zero (skip sample) — never an empty role.
+    roleProbe:
+      periodSeconds: 1
+      timeoutSeconds: 1
+      exec:
+        container: valkey-cluster
+        command:
+          - /scripts/valkey-cluster-check-role.sh
+        env:
+          - name: KB_SERVICE_PORT
+            value: "$(SERVICE_PORT)"
+    # Intra-shard graceful switchover: CLUSTER FAILOVER on the candidate
+    # replica; deterministic candidate pick when unspecified; bounded
+    # in-action confirmation.
+    switchover:
+      exec:
+        container: valkey-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-cluster-switchover.sh
+    # Replica join/leave within a shard. Leave of the current master fails
+    # over first and only deletes after mastership provably moved.
+    memberJoin:
+      exec:
+        container: valkey-cluster
+        targetPodSelector: Any
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-cluster-member.sh --join
+      retryPolicy:
+        maxRetries: 10
+        retryInterval: 3
+    memberLeave:
+      exec:
+        container: valkey-cluster
+        targetPodSelector: Any
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-cluster-member.sh --leave
+      retryPolicy:
+        maxRetries: 10
+        retryInterval: 3
     # Formation-or-join: single-shot bootstrap-or-defer (rc=1 => framework
     # retry). Coordinator pod creates the cluster; every other pod verifies
     # membership or joins (scale-out path). See valkey-cluster-manage.sh.
