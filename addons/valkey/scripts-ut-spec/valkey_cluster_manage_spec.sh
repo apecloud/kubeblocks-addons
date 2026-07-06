@@ -30,7 +30,8 @@ Describe "valkey-cluster-manage.sh"
       The status should be failure
       The stderr should include "ALL_SHARDS_COMPONENT_SHORT_NAMES"
       The stderr should include "CURRENT_SHARD_COMPONENT_SHORT_NAME"
-      The stderr should include "hard fail (no fallback)"
+      The stderr should include "retry_safe=no"
+      The stderr should include "no fallback"
     End
   End
 
@@ -117,8 +118,8 @@ Describe "valkey-cluster-manage.sh"
       mock_pong() { echo PONG; }
       When call form_cluster
       The status should be failure
-      The stderr should include "needs >=3"
-      The stderr should include "retry-safe"
+      The stderr should include "phase=formation-wait-shards"
+      The stderr should include "retry_safe=yes"
       The stdout should include ""
     End
 
@@ -132,8 +133,8 @@ Describe "valkey-cluster-manage.sh"
       mock_silent() { return 1; }
       When call form_cluster
       The status should be failure
-      The stderr should include "not answering yet"
-      The stderr should include "retry-safe"
+      The stderr should include "phase=formation-wait-primaries"
+      The stderr should include "retry_safe=yes"
     End
   End
 
@@ -152,8 +153,9 @@ Describe "valkey-cluster-manage.sh"
       # shard_remove exits; run in subshell via run
       When run shard_remove
       The status should be failure
+      The stderr should include "phase=remove-slots-nonzero"
+      The stderr should include "retry_safe=yes"
       The stderr should include "still owns 5 slots"
-      The stderr should include "NOT removing nodes"
       The stdout should include ""
     End
   End

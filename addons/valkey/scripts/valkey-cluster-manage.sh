@@ -34,6 +34,13 @@ load_common_library() {
   source /scripts/common.sh
 }
 
+# Structured classification for every non-zero exit (stable, parseable):
+#   classify <phase> <retry_safe:yes|no> <detail...>
+classify() {
+  local phase="$1" retry_safe="$2"; shift 2
+  echo "action=valkey-cluster-manage phase=${phase} retry_safe=${retry_safe} detail=$*" >&2
+}
+
 # ── env contract ─────────────────────────────────────────────────────────────
 
 validate_manage_env() {
@@ -44,7 +51,7 @@ validate_manage_env() {
   [ -z "${ALL_SHARDS_COMPONENT_SHORT_NAMES:-}" ] && missing="${missing} ALL_SHARDS_COMPONENT_SHORT_NAMES"
   [ -z "${SERVICE_PORT:-}" ] && missing="${missing} SERVICE_PORT"
   if [ -n "${missing}" ]; then
-    echo "ERROR: valkey-cluster-manage.sh missing required env:${missing} — hard fail (no fallback)." >&2
+    classify env-contract no "missing required env:${missing} (no fallback)"
     return 1
   fi
   return 0
@@ -167,11 +174,36 @@ self_is_coordinator_pod() {
 # Positive goal check used by every path: state ok and all 16384 slots
 # assigned, observed from this pod.
 cluster_formed_from_self() {
-  local self_fqdn state slots
-  self_fqdn=$(first_fqdn_of_list "${CURRENT_SHARD_POD_FQDN_LIST}")  # any shard member works; use self pod
+  local state slots
   state=$(cluster_state_of "127.0.0.1")
   slots=$(assigned_slots_of "127.0.0.1")
-  [ "${state}" = "ok" ] && [ "${slots}" = "16384" ]
+  [ "${state}" = "ok" ] && [ "${slots}" = "16384" ] && all_expected_members_present "127.0.0.1"
+}
+
+# Positive membership completeness: EVERY pod of EVERY shard (KB roster)
+# must appear in the cluster view seen from $1, and every shard must have
+# a master there. rc=0 must never settle for state/slot totals alone
+# (review: totals can be right while pods are missing or unattached).
+all_expected_members_present() {
+  local via="${1}" nodes shard_line shard fqdns fqdn missing=0
+  build_cli "${via}"
+  nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
+  [ -z "${nodes}" ] && return 1
+  while read -r shard_line; do
+    shard="${shard_line%% *}"
+    fqdns="${shard_line#* }"
+    for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$'); do
+      if ! echo "${nodes}" | grep -qF "${fqdn}"; then
+        echo "membership incomplete: ${fqdn} (shard ${shard}) not in cluster view."
+        missing=1
+      fi
+    done
+    if [ "$(echo "${nodes}" | grep -E "$(echo "${fqdns}" | tr ',' '|')" | awk '$3 ~ /master/' | grep -c .)" -lt 1 ]; then
+      echo "membership incomplete: shard ${shard} has no master in cluster view."
+      missing=1
+    fi
+  done < <(each_shard_fqdn_list)
+  [ "${missing}" -eq 0 ]
 }
 
 # Coordinator: create the cluster from one designated first-pod per shard,
@@ -181,7 +213,6 @@ cluster_formed_from_self() {
 form_cluster() {
   local shard_line shard fqdns first rest fqdn
   local primaries=()
-  local -A shard_first=()
 
   while read -r shard_line; do
     shard="${shard_line%% *}"
@@ -189,29 +220,28 @@ form_cluster() {
     first=$(first_fqdn_of_list "${fqdns}")
     # every designated primary must answer before creation — else defer
     if ! build_cli "${first}" || ! "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
-      echo "DEFER: shard ${shard} first pod ${first} not answering yet — retry (transient, retry-safe)." >&2
+      classify formation-wait-primaries yes "shard ${shard} first pod ${first} not answering yet"
       return 1
     fi
     primaries+=("${first}:${SERVICE_PORT}")
-    shard_first["${shard}"]="${first}"
   done < <(each_shard_fqdn_list)
 
   if [ "${#primaries[@]}" -lt 3 ]; then
-    echo "DEFER: only ${#primaries[@]} shard(s) visible; cluster create needs >=3 — retry (transient, retry-safe)." >&2
+    classify formation-wait-shards yes "only ${#primaries[@]} shard(s) visible; create needs >=3"
     return 1
   fi
 
   build_cluster_cli
   local create_out
   create_out=$(echo yes | "${_ccli[@]}" --cluster create "${primaries[@]}" --cluster-yes 2>&1) || {
-    echo "ERROR: cluster create failed: ${create_out}" >&2
+    classify formation-create no "cluster create failed: ${create_out}"
     return 1
   }
   echo "cluster create issued across ${#primaries[@]} primaries."
 
   attach_all_replicas || return 1
   cluster_formed_from_self || {
-    echo "DEFER: create issued but state/slots not converged yet — retry (transient, retry-safe)." >&2
+    classify formation-converge yes "create issued but state/slots/membership not converged yet"
     return 1
   }
   echo "cluster formed: state ok, 16384/16384 slots assigned."
@@ -227,7 +257,7 @@ attach_all_replicas() {
     first=$(first_fqdn_of_list "${fqdns}")
     master_id=$(node_id_of "${first}")
     if [ -z "${master_id}" ]; then
-      echo "DEFER: cannot read CLUSTER MYID from ${first} — retry (transient, retry-safe)." >&2
+      classify formation-myid yes "cannot read CLUSTER MYID from ${first}"
       return 1
     fi
     for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$' | sort); do
@@ -239,7 +269,7 @@ attach_all_replicas() {
       fi
       build_cluster_cli
       add_out=$("${_ccli[@]}" --cluster add-node "${fqdn}:${SERVICE_PORT}" "${first}:${SERVICE_PORT}" --cluster-slave --cluster-master-id "${master_id}" 2>&1) || {
-        echo "ERROR: add replica ${fqdn} to shard ${shard} failed: ${add_out}" >&2
+        classify formation-add-replica no "add replica ${fqdn} to shard ${shard} failed: ${add_out}"
         return 1
       }
       echo "attached ${fqdn} as replica of shard ${shard} (master ${master_id})."
@@ -263,7 +293,7 @@ verify_or_join() {
   done < <(each_shard_fqdn_list)
 
   if [ -z "${any_formed_host}" ]; then
-    echo "DEFER: no formed cluster visible yet (coordinator still working) — retry (transient, retry-safe)." >&2
+    classify join-wait-formed yes "no formed cluster visible yet (coordinator still working)"
     return 1
   fi
 
@@ -271,8 +301,12 @@ verify_or_join() {
   self_first=$(first_fqdn_of_list "${CURRENT_SHARD_POD_FQDN_LIST}")
   build_cli "${any_formed_host}"
   if "${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | grep -q "${self_first}"; then
-    echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} already a cluster member."
-    return 0
+    if all_expected_members_present "${any_formed_host}"; then
+      echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} already a cluster member; membership complete."
+      return 0
+    fi
+    classify join-membership yes "shard present but full membership not yet complete"
+    return 1
   fi
 
   # scale-out: join this shard's first pod as a new master, rebalance slots
@@ -280,27 +314,37 @@ verify_or_join() {
   build_cluster_cli
   local add_out
   add_out=$("${_ccli[@]}" --cluster add-node "${self_first}:${SERVICE_PORT}" "${any_formed_host}:${SERVICE_PORT}" 2>&1) || {
-    echo "ERROR: add-node ${self_first} failed: ${add_out}" >&2
+    classify join-add-node no "add-node ${self_first} failed: ${add_out}"
     return 1
   }
   master_id=$(node_id_of "${self_first}")
   if [ -z "${master_id}" ]; then
-    echo "DEFER: joined but CLUSTER MYID unreadable from ${self_first} — retry (transient, retry-safe)." >&2
+    classify join-myid yes "joined but CLUSTER MYID unreadable from ${self_first}"
     return 1
   fi
   local rebalance_out
   rebalance_out=$("${_ccli[@]}" --cluster rebalance "${any_formed_host}:${SERVICE_PORT}" --cluster-use-empty-masters 2>&1) || {
-    echo "ERROR: rebalance toward new shard failed: ${rebalance_out}" >&2
+    classify join-rebalance no "rebalance toward new shard failed: ${rebalance_out}"
     return 1
   }
   attach_shard_replicas_to "${self_first}" "${master_id}" || return 1
   local own
   own=$(slots_owned_by "${self_first}" "${master_id}")
   if [ "${own}" -le 0 ]; then
-    echo "DEFER: new shard joined but owns ${own} slots after rebalance — retry (transient, retry-safe)." >&2
+    classify join-slots yes "new shard joined but owns ${own} slots after rebalance"
     return 1
   fi
-  echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} joined with ${own} slots."
+  # positive completeness: every pod of THIS shard must be in the view
+  local nodes vfqdn
+  build_cli "${self_first}"
+  nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
+  for vfqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$'); do
+    if ! echo "${nodes}" | grep -qF "${vfqdn}"; then
+      classify join-membership yes "pod ${vfqdn} of this shard not yet in cluster view"
+      return 1
+    fi
+  done
+  echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} joined with ${own} slots; all shard pods in view."
 }
 
 attach_shard_replicas_to() {
@@ -313,7 +357,7 @@ attach_shard_replicas_to() {
     fi
     build_cluster_cli
     add_out=$("${_ccli[@]}" --cluster add-node "${fqdn}:${SERVICE_PORT}" "${master_fqdn}:${SERVICE_PORT}" --cluster-slave --cluster-master-id "${master_id}" 2>&1) || {
-      echo "ERROR: add replica ${fqdn} failed: ${add_out}" >&2
+      classify join-add-replica no "add replica ${fqdn} failed: ${add_out}"
       return 1
     }
   done
@@ -356,7 +400,7 @@ shard_remove() {
     fi
   done < <(each_shard_fqdn_list)
   if [ -z "${remaining_host}" ]; then
-    echo "ERROR: no healthy remaining shard visible to receive slots — refusing shard removal." >&2
+    classify remove-no-receiver no "no healthy remaining shard visible to receive slots — refusing removal"
     exit 1
   fi
 
@@ -378,13 +422,13 @@ shard_remove() {
     build_cluster_cli
     local reb_out
     reb_out=$("${_ccli[@]}" --cluster rebalance "${remaining_host}:${SERVICE_PORT}" --cluster-weight "${master_id}=0" 2>&1) || {
-      echo "ERROR: slot drain (rebalance weight=0) failed: ${reb_out}" >&2
+      classify remove-drain no "slot drain (rebalance weight=0) failed: ${reb_out}"
       exit 1
     }
     own=$(slots_owned_by "${remaining_host}" "${master_id}")
   fi
   if [ "${own}" -ne 0 ]; then
-    echo "DEFER: shard still owns ${own} slots after drain — NOT removing nodes; retry (retry-safe)." >&2
+    classify remove-slots-nonzero yes "shard still owns ${own} slots after drain — NOT removing nodes"
     exit 1
   fi
   echo "slot drain proven: shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} owns 0 slots."
@@ -397,7 +441,7 @@ shard_remove() {
     build_cluster_cli
     local del_out
     del_out=$("${_ccli[@]}" --cluster del-node "${remaining_host}:${SERVICE_PORT}" "${node_id}" 2>&1) || {
-      echo "ERROR: del-node ${node_id} failed: ${del_out}" >&2
+      classify remove-del-node no "del-node ${node_id} failed: ${del_out}"
       exit 1
     }
     echo "removed node ${node_id} from cluster."
@@ -407,7 +451,7 @@ shard_remove() {
     build_cluster_cli
     local del_out2
     del_out2=$("${_ccli[@]}" --cluster del-node "${remaining_host}:${SERVICE_PORT}" "${node_id}" 2>&1) || {
-      echo "ERROR: del-node ${node_id} failed: ${del_out2}" >&2
+      classify remove-del-node no "del-node ${node_id} failed: ${del_out2}"
       exit 1
     }
     echo "removed node ${node_id} from cluster."
