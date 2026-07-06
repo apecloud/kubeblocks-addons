@@ -6,7 +6,7 @@ Phase A boundary (issue #3021): templates + config + server start only.
   - No roles / roleProbe yet: cluster-mode role detection (CLUSTER NODES) and
     switchover land together in phase C as one contract; declaring roles
     without a probe would leave pods permanently unlabeled.
-  - No lifecycle actions yet: cluster formation / shard scale land in phase B.
+  - Phase B (issue #3026) added postProvision formation and shardRemove.
 v1 boundary: Valkey 9 only; in-cluster networking only (pod-FQDN announce,
 no NodePort/LB advertise).
 */}}
@@ -124,6 +124,25 @@ spec:
         componentVarRef:
           optional: false
           podFQDNs: Required
+    ## all-shards discovery for formation/scale (KB 'individual' strategy
+    ## emits ALL_SHARDS_POD_FQDN_LIST_<SHARD> per shard; 'combined' gives the
+    ## short-name roster the coordinator election sorts).
+    - name: ALL_SHARDS_COMPONENT_SHORT_NAMES
+      valueFrom:
+        componentVarRef:
+          compDef: {{ printf "valkey-cluster-%s" .major }}
+          optional: false
+          shortName: Required
+          multipleClusterObjectOption:
+            strategy: combined
+    - name: ALL_SHARDS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ printf "valkey-cluster-%s" .major }}
+          optional: false
+          podFQDNs: Required
+          multipleClusterObjectOption:
+            strategy: individual
     # ── Physical resource hints for config tuning (io-threads, maxmemory).
     # Optional: pods without explicit limits still render (template guards
     # every access with index — Emily's phase-A first-blocker, task #367).
@@ -144,6 +163,22 @@ spec:
       expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --cacert {{.TLS_MOUNT_PATH}}/ca.crt{{else}}{{end}}` | toYaml }}
     - name: TLS_MOUNT_PATH
       value: {{ $.Values.tlsMountPath }}
+
+  lifecycleActions:
+    # Formation-or-join: single-shot bootstrap-or-defer (rc=1 => framework
+    # retry). Coordinator pod creates the cluster; every other pod verifies
+    # membership or joins (scale-out path). See valkey-cluster-manage.sh.
+    postProvision:
+      exec:
+        container: valkey-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-cluster-manage.sh --post-provision
+        precondition: RuntimeReady
+      retryPolicy:
+        maxRetries: 20
+        retryInterval: 5
 
   runtime:
     containers:

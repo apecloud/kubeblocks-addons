@@ -170,11 +170,13 @@ Describe "Valkey cluster template contracts"
     The status should be failure
   End
 
-  It "declares no shard lifecycle actions yet (phase B owns shardRemove)"
-    # Guard: shard scale must not be enabled before the slot-drain script
-    # exists (shardRemove-vs-preTerminate data-safety trap). Match YAML
-    # keys only; the design comment legitimately mentions the action name.
-    When call grep -E "^[[:space:]]*(shardRemove|shardAdd|lifecycleActions):" "${shardingdef}"
-    The status should be failure
+  It "declares shardRemove backed by the drain-then-prove manage script"
+    # Shard scale is only legal WITH the slot-drain script (the
+    # shardRemove-vs-preTerminate data-safety trap): the action and the
+    # script must appear together.
+    When call grep -E "shardRemove:|valkey-cluster-manage.sh --shard-remove" "${shardingdef}"
+    The status should be success
+    The stdout should include "shardRemove:"
+    The stdout should include "--shard-remove"
   End
 End

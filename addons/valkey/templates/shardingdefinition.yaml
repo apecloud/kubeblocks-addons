@@ -1,14 +1,8 @@
 {{- /*
 ShardingDefinition for Valkey Cluster (sharding) mode.
 
-Phase A boundary (issue #3021): shape only — no shard lifecycle actions yet.
-shardRemove (slot drain -> positive slots-zero proof -> del-node) lands in
-phase B together with cluster formation; declaring shard scale before those
-scripts exist would let a shard scale-in destroy data (the shardRemove-vs-
-preTerminate trap documented in kubeblocks-addon-docs).
-
-Until phase B merges, shardsLimit min==max effectively pins the shard count
-users can request at creation; scale in/out is rejected by the controller.
+Phase B (issue #3026) enables shard lifecycle: shardRemove drains this shard's slots and only deletes nodes after a
+POSITIVE zero-slots observation (never on del-node success alone).
 */}}
 apiVersion: apps.kubeblocks.io/v1
 kind: ShardingDefinition
@@ -26,8 +20,24 @@ spec:
     # 32 is the reviewed v1 upper bound (raise only with scale evidence).
     minShards: 3
     maxShards: 32
-  provisionStrategy: Serial
+  # Parallel provisioning is REQUIRED for single-shot formation: cluster
+  # create needs every shard's designated primary reachable at once; the
+  # coordinator defers (rc=1, framework retry) until all shards answer —
+  # deterministic convergence, no sleeps. Updates stay Serial for safe
+  # rolling behavior.
+  provisionStrategy: Parallel
   updateStrategy: Serial
   systemAccounts:
     - name: default
       shared: true
+  lifecycleActions:
+    shardRemove:
+      exec:
+        container: valkey-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-cluster-manage.sh --shard-remove
+      retryPolicy:
+        maxRetries: 20
+        retryInterval: 5
