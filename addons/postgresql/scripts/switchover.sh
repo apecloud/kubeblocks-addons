@@ -27,8 +27,8 @@ load_common_library() {
 # Bounded-wait budget (kbagent clamps every action call at 60s):
 #   leader query  : curl -m 5
 #   switchover API: curl -m 20 (patroni blocks until the switchover attempt finishes)
-#   verification  : up to 4 attempts x (curl -m 3 + sleep 2) ~= 20s
-# worst case ~= 45s, leaving a buffer under the cmpd timeoutSeconds of 50.
+#   verification  : candidate path only, up to 4 attempts x (curl -m 3 + sleep 2) ~= 20s
+# worst case ~= 45s (candidate) / ~25s (no candidate), under cmpd timeoutSeconds 50.
 SWITCHOVER_VERIFY_ATTEMPTS=${SWITCHOVER_VERIFY_ATTEMPTS:-4}
 SWITCHOVER_VERIFY_INTERVAL=${SWITCHOVER_VERIFY_INTERVAL:-2}
 
@@ -90,8 +90,11 @@ request_switchover() {
   esac
 }
 
-# Positively confirms the switchover result: leadership must have left the old
-# leader, and when a candidate was requested it must be the new leader.
+# Positively confirms a candidate switchover: leadership must have left the
+# old leader and landed on the requested candidate. The no-candidate path does
+# not use this — patroni's POST /switchover is synchronous, so the checked
+# 2xx response already confirms the switchover completed (reviewer direction
+# in PR #3035: do not poll-verify the no-candidate path).
 verify_switchover() {
   local old_leader=$1
   local candidate=$2
@@ -156,8 +159,10 @@ switchover() {
     verify_switchover "$POSTGRES_PRIMARY_POD_NAME" "$KB_SWITCHOVER_CANDIDATE_NAME" || exit 1
   else
     echo "Current pod: ${CURRENT_POD_NAME} performs switchover without candidate. Leader: ${POSTGRES_PRIMARY_POD_NAME}"
+    # No post-hoc verification here: patroni's /switchover is synchronous and
+    # request_switchover already fails on any non-2xx result. Role convergence
+    # is then proven by the roleProbe (05c). Reviewer direction in PR #3035.
     request_switchover "$POSTGRES_PRIMARY_POD_NAME" "" || exit 1
-    verify_switchover "$POSTGRES_PRIMARY_POD_NAME" "" || exit 1
   fi
 }
 

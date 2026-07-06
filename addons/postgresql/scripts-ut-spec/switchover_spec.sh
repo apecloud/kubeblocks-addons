@@ -132,15 +132,21 @@ Describe "PostgreSQL Switchover Script Tests"
         The output should include "Switchover verified: new leader is pod-1"
       End
 
-      It "succeeds without candidate once leadership leaves the old leader"
+      It "succeeds without candidate on a checked 2xx, with no poll verification"
         export CURRENT_POD_NAME="pod-0"
+        # keep the cluster view unchanged: the no-candidate path must not
+        # depend on observing a leader change (patroni /switchover is
+        # synchronous; the checked 2xx is the confirmation)
+        export CLUSTER_JSON_AFTER="${CLUSTER_JSON_BEFORE}"
         When run switchover
         The status should eq 0
-        The output should include "Switchover verified: new leader is pod-1"
+        The output should include "Switchover API response (HTTP 200)"
+        The output should not include "Switchover verified"
       End
 
-      It "verifies a standby_leader in standby clusters"
+      It "verifies a standby_leader candidate in standby clusters"
         export CURRENT_POD_NAME="pod-0"
+        export KB_SWITCHOVER_CANDIDATE_NAME="pod-1"
         export CLUSTER_JSON_BEFORE='{"members":[{"name":"pod-0","role":"standby_leader"},{"name":"pod-1","role":"replica"}]}'
         export CLUSTER_JSON_AFTER='{"members":[{"name":"pod-0","role":"replica"},{"name":"pod-1","role":"standby_leader"}]}'
         When run switchover
@@ -184,8 +190,9 @@ Describe "PostgreSQL Switchover Script Tests"
     End
 
     Context "when the switchover result cannot be confirmed"
-      It "defers when the leader does not change within the bounded window"
+      It "defers when the candidate does not become leader within the bounded window"
         export CURRENT_POD_NAME="pod-0"
+        export KB_SWITCHOVER_CANDIDATE_NAME="pod-1"
         export CLUSTER_JSON_AFTER="${CLUSTER_JSON_BEFORE}"
         When run switchover
         The status should be failure
