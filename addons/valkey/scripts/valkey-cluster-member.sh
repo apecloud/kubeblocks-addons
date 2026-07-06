@@ -236,6 +236,12 @@ all_cluster_pods_except() {
   while IFS='=' read -r var value; do
     for fqdn in $(echo "${value}" | tr ',' '\n' | grep -v '^$'); do
       [ "${fqdn}" = "${except}" ] && continue
+      # skip roster members that no longer resolve (departed concurrently
+      # in the same scale-in operation — their node tables are gone);
+      # resolvable-but-down members still count and defer downstream.
+      if command -v getent >/dev/null 2>&1 && ! getent hosts "${fqdn}" >/dev/null 2>&1; then
+        continue
+      fi
       echo "${fqdn}"
     done
   done < <(env | grep -E '^ALL_SHARDS_POD_FQDN_LIST_[A-Za-z0-9_]+=' | sort)

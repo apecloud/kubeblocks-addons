@@ -567,11 +567,21 @@ purge_shard_from_cluster() {
     fqdns="${shard_line#* }"
     [ "${shard}" = "${self_upper}" ] && continue
     for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$'); do
+      # r9 CT12: in a multi-shard scale-in the roster env snapshot still
+      # lists SIBLING shards leaving in the same operation. A roster host
+      # whose DNS name no longer exists has departed — its node table
+      # died with it, so FORGET and the absence proof on it are vacuous.
+      # Only DNS-gone hosts are skipped; a resolvable-but-unreachable
+      # host (pod restarting) still defers below, keeping the proof strict.
+      if ! host_resolves "${fqdn}"; then
+        echo "roster host ${fqdn} no longer resolves — departed concurrently; skipping as vantage."
+        continue
+      fi
       remaining+=("${fqdn}")
     done
   done < <(each_shard_fqdn_list)
   if [ "${#remaining[@]}" -eq 0 ]; then
-    classify remove-no-receiver no "no remaining pods in roster — refusing purge"
+    classify remove-no-receiver no "no live remaining pods in roster — refusing purge"
     return 1
   fi
 
@@ -641,6 +651,14 @@ purge_shard_from_cluster() {
     fi
   done
   return 0
+}
+
+# DNS existence check for roster members. getent absent (minimal image)
+# falls back to "resolvable" so behavior degrades to the strict defer
+# path, never to a weaker proof.
+host_resolves() {
+  command -v getent >/dev/null 2>&1 || return 0
+  getent hosts "${1}" >/dev/null 2>&1
 }
 
 # The current pod's own cluster view: does it claim to be a master that

@@ -365,6 +365,45 @@ Describe "valkey-cluster-manage.sh"
       The contents of file "${calls}" should include "FORGET:vk-abc-1.h:dead2"
     End
 
+    It "skips a concurrently-departed sibling shard (DNS gone) and still purges via live members (r9 CT12)"
+      # 5->3 scale-in: shard-def and shard-ghi leave in the same batch.
+      # From shard-def's action, shard-ghi's pods are roster-listed but
+      # their DNS is already gone — they must be skipped as vantage, not
+      # deferred on forever.
+      each_shard_fqdn_list() {
+        printf 'SHARD_ABC vk-abc-0.h,vk-abc-1.h\n'
+        printf 'SHARD_DEF vk-def-0.h,vk-def-1.h\n'
+        printf 'SHARD_GHI vk-ghi-0.h,vk-ghi-1.h\n'
+      }
+      host_resolves() { case "${1}" in vk-ghi-*) return 1 ;; *) return 0 ;; esac; }
+      When call purge_shard_from_cluster
+      The status should be success
+      The stdout should include "vk-ghi-0.h no longer resolves"
+      The contents of file "${calls}" should include "FORGET:vk-abc-0.h:dead1"
+      The contents of file "${calls}" should include "FORGET:vk-abc-1.h:dead1"
+      The contents of file "${calls}" should not include "FORGET:vk-ghi"
+    End
+
+    It "still defers when a resolvable live member cannot be reached (connection failure is NOT departure)"
+      host_resolves() { return 0; }
+      mock_cli() {
+        local host="${1}" f="${2}"; shift 2
+        case "$*" in
+          PING) echo PONG ;;
+          FLUSHALL|"CLUSTER RESET HARD") echo OK ;;
+          "CLUSTER FORGET"*)
+            if [ "${host}" = "vk-abc-1.h" ]; then echo "Could not connect to Valkey at vk-abc-1.h:6379: Connection refused"; else echo OK; fi ;;
+          "CLUSTER NODES")
+            printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
+            printf 'dead1 vk-def-0.h:6379@16379 master,fail - 0 0 2 disconnected\n' ;;
+        esac
+      }
+      When call purge_shard_from_cluster
+      The status should be failure
+      The stderr should include "phase=remove-forget"
+      The stderr should include "retry_safe=yes"
+    End
+
     It "cannot succeed while resurrection residue persists (retry-safe defer)"
       mock_cli() {
         local host="${1}" f="${2}"; shift 2
