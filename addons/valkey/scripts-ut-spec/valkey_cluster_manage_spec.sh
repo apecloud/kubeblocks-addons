@@ -236,6 +236,65 @@ Describe "valkey-cluster-manage.sh"
     End
   End
 
+  Describe "open-slot repair — r7 CT05 interrupted migration"
+    # r7 live evidence: slot 5517 stuck in importing/migrating (rebalance
+    # interrupted, e.g. by the action runtime clamp) blocks every later
+    # add-node/rebalance preflight, and the engine never self-heals it.
+    # The driver must repair open slots BEFORE trusting slot ownership.
+
+    It "repairs open slots before continuing the join (own>0 must not skip past them)"
+      _fix_marker=$(mktemp)
+      node_id_of() { echo "mid-new"; }
+      slots_owned_by() { echo "120"; }
+      build_cluster_cli() { _ccli=(mock_checkfix "${_fix_marker}"); }
+      mock_checkfix() {
+        local f="${1}"; shift
+        case "$*" in
+          *check*)
+            if [ -s "${f}" ]; then echo "[OK] All 16384 slots covered."; else
+              echo "[WARNING] The following slots are open: 5517"
+            fi ;;
+          *fix*) echo "fixed" > "${f}"; echo "Fixing open slot 5517" ;;
+        esac
+      }
+      ensure_replica_bound() { return 0; }
+      shard_membership_bound() { return 0; }
+      all_expected_members_present() { return 0; }
+      build_cli() { _cli=(true); }
+      When call drive_shard_completion "via.h" "vk-shard-abc-0.h.ns.svc"
+      The status should be success
+      The stdout should include "repaired open slots"
+      The stdout should include "membership bound"
+    End
+
+    It "defers retry-safe when the fix cannot close the open slots"
+      node_id_of() { echo "mid-new"; }
+      build_cluster_cli() { _ccli=(mock_stuck_fix); }
+      mock_stuck_fix() {
+        case "$*" in
+          *check*) echo "[WARNING] Node x has slots in importing state 5517." ;;
+          *fix*) echo "tried" ;;
+        esac
+      }
+      When call drive_shard_completion "via.h" "vk-shard-abc-0.h.ns.svc"
+      The status should be failure
+      The stderr should include "phase=join-fix"
+      The stderr should include "retry_safe=yes"
+    End
+
+    It "gates the shard-remove drain on open-slot repair (zero-proof needs clean state)"
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() { printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'; }
+      cluster_state_of() { echo "ok"; }
+      shard_master_id_via() { echo "master-id-1"; }
+      open_slots_present() { return 0; }
+      repair_open_slots() { echo REPAIR-CALLED >&2; return 1; }
+      When run shard_remove
+      The status should be failure
+      The stderr should include "REPAIR-CALLED"
+    End
+  End
+
   Describe "purge_shard_from_cluster() — r4 CT06 residue-free removal"
     # r4 CT06 live evidence: del-node's SHUTDOWN let the removed pods
     # restart with old nodes.conf and re-handshake back as fail entries.

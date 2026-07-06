@@ -344,6 +344,33 @@ verify_or_join() {
   drive_shard_completion "${any_formed_host}" "${self_first}"
 }
 
+# Open-slot detection: an interrupted slot migration (e.g. a rebalance
+# killed by the action runtime clamp mid-slot) leaves importing/migrating
+# markers the engine never self-heals; every later add-node/rebalance
+# preflight then rejects. --cluster check surfaces them from any vantage.
+open_slots_present() {
+  local via="${1}" out
+  build_cluster_cli
+  out=$("${_ccli[@]}" --cluster check "${via}:${SERVICE_PORT}" 2>&1) || true
+  echo "${out}" | grep -qiE "slots are open|in (migrating|importing) state"
+}
+
+# Repair interrupted migrations, then positively re-check. Retry-safe:
+# re-entry re-reads engine state and re-drives the fix.
+repair_open_slots() {
+  local via="${1}" fix_out
+  build_cluster_cli
+  fix_out=$(echo yes | "${_ccli[@]}" --cluster fix "${via}:${SERVICE_PORT}" 2>&1) || {
+    classify join-fix yes "cluster fix for open slots failed (re-entry re-drives): $(echo "${fix_out}" | tail -2 | tr '\n' ';')"
+    return 1
+  }
+  if open_slots_present "${via}"; then
+    classify join-fix yes "open slots remain after cluster fix — deferring"
+    return 1
+  fi
+  echo "repaired open slots (interrupted migration)."
+}
+
 # Idempotent completion driver for THIS shard: ensure its master owns
 # slots (rebalance if zero), ensure every replica is bound, then require
 # strict in-shard binding and full-roster completeness. Safe to re-enter
@@ -354,6 +381,12 @@ drive_shard_completion() {
   if [ -z "${master_id}" ]; then
     classify join-myid yes "CLUSTER MYID unreadable from ${self_first}"
     return 1
+  fi
+  # r7 CT05 evidence: repair interrupted migrations FIRST — a stuck open
+  # slot blocks both rebalance and replica attach, and own>0 alone must
+  # not skip past it.
+  if open_slots_present "${via}"; then
+    repair_open_slots "${via}" || return 1
   fi
   own=$(slots_owned_by "${via}" "${master_id}")
   if [ "${own}" -le 0 ]; then
@@ -483,6 +516,11 @@ shard_remove() {
     exit 0
   fi
 
+  # interrupted-migration repair also gates the drain: rebalance weight=0
+  # cannot start (and zero-proof cannot be trusted) with open slots.
+  if open_slots_present "${remaining_host}"; then
+    repair_open_slots "${remaining_host}" || exit 1
+  fi
   local own
   own=$(slots_owned_by "${remaining_host}" "${master_id}")
   if [ "${own}" -gt 0 ]; then
