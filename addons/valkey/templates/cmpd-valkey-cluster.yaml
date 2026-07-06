@@ -124,6 +124,19 @@ spec:
         componentVarRef:
           optional: false
           podFQDNs: Required
+    # ── Physical resource hints for config tuning (io-threads, maxmemory).
+    # Optional: pods without explicit limits still render (template guards
+    # every access with index — Emily's phase-A first-blocker, task #367).
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          optional: true
+          memoryLimit: Required
+    - name: PHY_CPU
+      valueFrom:
+        resourceVarRef:
+          optional: true
+          cpuLimit: Required
     # ── TLS CLI flags (empty when TLS is off) ──
     # Same verify-against-CA contract as the sentinel-mode definition.
     - name: VALKEY_CLI_TLS_ARGS

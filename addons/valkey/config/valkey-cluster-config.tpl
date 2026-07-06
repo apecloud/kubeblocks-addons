@@ -76,7 +76,7 @@ zset-max-listpack-value 64
 
 # IO threads -- use roughly half of available CPUs, capped at 8.
 # Setting 1 disables multi-threading (same as not setting it).
-{{- $cpu := default 0 $.PHY_CPU | int }}
+{{- $cpu := index . "PHY_CPU" | default 0 | int }}
 {{- if gt $cpu 1 }}
 io-threads {{ min (max (div $cpu 2) 1) 8 }}
 {{- else }}
@@ -90,7 +90,7 @@ io-threads-do-reads yes
 # service that is the safe default; cache deployments that prefer
 # eviction can set maxmemory-policy (dynamic parameter) per cluster.
 maxmemory-policy noeviction
-{{- $mem := default 0 $.PHY_MEMORY | int }}
+{{- $mem := index . "PHY_MEMORY" | default 0 | int }}
 {{- if gt $mem 0 }}
 maxmemory {{ mulf $mem 0.8 | int }}
 {{- end }}
