@@ -175,7 +175,8 @@ spec:
 
   lifecycleActions:
     # Role probe: pure read of this node's CLUSTER NODES myself line;
-    # emits "<role> <config-epoch>" (epoch = anti-replay version token).
+    # emits a SINGLE-TOKEN role (versioned output deferred — a local epoch
+    # cannot prove the complete shard role fact; see check-role script).
     # Unknown state exits non-zero (skip sample) — never an empty role.
     roleProbe:
       periodSeconds: 1
