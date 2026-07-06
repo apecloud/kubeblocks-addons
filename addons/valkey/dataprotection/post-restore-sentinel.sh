@@ -252,17 +252,46 @@ build_sentinel_target_list() {
     fi
     echo "INFO: using SENTINEL_POD_FQDN_LIST (${expected_sentinel_count} entries) as target set."
   else
-    expected_sentinel_count=$(positive_int_or_default "${POST_RESTORE_SENTINEL_EXPECTED_COUNT:-3}" 3)
+    # PR #2988 semantics: when POST_RESTORE_SENTINEL_EXPECTED_COUNT is
+    # explicitly set, the DNS-discovered count must match exactly. When
+    # unset, the DNS-discovered count is used — this assumes component
+    # orchestration guarantees all Sentinel pods are Ready before postReady
+    # runs; if that assumption fails (e.g. node eviction during restore),
+    # the explicit env var is the safety net. Even-count discovery is
+    # refused as a signal of partial visibility.
+    local local_dns_attempt=0
     local sentinel_ip _rest
-    while read -r sentinel_ip _rest; do
-      [ -n "${sentinel_ip}" ] && sentinel_fqdn_list+=("${sentinel_ip}")
-    done < <(getent hosts "${sentinel_headless}" 2>/dev/null | awk '!seen[$1]++ { print $1 }')
+    while [ "${local_dns_attempt}" -lt 3 ]; do
+      sentinel_fqdn_list=()
+      while read -r sentinel_ip _rest; do
+        [ -n "${sentinel_ip}" ] && sentinel_fqdn_list+=("${sentinel_ip}")
+      done < <(getent hosts "${sentinel_headless}" 2>/dev/null | awk '!seen[$1]++ { print $1 }')
+      [ "${#sentinel_fqdn_list[@]}" -gt 0 ] && break
+      local_dns_attempt=$((local_dns_attempt + 1))
+      echo "INFO: DNS returned 0 Sentinel endpoints, retrying (${local_dns_attempt}/3)..."
+      sleep 5
+    done
     local discovered_sentinel_count="${#sentinel_fqdn_list[@]}"
-    if [ "${discovered_sentinel_count}" -ne "${expected_sentinel_count}" ]; then
-      echo "ERROR: discovered ${discovered_sentinel_count}/${expected_sentinel_count} expected Sentinel endpoint(s) from ${sentinel_headless}; refusing partial post-restore registration." >&2
+    if [ "${discovered_sentinel_count}" -eq 0 ]; then
+      echo "ERROR: discovered 0 Sentinel endpoint(s) from ${sentinel_headless} after retries; cannot proceed." >&2
       return 1
     fi
-    echo "INFO: using ${discovered_sentinel_count}/${expected_sentinel_count} DNS-discovered Sentinel endpoint(s) from ${sentinel_headless} as target set."
+    if [ -n "${POST_RESTORE_SENTINEL_EXPECTED_COUNT:-}" ]; then
+      expected_sentinel_count=$(positive_int_or_default "${POST_RESTORE_SENTINEL_EXPECTED_COUNT}" 3)
+      if [ "${discovered_sentinel_count}" -ne "${expected_sentinel_count}" ]; then
+        echo "ERROR: discovered ${discovered_sentinel_count}/${expected_sentinel_count} expected Sentinel endpoint(s) from ${sentinel_headless}; refusing partial post-restore registration." >&2
+        return 1
+      fi
+      echo "INFO: using ${discovered_sentinel_count}/${expected_sentinel_count} DNS-discovered Sentinel endpoint(s) from ${sentinel_headless} as target set."
+    else
+      if [ $((discovered_sentinel_count % 2)) -eq 0 ]; then
+        echo "ERROR: DNS discovered ${discovered_sentinel_count} Sentinel endpoint(s) — even count suggests partial discovery from an odd-replica deployment. Set POST_RESTORE_SENTINEL_EXPECTED_COUNT explicitly in your restore env to proceed safely (e.g. POST_RESTORE_SENTINEL_EXPECTED_COUNT=3 or =5)." >&2
+        return 1
+      fi
+      expected_sentinel_count="${discovered_sentinel_count}"
+      echo "WARNING: Sentinel expected count inferred from DNS (${discovered_sentinel_count}). For HA restores, explicitly set POST_RESTORE_SENTINEL_EXPECTED_COUNT in restore env to guarantee full-cluster registration."
+      echo "INFO: using ${discovered_sentinel_count} DNS-discovered Sentinel endpoint(s) from ${sentinel_headless} as target set."
+    fi
   fi
 }
 
