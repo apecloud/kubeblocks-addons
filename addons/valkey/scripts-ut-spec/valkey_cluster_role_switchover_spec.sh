@@ -7,7 +7,7 @@
 Describe "valkey-cluster-check-role.sh"
   Include ../scripts/valkey-cluster-check-role.sh
 
-  It "emits 'primary <epoch>' from a myself,master line"
+  It "emits single-token 'primary' from a myself,master line"
     build_cli_cmd() { cli_cmd=(mock_nodes); }
     mock_nodes() {
       printf 'aaa 10.0.0.1:6379@16379 myself,master - 0 0 7 connected 0-5460\n'
@@ -15,17 +15,17 @@ Describe "valkey-cluster-check-role.sh"
     }
     When call probe_cluster_role
     The status should be success
-    The stdout should equal "primary 7"
+    The stdout should equal "primary"
   End
 
-  It "emits 'secondary <epoch>' from a myself,slave line"
+  It "emits single-token 'secondary' from a myself,slave line"
     build_cli_cmd() { cli_cmd=(mock_nodes); }
     mock_nodes() {
       printf 'bbb 10.0.0.2:6379@16379 myself,slave aaa 0 0 12 connected\n'
     }
     When call probe_cluster_role
     The status should be success
-    The stdout should equal "secondary 12"
+    The stdout should equal "secondary"
   End
 
   It "skips the sample (non-zero, no role token) when myself is absent"
@@ -37,13 +37,12 @@ Describe "valkey-cluster-check-role.sh"
     The stderr should include "skip sample"
   End
 
-  It "skips the sample on a non-numeric epoch (never emits a guessed role)"
+  It "never emits a version token (single-token contract, versioned path deferred)"
     build_cli_cmd() { cli_cmd=(mock_nodes); }
-    mock_nodes() { printf 'ddd 10.0.0.4:6379@16379 myself,master - 0 0 oops connected\n'; }
+    mock_nodes() { printf 'ddd 10.0.0.4:6379@16379 myself,master - 0 0 42 connected 0-5460\n'; }
     When call probe_cluster_role
-    The status should be failure
-    The stdout should equal ""
-    The stderr should include "non-numeric config-epoch"
+    The status should be success
+    The stdout should not include " "
   End
 End
 
@@ -91,7 +90,29 @@ Describe "valkey-cluster-switchover.sh"
     role_of() { echo "unknown"; }
     When call execute_switchover "vk-s-1.h.ns.svc"
     The status should be failure
-    The stderr should include "cannot promote"
+    The stderr should include "phase=candidate-state"
+  End
+
+  It "refuses an explicit candidate outside this shard"
+    export KB_SWITCHOVER_CANDIDATE_FQDN="vk-OTHER-9.h.ns.svc"
+    When call switchover
+    The status should be failure
+    The stderr should include "phase=candidate-outside-shard"
+  End
+
+  It "refuses non-primary role switchover requests"
+    export KB_SWITCHOVER_ROLE="secondary"
+    When call switchover
+    The status should be failure
+    The stderr should include "phase=role-guard"
+  End
+
+  It "refuses a candidate that does not replicate this shard's master"
+    role_of() { echo "replica"; }
+    candidate_replicates_this_shard() { return 1; }
+    When call execute_switchover "vk-s-1.h.ns.svc"
+    The status should be failure
+    The stderr should include "phase=candidate-wrong-master"
   End
 
   It "fails with a classified error when promotion is unconfirmed in budget"
@@ -133,13 +154,44 @@ Describe "valkey-cluster-member.sh"
     mock_no_slave() { printf 'id1 x myself,master - 0 0 5 connected\n'; }
     When run member_leave
     The status should be failure
+    The stderr should include "phase=leave-orphan-guard"
     The stderr should include "would orphan slots"
+  End
+
+  It "excludes the join target from the vantage and requires a formed member"
+    export KB_JOIN_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
+    # Only the target itself would answer: vantage must refuse it and fail.
+    build_cli() {
+      case "$1" in
+        vk-s-1.h.ns.svc) _cli=(mock_up) ;;
+        *) _cli=(mock_down) ;;
+      esac
+    }
+    mock_up() { case "$1" in PING) echo PONG;; *) echo "cluster_state:ok";; esac; }
+    mock_down() { return 1; }
+    When run member_join
+    The status should be failure
+    The stderr should include "phase=vantage"
+  End
+
+  It "does not confirm a join on visibility alone (must be replica of this master)"
+    export KB_JOIN_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
+    shard_vantage() { echo "vk-s-0.h.ns.svc"; }
+    shard_master_line() { echo "mid1 vk-s-0.h.ns.svc:6379@16379 myself,master - 0 0 5 connected 0-5460"; }
+    # target visible but flagged master of nothing (not slave of mid1)
+    node_line_of() { echo "tid2 vk-s-1.h.ns.svc:6379@16379 master - 0 0 6 connected"; }
+    build_cluster_cli() { _ccli=(mock_add); }
+    mock_add() { echo "added"; }
+    When run member_join
+    The status should be failure
+    The stderr should include "phase=join-confirm"
   End
 
   It "requires the join target env"
     unset KB_JOIN_MEMBER_POD_FQDN
     When run member_join
     The status should be failure
+    The stderr should include "phase=env-contract"
     The stderr should include "KB_JOIN_MEMBER_POD_FQDN is required"
   End
 End

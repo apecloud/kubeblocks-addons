@@ -31,6 +31,13 @@ load_common_library() {
   source /scripts/common.sh
 }
 
+# Stable classification for every non-zero exit (aligned with
+# valkey-cluster-manage.sh): classify <phase> <retry_safe:yes|no> <detail...>
+classify() {
+  local phase="$1" retry_safe="$2"; shift 2
+  echo "action=valkey-cluster-member phase=${phase} retry_safe=${retry_safe} detail=$*" >&2
+}
+
 build_cli() {
   local host="${1}"
   _cli=(valkey-cli --no-auth-warning -h "${host}" -p "${port}")
@@ -50,18 +57,23 @@ build_cluster_cli() {
   fi
 }
 
-# First in-shard pod that answers PING — used as the vantage point for
-# cluster-view reads (never as an identity).
+# Vantage for cluster-view reads: first in-shard pod that (a) is NOT the
+# operation target (a target's local view can false-close join/leave —
+# review blocker), (b) answers PING, and (c) provably belongs to a FORMED
+# cluster (state ok). Never an identity, only a viewpoint.
 shard_vantage() {
-  local fqdn
+  local exclude="${1:-}" fqdn state
   for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$' | sort); do
+    [ -n "${exclude}" ] && [ "${fqdn}" = "${exclude}" ] && continue
     build_cli "${fqdn}"
-    if "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
+    "${_cli[@]}" PING 2>/dev/null | grep -q PONG || continue
+    state=$("${_cli[@]}" CLUSTER INFO 2>/dev/null | grep "^cluster_state:" | tr -d '\r' | cut -d: -f2)
+    if [ "${state}" = "ok" ]; then
       echo "${fqdn}"
       return 0
     fi
   done
-  echo "ERROR: no in-shard pod answers — cannot read cluster view." >&2
+  classify vantage yes "no non-target in-shard pod with cluster_state:ok — cannot read a trustworthy cluster view"
   return 1
 }
 
@@ -83,45 +95,58 @@ node_line_of() {
 member_join() {
   local target="${KB_JOIN_MEMBER_POD_FQDN:-}"
   if [ -z "${target}" ]; then
-    echo "ERROR: KB_JOIN_MEMBER_POD_FQDN is required for --join." >&2
+    classify env-contract no "KB_JOIN_MEMBER_POD_FQDN is required for --join"
     exit 1
   fi
   local via master_line master_id master_addr
-  via=$(shard_vantage) || exit 1
+  via=$(shard_vantage "${target}") || exit 1
   master_line=$(shard_master_line "${via}")
   if [ -z "${master_line}" ]; then
-    echo "ERROR: shard has no master in cluster view — refusing to attach a replica blind." >&2
+    classify join-no-master no "shard has no master in cluster view — refusing to attach a replica blind"
     exit 1
   fi
   master_id=$(echo "${master_line}" | awk '{print $1}')
   master_addr=$(echo "${master_line}" | awk '{print $2}' | cut -d@ -f1 | cut -d: -f1)
 
-  if [ -n "$(node_line_of "${via}" "${target}")" ]; then
-    echo "member ${target} already in cluster view — join already effective."
+  if join_confirmed "${via}" "${target}" "${master_id}"; then
+    echo "member ${target} already a replica of this shard's master — join already effective."
     exit 0
   fi
-  build_cluster_cli
-  local out
-  out=$("${_ccli[@]}" --cluster add-node "${target}:${port}" "${master_addr}:${port}" --cluster-slave --cluster-master-id "${master_id}" 2>&1) || {
-    echo "ERROR: add-node --cluster-slave for ${target} failed: ${out}" >&2
-    exit 1
-  }
   if [ -z "$(node_line_of "${via}" "${target}")" ]; then
-    echo "ERROR: add-node reported success but ${target} not visible in cluster view — not confirming join." >&2
+    build_cluster_cli
+    local out
+    out=$("${_ccli[@]}" --cluster add-node "${target}:${port}" "${master_addr}:${port}" --cluster-slave --cluster-master-id "${master_id}" 2>&1) || {
+      classify join-add-node no "add-node --cluster-slave for ${target} failed: ${out}"
+      exit 1
+    }
+  fi
+  if ! join_confirmed "${via}" "${target}" "${master_id}"; then
+    classify join-confirm yes "${target} not yet a replica of master ${master_id} in the non-target cluster view"
     exit 1
   fi
   echo "member ${target} joined shard as replica of ${master_id}."
   exit 0
 }
 
+# Positive join fact: from a NON-TARGET vantage, the target's node line must
+# carry the slave flag AND reference this shard's master id (visibility
+# alone is not membership — review blocker).
+join_confirmed() {
+  local via="${1}" target="${2}" master_id="${3}" line
+  line=$(node_line_of "${via}" "${target}")
+  [ -z "${line}" ] && return 1
+  echo "${line}" | awk '{print $3}' | grep -q slave || return 1
+  [ "$(echo "${line}" | awk '{print $4}')" = "${master_id}" ]
+}
+
 member_leave() {
   local target="${KB_LEAVE_MEMBER_POD_FQDN:-}"
   if [ -z "${target}" ]; then
-    echo "ERROR: KB_LEAVE_MEMBER_POD_FQDN is required for --leave." >&2
+    classify env-contract no "KB_LEAVE_MEMBER_POD_FQDN is required for --leave"
     exit 1
   fi
   local via target_line target_id target_flags
-  via=$(shard_vantage) || exit 1
+  via=$(shard_vantage "${target}") || exit 1
   target_line=$(node_line_of "${via}" "${target}")
   if [ -z "${target_line}" ]; then
     echo "member ${target} not in cluster view — leave already effective."
@@ -137,11 +162,11 @@ member_leave() {
   build_cluster_cli
   local out
   out=$("${_ccli[@]}" --cluster del-node "${via}:${port}" "${target_id}" 2>&1) || {
-    echo "ERROR: del-node ${target_id} failed: ${out}" >&2
+    classify leave-del-node no "del-node ${target_id} failed: ${out}"
     exit 1
   }
   if [ -n "$(node_line_of "${via}" "${target}")" ]; then
-    echo "ERROR: del-node reported success but ${target} still in cluster view — not confirming leave." >&2
+    classify leave-confirm yes "del-node reported success but ${target} still in cluster view"
     exit 1
   fi
   echo "member ${target} removed from cluster."
@@ -163,12 +188,12 @@ demote_master_before_leave() {
     fi
   done
   if [ -z "${promoted}" ]; then
-    echo "ERROR: leaving pod is the shard master and no in-shard replica exists — refusing leave (would orphan slots)." >&2
+    classify leave-orphan-guard no "leaving pod is the shard master and no in-shard replica exists — refusing leave (would orphan slots)"
     return 1
   fi
   build_cli "${promoted}"
   out=$("${_cli[@]}" CLUSTER FAILOVER 2>&1) || {
-    echo "ERROR: CLUSTER FAILOVER on ${promoted} failed: ${out}" >&2
+    classify leave-failover no "CLUSTER FAILOVER on ${promoted} failed: ${out}"
     return 1
   }
   while [ "${waited}" -lt "${LEAVE_FAILOVER_BUDGET}" ]; do
@@ -179,7 +204,7 @@ demote_master_before_leave() {
     sleep_when_ut_mode_false 1
     waited=$((waited + 1))
   done
-  echo "ERROR: mastership did not move within ${LEAVE_FAILOVER_BUDGET}s — refusing to delete the master (retry-safe)." >&2
+  classify leave-failover-confirm yes "mastership did not move within ${LEAVE_FAILOVER_BUDGET}s — refusing to delete the master"
   return 1
 }
 
