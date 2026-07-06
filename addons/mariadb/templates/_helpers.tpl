@@ -475,8 +475,17 @@ reconfigure:
           echo "${skipped_count} parameter(s) were rejected by engine and skipped"
           echo "${skipped_count} parameter(s) were rejected by engine and skipped" >&2
         fi
-        if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -eq 0 ]; then
-          echo "No parameters were applied during reconfigure action" >&2
+        # Fail whenever NOTHING was applied. applied=0 with skipped>0 means
+        # every declared parameter was rejected by the engine (unknown var /
+        # bad value / type / syntax), so no declared value reached the engine
+        # and the reconfigure did not converge — reporting success here would
+        # leave ComponentParameter desired permanently divergent from runtime.
+        if [ "${applied_count}" -eq 0 ]; then
+          if [ "${skipped_count}" -gt 0 ]; then
+            echo "All ${skipped_count} parameter(s) were rejected by the engine; no declared value was applied — reconfigure did not converge" >&2
+          else
+            echo "No parameters were applied during reconfigure action" >&2
+          fi
           exit 1
         fi
       - reconfigure
@@ -990,8 +999,17 @@ reconfigure:
           echo "${skipped_count} parameter(s) were rejected by engine and skipped"
           echo "${skipped_count} parameter(s) were rejected by engine and skipped" >&2
         fi
-        if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -eq 0 ]; then
-          echo "No parameters were applied during reconfigure action" >&2
+        # Fail whenever NOTHING was applied. applied=0 with skipped>0 means
+        # every declared parameter was rejected by the engine (unknown var /
+        # bad value / type / syntax), so no declared value reached the engine
+        # and the reconfigure did not converge — reporting success here would
+        # leave ComponentParameter desired permanently divergent from runtime.
+        if [ "${applied_count}" -eq 0 ]; then
+          if [ "${skipped_count}" -gt 0 ]; then
+            echo "All ${skipped_count} parameter(s) were rejected by the engine; no declared value was applied — reconfigure did not converge" >&2
+          else
+            echo "No parameters were applied during reconfigure action" >&2
+          fi
           exit 1
         fi
       - reconfigure

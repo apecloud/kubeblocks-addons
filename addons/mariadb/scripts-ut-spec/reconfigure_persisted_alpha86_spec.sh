@@ -586,23 +586,77 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
   End
 
   Describe "Rejected user-input SQL errors do not keep reconfigure on the failing path"
-    It "base reconfigureAction skips classified engine rejects without exiting 1"
+    It "base reconfigureAction skips classified engine rejects without exiting 1 mid-loop"
       When call extract_base_helper_body
       The status should be success
       The output should include 'skipped_count=$((skipped_count + 1))'
       The output should include 'parameter(s) were rejected by engine and skipped'
-      The output should include 'if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -eq 0 ]; then'
       The output should not include 'failing reconfigure to avoid accepting invalid rendered config'
     End
 
-    It "persisted reconfigureAction skips classified engine rejects without writing overrides or exiting 1"
+    It "persisted reconfigureAction skips classified engine rejects without writing overrides or exiting 1 mid-loop"
       When call extract_persisted_helper_body
       The status should be success
       The output should include 'skipped_count=$((skipped_count + 1))'
       The output should include 'continue'
       The output should include 'parameter(s) were rejected by engine and skipped'
-      The output should include 'if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -eq 0 ]; then'
       The output should not include 'failing reconfigure to avoid accepting invalid rendered config'
+    End
+  End
+
+  Describe "Reconfigure does not silently report success when nothing was applied"
+    # H4: the terminal gate must fail whenever applied_count == 0, including
+    # the all-rejected case (applied=0, skipped>0). The previous gate only
+    # failed when applied=0 AND skipped=0, so a reconfigure whose every
+    # parameter was engine-rejected exited 0 and KB marked the Ops Succeeded
+    # while ComponentParameter desired stayed divergent from runtime.
+
+    It "base gate fails whenever applied_count is 0 (not only when skipped is also 0)"
+      When call extract_base_helper_body
+      The status should be success
+      The output should include 'if [ "${applied_count}" -eq 0 ]; then'
+      # the old both-zero-only gate must be gone
+      The output should not include 'if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -eq 0 ]; then'
+    End
+
+    It "persisted gate fails whenever applied_count is 0 (not only when skipped is also 0)"
+      When call extract_persisted_helper_body
+      The status should be success
+      The output should include 'if [ "${applied_count}" -eq 0 ]; then'
+      The output should not include 'if [ "${applied_count}" -eq 0 ] && [ "${skipped_count}" -eq 0 ]; then'
+    End
+
+    _run_gate() {
+      # Replicate the terminal gate exactly and evaluate it under the given
+      # (applied_count, skipped_count); print REACHED on the success path.
+      applied_count="$1"; skipped_count="$2"
+      if [ "${applied_count}" -eq 0 ]; then
+        if [ "${skipped_count}" -gt 0 ]; then
+          echo "did not converge" >&2
+        else
+          echo "No parameters were applied" >&2
+        fi
+        exit 1
+      fi
+      echo "REACHED"
+    }
+
+    It "all-rejected run (applied=0, skipped>0) exits non-zero"
+      When run _run_gate 0 3
+      The status should equal 1
+      The stderr should include "did not converge"
+    End
+
+    It "empty run (applied=0, skipped=0) exits non-zero"
+      When run _run_gate 0 0
+      The status should equal 1
+      The stderr should include "No parameters were applied"
+    End
+
+    It "at least one applied (applied>0, some skipped) still succeeds"
+      When run _run_gate 2 1
+      The status should equal 0
+      The output should equal "REACHED"
     End
   End
 
