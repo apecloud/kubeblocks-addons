@@ -321,43 +321,55 @@ verify_or_join() {
     return 1
   fi
 
-  local self_first master_id
+  local self_first
   self_first=$(first_fqdn_of_list "${CURRENT_SHARD_POD_FQDN_LIST}")
   build_cli "${any_formed_host}"
-  if "${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | grep -q "${self_first}"; then
-    if all_expected_members_present "${any_formed_host}"; then
-      echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} already a cluster member; membership complete."
-      return 0
-    fi
-    classify join-membership yes "shard present but full membership not yet complete"
-    return 1
+  if ! "${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | grep -q "${self_first}"; then
+    # scale-out first contact: introduce this shard's designated master.
+    # Wrapper preflight failures here are dominated by transient config
+    # agreement (gossip settling after a prior step) -> retry-safe defer;
+    # re-entry re-reads topology and re-drives (r3 CT05 evidence).
+    build_cluster_cli
+    local add_out
+    add_out=$("${_ccli[@]}" --cluster add-node "${self_first}:${SERVICE_PORT}" "${any_formed_host}:${SERVICE_PORT}" 2>&1) || {
+      classify join-add-node yes "add-node ${self_first} failed (re-entry re-drives): ${add_out}"
+      return 1
+    }
+    echo "introduced ${self_first} to the cluster as this shard's master."
   fi
+  # DRIVER (r3 CT05 livelock fix): once this shard is visible, every
+  # invocation must DRIVE the remaining steps -- slots, replica binding,
+  # roster completeness -- never observe-and-defer. The old present-branch
+  # deferred without acting, so a single failed attach never healed.
+  drive_shard_completion "${any_formed_host}" "${self_first}"
+}
 
-  # scale-out: join this shard's first pod as a new master, rebalance slots
-  # to it, then attach the shard's replicas.
-  build_cluster_cli
-  local add_out
-  add_out=$("${_ccli[@]}" --cluster add-node "${self_first}:${SERVICE_PORT}" "${any_formed_host}:${SERVICE_PORT}" 2>&1) || {
-    classify join-add-node no "add-node ${self_first} failed: ${add_out}"
-    return 1
-  }
+# Idempotent completion driver for THIS shard: ensure its master owns
+# slots (rebalance if zero), ensure every replica is bound, then require
+# strict in-shard binding and full-roster completeness. Safe to re-enter
+# from any partial state; every step re-reads engine truth first.
+drive_shard_completion() {
+  local via="${1}" self_first="${2}" master_id own
   master_id=$(node_id_of "${self_first}")
   if [ -z "${master_id}" ]; then
-    classify join-myid yes "joined but CLUSTER MYID unreadable from ${self_first}"
+    classify join-myid yes "CLUSTER MYID unreadable from ${self_first}"
     return 1
   fi
-  local rebalance_out
-  rebalance_out=$("${_ccli[@]}" --cluster rebalance "${any_formed_host}:${SERVICE_PORT}" --cluster-use-empty-masters 2>&1) || {
-    classify join-rebalance no "rebalance toward new shard failed: ${rebalance_out}"
-    return 1
-  }
-  attach_shard_replicas_to "${self_first}" "${master_id}" || return 1
-  local own
-  own=$(slots_owned_by "${self_first}" "${master_id}")
+  own=$(slots_owned_by "${via}" "${master_id}")
   if [ "${own}" -le 0 ]; then
-    classify join-slots yes "new shard joined but owns ${own} slots after rebalance"
-    return 1
+    build_cluster_cli
+    local rebalance_out
+    rebalance_out=$("${_ccli[@]}" --cluster rebalance "${via}:${SERVICE_PORT}" --cluster-use-empty-masters 2>&1) || {
+      classify join-rebalance yes "rebalance toward ${CURRENT_SHARD_COMPONENT_SHORT_NAME} failed (re-entry re-drives): ${rebalance_out}"
+      return 1
+    }
+    own=$(slots_owned_by "${via}" "${master_id}")
+    if [ "${own}" -le 0 ]; then
+      classify join-slots yes "shard master owns ${own} slots after rebalance"
+      return 1
+    fi
   fi
+  attach_shard_replicas_to "${self_first}" "${master_id}" || return 1
   # positive completeness: strict binding for THIS shard (exactly one
   # in-shard master; every other pod a slave of that master)
   local nodes
@@ -367,7 +379,11 @@ verify_or_join() {
     classify join-membership yes "this shard's pods not yet fully bound (master+replicas) in cluster view"
     return 1
   fi
-  echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} joined with ${own} slots; membership bound."
+  if ! all_expected_members_present "${via}"; then
+    classify join-membership yes "this shard complete; full roster membership not yet complete"
+    return 1
+  fi
+  echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} complete: ${own} slots, membership bound."
 }
 
 attach_shard_replicas_to() {
@@ -391,7 +407,7 @@ ensure_replica_bound() {
   if [ -z "${line}" ]; then
     build_cluster_cli
     out=$("${_ccli[@]}" --cluster add-node "${fqdn}:${SERVICE_PORT}" "${via}:${SERVICE_PORT}" --cluster-slave --cluster-master-id "${master_id}" 2>&1) || {
-      classify attach-add-node no "add replica ${fqdn} to shard ${shard} failed: ${out}"
+      classify attach-add-node yes "add replica ${fqdn} to shard ${shard} failed (re-entry re-drives): ${out}"
       return 1
     }
     echo "attached ${fqdn} as replica of shard ${shard} (master ${master_id})."

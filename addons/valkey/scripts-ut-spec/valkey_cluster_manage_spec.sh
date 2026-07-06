@@ -161,6 +161,81 @@ Describe "valkey-cluster-manage.sh"
       The stdout should include ""
     End
   End
+  Describe "drive_shard_completion() — r3 CT05 livelock fix"
+    # r3 live evidence: after one failed replica attach, the old
+    # present-branch only observed ("shard present but full membership
+    # not yet complete") and never re-drove the attach. The driver must
+    # ACT from any partial state, not defer.
+
+    It "drives the missing replica attach when the shard master is present with slots (livelock regression)"
+      node_id_of() { echo "mid-new"; }
+      slots_owned_by() { echo "120"; }
+      ensure_replica_bound() { echo "DRIVE ${2}"; }
+      shard_membership_bound() { return 0; }
+      all_expected_members_present() { return 0; }
+      build_cli() { _cli=(true); }
+      When call drive_shard_completion "via.h" "vk-shard-abc-0.h.ns.svc"
+      The status should be success
+      The stdout should include "DRIVE vk-shard-abc-1.h.ns.svc"
+      The stdout should include "membership bound"
+    End
+
+    It "re-drives rebalance when the shard master owns zero slots"
+      node_id_of() { echo "mid-new"; }
+      # command-substitution runs the stub in a subshell, so state must
+      # live in a file: first call reports 0 slots, later calls 200.
+      _slots_marker=$(mktemp)
+      slots_owned_by() {
+        if [ -s "${_slots_marker}" ]; then echo "200"; else echo seen > "${_slots_marker}"; echo "0"; fi
+      }
+      build_cluster_cli() { _ccli=(mock_reb); }
+      mock_reb() { echo "rebalanced"; }
+      ensure_replica_bound() { return 0; }
+      shard_membership_bound() { return 0; }
+      all_expected_members_present() { return 0; }
+      build_cli() { _cli=(true); }
+      When call drive_shard_completion "via.h" "vk-shard-abc-0.h.ns.svc"
+      The status should be success
+      The stdout should include "complete: 200 slots"
+    End
+
+    It "classifies a rebalance failure as retry-safe (re-entry re-drives)"
+      node_id_of() { echo "mid-new"; }
+      slots_owned_by() { echo "0"; }
+      build_cluster_cli() { _ccli=(mock_reb_fail); }
+      mock_reb_fail() { echo "[ERR] Nodes don't agree about configuration!" >&2; return 1; }
+      When call drive_shard_completion "via.h" "vk-shard-abc-0.h.ns.svc"
+      The status should be failure
+      The stderr should include "phase=join-rebalance"
+      The stderr should include "retry_safe=yes"
+    End
+
+    It "classifies a transient replica add-node preflight failure as retry-safe"
+      build_cli() { _cli=(mock_empty_nodes); }
+      mock_empty_nodes() { printf ''; }
+      build_cluster_cli() { _ccli=(mock_add_fail); }
+      mock_add_fail() { echo "[ERR] Nodes don't agree about configuration!" >&2; return 1; }
+      When call ensure_replica_bound "via.h" "vk-shard-abc-1.h.ns.svc" "mid-new" "shard-abc"
+      The status should be failure
+      The stderr should include "phase=attach-add-node"
+      The stderr should include "retry_safe=yes"
+    End
+
+    It "routes the present-branch of verify_or_join into the driver (no observe-only dead end)"
+      each_shard_fqdn_list() {
+        printf 'SHARD_ABC vk-shard-abc-0.h.ns.svc,vk-shard-abc-1.h.ns.svc\n'
+      }
+      cluster_state_of() { echo "ok"; }
+      build_cli() { _cli=(mock_nodes_present); }
+      mock_nodes_present() { printf 'mid-new vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-5460\n'; }
+      drive_shard_completion() { echo "DRIVEN via=${1} self=${2}"; }
+      When call verify_or_join
+      The status should be success
+      The stdout should include "DRIVEN"
+      The stdout should include "self=vk-shard-abc-0.h.ns.svc"
+    End
+  End
+
   Describe "shard_membership_bound()"
     nodes3ok='m1 vk-s-a-0.h:6379@16379 master - 0 0 1 connected 0-5460
 s1 vk-s-a-1.h:6379@16379 slave m1 0 0 1 connected'
