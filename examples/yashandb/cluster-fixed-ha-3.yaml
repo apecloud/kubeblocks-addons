@@ -11,9 +11,9 @@ spec:
   componentSpecs:
     - name: yashan-comp
       # 2026-06-23 Reason: the live P0 recovery path converged only after all replicas used the current immutable ComponentDefinition revision; Purpose: keep the PR example aligned with the Chart version validated by local gates.
-      # 2026-07-06 Reason: upstream main advanced the chart version to 1.2.0-alpha.1 during PR review; Purpose: keep fixed-address examples aligned with the rendered ComponentDefinition name.
+      # 2026-07-06 Reason: upstream main advanced the chart version to 1.2.0-alpha.2 during PR review; Purpose: keep fixed-address examples aligned with the rendered ComponentDefinition name.
       # Time: 2026-07-06.
-      componentDef: yashandb-1.2.0-alpha.1
+      componentDef: yashandb-1.2.0-alpha.2
       # 2026-06-22 Reason: a three-node proof can form one primary plus two standby nodes only when addresses remain stable; Purpose: document the fixed-address contract without claiming generic Pod-IP HA.
       replicas: 3
       # 2026-06-23 Reason: fixed-address HA must pin each logical database node to the worker address used by yasboot metadata; Purpose: express one primary plus two standbys as an explicit KubeBlocks instance topology.

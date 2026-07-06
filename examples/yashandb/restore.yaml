@@ -17,9 +17,9 @@ spec:
     - name: yashan-comp
       # 2026-06-22 Reason: native Configure is delivered through a new immutable ComponentDefinition revision; Purpose: keep restore examples aligned with fresh addon installs.
       # 2026-06-23 Reason: restored example clusters must use the same current ComponentDefinition as fresh examples; Purpose: keep restore validation aligned with the PR-facing addon revision.
-      # 2026-07-06 Reason: upstream main advanced the chart version to 1.2.0-alpha.1 during PR review; Purpose: keep restore examples aligned with the rendered ComponentDefinition name.
+      # 2026-07-06 Reason: upstream main advanced the chart version to 1.2.0-alpha.2 during PR review; Purpose: keep restore examples aligned with the rendered ComponentDefinition name.
       # Time: 2026-07-06.
-      componentDef: yashandb-1.2.0-alpha.1
+      componentDef: yashandb-1.2.0-alpha.2
       replicas: 1
       volumeClaimTemplates:
         - name: data

@@ -11,9 +11,9 @@ spec:
   componentSpecs:
     - name: yashan-comp
       # 2026-06-23 Reason: the live P0 recovery path converged only after all replicas used the current immutable ComponentDefinition revision; Purpose: keep the PR example aligned with the Chart version validated by local gates.
-      # 2026-07-06 Reason: upstream main advanced the chart version to 1.2.0-alpha.1 during PR review; Purpose: keep fixed-address examples aligned with the rendered ComponentDefinition name.
+      # 2026-07-06 Reason: upstream main advanced the chart version to 1.2.0-alpha.2 during PR review; Purpose: keep fixed-address examples aligned with the rendered ComponentDefinition name.
       # Time: 2026-07-06.
-      componentDef: yashandb-1.2.0-alpha.1
+      componentDef: yashandb-1.2.0-alpha.2
       # 2026-06-22 Reason: ordinary Pod-IP multi-replica YashanDB is not productized; Purpose: make this example explicitly require the fixed-address HA mode and stable worker scheduling.
       replicas: 2
       # 2026-06-23 Reason: fixed-address HA must pin each logical database node to the worker address used by yasboot metadata; Purpose: prevent a multi-replica example from degrading into independent primary databases.

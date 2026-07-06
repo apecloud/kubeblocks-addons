@@ -31,13 +31,7 @@ spec:
       template: {{ include "yashandb.configTplName" . }}
       volumeName: {{ include "yashandb.configEntryName" . }}
       namespace: {{ .Release.Namespace }}
-      # 2026-07-06 Reason: current KubeBlocks parameter API binds ComponentParameter through external-managed config items; Purpose: ensure Configure creates configItemDetails for install.ini.
-      # Time: 2026-07-06.
-      externalManaged: true
       restartOnFileChange: true
-      # 2026-07-06 Reason: external-managed config items need their reconfigure action attached to the config entry so KubeBlocks can build configItemDetails; Purpose: keep Configure binding without blocking workload provisioning.
-      # Time: 2026-07-06.
-      {{- include "yashandb.config.reconfigureAction" . | nindent 6 }}
   scripts:
     - name: yashandb-scripts
       template: {{ include "yashandb.scriptsTplName" . }}
@@ -63,6 +57,9 @@ spec:
       updatePriority: 1
       participatesInQuorum: false
   lifecycleActions:
+    # 2026-07-06 Reason: KubeBlocks v1 CRD prunes spec.configs[].reconfigure and externalManaged=true makes the controller ignore this template, blocking provisioning with "config/script template has no template specified"; Purpose: keep current-head workload provisioning on the CRD-supported lifecycle reconfigure path.
+    # Time: 2026-07-06.
+    {{- include "yashandb.config.reconfigureAction" . | nindent 4 }}
     # 2026-06-02 Reason: wire YashanDB DATABASE_ROLE into KubeBlocks roleProbe; Purpose: map PRIMARY/STANDBY to primary/secondary labels for services and switchover prechecks.
     roleProbe:
       periodSeconds: 10
