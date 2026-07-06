@@ -158,6 +158,49 @@ Describe "valkey-cluster-member.sh"
     The stderr should include "would orphan slots"
   End
 
+  It "leaves via reset+FORGET-sweep+absence, never del-node (r4 CT06 family)"
+    export KB_LEAVE_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
+    export ALL_SHARDS_POD_FQDN_LIST_SHARD_S="vk-s-0.h.ns.svc,vk-s-1.h.ns.svc"
+    export ALL_SHARDS_POD_FQDN_LIST_SHARD_T="vk-t-0.h.ns.svc"
+    mb_calls=$(mktemp)
+    shard_vantage() { echo "vk-s-0.h.ns.svc"; }
+    # target present as replica at first; absent from every host after sweep
+    node_line_of() {
+      if [ "$(grep -c FORGET "${mb_calls}" 2>/dev/null)" -ge 2 ]; then echo ""; else
+        echo "tid2 vk-s-1.h.ns.svc:6379@16379 slave mid1 0 0 5 connected"
+      fi
+    }
+    build_cli() { _cli=(mock_leave_cli "${1}" "${mb_calls}"); }
+    mock_leave_cli() {
+      local host="${1}" f="${2}"; shift 2
+      case "$*" in
+        PING) echo PONG ;;
+        FLUSHALL) echo OK ;;
+        "CLUSTER RESET HARD") echo "RESET:${host}" >> "${f}"; echo OK ;;
+        "CLUSTER FORGET"*) echo "FORGET:${host}:${3}" >> "${f}"; echo OK ;;
+      esac
+    }
+    When run member_leave
+    The status should be success
+    The stdout should include "reset, forgotten, absence-proven"
+    The contents of file "${mb_calls}" should include "RESET:vk-s-1.h.ns.svc"
+    The contents of file "${mb_calls}" should include "FORGET:vk-s-0.h.ns.svc:tid2"
+    The contents of file "${mb_calls}" should include "FORGET:vk-t-0.h.ns.svc:tid2"
+  End
+
+  It "cannot close a leave while any remaining pod still sees the member"
+    export KB_LEAVE_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
+    export ALL_SHARDS_POD_FQDN_LIST_SHARD_S="vk-s-0.h.ns.svc,vk-s-1.h.ns.svc"
+    shard_vantage() { echo "vk-s-0.h.ns.svc"; }
+    node_line_of() { echo "tid2 vk-s-1.h.ns.svc:6379@16379 slave,fail mid1 0 0 5 disconnected"; }
+    build_cli() { _cli=(mock_stuck); }
+    mock_stuck() { case "$*" in PING) echo PONG;; *) echo OK;; esac; }
+    When run member_leave
+    The status should be failure
+    The stderr should include "phase=leave-confirm"
+    The stderr should include "retry_safe=yes"
+  End
+
   It "excludes the join target from the vantage and requires a formed member"
     export KB_JOIN_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
     # Only the target itself would answer: vantage must refuse it and fail.

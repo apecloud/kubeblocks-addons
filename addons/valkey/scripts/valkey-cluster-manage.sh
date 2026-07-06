@@ -474,9 +474,12 @@ shard_remove() {
   # roles) — resolve the master id from the cluster's own view.
   master_id=$(shard_master_id_via "${remaining_host}")
   if [ -z "${master_id}" ]; then
-    # No master of this shard known to the cluster: shard is already out —
-    # classify NotFound explicitly as closable only when no slots dangle.
-    echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} has no master in cluster view — treating as already removed."
+    # No master of this shard in the cluster view: deletion already began.
+    # NOT an automatic success — fail/handshake residue of this shard may
+    # linger in remaining node tables (r4 CT06). Purge + absence proof.
+    echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} has no master in cluster view — verifying residue-free absence."
+    purge_shard_from_cluster || exit 1
+    echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} absent with no residue."
     exit 0
   fi
 
@@ -497,31 +500,89 @@ shard_remove() {
   fi
   echo "slot drain proven: shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} owns 0 slots."
 
-  # remove replicas first, master last
-  local node_line node_id fqdn
-  build_cli "${remaining_host}"
-  while read -r node_line; do
-    node_id="${node_line%% *}"
-    build_cluster_cli
-    local del_out
-    del_out=$("${_ccli[@]}" --cluster del-node "${remaining_host}:${SERVICE_PORT}" "${node_id}" 2>&1) || {
-      classify remove-del-node no "del-node ${node_id} failed: ${del_out}"
-      exit 1
-    }
-    echo "removed node ${node_id} from cluster."
-  done < <(shard_member_lines_via "${remaining_host}" | awk '{if ($3 ~ /slave/) print; }')
-  while read -r node_line; do
-    node_id="${node_line%% *}"
-    build_cluster_cli
-    local del_out2
-    del_out2=$("${_ccli[@]}" --cluster del-node "${remaining_host}:${SERVICE_PORT}" "${node_id}" 2>&1) || {
-      classify remove-del-node no "del-node ${node_id} failed: ${del_out2}"
-      exit 1
-    }
-    echo "removed node ${node_id} from cluster."
-  done < <(shard_member_lines_via "${remaining_host}" | awk '{if ($3 ~ /master/) print; }')
-  echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} removed cleanly (drained then deleted)."
+  purge_shard_from_cluster || exit 1
+  echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} removed cleanly (drained, reset, forgotten, absence-proven)."
   exit 0
+}
+
+# Residue-free removal (r4 CT06 live evidence): --cluster del-node also
+# SHUTDOWNs the deleted node; a KB-managed pod restarts with its old
+# nodes.conf and re-handshakes back into the cluster before KB terminates
+# it, leaving fail/handshake entries in remaining node tables. Sequence
+# that cannot resurrect instead:
+#   1. FLUSHALL + CLUSTER RESET HARD on each leaving pod (identity is
+#      destroyed on the node itself; a restart cannot rejoin),
+#   2. CLUSTER FORGET of the old ids on EVERY remaining node (node tables
+#      are per-node; "Unknown node" = already forgotten),
+#   3. positive absence proof from every remaining pod (no fqdn line, no
+#      old-id line, any flags) before rc=0.
+purge_shard_from_cluster() {
+  local pattern="" fqdn
+  for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$'); do
+    pattern="${pattern:+${pattern}|}${fqdn}"
+  done
+
+  local remaining=() shard_line shard fqdns self_upper
+  self_upper=$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_')
+  while read -r shard_line; do
+    shard="${shard_line%% *}"
+    fqdns="${shard_line#* }"
+    [ "${shard}" = "${self_upper}" ] && continue
+    for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$'); do
+      remaining+=("${fqdn}")
+    done
+  done < <(each_shard_fqdn_list)
+  if [ "${#remaining[@]}" -eq 0 ]; then
+    classify remove-no-receiver no "no remaining pods in roster — refusing purge"
+    return 1
+  fi
+
+  # old ids of this shard as currently seen (any state, incl fail/noaddr)
+  local nodes ids id
+  build_cli "${remaining[0]}"
+  nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
+  ids=$(echo "${nodes}" | grep -E "${pattern}" | awk '{print $1}')
+
+  # 1) neutralize reachable leaving pods: identity death, not shutdown
+  for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$' | sort); do
+    build_cli "${fqdn}"
+    if "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
+      "${_cli[@]}" FLUSHALL >/dev/null 2>&1 || true  # replicas refuse (harmless); master owns 0 slots
+      "${_cli[@]}" CLUSTER RESET HARD >/dev/null 2>&1 || {
+        classify remove-reset yes "CLUSTER RESET HARD on ${fqdn} failed"
+        return 1
+      }
+    fi
+  done
+
+  # 2) forget the old ids on every remaining node
+  local host out
+  for host in "${remaining[@]}"; do
+    build_cli "${host}"
+    for id in ${ids}; do
+      out=$("${_cli[@]}" CLUSTER FORGET "${id}" 2>&1) || true
+      case "${out}" in
+        OK*|*"Unknown node"*) ;;
+        *) classify remove-forget yes "FORGET ${id} on ${host} failed: ${out}"; return 1 ;;
+      esac
+    done
+  done
+
+  # 3) positive absence proof from EVERY remaining pod
+  local residue
+  for host in "${remaining[@]}"; do
+    build_cli "${host}"
+    nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
+    residue=$(echo "${nodes}" | grep -E "${pattern}" || true)
+    for id in ${ids}; do
+      residue="${residue}$(echo "${nodes}" | awk -v i="${id}" '$1==i')"
+    done
+    if [ -n "${residue}" ]; then
+      classify remove-residue yes "removed-shard residue still visible from ${host}"
+      return 1
+    fi
+  done
+  return 0
 }
 
 # CLUSTER NODES lines whose address matches any pod of the current shard.

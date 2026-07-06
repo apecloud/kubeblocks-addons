@@ -159,18 +159,53 @@ member_leave() {
     demote_master_before_leave "${via}" "${target}" || exit 1
   fi
 
-  build_cluster_cli
-  local out
-  out=$("${_ccli[@]}" --cluster del-node "${via}:${port}" "${target_id}" 2>&1) || {
-    classify leave-del-node no "del-node ${target_id} failed: ${out}"
-    exit 1
-  }
-  if [ -n "$(node_line_of "${via}" "${target}")" ]; then
-    classify leave-confirm yes "del-node reported success but ${target} still in cluster view"
+  # Residue-free leave (r4 CT06 family): --cluster del-node SHUTDOWNs the
+  # node; the KB-managed pod restarts with its old nodes.conf and can
+  # re-handshake back before KB terminates it. Instead: destroy the
+  # leaving node's identity on itself, FORGET its old id on every
+  # remaining cluster pod, and positively prove absence before rc=0.
+  build_cli "${target}"
+  if "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
+    "${_cli[@]}" FLUSHALL >/dev/null 2>&1 || true  # refused on replicas (harmless)
+    "${_cli[@]}" CLUSTER RESET HARD >/dev/null 2>&1 || {
+      classify leave-reset yes "CLUSTER RESET HARD on ${target} failed"
+      exit 1
+    }
+  fi
+  local remaining host out
+  remaining=$(all_cluster_pods_except "${target}")
+  if [ -z "${remaining}" ]; then
+    classify env-contract no "ALL_SHARDS_POD_FQDN_LIST_* roster empty — cannot FORGET ${target_id} cluster-wide (no fallback)"
     exit 1
   fi
-  echo "member ${target} removed from cluster."
+  for host in ${remaining}; do
+    build_cli "${host}"
+    out=$("${_cli[@]}" CLUSTER FORGET "${target_id}" 2>&1) || true
+    case "${out}" in
+      OK*|*"Unknown node"*) ;;
+      *) classify leave-forget yes "FORGET ${target_id} on ${host} failed: ${out}"; exit 1 ;;
+    esac
+  done
+  for host in ${remaining}; do
+    if [ -n "$(node_line_of "${host}" "${target}")" ]; then
+      classify leave-confirm yes "${target} still in cluster view from ${host} after FORGET sweep"
+      exit 1
+    fi
+  done
+  echo "member ${target} removed from cluster (reset, forgotten, absence-proven)."
   exit 0
+}
+
+# Every pod of every shard (KB roster env), excluding one FQDN. The
+# leaving node lives in EVERY node table, so FORGET must sweep them all.
+all_cluster_pods_except() {
+  local except="${1}" var value fqdn
+  while IFS='=' read -r var value; do
+    for fqdn in $(echo "${value}" | tr ',' '\n' | grep -v '^$'); do
+      [ "${fqdn}" = "${except}" ] && continue
+      echo "${fqdn}"
+    done
+  done < <(env | grep -E '^ALL_SHARDS_POD_FQDN_LIST_[A-Za-z0-9_]+=' | sort)
 }
 
 # The leaving pod is the shard's current master: promote another in-shard

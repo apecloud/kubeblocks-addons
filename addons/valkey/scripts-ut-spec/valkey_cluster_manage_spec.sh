@@ -236,6 +236,102 @@ Describe "valkey-cluster-manage.sh"
     End
   End
 
+  Describe "purge_shard_from_cluster() — r4 CT06 residue-free removal"
+    # r4 CT06 live evidence: del-node's SHUTDOWN let the removed pods
+    # restart with old nodes.conf and re-handshake back as fail entries.
+    # The purge must FORGET old ids on EVERY remaining node and prove
+    # absence before rc=0.
+    purge_env() {
+      export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-def"
+      export CURRENT_SHARD_POD_FQDN_LIST="vk-def-0.h,vk-def-1.h"
+      calls=$(mktemp)
+      each_shard_fqdn_list() {
+        printf 'SHARD_ABC vk-abc-0.h,vk-abc-1.h\n'
+        printf 'SHARD_DEF vk-def-0.h,vk-def-1.h\n'
+      }
+      build_cli() { _cli=(mock_cli "${1}" "${calls}"); }
+    }
+    Before "purge_env"
+
+    # mock: NODES shows the removed shard's fail residue until all 4
+    # FORGETs (2 remaining hosts x 2 old ids) have been recorded.
+    mock_cli() {
+      local host="${1}" f="${2}"; shift 2
+      case "$*" in
+        PING) echo PONG ;;
+        FLUSHALL) echo OK ;;
+        "CLUSTER RESET HARD") echo "RESET:${host}" >> "${f}"; echo OK ;;
+        "CLUSTER FORGET"*) echo "FORGET:${host}:${3}" >> "${f}"; echo OK ;;
+        "CLUSTER NODES")
+          printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
+          if [ "$(grep -c FORGET "${f}" 2>/dev/null)" -lt 4 ]; then
+            printf 'dead1 vk-def-0.h:6379@16379 master,fail - 0 0 2 disconnected\n'
+            printf 'dead2 vk-def-1.h:6379@16379 slave,fail dead1 0 0 2 disconnected\n'
+          fi ;;
+      esac
+    }
+
+    It "resets leaving pods, FORGETs old ids on every remaining pod, proves absence"
+      When call purge_shard_from_cluster
+      The status should be success
+      The contents of file "${calls}" should include "RESET:vk-def-0.h"
+      The contents of file "${calls}" should include "RESET:vk-def-1.h"
+      The contents of file "${calls}" should include "FORGET:vk-abc-0.h:dead1"
+      The contents of file "${calls}" should include "FORGET:vk-abc-0.h:dead2"
+      The contents of file "${calls}" should include "FORGET:vk-abc-1.h:dead1"
+      The contents of file "${calls}" should include "FORGET:vk-abc-1.h:dead2"
+    End
+
+    It "cannot succeed while resurrection residue persists (retry-safe defer)"
+      mock_cli() {
+        local host="${1}" f="${2}"; shift 2
+        case "$*" in
+          PING) echo PONG ;;
+          FLUSHALL|"CLUSTER RESET HARD"|"CLUSTER FORGET"*) echo OK ;;
+          "CLUSTER NODES")
+            printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
+            printf 'dead1 vk-def-0.h:6379@16379 master,fail - 0 0 2 disconnected\n' ;;
+        esac
+      }
+      When call purge_shard_from_cluster
+      The status should be failure
+      The stderr should include "phase=remove-residue"
+      The stderr should include "retry_safe=yes"
+    End
+
+    It "treats FORGET 'Unknown node' as already forgotten"
+      _nodes_reads=$(mktemp)
+      mock_cli() {
+        local host="${1}" f="${2}"; shift 2
+        case "$*" in
+          PING) echo PONG ;;
+          FLUSHALL|"CLUSTER RESET HARD") echo OK ;;
+          "CLUSTER FORGET"*) echo "ERR Unknown node ${3}" ;;
+          "CLUSTER NODES")
+            printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
+            if [ ! -s "${_nodes_reads}" ]; then
+              echo seen > "${_nodes_reads}"
+              printf 'dead1 vk-def-0.h:6379@16379 master,fail - 0 0 2 disconnected\n'
+            fi ;;
+        esac
+      }
+      When call purge_shard_from_cluster
+      The status should be success
+    End
+
+    It "still purges on the already-removed path (no silent rc=0 over residue)"
+      # shard_remove with no master in view must route through the purge,
+      # not exit 0 blindly — pin by proving purge failure propagates.
+      validate_manage_env() { return 0; }
+      cluster_state_of() { echo "ok"; }
+      shard_master_id_via() { echo ""; }
+      purge_shard_from_cluster() { echo PURGE-CALLED; return 1; }
+      When run shard_remove
+      The status should be failure
+      The stdout should include "PURGE-CALLED"
+    End
+  End
+
   Describe "shard_membership_bound()"
     nodes3ok='m1 vk-s-a-0.h:6379@16379 master - 0 0 1 connected 0-5460
 s1 vk-s-a-1.h:6379@16379 slave m1 0 0 1 connected'
