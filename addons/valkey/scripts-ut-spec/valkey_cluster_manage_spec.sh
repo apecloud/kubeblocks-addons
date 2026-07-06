@@ -47,6 +47,7 @@ Describe "valkey-cluster-manage.sh"
       export ALL_SHARDS_COMPONENT_SHORT_NAMES="shard-aaa:shard-aaa,shard-aaa:shard-aaa"
       When call coordinator_shard
       The status should be failure
+      The stderr should include "phase=shard-roster"
       The stderr should include "duplicate shard name"
     End
 
@@ -54,6 +55,7 @@ Describe "valkey-cluster-manage.sh"
       export ALL_SHARDS_COMPONENT_SHORT_NAMES=":,shard-bbb:shard-bbb"
       When call coordinator_shard
       The status should be failure
+      The stderr should include "phase=shard-roster"
       The stderr should include "empty shard name"
     End
   End
@@ -157,6 +159,30 @@ Describe "valkey-cluster-manage.sh"
       The stderr should include "retry_safe=yes"
       The stderr should include "still owns 5 slots"
       The stdout should include ""
+    End
+  End
+  Describe "shard_membership_bound()"
+    nodes3ok='m1 vk-s-a-0.h:6379@16379 master - 0 0 1 connected 0-5460
+s1 vk-s-a-1.h:6379@16379 slave m1 0 0 1 connected'
+    It "passes when the shard has one master and slaves bound to it"
+      When call shard_membership_bound "${nodes3ok}" "SHARD_A" "vk-s-a-0.h,vk-s-a-1.h"
+      The status should be success
+    End
+
+    It "fails when a non-first pod is a stray master"
+      nodes_bad='m1 vk-s-a-0.h:6379@16379 master - 0 0 1 connected 0-5460
+m2 vk-s-a-1.h:6379@16379 master - 0 0 2 connected'
+      When call shard_membership_bound "${nodes_bad}" "SHARD_A" "vk-s-a-0.h,vk-s-a-1.h"
+      The status should be failure
+      The stdout should include "2 in-shard master(s), expected exactly 1"
+    End
+
+    It "fails when a pod replicates a foreign master"
+      nodes_bad2='m1 vk-s-a-0.h:6379@16379 master - 0 0 1 connected 0-5460
+s1 vk-s-a-1.h:6379@16379 slave OTHER 0 0 1 connected'
+      When call shard_membership_bound "${nodes_bad2}" "SHARD_A" "vk-s-a-0.h,vk-s-a-1.h"
+      The status should be failure
+      The stdout should include "replicates OTHER, not this shard's master m1"
     End
   End
 End

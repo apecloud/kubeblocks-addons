@@ -131,14 +131,14 @@ coordinator_shard() {
   IFS=',' read -ra _entries <<< "${raw}"
   for entry in "${_entries[@]}"; do
     name="${entry%%:*}"
-    [ -z "${name}" ] && { echo "ERROR: empty shard name in ALL_SHARDS_COMPONENT_SHORT_NAMES='${raw}'." >&2; return 1; }
+    [ -z "${name}" ] && { classify shard-roster no "empty shard name in ALL_SHARDS_COMPONENT_SHORT_NAMES='${raw}'"; return 1; }
     if echo "${names}" | tr ' ' '\n' | grep -qx "${name}"; then
-      echo "ERROR: duplicate shard name '${name}' in ALL_SHARDS_COMPONENT_SHORT_NAMES='${raw}'." >&2
+      classify shard-roster no "duplicate shard name '${name}' in ALL_SHARDS_COMPONENT_SHORT_NAMES='${raw}'"
       return 1
     fi
     names="${names} ${name}"
   done
-  [ -z "${names// }" ] && { echo "ERROR: ALL_SHARDS_COMPONENT_SHORT_NAMES is empty." >&2; return 1; }
+  [ -z "${names// }" ] && { classify shard-roster no "ALL_SHARDS_COMPONENT_SHORT_NAMES is empty"; return 1; }
   echo "${names}" | tr ' ' '\n' | grep -v '^$' | sort | head -1
 }
 
@@ -148,7 +148,7 @@ each_shard_fqdn_list() {
   local var value shard
   while IFS='=' read -r var value; do
     shard="${var#ALL_SHARDS_POD_FQDN_LIST_}"
-    [ -z "${value}" ] && { echo "ERROR: ${var} is empty." >&2; return 1; }
+    [ -z "${value}" ] && { classify shard-roster no "${var} is empty"; return 1; }
     echo "${shard} ${value}"
   done < <(env | grep -E '^ALL_SHARDS_POD_FQDN_LIST_[A-Za-z0-9_]+=' | sort)
 }
@@ -185,25 +185,59 @@ cluster_formed_from_self() {
 # a master there. rc=0 must never settle for state/slot totals alone
 # (review: totals can be right while pods are missing or unattached).
 all_expected_members_present() {
-  local via="${1}" nodes shard_line shard fqdns fqdn missing=0
+  local via="${1}" nodes shard_line shard fqdns missing=0
   build_cli "${via}"
   nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
   [ -z "${nodes}" ] && return 1
   while read -r shard_line; do
     shard="${shard_line%% *}"
     fqdns="${shard_line#* }"
-    for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$'); do
-      if ! echo "${nodes}" | grep -qF "${fqdn}"; then
-        echo "membership incomplete: ${fqdn} (shard ${shard}) not in cluster view."
-        missing=1
-      fi
-    done
-    if [ "$(echo "${nodes}" | grep -E "$(echo "${fqdns}" | tr ',' '|')" | awk '$3 ~ /master/' | grep -c .)" -lt 1 ]; then
-      echo "membership incomplete: shard ${shard} has no master in cluster view."
-      missing=1
-    fi
+    shard_membership_bound "${nodes}" "${shard}" "${fqdns}" || missing=1
   done < <(each_shard_fqdn_list)
   [ "${missing}" -eq 0 ]
+}
+
+# Strict per-shard binding (round-2 review): the shard must have exactly
+# one in-shard master, and EVERY other in-shard pod's node line must carry
+# the slave flag AND reference that master's id. Presence alone would let
+# a stray master or a cross-shard replica pass as success.
+shard_membership_bound() {
+  local nodes="${1}" shard="${2}" fqdns="${3}"
+  local pattern="" fqdn line master_line master_id master_count flags parent
+  for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$'); do
+    pattern="${pattern:+${pattern}|}${fqdn}"
+  done
+  master_count=$(echo "${nodes}" | grep -E "${pattern}" | awk '$3 ~ /master/' | grep -c .)
+  if [ "${master_count}" -ne 1 ]; then
+    echo "membership incomplete: shard ${shard} has ${master_count} in-shard master(s), expected exactly 1."
+    return 1
+  fi
+  master_line=$(echo "${nodes}" | grep -E "${pattern}" | awk '$3 ~ /master/ {print; exit}')
+  master_id=$(echo "${master_line}" | awk '{print $1}')
+  local bad=0
+  for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$'); do
+    line=$(echo "${nodes}" | grep -F "${fqdn}" | head -1)
+    if [ -z "${line}" ]; then
+      echo "membership incomplete: ${fqdn} (shard ${shard}) not in cluster view."
+      bad=1
+      continue
+    fi
+    flags=$(echo "${line}" | awk '{print $3}')
+    case "${flags}" in
+      *master*) continue ;;
+    esac
+    if ! echo "${flags}" | grep -q slave; then
+      echo "membership incomplete: ${fqdn} (shard ${shard}) is neither master nor slave (flags=${flags})."
+      bad=1
+      continue
+    fi
+    parent=$(echo "${line}" | awk '{print $4}')
+    if [ "${parent}" != "${master_id}" ]; then
+      echo "membership incomplete: ${fqdn} (shard ${shard}) replicates ${parent}, not this shard's master ${master_id}."
+      bad=1
+    fi
+  done
+  return "${bad}"
 }
 
 # Coordinator: create the cluster from one designated first-pod per shard,
@@ -334,17 +368,16 @@ verify_or_join() {
     classify join-slots yes "new shard joined but owns ${own} slots after rebalance"
     return 1
   fi
-  # positive completeness: every pod of THIS shard must be in the view
-  local nodes vfqdn
+  # positive completeness: strict binding for THIS shard (exactly one
+  # in-shard master; every other pod a slave of that master)
+  local nodes
   build_cli "${self_first}"
   nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
-  for vfqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$'); do
-    if ! echo "${nodes}" | grep -qF "${vfqdn}"; then
-      classify join-membership yes "pod ${vfqdn} of this shard not yet in cluster view"
-      return 1
-    fi
-  done
-  echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} joined with ${own} slots; all shard pods in view."
+  if ! shard_membership_bound "${nodes}" "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" "${CURRENT_SHARD_POD_FQDN_LIST}"; then
+    classify join-membership yes "this shard's pods not yet fully bound (master+replicas) in cluster view"
+    return 1
+  fi
+  echo "shard ${CURRENT_SHARD_COMPONENT_SHORT_NAME} joined with ${own} slots; membership bound."
 }
 
 attach_shard_replicas_to() {
