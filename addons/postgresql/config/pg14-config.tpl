@@ -29,7 +29,7 @@
 
 {{- $pgVersion := "14.0" }}
 {{- range $i, $spec := $.cluster.spec.componentSpecs }}
-{{- if eq "postgresql" $spec.name }}
+{{- if or (eq "postgresql" $spec.name) (hasPrefix "postgresql" (default "" $spec.componentDef)) }}
 {{- if $spec.serviceVersion }}
 {{- $pgVersion = $spec.serviceVersion }}
 {{- end }}
