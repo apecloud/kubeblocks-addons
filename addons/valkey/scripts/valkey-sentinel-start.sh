@@ -148,7 +148,7 @@ _find_master_fqdn() {
     [ -z "${fqdn}" ] && continue
     local cmd=(valkey-cli -h "${fqdn}" -p "${data_port}")
     if [ "${TLS_ENABLED}" = "true" ]; then
-      cmd+=(--tls --insecure)
+      cmd+=(--tls --cacert "${TLS_MOUNT_PATH:-/etc/pki/tls}/ca.crt")
     fi
     if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
       cmd+=(-a "${VALKEY_DEFAULT_PASSWORD}")
@@ -167,7 +167,7 @@ _find_master_fqdn() {
 _sentinel_cli() {
   local _scli=(valkey-cli -h 127.0.0.1 -p "${sentinel_port}" --no-auth-warning)
   if [ "${TLS_ENABLED}" = "true" ]; then
-    _scli+=(--tls --insecure)
+    _scli+=(--tls --cacert "${TLS_MOUNT_PATH:-/etc/pki/tls}/ca.crt")
   fi
   if ! is_empty "${SENTINEL_PASSWORD}"; then
     _scli+=(-a "${SENTINEL_PASSWORD}")
