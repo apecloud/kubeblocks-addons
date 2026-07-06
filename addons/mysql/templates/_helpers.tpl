@@ -321,7 +321,7 @@ env:
     value: $(MYSQL_ROOT_PASSWORD)
   - name: EXPORTER_WEB_PORT
     value: "{{ .Values.metrics.service.port }}"
-imagePullPolicy: IfNotPresent
+imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
 ports:
   - name: http-metrics
     containerPort: {{ .Values.metrics.service.port }}
