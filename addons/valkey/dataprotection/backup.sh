@@ -145,15 +145,33 @@ if [ "${_cluster_enabled}" = "1" ]; then
     echo "ERROR: cluster mode detected but could not count source shards from CLUSTER NODES." >&2
     exit 1
   fi
-  # Record THIS shard's current slot ranges too: shard count alone is not
-  # a sufficient restore precondition (post-rebalance layouts differ from
-  # the even split a re-formed cluster gets) — the ranges make the future
-  # slot-aware restore designable and keep archives self-describing.
-  _my_master_line=$("${connect_base[@]}" CLUSTER NODES 2>/dev/null | tr -d "\r" | awk '$3 ~ /myself/')
-  _my_slot_ranges=$(echo "${_my_master_line}" | cut -d' ' -f9- | tr ' ' ',')
+  # Record THIS SHARD's slot ranges + master identity: shard count alone
+  # is not a sufficient restore precondition (post-rebalance layouts
+  # differ from a re-formed even split). The backup target is normally a
+  # SECONDARY (BPT role) which owns no slots — so the ranges must come
+  # from this shard's MASTER line, resolved from the target's view:
+  # myself's parent id when the target is a slave, else myself itself.
+  _nodes=$("${connect_base[@]}" CLUSTER NODES 2>/dev/null | tr -d "\r")
+  _myself_line=$(echo "${_nodes}" | awk '$3 ~ /myself/')
+  if echo "${_myself_line}" | awk '{print $3}' | grep -q slave; then
+    _shard_master_id=$(echo "${_myself_line}" | awk '{print $4}')
+  else
+    _shard_master_id=$(echo "${_myself_line}" | awk '{print $1}')
+  fi
+  _master_line=$(echo "${_nodes}" | awk -v id="${_shard_master_id}" '$1 == id')
+  if [ -z "${_master_line}" ] || [ "${_shard_master_id}" = "-" ]; then
+    echo "ERROR: cluster mode — cannot resolve this shard's master from the target's CLUSTER NODES view." >&2
+    exit 1
+  fi
+  _shard_slot_ranges=$(echo "${_master_line}" | cut -d' ' -f9- | tr ' ' ',')
+  if [ -z "${_shard_slot_ranges}" ]; then
+    echo "ERROR: cluster mode — this shard's master ${_shard_master_id} owns no slot ranges; refusing to write empty metadata." >&2
+    exit 1
+  fi
   {
     printf 'source_shards=%s\n' "${_source_shards}"
-    printf 'shard_slot_ranges=%s\n' "${_my_slot_ranges}"
+    printf 'shard_master_id=%s\n' "${_shard_master_id}"
+    printf 'shard_slot_ranges=%s\n' "${_shard_slot_ranges}"
   } > ./cluster-meta
   backup_files+=("./cluster-meta")
   # cluster-meta is backup metadata, not engine data: it must not remain
