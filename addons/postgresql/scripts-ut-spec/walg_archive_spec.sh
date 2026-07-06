@@ -71,7 +71,9 @@ EOF
 #!/bin/sh
 if [ "$1" = "-r" ]; then
   f=$2
-  stat -f %m "$f" 2>/dev/null || stat -c %Y "$f"
+  # GNU form first: on GNU, `stat -f %m <file>` is not an error — it prints
+  # the filesystem mount point — so a BSD-first chain returns garbage.
+  stat -c %Y "$f" 2>/dev/null || stat -f %m "$f"
 else
   exec /bin/date "$@"
 fi
