@@ -63,12 +63,33 @@ Describe "valkey-cluster-server-start.sh behavior"
       export SERVICE_PORT="not-a-port"
       When call validate_required_env
       The status should be failure
-      The stderr should include "SERVICE_PORT must be a positive integer"
+      The stderr should include "SERVICE_PORT must be an integer in 1..65535"
     End
 
     It "passes with the full contract inputs"
       When call validate_required_env
       The status should be success
+    End
+
+    It "rejects SERVICE_PORT=0 (out of 1..65535)"
+      export SERVICE_PORT="0"
+      When call validate_required_env
+      The status should be failure
+      The stderr should include "must be an integer in 1..65535"
+    End
+
+    It "rejects a non-numeric CLUSTER_BUS_PORT"
+      export CLUSTER_BUS_PORT="abc"
+      When call validate_required_env
+      The status should be failure
+      The stderr should include "CLUSTER_BUS_PORT must be an integer in 1..65535"
+    End
+
+    It "rejects CLUSTER_BUS_PORT above 65535"
+      export CLUSTER_BUS_PORT="70000"
+      When call validate_required_env
+      The status should be failure
+      The stderr should include "1..65535"
     End
   End
 

@@ -68,6 +68,12 @@ v1 boundary: Valkey 9 only; in-cluster networking only.
 {{- if or .Values.nodePortEnabled .Values.loadBalancerEnabled -}}
 {{- fail "mode=cluster v1 supports in-cluster networking only: nodePortEnabled/loadBalancerEnabled are not supported" -}}
 {{- end -}}
+{{- if .Values.tlsEnable -}}
+{{- fail "mode=cluster v1 does not support TLS yet (shard template and start script do not wire tls-port); tlsEnable must be false" -}}
+{{- end -}}
+{{- if or .Values.customSecretName .Values.customSecretNamespace -}}
+{{- fail "mode=cluster v1 does not wire customSecretName/customSecretNamespace into shard system accounts; unset them (silently ignoring credentials is not acceptable)" -}}
+{{- end -}}
 {{- end -}}
 
 {{- define "valkey-cluster.clusterCommon" }}

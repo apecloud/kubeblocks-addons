@@ -49,11 +49,26 @@ validate_required_env() {
     echo "ERROR: valkey-cluster-server-start.sh missing required env:${missing} — refusing to start in cluster mode." >&2
     return 1
   fi
-  case "${SERVICE_PORT}" in
+  validate_port_range SERVICE_PORT "${SERVICE_PORT}" || return 1
+  if [ -n "${CLUSTER_BUS_PORT:-}" ]; then
+    validate_port_range CLUSTER_BUS_PORT "${CLUSTER_BUS_PORT}" || return 1
+  fi
+  return 0
+}
+
+# A port must be an integer in 1..65535 — 0 and non-numeric are refused
+# (review finding: 0 and garbage previously slipped through).
+validate_port_range() {
+  local name="$1" value="$2"
+  case "${value}" in
     ''|*[!0-9]*)
-      echo "ERROR: SERVICE_PORT must be a positive integer, got '${SERVICE_PORT}'." >&2
+      echo "ERROR: ${name} must be an integer in 1..65535, got '${value}'." >&2
       return 1 ;;
   esac
+  if [ "${value}" -lt 1 ] || [ "${value}" -gt 65535 ]; then
+    echo "ERROR: ${name} must be an integer in 1..65535, got '${value}'." >&2
+    return 1
+  fi
   return 0
 }
 
