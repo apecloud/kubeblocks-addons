@@ -1,0 +1,40 @@
+# Restore a Valkey Cluster (sharding) backup into a NEW cluster.
+#
+# v1 boundary: the target MUST declare the SAME shard count as the source
+# backup. RESTORE_TARGET_SHARDS (restore-env) lets the prepareData stage
+# enforce this before any pod starts — always set it for cluster restores:
+# a mismatch would place keys on shards that do not own their hash slots
+# (silently unreachable), so the restore refuses instead.
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: valkey-sharding-restored
+  namespace: demo
+  annotations:
+    kubeblocks.io/restore-from-backup: '{"shard":{"name":"<BACKUP-NAME>","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+spec:
+  terminationPolicy: Delete
+  clusterDef: valkey
+  topology: cluster
+  restore:
+    backupName: <BACKUP-NAME>
+    backupNamespace: demo
+    parameters:
+      dataprotection.kubeblocks.io/volume-restore-policy: Parallel
+      dataprotection.kubeblocks.io/restore-env: '[{"name":"RESTORE_TARGET_SHARDS","value":"3"}]'
+  shardings:
+    - name: shard
+      shards: 3
+      template:
+        name: shard
+        serviceVersion: "9.0.0"
+        replicas: 2
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              storageClassName: ""
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 10Gi
