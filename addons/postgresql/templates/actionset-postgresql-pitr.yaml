@@ -62,6 +62,10 @@ spec:
       - -c
       - |
         #!/bin/bash
-        set -e;
+        # No set -e here: postgresql-pitr-backup.sh is a long-running archiver
+        # that owns its error contract (bounded pg probing, rescue upload
+        # before exit, per-file upload checks). A wrapper set -e kills the
+        # process on the first failure and makes all of that unreachable.
+        set -o pipefail
         {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/postgresql-pitr-backup.sh" | nindent 8 }}
