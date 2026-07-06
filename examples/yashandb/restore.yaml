@@ -3,11 +3,16 @@ kind: Cluster
 metadata:
   name: yashandb-cluster-restore
   namespace: demo
-  annotations:
-    # 2026-06-02 Reason: add Stage 3B restore example for a new cluster; Purpose: let KubeBlocks prepare the backup data before YashanDB startup-time restore.
-    kubeblocks.io/restore-from-backup: '{"yashan-comp":{"name":"yashandb-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
+  # 2026-07-06 Reason: current KubeBlocks restore API reads Cluster.spec.restore.source instead of the legacy restore annotation; Purpose: keep the example aligned with controller reconciliation.
+  # Time: 2026-07-06.
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: yashandb-cluster-backup
+      namespace: demo
   componentSpecs:
     - name: yashan-comp
       # 2026-06-22 Reason: native Configure is delivered through a new immutable ComponentDefinition revision; Purpose: keep restore examples aligned with fresh addon installs.

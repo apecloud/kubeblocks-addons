@@ -94,6 +94,15 @@ Define yashandb config template name
 {{- end -}}
 
 {{/*
+2026-07-06 Reason: ParametersDefinition must reference the ComponentDefinition config entry, not the generated ConfigurationTemplate name.
+Purpose: keep config and parameter binding names drift-free across templates.
+Time: 2026-07-06.
+*/}}
+{{- define "yashandb.configEntryName" -}}
+yashandb-configs
+{{- end -}}
+
+{{/*
 Define yashandb parameters definition name
 */}}
 {{- define "yashandb.paramsDefName" -}}

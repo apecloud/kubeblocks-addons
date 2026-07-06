@@ -16,7 +16,7 @@ YashanDB is a new database system completely independently designed and develope
   ```
 
 > [!NOTE]
-> Before promoting backup, restore, switchover, configure, or monitoring beyond template-level validation, run real-cluster validation with a reachable KubeBlocks control plane, a writable StorageClass, a configured BackupRepository, mirrored YashanDB images, and target-cluster evidence collection. Local Helm rendering does not replace Kubernetes apply, controller reconciliation, database SQL checks, or recovery testing.
+> This PR provides addon templates, scripts, and examples. The attached validation boundary is local Helm rendering and script syntax checks only. Before promoting backup, restore, fixed-address HA, writer endpoint reconciliation, configure, or monitoring beyond template-level validation, run current-head real-cluster validation with a reachable KubeBlocks control plane, a writable StorageClass, a configured BackupRepository, mirrored YashanDB images, and target-cluster evidence collection. Local Helm rendering does not replace Kubernetes apply, controller reconciliation, database SQL checks, endpoint traffic checks, exporter scrapes, or recovery testing.
 
 For local template checks from the repository root, run:
 
@@ -60,7 +60,7 @@ The fixed-address examples reference this Secret through:
 
 Use a yasboot-safe logical cluster name in `YASDB_HA_CLUSTER_NAME`, for example `kbfh2` or `kbfh3`. This value is passed to `yasboot` and must not be copied blindly from a Kubernetes `Cluster` name that contains hyphens.
 
-The HA database image must be a yasboot-capable image. The validated lab image is not a formal upstream image contract. A production image for this route must provide:
+The HA database image must be a yasboot-capable image. Treat the image as a runtime contract instead of relying on a lab image tag. A production image for this route must provide:
 
 - the YashanDB 23.4.1.109 aarch64 package or an equivalent supported runtime package;
 - the yasboot package under `/opt/yasboot-package` with runnable `bin/yasboot`;
@@ -68,7 +68,7 @@ The HA database image must be a yasboot-capable image. The validated lab image i
 - a writable `/home/yashan/mydb` data mount;
 - compatibility with `fixed-ha-bootstrap.sh`, `check_alive.sh`, and `check_role.sh`.
 
-`yashandb-1.1.0-alpha.29` is the current immutable `ComponentDefinition` revision for this proof path. Earlier validation revisions are historical evidence only: `alpha.17` validated empty-PVC bootstrap and native switchover, `alpha.18` introduced already-bootstrapped node recovery, `alpha.22` restored the agent through `yasboot process yasagent start -t <hosts.toml>`, `alpha.26` isolated versioned script/config templates for the repaired lab cluster, `alpha.27` is the clean fixed-address HA validation revision, and `alpha.28` added the opt-in exporter sidecar runtime contract. `alpha.29` keeps that exporter contract and restores the default image to the standalone YashanDB image because the fixed-address HA yasboot image does not satisfy the standalone install path. KubeBlocks treats runtime, script, config, service, and image contracts as immutable after creation, so future runtime contract changes must publish a new `ComponentDefinition` revision instead of patching an existing revision in place.
+`yashandb-1.1.0-alpha.29` is the current immutable `ComponentDefinition` revision for this template path. Earlier alpha revisions are development history only. This PR does not attach current-head runtime evidence for fixed-address HA, writer endpoint reconciliation, backup/restore, or metrics. KubeBlocks treats runtime, script, config, service, and image contracts as immutable after creation, so future runtime contract changes must publish a new `ComponentDefinition` revision instead of patching an existing revision in place.
 
 #### Fixed-address HA writer Endpoint reconciler
 
@@ -97,7 +97,7 @@ helm upgrade --install yashandb addons/yashandb \
   -f addons/yashandb/examples/fixed-ha-writer-reconciler-values.yaml
 ```
 
-The bundled example uses `apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:1.0.2` because it was available in the verified offline KubeBlocks 1.0.2 environment and provides `kubectl`. For another offline environment, mirror a kubectl-capable image and update `ha.writerReconciler.image.*`.
+The bundled example uses `apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:1.0.2` because it provides `kubectl` in the target runtime shape. For another offline environment, mirror a kubectl-capable image and update `ha.writerReconciler.image.*`.
 
 Optional automatic failover is disabled by default. Enable it only after the fixed-address topology and writer Endpoint follower have passed validation in the target environment:
 
@@ -130,10 +130,10 @@ kubectl -n demo get svc,endpoints yashandb-writer -o wide
 kubectl -n demo logs deploy/yashandb-writer-endpoint-reconciler --tail=50
 ```
 
-Validated proof scope:
+Current PR validation boundary:
 
-- Active primary Pod deletion during continuous read/write traffic: writer Endpoint followed the promoted primary.
-- Planned `yasboot node switchover` during continuous read/write traffic: writer Endpoint followed the new primary.
+- Helm renders the optional writer Endpoint reconciler resources.
+- Runtime writer endpoint movement, planned switchover, failover behavior, and traffic continuity require target-cluster evidence before promotion.
 
 Claim boundary:
 
@@ -148,8 +148,8 @@ Claim boundary:
 
 | Feature | Status | Notes |
 |---|---|---|
-| Full Backup | Single-instance proof verified | Uses `backup database full format '<path>'` and uploads the generated backup set from the shared data mount to the KubeBlocks BackupRepository. The source database must be in archive log mode. |
-| Restore | Single-instance proof verified | KubeBlocks `prepareData` downloads the full backup set, then `initDB.sh` runs `restore database from '<path>'` during NOMOUNT startup and opens the restored database before readiness. |
+| Full Backup | Template wiring | Uses `backup database full format '<path>'` and uploads the generated backup set from the shared data mount to the KubeBlocks BackupRepository. The source database must be in archive log mode. Current-head runtime backup evidence is not attached to this PR. |
+| Restore | Template wiring | KubeBlocks `prepareData` downloads the full backup set, then `initDB.sh` runs `restore database from '<path>'` during NOMOUNT startup and opens the restored database before readiness. Current-head runtime restore evidence is not attached to this PR. |
 | PITR | Not implemented | Waiting for archive/log restore contract. |
 
 ### Monitoring
@@ -334,7 +334,7 @@ kubectl apply -f examples/yashandb/backup.yaml
 ### Restore
 
 > [!NOTE]
-> Stage 10/11 real-cluster proof verified single-instance full backup and new-cluster restore on 2026-06-18. The restore path starts YashanDB in NOMOUNT mode, submits `restore database from '<path>'`, opens the restored database, and requires the readiness probe to see `OPEN`. It does not implement PITR, incremental restore, in-place restore, or HA restore.
+> The restore path is wired for a new cluster restored from a full backup. The path starts YashanDB in NOMOUNT mode, submits `restore database from '<path>'`, opens the restored database, and requires the readiness probe to see `OPEN`. This PR does not attach current-head runtime evidence for the backup/restore flow. It does not implement PITR, incremental restore, in-place restore, or HA restore.
 
 ```bash
 kubectl apply -f examples/yashandb/restore.yaml
@@ -343,7 +343,7 @@ kubectl apply -f examples/yashandb/restore.yaml
 ### Monitoring
 
 > [!WARNING]
-> The exporter package contract is known, and a standalone real-cluster exporter Pod was validated with a test image on 2026-06-24. The addon now renders an opt-in exporter sidecar when `metrics.enabled=true`. It remains disabled by default because the operator must provide an exporter image and a Secret containing the exporter-compatible encrypted database password.
+> The addon renders an opt-in exporter sidecar when `metrics.enabled=true`. It remains disabled by default because the operator must provide an exporter image and a Secret containing the exporter-compatible encrypted database password. This PR does not attach current-head runtime scrape evidence for the sidecar, ServiceMonitor, or dashboard.
 
 The confirmed package path is:
 
@@ -404,7 +404,7 @@ kubectl apply -f examples/yashandb/pod-monitor.yaml
 
 Import `dashboards/yashandb.json` only as a placeholder. Replace its text panel with validated PromQL after the exporter is scraped in a real cluster.
 
-Real-cluster standalone Pod validation on 2026-06-24 used image `docker.io/library/yashandb-exporter:ycm-23.5.13.3-arm64-test`, exposed port `9100`, and verified database-backed metrics through the Kubernetes Service:
+Runtime validation in the target cluster should confirm database-backed metrics through the Kubernetes Service, including:
 
 - `yashandb_up 1`
 - `yashandb_instance_disconnected ... 0`
@@ -413,7 +413,7 @@ Real-cluster standalone Pod validation on 2026-06-24 used image `docker.io/libra
 - `yashandb_querys ...`
 - `yashandb_exporter_last_scrape_success 1`
 
-One compatibility issue was found with the bundled `default-se-metrics.yml`: the `swap` metric query references `FREE_SWAP_BLOCKS`, which was not available in the validated 23.5.13.3 SE database and caused `YAS-04243 invalid identifier "FREE_SWAP_BLOCKS"`. The sidecar copies metrics into a writable work directory and disables `swap` by default through `metrics.compat.disabledMetrics`. Keep this as a metric-pack compatibility note until the vendor exporter package or addon provides a version-aware metric override.
+One known compatibility risk exists with the bundled `default-se-metrics.yml`: the `swap` metric query references `FREE_SWAP_BLOCKS`, which may not exist in every YashanDB SE database version. The sidecar copies metrics into a writable work directory and disables `swap` by default through `metrics.compat.disabledMetrics`. Keep this as a metric-pack compatibility note until the vendor exporter package or addon provides a version-aware metric override.
 
 ### Configure
 

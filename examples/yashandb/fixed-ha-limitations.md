@@ -1,6 +1,6 @@
 # YashanDB Fixed-Address HA Limitations
 
-`cluster-fixed-ha-2.yaml` and `cluster-fixed-ha-3.yaml` document the fixed-address HA route only.
+`cluster-fixed-ha-2.yaml` and `cluster-fixed-ha-3.yaml` document the fixed-address HA route only. In this PR, they are examples and template wiring; current-head runtime evidence is not attached.
 
 This mode is not ordinary Pod-IP HA.
 
@@ -44,7 +44,7 @@ The fixed-address HA image must provide at least:
 - a writable `/home/yashan/mydb` mount owned or prepared for `yashan`;
 - compatibility with the addon `fixed-ha-bootstrap.sh`, `check_alive.sh`, and `check_role.sh` scripts.
 
-The current `ComponentDefinition` revision is `yashandb-1.1.0-alpha.29`. Earlier alpha revisions remain validation history only: `alpha.17` proved empty-PVC bootstrap and native switchover, `alpha.18` added the already-bootstrapped recovery path, `alpha.22` restored the local agent through `yasboot process yasagent start -t <hosts.toml>`, `alpha.26` proved repaired lab convergence with versioned script/config templates, `alpha.27` is the clean fixed-address HA validation revision, and `alpha.28` adds the opt-in exporter sidecar runtime contract. `alpha.29` keeps fixed-address HA opt-in and restores the default image to the standalone image, so fixed-address HA installs must explicitly override the image with a yasboot-capable image. Do not patch immutable `ComponentDefinition` runtime, script, config, service, or image fields in place.
+The current `ComponentDefinition` revision is `yashandb-1.1.0-alpha.29`. Earlier alpha revisions remain development history only. `alpha.29` keeps fixed-address HA opt-in and restores the default image to the standalone image, so fixed-address HA installs must explicitly override the image with a yasboot-capable image. Do not patch immutable `ComponentDefinition` runtime, script, config, service, or image fields in place.
 
 ## Not Claimed
 
@@ -55,7 +55,9 @@ The current `ComponentDefinition` revision is `yashandb-1.1.0-alpha.29`. Earlier
 - Automatic repair of yasboot metadata after Pod IP changes.
 - HA bootstrap without a Secret-provided SSH identity.
 
-## Current Live-Cluster Finding
+## Historical Lab Notes
+
+The following notes are historical lab findings from development iterations. They are not current-head runtime evidence attached to this PR.
 
 On 2026-06-23, a KubeBlocks `Cluster` using `yashandb-1.1.0-alpha.4` and the fixed-address two-node example created the first per-instance Pod on `172.16.90.245` with hostNetwork and the expected HA ports. The Pod stayed `1/2 Ready`, and KubeBlocks did not create the second ordered instance.
 
@@ -84,28 +86,30 @@ P1 clean validation on 2026-06-23 using `yashandb-1.1.0-alpha.27` also passed fr
 - SQL `select status from v$instance` returned `OPEN` on the primary.
 - The first clean attempt failed before this pass because `YASDB_HA_CLUSTER_NAME` copied the Kubernetes name `yashandb-pr-clean-ha-3`; yasboot rejected the hyphenated logical name. The examples now use yasboot-safe names such as `kbfh3`.
 
-Conclusion: the fixed-address per-instance topology can be expressed, scheduled, and bootstrapped from empty PVCs when the addon fixed-address mode and SSH identity Secret are provided.
+Conclusion from the historical lab notes: the fixed-address per-instance topology can be expressed, scheduled, and bootstrapped from empty PVCs when the addon fixed-address mode and SSH identity Secret are provided. Re-run this validation against the current PR head before promotion.
 
 Native KubeBlocks switchover follow-up validation on 2026-06-23 also passed on `yashandb-kb-fixed-ha-3`:
 
 - `OpsRequest/kbfh3-switchover-node2` targeted `yashandb-kb-fixed-ha-3-yashan-comp-node2-0`, reached `Succeed`, and KubeBlocks role label `kubeblocks.io/role` moved primary to node2.
 - `OpsRequest/kbfh3-switchover-node3-p0` targeted `yashandb-kb-fixed-ha-3-yashan-comp-node3-0`, reached `Succeed`, and KubeBlocks role label `kubeblocks.io/role` moved primary to node3.
 - A validation writer Endpoint named `yashandb-kbfh3-writer` was reconciled from `172.16.90.246:3688` to `172.16.90.247:3688` after the node3 switchover.
-- This validates native KubeBlocks switchover plus writer Endpoint following for the fixed-address empty-PVC route. It still does not validate ordinary Pod-IP HA.
+- Historical observation: native KubeBlocks switchover plus writer Endpoint following worked for that fixed-address empty-PVC route. Re-run against the current PR head before promotion. It still does not validate ordinary Pod-IP HA.
 - Old-primary rebuild remains an operator-controlled action in this route. The reconciler can log `rebuild manual action required`, but it does not automatically run rebuild.
 
-## Validation Required Before Promotion
+## Current-Head Validation Required Before Promotion
 
-- One primary and one standby are `open/normal`. Verified on 2026-06-23 with `yashandb-kb-fixed-ha-2`.
-- One primary and two standby nodes are `open/normal`. Verified on 2026-06-23 with `yashandb-kb-fixed-ha-3`.
-- Planned switchover changes roles and updates the writer endpoint. Verified on 2026-06-23 with `OpsRequest/kbfh3-switchover-node3-p0` and `yashandb-kbfh3-writer`.
+- One primary and one standby are `open/normal`.
+- One primary and two standby nodes are `open/normal`.
+- Planned switchover changes roles and updates the writer endpoint.
 - Primary failure promotes a standby and updates the writer endpoint.
 - The old primary is rebuilt as standby.
 - Rolling restart does not leave yasboot metadata pointing at stale addresses.
 
-## Traffic Validation Record
+## Historical Traffic Notes
 
-The fixed-address hostNetwork proof has one traffic failover validation record:
+The following traffic notes are historical development records. Re-run them against the current PR head before treating the writer endpoint reconciler or fixed-address HA path as runtime validated.
+
+The fixed-address hostNetwork proof had one traffic failover validation record:
 
 - Date: 2026-06-22.
 - Run ID: `hostnet3_auto_failover_20260622T091645Z`.

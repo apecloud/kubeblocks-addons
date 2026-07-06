@@ -25,9 +25,11 @@ spec:
             port: {{ ternary (.Values.ha.fixedAddress.dbPort | default 2688) 1688 .Values.ha.fixedAddress.enabled }}
             targetPort: yashandb
   configs:
-    - name: yashandb-configs
+    # 2026-07-06 Reason: ParametersDefinition binds by ComponentDefinition config entry name; Purpose: keep the config entry and parameter chain on one shared helper.
+    # Time: 2026-07-06.
+    - name: {{ include "yashandb.configEntryName" . }}
       template: {{ include "yashandb.configTplName" . }}
-      volumeName: yashandb-configs
+      volumeName: {{ include "yashandb.configEntryName" . }}
       namespace: {{ .Release.Namespace }}
       # 2026-06-22 Reason: KubeBlocks 1.0.2 treats externalManaged config entries as externally supplied and then skips the template lookup; Purpose: keep template rendering active while lifecycleActions.reconfigure owns parameter application.
       restartOnFileChange: true
@@ -160,7 +162,7 @@ spec:
           - mountPath: /home/yashan/mydb
             name: data
           - mountPath: /home/yashan/kbconfigs
-            name: yashandb-configs
+            name: {{ include "yashandb.configEntryName" . }}
           - mountPath: /home/yashan/kbscripts
             name: yashandb-scripts
         ports:

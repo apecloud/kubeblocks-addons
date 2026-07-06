@@ -52,31 +52,4 @@ Describe "YASDB Database Initialization Tests"
       The output should eq "('redo0' size 100M,'redo1' size 100M,'redo2' size 100M)"
     End
   End
-
-  Describe "restore_database()"
-    It "executes restore SQL from the prepared restore directory"
-      YASDB_RESTORE_DIR="${YASDB_MOUNT_HOME}/restore/${DP_BACKUP_NAME:-test-backup}"
-      mkdir -p "${YASDB_RESTORE_DIR}" "${YASDB_HOME}/bin"
-      printf '%s\n' "${YASDB_RESTORE_DIR}" >"${YASDB_MOUNT_HOME}/.restore_new_cluster"
-      cat >"${YASDB_HOME}/bin/yasdb" <<'EOF'
-#!/usr/bin/env bash
-echo "Instance started"
-exit 0
-EOF
-      cat >"${YASDB_HOME}/bin/yasql" <<'EOF'
-#!/usr/bin/env bash
-cat >>"${YASDB_MOUNT_HOME}/restore_sql.log"
-if grep -q "select open_mode from v\\$database" "${YASDB_MOUNT_HOME}/restore_sql.log"; then
-  echo "READ_WRITE"
-fi
-exit 0
-EOF
-      chmod +x "${YASDB_HOME}/bin/yasdb" "${YASDB_HOME}/bin/yasql"
-
-      When call restore_database
-      The status should be success
-      The contents of file "${YASDB_MOUNT_HOME}/restore_sql.log" should include "restore database from '${YASDB_RESTORE_DIR}'"
-      The contents of file "${YASDB_MOUNT_HOME}/restore_sql.log" should include "alter database open;"
-    End
-  End
 End

@@ -16,7 +16,7 @@ YashanDB is a new database system completely independently designed and develope
   ```
 
 > [!NOTE]
-> Run these stateful examples only after the target environment has a reachable KubeBlocks control plane, a writable StorageClass, a configured BackupRepository for backup/restore examples, mirrored YashanDB images, and a plan to collect cluster and database evidence. Local Helm rendering can catch template errors, but it does not prove Kubernetes apply, controller reconciliation, database SQL behavior, backup/restore, or HA recovery.
+> These examples are template-level examples in this PR. Run them only after the target environment has a reachable KubeBlocks control plane, a writable StorageClass, a configured BackupRepository for backup/restore examples, mirrored YashanDB images, and a plan to collect cluster and database evidence. Local Helm rendering can catch template errors, but it does not prove Kubernetes apply, controller reconciliation, database SQL behavior, backup/restore, writer endpoint movement, metrics scraping, or HA recovery.
 
 For local template checks from the repository root, run:
 
@@ -112,7 +112,7 @@ The examples use KubeBlocks per-instance templates to declare one primary plus o
 - `YASDB_HA_CLUSTER_NAME` and ports if the environment uses different names or hostNetwork ports.
 
 > [!WARNING]
-> These examples rely on the addon `ComponentVersion` image resolution and must not set `instances[].image`; KubeBlocks 1.0.2 rejects that field. A live 2026-06-23 validation also showed that the HA-capable proof image starts sshd on an empty KubeBlocks PVC but does not complete yasboot install/deploy by itself. Do not promote this as complete native HA lifecycle until the empty-PVC bootstrap path is implemented and validated.
+> These examples rely on the addon `ComponentVersion` image resolution and must not set `instances[].image`; KubeBlocks 1.0.2 rejects that field. Do not promote this as complete native HA lifecycle until the empty-PVC bootstrap path is validated against the current PR head in the target environment.
 
 Create the SSH Secret required by the empty-PVC yasboot bootstrap. The examples reference this Secret by name and do not store key material in Git:
 
@@ -124,7 +124,7 @@ kubectl -n demo create secret generic yashandb-fixed-ha-ssh \
   --from-file=authorized_key=./yashandb-fixed-ha-id_rsa.pub
 ```
 
-The fixed-address HA image must include YashanDB, yasboot, and SSH utilities. The validated lab image tag proves the route, but a production PR should describe it as an image contract rather than as an official image source.
+The fixed-address HA image must include YashanDB, yasboot, and SSH utilities. Treat this as an image contract; this PR does not attach current-head runtime evidence for a specific official image source.
 
 Create a fixed-address one-primary-one-standby shape:
 
@@ -203,7 +203,7 @@ kubectl apply -f examples/yashandb/switchover.yaml
 ### [Full backup](backup.yaml)
 
 > [!NOTE]
-> This example triggers a full backup. The matching restore example is locally wired for new-cluster restore only and still needs real KubeBlocks/YashanDB validation.
+> This example triggers a full backup through KubeBlocks dataprotection wiring. It still needs current-head KubeBlocks/YashanDB runtime validation before promotion.
 
 ```bash
 kubectl apply -f examples/yashandb/backup.yaml
@@ -212,7 +212,7 @@ kubectl apply -f examples/yashandb/backup.yaml
 ### [Restore](restore.yaml)
 
 > [!WARNING]
-> This restore example covers new-cluster restore from a full backup. It prepares backup data through KubeBlocks, then lets `initDB.sh` run YashanDB NOMOUNT restore during first startup. PITR, incremental restore, in-place restore, and HA restore are not implemented. Validate post-restore `OPEN` status, row counts, and checksums in the target cluster before promoting this example beyond experimental validation.
+> This restore example covers new-cluster restore from a full backup through `Cluster.spec.restore.source`. It prepares backup data through KubeBlocks, then lets `initDB.sh` run YashanDB NOMOUNT restore during first startup. PITR, incremental restore, in-place restore, and HA restore are not implemented. Validate post-restore `OPEN` status, row counts, and checksums in the target cluster before promoting this example beyond experimental validation.
 
 ```bash
 kubectl apply -f examples/yashandb/restore.yaml
