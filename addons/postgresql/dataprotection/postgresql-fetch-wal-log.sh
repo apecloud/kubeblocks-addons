@@ -47,7 +47,7 @@ function fetch-wal-log(){
             continue
          fi
          timestamp=`date -d "$latest_commit_time" +%s`
-         if [[ $latest_commit_time != "" && $timestamp > $restore_time ]]; then
+         if [[ $latest_commit_time != "" && $timestamp -gt $restore_time ]]; then
             DP_log "exit when reaching the target time log."
             exit_fetch_wal=1
             break
