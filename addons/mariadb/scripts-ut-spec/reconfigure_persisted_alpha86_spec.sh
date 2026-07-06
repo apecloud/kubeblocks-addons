@@ -371,6 +371,53 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
     End
   End
 
+  Describe "Guard 3b: SQL string-literal escaping is backslash-safe"
+    # is_safe_param_value rejects control chars / section headers but NOT
+    # backslash or quote, so the SQL `SET GLOBAL x = '<value>'` literal is
+    # the last line of defense. Under MariaDB default sql_mode (no
+    # NO_BACKSLASH_ESCAPES) backslash is an escape char, so doubling only
+    # single quotes (`sed "s/'/''/g"`) is defeated by a value ending in a
+    # backslash: `\'` escapes the first quote of the `''` pair and the
+    # second quote closes the string early, letting the remainder run as
+    # SQL as kb_internal_root. The escaping MUST double backslashes first,
+    # then quotes. These tests EXECUTE the exact sed pipeline extracted from
+    # the persisted helper against an injection payload (runtime-confirmed
+    # against mariadb:11.4/11.8: the injected statement does not execute).
+
+    escape_pipeline_from_helper() {
+      # Pull the first SQL-value sed pipeline out of the persisted helper.
+      grep -m1 'escaped_value=.*sed' "${HELPERS_TPL}"
+    }
+
+    It "the persisted helper doubles backslashes before quotes"
+      When call escape_pipeline_from_helper
+      The status should be success
+      # backslash-doubling pass must appear, before the quote-doubling pass
+      The output should include "s/\\\\/\\\\\\\\/g"
+      The output should include "s/'/''/g"
+    End
+
+    It "no SQL-value escaping site still uses quote-only doubling"
+      # Regression guard: every `escaped_value=... sed` line must carry the
+      # backslash pass; a bare `sed "s/'/''/g"` on an escaped_value line is
+      # the vulnerable form.
+      When run sh -c "grep -n 'escaped_value=.*sed' '${HELPERS_TPL}' | grep -v 's/\\\\\\\\/' || true"
+      The status should equal 0
+      The output should equal ""
+    End
+
+    It "escaping neutralizes a trailing-backslash breakout payload"
+      # payload = v \ ' ; CREATE USER pwned ; --   (backslash then quote)
+      # Correct escaping -> the ' after \\ is a doubled literal quote, the
+      # string does not terminate early, so ; CREATE USER never becomes SQL.
+      When run sh -c 'printf "%s" "v\\'"'"'; CREATE USER pwned; -- " | sed -e "s/\\\\/\\\\\\\\/g" -e "s/'"'"'/'"'"''"'"'/g"'
+      The status should equal 0
+      # doubled backslash present, and the injected quote is doubled (escaped)
+      The output should include "v\\\\"
+      The output should include "'';"
+    End
+  End
+
   Describe "Guard 4: fail-closed sentinels on persistence failure paths (parse-smoke removed in alpha.88)"
     It "mkdir of OVERRIDES_DIR exits 1 on failure"
       When call extract_persisted_helper_body

@@ -377,7 +377,7 @@ reconfigure:
           if numeric_value="$(to_numeric_value "${value}" 2>/dev/null)"; then
             printf "%s\n" "${numeric_value}"
           else
-            escaped_value="$(printf "%s" "${value}" | sed "s/'/''/g")"
+            escaped_value="$(printf "%s" "${value}" | sed -e 's/\\/\\\\/g' -e "s/'/''/g")"
             printf "'%s'\n" "${escaped_value}"
           fi
         }
@@ -446,7 +446,7 @@ reconfigure:
           if numeric_value="$(to_numeric_value "${param_value}" 2>/dev/null)"; then
             query="SET GLOBAL \`${param_name}\` = ${numeric_value};"
           else
-            escaped_value="$(printf "%s" "${param_value}" | sed "s/'/''/g")"
+            escaped_value="$(printf "%s" "${param_value}" | sed -e 's/\\/\\\\/g' -e "s/'/''/g")"
             query="SET GLOBAL \`${param_name}\` = '${escaped_value}';"
           fi
 
@@ -721,7 +721,7 @@ reconfigure:
           if numeric_value="$(to_numeric_value "${value}" 2>/dev/null)"; then
             printf "%s\n" "${numeric_value}"
           else
-            escaped_value="$(printf "%s" "${value}" | sed "s/'/''/g")"
+            escaped_value="$(printf "%s" "${value}" | sed -e 's/\\/\\\\/g' -e "s/'/''/g")"
             printf "'%s'\n" "${escaped_value}"
           fi
         }
@@ -891,7 +891,7 @@ reconfigure:
             query="SET GLOBAL \`${param_name}\` = ${numeric_value};"
             persist_quoted="${numeric_value}"
           else
-            escaped_value="$(printf "%s" "${param_value}" | sed "s/'/''/g")"
+            escaped_value="$(printf "%s" "${param_value}" | sed -e 's/\\/\\\\/g' -e "s/'/''/g")"
             query="SET GLOBAL \`${param_name}\` = '${escaped_value}';"
             # my.cnf quoting: quote when value contains whitespace or
             # ini metacharacters; otherwise leave bare.
