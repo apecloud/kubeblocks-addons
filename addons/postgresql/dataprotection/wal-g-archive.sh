@@ -29,8 +29,10 @@ function config_wal_g() {
         exit 1
     fi
 
-    mkdir -p ${walg_dir}/env
-    cp /etc/datasafed/datasafed.conf ${walg_dir}/datasafed.conf
+    # bootstrap failures are fatal: continuing with an incomplete wal-g env
+    # would make every subsequent wal-push fail
+    mkdir -p ${walg_dir}/env || { DP_error_log "failed to create ${walg_dir}/env"; exit 1; }
+    cp /etc/datasafed/datasafed.conf ${walg_dir}/datasafed.conf || { DP_error_log "failed to copy datasafed.conf"; exit 1; }
 
     echo "${walg_dir}/datasafed.conf" > ${walg_env}/WALG_DATASAFED_CONFIG
     echo "${datasafed_base_path}" > ${walg_env}/DATASAFED_BACKEND_BASE_PATH
