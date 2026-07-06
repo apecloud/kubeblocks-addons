@@ -71,7 +71,11 @@ io-threads 1
 io-threads-do-reads yes
 
 # Memory policy
-maxmemory-policy volatile-lru
+# noeviction is the Valkey upstream default: when maxmemory is reached,
+# writes fail loudly instead of silently evicting data. For a database
+# service that is the safe default; cache deployments that prefer
+# eviction can set maxmemory-policy (dynamic parameter) per cluster.
+maxmemory-policy noeviction
 {{- $mem := default 0 $.PHY_MEMORY | int }}
 {{- if gt $mem 0 }}
 maxmemory {{ mulf $mem 0.8 | int }}
