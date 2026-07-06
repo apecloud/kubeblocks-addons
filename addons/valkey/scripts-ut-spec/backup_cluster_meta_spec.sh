@@ -81,6 +81,9 @@ STUB
     When call run_backup
     The status should be success
     The stdout should include "embedded cluster-meta (source_shards=3)"
+    # tar -v member list goes to stderr (archive is on stdout); the
+    # substring matches both BSD ("a ./cluster-meta") and GNU ("./cluster-meta")
+    The stderr should include "cluster-meta"
     The file "${workdir}/pushed-files.txt" should be exist
     The contents of file "${workdir}/pushed-files.txt" should include "cluster-meta"
     The contents of file "${workdir}/pushed-files.txt" should include "dump.rdb"
@@ -104,6 +107,8 @@ STUB
     chmod +x "${bindir}/datasafed"
     When call run_backup
     The status should be success
+    The stdout should include "embedded cluster-meta (source_shards=3)"
+    The stderr should include "cluster-meta"
     The contents of file "${workdir}/extracted/cluster-meta" should include "source_shards=3"
     The contents of file "${workdir}/extracted/cluster-meta" should include "shard_master_id=mid001"
     The contents of file "${workdir}/extracted/cluster-meta" should include "shard_slot_ranges=0-5460"
