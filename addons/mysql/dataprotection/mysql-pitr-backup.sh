@@ -157,13 +157,27 @@ function save_backup_status() {
 
 cleanup_mysql_binlogs() {
 
+    # Discover replica hosts from the target primary itself: each replica
+    # registers its report_host there. The previous KB_ITS_*_HOSTNAME env
+    # discovery never worked in a DataProtection job pod (those env vars were
+    # only injected into workload pods by pre-1.0 KubeBlocks), which made this
+    # whole cleanup a silent no-op.
+    function get_replica_hosts() {
+        local hosts
+        hosts=$(mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e "SHOW REPLICAS" 2>/dev/null | awk '{print $2}')
+        if [[ -z "$hosts" ]]; then
+            # MySQL 5.7 syntax
+            hosts=$(mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e "SHOW SLAVE HOSTS" 2>/dev/null | awk '{print $2}')
+        fi
+        printf '%s\n' "$hosts" | sed '/^$/d' | grep -v "^${DP_DB_HOST}$" || true
+    }
+
     # Get synced binlog files from all replicas
     function get_synced_binlogs() {
 
         readarray -t all_binlogs < <(ls -1 "$LOG_DIR"/*-bin.[0-9]* | sort -V)
 
-        # TODO: KB_ITS_.*_HOSTNAME will be removed in kb1.0 and needs to be modified accordingly
-        local REPLICA_HOSTS=($(env | grep "KB_ITS_.*_HOSTNAME" | cut -d= -f2 | grep -v "^${DP_DB_HOST}$"))
+        local REPLICA_HOSTS=($(get_replica_hosts))
 
         # Check synchronization status of each replica
         for host in "${REPLICA_HOSTS[@]}"; do
@@ -223,41 +237,45 @@ cleanup_mysql_binlogs() {
           return
       fi
 
-      # Get the latest 5 binlog files
-      local latest_binlogs=$(printf "%s\n" "${all_binlogs[@]: -4}" | xargs -n1 basename)
-
-      for binlog_file in "${all_binlogs[@]}"; do
-          if [ ! -f "$binlog_file" ]; then
-              continue
+      # PURGE BINARY LOGS TO '<file>' deletes every file BEFORE <file> (prefix
+      # deletion). So the scan must stop at the FIRST file that has to be kept
+      # (not synced+uploaded, or one of the newest 5): purging past it would
+      # delete it as well and tear a hole in the archived binlog sequence.
+      local keep_tail_start=$((total_files - 5))
+      local first_kept=""
+      local i
+      for ((i = 0; i < total_files; i++)); do
+          local base_name=$(basename "${all_binlogs[$i]}")
+          if ((i >= keep_tail_start)); then
+              first_kept="$base_name"
+              echo "Keeping $base_name and newer (newest 5 binlog files)"
+              break
           fi
-
-          local base_name=$(basename "$binlog_file")
-
-          # Skip if it's one of the latest 5 files
-          if echo "$latest_binlogs" | grep -q "$base_name"; then
-              echo "Keeping $base_name (one of latest 5 binlog files)"
-              continue
-          fi
-
-          # Original logic: check if synced and uploaded
-          if echo "$synced_files" | grep -q "$base_name" && echo "$uploaded_files" | grep -q "$base_name"; then
-              echo "Purging binary log: $base_name from master host"
-
-              if mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e \
-                  "PURGE BINARY LOGS TO '$base_name'" &>/dev/null; then
-                  echo "Successfully purged binary log: $base_name on master host ${DP_DB_HOST}"
-              else
-                  echo "Failed to connect or purge binary log: $base_name on master host ${DP_DB_HOST}"
-              fi
-          else
-              echo "Keeping $base_name (not yet synced or uploaded)"
+          if ! (echo "$synced_files" | tr ' ' '\n' | grep -Fxq "$base_name" &&
+                echo "$uploaded_files" | tr ' ' '\n' | grep -Fxq "$base_name"); then
+              first_kept="$base_name"
+              echo "Keeping $base_name and newer (not yet synced or uploaded)"
+              break
           fi
       done
+
+      if [[ -z "$first_kept" || "$first_kept" == "$(basename "${all_binlogs[0]}")" ]]; then
+          echo "No purgeable binlog prefix on master host"
+          return
+      fi
+
+      echo "Purging binary logs before $first_kept on master host"
+      if mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e \
+          "PURGE BINARY LOGS TO '$first_kept'" &>/dev/null; then
+          echo "Successfully purged binary logs before $first_kept on master host ${DP_DB_HOST}"
+      else
+          echo "Failed to connect or purge binary logs on master host ${DP_DB_HOST}"
+      fi
     }
 
     # Purge all binlog files on replica except for the latest 5 files
     function purge_replica_binlogs() {
-        local REPLICA_HOSTS=($(env | grep "KB_ITS_.*_HOSTNAME" | cut -d= -f2 | grep -v "^${DP_DB_HOST}$"))
+        local REPLICA_HOSTS=($(get_replica_hosts))
 
         for host in "${REPLICA_HOSTS[@]}"; do
             echo "Processing replica host: $host"
