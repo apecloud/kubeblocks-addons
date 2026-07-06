@@ -694,4 +694,34 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
       The output should equal "1"
     End
   End
+
+  Describe "Parameter effect-scope rejects params invalid for MariaDB"
+    # Runtime-confirmed on mariadb:11.4 (2026-07-06):
+    #   log_error_verbosity -> `unknown variable`, mariadbd exits rc=7 (MySQL-only)
+    #   secure_timestamp     -> `ERROR 1238 ... read only variable` (static, not dynamic)
+    param_section() {
+      # Prints the section header (staticParameters/dynamicParameters) that a
+      # given list entry falls under, or empty if the entry is absent.
+      awk -v want="$1" '
+        /^[A-Za-z].*:[[:space:]]*$/ { section = $1; sub(/:$/, "", section) }
+        $0 ~ "^[[:space:]]*-[[:space:]]*" want "[[:space:]]*$" { print section; exit }
+      ' "${EFFECT_SCOPE}"
+    }
+
+    It "does not list log_error_verbosity anywhere (MySQL-only, would CrashLoop mariadbd)"
+      When call grep -c '^[[:space:]]*-[[:space:]]*log_error_verbosity[[:space:]]*$' "${EFFECT_SCOPE}"
+      The status should be failure
+      The output should equal "0"
+    End
+
+    It "classifies secure_timestamp as static, not dynamic (it is a read-only MariaDB variable)"
+      When call param_section "secure_timestamp"
+      The output should equal "staticParameters"
+    End
+
+    It "does not list secure_timestamp under dynamicParameters"
+      When call param_section "secure_timestamp"
+      The output should not equal "dynamicParameters"
+    End
+  End
 End
