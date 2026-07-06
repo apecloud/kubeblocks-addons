@@ -33,6 +33,7 @@ spec:
       memberleave: {{ $imageRegistry }}/{{ $.Values.image.tools.repository }}:{{ $.Values.image.tools.tag }}
       install-es-agent: {{ $imageRegistry }}/{{ $.Values.image.agent.repository }}:{{ $.Values.image.agent.tag }}
       es-agent: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      prepare-custom-plugins: {{ $imageRegistry }}/{{ $.Values.image.customPlugins.repository }}:{{ $.Values.image.customPlugins.tag }}
 {{- end }}
 {{- end }}
 {{- end }}

@@ -498,14 +498,13 @@ Generate reloader scripts configmap
 reconfigure:
   exec:
     container: mysql
+    targetPodSelector: All
     command:
       - /bin/sh
       - -c
       - |
         set -eu
 
-        env | cut -d= -f1 | grep -E '^[a-z0-9_.-][a-z0-9_.-]*$' | sort -u | while IFS= read -r param; do
-          [ -n "${param}" ] || continue
-          /scripts/update-parameter.sh "${param}" "$(printenv "${param}")"
-        done
+        /scripts/update-parameter.sh "$1" "$2"
+      - --
 {{- end -}}

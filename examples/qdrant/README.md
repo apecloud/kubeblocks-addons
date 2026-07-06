@@ -48,6 +48,60 @@ Create a Qdrant cluster with specified cluster definition
 kubectl apply -f examples/qdrant/cluster.yaml
 ```
 
+### [Create with API key](cluster-with-api-key.yaml)
+
+Create a Qdrant cluster with `service.api_key` set through `QDRANT__SERVICE__API_KEY`.
+
+```bash
+kubectl apply -f examples/qdrant/cluster-with-api-key.yaml
+```
+
+You can configure the Qdrant API key in either of these ways:
+
+```yaml
+# Qdrant environment variable. This has higher priority than config.yaml.
+env:
+  - name: QDRANT__SERVICE__API_KEY
+    value: my-key-123456
+```
+
+```yaml
+# KubeBlocks configuration variable. This renders service.api_key into config.yaml.
+configs:
+  - name: qdrant-config-template
+    variables:
+      service_api_key: my-key-123456
+```
+
+Qdrant environment variables have higher priority than `config.yaml`. The backup/restore helper follows the same order: it uses `QDRANT__SERVICE__API_KEY` when that env is present in the action container, then falls back to `service.api_key` from the mounted `config.yaml`.
+
+### Configure telemetry
+
+Qdrant telemetry is disabled by default in `config.yaml`. You can override it through the KubeBlocks configuration variables API:
+
+```yaml
+configs:
+  - name: qdrant-config-template
+    variables:
+      telemetry_disabled: "false"
+```
+
+### [Create with TLS](cluster-with-tls.yaml)
+
+Create a Qdrant cluster with TLS enabled by the KubeBlocks Cluster TLS API.
+
+```bash
+kubectl apply -f examples/qdrant/cluster-with-tls.yaml
+```
+
+### [Create with TLS and API key](cluster-with-tls-and-api-key.yaml)
+
+Create a Qdrant cluster with TLS enabled and `service.api_key` set through `QDRANT__SERVICE__API_KEY`.
+
+```bash
+kubectl apply -f examples/qdrant/cluster-with-tls-and-api-key.yaml
+```
+
 ### Horizontal scaling
 
 > [!Important]

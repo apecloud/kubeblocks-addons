@@ -68,7 +68,7 @@ The HA database image must be a yasboot-capable image. Treat the image as a runt
 - a writable `/home/yashan/mydb` data mount;
 - compatibility with `fixed-ha-bootstrap.sh`, `check_alive.sh`, and `check_role.sh`.
 
-`yashandb-1.1.0-alpha.29` is the current immutable `ComponentDefinition` revision for this template path. Earlier alpha revisions are development history only. This PR does not attach current-head runtime evidence for fixed-address HA, writer endpoint reconciliation, backup/restore, or metrics. KubeBlocks treats runtime, script, config, service, and image contracts as immutable after creation, so future runtime contract changes must publish a new `ComponentDefinition` revision instead of patching an existing revision in place.
+`yashandb-1.2.0-alpha.0` is the current immutable `ComponentDefinition` revision for this template path. Earlier alpha revisions are development history only. This PR does not attach current-head runtime evidence for fixed-address HA, writer endpoint reconciliation, backup/restore, or metrics. KubeBlocks treats runtime, script, config, service, and image contracts as immutable after creation, so future runtime contract changes must publish a new `ComponentDefinition` revision instead of patching an existing revision in place.
 
 #### Fixed-address HA writer Endpoint reconciler
 
@@ -180,7 +180,7 @@ spec:
   terminationPolicy: Delete
   componentSpecs:
     - name: yashan-comp
-      componentDef: yashandb-1.1.0-alpha.29
+      componentDef: yashandb-1.2.0-alpha.0
       # Only supports Standalone YashanDB at the moment
       # Must set replcias to 1.
       replicas: 1

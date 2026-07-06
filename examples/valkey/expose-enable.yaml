@@ -1,0 +1,19 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: valkey-expose-enable
+  namespace: demo
+spec:
+  clusterName: valkey-replication
+  type: Expose
+  expose:
+    - componentName: valkey
+      services:
+        - name: internet
+          serviceType: LoadBalancer
+          roleSelector: primary
+          annotations:
+            service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: internet
+            service.beta.kubernetes.io/alibaba-cloud-loadbalancer-spec: slb.s1.small
+      switch: Enable
+  preConditionDeadlineSeconds: 0

@@ -91,7 +91,7 @@ spec:
       namespace: {{ $.Release.Namespace }}
       volumeName: redis-cluster-config
       externalManaged: true
-      {{- include "redis.config.reconfigureAction" $ | nindent 6 }}
+      {{- include "redis.config.reconfigureAction" (dict "container" "redis-cluster") | nindent 6 }}
   scripts:
     - name: redis-cluster-scripts
       template: {{ include "redisCluster.scriptsTemplate" $ }}
@@ -468,7 +468,7 @@ spec:
           - redis
           - getrole
     postProvision:
-      timeoutSeconds: 900
+      timeoutSeconds: 600
       exec:
         container: redis-cluster
         command:

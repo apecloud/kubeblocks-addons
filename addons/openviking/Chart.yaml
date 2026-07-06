@@ -1,0 +1,38 @@
+apiVersion: v2
+name: openviking
+description: OpenViking is an open-source RAG and semantic search engine that serves as a Context Database MCP (Model Context Protocol) server.
+
+# A chart can be either an 'application' or a 'library' chart.
+type: application
+
+# This is the chart version. Increment when chart or templates change.
+version: 0.1.0
+
+# Application (OpenViking) version being deployed.
+appVersion: "0.3.12"
+
+# Add a dependency to the kubeblocks definition library chart
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+
+home: https://github.com/volcengine/OpenViking
+icon: https://raw.githubusercontent.com/volcengine/OpenViking/main/docs/images/ov-logo.png
+keywords:
+  - openviking
+  - rag
+  - semantic-search
+  - mcp
+  - knowledge-base
+  - vector-database
+
+maintainers:
+  - name: OpenViking Contributors
+    url: https://github.com/volcengine/OpenViking
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/model: "rag"
+  addon.kubeblocks.io/provider: "community"

@@ -1,0 +1,50 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "openviking.paramsDefName" . }}
+  labels:
+    {{- include "openviking.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "openviking.cmpdName" . }}
+  templateName: config
+  fileName: {{ .Values.configFileName }}
+  fileFormatConfig:
+    format: json
+
+  # ConfigurationSchema imposes restrictions on parameter values.
+  parametersSchema:
+    topLevelKey: OpenVikingParameter
+    cue: |-
+      {{- .Files.Get "config/ov-config-constraint.cue" | nindent 6 }}
+
+  # Static parameters require a process restart to take effect because the
+  # OpenViking server reads ov.conf only at startup.
+  staticParameters:
+    - storage.workspace
+    - storage.vectordb.name
+    - storage.vectordb.backend
+    - storage.vectordb.project
+    - storage.agfs.backend
+    - storage.agfs.timeout
+    - log.level
+    - log.output
+    - server.host
+    - server.port
+    - server.workers
+    - server.root_api_key
+    - server.cors_origins
+    - embedding.dense.api_base
+    - embedding.dense.api_key
+    - embedding.dense.provider
+    - embedding.dense.dimension
+    - embedding.dense.model
+    - embedding.dense.input
+    - embedding.max_concurrent
+    - vlm.api_base
+    - vlm.api_key
+    - vlm.provider
+    - vlm.model
+    - vlm.temperature
+    - vlm.max_retries
+    - vlm.thinking
+    - vlm.max_concurrent

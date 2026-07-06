@@ -14,11 +14,15 @@ spec:
       value: rep_user
     - name: DP_TIME_FORMAT
       value: "2006-01-02 15:04:05"
+    - name: SUPPORT_S3
+      value: "true"
+    - name: IMAGE_TAG
+      value: {{ .Values.image.observer.tag | quote }}
   backup:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "oceanbase-ce.observer.repository" . }}:{{ .Values.image.observer.tag }}
+      image: {{ include "oceanbase-ce.observer.repository" . }}:$(IMAGE_TAG)
       runOnTargetPodNode: true
       command:
       - sh
@@ -33,7 +37,7 @@ spec:
   restore:
     postReady:
     - job:
-        image: {{ include "oceanbase-ce.observer.repository" . }}:{{ .Values.image.observer.tag }}
+        image: {{ include "oceanbase-ce.observer.repository" . }}:$(IMAGE_TAG)
         runOnTargetPodNode: true
         command:
         - bash

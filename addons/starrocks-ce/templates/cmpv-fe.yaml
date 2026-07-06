@@ -18,7 +18,9 @@ spec:
     serviceVersion: 3.2.2
     images:
       fe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.2.2
+      memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.2.2
   - name: 3.3.0
     serviceVersion: 3.3.0
     images:
       fe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.3.0
+      memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.3.0

@@ -94,6 +94,21 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: pulsar-config
       externalManaged: true
+      reconfigure:
+        exec:
+          container: broker
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+
+              cd /pulsar 2>/dev/null || cd /opt/pulsar
+              client_conf="$(pwd)/conf/client.conf"
+
+              env PULSAR_CLIENT_CONF="$client_conf" \
+                bin/pulsar-admin brokers update-dynamic-config --config "$1" --value "$2"
+            - --
   scripts:
     - name: pulsar-scripts
       template: {{ include "pulsar.scriptsTplName" . }}
@@ -231,7 +246,7 @@ spec:
         livenessProbe:
           failureThreshold: 30
           httpGet:
-            path: /status.html
+            path: /admin/v2/brokers/health
             port: http
             scheme: HTTP
           initialDelaySeconds: 5
@@ -241,7 +256,7 @@ spec:
         readinessProbe:
           failureThreshold: 3
           httpGet:
-            path: /status.html
+            path: /admin/v2/brokers/health
             port: http
             scheme: HTTP
           initialDelaySeconds: 30
@@ -251,7 +266,7 @@ spec:
         startupProbe:
           failureThreshold: 30
           httpGet:
-            path: /status.html
+            path: /admin/v2/brokers/health
             port: http
             scheme: HTTP
           initialDelaySeconds: 5

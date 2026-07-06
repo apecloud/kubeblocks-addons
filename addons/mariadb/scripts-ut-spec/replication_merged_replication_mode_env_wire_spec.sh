@@ -1,0 +1,289 @@
+# shellcheck shell=sh
+
+# alpha.89 v1 commit 13 (Helen 2026-05-20, C3 design env plumbing —
+# Helm value / Option C path).
+#
+# Lock the wire-up that connects `mariadb.replication.mode` (Helm
+# value) → `MARIADB_REPLICATION_MODE` (env var on the merged CmpD's
+# mariadb container) → `apply_replication_mode_mapping` (mapper
+# sourced by `reconfigureAction.persisted`).
+#
+# This commit deliberately uses the Helm value path rather than KB
+# ParametersDefinition or Cluster annotations: the standard
+# parameters reconfigure path is blocked by the `replicationmode?: _|_`
+# CUE backstop (commit 11 v2) so a user-supplied `replicationMode`
+# parameter cannot reach the engine via the normal reconfigure flow.
+# Helm-install-time setting is the conservative plumbing path that
+# does not depend on speculative KB behavior. Runtime mode flip via
+# OpsRequest reconfigure is deferred to a future commit.
+#
+# Strategy: render the merged CmpD via `helm template` and grep the
+# rendered manifest for the expected env declarations and default
+# values; render again with `--set replication.mode=semisync` /
+# `--set replication.mode=async` to verify the value flows through.
+
+Describe "alpha.89 commit 13 — replication.mode Helm value → MARIADB_REPLICATION_MODE env wire"
+
+  repo_root() {
+    printf "%s" "${SHELLSPEC_CWD:?}"
+  }
+
+  chart_path() {
+    printf "%s/addons/mariadb" "$(repo_root)"
+  }
+
+  values_path() {
+    printf "%s/addons/mariadb/values.yaml" "$(repo_root)"
+  }
+
+  cmpd_merged_path() {
+    printf "%s/addons/mariadb/templates/cmpd-replication.yaml" "$(repo_root)"
+  }
+
+  clusterdefinition_path() {
+    printf "%s/addons/mariadb/templates/clusterdefinition.yaml" "$(repo_root)"
+  }
+
+  chart_yaml_path() {
+    printf "%s/addons/mariadb/Chart.yaml" "$(repo_root)"
+  }
+
+  helper_path() {
+    printf "%s/addons/mariadb/templates/_helpers.tpl" "$(repo_root)"
+  }
+
+  Describe "values.yaml declares replication.mode with empty default"
+    It "declares a top-level replication block"
+      When call grep -E '^replication:' "$(values_path)"
+      The status should be success
+      The output should include "replication:"
+    End
+
+    It "declares replication.mode with empty-string default to preserve existing behavior"
+      # 2-space-indented `mode: ""` under `replication:` — the empty
+      # string is the default so existing clusters (whose values do
+      # not set this) see no behavioral change.
+      When call awk '/^replication:/{in_block=1; next} in_block && /^[A-Za-z]/{in_block=0} in_block && /^[[:space:]]+mode:[[:space:]]*""/{print "ok"; exit}' "$(values_path)"
+      The output should equal "ok"
+    End
+  End
+
+  Describe "replication topology contract wording stays aligned with the actual implementation"
+    # API-doc / MySQL-addon comparison guard (Jack 2026-06-01):
+    # MySQL exposes semisync as an explicit topology, while MariaDB's
+    # merged replication CmpD currently selects async/semisync through
+    # the install-time Helm value below. Do not document this as a
+    # per-Cluster ComponentSpec parameter unless the chart actually
+    # implements that contract end-to-end.
+
+    It "ClusterDefinition documents replication.mode as the current mode source"
+      When call grep -q 'replication\.mode' "$(clusterdefinition_path)"
+      The status should be success
+    End
+
+    It "ClusterDefinition does not claim replicationMode is a ComponentSpec parameter"
+      When call grep -Eq 'ComponentSpec parameter[[:space:]]+`?replicationMode|`replicationMode[^`]*`[[:space:]]+ComponentSpec parameter' "$(clusterdefinition_path)"
+      The status should be failure
+    End
+
+    It "Chart.yaml does not claim replicationMode is the ComponentSpec source of truth"
+      When call grep -Eq 'replicationMode source-of-truth is ComponentSpec parameter|ComponentSpec parameter[[:space:]]+`replicationMode`' "$(chart_yaml_path)"
+      The status should be failure
+    End
+
+    It "_helpers.tpl documents the merged mode as install/render-time rather than per-Cluster"
+      When call grep -q 'install-time mode' "$(helper_path)"
+      The status should be success
+    End
+  End
+
+  Describe "cmpd-replication.yaml wires MARIADB_REPLICATION_MODE env from Helm value"
+    It "declares a MARIADB_REPLICATION_MODE env entry in the merged CmpD"
+      When call grep -c 'name: MARIADB_REPLICATION_MODE' "$(cmpd_merged_path)"
+      The status should be success
+      The output should equal "1"
+    End
+
+    It "sources the env value through the mariadb.replication.mode.validate helper (Jack B2 fail-closed path)"
+      When call grep -c 'include "mariadb\.replication\.mode\.validate"' "$(cmpd_merged_path)"
+      The status should be success
+      The output should equal "1"
+    End
+
+    It "_helpers.tpl declares the mariadb.replication.mode.validate helper"
+      When call grep -c 'define "mariadb\.replication\.mode\.validate"' "$(helper_path)"
+      The status should be success
+      The output should equal "1"
+    End
+
+    It "validator defaults the value to empty string when Helm value is unset"
+      When call grep -c '\.Values\.replication\.mode | default ""' "$(helper_path)"
+      The status should be success
+      The output should equal "1"
+    End
+
+    It "validator uses fail to abort helm render on invalid value"
+      When call grep -c 'fail (printf "invalid replication\.mode' "$(helper_path)"
+      The status should be success
+      The output should equal "1"
+    End
+  End
+
+  Describe "rendered manifest reflects the Helm value"
+    helm_not_available() { ! command -v helm >/dev/null 2>&1; }
+    Skip if "helm not available" helm_not_available
+
+    render_to_tmp() {
+      tmp_render=$(mktemp -t mariadb-render-XXXXXX)
+      helm template test "$(chart_path)" "$@" >"${tmp_render}" 2>/dev/null || true
+      printf "%s" "${tmp_render}"
+    }
+
+    cleanup_tmp_render() {
+      [ -n "${tmp_render:-}" ] && rm -f "${tmp_render}" 2>/dev/null || true
+    }
+
+    AfterEach 'cleanup_tmp_render'
+
+    grep_env_value_after() {
+      # Look for the literal two-line shape:
+      #   - name: MARIADB_REPLICATION_MODE
+      #     value: "<expected>"
+      # Use grep -A1 + awk so we only capture the relevant 2 lines
+      # rather than the whole manifest. Returns 0 on match, 1 on
+      # miss.
+      file_path="$1"
+      expected_value="$2"
+      grep -F -A1 'name: MARIADB_REPLICATION_MODE' "${file_path}" |
+        awk -v want="value: \"${expected_value}\"" '
+          NR==1 { next }
+          $0 ~ "value: " && index($0, want) { print "ok"; exit }
+        '
+    }
+
+    It "renders an empty-string MARIADB_REPLICATION_MODE when replication.mode is unset"
+      tmp_render=$(render_to_tmp)
+      When call grep_env_value_after "${tmp_render}" ""
+      The status should be success
+      The output should equal "ok"
+    End
+
+    It "renders MARIADB_REPLICATION_MODE=semisync when --set replication.mode=semisync"
+      tmp_render=$(render_to_tmp --set replication.mode=semisync)
+      When call grep_env_value_after "${tmp_render}" "semisync"
+      The status should be success
+      The output should equal "ok"
+    End
+
+    It "renders MARIADB_REPLICATION_MODE=async when --set replication.mode=async"
+      tmp_render=$(render_to_tmp --set replication.mode=async)
+      When call grep_env_value_after "${tmp_render}" "async"
+      The status should be success
+      The output should equal "ok"
+    End
+  End
+
+  Describe "Helm template-time fail-closed on invalid value (Jack B2 fix)"
+    helm_not_available_b2() { ! command -v helm >/dev/null 2>&1; }
+    Skip if "helm not available" helm_not_available_b2
+
+    render_stderr_to_tmp() {
+      tmp_stderr=$(mktemp -t mariadb-rend-err-XXXXXX)
+      local rc=0
+      helm template test "$(chart_path)" "$@" >/dev/null 2>"${tmp_stderr}" || rc=$?
+      printf "%s|%s" "${rc}" "${tmp_stderr}"
+    }
+
+    cleanup_tmp_stderr() {
+      [ -n "${tmp_stderr:-}" ] && rm -f "${tmp_stderr}" 2>/dev/null || true
+    }
+
+    AfterEach 'cleanup_tmp_stderr'
+
+    check_render_failed_with_sentinel() {
+      rc_and_path="$1"
+      expected_value_in_msg="$2"
+      rc="${rc_and_path%%|*}"
+      file_path="${rc_and_path#*|}"
+      if [ "${rc}" = "0" ]; then
+        echo "expected non-zero rc but got 0" >&2
+        return 1
+      fi
+      if ! grep -qF "invalid replication.mode" "${file_path}"; then
+        echo "expected stderr to contain 'invalid replication.mode'" >&2
+        return 1
+      fi
+      if ! grep -qF "${expected_value_in_msg}" "${file_path}"; then
+        echo "expected stderr to contain '${expected_value_in_msg}'" >&2
+        return 1
+      fi
+      printf "ok"
+    }
+
+    It "rejects mariadb.replication.mode=bogus at render time"
+      tmp_stderr_setup=$(render_stderr_to_tmp --set replication.mode=bogus)
+      tmp_stderr="${tmp_stderr_setup#*|}"
+      When call check_render_failed_with_sentinel "${tmp_stderr_setup}" "bogus"
+      The status should be success
+      The output should equal "ok"
+    End
+
+    It "rejects arbitrary string values at render time"
+      tmp_stderr_setup=$(render_stderr_to_tmp --set replication.mode=garbage)
+      tmp_stderr="${tmp_stderr_setup#*|}"
+      When call check_render_failed_with_sentinel "${tmp_stderr_setup}" "garbage"
+      The status should be success
+      The output should equal "ok"
+    End
+
+    It "rejects mixed-case async at render time (only lowercase enum members accepted)"
+      tmp_stderr_setup=$(render_stderr_to_tmp --set replication.mode=ASYNC)
+      tmp_stderr="${tmp_stderr_setup#*|}"
+      When call check_render_failed_with_sentinel "${tmp_stderr_setup}" "ASYNC"
+      The status should be success
+      The output should equal "ok"
+    End
+
+    It "accepts the empty string explicitly (preserves default behavior)"
+      # Empty-string render should succeed; reuse the render_to_tmp
+      # helper from the previous Describe via inline duplicate.
+      tmp_render=$(mktemp -t mariadb-render-empty-XXXXXX)
+      helm template test "$(chart_path)" --set replication.mode="" >"${tmp_render}" 2>/dev/null || true
+      render_rc=$?
+      grep_result=$(grep -F -A1 'name: MARIADB_REPLICATION_MODE' "${tmp_render}" |
+        awk 'NR==2 && $0 ~ /value: ""/ { print "ok"; exit }')
+      rm -f "${tmp_render}" 2>/dev/null || true
+      When call test "${render_rc}" -eq 0 -a "${grep_result}" = "ok"
+      The status should be success
+    End
+  End
+
+  Describe "non-merged topologies do NOT receive the env var"
+    # The Helm value flows ONLY into the merged CmpD's container env
+    # (where the persisted reconfigureAction sources the mapper).
+    # Standalone / galera topologies do not have the merged
+    # reconfigureAction.persisted helper wired with the mapper call,
+    # so adding the env there would be dead.
+
+    cmpd_standalone_path() {
+      printf "%s/addons/mariadb/templates/cmpd.yaml" "$(repo_root)"
+    }
+
+    cmpd_galera_path() {
+      printf "%s/addons/mariadb/templates/cmpd-galera.yaml" "$(repo_root)"
+    }
+
+    It "standalone cmpd.yaml does NOT declare MARIADB_REPLICATION_MODE env"
+      When call grep -c 'name: MARIADB_REPLICATION_MODE' "$(cmpd_standalone_path)"
+      The status should be failure
+      The output should equal "0"
+    End
+
+    It "galera cmpd-galera.yaml does NOT declare MARIADB_REPLICATION_MODE env"
+      When call grep -c 'name: MARIADB_REPLICATION_MODE' "$(cmpd_galera_path)"
+      The status should be failure
+      The output should equal "0"
+    End
+  End
+
+End

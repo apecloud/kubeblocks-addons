@@ -1,0 +1,27 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: mariadb
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  topologies:
+    - name: standalone
+      components:
+        - name: mariadb
+          compDef: {{ include "mariadb.cmpdName" . }}
+      default: true
+    # `replication` is the single canonical primary/secondary topology.
+    # Async vs semisync behavior is selected at addon install/render
+    # time by the Helm value `replication.mode`, wired to
+    # `MARIADB_REPLICATION_MODE` on the replication CmpD.
+    - name: replication
+      components:
+        - name: mariadb
+          compDef: {{ include "mariadb.replication.cmpdName" . }}
+    - name: galera
+      components:
+        - name: mariadb
+          compDef: {{ include "mariadb.galera.cmpdName" . }}

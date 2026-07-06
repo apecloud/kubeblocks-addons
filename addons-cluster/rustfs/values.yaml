@@ -1,0 +1,11 @@
+# Default values for rustfs cluster
+
+replicas: 4
+
+buckets: ""
+
+# resources
+cpu: 1
+memory: 1
+storageClassName: ""
+storage: 20

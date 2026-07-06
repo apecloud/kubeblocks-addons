@@ -132,7 +132,7 @@ spec:
             targetPort: client
       disableAutoProvision: true
     - name: peer
-      serviceName:
+      serviceName: peer
       spec:
         ports:
           - name: peer
@@ -205,6 +205,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
+      externalManaged: true
       restartOnFileChange: true
   scripts:
     - name: script

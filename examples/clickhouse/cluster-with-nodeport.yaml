@@ -9,10 +9,10 @@ spec:
   services:
     # Exposes ClickHouse service using NodePort
     - name: clickhouse-nodeport
+      # Sharding associated with this service
+      componentSelector: clickhouse
       # Type of the exposed service. Valid options are 'ClusterIP', 'NodePort', and 'LoadBalancer'.
       serviceType: NodePort
-      # Sharding associated with this service
-      shardingSelector: clickhouse
       # Role selector for the component service.
       # In a ClickHouse cluster, we only expose nodes without specifying roles
       # since all nodes can handle read/write requests

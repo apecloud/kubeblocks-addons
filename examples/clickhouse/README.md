@@ -35,8 +35,8 @@ There are two key components in the ClickHouse cluster:
 
 | Major Versions | Description               |
 | -------------- | ------------------------- |
-| 22             | 22.3.18, 22.3.20, 22.8.21 |
-| 24             | 24.8.3                    |
+| 22             | 22.3.18, 22.3.20, 22.6.1, 22.8.21, 22.9.4 |
+| 24             | 24.7.2, 24.8.3, 24.12.2   |
 | 25             | 25.4.4, 25.9.7            |
 
 ## Prerequisites
@@ -288,38 +288,9 @@ kubectl apply -f examples/clickhouse/verticalscale.yaml
 
 ### Switchover for Clickhouse Keeper
 
-#### Switchover without preferred candidates
+#### Switchover with specified candidate
 
-Switchover a specified instance as the new primary or leader of the cluster
-
-```yaml
-# cat examples/clickhouse/keeper-switchover.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: keeper-switchover
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: clickhouse-cluster
-  type: Switchover
-  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
-  switchover:
-    # Specifies the name of the Component.
-  - componentName: ch-keeper
-    # Specifies the instance whose role will be transferred.
-    # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: "clickhouse-cluster-ch-keeper-0"
-
-```
-
-```bash
-kubectl apply -f examples/clickhouse/keeper-switchover.yaml
-```
-
-#### Switchover-specified-instance
-
-Switchover a specified instance as the new primary or leader of the cluster
+Switchover the current leader to a selected candidate instance. ClickHouse Keeper switchover currently requires `candidateName`.
 
 ```yaml
 # cat examples/clickhouse/keeper-switchover-specified-instance.yaml
@@ -339,8 +310,8 @@ spec:
     # Specifies the instance whose role will be transferred.
     # A typical usage is to transfer the leader role in a consensus system.
     instanceName: "clickhouse-cluster-ch-keeper-0"
-    # Specifies the instance that will become the new leader, if not specify, the first non leader instance will become candidate.
-    # Need to ensure the candidate instance is catch up logs of the quorum, otherwise the switchover will transfer the leader to other instance.
+    # ClickHouse Keeper switchover currently requires candidateName.
+    # Need to ensure the candidate instance has caught up with quorum logs.
     candidateName: "clickhouse-cluster-ch-keeper-1"
 
 ```
@@ -349,7 +320,7 @@ spec:
 kubectl apply -f examples/clickhouse/keeper-switchover-specified-instance.yaml
 ```
 
-You may need to update the `opsrequest.spec.switchover.instanceName` field to your desired instance name.
+You may need to update the `opsrequest.spec.switchover.instanceName` and `opsrequest.spec.switchover.candidateName` fields to your desired instance names.
 
 ### [Expand volume](volumeexpand.yaml)
 
@@ -598,12 +569,67 @@ spec:
   backupMethod: incremental  # Change from 'full' to 'incremental'
 ```
 
+#### Create Encrypted Backup
+
+To encrypt ClickHouse backup objects in the BackupRepo, configure `encryptionConfig` on the ClickHouse `BackupPolicy` before creating the `Backup`.
+
+Create the passphrase secret with a random value:
+
+```bash
+kubectl create secret generic clickhouse-backup-encryption-passphrase \
+  -n demo \
+  --from-literal=passphrase="$(openssl rand -base64 32)"
+```
+
+Patch the backup policy to enable encryption. Replace `backupRepoName` if your BackupRepo name is different:
+
+```bash
+kubectl patch backuppolicy clickhouse-cluster-clickhouse-backup-policy \
+  -n demo \
+  --type merge \
+  -p '{
+    "spec": {
+      "backupRepoName": "<test-backuprepo>",
+      "encryptionConfig": {
+        "algorithm": "AES-256-CFB",
+        "passPhraseSecretKeyRef": {
+          "name": "clickhouse-backup-encryption-passphrase",
+          "key": "passphrase"
+        }
+      }
+    }
+  }'
+```
+
+Create an encrypted full backup:
+
+```bash
+kubectl apply -f examples/clickhouse/backup.yaml
+```
+
+To create an encrypted incremental backup after the full backup completes, create another `Backup` with `backupMethod: incremental` and set `parentBackupName` to the completed full backup:
+
+```yaml
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: clickhouse-cluster-backup-incremental
+  namespace: demo
+spec:
+  backupMethod: incremental
+  backupPolicyName: clickhouse-cluster-clickhouse-backup-policy
+  parentBackupName: clickhouse-cluster-backup
+  deletionPolicy: Delete
+```
+
+The incremental backup's `parentBackupName` must refer to an existing backup created with the same encryption settings. Keep the passphrase secret; it is required for restore. Existing backups created before `encryptionConfig` was set are not retroactively encrypted.
+
 #### Restore Settings
 
 > [!NOTE]
-> Restoring a TLS-enabled cluster directly from backup is NOT supported. You should restore the cluster with TLS disabled first, and then enable TLS manually after the restore process is complete.
+> When the restore target has TLS enabled, the restore job mounts the ClickHouse TLS files and connects through the secure TCP port.
 
-Restore process will restore schema and rbac first, then restore data. You can tune schema-ready waiting behavior for restore jobs via Helm values:
+Restore process will restore schema and RBAC metadata first, then restore data. When the restore target has TLS enabled, the restore job uses the secure ClickHouse TCP port and Keeper TLS settings for RBAC metadata. You can tune schema-ready waiting behavior for restore jobs via Helm values:
 
 ```yaml
 restore:
@@ -618,6 +644,14 @@ kubectl apply -f examples/clickhouse/restore.yaml
 ```
 This will create a new cluster named `clickhouse-cluster-restore` with the data restored from the specified backup.
 It also creates the necessary system account secret `udf-restore-account-info`.
+
+To restore from an encrypted backup, use the same restore flow and reference the encrypted `Backup` name:
+
+```bash
+kubectl apply -f examples/clickhouse/restore.yaml
+```
+
+Restore uses the encryption configuration recorded on the referenced `Backup`; no extra encryption field is required in the restore cluster manifest. The passphrase secret referenced by the `Backup` must still exist in the backup namespace.
 
 ### [Restart](restart.yaml)
 

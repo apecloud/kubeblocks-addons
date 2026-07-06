@@ -254,7 +254,7 @@ Reconfigure parameters with the specified components in the cluster
 kubectl apply -f examples/rabbitmq/reconfigure.yaml
 ```
 
-This example will change the `channel_max` to `2000`.
+This example will change the `channel_max` to `4096`.
 
 > In RabbitMQ, the `channel_max` parameter is used to set the maximum number of channels that a client can open on a single connection. It is a static parameter, so the change will take effect after restarting the database.
 

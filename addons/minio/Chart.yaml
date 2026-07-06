@@ -2,7 +2,7 @@ apiVersion: v2
 description: High Performance, Kubernetes Native Object Storage
 name: minio
 
-version: 1.1.0-alpha.0
+version: 1.2.0-alpha.0
 
 appVersion: master
 
@@ -18,7 +18,7 @@ sources:
 
 maintainers:
   - name: ldming
-    url: https://github.com/apecloud/kubeblocks/
+    url: https://github.com/ldming
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"

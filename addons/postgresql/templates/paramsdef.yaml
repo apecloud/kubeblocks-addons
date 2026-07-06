@@ -12,7 +12,7 @@ metadata:
 spec:
   componentDef: {{ include "postgresql.componentDefByMajor" (dict "major" .major "root" $) }}
   serviceVersion: {{ .serviceVersion }}
-  templateName: {{ include "postgresql.parameterTemplate" (dict "major" .major "root" $) }}
+  templateName: postgresql-configuration
   fileName: postgresql.conf
   fileFormatConfig:
     format: properties

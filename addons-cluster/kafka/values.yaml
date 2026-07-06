@@ -107,11 +107,11 @@ monitor:
     memory: 1
 
 ## kafka broker's jvm heap setting
-brokerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
+brokerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64
 
 ## kafka broker's jvm heap setting
 ## only effective when clusterMode='separated'
-controllerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
+controllerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64
 
 ## @param nodePortEnabled
 ## Whether to enable NodePort mode.
@@ -125,6 +125,14 @@ fixedPodIPEnabled: false
 
 # zookeeper config, valid only if mode is withZookeeper-10
 zookeeper:
+  mode: serviceRef
+  component:
+    serviceVersion: 
+    replicas: 3
+    storage:
+      storageClassName:
+      data: 8
+      log: 2
   serviceRef:
     namespace:
     cluster:

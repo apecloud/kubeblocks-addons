@@ -19,10 +19,12 @@ set_join_args() {
         if [[ -n $PD_LEADER_POD_NAME ]]; then
             echo "query member list from leader"
             leader_fqdn=$(echo "$replicas" | grep "$PD_LEADER_POD_NAME")
-            members=$(/pd-ctl --pd "http://$leader_fqdn:2379" member | jq -r '.members[] | .name')
+            # shellcheck disable=SC2086
+            members=$(/pd-ctl --pd "$scheme://$leader_fqdn:2379" $extraArg member | jq -r '.members[] | .name')
             if echo "$members" | grep -q "$CURRENT_POD_NAME"; then
                 echo "current pod already in cluster, delete member first"
-                res=$(/pd-ctl --pd "http://$leader_fqdn:2379" member delete name "$CURRENT_POD_NAME")
+                # shellcheck disable=SC2086
+                res=$(/pd-ctl --pd "$scheme://$leader_fqdn:2379" $extraArg member delete name "$CURRENT_POD_NAME")
                 if [[ $res != "Success!" ]]; then
                     exit 1
                 fi
@@ -32,7 +34,9 @@ set_join_args() {
             join=""
 
             for replica in $replicas; do
-                join="${join}http://$replica:2380,"
+                # join address should be client url, otherwise join will fail when cluster tls is enabled
+                # https://github.com/tikv/pd/issues/1682
+                join="${join}$scheme://$replica:2379,"
             done
 
             join=${join%,}
@@ -43,7 +47,7 @@ set_join_args() {
 
             for replica in $replicas; do
                 name=$(echo "$replica" | cut -d "." -f 1)
-                PEERS="$PEERS$name=http://$replica:2380,"
+                PEERS="$PEERS$name=$scheme://$replica:2380,"
             done
 
             PEERS=${PEERS%,}
@@ -75,15 +79,22 @@ ${__SOURCED__:+false} : || return 0
 
 set -exo pipefail
 
+# shellcheck source=common.sh
+. /scripts/common.sh
+
+set_component_tls_variables
+
+cat /etc/pd/pd.toml
+
 MY_PEER=$(get_current_pod_fqdn)
 
 DATA_DIR="/var/lib/pd"
 ARGS="--name=$HOSTNAME \
     --data-dir=$DATA_DIR \
-    --peer-urls=http://0.0.0.0:2380 \
-    --advertise-peer-urls=http://$MY_PEER:2380 \
-    --client-urls=http://0.0.0.0:2379 \
-    --advertise-client-urls=http://$MY_PEER:2379 \
+    --peer-urls=$scheme://0.0.0.0:2380 \
+    --advertise-peer-urls=$scheme://$MY_PEER:2380 \
+    --client-urls=$scheme://0.0.0.0:2379 \
+    --advertise-client-urls=$scheme://$MY_PEER:2379 \
     --config=/etc/pd/pd.toml"
 
 set_join_args

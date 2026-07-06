@@ -8,6 +8,7 @@ spec:
   serviceKind: MySQL
   compDefs:
     - ^mysql-\d+.*$
+    - ^mysql-mgr-\d+.*$
   target:
     role: secondary
     fallbackRole: primary

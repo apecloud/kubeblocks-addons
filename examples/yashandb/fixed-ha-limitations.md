@@ -44,7 +44,7 @@ The fixed-address HA image must provide at least:
 - a writable `/home/yashan/mydb` mount owned or prepared for `yashan`;
 - compatibility with the addon `fixed-ha-bootstrap.sh`, `check_alive.sh`, and `check_role.sh` scripts.
 
-The current `ComponentDefinition` revision is `yashandb-1.1.0-alpha.29`. Earlier alpha revisions remain development history only. `alpha.29` keeps fixed-address HA opt-in and restores the default image to the standalone image, so fixed-address HA installs must explicitly override the image with a yasboot-capable image. Do not patch immutable `ComponentDefinition` runtime, script, config, service, or image fields in place.
+The current `ComponentDefinition` revision is `yashandb-1.2.0-alpha.0`. Earlier alpha revisions remain development history only. This revision keeps fixed-address HA opt-in and restores the default image to the standalone image, so fixed-address HA installs must explicitly override the image with a yasboot-capable image. Do not patch immutable `ComponentDefinition` runtime, script, config, service, or image fields in place.
 
 ## Not Claimed
 
@@ -63,7 +63,7 @@ On 2026-06-23, a KubeBlocks `Cluster` using `yashandb-1.1.0-alpha.4` and the fix
 
 `yashandb-1.1.0-alpha.17` adds the empty-PVC bootstrap contract for this route: fixed-address mode renders `podManagementPolicy: Parallel` and starts `fixed-ha-bootstrap.sh` instead of the standalone install script. This lets all fixed-address Pods exist before the primary node runs the yasboot multi-node deployment.
 
-`yashandb-1.1.0-alpha.27` is the clean PR-facing recovery validation contract for this route: after a Pod is rebuilt with its PVC preserved, `fixed-ha-bootstrap.sh` reconstructs `/home/yashan/.yasboot`, writes the probe environment, starts local OM when that node owns OM metadata, starts the local agent through `yasboot process yasagent start -t <hosts.toml>`, starts only the local database node through `yasboot node start`, and waits for `check_alive.sh` plus `check_role.sh` before declaring the Pod ready. `yashandb-1.1.0-alpha.29` carries that contract forward and adds the opt-in exporter sidecar runtime wiring. It also uses versioned script/config template ConfigMaps to avoid mixed-revision KubeBlocks status drift.
+`yashandb-1.1.0-alpha.27` is a historical recovery validation contract for this route: after a Pod is rebuilt with its PVC preserved, `fixed-ha-bootstrap.sh` reconstructs `/home/yashan/.yasboot`, writes the probe environment, starts local OM when that node owns OM metadata, starts the local agent through `yasboot process yasagent start -t <hosts.toml>`, starts only the local database node through `yasboot node start`, and waits for `check_alive.sh` plus `check_role.sh` before declaring the Pod ready. Later development revisions carried that contract forward and added the opt-in exporter sidecar runtime wiring. The current chart still uses versioned script/config template ConfigMaps to avoid mixed-revision KubeBlocks status drift.
 
 Empty-PVC bootstrap also requires an SSH identity supplied by Secret. The private key must be available as `YASHANDB_SSH_PRIVATE_KEY` on the primary bootstrap node, and the public key must be available as `YASHANDB_AUTHORIZED_KEY` on every fixed-address node.
 

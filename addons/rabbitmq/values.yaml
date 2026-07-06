@@ -15,6 +15,7 @@ versions:
     componentDef: "^rabbitmq.*"
     minors:
       # [version, serviceVersion, tag, deprecated]
+      - ["4.3.1", "4.3.1", "4.3.1-management", false]
       - ["4.2.1", "4.2.1", "4.2.1-management", false]
       - ["4.1.6", "4.1.6", "4.1.6-management", false]
       - ["4.0.9", "4.0.9", "4.0.9-management", false]
@@ -51,6 +52,8 @@ logCollector:
   enabled: false
 
 dataMountPath: /var/lib/rabbitmq
+
+tlsMountPath: /etc/pki/tls
 
 
 ## @param enabledClusterVersions specifies the enabled cluster versions, if not set, all cluster versions are enabled

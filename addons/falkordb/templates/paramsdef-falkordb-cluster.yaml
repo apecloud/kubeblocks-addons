@@ -11,7 +11,7 @@ metadata:
     {{- include "falkordb.labels" $ | nindent 4 }}
 spec:
   componentDef: {{ printf "%s-%s" .clusterComponentDef  $.Chart.Version }}
-  templateName: {{ printf "falkordb-cluster%s-config-template-%s" .major $.Chart.Version }}
+  templateName: falkordb-cluster-config
   fileName: redis.conf
   fileFormatConfig:
     format: redis

@@ -1,0 +1,58 @@
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ printf "mongodb-config-pd-%s" .Chart.Version }}
+  labels:
+    {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ printf "^(%s|%s|%s)$" (include "mongodb.compDefName" .) (include "mongodbShard.compDefName" .) (include "cfgServer.compDefName" .) | quote }}
+  templateName: mongodb-config
+  fileName: mongodb.conf
+  fileFormatConfig:
+    format: yaml
+  parametersSchema:
+    topLevelKey: MongoDBParameter
+    cue: |-
+      #MongoDBParameter: {
+        ...
+        systemLog?: {
+          ...
+          quiet?: bool | *false
+          verbosity?: int & >=0 & <=5 | *0
+        }
+      }
+  staticParameters:
+    - systemLog.quiet
+    - systemLog.verbosity
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ printf "mongos-config-pd-%s" .Chart.Version }}
+  labels:
+    {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ printf "^%s$" (include "mongos.compDefName" .) | quote }}
+  templateName: mongodb-config
+  fileName: mongos.conf
+  fileFormatConfig:
+    format: yaml
+  parametersSchema:
+    topLevelKey: MongoDBParameter
+    cue: |-
+      #MongoDBParameter: {
+        ...
+        systemLog?: {
+          ...
+          quiet?: bool | *false
+          verbosity?: int & >=0 & <=5 | *0
+        }
+      }
+  staticParameters:
+    - systemLog.quiet
+    - systemLog.verbosity

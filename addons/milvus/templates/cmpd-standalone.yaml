@@ -10,6 +10,19 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  services:
+    - name: milvus
+      spec:
+        type: ClusterIP
+        ports:
+          - name: milvus
+            port: 19530
+            protocol: TCP
+            targetPort: milvus
+          - name: metrics
+            port: 9091
+            protocol: TCP
+            targetPort: metrics
   configs:
     {{- include "milvus.config.standalone" . | indent 4 }}
   vars:
@@ -45,7 +58,7 @@ spec:
       - name: milvus
         {{- include "milvus.image" . | indent 8 }}
         args:
-          - /milvus/tools/delegate-run.sh
+          - /milvus/scripts/delegate-run.sh
           - /milvus/tools/run.sh
           - milvus
           - run

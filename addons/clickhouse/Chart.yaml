@@ -6,7 +6,7 @@ description: ClickHouse is an open-source column-oriented OLAP database manageme
 
 type: application
 
-version: 1.1.0-alpha.1
+version: 1.2.0-alpha.0
 
 appVersion: 25.9.7
 
@@ -17,8 +17,8 @@ keywords:
 - sharding
 
 maintainers:
-  - name: ApeCloud
-    url: https://kubeblocks.io/
+  - name: loomt
+    url: https://github.com/loomt
 
 dependencies:
   - name: kblib

@@ -78,7 +78,7 @@ get_current_shard_primary() {
   master_host=$(echo "$master_info" | grep "master_host:" | cut -d':' -f2 | tr -d '[:space:]')
   master_port=$(echo "$master_info" | grep "master_port:" | cut -d':' -f2 | tr -d '[:space:]')
 
-  if is_empty "$master_host"|| is_empty "$master_port"; then
+  if is_empty "$master_host" || is_empty "$master_port"; then
     return 1
   fi
 
@@ -97,7 +97,7 @@ get_all_shards_master() {
   fi
   set_xtrace_when_ut_mode_false
 
-  echo "$cluster_nodes_info" | grep "master" | while read -r line; do
+  echo "$cluster_nodes_info" | grep "master" | grep -v "fail" | while read -r line; do
     node_addr=$(echo "$line" | cut -d' ' -f2 | cut -d'@' -f1)
     echo "$node_addr"
   done

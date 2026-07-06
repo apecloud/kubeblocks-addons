@@ -25,6 +25,10 @@ images:
   milvus:
     registry: ""
     repository: milvusdb/milvus
+  milvusCLI:
+    registry: ""
+    repository: zilliz/milvus_cli
+    tag: v1.2.1
   milvusBackup:
     repository: apecloud/milvus-backup
 

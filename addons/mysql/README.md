@@ -22,7 +22,7 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 |---------------|--------------|
 | 5.7 | 5.7.44  |
 | 8.0 | \[8.0.33 ~ 8.0.44\] |
-| 8.4 | 8.4.0 ~ 8.4.2|
+| 8.4 | 8.4.0 ~ 8.4.8 |
 
 ## Prerequisites
 
@@ -579,9 +579,15 @@ kind: Cluster
 metadata:
   name: mysql-cluster-restore
   namespace: demo
-  annotations:
-    kubeblocks.io/restore-from-backup: '{"mysql":{"name":"mysql-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: mysql-cluster-backup
+      namespace: demo
+    parameters:
+      dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   componentSpecs:
     - name: mysql

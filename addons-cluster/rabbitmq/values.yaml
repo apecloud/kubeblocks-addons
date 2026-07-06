@@ -29,5 +29,12 @@ requests:
 ##
 storage: 20
 
+tls:
+  enabled: false
+  ## KubeBlocks or UserProvided. UserProvided auto-generates a self-signed
+  ## Secret for the example chart unless tls.secretName points to an existing Secret.
+  issuer: UserProvided
+  secretName: ""
+
 extra:
   terminationPolicy: Delete

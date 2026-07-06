@@ -34,7 +34,7 @@ spec:
         ports:
           - name: sentinel-advertised
             port: 26379
-            targetPort: 26379
+            targetPort: redis-sentinel
       podService: true
       disableAutoProvision: true
     - name: sentinel-lb-advertised
@@ -193,7 +193,7 @@ spec:
       exec:
         container: redis-sentinel
         command:
-          - sh
+          - /bin/bash
           - -c
           - /scripts/redis-sentinel-account-provision.sh
     memberLeave:

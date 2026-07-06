@@ -3,9 +3,16 @@ kind: Cluster
 metadata:
   name: falkordb-replication-restore
   namespace: demo
-  annotations:
-    kubeblocks.io/restore-from-backup: '{"falkordb":{"name":"falkordb-backup-datafile","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: falkordb-backup-datafile
+      namespace: demo
+    parameters:
+      dataprotection.kubeblocks.io/source-target-name: falkordb
+      dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   clusterDef: falkordb
   topology: replication

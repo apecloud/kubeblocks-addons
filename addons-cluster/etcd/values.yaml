@@ -14,9 +14,9 @@ peerService:
   type:
   annotations: {}
 
-## Client Service Configuration, used for client access, NodePort and LoadBalancer is recommended; otherwise will will only create headless ClusterIP
+## Client Service Configuration, used for client access. ClusterIP provides the local endpoint by default; use NodePort or LoadBalancer for external access.
 clientService:
-  type:
+  type: ClusterIP
   port: 2379
   role: leader
   nodePort:

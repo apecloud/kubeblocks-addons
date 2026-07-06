@@ -35,6 +35,10 @@ spec:
           resources:
             requests:
               storage: {{ print .persistence.data.size "Gi" }}
+      env:
+        {{- include "tidb-cluster.enableTLSBetweenComponentsEnv" $ | nindent 6 }}
+      volumes:
+        {{- include "tidb-cluster.TLSBetweenComponentsVolumes" $ | nindent 6 }}
     {{- end }}
     {{- with $.Values.tikv }}
     - name: tikv
@@ -62,12 +66,21 @@ spec:
           resources:
             requests:
               storage: {{ print .persistence.data.size "Gi" }}
+      env:
+        {{- include "tidb-cluster.enableTLSBetweenComponentsEnv" $ | nindent 6 }}
+      volumes:
+        {{- include "tidb-cluster.TLSBetweenComponentsVolumes" $ | nindent 6 }}
     {{- end }}
     {{- with $.Values.tidb }}
     - name: tidb
       serviceVersion: {{ default $.Chart.AppVersion $.Values.appVersionOverride }}
       disableExporter: false
       replicas: {{ .replicas | default 2 }}
+      tls: {{ .tlsEnable }}
+      {{- if .tlsEnable }}
+      issuer:
+        name: KubeBlocks
+      {{- end }}
       {{- with .tolerations }}
       tolerations: {{ .| toYaml | nindent 8 }}
       {{- end }}
@@ -80,4 +93,8 @@ spec:
           cpu: {{ .requests.cpu | quote }}
           memory: {{ print .requests.memory "Gi" | quote }}
       {{- end }}
+      env:
+        {{- include "tidb-cluster.enableTLSBetweenComponentsEnv" $ | nindent 6 }}
+      volumes:
+        {{- include "tidb-cluster.TLSBetweenComponentsVolumes" $ | nindent 6 }}
     {{- end }}

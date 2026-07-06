@@ -26,28 +26,157 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
   }
   BeforeAll "init"
 
+  redis_config_get() {
+    echo "cluster-announce-ip"
+    case "$1" in
+      *sxj-0*) echo "10.42.0.1" ;;
+      *sxj-1*) echo "10.42.0.2" ;;
+      *98x-0*) echo "10.42.0.1" ;;
+      *98x-1*) echo "10.42.0.2" ;;
+      *7hy-0*) echo "10.42.0.3" ;;
+      *7hy-1*) echo "10.42.0.4" ;;
+      *jwl-0*) echo "10.42.0.5" ;;
+      *jwl-1*) echo "10.42.0.6" ;;
+      *) echo "$1" ;;
+    esac
+  }
+
   cleanup() {
     rm -f $common_library_file;
   }
   AfterAll 'cleanup'
 
+  Describe "init_environment()"
+    Context "when KB main provides declared shard variables"
+      init_environment_and_print_vars() {
+        init_environment
+        echo "ALL_SHARDS_POD_NAME_LIST_COMBINED=$ALL_SHARDS_POD_NAME_LIST_COMBINED"
+        echo "ALL_SHARDS_POD_FQDN_LIST_COMBINED=$ALL_SHARDS_POD_FQDN_LIST_COMBINED"
+        echo "CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE=$CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE"
+        echo "CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE=$CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE"
+        echo "ALL_SHARDS_COMPONENT_LIST=$ALL_SHARDS_COMPONENT_LIST"
+        echo "ALL_SHARDS_UNDELETED_COMPONENT_LIST=$ALL_SHARDS_UNDELETED_COMPONENT_LIST"
+      }
+
+      setup() {
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
+        export ALL_SHARDS_COMPONENT_SHORT_NAMES="shard-fgt:shard-fgt,shard-2qk:shard-2qk,shard-r7s:shard-r7s"
+        export ALL_SHARDS_POD_NAME_LIST=""
+        export ALL_SHARDS_POD_NAME_LIST_SHARD_FGT="fdb-cl-debug-shard-fgt-0,fdb-cl-debug-shard-fgt-1"
+        export ALL_SHARDS_POD_NAME_LIST_SHARD_2QK="fdb-cl-debug-shard-2qk-0,fdb-cl-debug-shard-2qk-1"
+        export ALL_SHARDS_POD_NAME_LIST_SHARD_R7S="fdb-cl-debug-shard-r7s-0,fdb-cl-debug-shard-r7s-1"
+        export ALL_SHARDS_POD_FQDN_LIST=""
+        export ALL_SHARDS_POD_FQDN_LIST_SHARD_FGT="fdb-cl-debug-shard-fgt-0.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local,fdb-cl-debug-shard-fgt-1.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local"
+        export ALL_SHARDS_POD_FQDN_LIST_SHARD_2QK="fdb-cl-debug-shard-2qk-0.fdb-cl-debug-shard-2qk-headless.default.svc.cluster.local,fdb-cl-debug-shard-2qk-1.fdb-cl-debug-shard-2qk-headless.default.svc.cluster.local"
+        export ALL_SHARDS_POD_FQDN_LIST_SHARD_R7S="fdb-cl-debug-shard-r7s-0.fdb-cl-debug-shard-r7s-headless.default.svc.cluster.local,fdb-cl-debug-shard-r7s-1.fdb-cl-debug-shard-r7s-headless.default.svc.cluster.local"
+        export CURRENT_SHARD_POD_NAME_LIST="fdb-cl-debug-shard-fgt-0,fdb-cl-debug-shard-fgt-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="fdb-cl-debug-shard-fgt-0.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local,fdb-cl-debug-shard-fgt-1.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset ALL_SHARDS_COMPONENT_SHORT_NAMES
+        unset ALL_SHARDS_POD_NAME_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_SHARD_FGT
+        unset ALL_SHARDS_POD_NAME_LIST_SHARD_2QK
+        unset ALL_SHARDS_POD_NAME_LIST_SHARD_R7S
+        unset ALL_SHARDS_POD_FQDN_LIST
+        unset ALL_SHARDS_POD_FQDN_LIST_SHARD_FGT
+        unset ALL_SHARDS_POD_FQDN_LIST_SHARD_2QK
+        unset ALL_SHARDS_POD_FQDN_LIST_SHARD_R7S
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
+      }
+      After "un_setup"
+
+      It "initializes addon-owned topology variables from declared shard variables"
+        When call init_environment_and_print_vars
+        The status should be success
+        The output should include "ALL_SHARDS_POD_NAME_LIST_COMBINED=fdb-cl-debug-shard-2qk-0,fdb-cl-debug-shard-2qk-1,fdb-cl-debug-shard-fgt-0,fdb-cl-debug-shard-fgt-1,fdb-cl-debug-shard-r7s-0,fdb-cl-debug-shard-r7s-1"
+        The output should include "ALL_SHARDS_POD_FQDN_LIST_COMBINED=fdb-cl-debug-shard-2qk-0.fdb-cl-debug-shard-2qk-headless.default.svc.cluster.local,fdb-cl-debug-shard-2qk-1.fdb-cl-debug-shard-2qk-headless.default.svc.cluster.local,fdb-cl-debug-shard-fgt-0.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local,fdb-cl-debug-shard-fgt-1.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local,fdb-cl-debug-shard-r7s-0.fdb-cl-debug-shard-r7s-headless.default.svc.cluster.local,fdb-cl-debug-shard-r7s-1.fdb-cl-debug-shard-r7s-headless.default.svc.cluster.local"
+        The output should include "CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE=fdb-cl-debug-shard-fgt-0,fdb-cl-debug-shard-fgt-1"
+        The output should include "CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE=fdb-cl-debug-shard-fgt-0.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local,fdb-cl-debug-shard-fgt-1.fdb-cl-debug-shard-fgt-headless.default.svc.cluster.local"
+        The output should include "ALL_SHARDS_COMPONENT_LIST=shard-fgt,shard-2qk,shard-r7s"
+        The output should include "ALL_SHARDS_UNDELETED_COMPONENT_LIST=shard-fgt,shard-2qk,shard-r7s"
+      End
+    End
+
+    Context "when shardRemove identifies the deleted shard"
+      init_environment_and_print_shard_remove_vars() {
+        init_environment
+        echo "ALL_SHARDS_COMPONENT_LIST=$ALL_SHARDS_COMPONENT_LIST"
+        echo "ALL_SHARDS_DELETING_COMPONENT_LIST=$ALL_SHARDS_DELETING_COMPONENT_LIST"
+        echo "ALL_SHARDS_UNDELETED_COMPONENT_LIST=$ALL_SHARDS_UNDELETED_COMPONENT_LIST"
+      }
+
+      setup() {
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
+        export KB_REMOVE_SHARD_NAME="98x"
+        export CURRENT_SHARD_COMPONENT_NAME="falkordb-sharding-shard-98x"
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export ALL_SHARDS_COMPONENT_SHORT_NAMES="shard-98x:shard-98x,shard-7hy:shard-7hy,shard-jwl:shard-jwl,shard-kpl:shard-kpl"
+        export CURRENT_SHARD_POD_NAME_LIST="falkordb-sharding-shard-98x-0,falkordb-sharding-shard-98x-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="falkordb-sharding-shard-98x-0.falkordb-sharding-shard-98x-headless.default.svc.cluster.local,falkordb-sharding-shard-98x-1.falkordb-sharding-shard-98x-headless.default.svc.cluster.local"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_REMOVE_SHARD_NAME
+        unset CURRENT_SHARD_COMPONENT_NAME
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset ALL_SHARDS_COMPONENT_SHORT_NAMES
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
+      }
+      After "un_setup"
+
+      It "derives deleting and undeleted component lists from KB_REMOVE_SHARD_NAME"
+        When call init_environment_and_print_shard_remove_vars
+        The status should be success
+        The output should include "ALL_SHARDS_COMPONENT_LIST=shard-98x,shard-7hy,shard-jwl,shard-kpl"
+        The output should include "ALL_SHARDS_DELETING_COMPONENT_LIST=shard-98x"
+        The output should include "ALL_SHARDS_UNDELETED_COMPONENT_LIST=shard-7hy,shard-jwl,shard-kpl"
+      End
+    End
+  End
+
   Describe "init_other_components_and_pods_info()"
     It "initializes other components and pods info correctly"
-      export KB_CLUSTER_COMPONENT_LIST="component1,component2,component3"
-      export KB_CLUSTER_COMPONENT_DELETING_LIST="component2"
-      export KB_CLUSTER_COMPONENT_UNDELETED_LIST="component1,component3"
-      export KB_CLUSTER_POD_IP_LIST="10.0.0.1,10.0.0.2,10.0.0.3,10.0.0.4"
-      export KB_CLUSTER_POD_NAME_LIST="component1-0,component2-0,component3-0,component3-1"
+      export ALL_SHARDS_COMPONENT_LIST="component1,component2,component3"
+      export ALL_SHARDS_DELETING_COMPONENT_LIST="component2"
+      export ALL_SHARDS_UNDELETED_COMPONENT_LIST="component1,component3"
+      export ALL_SHARDS_POD_FQDN_LIST_COMBINED="component1-0.component1-headless.kb-system.svc.cluster.local,component2-0.component2-headless.kb-system.svc.cluster.local,component3-0.component3-headless.kb-system.svc.cluster.local,component3-1.component3-headless.kb-system.svc.cluster.local"
       export CLUSTER_NAMESPACE="kb-system"
       export CLUSTER_DOMAIN="cluster.local"
       export SERVICE_PORT="6379"
 
-      When call init_other_components_and_pods_info "component1" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_LIST" "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"
+      When call init_other_components_and_pods_info "component1" "$ALL_SHARDS_POD_FQDN_LIST_COMBINED" "$ALL_SHARDS_COMPONENT_LIST" "$ALL_SHARDS_DELETING_COMPONENT_LIST" "$ALL_SHARDS_UNDELETED_COMPONENT_LIST"
       The status should be success
       The output should include "other_components: component2 component3"
       The output should include "other_deleting_components: component2"
       The output should include "other_undeleted_components: component3"
-      The output should include "other_undeleted_component_pod_ips: 10.0.0.3 10.0.0.4"
       The output should include "other_undeleted_component_pod_names: component3-0 component3-1"
       The output should include "other_undeleted_component_nodes: component3-0.component3-headless.kb-system.svc.cluster.local:6379 component3-1.component3-headless.kb-system.svc.cluster.local:6379"
     End
@@ -84,18 +213,18 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
   End
 
   Describe "parse_host_ip_from_built_in_envs()"
-    It "parses host IP from built-in environment variables"
-      export KB_CLUSTER_POD_NAME_LIST="pod1,pod2,pod3"
-      export KB_CLUSTER_POD_HOST_IP_LIST="10.0.0.1,10.0.0.2,10.0.0.3"
-      When call parse_host_ip_from_built_in_envs "pod2" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_HOST_IP_LIST"
+    It "parses host IP from an explicit pod mapping"
+      export ALL_SHARDS_POD_NAME_LIST_COMBINED="pod1,pod2,pod3"
+      export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.0.0.1,10.0.0.2,10.0.0.3"
+      When call parse_host_ip_from_built_in_envs "pod2" "$ALL_SHARDS_POD_NAME_LIST_COMBINED" "$ALL_SHARDS_POD_FQDN_LIST_COMBINED"
       The status should be success
       The output should eq "10.0.0.2"
     End
 
     It "exits with error when pod name not found"
-      export KB_CLUSTER_POD_NAME_LIST="pod1,pod2,pod3"
-      export KB_CLUSTER_POD_HOST_IP_LIST="10.0.0.1,10.0.0.2,10.0.0.3"
-      When call parse_host_ip_from_built_in_envs "pod4" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_HOST_IP_LIST"
+      export ALL_SHARDS_POD_NAME_LIST_COMBINED="pod1,pod2,pod3"
+      export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.0.0.1,10.0.0.2,10.0.0.3"
+      When call parse_host_ip_from_built_in_envs "pod4" "$ALL_SHARDS_POD_NAME_LIST_COMBINED" "$ALL_SHARDS_POD_FQDN_LIST_COMBINED"
       The status should be failure
       The stderr should include "the given pod name pod4 not found"
     End
@@ -221,13 +350,15 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
       setup() {
         declare -gA scale_out_shard_default_primary_node
         declare -gA scale_out_shard_default_other_nodes
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-sxj-0,falkordb-shard-sxj-1"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-sxj-0,falkordb-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="falkordb-shard-sxj-0.falkordb-shard-sxj-headless.default.svc.cluster.local,falkordb-shard-sxj-1.falkordb-shard-sxj-headless.default.svc.cluster.local"
         export CURRENT_SHARD_ADVERTISED_PORT="falkordb-shard-sxj-0:31000,falkordb-shard-sxj-1:31001"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
         unset CURRENT_SHARD_ADVERTISED_PORT
       }
       After "un_setup"
@@ -263,15 +394,15 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
       setup() {
         declare -gA scale_out_shard_default_primary_node
         declare -gA scale_out_shard_default_other_nodes
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-sxj-0,falkordb-shard-sxj-1"
-        export CURRENT_SHARD_POD_FQDN_LIST="falkordb-shard-sxj-0.falkordb-shard-sxj-headless.default.svc.cluster.local,falkordb-shard-sxj-1.falkordb-shard-sxj-headless.default.svc.cluster.local"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-sxj-0,falkordb-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="falkordb-shard-sxj-0.falkordb-shard-sxj-headless.default.svc.cluster.local,falkordb-shard-sxj-1.falkordb-shard-sxj-headless.default.svc.cluster.local"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -294,12 +425,14 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
       }
 
       setup() {
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-sxj-0,falkordb-shard-sxj-1"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-sxj-0,falkordb-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="falkordb-shard-sxj-0.falkordb-shard-sxj-headless.default.svc.cluster.local,falkordb-shard-sxj-1.falkordb-shard-sxj-headless.default.svc.cluster.local"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
       }
       After "un_setup"
 
@@ -326,18 +459,21 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
         esac
       }
 
-      parse_host_ip_from_built_in_envs() {
-        return 1
+      redis_config_get() {
+        echo "cluster-announce-ip"
+        echo ""
       }
 
       setup() {
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-sxj-0,falkordb-shard-sxj-1"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-sxj-0,falkordb-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="falkordb-shard-sxj-0.falkordb-shard-sxj-headless.default.svc.cluster.local,falkordb-shard-sxj-1.falkordb-shard-sxj-headless.default.svc.cluster.local"
         export CURRENT_SHARD_ADVERTISED_PORT="falkordb-shard-sxj-0:31000,falkordb-shard-sxj-1:31001"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
         unset CURRENT_SHARD_ADVERTISED_PORT
       }
       After "un_setup"
@@ -377,13 +513,15 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
       }
 
       setup() {
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-sxj-0,falkordb-shard-sxj-1"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-sxj-0,falkordb-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="falkordb-shard-sxj-0.falkordb-shard-sxj-headless.default.svc.cluster.local,falkordb-shard-sxj-1.falkordb-shard-sxj-headless.default.svc.cluster.local"
         export CURRENT_SHARD_ADVERTISED_PORT="falkordb-shard-sxj-0:31000"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
         unset CURRENT_SHARD_ADVERTISED_PORT
       }
       After "un_setup"
@@ -416,15 +554,15 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
       }
 
       setup() {
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-sxj-0,falkordb-shard-sxj-1"
-        export CURRENT_SHARD_POD_FQDN_LIST="falkordb-shard-sxj-0.falkordb-shard-sxj-headless.default.svc.cluster.local,falkordb-shard-sxj-1.falkordb-shard-sxj-headless.default.svc.cluster.local"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-sxj-0,falkordb-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE=""
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -432,7 +570,7 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
       It "exits with error when failed to get pod fqdn"
         When run init_current_comp_default_nodes_for_scale_out
         The status should be failure
-        The stderr should include "Error: Failed to get pod falkordb-shard-sxj-0 fqdn from list: falkordb-shard-sxj-0.falkordb-shard-sxj-headless.default.svc.cluster.local,falkordb-shard-sxj-1.falkordb-shard-sxj-headless.default.svc.cluster.local"
+        The stderr should include "Error: Required environment variable CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE and CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE are not set when initializing current shard default nodes"
       End
     End
   End
@@ -440,8 +578,8 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
   Describe "gen_initialize_redis_cluster_node()"
     Context "when is_primary is true and using advertised ports"
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="falkordb-shard-98x-0.namespace.svc.cluster.local,falkordb-shard-98x-1.namespace.svc.cluster.local,falkordb-shard-7hy-0.namespace.svc.cluster.local,falkordb-shard-7hy-1.namespace.svc.cluster.local,falkordb-shard-jwl-0.namespace.svc.cluster.local,falkordb-shard-jwl-1.namespace.svc.cluster.local"
         export ALL_SHARDS_ADVERTISED_PORT="shard-98x@falkordb-shard-98x-redis-advertised-0:32024,falkordb-shard-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:32025,falkordb-shard-7hy-redis-advertised-1:31319.shard-jwl@falkordb-shard-jwl-redis-advertised-0:32026,falkordb-shard-jwl-redis-advertised-1:31320"
         declare -gA initialize_redis_cluster_primary_nodes
         declare -gA initialize_redis_cluster_secondary_nodes
@@ -450,8 +588,8 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
         unset ALL_SHARDS_ADVERTISED_PORT
       }
       After "un_setup"
@@ -473,8 +611,8 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
 
     Context "when is_primary is false and using advertised ports"
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="falkordb-shard-98x-0.namespace.svc.cluster.local,falkordb-shard-98x-1.namespace.svc.cluster.local,falkordb-shard-7hy-0.namespace.svc.cluster.local,falkordb-shard-7hy-1.namespace.svc.cluster.local,falkordb-shard-jwl-0.namespace.svc.cluster.local,falkordb-shard-jwl-1.namespace.svc.cluster.local"
         export ALL_SHARDS_ADVERTISED_PORT="shard-98x@falkordb-shard-98x-redis-advertised-0:32024,falkordb-shard-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:32025,falkordb-shard-7hy-redis-advertised-1:31319.shard-jwl@falkordb-shard-jwl-redis-advertised-0:32026,falkordb-shard-jwl-redis-advertised-1:31320"
         declare -gA initialize_redis_cluster_primary_nodes
         declare -gA initialize_redis_cluster_secondary_nodes
@@ -483,8 +621,8 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
         unset ALL_SHARDS_ADVERTISED_PORT
       }
       After "un_setup"
@@ -505,12 +643,9 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
     End
 
     Context "when is_primary is true and not using advertised ports"
-      get_all_shards_pod_fqdns() {
-        echo "falkordb-shard-98x-0.namespace.svc.cluster.local,falkordb-shard-98x-1.namespace.svc.cluster.local,falkordb-shard-7hy-0.namespace.svc.cluster.local,falkordb-shard-7hy-1.namespace.svc.cluster.local,falkordb-shard-jwl-0.namespace.svc.cluster.local,falkordb-shard-jwl-1.namespace.svc.cluster.local"
-      }
-
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="falkordb-shard-98x-0.namespace.svc.cluster.local,falkordb-shard-98x-1.namespace.svc.cluster.local,falkordb-shard-7hy-0.namespace.svc.cluster.local,falkordb-shard-7hy-1.namespace.svc.cluster.local,falkordb-shard-jwl-0.namespace.svc.cluster.local,falkordb-shard-jwl-1.namespace.svc.cluster.local"
         export SERVICE_PORT="6379"
         declare -gA initialize_redis_cluster_primary_nodes
         declare -gA initialize_redis_cluster_secondary_nodes
@@ -519,7 +654,8 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -540,12 +676,9 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
     End
 
     Context "when is_primary is false and not using advertised ports"
-      get_all_shards_pod_fqdns() {
-        echo "falkordb-shard-98x-0.namespace.svc.cluster.local,falkordb-shard-98x-1.namespace.svc.cluster.local,falkordb-shard-7hy-0.namespace.svc.cluster.local,falkordb-shard-7hy-1.namespace.svc.cluster.local,falkordb-shard-jwl-0.namespace.svc.cluster.local,falkordb-shard-jwl-1.namespace.svc.cluster.local"
-      }
-
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="falkordb-shard-98x-0.namespace.svc.cluster.local,falkordb-shard-98x-1.namespace.svc.cluster.local,falkordb-shard-7hy-0.namespace.svc.cluster.local,falkordb-shard-7hy-1.namespace.svc.cluster.local,falkordb-shard-jwl-0.namespace.svc.cluster.local,falkordb-shard-jwl-1.namespace.svc.cluster.local"
         export SERVICE_PORT="6379"
         declare -gA initialize_redis_cluster_primary_nodes
         declare -gA initialize_redis_cluster_secondary_nodes
@@ -554,7 +687,8 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -580,12 +714,14 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
       }
 
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="falkordb-shard-98x-0.namespace.svc.cluster.local,falkordb-shard-98x-1.namespace.svc.cluster.local,falkordb-shard-7hy-0.namespace.svc.cluster.local,falkordb-shard-7hy-1.namespace.svc.cluster.local,falkordb-shard-jwl-0.namespace.svc.cluster.local,falkordb-shard-jwl-1.namespace.svc.cluster.local"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
       }
       After "un_setup"
 
@@ -597,22 +733,22 @@ Describe "FalkorDB Cluster Manage Bash Script Tests"
     End
 
     Context "when failed to get host ip of pod"
-      parse_host_ip_from_built_in_envs() {
+      redis_config_get() {
+        echo "cluster-announce-ip"
         echo ""
-        return 1
       }
 
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="falkordb-shard-98x-0.namespace.svc.cluster.local,falkordb-shard-98x-1.namespace.svc.cluster.local,falkordb-shard-7hy-0.namespace.svc.cluster.local,falkordb-shard-7hy-1.namespace.svc.cluster.local,falkordb-shard-jwl-0.namespace.svc.cluster.local,falkordb-shard-jwl-1.namespace.svc.cluster.local"
         export ALL_SHARDS_ADVERTISED_PORT="shard-98x@falkordb-shard-98x-redis-advertised-0:32024,redis-shar
 d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:32025,falkordb-shard-7hy-redis-advertised-1:31319.shard-jwl@falkordb-shard-jwl-redis-advertised-0:32026,falkordb-shard-jwl-redis-advertised-1:31320"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
         unset ALL_SHARDS_ADVERTISED_PORT
       }
       After "un_setup"
@@ -625,18 +761,16 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
     End
 
     Context "when failed to get all shard pod fqdns"
-      get_all_shards_pod_fqdns() {
-        echo ""
-      }
-
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED=""
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -644,37 +778,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       It "returns error when failed to get all shard pod fqdns"
         When call gen_initialize_redis_cluster_node "true"
         The status should be failure
-        The error should include "Failed to get all shard pod FQDNs"
+        The error should include "Error: Required environment variable ALL_SHARDS_POD_NAME_LIST_COMBINED and ALL_SHARDS_POD_FQDN_LIST_COMBINED are not set when generating redis cluster nodes"
       End
     End
 
-    Context "when failed to get target pod fqdn"
-      get_all_shards_pod_fqdns() {
-        echo "falkordb-shard-98x-1.namespace.svc.cluster.local,falkordb-shard-98x-2.namespace.svc.cluster.local,falkordb-shard-7hy-0.namespace.svc.cluster.local,falkordb-shard-7hy-1.namespace.svc.cluster.local,falkordb-shard-jwl-0.namespace.svc.cluster.local,falkordb-shard-jwl-1.namespace.svc.cluster.local"
-      }
-
-      get_target_pod_fqdn_from_pod_fqdn_vars() {
-        echo ""
-      }
-
-      setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
-        export SERVICE_PORT="6379"
-      }
-      Before "setup"
-
-      un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset SERVICE_PORT
-      }
-      After "un_setup"
-
-      It "returns error when failed to get target pod fqdn"
-        When call gen_initialize_redis_cluster_node "true"
-        The status should be failure
-        The stderr should include "Failed to get pod falkordb-shard-98x-0 fqdn from list: falkordb-shard-98x-1.namespace.svc.cluster.local,falkordb-shard-98x-2.namespace.svc.cluster.local,falkordb-shard-7hy-0.namespace.svc.cluster.local,falkordb-shard-7hy-1.namespace.svc.cluster.local,falkordb-shard-jwl-0.namespace.svc.cluster.local,falkordb-shard-jwl-1.namespace.svc.cluster.local"
-      End
-    End
   End
 
   Describe "gen_initialize_redis_cluster_primary_node()"
@@ -698,23 +805,23 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
   End
 
   Describe "initialize_redis_cluster()"
-    Context "when KB_CLUSTER_POD_NAME_LIST or KB_CLUSTER_POD_HOST_IP_LIST is empty"
+    Context "when ALL_SHARDS_POD_NAME_LIST_COMBINED or ALL_SHARDS_POD_FQDN_LIST_COMBINED is empty"
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST=""
-        export KB_CLUSTER_POD_HOST_IP_LIST=""
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED=""
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED=""
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
       }
       After "un_setup"
 
-      It "exits with error when KB_CLUSTER_POD_NAME_LIST or KB_CLUSTER_POD_HOST_IP_LIST is empty"
+      It "exits with error when ALL_SHARDS_POD_NAME_LIST_COMBINED or ALL_SHARDS_POD_FQDN_LIST_COMBINED is empty"
         When run initialize_redis_cluster
         The status should be failure
-        The stderr should include "Error: Required environment variable KB_CLUSTER_POD_NAME_LIST and KB_CLUSTER_POD_HOST_IP_LIST are not set when initializing redis cluster"
+        The stderr should include "Error: Required environment variable ALL_SHARDS_POD_NAME_LIST_COMBINED and ALL_SHARDS_POD_FQDN_LIST_COMBINED are not set when initializing redis cluster"
       End
     End
 
@@ -724,14 +831,14 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
       }
       After "un_setup"
 
@@ -759,14 +866,14 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
       }
       After "un_setup"
 
@@ -798,15 +905,15 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -844,15 +951,15 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -890,15 +997,15 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -948,15 +1055,15 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -1006,15 +1113,15 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -1032,26 +1139,26 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
     Context "when required environment variables are not set"
       setup() {
         export CURRENT_SHARD_COMPONENT_SHORT_NAME=""
-        export KB_CLUSTER_POD_NAME_LIST=""
-        export KB_CLUSTER_POD_HOST_IP_LIST=""
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST=""
-        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST=""
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED=""
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED=""
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE=""
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE=""
       }
       Before "setup"
 
       un_setup() {
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
       }
       After "un_setup"
 
       It "returns error when required environment variables are not set"
         When call scale_out_redis_cluster_shard
         The status should be failure
-        The error should include "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, KB_CLUSTER_POD_NAME_LIST, KB_CLUSTER_POD_HOST_IP_LIST, KB_CLUSTER_COMPONENT_POD_NAME_LIST and KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set when scale out redis cluster shard"
+        The error should include "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, ALL_SHARDS_POD_NAME_LIST_COMBINED, ALL_SHARDS_POD_FQDN_LIST_COMBINED, CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE and CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE are not set when scale out redis cluster shard"
       End
     End
 
@@ -1062,27 +1169,26 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
 
       setup() {
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_COMPONENT_LIST="falkordb-shard-98x"
-        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
-        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="falkordb-shard-98x"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="falkordb-shard-98x-0.falkordb-shard-98x-headless.kb-system.svc.cluster.local,falkordb-shard-98x-1.falkordb-shard-98x-headless.kb-system.svc.cluster.local"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="falkordb-shard-98x-0.falkordb-shard-98x-headless.kb-system.svc.cluster.local,falkordb-shard-98x-1.falkordb-shard-98x-headless.kb-system.svc.cluster.local"
+        export ALL_SHARDS_COMPONENT_LIST="falkordb-shard-98x"
+        export ALL_SHARDS_DELETING_COMPONENT_LIST=""
+        export ALL_SHARDS_UNDELETED_COMPONENT_LIST="falkordb-shard-98x"
       }
       Before "setup"
 
       un_setup() {
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_COMPONENT_LIST
-        unset KB_CLUSTER_COMPONENT_DELETING_LIST
-        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
       }
       After "un_setup"
 
@@ -1102,27 +1208,27 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
 
       setup() {
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_COMPONENT_LIST="falkordb-shard-98x"
-        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
-        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="falkordb-shard-98x"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="10.42.0.1,10.42.0.2"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2"
+        export ALL_SHARDS_COMPONENT_LIST="falkordb-shard-98x"
+        export ALL_SHARDS_DELETING_COMPONENT_LIST=""
+        export ALL_SHARDS_UNDELETED_COMPONENT_LIST="falkordb-shard-98x"
       }
       Before "setup"
 
       un_setup() {
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_COMPONENT_LIST
-        unset KB_CLUSTER_COMPONENT_DELETING_LIST
-        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
       }
       After "un_setup"
 
@@ -1154,28 +1260,28 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
 
       setup() {
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_COMPONENT_LIST="falkordb-shard-98x"
-        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
-        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="falkordb-shard-98x"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="10.42.0.1,10.42.0.2"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2"
+        export ALL_SHARDS_COMPONENT_LIST="falkordb-shard-98x"
+        export ALL_SHARDS_DELETING_COMPONENT_LIST=""
+        export ALL_SHARDS_UNDELETED_COMPONENT_LIST="falkordb-shard-98x"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_COMPONENT_LIST
-        unset KB_CLUSTER_COMPONENT_DELETING_LIST
-        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -1207,28 +1313,28 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
 
       setup() {
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_COMPONENT_LIST="falkordb-shard-98x"
-        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
-        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="falkordb-shard-98x"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="10.42.0.1,10.42.0.2"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2"
+        export ALL_SHARDS_COMPONENT_LIST="falkordb-shard-98x"
+        export ALL_SHARDS_DELETING_COMPONENT_LIST=""
+        export ALL_SHARDS_UNDELETED_COMPONENT_LIST="falkordb-shard-98x"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_COMPONENT_LIST
-        unset KB_CLUSTER_COMPONENT_DELETING_LIST
-        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -1265,28 +1371,28 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
 
       setup() {
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_COMPONENT_LIST="falkordb-shard-98x"
-        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
-        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="falkordb-shard-98x"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="10.42.0.1,10.42.0.2"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2"
+        export ALL_SHARDS_COMPONENT_LIST="falkordb-shard-98x"
+        export ALL_SHARDS_DELETING_COMPONENT_LIST=""
+        export ALL_SHARDS_UNDELETED_COMPONENT_LIST="falkordb-shard-98x"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_COMPONENT_LIST
-        unset KB_CLUSTER_COMPONENT_DELETING_LIST
-        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -1329,28 +1435,28 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
 
       setup() {
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_COMPONENT_LIST="falkordb-shard-98x"
-        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
-        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="falkordb-shard-98x"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="10.42.0.1,10.42.0.2"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2"
+        export ALL_SHARDS_COMPONENT_LIST="falkordb-shard-98x"
+        export ALL_SHARDS_DELETING_COMPONENT_LIST=""
+        export ALL_SHARDS_UNDELETED_COMPONENT_LIST="falkordb-shard-98x"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_COMPONENT_LIST
-        unset KB_CLUSTER_COMPONENT_DELETING_LIST
-        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -1398,14 +1504,14 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
 
       setup() {
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="falkordb-shard-98x"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4"
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4"
-        export KB_CLUSTER_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy"
-        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
-        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="falkordb-shard-98x,falkordb-shard-7hy"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="10.42.0.1,10.42.0.2"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4"
+        export ALL_SHARDS_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy"
+        export ALL_SHARDS_DELETING_COMPONENT_LIST=""
+        export ALL_SHARDS_UNDELETED_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy"
         export CURRENT_SHARD_COMPONENT_NAME="falkordb-shard-98x"
         export SERVICE_PORT="6379"
       }
@@ -1413,14 +1519,14 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
 
       un_setup() {
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_COMPONENT_LIST
-        unset KB_CLUSTER_COMPONENT_DELETING_LIST
-        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
         unset CURRENT_SHARD_COMPONENT_NAME
         unset SERVICE_PORT
       }
@@ -1436,50 +1542,30 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
   End
 
   Describe "scale_in_redis_cluster_shard()"
-    Context "when KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set"
-      setup() {
-        export KB_CLUSTER_COMPONENT_IS_SCALING_IN=""
-      }
-      Before "setup"
-
-      un_setup() {
-        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
-      }
-      After "un_setup"
-
-      It "returns 0 when KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set"
-        When call scale_in_redis_cluster_shard
-        The status should be success
-        The output should include "The KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set, skip scaling in"
-      End
-    End
-
     Context "when required environment variables are not set"
       setup() {
-        export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
         export CURRENT_SHARD_COMPONENT_SHORT_NAME=""
-        export KB_CLUSTER_POD_NAME_LIST=""
-        export KB_CLUSTER_POD_HOST_IP_LIST=""
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST=""
-        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST=""
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED=""
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED=""
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE=""
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE=""
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
       }
       After "un_setup"
 
       It "returns 1 when required environment variables are not set"
         When call scale_in_redis_cluster_shard
         The status should be failure
-        The error should include "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, KB_CLUSTER_POD_NAME_LIST, KB_CLUSTER_POD_HOST_IP_LIST, KB_CLUSTER_COMPONENT_POD_NAME_LIST and KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set when scale in redis cluster shard"
+        The error should include "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, ALL_SHARDS_POD_NAME_LIST_COMBINED, ALL_SHARDS_POD_FQDN_LIST_COMBINED, CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE and CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE are not set when scale in redis cluster shard"
       End
     End
 
@@ -1494,17 +1580,15 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
         export CURRENT_SHARD_COMPONENT_NAME="falkordb-shard-98x"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5"
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5"
-        export KB_CLUSTER_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl"
-        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
-        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="falkordb-shard-98x-0.falkordb-shard-98x-headless.kb-system.svc.cluster.local,falkordb-shard-98x-1.falkordb-shard-98x-headless.kb-system.svc.cluster.local,falkordb-shard-7hy-0.falkordb-shard-7hy-headless.kb-system.svc.cluster.local,falkordb-shard-7hy-1.falkordb-shard-7hy-headless.kb-system.svc.cluster.local,falkordb-shard-jwl-0.falkordb-shard-jwl-headless.kb-system.svc.cluster.local"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="falkordb-shard-98x-0.falkordb-shard-98x-headless.kb-system.svc.cluster.local,falkordb-shard-98x-1.falkordb-shard-98x-headless.kb-system.svc.cluster.local"
+        export ALL_SHARDS_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl"
+        export ALL_SHARDS_DELETING_COMPONENT_LIST=""
+        export ALL_SHARDS_UNDELETED_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl"
         export CLUSTER_NAMESPACE="kb-system"
         export CLUSTER_DOMAIN="cluster.local"
         export SERVICE_PORT="6379"
@@ -1512,16 +1596,15 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_COMPONENT_LIST
-        unset KB_CLUSTER_COMPONENT_DELETING_LIST
-        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
       }
       After "un_setup"
 
@@ -1556,32 +1639,29 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
         export CURRENT_SHARD_COMPONENT_NAME="falkordb-shard-98x"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1,falkordb-shard-kpl-0,falkordb-shard-kpl-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6,10.42.0.7,10.42.0.8"
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6,172.42.0.7,172.42.0.8"
-        export KB_CLUSTER_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
-        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
-        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1,falkordb-shard-kpl-0,falkordb-shard-kpl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="falkordb-shard-98x-0.falkordb-shard-98x-headless.kb-system.svc.cluster.local,falkordb-shard-98x-1.falkordb-shard-98x-headless.kb-system.svc.cluster.local,falkordb-shard-7hy-0.falkordb-shard-7hy-headless.kb-system.svc.cluster.local,falkordb-shard-7hy-1.falkordb-shard-7hy-headless.kb-system.svc.cluster.local,falkordb-shard-jwl-0.falkordb-shard-jwl-headless.kb-system.svc.cluster.local,falkordb-shard-jwl-1.falkordb-shard-jwl-headless.kb-system.svc.cluster.local,falkordb-shard-kpl-0.falkordb-shard-kpl-headless.kb-system.svc.cluster.local,falkordb-shard-kpl-1.falkordb-shard-kpl-headless.kb-system.svc.cluster.local"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="falkordb-shard-98x-0.falkordb-shard-98x-headless.kb-system.svc.cluster.local,falkordb-shard-98x-1.falkordb-shard-98x-headless.kb-system.svc.cluster.local"
+        export ALL_SHARDS_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
+        export ALL_SHARDS_DELETING_COMPONENT_LIST=""
+        export ALL_SHARDS_UNDELETED_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_COMPONENT_LIST
-        unset KB_CLUSTER_COMPONENT_DELETING_LIST
-        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
       }
       After "un_setup"
 
@@ -1613,17 +1693,15 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
         export CURRENT_SHARD_COMPONENT_NAME="falkordb-shard-98x"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1,falkordb-shard-kpl-0,falkordb-shard-kpl-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6,10.42.0.7,10.42.0.8"
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6,172.42.0.7,172.42.0.8"
-        export KB_CLUSTER_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
-        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
-        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1,falkordb-shard-kpl-0,falkordb-shard-kpl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="falkordb-shard-98x-0.falkordb-shard-98x-headless.kb-system.svc.cluster.local,falkordb-shard-98x-1.falkordb-shard-98x-headless.kb-system.svc.cluster.local,falkordb-shard-7hy-0.falkordb-shard-7hy-headless.kb-system.svc.cluster.local,falkordb-shard-7hy-1.falkordb-shard-7hy-headless.kb-system.svc.cluster.local,falkordb-shard-jwl-0.falkordb-shard-jwl-headless.kb-system.svc.cluster.local,falkordb-shard-jwl-1.falkordb-shard-jwl-headless.kb-system.svc.cluster.local,falkordb-shard-kpl-0.falkordb-shard-kpl-headless.kb-system.svc.cluster.local,falkordb-shard-kpl-1.falkordb-shard-kpl-headless.kb-system.svc.cluster.local"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="falkordb-shard-98x-0.falkordb-shard-98x-headless.kb-system.svc.cluster.local,falkordb-shard-98x-1.falkordb-shard-98x-headless.kb-system.svc.cluster.local"
+        export ALL_SHARDS_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
+        export ALL_SHARDS_DELETING_COMPONENT_LIST=""
+        export ALL_SHARDS_UNDELETED_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
         export CLUSTER_NAMESPACE="kb-system"
         export CLUSTER_DOMAIN="cluster.local"
         export SERVICE_PORT="6379"
@@ -1631,16 +1709,15 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_COMPONENT_LIST
-        unset KB_CLUSTER_COMPONENT_DELETING_LIST
-        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
       }
       After "un_setup"
 
@@ -1675,32 +1752,30 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
         export CURRENT_SHARD_COMPONENT_NAME="falkordb-shard-98x"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1,falkordb-shard-kpl-0,falkordb-shard-kpl-1"
-        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6,10.42.0.7,10.42.0.8"
-        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1"
-        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
-        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6,172.42.0.7,172.42.0.8"
-        export KB_CLUSTER_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
-        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
-        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1,falkordb-shard-kpl-0,falkordb-shard-kpl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6,10.42.0.7,10.42.0.8"
+        export CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE="falkordb-shard-98x-0,falkordb-shard-98x-1"
+        export CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE="10.42.0.1,10.42.0.2"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6,172.42.0.7,172.42.0.8"
+        export ALL_SHARDS_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
+        export ALL_SHARDS_DELETING_COMPONENT_LIST=""
+        export ALL_SHARDS_UNDELETED_COMPONENT_LIST="falkordb-shard-98x,falkordb-shard-7hy,falkordb-shard-jwl,falkordb-shard-kpl"
         export SERVICE_PORT="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
-        unset KB_CLUSTER_POD_NAME_LIST
-        unset KB_CLUSTER_POD_HOST_IP_LIST
-        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
-        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_COMPONENT_LIST
-        unset KB_CLUSTER_COMPONENT_DELETING_LIST
-        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset CURRENT_SHARD_POD_NAME_LIST_EFFECTIVE
+        unset CURRENT_SHARD_POD_FQDN_LIST_EFFECTIVE
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_COMPONENT_LIST
+        unset ALL_SHARDS_DELETING_COMPONENT_LIST
+        unset ALL_SHARDS_UNDELETED_COMPONENT_LIST
       }
       After "un_setup"
 
@@ -1716,21 +1791,21 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
   Describe "initialize_or_scale_out_redis_cluster()"
     Context "when required environment variables are not set"
       setup() {
-        export KB_CLUSTER_POD_IP_LIST=""
-        export KB_CLUSTER_POD_NAME_LIST=""
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED=""
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED=""
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_POD_NAME_LIST
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
       }
       After "un_setup"
 
       It "exits with status 1 when required environment variables are not set"
         When run initialize_or_scale_out_redis_cluster
         The status should be failure
-        The stderr should include "Error: Required environment variable KB_CLUSTER_POD_IP_LIST and KB_CLUSTER_POD_NAME_LIST and SERVICE_PORT is not set."
+        The stderr should include "Error: Required environment variable ALL_SHARDS_POD_FQDN_LIST_COMBINED and ALL_SHARDS_POD_NAME_LIST_COMBINED and SERVICE_PORT is not set."
       End
     End
 
@@ -1744,14 +1819,14 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_POD_NAME_LIST
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
       }
       After "un_setup"
 
@@ -1777,14 +1852,14 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_POD_NAME_LIST
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
       }
       After "un_setup"
 
@@ -1806,14 +1881,14 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_POD_NAME_LIST
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
       }
       After "un_setup"
 
@@ -1835,14 +1910,14 @@ d-98x-redis-advertised-1:31318.shard-7hy@falkordb-shard-7hy-redis-advertised-0:3
       }
 
       setup() {
-        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
-        export KB_CLUSTER_POD_NAME_LIST="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
+        export ALL_SHARDS_POD_FQDN_LIST_COMBINED="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
+        export ALL_SHARDS_POD_NAME_LIST_COMBINED="falkordb-shard-98x-0,falkordb-shard-98x-1,falkordb-shard-7hy-0,falkordb-shard-7hy-1,falkordb-shard-jwl-0,falkordb-shard-jwl-1"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_CLUSTER_POD_IP_LIST
-        unset KB_CLUSTER_POD_NAME_LIST
+        unset ALL_SHARDS_POD_FQDN_LIST_COMBINED
+        unset ALL_SHARDS_POD_NAME_LIST_COMBINED
       }
       After "un_setup"
 

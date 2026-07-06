@@ -240,6 +240,149 @@ function getToolConfigValue() {
 	cat "$toolConfig" | grep "$var" | awk '{print $NF}'
 }
 
+function configure_clickhouse_backup_custom_storage_if_encrypted() {
+	if [[ -z "${DATASAFED_ENCRYPTION_ALGORITHM:-}" && -z "${DATASAFED_ENCRYPTION_PASS_PHRASE:-}" ]]; then
+		return 0
+	fi
+
+	local custom_storage_dir="${KB_BACKUP_WORKDIR:-/tmp}/clickhouse-backup-custom-storage"
+	local custom_storage_script="${custom_storage_dir}/storage.sh"
+	mkdir -p "$custom_storage_dir"
+	cat >"$custom_storage_script" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+function init_datasafed() {
+	export PATH="$PATH:${DP_DATASAFED_BIN_PATH:-}"
+	export DATASAFED_BACKEND_BASE_PATH="${S3_PATH:?S3_PATH is required}"
+}
+
+function clickhouse_query() {
+	local ch_port="${CLICKHOUSE_PORT:-9000}"
+	local ch_args=(--user "${CLICKHOUSE_USERNAME}" --password "${CLICKHOUSE_PASSWORD}" --host "${CLICKHOUSE_HOST}" --port "$ch_port" --connect_timeout=5)
+	if [[ "${CLICKHOUSE_SECURE:-false}" == "true" ]]; then
+		ch_args+=(--secure --accept-invalid-certificate)
+	fi
+	clickhouse-client "${ch_args[@]}" --query "$1"
+}
+
+function list_local_disks() {
+	clickhouse_query "SELECT concat(name, ':', trim(TRAILING '/' FROM path)) FROM system.disks FORMAT TSVRaw"
+}
+
+function upload_backup() {
+	local backup_name="${1:?missing backup name}"
+	local diff_from_remote="${2:-}"
+	local uploaded_files=0
+	local disk
+	[[ -n "$diff_from_remote" ]] && echo "datasafed custom storage uploads backup '$backup_name' without remote link-dest '$diff_from_remote'" >&2
+	init_datasafed
+	while IFS= read -r disk; do
+		[[ -z "$disk" ]] && continue
+		local disk_name="${disk%%:*}"
+		local disk_path="${disk#*:}"
+		local backup_dir="${disk_path%/}/backup/${backup_name}"
+		[[ -d "$backup_dir" ]] || continue
+		while IFS= read -r local_file; do
+			local relative_path="${local_file#"$backup_dir"/}"
+			local remote_file="/${backup_name}/${disk_name}/${relative_path}"
+			datasafed push "$local_file" "$remote_file"
+			if [[ "$relative_path" == "metadata.json" ]]; then
+				# Incremental restore stages parent metadata from this native path.
+				datasafed push "$local_file" "/${backup_name}/metadata.json"
+			fi
+			uploaded_files=$((uploaded_files + 1))
+		done < <(find "$backup_dir" -type f -print)
+	done < <(list_local_disks)
+	if [[ "$uploaded_files" -eq 0 ]]; then
+		echo "No local files found for backup '$backup_name'" >&2
+		exit 1
+	fi
+}
+
+function list_backups() {
+	local backup_name
+	local metadata_file
+	init_datasafed
+	while IFS= read -r backup_name; do
+		[[ -z "$backup_name" ]] && continue
+		backup_name="${backup_name#./}"
+		backup_name="${backup_name#/}"
+		backup_name="${backup_name%%/*}"
+		[[ -z "$backup_name" ]] && continue
+		metadata_file="$(mktemp)" || exit 1
+		if datasafed pull "/${backup_name}/metadata.json" "$metadata_file" >/dev/null 2>&1; then
+			clickhouse-local --input-format JSONEachRow --output-format JSONEachRow --query "SELECT *, creation_date AS upload_date FROM table" <"$metadata_file"
+		fi
+		rm -f "$metadata_file"
+	done < <(datasafed list -d / 2>/dev/null | sort -u || true)
+}
+
+function download_backup() {
+	local backup_name="${1:?missing backup name}"
+	local downloaded_files=0
+	local disk
+	init_datasafed
+	while IFS= read -r disk; do
+		[[ -z "$disk" ]] && continue
+		local disk_name="${disk%%:*}"
+		local disk_path="${disk#*:}"
+		local backup_dir="${disk_path%/}/backup/${backup_name}"
+		local remote_prefix="/${backup_name}/${disk_name}"
+		local remote_file
+		mkdir -p "$backup_dir"
+		while IFS= read -r remote_file; do
+			[[ -z "$remote_file" ]] && continue
+			remote_file="/${remote_file#./}"
+			remote_file="/${remote_file#/}"
+			case "$remote_file" in
+			"$remote_prefix"/*) ;;
+			*) continue ;;
+			esac
+			local relative_path="${remote_file#"$remote_prefix"/}"
+			local local_file="${backup_dir}/${relative_path}"
+			mkdir -p "$(dirname "$local_file")"
+			datasafed pull "$remote_file" "$local_file"
+			downloaded_files=$((downloaded_files + 1))
+		done < <(datasafed list -f --recursive "$remote_prefix" 2>/dev/null || true)
+	done < <(list_local_disks)
+	if [[ "$downloaded_files" -eq 0 ]]; then
+		echo "No remote files found for backup '$backup_name'" >&2
+		exit 1
+	fi
+}
+
+function delete_backup() {
+	local backup_name="${1:?missing backup name}"
+	init_datasafed
+	datasafed rm -r "/${backup_name}"
+}
+
+action="${1:?missing action}"
+shift
+case "$action" in
+upload) upload_backup "$@" ;;
+list) list_backups ;;
+download) download_backup "$@" ;;
+delete) delete_backup "$@" ;;
+*)
+	echo "Unknown action '$action'" >&2
+	exit 1
+	;;
+esac
+EOF
+	chmod +x "$custom_storage_script"
+
+	export PATH="$PATH:${DP_DATASAFED_BIN_PATH:-}"
+	export REMOTE_STORAGE=custom
+	export USE_RESUMABLE_STATE=false
+	export CUSTOM_UPLOAD_COMMAND="$custom_storage_script upload {{ .backupName }} {{ .diffFromRemote }}"
+	export CUSTOM_DOWNLOAD_COMMAND="$custom_storage_script download {{ .backupName }}"
+	export CUSTOM_DELETE_COMMAND="$custom_storage_script delete {{ .backupName }}"
+	export CUSTOM_LIST_COMMAND="$custom_storage_script list"
+	DP_log "ClickHouse backup encryption detected; using datasafed custom remote storage."
+}
+
 function set_clickhouse_backup_config_env() {
 	toolConfig=/etc/datasafed/datasafed.conf
 	if [ ! -f ${toolConfig} ]; then
@@ -320,6 +463,7 @@ function set_clickhouse_backup_config_env() {
 		export CLICKHOUSE_TLS_KEY="/etc/pki/tls/key.pem"
 		export CLICKHOUSE_SKIP_VERIFY=true
 	fi
+	configure_clickhouse_backup_custom_storage_if_encrypted
 	DP_log "Dynamic environment variables for clickhouse-backup have been set."
 }
 
@@ -327,6 +471,9 @@ function ch_query() {
 	local query="$1"
 	local ch_port="${CLICKHOUSE_PORT:-9000}"
 	local ch_args=(--user "${CLICKHOUSE_USERNAME}" --password "${CLICKHOUSE_PASSWORD}" --host "${CLICKHOUSE_HOST}" --port "$ch_port" --connect_timeout=5)
+	if [[ "${CLICKHOUSE_SECURE:-false}" == "true" ]]; then
+		ch_args+=(--secure --accept-invalid-certificate)
+	fi
 	clickhouse-client "${ch_args[@]}" --query "$query"
 }
 
@@ -358,10 +505,41 @@ function fetch_backup() {
 	DP_log "Backup '$backup_name' is available locally."
 }
 
+function stage_required_backup_metadata() {
+	local target_base_path="$1"
+	shift
+	local backup_name
+	local metadata_file
+
+	# clickhouse-backup expects incremental parents under the same S3_PATH.
+	# KubeBlocks stores each Backup under its own path, so stage parent metadata only.
+	export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
+	for backup_name in "$@"; do
+		[[ -z "$backup_name" ]] && continue
+		metadata_file=$(mktemp) || {
+			DP_error_log "Failed to create temporary metadata file"
+			return 1
+		}
+		export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_ROOT_PATH/$backup_name/$DP_TARGET_RELATIVE_PATH"
+		if ! datasafed pull "$backup_name/metadata.json" "$metadata_file"; then
+			rm -f "$metadata_file"
+			DP_error_log "Failed to pull metadata for backup '$backup_name'"
+			return 1
+		fi
+		export DATASAFED_BACKEND_BASE_PATH="$target_base_path"
+		if ! datasafed push "$metadata_file" "$backup_name/metadata.json"; then
+			rm -f "$metadata_file"
+			DP_error_log "Failed to stage metadata for backup '$backup_name'"
+			return 1
+		fi
+		rm -f "$metadata_file"
+	done
+}
+
 function delete_backups_except() {
 	local latest_backup=$1
 	DP_log "delete backup except $latest_backup"
-	backup_list=$(clickhouse-backup list)
+	backup_list=$(clickhouse-backup list local)
 	echo "$backup_list" | awk '/local/ {print $1}' | while IFS= read -r backup_name; do
 		if [ "$backup_name" != "$latest_backup" ]; then
 			clickhouse-backup delete local "$backup_name" || {
@@ -380,6 +558,25 @@ function save_backup_size() {
 	local backup_size
 	backup_size=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 	DP_save_backup_status_info "$backup_size"
+}
+
+function detect_restore_mode() {
+	local first_entry="${ALL_COMBINED_SHARDS_POD_FQDN_LIST%%,*}"
+	local first_component="${first_entry%%:*}"
+	if [[ -z "$first_component" ]]; then
+		DP_error_log "Invalid ALL_COMBINED_SHARDS_POD_FQDN_LIST" >&2
+		return 1
+	fi
+
+	if [[ -z "${CH_KEEPER_POD_FQDN_LIST:-}" ]]; then
+		echo "standalone"
+		return 0
+	fi
+
+	if [[ "$first_component" == "$first_entry" ]]; then
+		first_component="${CURRENT_SHARD_COMPONENT_SHORT_NAME}"
+	fi
+	echo "cluster:$first_component"
 }
 
 # Restore schema and wait for sync across shards
@@ -401,9 +598,21 @@ function restore_schema_and_sync() {
 	fi
 
 	if [[ "$should_restore_schema" == "true" ]]; then
-		# Standalone: unset ON CLUSTER mode to avoid ZK requirement
+		# No-keeper restore: unset ON CLUSTER because distributed DDL requires Keeper/ZooKeeper.
 		[[ "$mode_info" == "standalone" ]] && unset RESTORE_SCHEMA_ON_CLUSTER
-		clickhouse-backup restore_remote "$backup_name" --schema --rbac || {
+		local restore_args=(restore_remote "$backup_name" --schema)
+		if [[ -n "${CH_KEEPER_POD_FQDN_LIST:-}" ]]; then
+			export PATH="$PATH:${DP_DATASAFED_BIN_PATH:-}"
+			export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_BASE_PATH}/${DP_BACKUP_NAME}"
+			if datasafed list -f / 2>/dev/null | grep -q "access.tar"; then
+				restore_args+=(--rbac)
+			else
+				DP_log "Skip RBAC restore because no access.tar found in backup"
+			fi
+		else
+			DP_log "Skip RBAC restore because ClickHouse keeper is not configured"
+		fi
+		clickhouse-backup "${restore_args[@]}" || {
 			DP_error_log "Clickhouse-backup restore_remote backup $backup_name FAILED"
 			return 1
 		}

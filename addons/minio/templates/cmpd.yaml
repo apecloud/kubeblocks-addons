@@ -124,6 +124,14 @@ spec:
         - get
         - patch
   lifecycleActions:
+    memberLeave:
+      exec:
+        command:
+          - /bin/sh
+          - -c
+          - |
+            echo "MinIO does not support scale-in: removing nodes from a distributed erasure-coding pool is not supported and would cause data loss." >&2
+            exit 1
     roleProbe:
       exec:
         command:

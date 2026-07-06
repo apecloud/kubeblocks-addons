@@ -14,27 +14,78 @@ spec:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       runOnTargetPodNode: true
       command:
-        - sh
+        - bash
         - -c
         - |
-          set -e;
-          echo "DB_HOST=${DP_DB_HOST} DB_USER=${DP_DB_USER} DB_PASSWORD=${DP_DB_PASSWORD} DATA_DIR=${DATA_DIR} BACKUP_DIR=${DP_BACKUP_DIR} BACKUP_NAME=${DP_BACKUP_NAME}";
-          mariadb-backup --backup  --safe-slave-backup --slave-info --stream=mbstream --host=${DP_DB_HOST} \
-          --user=${DP_DB_USER} --password=${DP_DB_PASSWORD} --datadir=${DATA_DIR} > ${DATASAFED_LOCAL_BACKEND_PATH}/${DP_BACKUP_NAME}.mbstream
+          set -eo pipefail;
+          export PATH="$PATH:$DP_DATASAFED_BIN_PATH";
+          export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH";
+          BACKUP_DB_USER="${DP_DB_USER}";
+          BACKUP_DB_PASSWORD="${DP_DB_PASSWORD}";
+          if [ -n "${MARIADB_INTERNAL_ROOT_USER:-}" ] && [ -n "${MARIADB_ROOT_PASSWORD:-}" ]; then
+            BACKUP_DB_USER="${MARIADB_INTERNAL_ROOT_USER}";
+            BACKUP_DB_PASSWORD="${MARIADB_ROOT_PASSWORD}";
+          elif [ -n "${MYSQL_ADMIN_USER:-}" ] && [ -n "${MYSQL_ADMIN_PASSWORD:-}" ]; then
+            BACKUP_DB_USER="${MYSQL_ADMIN_USER}";
+            BACKUP_DB_PASSWORD="${MYSQL_ADMIN_PASSWORD}";
+          fi
+          echo "DB_HOST=${DP_DB_HOST} DB_USER=${DP_DB_USER} BACKUP_DB_USER=${BACKUP_DB_USER} DB_PASSWORD=<redacted> DATA_DIR=${DATA_DIR} BACKUP_DIR=${DP_BACKUP_DIR} BACKUP_NAME=${DP_BACKUP_NAME}";
+          wait_for_mariadb_backup_target() {
+            local max_attempts=12
+            local sleep_seconds=5
+            local attempt=1
+            while [ "${attempt}" -le "${max_attempts}" ]; do
+              if mariadb --host="${DP_DB_HOST}" --user="${BACKUP_DB_USER}" --password="${BACKUP_DB_PASSWORD}" \
+                --connect-timeout=2 --skip-ssl -e "SELECT 1;" >/dev/null 2>&1; then
+                echo "MariaDB backup target reachable: host=${DP_DB_HOST} attempt=${attempt}";
+                return 0
+              fi
+              echo "Waiting for MariaDB connection: host=${DP_DB_HOST} attempt=${attempt}/${max_attempts}";
+              sleep "${sleep_seconds}";
+              attempt=$((attempt + 1))
+            done
+            echo "MariaDB backup target ${DP_DB_HOST} did not become reachable after $((max_attempts * sleep_seconds))s" >&2;
+            return 1
+          }
+          wait_for_mariadb_backup_target;
+          wait_for_backup_privileges() {
+            local max_attempts=30
+            local attempt=1
+            while [ "${attempt}" -le "${max_attempts}" ]; do
+              if mariadb --host="${DP_DB_HOST}" --user="${BACKUP_DB_USER}" --password="${BACKUP_DB_PASSWORD}" \
+                --connect-timeout=2 --skip-ssl -e "SHOW ALL SLAVES STATUS;" >/dev/null 2>&1; then
+                echo "Backup privileges ready: host=${DP_DB_HOST} attempt=${attempt}";
+                return 0
+              fi
+              echo "Waiting for backup privileges (SLAVE MONITOR): host=${DP_DB_HOST} attempt=${attempt}/${max_attempts}";
+              sleep 1;
+              attempt=$((attempt + 1))
+            done
+            echo "Backup privileges not available after ${max_attempts}s" >&2;
+            return 1
+          }
+          wait_for_backup_privileges;
+          mariadb-backup --backup --slave-info --stream=mbstream --host=${DP_DB_HOST} \
+          --user=${BACKUP_DB_USER} --password=${BACKUP_DB_PASSWORD} --datadir=${DATA_DIR} \
+          --skip-ssl | datasafed push - "/${DP_BACKUP_NAME}.mbstream";
+          TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}');
+          echo "{\"totalSize\":\"${TOTAL_SIZE}\"}" > "${DP_BACKUP_INFO_FILE}"
   restore:
     prepareData:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       command:
-        - sh
+        - bash
         - -c
         - |
-          echo "BACKUP_DIR=${DP_BACKUP_BASE_PATH} BACKUP_NAME=${DP_BACKUP_NAME} DATA_DIR=${DATA_DIR}" && \
+          set -eo pipefail;
+          export PATH="$PATH:$DP_DATASAFED_BIN_PATH";
+          export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH";
+          echo "BACKUP_DIR=${DP_BACKUP_BASE_PATH} BACKUP_NAME=${DP_BACKUP_NAME} DATA_DIR=${DATA_DIR}";
           mkdir -p /tmp/data/ && cd /tmp/data \
-          && mbstream -x < /backupdata/${DP_BACKUP_NAME}.mbstream \
+          && datasafed pull "${DP_BACKUP_NAME}.mbstream" - | mbstream -x \
           && mariadb-backup --prepare --target-dir=/tmp/data/ \
-          && mariadb-backup --copy-back --target-dir=/tmp/data/ \
-          && find . -name "*.qp"|xargs rm -f \
           && rm -rf ${DATA_DIR}/* \
-          && rsync -avrP /tmp/data/ ${DATA_DIR}/ \
+          && mariadb-backup --copy-back --target-dir=/tmp/data/ --datadir=${DATA_DIR} \
           && rm -rf /tmp/data/ \
-          && chmod -R 0777 ${DATA_DIR}
+          && chown -R mysql:mysql ${DATA_DIR} \
+          && chmod -R 750 ${DATA_DIR}

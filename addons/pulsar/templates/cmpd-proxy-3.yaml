@@ -80,8 +80,8 @@ spec:
             mountPath: /kb-scripts
           - name: pulsar-proxy-config
             mountPath: /opt/pulsar/conf
-        env:
         {{- if .Values.debugEnabled }}
+        env:
           - name: PULSAR_LOG_ROOT_LEVEL
             value: DEBUG
           - name: PULSAR_LOG_LEVEL

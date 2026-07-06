@@ -5,7 +5,7 @@ description: Vanilla-PostgreSQL is compatible with the native PostgreSQL kernel,
 
 type: application
 
-version: 1.1.0-alpha.0
+version: 1.2.0-alpha.0
 
 # Add a dependency to the kubeblocks definition library chart
 dependencies:
@@ -24,7 +24,7 @@ icon: https://kubeblocks.io/img/logo.png
 
 maintainers:
   - name: kizuna-lek
-    url: https://github.com/apecloud/kubeblocks/
+    url: https://github.com/kizuna-lek
 
 sources:
   - https://github.com/apecloud/kubeblocks/

@@ -1,0 +1,10 @@
+{{- include "kblib.clusterCommon" . }}
+  componentSpecs:
+    - name: openviking
+      componentDef: openviking
+      serviceVersion: {{ .Values.version }}
+      replicas: {{ .Values.replicas | default 1 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+  {{- include "openviking-cluster.service" . | indent 2 }}

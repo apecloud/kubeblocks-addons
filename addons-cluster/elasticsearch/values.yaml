@@ -48,3 +48,19 @@ tls:
   kibanaAccountSecretName:
 
 enableKibana: true
+
+remoteSetting:
+  isStandby: false
+  replaySettings:
+    ## Whether to start replay immediately after successful startup
+    isStartAfterRunning: false
+    ## Start time of replay, unit: ms
+    startTimeMs: 0
+  primarySettings:
+    serviceDescriptorNamespace: ""
+    host: ""
+    port: "9200"
+    accountSecret:
+      name: ""
+      userKey: "username"
+      passwordKey: "password"

@@ -26,7 +26,6 @@ spec:
       template: {{ include "pulsar2.zookeeperTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: zookeeper-config
-      externalManaged: true
   scripts:
     - name: pulsar-scripts
       template: {{ include "pulsar.scriptsTplName" . }}

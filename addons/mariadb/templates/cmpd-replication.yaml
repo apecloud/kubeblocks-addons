@@ -1,0 +1,401 @@
+{{/*
+mariadb-replication ComponentDefinition.
+
+Canonical replication CmpD supporting both async and semisync modes
+via the `replicationMode` parameter. Mode selection is install/render-time
+via the Helm value `replication.mode`, wired to `MARIADB_REPLICATION_MODE`.
+*/}}
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mariadb.replication.cmpdName" . }}
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  provider: Community
+  description: MariaDB replication component definition (async/semisync via replicationMode parameter)
+  serviceKind: mariadb
+  serviceVersion: {{ .Values.defaultServiceVersion.replication }}
+  updateStrategy: BestEffortParallel
+  podManagementPolicy: OrderedReady
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+    scrapePort: metrics
+  services:
+    - name: default
+      roleSelector: primary
+      spec:
+        ports:
+          - name: mariadb
+            port: 3306
+            targetPort: mariadb
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+      isExclusive: true
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
+  configs:
+    # Configspec uses `mariadb-replication-config` name and
+    # `mariadb-replication-config-template` ConfigMap (which loads
+    # `config/mariadb-replication.tpl`). Default behavior is async
+    # replication: the four semisync engine variables are absent from
+    # the default my.cnf and take their engine defaults (OFF / 0).
+    # Users who want semisync set the four `rpl_semi_sync_*` variables
+    # via `spec.componentSpecs[].parameters` at create time.
+    - name: mariadb-replication-config
+      template: mariadb-replication-config-template
+      volumeName: mariadb-config
+      namespace: {{ .Release.Namespace }}
+      externalManaged: true
+      {{- /* Replication CmpD uses the persisted variant of reconfigureAction
+             so SET GLOBAL values also land in
+             /var/lib/mysql/runtime-overrides.d/<param>.cnf, which mariadbd
+             loads at startup via --defaults-extra-file. */}}
+      {{- include "mariadb.config.reconfigureAction.persisted" . | nindent 6 }}
+  scripts:
+    - name: {{ include "mariadb.replication.scriptConfigMapName" . }}
+      template: {{ include "mariadb.replication.scriptConfigMapName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^*"
+      optional: true
+  volumes:
+    - name: data
+      needSnapshot: true
+  {{- include "mariadb.semisync.spec.systemAccounts" . | nindent 2 }}
+  {{- include "mariadb.spec.vars" . | nindent 2 }}
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - -c
+          - MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY=true /scripts/replication-roleprobe.sh
+    memberJoin:
+      timeoutSeconds: 60
+      exec:
+        container: mariadb
+        command:
+          - /bin/sh
+          - /scripts/replication-member-join.sh
+    memberLeave:
+      timeoutSeconds: 50
+      exec:
+        container: mariadb
+        env:
+          - name: MYSQL_ADMIN_USER
+            value: "kb_internal_root"
+          - name: MYSQL_ADMIN_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+        command:
+          - /bin/sh
+          - /scripts/replication-member-leave.sh
+    switchover:
+      # KB kbagent enforces a hardcoded maxActionCallTimeout of 60s
+      # (pkg/kbagent/service/action_utils.go), so any value above 60 is silently
+      # truncated. We declare 60 here so the contract reflects what kbagent
+      # actually enforces. The switchover action is intentionally short and
+      # delegates post-DCS convergence to roleProbe + KB endpoint controller.
+      timeoutSeconds: 60
+      exec:
+        container: mariadb
+        env:
+          - name: MARIADB_ROOT_USER
+            value: "$(MARIADB_ROOT_USER)"
+          - name: MARIADB_ROOT_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          - name: MARIADB_INTERNAL_ROOT_USER
+            value: "kb_internal_root"
+        command:
+          - /bin/sh
+          - /scripts/replication-switchover.sh
+  runtime:
+    # Give preStop enough time to fence the old primary and stop mariadbd before
+    # syncer releases the HA lease.
+    terminationGracePeriodSeconds: 120
+    initContainers:
+      - command:
+          - /bin/sh
+          - -c
+          - |
+            cp -r /bin/syncer /bin/syncerctl /tools/
+            mkdir -p {{ .Values.dataMountPath }}
+            # alpha.86 v1 (Helen) — runtime override persistence layer.
+            # Per-parameter `.cnf` files live under runtime-overrides.d/;
+            # mariadbd loads them via --defaults-extra-file pointing at
+            # the loader file runtime-overrides.cnf (which `!includedir`
+            # the dir). KB's strict INI parser never sees `!includedir`
+            # because it does not parse this file. Group write (gid=1000
+            # matches the kbagent gid the main container chgrp below)
+            # so the reconfigureAction.persisted helper running in the
+            # mariadb container as the kbagent group can write override
+            # files; mariadbd reads via its mysql user.
+            mkdir -p {{ .Values.dataMountPath }}/runtime-overrides.d
+            chgrp 1000 {{ .Values.dataMountPath }}/runtime-overrides.d 2>/dev/null || true
+            chmod 0770 {{ .Values.dataMountPath }}/runtime-overrides.d 2>/dev/null || true
+            # Loader file is created idempotently with the single
+            # `!includedir` directive. mariadbd silently accepts an
+            # empty dir; first reconfigure populates per-param files
+            # under runtime-overrides.d/. Loader file itself is
+            # treated as immutable shape; we always overwrite to the
+            # canonical content so a corrupted prior write cannot
+            # block mariadbd startup on the next restart.
+            printf '!includedir %s/runtime-overrides.d/\n' '{{ .Values.dataMountPath }}' > {{ .Values.dataMountPath }}/runtime-overrides.cnf
+            chgrp 1000 {{ .Values.dataMountPath }}/runtime-overrides.cnf 2>/dev/null || true
+            chmod 0660 {{ .Values.dataMountPath }}/runtime-overrides.cnf 2>/dev/null || true
+            rm -f {{ .Values.dataMountPath }}/.replication-ready {{ .Values.dataMountPath }}/.replication-divergence-pending
+            rm -f {{ .Values.dataMountPath }}/.prestop-fence-started \
+              {{ .Values.dataMountPath }}/.prestop-fence-complete \
+              {{ .Values.dataMountPath }}/.prestop-fence-failed
+            rm -f {{ .Values.dataMountPath }}/.sql-listener-ready \
+              {{ .Values.dataMountPath }}/.remote-root-fence-role \
+              {{ .Values.dataMountPath }}/.primary-read-write-ready
+            # alpha.80 v1 (Helen): removed `.switchover-fence-active` from this
+            # init rm list. alpha.79 v1 minimalist deleted the marker writer
+            # in switchover.sh so the marker file never appears anywhere; the
+            # init-syncer rm of it was a no-op safety net. Pure dead-code
+            # cleanup, no runtime behavior change.
+            touch {{ .Values.dataMountPath }}/.replication-pending
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-syncer
+        securityContext:
+          runAsGroup: 0
+          runAsUser: 0
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+    containers:
+      - name: mariadb
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /tools/syncer
+          - --port
+          - "3601"
+          - --
+          - bash
+          - /scripts/replication-entrypoint.sh
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mariadb-config
+          - mountPath: /tools
+            name: tools
+          - name: scripts
+            mountPath: /scripts
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/sh
+                - /scripts/replication-prestop.sh
+        ports:
+          - containerPort: 3306
+            name: mariadb
+          - containerPort: 3601
+            name: ha
+        env:
+          # syncer DB engine reads KB_SERVICE_* for the root/poll DB
+          # credentials. KB_SERVICE_USER stays bound to MARIADB_ROOT_USER
+          # so syncer's startup readiness ping always works (root is the
+          # one user that always exists from mariadbd init). HA promote/
+          # demote SQL is NOT executed via this credential — see
+          # MYSQL_ADMIN_USER below.
+          - name: KB_SERVICE_USER
+            value: "$(MARIADB_ROOT_USER)"
+          - name: KB_SERVICE_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          # alpha.66 v1 (Jack 12:18 alpha.65 v2 install/script live-gate
+          # RED + Jack 12:34 alpha.66 v1 design HOLD): syncer's HA Promote/
+          # Demote SQL needs admin-bypass privileges (REPLICATION SLAVE
+          # ADMIN / READ_ONLY ADMIN / etc). alpha.64 v1 correctly removed
+          # these from user-facing root, so the syncer HA path was failing
+          # 1227. Upstream syncer (engines/mysql) already has a 3-tier
+          # credential model (Root / Admin / Replication) and an auto-switch
+          # in IsRunning() that swaps mgr.DB to AdminDB once the admin user
+          # is detected via `mysql.user WHERE host='%' AND user LIKE 'kb%'`.
+          # We inject MYSQL_ADMIN_USER=kb_internal_root (literal — NOT
+          # `$(MARIADB_INTERNAL_ROOT_USER)` because container env expansion
+          # order is not guaranteed) so syncer uses kb_internal_root for
+          # AdminDB. The bootstrap script also creates a detection-only
+          # `kb_internal_root@'%'` record (ACCOUNT LOCK + no privileges)
+          # so IsAdminCreated finds it without expanding the remote attack
+          # surface; the actual AdminDB connection from 127.0.0.1 matches
+          # `kb_internal_root@127.0.0.1` (full admin privileges).
+          - name: MYSQL_ADMIN_USER
+            value: "kb_internal_root"
+          - name: MYSQL_ADMIN_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          # alpha.72 v1 (Helen TL 22:14 autonomous decision after westonnnn
+          # 21:56 `8390cc8a` full TL autonomy + Jack XP review request
+          # `89591496`): explicitly set `MYSQL_REPLICATION_USER=kb_replicator`
+          # to override syncer's fallback to `MYSQL_ADMIN_USER`. Without this
+          # env, syncer's engines/mariadb/config.go:80 falls back to
+          # getAdminUserName() (= MYSQL_ADMIN_USER = kb_internal_root), and
+          # engines/mariadb/manager.go:794 calls `CHANGE MASTER TO
+          # master_user=kb_internal_root`. But `kb_internal_root@'%'` is the
+          # admin role with only REPLICATION CLIENT + REPLICATION MASTER ADMIN
+          # (no REPLICATION SLAVE — alpha.69 v1 narrowed the grants), so the
+          # secondary's REGISTER_SLAVE fails with Errno 1597 / Errno 1045
+          # access denied. Evidence in alpha.71 v1 N=1 RED:
+          # pod-1 SHOW SLAVE STATUS Master_User=kb_internal_root +
+          # Last_IO_Error=COM_REGISTER_SLAVE failed Access denied for user
+          # 'kb_internal_root'@'%' (Errno: 1045). alpha.72 v1 fixes this by
+          # (a) setting MYSQL_REPLICATION_USER to a dedicated `kb_replicator`
+          # user, (b) creating that user with `REPLICATION SLAVE ON *.*` priv
+          # in ensure_internal_local_admin within the same SQL block as
+          # kb_internal_root — NOT an atomic transaction; MariaDB DDL/GRANT
+          # statements are not transactional, so the bootstrap relies on
+          # idempotent convergence (CREATE IF NOT EXISTS + ALTER UNLOCK +
+          # REVOKE ALL + GRANT REPLICATION SLAVE) so retries can complete
+          # any partial state — and (c) chart member-join script reading
+          # MARIADB_REPLICATION_USER for its CHANGE MASTER TO. All three
+          # semisync call sites (syncer Follow + chart inline
+          # configure_replication_from_primary_service_once + chart
+          # member-join) converge on kb_replicator. kb_internal_root remains
+          # admin-role only, not leaking REPLICATION SLAVE priv to remote.
+          # Replication topology stays on pre-alpha.72 root path (alpha.72
+          # v1 scope-cap to semisync; replication kb_replicator deferred to
+          # alpha.73+).
+          - name: MYSQL_REPLICATION_USER
+            value: "kb_replicator"
+          # alpha.74 v1 (Helen TL autopilot mode westonnnn `df3c94b0` 01:28
+          # 12h-autonomous: TL self-determines + Jack XP review parallel
+          # non-blocking; root cause for alpha.73 v1 N=1 partial first-blocker
+          # = SQL replay 1396 on kb_replicator CREATE USER): mariadb 11.4
+          # image entrypoint /usr/local/bin/docker-entrypoint.sh examines
+          # MARIADB_REPLICATION_USER env at initdb time. If set, it runs
+          # `CREATE USER 'kb_replicator'@'%' IDENTIFIED BY ...; GRANT
+          # REPLICATION SLAVE ON *.* TO 'kb_replicator'@'%';` WITHOUT
+          # IF NOT EXISTS, WITHOUT SET SESSION sql_log_bin=0 wrapper. The
+          # CREATE USER is binlogged on pod-0; pod-1 also runs entrypoint
+          # initdb which creates kb_replicator@'%' locally; then pod-1
+          # START SLAVE replays pod-0 binlog CREATE USER -> 1396
+          # "Operation CREATE USER failed for 'kb_replicator'@'%'" because
+          # the entrypoint statement lacks IF NOT EXISTS clause.
+          #
+          # alpha.74 v1 fix: STOP setting MARIADB_REPLICATION_USER env
+          # entirely (so mariadb entrypoint doesn't trigger that CREATE/
+          # GRANT path), AND introduce a renamed `MARIADB_REPL_USER` shell
+          # variable for chart scripts (replication-member-join.sh + inline
+          # CHANGE MASTER TO) so the chart still has a well-known token to
+          # reference kb_replicator. syncer Go binary keeps reading
+          # MYSQL_REPLICATION_USER (engines/mariadb/config.go:80) — this
+          # env name is NOT consumed by mariadb image entrypoint, so syncer
+          # path stays converged to kb_replicator with no entrypoint side-
+          # effect. Chart's ensure_internal_local_admin still creates
+          # kb_replicator@'%' via INTERNAL_LOCAL with SET SESSION
+          # sql_log_bin=0 prefix, so chart's CREATE USER is NOT binlogged.
+          # Both pods bootstrap kb_replicator locally (idempotent) and no
+          # binlog event needs to replay through START SLAVE.
+          - name: MARIADB_REPL_USER
+            value: "kb_replicator"
+          - name: MARIADB_REPL_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          - name: MYSQL_REPLICATION_PASSWORD
+            value: "$(MARIADB_ROOT_PASSWORD)"
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mariadb
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain | quote }}
+          - name: MARIADB_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: MARIADB_INTERNAL_ROOT_USER
+            value: kb_internal_root
+          - name: MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY
+            value: "true"
+          - name: MARIADB_DATADIR
+            value: {{ .Values.dataMountPath | quote }}
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          # syncer uses this pod FQDN to wait for DNS readiness before control-plane actions.
+          - name: KB_POD_FQDN
+            value: "$(POD_NAME).$(CLUSTER_NAME)-$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+          - name: SERVICE_PORT
+            value: "3306"
+          - name: PATH
+            value: /tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: MARIADB_AUTO_UPGRADE
+            value: "1"
+          # alpha.89 v1 commit 13 (Helen 2026-05-20, C3 design env
+          # plumbing — Helm value path / Option C of the plumbing
+          # candidate list, per the commit 11+12 / addon-docs guide
+          # discussion).
+          #
+          # `MARIADB_REPLICATION_MODE` is consumed by the addon-side
+          # mapper sourced into `reconfigureAction.persisted` (see
+          # `scripts/replication-mode-mapper.sh` + commit 12
+          # `mariadb.config.reconfigureAction.persisted` helper). The
+          # mapper translates the synthetic `replicationMode` switch
+          # ("async" | "semisync") into the four real engine
+          # variables (rpl_semi_sync_master_enabled / slave_enabled /
+          # master_wait_for_slave_count / master_timeout) BEFORE the
+          # main loop renders any my.cnf or runtime-overrides.d/
+          # file. When the env is empty the mapper is a no-op
+          # (parameter list flows through unchanged), preserving the
+          # "only-4-vars" path on existing clusters.
+          #
+          # Sourcing the value from a Helm value rather than a KB
+          # ParametersDefinition parameter or an annotation is the
+          # conservative path: it sets the topology default at chart
+          # install/upgrade time without requiring speculative KB
+          # behavior (the standard `parameters` reconfigure path is
+          # blocked by the `replicationmode?: _|_` CUE backstop
+          # added in commit 11 v2 specifically to prevent the
+          # synthetic key from landing in my.cnf). Runtime-time mode
+          # flip via OpsRequest reconfigure is deferred to a future
+          # commit / version that wires either a Cluster annotation
+          # + addon-side reader OR a separate non-INI-bound PD; the
+          # mapper interface itself is unchanged in either case
+          # (only the env source differs).
+          #
+          # Empty default = "" means existing clusters whose Helm
+          # values do not set `replication.mode` see no
+          # behavioral change: the mapper short-circuits at the
+          # empty-mode early return, the strip-synthetic pass (B2
+          # fix in commit 12 v2) still runs unconditionally as
+          # defense-in-depth, and the four real engine variables
+          # continue to flow through the existing persisted helper.
+          # alpha.89 v1 commit 13 v2 (Helen 2026-05-20, Jack B2 fix
+          # msg `f9433634`) — value flows through
+          # `replication.mode` validation helper which fails
+          # the helm render with a clear error message when the value
+          # is not in the accepted set ("" / "async" / "semisync"),
+          # so invalid values are caught at install/upgrade time
+          # rather than only at container startup.
+          - name: MARIADB_REPLICATION_MODE
+            value: {{ include "mariadb.replication.mode.validate" . | quote }}
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+      {{- include "mariadb.container.exporter" . | nindent 6 }}
+    volumes:
+      - name: tools
+        emptyDir: {}

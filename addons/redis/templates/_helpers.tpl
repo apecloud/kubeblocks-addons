@@ -130,7 +130,16 @@ redis-cluster-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "redis7.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+{{- $registry := .Values.image.registry | default "docker.io" -}}
+{{- $repository := .Values.image.repository -}}
+{{- $tag := .Values.image.tag.major7.minor72 -}}
+{{- range .Values.redisVersions -}}
+{{- if eq .major "7" -}}
+{{- $repository = .repository | default $repository -}}
+{{- $tag = .defaultImageTag | default $tag -}}
+{{- end -}}
+{{- end -}}
+{{ $registry }}/{{ $repository }}:{{ $tag }}
 {{- end }}
 
 {{- define "redisTwemproxy.repository" -}}
@@ -184,22 +193,21 @@ Generate scripts configmap
 redis-account.sh: |-
 {{- $.Files.Get "scripts/redis-account.sh" | nindent 2 }}
 {{- end }}
+{{- if $.Files.Get "scripts/redis-reconfigure-config.sh" }}
+redis-reconfigure-config.sh: |-
+{{- $.Files.Get "scripts/redis-reconfigure-config.sh" | nindent 2 }}
+{{- end }}
 {{- end }}
 
 {{- define "redis.config.reconfigureAction" -}}
+{{- $container := .container | default "redis" -}}
 reconfigure:
   exec:
-    container: redis
+    container: {{ $container }}
+    targetPodSelector: All
     command:
       - /bin/sh
-      - -c
-      - |
-        set -eu
-
-        env | cut -d= -f1 | grep -E '^[a-z0-9_.-][a-z0-9_.-]*$' | sort -u | while IFS= read -r param; do
-          [ -n "${param}" ] || continue
-          /scripts/reload-parameter.sh "${param}" "$(printenv "${param}")"
-        done
+      - /scripts/redis-reconfigure-config.sh
 {{- end -}}
 
 {{- define "apeDts.reshard.image" -}}

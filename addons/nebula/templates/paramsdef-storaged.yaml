@@ -7,7 +7,7 @@ metadata:
     {{- include "nebula.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "nebula-storaged.cmpdName" . }}
-  templateName: {{ include "nebula-storaged.configTemplateName" . }}
+  templateName: nebula-storaged-config
   fileName: nebula-storaged.conf
   fileFormatConfig:
     format: props-ultra

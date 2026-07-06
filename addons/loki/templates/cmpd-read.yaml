@@ -141,6 +141,8 @@ spec:
       volumeName: scripts
       defaultMode: 0555
   vars:
+    - name: LOG_LEVEL
+      value: {{ .Values.logLevel.read | quote }}
     - name: SERVER_HTTP_PORT
       value: {{ .Values.server.httpMetricsPort | quote }}
     - name: SERVER_GRPC_PORT

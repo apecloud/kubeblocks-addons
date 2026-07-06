@@ -14,12 +14,16 @@ RabbitMQ is an open-source and lightweight message broker which supports multipl
 
 | Major Versions | Description |
 |---------------|-------------|
-| 3.8 | 3.8.14|
+| 3.8 | 3.8.34|
 | 3.9 | 3.9.29|
 | 3.10 | 3.10.25|
 | 3.11 | 3.11.28|
 | 3.12 | 3.12.14|
 | 3.13 | 3.13.7|
+| 4.0 | 4.0.9|
+| 4.1 | 4.1.6|
+| 4.2 | 4.2.1|
+| 4.3 | 4.3.1|
 
 ## Prerequisites
 
@@ -62,7 +66,7 @@ spec:
       # The serviceVersion is used to determine the version of the Cluster. If the serviceVersion is not specified, the default value is the ServiceVersion defined in ComponentDefinition.
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [3.10.25,3.11.28,3.12.14,3.13.7,3.8.14,3.9.29]
+      # Valid options are: [3.8.34,3.9.29,3.10.25,3.11.28,3.12.14,3.13.7,4.0.9,4.1.6,4.2.1,4.3.1]
       serviceVersion: 3.13.7
       # Recommended to set `replicas` to [3,5,7]
       # All data/state is replicated across all replicas.
@@ -524,17 +528,17 @@ spec:
     parameters:
       # Represents the name of the parameter that is to be updated.
       # `channel_max` is a static parameter in rabbitmq
-    - key: ssl_handshake_timeout
+    - key: channel_max
       # Represents the parameter values that are to be updated.
       # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
-      value: "2000"
+      value: "4096"
 ```
 
 ```bash
 kubectl apply -f examples/rabbitmq/reconfigure.yaml
 ```
 
-This example will change the `channel_max` to `2000`.
+This example will change the `channel_max` to `4096`.
 
 > In RabbitMQ, the `channel_max` parameter is used to set the maximum number of channels that a client can open on a single connection. It is a static parameter, so the change will take effect after restarting the database.
 

@@ -1,0 +1,13 @@
+# Releases for the openviking addon
+#
+# This file mirrors the release notes pattern used by other addons in this
+# repository. Each release describes a single appVersion of OpenViking that the
+# addon is known to install successfully.
+releases:
+  - version: 0.1.0
+    notes: |
+      Initial KubeBlocks addon for OpenViking.
+      - ComponentDefinition `openviking-0-<chartVersion>` for OpenViking 0.1.0.
+      - Config template rendered into ov.conf and mounted at /etc/openviking/ov.conf.
+      - Single-replica StatefulSet with PVC at /app/data (RocksDB-backed storage).
+      - HTTP service on port 1933 with /health and /ready probes.

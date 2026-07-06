@@ -4,42 +4,17 @@ description: YashanDB is a new database system completely independently designed
 
 type: application
 
-# 2026-06-22 Reason: ComponentDefinition fields are immutable after installation; Purpose: publish the native Configure binding as a new addon component definition instead of mutating existing clusters in place.
-# 2026-06-23 Reason: fixed-address HA changes immutable runtime, service, config, script, and image contracts; Purpose: ship each changed validation contract as a new component definition instead of mutating alpha.2/alpha.3 in place.
-# 2026-06-23 Reason: empty-PVC fixed-address bootstrap adds a new runtime command and pod creation policy; Purpose: publish it as a new immutable ComponentDefinition revision.
-# 2026-06-23 Reason: live validation needs a non-conflicting fixed-address port contract after alpha.5 was rendered with defaults; Purpose: avoid mutating an already-created immutable ComponentDefinition.
-# 2026-06-23 Reason: live empty-PVC bootstrap found sshd needs absolute-path launch; Purpose: publish the corrected script through a new validation revision.
-# 2026-06-23 Reason: live bootstrap found comma-split node counts and yasboot package permissions drifted from proof; Purpose: publish the corrected bootstrap script through a new immutable revision.
-# 2026-06-23 Reason: live yasboot execution needs writable om/yasboot.log for the yashan user; Purpose: publish the explicit permission preparation through a new immutable revision.
-# 2026-06-23 Reason: live package generation still failed when run through su; Purpose: align package se gen with the privileged proof command path in a new immutable revision.
-# 2026-06-23 Reason: live su-based yasboot self-check failed before root package generation could run; Purpose: keep yasboot orchestration in the privileged bootstrap shell for validation.
-# 2026-06-23 Reason: live primary pods still rejected the bin/yasboot symlink; Purpose: call the real yasboot binary path and log permissions in a new immutable revision.
-# 2026-06-23 Reason: live package install must use the bundled yashan SSH identity instead of root; Purpose: publish install/deploy user correction in a new immutable revision.
-# 2026-06-23 Reason: live image entrypoint concurrently modified the yasboot package during bootstrap; Purpose: start sshd directly and leave yasboot files stable in a new immutable revision.
-# 2026-06-23 Reason: empty-PVC yasboot install needs an explicit SSH identity contract; Purpose: support Secret-injected private and authorized keys in a new immutable revision.
-# 2026-06-23 Reason: yasboot HA data lives under per-node db-<node-id> directories while probes source .temp.ini; Purpose: publish fixed-address probe environment generation in a new immutable revision.
-# 2026-06-23 Reason: fixed-address probe env also needs yasdb.bashrc for LD_LIBRARY_PATH; Purpose: make check_alive.sh and check_role.sh work with yasboot HA layout.
-# 2026-06-23 Reason: rolling restart deletes container-home yasboot metadata while preserving PVC data; Purpose: publish the already-bootstrapped node restore path as a new immutable revision.
-# 2026-06-23 Reason: live rolling restart restore showed yasboot node start needs local OM/agent first; Purpose: publish the ordered OM/agent/node restore path as a new immutable revision.
-# 2026-06-23 Reason: live yasboot process yasagent start requires a toml file while the running nodes use direct yasagent --init; Purpose: publish the validated local agent restore path as a new immutable revision.
-# 2026-06-23 Reason: live direct yasagent restore needs the yasboot secret key argument; Purpose: pass the persisted hosts.toml secret_key in a new immutable revision.
-# 2026-06-23 Reason: live direct yasagent init is rejected after package install; Purpose: restore agent through yasboot process yasagent start with the persisted hosts.toml.
-# 2026-06-23 Reason: live KubeBlocks reconfigure executes ConfigMap-mounted scripts without execute bits; Purpose: publish the bash-invoked Configure updater in a new immutable revision.
-# 2026-06-23 Reason: live rolling restart showed non-OM nodes do not persist yasom.toml; Purpose: skip local OM restore on agent-only DB nodes in a new immutable revision.
-# 2026-06-23 Reason: live rolling restart showed non-primary PVCs do not retain yasboot hosts.toml; Purpose: regenerate the minimal local agent inventory in a new immutable revision.
-# 2026-06-23 Reason: KubeBlocks validates mounted script hashes during rolling updates; Purpose: isolate config/script template ConfigMaps per immutable ComponentDefinition revision.
-# 2026-06-23 Reason: PR clean validation needs a fresh immutable ComponentDefinition instead of reusing the lab alpha.26 definition that was rendered with non-default ports; Purpose: publish the final P1 example-aligned contract as a new revision.
-# 2026-06-24 Reason: metrics sidecar productization adds runtime containers, volumes, and Secret-backed exporter config; Purpose: publish a new immutable ComponentDefinition contract instead of mutating alpha.27.
-# 2026-06-25 Reason: live metrics proof showed the HA yasboot image cannot run the standalone install.sh path; Purpose: publish a corrected immutable contract that separates standalone defaults from fixed-address HA image overrides.
-version: 1.1.0-alpha.29
+# 2026-07-06 Reason: upstream main already advanced the YashanDB addon release line during PR review; Purpose: keep this PR on the community chart version while preserving the immutable ComponentDefinition contract.
+# Time: 2026-07-06.
+version: 1.2.0-alpha.0
 
 appVersion: "23.1.1-100"
 
 maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/
   - name: JesseAtSZ
     url: https://github.com/JesseAtSZ
-  - name: shanshanying
-    url: https://github.com/apecloud/kubeblocks/
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"

@@ -105,7 +105,7 @@ Describe "PostgreSQL Initialization Script Tests"
         :
       }
       When call regenerate_spilo_configuration_and_start_postgres
-      The stdout should include "/home/postgres/.kb_set_up.log: No such file or directory"
+      # with the ">> file 2>&1" redirect order, failed redirections report on stderr only
       The stderr should include "/home/postgres/.kb_set_up.log: No such file or directory"
       The status should be success
       The file "tmp_patroni.yaml" should be exist
@@ -114,6 +114,38 @@ Describe "PostgreSQL Initialization Script Tests"
       The variable SPILO_CONFIGURATION should not be undefined
       The variable SPILO_CONFIGURATION should include "bootstrap:"
       The variable SPILO_CONFIGURATION should include "auth-host: md5"
+    End
+  End
+
+  Describe "need_restart_for_pending()"
+    setup() {
+      CURRENT_POD_NAME="pg-cluster-postgresql-0"
+    }
+    Before 'setup'
+
+    un_setup() {
+      unset CURRENT_POD_NAME
+    }
+    After 'un_setup'
+
+    It "restarts when pending and no leader is pending"
+      When call need_restart_for_pending "true" ""
+      The status should be success
+    End
+
+    It "restarts when pending and the pending leader is the current pod"
+      When call need_restart_for_pending "true" "pg-cluster-postgresql-0"
+      The status should be success
+    End
+
+    It "does not restart when pending but another pod is the pending leader"
+      When call need_restart_for_pending "true" "pg-cluster-postgresql-1"
+      The status should be failure
+    End
+
+    It "does not restart when not pending"
+      When call need_restart_for_pending "false" ""
+      The status should be failure
     End
   End
 End

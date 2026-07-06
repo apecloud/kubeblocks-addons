@@ -1,0 +1,106 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "openviking.cmpdName" . }}
+  labels:
+    {{- include "openviking.labels" . | nindent 4 }}
+  annotations:
+    {{- include "openviking.annotations" . | nindent 4 }}
+spec:
+  provider: OpenViking
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  runtime:
+    containers:
+      - name: openviking
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+          - containerPort: {{ .Values.servicePort }}
+            name: http
+            protocol: TCP
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountDir }}
+          - name: config
+            mountPath: {{ .Values.configMountDir }}
+        command:
+          - openviking-server
+        env:
+          - name: OPENVIKING_CONFIG_FILE
+            value: {{ printf "%s/%s" .Values.configMountDir .Values.configFileName }}
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+  vars:
+    - name: OPENVIKING_VERSION
+      value: {{ .Chart.AppVersion }}
+    - name: DATA_DIR
+      value: {{ .Values.dataMountDir }}
+    - name: CONFIG_DIR
+      value: {{ .Values.configMountDir }}
+    - name: SERVICE_PORT
+      value: "{{ .Values.servicePort }}"
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+  volumes:
+    - name: data
+      needSnapshot: true
+  services:
+    - name: http
+      serviceName: http
+      spec:
+        ports:
+          - name: http
+            port: {{ .Values.servicePort }}
+            targetPort: http
+      disableAutoProvision: true
+  # OpenViking uses RocksDB-backed local storage and does not support
+  # multiple pods sharing the same PVC. Replicas are managed serially and
+  # the component is hard-capped to a single replica via replicasLimit, so
+  # the KubeBlocks admission webhook will reject any Cluster / scale OpsRequest
+  # that asks for more than 1 replica.
+  updateStrategy: Serial
+  replicasLimit:
+    minReplicas: 1
+    maxReplicas: 1
+  configs:
+    - name: config
+      template: {{ include "openviking.configTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: config
+      defaultMode: 0644
+      externalManaged: true

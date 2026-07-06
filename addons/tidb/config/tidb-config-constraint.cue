@@ -9,7 +9,7 @@
 	"tidb-max-reuse-column": float & >=0 & <=2.147483648e+09 | *256
 
 	// The number of sessions that can execute requests concurrently. Type: Integer. Maximum Value (64-bit platforms): `18446744073709551615`. Maximum Value (32-bit platforms): `4294967295`
-	"token-limit": float & >=1 | *1000
+	"token-limit": int & >=1 | *1000
 
 	// File system location used by TiDB to store temporary data. If a feature requires local storage in TiDB nodes, TiDB stores the corresponding temporary data in this location. When creating an index, if [`tidb_ddl_enable_fast_reorg`](/system-variables.md#tidb_ddl_enable_fast_reorg-new-in-v630) is enabled, data that needs to be backfilled for a newly created index will be at first stored in the TiDB local temporary directory, and then imported into TiKV in batches, thus accelerating the index creation. When [`IMPORT INTO`](/sql-statements/sql-statement-import-into.md) is used to import data, the sorted data is first stored in the TiDB local temporary directory, and then imported into TiKV in batches.
 	"temp-dir": string | *"/tmp/tidb"
@@ -152,8 +152,8 @@
 	// Determines whether to automatically generate the TLS certificates on startup.
 	"security.auto-tls": bool | *false
 
-	// Set the minimum TLS version for MySQL Protocol connections. Optional values: `"TLSv1.0"`, `"TLSv1.1"`, `"TLSv1.2"` and `"TLSv1.3"`
-	"security.tls-version": string | *", which allows TLSv1.1 or higher."
+	// Sets the minimum TLS version for MySQL protocol connections. Valid values are `""`, `"TLSv1.0"`, `"TLSv1.1"`, `"TLSv1.2"`, and `"TLSv1.3"`. The template default is `""`.
+	"security.tls-version": string | *""
 
 	// Set the local file path of the JSON Web Key Sets (JWKS) for the [`tidb_auth_token`](/security-compatibility-with-mysql.md#tidb_auth_token) authentication method.
 	"security.auth-token-jwks": string
@@ -204,7 +204,7 @@
 	"performance.force-priority": string | *"NO_PRIORITY"
 
 	// Determines whether the optimizer executes the operation that pushes down the aggregation function with `Distinct` (such as `select count(distinct a) from t`) to Coprocessors. Default: `false`. This variable is the initial value of the system variable [`tidb_opt_distinct_agg_push_down`](/system-variables.md#tidb_opt_distinct_agg_push_down).
-	"performance.distinct-agg-push-down": string
+	"performance.distinct-agg-push-down": bool | *false
 
 	// Determines whether to ignore the optimizer's cost estimation and to forcibly use TiFlash's MPP mode for query execution. This configuration item controls the initial value of [`tidb_enforce_mpp`](/system-variables.md#tidb_enforce_mpp-new-in-v51). For example, when this configuration item is set to `true`, the default value of `tidb_enforce_mpp` is `ON`.
 	"performance.enforce-mpp": bool | *false
@@ -264,7 +264,7 @@
 	"tikv-client.grpc-connection-count": int | *4
 
 	// The `keepalive` time interval of the RPC connection between TiDB and TiKV nodes. If there is no network packet within the specified time interval, the gRPC client executes `ping` command to TiKV to see if it is alive. Default: `10`. Unit: second
-	"tikv-client.grpc-keepalive-time": string
+	"tikv-client.grpc-keepalive-time": int | *10
 
 	// The timeout of the RPC `keepalive` check between TiDB and TiKV nodes. Unit: second
 	"tikv-client.grpc-keepalive-timeout": int | *3
@@ -339,7 +339,7 @@
 	"pessimistic-txn.constraint-check-in-place-pessimistic": bool | *true
 
 	// Controls from which engine TiDB allows to read data. Value options: Any combinations of "tikv", "tiflash", and "tidb", for example, ["tikv", "tidb"] or ["tiflash", "tidb"]
-	"isolation-read.engines": string | *'["tikv", "tiflash", "tidb"]'
+	"isolation-read.engines": [...string] | *["tikv", "tiflash", "tidb"]
 
 	// This configuration controls whether to record the execution information of each operator in the slow query log. Before v6.1.0, this configuration is set by `enable-collect-execution-info`.
 	"instance.tidb_enable_collect_execution_info": bool | *true

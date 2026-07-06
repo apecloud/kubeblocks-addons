@@ -1,0 +1,25 @@
+apiVersion: v2
+description: RustFS S3-compatible high-performance distributed object storage
+name: rustfs-cluster
+version: 0.1.0
+appVersion: "1.0.0-beta.8"
+type: application
+keywords:
+  - storage
+  - object-storage
+  - S3
+  - rustfs
+
+dependencies:
+  - name: kblib
+    version: 0.1.2
+    repository: file://../kblib
+    alias: extra
+
+home: https://rustfs.com
+sources:
+  - https://github.com/rustfs/rustfs
+
+maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks-addons

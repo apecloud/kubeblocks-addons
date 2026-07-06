@@ -23,13 +23,23 @@ load_common_library
 current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$QDRANT_POD_FQDN_LIST" "$CURRENT_POD_NAME")
 boostrap_node_fqdn=$(get_boostrap_node)
 
+# TLS setup
+if [ "${TLS_ENABLED:-}" = "true" ]; then
+  SCHEME="https"
+  CURL_TLS="-k"
+else
+  SCHEME="http"
+  CURL_TLS=""
+fi
+
 if [ "$current_pod_fqdn" == "$boostrap_node_fqdn" ]; then
-  exec ./qdrant --uri "http://${current_pod_fqdn}:6335"
+  exec ./qdrant --uri "${SCHEME}://${current_pod_fqdn}:6335"
 else
   echo "BOOTSTRAP_HOSTNAME: ${boostrap_node_fqdn}"
-  until ./tools/curl http://${boostrap_node_fqdn}:6333/cluster; do
+  QDRANT_CURL_BIN=./tools/curl
+  until qdrant_curl ${SCHEME}://${boostrap_node_fqdn}:6333/cluster; do
     echo "INFO: wait for bootstrap node starting..."
     sleep 1;
   done
-  exec ./qdrant --bootstrap "http://${boostrap_node_fqdn}:6335" --uri "http://${current_pod_fqdn}:6335"
+  exec ./qdrant --bootstrap "${SCHEME}://${boostrap_node_fqdn}:6335" --uri "${SCHEME}://${current_pod_fqdn}:6335"
 fi

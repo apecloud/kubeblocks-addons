@@ -60,8 +60,8 @@ spec:
       componentDef: etcd
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [3.6.1,3.5.15,3.5.6]
-      serviceVersion: 3.6.1
+      # Valid options are: [3.6.12,3.6.1,3.5.15,3.5.6]
+      serviceVersion: 3.6.12
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -128,7 +128,7 @@ spec:
       tls: true   # set TLS to true
       issuer:     # if TLS is True, this filed is required.
         name: KubeBlocks  # set Issuer to [KubeBlocks, UserProvided].
-      serviceVersion: 3.6.1
+      serviceVersion: 3.6.12
       replicas: 3
       resources:
         limits:
@@ -255,8 +255,8 @@ spec:
       componentDef: etcd
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [3.6.1,3.5.15,3.5.6]
-      serviceVersion: 3.6.1
+      # Valid options are: [3.6.12,3.6.1,3.5.15,3.5.6]
+      serviceVersion: 3.6.12
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -713,15 +713,20 @@ kind: Cluster
 metadata:
   name: etcd-cluster-restore
   namespace: demo
-  annotations:
-    # etcd-cluster-backup is the backup name.
-    kubeblocks.io/restore-from-backup: '{"etcd":{"name":"etcd-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: etcd-cluster-backup
+      namespace: demo
+    parameters:
+      dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   componentSpecs:
     - name: etcd
       componentDef: etcd
-      serviceVersion: 3.6.1
+      serviceVersion: 3.6.12
       disableExporter: false
       replicas: 3
       resources:

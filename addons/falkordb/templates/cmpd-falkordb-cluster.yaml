@@ -83,7 +83,7 @@ spec:
       namespace: {{ $.Release.Namespace }}
       volumeName: falkordb-cluster-config
       externalManaged: true
-      {{- include "falkordb.config.reconfigureAction" $ | nindent 6 }}
+      {{- include "falkordb.config.reconfigureAction" (dict "container" "falkordb-cluster") | nindent 6 }}
   scripts:
     - name: falkordb-cluster-scripts
       template: {{ include "falkordbCluster.scriptsTemplate" $ }}
@@ -464,15 +464,6 @@ spec:
                 apiVersion: v1
                 fieldPath: status.hostIP
       preCondition: RuntimeReady
-      retryPolicy:
-        maxRetries: 10
-    preTerminate:
-      exec:
-        container: falkordb-cluster
-        command:
-          - /bin/bash
-          - -c
-          - /scripts/{{ $falkordbClusterManageScripts }} --pre-terminate > /tmp/pre-terminate.log 2>&1
       retryPolicy:
         maxRetries: 10
     memberLeave:

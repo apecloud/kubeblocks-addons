@@ -4,12 +4,12 @@ description: "Loki is a horizontally-scalable, highly-available, multi-tenant lo
 
 type: application
 
-version: 1.1.0-alpha.0
+version: 1.2.0-alpha.0
 
 appVersion: "3.0.0"
 
 maintainers:
-  - name: Chen-speculation
+  - name: ApeCloud
     url: https://github.com/apecloud/kubeblocks/
 
 annotations:

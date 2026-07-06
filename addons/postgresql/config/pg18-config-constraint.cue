@@ -101,7 +101,7 @@
 	bgwriter_flush_after?: int & >=0 & <=256 @storeResource(8KB)
 
 	// Background writer maximum number of LRU pages to flush per round.
-	bgwriter_lru_maxpages?: int & >=0 & <=1000
+	bgwriter_lru_maxpages?: int & >=0 & <=1073741823
 
 	// Multiple of the average buffer usage to free per round.
 	bgwriter_lru_multiplier?: float & >=0 & <=10
@@ -387,6 +387,9 @@
 
 	// Sets the locale for formatting date and time values.
 	lc_time?: string
+
+	// Sets the maximum allowed duration of any wait for a lock.
+	lock_timeout?: int & >=0 & <=2147483647 @timeDurationResource()
 
 	// Sets the host name or IP address(es) to listen to.
 	listen_addresses?: string
@@ -826,6 +829,15 @@
 	// Sets the behavior for interacting with passcheck feature.
 	"pgtle.enable_password_check"?: string & "on" | "off" | "require"
 
+	// Enables index adviser logging.
+	"index_adviser.enable_log"?: string & "on" | "off"
+
+	// Maximum number of aggregation columns considered by index adviser.
+	"index_adviser.max_aggregation_column_count"?: int & >=0 & <=32
+
+	// Maximum number of candidate indexes considered by index adviser.
+	"index_adviser.max_candidate_index_count"?: int & >=0 & <=1000
+
 	// Number of workers to use for a physical transport.
 	"pg_transport.num_workers"?: int & >=1 & <=32
 
@@ -897,6 +909,9 @@
 
 	// Lists shared libraries to preload into server. Multiple libraries can be provided using a comma-separated list, e.g. 'pg_stat_statements, auto_explain'.
 	shared_preload_libraries?: string
+
+	// sql_firewall operating mode.
+	"sql_firewall.firewall"?: string & "disable" | "learning" | "permissive" | "enforcing"
 
 	// Enables SSL connections.
 	ssl: bool & false | true | *true
@@ -1034,7 +1049,7 @@
 	wal_buffers?: int & >=-1 & <=262143 @storeResource(8KB)
 
 	// Compresses full-page writes written in WAL file.
-	wal_compression: bool & false | true | *true
+	wal_compression: string & (*"pglz" | "lz4" | "zstd" | "on" | "off")
 
 	// Sets the WAL resource managers for which WAL consistency checks are done.
 	wal_consistency_checking?: string
@@ -1044,6 +1059,9 @@
 
 	// (MB) Sets the size of WAL files held for standby servers.
 	wal_keep_size: int & >=0 & <=2147483647 | *2048 @storeResource(1MB)
+
+	// Writes full pages to WAL when first modified after a checkpoint.
+	wal_log_hints?: bool & false | true
 
 	// Sets whether a WAL receiver should create a temporary replication slot if no permanent slot is configured.
 	wal_receiver_create_temp_slot: bool & false | true | *false

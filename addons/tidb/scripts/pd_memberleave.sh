@@ -2,8 +2,14 @@
 
 set -exo pipefail
 
+# shellcheck source=common.sh
+. /scripts/common.sh
+
+set_component_tls_variables
+
 echo "$KB_LEAVE_MEMBER_POD_NAME"
-res=$(/pd-ctl member delete name "$KB_LEAVE_MEMBER_POD_NAME")
+# shellcheck disable=SC2086
+res=$(/pd-ctl -u $pdAddr $extraArg member delete name "$KB_LEAVE_MEMBER_POD_NAME")
 echo "$res"
 not_found_pattern="Failed to delete member.*not found"
 # this redirect_not_leader_pattern is a workaround when scaling in multiple pd instances,

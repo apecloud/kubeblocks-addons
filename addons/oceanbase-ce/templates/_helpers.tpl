@@ -88,16 +88,38 @@ Generate reloader scripts configmap
 reconfigure:
   exec:
     container: metrics
+    targetPodSelector: All
     command:
       - /bin/sh
       - -c
       - |
         set -eu
 
-        env | cut -d= -f1 | grep -E '^[a-z0-9_.-][a-z0-9_.-]*$' | sort -u | while IFS= read -r param; do
-          [ -n "${param}" ] || continue
-          /scripts/{{ .script }} "${param}" "$(printenv "${param}")"
-        done
+        env_file="/tmp/oceanbase-reconfigure-env.$$"
+        trap 'rm -f "$env_file"' EXIT
+        tr '\0' '\n' < /proc/self/environ > "$env_file"
+
+        rc=0
+        matched=0
+        while IFS= read -r line; do
+          paramName="${line%%=*}"
+          paramValue="${line#*=}"
+          [ "$paramName" != "$line" ] || continue
+          case "$paramName" in
+            ""|"_"|KB_*|*[!abcdefghijklmnopqrstuvwxyz0123456789_]*)
+              continue
+              ;;
+          esac
+
+          matched=$((matched + 1))
+          /scripts/{{ .script }} "$paramName" "$paramValue" || rc=$?
+        done < "$env_file"
+
+        if [ "$matched" -eq 0 ]; then
+          echo "no reconfigure parameters found in kbagent environment" >&2
+          exit 1
+        fi
+        exit "$rc"
 {{- end -}}
 
 
@@ -160,11 +182,19 @@ oceanbase-ce-reloadscripts
 Define image
 */}}
 {{- define "oceanbase-ce.observer.repository" -}}
+{{- if .Values.image.observer.image -}}
+{{ .Values.image.observer.image }}
+{{- else -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.observer.repository }}
+{{- end -}}
 {{- end -}}
 
 {{- define "oceanbase-ce.metrics.repository" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.metrics.repository }}
+{{- end -}}
+
+{{- define "oceanbase-ce.obtools.repository" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.obtools.repository }}
 {{- end -}}
 
 {{- define "oceanbase-ce.spec.vars" -}}

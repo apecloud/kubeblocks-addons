@@ -9,7 +9,8 @@ fullnameOverride: ""
 ##
 commonLabels: {}
 
-logConfigs: {}
+logConfigs:
+  error: /bitnami/clickhouse/log/*.err.log
 
 commonAnnotations: {}
 
@@ -23,8 +24,12 @@ clickhouseVersions:
     imageTag: 25.9.7
   - version: 25.4.4
     imageTag: 25.4.4-debian-12-r1
+  - version: 24.12.2
+    imageTag: 24.12.2.29
   - version: 24.8.3
     imageTag: 24.8.3-debian-12-r1
+  - version: 24.7.2
+    imageTag: 24.7.2.13
   - version: 22.8.21
     imageTag: 22.8.21-debian-11-r33
   - version: 22.3.20
@@ -33,12 +38,14 @@ clickhouseVersions:
     imageTag: 22.3.18-debian-11-r3
   - version: 22.6.1
     imageTag: 22.6.1
+  - version: 22.9.4
+    imageTag: 22.9.4-debian-11-r1
 
 roleProbe:
   initialDelaySeconds: 15
   failureThreshold: 3
   periodSeconds: 3
-  timeoutSeconds: 3
+  timeoutSeconds: 10
 
 busyboxImage:
   registry: ""
@@ -51,7 +58,7 @@ backupImage:
   registry: ""
   repository: apecloud/clickhouse-backup-full
   pullPolicy: IfNotPresent
-  tag: 2.6.42
+  tag: 2.7.0
 
 restore:
   schemaReadyTimeoutSeconds: 1800

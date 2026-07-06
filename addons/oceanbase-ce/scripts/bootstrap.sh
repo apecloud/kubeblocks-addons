@@ -37,8 +37,7 @@ function others_running {
       continue
     fi
     ip=$(get_pod_ip $replica)
-    nc -z $ip $OB_SERVICE_PORT
-    if [ $? -ne 0 ]; then
+    if ! bash -c "echo > /dev/tcp/$ip/$OB_SERVICE_PORT" 2>/dev/null; then
       continue
     fi
     conn_remote $ip "show databases" &> /dev/null
@@ -66,8 +65,7 @@ function bootstrap_obcluster {
     fi
     replica_ip=$(get_pod_ip $replica)
     while true; do
-      nc -z $replica_ip $OB_SERVICE_PORT
-      if [ $? -ne 0 ]; then
+      if ! bash -c "echo > /dev/tcp/$replica_ip/$OB_SERVICE_PORT" 2>/dev/null; then
         echo "Replica $replica_ip is not up yet"
         sleep $WAIT_SERVER_SLEEP_TIME
       else

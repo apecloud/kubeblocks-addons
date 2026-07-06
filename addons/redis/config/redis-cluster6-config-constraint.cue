@@ -264,7 +264,9 @@
 
      "auto-aof-rewrite-min-size": string | *"64mb"
 
-     "lua-time-limit": int | *5000
+     "lua-time-limit": int & >=0 | *5000
+
+     "busy-reply-threshold": int | *5000
 
      // By default latency monitoring is disabled since it is mostly not needed
      // if you don't have latency issues, and collecting data has a performance
@@ -380,7 +382,7 @@
 
     "replica-read-only": string & "yes" | "no" | *"yes"
 
-    "repl-diskless-sync ":string & "yes" | "no" | *"yes"
+    "repl-diskless-sync":string & "yes" | "no" | *"yes"
 
     "repl-diskless-sync-delay": int | *5
 

@@ -71,7 +71,7 @@ fi
 echo "parameters: $params"
 
 # Download and restore
-pg_restore -h ${DP_DB_HOST} -U ${POSTGRES_USER} -p ${DP_DB_PORT} ${params} $BACKUP_DIR 2> >(tee /tmp/pg_restore.log >&2)=
+pg_restore -h ${DP_DB_HOST} -U ${POSTGRES_USER} -p ${DP_DB_PORT} ${params} $BACKUP_DIR 2> >(tee /tmp/pg_restore.log >&2)
 exit_code=$?
 if [ -f /tmp/pg_restore.log ] && grep "pg_restore: warning: errors ignored on restore" /tmp/pg_restore.log ; then
   exit_code=0

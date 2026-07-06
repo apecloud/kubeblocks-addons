@@ -6,7 +6,7 @@ metadata:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "zookeeper.cmpdName" . }}
-  templateName: {{ include "zookeeper.dynamicConfigTplName" . }}
+  templateName: zookeeper-dynamic-config
   fileName: zoo.cfg.dynamic
   fileFormatConfig:
     format: props-plus

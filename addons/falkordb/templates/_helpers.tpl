@@ -147,22 +147,26 @@ Generate scripts configmap
 falkordb-account.sh: |-
 {{- $.Files.Get "scripts/falkordb-account.sh" | nindent 2 }}
 {{- end }}
+{{- if $.Files.Get "scripts/reload-parameter.sh" }}
+reload-parameter.sh: |-
+{{- $.Files.Get "scripts/reload-parameter.sh" | nindent 2 }}
+{{- end }}
 {{- end }}
 
 {{- define "falkordb.config.reconfigureAction" -}}
+{{- $container := .container | default "falkordb" -}}
 reconfigure:
   exec:
-    container: falkordb
+    container: {{ $container }}
+    targetPodSelector: All
     command:
       - /bin/sh
       - -c
       - |
         set -eu
 
-        env | cut -d= -f1 | grep -E '^[a-z0-9_.-][a-z0-9_.-]*$' | sort -u | while IFS= read -r param; do
-          [ -n "${param}" ] || continue
-          /scripts/reload-parameter.sh "${param}" "$(printenv "${param}")"
-        done
+        /scripts/reload-parameter.sh "$1" "$2"
+      - --
 {{- end -}}
 
 {{- define "apeDts.reshard.image" -}}

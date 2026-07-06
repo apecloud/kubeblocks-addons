@@ -2,6 +2,5 @@
 staticParameters:
   - cluster-enabled
   - databases
-  - maxclients
   - io-threads
   - io-threads-do-reads

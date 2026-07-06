@@ -6,7 +6,7 @@ metadata:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "pulsar3.proxyCmpdName" . }}
-  templateName: {{ include "pulsar3.proxyConfigTplName" . }}
+  templateName: proxy-config
   fileName: proxy.conf
   fileFormatConfig:
     format: props-plus

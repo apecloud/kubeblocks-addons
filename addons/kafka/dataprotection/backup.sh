@@ -20,14 +20,32 @@ trap handle_exit EXIT
 #
 # We also ignores the __consumer_offsets topic as offsets won't be backuped up.
 echo "getting topics..."
-topic_list=$(kafkactl get topics | tail -n +2)
+topic_table="/tmp/kafka-topics.txt"
+topic_stderr="/tmp/kafkactl-get-topics.stderr"
+topic_retries="${KAFKA_BACKUP_TOPIC_DISCOVERY_RETRIES:-12}"
+topic_attempt=1
+while true; do
+  if kafkactl get topics > "${topic_table}" 2> "${topic_stderr}"; then
+    break
+  fi
+  rc=$?
+  echo "kafkactl get topics failed attempt=${topic_attempt}/${topic_retries} rc=${rc}"
+  cat "${topic_stderr}" || true
+  if [[ "${topic_attempt}" -ge "${topic_retries}" ]]; then
+    exit "${rc}"
+  fi
+  topic_attempt=$((topic_attempt + 1))
+  sleep 5
+done
+
+topic_list=$(awk 'NR > 1 && $1 != "__consumer_offsets" {print $1, $2, $3}' "${topic_table}")
 if [[ -z $topic_list ]]; then
   echo "nothing to backup"
   DP_save_backup_status_info 0
   exit 0
 fi
-echo $topic_list | grep -v __consumer_offsets | datasafed push - topics.txt
-readarray -t topics < <(kafkactl get topics -o compact | grep -v  __consumer_offsets)
+printf '%s\n' "${topic_list}" | datasafed push - topics.txt
+readarray -t topics < <(awk 'NR > 1 && $1 != "__consumer_offsets" {print $1}' "${topic_table}")
 
 for topic in "${topics[@]}"; do
   echo "backing up ${topic}..."

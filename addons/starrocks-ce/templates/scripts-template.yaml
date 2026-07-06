@@ -7,3 +7,5 @@ metadata:
 data:
   fe-post-start.sh: |-
     {{- .Files.Get "scripts/fe-post-start.sh" | nindent 4 }}
+  fe-member-leave.sh: |-
+    {{- .Files.Get "scripts/fe-member-leave.sh" | nindent 4 }}

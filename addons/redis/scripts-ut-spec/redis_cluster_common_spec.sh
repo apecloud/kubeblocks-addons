@@ -139,6 +139,32 @@ Describe "Redis Cluster Common Bash Script Tests"
     End
   End
 
+  Describe "fix_cluster_slots()"
+    setup() {
+      export REDIS_DEFAULT_PASSWORD=""
+      export REDIS_CLI_TLS_CMD=""
+    }
+    Before "setup"
+
+    un_setup() {
+      unset REDIS_DEFAULT_PASSWORD
+      unset REDIS_CLI_TLS_CMD
+    }
+    After "un_setup"
+
+    It "answers redis-cli cluster fix confirmation non-interactively"
+      redis-cli() {
+        local answer=""
+        read -r answer || true
+        [ "$answer" = "yes" ]
+      }
+
+      When call fix_cluster_slots "redis-0:6379" "6379"
+      The status should be success
+      The error should include "printf yes... | redis-cli"
+    End
+  End
+
   Describe "get_cluster_announce_ip()"
     It "gets cluster announce IP successfully"
       get_cluster_nodes_info() {

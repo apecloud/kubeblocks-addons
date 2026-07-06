@@ -7,7 +7,7 @@ metadata:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "pulsar4.brokerCmpdName" . }}
-  templateName: {{ include "pulsar4.brokerConfigTplName" . }}
+  templateName: broker-config
   fileName: broker.conf
   fileFormatConfig:
     format: props-plus
@@ -32,24 +32,3 @@ spec:
     - {{ . }}
    {{- end }}
  {{- end}}
-
-  reloadAction:
-    shellTrigger:
-      sync: true
-      command:
-        - "update-dynamic-config.sh"
-      scriptConfig:
-        scriptConfigMapRef: {{ include "pulsar.toolsScriptsTplName" . }}
-        namespace: {{ .Release.Namespace }}
-      toolsSetup:
-        mountPoint: /kb/tools
-        toolConfigs:
-          - name: init-pulsar-tools
-            command:
-              - cp
-              - /bin/pulsar-admin
-              - /kb/tools/pulsar-admin
-            image: {{ include "pulsar.toolsImage" . }}
-          - name: init-pulsar-client-config
-            command:
-              - "$(TOOLS_SCRIPTS_PATH)/install-pulsar-client-config.sh"

@@ -27,8 +27,8 @@ build_pgbouncer_conf() {
   echo -e "\\n[databases]" >> $pgbouncer_conf_file
   echo "postgres=host=$CURRENT_POD_IP port=5432 dbname=postgres" >> $pgbouncer_conf_file
   echo "*=host=$CURRENT_POD_IP port=5432" >> $pgbouncer_conf_file
-  chmod 777 $pgbouncer_conf_file
-  chmod 777 $pgbouncer_user_list_file
+  chmod 644 $pgbouncer_conf_file
+  chmod 600 $pgbouncer_user_list_file
 
   # Try to add user
   useradd pgbouncer 2>/dev/null || true

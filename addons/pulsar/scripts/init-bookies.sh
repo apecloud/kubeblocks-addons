@@ -1,17 +1,7 @@
 #!/bin/bash
 
-# shellcheck disable=SC2034
-ut_mode="false"
-test || __() {
- # when running in non-unit test mode, set the options "set -ex".
- set -ex;
-}
-
 wait_for_zookeeper() {
   local zk_servers="$1"
-  local zk_domain="${zk_servers%%:*}"
-  local zk_port="2181"
-
   echo "Waiting for Zookeeper at ${zk_servers} to be ready..."
   until zkURL=${zk_servers} python3 /kb-scripts/zookeeper.py get /; do
     sleep 1
@@ -60,7 +50,17 @@ decommission_old_bookie() {
     echo "Data dir is empty"
     fqdn=$(echo "$BOOKKEEPER_POD_FQDN_LIST" | tr ',' '\n' | grep "$CURRENT_POD_NAME")
     echo "Decommissioning old bookie with id $fqdn"
-    bin/bookkeeper shell decommissionbookie -bookieid "$fqdn:3181"
+    if ! bin/bookkeeper shell decommissionbookie -bookieid "$fqdn:3181" | tee /tmp/decommission.log; then
+      # shellcheck disable=SC2016
+      if cat /tmp/decommission.log | grep -q 'org.apache.zookeeper.KeeperException$NoNodeException'; then
+        echo "Bookie $fqdn is not registered in zookeeper, skip decommission"
+      else
+        echo "Failed to decommission bookie $fqdn"
+        exit 1
+      fi
+    else
+      echo "Bookie $fqdn decommissioned successfully"
+    fi
   fi
 }
 
@@ -92,6 +92,8 @@ init_bookies() {
 # When included from shellspec, __SOURCED__ variable defined and script
 # end here. The script path is assigned to the __SOURCED__ variable.
 ${__SOURCED__:+false} : || return 0
+
+set -exo pipefail;
 
 # main
 init_bookies

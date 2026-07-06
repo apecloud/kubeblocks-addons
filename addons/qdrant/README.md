@@ -107,6 +107,60 @@ spec:
 kubectl apply -f examples/qdrant/cluster.yaml
 ```
 
+#### Create with API key
+
+Create a Qdrant cluster with `service.api_key` set through `QDRANT__SERVICE__API_KEY`:
+
+```bash
+kubectl apply -f examples/qdrant/cluster-with-api-key.yaml
+```
+
+You can configure the Qdrant API key in either of these ways:
+
+```yaml
+# Qdrant environment variable. This has higher priority than config.yaml.
+env:
+  - name: QDRANT__SERVICE__API_KEY
+    value: my-key-123456
+```
+
+```yaml
+# KubeBlocks configuration variable. This renders service.api_key into config.yaml.
+configs:
+  - name: qdrant-config-template
+    variables:
+      service_api_key: my-key-123456
+```
+
+Qdrant environment variables have higher priority than `config.yaml`. Backup and restore scripts follow the same order: they use `QDRANT__SERVICE__API_KEY` when that env is present in the action container, then fall back to `service.api_key` from the mounted `config.yaml`.
+
+#### Configure telemetry
+
+Qdrant telemetry is disabled by default in `config.yaml`. You can override it through the KubeBlocks configuration variables API:
+
+```yaml
+configs:
+  - name: qdrant-config-template
+    variables:
+      telemetry_disabled: "false"
+```
+
+#### Create with TLS
+
+Create a Qdrant cluster with TLS enabled by the KubeBlocks Cluster TLS API:
+
+```bash
+kubectl apply -f examples/qdrant/cluster-with-tls.yaml
+```
+
+#### Create with TLS and API key
+
+Create a Qdrant cluster with TLS enabled and `service.api_key` set through `QDRANT__SERVICE__API_KEY`:
+
+```bash
+kubectl apply -f examples/qdrant/cluster-with-tls-and-api-key.yaml
+```
+
 ### Horizontal scaling
 
 > [!Important]
@@ -439,10 +493,15 @@ kind: Cluster
 metadata:
   name: qdrant-cluster-restore
   namespace: demo
-  annotations:
-    # qdrant-cluster-backup is the backup name
-    kubeblocks.io/restore-from-backup: '{"qdrant":{"name":"qdrant-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: qdrant-cluster-backup
+      namespace: demo
+    parameters:
+      dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   clusterDef: qdrant
   topology: cluster

@@ -259,10 +259,10 @@ safe_scale_down() {
   log "Node $node_name can now be safely removed from the cluster"
   log "=== Safe scale-down process completed successfully ==="
 
-  # Clear the shard exclusion settings since the node is safely removed
-  log "Clearing shard allocation exclusion settings..."
-  clear_shard_exclusion "$node_name" || log "Warning: Failed to clear shard exclusion after successful completion"
-
+  # Keep the exclusion until Kubernetes actually removes the leaving Pod.
+  # Clearing it here opens a race where Elasticsearch can move a primary
+  # shard back to the node after memberLeave succeeds but before pod deletion.
+  log "Leaving shard allocation exclusion for $node_name in place until the pod is removed"
   local total_time=$(( $(date +%s) - start_time ))
   log "Total time taken: ${total_time} seconds"
 }
@@ -307,21 +307,19 @@ cleanup() {
       clear_shard_exclusion "$KB_LEAVE_MEMBER_POD_NAME" || log "Failed to clear shard exclusions during cleanup"
     fi
   else
-    # Even on successful exit, ensure we clear the exclusion settings
-    log "Script completed successfully, clearing shard exclusions..."
-    if [ -n "${KB_LEAVE_MEMBER_POD_NAME:-}" ]; then
-      clear_shard_exclusion "$KB_LEAVE_MEMBER_POD_NAME" || log "Failed to clear shard exclusions after success"
-    fi
+    log "Script completed successfully, leaving shard allocation exclusion in place for pod deletion"
   fi
   log "Cleanup completed"
   exit $exit_code
 }
 
 # Set trap for cleanup
-trap cleanup EXIT
+if [ "${ES_MEMBER_LEAVE_UNIT_TEST:-0}" != "1" ]; then
+  trap cleanup EXIT
 
-# Also trap common signals that might cause script termination
-trap cleanup INT TERM
+  # Also trap common signals that might cause script termination
+  trap cleanup INT TERM
 
-# Run main function
-main
+  # Run main function
+  main
+fi

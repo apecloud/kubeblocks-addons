@@ -110,6 +110,20 @@ build_redis_service_port() {
   fi
 }
 
+build_redis_tls_config() {
+  if [ "$TLS_ENABLED" == "true" ]; then
+    TLS_MOUNT_PATH=${TLS_MOUNT_PATH:-/etc/pki/tls}
+    {
+      echo "tls-cert-file $TLS_MOUNT_PATH/tls.crt"
+      echo "tls-key-file $TLS_MOUNT_PATH/tls.key"
+      echo "tls-ca-cert-file $TLS_MOUNT_PATH/ca.crt"
+      echo "tls-auth-clients no"
+      echo "tls-replication yes"
+      echo "port 0"
+    } >> $redis_real_conf
+  fi
+}
+
 build_replicaof_config() {
   init_or_get_primary_from_redis_sentinel
   if check_current_pod_is_primary; then
@@ -367,9 +381,19 @@ parse_redis_announce_addr() {
 
 # build redis.conf
 build_redis_conf() {
+  # Truncate before building to guarantee a clean slate on every container start.
+  # /etc/redis/ is an emptyDir that survives container restarts (but not pod
+  # deletion). Without this truncation, CONFIG REWRITE (triggered by Sentinel)
+  # writes 'loadmodule' back into redis.conf; on the next container restart the
+  # accumulated 'loadmodule' line stays in the file, and start_redis_server()
+  # also passes --loadmodule via CLI, causing the module to load twice.
+  # Redis exits on the second load attempt → CrashLoopBackOff.
+  # See: https://github.com/apecloud/kubeblocks-addons/issues/2686
+  > "$redis_real_conf"
   load_redis_template_conf
   build_announce_ip_and_port
   build_redis_service_port
+  build_redis_tls_config
   build_replicaof_config
   rebuild_redis_acl_file
   build_redis_default_accounts

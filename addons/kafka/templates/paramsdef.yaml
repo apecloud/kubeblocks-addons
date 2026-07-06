@@ -6,7 +6,7 @@ metadata:
     {{- include "kafka.labels" . | nindent 4 }}
 spec:
   componentDef: {{ printf "(%s|%s|%s)" (include "kafka-broker.cmpdRegexpPattern" .) (include "kafka-combine.cmpdRegexpPattern" .) (include "kafka-controller.cmpdRegexpPattern" .) | quote }}
-  templateName: {{ include "kafka.configurationTplName" . }}
+  templateName: kafka-configuration-tpl
   fileName: server.properties
   fileFormatConfig:
     format: properties
@@ -25,7 +25,7 @@ metadata:
     {{- include "kafka.labels" . | nindent 4 }}
 spec:
   componentDef: {{ include "kafka2-broker.componentDefName" . }}
-  templateName: {{ include "kafka2.configurationTplName" . }}
+  templateName: kafka-configuration-tpl
   fileName: server.properties
   fileFormatConfig:
     format: properties

@@ -520,10 +520,23 @@ consistency-check-method = "mvcc"
 ## If the config value is not set, the coprocessor plugin will be disabled.
 coprocessor-plugin-directory = "./coprocessors"
 
+[rocksdb]
+## Number of open files that can be used by the DB.
+## Value -1 means files opened are always kept open and RocksDB will prefetch index and filter
+## blocks into block cache at startup. So if your database has a large working set, it will take
+## several minutes to open the DB. You may need to increase this if your database has a large
+## working set. You can estimate the number of files based on `target-file-size-base` for
+## level-based compaction.
+# https://github.com/apecloud/apecloud/issues/18181
+# Some enviroments have RLIMIT_NOFILE not big enough
+max-open-files = 20000
+
 [raftdb]
 max-background-jobs = 4
 max-sub-compactions = 2
-max-open-files = 40960
+# https://github.com/apecloud/apecloud/issues/18181
+# Some enviroments have RLIMIT_NOFILE not big enough
+max-open-files = 20000
 max-manifest-file-size = "20MB"
 create-if-missing = true
 
@@ -660,12 +673,27 @@ enable-log-recycle = true
 ## Default: false
 prefill-for-recycle = false
 
+{{/* a dirty way to inject user defined config */}}
+{{- $conponentTls := false }}
+{{- $container := index $.podSpec.containers 0}}
+{{- range $e := $container.env }}
+{{- if and (eq $e.name "KB_ENABLE_TLS_BETWEEN_COMPONENTS") (eq $e.value "true") }}
+{{- $conponentTls = true }}
+{{- end }}
+{{- end }}
+
 [security]
-## The path for TLS certificates. Empty string means disabling secure connections.
-ca-path = ""
-cert-path = ""
-key-path = ""
-cert-allowed-cn = []
+{{- if eq $conponentTls true }}
+# Path of file that contains list of trusted SSL CAs for connection with cluster components.
+ca-path = "/etc/pki/cluster-tls/ca.pem"
+
+# Path of file that contains X509 certificate in PEM format for connection with cluster components.
+cert-path = "/etc/pki/cluster-tls/cert.pem"
+
+# Path of file that contains X509 key in PEM format for connection with cluster components.
+key-path = "/etc/pki/cluster-tls/key.pem"
+{{- end }}
+# cert-allowed-cn = []
 #
 ## Avoid outputing data (e.g. user keys) to info log. It currently does not avoid printing
 ## user data altogether, but greatly reduce those logs.

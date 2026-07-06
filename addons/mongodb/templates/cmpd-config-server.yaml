@@ -242,13 +242,13 @@ spec:
         env:
           - name: MONGODB_URI
             value: mongodb://127.0.0.1:$(KB_SERVICE_PORT)
+    {{- if .Values.logCollector.enabled }}
     volumes:
-      {{- if .Values.logCollector.enabled }}
       - name: log-data
         hostPath:
           path: /var/log/kubeblocks
           type: DirectoryOrCreate
-      {{- end }}
+    {{- end }}
   services:
     - name: default
       spec:

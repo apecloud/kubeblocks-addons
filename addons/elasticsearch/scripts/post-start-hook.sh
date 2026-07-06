@@ -54,6 +54,88 @@ function wait_for_cluster_health() {
     done
 }
 
+STALE_EXCLUSION_MARKER="/tmp/stale-exclusion-cleanup.pending"
+
+function verify_exclusion_cleared() {
+    local verify_json
+    verify_json=$(curl --fail ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/settings?include_defaults=false&flat_settings=true" 2>/dev/null) || return 1
+    local verify_exclusion
+    verify_exclusion=$(echo "$verify_json" | grep -o '"persistent.cluster.routing.allocation.exclude._name" *: *"[^"]*"' | sed 's/.*: *"//;s/"$//')
+    local verify_normalized
+    verify_normalized=$(echo "$verify_exclusion" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | paste -sd ',' -)
+    case ",$verify_normalized," in
+        *",${POD_NAME},"*)
+            echo "readback verify failed: ${POD_NAME} still in exclusion after PUT (current: ${verify_normalized})" >&2
+            return 1
+            ;;
+    esac
+    return 0
+}
+
+function try_clear_stale_exclusion() {
+    local settings_json
+    settings_json=$(curl --fail ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/settings?include_defaults=false&flat_settings=true" 2>/dev/null) || {
+        echo "failed to read cluster settings" >&2
+        return 1
+    }
+    local raw_exclusion
+    raw_exclusion=$(echo "$settings_json" | grep -o '"persistent.cluster.routing.allocation.exclude._name" *: *"[^"]*"' | sed 's/.*: *"//;s/"$//')
+    if [ -z "$raw_exclusion" ]; then
+        echo "no shard allocation exclusion set"
+        return 0
+    fi
+
+    local current_exclusion
+    current_exclusion=$(echo "$raw_exclusion" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | paste -sd ',' -)
+
+    case ",$current_exclusion," in
+        *",${POD_NAME},"*)
+            ;;
+        *)
+            echo "no stale shard allocation exclusion for ${POD_NAME} (current: ${current_exclusion})"
+            return 0
+            ;;
+    esac
+
+    local new_exclusion
+    new_exclusion=$(echo "$current_exclusion" | tr ',' '\n' | grep -v "^${POD_NAME}$" | paste -sd ',' -)
+    if [ -z "$new_exclusion" ]; then
+        echo "clearing stale shard allocation exclusion for ${POD_NAME}"
+        curl --fail ${COMMON_OPTIONS} -X PUT "${ENDPOINT}/_cluster/settings" -H 'Content-Type: application/json' -d '{"persistent":{"cluster.routing.allocation.exclude._name":null}}' || return 1
+    else
+        echo "removing ${POD_NAME} from shard allocation exclusion (remaining: ${new_exclusion})"
+        curl --fail ${COMMON_OPTIONS} -X PUT "${ENDPOINT}/_cluster/settings" -H 'Content-Type: application/json' -d "{\"persistent\":{\"cluster.routing.allocation.exclude._name\":\"${new_exclusion}\"}}" || return 1
+    fi
+
+    verify_exclusion_cleared
+}
+
+function clear_stale_allocation_exclusion_for_self() {
+    if [ -z "${POD_NAME:-}" ]; then
+        echo "POD_NAME is empty, skip clearing stale shard allocation exclusion"
+        return 0
+    fi
+
+    if ! curl --fail ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/health?local=true" >/dev/null 2>&1; then
+        echo "local elasticsearch API is not ready, writing marker for readiness probe cleanup"
+        touch "${STALE_EXCLUSION_MARKER}"
+        return 0
+    fi
+
+    if try_clear_stale_exclusion; then
+        rm -f "${STALE_EXCLUSION_MARKER}"
+        return 0
+    else
+        echo "stale exclusion cleanup failed, writing marker for readiness probe retry" >&2
+        touch "${STALE_EXCLUSION_MARKER}"
+        return 0
+    fi
+}
+
+if [ "${ES_POST_START_UNIT_TEST:-0}" = "1" ]; then
+    return 0 2>/dev/null || exit 0
+fi
+
 # For master nodes: Initialize cluster and create CLUSTER_FORMED_FILE
 # CLUSTER_FORMED_FILE is used to indicate that cluster is already initialized
 # When cluster restarts, elasticsearch.yml needs to be modified to remove INITIAL_MASTER_NODES_BLOCK
@@ -76,8 +158,15 @@ if grep '\- master\|master: true' config/elasticsearch.yml > /dev/null 2>&1; the
         touch ${CLUSTER_FORMED_FILE}
     fi
 else
-    exit 0
+	if grep 'type: single-node' config/elasticsearch.yml > /dev/null 2>&1; then
+		echo "single-node mode, skip cluster formation and user initialization"
+	else
+        clear_stale_allocation_exclusion_for_self
+    	exit 0
+	fi
 fi
+
+clear_stale_allocation_exclusion_for_self
 
 # The following operations only need to be performed on master-0
 idx=${POD_NAME##*-}
@@ -138,7 +227,8 @@ fi
 # Store the certificate in an ES index for Kibana to access
 # https://github.com/apecloud/kubeblocks/issues/8278
 index_name=kubeblocks_ca_crt
-ca_crt=$(cat /usr/share/elasticsearch/config/ca.crt | base64 -w 0)
+# ca in /usr/share/elasticsearch/config is in PEM format, but we want to store it in CRT format for better compatibility with KB, so we just change the file extension but keep the content unchanged
+ca_crt=$(cat /usr/share/elasticsearch/config/ca.pem | base64 -w 0)
 echo "fill elastic ca into index ${index_name}"
 #{
 #  "_index" : "kubeblocks_ca_crt",

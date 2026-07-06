@@ -5,7 +5,7 @@ description: Weaviate is an open-source vector database. It allows you to store 
 type: application
 
 # This is the chart version.
-version: 1.1.0-alpha.0
+version: 1.2.0-alpha.0
 
 # This is the version number of weaviate.
 appVersion: "1.19.6"
@@ -15,7 +15,7 @@ icon: https://weaviate.tech/images/logo_with_text.svg
 
 
 maintainers:
-  - name: iziang
+  - name: ApeCloud
     url: https://github.com/apecloud/kubeblocks/
 
 

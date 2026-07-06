@@ -11,6 +11,13 @@ spec:
   description: RabbitMQ is a reliable and mature messaging and streaming broker.
   serviceKind: rabbitmq
   serviceVersion: {{ .Values.componentServiceVersion.rabbitmq }}
+  podManagementPolicy: Parallel
+  tls:
+    volumeName: tls
+    mountPath: {{ .Values.tlsMountPath }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
   services:
     - name: default
       spec:
@@ -18,9 +25,15 @@ spec:
           - name: amqp
             port: 5672
             targetPort: amqp
+          - name: amqps
+            port: 5671
+            targetPort: amqps
           - name: management
             port: 15672
             targetPort: management
+          - name: management-tls
+            port: 15671
+            targetPort: management-tls
           - name: web-stomp
             port: 15674
             targetPort: web-stomp
@@ -30,7 +43,13 @@ spec:
       volumeName: rabbitmq-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0644
-      restartOnFileChange: true
+      externalManaged: true
+  scripts:
+    - name: script
+      template: {{ include "rabbitmq.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
   systemAccounts:
     - name: root
       initAccount: true
@@ -83,16 +102,10 @@ spec:
       - name: rabbitmq
         command:
           - /bin/sh
-          - -c
-          - |
-            if [ ! -f {{ .Values.dataMountPath }}/enabled_plugins ]; then
-              cp /etc/rabbitmq/enabled_plugins {{ .Values.dataMountPath }}/enabled_plugins
-            fi
-            cp /root/erlang.cookie {{ .Values.dataMountPath }}/.erlang.cookie
-            chown rabbitmq:rabbitmq {{ .Values.dataMountPath }}/.erlang.cookie
-            chmod 400 {{ .Values.dataMountPath }}/.erlang.cookie
-            exec /opt/rabbitmq/sbin/rabbitmq-server
+          - /scripts/startup.sh
         env:
+        - name: RABBITMQ_DATA_DIR
+          value: {{ .Values.dataMountPath }}
         - name: POD_NAME
           valueFrom:
             fieldRef:
@@ -105,6 +118,8 @@ spec:
               fieldPath: metadata.namespace
         - name: SERVICE_PORT
           value: "15692"
+        - name: TLS_MOUNT_PATH
+          value: {{ .Values.tlsMountPath }}
         - name: RABBITMQ_MNESIA_BASE
           value: {{ .Values.dataMountPath }}/mnesia
         - name: RABBITMQ_LOG_BASE
@@ -143,8 +158,14 @@ spec:
         - containerPort: 5672
           name: amqp
           protocol: TCP
+        - containerPort: 5671
+          name: amqps
+          protocol: TCP
         - containerPort: 15672
           name: management
+          protocol: TCP
+        - containerPort: 15671
+          name: management-tls
           protocol: TCP
         - containerPort: 15674
           name: web-stomp
@@ -167,6 +188,9 @@ spec:
           - mountPath: /etc/rabbitmq/enabled_plugins
             name: rabbitmq-config
             subPath: enabled_plugins
+          - mountPath: /scripts/startup.sh
+            name: scripts
+            subPath: startup.sh
           - name: timezone
             mountPath: /etc/localtime
             readOnly: true
@@ -210,6 +234,13 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+          optional: true
+    - name: TLS_MOUNT_PATH
+      value: {{ .Values.tlsMountPath }}
     - name: PHY_MEMORY
       valueFrom:
         resourceVarRef:
