@@ -1,3 +1,4 @@
+# shellcheck disable=SC2148
 # use datasafed and default config
 export WALG_DATASAFED_CONFIG=""
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
@@ -27,7 +28,7 @@ echo "[[ -d '${DATA_DIR}.old' ]] && mv -f ${DATA_DIR}.old/* ${DATA_DIR}/;" >> ${
 echo "sync;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 chmod +x ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 cat << EOF > "${CONF_DIR}/recovery.conf"
-restore_command='case "%f" in *history) cp ${PITR_DIR}/%f %p ;; *) mv ${PITR_DIR}/%f %p ;; esac'
+restore_command='cp ${PITR_DIR}/%f %p'
 recovery_target_time='$( date -d "@${DP_RESTORE_TIMESTAMP}" '+%F %T%::z' )'
 recovery_target_action='promote'
 recovery_target_timeline='latest'
