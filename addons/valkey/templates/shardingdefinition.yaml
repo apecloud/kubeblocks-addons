@@ -1,0 +1,33 @@
+{{- /*
+ShardingDefinition for Valkey Cluster (sharding) mode.
+
+Phase A boundary (issue #3021): shape only — no shard lifecycle actions yet.
+shardRemove (slot drain -> positive slots-zero proof -> del-node) lands in
+phase B together with cluster formation; declaring shard scale before those
+scripts exist would let a shard scale-in destroy data (the shardRemove-vs-
+preTerminate trap documented in kubeblocks-addon-docs).
+
+Until phase B merges, shardsLimit min==max effectively pins the shard count
+users can request at creation; scale in/out is rejected by the controller.
+*/}}
+apiVersion: apps.kubeblocks.io/v1
+kind: ShardingDefinition
+metadata:
+  name: valkey-cluster
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" . | nindent 4 }}
+spec:
+  template:
+    compDef: {{ include "valkeyCluster.cmpdRegexpPattern" . }}
+  shardsLimit:
+    # Valkey Cluster needs >=3 masters for a sane slot/failover layout.
+    # 32 is the reviewed v1 upper bound (raise only with scale evidence).
+    minShards: 3
+    maxShards: 32
+  provisionStrategy: Serial
+  updateStrategy: Serial
+  systemAccounts:
+    - name: default
+      shared: true

@@ -1,0 +1,190 @@
+{{- /*
+ComponentDefinition for Valkey Cluster (sharding) mode — one definition per
+shard; ShardingDefinition stamps N shard components out of it.
+
+Phase A boundary (issue #3021): templates + config + server start only.
+  - No roles / roleProbe yet: cluster-mode role detection (CLUSTER NODES) and
+    switchover land together in phase C as one contract; declaring roles
+    without a probe would leave pods permanently unlabeled.
+  - No lifecycle actions yet: cluster formation / shard scale land in phase B.
+v1 boundary: Valkey 9 only; in-cluster networking only (pod-FQDN announce,
+no NodePort/LB advertise).
+*/}}
+{{- range .Values.valkeyVersions }}
+{{- if eq .major "9" }}
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ printf "valkey-cluster-%s" .major }}
+  labels:
+    {{- include "valkey.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" $ | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Valkey {{ .major }} Cluster (sharding) component definition — one shard of a Valkey Cluster.
+  serviceKind: valkey-cluster
+  serviceVersion: {{ .serviceVersion }}
+  updateStrategy: BestEffortParallel
+  podManagementPolicy: OrderedReady
+
+  # ── TLS ────────────────────────────────────────────────────────────────
+  tls:
+    volumeName: tls
+    mountPath: {{ $.Values.tlsMountPath }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
+
+  volumes:
+    - name: data
+      needSnapshot: true
+
+  services:
+    # Per-shard ClusterIP service. Cluster-mode clients are expected to be
+    # cluster-aware (MOVED/ASK redirects) and discover topology themselves;
+    # this service is a stable per-shard entry point, not a router.
+    - name: valkey-cluster
+      serviceName: valkey-cluster
+      spec:
+        ports:
+          - name: valkey-cluster
+            port: 6379
+            targetPort: valkey-cluster
+
+  configs:
+    - name: valkey-cluster-config
+      template: {{ include "valkey.clusterConfigTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: valkey-config
+
+  scripts:
+    - name: valkey-scripts
+      template: {{ include "valkey.scriptsTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+
+  systemAccounts:
+    - name: default
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    # Data port and cluster bus port: single source for scripts and probes.
+    # No hardcoded 6379/16379 anywhere in scripts (design contract).
+    - name: SERVICE_PORT
+      value: "6379"
+    - name: CLUSTER_BUS_PORT
+      value: "16379"
+    - name: VALKEY_DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          name: default
+          optional: false
+          username: Required
+    - name: VALKEY_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: default
+          optional: false
+          password: Required
+    ## current shard identity + membership (KB-provided; scripts must not
+    ## derive these by string arithmetic)
+    - name: CURRENT_SHARD_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CURRENT_SHARD_COMPONENT_SHORT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CURRENT_SHARD_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    - name: CURRENT_SHARD_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    # ── TLS CLI flags (empty when TLS is off) ──
+    # Same verify-against-CA contract as the sentinel-mode definition.
+    - name: VALKEY_CLI_TLS_ARGS
+      value: ""
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --cacert {{.TLS_MOUNT_PATH}}/ca.crt{{else}}{{end}}` | toYaml }}
+    - name: TLS_MOUNT_PATH
+      value: {{ $.Values.tlsMountPath }}
+
+  runtime:
+    containers:
+      - name: valkey-cluster
+        imagePullPolicy: IfNotPresent
+        command: ["/scripts/valkey-cluster-server-start.sh"]
+        ports:
+          - name: valkey-cluster
+            containerPort: 6379
+          - name: cluster-bus
+            containerPort: 16379
+        volumeMounts:
+          - name: data
+            mountPath: {{ $.Values.dataMountPath }}
+          - name: valkey-config    # mounted config template (read-only)
+            mountPath: /etc/conf
+          - name: scripts
+            mountPath: /scripts
+          - name: valkey-conf      # writable dir for the final rendered conf
+            mountPath: /etc/valkey
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+        livenessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+          exec:
+            command:
+              - sh
+              - -c
+              - /scripts/valkey-ping.sh
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+              - sh
+              - -c
+              - /scripts/valkey-ping.sh
+    volumes:
+      - name: valkey-conf
+        emptyDir: {}
+{{- end }}
+{{- end }}

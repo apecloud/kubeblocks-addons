@@ -15,7 +15,8 @@
       "default": "replication",
       "enum": [
         "standalone",
-        "replication"
+        "replication",
+        "cluster"
       ]
     },
     "replicas": {
@@ -150,6 +151,26 @@
           "title": "Sentinel default account secret namespace",
           "type": "string",
           "default": ""
+        }
+      }
+    },
+    "cluster": {
+      "title": "Cluster (sharding) mode",
+      "type": "object",
+      "properties": {
+        "shards": {
+          "title": "Shards",
+          "type": "integer",
+          "default": 3,
+          "minimum": 3,
+          "maximum": 32
+        },
+        "replicas": {
+          "title": "Replicas per shard",
+          "type": "integer",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 5
         }
       }
     }

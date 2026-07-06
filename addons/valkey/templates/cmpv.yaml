@@ -75,3 +75,40 @@ spec:
         accountProvision: {{ $valkeyRepo }}:{{ .imageTag }}
     {{- end }}
     {{- end }}
+---
+# ── Cluster (sharding) component ─────────────────────────────────────────────
+# v1: Valkey 9 only. Container name matches the cluster cmpd runtime
+# (valkey-cluster); image releases reuse the same engine images.
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: valkey-cluster
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    {{- range .Values.valkeyVersions }}
+    {{- if eq .major "9" }}
+    - compDefs:
+        - {{ printf "valkey-cluster-%s" .major }}
+      releases:
+        {{- range .mirrorVersions }}
+        - {{ .version }}
+        {{- end }}
+    {{- end }}
+    {{- end }}
+
+  releases:
+    {{- range .Values.valkeyVersions }}
+    {{- if eq .major "9" }}
+    {{- $valkeyRepo := printf "%s/%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository }}
+    {{- range .mirrorVersions }}
+    - name: {{ .version }}
+      serviceVersion: {{ .version }}
+      images:
+        valkey-cluster: {{ $valkeyRepo }}:{{ .imageTag }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
