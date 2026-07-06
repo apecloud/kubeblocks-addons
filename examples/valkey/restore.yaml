@@ -11,6 +11,7 @@ spec:
       name: valkey-backup-datafile
       namespace: demo
     parameters:
+      dataprotection.kubeblocks.io/source-target-name: valkey
       dataprotection.kubeblocks.io/volume-restore-policy: Parallel
       dataprotection.kubeblocks.io/restore-env: '[{"name":"DATA_REPLICA_COUNT","value":"3"}]'
   terminationPolicy: Delete

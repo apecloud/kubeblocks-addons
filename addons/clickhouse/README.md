@@ -1459,6 +1459,7 @@ spec:
       namespace: demo
     parameters:
       dataprotection.kubeblocks.io/volume-restore-policy: Parallel
+      dataprotection.kubeblocks.io/source-target-name: clickhouse
   clusterDef: clickhouse
   topology: cluster
   terminationPolicy: Delete
@@ -1549,6 +1550,7 @@ spec:
       namespace: demo
     parameters:
       dataprotection.kubeblocks.io/volume-restore-policy: Parallel
+      dataprotection.kubeblocks.io/source-target-name: clickhouse
   clusterDef: clickhouse
   topology: cluster
   terminationPolicy: Delete

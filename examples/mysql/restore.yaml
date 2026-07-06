@@ -11,6 +11,7 @@ spec:
       name: mysql-cluster-backup
       namespace: demo
     parameters:
+      dataprotection.kubeblocks.io/source-target-name: mysql
       dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   componentSpecs:
