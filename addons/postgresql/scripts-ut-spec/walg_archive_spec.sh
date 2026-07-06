@@ -53,6 +53,14 @@ Describe "dataprotection/wal-g-archive.sh"
 printf 'wal-g %s\n' "$*" >> "${CALL_LOG}"
 exit "${WALG_EXIT:-0}"
 EOF
+    # the script invokes wal-g through envdir (daemontools), which the test
+    # host may not have: pass through to the wrapped command, skipping the dir
+    cat > "${bindir}/envdir" <<'EOF'
+#!/bin/sh
+shift
+exec "$@"
+EOF
+    chmod +x "${bindir}/envdir"
     cat > "${bindir}/psql" <<'EOF'
 #!/bin/sh
 printf 'psql %s\n' "$*" >> "${CALL_LOG}"
