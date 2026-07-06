@@ -289,6 +289,17 @@ main() {
             _restart_mariadbd_for_self_heal "wsrep_cluster_status=${CLUSTER_STATUS} for $((NON_PRIMARY_COUNT * 3))s"
             NON_PRIMARY_COUNT=0
           fi
+        elif [ -f "${DATA_DIR}/sst_in_progress" ] || pgrep -f 'wsrep_sst_' >/dev/null 2>&1; then
+          # A joiner performing SST (State Snapshot Transfer) runs mariadbd
+          # WITHOUT a SQL socket until the transfer completes. A large-dataset
+          # rsync/mariabackup SST can take much longer than the socketless
+          # threshold, so killing mariadbd here would abort a healthy SST,
+          # restart, and abort it again — permanent non-convergence, and each
+          # round re-blocks the donor. The Galera SST-in-progress marker
+          # (${DATA_DIR}/sst_in_progress, created by wsrep_sst_common) and a
+          # live wsrep_sst_* helper process both mean SST is underway, not a
+          # stall. Do not count these ticks toward the socketless kill.
+          NO_SOCKET_COUNT=0
         else
           NON_PRIMARY_COUNT=0
           if pgrep -x mariadbd >/dev/null 2>&1 || pidof mariadbd >/dev/null 2>&1; then
