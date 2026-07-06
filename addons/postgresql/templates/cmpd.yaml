@@ -259,7 +259,11 @@ spec:
           - bash
           - -c
           - |
-            eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+            # Expand the ${KB_ACCOUNT_NAME}/${KB_ACCOUNT_PASSWORD} placeholders
+            # without eval: bash pattern substitution treats the replacement as
+            # a literal, so credential values never go through a shell parse.
+            statement="${KB_ACCOUNT_STATEMENT//\$\{KB_ACCOUNT_NAME\}/${KB_ACCOUNT_NAME}}"
+            statement="${statement//\$\{KB_ACCOUNT_PASSWORD\}/${KB_ACCOUNT_PASSWORD}}"
             psql -h 127.0.0.1 -c "${statement}"
         env:
           - name: PGUSER
