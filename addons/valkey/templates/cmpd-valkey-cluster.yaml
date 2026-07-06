@@ -175,6 +175,15 @@ spec:
           - /bin/bash
           - -c
           - /scripts/valkey-cluster-manage.sh --post-provision
+        env:
+          # kbagent-executed actions do NOT inherit the runtime container's
+          # downward-API env — pod identity must be declared on the action
+          # itself (r2 live first-blocker; same pattern as sentinel cmpd).
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
       # preCondition is a sibling of exec (KB Action API), not an exec field
       preCondition: RuntimeReady
       retryPolicy:

@@ -186,6 +186,26 @@ Describe "Valkey cluster template contracts"
     The stdout should equal ""
   End
 
+  # kbagent-executed actions do NOT inherit the runtime container's
+  # downward-API env (r2 live first-blocker: manage script fail-fasted on
+  # missing CURRENT_POD_NAME). Pod identity must be pinned on the ACTION
+  # env itself — asserting the runtime container env is NOT sufficient.
+  action_env_has_pod_name() {
+    awk "/^    ${2}:/,/^      retryPolicy:/" "${1}" | grep -c "name: CURRENT_POD_NAME"
+  }
+
+  It "pins CURRENT_POD_NAME on the postProvision ACTION env (not just runtime)"
+    When call action_env_has_pod_name "${cmpd}" "postProvision"
+    The status should be success
+    The stdout should equal "1"
+  End
+
+  It "pins CURRENT_POD_NAME on the shardRemove ACTION env (not just runtime)"
+    When call action_env_has_pod_name "${shardingdef}" "shardRemove"
+    The status should be success
+    The stdout should equal "1"
+  End
+
   It "declares shardRemove backed by the drain-then-prove manage script"
     # Shard scale is only legal WITH the slot-drain script (the
     # shardRemove-vs-preTerminate data-safety trap): the action and the
