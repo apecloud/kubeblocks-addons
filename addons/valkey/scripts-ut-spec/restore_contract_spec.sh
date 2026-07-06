@@ -162,34 +162,20 @@ SH
     The stderr should include "ERROR: restored archive already contains AOF state"
     The stderr should include "appendonly.aof"
   End
-  It "rejects a cluster restore when target shard count differs (fail-fast)"
+  It "refuses any cluster archive outright (v1: cluster restore unsupported)"
     export FAKE_DATASAFED_CLUSTER_META=3
-    export RESTORE_TARGET_SHARDS=4
 
     When run bash ../dataprotection/restore.sh
     The status should be failure
     The stdout should include "INFO: Restoring from restore-test.tar.zst..."
-    The stderr should include "shard count mismatch"
-    The stderr should include "backup taken from 3 shard(s), target declares 4"
-  End
-
-  It "verifies and cleans cluster-meta when shard counts match"
-    export FAKE_DATASAFED_CLUSTER_META=3
-    export RESTORE_TARGET_SHARDS=3
-
-    When run bash ../dataprotection/restore.sh
-    The status should be success
-    The stdout should include "cluster restore shard count verified (3)"
+    The stderr should include "CLUSTER (sharding) backup (source_shards=3)"
+    The stderr should include "NOT supported in v1"
     The file "${data_dir}/cluster-meta" should not be exist
   End
 
-  It "warns loudly when cluster-meta exists but no target count is provided"
-    export FAKE_DATASAFED_CLUSTER_META=5
-
+  It "leaves non-cluster restores untouched by the cluster guard"
     When run bash ../dataprotection/restore.sh
     The status should be success
-    The stdout should include "WARNING"
-    The stdout should include "source_shards=5"
-    The file "${data_dir}/cluster-meta" should not be exist
+    The stdout should include "INFO: Restore complete."
   End
 End

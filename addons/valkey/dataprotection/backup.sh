@@ -20,6 +20,8 @@ set -o pipefail
 
 function handle_exit() {
   local exit_code=$?
+  # cluster-mode metadata must never remain on the live data volume
+  [ "${_cluster_meta_cleanup_needed:-0}" = "1" ] && rm -f "${DATA_DIR}/cluster-meta"
   if [ "${exit_code}" -ne 0 ]; then
     echo "ERROR: backup failed with exit code ${exit_code}" >&2
     touch "${DP_BACKUP_INFO_FILE}.exit"
@@ -143,12 +145,26 @@ if [ "${_cluster_enabled}" = "1" ]; then
     echo "ERROR: cluster mode detected but could not count source shards from CLUSTER NODES." >&2
     exit 1
   fi
-  printf 'source_shards=%s
-' "${_source_shards}" > ./cluster-meta
+  # Record THIS shard's current slot ranges too: shard count alone is not
+  # a sufficient restore precondition (post-rebalance layouts differ from
+  # the even split a re-formed cluster gets) — the ranges make the future
+  # slot-aware restore designable and keep archives self-describing.
+  _my_master_line=$("${connect_base[@]}" CLUSTER NODES 2>/dev/null | tr -d "\r" | awk '$3 ~ /myself/')
+  _my_slot_ranges=$(echo "${_my_master_line}" | cut -d' ' -f9- | tr ' ' ',')
+  {
+    printf 'source_shards=%s\n' "${_source_shards}"
+    printf 'shard_slot_ranges=%s\n' "${_my_slot_ranges}"
+  } > ./cluster-meta
   backup_files+=("./cluster-meta")
+  # cluster-meta is backup metadata, not engine data: it must not remain
+  # on the live DATA_DIR after archiving (review blocker). Cleaned right
+  # after tar below AND on failure via handle_exit (single EXIT trap —
+  # a second `trap EXIT` here would clobber handle_exit).
+  _cluster_meta_cleanup_needed=1
   echo "INFO: cluster mode — embedded cluster-meta (source_shards=${_source_shards})."
 fi
 tar -cvf - "${backup_files[@]}" | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst" || exit 1
+rm -f ./cluster-meta
 
 save_sentinel_acl || \
   echo "WARNING: Sentinel ACL save failed — ACL rules will not be restored after a cluster restore." >&2

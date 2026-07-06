@@ -72,36 +72,29 @@ seed_multipart_aof_from_rdb() {
   echo "INFO: Seeded multipart AOF manifest from restored dump.rdb."
 }
 
-# Cluster (sharding) restore guard: v1 supports SAME shard count only —
-# keys restored onto a shard that does not own their hash slots are
-# silently unreachable, so a mismatch must stop before the pod starts.
-# Enforcement is engine-truth (cluster-meta embedded at backup time)
-# compared against RESTORE_TARGET_SHARDS when the operator provides it
-# via dataprotection.kubeblocks.io/restore-env; without the env we can
-# only warn (DP jobs cannot see target sharding vars — platform gap,
-# kubeblocks#10540).
-verify_cluster_shard_count() {
+# Cluster (sharding) restore: NOT SUPPORTED in v1 — fail fast.
+#
+# Same shard count is NOT a sufficient safety condition (review, PR #3044):
+# restore re-forms the cluster (phase B) with an even slot split, but the
+# SOURCE layout may differ (any post-rebalance / scale history). Keys
+# restored onto a shard that does not own their hash slots are silently
+# unreachable, and archive->target-shard positional mapping is itself
+# unverified. Until a slot-aware restore is designed (cluster-meta already
+# records source_shards + shard_slot_ranges for exactly that), a cluster
+# archive is refused outright — refusal beats silent misplacement.
+refuse_cluster_restore() {
   local meta="${DATA_DIR}/cluster-meta" source_shards
   [ -f "${meta}" ] || return 0
   source_shards=$(grep '^source_shards=' "${meta}" | cut -d= -f2)
-  rm -f "${meta}"   # metadata, not engine data — never leave it in DATA_DIR
-  case "${source_shards}" in
-    ''|*[!0-9]*)
-      echo "ERROR: cluster-meta present but source_shards is invalid ('${source_shards}')." >&2
-      exit 1 ;;
-  esac
-  if [ -n "${RESTORE_TARGET_SHARDS:-}" ]; then
-    if [ "${RESTORE_TARGET_SHARDS}" != "${source_shards}" ]; then
-      echo "ERROR: shard count mismatch — backup taken from ${source_shards} shard(s), target declares ${RESTORE_TARGET_SHARDS}. v1 cluster restore requires the SAME shard count; refusing before any pod starts." >&2
-      exit 1
-    fi
-    echo "INFO: cluster restore shard count verified (${source_shards})."
-  else
-    echo "WARNING: cluster backup (source_shards=${source_shards}) restored without RESTORE_TARGET_SHARDS — same-shard-count is the operator's responsibility; set it via restore-env to enforce."
-  fi
+  rm -f "${meta}"
+  echo "ERROR: this archive is a Valkey CLUSTER (sharding) backup (source_shards=${source_shards})." >&2
+  echo "  Cluster datafile restore is NOT supported in v1: restored slot layouts cannot yet be" >&2
+  echo "  guaranteed to match the source (slot-aware restore is a planned follow-up; the archive" >&2
+  echo "  already records shard_slot_ranges for it). Refusing before any pod starts." >&2
+  exit 1
 }
 
-verify_cluster_shard_count
+refuse_cluster_restore
 
 seed_multipart_aof_from_rdb
 

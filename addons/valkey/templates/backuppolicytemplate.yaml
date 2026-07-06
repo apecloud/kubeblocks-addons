@@ -78,11 +78,16 @@ spec:
 # archived — it is cluster identity and must be regenerated on restore.
 #
 # v1 restore compatibility matrix:
-#   same shard count                     -> supported (positional mapping)
-#   different shard count                -> REJECTED at prepareData when
-#                                           RESTORE_TARGET_SHARDS is set via
-#                                           restore-env; else operator's
-#                                           responsibility (loud WARNING)
+#   ANY cluster datafile restore         -> NOT SUPPORTED (refused at
+#                                           prepareData before pods start):
+#                                           same shard count is not a
+#                                           sufficient condition — source
+#                                           slot layouts (post-rebalance)
+#                                           cannot be guaranteed to match a
+#                                           re-formed cluster's even split.
+#                                           Archives record source_shards +
+#                                           shard_slot_ranges so the planned
+#                                           slot-aware restore can be built.
 #   cluster <-> replication/standalone   -> unsupported
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
