@@ -44,7 +44,7 @@ The fixed-address HA image must provide at least:
 - a writable `/home/yashan/mydb` mount owned or prepared for `yashan`;
 - compatibility with the addon `fixed-ha-bootstrap.sh`, `check_alive.sh`, and `check_role.sh` scripts.
 
-The current `ComponentDefinition` revision is `yashandb-1.2.0-alpha.0`. Earlier alpha revisions remain development history only. This revision keeps fixed-address HA opt-in and restores the default image to the standalone image, so fixed-address HA installs must explicitly override the image with a yasboot-capable image. Do not patch immutable `ComponentDefinition` runtime, script, config, service, or image fields in place.
+The current `ComponentDefinition` revision is `yashandb-1.2.0-alpha.1`. Earlier alpha revisions remain development history only. This revision keeps fixed-address HA opt-in and restores the default image to the standalone image, so fixed-address HA installs must explicitly override the image with a yasboot-capable image. Do not patch immutable `ComponentDefinition` runtime, script, config, service, or image fields in place.
 
 ## Not Claimed
 
