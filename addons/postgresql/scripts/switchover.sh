@@ -24,49 +24,140 @@ load_common_library() {
   source "${common_library_file}"
 }
 
-switchover_with_candidate() {
-  local current_pod_fqdn=$1
-  local current_primary_pod_name=$2
-  # shellcheck disable=SC2034
-  local candidate_pod_name=$3
-  # TODO: check the role in kernel before switchover
-  echo "Current pod: ${current_pod_fqdn} perform switchover with candidate. Leader: ${current_primary_pod_name}, Candidate: ${candidate_pod_name}"
-  switchover_output=$(curl -s "http://127.0.0.1:8008/switchover" -XPOST -d "{\"leader\":\"${current_primary_pod_name}\",\"candidate\":\"${candidate_pod_name}\"}")
-  echo "Switchover with candidate output: ${switchover_output}"
-  # TODO: check switchover result
+# Bounded-wait budget (kbagent clamps every action call at 60s):
+#   leader query  : curl -m 5
+#   switchover API: curl -m 20 (patroni blocks until the switchover attempt finishes)
+#   verification  : up to 4 attempts x (curl -m 3 + sleep 2) ~= 20s
+# worst case ~= 45s, leaving a buffer under the cmpd timeoutSeconds of 50.
+SWITCHOVER_VERIFY_ATTEMPTS=${SWITCHOVER_VERIFY_ATTEMPTS:-4}
+SWITCHOVER_VERIFY_INTERVAL=${SWITCHOVER_VERIFY_INTERVAL:-2}
+
+switchover_diagnose_not_ready() {
+  local phase=$1
+  local ctx=$2
+  local retry_safe=$3
+  {
+    echo "switchover diagnosis:"
+    echo "  action: switchover"
+    echo "  phase: ${phase}"
+    echo "${ctx}"
+    echo "  next-retry-safe: ${retry_safe}"
+  } >&2
 }
 
-switchover_without_candidate() {
-  local current_pod_fqdn=$1
-  # shellcheck disable=SC2034
-  local current_primary_pod_name=$2
-  # TODO: check the role in kernel before switchover
-  echo "Current pod: ${current_pod_fqdn} perform switchover without candidate. Leader: ${current_primary_pod_name}"
-  switchover_output=$(curl -s "http://127.0.0.1:8008/switchover" -XPOST -d "{\"leader\":\"${current_primary_pod_name}\"}")
-  echo "Switchover without candidate output: ${switchover_output}"
-  # TODO: check switchover result
+# Prints the name of the current leader as seen by patroni. Matches both
+# "leader" and "standby_leader" so switchover works in standby clusters too.
+get_current_leader() {
+  curl -s -m 5 http://localhost:8008/cluster 2>/dev/null \
+    | jq -r '[.members[] | select(.role == "leader" or .role == "standby_leader") | .name] | first // empty' 2>/dev/null
+}
+
+# Sends the switchover request to patroni and fails on connection errors or
+# non-2xx responses instead of swallowing them.
+request_switchover() {
+  local leader=$1
+  local candidate=$2
+  local payload response http_code body
+
+  if [ -n "${candidate}" ]; then
+    payload="{\"leader\":\"${leader}\",\"candidate\":\"${candidate}\"}"
+  else
+    payload="{\"leader\":\"${leader}\"}"
+  fi
+
+  if ! response=$(curl -s -m 20 -w "\n%{http_code}" -XPOST -d "${payload}" "http://127.0.0.1:8008/switchover"); then
+    switchover_diagnose_not_ready "switchover-api-unreachable" "  leader: ${leader}" "yes"
+    return 1
+  fi
+  http_code=$(printf '%s\n' "${response}" | tail -n 1)
+  body=$(printf '%s\n' "${response}" | sed '$d')
+  echo "Switchover API response (HTTP ${http_code}): ${body}"
+  case "${http_code}" in
+    2*)
+      return 0
+      ;;
+    5*)
+      # e.g. patroni 503 "switchover is not possible" while replicas catch up
+      switchover_diagnose_not_ready "switchover-rejected" "  http_code: ${http_code}
+  response: ${body}" "yes"
+      return 1
+      ;;
+    *)
+      switchover_diagnose_not_ready "switchover-rejected" "  http_code: ${http_code}
+  response: ${body}" "no"
+      return 1
+      ;;
+  esac
+}
+
+# Positively confirms the switchover result: leadership must have left the old
+# leader, and when a candidate was requested it must be the new leader.
+verify_switchover() {
+  local old_leader=$1
+  local candidate=$2
+  local attempt new_leader
+
+  for attempt in $(seq 1 "${SWITCHOVER_VERIFY_ATTEMPTS}"); do
+    new_leader=$(get_current_leader)
+    if [ -n "${new_leader}" ] && [ "${new_leader}" != "${old_leader}" ]; then
+      if [ -n "${candidate}" ] && [ "${new_leader}" != "${candidate}" ]; then
+        switchover_diagnose_not_ready "switchover-wrong-leader" "  expected_leader: ${candidate}
+  observed_leader: ${new_leader}" "no"
+        return 1
+      fi
+      echo "Switchover verified: new leader is ${new_leader}"
+      return 0
+    fi
+    echo "Switchover not confirmed yet (attempt ${attempt}/${SWITCHOVER_VERIFY_ATTEMPTS}, observed leader: ${new_leader:-<none>})"
+    sleep "${SWITCHOVER_VERIFY_INTERVAL}"
+  done
+
+  switchover_diagnose_not_ready "switchover-not-confirmed" "  old_leader: ${old_leader}
+  observed_leader: ${new_leader:-<none>}
+  attempts: ${SWITCHOVER_VERIFY_ATTEMPTS}" "yes"
+  return 1
 }
 
 switchover() {
-
-  POSTGRES_PRIMARY_POD_NAME=$(curl -s http://localhost:8008/cluster | jq -r '.members[] | select (.role == "leader") | .name')
-
   # CURRENT_POD_NAME defined in the switchover action env
   if is_empty "$CURRENT_POD_NAME" ; then
     echo "CURRENT_POD_NAME is not set. Exiting..."
     exit 1
   fi
 
+  POSTGRES_PRIMARY_POD_NAME=$(get_current_leader)
+  if is_empty "$POSTGRES_PRIMARY_POD_NAME"; then
+    switchover_diagnose_not_ready "leader-not-resolved" "  detail: cannot determine current leader from patroni /cluster" "yes"
+    exit 1
+  fi
+
   if [[ $POSTGRES_PRIMARY_POD_NAME != "$CURRENT_POD_NAME" ]]; then
-    echo "switchover action not triggered for non-primary pod. Exiting."
+    # KubeBlocks invoked the action on the pod it believes is primary, but
+    # patroni disagrees. Only report success when the desired end state is
+    # already positively observed.
+    if ! is_empty "$KB_SWITCHOVER_CANDIDATE_NAME"; then
+      if [[ $POSTGRES_PRIMARY_POD_NAME == "$KB_SWITCHOVER_CANDIDATE_NAME" ]]; then
+        echo "Switchover already completed: current leader is the candidate ${KB_SWITCHOVER_CANDIDATE_NAME}. Exiting."
+        exit 0
+      fi
+      switchover_diagnose_not_ready "leader-mismatch" "  current_pod: ${CURRENT_POD_NAME}
+  observed_leader: ${POSTGRES_PRIMARY_POD_NAME}
+  candidate: ${KB_SWITCHOVER_CANDIDATE_NAME}" "no"
+      exit 1
+    fi
+    echo "Leadership already moved to ${POSTGRES_PRIMARY_POD_NAME}; nothing to do for ${CURRENT_POD_NAME}. Exiting."
     exit 0
   fi
 
   # KB_SWITCHOVER_CANDIDATE_NAME is built-in env in the switchover action injected by the KubeBlocks controller
   if ! is_empty "$KB_SWITCHOVER_CANDIDATE_NAME"; then
-    switchover_with_candidate "$CURRENT_POD_NAME" "$POSTGRES_PRIMARY_POD_NAME" "$KB_SWITCHOVER_CANDIDATE_NAME"
+    echo "Current pod: ${CURRENT_POD_NAME} performs switchover. Leader: ${POSTGRES_PRIMARY_POD_NAME}, Candidate: ${KB_SWITCHOVER_CANDIDATE_NAME}"
+    request_switchover "$POSTGRES_PRIMARY_POD_NAME" "$KB_SWITCHOVER_CANDIDATE_NAME" || exit 1
+    verify_switchover "$POSTGRES_PRIMARY_POD_NAME" "$KB_SWITCHOVER_CANDIDATE_NAME" || exit 1
   else
-    switchover_without_candidate "$CURRENT_POD_NAME" "$POSTGRES_PRIMARY_POD_NAME"
+    echo "Current pod: ${CURRENT_POD_NAME} performs switchover without candidate. Leader: ${POSTGRES_PRIMARY_POD_NAME}"
+    request_switchover "$POSTGRES_PRIMARY_POD_NAME" "" || exit 1
+    verify_switchover "$POSTGRES_PRIMARY_POD_NAME" "" || exit 1
   fi
 }
 
