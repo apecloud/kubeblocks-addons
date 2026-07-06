@@ -33,11 +33,11 @@ sync_default_user_password() {
 }
 
 sync_default_user_password_until_ready() {
-  attempts="${RABBITMQ_PASSWORD_SYNC_ATTEMPTS:-60}"
+  attempts="${RABBITMQ_PASSWORD_SYNC_ATTEMPTS:-0}"
   interval="${RABBITMQ_PASSWORD_SYNC_INTERVAL_SECONDS:-2}"
   i=0
 
-  while [ "$i" -lt "$attempts" ]; do
+  while [ "$attempts" -le 0 ] || [ "$i" -lt "$attempts" ]; do
     if sync_default_user_password; then
       return 0
     fi
@@ -45,7 +45,7 @@ sync_default_user_password_until_ready() {
     sleep "$interval"
   done
 
-  echo "WARN: RabbitMQ default user password sync did not complete before timeout" >&2
+  echo "WARN: RabbitMQ default user password sync did not complete after ${attempts} attempts" >&2
   return 1
 }
 
