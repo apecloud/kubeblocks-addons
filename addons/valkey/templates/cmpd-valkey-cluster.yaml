@@ -175,7 +175,8 @@ spec:
           - /bin/bash
           - -c
           - /scripts/valkey-cluster-manage.sh --post-provision
-        precondition: RuntimeReady
+      # preCondition is a sibling of exec (KB Action API), not an exec field
+      preCondition: RuntimeReady
       retryPolicy:
         maxRetries: 20
         retryInterval: 5

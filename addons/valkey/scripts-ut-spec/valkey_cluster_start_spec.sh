@@ -170,6 +170,22 @@ Describe "Valkey cluster template contracts"
     The status should be failure
   End
 
+  It "wires postProvision preCondition at the action level (KB Action API shape)"
+    # Live install first-blocker (kubeblocks-tests #583): 'precondition'
+    # nested under exec is not a CRD field and fails addon install. The
+    # correct shape is action-level 'preCondition', a SIBLING of exec —
+    # same as the sentinel cmpd prior art.
+    When call grep -c "^      preCondition: RuntimeReady" "${cmpd}"
+    The status should be success
+    The stdout should equal "1"
+  End
+
+  It "carries no exec-nested lowercase 'precondition:' anywhere in the cluster cmpd"
+    When call grep -E "precondition:" "${cmpd}"
+    The status should be failure
+    The stdout should equal ""
+  End
+
   It "declares shardRemove backed by the drain-then-prove manage script"
     # Shard scale is only legal WITH the slot-drain script (the
     # shardRemove-vs-preTerminate data-safety trap): the action and the
