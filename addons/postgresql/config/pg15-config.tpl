@@ -241,7 +241,7 @@ ssl_ca_file = '/etc/pki/tls/ca.pem'
 ssl_cert_file = '/etc/pki/tls/cert.pem'
 ssl_key_file = '/etc/pki/tls/key.pem'
 {{- end }}
-ssl_min_protocol_version = 'TLSv1'
+ssl_min_protocol_version = 'TLSv1.2'
 standard_conforming_strings = 'True'
 statement_timeout = '0'
 superuser_reserved_connections = '20'
