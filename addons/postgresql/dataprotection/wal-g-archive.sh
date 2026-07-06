@@ -113,14 +113,6 @@ function save_backup_status() {
 function uploadDoneHistoryWALs() {
   DP_log "Checking for historical .history files with .done status to upload..."
 
-  # Build environment variables command prefix without affecting global env
-  env_cmd_prefix="env"
-  while read -r env_file; do
-    env_name=$(basename "$env_file")
-    env_value=$(cat "$env_file")
-    env_cmd_prefix="$env_cmd_prefix $env_name=\"$env_value\""
-  done < <(find "${VOLUME_DATA_DIR}/wal-g/env" -type f)
-
   # Find all .done status files for .history files in archive_status directory
   for done_file in $(find "${LOG_DIR}/archive_status/" -name "*.history.done" -type f | sort); do
     history_name=$(basename "$done_file" .done)
@@ -128,8 +120,10 @@ function uploadDoneHistoryWALs() {
 
     # Check if the actual .history file still exists
     if [ -f "$history_path" ]; then
-      # Try upload with WAL-G
-      eval ${env_cmd_prefix} ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push "${history_path}"
+      # Try upload with WAL-G. envdir reads the env files directly: no shell
+      # re-parse of values, no passphrase on the command line (same pattern as
+      # the archive_command in backuppolicytemplate.yaml).
+      envdir "${VOLUME_DATA_DIR}/wal-g/env" "${VOLUME_DATA_DIR}/wal-g/wal-g" wal-push "${history_path}"
       exit_code=$?
       if [ "$exit_code" -eq 0 ]; then
         DP_log "Successfully uploaded file: ${history_name}"
@@ -148,14 +142,6 @@ function uploadDoneHistoryWALs() {
 # Uses a tracking file system to prevent continuous retries on problem files.
 # If upload fails, we keep the tracking file and only retry after UPLOAD_MISSING_LOGS_RETRY_INTERVAL minutes.
 function uploadMissingLogs() {
-  # Build environment variables command prefix without affecting global env
-  env_cmd_prefix="env"
-  while read -r env_file; do
-    env_name=$(basename "$env_file")
-    env_value=$(cat "$env_file")
-    env_cmd_prefix="$env_cmd_prefix $env_name=\"$env_value\""
-  done < <(find "${VOLUME_DATA_DIR}/wal-g/env" -type f)
-
   # Now iterate through ready WAL files and push them
   for ready_file in $(find "${LOG_DIR}/archive_status/" -name "*.ready" -type f | sort); do
     i=$(basename "$ready_file")
@@ -174,8 +160,9 @@ function uploadMissingLogs() {
     fi
     touch "$tracking_file"
 
-    # Try upload with WAL-G using the env command to avoid affecting global variables
-    eval ${env_cmd_prefix} ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push ${LOG_DIR}/${wal_name}
+    # Try upload with WAL-G. envdir reads the env files directly: no shell
+    # re-parse of values, no passphrase on the command line.
+    envdir "${VOLUME_DATA_DIR}/wal-g/env" "${VOLUME_DATA_DIR}/wal-g/wal-g" wal-push "${LOG_DIR}/${wal_name}"
     exit_code=$?
 
     # Check if rename succeeded by checking if .ready file still exists
