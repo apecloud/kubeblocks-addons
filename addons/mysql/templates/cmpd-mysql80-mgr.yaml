@@ -8,7 +8,7 @@ metadata:
     {{- include "mysql.annotations" . | nindent 4 }}
 spec:
   {{- include "mysql.spec.common" . | nindent 2 }}
-  serviceVersion: 8.0.33
+  serviceVersion: 8.0.46
   configs:
     - name: mysql-replication-config
       template: mysql-8.0-mgr-config-template
