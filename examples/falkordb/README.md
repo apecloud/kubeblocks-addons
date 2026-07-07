@@ -721,12 +721,14 @@ You may change the number of shards and replicas in the yaml file.
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
+  clusterDef: falkordb
+  topology: cluster
   shardings:
   - name: shard
+    shardingDef: falkordb-cluster
     shards: 3  # set the desired number of shards.
     template:
       name: falkordb
-      componentDef: falkordb-cluster-4
       replicas: 2 # set the desired number of replicas for each shard.
       serviceVersion: 4.12.5
       # Component-level services override services defined in
@@ -755,12 +757,14 @@ Similarly to add or remove shards, you can update the `shardings` field in the `
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
+  clusterDef: falkordb
+  topology: cluster
   shardings:
   - name: shard
+    shardingDef: falkordb-cluster
     shards: 3 # increase or decrease the number of shards.
     template:
       name: falkordb
-      componentDef: falkordb-cluster-4
       replicas: 2 # set the desired number of replicas for each shard.
       serviceVersion: 4.12.5
       stop: false # set to `true` to stop all components
