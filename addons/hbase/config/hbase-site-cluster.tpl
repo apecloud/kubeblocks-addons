@@ -77,11 +77,6 @@
     </property>
 
     <property>
-        <name>hbase.regionserver.hostname</name>
-        <value>{{ .POD_FQDN }}</value>
-    </property>
-
-    <property>
         <name>hbase.regionserver.hostname.disable.master.reversedns</name>
         <value>true</value>
     </property>
