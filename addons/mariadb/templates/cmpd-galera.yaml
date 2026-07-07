@@ -12,7 +12,17 @@ spec:
   serviceKind: mariadb
   serviceVersion: {{ .Values.defaultServiceVersion.galera }}
   updateStrategy: Serial
-  podManagementPolicy: Parallel
+  # OrderedReady makes Stop and scale-in delete instances strictly one at a
+  # time, highest ordinal first, waiting for each pod to fully terminate
+  # before deleting the next — pod-0 shuts down last, as the final Primary
+  # Component member, so Galera grants it grastate safe_to_bootstrap=1 and
+  # the next Start can bootstrap automatically. Parallel deletion killed all
+  # members concurrently: the cluster never shrank to a last member, every
+  # grastate ended safe_to_bootstrap=0, and the (correct) fail-closed
+  # should_bootstrap refusal left Stop/Start permanently in manual recovery.
+  # Creation also becomes sequential, which matches Galera anyway: joiners
+  # SST from a donor one at a time.
+  podManagementPolicy: OrderedReady
   exporter:
     containerName: exporter
     scrapePath: /metrics

@@ -80,8 +80,8 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
   MEMBER_JOIN="${ADDON_ROOT}/scripts/replication-member-join.sh"
 
   Describe "Gate 1: Chart.yaml literal version"
-    It "is exactly 1.2.0-alpha.26 (alpha.26 bump: replication merged topology)"
-      When call grep -c '^version: 1.2.0-alpha.26$' "${CHART_YAML}"
+    It "is exactly 1.2.0-alpha.29 (alpha.29 bump: galera OrderedReady stop ordering)"
+      When call grep -c '^version: 1.2.0-alpha.29$' "${CHART_YAML}"
       The output should eq "1"
       The status should be success
     End
