@@ -17,6 +17,26 @@ if echo "${paramName}" | grep -q "^loose_"; then
 fi
 paramName=$(echo "${paramName}" | tr '-' '_')
 
+# MySQL 8.4 removed several system variables. Reject a reconfigure of any of
+# them BEFORE the SET GLOBAL / config write, so it fails explicitly with a
+# clear reason instead of silently landing in my.cnf and crash-looping the
+# instance on the next restart. The SET GLOBAL unknown-variable error below is
+# a backstop; this by-name check makes the rejection deterministic and visible.
+mysql_84_removed_vars="expire_logs_days default_authentication_plugin binlog_transaction_dependency_tracking transaction_write_set_extraction slave_rows_search_algorithms master_info_repository relay_log_info_repository log_bin_use_v1_row_events"
+server_version=$(mysql_exec "SELECT VERSION();" 2>/dev/null | head -n1)
+server_major=$(echo "${server_version}" | cut -d. -f1)
+server_minor=$(echo "${server_version}" | cut -d. -f2)
+if [[ "${server_major}" =~ ^[0-9]+$ ]] && [[ "${server_minor}" =~ ^[0-9]+$ ]]; then
+    if [ "${server_major}" -gt 8 ] || { [ "${server_major}" -eq 8 ] && [ "${server_minor}" -ge 4 ]; }; then
+        for removed in ${mysql_84_removed_vars}; do
+            if [ "${paramName}" = "${removed}" ]; then
+                echo "Parameter ${paramName} was removed in MySQL 8.4 and cannot be set on server version ${server_version}; rejecting reconfigure." >&2
+                exit 1
+            fi
+        done
+    fi
+fi
+
 var_int=-1
 if [[ "${paramValue}" =~ ^[0-9]+$ ]]; then
     var_int="${paramValue}"
