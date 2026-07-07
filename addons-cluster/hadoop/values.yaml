@@ -72,6 +72,7 @@ hdfs:
   registration:
     ipHostnameCheck: false
   ha:
+    nameNodeIds: "nn0,nn1"
     automaticFailoverEnabled: true
     fencingMethods: "sshfence\nshell(/bin/true)"
     zookeeper:

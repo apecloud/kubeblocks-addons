@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
 
-{{- $name_node_ids := splitList "," (include "hadoop.haNameNodeIds" .) }}
+{{- $name_node_ids := splitList "," .HDFS_HA_NAMENODE_IDS }}
 <configuration>
     <property>
         <name>dfs.nameservices</name>
@@ -61,16 +61,16 @@
     <property>
         <name>dfs.ha.namenodes.{{- .CLUSTER_NAME }}</name>
         <value>{{ join "," $name_node_ids }}</value>
-    </property> {{- range $nn_id :=
+    </property> {{- range $nn_ordinal, $nn_id :=
     $name_node_ids }} <property>
         <name>dfs.namenode.rpc-address.{{- $.CLUSTER_NAME }}.{{ $nn_id }}</name>
-        <value>{{- $.CLUSTER_NAME }}-namenode-{{ trimPrefix "nn" $nn_id }}.{{- $.CLUSTER_NAME
+        <value>{{- $.CLUSTER_NAME }}-namenode-{{ $nn_ordinal }}.{{- $.CLUSTER_NAME
     }}-namenode-headless.{{-
             $.NAMESPACE }}.svc.{{- $.CLUSTER_DOMAIN }}:{{- $.HDFS_NAMENODE_RPC_PORT }}</value>
     </property>
-    {{- end }} {{- range $nn_id := $name_node_ids }} <property>
+    {{- end }} {{- range $nn_ordinal, $nn_id := $name_node_ids }} <property>
         <name>dfs.namenode.http-address.{{- $.CLUSTER_NAME }}.{{ $nn_id }}</name>
-        <value>{{- $.CLUSTER_NAME }}-namenode-{{ trimPrefix "nn" $nn_id }}.{{- $.CLUSTER_NAME
+        <value>{{- $.CLUSTER_NAME }}-namenode-{{ $nn_ordinal }}.{{- $.CLUSTER_NAME
     }}-namenode-headless.{{-
             $.NAMESPACE }}.svc.{{- $.CLUSTER_DOMAIN }}:{{- $.HDFS_NAMENODE_HTTP_PORT }}</value>
     </property>

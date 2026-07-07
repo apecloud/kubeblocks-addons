@@ -1,10 +1,14 @@
 {{- $isCluster := eq .Values.topology "cluster" }}
 {{- $isStandalone := eq .Values.topology "standalone" }}
+{{- $haNameNodeIds := splitList "," .Values.hdfs.ha.nameNodeIds }}
 {{- if not (or $isCluster $isStandalone) }}
 {{- fail "topology must be either 'cluster' or 'standalone'" }}
 {{- end }}
 {{- if and $isCluster (ne (.Values.replicas.namenode | int) 2) }}
 {{- fail "cluster topology requires replicas.namenode = 2; this addon currently supports only active/standby NameNode HA" }}
+{{- end }}
+{{- if and $isCluster (ne (len $haNameNodeIds) 2) }}
+{{- fail "cluster topology requires exactly 2 hdfs.ha.nameNodeIds entries while active/standby NameNode HA is enforced" }}
 {{- end }}
 {{- include "hadoop-cluster.clusterCommon" . }}
   clusterDef: hadoop
@@ -28,6 +32,7 @@
             HDFS_IPC_CLIENT_CONNECT_RETRY_INTERVAL_MS: {{ .Values.hdfs.ipc.clientConnectRetryIntervalMs | quote }}
             HDFS_IPC_CLIENT_PING: {{ .Values.hdfs.ipc.clientPing | quote }}
             HDFS_IPC_PING_INTERVAL_MS: {{ .Values.hdfs.ipc.pingIntervalMs | quote }}
+            HDFS_HA_NAMENODE_IDS: {{ .Values.hdfs.ha.nameNodeIds | quote }}
         - name: journalnode-config
           variables:
             HDFS_JOURNALNODE_EDITS_DIR: {{ .Values.hdfs.paths.journalnodeEditsDir | quote }}
@@ -88,6 +93,7 @@
             HDFS_IPC_CLIENT_CONNECT_RETRY_INTERVAL_MS: {{ .Values.hdfs.ipc.clientConnectRetryIntervalMs | quote }}
             HDFS_IPC_CLIENT_PING: {{ .Values.hdfs.ipc.clientPing | quote }}
             HDFS_IPC_PING_INTERVAL_MS: {{ .Values.hdfs.ipc.pingIntervalMs | quote }}
+            HDFS_HA_NAMENODE_IDS: {{ .Values.hdfs.ha.nameNodeIds | quote }}
 {{- if $isCluster }}
             HDFS_HA_ZOOKEEPER_SESSION_TIMEOUT_MS: {{ .Values.hdfs.ha.zookeeper.sessionTimeoutMs | quote }}
 {{- else }}
@@ -110,6 +116,7 @@
             HDFS_HA_FENCING_METHODS: {{ .Values.hdfs.ha.fencingMethods | quote }}
             HDFS_HA_ZOOKEEPER_SESSION_TIMEOUT_MS: {{ .Values.hdfs.ha.zookeeper.sessionTimeoutMs | quote }}
             HDFS_HA_ZOOKEEPER_OPERATION_RETRIES: {{ .Values.hdfs.ha.zookeeper.operationRetries | quote }}
+            HDFS_HA_NAMENODE_IDS: {{ .Values.hdfs.ha.nameNodeIds | quote }}
 {{- else }}
             HDFS_REPLICATION: "1"
             HDFS_REPLICATION_MAX: "1"
@@ -160,6 +167,7 @@
             HDFS_IPC_CLIENT_CONNECT_RETRY_INTERVAL_MS: {{ .Values.hdfs.ipc.clientConnectRetryIntervalMs | quote }}
             HDFS_IPC_CLIENT_PING: {{ .Values.hdfs.ipc.clientPing | quote }}
             HDFS_IPC_PING_INTERVAL_MS: {{ .Values.hdfs.ipc.pingIntervalMs | quote }}
+            HDFS_HA_NAMENODE_IDS: {{ .Values.hdfs.ha.nameNodeIds | quote }}
 {{- if not $isCluster }}
             HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.ports.namenode.rpc | quote }}
 {{- end }}
@@ -170,6 +178,7 @@
             HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.ports.namenode.http | quote }}
             HDFS_DATANODE_HANDLER_COUNT: {{ .Values.hdfs.datanode.handlerCount | quote }}
             HDFS_PERMISSIONS_ENABLED: {{ .Values.hdfs.permissions.enabled | quote }}
+            HDFS_HA_NAMENODE_IDS: {{ .Values.hdfs.ha.nameNodeIds | quote }}
 {{- if $isCluster }}
             HDFS_REPLICATION: {{ .Values.hdfs.replication | quote }}
             HDFS_REPLICATION_MAX: {{ .Values.hdfs.replicationMax | quote }}

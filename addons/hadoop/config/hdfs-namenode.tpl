@@ -4,7 +4,7 @@
 {{- $fqnds := splitList "," .JOURNALNODE_POD_FQDN_LIST }}
 {{- $journalnode_fqdns := printf "qjournal://" }}
 {{- $journalnode_rpc_port := .HDFS_JOURNALNODE_RPC_PORT }}
-{{- $name_node_ids := splitList "," (include "hadoop.haNameNodeIds" .) }}
+{{- $name_node_ids := splitList "," .HDFS_HA_NAMENODE_IDS }}
 {{- range $i, $fqdn := $fqnds }}
 {{- $journalnode_fqdns = printf "%s%s:%s" $journalnode_fqdns $fqdn $journalnode_rpc_port }}
 {{- if lt $i (sub (len $fqnds) 1) }}
@@ -27,25 +27,20 @@
     <property>
         <name>dfs.ha.namenodes.{{- .CLUSTER_NAME }}</name>
         <value>{{ join "," $name_node_ids }}</value>
-    </property>
-
-{{- range $nn_id := $name_node_ids }}
-    <property>
+    </property> {{- range $nn_ordinal, $nn_id :=
+    $name_node_ids }} <property>
         <name>dfs.namenode.rpc-address.{{- $.CLUSTER_NAME }}.{{ $nn_id }}</name>
-        <value>{{- $.CLUSTER_NAME }}-namenode-{{ trimPrefix "nn" $nn_id }}.{{- $.CLUSTER_NAME }}-namenode-headless.{{-
+        <value>{{- $.CLUSTER_NAME }}-namenode-{{ $nn_ordinal }}.{{- $.CLUSTER_NAME
+    }}-namenode-headless.{{-
             $.NAMESPACE }}.svc.{{- $.CLUSTER_DOMAIN }}:{{- $.HDFS_NAMENODE_RPC_PORT }}</value>
     </property>
-{{- end }}
-
-{{- range $nn_id := $name_node_ids }}
-    <property>
+    {{- end }} {{- range $nn_ordinal, $nn_id := $name_node_ids }} <property>
         <name>dfs.namenode.http-address.{{- $.CLUSTER_NAME }}.{{ $nn_id }}</name>
-        <value>{{- $.CLUSTER_NAME }}-namenode-{{ trimPrefix "nn" $nn_id }}.{{- $.CLUSTER_NAME }}-namenode-headless.{{-
+        <value>{{- $.CLUSTER_NAME }}-namenode-{{ $nn_ordinal }}.{{- $.CLUSTER_NAME
+    }}-namenode-headless.{{-
             $.NAMESPACE }}.svc.{{- $.CLUSTER_DOMAIN }}:{{- $.HDFS_NAMENODE_HTTP_PORT }}</value>
     </property>
-{{- end }}
-
-    <property>
+    {{- end }} <property>
         <name>dfs.namenode.rpc-bind-host</name>
         <value>0.0.0.0</value>
     </property>

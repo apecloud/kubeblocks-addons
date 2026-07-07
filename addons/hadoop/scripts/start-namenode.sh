@@ -30,7 +30,7 @@ bootstrap_standby_if_needed() {
   ordinal="${pod_name##*-}"
   [[ "$ordinal" == "$pod_name" ]] && ordinal="${host_name##*-}"
 
-  # ponytail: 当前 addon 的 HA 语义固定为双 NameNode，standby ordinal 集中在这里；扩展更多 NN 时再引入显式 nnId 映射。
+  # ponytail: 当前 addon 的 HA 语义固定为双 NameNode，standby ordinal 集中在这里；扩展更多 NN 时再引入 observer/多角色编排。
   [[ "$ordinal" == "${HDFS_HA_STANDBY_ORDINAL}" ]] || return 0
 
   nameservices=$("${HADOOP_HOME}/bin/hdfs" getconf -confKey dfs.nameservices 2>/dev/null || echo "")
@@ -50,14 +50,16 @@ bootstrap_standby_if_needed() {
     return 0
   fi
 
-  peer_id=""
-  for nn_id in $(echo "${HDFS_HA_NAMENODE_IDS}" | tr ',' '\n'); do
-    if [[ "$nn_id" != "nn${ordinal}" ]]; then
-      peer_id="$nn_id"
-      break
-    fi
-  done
-  [[ -n "$peer_id" ]] || peer_id="nn0"
+  IFS=',' read -r -a nn_id_array <<< "${HDFS_HA_NAMENODE_IDS}"
+  if [[ "${#nn_id_array[@]}" -lt 2 ]]; then
+    echo "[$(date)] HDFS_HA_NAMENODE_IDS must contain two entries for active/standby HA" >&2
+    return 1
+  fi
+  if [[ "$ordinal" == "0" ]]; then
+    peer_id="${nn_id_array[1]}"
+  else
+    peer_id="${nn_id_array[0]}"
+  fi
   peer_rpc=$("${HADOOP_HOME}/bin/hdfs" getconf -confKey "dfs.namenode.rpc-address.${nameservices}.${peer_id}" 2>/dev/null || echo "")
   peer_host="${peer_rpc%:*}"
   if [[ -z "$peer_host" || "$peer_host" == "$peer_rpc" ]]; then

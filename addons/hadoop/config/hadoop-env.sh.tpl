@@ -6,6 +6,7 @@ export HADOOP_PID_DIR=${HADOOP_PID_DIR:-/tmp/hadoop}
 export HADOOP_IDENT_STRING=${HADOOP_IDENT_STRING:-$USER}
 
 export HADOOP_OPTS="${HADOOP_OPTS} -Djava.net.preferIPv4Stack=true -Dsun.net.inetaddr.ttl=10 -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:ParallelGCThreads=8"
+export HDFS_HA_NAMENODE_IDS="${HDFS_HA_NAMENODE_IDS:-{{ .HDFS_HA_NAMENODE_IDS }}}"
 
 export HDFS_NAMENODE_OPTS="${HDFS_NAMENODE_OPTS:-} -Xms{{ .HDFS_NAMENODE_HEAP }} -Xmx{{ .HDFS_NAMENODE_HEAP }} -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dhadoop.security.logger=INFO,RFAS -Dhdfs.audit.logger=INFO,NullAppender"
 

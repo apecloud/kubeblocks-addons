@@ -71,13 +71,6 @@ Component definition regex patterns
 {{- end }}
 
 {{/*
-HA NameNode ids for the current addon implementation.
-*/}}
-{{- define "hadoop.haNameNodeIds" -}}
-nn0,nn1
-{{- end }}
-
-{{/*
 Image references
 */}}
 {{- define "hadoop.commonImage" -}}
