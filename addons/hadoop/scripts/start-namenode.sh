@@ -16,6 +16,69 @@ mkdir -p "${HADOOP_LOG_DIR}" "${HADOOP_PID_DIR}" "${LIFECYCLE_DIR}"
 USER=$(whoami)
 LOG_FILE="${HADOOP_LOG_DIR}/hadoop-${USER}-namenode-$(hostname).log"
 
+# 仅在 standby ordinal 上执行 bootstrapStandby，避免与 OrderedReady 启动顺序冲突。
+bootstrap_standby_if_needed() {
+  local pod_name host_name ordinal nameservices nn_ids peer_id peer_rpc peer_host
+  local name_dirs nn_dir nn_current_dir
+
+  pod_name="${POD_NAME:-$(hostname)}"
+  host_name="$(hostname)"
+  ordinal="${pod_name##*-}"
+  [[ "$ordinal" == "$pod_name" ]] && ordinal="${host_name##*-}"
+
+  # ponytail: 当前 HA 只支持双 NameNode，standby 固定为 ordinal 1；如后续拓扑扩展，再显式映射 nnId。
+  [[ "$ordinal" == "1" ]] || return 0
+
+  nameservices=$("${HADOOP_HOME}/bin/hdfs" getconf -confKey dfs.nameservices 2>/dev/null || echo "")
+  [[ -n "$nameservices" ]] || return 0
+
+  nn_ids=$("${HADOOP_HOME}/bin/hdfs" getconf -confKey "dfs.ha.namenodes.${nameservices}" 2>/dev/null || echo "")
+  [[ "$nn_ids" == *","* ]] || return 0
+
+  name_dirs=$("${HADOOP_HOME}/bin/hdfs" getconf -confKey dfs.namenode.name.dir 2>/dev/null || echo "")
+  [[ -n "$name_dirs" ]] || return 0
+  nn_dir="${name_dirs%%,*}"
+  nn_dir="${nn_dir#file://}"
+  nn_current_dir="${nn_dir}/current"
+
+  if [[ -d "$nn_current_dir" ]] && find "$nn_current_dir" -maxdepth 1 -type f -name 'fsimage_*' ! -name '*.md5' 2>/dev/null | grep -q .; then
+    echo "[$(date)] Valid fsimage found at ${nn_current_dir}, skipping bootstrapStandby"
+    return 0
+  fi
+
+  peer_id="nn0"
+  peer_rpc=$("${HADOOP_HOME}/bin/hdfs" getconf -confKey "dfs.namenode.rpc-address.${nameservices}.${peer_id}" 2>/dev/null || echo "")
+  peer_host="${peer_rpc%:*}"
+  if [[ -z "$peer_host" || "$peer_host" == "$peer_rpc" ]]; then
+    echo "[$(date)] Cannot determine active peer host for ${peer_id}, skipping bootstrapStandby"
+    return 1
+  fi
+
+  for attempt in $(seq 1 30); do
+    if getent hosts "$peer_host" >/dev/null 2>&1; then
+      break
+    fi
+    if [[ "$attempt" -eq 30 ]]; then
+      echo "[$(date)] Peer ${peer_host} is still unresolved after 60s" >&2
+      return 1
+    fi
+    sleep 2
+  done
+
+  echo "[$(date)] No valid fsimage, running bootstrapStandby with retries..."
+  for attempt in $(seq 1 30); do
+    if "${HADOOP_HOME}/bin/hdfs" namenode -bootstrapStandby -nonInteractive; then
+      echo "[$(date)] bootstrapStandby succeeded on attempt ${attempt}"
+      return 0
+    fi
+    echo "[$(date)] bootstrapStandby failed on attempt ${attempt}, retrying in 10s..."
+    sleep 10
+  done
+
+  echo "[$(date)] bootstrapStandby failed after 30 attempts" >&2
+  return 1
+}
+
 shutdown() {
   echo "[$(date)] Received SIGTERM, stopping NameNode gracefully..."
   local is_active=0
@@ -74,6 +137,8 @@ if [[ -n "$EXCLUDE_PATH" ]]; then
 fi
 
 trap shutdown SIGTERM SIGINT
+
+bootstrap_standby_if_needed
 
 echo "[$(date)] Starting NameNode..."
 "${HADOOP_HOME}/bin/hdfs" namenode 2>&1 | tee -a "$LOG_FILE" &

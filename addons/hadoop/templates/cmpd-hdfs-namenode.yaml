@@ -111,38 +111,6 @@ spec:
             mountPath: {{ .Values.runtime.hadoopLogDir }}
           - name: scripts
             mountPath: {{ .Values.runtime.scriptsDir }}
-      - name: init-nn-bootstrap-standby
-        image: {{ include "hadoop.initNnBootstrapStandbyImage" . | quote }}
-        imagePullPolicy: {{ default .Values.nameNode.image.pullPolicy .Values.nameNode.initImages.initNnBootstrapStandby.pullPolicy }}
-        securityContext:
-          runAsUser: {{ .Values.securityContext.runAsUser }}
-          runAsGroup: {{ .Values.securityContext.runAsGroup }}
-        env:
-          - name: HADOOP_HOME
-            value: {{ .Values.runtime.hadoopHome }}
-          - name: HADOOP_CONF_DIR
-            value: {{ .Values.runtime.configDir }}
-        command:
-          - /bin/bash
-          - {{ .Values.runtime.scriptsDir }}/init-nn-bootstrap-standby.sh
-        volumeMounts:
-          - name: hadoop-common
-            mountPath: {{ .Values.runtime.hadoopHome }}
-          - name: metadata-dir
-            mountPath: /hadoop
-          - name: hadoop-core-config
-            mountPath: {{ .Values.runtime.configDir }}/core-site.xml
-            subPath: core-site.xml
-          - name: hadoop-core-config
-            mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
-            subPath: hadoop-env.sh
-          - name: namenode-config
-            mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
-            subPath: hdfs-site.xml
-          - name: hadoop-logs
-            mountPath: {{ .Values.runtime.hadoopLogDir }}
-          - name: scripts
-            mountPath: {{ .Values.runtime.scriptsDir }}
     containers:
       - name: hdfs-namenode
         image: {{ include "hadoop.nameNodeImage" . | quote }}

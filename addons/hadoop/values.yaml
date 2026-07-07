@@ -38,11 +38,6 @@ nameNode:
       repository: ""
       tag: ""
       pullPolicy: ""
-    initNnBootstrapStandby:
-      registry: ""
-      repository: ""
-      tag: ""
-      pullPolicy: ""
 
 dataNode:
   image:

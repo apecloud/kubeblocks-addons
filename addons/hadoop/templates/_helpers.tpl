@@ -105,10 +105,6 @@ Image references
 {{ default .Values.nameNode.image.registry .Values.nameNode.initImages.initZkfcFormat.registry }}/{{ default .Values.nameNode.image.repository .Values.nameNode.initImages.initZkfcFormat.repository }}:{{ default .Values.nameNode.image.tag .Values.nameNode.initImages.initZkfcFormat.tag }}
 {{- end }}
 
-{{- define "hadoop.initNnBootstrapStandbyImage" -}}
-{{ default .Values.nameNode.image.registry .Values.nameNode.initImages.initNnBootstrapStandby.registry }}/{{ default .Values.nameNode.image.repository .Values.nameNode.initImages.initNnBootstrapStandby.repository }}:{{ default .Values.nameNode.image.tag .Values.nameNode.initImages.initNnBootstrapStandby.tag }}
-{{- end }}
-
 {{- define "hadoop.dataNodeImage" -}}
 {{ .Values.dataNode.image.registry }}/{{ .Values.dataNode.image.repository }}:{{ .Values.dataNode.image.tag }}
 {{- end }}

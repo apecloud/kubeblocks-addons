@@ -20,6 +20,5 @@ spec:
         hadoop-common: {{ include "hadoop.commonImage" . | quote }}
         init-namenode-format: {{ include "hadoop.initNameNodeFormatImage" . | quote }}
         init-zkfc-format: {{ include "hadoop.initZkfcFormatImage" . | quote }}
-        init-nn-bootstrap-standby: {{ include "hadoop.initNnBootstrapStandbyImage" . | quote }}
         hdfs-namenode: {{ include "hadoop.nameNodeImage" . | quote }}
         hdfs-zkfc: {{ include "hadoop.nameNodeImage" . | quote }}
