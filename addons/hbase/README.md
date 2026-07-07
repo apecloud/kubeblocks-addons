@@ -70,9 +70,9 @@ spec:
         - name: HADOOP_CLUSTER_NAME
           value: "hadoop2"
       volumes:
-        - name: hadoop-core-config
+        - name: hdfs-common-config
           configMap:
-            name: hadoop2-hadoop-core-config
+            name: hadoop2-namenode-hdfs-common-config
         - name: hadoop-hdfs-config
           configMap:
             name: hadoop2-namenode-config
@@ -116,9 +116,9 @@ spec:
         - name: HADOOP_CLUSTER_NAME
           value: "hadoop2"
       volumes:
-        - name: hadoop-core-config
+        - name: hdfs-common-config
           configMap:
-            name: hadoop2-hadoop-core-config
+            name: hadoop2-namenode-hdfs-common-config
         - name: hadoop-hdfs-config
           configMap:
             name: hadoop2-namenode-config

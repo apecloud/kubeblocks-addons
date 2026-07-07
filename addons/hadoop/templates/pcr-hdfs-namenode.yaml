@@ -9,8 +9,12 @@ metadata:
 spec:
   componentDef: hdfs-namenode
   parametersDefs:
+    - hdfs-common-config-constraints
     - namenode-config-constraints
   configs:
+    - name: core-site.xml
+      fileFormatConfig:
+        format: xml
     - name: hdfs-site.xml
       fileFormatConfig:
         format: xml

@@ -1,19 +1,11 @@
 topology: cluster
 
 replicas:
-  core: 1
   journalnode: 3
   namenode: 2
   datanode: 3
 
 resources:
-  core:
-    requests:
-      cpu: "100m"
-      memory: 256Mi
-    limits:
-      cpu: "500m"
-      memory: 1Gi
   journalnode:
     requests:
       cpu: "500m"

@@ -8,7 +8,7 @@ data:
   hbase-site.xml: |-
     {{- .Files.Get "config/hbase-site-cluster.tpl" | nindent 4 }}
   core-site.xml: |-
-    {{- .Files.Get "config/hadoop-core-site.tpl" | nindent 4 }}
+    {{- .Files.Get "config/hdfs-common-site.tpl" | nindent 4 }}
   hdfs-site.xml: |-
     {{- .Files.Get "config/hdfs-client-site.tpl" | nindent 4 }}
   hbase-env.sh: |-

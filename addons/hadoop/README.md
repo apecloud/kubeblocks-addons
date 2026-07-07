@@ -4,7 +4,7 @@
 
 This addon provides Hadoop HDFS support on KubeBlocks, including:
 
-- **HA Cluster Topology**: 4-component architecture (hadoop-core, journalnode, namenode, datanode)
+- **HA Cluster Topology**: 3-component architecture (journalnode, namenode, datanode)
 - **ZooKeeper Integration**: Automatic failover via ZK service reference
 - **Host Network**: DataNode supports hostNetwork for optimal I/O performance
 - **Configuration Management**: Dynamic parameter tuning via Parameters API
@@ -13,7 +13,6 @@ This addon provides Hadoop HDFS support on KubeBlocks, including:
 
 | Component | Role | Default Replicas |
 |-----------|------|-----------------|
-| hadoop-core | Orchestration (config generation only) | 1 |
 | hdfs-journalnode | HA Journal | 3 |
 | hdfs-namenode | NameNode (nn0/nn1) | 2 |
 | hdfs-datanode | DataNode (hostNetwork) | 1 |

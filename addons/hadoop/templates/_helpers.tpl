@@ -50,14 +50,6 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{/*
 Component definition regex patterns
 */}}
-{{- define "hadoop.hadoopCoreCmpdRegexPattern" -}}
-^hadoop-core$
-{{- end }}
-
-{{- define "hadoop.hadoopCoreStandaloneCmpdRegexPattern" -}}
-^hadoop-core-standalone$
-{{- end }}
-
 {{- define "hadoop.hdfsJournalnodeCmpdRegexPattern" -}}
 ^hdfs-journalnode$
 {{- end }}
@@ -79,14 +71,17 @@ Component definition regex patterns
 {{- end }}
 
 {{/*
+HA NameNode ids for the current addon implementation.
+*/}}
+{{- define "hadoop.haNameNodeIds" -}}
+nn0,nn1
+{{- end }}
+
+{{/*
 Image references
 */}}
 {{- define "hadoop.commonImage" -}}
 {{ .Values.image.common.registry }}/{{ .Values.image.common.repository }}:{{ .Values.image.common.tag }}
-{{- end }}
-
-{{- define "hadoop.coreImage" -}}
-{{ .Values.core.image.registry }}/{{ .Values.core.image.repository }}:{{ .Values.core.image.tag }}
 {{- end }}
 
 {{- define "hadoop.journalNodeImage" -}}

@@ -104,19 +104,19 @@ spec:
         volumeMounts:
           - name: hadoop-common
             mountPath: {{ .Values.runtime.hadoopHome }}
-          - name: hadoop-core-config
+          - name: hdfs-common-config
             mountPath: {{ .Values.runtime.configDir }}/core-site.xml
             subPath: core-site.xml
-          - name: hadoop-core-config
+          - name: hdfs-common-config
             mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
             subPath: hadoop-env.sh
-          - name: hadoop-core-config
+          - name: hdfs-common-config
             mountPath: {{ .Values.runtime.configDir }}/hadoop-metrics2.properties
             subPath: hadoop-metrics2.properties
-          - name: hadoop-core-config
+          - name: hdfs-common-config
             mountPath: {{ .Values.runtime.configDir }}/dfs.include
             subPath: dfs.include
-          - name: hadoop-core-config
+          - name: hdfs-common-config
             mountPath: {{ .Values.runtime.configDir }}/dfs.exclude
             subPath: dfs.exclude
           - name: datanode-config
@@ -196,6 +196,11 @@ spec:
           fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']
           apiVersion: v1
   configs:
+    - name: hdfs-common-config
+      template: hdfs-common-config-template
+      volumeName: hdfs-common-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.config.defaultMode }}
     - name: datanode-config
       template: datanode-config-template
       volumeName: datanode-config

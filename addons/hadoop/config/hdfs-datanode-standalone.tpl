@@ -53,11 +53,6 @@
     </property>
 
     <property>
-        <name>dfs.datanode.hostname</name>
-        <value>{{- .POD_FQDN }}</value>
-    </property>
-
-    <property>
         <name>dfs.namenode.rpc-address</name>
         <value>{{- .CLUSTER_NAME }}-namenode-0.{{- .CLUSTER_NAME }}-namenode-headless.{{-
             .NAMESPACE }}.svc.{{- .CLUSTER_DOMAIN }}:{{- .HDFS_NAMENODE_RPC_PORT }}</value>

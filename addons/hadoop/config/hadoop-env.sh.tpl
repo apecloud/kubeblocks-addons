@@ -9,7 +9,7 @@ export HADOOP_OPTS="${HADOOP_OPTS} -Djava.net.preferIPv4Stack=true -Dsun.net.ine
 
 export HDFS_NAMENODE_OPTS="${HDFS_NAMENODE_OPTS:-} -Xms{{ .HDFS_NAMENODE_HEAP }} -Xmx{{ .HDFS_NAMENODE_HEAP }} -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dhadoop.security.logger=INFO,RFAS -Dhdfs.audit.logger=INFO,NullAppender"
 
-export HDFS_DATANODE_OPTS="${HDFS_DATANODE_OPTS:-} -Xms{{ .HDFS_DATANODE_HEAP }} -Xmx{{ .HDFS_DATANODE_HEAP }} -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dhadoop.security.logger=ERROR,RFAS"
+export HDFS_DATANODE_OPTS="${HDFS_DATANODE_OPTS:-} -Xms{{ .HDFS_DATANODE_HEAP }} -Xmx{{ .HDFS_DATANODE_HEAP }} -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dhadoop.security.logger=ERROR,RFAS -Ddfs.datanode.hostname=${POD_FQDN}"
 
 export HDFS_JOURNALNODE_OPTS="${HDFS_JOURNALNODE_OPTS:-} -Xms{{ .HDFS_JOURNALNODE_HEAP }} -Xmx{{ .HDFS_JOURNALNODE_HEAP }} -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
 

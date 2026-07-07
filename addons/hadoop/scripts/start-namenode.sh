@@ -8,6 +8,8 @@ set -o pipefail
 : "${HADOOP_CONF_DIR:=${HADOOP_HOME}/etc/hadoop}"
 : "${HADOOP_LOG_DIR:=/var/log/hadoop}"
 : "${HADOOP_PID_DIR:=/tmp/hadoop}"
+: "${HDFS_HA_NAMENODE_IDS:=nn0,nn1}"
+: "${HDFS_HA_STANDBY_ORDINAL:=1}"
 : "${LIFECYCLE_DIR:=/lifecycle}"
 
 export HADOOP_HOME HADOOP_CONF_DIR HADOOP_LOG_DIR HADOOP_PID_DIR
@@ -16,7 +18,9 @@ mkdir -p "${HADOOP_LOG_DIR}" "${HADOOP_PID_DIR}" "${LIFECYCLE_DIR}"
 USER=$(whoami)
 LOG_FILE="${HADOOP_LOG_DIR}/hadoop-${USER}-namenode-$(hostname).log"
 
-# 仅在 standby ordinal 上执行 bootstrapStandby，避免与 OrderedReady 启动顺序冲突。
+# 功能：仅在 standby ordinal 上执行 bootstrapStandby，避免与 OrderedReady 启动顺序冲突。
+# 参数：无，依赖 POD_NAME、HADOOP_HOME、HADOOP_CONF_DIR 等环境变量。
+# 返回值：成功返回 0，失败返回非 0。
 bootstrap_standby_if_needed() {
   local pod_name host_name ordinal nameservices nn_ids peer_id peer_rpc peer_host
   local name_dirs nn_dir nn_current_dir
@@ -26,8 +30,8 @@ bootstrap_standby_if_needed() {
   ordinal="${pod_name##*-}"
   [[ "$ordinal" == "$pod_name" ]] && ordinal="${host_name##*-}"
 
-  # ponytail: 当前 HA 只支持双 NameNode，standby 固定为 ordinal 1；如后续拓扑扩展，再显式映射 nnId。
-  [[ "$ordinal" == "1" ]] || return 0
+  # ponytail: 当前 addon 的 HA 语义固定为双 NameNode，standby ordinal 集中在这里；扩展更多 NN 时再引入显式 nnId 映射。
+  [[ "$ordinal" == "${HDFS_HA_STANDBY_ORDINAL}" ]] || return 0
 
   nameservices=$("${HADOOP_HOME}/bin/hdfs" getconf -confKey dfs.nameservices 2>/dev/null || echo "")
   [[ -n "$nameservices" ]] || return 0
@@ -46,7 +50,14 @@ bootstrap_standby_if_needed() {
     return 0
   fi
 
-  peer_id="nn0"
+  peer_id=""
+  for nn_id in $(echo "${HDFS_HA_NAMENODE_IDS}" | tr ',' '\n'); do
+    if [[ "$nn_id" != "nn${ordinal}" ]]; then
+      peer_id="$nn_id"
+      break
+    fi
+  done
+  [[ -n "$peer_id" ]] || peer_id="nn0"
   peer_rpc=$("${HADOOP_HOME}/bin/hdfs" getconf -confKey "dfs.namenode.rpc-address.${nameservices}.${peer_id}" 2>/dev/null || echo "")
   peer_host="${peer_rpc%:*}"
   if [[ -z "$peer_host" || "$peer_host" == "$peer_rpc" ]]; then

@@ -96,19 +96,19 @@ spec:
           - name: edits-dir
             mountPath: {{ .Values.hdfs.paths.journalnodeEditsDir }}
             subPath: journal
-          - name: hadoop-core-config
+          - name: hdfs-common-config
             mountPath: {{ .Values.runtime.configDir }}/core-site.xml
             subPath: core-site.xml
-          - name: hadoop-core-config
+          - name: hdfs-common-config
             mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
             subPath: hadoop-env.sh
-          - name: hadoop-core-config
+          - name: hdfs-common-config
             mountPath: {{ .Values.runtime.configDir }}/hadoop-metrics2.properties
             subPath: hadoop-metrics2.properties
-          - name: hadoop-core-config
+          - name: hdfs-common-config
             mountPath: {{ .Values.runtime.configDir }}/dfs.include
             subPath: dfs.include
-          - name: hadoop-core-config
+          - name: hdfs-common-config
             mountPath: {{ .Values.runtime.configDir }}/dfs.exclude
             subPath: dfs.exclude
           - name: journalnode-config
@@ -167,6 +167,11 @@ spec:
     - name: HDFS_REPLICATION
       value: {{ .Values.hdfs.replication | quote }}
   configs:
+    - name: hdfs-common-config
+      template: hdfs-common-config-template
+      volumeName: hdfs-common-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.config.defaultMode }}
     - name: journalnode-config
       template: journalnode-config-template
       volumeName: journalnode-config

@@ -9,8 +9,12 @@ metadata:
 spec:
   componentDef: hdfs-journalnode
   parametersDefs:
+    - hdfs-common-config-constraints
     - journalnode-config-constraints
   configs:
+    - name: core-site.xml
+      fileFormatConfig:
+        format: xml
     - name: hdfs-site.xml
       fileFormatConfig:
         format: xml

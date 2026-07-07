@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
 
+{{- $name_node_ids := splitList "," (include "hadoop.haNameNodeIds" .) }}
 <configuration>
     <property>
         <name>dfs.nameservices</name>
@@ -58,36 +59,22 @@
     </property>
 
     <property>
-        <name>dfs.datanode.hostname</name>
-        <value>{{- .POD_FQDN }}</value>
-    </property>
-
-    <property>
         <name>dfs.ha.namenodes.{{- .CLUSTER_NAME }}</name>
-        <value>nn0,nn1</value>
+        <value>{{ join "," $name_node_ids }}</value>
+    </property> {{- range $nn_id :=
+    $name_node_ids }} <property>
+        <name>dfs.namenode.rpc-address.{{- $.CLUSTER_NAME }}.{{ $nn_id }}</name>
+        <value>{{- $.CLUSTER_NAME }}-namenode-{{ trimPrefix "nn" $nn_id }}.{{- $.CLUSTER_NAME
+    }}-namenode-headless.{{-
+            $.NAMESPACE }}.svc.{{- $.CLUSTER_DOMAIN }}:{{- $.HDFS_NAMENODE_RPC_PORT }}</value>
     </property>
-    <property>
-        <name>dfs.namenode.rpc-address.{{- .CLUSTER_NAME }}.nn0</name>
-        <value>{{- .CLUSTER_NAME }}-namenode-0.{{- .CLUSTER_NAME }}-namenode-headless.{{-
-            .NAMESPACE }}.svc.{{- .CLUSTER_DOMAIN }}:{{- .HDFS_NAMENODE_RPC_PORT }}</value>
+    {{- end }} {{- range $nn_id := $name_node_ids }} <property>
+        <name>dfs.namenode.http-address.{{- $.CLUSTER_NAME }}.{{ $nn_id }}</name>
+        <value>{{- $.CLUSTER_NAME }}-namenode-{{ trimPrefix "nn" $nn_id }}.{{- $.CLUSTER_NAME
+    }}-namenode-headless.{{-
+            $.NAMESPACE }}.svc.{{- $.CLUSTER_DOMAIN }}:{{- $.HDFS_NAMENODE_HTTP_PORT }}</value>
     </property>
-    <property>
-        <name>dfs.namenode.rpc-address.{{- .CLUSTER_NAME }}.nn1</name>
-        <value>{{- .CLUSTER_NAME }}-namenode-1.{{- .CLUSTER_NAME }}-namenode-headless.{{-
-            .NAMESPACE }}.svc.{{- .CLUSTER_DOMAIN }}:{{- .HDFS_NAMENODE_RPC_PORT }}</value>
-    </property>
-    <property>
-        <name>dfs.namenode.http-address.{{- .CLUSTER_NAME }}.nn0</name>
-        <value>{{- .CLUSTER_NAME }}-namenode-0.{{- .CLUSTER_NAME }}-namenode-headless.{{-
-            .NAMESPACE }}.svc.{{- .CLUSTER_DOMAIN }}:{{- .HDFS_NAMENODE_HTTP_PORT }}</value>
-    </property>
-    <property>
-        <name>dfs.namenode.http-address.{{- .CLUSTER_NAME }}.nn1</name>
-        <value>{{- .CLUSTER_NAME }}-namenode-1.{{- .CLUSTER_NAME }}-namenode-headless.{{-
-            .NAMESPACE }}.svc.{{- .CLUSTER_DOMAIN }}:{{- .HDFS_NAMENODE_HTTP_PORT }}</value>
-    </property>
-
-    <property>
+    {{- end }} <property>
         <name>dfs.client.failover.proxy.provider.{{- .CLUSTER_NAME }}</name>
         <value>org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider</value>
     </property>
