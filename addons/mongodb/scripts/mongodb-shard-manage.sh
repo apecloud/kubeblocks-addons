@@ -112,12 +112,6 @@ get_remaining_chunks() {
 }
 
 delete_or_scale_in_mongodb_shard() {
-    # Check if the shard is scaling in
-    if [[ $KB_CLUSTER_COMPONENT_IS_SCALING_IN != "true" ]]; then
-        echo "INFO: Shard $MONGODB_REPLICA_SET_NAME is not scaling in, exiting."
-        exit 0
-    fi
-
     wait_for_mongos
 
     if ! check_shard_exists; then

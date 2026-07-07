@@ -35,7 +35,7 @@ There are two key components in the ClickHouse cluster:
 
 | Major Versions | Description               |
 | -------------- | ------------------------- |
-| 22             | 22.3.18, 22.3.20, 22.8.21 |
+| 22             | 22.3.18, 22.3.20, 22.6.1, 22.8.21, 22.9.4 |
 | 24             | 24.7.2, 24.8.3, 24.12.2   |
 | 25             | 25.4.4, 25.9.7            |
 
@@ -802,58 +802,9 @@ kubectl apply -f examples/clickhouse/verticalscale.yaml
 
 ### Switchover for Clickhouse Keeper
 
-#### Switchover without preferred candidates
+#### Switchover with specified candidate
 
-Switchover a specified instance as the new primary or leader of the cluster
-
-```yaml
-# cat examples/clickhouse/keeper-switchover.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: keeper-switchover
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: clickhouse-cluster
-  type: Switchover
-  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
-  switchover:
-    # Specifies the name of the Component.
-  - componentName: ch-keeper
-    # Specifies the instance whose role will be transferred.
-    # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: "clickhouse-cluster-ch-keeper-0"
-
-```
-
-```yaml
-# cat examples/clickhouse/keeper-switchover.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: keeper-switchover
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: clickhouse-cluster
-  type: Switchover
-  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
-  switchover:
-    # Specifies the name of the Component.
-  - componentName: ch-keeper
-    # Specifies the instance whose role will be transferred.
-    # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: "clickhouse-cluster-ch-keeper-0"
-```
-
-```bash
-kubectl apply -f examples/clickhouse/keeper-switchover.yaml
-```
-
-#### Switchover-specified-instance
-
-Switchover a specified instance as the new primary or leader of the cluster
+Switchover the current leader to a selected candidate instance. ClickHouse Keeper switchover currently requires `candidateName`.
 
 ```yaml
 # cat examples/clickhouse/keeper-switchover-specified-instance.yaml
@@ -873,8 +824,8 @@ spec:
     # Specifies the instance whose role will be transferred.
     # A typical usage is to transfer the leader role in a consensus system.
     instanceName: "clickhouse-cluster-ch-keeper-0"
-    # Specifies the instance that will become the new leader, if not specify, the first non leader instance will become candidate.
-    # Need to ensure the candidate instance is catch up logs of the quorum, otherwise the switchover will transfer the leader to other instance.
+    # ClickHouse Keeper switchover currently requires candidateName.
+    # Need to ensure the candidate instance has caught up with quorum logs.
     candidateName: "clickhouse-cluster-ch-keeper-1"
 
 ```
@@ -897,16 +848,17 @@ spec:
     # Specifies the instance whose role will be transferred.
     # A typical usage is to transfer the leader role in a consensus system.
     instanceName: "clickhouse-cluster-ch-keeper-0"
-    # Specifies the instance that will become the new leader, if not specify, the first non leader instance will become candidate.
-    # Need to ensure the candidate instance is catch up logs of the quorum, otherwise the switchover will transfer the leader to other instance.
+    # ClickHouse Keeper switchover currently requires candidateName.
+    # Need to ensure the candidate instance has caught up with quorum logs.
     candidateName: "clickhouse-cluster-ch-keeper-1"
+
 ```
 
 ```bash
 kubectl apply -f examples/clickhouse/keeper-switchover-specified-instance.yaml
 ```
 
-You may need to update the `opsrequest.spec.switchover.instanceName` field to your desired instance name.
+You may need to update the `opsrequest.spec.switchover.instanceName` and `opsrequest.spec.switchover.candidateName` fields to your desired instance names.
 
 ### Expand volume
 
@@ -1101,7 +1053,7 @@ spec:
           configMap:
             name: custom-user-configuration-tpl # refers to the configmap with your customized configuration info.
           variables:
-            max_threads: "16"
+            udf_max_threads: "16"
         systemAccounts:
           - name: admin
             secretRef:
@@ -1479,9 +1431,9 @@ The incremental backup's `parentBackupName` must refer to an existing backup cre
 #### Restore Settings
 
 > [!NOTE]
-> Restoring a TLS-enabled cluster directly from backup is NOT supported. You should restore the cluster with TLS disabled first, and then enable TLS manually after the restore process is complete.
+> When the restore target has TLS enabled, the restore job mounts the ClickHouse TLS files and connects through the secure TCP port.
 
-Restore process will restore schema and rbac first, then restore data. You can tune schema-ready waiting behavior for restore jobs via Helm values:
+Restore process will restore schema and RBAC metadata first, then restore data. When the restore target has TLS enabled, the restore job uses the secure ClickHouse TCP port and Keeper TLS settings for RBAC metadata. You can tune schema-ready waiting behavior for restore jobs via Helm values:
 
 ```yaml
 restore:
@@ -1531,7 +1483,7 @@ spec:
                 storage: 10Gi
   shardings:
     - name: clickhouse
-      shards: 3
+      shards: 2
       template:
         name: clickhouse
         componentDef: clickhouse-1
@@ -1616,7 +1568,7 @@ spec:
                 storage: 10Gi
   shardings:
     - name: clickhouse
-      shards: 3
+      shards: 2
       template:
         name: clickhouse
         componentDef: clickhouse-1
@@ -1833,10 +1785,10 @@ spec:
   services:
     # Exposes ClickHouse service using NodePort
     - name: clickhouse-nodeport
+      # Sharding associated with this service
+      componentSelector: clickhouse
       # Type of the exposed service. Valid options are 'ClusterIP', 'NodePort', and 'LoadBalancer'.
       serviceType: NodePort
-      # Sharding associated with this service
-      shardingSelector: clickhouse
       # Role selector for the component service.
       # In a ClickHouse cluster, we only expose nodes without specifying roles
       # since all nodes can handle read/write requests
@@ -1909,6 +1861,7 @@ metadata:
 type: Opaque
 data:
   password: cGFzc3dvcmQxMjM=  # 'password123' in base64
+
 ```
 
 ```bash

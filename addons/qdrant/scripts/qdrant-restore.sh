@@ -5,6 +5,12 @@ set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
+QDRANT_COMMON_FILE="${QDRANT_COMMON_FILE:-/qdrant/scripts/common.sh}"
+if [ -r "$QDRANT_COMMON_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$QDRANT_COMMON_FILE"
+fi
+
 if [ "${TLS_ENABLED:-}" = "true" ]; then
   QDRANT_SCHEME=https
   CURL_TLS="-k"
@@ -13,7 +19,7 @@ else
   CURL_TLS=""
 fi
 
-SNAPSHOT_DIR="${DATA_DIR}/_dp_snapshots"
+SNAPSHOT_DIR="${TMPDIR:-/tmp}/qdrant-snapshots"
 mkdir -p "${SNAPSHOT_DIR}"
 for snapshot in $(datasafed list /) ; do
   collection_name=${snapshot%.*}
@@ -26,10 +32,10 @@ for snapshot in $(datasafed list /) ; do
   datasafed pull "${snapshot}" "${SNAPSHOT_DIR}/${snapshot}"
 
   while true; do
-    curl $CURL_TLS -X POST "${QDRANT_SCHEME}://${DP_DB_HOST}:6333/collections/${collection_name}/snapshots/upload?priority=snapshot" \
+    if qdrant_curl -sS -f -X POST "${QDRANT_SCHEME}://${DP_DB_HOST}:6333/collections/${collection_name}/snapshots/upload?priority=snapshot" \
       -H 'Content-Type:multipart/form-data' \
-      -F "snapshot=@${SNAPSHOT_DIR}/${snapshot}" > /tmp/qdrant-restore.log 2>&1
-    if grep -q '"status":"ok"' /tmp/qdrant-restore.log; then
+      -F "snapshot=@${SNAPSHOT_DIR}/${snapshot}" > /tmp/qdrant-restore.log 2>&1 \
+      && grep -q '"status":"ok"' /tmp/qdrant-restore.log; then
       echo "restore collection ${collection_name} successfully"
       break
     else
