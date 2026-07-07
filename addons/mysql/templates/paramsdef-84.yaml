@@ -33,13 +33,17 @@ spec:
       sectionName: mysqld
   parametersSchema:
     topLevelKey: MysqlParameter
+    # Reuse the shared 8.0 CUE verbatim. A separate `#MysqlParameter { ... }`
+    # unification block was tried to declare the 8.4-only authentication_policy
+    # and to reject removed variables, but re-declaring the definition closes
+    # the otherwise-open (`...`) struct, which then validates every ini section
+    # (including [client]) strictly and conflicts on `port` (rendered "3306"
+    # string vs the schema's `port?: int`) - the exact failure that blocked 8.4
+    # ComponentParameter rendering. The open shared struct already accepts
+    # authentication_policy; removed-variable rejection stays at the runtime
+    # fail-close layer plus the classification-list filtering below.
     cue: |-
       {{- .Files.Get "config/mysql8-config-constraint.cue" | nindent 6 }}
-
-      #MysqlParameter: {
-        // MySQL 8.4 replacement for the removed default_authentication_plugin.
-        authentication_policy?: string
-      }
 
   {{- if hasKey $pd "staticParameters" }}
   staticParameters:
