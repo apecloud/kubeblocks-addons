@@ -19,7 +19,7 @@ Describe "replication-roleprobe.sh"
   cleanup() {
     rm -rf "$TEST_DIR"
     export PATH="$TEST_ORIG_PATH"
-    unset MARIADB_DATADIR DATA_DIR SYNCERCTL_BIN MOCK_SYNCERCTL_ROLE MARIADB_ROLEPROBE_SKIP_DB_READY MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY TEST_ORIG_PATH MARIADB_ROOT_HOST MARIADB_INTERNAL_ROOT_USER MARIADB_REPLICATION_MODE
+    unset MARIADB_DATADIR DATA_DIR SYNCERCTL_BIN MOCK_SYNCERCTL_ROLE MARIADB_ROLEPROBE_SKIP_DB_READY MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY MARIADB_ROLEPROBE_TERMINAL_CONFIRM_THRESHOLD TEST_ORIG_PATH MARIADB_ROOT_HOST MARIADB_INTERNAL_ROOT_USER MARIADB_REPLICATION_MODE
     unset MOCK_MARIADB_SELECT1_RC MOCK_MARIADB_SELECT1_STDOUT
     unset MOCK_MARIADB_SHOW_SLAVE_STATUS_RC MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT
     unset MOCK_MARIADB_BIND_ADDRESS MOCK_MARIADB_BIND_ADDRESS_RC
@@ -763,6 +763,172 @@ Last_SQL_Errno: 0"
         The status should be failure
         The output should eq "initializing"
         The path "${TEST_DIR}/.remote-root-fence-role" should not be exist
+      End
+    End
+
+    Context "when divergence-pending marker exists"
+      setup_divergence_pending() {
+        touch "${TEST_DIR}/.replication-pending"
+        touch "${TEST_DIR}/.replication-divergence-pending"
+      }
+      Before "setup_divergence_pending"
+
+      It "publishes recoveryPending immediately with a manual-intervention marker"
+        When call check_role
+        The status should be success
+        The output should eq "recoveryPending"
+        The path "${TEST_DIR}/.replication-manual-intervention-required" should be file
+        The contents of file "${TEST_DIR}/.replication-manual-intervention-required" should include "reason=replication_divergence_pending"
+        The contents of file "${TEST_DIR}/.replication-manual-intervention-required" should include "action=manual_recovery_required"
+        The path "${TEST_DIR}/.replication-divergence-pending" should be file
+      End
+    End
+
+    Context "when secondary has non-kb_health_check 1146 for fewer than N probes"
+      setup_non_kb_1146_under_threshold() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_ROLEPROBE_TERMINAL_CONFIRM_THRESHOLD="3"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT="Slave_IO_Running: Yes
+Slave_SQL_Running: No
+Last_IO_Errno: 0
+Last_SQL_Errno: 1146
+Last_SQL_Error: Table 't.rows' doesn't exist"
+        touch "${TEST_DIR}/.replication-ready"
+        touch "${TEST_DIR}/master.info"
+        make_mariadb_cli
+      }
+      Before "setup_non_kb_1146_under_threshold"
+
+      It "keeps failed initializing before the confirmation threshold"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+        The stderr should include "roleProbe terminal candidate: reason=non_kb_1146 count=1/3 errno=1146"
+        The contents of file "${TEST_DIR}/.replication-terminal-count" should eq "1"
+        The path "${TEST_DIR}/.replication-manual-intervention-required" should not be exist
+      End
+    End
+
+    Context "when secondary has non-kb_health_check 1146 for N consecutive probes"
+      setup_non_kb_1146_at_threshold() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_ROLEPROBE_TERMINAL_CONFIRM_THRESHOLD="3"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT="Slave_IO_Running: Yes
+Slave_SQL_Running: No
+Last_IO_Errno: 0
+Last_SQL_Errno: 1146
+Last_SQL_Error: Table 't.rows' doesn't exist"
+        touch "${TEST_DIR}/.replication-ready"
+        touch "${TEST_DIR}/master.info"
+        make_mariadb_cli
+        check_role >/dev/null 2>&1 || true
+        check_role >/dev/null 2>&1 || true
+      }
+      Before "setup_non_kb_1146_at_threshold"
+
+      It "publishes recoveryPending and records the SQL error after N observations"
+        When call check_role
+        The status should be success
+        The output should eq "recoveryPending"
+        The stderr should include "roleProbe terminal candidate: reason=non_kb_1146 count=3/3 errno=1146"
+        The contents of file "${TEST_DIR}/.replication-terminal-count" should eq "3"
+        The contents of file "${TEST_DIR}/.replication-manual-intervention-required" should include "reason=slave_sql_error_non_kb_1146"
+        The contents of file "${TEST_DIR}/.replication-manual-intervention-required" should include "errno=1146"
+        The contents of file "${TEST_DIR}/.replication-manual-intervention-required" should include "error=Table 't.rows' doesn't exist"
+        The contents of file "${TEST_DIR}/.replication-manual-intervention-required" should include "count=3"
+      End
+    End
+
+    Context "when a pod restarts after two terminal observations"
+      setup_non_kb_1146_after_restart() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_ROLEPROBE_TERMINAL_CONFIRM_THRESHOLD="3"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT="Slave_IO_Running: Yes
+Slave_SQL_Running: No
+Last_IO_Errno: 0
+Last_SQL_Errno: 1146
+Last_SQL_Error: Table 't.rows' doesn't exist"
+        touch "${TEST_DIR}/.replication-ready"
+        touch "${TEST_DIR}/master.info"
+        printf "2\n" > "${TEST_DIR}/.replication-terminal-count"
+        make_mariadb_cli
+      }
+      Before "setup_non_kb_1146_after_restart"
+
+      It "continues the datadir-backed count instead of resetting it"
+        When call check_role
+        The status should be success
+        The output should eq "recoveryPending"
+        The stderr should include "roleProbe terminal candidate: reason=non_kb_1146 count=3/3 errno=1146"
+        The contents of file "${TEST_DIR}/.replication-terminal-count" should eq "3"
+      End
+    End
+
+    Context "when secondary recovers after a manual-intervention marker"
+      setup_secondary_recovered_after_terminal() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT="Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Last_IO_Errno: 0
+Last_SQL_Errno: 0"
+        touch "${TEST_DIR}/.replication-ready"
+        touch "${TEST_DIR}/master.info"
+        printf "3\n" > "${TEST_DIR}/.replication-terminal-count"
+        printf "reason=slave_sql_error_non_kb_1146\n" > "${TEST_DIR}/.replication-manual-intervention-required"
+        make_mariadb_cli
+      }
+      Before "setup_secondary_recovered_after_terminal"
+
+      It "publishes secondary and clears terminal count plus manual marker"
+        When call check_role
+        The status should be success
+        The output should eq "secondary"
+        The path "${TEST_DIR}/.replication-terminal-count" should not be exist
+        The path "${TEST_DIR}/.replication-manual-intervention-required" should not be exist
+      End
+    End
+
+    Context "when secondary has kb_health_check 1146"
+      setup_kb_health_check_1146() {
+        unset MARIADB_ROLEPROBE_SKIP_DB_READY
+        export MARIADB_ROLEPROBE_TERMINAL_CONFIRM_THRESHOLD="1"
+        export MOCK_MARIADB_SELECT1_RC=0
+        export MOCK_MARIADB_SELECT1_STDOUT="1"
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
+        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT="Slave_IO_Running: Yes
+Slave_SQL_Running: No
+Last_IO_Errno: 0
+Last_SQL_Errno: 1146
+Last_SQL_Error: Table 'kubeblocks.kb_health_check' doesn't exist"
+        export MOCK_MARIADB_CAPTURE_FILE="${TEST_DIR}/sql_calls"
+        : > "${MOCK_MARIADB_CAPTURE_FILE}"
+        touch "${TEST_DIR}/.replication-ready"
+        touch "${TEST_DIR}/master.info"
+        make_mariadb_cli
+      }
+      Before "setup_kb_health_check_1146"
+
+      It "stays in the existing repair/transient path and does not publish recoveryPending"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+        The stderr should include "secondary_kb_health_check_repair_attempt: detected 1062/1146 on kubeblocks.kb_health_check, attempting repair"
+        The stderr should include "secondary_kb_health_check_repair_attempt: rc=0"
+        The contents of file "${TEST_DIR}/sql_calls" should include "DELETE FROM kubeblocks.kb_health_check;"
+        The path "${TEST_DIR}/.replication-terminal-count" should not be exist
+        The path "${TEST_DIR}/.replication-manual-intervention-required" should not be exist
       End
     End
 

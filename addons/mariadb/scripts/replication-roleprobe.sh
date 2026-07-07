@@ -91,6 +91,109 @@ divergence_pending_file() {
   printf "%s/.replication-divergence-pending" "$(data_dir)"
 }
 
+manual_intervention_required_file() {
+  printf "%s/.replication-manual-intervention-required" "$(data_dir)"
+}
+
+terminal_count_file() {
+  printf "%s/.replication-terminal-count" "$(data_dir)"
+}
+
+terminal_confirm_threshold() {
+  local threshold
+  threshold="${MARIADB_ROLEPROBE_TERMINAL_CONFIRM_THRESHOLD:-3}"
+  case "${threshold}" in
+    ''|*[!0-9]*|0) threshold=3 ;;
+  esac
+  printf "%s" "${threshold}"
+}
+
+utc_now() {
+  date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || printf "unknown"
+}
+
+read_terminal_count() {
+  local count
+  count=$(cat "$(terminal_count_file)" 2>/dev/null || true)
+  case "${count}" in
+    ''|*[!0-9]*) count=0 ;;
+  esac
+  printf "%s" "${count}"
+}
+
+increment_terminal_count() {
+  local count
+  count=$(read_terminal_count)
+  count=$((count + 1))
+  printf "%s\n" "${count}" > "$(terminal_count_file)" 2>/dev/null || true
+  printf "%s" "${count}"
+}
+
+clear_terminal_observation() {
+  rm -f "$(terminal_count_file)" "$(manual_intervention_required_file)" 2>/dev/null || true
+}
+
+write_manual_intervention_required() {
+  local reason="$1" errno="$2" error="$3" count="$4" file
+  file="$(manual_intervention_required_file)"
+  {
+    printf 'timestamp=%s\n' "$(utc_now)"
+    printf 'reason=%s\n' "${reason}"
+    printf 'errno=%s\n' "${errno:-unknown}"
+    printf 'error=%s\n' "${error:-unknown}"
+    printf 'count=%s\n' "${count:-0}"
+    printf 'action=manual_recovery_required\n'
+  } > "${file}.tmp" 2>/dev/null && mv "${file}.tmp" "${file}" 2>/dev/null || true
+}
+
+publish_recovery_pending() {
+  local reason="$1" errno="$2" error="$3" count="$4"
+  write_manual_intervention_required "${reason}" "${errno}" "${error}" "${count}"
+  printf '%s' "recoveryPending"
+  return 0
+}
+
+slave_status_errno() {
+  printf "%s" "$1" | awk -F: '
+    /Last_SQL_Errno:/ {gsub(/^[ \t]+/, "", $2); print $2; exit}
+    /Last_Errno:/ {gsub(/^[ \t]+/, "", $2); print $2; exit}
+  '
+}
+
+slave_status_error() {
+  printf "%s" "$1" | awk -F: '
+    /Last_SQL_Error:/ {sub(/^[^:]*:[ \t]*/, ""); print; exit}
+    /Last_Error:/ {sub(/^[^:]*:[ \t]*/, ""); print; exit}
+  '
+}
+
+slave_status_has_non_kb_1146_error() {
+  local slave_status="$1" errno
+  [ -n "${slave_status}" ] || return 1
+  errno=$(slave_status_errno "${slave_status}")
+  [ "${errno}" = "1146" ] || return 1
+  case ${slave_status} in
+    *"kubeblocks.kb_health_check"*) return 1 ;;
+  esac
+  return 0
+}
+
+maybe_publish_terminal_sql_error() {
+  local slave_status count threshold errno error
+  slave_status=$(query_slave_status)
+  slave_status_has_non_kb_1146_error "${slave_status}" || return 1
+  count=$(increment_terminal_count)
+  threshold=$(terminal_confirm_threshold)
+  errno=$(slave_status_errno "${slave_status}")
+  error=$(slave_status_error "${slave_status}")
+  echo "roleProbe terminal candidate: reason=non_kb_1146 count=${count}/${threshold} errno=${errno} error=${error}" >&2
+  if [ "${count}" -ge "${threshold}" ]; then
+    publish_recovery_pending "slave_sql_error_non_kb_1146" "${errno}" "${error}" "${count}"
+    return 0
+  fi
+  return 1
+}
+
 # alpha.107 v1 (Jack 2026-05-29): mariadbd_listen_on_all_interfaces returns
 # 0 iff mariadbd has at least one listening TCP socket bound to 0.0.0.0:3306
 # (IPv4 wildcard) OR :::3306 (IPv6 wildcard). The check looks directly at
@@ -635,6 +738,11 @@ check_role() {
   # reaper never propagates a failure into the role-decision path.
   attempt_marker_self_heal 2>/dev/null || true
 
+  if [ -f "$(divergence_pending_file)" ]; then
+    publish_recovery_pending "replication_divergence_pending" "unknown" "replication-divergence-pending marker exists" "1"
+    return 0
+  fi
+
   # Before the startup command finishes role selection, do not publish a role.
   # Publishing "secondary" here causes secondary -> primary label flips for
   # pod-0, and publishing "primary" before the pending marker exists causes
@@ -648,11 +756,13 @@ check_role() {
     # is fail-closed read-only; replication may still be pending, but the pod
     # must not remain in the primary Service.
     if pending_primary_fail_closed_ready; then
+      clear_terminal_observation
       apply_remote_root_fence "primary" || { not_ready; return $?; }
       printf '%s' "primary"
       return 0
     fi
     if pending_secondary_fail_closed_ready; then
+      clear_terminal_observation
       apply_remote_root_fence "secondary" || { not_ready; return $?; }
       printf '%s' "secondary"
       return 0
@@ -674,15 +784,24 @@ check_role() {
       # convergence (kbagent enforces a 60s action ceiling). When the new
       # primary's replicated kb_health_check writes hit a duplicate-key on
       # this pod's stale row, repair narrowly and re-evaluate. Other SQL
-      # errors are NOT swallowed: the next clause still fails not_ready.
+      # errors are NOT swallowed. A non-kb_health_check 1146 is treated as a
+      # terminal manual-recovery state after N consecutive observations so KB
+      # gets a positive non-service role token and does not keep a stale
+      # secondary label.
       secondary_kb_health_check_repair_attempt
-      secondary_replication_ready || { not_ready; return $?; }
+      secondary_replication_ready || {
+        maybe_publish_terminal_sql_error && return 0
+        not_ready
+        return $?
+      }
     fi
+    clear_terminal_observation
     apply_remote_root_fence "secondary" || { not_ready; return $?; }
     printf '%s' "secondary"
   else
     primary_listener_ready || { not_ready; return $?; }
     primary_read_write_ready || { not_ready; return $?; }
+    clear_terminal_observation
     apply_remote_root_fence "primary" || { not_ready; return $?; }
     printf '%s' "primary"
   fi

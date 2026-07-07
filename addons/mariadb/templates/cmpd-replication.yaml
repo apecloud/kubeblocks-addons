@@ -40,6 +40,10 @@ spec:
     - name: secondary
       updatePriority: 1
       participatesInQuorum: false
+    - name: recoveryPending
+      updatePriority: 0
+      participatesInQuorum: false
+      isExclusive: false
   {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   configs:
     # Configspec uses `mariadb-replication-config` name and
