@@ -67,6 +67,35 @@
           "$ref": "#/definitions/serviceRefSchema"
         }
       }
+    },
+    "hdfs": {
+      "type": "object",
+      "properties": {
+        "namenodeNodes": {
+          "type": "string",
+          "default": "nn0,nn1"
+        },
+        "namenodeRpcPort": {
+          "type": "integer",
+          "default": 8020,
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "namenodeHttpPort": {
+          "type": "integer",
+          "default": 9870,
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "haZkParent": {
+          "type": "string",
+          "default": "/hadoop-ha"
+        },
+        "replication": {
+          "type": "string",
+          "default": "3"
+        }
+      }
     }
   },
   "definitions": {

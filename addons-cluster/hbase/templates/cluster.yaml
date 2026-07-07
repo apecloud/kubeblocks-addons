@@ -33,6 +33,11 @@
         - name: hbase-config
           variables:
             HDFS_NAMESERVICE: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.cluster | quote }}
+            HDFS_NAMENODE_NODES: {{ .Values.hdfs.namenodeNodes | quote }}
+            HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.namenodeRpcPort | quote }}
+            HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.namenodeHttpPort | quote }}
+            HDFS_HA_ZK_PARENT: {{ .Values.hdfs.haZkParent | quote }}
+            HDFS_REPLICATION: {{ .Values.hdfs.replication | quote }}
       resources:
         requests:
           cpu: {{ .Values.resources.hmaster.requests.cpu | quote }}
@@ -73,6 +78,11 @@
         - name: hbase-config
           variables:
             HDFS_NAMESERVICE: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.cluster | quote }}
+            HDFS_NAMENODE_NODES: {{ .Values.hdfs.namenodeNodes | quote }}
+            HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.namenodeRpcPort | quote }}
+            HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.namenodeHttpPort | quote }}
+            HDFS_HA_ZK_PARENT: {{ .Values.hdfs.haZkParent | quote }}
+            HDFS_REPLICATION: {{ .Values.hdfs.replication | quote }}
       resources:
         requests:
           cpu: {{ .Values.resources.hregionserver.requests.cpu | quote }}

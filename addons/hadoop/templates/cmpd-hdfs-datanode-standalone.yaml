@@ -162,6 +162,12 @@ spec:
       value: {{ .Values.hdfs.paths.datanodeDataDir | quote }}
     - name: HDFS_DATANODE_HANDLER_COUNT
       value: {{ .Values.hdfs.datanode.handlerCount | quote }}
+    - name: HDFS_DATANODE_DATA_PORT
+      value: {{ .Values.hdfs.ports.datanode.data | quote }}
+    - name: HDFS_DATANODE_HTTP_PORT
+      value: {{ .Values.hdfs.ports.datanode.http | quote }}
+    - name: HDFS_DATANODE_IPC_PORT
+      value: {{ .Values.hdfs.ports.datanode.ipc | quote }}
     - name: HDFS_NAMENODE_RPC_PORT
       value: {{ .Values.hdfs.ports.namenode.rpc | quote }}
     - name: HDFS_NAMENODE_HTTP_PORT

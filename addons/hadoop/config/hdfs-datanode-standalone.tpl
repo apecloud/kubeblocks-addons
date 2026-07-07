@@ -29,17 +29,17 @@
 
     <property>
         <name>dfs.datanode.address</name>
-        <value>0.0.0.0:9866</value>
+        <value>0.0.0.0:{{- .HDFS_DATANODE_DATA_PORT }}</value>
     </property>
 
     <property>
         <name>dfs.datanode.http.address</name>
-        <value>0.0.0.0:9864</value>
+        <value>0.0.0.0:{{- .HDFS_DATANODE_HTTP_PORT }}</value>
     </property>
 
     <property>
         <name>dfs.datanode.ipc.address</name>
-        <value>0.0.0.0:9867</value>
+        <value>0.0.0.0:{{- .HDFS_DATANODE_IPC_PORT }}</value>
     </property>
 
     <property>

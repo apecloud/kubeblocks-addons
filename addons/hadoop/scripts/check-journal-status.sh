@@ -13,7 +13,7 @@ set -o pipefail
 set -o xtrace
 
 # Check if datanode registered with the namenode and got non-null cluster ID.
-_PORTS="8480"
+_PORTS="${HDFS_JOURNALNODE_HTTP_PORT:-8480}"
 _URL_PATH="jmx?qry=Hadoop:service=JournalNode,name=JournalNodeInfo"
 _CLUSTER_ID=""
 for _PORT in $_PORTS; do

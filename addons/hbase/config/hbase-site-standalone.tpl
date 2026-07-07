@@ -58,22 +58,22 @@
 
     <property>
         <name>hbase.master.port</name>
-        <value>16000</value>
+        <value>{{ .HBASE_MASTER_PORT }}</value>
     </property>
 
     <property>
         <name>hbase.master.info.port</name>
-        <value>16010</value>
+        <value>{{ .HBASE_MASTER_INFO_PORT }}</value>
     </property>
 
     <property>
         <name>hbase.regionserver.port</name>
-        <value>16020</value>
+        <value>{{ .HBASE_REGIONSERVER_PORT }}</value>
     </property>
 
     <property>
         <name>hbase.regionserver.info.port</name>
-        <value>16030</value>
+        <value>{{ .HBASE_REGIONSERVER_INFO_PORT }}</value>
     </property>
 
     <property>

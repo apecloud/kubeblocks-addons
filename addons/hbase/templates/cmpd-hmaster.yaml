@@ -191,6 +191,14 @@ spec:
       value: {{ .Values.jvm.hregionserverHeapSize | quote }}
     - name: HBASE_MASTER_JMX_PORT
       value: {{ .Values.ports.hmaster.jmx | quote }}
+    - name: HBASE_MASTER_PORT
+      value: {{ .Values.ports.hmaster.rpc | quote }}
+    - name: HBASE_MASTER_INFO_PORT
+      value: {{ .Values.ports.hmaster.info | quote }}
+    - name: HBASE_REGIONSERVER_PORT
+      value: {{ .Values.ports.hregionserver.rpc | quote }}
+    - name: HBASE_REGIONSERVER_INFO_PORT
+      value: {{ .Values.ports.hregionserver.info | quote }}
     - name: HBASE_REGIONSERVER_JMX_PORT
       value: {{ .Values.ports.hregionserver.jmx | quote }}
     - name: HBASE_HEAP_SIZE

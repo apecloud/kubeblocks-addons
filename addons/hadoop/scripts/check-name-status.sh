@@ -8,7 +8,7 @@ set -o pipefail
 : "${HADOOP_CONF_DIR:=${HADOOP_HOME}/etc/hadoop}"
 export HADOOP_HOME HADOOP_CONF_DIR
 
-_NN_HTTP_PORT=9870
+_NN_HTTP_PORT="${HDFS_NAMENODE_HTTP_PORT:-9870}"
 
 CLUSTER_ID_RESP=$(curl -s --connect-timeout 5 --max-time 10 "http://localhost:${_NN_HTTP_PORT}/jmx?qry=Hadoop:service=NameNode,name=NameNodeInfo" 2>/dev/null || echo "")
 if echo "${CLUSTER_ID_RESP}" | grep -q '"ClusterId"'; then

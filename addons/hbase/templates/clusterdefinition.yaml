@@ -8,7 +8,7 @@ metadata:
     {{- include "hbase.apiVersion" . | nindent 4 }}
 spec:
   topologies:
-    - name: hbase-cluster
+    - name: cluster
       default: true
       components:
         - name: hmaster
@@ -25,7 +25,7 @@ spec:
         update:
           - hregionserver
           - hmaster
-    - name: hbase-standalone
+    - name: standalone
       components:
         - name: hbase-standalone
           compDef: {{ include "hbase.hbaseStandaloneCmpdRegexPattern" . }}
