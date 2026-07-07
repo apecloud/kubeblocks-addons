@@ -178,6 +178,11 @@ cleanup_mysql_binlogs() {
         readarray -t all_binlogs < <(ls -1 "$LOG_DIR"/*-bin.[0-9]* | sort -V)
 
         local REPLICA_HOSTS=($(get_replica_hosts))
+        # Match the binlog file name from replica status against the real
+        # binlog prefix (LOG_PREFIX, derived from log_bin_basename), not a
+        # reconstructed ${DP_TARGET_POD_NAME}-bin which can drift from the
+        # actual writer pod after a switchover or when the env is unset.
+        echo "DEBUG cleanup: DP_TARGET_POD_NAME=${DP_TARGET_POD_NAME}, LOG_PREFIX=${LOG_PREFIX}, replicas=[${REPLICA_HOSTS[*]}]"
 
         # Check synchronization status of each replica
         for host in "${REPLICA_HOSTS[@]}"; do
@@ -185,7 +190,8 @@ cleanup_mysql_binlogs() {
                 mysql -u"${DP_DB_USER}" -h"$host" -p"${DP_DB_PASSWORD}" -N -e "SHOW REPLICA STATUS\G" 2>/dev/null ||
                 mysql -u"${DP_DB_USER}" -h"$host" -p"${DP_DB_PASSWORD}" -N -e "SHOW SLAVE STATUS\G"
             )
-            local current_file=$(echo "$status_output" | grep -o "${DP_TARGET_POD_NAME}-bin\.[0-9]*" | tail -n1)
+            local current_file=$(echo "$status_output" | grep -o "${LOG_PREFIX}\.[0-9]*" | tail -n1)
+            echo "DEBUG cleanup: replica=${host} current_file=${current_file:-<none>}"
 
             if [[ -z "$current_file" ]]; then
                 return 1
