@@ -57,12 +57,12 @@ spec:
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.9
         accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.9
-        init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.4
+        init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup-minimal:8.4.0
         {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.4.10
       serviceVersion: 8.4.10
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.10
         accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.10
-        init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.4
+        init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup-minimal:8.4.0
         {{- include "mysql.spec.runtime.images" . | nindent 8 }}
