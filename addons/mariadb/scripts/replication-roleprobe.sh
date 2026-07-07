@@ -739,6 +739,10 @@ check_role() {
   attempt_marker_self_heal 2>/dev/null || true
 
   if [ -f "$(divergence_pending_file)" ]; then
+    # Required fail-safe: divergence-pending has higher priority than healthy
+    # replication observations. roleProbe may publish recoveryPending while this
+    # marker exists, but it must never clear the marker automatically. Only the
+    # external/manual recovery flow that has handled forked data may remove it.
     publish_recovery_pending "replication_divergence_pending" "unknown" "replication-divergence-pending marker exists" "1"
     return 0
   fi
