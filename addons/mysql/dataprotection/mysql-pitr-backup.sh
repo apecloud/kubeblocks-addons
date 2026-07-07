@@ -164,12 +164,31 @@ cleanup_mysql_binlogs() {
     # whole cleanup a silent no-op.
     function get_replica_hosts() {
         local hosts
-        hosts=$(mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e "SHOW REPLICAS" 2>/dev/null | awk '{print $2}')
+        # Semisync replicas do NOT set report_host (only the MGR cmpd and
+        # mysql-entrypoint.sh pass --report-host), so SHOW REPLICAS / SHOW
+        # SLAVE HOSTS leave the Host column empty; whitespace-splitting with
+        # `awk '{print $2}'` then slides onto the Port and returns "3306"
+        # instead of a host. Discover the connected replicas from the
+        # primary's own Binlog Dump threads, whose HOST carries the replica's
+        # real ip:port regardless of report_host.
+        hosts=$(mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e \
+            "SELECT HOST FROM information_schema.PROCESSLIST WHERE COMMAND LIKE 'Binlog Dump%'" 2>/dev/null)
         if [[ -z "$hosts" ]]; then
-            # MySQL 5.7 syntax
-            hosts=$(mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e "SHOW SLAVE HOSTS" 2>/dev/null | awk '{print $2}')
+            # Fallback: report_host-based discovery. Split on TAB so an empty
+            # Host column stays empty instead of sliding onto the Port.
+            hosts=$(mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e "SHOW REPLICAS" 2>/dev/null | awk -F'\t' '{print $2}')
+            if [[ -z "$hosts" ]]; then
+                # MySQL 5.7 syntax
+                hosts=$(mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e "SHOW SLAVE HOSTS" 2>/dev/null | awk -F'\t' '{print $2}')
+            fi
         fi
-        printf '%s\n' "$hosts" | sed '/^$/d' | grep -v "^${DP_DB_HOST}$" || true
+        # Strip the ephemeral ":port" from PROCESSLIST HOST (ip:port), drop
+        # blank lines and the primary itself, and de-duplicate.
+        printf '%s\n' "$hosts" \
+            | sed 's/:[0-9]\{1,\}$//' \
+            | sed '/^$/d' \
+            | grep -v "^${DP_DB_HOST}$" \
+            | sort -u || true
     }
 
     # Get synced binlog files from all replicas
@@ -182,7 +201,10 @@ cleanup_mysql_binlogs() {
         # binlog prefix (LOG_PREFIX, derived from log_bin_basename), not a
         # reconstructed ${DP_TARGET_POD_NAME}-bin which can drift from the
         # actual writer pod after a switchover or when the env is unset.
-        echo "DEBUG cleanup: DP_TARGET_POD_NAME=${DP_TARGET_POD_NAME}, LOG_PREFIX=${LOG_PREFIX}, replicas=[${REPLICA_HOSTS[*]}]"
+        # DEBUG must go to stderr: this function's stdout is captured by
+        # `synced_binlogs=$(get_synced_binlogs)`, so echoing here on stdout
+        # both hides the line from the pod log and corrupts the return value.
+        echo "DEBUG cleanup: DP_TARGET_POD_NAME=${DP_TARGET_POD_NAME}, LOG_PREFIX=${LOG_PREFIX}, replicas=[${REPLICA_HOSTS[*]}]" >&2
 
         # Check synchronization status of each replica
         for host in "${REPLICA_HOSTS[@]}"; do
@@ -191,7 +213,7 @@ cleanup_mysql_binlogs() {
                 mysql -u"${DP_DB_USER}" -h"$host" -p"${DP_DB_PASSWORD}" -N -e "SHOW SLAVE STATUS\G"
             )
             local current_file=$(echo "$status_output" | grep -o "${LOG_PREFIX}\.[0-9]*" | tail -n1)
-            echo "DEBUG cleanup: replica=${host} current_file=${current_file:-<none>}"
+            echo "DEBUG cleanup: replica=${host} current_file=${current_file:-<none>}" >&2
 
             if [[ -z "$current_file" ]]; then
                 return 1
@@ -318,8 +340,12 @@ cleanup_mysql_binlogs() {
         done
     }
 
-    # Get list of synced binlogs
-    local synced_binlogs=$(get_synced_binlogs)
+    # Get list of synced binlogs. Declare and assign on separate lines so the
+    # `if [ $? -ne 0 ]` below reflects get_synced_binlogs' exit code and not
+    # the always-zero exit of `local` -- this is what keeps the fail-closed
+    # "don't purge when replica sync is unknown" guard actually closed.
+    local synced_binlogs
+    synced_binlogs=$(get_synced_binlogs)
     if [ $? -ne 0 ] || [ -z "$synced_binlogs" ]; then
         echo "No synced binlog files found"
         return 0
