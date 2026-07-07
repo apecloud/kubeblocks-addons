@@ -981,6 +981,11 @@ scale_out_redis_cluster_shard() {
     fi
   done
 
+  if [ "$current_primary_joined" = true ]; then
+    echo "The current component shard primary already has slots, repaired secondary nodes, no need to reshard again."
+    return 0
+  fi
+
   # do the reshard
   # TODO: optimize the number of reshard slots according to the cluster status
   local total_slots
