@@ -31,6 +31,9 @@ spec:
       - name: grpc-qdrant
         port: 6334
         targetPort: grpc-qdrant
+      - name: p2p
+        port: 6335
+        targetPort: p2p
   configs:
   - name: qdrant-config-template
     template: {{ include "qdrant.configTplName" . }}
@@ -48,20 +51,17 @@ spec:
     needSnapshot: true
   - name: log
   vars:
-    - name: QDRANT_POD_NAME_LIST
-      valueFrom:
-        componentVarRef:
-          optional: false
-          podNames: Required
-    - name: QDRANT_POD_FQDN_LIST
-      valueFrom:
-        componentVarRef:
-          optional: false
-          podFQDNs: Required
     - name: KB_NAMESPACE
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: QDRANT_SERVICE_NAME
+      value: qdrant
     - name: TLS_ENABLED
       valueFrom:
         tlsVarRef:
@@ -69,9 +69,10 @@ spec:
           optional: true
     - name: TLS_MOUNT_PATH
       value: {{ .Values.tlsMountPath }}
+
   lifecycleActions:
     memberLeave:
-      timeoutSeconds: 300
+      timeoutSeconds: 30
       exec:
         command:
           - /bin/bash

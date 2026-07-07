@@ -2,44 +2,91 @@
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
-  common_library_file="/qdrant/scripts/common.sh"
+  common_library_file="${QDRANT_COMMON_FILE:-/qdrant/scripts/common.sh}"
   # shellcheck disable=SC1090
   source "${common_library_file}"
 }
 
-# get the min lexicographical order pod fqdn as the bootstrap node
-get_boostrap_node() {
-  min_lexicographical_pod_name=$(min_lexicographical_order_pod "$QDRANT_POD_NAME_LIST")
-  min_lexicographical_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$QDRANT_POD_FQDN_LIST" "$min_lexicographical_pod_name")
-  if is_empty "$min_lexicographical_pod_fqdn"; then
-    echo "Error: Failed to get pod: $min_lexicographical_pod_name fqdn from pod fqdn list: $QDRANT_POD_FQDN_LIST. Exiting." >&2
-    return 1
-  fi
-  echo $min_lexicographical_pod_fqdn
-  return 0
-}
-
-load_common_library
-current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$QDRANT_POD_FQDN_LIST" "$CURRENT_POD_NAME")
-boostrap_node_fqdn=$(get_boostrap_node)
-
-# TLS setup
-if [ "${TLS_ENABLED:-}" = "true" ]; then
-  SCHEME="https"
-  CURL_TLS="-k"
-else
+configure_tls() {
   SCHEME="http"
   CURL_TLS=""
-fi
+  if [ "${TLS_ENABLED:-}" = "true" ]; then
+    SCHEME="https"
+    CURL_TLS="-k"
+  fi
+}
 
-if [ "$current_pod_fqdn" == "$boostrap_node_fqdn" ]; then
-  exec ./qdrant --uri "${SCHEME}://${current_pod_fqdn}:6335"
-else
-  echo "BOOTSTRAP_HOSTNAME: ${boostrap_node_fqdn}"
-  QDRANT_CURL_BIN=./tools/curl
-  until qdrant_curl ${SCHEME}://${boostrap_node_fqdn}:6333/cluster; do
+wait_for_bootstrap_service() {
+  bootstrap_service_http_uri="$1"
+  until qdrant_curl -sf --max-time 10 "${bootstrap_service_http_uri}/cluster" >/dev/null; do
     echo "INFO: wait for bootstrap node starting..."
-    sleep 1;
+    sleep 10;
   done
-  exec ./qdrant --bootstrap "${SCHEME}://${boostrap_node_fqdn}:6335" --uri "${SCHEME}://${current_pod_fqdn}:6335"
+}
+
+qdrant_has_existing_raft_state() {
+  qdrant_storage_path="${QDRANT_STORAGE_PATH:-/qdrant/storage}"
+  [ -s "${qdrant_storage_path}/raft_state.json" ]
+}
+
+qdrant_bootstrap_service_available() {
+  bootstrap_service_http_uri="$1"
+  qdrant_curl -sf --max-time "${QDRANT_BOOTSTRAP_SERVICE_CHECK_TIMEOUT:-3}" \
+    "${bootstrap_service_http_uri}/cluster" >/dev/null 2>&1
+}
+
+qdrant_start_mode() {
+  bootstrap_service_http_uri="$1"
+
+  if qdrant_has_existing_raft_state; then
+    echo "restart"
+    return 0
+  fi
+
+  if qdrant_bootstrap_service_available "$bootstrap_service_http_uri"; then
+    echo "join"
+    return 0
+  fi
+
+  if qdrant_should_self_bootstrap; then
+    echo "bootstrap"
+    return 0
+  fi
+
+  echo "join"
+}
+
+qdrant_setup_main() {
+  set -o errexit
+  set -o pipefail
+
+  load_common_library
+  configure_tls
+
+  current_pod_fqdn="$(qdrant_current_pod_fqdn)"
+  bootstrap_service_host="$(qdrant_bootstrap_service_host)"
+  bootstrap_service_http_uri="${SCHEME}://${bootstrap_service_host}:6333"
+  bootstrap_service_p2p_uri="${SCHEME}://${bootstrap_service_host}:6335"
+
+  QDRANT_CURL_BIN="${QDRANT_CURL_BIN:-./tools/curl}"
+  export QDRANT_CURL_BIN
+
+  case "$(qdrant_start_mode "$bootstrap_service_http_uri")" in
+    restart|bootstrap)
+      exec ./qdrant --uri "${SCHEME}://${current_pod_fqdn}:6335"
+      ;;
+    join)
+      echo "JOIN EXISTING CLUSTER: ${bootstrap_service_host}"
+      wait_for_bootstrap_service "$bootstrap_service_http_uri"
+      exec ./qdrant --bootstrap "$bootstrap_service_p2p_uri" --uri "${SCHEME}://${current_pod_fqdn}:6335"
+      ;;
+    *)
+      echo "ERROR: unknown qdrant start mode" >&2
+      return 1
+      ;;
+  esac
+}
+
+if [ "${QDRANT_SETUP_UNIT_TEST:-}" != "true" ]; then
+  qdrant_setup_main "$@"
 fi
