@@ -46,7 +46,8 @@ spec:
           - name: metadata-dir
             mountPath: /hadoop
       - name: init-namenode-format
-        imagePullPolicy: IfNotPresent
+        image: {{ include "hadoop.initNameNodeFormatImage" . | quote }}
+        imagePullPolicy: {{ default .Values.nameNode.image.pullPolicy .Values.nameNode.initImages.initNameNodeFormat.pullPolicy }}
         securityContext:
           runAsUser: {{ .Values.securityContext.runAsUser }}
           runAsGroup: {{ .Values.securityContext.runAsGroup }}
@@ -79,7 +80,8 @@ spec:
           - name: scripts
             mountPath: {{ .Values.runtime.scriptsDir }}
       - name: init-zkfc-format
-        imagePullPolicy: IfNotPresent
+        image: {{ include "hadoop.initZkfcFormatImage" . | quote }}
+        imagePullPolicy: {{ default .Values.nameNode.image.pullPolicy .Values.nameNode.initImages.initZkfcFormat.pullPolicy }}
         securityContext:
           runAsUser: {{ .Values.securityContext.runAsUser }}
           runAsGroup: {{ .Values.securityContext.runAsGroup }}
@@ -106,7 +108,8 @@ spec:
           - name: scripts
             mountPath: {{ .Values.runtime.scriptsDir }}
       - name: init-nn-bootstrap-standby
-        imagePullPolicy: IfNotPresent
+        image: {{ include "hadoop.initNnBootstrapStandbyImage" . | quote }}
+        imagePullPolicy: {{ default .Values.nameNode.image.pullPolicy .Values.nameNode.initImages.initNnBootstrapStandby.pullPolicy }}
         securityContext:
           runAsUser: {{ .Values.securityContext.runAsUser }}
           runAsGroup: {{ .Values.securityContext.runAsGroup }}

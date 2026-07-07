@@ -27,6 +27,22 @@ nameNode:
     repository: apecloud/hdfs-namenode
     tag: "v3.3.4-1.0.0"
     pullPolicy: IfNotPresent
+  initImages:
+    initNameNodeFormat:
+      registry: ""
+      repository: ""
+      tag: ""
+      pullPolicy: ""
+    initZkfcFormat:
+      registry: ""
+      repository: ""
+      tag: ""
+      pullPolicy: ""
+    initNnBootstrapStandby:
+      registry: ""
+      repository: ""
+      tag: ""
+      pullPolicy: ""
 
 dataNode:
   image:

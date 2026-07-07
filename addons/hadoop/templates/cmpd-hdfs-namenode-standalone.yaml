@@ -40,7 +40,8 @@ spec:
           - name: metadata-dir
             mountPath: /hadoop
       - name: init-namenode-format
-        imagePullPolicy: IfNotPresent
+        image: {{ include "hadoop.initNameNodeFormatImage" . | quote }}
+        imagePullPolicy: {{ default .Values.nameNode.image.pullPolicy .Values.nameNode.initImages.initNameNodeFormat.pullPolicy }}
         securityContext:
           runAsUser: {{ .Values.securityContext.runAsUser }}
           runAsGroup: {{ .Values.securityContext.runAsGroup }}

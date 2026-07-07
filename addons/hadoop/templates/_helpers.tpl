@@ -97,6 +97,18 @@ Image references
 {{ .Values.nameNode.image.registry }}/{{ .Values.nameNode.image.repository }}:{{ .Values.nameNode.image.tag }}
 {{- end }}
 
+{{- define "hadoop.initNameNodeFormatImage" -}}
+{{ default .Values.nameNode.image.registry .Values.nameNode.initImages.initNameNodeFormat.registry }}/{{ default .Values.nameNode.image.repository .Values.nameNode.initImages.initNameNodeFormat.repository }}:{{ default .Values.nameNode.image.tag .Values.nameNode.initImages.initNameNodeFormat.tag }}
+{{- end }}
+
+{{- define "hadoop.initZkfcFormatImage" -}}
+{{ default .Values.nameNode.image.registry .Values.nameNode.initImages.initZkfcFormat.registry }}/{{ default .Values.nameNode.image.repository .Values.nameNode.initImages.initZkfcFormat.repository }}:{{ default .Values.nameNode.image.tag .Values.nameNode.initImages.initZkfcFormat.tag }}
+{{- end }}
+
+{{- define "hadoop.initNnBootstrapStandbyImage" -}}
+{{ default .Values.nameNode.image.registry .Values.nameNode.initImages.initNnBootstrapStandby.registry }}/{{ default .Values.nameNode.image.repository .Values.nameNode.initImages.initNnBootstrapStandby.repository }}:{{ default .Values.nameNode.image.tag .Values.nameNode.initImages.initNnBootstrapStandby.tag }}
+{{- end }}
+
 {{- define "hadoop.dataNodeImage" -}}
 {{ .Values.dataNode.image.registry }}/{{ .Values.dataNode.image.repository }}:{{ .Values.dataNode.image.tag }}
 {{- end }}
