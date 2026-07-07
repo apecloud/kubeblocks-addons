@@ -543,7 +543,7 @@ mark_replication_pending() {
 mark_replication_ready() {
   touch ${DATA_DIR}/.replication-ready
   touch ${DATA_DIR}/.sql-listener-ready
-  rm -f ${DATA_DIR}/.replication-pending ${DATA_DIR}/.replication-divergence-pending
+  rm -f ${DATA_DIR}/.replication-pending
 }
 mark_replication_divergence_pending() {
   mark_replication_pending

@@ -332,7 +332,7 @@ EOF
         The output should include "Replication started"
       End
 
-      It "clears any stale divergence marker on successful replication setup"
+      It "preserves divergence marker on successful replication setup"
         primary_sql() {
           case "$*" in
             *"gtid_binlog_pos"*) echo "0-1-100" ;;
@@ -354,7 +354,7 @@ EOF
         }
         touch "${TEST_DIR}/.replication-pending" "${TEST_DIR}/.replication-divergence-pending"
         When call setup_replication
-        The path "${TEST_DIR}/.replication-divergence-pending" should not be exist
+        The path "${TEST_DIR}/.replication-divergence-pending" should be exist
         The output should include "Replication started"
       End
     End

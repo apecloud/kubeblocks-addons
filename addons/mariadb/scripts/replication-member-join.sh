@@ -116,11 +116,11 @@ mark_replication_ready() {
   if [ ! -f "${DATA_DIR}/.replication-ready" ]; then
     touch "${DATA_DIR}/.replication-ready"
   fi
-  rm -f "${DATA_DIR}/.replication-pending" "${DATA_DIR}/.replication-divergence-pending"
+  rm -f "${DATA_DIR}/.replication-pending"
 }
 
 mark_replication_pending() {
-  rm -f "${DATA_DIR}/.replication-ready" "${DATA_DIR}/.replication-divergence-pending"
+  rm -f "${DATA_DIR}/.replication-ready"
   touch "${DATA_DIR}/.replication-pending"
 }
 
