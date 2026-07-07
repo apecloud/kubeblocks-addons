@@ -1,7 +1,13 @@
 {{- $pd := .Files.Get "config/mysql8-config-effect-scope.yaml" | fromYaml }}
-{{- /* System variables removed in MySQL 8.4.0: setting any of them must be
-       rejected by the schema, and they must not appear in the static/dynamic/
-       immutable classification lists. */}}
+{{- /* System variables removed in MySQL 8.4.0 must not appear in the static/
+       dynamic/immutable classification lists. Explicit CUE bottom (_|_) is NOT
+       used to reject them: KB 1.2.0-alpha.2 cannot marshal an explicit bottom
+       into the OpenAPI schema, which makes the whole ParametersDefinition
+       unavailable and blocks 8.4 provisioning. Rejection of a user reconfigure
+       of these variables is enforced at runtime by update-parameter.sh
+       (fail-closed on the SET GLOBAL unknown-variable error) rather than at the
+       PD schema layer. Strict schema-level rejection is a follow-up enhancement
+       (would require closing the open CUE struct, evaluated separately). */}}
 {{- $removed84 := list
       "default_authentication_plugin"
       "expire_logs_days"
@@ -31,18 +37,8 @@ spec:
       {{- .Files.Get "config/mysql8-config-constraint.cue" | nindent 6 }}
 
       #MysqlParameter: {
-        // Removed in MySQL 8.4.0. default_authentication_plugin is superseded
-        // by authentication_policy.
-        default_authentication_plugin?: _|_
+        // MySQL 8.4 replacement for the removed default_authentication_plugin.
         authentication_policy?: string
-        // Removed in MySQL 8.4.0. Superseded by binlog_expire_logs_seconds.
-        expire_logs_days?: _|_
-        binlog_transaction_dependency_tracking?: _|_
-        transaction_write_set_extraction?: _|_
-        slave_rows_search_algorithms?: _|_
-        master_info_repository?: _|_
-        relay_log_info_repository?: _|_
-        log_bin_use_v1_row_events?: _|_
       }
 
   {{- if hasKey $pd "staticParameters" }}
