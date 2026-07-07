@@ -173,6 +173,32 @@ SH
     The file "${data_dir}/cluster-meta" should not be exist
   End
 
+  It "re-emits the TRUE refusal reason on retry (cleanup leaves no extraction residue)"
+    # CT11 focused-rerun live finding: refusal used to leave its own
+    # extracted files in DATA_DIR, so every retried prepareData pod hit
+    # the '/data is not empty' guard and the real reason was masked.
+    export FAKE_DATASAFED_CLUSTER_META=3
+    When run bash -c "bash ../dataprotection/restore.sh; bash ../dataprotection/restore.sh"
+    The status should be failure
+    # BOTH invocations must speak the true refusal, never the guard error
+    The stdout should include "INFO: Restoring from restore-test.tar.zst..."
+    The stderr should not include "is not empty"
+    The stderr should include "CLUSTER (sharding) backup (source_shards=3)"
+    The file "${data_dir}/dump.rdb" should not be exist
+    The file "${data_dir}/cluster-meta" should not be exist
+  End
+
+  It "refusal cleanup spares the placeholder and lost+found (never real pre-existing entries)"
+    export FAKE_DATASAFED_CLUSTER_META=3
+    mkdir -p "${data_dir}/lost+found"
+    When run bash ../dataprotection/restore.sh
+    The status should be failure
+    The stdout should include "INFO: Restoring from restore-test.tar.zst..."
+    The stderr should include "NOT supported in v1"
+    The file "${data_dir}/.kb-data-protection" should be exist
+    The dir "${data_dir}/lost+found" should be exist
+  End
+
   It "leaves non-cluster restores untouched by the cluster guard"
     When run bash ../dataprotection/restore.sh
     The status should be success

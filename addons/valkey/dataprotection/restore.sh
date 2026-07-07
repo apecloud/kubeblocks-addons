@@ -86,7 +86,13 @@ refuse_cluster_restore() {
   local meta="${DATA_DIR}/cluster-meta" source_shards
   [ -f "${meta}" ] || return 0
   source_shards=$(grep '^source_shards=' "${meta}" | cut -d= -f2)
-  rm -f "${meta}"
+  # Remove everything THIS run extracted before exiting: the emptiness
+  # guard proved DATA_DIR held no user data at entry, so all entries here
+  # are our own extraction output. Without this, a retried prepareData
+  # pod trips the '/data is not empty' guard over our leftovers and the
+  # TRUE refusal reason is masked on every retry (live finding, CT11
+  # focused rerun).
+  find "${DATA_DIR}" -mindepth 1 -maxdepth 1 ! -name ".kb-data-protection" ! -name "lost+found" -exec rm -rf {} +
   echo "ERROR: this archive is a Valkey CLUSTER (sharding) backup (source_shards=${source_shards})." >&2
   echo "  Cluster datafile restore is NOT supported in v1: restored slot layouts cannot yet be" >&2
   echo "  guaranteed to match the source (slot-aware restore is a planned follow-up; the archive" >&2
