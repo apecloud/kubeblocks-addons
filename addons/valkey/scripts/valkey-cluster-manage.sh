@@ -323,8 +323,32 @@ verify_or_join() {
 
   local self_first
   self_first=$(first_fqdn_of_list "${CURRENT_SHARD_POD_FQDN_LIST}")
+
+  # JOIN QUEUE (r11 CT12 3->5 evidence): when MULTIPLE shards join in one
+  # operation (Parallel provisioning), concurrent drivers mutually wound
+  # each other — each shard's fix/rebalance creates exactly the transient
+  # inconsistency that fails the other's preflights, alternating forever.
+  # Same design language as formation's deterministic coordinator: among
+  # the currently-INCOMPLETE shards (engine truth), only the sorted-first
+  # one may perform write actions; the rest defer retry-safe and take
+  # their turn on a later re-entry. Completed shards are never gated.
+  local first_incomplete
+  first_incomplete=$(first_incomplete_shard "${any_formed_host}")
+  if [ -n "${first_incomplete}" ] && \
+     [ "${first_incomplete}" != "$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_')" ] && \
+     ! shard_complete_in_view "${any_formed_host}" "$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_')"; then
+    classify join-queue yes "holder=${first_incomplete} current=$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_') — waiting for earlier joining shard (deterministic multi-join serialization)"
+    return 1
+  fi
+
   build_cli "${any_formed_host}"
   if ! "${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | grep -q "${self_first}"; then
+    # repair-first also gates the FIRST CONTACT: the turn-holder may
+    # inherit open slots left by a clamped predecessor, and add-node's
+    # preflight rejects over them (review contract, r11 CT12).
+    if open_slots_present "${any_formed_host}"; then
+      repair_open_slots "${any_formed_host}" || return 1
+    fi
     # scale-out first contact: introduce this shard's designated master.
     # Wrapper preflight failures here are dominated by transient config
     # agreement (gossip settling after a prior step) -> retry-safe defer;
@@ -369,6 +393,42 @@ repair_open_slots() {
     return 1
   fi
   echo "repaired open slots (interrupted migration)."
+}
+
+# A shard is COMPLETE in the cluster view when it has exactly one bound
+# master that owns slots and every roster pod is bound (strict binding).
+# Used by the join queue; reads engine truth from the given vantage.
+shard_complete_in_view() {
+  local via="${1}" shard_upper="${2}" shard_line shard fqdns nodes master_line master_id own
+  while read -r shard_line; do
+    shard="${shard_line%% *}"
+    [ "${shard}" = "${shard_upper}" ] || continue
+    fqdns="${shard_line#* }"
+    build_cli "${via}"
+    nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
+    [ -z "${nodes}" ] && return 1
+    shard_membership_bound "${nodes}" "${shard}" "${fqdns}" >/dev/null || return 1
+    master_line=$(echo "${nodes}" | grep -E "$(echo "${fqdns}" | tr ',' '|')" | awk '$3 ~ /master/ {print; exit}')
+    master_id=$(echo "${master_line}" | awk '{print $1}')
+    own=$(slots_owned_by "${via}" "${master_id}")
+    [ "${own}" -gt 0 ] && return 0
+    return 1
+  done < <(each_shard_fqdn_list)
+  return 1
+}
+
+# Sorted-first shard (roster order) that is NOT complete in the view.
+# Empty output = all roster shards complete.
+first_incomplete_shard() {
+  local via="${1}" shard_line shard
+  while read -r shard_line; do
+    shard="${shard_line%% *}"
+    if ! shard_complete_in_view "${via}" "${shard}"; then
+      echo "${shard}"
+      return 0
+    fi
+  done < <(each_shard_fqdn_list)
+  return 0
 }
 
 # Idempotent completion driver for THIS shard: ensure its master owns

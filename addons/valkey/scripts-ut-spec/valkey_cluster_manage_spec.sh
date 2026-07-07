@@ -295,6 +295,93 @@ Describe "valkey-cluster-manage.sh"
     End
   End
 
+  Describe "multi-join queue — r11 CT12 3->5 concurrent-join livelock"
+    # r11 live evidence: two shards joining in one Parallel operation
+    # mutually wound each other (each driver's fix/rebalance breaks the
+    # other's preflights, alternating forever). Only the sorted-first
+    # INCOMPLETE shard may write; the rest defer deterministically.
+    queue_env() {
+      export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-k74"
+      export CURRENT_SHARD_POD_FQDN_LIST="vk-k74-0.h,vk-k74-1.h"
+      each_shard_fqdn_list() {
+        printf 'SHARD_ABC vk-abc-0.h,vk-abc-1.h\n'
+        printf 'SHARD_HX7 vk-hx7-0.h,vk-hx7-1.h\n'
+        printf 'SHARD_K74 vk-k74-0.h,vk-k74-1.h\n'
+      }
+      cluster_state_of() { echo "ok"; }
+    }
+    Before "queue_env"
+
+    It "defers a non-first joining shard with join-queue and performs NO writes"
+      # ABC complete; HX7 and K74 both incomplete -> HX7 (sorted first) holds the turn
+      shard_complete_in_view() { [ "${2}" = "SHARD_ABC" ]; }
+      build_cli() { _cli=(true); }
+      build_cluster_cli() { echo "WRITE-PATH-REACHED" >&2; _ccli=(true); }
+      drive_shard_completion() { echo "DRIVE-REACHED" >&2; return 0; }
+      When call verify_or_join
+      The status should be failure
+      The stderr should include "phase=join-queue"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "holder=SHARD_HX7"
+      The stderr should include "current=SHARD_K74"
+      The stderr should not include "WRITE-PATH-REACHED"
+      The stderr should not include "DRIVE-REACHED"
+    End
+
+    It "turn-holder repairs inherited open slots BEFORE first-contact add-node"
+      # a clamped predecessor may leave open slots; add-node preflight
+      # rejects over them, so repair must run first (review contract)
+      shard_complete_in_view() { [ "${2}" = "SHARD_ABC" ] || [ "${2}" = "SHARD_HX7" ]; }
+      _order=$(mktemp)
+      build_cli() { _cli=(mock_absent_self); }
+      mock_absent_self() { printf 'aid vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'; }
+      open_slots_present() { [ ! -s "${_order}" ]; }
+      repair_open_slots() { echo "REPAIR" >> "${_order}"; return 0; }
+      build_cluster_cli() { echo "ADDNODE" >> "${_order}"; _ccli=(mock_add_ok); }
+      mock_add_ok() { echo "added"; }
+      node_id_of() { echo "kid"; }
+      drive_shard_completion() { echo "DRIVEN"; }
+      When call verify_or_join
+      The status should be success
+      The stdout should include "DRIVEN"
+      The contents of file "${_order}" should equal "REPAIR
+ADDNODE"
+    End
+
+    It "lets the shard proceed once every earlier joining shard is complete"
+      # ABC and HX7 complete; K74 (self) is the first incomplete -> drive
+      shard_complete_in_view() { [ "${2}" != "SHARD_K74" ]; }
+      build_cli() { _cli=(mock_self_present); }
+      mock_self_present() { printf 'kid vk-k74-0.h:6379@16379 master - 0 0 9 connected\n'; }
+      drive_shard_completion() { echo "DRIVEN self=${2}"; }
+      When call verify_or_join
+      The status should be success
+      The stdout should include "DRIVEN self=vk-k74-0.h"
+    End
+
+    It "never gates a shard that is already complete in the view"
+      # all complete; self included -> gate must not fire, flow verifies via driver
+      shard_complete_in_view() { return 0; }
+      build_cli() { _cli=(mock_self_present2); }
+      mock_self_present2() { printf 'kid vk-k74-0.h:6379@16379 master - 0 0 9 connected 5461-10922\n'; }
+      drive_shard_completion() { echo "VERIFIED self=${2}"; }
+      When call verify_or_join
+      The status should be success
+      The stdout should include "VERIFIED"
+    End
+
+    It "shard_complete_in_view requires bound membership AND owned slots"
+      # bound but zero slots -> incomplete
+      build_cli() { _cli=(mock_zero_slot_view); }
+      mock_zero_slot_view() {
+        printf 'm1 vk-hx7-0.h:6379@16379 master - 0 0 7 connected\n'
+        printf 's1 vk-hx7-1.h:6379@16379 slave m1 0 0 7 connected\n'
+      }
+      When call shard_complete_in_view "via.h" "SHARD_HX7"
+      The status should be failure
+    End
+  End
+
   Describe "purge_shard_from_cluster() — r4 CT06 residue-free removal"
     # r4 CT06 live evidence: del-node's SHUTDOWN let the removed pods
     # restart with old nodes.conf and re-handshake back as fail entries.
