@@ -354,10 +354,14 @@ while true; do
   # purge the expired bin logs
   purge_expired_files
 
-  # clean up synced and uploaded binary log files when disk usage >= 80%
+  # clean up synced and uploaded binary log files when disk usage reaches the
+  # threshold. The threshold defaults to 80% (production behaviour unchanged);
+  # it is overridable via PURGE_BINLOG_DISK_THRESHOLD so tests can exercise the
+  # purge path without filling a large shared host volume to 80%.
+  purge_threshold="${PURGE_BINLOG_DISK_THRESHOLD:-80}"
   disk_usage=$(df -h ${LOG_DIR} | awk 'NR==2 {print $5}' | cut -d'%' -f1)
-  if [ -n "${disk_usage}" ] && [ "${disk_usage}" -ge 80 ] && [ "${PURGE_BINLOG}" = "on" ]; then
-      echo "Executing cleanup_mysql_binlogs due to: Disk usage is ${disk_usage}% (>= 80%)"
+  if [ -n "${disk_usage}" ] && [ "${disk_usage}" -ge "${purge_threshold}" ] && [ "${PURGE_BINLOG}" = "on" ]; then
+      echo "Executing cleanup_mysql_binlogs due to: Disk usage is ${disk_usage}% (>= ${purge_threshold}%)"
       cleanup_mysql_binlogs
   fi
 
