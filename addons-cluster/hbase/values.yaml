@@ -1,0 +1,54 @@
+topology: cluster
+
+replicas:
+  hmaster: 2
+  hregionserver: 2
+
+resources:
+  hmaster:
+    requests:
+      cpu: "0.5"
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  hregionserver:
+    requests:
+      cpu: "0.5"
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 6Gi
+  hbasestandalone:
+    requests:
+      cpu: "0.2"
+      memory: 0.5Gi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+storage:
+  storageClassName: ""
+  standalone:
+    data: 20Gi
+
+serviceRefs:
+  hbaseZookeeper:
+    namespace: kubeblocks
+    clusterServiceSelector:
+      cluster: zk
+      service:
+        component: zookeeper
+        service: headless
+        port: client
+  hdfsNamenode:
+    namespace: kubeblocks
+    clusterServiceSelector:
+      cluster: hdfs
+      service:
+        component: namenode
+        service: headless
+        port: client
+
+extra:
+  terminationPolicy: Delete

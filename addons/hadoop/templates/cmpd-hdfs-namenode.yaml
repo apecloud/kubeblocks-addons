@@ -1,0 +1,396 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: hdfs-namenode
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.apiVersion" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceKind: hdfs-namenode
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: fs
+            port: {{ .Values.hdfs.ports.namenode.rpc }}
+          - name: http
+            port: {{ .Values.hdfs.ports.namenode.http }}
+  serviceRefDeclarations:
+    - name: hadoopZookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: "^*"
+  runtime:
+    terminationGracePeriodSeconds: 300
+    initContainers:
+      - name: hadoop-common
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: {{ .Values.securityContext.initRunAsUser }}
+        command:
+          - /bin/bash
+        args:
+          - -ec
+          - |
+            cp -r {{ .Values.runtime.hadoopSoftwareDir }}/* {{ .Values.runtime.hadoopHome }}
+            mkdir -p {{ .Values.hdfs.paths.namenodeMetadataDir }}
+            mkdir -p {{ .Values.hdfs.paths.namenodeJournalDir }}
+            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} /hadoop
+            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.runtime.hadoopHome }}
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: metadata-dir
+            mountPath: /hadoop
+      - name: init-namenode-format
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: HADOOP_HOME
+            value: {{ .Values.runtime.hadoopHome }}
+          - name: HADOOP_CONF_DIR
+            value: {{ .Values.runtime.configDir }}
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/init-namenode-format.sh
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: metadata-dir
+            mountPath: /hadoop
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/core-site.xml
+            subPath: core-site.xml
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
+            subPath: hadoop-env.sh
+          - name: namenode-config
+            mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: scripts
+            mountPath: {{ .Values.runtime.scriptsDir }}
+      - name: init-zkfc-format
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+        env:
+          - name: HADOOP_HOME
+            value: {{ .Values.runtime.hadoopHome }}
+          - name: HADOOP_CONF_DIR
+            value: {{ .Values.runtime.configDir }}
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/init-zkfc-format.sh
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/core-site.xml
+            subPath: core-site.xml
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
+            subPath: hadoop-env.sh
+          - name: namenode-config
+            mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: scripts
+            mountPath: {{ .Values.runtime.scriptsDir }}
+      - name: init-nn-bootstrap-standby
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+        env:
+          - name: HADOOP_HOME
+            value: {{ .Values.runtime.hadoopHome }}
+          - name: HADOOP_CONF_DIR
+            value: {{ .Values.runtime.configDir }}
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/init-nn-bootstrap-standby.sh
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: metadata-dir
+            mountPath: /hadoop
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/core-site.xml
+            subPath: core-site.xml
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
+            subPath: hadoop-env.sh
+          - name: namenode-config
+            mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: scripts
+            mountPath: {{ .Values.runtime.scriptsDir }}
+    containers:
+      - name: hdfs-namenode
+        image: {{ include "hadoop.nameNodeImage" . | quote }}
+        imagePullPolicy: {{ .Values.nameNode.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/start-namenode.sh
+        env:
+          - name: DEBUG_MODEL
+            value: {{ .Values.runtime.debug | quote }}
+          - name: CURRENT_POD
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: HADOOP_HOME
+            value: {{ .Values.runtime.hadoopHome }}
+          - name: HADOOP_CONF_DIR
+            value: {{ .Values.runtime.configDir }}
+          - name: HADOOP_LOG_DIR
+            value: {{ .Values.runtime.hadoopLogDir }}
+        ports:
+          - containerPort: {{ .Values.hdfs.ports.namenode.rpc }}
+            name: fs
+          - containerPort: {{ .Values.hdfs.ports.namenode.http }}
+            name: http
+        startupProbe:
+          failureThreshold: 60
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-name-status.sh
+        livenessProbe:
+          failureThreshold: {{ .Values.probes.namenode.liveness.failureThreshold }}
+          initialDelaySeconds: {{ .Values.probes.namenode.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.namenode.liveness.periodSeconds }}
+          successThreshold: 1
+          timeoutSeconds: {{ .Values.probes.namenode.liveness.timeoutSeconds }}
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-name-status.sh
+        readinessProbe:
+          failureThreshold: {{ .Values.probes.namenode.readiness.failureThreshold }}
+          initialDelaySeconds: {{ .Values.probes.namenode.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.namenode.readiness.periodSeconds }}
+          successThreshold: 1
+          timeoutSeconds: {{ .Values.probes.namenode.readiness.timeoutSeconds }}
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-name-status.sh
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: metadata-dir
+            mountPath: /hadoop
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/core-site.xml
+            subPath: core-site.xml
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
+            subPath: hadoop-env.sh
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-metrics2.properties
+            subPath: hadoop-metrics2.properties
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.include
+            subPath: dfs.include
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.exclude
+            subPath: dfs.exclude
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/log4j.properties
+            subPath: log4j.properties
+          - name: namenode-config
+            mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: lifecycle
+            mountPath: /lifecycle
+          - name: hadoop-logs
+            mountPath: {{ .Values.runtime.hadoopLogDir }}
+          - name: scripts
+            mountPath: {{ .Values.runtime.scriptsDir }}
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          privileged: {{ .Values.securityContext.privileged }}
+          allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+          capabilities:
+{{ toYaml .Values.securityContext.capabilities | nindent 12 }}
+          seccompProfile:
+{{ toYaml .Values.securityContext.seccompProfile | nindent 12 }}
+      - name: hdfs-zkfc
+        image: {{ include "hadoop.nameNodeImage" . | quote }}
+        imagePullPolicy: {{ .Values.nameNode.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/start-zkfc.sh
+        env:
+          - name: HADOOP_HOME
+            value: {{ .Values.runtime.hadoopHome }}
+          - name: HADOOP_CONF_DIR
+            value: {{ .Values.runtime.configDir }}
+          - name: HADOOP_LOG_DIR
+            value: {{ .Values.runtime.hadoopLogDir }}
+        ports:
+          - containerPort: 8019
+            name: zkfc
+        startupProbe:
+          failureThreshold: 30
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - -ec
+              - "jps | grep -q DFSZKFailoverController || pgrep -f DFSZKFailoverController > /dev/null"
+        livenessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - -ec
+              - "jps | grep -q DFSZKFailoverController || pgrep -f DFSZKFailoverController > /dev/null"
+        readinessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - -ec
+              - "jps | grep -q DFSZKFailoverController || pgrep -f DFSZKFailoverController > /dev/null"
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/core-site.xml
+            subPath: core-site.xml
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
+            subPath: hadoop-env.sh
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/log4j.properties
+            subPath: log4j.properties
+          - name: namenode-config
+            mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: lifecycle
+            mountPath: /lifecycle
+          - name: hadoop-logs
+            mountPath: {{ .Values.runtime.hadoopLogDir }}
+          - name: scripts
+            mountPath: {{ .Values.runtime.scriptsDir }}
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          privileged: {{ .Values.securityContext.privileged }}
+          allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+          capabilities:
+{{ toYaml .Values.securityContext.capabilities | nindent 12 }}
+          seccompProfile:
+{{ toYaml .Values.securityContext.seccompProfile | nindent 12 }}
+    securityContext:
+      fsGroupChangePolicy: {{ .Values.securityContext.fsGroupChangePolicy }}
+      fsGroup: {{ .Values.securityContext.fsGroup }}
+    volumes:
+      - name: hadoop-common
+        emptyDir: {}
+      - name: lifecycle
+        emptyDir: {}
+      - name: hadoop-logs
+        emptyDir: {}
+  updateStrategy: {{ .Values.updateStrategy }}
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
+    - name: NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.extra.clusterDomain }}
+    - name: HDFS_CONF_DIR
+      value: {{ .Values.runtime.configDir }}
+    - name: JOURNALNODE_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: hdfs-journalnode
+          optional: false
+          podFQDNs: Required
+    - name: ZOOKEEPER_ENDPOINTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hadoopZookeeper
+          endpoint: Required
+    - name: HDFS_NAMENODE_NAME_DIR
+      value: {{ .Values.hdfs.paths.namenodeMetadataDir | quote }}
+    - name: HDFS_NAMENODE_RPC_PORT
+      value: {{ .Values.hdfs.ports.namenode.rpc | quote }}
+    - name: HDFS_NAMENODE_HTTP_PORT
+      value: {{ .Values.hdfs.ports.namenode.http | quote }}
+    - name: HDFS_JOURNALNODE_RPC_PORT
+      value: {{ .Values.hdfs.ports.journalnode.rpc | quote }}
+    - name: HDFS_HA_FENCING_METHODS
+      value: {{ .Values.hdfs.ha.fencingMethods | quote }}
+    - name: HDFS_HA_AUTOMATIC_FAILOVER_ENABLED
+      value: {{ .Values.hdfs.ha.automaticFailoverEnabled | quote }}
+    - name: HDFS_HA_ZOOKEEPER_OPERATION_RETRIES
+      value: {{ .Values.hdfs.ha.zookeeper.operationRetries | quote }}
+    - name: HDFS_PERMISSIONS_ENABLED
+      value: {{ .Values.hdfs.permissions.enabled | quote }}
+    - name: HDFS_REGISTRATION_IP_HOSTNAME_CHECK
+      value: {{ .Values.hdfs.registration.ipHostnameCheck | quote }}
+    - name: HDFS_REPLICATION
+      value: {{ .Values.hdfs.replication | quote }}
+    - name: HDFS_REPLICATION_MAX
+      value: {{ .Values.hdfs.replicationMax | quote }}
+    - name: HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY
+      value: {{ .Values.hdfs.client.replaceDatanodeOnFailurePolicy | quote }}
+    - name: HDFS_NAMENODE_HANDLER_COUNT
+      value: {{ .Values.hdfs.namenode.handlerCount | quote }}
+    - name: POD_FQDN
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']
+          apiVersion: v1
+  configs:
+    - name: namenode-config
+      template: namenode-config-template
+      volumeName: namenode-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.config.defaultMode }}
+  scripts:
+    - name: hadoop-scripts
+      template: hadoop-scripts
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.scripts.defaultMode }}

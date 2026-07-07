@@ -1,0 +1,72 @@
+hmaster:
+  image:
+    registry: docker.io
+    repository: apecloud/hbase-hmaster
+    tag: "v2.5.6-1.0.0"
+    pullPolicy: IfNotPresent
+
+hregionserver:
+  image:
+    registry: docker.io
+    repository: apecloud/hbase-hregionserver
+    tag: "v2.5.6-1.0.0"
+    pullPolicy: IfNotPresent
+
+hbasestandalone:
+  image:
+    registry: docker.io
+    repository: apecloud/hbase-hmaster
+    tag: "v2.5.6-1.0.0"
+    pullPolicy: IfNotPresent
+
+runtime:
+  hbaseHome: /opt/hbase-2.5.6
+  hbaseConfDir: /hbase/conf
+  hbaseLogDir: /var/log/hbase
+  hbasePidDir: /var/run/hbase
+  hbaseTmpDir: /hbase/tmp
+  hbaseDataDir: /data/hbase
+  scriptsDir: /hbase/scripts
+  hadoopConfDir: /hadoop/conf
+  hadoopHome: /opt/hadoop
+  hadoopNativeLibPath: /opt/hadoop/lib/native
+  javaHome: /usr/local/openjdk-8
+
+ports:
+  hmaster:
+    rpc: 16000
+    info: 16010
+    jmx: 10103
+  hregionserver:
+    rpc: 16020
+    info: 16030
+    jmx: 10104
+
+jvm:
+  hmasterHeapSize: 3g
+  hregionserverHeapSize: 4g
+  hbasestandaloneHeapSize: 512m
+
+hbase:
+  rootDir: hbase
+  zkParent: /hbase
+  zkClientPort: 2181
+
+hdfs:
+  nameservice: ""
+  namenodeNodes: nn0,nn1
+  namenodeRpcPort: 8020
+  namenodeHttpPort: 9870
+  haZkParent: /hadoop-ha
+  replication: "3"
+
+extra:
+  disableExporter: true
+  terminationPolicy: Delete
+  clusterDomain: cluster.local
+
+securityContext:
+  runAsUser: 10000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  fsGroup: 1000

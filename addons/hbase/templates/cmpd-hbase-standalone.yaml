@@ -1,0 +1,186 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: hbase-standalone-2.5
+  labels:
+    {{- include "hbase.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hbase.apiVersion" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceKind: hbase-standalone
+  serviceVersion: 2.5.6
+  updateStrategy: BestEffortParallel
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: hmaster
+            port: {{ .Values.ports.hmaster.rpc }}
+          - name: http
+            port: {{ .Values.ports.hmaster.info }}
+          - name: hregionserver
+            port: {{ .Values.ports.hregionserver.rpc }}
+          - name: rs-http
+            port: {{ .Values.ports.hregionserver.info }}
+  serviceRefDeclarations:
+    - name: hbase-zookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: "^*"
+  runtime:
+    terminationGracePeriodSeconds: 120
+    containers:
+      - name: hbase-standalone
+        imagePullPolicy: {{ default "IfNotPresent" .Values.hbasestandalone.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/start-hmaster.sh
+        env:
+          - name: HBASE_CONF_DIR
+            value: {{ .Values.runtime.hbaseConfDir }}
+          - name: HBASE_HOME
+            value: {{ .Values.runtime.hbaseHome }}
+          - name: HBASE_LOG_DIR
+            value: {{ .Values.runtime.hbaseLogDir }}
+          - name: HBASE_PID_DIR
+            value: {{ .Values.runtime.hbasePidDir }}
+          - name: HMASTER_INFO_PORT
+            value: {{ .Values.ports.hmaster.info | quote }}
+        ports:
+          - containerPort: {{ .Values.ports.hmaster.rpc }}
+            name: hmaster
+          - containerPort: {{ .Values.ports.hmaster.info }}
+            name: http
+          - containerPort: {{ .Values.ports.hregionserver.rpc }}
+            name: hregionserver
+          - containerPort: {{ .Values.ports.hregionserver.info }}
+            name: rs-http
+        startupProbe:
+          failureThreshold: 30
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-hmaster-status.sh
+        livenessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-hmaster-status.sh
+        readinessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-hmaster-status.sh
+        volumeMounts:
+          - name: hbase-standalone-config
+            mountPath: {{ .Values.runtime.hbaseConfDir }}/hbase-site.xml
+            subPath: hbase-site.xml
+          - name: hbase-standalone-config
+            mountPath: {{ .Values.runtime.hbaseConfDir }}/hbase-env.sh
+            subPath: hbase-env.sh
+          - name: hbase-standalone-config
+            mountPath: {{ .Values.runtime.hbaseConfDir }}/hadoop-metrics2-hbase.properties
+            subPath: hadoop-metrics2-hbase.properties
+          - name: hbase-standalone-config
+            mountPath: {{ .Values.runtime.hbaseConfDir }}/log4j.properties
+            subPath: log4j.properties
+          - name: hbase-scripts
+            mountPath: {{ .Values.runtime.scriptsDir }}
+          - name: data
+            mountPath: {{ .Values.runtime.hbaseDataDir }}
+          - name: hbase-logs
+            mountPath: {{ .Values.runtime.hbaseLogDir }}
+          - name: hbase-tmp
+            mountPath: {{ .Values.runtime.hbaseTmpDir }}
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          privileged: false
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ "ALL" ]
+          seccompProfile:
+            type: "RuntimeDefault"
+    securityContext:
+      fsGroupChangePolicy: Always
+      fsGroup: {{ .Values.securityContext.fsGroup }}
+    volumes:
+      - name: hbase-logs
+        emptyDir: {}
+      - name: hbase-tmp
+        emptyDir: {}
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.extra.clusterDomain }}
+    - name: HBASE_CONF_DIR
+      value: {{ .Values.runtime.hbaseConfDir }}
+    - name: HBASE_LOG_DIR
+      value: {{ .Values.runtime.hbaseLogDir }}
+    - name: HBASE_PID_DIR
+      value: {{ .Values.runtime.hbasePidDir }}
+    - name: HBASE_TMP_DIR
+      value: {{ .Values.runtime.hbaseTmpDir }}
+    - name: HBASE_DATA_DIR
+      value: {{ .Values.runtime.hbaseDataDir }}
+    - name: HADOOP_NATIVE_LIB_PATH
+      value: {{ .Values.runtime.hadoopNativeLibPath }}
+    - name: JAVA_HOME
+      value: {{ .Values.runtime.javaHome }}
+    - name: HBASE_MASTER_HEAP_SIZE
+      value: {{ .Values.jvm.hbasestandaloneHeapSize | quote }}
+    - name: HBASE_REGIONSERVER_HEAP_SIZE
+      value: {{ .Values.jvm.hbasestandaloneHeapSize | quote }}
+    - name: HBASE_MASTER_JMX_PORT
+      value: {{ .Values.ports.hmaster.jmx | quote }}
+    - name: HBASE_REGIONSERVER_JMX_PORT
+      value: {{ .Values.ports.hregionserver.jmx | quote }}
+    - name: HBASE_HEAP_SIZE
+      value: {{ .Values.jvm.hbasestandaloneHeapSize | quote }}
+    - name: ZOOKEEPER_QUORUM
+      valueFrom:
+        serviceRefVarRef:
+          name: hbase-zookeeper
+          host: Required
+    - name: ZOOKEEPER_CLIENT_PORT
+      value: {{ .Values.hbase.zkClientPort | quote }}
+    - name: ZOOKEEPER_ENDPOINTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hbase-zookeeper
+          endpoint: Required
+    - name: HBASE_ZK_PARENT
+      value: {{ .Values.hbase.zkParent | quote }}
+  configs:
+    - name: hbase-standalone-config
+      template: hbase-standalone-config-template
+      volumeName: hbase-standalone-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755
+  scripts:
+    - name: hbase-scripts
+      template: hbase-scripts
+      volumeName: hbase-scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755

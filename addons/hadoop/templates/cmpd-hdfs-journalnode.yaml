@@ -1,0 +1,180 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: hdfs-journalnode
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.apiVersion" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceKind: hdfs-journalnode
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: jn
+            port: {{ .Values.hdfs.ports.journalnode.rpc }}
+          - name: http
+            port: {{ .Values.hdfs.ports.journalnode.http }}
+  runtime:
+    terminationGracePeriodSeconds: 60
+    initContainers:
+      - name: hadoop-common
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: {{ .Values.securityContext.initRunAsUser }}
+        command:
+          - /bin/bash
+        args:
+          - -ec
+          - |
+            cp -r {{ .Values.runtime.hadoopSoftwareDir }}/* {{ .Values.runtime.hadoopHome }}
+            mkdir -p {{ .Values.hdfs.paths.journalnodeEditsDir }}
+            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.hdfs.paths.journalnodeEditsDir }}
+            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.runtime.hadoopHome }}
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: edits-dir
+            mountPath: {{ .Values.hdfs.paths.journalnodeEditsDir }}
+            subPath: journal
+    containers:
+      - name: hdfs-journalnode
+        image: {{ include "hadoop.journalNodeImage" . | quote }}
+        imagePullPolicy: {{ .Values.journalNode.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/start-journalnode.sh
+        env:
+          - name: DEBUG_MODEL
+            value: {{ .Values.runtime.debug | quote }}
+          - name: HADOOP_HOME
+            value: {{ .Values.runtime.hadoopHome }}
+          - name: HADOOP_CONF_DIR
+            value: {{ .Values.runtime.configDir }}
+          - name: HADOOP_LOG_DIR
+            value: {{ .Values.runtime.hadoopLogDir }}
+        ports:
+          - containerPort: {{ .Values.hdfs.ports.journalnode.rpc }}
+            name: jn
+          - containerPort: {{ .Values.hdfs.ports.journalnode.http }}
+            name: http
+        startupProbe:
+          failureThreshold: 30
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-journal-status.sh
+        livenessProbe:
+          failureThreshold: {{ .Values.probes.journalnode.liveness.failureThreshold }}
+          initialDelaySeconds: {{ .Values.probes.journalnode.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.journalnode.liveness.periodSeconds }}
+          successThreshold: 1
+          timeoutSeconds: {{ .Values.probes.journalnode.liveness.timeoutSeconds }}
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-journal-status.sh
+        readinessProbe:
+          failureThreshold: {{ .Values.probes.journalnode.readiness.failureThreshold }}
+          initialDelaySeconds: {{ .Values.probes.journalnode.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.journalnode.readiness.periodSeconds }}
+          successThreshold: 1
+          timeoutSeconds: {{ .Values.probes.journalnode.readiness.timeoutSeconds }}
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-journal-status.sh
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: edits-dir
+            mountPath: {{ .Values.hdfs.paths.journalnodeEditsDir }}
+            subPath: journal
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/core-site.xml
+            subPath: core-site.xml
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
+            subPath: hadoop-env.sh
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-metrics2.properties
+            subPath: hadoop-metrics2.properties
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.include
+            subPath: dfs.include
+          - name: hadoop-core-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.exclude
+            subPath: dfs.exclude
+          - name: journalnode-config
+            mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: journalnode-config
+            mountPath: {{ .Values.runtime.configDir }}/log4j.properties
+            subPath: log4j.properties
+          - name: hadoop-logs
+            mountPath: {{ .Values.runtime.hadoopLogDir }}
+          - name: scripts
+            mountPath: {{ .Values.runtime.scriptsDir }}
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          privileged: {{ .Values.securityContext.privileged }}
+          allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+          capabilities:
+{{ toYaml .Values.securityContext.capabilities | nindent 12 }}
+          seccompProfile:
+{{ toYaml .Values.securityContext.seccompProfile | nindent 12 }}
+    securityContext:
+      fsGroupChangePolicy: {{ .Values.securityContext.fsGroupChangePolicy }}
+      fsGroup: {{ .Values.securityContext.fsGroup }}
+    volumes:
+      - name: hadoop-common
+        emptyDir: {}
+      - name: hadoop-logs
+        emptyDir: {}
+  updateStrategy: {{ .Values.updateStrategy }}
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: JOURNALNODE_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: HDFS_CONF_DIR
+      value: {{ .Values.runtime.configDir }}
+    - name: HDFS_JOURNALNODE_EDITS_DIR
+      value: {{ .Values.hdfs.paths.journalnodeEditsDir | quote }}
+    - name: HDFS_JOURNALNODE_RPC_PORT
+      value: {{ .Values.hdfs.ports.journalnode.rpc | quote }}
+    - name: HDFS_JOURNALNODE_HTTP_PORT
+      value: {{ .Values.hdfs.ports.journalnode.http | quote }}
+    - name: HDFS_PERMISSIONS_ENABLED
+      value: {{ .Values.hdfs.permissions.enabled | quote }}
+    - name: HDFS_REPLICATION
+      value: {{ .Values.hdfs.replication | quote }}
+  configs:
+    - name: journalnode-config
+      template: journalnode-config-template
+      volumeName: journalnode-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.config.defaultMode }}
+  scripts:
+    - name: hadoop-scripts
+      template: hadoop-scripts
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.scripts.defaultMode }}

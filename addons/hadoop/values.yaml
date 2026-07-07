@@ -1,0 +1,166 @@
+# Hadoop common image (used by initContainers via ComponentVersion.hadoop-common)
+image:
+  common:
+    registry: docker.io
+    repository: apecloud/hdfs-journalnode
+    tag: "v3.3.4-1.0.0"
+    pullPolicy: IfNotPresent
+
+# Component-specific images
+core:
+  image:
+    registry: docker.io
+    repository: apecloud/hdfs-journalnode
+    tag: "v3.3.4-1.0.0"
+    pullPolicy: IfNotPresent
+
+journalNode:
+  image:
+    registry: docker.io
+    repository: apecloud/hdfs-journalnode
+    tag: "v3.3.4-1.0.0"
+    pullPolicy: IfNotPresent
+
+nameNode:
+  image:
+    registry: docker.io
+    repository: apecloud/hdfs-namenode
+    tag: "v3.3.4-1.0.0"
+    pullPolicy: IfNotPresent
+
+dataNode:
+  image:
+    registry: docker.io
+    repository: apecloud/hdfs-datanode
+    tag: "v3.3.4-1.0.0"
+    pullPolicy: IfNotPresent
+
+# kblib extension config
+extra:
+  disableExporter: true
+  terminationPolicy: Delete
+  clusterDomain: cluster.local
+
+runtime:
+  debug: false
+  hadoopHome: /opt/kubeemr/hadoop/hadoop-3.3.4
+  hadoopSoftwareDir: /opt/software/hadoop-3.3.4
+  configDir: /hadoop/conf
+  scriptsDir: /kubeblocks/scripts
+  hadoopLogDir: /var/log/hadoop
+  datanode:
+    hostNetwork: true
+    hostPID: true
+    dnsPolicy: ClusterFirstWithHostNet
+  journalnode:
+    waitZkToReady: false
+
+hdfs:
+  replication: 3
+  replicationMax: 6
+  permissions:
+    enabled: false
+    superusergroup: supergroup
+  registration:
+    ipHostnameCheck: false
+  client:
+    replaceDatanodeOnFailurePolicy: DEFAULT
+  namenode:
+    handlerCount: 64
+  datanode:
+    handlerCount: 64
+  ha:
+    automaticFailoverEnabled: true
+    fencingMethods: "sshfence\nshell(/bin/true)"
+    zookeeper:
+      sessionTimeoutMs: 60000
+      operationRetries: 3
+      parentZnodePrefix: /hadoop-ha
+  trash:
+    interval: 1440
+  ipc:
+    clientConnectionMaxIdleTimeMs: 300000
+    clientConnectTimeoutMs: 20000
+    clientConnectionPoolSize: 8
+    clientConnectRetryIntervalMs: 1000
+    clientPing: true
+    pingIntervalMs: 30000
+  jvm:
+    namenodeHeapSize: "3g"
+    datanodeHeapSize: "1g"
+    journalnodeHeapSize: "1g"
+    zkfcHeapSize: "512m"
+  ports:
+    namenode:
+      rpc: 8020
+      http: 9870
+    journalnode:
+      rpc: 8485
+      http: 8480
+    datanode:
+      data: 9866
+      ipc: 9867
+      http: 9864
+  paths:
+    namenodeMetadataDir: /hadoop/dfs/metadata
+    namenodeJournalDir: /hadoop/dfs/journal
+    datanodeDataDir: /hadoop/dfs/data0
+    journalnodeEditsDir: /hadoop/dfs/journal
+
+securityContext:
+  initRunAsUser: 0
+  runAsUser: 10000
+  runAsGroup: 1000
+  fsGroup: 1000
+  fsGroupChangePolicy: Always
+  runAsNonRoot: true
+  privileged: false
+  allowPrivilegeEscalation: false
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop:
+      - ALL
+
+probes:
+  namenode:
+    liveness:
+      failureThreshold: 6
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      timeoutSeconds: 5
+    readiness:
+      failureThreshold: 6
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+  journalnode:
+    liveness:
+      failureThreshold: 6
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+    readiness:
+      failureThreshold: 6
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+  datanode:
+    liveness:
+      failureThreshold: 6
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+    readiness:
+      failureThreshold: 6
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+
+config:
+  defaultMode: 0755
+
+scripts:
+  defaultMode: 0755
+
+updateStrategy: BestEffortParallel

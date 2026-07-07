@@ -1,0 +1,16 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: hdfs-journalnode-config-renderer
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.annotations" . | nindent 4 }}
+spec:
+  componentDef: hdfs-journalnode
+  parametersDefs:
+    - journalnode-config-constraints
+  configs:
+    - name: hdfs-site.xml
+      fileFormatConfig:
+        format: xml
