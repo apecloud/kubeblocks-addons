@@ -30,7 +30,6 @@ runtime:
   hadoopConfDir: /hadoop/conf
   hadoopHome: /opt/hadoop
   hadoopNativeLibPath: /opt/hadoop/lib/native
-  javaHome: /usr/local/openjdk-8
 
 ports:
   hmaster:

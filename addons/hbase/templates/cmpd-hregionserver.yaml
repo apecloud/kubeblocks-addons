@@ -146,8 +146,6 @@ spec:
       value: {{ .Values.runtime.hbaseTmpDir }}
     - name: HADOOP_NATIVE_LIB_PATH
       value: {{ .Values.runtime.hadoopNativeLibPath }}
-    - name: JAVA_HOME
-      value: {{ .Values.runtime.javaHome }}
     - name: HBASE_MASTER_HEAP_SIZE
       value: {{ .Values.jvm.hmasterHeapSize | quote }}
     - name: HBASE_REGIONSERVER_HEAP_SIZE
