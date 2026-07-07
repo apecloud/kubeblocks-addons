@@ -77,6 +77,8 @@ spec:
           - name: namenode-config
             mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
             subPath: hdfs-site.xml
+          - name: hadoop-logs
+            mountPath: {{ .Values.runtime.hadoopLogDir }}
           - name: scripts
             mountPath: {{ .Values.runtime.scriptsDir }}
       - name: init-zkfc-format
@@ -105,6 +107,8 @@ spec:
           - name: namenode-config
             mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
             subPath: hdfs-site.xml
+          - name: hadoop-logs
+            mountPath: {{ .Values.runtime.hadoopLogDir }}
           - name: scripts
             mountPath: {{ .Values.runtime.scriptsDir }}
       - name: init-nn-bootstrap-standby
@@ -135,6 +139,8 @@ spec:
           - name: namenode-config
             mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
             subPath: hdfs-site.xml
+          - name: hadoop-logs
+            mountPath: {{ .Values.runtime.hadoopLogDir }}
           - name: scripts
             mountPath: {{ .Values.runtime.scriptsDir }}
     containers:
