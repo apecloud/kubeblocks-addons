@@ -23,7 +23,7 @@ runtime:
   hbaseHome: /opt/hbase-2.5.6
   hbaseConfDir: /hbase/conf
   hbaseLogDir: /var/log/hbase
-  hbasePidDir: /var/run/hbase
+  hbasePidDir: /tmp/hbase
   hbaseTmpDir: /hbase/tmp
   hbaseDataDir: /data/hbase
   scriptsDir: /hbase/scripts
