@@ -44,7 +44,7 @@ cluster_name                               = {{ .KB_CLUSTER_NAME }}
 listeners.tcp.1 = :::{{ $rabbitmq_port }}
 
 {{- if gt (div $phy_memory 5) (mul 2 $GiB) }}
-total_memory_available_override_value = {{ sub $phy_memory (mul 2 $GiB) }}
+total_memory_available_override_value = {{ $phy_memory (mul 2 $GiB) }}
 {{- else if gt $phy_memory 0 }}
 total_memory_available_override_value = {{ sub $phy_memory (div $phy_memory 5) }}
 {{- end }}

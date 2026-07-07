@@ -92,7 +92,7 @@ versions:
         tag: "12.22"
   - major: "14"
     componentDef: "postgresql-14"
-    serviceVersion: "14.23.0"
+    serviceVersion: "14.18.0"
     minors:
       - version: "14.7.2"
         tag: "14.7.2-pgvector-v0.6.1"
@@ -100,45 +100,35 @@ versions:
         tag: "14.8.0-pgvector-v0.6.1"
       - version: "14.18.0"
         tag: "14.18"
-      - version: "14.23.0"
-        tag: "14.23"
   - major: "15"
     componentDef: "postgresql-15"
-    serviceVersion: "15.18.0"
+    serviceVersion: "15.13.0"
     minors:
       - version: "15.7.0"
         tag: "15.7.0"
       - version: "15.13.0"
         tag: "15.13"
-      - version: "15.18.0"
-        tag: "15.18"
   - major: "16"
     componentDef: "postgresql-16"
-    serviceVersion: "16.14.0"
+    serviceVersion: "16.9.0"
     minors:
       - version: "16.4.0"
         tag: "16.4.0"
       - version: "16.9.0"
         tag: "16.9"
-      - version: "16.14.0"
-        tag: "16.14"
   - major: "17"
     componentDef: "postgresql-17"
-    serviceVersion: "17.10.0"
+    serviceVersion: "17.5.0"
     minors:
       - version: "17.5.0"
         tag: "17.5"
         isDefault: true
-      - version: "17.10.0"
-        tag: "17.10"
   - major: "18"
     componentDef: "postgresql-18"
-    serviceVersion: "18.4.0"
+    serviceVersion: "18.1.0"
     minors:
       - version: "18.1.0"
         tag: "18.1"
-      - version: "18.4.0"
-        tag: "18.4"
 
 ## @section pgbouncer Parameters
 pgbouncer:

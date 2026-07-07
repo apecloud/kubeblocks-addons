@@ -29,14 +29,7 @@ if [ -z "$jobs" ]; then
 fi
 
 # Build pg_dump parameters
-# Detect PostgreSQL server version to choose compression flag
-PG_MAJOR_VERSION=$(psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -p ${DP_DB_PORT} -Atc "SHOW server_version;" 2>/dev/null | cut -d'.' -f1)
-if [ -z "$PG_MAJOR_VERSION" ] || [ "$PG_MAJOR_VERSION" -le 15 ] 2>/dev/null; then
-  pg_zopt="-Z 6"
-else
-  pg_zopt="-Z lz4"
-fi
-params="-j $jobs -Fd -f $BACKUP_DIR ${pg_zopt} -v"
+params="-j $jobs -Fd -f $BACKUP_DIR -Z lz4 -v"
 
 # Handle database selection
 if [ -n "$database" ]; then

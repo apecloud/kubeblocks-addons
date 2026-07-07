@@ -130,16 +130,7 @@ redis-cluster-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "redis7.image" -}}
-{{- $registry := .Values.image.registry | default "docker.io" -}}
-{{- $repository := .Values.image.repository -}}
-{{- $tag := .Values.image.tag.major7.minor72 -}}
-{{- range .Values.redisVersions -}}
-{{- if eq .major "7" -}}
-{{- $repository = .repository | default $repository -}}
-{{- $tag = .defaultImageTag | default $tag -}}
-{{- end -}}
-{{- end -}}
-{{ $registry }}/{{ $repository }}:{{ $tag }}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
 {{- end }}
 
 {{- define "redisTwemproxy.repository" -}}

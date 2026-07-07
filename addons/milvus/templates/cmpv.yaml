@@ -54,7 +54,6 @@ spec:
       images:
         setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:v0.9.17
         proxy: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvus.repository }}:v2.3.2
-        postProvision: {{ .Values.images.milvusCLI.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvusCLI.repository }}:{{ .Values.images.milvusCLI.tag }}
     - name: v2.3.2-querynode
       serviceVersion: v2.3.2
       images:
@@ -86,7 +85,6 @@ spec:
       images:
         setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.operator.repository }}:v0.9.17
         proxy: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvus.repository }}:v2.5.13
-        postProvision: {{ .Values.images.milvusCLI.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvusCLI.repository }}:{{ .Values.images.milvusCLI.tag }}
     - name: v2.5.13-querynode
       serviceVersion: "2.5.13"
       images:

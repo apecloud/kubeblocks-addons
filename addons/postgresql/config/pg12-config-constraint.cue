@@ -95,7 +95,7 @@
 	bgwriter_flush_after?: int & >=0 & <=256 @storeResource(8KB)
 
 	// Background writer maximum number of LRU pages to flush per round.
-	bgwriter_lru_maxpages?: int & >=0 & <=1073741823
+	bgwriter_lru_maxpages?: int & >=0 & <=1000
 
 	// Multiple of the average buffer usage to free per round.
 	bgwriter_lru_multiplier?: float & >=0 & <=10

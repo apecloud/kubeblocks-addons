@@ -5,12 +5,6 @@ set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
-QDRANT_COMMON_FILE="${QDRANT_COMMON_FILE:-/qdrant/scripts/common.sh}"
-if [ -r "$QDRANT_COMMON_FILE" ]; then
-  # shellcheck disable=SC1090
-  . "$QDRANT_COMMON_FILE"
-fi
-
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
 # the sync progress container will check this file and exit if it exists
 function handle_exit() {
@@ -37,33 +31,24 @@ else
   CURL_TLS=""
 fi
 
-collectionRes=$(qdrant_curl -sS -f ${endpoint}/collections)
-if ! echo "${collectionRes}" | jq -e . >/dev/null 2>&1; then
-  echo "failed to parse collections response: ${collectionRes}"
-  exit 1
-fi
-collections=$(echo "${collectionRes}" | jq -r '.result.collections[].name // empty')
-if [ -z "$collections" ]; then
+collectionRes=$(curl $CURL_TLS ${endpoint}/collections)
+collections=$(echo ${collectionRes}  | jq -r '.result.collections[].name')
+if [ -z $collections ]; then
    save_backup_size
    exit 0
 fi
 # snapshot all collections
 for c in ${collections}; do
   echo "INFO: start to snapshot collection ${c}..."
-  snapshot=$(qdrant_curl -sS -f -XPOST ${endpoint}/collections/${c}/snapshots)
-  status=$(echo "${snapshot}" | jq -r '.status // empty')
-  if [ "${status}" != "ok" ]; then
+  snapshot=$(curl $CURL_TLS -XPOST ${endpoint}/collections/${c}/snapshots)
+  status=$(echo ${snapshot} | jq '.status')
+  if [ "${status}" != "ok" ] && [ "${status}" != "\"ok\"" ]; then
     echo "backup failed, status: ${status}"
-    echo "response: ${snapshot}"
     exit 1
   fi
-  name=$(echo "${snapshot}" | jq -r '.result.name // empty')
-  if [ -z "$name" ]; then
-    echo "backup failed, snapshot name is empty"
-    exit 1
-  fi
-  qdrant_curl -sS -f -L ${endpoint}/collections/${c}/snapshots/${name} | datasafed push - "/${c}.snapshot"
-  qdrant_curl -sS -f -XDELETE ${endpoint}/collections/${c}/snapshots/${name} >/dev/null
+  name=$(echo ${snapshot} | jq -r '.result.name')
+  curl $CURL_TLS -v --fail-with-body ${endpoint}/collections/${c}/snapshots/${name} | datasafed push - "/${c}.snapshot"
+  curl $CURL_TLS -XDELETE ${endpoint}/collections/${c}/snapshots/${name}
   echo "INFO: snapshot collection ${c} successfully."
 done
 save_backup_size

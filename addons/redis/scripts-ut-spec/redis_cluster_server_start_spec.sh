@@ -44,42 +44,6 @@ Describe "Redis Cluster Server Start Bash Script Tests"
     End
   End
 
-  Describe "build_redis_conf()"
-    Context "when redis.conf already contains stale loadmodule from CONFIG REWRITE"
-      setup() {
-        # Simulate a redis.conf that was written by CONFIG REWRITE after a prior run.
-        # See: https://github.com/apecloud/kubeblocks-addons/issues/2686
-        echo "loadmodule /opt/redis-stack/lib/redisearch.so" > "$redis_real_conf"
-        echo "loadmodule /opt/redis-stack/lib/redistimeseries.so" >> "$redis_real_conf"
-        echo "" > "$redis_acl_file"
-        redis_template_conf="/etc/conf/redis.conf"
-        load_redis_template_conf() {
-          echo "include $redis_template_conf" >> "$redis_real_conf"
-        }
-        build_redis_cluster_service_port() { :; }
-        build_redis_tls_config() { :; }
-        build_announce_ip_and_port() { :; }
-        build_cluster_announce_info() { :; }
-        rebuild_redis_acl_file() { :; }
-        build_redis_default_accounts() { :; }
-      }
-      Before "setup"
-
-      un_setup() {
-        rm -f "$redis_real_conf"
-      }
-      After "un_setup"
-
-      It "truncates stale loadmodule lines before building new config"
-        When call build_redis_conf
-        The status should be success
-        The contents of file "$redis_real_conf" should not include "loadmodule /opt/redis-stack/lib/redisearch.so"
-        The contents of file "$redis_real_conf" should not include "loadmodule /opt/redis-stack/lib/redistimeseries.so"
-        The contents of file "$redis_real_conf" should include "include $redis_template_conf"
-      End
-    End
-  End
-
   Describe "build_redis_default_accounts()"
     Context 'when all environment variables exist'
       setup() {

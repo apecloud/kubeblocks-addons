@@ -185,12 +185,6 @@ get_current_comp_nodes_for_scale_out_replica() {
 
     local node_port
     node_port=$(echo "$node_announce_ip_port" | cut -d':' -f2)
-    if [ "$node_port" -eq 0 ]; then
-      tls_port=$(grep "$node_announce_ip_port" /data/nodes.conf | sed -n 's/.*tls-port=\([0-9]*\).*/\1/p')
-      if [ "$tls_port" != "0" ]; then
-          node_port="$tls_port"
-      fi
-    fi
 
     local node_bus_port
     node_bus_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $2}' | awk -F ',' '{print $1}')
@@ -639,9 +633,6 @@ start_redis_server() {
 
 # build redis cluster configuration redis.conf
 build_redis_conf() {
-  # Truncate before building to guarantee a clean slate on every container start.
-  # See: https://github.com/apecloud/kubeblocks-addons/issues/2686
-  > "$redis_real_conf"
   load_redis_template_conf
   build_redis_cluster_service_port
   build_announce_ip_and_port

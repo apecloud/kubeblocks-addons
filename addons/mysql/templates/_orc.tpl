@@ -168,19 +168,8 @@ accountProvision:
       - |
         set -ex
         ALL_DB='*.*'
-        # Suppress xtrace AND errexit so the password-bearing expansion is not echoed
-        # to pod stderr. KB_ACCOUNT_STATEMENT itself contains CREATE USER ... IDENTIFIED
-        # BY '<password>' (account password), and the mysql -p${MYSQL_ROOT_PASSWORD}
-        # invocation contains the root password; both would land in `kubectl logs` if
-        # xtrace stayed on. errexit is suppressed too so accountProvision failure can be
-        # captured explicitly via $? -- if it stayed on, set -e would exit before the
-        # rc-save line on any non-zero result.
-        { previous_state=$(set +o); set +ex; } 2>/dev/null
         eval statement=\"${KB_ACCOUNT_STATEMENT}\"
         mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement};"
-        mysql_rc=$?
-        eval "$previous_state"
-        exit $mysql_rc
     targetPodSelector: Role
     matchingKey: primary
 roleProbe:

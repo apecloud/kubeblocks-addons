@@ -1,22 +1,3 @@
-common:
-  security:
-    authorizationEnabled: true
-    {{- if eq (index $ "TLS_ENABLED") "true" }}
-    tlsMode: 1
-    {{- end }}
-
-{{- if eq (index $ "TLS_ENABLED") "true" }}
-proxy:
-  http:
-    # for now milvus do not support config restful on same port with grpc
-    # so we set to 8080, grpc will still use 19530
-    port: 8080 
-tls:
-  serverPemPath: /etc/pki/tls/cert.pem
-  serverKeyPath: /etc/pki/tls/key.pem
-  caPemPath: /etc/pki/tls/ca.pem
-{{- end }}
-
 etcd:
   endpoints:
     - {{ .ETCD_ENDPOINT }}

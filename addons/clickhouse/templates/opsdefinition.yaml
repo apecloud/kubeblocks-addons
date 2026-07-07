@@ -43,7 +43,7 @@ spec:
         podSpec:
           containers:
             - name: post-rebuild
-              image: {{ include "clickhouse.repository" . }}:{{ .Chart.AppVersion }}
+              image: {{ include "clickhouse.repository" . }}:24.8.3-debian-12-r1
               imagePullPolicy: IfNotPresent
               command:
                 - bash
@@ -92,7 +92,7 @@ spec:
         podSpec:
           containers:
             - name: post-rebuild
-              image: {{ include "clickhouse.repository" . }}:{{ .Chart.AppVersion }}
+              image: {{ include "clickhouse.repository" . }}:24.8.3-debian-12-r1
               imagePullPolicy: IfNotPresent
               command:
                 - bash

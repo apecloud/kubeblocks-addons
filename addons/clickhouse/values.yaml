@@ -37,14 +37,12 @@ clickhouseVersions:
     imageTag: 22.3.18-debian-11-r3
   - version: 22.6.1
     imageTag: 22.6.1
-  - version: 22.9.4
-    imageTag: 22.9.4-debian-11-r1
 
 roleProbe:
   initialDelaySeconds: 15
   failureThreshold: 3
   periodSeconds: 3
-  timeoutSeconds: 10
+  timeoutSeconds: 3
 
 busyboxImage:
   registry: ""
@@ -57,7 +55,7 @@ backupImage:
   registry: ""
   repository: apecloud/clickhouse-backup-full
   pullPolicy: IfNotPresent
-  tag: 2.7.0
+  tag: 2.6.42
 
 restore:
   schemaReadyTimeoutSeconds: 1800

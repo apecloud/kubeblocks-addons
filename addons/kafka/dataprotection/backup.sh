@@ -26,7 +26,7 @@ if [[ -z $topic_list ]]; then
   DP_save_backup_status_info 0
   exit 0
 fi
-echo "$topic_list" | grep -v __consumer_offsets | datasafed push - topics.txt
+echo $topic_list | grep -v __consumer_offsets | datasafed push - topics.txt
 readarray -t topics < <(kafkactl get topics -o compact | grep -v  __consumer_offsets)
 
 for topic in "${topics[@]}"; do

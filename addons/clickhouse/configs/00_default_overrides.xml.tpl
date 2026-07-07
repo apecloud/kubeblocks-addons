@@ -106,9 +106,10 @@
     <server>
       <certificateFile>{{$CERT_FILE}}</certificateFile>
       <privateKeyFile>{{$KEY_FILE}}</privateKeyFile>
+      <!--
+        Use relaxed verification for ClickHouse to skip hostname check, while still supporting TLS encryption.
+      -->
       <verificationMode>relaxed</verificationMode>
-      <!-- Disable peer hostname matching; certificate validation is controlled by verificationMode. -->
-      <extendedVerification>false</extendedVerification>
       <caConfig>{{$CA_FILE}}</caConfig>
       <cacheSessions>true</cacheSessions>
       <disableProtocols>sslv2,sslv3</disableProtocols>
@@ -123,8 +124,6 @@
       <disableProtocols>sslv2,sslv3</disableProtocols>
       <preferServerCiphers>true</preferServerCiphers>
       <verificationMode>strict</verificationMode>
-      <!-- Disable peer hostname matching; certificate validation remains strict. -->
-      <extendedVerification>false</extendedVerification>
       <invalidCertificateHandler>
         <name>RejectCertificateHandler</name>
       </invalidCertificateHandler>
@@ -155,18 +154,6 @@
     <buffer_size_rows_flush_threshold>524288</buffer_size_rows_flush_threshold>
     <flush_on_crash>false</flush_on_crash>
   </query_log>
-  <session_log>
-    <database>system</database>
-    <table>session_log</table>
-    <partition_by>event_date</partition_by>
-    <order_by>event_time</order_by>
-    <ttl>event_date + INTERVAL 7 day</ttl>
-    <flush_interval_milliseconds>7500</flush_interval_milliseconds>
-    <max_size_rows>1048576</max_size_rows>
-    <reserved_size_rows>8192</reserved_size_rows>
-    <buffer_size_rows_flush_threshold>524288</buffer_size_rows_flush_threshold>
-    <flush_on_crash>false</flush_on_crash>
-  </session_log>
   <!-- User directories configuration -->
   <!-- see https://github.com/ClickHouse/ClickHouse/issues/78830 -->
   <user_directories replace="replace">

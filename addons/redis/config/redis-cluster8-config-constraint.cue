@@ -59,17 +59,11 @@
 
 	"cluster-allow-reads-when-down"?: string & "yes" | "no"
 
-	"cluster-allow-replica-migration"?: string & "yes" | "no"
-
 	"cluster-enabled"?: string & "yes" | "no"
-
-	"cluster-node-timeout": int | *0
 
 	"cluster-preferred-endpoint-type"?: string & "tls-dynamic" | "ip"
 
 	"cluster-require-full-coverage"?: string & "yes" | "no"
-
-	"cluster-replica-validity-factor": int | *0
 
 	databases: int & >=1 & <=10000 | *16
 
@@ -286,8 +280,6 @@
     "auto-aof-rewrite-min-size": string | *"64mb"
 
     "busy-reply-threshold": int | *5000
-
-    "lua-time-limit": int & >=0 | *5000
 
     // By default latency monitoring is disabled since it is mostly not needed
     // if you don't have latency issues, and collecting data has a performance
@@ -709,7 +701,7 @@
 
     "replica-read-only": string & "yes" | "no" | *"yes"
 
-    "repl-diskless-sync":string & "yes" | "no" | *"yes"
+    "repl-diskless-sync ":string & "yes" | "no" | *"yes"
 
     "repl-diskless-sync-delay": int | *5
 

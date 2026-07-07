@@ -16,11 +16,9 @@ spec:
       snapshotVolumes: false
       actionSetName: qdrant-snapshot-br
       targetVolumes:
-        volumes:
-          - qdrant-config
         volumeMounts:
-          - name: qdrant-config
-            mountPath: /qdrant/config
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
   schedules:
     - backupMethod: datafile
       enabled: false

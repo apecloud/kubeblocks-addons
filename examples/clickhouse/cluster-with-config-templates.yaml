@@ -43,7 +43,7 @@ spec:
           configMap:
             name: custom-user-configuration-tpl # refers to the configmap with your customized configuration info.
           variables:
-            udf_max_threads: "16"
+            max_threads: "16"
         systemAccounts:
           - name: admin
             secretRef:

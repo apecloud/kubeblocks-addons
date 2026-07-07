@@ -22,8 +22,6 @@
 
 	"cluster-require-full-coverage"?: string & "yes" | "no"
 
-	"cluster-migration-barrier": int | *99999
-
 	"cluster-node-timeout": int | *0
 
 	"cluster-replica-validity-factor": int | *0
@@ -62,9 +60,7 @@
 
 	"list-max-listpack-size": int | *-2
 
-	"lua-time-limit": int & >=0 | *5000
-
-	"busy-reply-threshold": int | *5000
+	"lua-time-limit": int & 5000 | *5000
 
 	maxclients: int & >=1 & <=65000 | *65000
 
@@ -255,7 +251,7 @@
 
     "replica-read-only": string & "yes" | "no" | *"yes"
 
-    "repl-diskless-sync":string & "yes" | "no" | *"yes"
+    "repl-diskless-sync ":string & "yes" | "no" | *"yes"
 
     "repl-diskless-sync-delay": int | *5
 
