@@ -191,6 +191,8 @@ CMPD_OPTIONAL_MONITOR_PRIVS="BINLOG MONITOR SLAVE MONITOR"
 # later pod accepts a local syncer primary role.
 SYNCER_PRIMARY_BOOTSTRAP_GRACE_SECONDS="${MARIADB_SYNCER_PRIMARY_BOOTSTRAP_GRACE_SECONDS:-45}"
 SYNCER_PRIMARY_BOOTSTRAP_GRACE_UNTIL="$(($(date +%s) + SYNCER_PRIMARY_BOOTSTRAP_GRACE_SECONDS))"
+FRESH_SEED_BOOTSTRAP_WAIT_SECONDS="${MARIADB_FRESH_SEED_BOOTSTRAP_WAIT_SECONDS:-20}"
+FRESH_SEED_BOOTSTRAP_UNTIL="$(($(date +%s) + FRESH_SEED_BOOTSTRAP_WAIT_SECONDS))"
 # alpha.80 v1 (Helen): the alpha.76 `switchover_fence_active_is_fresh`
 # function + `SWITCHOVER_FENCE_MARKER_MAX_AGE_SECONDS` env are
 # removed. alpha.79 v1 minimalist deleted the marker writer in
@@ -1914,6 +1916,86 @@ local_has_user_tables() {
   prestop_watchdog_log "runtime-secondary-follow-user-table-count rc=0 value=${table_count}"
   [ "${table_count}" -gt 0 ]
 }
+fresh_seed_required_identity_present() {
+  [ "${POD_INDEX:-}" = "0" ] || return 1
+  [ -n "${POD_NAME:-}" ] || return 1
+  [ -n "${CLUSTER_NAME:-}" ] || return 1
+  [ -n "${COMPONENT_NAME:-}" ] || return 1
+  [ -n "${CLUSTER_NAMESPACE:-${POD_NAMESPACE:-}}" ] || return 1
+}
+fresh_seed_leader_configmap_absent() {
+  local namespace leader_cm out rc
+  namespace="${CLUSTER_NAMESPACE:-${POD_NAMESPACE:-}}"
+  leader_cm="${CLUSTER_NAME}-${COMPONENT_NAME}-leader"
+  [ -x /tools/syncerctl ] || return 1
+  [ -n "${namespace}" ] && [ -n "${leader_cm}" ] || return 1
+  out="$(timeout 5 /tools/syncerctl dcs-leader-status --configmap "${leader_cm}" -n "${namespace}" 2>&1)"
+  rc=$?
+  case "${rc}:${out}" in
+    1:*" is not found."*) return 0 ;;
+    *)
+      prestop_watchdog_log "fresh-bootstrap-seed-defer reason=leader-cm-not-absent rc=${rc} configmap=${leader_cm} namespace=${namespace} message=${out}"
+      return 1
+      ;;
+  esac
+}
+fresh_seed_slave_status_absent() {
+  local slave_status rc
+  slave_status="$(timeout 5 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    -S "${SOCK}" -e "SHOW SLAVE STATUS\\G" 2>/dev/null)"
+  rc=$?
+  if [ "${rc}" -ne 0 ]; then
+    prestop_watchdog_log "fresh-bootstrap-seed-defer reason=slave-status-query-failed rc=${rc}"
+    return 1
+  fi
+  [ -z "${slave_status}" ]
+}
+fresh_seed_no_blocking_markers() {
+  [ ! -f "${DATA_DIR}/.replication-divergence-pending" ] || return 1
+  [ ! -f "${DATA_DIR}/.replication-manual-intervention-required" ] || return 1
+  [ ! -f "${DATA_DIR}/.prestop-fence-started" ] || return 1
+}
+fresh_seed_gate_ready() {
+  local now
+  fresh_seed_required_identity_present || return 1
+  now="$(date +%s)"
+  if [ "${now}" -lt "${FRESH_SEED_BOOTSTRAP_UNTIL}" ]; then
+    prestop_watchdog_log "fresh-bootstrap-seed-defer reason=bounded-wait pod_index=${POD_INDEX} wait_until=${FRESH_SEED_BOOTSTRAP_UNTIL}"
+    return 1
+  fi
+  [ "${HAS_EXISTING_DATA:-unknown}" = "false" ] || return 1
+  [ ! -f "${DATA_DIR}/master.info" ] || return 1
+  fresh_seed_no_blocking_markers || return 1
+  if local_has_user_tables; then
+    prestop_watchdog_log "fresh-bootstrap-seed-defer reason=user-tables-present-or-unknown"
+    return 1
+  fi
+  fresh_seed_slave_status_absent || return 1
+  fresh_seed_leader_configmap_absent || return 1
+  # Re-read local state after the remote/API check so a mid-flight change cannot
+  # turn stale fresh evidence into a writeable seed.
+  [ ! -f "${DATA_DIR}/master.info" ] || return 1
+  fresh_seed_no_blocking_markers || return 1
+  if local_has_user_tables; then
+    prestop_watchdog_log "fresh-bootstrap-seed-defer reason=user-tables-present-or-unknown-after-reread"
+    return 1
+  fi
+  fresh_seed_slave_status_absent || return 1
+  return 0
+}
+try_fresh_bootstrap_seed_once() {
+  local label="${1:-fresh-bootstrap-seed}"
+  fresh_seed_gate_ready || return 1
+  prestop_watchdog_log "fresh-bootstrap-seed-begin label=${label}"
+  if expose_sql_listener_for_primary_role "${label}"; then
+    mark_replication_ready
+    prestop_watchdog_log "fresh-bootstrap-seed-complete label=${label}"
+    return 0
+  fi
+  mark_replication_pending
+  prestop_watchdog_log "fresh-bootstrap-seed-failed label=${label}"
+  return 1
+}
 reconcile_sql_listener_for_syncer_primary_once() {
   local now primary_sid role
   [ ! -f "${DATA_DIR}/.prestop-fence-started" ] || return 0
@@ -2079,6 +2161,9 @@ reconcile_sql_listener_for_syncer_secondary_once() {
   [ ! -f "${DATA_DIR}/.prestop-fence-started" ] || return 0
   role="$(query_local_syncer_role || true)"
   [ "${role}" = "secondary" ] || return 0
+  if try_fresh_bootstrap_seed_once "fresh-bootstrap-seed"; then
+    return 0
+  fi
   set_replica_read_only "runtime-secondary-reconcile"
   slave_rejoin_rc=$?
   if [ "${slave_rejoin_rc}" -eq 2 ]; then
