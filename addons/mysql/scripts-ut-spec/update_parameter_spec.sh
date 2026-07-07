@@ -114,4 +114,49 @@ Describe "MySQL update-parameter Script Tests"
       The stderr should include "Failed to set parameter"
     End
   End
+
+  Describe "MySQL 8.4 removed-variable rejection"
+    # mysql mock that answers SELECT VERSION() with the configured version and
+    # records / succeeds any SET GLOBAL. The tail argument is the SQL query.
+    mock_mysql_version() {
+      local version="$1"; shift
+      local q; eval "q=\"\${$#}\""
+      case "$q" in
+        *VERSION*) printf '%s\n' "$version" ;;
+        *) printf '%s' "$q" > "${MOCK_QUERY_FILE}"; return 0 ;;
+      esac
+    }
+
+    It "rejects a removed variable on MySQL 8.4 before SET GLOBAL"
+      mysql() { mock_mysql_version "8.4.8" "$@"; }
+      When run source ../scripts/update-parameter.sh expire_logs_days 1
+      The status should be failure
+      The stderr should include "removed in MySQL 8.4"
+      # SET GLOBAL must not have been attempted for the removed variable.
+      The contents of file "${MOCK_QUERY_FILE}" should not include "SET GLOBAL expire_logs_days"
+    End
+
+    It "rejects another removed variable (master_info_repository) on 8.4"
+      mysql() { mock_mysql_version "8.4.8" "$@"; }
+      When run source ../scripts/update-parameter.sh master_info_repository TABLE
+      The status should be failure
+      The stderr should include "removed in MySQL 8.4"
+    End
+
+    It "accepts a non-removed variable on MySQL 8.4"
+      mysql() { mock_mysql_version "8.4.8" "$@"; }
+      When run source ../scripts/update-parameter.sh max_connections 500
+      The status should be success
+      The stdout should include "Set parameter max_connections"
+      The contents of file "${MOCK_QUERY_FILE}" should equal "SET GLOBAL max_connections = 500;"
+    End
+
+    It "does not reject the removed name on MySQL 8.0 (still a legal 8.0 variable)"
+      mysql() { mock_mysql_version "8.0.33" "$@"; }
+      When run source ../scripts/update-parameter.sh expire_logs_days 1
+      The status should be success
+      The stdout should include "Set parameter expire_logs_days"
+      The contents of file "${MOCK_QUERY_FILE}" should equal "SET GLOBAL expire_logs_days = 1;"
+    End
+  End
 End
