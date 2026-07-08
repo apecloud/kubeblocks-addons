@@ -234,12 +234,11 @@
 
     <property>
         <name>hbase.coprocessor.master.classes</name>
-        <value>
-            org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint,org.apache.hadoop.hbase.rsgroup.RSGroupAdminEndpoint</value>
+        <value>org.apache.hadoop.hbase.rsgroup.RSGroupAdminEndpoint</value>
     </property>
 
     <property>
-        <name>hbase.coprocessor.regionserver.classes</name>
+        <name>hbase.coprocessor.region.classes</name>
         <value>org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint</value>
     </property>
 
