@@ -106,6 +106,7 @@ spec:
         targetPodSelector: Role
         matchingKey: primary
       preCondition: RuntimeReady
+      timeoutSeconds: -1
       retryPolicy:
         maxRetries: 10
   runtime:
