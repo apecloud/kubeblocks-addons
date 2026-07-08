@@ -393,7 +393,7 @@ spec:
     - name: MONGOS_INTERNAL_PORT
       value: "27018"
     - name: MONGOS_INTERNAL_HOST
-      value: "$(MONGOS_INTERNAL_SVC_NAME).$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+      value: "$(CLUSTER_NAME)-mongos-internal.$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
     - name: MONGODB_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
