@@ -21,6 +21,10 @@
         - name: hdfs-common-config
           variables:
             HDFS_TRASH_INTERVAL: {{ .Values.hdfs.trash.interval | quote }}
+            HDFS_HADOOP_TMP_DIR: {{ .Values.hdfs.core.hadoopTmpDir | quote }}
+            HDFS_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
+            HDFS_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
+            HDFS_HA_ZOOKEEPER_PARENT_ZNODE: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
             HDFS_NAMENODE_HEAP: {{ .Values.hdfs.jvm.namenodeHeapSize | quote }}
             HDFS_DATANODE_HEAP: {{ .Values.hdfs.jvm.datanodeHeapSize | quote }}
             HDFS_JOURNALNODE_HEAP: {{ .Values.hdfs.jvm.journalnodeHeapSize | quote }}
@@ -38,6 +42,9 @@
             HDFS_JOURNALNODE_EDITS_DIR: {{ .Values.hdfs.paths.journalnodeEditsDir | quote }}
             HDFS_JOURNALNODE_RPC_PORT: {{ .Values.hdfs.ports.journalnode.rpc | quote }}
             HDFS_JOURNALNODE_HTTP_PORT: {{ .Values.hdfs.ports.journalnode.http | quote }}
+            HDFS_JOURNALNODE_ENABLE_SYNC: {{ .Values.hdfs.journalnode.enableSync | quote }}
+            HDFS_JOURNALNODE_EDIT_CACHE_SIZE_BYTES: {{ .Values.hdfs.journalnode.editCacheSizeBytes | quote }}
+            HDFS_JOURNALNODE_SYNC_INTERVAL_MS: {{ .Values.hdfs.journalnode.syncIntervalMs | quote }}
       replicas: {{ .Values.replicas.journalnode }}
       resources:
         requests:
@@ -83,6 +90,10 @@
         - name: hdfs-common-config
           variables:
             HDFS_TRASH_INTERVAL: {{ .Values.hdfs.trash.interval | quote }}
+            HDFS_HADOOP_TMP_DIR: {{ .Values.hdfs.core.hadoopTmpDir | quote }}
+            HDFS_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
+            HDFS_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
+            HDFS_HA_ZOOKEEPER_PARENT_ZNODE: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
             HDFS_NAMENODE_HEAP: {{ .Values.hdfs.jvm.namenodeHeapSize | quote }}
             HDFS_DATANODE_HEAP: {{ .Values.hdfs.jvm.datanodeHeapSize | quote }}
             HDFS_JOURNALNODE_HEAP: {{ .Values.hdfs.jvm.journalnodeHeapSize | quote }}
@@ -106,7 +117,12 @@
             HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.ports.namenode.http | quote }}
             HDFS_NAMENODE_HANDLER_COUNT: {{ .Values.hdfs.namenode.handlerCount | quote }}
             HDFS_PERMISSIONS_ENABLED: {{ .Values.hdfs.permissions.enabled | quote }}
+            HDFS_PERMISSIONS_SUPERUSERGROUP: {{ .Values.hdfs.permissions.superusergroup | quote }}
             HDFS_REGISTRATION_IP_HOSTNAME_CHECK: {{ .Values.hdfs.registration.ipHostnameCheck | quote }}
+            HDFS_NAMENODE_WEBHDFS_ENABLED: {{ .Values.hdfs.namenode.webhdfsEnabled | quote }}
+            HDFS_NAMENODE_RESOURCE_DU_RESERVED: {{ .Values.hdfs.namenode.resourceDuReserved | quote }}
+            HDFS_CLIENT_RETRY_POLICY_ENABLED: {{ .Values.hdfs.client.retryPolicyEnabled | quote }}
+            HDFS_CLIENT_RETRY_POLICY_SPEC: {{ .Values.hdfs.client.retryPolicySpec | quote }}
 {{- if $isCluster }}
             HDFS_REPLICATION: {{ .Values.hdfs.replication | quote }}
             HDFS_REPLICATION_MAX: {{ .Values.hdfs.replicationMax | quote }}
@@ -114,9 +130,12 @@
             HDFS_JOURNALNODE_RPC_PORT: {{ .Values.hdfs.ports.journalnode.rpc | quote }}
             HDFS_HA_AUTOMATIC_FAILOVER_ENABLED: {{ .Values.hdfs.ha.automaticFailoverEnabled | quote }}
             HDFS_HA_FENCING_METHODS: {{ .Values.hdfs.ha.fencingMethods | quote }}
+            HDFS_HA_FENCING_SSH_CONNECT_TIMEOUT_MS: {{ .Values.hdfs.ha.fencingSshConnectTimeoutMs | quote }}
             HDFS_HA_ZOOKEEPER_SESSION_TIMEOUT_MS: {{ .Values.hdfs.ha.zookeeper.sessionTimeoutMs | quote }}
             HDFS_HA_ZOOKEEPER_OPERATION_RETRIES: {{ .Values.hdfs.ha.zookeeper.operationRetries | quote }}
             HDFS_HA_NAMENODE_IDS: {{ .Values.hdfs.ha.nameNodeIds | quote }}
+            HDFS_HA_LOG_ROLL_PERIOD: {{ .Values.hdfs.namenode.haLogRollPeriod | quote }}
+            HDFS_HA_TAIL_EDITS_PERIOD: {{ .Values.hdfs.namenode.haTailEditsPeriod | quote }}
 {{- else }}
             HDFS_REPLICATION: "1"
             HDFS_REPLICATION_MAX: "1"
@@ -157,6 +176,10 @@
         - name: hdfs-common-config
           variables:
             HDFS_TRASH_INTERVAL: {{ .Values.hdfs.trash.interval | quote }}
+            HDFS_HADOOP_TMP_DIR: {{ .Values.hdfs.core.hadoopTmpDir | quote }}
+            HDFS_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
+            HDFS_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
+            HDFS_HA_ZOOKEEPER_PARENT_ZNODE: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
             HDFS_NAMENODE_HEAP: {{ .Values.hdfs.jvm.namenodeHeapSize | quote }}
             HDFS_DATANODE_HEAP: {{ .Values.hdfs.jvm.datanodeHeapSize | quote }}
             HDFS_JOURNALNODE_HEAP: {{ .Values.hdfs.jvm.journalnodeHeapSize | quote }}
@@ -177,8 +200,12 @@
             HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.ports.namenode.rpc | quote }}
             HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.ports.namenode.http | quote }}
             HDFS_DATANODE_HANDLER_COUNT: {{ .Values.hdfs.datanode.handlerCount | quote }}
+            HDFS_DATANODE_FAILED_VOLUMES_TOLERATED: {{ .Values.hdfs.datanode.failedVolumesTolerated | quote }}
+            HDFS_DATANODE_DU_RESERVED: {{ .Values.hdfs.datanode.duReserved | quote }}
             HDFS_PERMISSIONS_ENABLED: {{ .Values.hdfs.permissions.enabled | quote }}
             HDFS_HA_NAMENODE_IDS: {{ .Values.hdfs.ha.nameNodeIds | quote }}
+            HDFS_CLIENT_RETRY_POLICY_ENABLED: {{ .Values.hdfs.client.retryPolicyEnabled | quote }}
+            HDFS_CLIENT_RETRY_POLICY_SPEC: {{ .Values.hdfs.client.retryPolicySpec | quote }}
 {{- if $isCluster }}
             HDFS_REPLICATION: {{ .Values.hdfs.replication | quote }}
             HDFS_REPLICATION_MAX: {{ .Values.hdfs.replicationMax | quote }}

@@ -28,7 +28,7 @@
 
     <property>
         <name>zookeeper.session.timeout</name>
-        <value>30000</value>
+        <value>{{ .HBASE_ZOOKEEPER_SESSION_TIMEOUT }}</value>
     </property>
 
     <property>
@@ -43,7 +43,7 @@
 
     <property>
         <name>hbase.zookeeper.property.maxClientCnxns</name>
-        <value>4000</value>
+        <value>{{ .HBASE_ZOOKEEPER_MAX_CLIENT_CNXNS }}</value>
     </property>
 
     <property>
@@ -83,27 +83,27 @@
 
     <property>
         <name>hbase.regionserver.handler.count</name>
-        <value>30</value>
+        <value>{{ .HBASE_REGIONSERVER_HANDLER_COUNT }}</value>
     </property>
 
     <property>
         <name>hbase.hstore.flusher.count</name>
-        <value>2</value>
+        <value>{{ .HBASE_HSTORE_FLUSHER_COUNT }}</value>
     </property>
 
     <property>
         <name>hbase.client.scanner.caching</name>
-        <value>100</value>
+        <value>{{ .HBASE_CLIENT_SCANNER_CACHING }}</value>
     </property>
 
     <property>
         <name>hbase.hregion.max.filesize</name>
-        <value>10737418240</value>
+        <value>{{ .HBASE_HREGION_MAX_FILESIZE }}</value>
     </property>
 
     <property>
         <name>hbase.hregion.memstore.flush.size</name>
-        <value>134217728</value>
+        <value>{{ .HBASE_HREGION_MEMSTORE_FLUSH_SIZE }}</value>
     </property>
 
     <property>
@@ -113,7 +113,7 @@
 
     <property>
         <name>hbase.procedure.store.wal.use.hsync</name>
-        <value>false</value>
+        <value>{{ .HBASE_PROCEDURE_STORE_WAL_USE_HSYNC }}</value>
     </property>
 
     <property>
@@ -123,16 +123,16 @@
 
     <property>
         <name>hbase.replication</name>
-        <value>false</value>
+        <value>{{ .HBASE_REPLICATION_ENABLED }}</value>
     </property>
 
     <property>
         <name>hbase.security.authentication</name>
-        <value>simple</value>
+        <value>{{ .HBASE_SECURITY_AUTHENTICATION }}</value>
     </property>
 
     <property>
         <name>hbase.security.authorization</name>
-        <value>false</value>
+        <value>{{ .HBASE_SECURITY_AUTHORIZATION }}</value>
     </property>
 </configuration>

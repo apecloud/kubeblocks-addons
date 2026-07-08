@@ -53,6 +53,11 @@ storage:
       - ReadWriteOnce
 
 hdfs:
+  core:
+    hadoopTmpDir: /hadoop/tmp
+  security:
+    authentication: simple
+    authorization: false
   ports:
     namenode:
       rpc: 8020
@@ -65,16 +70,21 @@ hdfs:
     datanodeDataDir: /hadoop/dfs/data0
     journalnodeEditsDir: /hadoop/dfs/journal
   replication: 3
+  replicationMax: 6
   client:
     replaceDatanodeOnFailurePolicy: DEFAULT
+    retryPolicyEnabled: true
+    retryPolicySpec: "1000,1"
   permissions:
     enabled: false
+    superusergroup: hadoop
   registration:
     ipHostnameCheck: false
   ha:
     nameNodeIds: "nn0,nn1"
     automaticFailoverEnabled: true
     fencingMethods: "sshfence\nshell(/bin/true)"
+    fencingSshConnectTimeoutMs: 30000
     zookeeper:
       parentZnodePrefix: /hadoop-ha
       includeClusterUID: true
@@ -96,8 +106,18 @@ hdfs:
     zkfcHeapSize: "256m"
   datanode:
     handlerCount: 64
+    failedVolumesTolerated: 0
+    duReserved: 1073741824
   namenode:
     handlerCount: 64
+    webhdfsEnabled: false
+    resourceDuReserved: 1073741824
+    haLogRollPeriod: 120
+    haTailEditsPeriod: 60
+  journalnode:
+    enableSync: true
+    editCacheSizeBytes: 104857600
+    syncIntervalMs: 120000
 
 serviceRefs:
   hadoopZookeeper:

@@ -43,7 +43,7 @@
 
     <property>
         <name>dfs.webhdfs.enabled</name>
-        <value>false</value>
+        <value>{{- .HDFS_WEBHDFS_ENABLED }}</value>
     </property>
 
     <property>

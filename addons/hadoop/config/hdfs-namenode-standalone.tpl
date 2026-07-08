@@ -34,7 +34,7 @@
 
     <property>
         <name>dfs.permissions.superusergroup</name>
-        <value>hadoop</value>
+        <value>{{- .HDFS_PERMISSIONS_SUPERUSERGROUP }}</value>
     </property>
 
     <property>
@@ -74,16 +74,16 @@
 
     <property>
         <name>dfs.webhdfs.enabled</name>
-        <value>false</value>
+        <value>{{- .HDFS_NAMENODE_WEBHDFS_ENABLED }}</value>
     </property>
 
     <property>
         <name>dfs.client.retry.policy.enabled</name>
-        <value>true</value>
+        <value>{{- .HDFS_CLIENT_RETRY_POLICY_ENABLED }}</value>
     </property>
 
     <property>
         <name>dfs.client.retry.policy.spec</name>
-        <value>1000,1</value>
+        <value>{{- .HDFS_CLIENT_RETRY_POLICY_SPEC }}</value>
     </property>
 </configuration>

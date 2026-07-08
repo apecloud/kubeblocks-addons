@@ -38,6 +38,46 @@
             HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.namenodeHttpPort | quote }}
             HDFS_HA_ZK_PARENT: {{ .Values.hdfs.haZkParent | quote }}
             HDFS_REPLICATION: {{ .Values.hdfs.replication | quote }}
+            HDFS_PERMISSIONS_ENABLED: {{ .Values.hdfs.permissionsEnabled | quote }}
+            HDFS_FS_TRASH_INTERVAL: {{ .Values.hdfs.fs.trashInterval | quote }}
+            HADOOP_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
+            HADOOP_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
+            HADOOP_IPC_CLIENT_CONNECTION_MAXIDLETIME: {{ .Values.hdfs.ipc.clientConnectionMaxIdleTime | quote }}
+            HADOOP_IPC_CLIENT_CONNECT_TIMEOUT: {{ .Values.hdfs.ipc.clientConnectTimeout | quote }}
+            HADOOP_IPC_PING_INTERVAL: {{ .Values.hdfs.ipc.pingInterval | quote }}
+            HADOOP_TMP_DIR: {{ .Values.hdfs.paths.tmpDir | quote }}
+            HDFS_COMMON_CLIENT_RETRY_POLICY_ENABLED: {{ .Values.hdfs.client.commonRetryPolicy.enabled | quote }}
+            HDFS_COMMON_CLIENT_RETRY_POLICY_SPEC: {{ .Values.hdfs.client.commonRetryPolicy.spec | quote }}
+            HDFS_WEBHDFS_ENABLED: {{ .Values.hdfs.client.webhdfsEnabled | quote }}
+            HDFS_CLIENT_FAILOVER_MAX_ATTEMPTS: {{ .Values.hdfs.client.failoverMaxAttempts | quote }}
+            HDFS_CLIENT_FAILOVER_SLEEP_BASE_MILLIS: {{ .Values.hdfs.client.failoverSleepBaseMillis | quote }}
+            HDFS_CLIENT_FAILOVER_SLEEP_MAX_MILLIS: {{ .Values.hdfs.client.failoverSleepMaxMillis | quote }}
+            HBASE_HDFS_CLIENT_RETRY_POLICY_ENABLED: {{ .Values.hdfs.client.retryPolicy.enabled | quote }}
+            HBASE_HDFS_CLIENT_RETRY_POLICY_SPEC: {{ .Values.hdfs.client.retryPolicy.spec | quote }}
+            HBASE_IPC_CLIENT_CONNECT_TIMEOUT: {{ .Values.hdfs.hbaseClient.ipcClientConnectTimeout | quote }}
+            HBASE_IPC_CLIENT_CONNECT_MAX_RETRIES: {{ .Values.hdfs.hbaseClient.ipcClientConnectMaxRetries | quote }}
+            HBASE_ZOOKEEPER_SESSION_TIMEOUT: {{ .Values.hbase.zk.sessionTimeout | quote }}
+            HBASE_ZOOKEEPER_MAX_CLIENT_CNXNS: {{ .Values.hbase.zk.maxClientCnxns | quote }}
+            HBASE_REGIONSERVER_HANDLER_COUNT: {{ .Values.hbase.cluster.regionserverHandlerCount | quote }}
+            HBASE_HSTORE_FLUSHER_COUNT: {{ .Values.hbase.cluster.hstoreFlusherCount | quote }}
+            HBASE_CLIENT_SCANNER_CACHING: {{ .Values.hbase.common.clientScannerCaching | quote }}
+            HBASE_HREGION_MAX_FILESIZE: {{ .Values.hbase.cluster.regionMaxFileSize | quote }}
+            HBASE_HREGION_MEMSTORE_FLUSH_SIZE: {{ .Values.hbase.common.regionMemstoreFlushSize | quote }}
+            HBASE_HREGION_MAJORCOMPACTION: {{ .Values.hbase.cluster.regionMajorCompaction | quote }}
+            HBASE_MASTER_WAIT_ON_REGIONSERVERS_TIMEOUT: {{ .Values.hbase.cluster.masterWaitOnRegionserversTimeout | quote }}
+            HBASE_MASTER_STARTUP_RETAINASSIGN_TIMEOUT: {{ .Values.hbase.cluster.masterStartupRetainassignTimeout | quote }}
+            HBASE_OLDWALS_CLEANER_THREAD_TIMEOUT_MSEC: {{ .Values.hbase.cluster.oldWalsCleanerThreadTimeoutMsec | quote }}
+            HBASE_MASTER_LOGCLEANER_TTL: {{ .Values.hbase.cluster.masterLogCleanerTtl | quote }}
+            HBASE_MASTER_HFILECLEANER_TTL: {{ .Values.hbase.cluster.masterHfileCleanerTtl | quote }}
+            HBASE_BALANCER_PERIOD: {{ .Values.hbase.cluster.balancerPeriod | quote }}
+            HBASE_PROCEDURE_STORE_WAL_USE_HSYNC: {{ .Values.hbase.cluster.procedureStoreWalUseHsync | quote }}
+            HBASE_REGIONSERVER_OPTIONALCACHEFLUSHINTERVAL: {{ .Values.hbase.cluster.regionserverOptionalCacheFlushInterval | quote }}
+            HBASE_REGIONSERVER_STARTUP_RETRIES: {{ .Values.hbase.cluster.regionserverStartupRetries | quote }}
+            HBASE_REGIONSERVER_STARTUP_RETRY_INTERVAL: {{ .Values.hbase.cluster.regionserverStartupRetryInterval | quote }}
+            HBASE_REPLICATION_ENABLED: {{ .Values.hbase.cluster.replicationEnabled | quote }}
+            HBASE_SECURITY_AUTHENTICATION: {{ .Values.hbase.security.authentication | quote }}
+            HBASE_SECURITY_AUTHORIZATION: {{ .Values.hbase.security.authorization | quote }}
+            HBASE_SPLITLOG_MANAGER_TIMEOUT: {{ .Values.hbase.cluster.splitlogManagerTimeout | quote }}
       resources:
         requests:
           cpu: {{ .Values.resources.hmaster.requests.cpu | quote }}
@@ -83,6 +123,46 @@
             HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.namenodeHttpPort | quote }}
             HDFS_HA_ZK_PARENT: {{ .Values.hdfs.haZkParent | quote }}
             HDFS_REPLICATION: {{ .Values.hdfs.replication | quote }}
+            HDFS_PERMISSIONS_ENABLED: {{ .Values.hdfs.permissionsEnabled | quote }}
+            HDFS_FS_TRASH_INTERVAL: {{ .Values.hdfs.fs.trashInterval | quote }}
+            HADOOP_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
+            HADOOP_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
+            HADOOP_IPC_CLIENT_CONNECTION_MAXIDLETIME: {{ .Values.hdfs.ipc.clientConnectionMaxIdleTime | quote }}
+            HADOOP_IPC_CLIENT_CONNECT_TIMEOUT: {{ .Values.hdfs.ipc.clientConnectTimeout | quote }}
+            HADOOP_IPC_PING_INTERVAL: {{ .Values.hdfs.ipc.pingInterval | quote }}
+            HADOOP_TMP_DIR: {{ .Values.hdfs.paths.tmpDir | quote }}
+            HDFS_COMMON_CLIENT_RETRY_POLICY_ENABLED: {{ .Values.hdfs.client.commonRetryPolicy.enabled | quote }}
+            HDFS_COMMON_CLIENT_RETRY_POLICY_SPEC: {{ .Values.hdfs.client.commonRetryPolicy.spec | quote }}
+            HDFS_WEBHDFS_ENABLED: {{ .Values.hdfs.client.webhdfsEnabled | quote }}
+            HDFS_CLIENT_FAILOVER_MAX_ATTEMPTS: {{ .Values.hdfs.client.failoverMaxAttempts | quote }}
+            HDFS_CLIENT_FAILOVER_SLEEP_BASE_MILLIS: {{ .Values.hdfs.client.failoverSleepBaseMillis | quote }}
+            HDFS_CLIENT_FAILOVER_SLEEP_MAX_MILLIS: {{ .Values.hdfs.client.failoverSleepMaxMillis | quote }}
+            HBASE_HDFS_CLIENT_RETRY_POLICY_ENABLED: {{ .Values.hdfs.client.retryPolicy.enabled | quote }}
+            HBASE_HDFS_CLIENT_RETRY_POLICY_SPEC: {{ .Values.hdfs.client.retryPolicy.spec | quote }}
+            HBASE_IPC_CLIENT_CONNECT_TIMEOUT: {{ .Values.hdfs.hbaseClient.ipcClientConnectTimeout | quote }}
+            HBASE_IPC_CLIENT_CONNECT_MAX_RETRIES: {{ .Values.hdfs.hbaseClient.ipcClientConnectMaxRetries | quote }}
+            HBASE_ZOOKEEPER_SESSION_TIMEOUT: {{ .Values.hbase.zk.sessionTimeout | quote }}
+            HBASE_ZOOKEEPER_MAX_CLIENT_CNXNS: {{ .Values.hbase.zk.maxClientCnxns | quote }}
+            HBASE_REGIONSERVER_HANDLER_COUNT: {{ .Values.hbase.cluster.regionserverHandlerCount | quote }}
+            HBASE_HSTORE_FLUSHER_COUNT: {{ .Values.hbase.cluster.hstoreFlusherCount | quote }}
+            HBASE_CLIENT_SCANNER_CACHING: {{ .Values.hbase.common.clientScannerCaching | quote }}
+            HBASE_HREGION_MAX_FILESIZE: {{ .Values.hbase.cluster.regionMaxFileSize | quote }}
+            HBASE_HREGION_MEMSTORE_FLUSH_SIZE: {{ .Values.hbase.common.regionMemstoreFlushSize | quote }}
+            HBASE_HREGION_MAJORCOMPACTION: {{ .Values.hbase.cluster.regionMajorCompaction | quote }}
+            HBASE_MASTER_WAIT_ON_REGIONSERVERS_TIMEOUT: {{ .Values.hbase.cluster.masterWaitOnRegionserversTimeout | quote }}
+            HBASE_MASTER_STARTUP_RETAINASSIGN_TIMEOUT: {{ .Values.hbase.cluster.masterStartupRetainassignTimeout | quote }}
+            HBASE_OLDWALS_CLEANER_THREAD_TIMEOUT_MSEC: {{ .Values.hbase.cluster.oldWalsCleanerThreadTimeoutMsec | quote }}
+            HBASE_MASTER_LOGCLEANER_TTL: {{ .Values.hbase.cluster.masterLogCleanerTtl | quote }}
+            HBASE_MASTER_HFILECLEANER_TTL: {{ .Values.hbase.cluster.masterHfileCleanerTtl | quote }}
+            HBASE_BALANCER_PERIOD: {{ .Values.hbase.cluster.balancerPeriod | quote }}
+            HBASE_PROCEDURE_STORE_WAL_USE_HSYNC: {{ .Values.hbase.cluster.procedureStoreWalUseHsync | quote }}
+            HBASE_REGIONSERVER_OPTIONALCACHEFLUSHINTERVAL: {{ .Values.hbase.cluster.regionserverOptionalCacheFlushInterval | quote }}
+            HBASE_REGIONSERVER_STARTUP_RETRIES: {{ .Values.hbase.cluster.regionserverStartupRetries | quote }}
+            HBASE_REGIONSERVER_STARTUP_RETRY_INTERVAL: {{ .Values.hbase.cluster.regionserverStartupRetryInterval | quote }}
+            HBASE_REPLICATION_ENABLED: {{ .Values.hbase.cluster.replicationEnabled | quote }}
+            HBASE_SECURITY_AUTHENTICATION: {{ .Values.hbase.security.authentication | quote }}
+            HBASE_SECURITY_AUTHORIZATION: {{ .Values.hbase.security.authorization | quote }}
+            HBASE_SPLITLOG_MANAGER_TIMEOUT: {{ .Values.hbase.cluster.splitlogManagerTimeout | quote }}
       resources:
         requests:
           cpu: {{ .Values.resources.hregionserver.requests.cpu | quote }}
@@ -112,6 +192,20 @@
               component: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.component }}
               service: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.service }}
               port: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.port }}
+      configs:
+        - name: hbase-standalone-config
+          variables:
+            HBASE_ZOOKEEPER_SESSION_TIMEOUT: {{ .Values.hbase.zk.sessionTimeout | quote }}
+            HBASE_ZOOKEEPER_MAX_CLIENT_CNXNS: {{ .Values.hbase.zk.maxClientCnxns | quote }}
+            HBASE_REGIONSERVER_HANDLER_COUNT: {{ .Values.hbase.standalone.regionserverHandlerCount | quote }}
+            HBASE_HSTORE_FLUSHER_COUNT: {{ .Values.hbase.standalone.hstoreFlusherCount | quote }}
+            HBASE_CLIENT_SCANNER_CACHING: {{ .Values.hbase.common.clientScannerCaching | quote }}
+            HBASE_HREGION_MAX_FILESIZE: {{ .Values.hbase.standalone.regionMaxFileSize | quote }}
+            HBASE_HREGION_MEMSTORE_FLUSH_SIZE: {{ .Values.hbase.common.regionMemstoreFlushSize | quote }}
+            HBASE_PROCEDURE_STORE_WAL_USE_HSYNC: {{ .Values.hbase.standalone.procedureStoreWalUseHsync | quote }}
+            HBASE_REPLICATION_ENABLED: {{ .Values.hbase.standalone.replicationEnabled | quote }}
+            HBASE_SECURITY_AUTHENTICATION: {{ .Values.hbase.security.authentication | quote }}
+            HBASE_SECURITY_AUTHORIZATION: {{ .Values.hbase.security.authorization | quote }}
       resources:
         requests:
           cpu: {{ .Values.resources.hbasestandalone.requests.cpu | quote }}

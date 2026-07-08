@@ -63,7 +63,14 @@
             "journalnodeEditsDir": { "type": "string", "default": "/hadoop/dfs/journal" }
           }
         },
-        "replication": { "type": "integer", "default": 1, "minimum": 1 },
+        "core": {
+          "type": "object",
+          "properties": {
+            "hadoopTmpDir": { "type": "string", "default": "/hadoop/tmp" }
+          }
+        },
+          "replication": { "type": "integer", "default": 1, "minimum": 1 },
+          "replicationMax": { "type": "integer", "default": 6, "minimum": 1 },
         "client": {
           "type": "object",
           "properties": {
@@ -71,13 +78,23 @@
               "type": "string",
               "enum": ["NEVER", "DEFAULT", "ALWAYS"],
               "default": "NEVER"
-            }
+            },
+            "retryPolicyEnabled": { "type": "boolean", "default": true },
+            "retryPolicySpec": { "type": "string", "default": "1000,1" }
           }
         },
         "permissions": {
           "type": "object",
           "properties": {
-            "enabled": { "type": "boolean", "default": false }
+            "enabled": { "type": "boolean", "default": false },
+            "superusergroup": { "type": "string", "default": "hadoop" }
+          }
+        },
+        "security": {
+          "type": "object",
+          "properties": {
+            "authentication": { "type": "string", "default": "simple" },
+            "authorization": { "type": "boolean", "default": false }
           }
         },
         "registration": {
@@ -89,8 +106,10 @@
         "ha": {
           "type": "object",
           "properties": {
+              "nameNodeIds": { "type": "string", "default": "nn0,nn1" },
             "automaticFailoverEnabled": { "type": "boolean", "default": true },
             "fencingMethods": { "type": "string", "default": "shell(/bin/true)" },
+              "fencingSshConnectTimeoutMs": { "type": "integer", "default": 30000, "minimum": 1 },
             "zookeeper": {
               "type": "object",
               "properties": {
@@ -102,6 +121,14 @@
             }
           }
         },
+          "journalnode": {
+            "type": "object",
+            "properties": {
+              "enableSync": { "type": "boolean", "default": true },
+              "editCacheSizeBytes": { "type": "integer", "default": 104857600, "minimum": 1 },
+              "syncIntervalMs": { "type": "integer", "default": 120000, "minimum": 1 }
+            }
+          },
         "ipc": {
           "type": "object",
           "properties": {
@@ -112,6 +139,24 @@
             "clientPing": { "type": "boolean", "default": true },
             "pingIntervalMs": { "type": "integer", "default": 30000, "minimum": 1 }
           }
+          },
+          "namenode": {
+            "type": "object",
+            "properties": {
+              "handlerCount": { "type": "integer", "default": 64, "minimum": 1 },
+              "webhdfsEnabled": { "type": "boolean", "default": false },
+              "resourceDuReserved": { "type": "integer", "default": 1073741824, "minimum": 0 },
+              "haLogRollPeriod": { "type": "integer", "default": 120, "minimum": 0 },
+              "haTailEditsPeriod": { "type": "integer", "default": 60, "minimum": 0 }
+            }
+          },
+          "datanode": {
+            "type": "object",
+            "properties": {
+              "handlerCount": { "type": "integer", "default": 64, "minimum": 1 },
+              "failedVolumesTolerated": { "type": "integer", "default": 0, "minimum": 0 },
+              "duReserved": { "type": "integer", "default": 1073741824, "minimum": 0 }
+            }
         }
       }
     },

@@ -14,7 +14,8 @@
 
     <property>
         <name>io.compression.codecs</name>
-        <value>org.apache.hadoop.io.compress.GzipCodec,org.apache.hadoop.io.compress.DefaultCodec,org.apache.hadoop.io.compress.BZip2Codec,org.apache.hadoop.io.compress.SnappyCodec,org.apache.hadoop.io.compress.Lz4Codec</value>
+        <value>
+            org.apache.hadoop.io.compress.GzipCodec,org.apache.hadoop.io.compress.DefaultCodec,org.apache.hadoop.io.compress.BZip2Codec,org.apache.hadoop.io.compress.SnappyCodec,org.apache.hadoop.io.compress.Lz4Codec</value>
     </property>
 
     <property>
@@ -39,12 +40,12 @@
 
     <property>
         <name>hadoop.security.authentication</name>
-        <value>simple</value>
+        <value>{{- .HDFS_SECURITY_AUTHENTICATION }}</value>
     </property>
 
     <property>
         <name>hadoop.security.authorization</name>
-        <value>false</value>
+        <value>{{- .HDFS_SECURITY_AUTHORIZATION }}</value>
     </property>
 
     <property>
@@ -79,7 +80,7 @@
 
     <property>
         <name>hadoop.tmp.dir</name>
-        <value>/hadoop/tmp</value>
+        <value>{{- .HDFS_HADOOP_TMP_DIR }}</value>
     </property>
 
     <property>

@@ -20,7 +20,7 @@
 
     <property>
         <name>dfs.datanode.failed.volumes.tolerated</name>
-        <value>0</value>
+        <value>{{- .HDFS_DATANODE_FAILED_VOLUMES_TOLERATED }}</value>
     </property>
 
     <property>
@@ -50,7 +50,7 @@
 
     <property>
         <name>dfs.datanode.du.reserved</name>
-        <value>1073741824</value>
+        <value>{{- .HDFS_DATANODE_DU_RESERVED }}</value>
     </property>
 
     <property>
@@ -106,11 +106,11 @@
 
     <property>
         <name>dfs.client.retry.policy.enabled</name>
-        <value>true</value>
+        <value>{{- .HDFS_CLIENT_RETRY_POLICY_ENABLED }}</value>
     </property>
 
     <property>
         <name>dfs.client.retry.policy.spec</name>
-        <value>1000,1</value>
+        <value>{{- .HDFS_CLIENT_RETRY_POLICY_SPEC }}</value>
     </property>
 </configuration>

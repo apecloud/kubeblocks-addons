@@ -28,7 +28,7 @@
 
     <property>
         <name>zookeeper.session.timeout</name>
-        <value>30000</value>
+        <value>{{ .HBASE_ZOOKEEPER_SESSION_TIMEOUT }}</value>
     </property>
 
     <property>
@@ -43,7 +43,7 @@
 
     <property>
         <name>hbase.zookeeper.property.maxClientCnxns</name>
-        <value>4000</value>
+        <value>{{ .HBASE_ZOOKEEPER_MAX_CLIENT_CNXNS }}</value>
     </property>
 
     <property>
@@ -88,32 +88,32 @@
 
     <property>
         <name>hbase.regionserver.handler.count</name>
-        <value>100</value>
+        <value>{{ .HBASE_REGIONSERVER_HANDLER_COUNT }}</value>
     </property>
 
     <property>
         <name>hbase.hstore.flusher.count</name>
-        <value>4</value>
+        <value>{{ .HBASE_HSTORE_FLUSHER_COUNT }}</value>
     </property>
 
     <property>
         <name>hbase.client.scanner.caching</name>
-        <value>100</value>
+        <value>{{ .HBASE_CLIENT_SCANNER_CACHING }}</value>
     </property>
 
     <property>
         <name>hbase.hregion.max.filesize</name>
-        <value>53687091200</value>
+        <value>{{ .HBASE_HREGION_MAX_FILESIZE }}</value>
     </property>
 
     <property>
         <name>hbase.hregion.memstore.flush.size</name>
-        <value>134217728</value>
+        <value>{{ .HBASE_HREGION_MEMSTORE_FLUSH_SIZE }}</value>
     </property>
 
     <property>
         <name>hbase.hregion.majorcompaction</name>
-        <value>0</value>
+        <value>{{ .HBASE_HREGION_MAJORCOMPACTION }}</value>
     </property>
 
     <property>
@@ -128,12 +128,12 @@
 
     <property>
         <name>hbase.master.wait.on.regionservers.timeout</name>
-        <value>300000</value>
+        <value>{{ .HBASE_MASTER_WAIT_ON_REGIONSERVERS_TIMEOUT }}</value>
     </property>
 
     <property>
         <name>hbase.master.startup.retainassign.timeout</name>
-        <value>300000</value>
+        <value>{{ .HBASE_MASTER_STARTUP_RETAINASSIGN_TIMEOUT }}</value>
     </property>
 
     <property>
@@ -143,22 +143,22 @@
 
     <property>
         <name>hbase.oldwals.cleaner.thread.timeout.msec</name>
-        <value>60000</value>
+        <value>{{ .HBASE_OLDWALS_CLEANER_THREAD_TIMEOUT_MSEC }}</value>
     </property>
 
     <property>
         <name>hbase.master.logcleaner.ttl</name>
-        <value>60000</value>
+        <value>{{ .HBASE_MASTER_LOGCLEANER_TTL }}</value>
     </property>
 
     <property>
         <name>hbase.master.hfilecleaner.ttl</name>
-        <value>600000</value>
+        <value>{{ .HBASE_MASTER_HFILECLEANER_TTL }}</value>
     </property>
 
     <property>
         <name>hbase.balancer.period</name>
-        <value>1800000</value>
+        <value>{{ .HBASE_BALANCER_PERIOD }}</value>
     </property>
 
     <property>
@@ -173,22 +173,22 @@
 
     <property>
         <name>hbase.procedure.store.wal.use.hsync</name>
-        <value>true</value>
+        <value>{{ .HBASE_PROCEDURE_STORE_WAL_USE_HSYNC }}</value>
     </property>
 
     <property>
         <name>hbase.regionserver.optionalcacheflushinterval</name>
-        <value>28800000</value>
+        <value>{{ .HBASE_REGIONSERVER_OPTIONALCACHEFLUSHINTERVAL }}</value>
     </property>
 
     <property>
         <name>hbase.regionserver.startup.retries</name>
-        <value>10</value>
+        <value>{{ .HBASE_REGIONSERVER_STARTUP_RETRIES }}</value>
     </property>
 
     <property>
         <name>hbase.regionserver.startup.retry.interval</name>
-        <value>10000</value>
+        <value>{{ .HBASE_REGIONSERVER_STARTUP_RETRY_INTERVAL }}</value>
     </property>
 
     <property>
@@ -198,17 +198,17 @@
 
     <property>
         <name>hbase.replication</name>
-        <value>true</value>
+        <value>{{ .HBASE_REPLICATION_ENABLED }}</value>
     </property>
 
     <property>
         <name>hbase.security.authentication</name>
-        <value>simple</value>
+        <value>{{ .HBASE_SECURITY_AUTHENTICATION }}</value>
     </property>
 
     <property>
         <name>hbase.security.authorization</name>
-        <value>false</value>
+        <value>{{ .HBASE_SECURITY_AUTHORIZATION }}</value>
     </property>
 
     <property>
@@ -245,37 +245,37 @@
 
     <property>
         <name>dfs.client.failover.max.attempts</name>
-        <value>15</value>
+        <value>{{ .HDFS_CLIENT_FAILOVER_MAX_ATTEMPTS }}</value>
     </property>
 
     <property>
         <name>dfs.client.failover.sleep.base.millis</name>
-        <value>500</value>
+        <value>{{ .HDFS_CLIENT_FAILOVER_SLEEP_BASE_MILLIS }}</value>
     </property>
 
     <property>
         <name>dfs.client.failover.sleep.max.millis</name>
-        <value>15000</value>
+        <value>{{ .HDFS_CLIENT_FAILOVER_SLEEP_MAX_MILLIS }}</value>
     </property>
 
     <property>
         <name>dfs.client.retry.policy.enabled</name>
-        <value>true</value>
+        <value>{{ .HBASE_HDFS_CLIENT_RETRY_POLICY_ENABLED }}</value>
     </property>
 
     <property>
         <name>dfs.client.retry.policy.spec</name>
-        <value>10000,6,60000,10</value>
+        <value>{{ .HBASE_HDFS_CLIENT_RETRY_POLICY_SPEC }}</value>
     </property>
 
     <property>
         <name>ipc.client.connect.timeout</name>
-        <value>30000</value>
+        <value>{{ .HBASE_IPC_CLIENT_CONNECT_TIMEOUT }}</value>
     </property>
 
     <property>
         <name>ipc.client.connect.max.retries</name>
-        <value>10</value>
+        <value>{{ .HBASE_IPC_CLIENT_CONNECT_MAX_RETRIES }}</value>
     </property>
 
     <property>
@@ -285,6 +285,6 @@
 
     <property>
         <name>hbase.splitlog.manager.timeout</name>
-        <value>600000</value>
+        <value>{{ .HBASE_SPLITLOG_MANAGER_TIMEOUT }}</value>
     </property>
 </configuration>

@@ -71,7 +71,7 @@
 
     <property>
         <name>dfs.ha.fencing.ssh.connect-timeout</name>
-        <value>30000</value>
+        <value>{{- .HDFS_HA_FENCING_SSH_CONNECT_TIMEOUT_MS }}</value>
     </property>
 
     <property>
@@ -91,7 +91,7 @@
 
     <property>
         <name>dfs.permissions.superusergroup</name>
-        <value>hadoop</value>
+        <value>{{- .HDFS_PERMISSIONS_SUPERUSERGROUP }}</value>
     </property>
 
     <property>
@@ -136,7 +136,7 @@
 
     <property>
         <name>dfs.webhdfs.enabled</name>
-        <value>false</value>
+        <value>{{- .HDFS_NAMENODE_WEBHDFS_ENABLED }}</value>
     </property>
 
     <property>
@@ -156,17 +156,17 @@
 
     <property>
         <name>dfs.namenode.resource.du.reserved</name>
-        <value>1073741824</value>
+        <value>{{- .HDFS_NAMENODE_RESOURCE_DU_RESERVED }}</value>
     </property>
 
     <property>
         <name>dfs.client.retry.policy.enabled</name>
-        <value>true</value>
+        <value>{{- .HDFS_CLIENT_RETRY_POLICY_ENABLED }}</value>
     </property>
 
     <property>
         <name>dfs.client.retry.policy.spec</name>
-        <value>1000,1</value>
+        <value>{{- .HDFS_CLIENT_RETRY_POLICY_SPEC }}</value>
     </property>
 
     <property>
@@ -176,12 +176,12 @@
 
     <property>
         <name>dfs.ha.log-roll.period</name>
-        <value>120</value>
+        <value>{{- .HDFS_HA_LOG_ROLL_PERIOD }}</value>
     </property>
 
     <property>
         <name>dfs.ha.tail-edits.period</name>
-        <value>60</value>
+        <value>{{- .HDFS_HA_TAIL_EDITS_PERIOD }}</value>
     </property>
 
     <property>

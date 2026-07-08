@@ -94,6 +94,286 @@
         "replication": {
           "type": "string",
           "default": "3"
+        },
+        "permissionsEnabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "fs": {
+          "type": "object",
+          "properties": {
+            "trashInterval": {
+              "type": "integer",
+              "default": 1440,
+              "minimum": 0
+            }
+          }
+        },
+        "security": {
+          "type": "object",
+          "properties": {
+            "authentication": {
+              "type": "string",
+              "default": "simple"
+            },
+            "authorization": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "ipc": {
+          "type": "object",
+          "properties": {
+            "clientConnectionMaxIdleTime": {
+              "type": "integer",
+              "default": 30000,
+              "minimum": 0
+            },
+            "clientConnectTimeout": {
+              "type": "integer",
+              "default": 10000,
+              "minimum": 1
+            },
+            "pingInterval": {
+              "type": "integer",
+              "default": 60000,
+              "minimum": 1
+            }
+          }
+        },
+        "paths": {
+          "type": "object",
+          "properties": {
+            "tmpDir": {
+              "type": "string",
+              "default": "/hadoop/tmp"
+            }
+          }
+        },
+        "client": {
+          "type": "object",
+          "properties": {
+            "webhdfsEnabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "failoverMaxAttempts": {
+              "type": "integer",
+              "default": 15,
+              "minimum": 1
+            },
+            "failoverSleepBaseMillis": {
+              "type": "integer",
+              "default": 500,
+              "minimum": 0
+            },
+            "failoverSleepMaxMillis": {
+              "type": "integer",
+              "default": 15000,
+              "minimum": 0
+            },
+            "retryPolicy": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "spec": {
+                  "type": "string",
+                  "default": "10000,6,60000,10"
+                }
+              }
+            },
+            "commonRetryPolicy": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "spec": {
+                  "type": "string",
+                  "default": "1000,1"
+                }
+              }
+            }
+          }
+        },
+        "hbaseClient": {
+          "type": "object",
+          "properties": {
+            "ipcClientConnectTimeout": {
+              "type": "integer",
+              "default": 30000,
+              "minimum": 1
+            },
+            "ipcClientConnectMaxRetries": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "hbase": {
+      "type": "object",
+      "properties": {
+        "zk": {
+          "type": "object",
+          "properties": {
+            "sessionTimeout": {
+              "type": "integer",
+              "default": 30000,
+              "minimum": 1
+            },
+            "maxClientCnxns": {
+              "type": "integer",
+              "default": 4000,
+              "minimum": 1
+            }
+          }
+        },
+        "security": {
+          "type": "object",
+          "properties": {
+            "authentication": {
+              "type": "string",
+              "default": "simple"
+            },
+            "authorization": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "common": {
+          "type": "object",
+          "properties": {
+            "clientScannerCaching": {
+              "type": "integer",
+              "default": 100,
+              "minimum": 1
+            },
+            "regionMemstoreFlushSize": {
+              "type": "integer",
+              "default": 134217728,
+              "minimum": 1
+            }
+          }
+        },
+        "cluster": {
+          "type": "object",
+          "properties": {
+            "regionserverHandlerCount": {
+              "type": "integer",
+              "default": 100,
+              "minimum": 1
+            },
+            "hstoreFlusherCount": {
+              "type": "integer",
+              "default": 4,
+              "minimum": 1
+            },
+            "regionMaxFileSize": {
+              "type": "integer",
+              "default": 53687091200,
+              "minimum": 1
+            },
+            "regionMajorCompaction": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            },
+            "masterWaitOnRegionserversTimeout": {
+              "type": "integer",
+              "default": 300000,
+              "minimum": 0
+            },
+            "masterStartupRetainassignTimeout": {
+              "type": "integer",
+              "default": 300000,
+              "minimum": 0
+            },
+            "oldWalsCleanerThreadTimeoutMsec": {
+              "type": "integer",
+              "default": 60000,
+              "minimum": 0
+            },
+            "masterLogCleanerTtl": {
+              "type": "integer",
+              "default": 60000,
+              "minimum": 0
+            },
+            "masterHfileCleanerTtl": {
+              "type": "integer",
+              "default": 600000,
+              "minimum": 0
+            },
+            "balancerPeriod": {
+              "type": "integer",
+              "default": 1800000,
+              "minimum": 0
+            },
+            "procedureStoreWalUseHsync": {
+              "type": "boolean",
+              "default": true
+            },
+            "regionserverOptionalCacheFlushInterval": {
+              "type": "integer",
+              "default": 28800000,
+              "minimum": 0
+            },
+            "regionserverStartupRetries": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 0
+            },
+            "regionserverStartupRetryInterval": {
+              "type": "integer",
+              "default": 10000,
+              "minimum": 0
+            },
+            "replicationEnabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "splitlogManagerTimeout": {
+              "type": "integer",
+              "default": 600000,
+              "minimum": 0
+            }
+          }
+        },
+        "standalone": {
+          "type": "object",
+          "properties": {
+            "regionserverHandlerCount": {
+              "type": "integer",
+              "default": 30,
+              "minimum": 1
+            },
+            "hstoreFlusherCount": {
+              "type": "integer",
+              "default": 2,
+              "minimum": 1
+            },
+            "regionMaxFileSize": {
+              "type": "integer",
+              "default": 10737418240,
+              "minimum": 1
+            },
+            "procedureStoreWalUseHsync": {
+              "type": "boolean",
+              "default": false
+            },
+            "replicationEnabled": {
+              "type": "boolean",
+              "default": false
+            }
+          }
         }
       }
     }

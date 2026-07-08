@@ -46,4 +46,19 @@
         <name>dfs.hosts.exclude</name>
         <value>{{- .HDFS_CONF_DIR }}/dfs.exclude</value>
     </property>
+
+    <property>
+        <name>dfs.journalnode.enable.sync</name>
+        <value>{{- .HDFS_JOURNALNODE_ENABLE_SYNC }}</value>
+    </property>
+
+    <property>
+        <name>dfs.journalnode.edit-cache-size.bytes</name>
+        <value>{{- .HDFS_JOURNALNODE_EDIT_CACHE_SIZE_BYTES }}</value>
+    </property>
+
+    <property>
+        <name>dfs.journalnode.sync.interval</name>
+        <value>{{- .HDFS_JOURNALNODE_SYNC_INTERVAL_MS }}</value>
+    </property>
 </configuration>

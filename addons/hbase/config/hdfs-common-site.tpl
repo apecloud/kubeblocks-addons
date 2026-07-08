@@ -8,7 +8,7 @@
 
     <property>
         <name>fs.trash.interval</name>
-        <value>1440</value>
+        <value>{{ .HDFS_FS_TRASH_INTERVAL }}</value>
     </property>
 
     <property>
@@ -33,22 +33,22 @@
 
     <property>
         <name>hadoop.security.authentication</name>
-        <value>simple</value>
+        <value>{{ .HADOOP_SECURITY_AUTHENTICATION }}</value>
     </property>
 
     <property>
         <name>hadoop.security.authorization</name>
-        <value>false</value>
+        <value>{{ .HADOOP_SECURITY_AUTHORIZATION }}</value>
     </property>
 
     <property>
         <name>ipc.client.connection.maxidletime</name>
-        <value>30000</value>
+        <value>{{ .HADOOP_IPC_CLIENT_CONNECTION_MAXIDLETIME }}</value>
     </property>
 
     <property>
         <name>ipc.client.connect.timeout</name>
-        <value>10000</value>
+        <value>{{ .HADOOP_IPC_CLIENT_CONNECT_TIMEOUT }}</value>
     </property>
 
     <property>
@@ -58,21 +58,21 @@
 
     <property>
         <name>ipc.ping.interval</name>
-        <value>60000</value>
+        <value>{{ .HADOOP_IPC_PING_INTERVAL }}</value>
     </property>
 
     <property>
         <name>hadoop.tmp.dir</name>
-        <value>/hadoop/tmp</value>
+        <value>{{ .HADOOP_TMP_DIR }}</value>
     </property>
 
     <property>
         <name>dfs.client.retry.policy.enabled</name>
-        <value>true</value>
+        <value>{{ .HDFS_COMMON_CLIENT_RETRY_POLICY_ENABLED }}</value>
     </property>
 
     <property>
         <name>dfs.client.retry.policy.spec</name>
-        <value>1000,1</value>
+        <value>{{ .HDFS_COMMON_CLIENT_RETRY_POLICY_SPEC }}</value>
     </property>
 </configuration>
