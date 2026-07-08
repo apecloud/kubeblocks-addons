@@ -388,20 +388,9 @@ spec:
           optional: false
           password: Required
     - name: MONGOS_INTERNAL_SVC_NAME
-      valueFrom:
-        serviceVarRef:
-          name: internal
-          compDef: {{ include "mongos.compDefName" . }}
-          optional: false
-          host: Required
+      value: "$(CLUSTER_NAME)-mongos-internal"
     - name: MONGOS_INTERNAL_PORT
-      valueFrom:
-        serviceVarRef:
-          name: internal
-          compDef: {{ include "mongos.compDefName" . }}
-          optional: false
-          port:
-            name: mongos
+      value: "27018"
     - name: MONGOS_INTERNAL_HOST
       value: "$(MONGOS_INTERNAL_SVC_NAME).$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
     - name: MONGODB_POD_FQDN_LIST
