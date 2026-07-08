@@ -75,7 +75,10 @@ mappings="$mappings,$CFG_SERVER_REPLICA_SET_NAME=$configsvr_name"
 echo "INFO: Shard mappings: $mappings"
 
 echo "INFO: Starting syncer physical restore..."
-restore_result=$(syncerctl_cmd restore start --backup-name "$backup_name" --type physical --replset-remapping "$mappings")
+if ! restore_result=$(syncerctl_cmd restore start --backup-name "$backup_name" --type physical --replset-remapping "$mappings" 2>&1); then
+    echo "ERROR: Syncer restore start failed: $restore_result"
+    exit 1
+fi
 echo "INFO: Syncer restore start result: $restore_result"
 
 wait_for_syncer_restore_completion

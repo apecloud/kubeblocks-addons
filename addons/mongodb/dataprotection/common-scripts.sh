@@ -198,6 +198,11 @@ EOF
 }
 
 function target_syncer_host() {
+  if [ -n "${DP_DB_HOST:-}" ] && [ -z "${DP_TARGET_POD_NAME:-}" ]; then
+    echo "$DP_DB_HOST"
+    return
+  fi
+
   local pod_name="${DP_TARGET_POD_NAME:-${POD_NAME:-}}"
   local component_name="${CLUSTER_COMPONENT_NAME:-${KB_CLUSTER_COMP_NAME:-}}"
   local namespace="${CLUSTER_NAMESPACE:-${KB_NAMESPACE:-${POD_NAMESPACE:-}}}"

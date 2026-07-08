@@ -61,7 +61,10 @@ recovery_target_time=$(date -d "@${DP_RESTORE_TIMESTAMP}" +"%Y-%m-%dT%H:%M:%S")
 echo "INFO: Recovery target time: $recovery_target_time"
 
 echo "INFO: Starting syncer PITR restore..."
-restore_result=$(syncerctl_cmd restore start --pitr-target "$recovery_target_time" --type physical --replset-remapping "$mappings")
+if ! restore_result=$(syncerctl_cmd restore start --pitr-target "$recovery_target_time" --type physical --replset-remapping "$mappings" 2>&1); then
+    echo "ERROR: Syncer restore start failed: $restore_result"
+    exit 1
+fi
 echo "INFO: Syncer restore start result: $restore_result"
 
 wait_for_syncer_restore_completion
