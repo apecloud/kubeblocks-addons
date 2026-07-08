@@ -87,6 +87,25 @@ spec:
   topology: standalone
 ```
 
+## Observability
+
+HBase metrics are now exposed through a `jmx-exporter` sidecar instead of the old `metrics2 JmxSink` path.
+
+- the old `hadoop-metrics2-hbase.properties` JmxSink path has been removed
+- `hmaster`, `hregionserver`, and `hbase-standalone` now include a `jmx-exporter` sidecar
+- the exporter scrapes local JVM JMX over loopback and exposes `/metrics`
+
+If you want Prometheus discovery metadata on the component service, set `spec.componentSpecs[*].disableExporter=false` in the deployed `Cluster`.
+
+Typical PodMonitor endpoint:
+
+```yaml
+podMetricsEndpoints:
+  - path: /metrics
+    port: http-metrics
+    scheme: http
+```
+
 ## Quick Start
 
 ### Install the Addon

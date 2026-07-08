@@ -68,3 +68,7 @@ Image references
 {{- define "hbase.hbaseStandaloneImage" -}}
 {{ .Values.hbasestandalone.image.registry }}/{{ .Values.hbasestandalone.image.repository }}:{{ .Values.hbasestandalone.image.tag }}
 {{- end }}
+
+{{- define "hbase.jmxExporterImage" -}}
+{{ .Values.images.jmxExporter.registry }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+{{- end }}

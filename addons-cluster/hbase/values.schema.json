@@ -376,6 +376,15 @@
           }
         }
       }
+    },
+    "prometheus": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        }
+      }
     }
   },
   "definitions": {

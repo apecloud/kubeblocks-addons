@@ -22,3 +22,4 @@ spec:
         init-zkfc-format: {{ include "hadoop.initZkfcFormatImage" . | quote }}
         hdfs-namenode: {{ include "hadoop.nameNodeImage" . | quote }}
         hdfs-zkfc: {{ include "hadoop.nameNodeImage" . | quote }}
+        jmx-exporter: {{ include "hadoop.jmxExporterImage" . | quote }}

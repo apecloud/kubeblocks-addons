@@ -43,14 +43,28 @@
               "type": "object",
               "properties": {
                 "rpc": { "type": "integer", "default": 8020, "minimum": 1, "maximum": 65535 },
-                "http": { "type": "integer", "default": 9870, "minimum": 1, "maximum": 65535 }
+                "http": { "type": "integer", "default": 9870, "minimum": 1, "maximum": 65535 },
+                "jmx": { "type": "integer", "default": 10101, "minimum": 1, "maximum": 65535 }
               }
             },
             "journalnode": {
               "type": "object",
               "properties": {
                 "rpc": { "type": "integer", "default": 8485, "minimum": 1, "maximum": 65535 },
-                "http": { "type": "integer", "default": 8480, "minimum": 1, "maximum": 65535 }
+                "http": { "type": "integer", "default": 8480, "minimum": 1, "maximum": 65535 },
+                "jmx": { "type": "integer", "default": 10103, "minimum": 1, "maximum": 65535 }
+              }
+            },
+            "datanode": {
+              "type": "object",
+              "properties": {
+                "jmx": { "type": "integer", "default": 10102, "minimum": 1, "maximum": 65535 }
+              }
+            },
+            "zkfc": {
+              "type": "object",
+              "properties": {
+                "jmx": { "type": "integer", "default": 10104, "minimum": 1, "maximum": 65535 }
               }
             }
           }
@@ -182,6 +196,15 @@
               }
             }
           }
+        }
+      }
+    },
+    "prometheus": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
         }
       }
     }

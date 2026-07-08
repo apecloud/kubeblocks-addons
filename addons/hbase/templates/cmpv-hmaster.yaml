@@ -18,3 +18,4 @@ spec:
       images:
         init-hdfs-root-layout: {{ include "hbase.hmasterImage" . | quote }}
         hbase-hmaster: {{ include "hbase.hmasterImage" . | quote }}
+        jmx-exporter: {{ include "hbase.jmxExporterImage" . | quote }}

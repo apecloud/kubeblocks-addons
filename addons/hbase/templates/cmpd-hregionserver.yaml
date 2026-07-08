@@ -12,6 +12,9 @@ spec:
   serviceKind: hbase-hregionserver
   serviceVersion: 2.5.6
   updateStrategy: BestEffortParallel
+  exporter:
+    containerName: jmx-exporter
+    scrapePath: /metrics
   services:
     - name: default
       spec:
@@ -96,9 +99,6 @@ spec:
             mountPath: {{ .Values.runtime.hbaseConfDir }}/hbase-env.sh
             subPath: hbase-env.sh
           - name: hbase-config
-            mountPath: {{ .Values.runtime.hbaseConfDir }}/hadoop-metrics2-hbase.properties
-            subPath: hadoop-metrics2-hbase.properties
-          - name: hbase-config
             mountPath: {{ .Values.runtime.hbaseConfDir }}/log4j.properties
             subPath: log4j.properties
           - name: hbase-scripts
@@ -117,6 +117,27 @@ spec:
             drop: [ "ALL" ]
           seccompProfile:
             type: "RuntimeDefault"
+      - name: jmx-exporter
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsNonRoot: {{ .Values.exporter.securityContext.runAsNonRoot }}
+          runAsUser: {{ .Values.exporter.securityContext.runAsUser }}
+        command:
+          - java
+        args:
+          - -XX:MaxRAMPercentage=100
+          - -XshowSettings:vm
+          - -jar
+          - jmx_prometheus_httpserver.jar
+          - {{ .Values.jmxExporter.port | quote }}
+          - /etc/jmx-exporter/hbase-jmx-exporter.yaml
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.jmxExporter.port }}
+        volumeMounts:
+          - name: hbase-config
+            mountPath: /etc/jmx-exporter/hbase-jmx-exporter.yaml
+            subPath: hbase-jmx-exporter.yaml
     securityContext:
       fsGroupChangePolicy: Always
       fsGroup: {{ .Values.securityContext.fsGroup }}
@@ -148,6 +169,8 @@ spec:
       value: {{ .Values.runtime.hadoopNativeLibPath }}
     - name: HBASE_MASTER_HEAP_SIZE
       value: {{ .Values.jvm.hmasterHeapSize | quote }}
+    - name: HBASE_JMX_PORT
+      value: {{ .Values.ports.hregionserver.jmx | quote }}
     - name: HBASE_REGIONSERVER_HEAP_SIZE
       value: {{ .Values.jvm.hregionserverHeapSize | quote }}
     - name: HBASE_MASTER_JMX_PORT

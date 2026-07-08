@@ -117,5 +117,8 @@ hbase:
     procedureStoreWalUseHsync: false
     replicationEnabled: false
 
+prometheus:
+  enabled: false
+
 extra:
   terminationPolicy: Delete

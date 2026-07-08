@@ -19,3 +19,4 @@ spec:
       images:
         hadoop-common: {{ include "hadoop.commonImage" . | quote }}
         hdfs-datanode: {{ include "hadoop.dataNodeImage" . | quote }}
+        jmx-exporter: {{ include "hadoop.jmxExporterImage" . | quote }}

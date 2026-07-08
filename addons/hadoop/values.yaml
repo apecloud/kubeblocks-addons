@@ -5,6 +5,10 @@ image:
     repository: apecloud/hdfs-journalnode
     tag: "v3.3.4-1.0.0"
     pullPolicy: IfNotPresent
+  jmxExporter:
+    registry: docker.io
+    repository: apecloud/jmx-exporter
+    tag: 0.18.0-debian-11-r20
 
 journalNode:
   image:
@@ -43,6 +47,14 @@ extra:
   disableExporter: true
   terminationPolicy: Delete
   clusterDomain: cluster.local
+
+exporter:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+
+jmxExporter:
+  port: 5556
 
 runtime:
   debug: false
@@ -97,13 +109,18 @@ hdfs:
     namenode:
       rpc: 8020
       http: 9870
+      jmx: 10101
     journalnode:
       rpc: 8485
       http: 8480
+      jmx: 10103
     datanode:
       data: 9866
       ipc: 9867
       http: 9864
+      jmx: 10102
+    zkfc:
+      jmx: 10104
   paths:
     namenodeMetadataDir: /hadoop/dfs/metadata
     namenodeJournalDir: /hadoop/dfs/journal

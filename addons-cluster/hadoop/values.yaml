@@ -62,9 +62,15 @@ hdfs:
     namenode:
       rpc: 8020
       http: 9870
+      jmx: 10101
     journalnode:
       rpc: 8485
       http: 8480
+      jmx: 10103
+    datanode:
+      jmx: 10102
+    zkfc:
+      jmx: 10104
   paths:
     namenodeMetadataDir: /hadoop/dfs/metadata
     datanodeDataDir: /hadoop/dfs/data0
@@ -128,6 +134,9 @@ serviceRefs:
         component: zookeeper
         service: headless
         port: client
+
+prometheus:
+  enabled: false
 
 extra:
   terminationPolicy: Delete

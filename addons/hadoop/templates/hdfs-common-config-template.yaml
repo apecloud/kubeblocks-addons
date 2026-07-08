@@ -9,8 +9,8 @@ data:
     {{- .Files.Get "config/core-site.tpl" | nindent 4 }}
   hadoop-env.sh: |-
     {{- .Files.Get "config/hadoop-env.sh.tpl" | nindent 4 }}
-  hadoop-metrics2.properties: |-
-    {{- .Files.Get "config/hadoop-metrics2.properties.tpl" | nindent 4 }}
+  hdfs-jmx-exporter.yaml: |-
+    {{- .Files.Get "config/hdfs-jmx-exporter.yaml.tpl" | nindent 4 }}
   dfs.include: |
     {{- .Files.Get "config/dfs.include" | nindent 4 }}
   dfs.exclude: |

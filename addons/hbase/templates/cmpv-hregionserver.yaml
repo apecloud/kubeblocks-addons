@@ -17,3 +17,4 @@ spec:
       serviceVersion: 2.5.6
       images:
         hbase-hregionserver: {{ include "hbase.hregionserverImage" . | quote }}
+        jmx-exporter: {{ include "hbase.jmxExporterImage" . | quote }}

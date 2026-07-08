@@ -9,7 +9,7 @@ data:
     {{- .Files.Get "config/hbase-site-standalone.tpl" | nindent 4 }}
   hbase-env.sh: |-
     {{- .Files.Get "config/hbase-env.sh.tpl" | nindent 4 }}
-  hadoop-metrics2-hbase.properties: |-
-    {{- .Files.Get "config/hadoop-metrics2-hbase.properties.tpl" | nindent 4 }}
+  hbase-jmx-exporter.yaml: |-
+    {{- .Files.Get "config/hbase-jmx-exporter.yaml.tpl" | nindent 4 }}
   log4j.properties: |-
     {{- .Files.Get "config/log4j.properties" | nindent 4 }}

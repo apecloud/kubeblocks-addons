@@ -25,6 +25,11 @@
             HDFS_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
             HDFS_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
             HDFS_HA_ZOOKEEPER_PARENT_ZNODE: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
+            HDFS_JMX_PORT: {{ .Values.hdfs.ports.journalnode.jmx | quote }}
+            HDFS_NAMENODE_JMX_PORT: {{ .Values.hdfs.ports.namenode.jmx | quote }}
+            HDFS_DATANODE_JMX_PORT: {{ .Values.hdfs.ports.datanode.jmx | quote }}
+            HDFS_JOURNALNODE_JMX_PORT: {{ .Values.hdfs.ports.journalnode.jmx | quote }}
+            HDFS_ZKFC_JMX_PORT: {{ .Values.hdfs.ports.zkfc.jmx | quote }}
             HDFS_NAMENODE_HEAP: {{ .Values.hdfs.jvm.namenodeHeapSize | quote }}
             HDFS_DATANODE_HEAP: {{ .Values.hdfs.jvm.datanodeHeapSize | quote }}
             HDFS_JOURNALNODE_HEAP: {{ .Values.hdfs.jvm.journalnodeHeapSize | quote }}
@@ -94,6 +99,11 @@
             HDFS_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
             HDFS_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
             HDFS_HA_ZOOKEEPER_PARENT_ZNODE: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
+            HDFS_JMX_PORT: {{ .Values.hdfs.ports.namenode.jmx | quote }}
+            HDFS_NAMENODE_JMX_PORT: {{ .Values.hdfs.ports.namenode.jmx | quote }}
+            HDFS_DATANODE_JMX_PORT: {{ .Values.hdfs.ports.datanode.jmx | quote }}
+            HDFS_JOURNALNODE_JMX_PORT: {{ .Values.hdfs.ports.journalnode.jmx | quote }}
+            HDFS_ZKFC_JMX_PORT: {{ .Values.hdfs.ports.zkfc.jmx | quote }}
             HDFS_NAMENODE_HEAP: {{ .Values.hdfs.jvm.namenodeHeapSize | quote }}
             HDFS_DATANODE_HEAP: {{ .Values.hdfs.jvm.datanodeHeapSize | quote }}
             HDFS_JOURNALNODE_HEAP: {{ .Values.hdfs.jvm.journalnodeHeapSize | quote }}
@@ -180,6 +190,11 @@
             HDFS_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
             HDFS_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
             HDFS_HA_ZOOKEEPER_PARENT_ZNODE: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
+            HDFS_JMX_PORT: {{ .Values.hdfs.ports.datanode.jmx | quote }}
+            HDFS_NAMENODE_JMX_PORT: {{ .Values.hdfs.ports.namenode.jmx | quote }}
+            HDFS_DATANODE_JMX_PORT: {{ .Values.hdfs.ports.datanode.jmx | quote }}
+            HDFS_JOURNALNODE_JMX_PORT: {{ .Values.hdfs.ports.journalnode.jmx | quote }}
+            HDFS_ZKFC_JMX_PORT: {{ .Values.hdfs.ports.zkfc.jmx | quote }}
             HDFS_NAMENODE_HEAP: {{ .Values.hdfs.jvm.namenodeHeapSize | quote }}
             HDFS_DATANODE_HEAP: {{ .Values.hdfs.jvm.datanodeHeapSize | quote }}
             HDFS_JOURNALNODE_HEAP: {{ .Values.hdfs.jvm.journalnodeHeapSize | quote }}

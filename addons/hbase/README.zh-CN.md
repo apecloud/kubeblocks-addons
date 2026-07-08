@@ -90,6 +90,25 @@ spec:
   topology: standalone
 ```
 
+## 监控说明
+
+HBase 当前的监控出口已经切到 `jmx-exporter` sidecar，不再依赖旧的 `metrics2 JmxSink`。
+
+- 旧的 `hadoop-metrics2-hbase.properties` JmxSink 路径已经移除
+- `hmaster`、`hregionserver` 和 `hbase-standalone` 现在都会带一个 `jmx-exporter` sidecar
+- sidecar 通过本地 loopback 抓取 JVM JMX，并对外暴露 `/metrics`
+
+如果希望组件 Service 上带 Prometheus 发现信息，需要在实际部署的 `Cluster` 里将 `spec.componentSpecs[*].disableExporter=false`。
+
+典型的 `PodMonitor` endpoint 如下：
+
+```yaml
+podMetricsEndpoints:
+  - path: /metrics
+    port: http-metrics
+    scheme: http
+```
+
 ## 快速开始
 
 ### 安装 Addon

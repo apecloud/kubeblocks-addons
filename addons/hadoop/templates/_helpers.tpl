@@ -96,3 +96,7 @@ Image references
 {{- define "hadoop.dataNodeImage" -}}
 {{ .Values.dataNode.image.registry }}/{{ .Values.dataNode.image.repository }}:{{ .Values.dataNode.image.tag }}
 {{- end }}
+
+{{- define "hadoop.jmxExporterImage" -}}
+{{ .Values.image.jmxExporter.registry }}/{{ .Values.image.jmxExporter.repository }}:{{ .Values.image.jmxExporter.tag }}
+{{- end }}

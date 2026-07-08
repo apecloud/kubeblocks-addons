@@ -40,7 +40,7 @@ The addon package under `addons/hadoop` defines:
   - `core-site.xml`
   - `hdfs-site.xml`
   - `hadoop-env.sh`
-  - `hadoop-metrics2.properties`
+    - `hdfs-jmx-exporter.yaml`
 - startup and init scripts for NameNode, DataNode, JournalNode, and ZKFC
 - parameter management resources:
   - `paramsdef-hdfs-common.yaml`
@@ -203,6 +203,25 @@ Current HA behavior is intentionally conservative:
 - standby bootstrap is guarded to avoid the old `OrderedReady` timing problem during initial bring-up
 
 This means the current addon supports configurable NameNode IDs for the existing 2NN active/standby model, not general N-way NameNode scaling.
+
+## Observability
+
+Hadoop metrics are now exposed through a `jmx-exporter` sidecar instead of the old `metrics2 JmxSink` path.
+
+- the old `hadoop-metrics2.properties` JmxSink path has been removed
+- NameNode, DataNode, and JournalNode pods now include a `jmx-exporter` sidecar
+- the exporter scrapes local JVM JMX over loopback and exposes `/metrics`
+
+If you want Prometheus discovery metadata on the component service, set `spec.componentSpecs[*].disableExporter=false` in the deployed `Cluster`.
+
+Typical PodMonitor endpoint:
+
+```yaml
+podMetricsEndpoints:
+  - path: /metrics
+    port: http-metrics
+    scheme: http
+```
 
 ## Quick Start
 

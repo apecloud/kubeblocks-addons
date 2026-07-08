@@ -10,6 +10,9 @@ spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}
   serviceKind: hdfs-datanode-standalone
+  exporter:
+    containerName: jmx-exporter
+    scrapePath: /metrics
   runtime:
     hostNetwork: {{ .Values.runtime.datanode.hostNetwork }}
     hostPID: {{ .Values.runtime.datanode.hostPID }}
@@ -105,9 +108,6 @@ spec:
             mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
             subPath: hadoop-env.sh
           - name: hdfs-common-config
-            mountPath: {{ .Values.runtime.configDir }}/hadoop-metrics2.properties
-            subPath: hadoop-metrics2.properties
-          - name: hdfs-common-config
             mountPath: {{ .Values.runtime.configDir }}/dfs.include
             subPath: dfs.include
           - name: hdfs-common-config
@@ -136,6 +136,27 @@ spec:
 {{ toYaml .Values.securityContext.capabilities | nindent 12 }}
           seccompProfile:
 {{ toYaml .Values.securityContext.seccompProfile | nindent 12 }}
+      - name: jmx-exporter
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsNonRoot: {{ .Values.exporter.securityContext.runAsNonRoot }}
+          runAsUser: {{ .Values.exporter.securityContext.runAsUser }}
+        command:
+          - java
+        args:
+          - -XX:MaxRAMPercentage=100
+          - -XshowSettings:vm
+          - -jar
+          - jmx_prometheus_httpserver.jar
+          - {{ .Values.jmxExporter.port | quote }}
+          - /etc/jmx-exporter/hdfs-jmx-exporter.yaml
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.jmxExporter.port }}
+        volumeMounts:
+          - name: hdfs-common-config
+            mountPath: /etc/jmx-exporter/hdfs-jmx-exporter.yaml
+            subPath: hdfs-jmx-exporter.yaml
     securityContext:
       fsGroupChangePolicy: {{ .Values.securityContext.fsGroupChangePolicy }}
       fsGroup: {{ .Values.securityContext.fsGroup }}
@@ -158,6 +179,16 @@ spec:
       value: {{ .Values.extra.clusterDomain }}
     - name: HDFS_CONF_DIR
       value: {{ .Values.runtime.configDir }}
+    - name: HDFS_JMX_PORT
+      value: {{ .Values.hdfs.ports.datanode.jmx | quote }}
+    - name: HDFS_NAMENODE_JMX_PORT
+      value: {{ .Values.hdfs.ports.namenode.jmx | quote }}
+    - name: HDFS_DATANODE_JMX_PORT
+      value: {{ .Values.hdfs.ports.datanode.jmx | quote }}
+    - name: HDFS_JOURNALNODE_JMX_PORT
+      value: {{ .Values.hdfs.ports.journalnode.jmx | quote }}
+    - name: HDFS_ZKFC_JMX_PORT
+      value: {{ .Values.hdfs.ports.zkfc.jmx | quote }}
     - name: HDFS_DATANODE_DATA_DIR
       value: {{ .Values.hdfs.paths.datanodeDataDir | quote }}
     - name: HDFS_DATANODE_HANDLER_COUNT

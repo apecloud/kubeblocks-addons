@@ -19,6 +19,12 @@ hbasestandalone:
     tag: "v2.5.6-1.0.0"
     pullPolicy: IfNotPresent
 
+images:
+  jmxExporter:
+    registry: docker.io
+    repository: apecloud/jmx-exporter
+    tag: 0.18.0-debian-11-r20
+
 runtime:
   hbaseHome: /opt/hbase-2.5.6
   hbaseConfDir: /hbase/conf
@@ -63,6 +69,14 @@ extra:
   disableExporter: true
   terminationPolicy: Delete
   clusterDomain: cluster.local
+
+exporter:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+
+jmxExporter:
+  port: 5556
 
 securityContext:
   runAsUser: 10000
