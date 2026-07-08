@@ -62,7 +62,7 @@ Use a yasboot-safe logical cluster name in `YASDB_HA_CLUSTER_NAME`, for example 
 
 The HA database image must be a yasboot-capable image. Treat the image as a runtime contract instead of relying on a lab image tag. A production image for this route must provide:
 
-- the YashanDB 23.4.1.109 aarch64 package or an equivalent supported runtime package;
+- the YashanDB aarch64 package matching the selected HA image contract, or an equivalent supported runtime package;
 - the yasboot package under `/opt/yasboot-package` with runnable `bin/yasboot`;
 - OpenSSH server/client utilities usable by the `yashan` user;
 - a writable `/home/yashan/mydb` data mount;
@@ -163,7 +163,7 @@ Claim boundary:
 
 ### Create
 
-Create a YashanDB cluster with service version `23.4.1-109` and the default `23.4.1.109` image tag with ONE replica.
+Create a YashanDB cluster with service version `23.5.2-9` and the default `23.5.2.9` image tag with ONE replica.
 
 > [!NOTE]
 > This example uses the default addon image version. For enterprise image tags, please contact the vendor and keep `ComponentVersion.serviceVersion` aligned with the actual image version.

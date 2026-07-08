@@ -9,17 +9,20 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - 23.4.1-109
+        # 2026-07-07 Reason: the default compatibility release should match the validated image tag shipped by values.yaml; Purpose: avoid registering an unavailable default runtime as the primary addon release.
+        # Time: 2026-07-07.
+        - 23.5.2-9
         {{- range .Values.image.extraReleases }}
         - {{ .serviceVersion }}
         {{- end }}
       compDefs:
         - {{ include "yashandb.cmpdRegexpPattern" . }}
   releases:
-    # 2026-07-06 Reason: KubeBlocks rejects four-segment dotted version strings while the vendor image tag uses 23.4.1.109; Purpose: expose a semver-compatible serviceVersion that maps to the default 23.4.1.109 image.
-    # Time: 2026-07-06.
-    - name: 23.4.1-109
-      serviceVersion: 23.4.1-109
+    # 2026-07-06 Reason: KubeBlocks rejects four-segment dotted version strings in serviceVersion; Purpose: keep vendor dotted image versions mapped to semver-compatible KubeBlocks releases.
+    # 2026-07-07 Reason: real-cluster validation evidence is attached to the available 23.5.2.9 aarch64 image, not to the unavailable 23.4.1.109 image; Purpose: make the default ComponentVersion release match the validated runtime boundary.
+    # Time: 2026-07-06; updated 2026-07-07.
+    - name: 23.5.2-9
+      serviceVersion: 23.5.2-9
       images:
         # 2026-07-06 Reason: production validation clusters may need a mirrored helper image instead of docker.io/library/busybox:1.35; Purpose: let values override the volume-permissions tag for offline or restricted networks.
         # Time: 2026-07-06.

@@ -15,8 +15,9 @@ image:
   pullPolicy: IfNotPresent
   # 2026-06-23 Reason: fixed-address HA examples use KubeBlocks ComponentVersion image resolution because instances[].image is not accepted by KubeBlocks 1.0.2; Purpose: keep the default validation image aligned with the imported yasboot-capable archive.
   # 2026-06-25 Reason: live metrics sidecar proof uses the standalone install.sh path, while the yasboot-capable image does not expose the standalone runtime layout under /home/yashan; Purpose: keep the addon default on the standalone image and require fixed-address HA installs to override the image explicitly.
-  # Time: 2026-06-25.
-  tag: yashandb-image-23.4.1.109-linux-aarch64
+  # 2026-07-07 Reason: the 23.4.1.109 container image archive was not available for current validation, while 23.5.2.9 passed standalone/data/archive-log checks in the real cluster; Purpose: keep the default image on the release with attached runtime evidence.
+  # Time: 2026-06-25; updated 2026-07-07.
+  tag: yashandb-image-23.5.2.9-linux-aarch64
   # 2026-06-29 Reason: production upgrade validation needs a second registered ComponentVersion without changing the default install image; Purpose: let operators add lab or mirrored upgrade images explicitly through values.
   # Time: 2026-06-29.
   extraReleases: []
