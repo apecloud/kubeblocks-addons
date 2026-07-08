@@ -74,6 +74,12 @@ spec:
           - name: hdfs-common-config
             mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
             subPath: hadoop-env.sh
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.include
+            subPath: dfs.include
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.exclude
+            subPath: dfs.exclude
           - name: namenode-config
             mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
             subPath: hdfs-site.xml
@@ -104,6 +110,12 @@ spec:
           - name: hdfs-common-config
             mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
             subPath: hadoop-env.sh
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.include
+            subPath: dfs.include
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.exclude
+            subPath: dfs.exclude
           - name: namenode-config
             mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
             subPath: hdfs-site.xml
