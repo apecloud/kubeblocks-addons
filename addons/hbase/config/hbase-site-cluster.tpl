@@ -279,11 +279,6 @@
     </property>
 
     <property>
-        <name>hbase.regionserver.wal.codec</name>
-        <value>org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec</value>
-    </property>
-
-    <property>
         <name>hbase.regionserver.wal.rs.bulkload.enabled</name>
         <value>true</value>
     </property>
