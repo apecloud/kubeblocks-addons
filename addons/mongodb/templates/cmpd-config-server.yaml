@@ -78,17 +78,20 @@ spec:
       runAsUser: 0
     initContainers:
       - command:
-          - cp
-          - -r
-          - /bin/syncer
-          - /bin/syncerctl
-          - /tools/
+          - sh
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/tmp/bin
+            cp -r /bin/syncer /bin/syncerctl /tools/
+            cp -r /bin/syncerctl {{ .Values.dataMountPath }}/tmp/bin
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-syncer
         volumeMounts:
           - mountPath: /tools
             name: tools
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
       - command:
           - sh
           - -c
@@ -154,6 +157,14 @@ spec:
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mongodb
+          - name: SYNCER_BACKUP_ENABLED
+            value: "true"
+          - name: PBM_BIN
+            value: /tools/pbm
+          - name: PBM_AGENT_BIN
+            value: /tools/pbm-agent
+          - name: PBM_RESTORE_AGENT_LOG_PATH
+            value: {{ .Values.dataMountPath }}/tmp/pbm-agent-restore.log
           - name: SERVICE_PORT
             value: $(KB_SERVICE_PORT)
           - name: MONGODB_ROOT_USER
@@ -196,12 +207,42 @@ spec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
-          - /bin/bash
-          - -c
+          - /tools/syncer
+          - --
           - /scripts/backup-agent-setup.sh
         env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_UID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.uid
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
           - name: PATH
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mongodb
+          - name: KB_WORKLOAD_TYPE
+            value: pbm-agent
+          - name: SYNCER_IGNORE_HA
+            value: "true"
+          - name: SYNCER_BACKUP_ENABLED
+            value: "true"
+          - name: SYNCER_DISABLE_HTTP_SERVER
+            value: "true"
           - name: PBM_MONGODB_REPLICA_SET
             value: $(CLUSTER_COMPONENT_NAME)
           - name: PBM_AGENT_SIDECAR

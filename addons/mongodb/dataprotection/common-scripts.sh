@@ -170,6 +170,177 @@ function export_pbm_env_vars_for_rs() {
   export PBM_MONGODB_URI="mongodb://$PBM_AGENT_MONGODB_USERNAME:$PBM_AGENT_MONGODB_PASSWORD@$mongodb_endpoints/?authSource=admin&replSetName=$MONGODB_REPLICA_SET_NAME"
 }
 
+function write_pbm_storage_config_file() {
+  local file=$1
+  if [ -z "$file" ]; then
+    echo "ERROR: PBM storage config file path is empty"
+    exit 1
+  fi
+  mkdir -p "$(dirname "$file")"
+  cat > "$file" <<EOF
+storage:
+  type: s3
+  s3:
+    region: ${S3_REGION}
+    bucket: ${S3_BUCKET}
+    prefix: ${S3_PREFIX}
+    endpointUrl: ${S3_ENDPOINT}
+    forcePathStyle: ${S3_FORCE_PATH_STYLE:-false}
+    credentials:
+      access-key-id: ${S3_ACCESS_KEY}
+      secret-access-key: ${S3_SECRET_KEY}
+restore:
+  numDownloadWorkers: ${PBM_RESTORE_DOWNLOAD_WORKERS:-4}
+backup:
+  timeouts:
+    startingStatus: 60
+EOF
+}
+
+function target_syncer_host() {
+  local pod_name="${DP_TARGET_POD_NAME:-${POD_NAME:-}}"
+  local component_name="${CLUSTER_COMPONENT_NAME:-${KB_CLUSTER_COMP_NAME:-}}"
+  local namespace="${CLUSTER_NAMESPACE:-${KB_NAMESPACE:-${POD_NAMESPACE:-}}}"
+  local cluster_domain="${KUBERNETES_CLUSTER_DOMAIN:-cluster.local}"
+  if [ -z "$pod_name" ] || [ -z "$component_name" ] || [ -z "$namespace" ]; then
+    echo "ERROR: Cannot build target syncer host, pod=$pod_name component=$component_name namespace=$namespace" >&2
+    exit 1
+  fi
+  echo "${pod_name}.${component_name}-headless.${namespace}.svc.${cluster_domain}"
+}
+
+function syncerctl_cmd() {
+  local host
+  host=$(target_syncer_host)
+  local port="${SYNCER_SERVICE_PORT:-3601}"
+  syncerctl --host "$host" --port "$port" "$@"
+}
+
+function configure_syncer_backup() {
+  local cnf_file="${MOUNT_DIR:-/tmp}/tmp/pbm_syncer_storage.yaml"
+  write_pbm_storage_config_file "$cnf_file"
+  echo "INFO: Configuring PBM storage through syncer on $(target_syncer_host)..."
+  syncerctl_cmd backup configure --file "$cnf_file"
+}
+
+function ensure_restore_coord_storage_config() {
+  local cnf_file="${MOUNT_DIR:-/tmp}/tmp/pbm_restore_syncer_storage.yaml"
+  local coord_cm="${CLUSTER_NAME}-restore-coord"
+  local namespace="${CLUSTER_NAMESPACE:-${KB_NAMESPACE:-${POD_NAMESPACE:-}}}"
+  if [ -z "$CLUSTER_NAME" ] || [ -z "$namespace" ]; then
+    echo "ERROR: Cannot prepare restore coord ConfigMap, cluster=$CLUSTER_NAME namespace=$namespace"
+    exit 1
+  fi
+  write_pbm_storage_config_file "$cnf_file"
+  if ! kubectl get configmap "$coord_cm" -n "$namespace" >/dev/null 2>&1; then
+    kubectl create configmap "$coord_cm" -n "$namespace" >/dev/null 2>&1 || kubectl get configmap "$coord_cm" -n "$namespace" >/dev/null
+  fi
+  kubectl label configmap "$coord_cm" -n "$namespace" app.kubernetes.io/instance="$CLUSTER_NAME" --overwrite >/dev/null
+  local cfg_json
+  cfg_json=$(jq -Rs . < "$cnf_file")
+  kubectl patch configmap "$coord_cm" -n "$namespace" --type=merge -p "{\"data\":{\"pbm-storage-config\":$cfg_json}}" >/dev/null
+  echo "INFO: Restore coord storage config prepared in $namespace/$coord_cm."
+}
+
+function wait_for_syncer_backup_completion() {
+  local backup_name=$1
+  local max_retries=${SYNCER_PBM_WAIT_MAX_RETRIES:-720}
+  local retry_interval=${SYNCER_PBM_WAIT_INTERVAL_SECONDS:-5}
+  local attempt=0
+  describe_result=""
+  while true; do
+    describe_result=$(syncerctl_cmd backup status --op-id "$backup_name")
+    local found
+    local status
+    found=$(echo "$describe_result" | jq -r '.found // false')
+    status=$(echo "$describe_result" | jq -r '.status // empty')
+    echo "INFO: Backup $backup_name status: found=$found status=$status"
+    if [ "$found" = "true" ] && [ "$status" = "done" ]; then
+      return 0
+    fi
+    if [ "$status" = "error" ] || [ "$status" = "failed" ]; then
+      echo "ERROR: Backup $backup_name failed: $(echo "$describe_result" | jq -r '.error // empty')"
+      exit 1
+    fi
+    attempt=$((attempt+1))
+    if [ $attempt -gt $max_retries ]; then
+      echo "ERROR: Backup $backup_name did not complete after $max_retries retries"
+      exit 1
+    fi
+    sleep "$retry_interval"
+  done
+}
+
+function wait_for_syncer_restore_completion() {
+  local coord_cm="${CLUSTER_NAME}-restore-coord"
+  local namespace="${CLUSTER_NAMESPACE:-${KB_NAMESPACE:-${POD_NAMESPACE:-}}}"
+  local max_retries=${SYNCER_RESTORE_WAIT_MAX_RETRIES:-7200}
+  local retry_interval=${SYNCER_RESTORE_WAIT_INTERVAL_SECONDS:-1}
+  local attempt=0
+  local last_phase=""
+  local last_op_id=""
+  while true; do
+    set +e
+    local cm_json
+    cm_json=$(kubectl get configmap "$coord_cm" -n "$namespace" -o json 2>/dev/null)
+    local get_exit=$?
+    set -e
+    if [ $get_exit -ne 0 ]; then
+      if [ "$last_phase" = "done" ] || [ "$last_phase" = "finalizing" ]; then
+        echo "INFO: Restore coord ConfigMap was removed after phase=$last_phase; treating restore as completed."
+        return 0
+      fi
+      if [ -n "$last_op_id" ]; then
+        set +e
+        local restore_status
+        restore_status=$(syncerctl_cmd restore status --op-id "$last_op_id" 2>/dev/null)
+        local status_exit=$?
+        set -e
+        if [ $status_exit -eq 0 ]; then
+          local status
+          status=$(echo "$restore_status" | jq -r '.status // empty')
+          if [ "$status" = "done" ]; then
+            echo "INFO: Restore $last_op_id completed after coord cleanup."
+            return 0
+          fi
+          if [ "$status" = "failed" ] || [ "$status" = "error" ]; then
+            echo "ERROR: Syncer restore failed after coord cleanup: $(echo "$restore_status" | jq -r '.error // empty')"
+            exit 1
+          fi
+        fi
+      fi
+      echo "INFO: Waiting for restore coord ConfigMap $namespace/$coord_cm..."
+    else
+      local phase
+      local op_id
+      local err_msg
+      phase=$(echo "$cm_json" | jq -r '.metadata.annotations["restore.syncer/phase"] // empty')
+      op_id=$(echo "$cm_json" | jq -r '.metadata.annotations["restore.syncer/op-id"] // empty')
+      err_msg=$(echo "$cm_json" | jq -r '.metadata.annotations["restore.syncer/error"] // empty')
+      if [ -n "$op_id" ]; then
+        last_op_id="$op_id"
+      fi
+      if [ -n "$phase" ] && [ "$phase" != "$last_phase" ]; then
+        echo "INFO: Restore coord phase=$phase op_id=$op_id"
+        last_phase="$phase"
+      fi
+      if [ "$phase" = "done" ]; then
+        return 0
+      fi
+      if [ "$phase" = "failed" ]; then
+        echo "ERROR: Syncer restore failed: $err_msg"
+        exit 1
+      fi
+    fi
+    attempt=$((attempt+1))
+    if [ $attempt -gt $max_retries ]; then
+      echo "ERROR: Restore did not complete after $max_retries retries"
+      exit 1
+    fi
+    sleep "$retry_interval"
+  done
+}
+
 function sync_pbm_storage_config() {
   echo "INFO: Checking if PBM storage config exists"
   pbm_config_exists=true

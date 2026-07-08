@@ -58,6 +58,17 @@ spec:
           - sh
           - -c
           - |
+            cp -r /bin/syncer /bin/syncerctl /kubeblocks/
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-syncer
+        volumeMounts:
+          - mountPath: /kubeblocks
+            name: kubeblocks
+      - command:
+          - sh
+          - -c
+          - |
             mkdir -p {{ .Values.dataMountPath }}/tmp/bin
             cp -r /opt/bitnami/kubectl/bin/kubectl {{ .Values.dataMountPath }}/tmp/bin
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
@@ -74,9 +85,12 @@ spec:
           - name: mongos
             protocol: TCP
             containerPort: 27017
+          - name: ha
+            protocol: TCP
+            containerPort: 3601
         command:
-          - bash
-          - -c
+          - /kubeblocks/syncer
+          - --
           - /scripts/mongodb-mongos-setup.sh
         env:
           - name: POD_NAME
@@ -101,6 +115,14 @@ spec:
                 fieldPath: status.podIP
           - name: PATH
             value: /kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mongodb
+          - name: KB_WORKLOAD_TYPE
+            value: mongos
+          - name: SYNCER_IGNORE_HA
+            value: "true"
+          - name: SYNCER_BACKUP_ENABLED
+            value: "true"
           - name: SERVICE_PORT
             value: $(KB_SERVICE_PORT)
           - name: MONGODB_ROOT_USER
@@ -192,6 +214,15 @@ spec:
           componentName: Required
     - name: KB_SERVICE_PORT
       value: "27017"
+    - name: SYNCER_SERVICE_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: mongos
+            port:
+              name: ha
+              option: Optional
     - name: CFG_SERVER_REPLICA_SET_NAME
       valueFrom:
         componentVarRef:
@@ -234,3 +265,4 @@ spec:
       - container: mongos
         ports:
           - mongos
+          - ha

@@ -14,25 +14,35 @@ trap handle_restore_exit EXIT
 
 wait_for_other_operations
 
-sync_pbm_storage_config
-
-sync_pbm_config_from_storage
+ensure_restore_coord_storage_config
 
 extras=$(cat /dp_downward/status_extras)
-backup_name=$(echo "$extras" | jq -r '.[0].backup_name')
-backup_type=$(echo "$extras" | jq -r '.[0].backup_type')
+backup_name=$(echo "$extras" | jq -r '.[0].backup_name // empty')
+backup_type=$(echo "$extras" | jq -r '.[0].backup_type // empty')
 
 if [ -z "$backup_type" ] || [ -z "$backup_name" ]; then
     echo "ERROR: Backup type or backup name is empty, skip restore."
     exit 1
 fi
 
-get_describe_backup_info
+configsvr_name=$(echo "$extras" | jq -r '.[0].configsvr // empty')
+shardsvr_names=$(echo "$extras" | jq -r '.[0].shardsvr // empty')
+if [ -z "$configsvr_name" ] || [ -z "$shardsvr_names" ]; then
+    echo "INFO: Backup extras do not contain replset mapping metadata, falling back to pbm describe-backup."
+    sync_pbm_storage_config
+    sync_pbm_config_from_storage
+    get_describe_backup_info
+    configsvr_name=$(echo "$describe_result" | jq -r '.replsets[] | select((.configsvr // false) == true or (.iscs // false) == true) | .name' | head -n 1)
+    shardsvr_names=$(echo "$describe_result" | jq -r '[.replsets[] | select(((.configsvr // false) != true) and ((.iscs // false) != true)) | .name] | join(",")')
+fi
 
-configsvr_name=$(echo "$describe_result" | jq -r '.replsets[] | select(.configsvr == true) | .name')
 echo "INFO: Config server replica set name: $configsvr_name"
-shardsvr_names=$(echo "$describe_result" | jq -r '[.replsets[] | select(.configsvr != true) | .name] | join(",")')
 echo "INFO: Shard replica set names: $shardsvr_names"
+if [ -z "$configsvr_name" ] || [ -z "$shardsvr_names" ]; then
+    echo "ERROR: Missing configsvr or shardsvr metadata for restore mapping."
+    exit 1
+fi
+
 mappings=""
 IFS="," read -r -a shardsvr_array <<< "$shardsvr_names"
 shardsvr_count=${#shardsvr_array[@]}
@@ -47,7 +57,6 @@ if [ $new_shardsvr_count -ne $shardsvr_count ]; then
     exit 1
 fi
 for i in "${!shardsvr_array[@]}"; do
-    # Get the part before "@" in new_shardsvr_array
     if [ $shardsvr_count -gt 1 ]; then
         shard_name="$CLUSTER_NAME-${new_shardsvr_array[i]%%@*}"
     else
@@ -60,17 +69,15 @@ for i in "${!shardsvr_array[@]}"; do
         mappings="$mappings,${shard_name}=${shardsvr_array[i]}"
     fi
 done
-# If the config server name is not empty, add it to the mappings
+
 echo "INFO: Mapping config server $configsvr_name to $CFG_SERVER_REPLICA_SET_NAME"
 mappings="$mappings,$CFG_SERVER_REPLICA_SET_NAME=$configsvr_name"
 echo "INFO: Shard mappings: $mappings"
 
-process_restore_start_signal
+echo "INFO: Starting syncer physical restore..."
+restore_result=$(syncerctl_cmd restore start --backup-name "$backup_name" --type physical --replset-remapping "$mappings")
+echo "INFO: Syncer restore start result: $restore_result"
 
-wait_for_other_operations
+wait_for_syncer_restore_completion
 
-restore_name=$(pbm restore $backup_name --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" -o json | jq -r '.name')
-
-wait_for_restoring
-
-process_restore_end_signal
+echo "INFO: Restore completed."
