@@ -19,8 +19,6 @@ else
   CURL_TLS=""
 fi
 
-SNAPSHOT_DIR="${TMPDIR:-/tmp}/qdrant-snapshots"
-mkdir -p "${SNAPSHOT_DIR}"
 for snapshot in $(datasafed list /) ; do
   collection_name=${snapshot%.*}
   # skip file kubeblocks-backup.json which is not a snapshot
@@ -28,13 +26,11 @@ for snapshot in $(datasafed list /) ; do
     continue
   fi
   echo "INFO: start to restore collection ${collection_name}..."
-  # download snapshot file
-  datasafed pull "${snapshot}" "${SNAPSHOT_DIR}/${snapshot}"
 
   while true; do
-    if qdrant_curl -sS -f -X POST "${QDRANT_SCHEME}://${DP_DB_HOST}:6333/collections/${collection_name}/snapshots/upload?priority=snapshot" \
+    if datasafed pull "${snapshot}" - | qdrant_curl -sS -f -X POST "${QDRANT_SCHEME}://${DP_DB_HOST}:6333/collections/${collection_name}/snapshots/upload?priority=snapshot" \
       -H 'Content-Type:multipart/form-data' \
-      -F "snapshot=@${SNAPSHOT_DIR}/${snapshot}" > /tmp/qdrant-restore.log 2>&1 \
+      -F "snapshot=@-;filename=${snapshot}" > /tmp/qdrant-restore.log 2>&1 \
       && grep -q '"status":"ok"' /tmp/qdrant-restore.log; then
       echo "restore collection ${collection_name} successfully"
       break
