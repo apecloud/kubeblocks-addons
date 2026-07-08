@@ -8,8 +8,10 @@ metadata:
 spec:
   backupType: Full
   env:
+    - name: VOLUME_DATA_DIR
+      value: {{ .Values.dataMountPath }}
     - name: DATA_DIR
-      value: {{ .Values.dataMountPath }}/pgroot/data
+      value: "$(VOLUME_DATA_DIR)/pgroot/data"
   backup:
     preBackup: []
     postBackup: []
