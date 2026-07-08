@@ -314,9 +314,26 @@ function wait_for_syncer_restore_completion() {
       local phase
       local op_id
       local err_msg
-      phase=$(echo "$cm_json" | jq -r '.metadata.annotations["restore.syncer/phase"] // empty')
-      op_id=$(echo "$cm_json" | jq -r '.metadata.annotations["restore.syncer/op-id"] // empty')
-      err_msg=$(echo "$cm_json" | jq -r '.metadata.annotations["restore.syncer/error"] // empty')
+      local state_json
+      state_json=$(echo "$cm_json" | jq -r '.data.state // empty')
+      if [ -n "$state_json" ]; then
+        phase=$(echo "$state_json" | jq -r '.phase // empty')
+        op_id=$(echo "$state_json" | jq -r '.op_id // empty')
+        err_msg=$(echo "$state_json" | jq -r '.error // empty')
+      else
+        phase=""
+        op_id=""
+        err_msg=""
+      fi
+      if [ -z "$phase" ]; then
+        phase=$(echo "$cm_json" | jq -r '.metadata.annotations["restore.syncer/phase"] // empty')
+      fi
+      if [ -z "$op_id" ]; then
+        op_id=$(echo "$cm_json" | jq -r '.metadata.annotations["restore.syncer/op-id"] // empty')
+      fi
+      if [ -z "$err_msg" ]; then
+        err_msg=$(echo "$cm_json" | jq -r '.metadata.annotations["restore.syncer/error"] // empty')
+      fi
       if [ -n "$op_id" ]; then
         last_op_id="$op_id"
       fi
