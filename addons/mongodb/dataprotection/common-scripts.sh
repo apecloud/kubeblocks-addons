@@ -221,6 +221,119 @@ function syncerctl_cmd() {
   syncerctl --host "$host" --port "$port" "$@"
 }
 
+function expected_restore_shard_names_json() {
+  local shardsvr_names="${MONGODB_SHARD_REPLICA_SET_NAME_LIST:-}"
+  if [ -z "$shardsvr_names" ]; then
+    echo "[]"
+    return
+  fi
+
+  local -a shardsvr_array
+  IFS="." read -r -a shardsvr_array <<< "$shardsvr_names"
+  local shardsvr_count=${#shardsvr_array[@]}
+  local json="["
+  local i
+  for i in "${!shardsvr_array[@]}"; do
+    local shard_name
+    if [ "$shardsvr_count" -gt 1 ]; then
+      shard_name="$CLUSTER_NAME-${shardsvr_array[i]%%@*}"
+    else
+      shard_name="${shardsvr_array[i]%%,*}"
+    fi
+    if [ -z "$shard_name" ]; then
+      continue
+    fi
+    local escaped="$shard_name"
+    escaped=${escaped//\\/\\\\}
+    escaped=${escaped//\"/\\\"}
+    if [ "$json" != "[" ]; then
+      json="$json,"
+    fi
+    json="$json\"$escaped\""
+  done
+  echo "$json]"
+}
+
+function wait_for_mongos_router_ready() {
+  if [ -z "${MONGOS_INTERNAL_HOST:-}" ] || [ -z "${MONGOS_INTERNAL_PORT:-}" ]; then
+    echo "ERROR: Cannot wait for mongos router, host=${MONGOS_INTERNAL_HOST:-} port=${MONGOS_INTERNAL_PORT:-}"
+    exit 1
+  fi
+
+  local client="mongosh"
+  if ! command -v mongosh >/dev/null 2>&1; then
+    client="mongo"
+  fi
+
+  local expected_shards
+  expected_shards=$(expected_restore_shard_names_json)
+  local max_retries=${MONGOS_ROUTE_WAIT_MAX_RETRIES:-90}
+  local retry_interval=${MONGOS_ROUTE_WAIT_INTERVAL_SECONDS:-2}
+  local settle_seconds=${MONGOS_ROUTE_SETTLE_SECONDS:-20}
+  local attempt=1
+  local script
+  script=$(cat <<EOF
+var expected = $expected_shards;
+var ping = db.adminCommand({ ping: 1 });
+if (!ping.ok) {
+  print('ping failed: ' + JSON.stringify(ping));
+  quit(2);
+}
+var flush = db.adminCommand({ flushRouterConfig: 1 });
+if (!flush.ok) {
+  print('flushRouterConfig failed: ' + JSON.stringify(flush));
+  quit(3);
+}
+var shards = db.adminCommand({ listShards: 1 });
+if (!shards.ok) {
+  print('listShards failed: ' + JSON.stringify(shards));
+  quit(4);
+}
+var found = {};
+for (var i = 0; i < (shards.shards || []).length; i++) {
+  var shard = shards.shards[i];
+  if (shard.state === 1) {
+    found[shard._id] = shard.host;
+  }
+}
+var missing = [];
+for (var j = 0; j < expected.length; j++) {
+  if (!found[expected[j]]) {
+    missing.push(expected[j]);
+  }
+}
+if (missing.length > 0) {
+  print('missing shards: ' + missing.join(','));
+  quit(5);
+}
+print('router ready: ' + JSON.stringify(found));
+EOF
+)
+
+  while [ "$attempt" -le "$max_retries" ]; do
+    local result
+    set +e
+    result=$("$client" --host "$MONGOS_INTERNAL_HOST" --port "$MONGOS_INTERNAL_PORT" -u "$MONGODB_USER" -p "$MONGODB_PASSWORD" --authenticationDatabase admin --quiet --eval "$script" 2>&1)
+    local exit_code
+    exit_code=$?
+    set -e
+    if [ "$exit_code" -eq 0 ]; then
+      echo "INFO: Mongos router is ready: $result"
+      if [ "$settle_seconds" -gt 0 ]; then
+        echo "INFO: Waiting ${settle_seconds}s for mongos router cache to settle."
+        sleep "$settle_seconds"
+      fi
+      return 0
+    fi
+    echo "INFO: Waiting for mongos router to be ready... (attempt $attempt/$max_retries): $result"
+    attempt=$((attempt+1))
+    sleep "$retry_interval"
+  done
+
+  echo "ERROR: Mongos router failed to become ready after $max_retries attempts."
+  exit 1
+}
+
 function configure_syncer_backup() {
   local cnf_file="${MOUNT_DIR:-/tmp}/tmp/pbm_syncer_storage.yaml"
   write_pbm_storage_config_file "$cnf_file"
