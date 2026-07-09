@@ -121,6 +121,10 @@ if [ "${#CLUSTER_NODES[@]}" -eq 0 ]; then
   echo "ERROR: could not discover RabbitMQ cluster nodes before physical backup" >&2
   exit 1
 fi
+echo "INFO: waiting for all RabbitMQ backup targets to finish startup and cluster discovery"
+write_marker ready
+wait_for_markers ready "${#CLUSTER_NODES[@]}"
+
 echo "INFO: stopping RabbitMQ applications on discovered nodes: ${CLUSTER_NODES[*]}"
 APP_STOPPED=true
 for node in "${CLUSTER_NODES[@]}"; do

@@ -44,15 +44,33 @@ Describe "RabbitMQ Backup/Restore contract"
   End
 
   It "uses a coordinated all-target stop and archive barrier for physical backup"
-    When call grep -E "MARKER_BASE_PATH|write_marker stopped|wait_for_markers stopped|write_marker archived|wait_for_markers archived|stop_app|start_app" "${backup_script}"
+    When call grep -E "MARKER_BASE_PATH|write_marker ready|wait_for_markers ready|write_marker stopped|wait_for_markers stopped|write_marker archived|wait_for_markers archived|stop_app|start_app" "${backup_script}"
     The status should be success
     The stdout should include "MARKER_BASE_PATH"
+    The stdout should include "write_marker ready"
+    The stdout should include "wait_for_markers ready"
     The stdout should include "write_marker stopped"
     The stdout should include "wait_for_markers stopped"
     The stdout should include "write_marker archived"
     The stdout should include "wait_for_markers archived"
     The stdout should include "stop_app"
     The stdout should include "start_app"
+  End
+
+  It "waits for all targets to finish startup and discovery before any stop_app call"
+    When call bash -c '
+      set -Eeuo pipefail
+      backup_script="$1"
+      write_ready_line="$(grep -n "write_marker ready" "${backup_script}" | cut -d: -f1)"
+      wait_ready_line="$(grep -n "wait_for_markers ready" "${backup_script}" | cut -d: -f1)"
+      stop_call_line="$(grep -n '"'"'stop_node_app "${node}"'"'"' "${backup_script}" | cut -d: -f1)"
+      test -n "${write_ready_line}"
+      test -n "${wait_ready_line}"
+      test -n "${stop_call_line}"
+      test "${write_ready_line}" -lt "${wait_ready_line}"
+      test "${wait_ready_line}" -lt "${stop_call_line}"
+    ' _ "${backup_script}"
+    The status should be success
   End
 
   It "writes per-pod archives and reports size for the current archive only"
