@@ -152,12 +152,12 @@ export_logs_start_time_env
 
 trap handle_pitr_exit EXIT
 
+# Apply storage once. Re-applying the storage file in the loop clears PBM PITR settings
+# and restarts slicing before chunks can mature.
 configure_syncer_backup
 
 while true; do
   wait_for_other_operations "backup"
-
-  configure_syncer_backup
 
   enable_pitr
 
