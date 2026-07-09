@@ -14,28 +14,28 @@ trap handle_restore_exit EXIT
 
 wait_for_other_operations
 
-sync_pbm_storage_config
-
-sync_pbm_config_from_storage
-
-process_restore_start_signal
+ensure_restore_coord_storage_config
 
 extras=$(cat /dp_downward/status_extras)
-rs_name=$(echo "$extras" | jq -r '.[0].replicaset')
+rs_name=$(echo "$extras" | jq -r '.[0].replicaset // empty')
+if [ -z "$rs_name" ] || [ "$rs_name" = "null" ]; then
+    echo "ERROR: Missing source replica set metadata for PITR restore mapping."
+    exit 1
+fi
+
 mappings="$MONGODB_REPLICA_SET_NAME=$rs_name"
 echo "INFO: Replica set mappings: $mappings"
 
 recovery_target_time=$(date -d "@${DP_RESTORE_TIMESTAMP}" +"%Y-%m-%dT%H:%M:%S")
 echo "INFO: Recovery target time: $recovery_target_time"
 
-echo "INFO: Starting restore..."
+echo "INFO: Starting syncer PITR restore..."
+if ! restore_result=$(syncerctl_cmd restore start --pitr-target "$recovery_target_time" --type physical --replset-remapping "$mappings" 2>&1); then
+    echo "ERROR: Syncer restore start failed: $restore_result"
+    exit 1
+fi
+echo "INFO: Syncer restore start result: $restore_result"
 
-wait_for_other_operations
-
-restore_name=$(pbm restore --time="$recovery_target_time" --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" -o json | jq -r '.name')
-
-wait_for_restoring
-
-process_restore_end_signal
+wait_for_syncer_restore_completion
 
 echo "INFO: Restore completed."
