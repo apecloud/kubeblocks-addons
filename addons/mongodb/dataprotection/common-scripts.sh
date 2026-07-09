@@ -270,6 +270,7 @@ function wait_for_mongos_router_ready() {
   local max_retries=${MONGOS_ROUTE_WAIT_MAX_RETRIES:-90}
   local retry_interval=${MONGOS_ROUTE_WAIT_INTERVAL_SECONDS:-2}
   local settle_seconds=${MONGOS_ROUTE_SETTLE_SECONDS:-20}
+  local eval_timeout=${MONGOS_ROUTE_EVAL_TIMEOUT_SECONDS:-15}
   local attempt=1
   local script
   script=$(cat <<EOF
@@ -306,14 +307,23 @@ if (missing.length > 0) {
   print('missing shards: ' + missing.join(','));
   quit(5);
 }
+var configShardCursorCount = db.getSiblingDB('config').shards.find({ state: 1 }).limit(Math.max(expected.length, 1)).itcount();
+if (configShardCursorCount < Math.max(expected.length, 1)) {
+  print('config.shards cursor saw ' + configShardCursorCount + ' active shards, expected at least ' + Math.max(expected.length, 1));
+  quit(6);
+}
 print('router ready: ' + JSON.stringify(found));
 EOF
 )
 
   while [ "$attempt" -le "$max_retries" ]; do
     local result
+    local timeout_cmd=()
+    if command -v timeout >/dev/null 2>&1; then
+      timeout_cmd=(timeout -k 2s "${eval_timeout}s")
+    fi
     set +e
-    result=$("$client" --host "$MONGOS_INTERNAL_HOST" --port "$MONGOS_INTERNAL_PORT" -u "$MONGODB_USER" -p "$MONGODB_PASSWORD" --authenticationDatabase admin --quiet --eval "$script" 2>&1)
+    result=$("${timeout_cmd[@]}" "$client" --host "$MONGOS_INTERNAL_HOST" --port "$MONGOS_INTERNAL_PORT" -u "$MONGODB_USER" -p "$MONGODB_PASSWORD" --authenticationDatabase admin --quiet --eval "$script" 2>&1)
     local exit_code
     exit_code=$?
     set -e
