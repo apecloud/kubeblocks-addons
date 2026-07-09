@@ -152,7 +152,7 @@ spec:
               - -c
               - |
                 client=$(mongosh --version 1>/dev/null&&echo mongosh||echo mongo)
-                $client --port $SERVICE_PORT -u $MONGOS_USER -p $MONGOS_PASSWORD --authenticationDatabase admin --eval "db.adminCommand('ping')"
+                exec timeout -k 1s 3s "$client" --quiet --port "$SERVICE_PORT" -u "$MONGOS_USER" -p "$MONGOS_PASSWORD" --authenticationDatabase admin --eval "db.adminCommand('ping')"
       - name: exporter
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
