@@ -12,6 +12,8 @@ spec:
       value: {{ .Values.dataMountPath }}
     - name: DATA_DIR
       value: "$(VOLUME_DATA_DIR)/pgroot/data"
+    - name: RESTORE_SCRIPT_DIR
+      value: "$(VOLUME_DATA_DIR)/kb_restore"
   backup:
     preBackup: []
     postBackup: []
