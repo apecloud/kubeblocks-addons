@@ -115,6 +115,33 @@ Describe "PostgreSQL Initialization Script Tests"
       The variable SPILO_CONFIGURATION should include "bootstrap:"
       The variable SPILO_CONFIGURATION should include "auth-host: md5"
     End
+
+    It "propagates restore replica configuration when the restore signal exists"
+      RESTORE_DATA_DIR="$(mktemp -d -t pg-restore-data-XXXXXX)"
+      touch "${RESTORE_DATA_DIR}/kb_restore.signal"
+      export RESTORE_DATA_DIR
+      python3() {
+        echo "postgresql:
+                create_replica_methods:
+                - restore_data
+                - basebackup
+                restore_data:
+                  command: bash /home/postgres/pgdata/kb_restore/kb_restore.sh --replica" > "$tmp_patroni_yaml"
+      }
+      chown() {
+        :
+      }
+      exec() {
+        :
+      }
+      When call regenerate_spilo_configuration_and_start_postgres
+      The stderr should include "/home/postgres/.kb_set_up.log: No such file or directory"
+      The status should be success
+      The variable SPILO_CONFIGURATION should include "create_replica_methods:"
+      The variable SPILO_CONFIGURATION should include "restore_data"
+      The variable SPILO_CONFIGURATION should include "kb_restore.sh --replica"
+      rm -rf "${RESTORE_DATA_DIR}"
+    End
   End
 
   Describe "need_restart_for_pending()"

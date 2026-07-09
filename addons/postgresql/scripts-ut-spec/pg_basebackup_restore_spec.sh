@@ -16,10 +16,11 @@ Describe "dataprotection/pg-basebackup-restore.sh"
 
     VOLUME_DATA_DIR="${tmpdir}/pgdata"
     DATA_DIR="${VOLUME_DATA_DIR}/pgroot/data"
+    RESTORE_SCRIPT_DIR="${VOLUME_DATA_DIR}/kb_restore"
     DP_DATASAFED_BIN_PATH="${bindir}"
     DP_BACKUP_BASE_PATH="/backup"
     DP_BACKUP_NAME="backup-test"
-    export PATH CALL_LOG VOLUME_DATA_DIR DATA_DIR DP_DATASAFED_BIN_PATH \
+    export PATH CALL_LOG VOLUME_DATA_DIR DATA_DIR RESTORE_SCRIPT_DIR DP_DATASAFED_BIN_PATH \
       DP_BACKUP_BASE_PATH DP_BACKUP_NAME
     unset DATASAFED_LIST_OUT TAR_CREATE_PGDATA 2>/dev/null || true
     write_stubs
@@ -83,6 +84,16 @@ EOF
     cat "${CALL_LOG}"
   }
 
+  restore_hook_syntax_status() {
+    bash -n "${RESTORE_SCRIPT_DIR}/kb_restore.sh" >/dev/null 2>&1
+    printf "%s" "$?"
+  }
+
+  restore_hook_primary_status() {
+    bash "${RESTORE_SCRIPT_DIR}/kb_restore.sh" >/dev/null 2>&1
+    printf "%s" "$?"
+  }
+
   It "restores the modern zstd archive into pgroot/data and leaves the volume root clean"
     export DATASAFED_LIST_OUT="backup-test.tar.zst"
     When run bash "$(script_path)"
@@ -95,6 +106,15 @@ EOF
     The path "${DATA_DIR}/pg_wal" should be directory
     The path "${VOLUME_DATA_DIR}/PG_VERSION" should not be exist
     The path "${VOLUME_DATA_DIR}/base" should not be exist
+    The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should be exist
+    The path "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should be executable
+    The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include "DATA_DIR=\"${DATA_DIR}\""
+    The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include "PG_VERSION base global pg_wal"
+    The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include "--replica"
+    The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include 'rm -f "${RESTORE_SCRIPT_DIR}/kb_restore.signal"'
+    The result of function restore_hook_syntax_status should eq 0
+    The result of function restore_hook_primary_status should eq 0
+    The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should not be exist
   End
 
   It "fails when DATA_DIR does not match the PostgreSQL volume data subdirectory"

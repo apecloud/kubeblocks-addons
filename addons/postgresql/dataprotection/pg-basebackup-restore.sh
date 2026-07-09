@@ -124,9 +124,79 @@ function save_backup_end_lsn() {
     fi
 }
 
+function configure_restore_script_dir() {
+    if [[ -z "${RESTORE_SCRIPT_DIR:-}" ]]; then
+        if [[ -n "${VOLUME_DATA_DIR:-}" ]]; then
+            RESTORE_SCRIPT_DIR="${VOLUME_DATA_DIR}/kb_restore"
+        else
+            RESTORE_SCRIPT_DIR="$(dirname "$(dirname "${DATA_DIR}")")/kb_restore"
+        fi
+    fi
+    RESTORE_SCRIPT_DIR="${RESTORE_SCRIPT_DIR%/}"
+}
+
+function write_restore_hook() {
+    configure_restore_script_dir
+    mkdir -p "${RESTORE_SCRIPT_DIR}"
+    chmod 777 "${RESTORE_SCRIPT_DIR}"
+    touch "${RESTORE_SCRIPT_DIR}/kb_restore.signal"
+
+    cat > "${RESTORE_SCRIPT_DIR}/kb_restore.sh" <<EOF
+#!/bin/bash
+set -e
+set -o pipefail
+
+DATA_DIR="${DATA_DIR}"
+RESTORE_SCRIPT_DIR="${RESTORE_SCRIPT_DIR}"
+
+IS_REPLICA=false
+while [[ \$# -gt 0 ]]; do
+    case "\$1" in
+        --replica)
+            IS_REPLICA=true
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+if [[ "\${IS_REPLICA}" == "true" ]]; then
+    echo "Replica creation detected. Patroni will use basebackup from primary."
+    rm -f "\${RESTORE_SCRIPT_DIR}/kb_restore.signal"
+    exit 1
+fi
+
+missing=()
+for path in PG_VERSION base global pg_wal; do
+    if [[ ! -e "\${DATA_DIR}/\${path}" ]]; then
+        missing+=("\${path}")
+    fi
+done
+
+if [[ \${#missing[@]} -gt 0 ]]; then
+    echo "ERROR: restored PostgreSQL data directory is incomplete: \${DATA_DIR}" >&2
+    echo "ERROR: missing required entries: \${missing[*]}" >&2
+    exit 1
+fi
+
+if [[ "\$(id -u)" == "0" ]]; then
+    chown -R postgres:postgres "\${DATA_DIR}" "\${RESTORE_SCRIPT_DIR}" 2>/dev/null \
+        || chown -R postgres "\${DATA_DIR}" "\${RESTORE_SCRIPT_DIR}"
+fi
+
+rm -f "\${RESTORE_SCRIPT_DIR}/kb_restore.signal"
+sync
+echo "Basebackup restored data accepted at \${DATA_DIR}"
+EOF
+    chmod +x "${RESTORE_SCRIPT_DIR}/kb_restore.sh"
+}
+
 function finish_restore() {
     assert_pgdata_restored
     save_backup_end_lsn
+    write_restore_hook
     echo "done!";
     exit 0
 }
