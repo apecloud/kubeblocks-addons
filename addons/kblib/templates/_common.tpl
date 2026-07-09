@@ -31,6 +31,13 @@ policyRules:
   verbs:
   - get
   - list
+- apiGroups:
+  - "dataprotection.kubeblocks.io"
+  resources:
+  - backups
+  verbs:
+  - get
+  - list
 {{- end -}}
 
 
