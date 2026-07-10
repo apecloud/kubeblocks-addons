@@ -69,13 +69,6 @@ spec:
     verbs:
     - get
     - list
-  - apiGroups:
-    - "dataprotection.kubeblocks.io"
-    resources:
-    - backups
-    verbs:
-    - get
-    - list
   exporter:
     containerName: exporter
     scrapePath: /metrics
