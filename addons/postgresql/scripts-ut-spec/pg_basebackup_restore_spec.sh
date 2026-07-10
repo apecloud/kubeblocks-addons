@@ -94,6 +94,11 @@ EOF
     printf "%s" "$?"
   }
 
+  restore_hook_replica_status() {
+    bash "${RESTORE_SCRIPT_DIR}/kb_restore.sh" --replica >/dev/null 2>&1
+    printf "%s" "$?"
+  }
+
   It "stages the modern zstd archive for Patroni bootstrap and leaves the volume root clean"
     export DATASAFED_LIST_OUT="backup-test.tar.zst"
     When run bash "$(script_path)"
@@ -142,6 +147,79 @@ EOF
     The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should be exist
     The path "${DATA_DIR}.old/PG_VERSION" should be exist
     The path "${DATA_DIR}/PG_VERSION" should not be exist
+  End
+
+  It "keeps the restore signal when the handoff directory is missing before commit"
+    export DATASAFED_LIST_OUT="backup-test.tar.zst"
+    When run bash "$(script_path)"
+    The status should eq 0
+    /bin/rm -rf "${DATA_DIR}.old"
+    The result of function restore_hook_primary_status should not eq 0
+    The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should be exist
+    The path "${DATA_DIR}.old" should not be exist
+    The path "${DATA_DIR}/PG_VERSION" should not be exist
+  End
+
+  It "keeps the restore signal and staged data when DATA_DIR is not empty before commit"
+    export DATASAFED_LIST_OUT="backup-test.tar.zst"
+    When run bash "$(script_path)"
+    The status should eq 0
+    mkdir -p "${DATA_DIR}/unexpected"
+    The result of function restore_hook_primary_status should not eq 0
+    The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should be exist
+    The path "${DATA_DIR}.old/PG_VERSION" should be exist
+    The path "${DATA_DIR}/unexpected" should be directory
+  End
+
+  It "cleans the restore signal and staged handoff on replica fallback"
+    export DATASAFED_LIST_OUT="backup-test.tar.zst"
+    When run bash "$(script_path)"
+    The status should eq 0
+    The result of function restore_hook_replica_status should not eq 0
+    The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should not be exist
+    The path "${DATA_DIR}.old" should not be exist
+    The path "${DATA_DIR}/PG_VERSION" should not be exist
+  End
+
+  It "converges when the primary hook moved data before clearing the signal"
+    export DATASAFED_LIST_OUT="backup-test.tar.zst"
+    When run bash "$(script_path)"
+    The status should eq 0
+    cat > "${bindir}/rm" <<'EOF'
+#!/bin/sh
+case "$*" in
+  *kb_restore.signal*) exit 7 ;;
+esac
+exec /bin/rm "$@"
+EOF
+    chmod +x "${bindir}/rm"
+    The result of function restore_hook_primary_status should not eq 0
+    The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should be exist
+    The path "${DATA_DIR}.old" should not be exist
+    The path "${DATA_DIR}/.kb_restore_handoff" should be exist
+    The path "${DATA_DIR}/PG_VERSION" should be exist
+
+    /bin/rm -f "${bindir}/rm"
+    The result of function restore_hook_primary_status should eq 0
+    The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should not be exist
+    The path "${DATA_DIR}/.kb_restore_handoff" should not be exist
+    The path "${DATA_DIR}/PG_VERSION" should be exist
+    The path "${DATA_DIR}/base" should be directory
+    The path "${DATA_DIR}/global" should be directory
+    The path "${DATA_DIR}/pg_wal" should be directory
+  End
+
+  It "fails when the handoff directory is missing and DATA_DIR lacks the restore marker"
+    export DATASAFED_LIST_OUT="backup-test.tar.zst"
+    When run bash "$(script_path)"
+    The status should eq 0
+    /bin/rm -rf "${DATA_DIR}.old"
+    mkdir -p "${DATA_DIR}/base"
+    printf '18\n' > "${DATA_DIR}/PG_VERSION"
+    The result of function restore_hook_primary_status should not eq 0
+    The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should be exist
+    The path "${DATA_DIR}/.kb_restore_handoff" should not be exist
+    The path "${DATA_DIR}/PG_VERSION" should be exist
   End
 
   It "fails when DATA_DIR does not match the PostgreSQL volume data subdirectory"
