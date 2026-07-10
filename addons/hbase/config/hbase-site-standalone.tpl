@@ -127,6 +127,11 @@
     </property>
 
     <property>
+        <name>hbase.io.compress.lz4.codec</name>
+        <value>org.apache.hadoop.hbase.io.compress.lz4.Lz4Codec</value>
+    </property>
+
+    <property>
         <name>hbase.security.authentication</name>
         <value>{{ .HBASE_SECURITY_AUTHENTICATION }}</value>
     </property>

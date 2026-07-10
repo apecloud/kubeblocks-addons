@@ -283,6 +283,11 @@
     </property>
 
     <property>
+        <name>hbase.io.compress.lz4.codec</name>
+        <value>org.apache.hadoop.hbase.io.compress.lz4.Lz4Codec</value>
+    </property>
+
+    <property>
         <name>hbase.splitlog.manager.timeout</name>
         <value>{{ .HBASE_SPLITLOG_MANAGER_TIMEOUT }}</value>
     </property>
