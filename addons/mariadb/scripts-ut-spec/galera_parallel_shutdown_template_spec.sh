@@ -17,6 +17,12 @@ Describe "Galera Parallel startup plus ordered shutdown template contract"
     The output should include "/scripts/galera-prestop.sh"
   End
 
+  It "keeps enough termination budget for bounded peer wait plus local shutdown"
+    When call grep -F "terminationGracePeriodSeconds: 120" "${CMPD_GALERA}"
+    The status should be success
+    The output should include "terminationGracePeriodSeconds: 120"
+  End
+
   It "mounts galera-prestop.sh in the Galera script ConfigMap"
     When call grep -F 'galera-prestop.sh: |-' "${SCRIPT_CM}"
     The status should be success
