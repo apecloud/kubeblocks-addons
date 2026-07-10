@@ -72,6 +72,45 @@ run_orchestrator_client_with_budget() {
   run_command_with_budget "${budget}" /kubeblocks/orchestrator-client "$@"
 }
 
+ORC_SWITCHOVER_CLIENT_PID=""
+ORC_SWITCHOVER_CLIENT_OUTPUT_FILE=""
+ORC_SWITCHOVER_CLIENT_RC_FILE=""
+ORC_SWITCHOVER_CLIENT_RC=""
+ORC_SWITCHOVER_CLIENT_OUTPUT=""
+
+start_orchestrator_client_background() {
+  local budget="$1"
+  shift
+  ORC_SWITCHOVER_CLIENT_OUTPUT_FILE="/tmp/orc-switchover-client-${$}-${RANDOM}.out"
+  ORC_SWITCHOVER_CLIENT_RC_FILE="/tmp/orc-switchover-client-${$}-${RANDOM}.rc"
+  ORC_SWITCHOVER_CLIENT_RC=""
+  ORC_SWITCHOVER_CLIENT_OUTPUT=""
+  (
+    run_orchestrator_client_with_budget "${budget}" "$@" > "${ORC_SWITCHOVER_CLIENT_OUTPUT_FILE}" 2>&1
+    printf '%s\n' "$?" > "${ORC_SWITCHOVER_CLIENT_RC_FILE}"
+  ) &
+  ORC_SWITCHOVER_CLIENT_PID=$!
+}
+
+finish_orchestrator_client_background() {
+  local wrapper_rc=0
+  if [ -n "${ORC_SWITCHOVER_CLIENT_PID}" ]; then
+    wait "${ORC_SWITCHOVER_CLIENT_PID}"
+    wrapper_rc=$?
+  fi
+
+  ORC_SWITCHOVER_CLIENT_OUTPUT=$(cat "${ORC_SWITCHOVER_CLIENT_OUTPUT_FILE}" 2>/dev/null || true)
+  if [ -s "${ORC_SWITCHOVER_CLIENT_RC_FILE}" ]; then
+    ORC_SWITCHOVER_CLIENT_RC=$(cat "${ORC_SWITCHOVER_CLIENT_RC_FILE}")
+  else
+    ORC_SWITCHOVER_CLIENT_RC="${wrapper_rc}"
+  fi
+  rm -f "${ORC_SWITCHOVER_CLIENT_OUTPUT_FILE}" "${ORC_SWITCHOVER_CLIENT_RC_FILE}"
+  ORC_SWITCHOVER_CLIENT_PID=""
+  ORC_SWITCHOVER_CLIENT_OUTPUT_FILE=""
+  ORC_SWITCHOVER_CLIENT_RC_FILE=""
+}
+
 mysql_read_flags() {
   local host="$1"
   local budget="${MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS:-1}"
@@ -188,34 +227,99 @@ verify_switchover_closed_once() {
   is_writable_mysql "$candidate_flags" && is_readonly_mysql "$current_flags"
 }
 
-verify_switchover_closed_or_defer() {
-  local attempts="${MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS:-8}"
+switchover_verify_context() {
+  local attempts="${MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS:-12}"
   local interval="${MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS:-1}"
-  local i ctx
+  local window="${MYSQL_ORC_SWITCHOVER_VERIFY_WINDOW_SECONDS:-${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-35}}"
+  local ctx
+  ctx=$(printf '  verify-attempts: %s\n  verify-interval-seconds: %s\n  verify-window-seconds: %s\n  precheck-timeout-seconds: %s\n  client-timeout-seconds: %s\n  mysql-timeout-seconds: %s\n  mysql-connect-timeout-seconds: %s\n  observed-candidate: %s\n  candidate-flags: %s\n  current-flags: %s' \
+    "$attempts" "$interval" "$window" "${MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS:-3}" \
+    "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-35}" \
+    "${MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS:-1}" \
+    "${MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS:-1}" \
+    "${SWITCHOVER_VERIFY_CANDIDATE:-<unset>}" \
+    "${SWITCHOVER_VERIFY_CANDIDATE_FLAGS:-<unset>}" "${SWITCHOVER_VERIFY_CURRENT_FLAGS:-<unset>}")
+  printf '%s\n  verify-history:\n%s' "$ctx" "${SWITCHOVER_VERIFY_HISTORY:-<empty>}"
+}
+
+diagnose_switchover_not_converged() {
+  local extra="${1:-}"
+  local ctx
+  ctx=$(switchover_verify_context)
+  if [ -n "$extra" ]; then
+    ctx=$(printf '%s\n%s' "$ctx" "$extra")
+  fi
+  switchover_diagnose_not_ready "post-switchover-not-converged" "$ctx" "yes"
+}
+
+verify_switchover_closed_window() {
+  local attempts="${MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS:-12}"
+  local interval="${MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS:-1}"
+  local window="${MYSQL_ORC_SWITCHOVER_VERIFY_WINDOW_SECONDS:-${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-35}}"
+  local started="$SECONDS"
+  local i
 
   SWITCHOVER_VERIFY_HISTORY=""
   i=1
   while [ "$i" -le "$attempts" ]; do
+    if [ "$i" -gt 1 ] && [ $((SECONDS - started)) -ge "$window" ]; then
+      break
+    fi
     if verify_switchover_closed_once; then
       mysql_note "Switchover verified: candidate is writable and previous primary is read-only."
       return 0
     fi
     append_switchover_verify_history "$i"
-    if [ "$i" -lt "$attempts" ]; then
+    if [ "$i" -lt "$attempts" ] && [ $((SECONDS - started)) -lt "$window" ]; then
       sleep "$interval"
     fi
     i=$((i + 1))
   done
 
-  ctx=$(printf '  verify-attempts: %s\n  verify-interval-seconds: %s\n  precheck-timeout-seconds: %s\n  client-timeout-seconds: %s\n  mysql-timeout-seconds: %s\n  mysql-connect-timeout-seconds: %s\n  observed-candidate: %s\n  candidate-flags: %s\n  current-flags: %s' \
-    "$attempts" "$interval" "${MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS:-3}" \
-    "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-20}" \
-    "${MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS:-1}" \
-    "${MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS:-1}" \
-    "${SWITCHOVER_VERIFY_CANDIDATE:-<unset>}" \
-    "${SWITCHOVER_VERIFY_CANDIDATE_FLAGS:-<unset>}" "${SWITCHOVER_VERIFY_CURRENT_FLAGS:-<unset>}")
-  ctx=$(printf '%s\n  verify-history:\n%s' "$ctx" "${SWITCHOVER_VERIFY_HISTORY:-<empty>}")
-  switchover_diagnose_not_ready "post-switchover-not-converged" "$ctx" "yes"
+  return 1
+}
+
+verify_switchover_closed_or_defer() {
+  if verify_switchover_closed_window; then
+    return 0
+  fi
+  diagnose_switchover_not_converged
+  return 1
+}
+
+orchestrator_client_context() {
+  printf '  orchestrator-client-rc: %s\n  orchestrator-client-output:\n%s' \
+    "${ORC_SWITCHOVER_CLIENT_RC:-<unset>}" "${ORC_SWITCHOVER_CLIENT_OUTPUT:-<empty>}"
+}
+
+run_switchover_client_and_verify() {
+  local client_budget="$1"
+  local verify_rc
+  shift
+
+  start_orchestrator_client_background "${client_budget}" "$@"
+  if verify_switchover_closed_window; then
+    verify_rc=0
+  else
+    verify_rc=1
+  fi
+  finish_orchestrator_client_background
+
+  if [ "$verify_rc" -eq 0 ]; then
+    if [ "${ORC_SWITCHOVER_CLIENT_RC:-0}" != "0" ]; then
+      mysql_note "Switchover command returned non-zero (${ORC_SWITCHOVER_CLIENT_RC}) but post-check observed the target topology."
+      if [ -n "${ORC_SWITCHOVER_CLIENT_OUTPUT:-}" ]; then
+        mysql_note "${ORC_SWITCHOVER_CLIENT_OUTPUT}"
+      fi
+    fi
+    return 0
+  fi
+
+  diagnose_switchover_not_converged "$(orchestrator_client_context)"
+  if [ "${ORC_SWITCHOVER_CLIENT_RC:-0}" != "0" ]; then
+    switchover_diagnose_not_ready "orchestrator-command-failed" \
+      "$(printf '  rc: %s\n  observed:\n%s' "${ORC_SWITCHOVER_CLIENT_RC}" "${ORC_SWITCHOVER_CLIENT_OUTPUT:-<empty>}")" "yes"
+  fi
   return 1
 }
 
@@ -260,26 +364,18 @@ fi
 if [ -n "$KB_SWITCHOVER_CANDIDATE_NAME" ]; then
   # Switchover to specific candidate
   mysql_note "Initiating graceful switchover to: ${KB_SWITCHOVER_CANDIDATE_NAME}"
-  result=$(run_orchestrator_client_with_budget "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-20}" -c graceful-master-takeover-auto \
+  if run_switchover_client_and_verify "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-35}" -c graceful-master-takeover-auto \
     -i "${KB_SWITCHOVER_CURRENT_NAME}" \
-    -d "${KB_SWITCHOVER_CANDIDATE_NAME}" 2>&1)
-  exit_code=$?
+    -d "${KB_SWITCHOVER_CANDIDATE_NAME}"; then
+    exit 0
+  fi
 else
   # Auto-select candidate
   mysql_note "Initiating graceful switchover with auto-selected candidate"
-  result=$(run_orchestrator_client_with_budget "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-20}" -c graceful-master-takeover-auto \
-    -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1)
-  exit_code=$?
-fi
-
-if [ $exit_code -ne 0 ]; then
-  if verify_switchover_closed_or_defer; then
-    mysql_note "Switchover command returned non-zero (${exit_code}) but post-check observed the target topology."
+  if run_switchover_client_and_verify "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-35}" -c graceful-master-takeover-auto \
+    -i "${KB_SWITCHOVER_CURRENT_NAME}"; then
     exit 0
   fi
-  switchover_diagnose_not_ready "orchestrator-command-failed" \
-    "$(printf '  rc: %s\n  observed:\n%s' "$exit_code" "$result")" "yes"
-  exit 1
 fi
 
-verify_switchover_closed_or_defer
+exit 1
