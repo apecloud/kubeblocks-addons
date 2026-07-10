@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# shellcheck disable=SC2034
+# shellcheck disable=SC2034,SC2329
 
 Describe "ORC switchover script tests"
   Include ../scripts/orc-switchover.sh
@@ -28,6 +28,78 @@ Describe "ORC switchover script tests"
 
       When call is_writable_mysql "$output"
       The status should be failure
+    End
+  End
+
+  Describe "Switchover closure verification"
+    setup_switchover_verify() {
+      export KB_SWITCHOVER_CURRENT_NAME="mysql-0"
+      export KB_SWITCHOVER_CANDIDATE_NAME="mysql-1"
+      export MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS=4
+      export MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS=0
+      export MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS=3
+      export MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS=20
+      export MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS=1
+      export MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS=1
+      VERIFY_COUNTER_FILE=$(mktemp)
+      export VERIFY_COUNTER_FILE
+      printf '0\n' > "$VERIFY_COUNTER_FILE"
+    }
+
+    cleanup_switchover_verify() {
+      rm -f "${VERIFY_COUNTER_FILE:-}"
+      unset KB_SWITCHOVER_CURRENT_NAME
+      unset KB_SWITCHOVER_CANDIDATE_NAME
+      unset MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS
+      unset MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS
+      unset MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS
+      unset MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS
+      unset MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS
+      unset MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS
+      unset VERIFY_COUNTER_FILE
+    }
+
+    Before 'setup_switchover_verify'
+    After 'cleanup_switchover_verify'
+
+    It "succeeds when readback converges inside the bounded verify window"
+      mysql_read_flags() {
+        local host="$1"
+        local count
+        if [ "$host" = "$KB_SWITCHOVER_CANDIDATE_NAME" ]; then
+          count=$(cat "$VERIFY_COUNTER_FILE")
+          count=$((count + 1))
+          printf '%s\n' "$count" > "$VERIFY_COUNTER_FILE"
+          if [ "$count" -lt 3 ]; then
+            printf '1 1\n'
+            return 0
+          fi
+          printf '0 0\n'
+          return 0
+        fi
+        printf '1 1\n'
+      }
+
+      When call verify_switchover_closed_or_defer
+      The status should be success
+      The output should include "Switchover verified"
+    End
+
+    It "classifies an unclosed readback window as retry-safe"
+      mysql_read_flags() {
+        local host="$1"
+        if [ "$host" = "$KB_SWITCHOVER_CANDIDATE_NAME" ]; then
+          printf '1 1\n'
+          return 0
+        fi
+        printf '1 1\n'
+      }
+
+      When call verify_switchover_closed_or_defer
+      The status should be failure
+      The error should include "phase: post-switchover-not-converged"
+      The error should include "next-retry-safe: yes"
+      The error should include "verify-history:"
     End
   End
 End

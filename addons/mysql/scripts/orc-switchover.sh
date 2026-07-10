@@ -74,7 +74,7 @@ run_orchestrator_client_with_budget() {
 
 mysql_read_flags() {
   local host="$1"
-  local budget="${MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS:-2}"
+  local budget="${MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS:-1}"
   local connect_timeout="${MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS:-1}"
   run_command_with_budget "${budget}" env MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql -u"${MYSQL_ROOT_USER}" -P3306 -h"${host}" \
     --connect-timeout="${connect_timeout}" --batch --skip-column-names \
@@ -189,7 +189,7 @@ verify_switchover_closed_once() {
 }
 
 verify_switchover_closed_or_defer() {
-  local attempts="${MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS:-4}"
+  local attempts="${MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS:-8}"
   local interval="${MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS:-1}"
   local i ctx
 
@@ -209,8 +209,8 @@ verify_switchover_closed_or_defer() {
 
   ctx=$(printf '  verify-attempts: %s\n  verify-interval-seconds: %s\n  precheck-timeout-seconds: %s\n  client-timeout-seconds: %s\n  mysql-timeout-seconds: %s\n  mysql-connect-timeout-seconds: %s\n  observed-candidate: %s\n  candidate-flags: %s\n  current-flags: %s' \
     "$attempts" "$interval" "${MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS:-3}" \
-    "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-28}" \
-    "${MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS:-2}" \
+    "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-20}" \
+    "${MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS:-1}" \
     "${MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS:-1}" \
     "${SWITCHOVER_VERIFY_CANDIDATE:-<unset>}" \
     "${SWITCHOVER_VERIFY_CANDIDATE_FLAGS:-<unset>}" "${SWITCHOVER_VERIFY_CURRENT_FLAGS:-<unset>}")
@@ -260,14 +260,14 @@ fi
 if [ -n "$KB_SWITCHOVER_CANDIDATE_NAME" ]; then
   # Switchover to specific candidate
   mysql_note "Initiating graceful switchover to: ${KB_SWITCHOVER_CANDIDATE_NAME}"
-  result=$(run_orchestrator_client_with_budget "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-28}" -c graceful-master-takeover-auto \
+  result=$(run_orchestrator_client_with_budget "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-20}" -c graceful-master-takeover-auto \
     -i "${KB_SWITCHOVER_CURRENT_NAME}" \
     -d "${KB_SWITCHOVER_CANDIDATE_NAME}" 2>&1)
   exit_code=$?
 else
   # Auto-select candidate
   mysql_note "Initiating graceful switchover with auto-selected candidate"
-  result=$(run_orchestrator_client_with_budget "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-28}" -c graceful-master-takeover-auto \
+  result=$(run_orchestrator_client_with_budget "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-20}" -c graceful-master-takeover-auto \
     -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1)
   exit_code=$?
 fi
