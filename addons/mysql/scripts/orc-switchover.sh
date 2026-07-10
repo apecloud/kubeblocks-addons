@@ -38,9 +38,10 @@ run_command_with_budget() {
     return $?
   fi
 
-  local output_file timeout_file pid timer_pid rc
-  output_file="/tmp/orc-switchover-${$}-${RANDOM}.out"
-  timeout_file="/tmp/orc-switchover-${$}-${RANDOM}.timeout"
+  local temp_dir output_file timeout_file pid timer_pid rc
+  temp_dir=$(mktemp -d /tmp/orc-switchover.XXXXXX) || return 1
+  output_file="${temp_dir}/output"
+  timeout_file="${temp_dir}/timeout"
   "$@" > "${output_file}" 2>&1 &
   pid=$!
   (
@@ -62,7 +63,7 @@ run_command_with_budget() {
   if [ -s "${timeout_file}" ]; then
     rc=124
   fi
-  rm -f "${output_file}" "${timeout_file}"
+  rm -rf "${temp_dir}"
   return $rc
 }
 
@@ -75,6 +76,7 @@ run_orchestrator_client_with_budget() {
 ORC_SWITCHOVER_CLIENT_PID=""
 ORC_SWITCHOVER_CLIENT_OUTPUT_FILE=""
 ORC_SWITCHOVER_CLIENT_RC_FILE=""
+ORC_SWITCHOVER_CLIENT_TEMP_DIR=""
 ORC_SWITCHOVER_CLIENT_RC=""
 ORC_SWITCHOVER_CLIENT_OUTPUT=""
 SWITCHOVER_VERIFY_CANDIDATE_RAW=""
@@ -83,8 +85,13 @@ SWITCHOVER_VERIFY_CURRENT_RAW=""
 start_orchestrator_client_background() {
   local budget="$1"
   shift
-  ORC_SWITCHOVER_CLIENT_OUTPUT_FILE="/tmp/orc-switchover-client-${$}-${RANDOM}.out"
-  ORC_SWITCHOVER_CLIENT_RC_FILE="/tmp/orc-switchover-client-${$}-${RANDOM}.rc"
+  if ! ORC_SWITCHOVER_CLIENT_TEMP_DIR=$(mktemp -d /tmp/orc-switchover-client.XXXXXX); then
+    ORC_SWITCHOVER_CLIENT_RC=1
+    ORC_SWITCHOVER_CLIENT_OUTPUT="failed to create orchestrator client temp directory"
+    return 1
+  fi
+  ORC_SWITCHOVER_CLIENT_OUTPUT_FILE="${ORC_SWITCHOVER_CLIENT_TEMP_DIR}/output"
+  ORC_SWITCHOVER_CLIENT_RC_FILE="${ORC_SWITCHOVER_CLIENT_TEMP_DIR}/rc"
   ORC_SWITCHOVER_CLIENT_RC=""
   ORC_SWITCHOVER_CLIENT_OUTPUT=""
   (
@@ -92,6 +99,7 @@ start_orchestrator_client_background() {
     printf '%s\n' "$?" > "${ORC_SWITCHOVER_CLIENT_RC_FILE}"
   ) &
   ORC_SWITCHOVER_CLIENT_PID=$!
+  return 0
 }
 
 finish_orchestrator_client_background() {
@@ -107,10 +115,11 @@ finish_orchestrator_client_background() {
   else
     ORC_SWITCHOVER_CLIENT_RC="${wrapper_rc}"
   fi
-  rm -f "${ORC_SWITCHOVER_CLIENT_OUTPUT_FILE}" "${ORC_SWITCHOVER_CLIENT_RC_FILE}"
+  rm -rf "${ORC_SWITCHOVER_CLIENT_TEMP_DIR}"
   ORC_SWITCHOVER_CLIENT_PID=""
   ORC_SWITCHOVER_CLIENT_OUTPUT_FILE=""
   ORC_SWITCHOVER_CLIENT_RC_FILE=""
+  ORC_SWITCHOVER_CLIENT_TEMP_DIR=""
 }
 
 mysql_read_flags() {
@@ -125,13 +134,20 @@ mysql_read_flags() {
 read_mysql_flags_pair() {
   local candidate="$1"
   local current="$2"
-  local candidate_output_file candidate_rc_file current_output_file current_rc_file
+  local temp_dir candidate_output_file candidate_rc_file current_output_file current_rc_file
   local candidate_pid current_pid candidate_rc current_rc candidate_output current_output
 
-  candidate_output_file="/tmp/orc-switchover-candidate-${$}-${RANDOM}.out"
-  candidate_rc_file="/tmp/orc-switchover-candidate-${$}-${RANDOM}.rc"
-  current_output_file="/tmp/orc-switchover-current-${$}-${RANDOM}.out"
-  current_rc_file="/tmp/orc-switchover-current-${$}-${RANDOM}.rc"
+  SWITCHOVER_VERIFY_CANDIDATE_RAW=""
+  SWITCHOVER_VERIFY_CURRENT_RAW=""
+  if ! temp_dir=$(mktemp -d /tmp/orc-switchover-readback.XXXXXX); then
+    SWITCHOVER_VERIFY_CANDIDATE_FLAGS="<failed to create readback temp directory>"
+    SWITCHOVER_VERIFY_CURRENT_FLAGS="<not checked>"
+    return 1
+  fi
+  candidate_output_file="${temp_dir}/candidate-output"
+  candidate_rc_file="${temp_dir}/candidate-rc"
+  current_output_file="${temp_dir}/current-output"
+  current_rc_file="${temp_dir}/current-rc"
 
   (
     mysql_read_flags "$candidate" > "${candidate_output_file}" 2>&1
@@ -157,7 +173,7 @@ read_mysql_flags_pair() {
   SWITCHOVER_VERIFY_CANDIDATE_FLAGS="rc=${candidate_rc} output=${candidate_output}"
   SWITCHOVER_VERIFY_CURRENT_FLAGS="rc=${current_rc} output=${current_output}"
 
-  rm -f "${candidate_output_file}" "${candidate_rc_file}" "${current_output_file}" "${current_rc_file}"
+  rm -rf "${temp_dir}"
   [ "$candidate_rc" = "0" ] && [ "$current_rc" = "0" ]
 }
 
@@ -327,7 +343,11 @@ run_switchover_client_and_verify() {
   local verify_rc
   shift
 
-  start_orchestrator_client_background "${client_budget}" "$@"
+  if ! start_orchestrator_client_background "${client_budget}" "$@"; then
+    switchover_diagnose_not_ready "orchestrator-client-start-failed" \
+      "$(orchestrator_client_context)" "yes"
+    return 1
+  fi
   if verify_switchover_closed_window; then
     verify_rc=0
   else

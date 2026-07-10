@@ -60,6 +60,7 @@ Describe "ORC switchover script tests"
       unset ORC_SWITCHOVER_CLIENT_PID
       unset ORC_SWITCHOVER_CLIENT_OUTPUT_FILE
       unset ORC_SWITCHOVER_CLIENT_RC_FILE
+      unset ORC_SWITCHOVER_CLIENT_TEMP_DIR
       unset ORC_SWITCHOVER_CLIENT_RC
       unset ORC_SWITCHOVER_CLIENT_OUTPUT
     }
@@ -164,6 +165,33 @@ Describe "ORC switchover script tests"
       The error should include "orchestrator-client-rc: 124"
       The error should include "client timed out"
       The error should include "phase: orchestrator-command-failed"
+    End
+
+    It "fails explicitly when the orchestrator client background wrapper cannot start"
+      start_orchestrator_client_background() {
+        ORC_SWITCHOVER_CLIENT_RC=1
+        ORC_SWITCHOVER_CLIENT_OUTPUT="failed to create orchestrator client temp directory"
+        return 1
+      }
+
+      When call run_switchover_client_and_verify 40 -c graceful-master-takeover-auto -i "$KB_SWITCHOVER_CURRENT_NAME" -d "$KB_SWITCHOVER_CANDIDATE_NAME"
+      The status should be failure
+      The error should include "phase: orchestrator-client-start-failed"
+      The error should include "failed to create orchestrator client temp directory"
+    End
+
+    It "does not reuse stale readback flags when its temp directory cannot be created"
+      SWITCHOVER_VERIFY_CANDIDATE_RAW="0 0"
+      SWITCHOVER_VERIFY_CURRENT_RAW="1 1"
+      mktemp() {
+        return 1
+      }
+
+      When call read_mysql_flags_pair "$KB_SWITCHOVER_CANDIDATE_NAME" "$KB_SWITCHOVER_CURRENT_NAME"
+      The status should be failure
+      The variable SWITCHOVER_VERIFY_CANDIDATE_RAW should equal ""
+      The variable SWITCHOVER_VERIFY_CURRENT_RAW should equal ""
+      The variable SWITCHOVER_VERIFY_CANDIDATE_FLAGS should include "failed to create readback temp directory"
     End
   End
 End
