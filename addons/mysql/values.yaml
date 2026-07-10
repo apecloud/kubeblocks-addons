@@ -117,6 +117,10 @@ roleProbe:
   failureThreshold: 2
   periodSeconds: 1
   timeoutSeconds: 1
+  orc:
+    periodSeconds: 5
+    timeoutSeconds: 5
+    clientTimeoutSeconds: 4
 
 ## @param cmpdNamePrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
 ## If specified, the component definition will use it as prefix.

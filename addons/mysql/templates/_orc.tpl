@@ -184,17 +184,48 @@ accountProvision:
     targetPodSelector: Role
     matchingKey: primary
 roleProbe:
-  periodSeconds: {{ .Values.roleProbe.periodSeconds }}
-  timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+  periodSeconds: {{ .Values.roleProbe.orc.periodSeconds }}
+  timeoutSeconds: {{ .Values.roleProbe.orc.timeoutSeconds }}
   exec:
     env:
       - name: PATH
         value: /kubeblocks/:/kubeblocks-tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - name: ORC_ROLE_PROBE_CLIENT_TIMEOUT_SECONDS
+        value: "{{ .Values.roleProbe.orc.clientTimeoutSeconds }}"
     command:
       - /bin/bash
       - -c
       - |
-        master_info=$(/kubeblocks/orchestrator-client -c which-cluster-master -i "${KB_AGENT_POD_NAME}") || true
+        run_orc_role_probe() {
+          if command -v timeout >/dev/null 2>&1; then
+            timeout "${ORC_ROLE_PROBE_CLIENT_TIMEOUT_SECONDS}s" /kubeblocks/orchestrator-client "$@"
+            return $?
+          fi
+
+          local output_file pid timer_pid rc
+          output_file="/tmp/orc-role-probe-${$}-${RANDOM}.out"
+          /kubeblocks/orchestrator-client "$@" > "${output_file}" &
+          pid=$!
+          (
+            sleep "${ORC_ROLE_PROBE_CLIENT_TIMEOUT_SECONDS}"
+            kill "${pid}" 2>/dev/null || true
+            sleep 1
+            kill -9 "${pid}" 2>/dev/null || true
+          ) &
+          timer_pid=$!
+          wait "${pid}"
+          rc=$?
+          kill "${timer_pid}" 2>/dev/null || true
+          cat "${output_file}" 2>/dev/null || true
+          rm -f "${output_file}"
+          return "${rc}"
+        }
+
+        master_info=$(run_orc_role_probe -c which-cluster-master -i "${KB_AGENT_POD_NAME}" 2>/dev/null)
+        if [ $? -ne 0 ]; then
+          echo -n ""
+          exit 0
+        fi
         if [[ -z "$master_info" ]]; then
           echo -n ""
           exit 0
@@ -204,7 +235,11 @@ roleProbe:
           echo -n "primary"
         else
           # get list of replicas
-          replicas=$(/kubeblocks/orchestrator-client -c which-cluster-instances -i "${master_from_orc}")
+          replicas=$(run_orc_role_probe -c which-cluster-instances -i "${master_from_orc}" 2>/dev/null)
+          if [ $? -ne 0 ]; then
+            echo -n ""
+            exit 0
+          fi
           # for each replica, check if it is a secondary
           for replica in $replicas; do
             if [ "${replica%%:*}" == "${KB_AGENT_POD_NAME}" ]; then
