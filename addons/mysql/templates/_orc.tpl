@@ -264,8 +264,14 @@ switchover:
   timeoutSeconds: {{ .Values.switchover.timeoutSeconds }}
   exec:
     env:
+      - name: MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS
+        value: "{{ .Values.switchover.precheckTimeoutSeconds }}"
       - name: MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS
         value: "{{ .Values.switchover.clientTimeoutSeconds }}"
+      - name: MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS
+        value: "{{ .Values.switchover.mysqlTimeoutSeconds }}"
+      - name: MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS
+        value: "{{ .Values.switchover.mysqlConnectTimeoutSeconds }}"
       - name: MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS
         value: "{{ .Values.switchover.verifyAttempts }}"
       - name: MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS
