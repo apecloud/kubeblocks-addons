@@ -80,7 +80,8 @@ function prepareTenantLogArchive() {
   save_defer_archivelog_tenants "${tenant_id}"
   destUrl=$(getDestURL archive ${tenant_name} ${tenant_id})
   echo "INFO: prepare log archive dest for tenant ${tenant_name}"
-  result=`${mysql_cmd} "ALTER SYSTEM SET LOG_ARCHIVE_DEST=\"LOCATION=${destUrl}\" TENANT=${tenant_name};"`
+  # Allow remote storage validation to outlive the default 10s session timeout.
+  result=`${mysql_cmd} "SET SESSION ob_query_timeout=1000000000; ALTER SYSTEM SET LOG_ARCHIVE_DEST=\"LOCATION=${destUrl}\" TENANT=${tenant_name};"`
   if [[ $? -ne 0 ]];then
      echo "ERROR: alert log_archive_dest for tenant ${tenant_name} failed: ${result}"
      exit 1
