@@ -123,15 +123,15 @@ systemAccounts:
       letterCase: MixedCases
   - name: kbdataprotection
     statement:
-      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
+      create: CREATE USER IF NOT EXISTS ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbprobe
     statement:
-      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
+      create: CREATE USER IF NOT EXISTS ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbmonitoring
     statement:
-      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
+      create: CREATE USER IF NOT EXISTS ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbreplicator
     statement:
@@ -139,7 +139,7 @@ systemAccounts:
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: proxysql
     statement:
-      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
+      create: CREATE USER IF NOT EXISTS ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
 vars:
   - name: CLUSTER_NAME
@@ -250,6 +250,9 @@ tls:
   caFile: ca.pem
   certFile: cert.pem
   keyFile: key.pem
+{{- end }}
+
+{{- define "mysql.spec.roles.semisync" -}}
 roles:
   - name: primary
     updatePriority: 2
@@ -258,6 +261,22 @@ roles:
   - name: secondary
     updatePriority: 1
     participatesInQuorum: false
+{{- end }}
+
+{{/*
+Group Replication is a majority-based protocol: members participate in quorum
+so KubeBlocks will not take down a majority at once during rolling updates,
+scale-in, stop, or failure recovery.
+*/}}
+{{- define "mysql.spec.roles.mgr" -}}
+roles:
+  - name: primary
+    updatePriority: 2
+    participatesInQuorum: true
+    isExclusive: true
+  - name: secondary
+    updatePriority: 1
+    participatesInQuorum: true
 {{- end }}
 
 {{- define "mysql.spec.runtime.entrypoint" -}}
@@ -302,7 +321,7 @@ env:
     value: $(MYSQL_ROOT_PASSWORD)
   - name: EXPORTER_WEB_PORT
     value: "{{ .Values.metrics.service.port }}"
-imagePullPolicy: IfNotPresent
+imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
 ports:
   - name: http-metrics
     containerPort: {{ .Values.metrics.service.port }}

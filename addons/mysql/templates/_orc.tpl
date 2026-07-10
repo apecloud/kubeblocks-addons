@@ -248,7 +248,7 @@ switchover:
       cp -r /usr/bin/jq /kubeblocks/jq
       cp -r /scripts/orchestrator-client /kubeblocks/orchestrator-client
       cp -r /usr/local/bin/curl /kubeblocks/curl
-  imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+  imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
   name: init-jq
   volumeMounts:
     - mountPath: /kubeblocks
@@ -256,7 +256,7 @@ switchover:
 {{- end }}
 
 {{- define "mysql-orc.spec.runtime.mysql" -}}
-imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
 command:
   - bash
   - -c
