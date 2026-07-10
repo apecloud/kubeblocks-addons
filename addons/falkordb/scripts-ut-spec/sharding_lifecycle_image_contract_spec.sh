@@ -34,7 +34,7 @@ Describe "FalkorDB sharding lifecycle image contract"
   }
   AfterEach 'cleanup_render'
 
-  It "runs shardRemove in the target container without a custom exec image"
+  It "shares FalkorDB container resources without a custom exec image"
     When call render_sharding_definition
     The status should be success
     The output should include "container: falkordb-cluster"
