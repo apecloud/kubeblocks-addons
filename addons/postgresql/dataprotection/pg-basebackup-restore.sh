@@ -181,6 +181,8 @@ if [[ \${#missing[@]} -gt 0 ]]; then
     exit 1
 fi
 
+rm -f "\${DATA_DIR}/standby.signal" "\${DATA_DIR}/recovery.signal"
+
 if [[ "\$(id -u)" == "0" ]]; then
     chown -R postgres:postgres "\${DATA_DIR}" "\${RESTORE_SCRIPT_DIR}" 2>/dev/null \
         || chown -R postgres "\${DATA_DIR}" "\${RESTORE_SCRIPT_DIR}"
