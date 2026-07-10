@@ -35,10 +35,10 @@ Describe "ORC switchover script tests"
     setup_switchover_verify() {
       export KB_SWITCHOVER_CURRENT_NAME="mysql-0"
       export KB_SWITCHOVER_CANDIDATE_NAME="mysql-1"
-      export MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS=4
+      export MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS=20
       export MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS=0
       export MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS=3
-      export MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS=35
+      export MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS=40
       export MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS=1
       export MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS=1
       VERIFY_COUNTER_FILE=$(mktemp)
@@ -90,6 +90,21 @@ Describe "ORC switchover script tests"
       The output should include "Switchover verified"
     End
 
+    It "uses raw parallel readback output for closure checks"
+      mysql_read_flags() {
+        local host="$1"
+        printf '%s\n' 'mysql: [Warning] Using a password on the command line interface can be insecure.'
+        if [ "$host" = "$KB_SWITCHOVER_CANDIDATE_NAME" ]; then
+          printf '0 0\n'
+          return 0
+        fi
+        printf '1 1\n'
+      }
+
+      When call verify_switchover_closed_once
+      The status should be success
+    End
+
     It "classifies an unclosed readback window as retry-safe"
       mysql_read_flags() {
         local host="$1"
@@ -122,7 +137,7 @@ Describe "ORC switchover script tests"
         printf '1 1\n'
       }
 
-      When call run_switchover_client_and_verify 35 -c graceful-master-takeover-auto -i "$KB_SWITCHOVER_CURRENT_NAME" -d "$KB_SWITCHOVER_CANDIDATE_NAME"
+      When call run_switchover_client_and_verify 40 -c graceful-master-takeover-auto -i "$KB_SWITCHOVER_CURRENT_NAME" -d "$KB_SWITCHOVER_CANDIDATE_NAME"
       The status should be success
       The output should include "Switchover command returned non-zero (124) but post-check observed the target topology."
       The output should include "client timed out"
@@ -143,7 +158,7 @@ Describe "ORC switchover script tests"
         printf '1 1\n'
       }
 
-      When call run_switchover_client_and_verify 35 -c graceful-master-takeover-auto -i "$KB_SWITCHOVER_CURRENT_NAME" -d "$KB_SWITCHOVER_CANDIDATE_NAME"
+      When call run_switchover_client_and_verify 40 -c graceful-master-takeover-auto -i "$KB_SWITCHOVER_CURRENT_NAME" -d "$KB_SWITCHOVER_CANDIDATE_NAME"
       The status should be failure
       The error should include "phase: post-switchover-not-converged"
       The error should include "orchestrator-client-rc: 124"
