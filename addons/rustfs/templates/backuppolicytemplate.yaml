@@ -15,6 +15,10 @@ spec:
     - name: s3-full
       snapshotVolumes: false
       actionSetName: rustfs-s3-full-br
+      targetVolumes:
+        volumeMounts:
+          - name: tls
+            mountPath: {{ .Values.certsPath | quote }}
   schedules:
     - backupMethod: s3-full
       enabled: false

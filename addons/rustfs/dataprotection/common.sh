@@ -30,6 +30,9 @@ rustfs_prepare_mc() {
 
   mkdir -p "${MC_CONFIG_DIR}"
   if [ -n "${RUSTFS_SCHEME:-}" ]; then
+    if [ "${RUSTFS_SCHEME}" = "https" ]; then
+      rustfs_prepare_mc_trust
+    fi
     rustfs_configure_mc_alias "${RUSTFS_SCHEME}" "${rustfs_access_key}" "${rustfs_secret_key}" || \
       rustfs_fail "failed to configure RustFS S3 alias with RUSTFS_SCHEME=${RUSTFS_SCHEME}"
     return
@@ -38,11 +41,32 @@ rustfs_prepare_mc() {
   if rustfs_configure_mc_alias http "${rustfs_access_key}" "${rustfs_secret_key}"; then
     return
   fi
+  rustfs_prepare_mc_trust
   if rustfs_configure_mc_alias https "${rustfs_access_key}" "${rustfs_secret_key}"; then
     return
   fi
 
   rustfs_fail "failed to configure RustFS S3 alias over http or https"
+}
+
+rustfs_prepare_mc_trust() {
+  rustfs_tls_ca_file="${RUSTFS_TLS_CA_FILE:-}"
+  [ -n "${rustfs_tls_ca_file}" ] || \
+    rustfs_fail "RUSTFS_TLS_CA_FILE is required for HTTPS"
+  [ -e "${rustfs_tls_ca_file}" ] || \
+    rustfs_fail "RustFS TLS CA file ${rustfs_tls_ca_file} does not exist"
+  [ -r "${rustfs_tls_ca_file}" ] || \
+    rustfs_fail "RustFS TLS CA file ${rustfs_tls_ca_file} is not readable"
+  [ -s "${rustfs_tls_ca_file}" ] || \
+    rustfs_fail "RustFS TLS CA file ${rustfs_tls_ca_file} is empty"
+
+  rustfs_mc_ca_dir="${MC_CONFIG_DIR}/certs/CAs"
+  mkdir -p "${rustfs_mc_ca_dir}"
+  cp -L "${rustfs_tls_ca_file}" "${rustfs_mc_ca_dir}/rustfs-ca.crt" || \
+    rustfs_fail "failed to install RustFS TLS CA into mc trust directory"
+  chmod 0644 "${rustfs_mc_ca_dir}/rustfs-ca.crt"
+  [ -s "${rustfs_mc_ca_dir}/rustfs-ca.crt" ] || \
+    rustfs_fail "installed RustFS TLS CA is empty"
 }
 
 rustfs_configure_mc_alias() {
@@ -64,7 +88,7 @@ rustfs_configure_mc_alias() {
 }
 
 rustfs_mc() {
-  mc --insecure --config-dir "${MC_CONFIG_DIR:-/tmp/rustfs-mc}" "$@"
+  mc --config-dir "${MC_CONFIG_DIR:-/tmp/rustfs-mc}" "$@"
 }
 
 rustfs_archive_name() {
