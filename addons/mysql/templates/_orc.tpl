@@ -261,7 +261,15 @@ memberLeave:
           exit 1
         fi
 switchover:
+  timeoutSeconds: {{ .Values.switchover.timeoutSeconds }}
   exec:
+    env:
+      - name: MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS
+        value: "{{ .Values.switchover.clientTimeoutSeconds }}"
+      - name: MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS
+        value: "{{ .Values.switchover.verifyAttempts }}"
+      - name: MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS
+        value: "{{ .Values.switchover.verifyIntervalSeconds }}"
     command:
       - /bin/sh
       - -c
