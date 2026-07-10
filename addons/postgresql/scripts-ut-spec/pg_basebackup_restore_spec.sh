@@ -111,10 +111,14 @@ EOF
     The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include "DATA_DIR=\"${DATA_DIR}\""
     The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include "PG_VERSION base global pg_wal"
     The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include "--replica"
+    The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include "standby.signal"
     The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include 'rm -f "${RESTORE_SCRIPT_DIR}/kb_restore.signal"'
     The result of function restore_hook_syntax_status should eq 0
+    touch "${DATA_DIR}/standby.signal" "${DATA_DIR}/recovery.signal"
     The result of function restore_hook_primary_status should eq 0
     The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should not be exist
+    The path "${DATA_DIR}/standby.signal" should not be exist
+    The path "${DATA_DIR}/recovery.signal" should not be exist
   End
 
   It "fails when DATA_DIR does not match the PostgreSQL volume data subdirectory"
