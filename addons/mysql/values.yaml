@@ -122,6 +122,13 @@ roleProbe:
     timeoutSeconds: 5
     clientTimeoutSeconds: 4
 
+switchover:
+  # kbagent caps positive action timeouts at 60s; leave headroom for diagnostics.
+  timeoutSeconds: 50
+  clientTimeoutSeconds: 35
+  verifyAttempts: 6
+  verifyIntervalSeconds: 2
+
 ## @param cmpdNamePrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
 ## If specified, the component definition will use it as prefix.
 cmpdNamePrefix: "mysql"
