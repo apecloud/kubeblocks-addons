@@ -164,32 +164,45 @@ done
 
 if [[ "\${IS_REPLICA}" == "true" ]]; then
     echo "Replica creation detected. Patroni will use basebackup from primary."
+    rm -rf "\${DATA_DIR}.old"
     rm -f "\${RESTORE_SCRIPT_DIR}/kb_restore.signal"
+    exit 1
+fi
+
+if [[ ! -d "\${DATA_DIR}.old" ]]; then
+    echo "ERROR: restored PostgreSQL data handoff directory is missing: \${DATA_DIR}.old" >&2
+    exit 1
+fi
+
+if [[ -d "\${DATA_DIR}" ]] && [[ -n "\$(find "\${DATA_DIR}" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+    echo "ERROR: PostgreSQL data directory is not empty before restore handoff: \${DATA_DIR}" >&2
     exit 1
 fi
 
 missing=()
 for path in PG_VERSION base global pg_wal; do
-    if [[ ! -e "\${DATA_DIR}/\${path}" ]]; then
+    if [[ ! -e "\${DATA_DIR}.old/\${path}" ]]; then
         missing+=("\${path}")
     fi
 done
 
 if [[ \${#missing[@]} -gt 0 ]]; then
-    echo "ERROR: restored PostgreSQL data directory is incomplete: \${DATA_DIR}" >&2
+    echo "ERROR: restored PostgreSQL data directory is incomplete: \${DATA_DIR}.old" >&2
     echo "ERROR: missing required entries: \${missing[*]}" >&2
     exit 1
 fi
 
-rm -f "\${DATA_DIR}/standby.signal" "\${DATA_DIR}/recovery.signal"
+rm -f "\${DATA_DIR}.old/standby.signal" "\${DATA_DIR}.old/recovery.signal"
 
 if [[ "\$(id -u)" == "0" ]]; then
-    chown -R postgres:postgres "\${DATA_DIR}" "\${RESTORE_SCRIPT_DIR}" 2>/dev/null \
-        || chown -R postgres "\${DATA_DIR}" "\${RESTORE_SCRIPT_DIR}"
+    chown -R postgres:postgres "\${DATA_DIR}.old" "\${RESTORE_SCRIPT_DIR}" 2>/dev/null \
+        || chown -R postgres "\${DATA_DIR}.old" "\${RESTORE_SCRIPT_DIR}"
 fi
 
 sync
 echo "Basebackup restored data accepted at \${DATA_DIR}"
+rm -rf "\${DATA_DIR}"
+mv "\${DATA_DIR}.old" "\${DATA_DIR}"
 rm -f "\${RESTORE_SCRIPT_DIR}/kb_restore.signal"
 EOF
     chmod +x "${RESTORE_SCRIPT_DIR}/kb_restore.sh"
@@ -199,6 +212,10 @@ function finish_restore() {
     assert_pgdata_restored
     save_backup_end_lsn
     write_restore_hook
+    rm -rf "${DATA_DIR}.old"
+    mv "${DATA_DIR}" "${DATA_DIR}.old"
+    mkdir -p "${DATA_DIR}"
+    sync
     echo "done!";
     exit 0
 }

@@ -94,29 +94,37 @@ EOF
     printf "%s" "$?"
   }
 
-  It "restores the modern zstd archive into pgroot/data and leaves the volume root clean"
+  It "stages the modern zstd archive for Patroni bootstrap and leaves the volume root clean"
     export DATASAFED_LIST_OUT="backup-test.tar.zst"
     When run bash "$(script_path)"
     The status should eq 0
     The output should include "done!"
     The result of function call_log should include "tar -xvf - -C ${DATA_DIR}/"
-    The path "${DATA_DIR}/PG_VERSION" should be exist
-    The path "${DATA_DIR}/base" should be directory
-    The path "${DATA_DIR}/global" should be directory
-    The path "${DATA_DIR}/pg_wal" should be directory
+    The path "${DATA_DIR}/PG_VERSION" should not be exist
+    The path "${DATA_DIR}/base" should not be exist
+    The path "${DATA_DIR}.old/PG_VERSION" should be exist
+    The path "${DATA_DIR}.old/base" should be directory
+    The path "${DATA_DIR}.old/global" should be directory
+    The path "${DATA_DIR}.old/pg_wal" should be directory
     The path "${VOLUME_DATA_DIR}/PG_VERSION" should not be exist
     The path "${VOLUME_DATA_DIR}/base" should not be exist
     The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should be exist
     The path "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should be executable
     The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include "DATA_DIR=\"${DATA_DIR}\""
+    The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include '${DATA_DIR}.old'
     The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include "PG_VERSION base global pg_wal"
     The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include "--replica"
     The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include "standby.signal"
     The contents of file "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should include 'rm -f "${RESTORE_SCRIPT_DIR}/kb_restore.signal"'
     The result of function restore_hook_syntax_status should eq 0
-    touch "${DATA_DIR}/standby.signal" "${DATA_DIR}/recovery.signal"
+    touch "${DATA_DIR}.old/standby.signal" "${DATA_DIR}.old/recovery.signal"
     The result of function restore_hook_primary_status should eq 0
     The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should not be exist
+    The path "${DATA_DIR}.old" should not be exist
+    The path "${DATA_DIR}/PG_VERSION" should be exist
+    The path "${DATA_DIR}/base" should be directory
+    The path "${DATA_DIR}/global" should be directory
+    The path "${DATA_DIR}/pg_wal" should be directory
     The path "${DATA_DIR}/standby.signal" should not be exist
     The path "${DATA_DIR}/recovery.signal" should not be exist
   End
@@ -132,6 +140,8 @@ EOF
     chmod +x "${bindir}/sync"
     The result of function restore_hook_primary_status should not eq 0
     The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should be exist
+    The path "${DATA_DIR}.old/PG_VERSION" should be exist
+    The path "${DATA_DIR}/PG_VERSION" should not be exist
   End
 
   It "fails when DATA_DIR does not match the PostgreSQL volume data subdirectory"
