@@ -30,39 +30,54 @@ switchover_diagnose_not_ready() {
   } >&2
 }
 
-run_orchestrator_client_with_budget() {
-  local budget="${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-35}"
-
+run_command_with_budget() {
+  local budget="$1"
+  shift
   if command -v timeout >/dev/null 2>&1; then
-    timeout "${budget}s" /kubeblocks/orchestrator-client "$@"
+    timeout "${budget}s" "$@"
     return $?
   fi
 
-  local output_file pid timer_pid rc
+  local output_file timeout_file pid timer_pid rc
   output_file="/tmp/orc-switchover-${$}-${RANDOM}.out"
-  /kubeblocks/orchestrator-client "$@" > "${output_file}" 2>&1 &
+  timeout_file="/tmp/orc-switchover-${$}-${RANDOM}.timeout"
+  "$@" > "${output_file}" 2>&1 &
   pid=$!
   (
     sleep "${budget}"
-    kill "${pid}" 2>/dev/null || true
-    sleep 1
-    kill -9 "${pid}" 2>/dev/null || true
+    if kill -0 "${pid}" 2>/dev/null; then
+      printf 'timeout\n' > "${timeout_file}"
+      kill "${pid}" 2>/dev/null || true
+      sleep 1
+      kill -9 "${pid}" 2>/dev/null || true
+    fi
   ) &
   timer_pid=$!
 
-  wait "${pid}"
+  wait "${pid}" 2>/dev/null
   rc=$?
   kill "${timer_pid}" 2>/dev/null || true
   wait "${timer_pid}" 2>/dev/null || true
   cat "${output_file}"
-  rm -f "${output_file}"
+  if [ -s "${timeout_file}" ]; then
+    rc=124
+  fi
+  rm -f "${output_file}" "${timeout_file}"
   return $rc
+}
+
+run_orchestrator_client_with_budget() {
+  local budget="$1"
+  shift
+  run_command_with_budget "${budget}" /kubeblocks/orchestrator-client "$@"
 }
 
 mysql_read_flags() {
   local host="$1"
-  mysql -u"${MYSQL_ROOT_USER}" -p"${MYSQL_ROOT_PASSWORD}" -P3306 -h"${host}" \
-    --connect-timeout=2 --batch --skip-column-names \
+  local budget="${MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS:-2}"
+  local connect_timeout="${MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS:-1}"
+  run_command_with_budget "${budget}" mysql -u"${MYSQL_ROOT_USER}" -p"${MYSQL_ROOT_PASSWORD}" -P3306 -h"${host}" \
+    --connect-timeout="${connect_timeout}" --batch --skip-column-names \
     -e "SELECT @@global.read_only, @@global.super_read_only;" 2>&1
 }
 
@@ -98,10 +113,17 @@ is_readonly_mysql() {
 
 verify_switchover_closed_once() {
   local candidate="${KB_SWITCHOVER_CANDIDATE_NAME:-}"
-  local master_from_orc candidate_flags current_flags rc
+  local master_from_orc candidate_flags current_flags precheck_budget rc
+  precheck_budget="${MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS:-3}"
 
   if [ -z "$candidate" ]; then
-    master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>/dev/null || true)
+    master_from_orc=$(run_orchestrator_client_with_budget "${precheck_budget}" -c which-cluster-master -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1)
+    rc=$?
+    if [ $rc -ne 0 ]; then
+      SWITCHOVER_VERIFY_CANDIDATE_FLAGS="candidate lookup rc=${rc} output=${master_from_orc}"
+      SWITCHOVER_VERIFY_CURRENT_FLAGS="<not checked>"
+      return 1
+    fi
     candidate="${master_from_orc%%:*}"
   fi
   SWITCHOVER_VERIFY_CANDIDATE="${candidate:-<empty>}"
@@ -131,8 +153,8 @@ verify_switchover_closed_once() {
 }
 
 verify_switchover_closed_or_defer() {
-  local attempts="${MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS:-6}"
-  local interval="${MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS:-2}"
+  local attempts="${MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS:-2}"
+  local interval="${MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS:-1}"
   local i ctx
 
   i=1
@@ -141,12 +163,18 @@ verify_switchover_closed_or_defer() {
       mysql_note "Switchover verified: candidate is writable and previous primary is read-only."
       return 0
     fi
-    sleep "$interval"
+    if [ "$i" -lt "$attempts" ]; then
+      sleep "$interval"
+    fi
     i=$((i + 1))
   done
 
-  ctx=$(printf '  verify-attempts: %s\n  verify-interval-seconds: %s\n  observed-candidate: %s\n  candidate-flags: %s\n  current-flags: %s' \
-    "$attempts" "$interval" "${SWITCHOVER_VERIFY_CANDIDATE:-<unset>}" \
+  ctx=$(printf '  verify-attempts: %s\n  verify-interval-seconds: %s\n  precheck-timeout-seconds: %s\n  client-timeout-seconds: %s\n  mysql-timeout-seconds: %s\n  mysql-connect-timeout-seconds: %s\n  observed-candidate: %s\n  candidate-flags: %s\n  current-flags: %s' \
+    "$attempts" "$interval" "${MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS:-3}" \
+    "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-28}" \
+    "${MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS:-2}" \
+    "${MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS:-1}" \
+    "${SWITCHOVER_VERIFY_CANDIDATE:-<unset>}" \
     "${SWITCHOVER_VERIFY_CANDIDATE_FLAGS:-<unset>}" "${SWITCHOVER_VERIFY_CURRENT_FLAGS:-<unset>}")
   switchover_diagnose_not_ready "post-switchover-not-converged" "$ctx" "yes"
   return 1
@@ -158,10 +186,15 @@ if [[ "$KB_SWITCHOVER_ROLE" != "primary" ]]; then
   exit 0
 fi
 
-# Skip if KB_SWITCHOVER_CURRENT_NAME is not the master
-master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1)
-if [ -z "$master_from_orc" ]; then
-  mysql_error "Could not determine current master from Orchestrator"
+# Skip if KB_SWITCHOVER_CURRENT_NAME is not the master.
+# Keep Orchestrator probing bounded; rc!=0 is a hard precheck failure and must
+# not be mistaken for a master name (that previously made this guard exit 0).
+precheck_budget="${MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS:-3}"
+
+master_from_orc=$(run_orchestrator_client_with_budget "${precheck_budget}" -c which-cluster-master -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1)
+rc=$?
+if [ $rc -ne 0 ] || [ -z "$master_from_orc" ]; then
+  mysql_error "Could not determine current master from Orchestrator (rc=${rc}): ${master_from_orc}"
 fi
 
 if [ "${KB_SWITCHOVER_CURRENT_NAME}" != "${master_from_orc%%:*}" ]; then
@@ -170,8 +203,13 @@ if [ "${KB_SWITCHOVER_CURRENT_NAME}" != "${master_from_orc%%:*}" ]; then
 fi
 
 # Skip switch if there is only one instance
-instance_count=$(/kubeblocks/orchestrator-client -c which-cluster-instances -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1 | wc -l)
-if [ "$instance_count" -eq 1 ]; then
+instances=$(run_orchestrator_client_with_budget "${precheck_budget}" -c which-cluster-instances -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1)
+rc=$?
+if [ $rc -ne 0 ]; then
+  mysql_error "Could not list cluster instances from Orchestrator (rc=${rc}): ${instances}"
+fi
+instance_count=$(printf '%s\n' "$instances" | sed '/^$/d' | wc -l)
+if [ "$instance_count" -le 1 ]; then
   mysql_note "Only one instance in cluster, cannot switchover."
   exit 0
 fi
@@ -179,14 +217,14 @@ fi
 if [ -n "$KB_SWITCHOVER_CANDIDATE_NAME" ]; then
   # Switchover to specific candidate
   mysql_note "Initiating graceful switchover to: ${KB_SWITCHOVER_CANDIDATE_NAME}"
-  result=$(run_orchestrator_client_with_budget -c graceful-master-takeover-auto \
+  result=$(run_orchestrator_client_with_budget "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-28}" -c graceful-master-takeover-auto \
     -i "${KB_SWITCHOVER_CURRENT_NAME}" \
     -d "${KB_SWITCHOVER_CANDIDATE_NAME}" 2>&1)
   exit_code=$?
 else
   # Auto-select candidate
   mysql_note "Initiating graceful switchover with auto-selected candidate"
-  result=$(run_orchestrator_client_with_budget -c graceful-master-takeover-auto \
+  result=$(run_orchestrator_client_with_budget "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-28}" -c graceful-master-takeover-auto \
     -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1)
   exit_code=$?
 fi
