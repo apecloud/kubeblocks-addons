@@ -188,9 +188,9 @@ if [[ "\$(id -u)" == "0" ]]; then
         || chown -R postgres "\${DATA_DIR}" "\${RESTORE_SCRIPT_DIR}"
 fi
 
-rm -f "\${RESTORE_SCRIPT_DIR}/kb_restore.signal"
 sync
 echo "Basebackup restored data accepted at \${DATA_DIR}"
+rm -f "\${RESTORE_SCRIPT_DIR}/kb_restore.signal"
 EOF
     chmod +x "${RESTORE_SCRIPT_DIR}/kb_restore.sh"
 }
