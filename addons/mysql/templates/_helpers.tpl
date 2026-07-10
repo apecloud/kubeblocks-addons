@@ -69,7 +69,6 @@ Common annotations
 {{- define "mysql.annotations" -}}
 {{ include "kblib.helm.resourcePolicy" . }}
 {{ include "mysql.apiVersion" . }}
-apps.kubeblocks.io/skip-immutable-check: "true"
 {{- end }}
 
 {{/*
