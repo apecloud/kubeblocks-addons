@@ -76,7 +76,7 @@ mysql_read_flags() {
   local host="$1"
   local budget="${MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS:-2}"
   local connect_timeout="${MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS:-1}"
-  run_command_with_budget "${budget}" mysql -u"${MYSQL_ROOT_USER}" -p"${MYSQL_ROOT_PASSWORD}" -P3306 -h"${host}" \
+  run_command_with_budget "${budget}" env MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql -u"${MYSQL_ROOT_USER}" -P3306 -h"${host}" \
     --connect-timeout="${connect_timeout}" --batch --skip-column-names \
     -e "SELECT @@global.read_only, @@global.super_read_only;" 2>&1
 }
@@ -95,19 +95,41 @@ is_true_flag() {
   esac
 }
 
+extract_mysql_read_flags() {
+  local flags="$1"
+  printf '%s\n' "$flags" | awk '
+    NF >= 2 {
+      read_only = tolower($1)
+      super_read_only = tolower($2)
+      if ((read_only == "0" || read_only == "1" || read_only == "on" || read_only == "off" || read_only == "true" || read_only == "false") &&
+          (super_read_only == "0" || super_read_only == "1" || super_read_only == "on" || super_read_only == "off" || super_read_only == "true" || super_read_only == "false")) {
+        last_read_only = $1
+        last_super_read_only = $2
+        found = 1
+      }
+    }
+    END {
+      if (!found) {
+        exit 1
+      }
+      print last_read_only, last_super_read_only
+    }
+  '
+}
+
 is_writable_mysql() {
   local flags="$1"
-  local read_only super_read_only
-  read_only=$(printf '%s\n' "$flags" | awk 'NR==1 {print $1}')
-  super_read_only=$(printf '%s\n' "$flags" | awk 'NR==1 {print $2}')
+  local parsed read_only super_read_only
+  parsed=$(extract_mysql_read_flags "$flags") || return 1
+  read -r read_only super_read_only <<< "$parsed"
   is_false_flag "$read_only" && is_false_flag "$super_read_only"
 }
 
 is_readonly_mysql() {
   local flags="$1"
-  local read_only super_read_only
-  read_only=$(printf '%s\n' "$flags" | awk 'NR==1 {print $1}')
-  super_read_only=$(printf '%s\n' "$flags" | awk 'NR==1 {print $2}')
+  local parsed read_only super_read_only
+  parsed=$(extract_mysql_read_flags "$flags") || return 1
+  read -r read_only super_read_only <<< "$parsed"
   is_true_flag "$read_only" && is_true_flag "$super_read_only"
 }
 
@@ -196,6 +218,10 @@ verify_switchover_closed_or_defer() {
   switchover_diagnose_not_ready "post-switchover-not-converged" "$ctx" "yes"
   return 1
 }
+
+# This is magic for shellspec ut framework.
+# When included from shellspec, __SOURCED__ is set and only functions are loaded.
+${__SOURCED__:+false} : || return 0
 
 # Check pod role
 if [[ "$KB_SWITCHOVER_ROLE" != "primary" ]]; then
