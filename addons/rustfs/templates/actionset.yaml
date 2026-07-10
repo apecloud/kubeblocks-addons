@@ -13,9 +13,12 @@ spec:
       value: "rustfs-s3-full.v1"
     - name: RUSTFS_MC_IMAGE
       value: {{ include "rustfs.mcImage" . | quote }}
+    - name: RUSTFS_TLS_CA_FILE
+      value: {{ printf "%s/ca.crt" (trimSuffix "/" .Values.certsPath) | quote }}
   backup:
     backupData:
       image: {{ include "rustfs.mcImage" . }}
+      runOnTargetPodNode: true
       syncProgress:
         enabled: true
         intervalSeconds: 5
@@ -29,6 +32,7 @@ spec:
     postReady:
       - job:
           image: {{ include "rustfs.mcImage" . }}
+          runOnTargetPodNode: true
           command:
             - sh
             - -c

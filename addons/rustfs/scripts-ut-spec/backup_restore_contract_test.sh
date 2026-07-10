@@ -4,6 +4,8 @@ set -eu
 
 ROOT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 TMP_ROOT="$(mktemp -d)"
+REAL_CP_BIN="$(command -v cp)"
+export REAL_CP_BIN
 
 cleanup() {
   rm -rf "${TMP_ROOT}"
@@ -19,10 +21,18 @@ set -eu
 log="${FAKE_MC_LOG:?missing FAKE_MC_LOG}"
 echo "mc $*" >> "${log}"
 
+config_dir=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --insecure) shift ;;
-    --config-dir) shift 2 ;;
+    --insecure)
+      if [ "${FAKE_REJECT_INSECURE:-}" = "1" ]; then
+        echo "fake mc rejected --insecure" >&2
+        exit 1
+      fi
+      shift ;;
+    --config-dir)
+      config_dir="$2"
+      shift 2 ;;
     *) break ;;
   esac
 done
@@ -38,6 +48,15 @@ case "$1" in
         http://*)
           echo "fake http read probe rejected" >&2
           exit 1 ;;
+      esac
+    fi
+    if [ "${FAKE_REQUIRE_CA:-}" = "1" ]; then
+      case "$(cat "${FAKE_MC_ALIAS_FILE}")" in
+        https://*)
+          [ -s "${config_dir}/certs/CAs/rustfs-ca.crt" ] || {
+            echo "fake https trust probe rejected missing CA" >&2
+            exit 1
+          } ;;
       esac
     fi
     echo '2026-07-03 00:00:00 UTC a/'
@@ -112,13 +131,33 @@ case "${cmd}" in
 esac
 SH
 
-chmod +x "${TMP_ROOT}/bin/mc" "${TMP_ROOT}/bin/datasafed"
+cat > "${TMP_ROOT}/bin/cp" <<'SH'
+#!/bin/sh
+set -eu
+
+destination=""
+for arg in "$@"; do
+  destination="${arg}"
+done
+if [ "${FAKE_TRUNCATE_CA_COPY:-}" = "1" ]; then
+  case "${destination}" in
+    */certs/CAs/rustfs-ca.crt)
+      : > "${destination}"
+      exit 0 ;;
+  esac
+fi
+exec "${REAL_CP_BIN:?missing REAL_CP_BIN}" "$@"
+SH
+
+chmod +x "${TMP_ROOT}/bin/mc" "${TMP_ROOT}/bin/datasafed" "${TMP_ROOT}/bin/cp"
 
 export PATH="${TMP_ROOT}/bin:${PATH}"
 export FAKE_STORE="${TMP_ROOT}/store"
 export FAKE_MC_LOG="${TMP_ROOT}/mc.log"
 export FAKE_MC_ALIAS_FILE="${TMP_ROOT}/mc-alias-endpoint"
 export FAKE_FORCE_HTTPS=1
+export FAKE_REJECT_INSECURE=1
+export FAKE_REQUIRE_CA=1
 export DP_BACKUP_BASE_PATH=/fake/base
 export DP_BACKUP_INFO_FILE="${TMP_ROOT}/backup-info.json"
 export DP_BACKUP_NAME=rustfs-test
@@ -128,7 +167,63 @@ export DP_DB_USER=root
 export DP_DB_PASSWORD=secret
 export RUSTFS_MC_IMAGE=docker.io/minio/mc@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
 export TMPDIR="${TMP_ROOT}/tmp"
-mkdir -p "${TMPDIR}"
+export MC_CONFIG_DIR="${TMP_ROOT}/mc-config"
+export RUSTFS_TLS_CA_FILE="${TMP_ROOT}/tls/ca.crt"
+mkdir -p "${TMPDIR}" "$(dirname "${RUSTFS_TLS_CA_FILE}")"
+printf '%s\n' 'rustfs-test-ca' > "${RUSTFS_TLS_CA_FILE}"
+
+(
+  export RUSTFS_TLS_CA_FILE="${TMP_ROOT}/tls/http-does-not-mount-ca.crt"
+  export FAKE_FORCE_HTTPS=0
+  export MC_CONFIG_DIR="${TMP_ROOT}/mc-http"
+  # shellcheck disable=SC1091
+  . "${ROOT_DIR}/dataprotection/common.sh"
+  rustfs_prepare_mc
+  [ "${RUSTFS_SCHEME_EFFECTIVE}" = "http" ]
+) || {
+  echo "TLS-off RustFS alias did not resolve over HTTP" >&2
+  exit 1
+}
+
+if (
+  unset RUSTFS_TLS_CA_FILE
+  export FAKE_FORCE_HTTPS=1
+  export MC_CONFIG_DIR="${TMP_ROOT}/mc-missing-ca"
+  # shellcheck disable=SC1091
+  . "${ROOT_DIR}/dataprotection/common.sh"
+  rustfs_prepare_mc
+); then
+  echo "HTTPS alias succeeded without a trusted RustFS CA" >&2
+  exit 1
+fi
+
+if (
+  export RUSTFS_TLS_CA_FILE="${TMP_ROOT}/tls/missing-ca.crt"
+  export RUSTFS_SCHEME=https
+  export FAKE_FORCE_HTTPS=1
+  export FAKE_REQUIRE_CA=0
+  export MC_CONFIG_DIR="${TMP_ROOT}/mc-missing-ca-path"
+  # shellcheck disable=SC1091
+  . "${ROOT_DIR}/dataprotection/common.sh"
+  rustfs_prepare_mc
+); then
+  echo "HTTPS alias succeeded with a configured but missing RustFS CA" >&2
+  exit 1
+fi
+
+if (
+  export RUSTFS_SCHEME=https
+  export FAKE_FORCE_HTTPS=1
+  export FAKE_REQUIRE_CA=0
+  export FAKE_TRUNCATE_CA_COPY=1
+  export MC_CONFIG_DIR="${TMP_ROOT}/mc-empty-installed-ca"
+  # shellcheck disable=SC1091
+  . "${ROOT_DIR}/dataprotection/common.sh"
+  rustfs_prepare_mc
+); then
+  echo "HTTPS alias succeeded after installing an empty RustFS CA" >&2
+  exit 1
+fi
 
 (
   # shellcheck disable=SC1091
@@ -208,6 +303,14 @@ grep -q 'mirror --overwrite .*/rustfs-restore/objects rustfs/' "${FAKE_MC_LOG}" 
 }
 grep -q 'alias set rustfs https://rustfs-0.rustfs-headless.demo.svc:9000' "${FAKE_MC_LOG}" || {
   echo "https alias fallback was not exercised" >&2
+  exit 1
+}
+if grep -q -- '--insecure' "${FAKE_MC_LOG}"; then
+  echo "backup/restore mc commands bypassed TLS certificate verification" >&2
+  exit 1
+fi
+[ "$(cat "${MC_CONFIG_DIR}/certs/CAs/rustfs-ca.crt")" = 'rustfs-test-ca' ] || {
+  echo "RustFS CA was not installed into the mc trust directory" >&2
   exit 1
 }
 
