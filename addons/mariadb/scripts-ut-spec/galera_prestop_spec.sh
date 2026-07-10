@@ -139,6 +139,7 @@ Describe "galera-prestop.sh"
     When call wait_for_higher_ordinals
     The status should be failure
     The output should include "reason=order_wait_timeout"
+    The output should include "elapsed_seconds="
     The contents of file "${GALERA_PRESTOP_DEGRADED_LOG}" should include "budget-exhausted"
   End
 

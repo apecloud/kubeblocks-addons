@@ -210,7 +210,7 @@ wait_for_higher_ordinals() {
       for exhausted_peer in ${peers}; do
         exhausted="${exhausted} ${exhausted_peer}(budget-exhausted)"
       done
-      record_degraded "reason=order_wait_timeout peers:${exhausted}"
+      record_degraded "reason=order_wait_timeout elapsed_seconds=$((now - started_at)) peers:${exhausted}"
       return 1
     fi
 
@@ -253,7 +253,7 @@ wait_for_higher_ordinals() {
     now="$(monotonic_seconds)"
     remaining=$((deadline - now))
     if [ "${remaining}" -le 0 ]; then
-      record_degraded "reason=order_wait_timeout peers:${still_waiting}"
+      record_degraded "reason=order_wait_timeout elapsed_seconds=$((now - started_at)) peers:${still_waiting}"
       return 1
     fi
 
