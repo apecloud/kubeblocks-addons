@@ -77,6 +77,8 @@ ORC_SWITCHOVER_CLIENT_OUTPUT_FILE=""
 ORC_SWITCHOVER_CLIENT_RC_FILE=""
 ORC_SWITCHOVER_CLIENT_RC=""
 ORC_SWITCHOVER_CLIENT_OUTPUT=""
+SWITCHOVER_VERIFY_CANDIDATE_RAW=""
+SWITCHOVER_VERIFY_CURRENT_RAW=""
 
 start_orchestrator_client_background() {
   local budget="$1"
@@ -118,6 +120,45 @@ mysql_read_flags() {
   run_command_with_budget "${budget}" env MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql -u"${MYSQL_ROOT_USER}" -P3306 -h"${host}" \
     --connect-timeout="${connect_timeout}" --batch --skip-column-names \
     -e "SELECT @@global.read_only, @@global.super_read_only;" 2>&1
+}
+
+read_mysql_flags_pair() {
+  local candidate="$1"
+  local current="$2"
+  local candidate_output_file candidate_rc_file current_output_file current_rc_file
+  local candidate_pid current_pid candidate_rc current_rc candidate_output current_output
+
+  candidate_output_file="/tmp/orc-switchover-candidate-${$}-${RANDOM}.out"
+  candidate_rc_file="/tmp/orc-switchover-candidate-${$}-${RANDOM}.rc"
+  current_output_file="/tmp/orc-switchover-current-${$}-${RANDOM}.out"
+  current_rc_file="/tmp/orc-switchover-current-${$}-${RANDOM}.rc"
+
+  (
+    mysql_read_flags "$candidate" > "${candidate_output_file}" 2>&1
+    printf '%s\n' "$?" > "${candidate_rc_file}"
+  ) &
+  candidate_pid=$!
+
+  (
+    mysql_read_flags "$current" > "${current_output_file}" 2>&1
+    printf '%s\n' "$?" > "${current_rc_file}"
+  ) &
+  current_pid=$!
+
+  wait "${candidate_pid}" 2>/dev/null || true
+  wait "${current_pid}" 2>/dev/null || true
+
+  candidate_rc=$(cat "${candidate_rc_file}" 2>/dev/null || printf '1')
+  current_rc=$(cat "${current_rc_file}" 2>/dev/null || printf '1')
+  candidate_output=$(cat "${candidate_output_file}" 2>/dev/null || true)
+  current_output=$(cat "${current_output_file}" 2>/dev/null || true)
+  SWITCHOVER_VERIFY_CANDIDATE_RAW="${candidate_output}"
+  SWITCHOVER_VERIFY_CURRENT_RAW="${current_output}"
+  SWITCHOVER_VERIFY_CANDIDATE_FLAGS="rc=${candidate_rc} output=${candidate_output}"
+  SWITCHOVER_VERIFY_CURRENT_FLAGS="rc=${current_rc} output=${current_output}"
+
+  rm -f "${candidate_output_file}" "${candidate_rc_file}" "${current_output_file}" "${current_rc_file}"
+  [ "$candidate_rc" = "0" ] && [ "$current_rc" = "0" ]
 }
 
 is_false_flag() {
@@ -188,7 +229,7 @@ append_switchover_verify_history() {
 
 verify_switchover_closed_once() {
   local candidate="${KB_SWITCHOVER_CANDIDATE_NAME:-}"
-  local master_from_orc candidate_flags current_flags precheck_budget rc
+  local master_from_orc precheck_budget rc
   precheck_budget="${MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS:-3}"
 
   if [ -z "$candidate" ]; then
@@ -209,32 +250,21 @@ verify_switchover_closed_once() {
     return 1
   fi
 
-  candidate_flags=$(mysql_read_flags "$candidate")
-  rc=$?
-  SWITCHOVER_VERIFY_CANDIDATE_FLAGS="rc=${rc} output=${candidate_flags}"
-  if [ $rc -ne 0 ]; then
-    SWITCHOVER_VERIFY_CURRENT_FLAGS="<not checked>"
+  if ! read_mysql_flags_pair "$candidate" "$KB_SWITCHOVER_CURRENT_NAME"; then
     return 1
   fi
 
-  current_flags=$(mysql_read_flags "$KB_SWITCHOVER_CURRENT_NAME")
-  rc=$?
-  SWITCHOVER_VERIFY_CURRENT_FLAGS="rc=${rc} output=${current_flags}"
-  if [ $rc -ne 0 ]; then
-    return 1
-  fi
-
-  is_writable_mysql "$candidate_flags" && is_readonly_mysql "$current_flags"
+  is_writable_mysql "$SWITCHOVER_VERIFY_CANDIDATE_RAW" && is_readonly_mysql "$SWITCHOVER_VERIFY_CURRENT_RAW"
 }
 
 switchover_verify_context() {
-  local attempts="${MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS:-12}"
+  local attempts="${MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS:-20}"
   local interval="${MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS:-1}"
-  local window="${MYSQL_ORC_SWITCHOVER_VERIFY_WINDOW_SECONDS:-${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-35}}"
+  local window="${MYSQL_ORC_SWITCHOVER_VERIFY_WINDOW_SECONDS:-${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-40}}"
   local ctx
   ctx=$(printf '  verify-attempts: %s\n  verify-interval-seconds: %s\n  verify-window-seconds: %s\n  precheck-timeout-seconds: %s\n  client-timeout-seconds: %s\n  mysql-timeout-seconds: %s\n  mysql-connect-timeout-seconds: %s\n  observed-candidate: %s\n  candidate-flags: %s\n  current-flags: %s' \
     "$attempts" "$interval" "$window" "${MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS:-3}" \
-    "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-35}" \
+    "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-40}" \
     "${MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS:-1}" \
     "${MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS:-1}" \
     "${SWITCHOVER_VERIFY_CANDIDATE:-<unset>}" \
@@ -253,9 +283,9 @@ diagnose_switchover_not_converged() {
 }
 
 verify_switchover_closed_window() {
-  local attempts="${MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS:-12}"
+  local attempts="${MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS:-20}"
   local interval="${MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS:-1}"
-  local window="${MYSQL_ORC_SWITCHOVER_VERIFY_WINDOW_SECONDS:-${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-35}}"
+  local window="${MYSQL_ORC_SWITCHOVER_VERIFY_WINDOW_SECONDS:-${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-40}}"
   local started="$SECONDS"
   local i
 
@@ -364,7 +394,7 @@ fi
 if [ -n "$KB_SWITCHOVER_CANDIDATE_NAME" ]; then
   # Switchover to specific candidate
   mysql_note "Initiating graceful switchover to: ${KB_SWITCHOVER_CANDIDATE_NAME}"
-  if run_switchover_client_and_verify "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-35}" -c graceful-master-takeover-auto \
+  if run_switchover_client_and_verify "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-40}" -c graceful-master-takeover-auto \
     -i "${KB_SWITCHOVER_CURRENT_NAME}" \
     -d "${KB_SWITCHOVER_CANDIDATE_NAME}"; then
     exit 0
@@ -372,7 +402,7 @@ if [ -n "$KB_SWITCHOVER_CANDIDATE_NAME" ]; then
 else
   # Auto-select candidate
   mysql_note "Initiating graceful switchover with auto-selected candidate"
-  if run_switchover_client_and_verify "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-35}" -c graceful-master-takeover-auto \
+  if run_switchover_client_and_verify "${MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS:-40}" -c graceful-master-takeover-auto \
     -i "${KB_SWITCHOVER_CURRENT_NAME}"; then
     exit 0
   fi
