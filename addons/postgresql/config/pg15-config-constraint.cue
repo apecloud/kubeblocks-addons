@@ -1076,7 +1076,7 @@
 	wal_buffers?: int & >=-1 & <=262143 @storeResource(8KB)
 
 	// Compresses full-page writes written in WAL file.
-	wal_compression: bool & false | true | *true
+	wal_compression: string & (*"pglz" | "lz4" | "zstd" | "on" | "off")
 
 	// Sets the WAL resource managers for which WAL consistency checks are done.
 	wal_consistency_checking?: string
