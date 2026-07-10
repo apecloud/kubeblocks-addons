@@ -90,10 +90,12 @@ spec:
           - /tools/syncerctl
           - getrole
     memberLeave:
-      http:
-        port: "3601"
-        path: /v1.0/leavemember
-        method: POST
+      exec:
+        container: mongodb
+        command:
+          - /bin/sh
+          - -c
+          - /scripts/mongodb-member-leave.sh > /tmp/member-leave.log 2>&1
       timeoutSeconds: -1
     switchover:
       exec:
@@ -251,6 +253,10 @@ spec:
       - name: mongodb-backup-agent
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        ports:
+          - name: pbm-agent-ha
+            protocol: TCP
+            containerPort: 3361
         command:
           - /tools/syncer
           - --
@@ -286,8 +292,8 @@ spec:
             value: "true"
           - name: SYNCER_BACKUP_ENABLED
             value: "true"
-          - name: SYNCER_DISABLE_HTTP_SERVER
-            value: "true"
+          - name: SYNCER_SERVICE_PORT
+            value: "3361"
           - name: PBM_AGENT_MONGODB_USERNAME
             value: $(MONGODB_ADMIN_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
