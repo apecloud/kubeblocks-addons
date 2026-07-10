@@ -277,13 +277,20 @@ switchover:
       - name: MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS
         value: "{{ .Values.switchover.verifyIntervalSeconds }}"
     command:
-      - /bin/sh
+      - /bin/bash
       - -c
       - |
-        /orc-scripts/switchover.sh 2>> /tmp/switchover.log
-        if [ $? -ne 0 ]; then
-          echo "ERROR: Failed to switchover"
-          exit 1
+        /orc-scripts/switchover.sh 2> >(tee -a /tmp/switchover.log >&2)
+        rc=$?
+        if [ $rc -ne 0 ]; then
+          {
+            echo "ERROR: Failed to switchover (rc=${rc}); diagnostics mirrored to /tmp/switchover.log"
+            if [ -s /tmp/switchover.log ]; then
+              echo "ERROR: switchover diagnostic tail:"
+              tail -n 200 /tmp/switchover.log || true
+            fi
+          } | tee /dev/stderr
+          exit $rc
         fi
 
 {{- end }}

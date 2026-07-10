@@ -111,6 +111,20 @@ is_readonly_mysql() {
   is_true_flag "$read_only" && is_true_flag "$super_read_only"
 }
 
+append_switchover_verify_history() {
+  local attempt="$1"
+  local entry
+  entry=$(printf 'attempt %s: observed-candidate=%s; candidate-flags=%s; current-flags=%s' \
+    "$attempt" "${SWITCHOVER_VERIFY_CANDIDATE:-<unset>}" \
+    "${SWITCHOVER_VERIFY_CANDIDATE_FLAGS:-<unset>}" \
+    "${SWITCHOVER_VERIFY_CURRENT_FLAGS:-<unset>}")
+  if [ -z "${SWITCHOVER_VERIFY_HISTORY:-}" ]; then
+    SWITCHOVER_VERIFY_HISTORY="$entry"
+  else
+    SWITCHOVER_VERIFY_HISTORY=$(printf '%s\n%s' "$SWITCHOVER_VERIFY_HISTORY" "$entry")
+  fi
+}
+
 verify_switchover_closed_once() {
   local candidate="${KB_SWITCHOVER_CANDIDATE_NAME:-}"
   local master_from_orc candidate_flags current_flags precheck_budget rc
@@ -153,16 +167,18 @@ verify_switchover_closed_once() {
 }
 
 verify_switchover_closed_or_defer() {
-  local attempts="${MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS:-2}"
+  local attempts="${MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS:-4}"
   local interval="${MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS:-1}"
   local i ctx
 
+  SWITCHOVER_VERIFY_HISTORY=""
   i=1
   while [ "$i" -le "$attempts" ]; do
     if verify_switchover_closed_once; then
       mysql_note "Switchover verified: candidate is writable and previous primary is read-only."
       return 0
     fi
+    append_switchover_verify_history "$i"
     if [ "$i" -lt "$attempts" ]; then
       sleep "$interval"
     fi
@@ -176,6 +192,7 @@ verify_switchover_closed_or_defer() {
     "${MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS:-1}" \
     "${SWITCHOVER_VERIFY_CANDIDATE:-<unset>}" \
     "${SWITCHOVER_VERIFY_CANDIDATE_FLAGS:-<unset>}" "${SWITCHOVER_VERIFY_CURRENT_FLAGS:-<unset>}")
+  ctx=$(printf '%s\n  verify-history:\n%s' "$ctx" "${SWITCHOVER_VERIFY_HISTORY:-<empty>}")
   switchover_diagnose_not_ready "post-switchover-not-converged" "$ctx" "yes"
   return 1
 }
