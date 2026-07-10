@@ -123,13 +123,14 @@ roleProbe:
     clientTimeoutSeconds: 4
 
 switchover:
-  # kbagent caps positive action timeouts at 60s; leave headroom for diagnostics.
-  timeoutSeconds: 55
+  # kbagent caps positive action timeouts at 60s; keep a buffer for diagnostics.
+  # Worst-case budget: 2*3s prechecks + 20s ORC CLI + 8*(2*1s SQL probes) + 7*1s intervals = 49s.
+  timeoutSeconds: 50
   precheckTimeoutSeconds: 3
-  clientTimeoutSeconds: 28
-  mysqlTimeoutSeconds: 2
+  clientTimeoutSeconds: 20
+  mysqlTimeoutSeconds: 1
   mysqlConnectTimeoutSeconds: 1
-  verifyAttempts: 4
+  verifyAttempts: 8
   verifyIntervalSeconds: 1
 
 ## @param cmpdNamePrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
