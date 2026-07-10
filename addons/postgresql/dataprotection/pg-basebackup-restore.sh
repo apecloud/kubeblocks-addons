@@ -148,6 +148,23 @@ set -o pipefail
 
 DATA_DIR="${DATA_DIR}"
 RESTORE_SCRIPT_DIR="${RESTORE_SCRIPT_DIR}"
+HANDOFF_MARKER=".kb_restore_handoff"
+
+function verify_pgdata_complete() {
+    local root_dir="\$1"
+    missing=()
+    for path in PG_VERSION base global pg_wal; do
+        if [[ ! -e "\${root_dir}/\${path}" ]]; then
+            missing+=("\${path}")
+        fi
+    done
+
+    if [[ \${#missing[@]} -gt 0 ]]; then
+        echo "ERROR: restored PostgreSQL data directory is incomplete: \${root_dir}" >&2
+        echo "ERROR: missing required entries: \${missing[*]}" >&2
+        exit 1
+    fi
+}
 
 IS_REPLICA=false
 while [[ \$# -gt 0 ]]; do
@@ -170,6 +187,20 @@ if [[ "\${IS_REPLICA}" == "true" ]]; then
 fi
 
 if [[ ! -d "\${DATA_DIR}.old" ]]; then
+    if [[ -f "\${DATA_DIR}/\${HANDOFF_MARKER}" ]]; then
+        verify_pgdata_complete "\${DATA_DIR}"
+        sync
+        echo "Basebackup restore handoff already committed at \${DATA_DIR}"
+        rm -f "\${RESTORE_SCRIPT_DIR}/kb_restore.signal"
+        rm -f "\${DATA_DIR}/\${HANDOFF_MARKER}" || true
+        exit 0
+    fi
+
+    if [[ -d "\${DATA_DIR}" ]] && [[ -n "\$(find "\${DATA_DIR}" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+        echo "ERROR: PostgreSQL data directory is non-empty but restore handoff marker is absent: \${DATA_DIR}" >&2
+        exit 1
+    fi
+
     echo "ERROR: restored PostgreSQL data handoff directory is missing: \${DATA_DIR}.old" >&2
     exit 1
 fi
@@ -179,20 +210,10 @@ if [[ -d "\${DATA_DIR}" ]] && [[ -n "\$(find "\${DATA_DIR}" -mindepth 1 -maxdept
     exit 1
 fi
 
-missing=()
-for path in PG_VERSION base global pg_wal; do
-    if [[ ! -e "\${DATA_DIR}.old/\${path}" ]]; then
-        missing+=("\${path}")
-    fi
-done
-
-if [[ \${#missing[@]} -gt 0 ]]; then
-    echo "ERROR: restored PostgreSQL data directory is incomplete: \${DATA_DIR}.old" >&2
-    echo "ERROR: missing required entries: \${missing[*]}" >&2
-    exit 1
-fi
+verify_pgdata_complete "\${DATA_DIR}.old"
 
 rm -f "\${DATA_DIR}.old/standby.signal" "\${DATA_DIR}.old/recovery.signal"
+touch "\${DATA_DIR}.old/\${HANDOFF_MARKER}"
 
 if [[ "\$(id -u)" == "0" ]]; then
     chown -R postgres:postgres "\${DATA_DIR}.old" "\${RESTORE_SCRIPT_DIR}" 2>/dev/null \
@@ -203,7 +224,9 @@ sync
 echo "Basebackup restored data accepted at \${DATA_DIR}"
 rm -rf "\${DATA_DIR}"
 mv "\${DATA_DIR}.old" "\${DATA_DIR}"
+sync
 rm -f "\${RESTORE_SCRIPT_DIR}/kb_restore.signal"
+rm -f "\${DATA_DIR}/\${HANDOFF_MARKER}" || true
 EOF
     chmod +x "${RESTORE_SCRIPT_DIR}/kb_restore.sh"
 }
