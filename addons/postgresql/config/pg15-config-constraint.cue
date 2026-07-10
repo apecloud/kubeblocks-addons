@@ -1106,7 +1106,7 @@
 	work_mem?: int & >=64 & <=2147483647 @storeResource(1KB)
 
 	// If set to on (the default), this option causes new WAL files to be filled with zeroes. On some file systems, this ensures that space is allocated before we need to write WAL records. However, Copy-On-Write (COW) file systems may not benefit from this technique, so the option is given to skip the unnecessary work. If set to off, only the final byte is written when the file is created so that it has the expected size.
-	wal_init_zero?: string & "on" | "off"
+	wal_init_zero?: (bool & (false | true)) | (string & ("on" | "off"))
 
 	// Sets how binary values are to be encoded in XML.
 	xmlbinary?: string & "base64" | "hex"
