@@ -121,6 +121,19 @@ EOF
     The path "${DATA_DIR}/recovery.signal" should not be exist
   End
 
+  It "keeps the restore signal when the primary hook fails before commit"
+    export DATASAFED_LIST_OUT="backup-test.tar.zst"
+    When run bash "$(script_path)"
+    The status should eq 0
+    cat > "${bindir}/sync" <<'EOF'
+#!/bin/sh
+exit 7
+EOF
+    chmod +x "${bindir}/sync"
+    The result of function restore_hook_primary_status should not eq 0
+    The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should be exist
+  End
+
   It "fails when DATA_DIR does not match the PostgreSQL volume data subdirectory"
     export DATASAFED_LIST_OUT="backup-test.tar.zst"
     DATA_DIR="${VOLUME_DATA_DIR}"
