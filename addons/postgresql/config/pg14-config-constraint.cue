@@ -1,9 +1,11 @@
 // PostgreSQL parameters: https://postgresqlco.nf/doc/en/param/
+#PgBool: string & =~"(?i)^(on|off|true|false|yes|no|0|1)$"
+
 #PGParameter: {
 	// Allows tablespaces directly inside pg_tblspc, for testing, pg version: 15
-	allow_in_place_tablespaces?: bool
+	allow_in_place_tablespaces?: #PgBool
 	// Allows modification of the structure of system tables as well as certain other risky actions on system tables. This is otherwise not allowed even for superusers. Ill-advised use of this setting can cause irretrievable data loss or seriously corrupt the database system.
-	allow_system_table_mods?: bool
+	allow_system_table_mods?: #PgBool
 	// Sets the application name to be reported in statistics and logs.
 	application_name?: string
 	// Sets the shell command that will be called to archive a WAL file.
@@ -15,13 +17,13 @@
 	// (s) Forces a switch to the next xlog file if a new file has not been started within N seconds.
 	archive_timeout: int & >=0 & <=2147483647 | *300 @timeDurationResource(1s)
 	// Enable input of NULL elements in arrays.
-	array_nulls?: bool
+	array_nulls?: #PgBool
 	// (s) Sets the maximum allowed time to complete client authentication.
 	authentication_timeout?: int & >=1 & <=600 @timeDurationResource(1s)
 	// Use EXPLAIN ANALYZE for plan logging.
-	"auto_explain.log_analyze"?: bool
+	"auto_explain.log_analyze"?: #PgBool
 	// Log buffers usage.
-	"auto_explain.log_buffers"?: bool & false | true
+	"auto_explain.log_buffers"?: #PgBool
 	// EXPLAIN format to be used for plan logging.
 	"auto_explain.log_format"?: string & "text" | "xml" | "json" | "yaml"
 
@@ -29,22 +31,22 @@
 	"auto_explain.log_min_duration"?: int & >=-1 & <=2147483647 @timeDurationResource()
 
 	// Log nested statements.
-	"auto_explain.log_nested_statements"?: bool & false | true
+	"auto_explain.log_nested_statements"?: #PgBool
 
 	// Collect timing data, not just row counts.
-	"auto_explain.log_timing"?: bool & false | true
+	"auto_explain.log_timing"?: #PgBool
 
 	// Include trigger statistics in plans.
-	"auto_explain.log_triggers"?: bool & false | true
+	"auto_explain.log_triggers"?: #PgBool
 
 	// Use EXPLAIN VERBOSE for plan logging.
-	"auto_explain.log_verbose"?: bool & false | true
+	"auto_explain.log_verbose"?: #PgBool
 
 	// Fraction of queries to process.
 	"auto_explain.sample_rate"?: float & >=0 & <=1
 
 	// Starts the autovacuum subprocess.
-	autovacuum?: bool
+	autovacuum?: #PgBool
 
 	// Number of tuple inserts, updates or deletes prior to analyze as a fraction of reltuples.
 	autovacuum_analyze_scale_factor: float & >=0 & <=100 | *0.05
@@ -110,7 +112,7 @@
 	bytea_output?: string & "escape" | "hex"
 
 	// Check function bodies during CREATE FUNCTION.
-	check_function_bodies?: bool & false | true
+	check_function_bodies?: #PgBool
 
 	// Time spent flushing dirty buffers during checkpoint, as fraction of checkpoint interval.
 	checkpoint_completion_target: float & >=0 & <=1 | *0.9
@@ -161,10 +163,10 @@
 	"cron.database_name"?: string
 
 	// Log all jobs runs into the job_run_details table
-	"cron.log_run"?: string & "on" | "off"
+	"cron.log_run"?: #PgBool
 
 	// Log all cron statements prior to execution.
-	"cron.log_statement"?: string & "on" | "off"
+	"cron.log_statement"?: #PgBool
 
 	// Maximum number of jobs that can run concurrently.
 	"cron.max_running_jobs": int & >=0 & <=100 | *5
@@ -182,22 +184,22 @@
 	datestyle?: string
 
 	// Enables per-database user names.
-	db_user_namespace?: bool & false | true
+	db_user_namespace?: #PgBool
 
 	// (ms) Sets the time to wait on a lock before checking for deadlock.
 	deadlock_timeout?: int & >=1 & <=2147483647 @timeDurationResource()
 
 	// Indents parse and plan tree displays.
-	debug_pretty_print?: bool & false | true
+	debug_pretty_print?: #PgBool
 
 	// Logs each queries parse tree.
-	debug_print_parse?: bool & false | true
+	debug_print_parse?: #PgBool
 
 	// Logs each queries execution plan.
-	debug_print_plan?: bool & false | true
+	debug_print_plan?: #PgBool
 
 	// Logs each queries rewritten parse tree.
-	debug_print_rewritten?: bool & false | true
+	debug_print_rewritten?: #PgBool
 
 	// Sets the default statistics target.
 	default_statistics_target?: int & >=1 & <=10000
@@ -209,13 +211,13 @@
 	default_toast_compression?: string & "pglz" | "lz4"
 
 	// Sets the default deferrable status of new transactions.
-	default_transaction_deferrable?: bool & false | true
+	default_transaction_deferrable?: #PgBool
 
 	// Sets the transaction isolation level of each new transaction.
 	default_transaction_isolation?: string & "serializable" | "repeatable read" | "read committed" | "read uncommitted"
 
 	// Sets the default read-only status of new transactions.
-	default_transaction_read_only?: bool & false | true
+	default_transaction_read_only?: #PgBool
 
 	// (8kB) Sets the planners assumption about the size of the disk cache.
 	effective_cache_size?: int & >=1 & <=2147483647 @storeResource(8KB)
@@ -224,88 +226,88 @@
 	effective_io_concurrency?: int & >=0 & <=1000
 
 	// Enables or disables the query planner's use of async-aware append plan types
-	enable_async_append?: bool & false | true
+	enable_async_append?: #PgBool
 
 	// Enables the planners use of bitmap-scan plans.
-	enable_bitmapscan?: bool & false | true
+	enable_bitmapscan?: #PgBool
 
 	// Enables the planner's use of gather merge plans.
-	enable_gathermerge?: bool & false | true
+	enable_gathermerge?: #PgBool
 
 	// Enables the planners use of hashed aggregation plans.
-	enable_hashagg?: bool & false | true
+	enable_hashagg?: #PgBool
 
 	// Enables the planners use of hash join plans.
-	enable_hashjoin?: bool & false | true
+	enable_hashjoin?: #PgBool
 
 	// Enables the planner's use of incremental sort steps.
-	enable_incremental_sort?: bool & false | true
+	enable_incremental_sort?: #PgBool
 
 	// Enables the planner's use of index-only-scan plans.
-	enable_indexonlyscan?: bool & false | true
+	enable_indexonlyscan?: #PgBool
 
 	// Enables the planners use of index-scan plans.
-	enable_indexscan?: bool & false | true
+	enable_indexscan?: #PgBool
 
 	// Enables the planners use of materialization.
-	enable_material?: bool & false | true
+	enable_material?: #PgBool
 
 	// Enables the planner's use of memoization
-	enable_memoize?: bool & false | true
+	enable_memoize?: #PgBool
 
 	// Enables the planners use of merge join plans.
-	enable_mergejoin?: bool & false | true
+	enable_mergejoin?: #PgBool
 
 	// Enables the planners use of nested-loop join plans.
-	enable_nestloop?: bool & false | true
+	enable_nestloop?: #PgBool
 
 	// Enables the planner's use of parallel append plans.
-	enable_parallel_append?: bool & false | true
+	enable_parallel_append?: #PgBool
 
 	// Enables the planner's user of parallel hash plans.
-	enable_parallel_hash?: bool & false | true
+	enable_parallel_hash?: #PgBool
 
 	// Enable plan-time and run-time partition pruning.
-	enable_partition_pruning?: bool & false | true
+	enable_partition_pruning?: #PgBool
 
 	// Enables partitionwise aggregation and grouping.
-	enable_partitionwise_aggregate?: bool & false | true
+	enable_partitionwise_aggregate?: #PgBool
 
 	// Enables partitionwise join.
-	enable_partitionwise_join?: bool & false | true
+	enable_partitionwise_join?: #PgBool
 
 	// Enables the planners use of sequential-scan plans.
-	enable_seqscan?: bool & false | true
+	enable_seqscan?: #PgBool
 
 	// Enables the planners use of explicit sort steps.
-	enable_sort?: bool & false | true
+	enable_sort?: #PgBool
 
 	// Enables the planners use of TID scan plans.
-	enable_tidscan?: bool & false | true
+	enable_tidscan?: #PgBool
 
 	// Warn about backslash escapes in ordinary string literals.
-	escape_string_warning?: bool & false | true
+	escape_string_warning?: #PgBool
 
 	// Terminate session on any error.
-	exit_on_error?: bool & false | true
+	exit_on_error?: #PgBool
 
 	// Sets the number of digits displayed for floating-point values.
 	extra_float_digits?: int & >=-15 & <=3
 
 	// Forces use of parallel query facilities.
-	force_parallel_mode?: bool & false | true
+	force_parallel_mode?: #PgBool
 
 	// Sets the FROM-list size beyond which subqueries are not collapsed.
 	from_collapse_limit?: int & >=1 & <=2147483647
 
 	// Forces synchronization of updates to disk.
-	fsync: bool & false | true | *true
+	fsync: #PgBool | *"true"
 
 	// Writes full pages to WAL when first modified after a checkpoint.
-	full_page_writes: bool & false | true | *true
+	full_page_writes: #PgBool | *"true"
 
 	// Enables genetic query optimization.
-	geqo?: bool & false | true
+	geqo?: #PgBool
 
 	// GEQO: effort is used to set the default for other GEQO parameters.
 	geqo_effort?: int & >=1 & <=10
@@ -338,10 +340,10 @@
 	hba_file?: string
 
 	// Force group aggregation for hll
-	"hll.force_groupagg"?: bool & false | true
+	"hll.force_groupagg"?: #PgBool
 
 	// Allows feedback from a hot standby to the primary that will avoid query conflicts.
-	hot_standby_feedback?: bool & false | true
+	hot_standby_feedback?: #PgBool
 
 	// Use of huge pages on Linux.
 	huge_pages?: string & "on" | "off" | "try"
@@ -359,13 +361,13 @@
 	idle_session_timeout?: int & >=0 & <=2147483647 @timeDurationResource()
 
 	// Continues recovery after an invalid pages failure.
-	ignore_invalid_pages: bool & false | true | *false
+	ignore_invalid_pages: #PgBool | *"false"
 
 	// Sets the display format for interval values.
 	intervalstyle?: string & "postgres" | "postgres_verbose" | "sql_standard" | "iso_8601"
 
 	// Allow JIT compilation.
-	jit: bool
+	jit: #PgBool
 
 	// Perform JIT compilation if query is more expensive.
 	jit_above_cost?: float & >=-1
@@ -398,16 +400,16 @@
 	listen_addresses?: string
 
 	// Enables backward compatibility mode for privilege checks on large objects.
-	lo_compat_privileges: bool & false | true | *false
+	lo_compat_privileges: #PgBool | *"false"
 
 	// (ms) Sets the minimum execution time above which autovacuum actions will be logged.
 	log_autovacuum_min_duration: int & >=-1 & <=2147483647 | *10000 @timeDurationResource()
 
 	// Logs each checkpoint.
-	log_checkpoints: bool & false | true | *true
+	log_checkpoints: #PgBool | *"true"
 
 	// Logs each successful connection.
-	log_connections?: bool & false | true
+	log_connections?: #PgBool
 
 	// Sets the destination for server log output.
 	log_destination?: string & "stderr" | "csvlog"
@@ -416,16 +418,16 @@
 	log_directory?: string
 
 	// Logs end of a session, including duration.
-	log_disconnections?: bool & false | true
+	log_disconnections?: #PgBool
 
 	// Logs the duration of each completed SQL statement.
-	log_duration?: bool & false | true
+	log_duration?: #PgBool
 
 	// Sets the verbosity of logged messages.
 	log_error_verbosity?: string & "terse" | "default" | "verbose"
 
 	// Writes executor performance statistics to the server log.
-	log_executor_stats?: bool & false | true
+	log_executor_stats?: #PgBool
 
 	// Sets the file permissions for log files.
 	log_file_mode?: string
@@ -434,10 +436,10 @@
 	log_filename?: string
 
 	// Start a subprocess to capture stderr output and/or csvlogs into log files.
-	logging_collector: bool & false | true | *true
+	logging_collector: #PgBool | *"true"
 
 	// Logs the host name in the connection logs.
-	log_hostname?: bool & false | true
+	log_hostname?: #PgBool
 
 	// (kB) Sets the maximum memory to be used for logical decoding.
 	logical_decoding_work_mem?: int & >=64 & <=2147483647 @storeResource(1KB)
@@ -446,7 +448,7 @@
 	log_line_prefix?: string
 
 	// Logs long lock waits.
-	log_lock_waits?: bool & false | true
+	log_lock_waits?: #PgBool
 
 	// (ms) Sets the minimum execution time above which a sample of statements will be logged. Sampling is determined by log_statement_sample_rate.
 	log_min_duration_sample?: int & >=-1 & <=2147483647 @timeDurationResource()
@@ -467,16 +469,16 @@
 	log_parameter_max_length_on_error?: int & >=-1 & <=1073741823
 
 	// Writes parser performance statistics to the server log.
-	log_parser_stats?: bool & false | true
+	log_parser_stats?: #PgBool
 
 	// Writes planner performance statistics to the server log.
-	log_planner_stats?: bool & false | true
+	log_planner_stats?: #PgBool
 
 	// Controls whether a log message is produced when the startup process waits longer than deadlock_timeout for recovery conflicts
-	log_recovery_conflict_waits?: bool & false | true
+	log_recovery_conflict_waits?: #PgBool
 
 	// Logs each replication command.
-	log_replication_commands?: bool & false | true
+	log_replication_commands?: #PgBool
 
 	// (min) Automatic log file rotation will occur after N minutes.
 	log_rotation_age: int & >=1 & <=1440 | *60 @timeDurationResource(1min)
@@ -494,7 +496,7 @@
 	log_statement_sample_rate?: float & >=0 & <=1
 
 	// Writes cumulative performance statistics to the server log.
-	log_statement_stats?: bool
+	log_statement_stats?: #PgBool
 
 	// (kB) Log the use of temporary files larger than this number of kilobytes.
 	log_temp_files?: int & >=-1 & <=2147483647 @storeResource(1KB)
@@ -506,7 +508,7 @@
 	log_transaction_sample_rate?: float & >=0 & <=1
 
 	// Truncate existing log files of same name during log rotation.
-	log_truncate_on_rotation: bool & false | true | *false
+	log_truncate_on_rotation: #PgBool | *"false"
 
 	// A variant of effective_io_concurrency that is used for maintenance work.
 	maintenance_io_concurrency?: int & >=0 & <=1000
@@ -599,7 +601,7 @@
 	"orafce.timezone"?: string
 
 	// Controls whether Gather and Gather Merge also run subplans.
-	parallel_leader_participation?: bool & false | true
+	parallel_leader_participation?: #PgBool
 
 	// Sets the planner's estimate of the cost of starting up worker processes for parallel query.
 	parallel_setup_cost?: float & >=0
@@ -614,37 +616,37 @@
 	"pgaudit.log"?: string
 
 	// Specifies that session logging should be enabled in the case where all relations in a statement are in pg_catalog.
-	"pgaudit.log_catalog"?: bool & false | true
+	"pgaudit.log_catalog"?: #PgBool
 
 	// Specifies the log level that will be used for log entries.
 	"pgaudit.log_level"?: string & "debug5" | "debug4" | "debug3" | "debug2" | "debug1" | "info" | "notice" | "warning" | "log"
 
 	// Specifies whether log messages will be visible to a client process such as psql. This setting should generally be left disabled but may be useful for debugging or other purposes.
-	"pgaudit.log_client"?: bool & false | true
+	"pgaudit.log_client"?: #PgBool
 
 	// Specifies that audit logging should include the parameters that were passed with the statement.
-	"pgaudit.log_parameter"?: bool & false | true
+	"pgaudit.log_parameter"?: #PgBool
 
 	// Specifies that parameter values longer than this setting (in bytes) should not be logged.
 	"pgaudit.log_parameter_max_size"?: int & >=0
 
 	// Specifies whether session audit logging should create a separate log entry for each relation (TABLE, VIEW, etc.) referenced in a SELECT or DML statement.
-	"pgaudit.log_relation"?: bool & false | true
+	"pgaudit.log_relation"?: #PgBool
 
 	// Specifies that audit logging should include the rows retrieved or affected by a statement.
-	"pgaudit.log_rows": bool & false | true | *false
+	"pgaudit.log_rows": #PgBool | *"false"
 
 	// Specifies whether logging will include the statement text and parameters (if enabled).
-	"pgaudit.log_statement": bool & false | true | *true
+	"pgaudit.log_statement": #PgBool | *"true"
 
 	// Specifies whether logging will include the statement text and parameters with the first log entry for a statement/substatement combination or with every entry.
-	"pgaudit.log_statement_once"?: bool & false | true
+	"pgaudit.log_statement_once"?: #PgBool
 
 	// Specifies the master role to use for object audit logging.
 	"pgaudit.role"?: string
 
 	// It specifies whether to perform Recheck which is an internal process of full text search.
-	"pg_bigm.enable_recheck"?: string & "on" | "off"
+	"pg_bigm.enable_recheck"?: #PgBool
 
 	// It specifies the maximum number of 2-grams of the search keyword to be used for full text search.
 	"pg_bigm.gin_key_limit": int & >=0 & <=2147483647 | *0
@@ -656,10 +658,10 @@
 	"pg_hint_plan.debug_print"?: string & "off" | "on" | "detailed" | "verbose"
 
 	// Force planner to use plans specified in the hint comment preceding to the query.
-	"pg_hint_plan.enable_hint"?: bool & false | true
+	"pg_hint_plan.enable_hint"?: #PgBool
 
 	// Force planner to not get hint by using table lookups.
-	"pg_hint_plan.enable_hint_table"?: bool & false | true
+	"pg_hint_plan.enable_hint_table"?: #PgBool
 
 	// Message level of debug messages.
 	"pg_hint_plan.message_level"?: string & "debug5" | "debug4" | "debug3" | "debug2" | "debug1" | "log" | "info" | "notice" | "warning" | "error"
@@ -668,7 +670,7 @@
 	"pg_hint_plan.parse_messages"?: string & "debug5" | "debug4" | "debug3" | "debug2" | "debug1" | "log" | "info" | "notice" | "warning" | "error"
 
 	// Batch inserts if possible
-	"pglogical.batch_inserts"?: bool & false | true
+	"pglogical.batch_inserts"?: #PgBool
 
 	// Sets log level used for logging resolved conflicts.
 	"pglogical.conflict_log_level"?: string & "debug5" | "debug4" | "debug3" | "debug2" | "debug1" | "info" | "notice" | "warning" | "error" | "log" | "fatal" | "panic"
@@ -680,19 +682,19 @@
 	"pglogical.extra_connection_options"?: string
 
 	// pglogical specific synchronous commit value
-	"pglogical.synchronous_commit"?: bool & false | true
+	"pglogical.synchronous_commit"?: #PgBool
 
 	// Use SPI instead of low-level API for applying changes
-	"pglogical.use_spi"?: bool & false | true
+	"pglogical.use_spi"?: #PgBool
 
 	// Starts the autoprewarm worker.
-	"pg_prewarm.autoprewarm"?: bool & false | true
+	"pg_prewarm.autoprewarm"?: #PgBool
 
 	// Sets the interval between dumps of shared buffers
 	"pg_prewarm.autoprewarm_interval"?: int & >=0 & <=2147483
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.block_is_normalized"?: bool & false | true
+	"pg_similarity.block_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Block similarity function.
 	"pg_similarity.block_threshold"?: float & >=0 & <=1
@@ -701,7 +703,7 @@
 	"pg_similarity.block_tokenizer"?: string & "alnum" | "gram" | "word" | "camelcase"
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.cosine_is_normalized"?: bool & false | true
+	"pg_similarity.cosine_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Cosine similarity function.
 	"pg_similarity.cosine_threshold"?: float & >=0 & <=1
@@ -710,7 +712,7 @@
 	"pg_similarity.cosine_tokenizer"?: string & "alnum" | "gram" | "word" | "camelcase"
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.dice_is_normalized"?: bool & false | true
+	"pg_similarity.dice_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Dice similarity measure.
 	"pg_similarity.dice_threshold"?: float & >=0 & <=1
@@ -719,7 +721,7 @@
 	"pg_similarity.dice_tokenizer"?: string & "alnum" | "gram" | "word" | "camelcase"
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.euclidean_is_normalized"?: bool & false | true
+	"pg_similarity.euclidean_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Euclidean similarity measure.
 	"pg_similarity.euclidean_threshold"?: float & >=0 & <=1
@@ -728,13 +730,13 @@
 	"pg_similarity.euclidean_tokenizer"?: string & "alnum" | "gram" | "word" | "camelcase"
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.hamming_is_normalized"?: bool & false | true
+	"pg_similarity.hamming_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Block similarity metric.
 	"pg_similarity.hamming_threshold"?: float & >=0 & <=1
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.jaccard_is_normalized"?: bool & false | true
+	"pg_similarity.jaccard_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Jaccard similarity measure.
 	"pg_similarity.jaccard_threshold"?: float & >=0 & <=1
@@ -743,25 +745,25 @@
 	"pg_similarity.jaccard_tokenizer"?: string & "alnum" | "gram" | "word" | "camelcase"
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.jaro_is_normalized"?: bool & false | true
+	"pg_similarity.jaro_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Jaro similarity measure.
 	"pg_similarity.jaro_threshold"?: float & >=0 & <=1
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.jarowinkler_is_normalized"?: bool & false | true
+	"pg_similarity.jarowinkler_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Jarowinkler similarity measure.
 	"pg_similarity.jarowinkler_threshold"?: float & >=0 & <=1
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.levenshtein_is_normalized"?: bool & false | true
+	"pg_similarity.levenshtein_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Levenshtein similarity measure.
 	"pg_similarity.levenshtein_threshold"?: float & >=0 & <=1
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.matching_is_normalized"?: bool & false | true
+	"pg_similarity.matching_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Matching Coefficient similarity measure.
 	"pg_similarity.matching_threshold"?: float & >=0 & <=1
@@ -770,7 +772,7 @@
 	"pg_similarity.matching_tokenizer"?: string & "alnum" | "gram" | "word" | "camelcase"
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.mongeelkan_is_normalized"?: bool & false | true
+	"pg_similarity.mongeelkan_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Monge-Elkan similarity measure.
 	"pg_similarity.mongeelkan_threshold"?: float & >=0 & <=1
@@ -782,13 +784,13 @@
 	"pg_similarity.nw_gap_penalty"?: float
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.nw_is_normalized"?: bool & false | true
+	"pg_similarity.nw_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Needleman-Wunsch similarity measure.
 	"pg_similarity.nw_threshold"?: float & >=0 & <=1
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.overlap_is_normalized"?: bool & false | true
+	"pg_similarity.overlap_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Overlap Coefficient similarity measure.
 	"pg_similarity.overlap_threshold"?: float & >=0 & <=1
@@ -797,7 +799,7 @@
 	"pg_similarity.overlap_tokenizer"?: string & "alnum" | "gram" | "word" | "camelcase"
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.qgram_is_normalized"?: bool & false | true
+	"pg_similarity.qgram_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Q-Gram similarity measure.
 	"pg_similarity.qgram_threshold"?: float & >=0 & <=1
@@ -806,13 +808,13 @@
 	"pg_similarity.qgram_tokenizer"?: string & "alnum" | "gram" | "word" | "camelcase"
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.swg_is_normalized"?: bool & false | true
+	"pg_similarity.swg_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Smith-Waterman-Gotoh similarity measure.
 	"pg_similarity.swg_threshold"?: float & >=0 & <=1
 
 	// Sets if the result value is normalized or not.
-	"pg_similarity.sw_is_normalized"?: bool & false | true
+	"pg_similarity.sw_is_normalized"?: #PgBool
 
 	// Sets the threshold used by the Smith-Waterman similarity measure.
 	"pg_similarity.sw_threshold"?: float & >=0 & <=1
@@ -821,22 +823,22 @@
 	"pg_stat_statements.max"?: int & >=100 & <=2147483647
 
 	// Save pg_stat_statements statistics across server shutdowns.
-	"pg_stat_statements.save"?: bool & false | true
+	"pg_stat_statements.save"?: #PgBool
 
 	// Selects which statements are tracked by pg_stat_statements.
 	"pg_stat_statements.track"?: string & "none" | "top" | "all"
 
 	// Selects whether planning duration is tracked by pg_stat_statements.
-	"pg_stat_statements.track_planning"?: bool & false | true
+	"pg_stat_statements.track_planning"?: #PgBool
 
 	// Selects whether utility commands are tracked by pg_stat_statements.
-	"pg_stat_statements.track_utility"?: bool & false | true
+	"pg_stat_statements.track_utility"?: #PgBool
 
 	// Sets the behavior for interacting with passcheck feature.
 	"pgtle.enable_password_check"?: string & "on" | "off" | "require"
 
 	// Enables index adviser logging.
-	"index_adviser.enable_log"?: string & "on" | "off"
+	"index_adviser.enable_log"?: #PgBool
 
 	// Maximum number of aggregation columns considered by index adviser.
 	"index_adviser.max_aggregation_column_count"?: int & >=0 & <=32
@@ -848,7 +850,7 @@
 	"pg_transport.num_workers"?: int & >=1 & <=32
 
 	// Specifies whether to report timing information during transport.
-	"pg_transport.timing"?: bool & false | true
+	"pg_transport.timing"?: #PgBool
 
 	// (kB) Amount of memory each worker can allocate for a physical transport.
 	"pg_transport.work_mem"?: int & >=65536 & <=2147483647 @storeResource(1KB)
@@ -869,7 +871,7 @@
 	"postgis.gdal_enabled_drivers"?: string & "ENABLE_ALL" | "DISABLE_ALL"
 
 	// When generating SQL fragments, quote all identifiers.
-	quote_all_identifiers?: bool & false | true
+	quote_all_identifiers?: #PgBool
 
 	// Sets the planners estimate of the cost of a nonsequentially fetched disk page.
 	random_page_cost?: float & >=0
@@ -878,10 +880,10 @@
 	"rdkit.dice_threshold"?: float & >=0 & <=1
 
 	// Should stereochemistry be taken into account in substructure matching. If false, no stereochemistry information is used in substructure matches.
-	"rdkit.do_chiral_sss"?: bool & false | true
+	"rdkit.do_chiral_sss"?: #PgBool
 
 	// Should enhanced stereochemistry be taken into account in substructure matching.
-	"rdkit.do_enhanced_stereo_sss"?: bool & false | true
+	"rdkit.do_enhanced_stereo_sss"?: #PgBool
 
 	// Lower threshold of Tanimoto similarity. Molecules with similarity lower than threshold are not similar by % operation.
 	"rdkit.tanimoto_threshold"?: float & >=0 & <=1
@@ -890,13 +892,13 @@
 	recovery_init_sync_method?: string & "fsync" | "syncfs"
 
 	// When set to on, which is the default, PostgreSQL will automatically remove temporary files after a backend crash
-	remove_temp_files_after_crash: string & "on" | "off"
+	remove_temp_files_after_crash: #PgBool
 
 	// Reinitialize server after backend crash.
-	restart_after_crash?: bool & false | true
+	restart_after_crash?: #PgBool
 
 	// Enable row security.
-	row_security?: bool & false | true
+	row_security?: #PgBool
 
 	// Sets the schema search order for names that are not schema-qualified.
 	search_path?: string
@@ -920,7 +922,7 @@
 	"sql_firewall.firewall"?: string & "disable" | "learning" | "permissive" | "enforcing"
 
 	// Enables SSL connections.
-	ssl: bool & false | true | *true
+	ssl: #PgBool | *"true"
 
 	// Location of the SSL server authority file.
 	ssl_ca_file?: string
@@ -941,7 +943,7 @@
 	ssl_min_protocol_version?: string & "TLSv1" | "TLSv1.1" | "TLSv1.2" | "TLSv1.3"
 
 	// Causes ... strings to treat backslashes literally.
-	standard_conforming_strings?: bool & false | true
+	standard_conforming_strings?: #PgBool
 
 	// (ms) Sets the maximum allowed duration of any statement.
 	statement_timeout?: int & >=0 & <=2147483647 @timeDurationResource()
@@ -953,7 +955,7 @@
 	superuser_reserved_connections: int & >=0 & <=262143 | *3
 
 	// Enable synchronized sequential scans.
-	synchronize_seqscans?: bool & false | true
+	synchronize_seqscans?: #PgBool
 
 	// Sets the current transactions synchronization level.
 	synchronous_commit?: string & "local" | "on" | "off" | "remote_write" | "remote_apply"
@@ -983,28 +985,28 @@
 	timezone?: string
 
 	// Collects information about executing commands.
-	track_activities?: bool & false | true
+	track_activities?: #PgBool
 
 	// Sets the size reserved for pg_stat_activity.current_query, in bytes.
 	track_activity_query_size: int & >=100 & <=1048576 | *4096 @storeResource()
 
 	// Collects transaction commit time.
-	track_commit_timestamp?: bool & false | true
+	track_commit_timestamp?: #PgBool
 
 	// Collects statistics on database activity.
-	track_counts?: bool & false | true
+	track_counts?: #PgBool
 
 	// Collects function-level statistics on database activity.
 	track_functions?: string & "none" | "pl" | "all"
 
 	// Collects timing statistics on database IO activity.
-	track_io_timing: bool & false | true | *true
+	track_io_timing: #PgBool | *"true"
 
 	// Enables timing of WAL I/O calls.
-	track_wal_io_timing?: bool & false | true
+	track_wal_io_timing?: #PgBool
 
 	// Treats expr=NULL as expr IS NULL.
-	transform_null_equals?: bool & false | true
+	transform_null_equals?: #PgBool
 
 	// Sets the directory where the Unix-domain socket will be created.
 	unix_socket_directories?: string
@@ -1016,7 +1018,7 @@
 	unix_socket_permissions?: int & >=0 & <=511
 
 	// Updates the process title to show the active SQL command.
-	update_process_title: bool & false | true | *true
+	update_process_title: #PgBool | *"true"
 
 	// (ms) Vacuum cost delay in milliseconds.
 	vacuum_cost_delay?: int & >=0 & <=100 @timeDurationResource()
@@ -1058,7 +1060,7 @@
 	wal_buffers?: int & >=-1 & <=262143 @storeResource(8KB)
 
 	// Compresses full-page writes written in WAL file.
-	wal_compression: bool & false | true | *true
+	wal_compression: #PgBool | *"true"
 
 	// Sets the WAL resource managers for which WAL consistency checks are done.
 	wal_consistency_checking?: string
@@ -1070,10 +1072,10 @@
 	wal_keep_size: int & >=0 & <=2147483647 | *2048 @storeResource(1MB)
 
 	// Writes full pages to WAL when first modified after a checkpoint.
-	wal_log_hints?: bool & false | true
+	wal_log_hints?: #PgBool
 
 	// Sets whether a WAL receiver should create a temporary replication slot if no permanent slot is configured.
-	wal_receiver_create_temp_slot: bool & false | true | *false
+	wal_receiver_create_temp_slot: #PgBool | *"false"
 
 	// (s) Sets the maximum interval between WAL receiver status reports to the primary.
 	wal_receiver_status_interval?: int & >=0 & <=2147483 @timeDurationResource(1s)
@@ -1082,7 +1084,7 @@
 	wal_receiver_timeout: int & >=0 & <=3600000 | *30000 @timeDurationResource()
 
 	// Recycles WAL files by renaming them. If set to on (the default), this option causes WAL files to be recycled by renaming them, avoiding the need to create new ones. On COW file systems, it may be faster to create new ones, so the option is given to disable this behavior.
-	wal_recycle?: bool
+	wal_recycle?: #PgBool
 
 	// Sets the time to wait before retrying to retrieve WAL after a failed attempt. Specifies how long the standby server should wait when WAL data is not available from any sources (streaming replication, local pg_wal or WAL archive) before trying again to retrieve WAL data. If this value is specified without units, it is taken as milliseconds. The default value is 5 seconds. This parameter can only be set in the postgresql.conf file or on the server command line.
 	wal_retrieve_retry_interval: int & >=1 & <=2147483647 | *5000 @timeDurationResource()
@@ -1106,7 +1108,7 @@
 	work_mem?: int & >=64 & <=2147483647 @storeResource(1KB)
 
 	// If set to on (the default), this option causes new WAL files to be filled with zeroes. On some file systems, this ensures that space is allocated before we need to write WAL records. However, Copy-On-Write (COW) file systems may not benefit from this technique, so the option is given to skip the unnecessary work. If set to off, only the final byte is written when the file is created so that it has the expected size.
-	wal_init_zero?: string & "on" | "off"
+	wal_init_zero?: #PgBool
 
 	// Sets how binary values are to be encoded in XML.
 	xmlbinary?: string & "base64" | "hex"
