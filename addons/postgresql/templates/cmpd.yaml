@@ -257,10 +257,22 @@ spec:
           - -c
           - |
             # Expand the ${KB_ACCOUNT_NAME}/${KB_ACCOUNT_PASSWORD} placeholders
-            # without eval: bash pattern substitution treats the replacement as
-            # a literal, so credential values never go through a shell parse.
-            statement="${KB_ACCOUNT_STATEMENT//\$\{KB_ACCOUNT_NAME\}/${KB_ACCOUNT_NAME}}"
-            statement="${statement//\$\{KB_ACCOUNT_PASSWORD\}/${KB_ACCOUNT_PASSWORD}}"
+            # without eval, so credential values never go through a shell parse.
+            # bash >= 5.2 enables patsub_replacement by default, making `&` and
+            # `\` special in the (unquoted) replacement — a password containing
+            # them would be silently rewritten. Disable it explicitly; the shopt
+            # is a no-op on older bash.
+            shopt -u patsub_replacement 2>/dev/null || true
+            # SQL-literal boundary: the statement embeds the values inside
+            # single quotes, so escape embedded single quotes ('' is the SQL
+            # escape) — otherwise a quote in a user-supplied password breaks
+            # the statement, leaks the fragment via psql's error context, and
+            # opens an injection path in a superuser session.
+            sq="'"
+            account_name="${KB_ACCOUNT_NAME//${sq}/${sq}${sq}}"
+            account_password="${KB_ACCOUNT_PASSWORD//${sq}/${sq}${sq}}"
+            statement="${KB_ACCOUNT_STATEMENT//\$\{KB_ACCOUNT_NAME\}/${account_name}}"
+            statement="${statement//\$\{KB_ACCOUNT_PASSWORD\}/${account_password}}"
             psql -h 127.0.0.1 -c "${statement}"
         env:
           - name: PGUSER
