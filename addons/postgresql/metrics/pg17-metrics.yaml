@@ -201,8 +201,8 @@ pg_stat_statements_by_mean_exec_time:
     local_blks_written,
     temp_blks_read,
     temp_blks_written,
-    blk_read_time / 1000 as blk_read_time_seconds,
-    blk_write_time / 1000 as blk_write_time_seconds,
+    shared_blk_read_time / 1000 as blk_read_time_seconds,
+    shared_blk_write_time / 1000 as blk_write_time_seconds,
     wal_records,
     wal_fpi,
     wal_bytes
@@ -346,8 +346,8 @@ pg_stat_statements_by_calls:
     local_blks_written,
     temp_blks_read,
     temp_blks_written,
-    blk_read_time / 1000 as blk_read_time_seconds,
-    blk_write_time / 1000 as blk_write_time_seconds,
+    shared_blk_read_time / 1000 as blk_read_time_seconds,
+    shared_blk_write_time / 1000 as blk_write_time_seconds,
     wal_records,
     wal_fpi,
     wal_bytes
