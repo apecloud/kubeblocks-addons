@@ -82,7 +82,7 @@ ORC_PRECHECK_MASTER=""
 
 extract_last_orchestrator_instance() {
   awk '
-    /^[^[:space:]]+:[0-9]+$/ {
+    /^[^[:space:]:]+:[0-9]+$/ {
       last = $0
       found = 1
     }
