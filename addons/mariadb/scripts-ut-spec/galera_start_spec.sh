@@ -280,4 +280,30 @@ EOF
       The output should equal "OK"
     End
   End
+
+  Describe "graceful-shutdown self-heal guard"
+    It "checks the shutting-down marker BEFORE any self-heal kill (source order)"
+      # The preStop sets wsrep_on=OFF (node leaves Primary) and then runs a
+      # clean shutdown; the watcher must skip self-heal while shutting down or
+      # it would SIGKILL mariadbd mid-shutdown and lose the safe_to_bootstrap
+      # write. The marker check must precede both self-heal call sites.
+      When run sh -c '
+        f="$(printf "%s/addons/mariadb/scripts/galera-start.sh" "'"${SHELLSPEC_CWD:?}"'")"
+        guard=$(grep -n "\.galera-shutting-down" "$f" | grep -v "rm -f" | head -1 | cut -d: -f1)
+        firstheal=$(grep -n "_restart_mariadbd_for_self_heal" "$f" | grep -v "^.*() {" | grep "reason\|SOCK\|CLUSTER_STATUS" | head -1 | cut -d: -f1)
+        if [ -n "$guard" ] && [ -n "$firstheal" ] && [ "$guard" -lt "$firstheal" ]; then echo OK; else echo "FAIL guard=$guard heal=$firstheal"; fi
+      '
+      The status should be success
+      The output should equal "OK"
+    End
+
+    It "clears the shutting-down marker on container start"
+      When run sh -c '
+        f="$(printf "%s/addons/mariadb/scripts/galera-start.sh" "'"${SHELLSPEC_CWD:?}"'")"
+        grep "rm -f" "$f" | grep -q "\.galera-shutting-down" && echo OK || echo FAIL
+      '
+      The status should be success
+      The output should equal "OK"
+    End
+  End
 End

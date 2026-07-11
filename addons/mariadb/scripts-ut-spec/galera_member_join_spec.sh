@@ -45,4 +45,21 @@ Describe "galera-member-join.sh"
     The error should include "phase: synced-marker-stale"
     The error should include "next-retry-safe: yes"
   End
+
+  Parameters
+    ""
+    "abc"
+    "-5"
+    "0"
+  End
+  It "fails closed (operator-attention) on a misconfigured staleness threshold (value=[$1])"
+    printf "primary" > "${DATA_DIR}/.galera-role"
+    touch "${DATA_DIR}/.galera-synced"
+    export GALERA_ROLE_MAX_STALE_SECONDS="$1"
+
+    When run sh ../scripts/galera-member-join.sh
+    The status should be failure
+    The error should include "phase: misconfigured-stale-threshold"
+    The error should include "next-retry-safe: no"
+  End
 End

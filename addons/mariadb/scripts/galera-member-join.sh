@@ -25,7 +25,7 @@ ROLE_FILE="${DATA_DIR}/.galera-role"
 # while the mariadb container is alive. If that container dies the markers
 # survive on the PV; memberJoin must not close on a stale "synced primary"
 # left by a dead writer. Reject markers older than this window (30s = 10 ticks).
-GALERA_ROLE_MAX_STALE_SECONDS="${GALERA_ROLE_MAX_STALE_SECONDS:-30}"
+GALERA_ROLE_MAX_STALE_SECONDS="${GALERA_ROLE_MAX_STALE_SECONDS-30}"
 
 # Portable file-age in seconds (GNU/busybox `stat -c %Y`, BSD `stat -f %m`).
 _file_age_seconds() {
@@ -63,6 +63,28 @@ if [ ! -d "${DATA_DIR}" ]; then
     galera_member_join_diagnose_not_ready \
         "data-dir-missing" \
         "  data_dir_exists: no" \
+        "no"
+    exit 1
+fi
+
+# Validate the staleness threshold before it is used in a numeric test. An
+# empty / non-numeric / negative / zero value would make the freshness gate
+# error and (inside an if) fall through to closing memberJoin on a possibly
+# stale marker — a fail-open bypass. Fail closed on misconfiguration.
+case "${GALERA_ROLE_MAX_STALE_SECONDS}" in
+    ''|*[!0-9]*)
+        galera_member_join_diagnose_not_ready \
+            "misconfigured-stale-threshold" \
+            "  GALERA_ROLE_MAX_STALE_SECONDS: '${GALERA_ROLE_MAX_STALE_SECONDS}'
+  hint: must be a positive integer" \
+            "no"
+        exit 1 ;;
+esac
+if [ "${GALERA_ROLE_MAX_STALE_SECONDS}" -lt 1 ]; then
+    galera_member_join_diagnose_not_ready \
+        "misconfigured-stale-threshold" \
+        "  GALERA_ROLE_MAX_STALE_SECONDS: '${GALERA_ROLE_MAX_STALE_SECONDS}'
+  hint: must be >= 1" \
         "no"
     exit 1
 fi

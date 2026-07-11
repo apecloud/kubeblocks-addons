@@ -33,7 +33,21 @@ ROLE_FILE="${DATA_DIR}/.galera-role"
 # container that stays up and runs this probe — would keep reading a stale
 # "primary" and route writes to a dead node. Reject a role file that has not
 # been refreshed within this staleness window (default 30s = 10 watcher ticks).
-GALERA_ROLE_MAX_STALE_SECONDS="${GALERA_ROLE_MAX_STALE_SECONDS:-30}"
+GALERA_ROLE_MAX_STALE_SECONDS="${GALERA_ROLE_MAX_STALE_SECONDS-30}"
+# Validate the threshold up front. If it is empty / non-numeric / negative /
+# zero, the later `[ "${age}" -gt "${threshold}" ]` test would error; inside an
+# `if` that error does NOT trip `set -e`, so the script would fall through and
+# publish "primary" — a fail-OPEN bypass of the freshness gate. Fail closed on
+# a misconfigured threshold instead.
+case "${GALERA_ROLE_MAX_STALE_SECONDS}" in
+  ''|*[!0-9]*)
+    echo "galera role probe misconfigured: GALERA_ROLE_MAX_STALE_SECONDS='${GALERA_ROLE_MAX_STALE_SECONDS}' must be a positive integer" >&2
+    exit 1 ;;
+esac
+if [ "${GALERA_ROLE_MAX_STALE_SECONDS}" -lt 1 ]; then
+  echo "galera role probe misconfigured: GALERA_ROLE_MAX_STALE_SECONDS='${GALERA_ROLE_MAX_STALE_SECONDS}' must be >= 1" >&2
+  exit 1
+fi
 
 # Portable file-age in seconds (GNU/busybox `stat -c %Y`, BSD `stat -f %m`).
 # Prints the age; returns non-zero if the mtime cannot be read.

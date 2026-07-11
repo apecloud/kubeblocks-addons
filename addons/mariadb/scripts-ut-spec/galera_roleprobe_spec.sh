@@ -41,6 +41,21 @@ Describe "galera-roleprobe.sh"
     The stderr should include "stale"
   End
 
+  Parameters
+    ""
+    "abc"
+    "-5"
+    "0"
+  End
+  It "fails closed on a misconfigured staleness threshold (value=[$1])"
+    printf "primary" > "${DATA_DIR}/.galera-role"
+    export GALERA_ROLE_MAX_STALE_SECONDS="$1"
+
+    When run sh ../scripts/galera-roleprobe.sh
+    The status should be failure
+    The stderr should include "misconfigured"
+  End
+
   It "does not publish secondary while the Galera member is still joining"
     printf "secondary" > "${DATA_DIR}/.galera-role"
 
