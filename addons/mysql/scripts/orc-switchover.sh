@@ -38,11 +38,12 @@ run_command_with_budget() {
     return $?
   fi
 
-  local temp_dir output_file timeout_file pid timer_pid rc
+  local temp_dir output_file error_file timeout_file pid timer_pid rc
   temp_dir=$(mktemp -d /tmp/orc-switchover.XXXXXX) || return 1
   output_file="${temp_dir}/output"
+  error_file="${temp_dir}/error"
   timeout_file="${temp_dir}/timeout"
-  "$@" > "${output_file}" 2>&1 &
+  "$@" > "${output_file}" 2> "${error_file}" &
   pid=$!
   (
     sleep "${budget}"
@@ -60,6 +61,7 @@ run_command_with_budget() {
   kill "${timer_pid}" 2>/dev/null || true
   wait "${timer_pid}" 2>/dev/null || true
   cat "${output_file}"
+  cat "${error_file}" >&2
   if [ -s "${timeout_file}" ]; then
     rc=124
   fi
@@ -71,6 +73,55 @@ run_orchestrator_client_with_budget() {
   local budget="$1"
   shift
   run_command_with_budget "${budget}" /kubeblocks/orchestrator-client "$@"
+}
+
+ORC_PRECHECK_RC=""
+ORC_PRECHECK_STDOUT=""
+ORC_PRECHECK_STDERR=""
+ORC_PRECHECK_MASTER=""
+
+extract_last_orchestrator_instance() {
+  awk '
+    /^[^[:space:]]+:[0-9]+$/ {
+      last = $0
+      found = 1
+    }
+    END {
+      if (!found) {
+        exit 1
+      }
+      print last
+    }
+  '
+}
+
+resolve_orchestrator_master_with_budget() {
+  local budget="$1"
+  local instance="$2"
+  local stderr_file
+
+  ORC_PRECHECK_RC=""
+  ORC_PRECHECK_STDOUT=""
+  ORC_PRECHECK_STDERR=""
+  ORC_PRECHECK_MASTER=""
+  if ! stderr_file=$(mktemp /tmp/orc-master-precheck.XXXXXX); then
+    ORC_PRECHECK_RC=1
+    ORC_PRECHECK_STDERR="failed to create master precheck stderr file"
+    return 1
+  fi
+
+  ORC_PRECHECK_STDOUT=$(run_orchestrator_client_with_budget "${budget}" \
+    -c which-cluster-master -i "${instance}" 2> "${stderr_file}")
+  ORC_PRECHECK_RC=$?
+  ORC_PRECHECK_STDERR=$(cat "${stderr_file}" 2>/dev/null || true)
+  rm -f "${stderr_file}"
+  if [ "${ORC_PRECHECK_RC}" -ne 0 ]; then
+    return 1
+  fi
+
+  ORC_PRECHECK_MASTER=$(printf '%s\n' "${ORC_PRECHECK_STDOUT}" | extract_last_orchestrator_instance) \
+    || return 1
+  [ -n "${ORC_PRECHECK_MASTER}" ]
 }
 
 ORC_SWITCHOVER_CLIENT_PID=""
@@ -245,18 +296,16 @@ append_switchover_verify_history() {
 
 verify_switchover_closed_once() {
   local candidate="${KB_SWITCHOVER_CANDIDATE_NAME:-}"
-  local master_from_orc precheck_budget rc
+  local precheck_budget
   precheck_budget="${MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS:-3}"
 
   if [ -z "$candidate" ]; then
-    master_from_orc=$(run_orchestrator_client_with_budget "${precheck_budget}" -c which-cluster-master -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1)
-    rc=$?
-    if [ $rc -ne 0 ]; then
-      SWITCHOVER_VERIFY_CANDIDATE_FLAGS="candidate lookup rc=${rc} output=${master_from_orc}"
+    if ! resolve_orchestrator_master_with_budget "${precheck_budget}" "${KB_SWITCHOVER_CURRENT_NAME}"; then
+      SWITCHOVER_VERIFY_CANDIDATE_FLAGS="candidate lookup rc=${ORC_PRECHECK_RC:-1} stdout=${ORC_PRECHECK_STDOUT:-<empty>} stderr=${ORC_PRECHECK_STDERR:-<empty>}"
       SWITCHOVER_VERIFY_CURRENT_FLAGS="<not checked>"
       return 1
     fi
-    candidate="${master_from_orc%%:*}"
+    candidate="${ORC_PRECHECK_MASTER%%:*}"
   fi
   SWITCHOVER_VERIFY_CANDIDATE="${candidate:-<empty>}"
 
@@ -388,11 +437,10 @@ fi
 # not be mistaken for a master name (that previously made this guard exit 0).
 precheck_budget="${MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS:-3}"
 
-master_from_orc=$(run_orchestrator_client_with_budget "${precheck_budget}" -c which-cluster-master -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1)
-rc=$?
-if [ $rc -ne 0 ] || [ -z "$master_from_orc" ]; then
-  mysql_error "Could not determine current master from Orchestrator (rc=${rc}): ${master_from_orc}"
+if ! resolve_orchestrator_master_with_budget "${precheck_budget}" "${KB_SWITCHOVER_CURRENT_NAME}"; then
+  mysql_error "Could not determine current master from Orchestrator (rc=${ORC_PRECHECK_RC:-1}, stdout=${ORC_PRECHECK_STDOUT:-<empty>}, stderr=${ORC_PRECHECK_STDERR:-<empty>})"
 fi
+master_from_orc="${ORC_PRECHECK_MASTER}"
 
 if [ "${KB_SWITCHOVER_CURRENT_NAME}" != "${master_from_orc%%:*}" ]; then
   mysql_note "Current instance is not the master, skipping."
