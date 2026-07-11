@@ -130,11 +130,16 @@ if [[ "${IS_REPLICA}" == "true" ]]; then
 fi
 
 # Primary restore: Restore from successful backup (.old directory exists)
+# Durability barrier BEFORE removing the signal in both branches: the signal
+# is this hook's retry marker, so its removal must be the FINAL commit
+# action. If sync (or a mv) fails, the signal survives and the bootstrap
+# re-runs the hook instead of losing the restore marker.
 if [[ -d "${DATA_DIR}.old" ]] && [[ ! -d "${DATA_DIR}.failed" ]]; then
     echo "Restoring data from ${DATA_DIR}.old..."
     mkdir -p "${DATA_DIR}"
     mv -f ${DATA_DIR}.old/* ${DATA_DIR}/
-    rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal
+    sync
+    rm -f ${RESTORE_SCRIPT_DIR}/kb_restore.signal
     echo "Data restore completed successfully"
 fi
 
@@ -143,12 +148,11 @@ if [[ -d "${DATA_DIR}.failed" ]]; then
     echo "Recovering from failed restore..."
     mkdir -p ${DATA_DIR}/
     mv -f ${DATA_DIR}.failed/* ${DATA_DIR}/
-    rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal
     rm -rf ${DATA_DIR}/recovery.signal
+    sync
+    rm -f ${RESTORE_SCRIPT_DIR}/kb_restore.signal
     echo "Failed restore recovery completed"
 fi
-
-sync
 EOF
 
 # Replace variables in the generated script
