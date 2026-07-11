@@ -314,13 +314,23 @@ EOF
       The contents of file "${KILL_COUNT_FILE}" should not equal ""
     End
 
-    It "clears the shutting-down marker on container start"
-      When run sh -c '
-        f="$(printf "%s/addons/mariadb/scripts/galera-start.sh" "'"${SHELLSPEC_CWD:?}"'")"
-        grep "rm -f" "$f" | grep -q "\.galera-shutting-down" && echo OK || echo FAIL
-      '
+    # Behavioral test of the watcher start-up marker reset: seed all three
+    # stale markers a previous container generation could leave on the PV, call
+    # the extracted helper main() runs at watcher start, and assert every marker
+    # is gone. This exercises the shipped code path (not a source grep), so a
+    # future drift in which markers get cleared — including dropping the
+    # .galera-shutting-down removal that would otherwise disable self-heal for
+    # the new container's whole lifetime — fails the test.
+    It "clears stale role/synced/shutting-down markers at watcher start"
+      touch "${DATA_DIR}/.galera-synced"
+      touch "${DATA_DIR}/.galera-role"
+      touch "${DATA_DIR}/.galera-shutting-down"
+
+      When call _clear_stale_markers_on_start
       The status should be success
-      The output should equal "OK"
+      The path "${DATA_DIR}/.galera-synced" should not be exist
+      The path "${DATA_DIR}/.galera-role" should not be exist
+      The path "${DATA_DIR}/.galera-shutting-down" should not be exist
     End
   End
 End

@@ -137,6 +137,20 @@ _mariadbd_pids() {
   pidof mariadbd 2>/dev/null || pgrep -x mariadbd 2>/dev/null || true
 }
 
+# Watcher start-up initialization: clear stale role/liveness markers left on the
+# PV by a previous container generation, including any .galera-shutting-down the
+# prior graceful shutdown dropped. This is a live container again, so a stale
+# .galera-shutting-down would otherwise disable self-heal for the whole life of
+# the new process, and a stale .galera-role/.galera-synced would let the probe
+# publish a role before the watcher has re-observed Galera state. Extracted as a
+# helper (not inline in the watcher subshell) so the reset is directly callable
+# and unit-testable, and so any future start-up call site stays covered.
+_clear_stale_markers_on_start() {
+  rm -f "${DATA_DIR}/.galera-synced" \
+        "${DATA_DIR}/.galera-role" \
+        "${DATA_DIR}/.galera-shutting-down"
+}
+
 _restart_mariadbd_for_self_heal() {
   local reason="$1"
   # Graceful-shutdown guard: the preStop hook drops .galera-shutting-down
@@ -299,9 +313,10 @@ main() {
   # stable Primary cluster.
   (
     set +e
-    # Clear stale markers on start, including any .galera-shutting-down left by
-    # a previous graceful shutdown — this is a live container again.
-    rm -f "${DATA_DIR}/.galera-synced" "${DATA_DIR}/.galera-role" "${DATA_DIR}/.galera-shutting-down"
+    # Clear stale markers on start (see _clear_stale_markers_on_start): includes
+    # any .galera-shutting-down left by a previous graceful shutdown — this is a
+    # live container again.
+    _clear_stale_markers_on_start
     SOCK=/run/mysqld/mysqld.sock
     SYNCED_ONCE=0
     NON_PRIMARY_COUNT=0
