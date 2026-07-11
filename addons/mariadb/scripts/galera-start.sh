@@ -149,18 +149,28 @@ should_bootstrap() {
       return 1
     fi
 
-    # No peers alive: this is a full cluster restart. Fresh Galera PVCs may
-    # already contain grastate.dat with safe_to_bootstrap=1 and seqno=-1. That
-    # state is not a clean shutdown election result, so keep initial bootstrap
-    # single-owner on pod-0; otherwise every pod can bootstrap its own Primary.
+    # No peers alive: this is a full cluster restart. seqno=-1 has TWO
+    # indistinguishable-by-seqno causes that must NOT be handled the same:
+    #   (1) Fresh Galera PVC: grastate.dat has seqno=-1 AND
+    #       safe_to_bootstrap=1 (Galera writes stb=1 on first datadir init).
+    #   (2) Hard crash (OOM-kill / node power loss / SIGKILL): a *running*
+    #       node's grastate.dat also carries seqno=-1, but with
+    #       safe_to_bootstrap=0 — the clean-shutdown election never ran.
+    #       This is exactly the full-cluster crash the header contract (c)
+    #       forbids auto-bootstrapping: pod-0 doing so would start a
+    #       possibly-stale Primary and SST away committed data on 1/2.
+    # So the seqno=-1 fast-path must ALSO require safe_to_bootstrap=1. A
+    # seqno=-1 + stb=0 pod falls through to the fail-closed crash-recovery
+    # branch below and defers instead of guessing it is the latest node.
     local grastate_seqno
     grastate_seqno=$(_grastate_seqno)
-    if [ "${grastate_seqno}" = "-1" ]; then
+    if [ "${grastate_seqno}" = "-1" ] \
+      && grep -q "^safe_to_bootstrap: 1" "${DATA_DIR}/grastate.dat"; then
       if [ "$pod_index" = "0" ]; then
-        echo "Fresh grastate.dat seqno=-1, pod-0 will bootstrap."
+        echo "Fresh grastate.dat seqno=-1 safe_to_bootstrap=1, pod-0 will bootstrap."
         return 0
       fi
-      echo "Fresh grastate.dat seqno=-1, ${POD_NAME} will wait for pod-0 bootstrap."
+      echo "Fresh grastate.dat seqno=-1 safe_to_bootstrap=1, ${POD_NAME} will wait for pod-0 bootstrap."
       return 1
     fi
 

@@ -133,7 +133,7 @@ EOF
       The output should include "grastate.dat: safe_to_bootstrap=1"
     End
 
-    It "keeps fresh seqno=-1 bootstrap single-owner on pod-0"
+    It "keeps fresh (seqno=-1, safe_to_bootstrap=1) bootstrap single-owner on pod-0"
       POD_NAME="mdb-galera-mariadb-0"
       write_grastate -1 1
       _any_peer_alive() {
@@ -142,10 +142,10 @@ EOF
 
       When call should_bootstrap
       The status should be success
-      The output should include "Fresh grastate.dat seqno=-1, pod-0 will bootstrap"
+      The output should include "Fresh grastate.dat seqno=-1 safe_to_bootstrap=1, pod-0 will bootstrap"
     End
 
-    It "prevents non-pod-0 fresh seqno=-1 bootstrap"
+    It "prevents non-pod-0 fresh (seqno=-1, safe_to_bootstrap=1) bootstrap"
       POD_NAME="mdb-galera-mariadb-1"
       write_grastate -1 1
       _any_peer_alive() {
@@ -154,8 +154,39 @@ EOF
 
       When call should_bootstrap
       The status should be failure
-      The output should include "Fresh grastate.dat seqno=-1"
+      The output should include "Fresh grastate.dat seqno=-1 safe_to_bootstrap=1"
       The output should include "will wait for pod-0 bootstrap"
+    End
+
+    It "refuses pod-0 bootstrap on a hard-crash grastate (seqno=-1, safe_to_bootstrap=0)"
+      # A running node killed by OOM/power-loss/SIGKILL leaves seqno=-1 but
+      # safe_to_bootstrap=0 — indistinguishable from a fresh PVC by seqno
+      # alone. pod-0 must NOT blind-bootstrap possibly-stale data; it defers
+      # to the fail-closed crash-recovery path.
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate -1 0
+      _any_peer_alive() {
+        return 1
+      }
+      mariadbd() {
+        printf "WSREP: Recovered position: 631a68d0-7697-11f1-923e-42be04dfa95f:44\n"
+      }
+
+      When call should_bootstrap
+      The status should be failure
+      The output should include "Refusing automatic Galera crash recovery bootstrap"
+      The variable GALERA_BOOTSTRAP_DEFER_REASON should include "latest seqno"
+    End
+
+    It "prevents non-pod-0 hard-crash (seqno=-1, safe_to_bootstrap=0) bootstrap"
+      POD_NAME="mdb-galera-mariadb-1"
+      write_grastate -1 0
+      _any_peer_alive() {
+        return 1
+      }
+
+      When call should_bootstrap
+      The status should be failure
     End
   End
 
