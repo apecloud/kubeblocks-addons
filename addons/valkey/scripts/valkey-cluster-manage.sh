@@ -107,6 +107,12 @@ known_nodes_of() {
   "${_cli[@]}" CLUSTER INFO 2>/dev/null | grep "^cluster_known_nodes:" | tr -d '\r' | cut -d: -f2
 }
 
+cluster_nodes_of() {
+  local host="${1}"
+  build_cli "${host}"
+  "${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r'
+}
+
 # Slot count currently owned by the master whose id is $2, read from $1's
 # view of CLUSTER NODES. Prints the count of slot ranges' total slots.
 slots_owned_by() {
@@ -264,8 +270,9 @@ shard_membership_bound() {
 # master. The first-pod choice is an ASSIGNMENT at creation time (roles may
 # move later via failover) — never an assumption elsewhere.
 form_cluster() {
-  local shard_line shard fqdns first rest fqdn roster
+  local shard_line shard fqdns first rest fqdn roster node_id slots known
   local primaries=()
+  local primary_hosts=() primary_ids=() primary_slots=() primary_known=()
 
   roster=$(each_shard_fqdn_list) || return 1
   while read -r shard_line; do
@@ -278,6 +285,7 @@ form_cluster() {
       return 1
     fi
     primaries+=("${first}:${SERVICE_PORT}")
+    primary_hosts+=("${first}")
   done <<< "${roster}"
 
   if [ "${#primaries[@]}" -lt 3 ]; then
@@ -285,26 +293,88 @@ form_cluster() {
     return 1
   fi
 
-  # RE-ENTRY GUARD (fresh-eyes review B1): a prior create may have succeeded
-  # before attach/convergence was interrupted (action clamp, pod churn).
-  # Issuing --cluster create again over nodes that already hold cluster
-  # config hard-fails ("Node ... is not empty") on EVERY retry, and the
-  # coordinator then never reaches the attach path — permanent wedge. If any
-  # designated primary already participates in a cluster (knows peers or
-  # owns slots), RESUME formation instead: repair slot coverage if the
-  # interruption hit mid-create, then fall through to attach + convergence.
-  local resume="" phost slots known
-  for phost in "${primaries[@]}"; do
-    phost="${phost%%:*}"
-    slots=$(assigned_slots_of "${phost}")
-    known=$(known_nodes_of "${phost}")
-    if [ "${slots:-0}" -gt 0 ] 2>/dev/null || [ "${known:-1}" -gt 1 ] 2>/dev/null; then
-      resume="${phost}"
-      break
+  local phost
+  for phost in "${primary_hosts[@]}"; do
+    node_id=$(node_id_of "${phost}") || {
+      classify formation-probe yes "cannot read CLUSTER MYID from designated primary ${phost}"
+      return 1
+    }
+    slots=$(assigned_slots_of "${phost}") || {
+      classify formation-probe yes "cannot read assigned slots from designated primary ${phost}"
+      return 1
+    }
+    known=$(known_nodes_of "${phost}") || {
+      classify formation-probe yes "cannot read known-node count from designated primary ${phost}"
+      return 1
+    }
+    case "${slots}" in ''|*[!0-9]*) classify formation-probe yes "invalid assigned slots '${slots}' from ${phost}"; return 1 ;; esac
+    case "${known}" in ''|*[!0-9]*) classify formation-probe yes "invalid known-node count '${known}' from ${phost}"; return 1 ;; esac
+    [ -n "${node_id}" ] || {
+      classify formation-probe yes "empty CLUSTER MYID from designated primary ${phost}"
+      return 1
+    }
+    primary_ids+=("${node_id}")
+    primary_slots+=("${slots}")
+    primary_known+=("${known}")
+  done
+
+  # RE-ENTRY GUARD: --cluster create is safe only when EVERY designated
+  # primary is fresh. A mixed set needs an explicit repair driver; blindly
+  # skipping create on the first configured node leaves fresh shard masters
+  # forever outside that cluster, while blindly merging two configured
+  # clusters risks combining unrelated slot/config-epoch histories.
+  local resume="" resume_id="" resume_nodes="" other_nodes=""
+  local fresh_count=0 i resume_index=-1
+  for ((i=0; i<${#primary_hosts[@]}; i++)); do
+    if [ "${primary_slots[$i]}" -gt 0 ] || [ "${primary_known[$i]}" -gt 1 ]; then
+      if [ -z "${resume}" ]; then
+        resume="${primary_hosts[$i]}"
+        resume_id="${primary_ids[$i]}"
+        resume_index=$i
+      fi
+    else
+      fresh_count=$((fresh_count + 1))
     fi
   done
   if [ -n "${resume}" ]; then
     echo "cluster config already present on ${resume} — resuming interrupted formation (create skipped)."
+
+    resume_nodes=$(cluster_nodes_of "${resume}") || {
+      classify formation-resume-topology yes "cannot read CLUSTER NODES from resume host ${resume}"
+      return 1
+    }
+    [ -n "${resume_nodes}" ] || {
+      classify formation-resume-topology yes "empty CLUSTER NODES from resume host ${resume}"
+      return 1
+    }
+
+    # Every already-configured primary must be in the SAME cluster. One-way
+    # visibility is a transient gossip state; zero-way visibility means two
+    # independently configured clusters and is never auto-merged.
+    for ((i=0; i<${#primary_hosts[@]}; i++)); do
+      [ "$i" -eq "${resume_index}" ] && continue
+      if [ "${primary_slots[$i]}" -gt 0 ] || [ "${primary_known[$i]}" -gt 1 ]; then
+        other_nodes=$(cluster_nodes_of "${primary_hosts[$i]}") || {
+          classify formation-resume-topology yes "cannot read CLUSTER NODES from configured primary ${primary_hosts[$i]}"
+          return 1
+        }
+        local resume_sees=0 other_sees=0
+        echo "${resume_nodes}" | awk -v id="${primary_ids[$i]}" '$1 == id {found=1} END {exit !found}' && resume_sees=1
+        echo "${other_nodes}" | awk -v id="${resume_id}" '$1 == id {found=1} END {exit !found}' && other_sees=1
+        if [ "${resume_sees}" -eq 0 ] && [ "${other_sees}" -eq 0 ]; then
+          classify formation-resume-topology no "configured primary ${primary_hosts[$i]} is not in resume cluster ${resume}; refusing automatic cluster merge"
+          return 1
+        fi
+        if [ "${resume_sees}" -eq 0 ] || [ "${other_sees}" -eq 0 ]; then
+          classify formation-resume-topology yes "membership gossip between ${resume} and ${primary_hosts[$i]} is one-way; deferring before mutation"
+          return 1
+        fi
+      fi
+    done
+
+    # redis-cli add-node performs cluster-health preflight checks. Repair the
+    # resume cluster's slot coverage first so a partially completed create
+    # cannot permanently block introduction of the remaining fresh masters.
     slots=$(assigned_slots_of "${resume}")
     if [ "${slots:-0}" -ne 16384 ] 2>/dev/null; then
       build_cluster_cli
@@ -318,6 +388,54 @@ form_cluster() {
         classify formation-resume yes "slot coverage ${slots:-0}/16384 after resume fix — deferring"
         return 1
       fi
+    fi
+
+    # Fresh designated primaries are now safe to introduce as empty masters.
+    # Re-entry verifies mutual visibility before any slot redistribution.
+    if [ "${fresh_count}" -gt 0 ]; then
+      build_cluster_cli
+      local add_out introduced=0
+      for ((i=0; i<${#primary_hosts[@]}; i++)); do
+        [ "${primary_slots[$i]}" -eq 0 ] && [ "${primary_known[$i]}" -eq 1 ] || continue
+        add_out=$("${_ccli[@]}" --cluster add-node "${primary_hosts[$i]}:${SERVICE_PORT}" "${resume}:${SERVICE_PORT}" 2>&1) || {
+          classify formation-resume yes "add missing designated primary ${primary_hosts[$i]} failed (re-entry re-drives): ${add_out}"
+          return 1
+        }
+        introduced=$((introduced + 1))
+        echo "introduced missing designated primary ${primary_hosts[$i]} to resume cluster ${resume}."
+      done
+      classify formation-resume yes "introduced ${introduced} missing designated primary(s); deferring for mutual membership visibility"
+      return 1
+    fi
+
+    # Interrupted formation can leave a mutually visible master with zero
+    # slots. Rebalance only after full coverage and same-cluster proof.
+    local zero_slot_primary=0 own rebalance_out
+    for ((i=0; i<${#primary_hosts[@]}; i++)); do
+      own=$(slots_owned_by "${resume}" "${primary_ids[$i]}") || {
+        classify formation-resume yes "cannot read owned slots for designated primary ${primary_hosts[$i]}"
+        return 1
+      }
+      case "${own}" in ''|*[!0-9]*) classify formation-resume yes "invalid owned-slot count '${own}' for designated primary ${primary_hosts[$i]}"; return 1 ;; esac
+      [ "${own}" -gt 0 ] || zero_slot_primary=1
+    done
+    if [ "${zero_slot_primary}" -eq 1 ]; then
+      build_cluster_cli
+      rebalance_out=$("${_ccli[@]}" --cluster rebalance "${resume}:${SERVICE_PORT}" --cluster-use-empty-masters 2>&1) || {
+        classify formation-resume yes "rebalance across resumed designated primaries failed (re-entry re-drives): ${rebalance_out}"
+        return 1
+      }
+      for ((i=0; i<${#primary_hosts[@]}; i++)); do
+        own=$(slots_owned_by "${resume}" "${primary_ids[$i]}") || {
+          classify formation-resume yes "cannot verify owned slots for designated primary ${primary_hosts[$i]} after resume rebalance"
+          return 1
+        }
+        case "${own}" in ''|*[!0-9]*) classify formation-resume yes "invalid post-rebalance owned-slot count '${own}' for designated primary ${primary_hosts[$i]}"; return 1 ;; esac
+        if [ "${own}" -le 0 ]; then
+          classify formation-resume yes "designated primary ${primary_hosts[$i]} still owns ${own} slots after resume rebalance"
+          return 1
+        fi
+      done
     fi
   else
     build_cluster_cli

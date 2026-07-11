@@ -155,6 +155,19 @@ Describe "valkey-cluster-manage.sh"
       }
       build_cli() { _cli=(mock_pong); }
       mock_pong() { echo PONG; }
+      node_id_of() {
+        case "$1" in
+          vk-shard-abc-0.h.ns.svc) echo id-abc ;;
+          vk-shard-def-0.h.ns.svc) echo id-def ;;
+          vk-shard-ghi-0.h.ns.svc) echo id-ghi ;;
+        esac
+      }
+      cluster_nodes_of() {
+        printf 'id-abc vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-5460\n'
+        printf 'id-def vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected 5461-10922\n'
+        printf 'id-ghi vk-shard-ghi-0.h.ns.svc:6379@16379 master - 0 0 3 connected 10923-16383\n'
+      }
+      slots_owned_by() { echo 5461; }
       attach_all_replicas() { echo "ATTACH-DRIVEN"; }
       cluster_formed_from_self() { return 0; }
     }
@@ -209,6 +222,160 @@ Describe "valkey-cluster-manage.sh"
       The status should be success
       The stdout should include "cluster create issued across 3 primaries"
       The stdout should include "ATTACH-DRIVEN"
+    End
+
+    It "defers before writes when a designated-primary state probe fails"
+      node_id_of() { return 1; }
+      known_nodes_of() { echo 1; }
+      assigned_slots_of() { echo 0; }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-probe"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "CLUSTER MYID"
+      The stdout should not include "WRITE-CALLED"
+    End
+
+    It "drives a mixed configured/fresh primary set across two re-entries"
+      _joined_marker=$(mktemp)
+      _balanced_marker=$(mktemp)
+      known_nodes_of() {
+        if [ -s "${_joined_marker}" ]; then echo 3
+        elif [ "$1" = vk-shard-abc-0.h.ns.svc ]; then echo 2
+        else echo 1
+        fi
+      }
+      assigned_slots_of() {
+        [ "$1" = vk-shard-abc-0.h.ns.svc ] && echo 16384 || echo 0
+      }
+      cluster_nodes_of() {
+        printf 'id-abc vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-16383\n'
+        if [ -s "${_joined_marker}" ]; then
+          printf 'id-def vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected\n'
+          printf 'id-ghi vk-shard-ghi-0.h.ns.svc:6379@16379 master - 0 0 3 connected\n'
+        fi
+      }
+      slots_owned_by() {
+        if [ "$2" = id-abc ] || [ -s "${_balanced_marker}" ]; then echo 5461; else echo 0; fi
+      }
+      build_cluster_cli() { _ccli=(mock_resume_write "${_joined_marker}" "${_balanced_marker}"); }
+      mock_resume_write() {
+        local joined="$1" balanced="$2"; shift 2
+        case "$*" in
+          *"--cluster add-node"*) echo joined >"${joined}"; echo "ADD $*" ;;
+          *"--cluster rebalance"*) echo balanced >"${balanced}"; echo "REBALANCE $*" ;;
+          *"--cluster create"*) echo "CREATE-CALLED"; return 99 ;;
+        esac
+      }
+      two_reentries() {
+        local first_rc=0
+        form_cluster || first_rc=$?
+        [ "${first_rc}" -eq 1 ] || return 99
+        form_cluster || return $?
+        [ -s "${_balanced_marker}" ] || return 98
+        echo "REBALANCE-DRIVEN"
+      }
+      When call two_reentries
+      The status should be success
+      The stdout should include "introduced missing designated primary vk-shard-def-0"
+      The stdout should include "introduced missing designated primary vk-shard-ghi-0"
+      The stdout should include "REBALANCE-DRIVEN"
+      The stdout should include "ATTACH-DRIVEN"
+      The stdout should not include "CREATE-CALLED"
+      The stderr should include "introduced 2 missing designated primary(s)"
+    End
+
+    It "repairs partial coverage before adding fresh designated primaries"
+      _cov_marker=$(mktemp)
+      _order=$(mktemp)
+      known_nodes_of() {
+        if [ "$1" = vk-shard-abc-0.h.ns.svc ]; then echo 2; else echo 1; fi
+      }
+      assigned_slots_of() {
+        if [ "$1" != vk-shard-abc-0.h.ns.svc ]; then echo 0
+        elif [ -s "${_cov_marker}" ]; then echo 16384
+        else echo 8000
+        fi
+      }
+      cluster_nodes_of() {
+        printf 'id-abc vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-7999\n'
+      }
+      build_cluster_cli() { _ccli=(mock_fix_then_add "${_cov_marker}" "${_order}"); }
+      mock_fix_then_add() {
+        local coverage="$1" order="$2"; shift 2
+        case "$*" in
+          *"--cluster fix"*) echo FIX >>"${order}"; echo fixed >"${coverage}" ;;
+          *"--cluster add-node"*) echo ADD >>"${order}"; echo added ;;
+          *"--cluster create"*) echo CREATE >>"${order}"; return 99 ;;
+        esac
+      }
+      When call form_cluster
+      The status should be failure
+      The contents of file "${_order}" should equal "FIX
+ADD
+ADD"
+      The stdout should include "introduced missing designated primary"
+      The stderr should include "introduced 2 missing designated primary(s)"
+    End
+
+    It "fails closed without writes when configured primaries belong to separate clusters"
+      known_nodes_of() { echo 2; }
+      assigned_slots_of() { echo 100; }
+      cluster_nodes_of() {
+        case "$1" in
+          vk-shard-abc-0.h.ns.svc) printf 'id-abc a:6379@16379 master - 0 0 1 connected 0-99\n' ;;
+          vk-shard-def-0.h.ns.svc) printf 'id-def b:6379@16379 master - 0 0 2 connected 100-199\n' ;;
+          vk-shard-ghi-0.h.ns.svc) printf 'id-ghi c:6379@16379 master - 0 0 3 connected 200-299\n' ;;
+        esac
+      }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-resume-topology"
+      The stderr should include "retry_safe=no"
+      The stderr should include "refusing automatic cluster merge"
+      The stdout should not include "WRITE-CALLED"
+      The stdout should not include "ATTACH-DRIVEN"
+    End
+
+    It "defers without writes while configured-primary gossip is only one-way"
+      known_nodes_of() { echo 3; }
+      assigned_slots_of() { echo 5461; }
+      cluster_nodes_of() {
+        if [ "$1" = vk-shard-abc-0.h.ns.svc ]; then
+          printf 'id-abc a:6379@16379 master - 0 0 1 connected 0-5460\n'
+          printf 'id-def b:6379@16379 master - 0 0 2 connected 5461-10922\n'
+          printf 'id-ghi c:6379@16379 master - 0 0 3 connected 10923-16383\n'
+        else
+          printf '%s self:6379@16379 master - 0 0 2 connected\n' "$(node_id_of "$1")"
+        fi
+      }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-resume-topology"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "one-way"
+      The stdout should not include "WRITE-CALLED"
+    End
+
+    It "defers before rebalance when owned-slot evidence is invalid"
+      known_nodes_of() { echo 3; }
+      assigned_slots_of() { echo 16384; }
+      slots_owned_by() { echo invalid; }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-resume"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "invalid owned-slot count"
+      The stdout should not include "WRITE-CALLED"
+      The stdout should not include "ATTACH-DRIVEN"
     End
   End
 
