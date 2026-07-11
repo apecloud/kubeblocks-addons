@@ -809,9 +809,42 @@ shard_remove() {
   local own
   own=$(slots_owned_by "${remaining_host}" "${master_id}")
   if [ "${own}" -gt 0 ]; then
+    # CONCURRENT SCALE-IN CONTRACT (round-2 external review): the drain
+    # must zero-weight not only this shard's master but EVERY master that
+    # currently owns 0 slots. Weight-1 defaults would rebalance slots INTO
+    # (a) a zero-proven departing sibling awaiting purge — its reset guard
+    # then refuses and forces a re-drain ping-pong — and (b) mid-join fresh
+    # masters, whose slots must come from their own completion driver.
+    # With this exclusion a leaver that reaches 0 slots STAYS at 0, so
+    # concurrent multi-shard drains terminate instead of re-polluting each
+    # other. 0-slot masters are engine-observable truth; "is departing" is
+    # not, so this is the strongest gate available from CLUSTER NODES.
+    local drain_nodes wline wid wown
+    local weight_args=("--cluster-weight" "${master_id}=0")
+    drain_nodes=$(cluster_nodes_of "${remaining_host}")
+    if [ -z "${drain_nodes}" ]; then
+      classify remove-drain yes "cannot read CLUSTER NODES from ${remaining_host} to build drain weights — deferring"
+      exit 1
+    fi
+    while read -r wline; do
+      wid=$(echo "${wline}" | awk '{print $1}')
+      [ -z "${wid}" ] && continue
+      [ "${wid}" = "${master_id}" ] && continue
+      # a fail-flagged master must never be a receiver either: rebalance
+      # would abort mid-migration trying to move slots to it
+      if echo "${wline}" | awk '{print $3}' | grep -q fail; then
+        weight_args+=("--cluster-weight" "${wid}=0")
+        continue
+      fi
+      wown=$(slots_owned_by "${remaining_host}" "${wid}")
+      case "${wown}" in ''|*[!0-9-]*) classify remove-drain yes "invalid owned-slot count '${wown}' for master ${wid} — deferring drain"; exit 1 ;; esac
+      if [ "${wown}" -eq 0 ]; then
+        weight_args+=("--cluster-weight" "${wid}=0")
+      fi
+    done <<< "$(echo "${drain_nodes}" | awk '$3 ~ /master/')"
     build_cluster_cli
     local reb_out
-    reb_out=$("${_ccli[@]}" --cluster rebalance "${remaining_host}:${SERVICE_PORT}" --cluster-weight "${master_id}=0" 2>&1) || {
+    reb_out=$("${_ccli[@]}" --cluster rebalance "${remaining_host}:${SERVICE_PORT}" "${weight_args[@]}" 2>&1) || {
       classify remove-drain no "slot drain (rebalance weight=0) failed: ${reb_out}"
       exit 1
     }

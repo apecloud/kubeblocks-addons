@@ -502,6 +502,10 @@ ADD"
       cluster_state_of() { echo "ok"; }
       shard_master_id_via() { echo "master-id-1"; }
       slots_owned_by() { echo "5"; }
+      cluster_nodes_of() {
+        printf 'master-id-1 vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-5\n'
+        printf 'master-id-2 vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected 6-16383\n'
+      }
       build_cluster_cli() { _ccli=(mock_reb); }
       mock_reb() { echo "rebalanced"; }
       # shard_remove exits; run in subshell via run
@@ -511,6 +515,85 @@ ADD"
       The stderr should include "retry_safe=yes"
       The stderr should include "still owns 5 slots"
       The stdout should include ""
+    End
+
+    It "drain zero-weights every slot-less or failed master (a zero-proven sibling is never re-polluted)"
+      # Round-2 external review (concurrent multi-shard scale-in): weight-1
+      # defaults would rebalance slots INTO a departed-and-drained sibling
+      # (invalidating its zero-proof and forcing a re-drain ping-pong) or a
+      # failed master (aborting the migration). Only slot-owning healthy
+      # masters may receive.
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() {
+        printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'
+      }
+      cluster_state_of() { echo "ok"; }
+      shard_master_id_via() { echo "id-self"; }
+      _drain_args=$(mktemp)
+      _drained_marker=$(mktemp)
+      slots_owned_by() {
+        case "${2}" in
+          id-self) if [ -s "${_drained_marker}" ]; then echo 0; else echo 500; fi ;;
+          id-drained-sibling) echo 0 ;;
+          id-healthy-stayer) echo 4000 ;;
+          *) echo 0 ;;
+        esac
+      }
+      cluster_nodes_of() {
+        printf 'id-self vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-499\n'
+        printf 'id-drained-sibling vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected\n'
+        printf 'id-healthy-stayer vk-shard-ghi-0.h.ns.svc:6379@16379 master - 0 0 3 connected 500-16383\n'
+        printf 'id-failed vk-shard-jkl-0.h.ns.svc:6379@16379 master,fail - 0 0 4 disconnected\n'
+      }
+      build_cluster_cli() { _ccli=(mock_drain_reb "${_drain_args}" "${_drained_marker}"); }
+      mock_drain_reb() {
+        # open_slots_present shares build_cluster_cli — only the rebalance
+        # invocation may record args and flip the drained marker
+        local argf="${1}" marker="${2}"; shift 2
+        case "$*" in
+          *"--cluster rebalance"*)
+            echo "$*" >> "${argf}"
+            echo drained > "${marker}"
+            echo "rebalanced" ;;
+          *) : ;;
+        esac
+      }
+      purge_shard_from_cluster() { echo "PURGED"; }
+      When run shard_remove
+      The status should be success
+      The stdout should include "slot drain proven"
+      The stdout should include "PURGED"
+      The contents of file "${_drain_args}" should include "id-self=0"
+      The contents of file "${_drain_args}" should include "id-drained-sibling=0"
+      The contents of file "${_drain_args}" should include "id-failed=0"
+      The contents of file "${_drain_args}" should not include "id-healthy-stayer=0"
+    End
+
+    It "defers the drain when a master's slot evidence is unreadable (no blind receiver set)"
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() {
+        printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'
+      }
+      cluster_state_of() { echo "ok"; }
+      shard_master_id_via() { echo "id-self"; }
+      slots_owned_by() {
+        case "${2}" in
+          id-self) echo 500 ;;
+          *) echo "" ;;
+        esac
+      }
+      cluster_nodes_of() {
+        printf 'id-self vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-499\n'
+        printf 'id-other vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected 500-16383\n'
+      }
+      build_cluster_cli() { _ccli=(mock_never); }
+      mock_never() { echo "REBALANCE-CALLED"; }
+      When run shard_remove
+      The status should be failure
+      The stderr should include "phase=remove-drain"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "invalid owned-slot count"
+      The stdout should not include "REBALANCE-CALLED"
     End
   End
   Describe "drive_shard_completion() — r3 CT05 livelock fix"
