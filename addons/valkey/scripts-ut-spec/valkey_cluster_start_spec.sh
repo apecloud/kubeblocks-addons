@@ -109,38 +109,53 @@ Describe "valkey-cluster-server-start.sh behavior"
   End
 
   Describe "build_cluster_conf()"
+    # These specs run the REAL production function (via VALKEY_CONF_DIR /
+    # VALKEY_ACL_FILE overrides) — never an inline copy. A sandboxed
+    # re-implementation is a tautology: deleting the announce trio from the
+    # production function would not fail it (fresh-eyes review finding).
     conf_setup() {
       tmpdir=$(mktemp -d)
-      # redirect the conf dir and data dir into the sandbox
-      build_cluster_conf_sandboxed() {
-        local self="$1"
-        mkdir -p "${tmpdir}/etc-valkey" "${tmpdir}/data"
-        conf_dir_override="${tmpdir}/etc-valkey"
-        # shellcheck disable=SC2317
-        local out
-        out=$( conf_dir="${conf_dir_override}" ; \
-          { echo "include /etc/conf/valkey.conf"; \
-            echo "port ${SERVICE_PORT}"; \
-            echo "cluster-port ${CLUSTER_BUS_PORT:-$((SERVICE_PORT + 10000))}"; \
-            echo "cluster-announce-ip ${CURRENT_POD_IP}"; \
-            echo "cluster-announce-hostname ${self}"; \
-            echo "cluster-preferred-endpoint-type hostname"; } > "${conf_dir_override}/valkey.conf" ; \
-          echo "${conf_dir_override}/valkey.conf" )
-        echo "${out}"
-      }
+      export VALKEY_CONF_DIR="${tmpdir}/etc-valkey"
+      export VALKEY_ACL_FILE="${tmpdir}/data/users.acl"
+      mkdir -p "${tmpdir}/data"
     }
-    conf_cleanup() { rm -rf "${tmpdir}"; }
+    conf_cleanup() {
+      rm -rf "${tmpdir}"
+      unset VALKEY_CONF_DIR VALKEY_ACL_FILE
+    }
     Before "conf_setup"
     After "conf_cleanup"
 
     It "renders the announce trio and derives the bus port from SERVICE_PORT"
-      conf_file=$(build_cluster_conf_sandboxed "vk-shard-a1x-0.vk-shard-a1x-headless.ns.svc.cluster.local")
+      conf_file=$(build_cluster_conf "vk-shard-a1x-0.vk-shard-a1x-headless.ns.svc.cluster.local")
       When call cat "${conf_file}"
       The status should be success
+      The stdout should include "include /etc/conf/valkey.conf"
+      The stdout should include "port 6379"
       The stdout should include "cluster-port 16379"
       The stdout should include "cluster-announce-ip 10.0.0.11"
       The stdout should include "cluster-announce-hostname vk-shard-a1x-0.vk-shard-a1x-headless.ns.svc.cluster.local"
       The stdout should include "cluster-preferred-endpoint-type hostname"
+    End
+
+    It "opens protected mode only when no default password is set"
+      unset VALKEY_DEFAULT_PASSWORD
+      conf_file=$(build_cluster_conf "vk-shard-a1x-0.vk-shard-a1x-headless.ns.svc.cluster.local")
+      When call cat "${conf_file}"
+      The status should be success
+      The stdout should include "protected-mode no"
+    End
+
+    It "materializes the per-node ACL file and master auth when a password is set"
+      export VALKEY_DEFAULT_PASSWORD="s3cret"
+      conf_file=$(build_cluster_conf "vk-shard-a1x-0.vk-shard-a1x-headless.ns.svc.cluster.local")
+      When call cat "${conf_file}"
+      The status should be success
+      The stdout should include "aclfile ${VALKEY_ACL_FILE}"
+      The stdout should include "masteruser default"
+      The stdout should not include "protected-mode no"
+      The file "${VALKEY_ACL_FILE}" should be exist
+      The contents of file "${VALKEY_ACL_FILE}" should include "user default on #"
     End
   End
 End

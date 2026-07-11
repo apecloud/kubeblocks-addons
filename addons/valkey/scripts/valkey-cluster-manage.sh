@@ -101,6 +101,12 @@ node_id_of() {
   "${_cli[@]}" CLUSTER MYID 2>/dev/null | tr -d '\r\n'
 }
 
+known_nodes_of() {
+  local host="${1}"
+  build_cli "${host}"
+  "${_cli[@]}" CLUSTER INFO 2>/dev/null | grep "^cluster_known_nodes:" | tr -d '\r' | cut -d: -f2
+}
+
 # Slot count currently owned by the master whose id is $2, read from $1's
 # view of CLUSTER NODES. Prints the count of slot ranges' total slots.
 slots_owned_by() {
@@ -144,13 +150,25 @@ coordinator_shard() {
 
 # All shard FQDN lists are exposed as ALL_SHARDS_POD_FQDN_LIST_<SHARD-SUFFIX>
 # env vars (KB 'individual' strategy). Prints "shard fqdn1,fqdn2" per line.
+#
+# CONSUMPTION CONTRACT (fresh-eyes review M1): callers MUST materialize the
+# output first (roster=$(each_shard_fqdn_list) || return 1) and iterate the
+# variable. Feeding this through a process substitution discards the exit
+# status: an empty/missing var would silently TRUNCATE the stream and every
+# downstream completeness/absence proof would quietly weaken. Zero roster
+# vars is likewise a hard failure, never an empty (vacuously passing) loop.
 each_shard_fqdn_list() {
-  local var value shard
+  local var value shard count=0
   while IFS='=' read -r var value; do
     shard="${var#ALL_SHARDS_POD_FQDN_LIST_}"
     [ -z "${value}" ] && { classify shard-roster no "${var} is empty"; return 1; }
     echo "${shard} ${value}"
+    count=$((count + 1))
   done < <(env | grep -E '^ALL_SHARDS_POD_FQDN_LIST_[A-Za-z0-9_]+=' | sort)
+  if [ "${count}" -eq 0 ]; then
+    classify shard-roster no "no ALL_SHARDS_POD_FQDN_LIST_* env vars present (roster unknown)"
+    return 1
+  fi
 }
 
 first_fqdn_of_list() {
@@ -185,7 +203,8 @@ cluster_formed_from_self() {
 # a master there. rc=0 must never settle for state/slot totals alone
 # (review: totals can be right while pods are missing or unattached).
 all_expected_members_present() {
-  local via="${1}" nodes shard_line shard fqdns missing=0
+  local via="${1}" nodes shard_line shard fqdns missing=0 roster
+  roster=$(each_shard_fqdn_list) || return 1
   build_cli "${via}"
   nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
   [ -z "${nodes}" ] && return 1
@@ -193,7 +212,7 @@ all_expected_members_present() {
     shard="${shard_line%% *}"
     fqdns="${shard_line#* }"
     shard_membership_bound "${nodes}" "${shard}" "${fqdns}" || missing=1
-  done < <(each_shard_fqdn_list)
+  done <<< "${roster}"
   [ "${missing}" -eq 0 ]
 }
 
@@ -245,9 +264,10 @@ shard_membership_bound() {
 # master. The first-pod choice is an ASSIGNMENT at creation time (roles may
 # move later via failover) — never an assumption elsewhere.
 form_cluster() {
-  local shard_line shard fqdns first rest fqdn
+  local shard_line shard fqdns first rest fqdn roster
   local primaries=()
 
+  roster=$(each_shard_fqdn_list) || return 1
   while read -r shard_line; do
     shard="${shard_line%% *}"
     fqdns="${shard_line#* }"
@@ -258,20 +278,56 @@ form_cluster() {
       return 1
     fi
     primaries+=("${first}:${SERVICE_PORT}")
-  done < <(each_shard_fqdn_list)
+  done <<< "${roster}"
 
   if [ "${#primaries[@]}" -lt 3 ]; then
     classify formation-wait-shards yes "only ${#primaries[@]} shard(s) visible; create needs >=3"
     return 1
   fi
 
-  build_cluster_cli
-  local create_out
-  create_out=$(echo yes | "${_ccli[@]}" --cluster create "${primaries[@]}" --cluster-yes 2>&1) || {
-    classify formation-create no "cluster create failed: ${create_out}"
-    return 1
-  }
-  echo "cluster create issued across ${#primaries[@]} primaries."
+  # RE-ENTRY GUARD (fresh-eyes review B1): a prior create may have succeeded
+  # before attach/convergence was interrupted (action clamp, pod churn).
+  # Issuing --cluster create again over nodes that already hold cluster
+  # config hard-fails ("Node ... is not empty") on EVERY retry, and the
+  # coordinator then never reaches the attach path — permanent wedge. If any
+  # designated primary already participates in a cluster (knows peers or
+  # owns slots), RESUME formation instead: repair slot coverage if the
+  # interruption hit mid-create, then fall through to attach + convergence.
+  local resume="" phost slots known
+  for phost in "${primaries[@]}"; do
+    phost="${phost%%:*}"
+    slots=$(assigned_slots_of "${phost}")
+    known=$(known_nodes_of "${phost}")
+    if [ "${slots:-0}" -gt 0 ] 2>/dev/null || [ "${known:-1}" -gt 1 ] 2>/dev/null; then
+      resume="${phost}"
+      break
+    fi
+  done
+  if [ -n "${resume}" ]; then
+    echo "cluster config already present on ${resume} — resuming interrupted formation (create skipped)."
+    slots=$(assigned_slots_of "${resume}")
+    if [ "${slots:-0}" -ne 16384 ] 2>/dev/null; then
+      build_cluster_cli
+      local fix_out
+      fix_out=$(echo yes | "${_ccli[@]}" --cluster fix "${resume}:${SERVICE_PORT}" 2>&1) || {
+        classify formation-resume yes "slot-coverage fix during formation resume failed (re-entry re-drives): $(echo "${fix_out}" | tail -2 | tr '\n' ';')"
+        return 1
+      }
+      slots=$(assigned_slots_of "${resume}")
+      if [ "${slots:-0}" -ne 16384 ] 2>/dev/null; then
+        classify formation-resume yes "slot coverage ${slots:-0}/16384 after resume fix — deferring"
+        return 1
+      fi
+    fi
+  else
+    build_cluster_cli
+    local create_out
+    create_out=$(echo yes | "${_ccli[@]}" --cluster create "${primaries[@]}" --cluster-yes 2>&1) || {
+      classify formation-create no "cluster create failed: ${create_out}"
+      return 1
+    }
+    echo "cluster create issued across ${#primaries[@]} primaries."
+  fi
 
   attach_all_replicas || return 1
   cluster_formed_from_self || {
@@ -284,7 +340,8 @@ form_cluster() {
 # Attach every non-first pod of every shard as a replica of that shard's
 # master (identified by engine node id, resolved fresh each invocation).
 attach_all_replicas() {
-  local shard_line shard fqdns first rest fqdn master_id add_out
+  local shard_line shard fqdns first rest fqdn master_id add_out roster
+  roster=$(each_shard_fqdn_list) || return 1
   while read -r shard_line; do
     shard="${shard_line%% *}"
     fqdns="${shard_line#* }"
@@ -298,14 +355,15 @@ attach_all_replicas() {
       [ "${fqdn}" = "${first}" ] && continue
       ensure_replica_bound "${first}" "${fqdn}" "${master_id}" "${shard}" || return 1
     done
-  done < <(each_shard_fqdn_list)
+  done <<< "${roster}"
 }
 
 # Non-coordinator (or late shard) path: if the cluster is formed and this
 # shard's members are attached, succeed; if formed but self not attached,
 # join as the scale-out path; otherwise defer.
 verify_or_join() {
-  local any_formed_host="" shard_line fqdns first state
+  local any_formed_host="" shard_line fqdns first state roster
+  roster=$(each_shard_fqdn_list) || return 1
   while read -r shard_line; do
     fqdns="${shard_line#* }"
     first=$(first_fqdn_of_list "${fqdns}")
@@ -314,7 +372,7 @@ verify_or_join() {
       any_formed_host="${first}"
       break
     fi
-  done < <(each_shard_fqdn_list)
+  done <<< "${roster}"
 
   if [ -z "${any_formed_host}" ]; then
     classify join-wait-formed yes "no formed cluster visible yet (coordinator still working)"
@@ -333,7 +391,7 @@ verify_or_join() {
   # one may perform write actions; the rest defer retry-safe and take
   # their turn on a later re-entry. Completed shards are never gated.
   local first_incomplete
-  first_incomplete=$(first_incomplete_shard "${any_formed_host}")
+  first_incomplete=$(first_incomplete_shard "${any_formed_host}") || return 1
   if [ -n "${first_incomplete}" ] && \
      [ "${first_incomplete}" != "$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_')" ] && \
      ! shard_complete_in_view "${any_formed_host}" "$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_')"; then
@@ -399,7 +457,8 @@ repair_open_slots() {
 # master that owns slots and every roster pod is bound (strict binding).
 # Used by the join queue; reads engine truth from the given vantage.
 shard_complete_in_view() {
-  local via="${1}" shard_upper="${2}" shard_line shard fqdns nodes master_line master_id own
+  local via="${1}" shard_upper="${2}" shard_line shard fqdns nodes master_line master_id own roster
+  roster=$(each_shard_fqdn_list) || return 1
   while read -r shard_line; do
     shard="${shard_line%% *}"
     [ "${shard}" = "${shard_upper}" ] || continue
@@ -413,21 +472,23 @@ shard_complete_in_view() {
     own=$(slots_owned_by "${via}" "${master_id}")
     [ "${own}" -gt 0 ] && return 0
     return 1
-  done < <(each_shard_fqdn_list)
+  done <<< "${roster}"
   return 1
 }
 
 # Sorted-first shard (roster order) that is NOT complete in the view.
-# Empty output = all roster shards complete.
+# Empty output = all roster shards complete. rc=1 = roster env unreadable
+# (callers must defer, never treat as "all complete").
 first_incomplete_shard() {
-  local via="${1}" shard_line shard
+  local via="${1}" shard_line shard roster
+  roster=$(each_shard_fqdn_list) || return 1
   while read -r shard_line; do
     shard="${shard_line%% *}"
     if ! shard_complete_in_view "${via}" "${shard}"; then
       echo "${shard}"
       return 0
     fi
-  done < <(each_shard_fqdn_list)
+  done <<< "${roster}"
   return 0
 }
 
@@ -545,7 +606,8 @@ post_provision() {
 shard_remove() {
   validate_manage_env || exit 1
 
-  local remaining_host="" shard_line shard fqdns first
+  local remaining_host="" shard_line shard fqdns first roster
+  roster=$(each_shard_fqdn_list) || exit 1
   while read -r shard_line; do
     shard="${shard_line%% *}"
     fqdns="${shard_line#* }"
@@ -555,7 +617,7 @@ shard_remove() {
       remaining_host="${first}"
       break
     fi
-  done < <(each_shard_fqdn_list)
+  done <<< "${roster}"
   if [ -z "${remaining_host}" ]; then
     classify remove-no-receiver no "no healthy remaining shard visible to receive slots — refusing removal"
     exit 1
@@ -620,8 +682,9 @@ purge_shard_from_cluster() {
     pattern="${pattern:+${pattern}|}${fqdn}"
   done
 
-  local remaining=() shard_line shard fqdns self_upper
+  local remaining=() shard_line shard fqdns self_upper roster
   self_upper=$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_')
+  roster=$(each_shard_fqdn_list) || return 1
   while read -r shard_line; do
     shard="${shard_line%% *}"
     fqdns="${shard_line#* }"
@@ -639,7 +702,7 @@ purge_shard_from_cluster() {
       fi
       remaining+=("${fqdn}")
     done
-  done < <(each_shard_fqdn_list)
+  done <<< "${roster}"
   if [ "${#remaining[@]}" -eq 0 ]; then
     classify remove-no-receiver no "no live remaining pods in roster — refusing purge"
     return 1

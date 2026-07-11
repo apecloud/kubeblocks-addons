@@ -88,7 +88,10 @@ resolve_self_fqdn() {
 }
 
 build_cluster_conf() {
-  local conf_dir="/etc/valkey"
+  # conf dir overridable so the contract spec exercises THIS function, not
+  # an inline copy (fresh-eyes review: a re-implemented sandbox guarded
+  # nothing — the announce trio could be deleted here and specs still passed).
+  local conf_dir="${VALKEY_CONF_DIR:-/etc/valkey}"
   local conf_file="${conf_dir}/valkey.conf"
   local port="${SERVICE_PORT}"
   local bus_port="${CLUSTER_BUS_PORT:-$((SERVICE_PORT + 10000))}"
@@ -120,7 +123,7 @@ build_cluster_conf() {
 # engine, so every node owns its own file).
 build_acl_file() {
   local conf_file="$1"
-  local acl_file="/data/users.acl"
+  local acl_file="${VALKEY_ACL_FILE:-/data/users.acl}"
   local sha256
   sha256=$(echo -n "${VALKEY_DEFAULT_PASSWORD}" | sha256sum | cut -d' ' -f1)
   if [ -f "${acl_file}" ]; then

@@ -28,13 +28,22 @@ spec:
   updateStrategy: BestEffortParallel
   podManagementPolicy: OrderedReady
 
-  # ── TLS ────────────────────────────────────────────────────────────────
-  tls:
-    volumeName: tls
-    mountPath: {{ $.Values.tlsMountPath }}
-    caFile: ca.crt
-    certFile: tls.crt
-    keyFile: tls.key
+  replicasLimit:
+    # Per-shard scale contract at the API layer (not only the chart
+    # schema — OpsRequest / direct-CR paths bypass values.schema.json):
+    # 1 master + up to 4 replicas per shard, matching the sentinel-mode
+    # bound. Raise only together with scale e2e evidence.
+    minReplicas: 1
+    maxReplicas: 5
+
+  # ── TLS: UNSUPPORTED on the cluster topology in v1 (TL ruling,
+  # #valkey:557234f0). Declaring the tls capability here without the full
+  # runtime wiring (enabling var, secure/plaintext port swap, cluster bus
+  # encryption, CLI flags on every script face) produced a SILENT
+  # PLAINTEXT cluster while the user believed encryption was on.
+  # Re-adding this capability requires the complete wiring plus live
+  # acceptance — the boundary block in tls_contract_spec.sh pins this
+  # file to stay tls-free until then. Sentinel topology is unaffected.
 
   volumes:
     - name: data
@@ -165,13 +174,8 @@ spec:
         resourceVarRef:
           optional: true
           cpuLimit: Required
-    # ── TLS CLI flags (empty when TLS is off) ──
-    # Same verify-against-CA contract as the sentinel-mode definition.
-    - name: VALKEY_CLI_TLS_ARGS
-      value: ""
-      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --cacert {{.TLS_MOUNT_PATH}}/ca.crt{{else}}{{end}}` | toYaml }}
-    - name: TLS_MOUNT_PATH
-      value: {{ $.Values.tlsMountPath }}
+    # (v1: no TLS vars — cluster topology TLS is unsupported; see the
+    # tls boundary comment at spec top and cluster-tls-boundary spec.)
 
   lifecycleActions:
     # Role probe: pure read of this node's CLUSTER NODES myself line;

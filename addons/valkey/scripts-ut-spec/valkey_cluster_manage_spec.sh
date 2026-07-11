@@ -140,6 +140,124 @@ Describe "valkey-cluster-manage.sh"
     End
   End
 
+  Describe "form_cluster() re-entry (fresh-eyes B1: interrupted formation must resume, never re-create)"
+    # Failure model: --cluster create succeeded, then the action was
+    # interrupted (clamp/pod churn) before attach/convergence. Re-issuing
+    # create over non-empty nodes hard-fails on EVERY retry ("Node is not
+    # empty") and the coordinator never reaches the attach path — a
+    # permanent provisioning wedge. Re-entry must SKIP create and drive
+    # the remaining steps (same doctrine as the CT05 completion driver).
+    resume_env() {
+      each_shard_fqdn_list() {
+        printf 'SHARD_ABC vk-shard-abc-0.h.ns.svc\n'
+        printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'
+        printf 'SHARD_GHI vk-shard-ghi-0.h.ns.svc\n'
+      }
+      build_cli() { _cli=(mock_pong); }
+      mock_pong() { echo PONG; }
+      attach_all_replicas() { echo "ATTACH-DRIVEN"; }
+      cluster_formed_from_self() { return 0; }
+    }
+    Before "resume_env"
+
+    It "skips create and drives attach when a primary already holds cluster config"
+      known_nodes_of() { echo "6"; }
+      assigned_slots_of() { echo "16384"; }
+      build_cluster_cli() { _ccli=(mock_create_forbidden); }
+      mock_create_forbidden() { echo "CREATE-CALLED"; return 1; }
+      When call form_cluster
+      The status should be success
+      The stdout should include "resuming interrupted formation (create skipped)"
+      The stdout should include "ATTACH-DRIVEN"
+      The stdout should not include "CREATE-CALLED"
+      The stdout should not include "cluster create issued"
+    End
+
+    It "repairs partial slot coverage (interrupted mid-create) before attach"
+      known_nodes_of() { echo "6"; }
+      _cov_marker=$(mktemp)
+      assigned_slots_of() {
+        if [ -s "${_cov_marker}" ]; then echo "16384"; else echo "8000"; fi
+      }
+      build_cluster_cli() { _ccli=(mock_fix "${_cov_marker}"); }
+      mock_fix() { local f="${1}"; shift; echo seen > "${f}"; echo "coverage fixed"; }
+      When call form_cluster
+      The status should be success
+      The stdout should include "resuming interrupted formation"
+      The stdout should include "ATTACH-DRIVEN"
+    End
+
+    It "defers retry-safe when coverage stays incomplete after the resume fix"
+      known_nodes_of() { echo "6"; }
+      assigned_slots_of() { echo "8000"; }
+      build_cluster_cli() { _ccli=(mock_fix_noop); }
+      mock_fix_noop() { echo "fix attempted"; }
+      When call form_cluster
+      The status should be failure
+      The stdout should include "resuming interrupted formation"
+      The stderr should include "phase=formation-resume"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "8000/16384"
+    End
+
+    It "still creates on a genuinely fresh primary set"
+      known_nodes_of() { echo "1"; }
+      assigned_slots_of() { echo "0"; }
+      build_cluster_cli() { _ccli=(mock_create_ok); }
+      mock_create_ok() { echo "OK all 16384 slots covered"; }
+      When call form_cluster
+      The status should be success
+      The stdout should include "cluster create issued across 3 primaries"
+      The stdout should include "ATTACH-DRIVEN"
+    End
+  End
+
+  Describe "roster env contract (fresh-eyes M1: no silent truncation, no vacuous pass)"
+    roster_clean() {
+      unset ALL_SHARDS_POD_FQDN_LIST_SHARD_ABC ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF
+    }
+    After "roster_clean"
+
+    It "each_shard_fqdn_list hard-fails when NO roster vars are present"
+      When call each_shard_fqdn_list
+      The status should be failure
+      The stderr should include "phase=shard-roster"
+      The stderr should include "no ALL_SHARDS_POD_FQDN_LIST_"
+      The stderr should include "retry_safe=no"
+    End
+
+    It "each_shard_fqdn_list hard-fails when a roster var is empty"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_ABC="vk-shard-abc-0.h.ns.svc"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF=""
+      When call each_shard_fqdn_list
+      The status should be failure
+      # lines before the empty var still stream out — the CONTRACT is the
+      # non-zero exit, which is exactly why callers must check it
+      The stdout should include "SHARD_ABC vk-shard-abc-0.h.ns.svc"
+      The stderr should include "ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF is empty"
+    End
+
+    It "all_expected_members_present fails — never vacuously passes — without a readable roster"
+      # regression lock: before the materialization fix, a missing roster
+      # meant zero loop iterations, missing=0, and rc=0 — exactly the
+      # "settle for state/slot totals alone" outcome the design forbids.
+      build_cli() { _cli=(mock_some_nodes); }
+      mock_some_nodes() { printf 'mid1 vk-x-0.h.ns.svc:6379@16379 master - 0 0 5 connected 0-16383\n'; }
+      When call all_expected_members_present "vk-x-0.h.ns.svc"
+      The status should be failure
+      The stderr should include "no ALL_SHARDS_POD_FQDN_LIST_"
+    End
+
+    It "emits sorted 'SHARD fqdns' lines when the roster is complete"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF="vk-shard-def-0.h.ns.svc"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_ABC="vk-shard-abc-0.h.ns.svc,vk-shard-abc-1.h.ns.svc"
+      When call each_shard_fqdn_list
+      The status should be success
+      The line 1 of stdout should equal "SHARD_ABC vk-shard-abc-0.h.ns.svc,vk-shard-abc-1.h.ns.svc"
+      The line 2 of stdout should equal "SHARD_DEF vk-shard-def-0.h.ns.svc"
+    End
+  End
+
   Describe "shard removal drain gate"
     It "refuses node deletion while slots remain (positive zero proof required)"
       # Simulate: drain issued but 5 slots still owned afterwards.

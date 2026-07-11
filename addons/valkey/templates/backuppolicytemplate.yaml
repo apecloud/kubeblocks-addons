@@ -100,7 +100,7 @@ metadata:
 spec:
   serviceKind: valkey-cluster
   compDefs:
-    - ^valkey-cluster-[0-9]+$
+    - {{ include "valkeyCluster.cmpdRegexpPattern" . }}
   target:
     role: secondary
     fallbackRole: primary

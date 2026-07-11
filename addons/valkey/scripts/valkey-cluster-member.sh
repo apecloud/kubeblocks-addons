@@ -98,7 +98,7 @@ member_join() {
     classify env-contract no "KB_JOIN_MEMBER_POD_FQDN is required for --join"
     exit 1
   fi
-  local via master_line master_id master_addr
+  local via master_line master_id
   via=$(shard_vantage "${target}") || exit 1
   master_line=$(shard_master_line "${via}")
   if [ -z "${master_line}" ]; then
@@ -106,16 +106,19 @@ member_join() {
     exit 1
   fi
   master_id=$(echo "${master_line}" | awk '{print $1}')
-  master_addr=$(echo "${master_line}" | awk '{print $2}' | cut -d@ -f1 | cut -d: -f1)
 
   if join_confirmed "${via}" "${target}" "${master_id}"; then
     echo "member ${target} already a replica of this shard's master — join already effective."
     exit 0
   fi
   if [ -z "$(node_line_of "${via}" "${target}")" ]; then
+    # existing-node argument is the vantage FQDN: any cluster member works,
+    # and reusing ${via} avoids parsing the master's announced address out
+    # of CLUSTER NODES (fresh-eyes review: that parse was IPv4-only —
+    # cut -d: -f1 mangles an IPv6 announce address).
     build_cluster_cli
     local out
-    out=$("${_ccli[@]}" --cluster add-node "${target}:${port}" "${master_addr}:${port}" --cluster-slave --cluster-master-id "${master_id}" 2>&1) || {
+    out=$("${_ccli[@]}" --cluster add-node "${target}:${port}" "${via}:${port}" --cluster-slave --cluster-master-id "${master_id}" 2>&1) || {
       classify join-add-node no "add-node --cluster-slave for ${target} failed: ${out}"
       exit 1
     }
@@ -167,7 +170,7 @@ member_leave() {
 # then prove BOTH old fqdn and old ids absent from every remaining pod.
 purge_member_from_cluster() {
   local target="${1}" remaining host ids="" id line nodes out
-  remaining=$(all_cluster_pods_except "${target}")
+  remaining=$(all_cluster_pods_except "${target}") || return 1
   if [ -z "${remaining}" ]; then
     classify env-contract no "ALL_SHARDS_POD_FQDN_LIST_* roster empty — cannot purge ${target} cluster-wide (no fallback)"
     return 1
@@ -238,9 +241,19 @@ host_resolves() {
   getent hosts "${1}" >/dev/null 2>&1
 }
 
+# CONSUMPTION CONTRACT (fresh-eyes review M1, aligned with the manage
+# script's each_shard_fqdn_list): callers MUST materialize the output
+# ($(...) with an rc check) — a process-substitution consumer would discard
+# the exit status and a broken roster env would silently WEAKEN the FORGET
+# sweep and absence proof. Empty roster vars and a zero-var env hard-fail.
 all_cluster_pods_except() {
-  local except="${1}" var value fqdn
+  local except="${1}" var value fqdn count=0
   while IFS='=' read -r var value; do
+    if [ -z "${value}" ]; then
+      classify shard-roster no "${var} is empty"
+      return 1
+    fi
+    count=$((count + 1))
     for fqdn in $(echo "${value}" | tr ',' '\n' | grep -v '^$'); do
       [ "${fqdn}" = "${except}" ] && continue
       # skip roster members that no longer resolve (departed concurrently
@@ -252,6 +265,10 @@ all_cluster_pods_except() {
       echo "${fqdn}"
     done
   done < <(env | grep -E '^ALL_SHARDS_POD_FQDN_LIST_[A-Za-z0-9_]+=' | sort)
+  if [ "${count}" -eq 0 ]; then
+    classify shard-roster no "no ALL_SHARDS_POD_FQDN_LIST_* env vars present (roster unknown)"
+    return 1
+  fi
 }
 
 # The leaving pod is the shard's current master: promote another in-shard
@@ -259,17 +276,32 @@ all_cluster_pods_except() {
 # before allowing deletion (slots must never be orphaned).
 demote_master_before_leave() {
   local via="${1}" leaving="${2}" fqdn role out waited=0
-  local promoted=""
+  local promoted="" leaving_id myline flags parent
+  # CANDIDATE CONTRACT (fresh-eyes review M3): a promotion candidate must
+  # be a replica OF THE LEAVING MASTER — "any in-shard pod flagged slave"
+  # would CLUSTER FAILOVER a mis-bound replica (present-but-wrong-parent is
+  # an acknowledged reachable state, see ensure_replica_bound) and fail
+  # over ANOTHER shard. Same hard line as the switchover script's
+  # candidate_replicates_this_shard.
+  build_cli "${leaving}"
+  leaving_id=$("${_cli[@]}" CLUSTER MYID 2>/dev/null | tr -d '\r\n')
+  if [ -z "${leaving_id}" ]; then
+    classify leave-myid yes "CLUSTER MYID unreadable from leaving master ${leaving}"
+    return 1
+  fi
   for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$' | sort); do
     [ "${fqdn}" = "${leaving}" ] && continue
     build_cli "${fqdn}"
-    if "${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | awk '$3 ~ /myself/ {print $3}' | grep -q slave; then
+    myline=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | awk '$3 ~ /myself/ {print; exit}')
+    flags=$(echo "${myline}" | awk '{print $3}')
+    parent=$(echo "${myline}" | awk '{print $4}')
+    if echo "${flags}" | grep -q slave && [ "${parent}" = "${leaving_id}" ]; then
       promoted="${fqdn}"
       break
     fi
   done
   if [ -z "${promoted}" ]; then
-    classify leave-orphan-guard no "leaving pod is the shard master and no in-shard replica exists — refusing leave (would orphan slots)"
+    classify leave-orphan-guard no "leaving pod is the shard master and no in-shard replica of it exists — refusing leave (would orphan slots)"
     return 1
   fi
   build_cli "${promoted}"

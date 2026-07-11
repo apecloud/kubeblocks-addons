@@ -95,12 +95,9 @@ maxmemory-policy noeviction
 maxmemory {{ mulf $mem 0.8 | int }}
 {{- end }}
 
-# TLS (enabled via runtime var)
-{{- if eq (index $ "TLS_ENABLED") "true" }}
-tls-cert-file {{ $.TLS_MOUNT_PATH }}/tls.crt
-tls-key-file  {{ $.TLS_MOUNT_PATH }}/tls.key
-tls-ca-cert-file {{ $.TLS_MOUNT_PATH }}/ca.crt
-tls-auth-clients no
-tls-replication yes
-port 0
-{{- end }}
+# TLS: unsupported on the cluster topology in v1. The previous gated block
+# here could never activate (no TLS_ENABLED var was supplied) and partial
+# re-wiring risks a silent-plaintext or split-brain config; cluster TLS
+# support must land as one complete change (cmpd tls decl + vars +
+# tls-port/port swap + tls-cluster bus + client flags) with live TLS
+# acceptance. See cluster-tls-boundary contract spec.
