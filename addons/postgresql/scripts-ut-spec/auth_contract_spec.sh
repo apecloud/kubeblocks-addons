@@ -1,8 +1,11 @@
 # shellcheck shell=sh
 # Contract tests pinning the authentication posture of the addon:
 # - passwords are stored as SCRAM verifiers on every supported version
-# - pgbouncer authenticates clients with SCRAM (an md5 auth_type cannot
-#   verify accounts whose pg_shadow verifier is SCRAM)
+# - pgbouncer keeps auth_type = md5, which is PgBouncer's DUAL-MODE setting:
+#   when the secret fetched via auth_query is a SCRAM verifier it performs
+#   SCRAM on the wire automatically. auth_type = scram-sha-256 would be
+#   SCRAM-only (md5-hashed secrets unusable) and lock pre-upgrade accounts
+#   out of the pooler path.
 # - pg_hba keeps the dual-mode `md5` method so accounts created by older
 #   addon versions (md5-stored) survive an upgrade, while SCRAM-stored
 #   accounts automatically get SCRAM on the wire
@@ -32,15 +35,20 @@ Describe "postgresql authentication contract"
   End
 
   Describe "pgbouncer"
-    It "authenticates clients with scram-sha-256"
-      When call grep -c "auth_type = scram-sha-256" ../config/pgbouncer-ini.tpl
+    It "keeps the dual-mode md5 auth_type (auto-SCRAM for SCRAM verifiers)"
+      When call grep -c "^auth_type = md5" ../config/pgbouncer-ini.tpl
       The output should eq 1
     End
 
-    It "does not use md5 auth_type"
-      When call grep -c "auth_type = md5" ../config/pgbouncer-ini.tpl
+    It "does not pin SCRAM-only auth_type (would lock out md5-stored accounts)"
+      When call grep -c "^auth_type = scram-sha-256" ../config/pgbouncer-ini.tpl
       The output should eq 0
       The status should be failure
+    End
+
+    It "keeps cmpd PGBOUNCER_AUTH_TYPE aligned with the ini dual-mode setting"
+      When call grep -A1 "name: PGBOUNCER_AUTH_TYPE" ../templates/cmpd.yaml
+      The output should include "value: md5"
     End
   End
 
