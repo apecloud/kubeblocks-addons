@@ -122,6 +122,11 @@ roleProbe:
     timeoutSeconds: 5
     clientTimeoutSeconds: 4
 
+memberLeave:
+  timeoutSeconds: 50
+  clientTimeoutSeconds: 10
+  settleSeconds: 3
+
 switchover:
   # kbagent caps positive action timeouts at 60s; keep a buffer for diagnostics.
   # Worst-case budget: 2*3s prechecks + max(40s ORC CLI, 20*(parallel 1s SQL probes) + 19*1s intervals) = 46s.
