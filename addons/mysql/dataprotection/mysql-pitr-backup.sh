@@ -246,10 +246,12 @@ cleanup_mysql_binlogs() {
 
     # Get the list of binlog files that have been uploaded to backup storage
     function get_uploaded_binlogs() {
+        # Match the actual log basename. DP_TARGET_POD_NAME can remain on the
+        # original primary after switchover and would hide every uploaded file.
         datasafed list -f --recursive / -o json \
             | jq -s -r ".[] | sort_by(.mtime) | .[] | .path" \
             | grep "\.zst$" \
-            | grep "${DP_TARGET_POD_NAME}" \
+            | grep -F "${LOG_PREFIX}." \
             | xargs -I {} basename {} .zst \
             | paste -sd ' ' -
     }
