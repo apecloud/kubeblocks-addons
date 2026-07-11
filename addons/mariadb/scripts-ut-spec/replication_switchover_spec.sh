@@ -1746,6 +1746,41 @@ EOF
       The stderr should not include "attempts=0"
       The stderr should not include "attempts=1"
     End
+
+    It "primary-ready loop converges after several attempts when candidate becomes ready mid-window"
+      : > "${TEST_DIR}/probe.count"
+      remote_root_primary_ready() {
+        n=$(cat "${TEST_DIR}/probe.count" 2>/dev/null || echo 0)
+        n=$((n + 1))
+        printf '%s' "${n}" > "${TEST_DIR}/probe.count"
+        if [ "${n}" -ge 3 ]; then return 0; fi
+        return 1
+      }
+      cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+printf '1'
+EOF
+      chmod +x "${MARIADB_CLIENT_BIN}"
+      When call wait_candidate_remote_root_primary_ready "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 30
+      The status should be success
+      The output should include "primary-readiness probe converged"
+      The output should include "attempt=3"
+    End
+
+    It "primary-ready loop fails closed with multi-attempt count when it never becomes ready within a larger budget"
+      remote_root_primary_ready() { return 1; }
+      cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+printf '1'
+EOF
+      chmod +x "${MARIADB_CLIENT_BIN}"
+      When call wait_candidate_remote_root_primary_ready "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 3
+      The status should be failure
+      The output should include "primary-readiness probe attempt="
+      The stderr should include "reason=candidate_remote_root_primary_not_ready_in_budget"
+      The stderr should not include "attempts=0"
+      The stderr should not include "attempts=1"
+    End
   End
 
   # alpha.61 v2 (Jack 02:00 review): POSIX wall-clock helpers + 5-stage deadline.
@@ -2020,7 +2055,12 @@ secondary-other"
       The stderr should include "fail-closed"
     End
 
-    It "fails closed at ready stage with action_deadline_exhausted_ready when promote body exceeds budget"
+    It "fails closed with action_deadline_exhausted_promote_overrun when promote body exceeds budget"
+      # The promote stage now has its own post-body overrun check (mirroring
+      # prepare/dcs/fence), so a promote body that succeeds but burns the global
+      # budget is attributed to promote_overrun BEFORE the ready stage entry --
+      # not silently carried into ready. The stage body "succeeds" (return 0) yet
+      # run_switchover must still fail closed.
       prepare_current_primary_for_switchover() { return 0; }
       syncerctl_switchover() { return 0; }
       fence_current_primary_local_writes_after_dcs() { return 0; }
@@ -2031,8 +2071,32 @@ secondary-other"
       When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
       The status should be failure
       The output should include "Switchover stage candidate_promoted"
-      The stderr should include "reason=action_deadline_exhausted_ready"
+      The stderr should include "reason=action_deadline_exhausted_promote_overrun"
       The stderr should include "fail-closed"
+    End
+
+    It "fails closed with action_deadline_exhausted_ready_overrun and NEVER reports success when the ready body exceeds budget"
+      # P0: ready is the LAST stage, so no downstream stage-entry gate would
+      # catch an overrun. The probe-at-least-once guarantee means the readiness
+      # probe can run once even at zero remaining budget and blow the global
+      # deadline. The ready body here "succeeds" (return 0) but burns 100s; the
+      # final overrun check MUST fail closed before the success log/return so a
+      # switchover that overran the global deadline is never reported as success.
+      prepare_current_primary_for_switchover() { return 0; }
+      syncerctl_switchover() { return 0; }
+      fence_current_primary_local_writes_after_dcs() { return 0; }
+      wait_candidate_promoted_via_syncerctl() { return 0; }
+      wait_candidate_remote_root_primary_ready() {
+        advance_clock 100
+        return 0
+      }
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      The status should be failure
+      The output should include "Switchover stage candidate_primary_ready"
+      The stderr should include "reason=action_deadline_exhausted_ready_overrun"
+      The stderr should include "fail-closed"
+      # The success closeout line must NOT be emitted once the deadline is blown.
+      The output should not include "Switchover action returned:"
     End
 
     It "alpha.61 v3: fails closed at prepare overrun with cause=action_clock_unavailable when wall clock fails mid-prepare"
