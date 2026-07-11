@@ -4,9 +4,13 @@ export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 if [[ -d ${DATA_DIR}.old ]] && [[ ! -d ${DATA_DIR} ]]; then
-  # if dataDir.old exists but dataDir not exits, retry it
+  # A previous run already completed the final staging mv. Un-staging and
+  # exiting 0 here (the old behavior) left a populated DATA_DIR carrying
+  # recovery.signal but no bootstrap: Patroni adopted the directory and
+  # postgres crash-looped on a missing restore_command. Move the data back
+  # and RE-RUN the whole preparation instead — the WAL re-fetch and config
+  # rewrite below are idempotent and the script ends by staging again.
   mv ${DATA_DIR}.old ${DATA_DIR}
-  exit 0;
 fi
 
 mkdir -p ${PITR_DIR};
