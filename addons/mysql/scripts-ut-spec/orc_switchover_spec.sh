@@ -28,13 +28,23 @@ Describe "ORC switchover script tests"
       The variable ORC_PRECHECK_STDERR should include "transient response parse failed"
     End
 
-    It "selects the last valid host-port token from stdout"
+    It "rejects colon-shaped jq noise without a Kubernetes hostname"
+      run_orchestrator_client_with_budget() {
+        printf '%s\n' 'jq:error:42'
+      }
+
+      When call resolve_orchestrator_master_with_budget 3 mysql-0
+      The status should be failure
+      The variable ORC_PRECHECK_MASTER should equal ""
+      The variable ORC_PRECHECK_STDOUT should equal "jq:error:42"
+    End
+
+    It "selects the valid host-port token around colon-shaped noise"
       run_orchestrator_client_with_budget() {
         printf '%s\n' \
-          'retrying request' \
-          'mysql-stale:3306' \
-          'not a master token' \
-          'mysql-current:3306'
+          'jq:error:42' \
+          'mysql-current:3306' \
+          'curl:error:7'
       }
 
       When call resolve_orchestrator_master_with_budget 3 mysql-0
