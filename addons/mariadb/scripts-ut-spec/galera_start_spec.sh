@@ -282,19 +282,36 @@ EOF
   End
 
   Describe "graceful-shutdown self-heal guard"
-    It "checks the shutting-down marker BEFORE any self-heal kill (source order)"
-      # The preStop sets wsrep_on=OFF (node leaves Primary) and then runs a
-      # clean shutdown; the watcher must skip self-heal while shutting down or
-      # it would SIGKILL mariadbd mid-shutdown and lose the safe_to_bootstrap
-      # write. The marker check must precede both self-heal call sites.
-      When run sh -c '
-        f="$(printf "%s/addons/mariadb/scripts/galera-start.sh" "'"${SHELLSPEC_CWD:?}"'")"
-        guard=$(grep -n "\.galera-shutting-down" "$f" | grep -v "rm -f" | head -1 | cut -d: -f1)
-        firstheal=$(grep -n "_restart_mariadbd_for_self_heal" "$f" | grep -v "^.*() {" | grep "reason\|SOCK\|CLUSTER_STATUS" | head -1 | cut -d: -f1)
-        if [ -n "$guard" ] && [ -n "$firstheal" ] && [ "$guard" -lt "$firstheal" ]; then echo OK; else echo "FAIL guard=$guard heal=$firstheal"; fi
-      '
+    # Behavioral test: with the shutdown marker present the self-heal helper
+    # must NOT kill mariadbd (0 kills); without it, it must kill (>=1). Stub the
+    # pid lookup and the actual signal so we count kill attempts.
+    setup_guard() {
+      GUARD_DIR="$(mktemp -d)"
+      export DATA_DIR="${GUARD_DIR}"
+      KILL_COUNT_FILE="${GUARD_DIR}/kills"
+      : > "${KILL_COUNT_FILE}"
+      _mariadbd_pids() { echo 4242; }
+      kill() { printf 'x' >> "${KILL_COUNT_FILE}"; }
+      sleep() { :; }
+    }
+    cleanup_guard() { rm -rf "${GUARD_DIR}"; unset DATA_DIR; }
+    BeforeEach setup_guard
+    AfterEach cleanup_guard
+
+    It "does not kill mariadbd while a graceful shutdown is in progress"
+      touch "${DATA_DIR}/.galera-shutting-down"
+
+      When call _restart_mariadbd_for_self_heal "test-reason"
       The status should be success
-      The output should equal "OK"
+      The output should include "graceful shutdown in progress"
+      The contents of file "${KILL_COUNT_FILE}" should equal ""
+    End
+
+    It "kills mariadbd when no graceful shutdown is in progress"
+      When call _restart_mariadbd_for_self_heal "test-reason"
+      The status should be success
+      The output should include "SIGTERM"
+      The contents of file "${KILL_COUNT_FILE}" should not equal ""
     End
 
     It "clears the shutting-down marker on container start"

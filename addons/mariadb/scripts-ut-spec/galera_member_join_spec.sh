@@ -46,13 +46,23 @@ Describe "galera-member-join.sh"
     The error should include "next-retry-safe: yes"
   End
 
+  It "fails closed (operator-attention) on an empty staleness threshold"
+    printf "primary" > "${DATA_DIR}/.galera-role"
+    touch "${DATA_DIR}/.galera-synced"
+    export GALERA_ROLE_MAX_STALE_SECONDS=""
+
+    When run sh ../scripts/galera-member-join.sh
+    The status should be failure
+    The error should include "phase: misconfigured-stale-threshold"
+    The error should include "next-retry-safe: no"
+  End
+
   Parameters
-    ""
     "abc"
     "-5"
     "0"
   End
-  It "fails closed (operator-attention) on a misconfigured staleness threshold (value=[$1])"
+  It "fails closed (operator-attention) on a non-positive-integer staleness threshold (value=[$1])"
     printf "primary" > "${DATA_DIR}/.galera-role"
     touch "${DATA_DIR}/.galera-synced"
     export GALERA_ROLE_MAX_STALE_SECONDS="$1"

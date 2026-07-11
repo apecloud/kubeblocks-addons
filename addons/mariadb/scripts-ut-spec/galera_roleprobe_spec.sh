@@ -41,13 +41,21 @@ Describe "galera-roleprobe.sh"
     The stderr should include "stale"
   End
 
+  It "fails closed on an empty staleness threshold"
+    printf "primary" > "${DATA_DIR}/.galera-role"
+    export GALERA_ROLE_MAX_STALE_SECONDS=""
+
+    When run sh ../scripts/galera-roleprobe.sh
+    The status should be failure
+    The stderr should include "misconfigured"
+  End
+
   Parameters
-    ""
     "abc"
     "-5"
     "0"
   End
-  It "fails closed on a misconfigured staleness threshold (value=[$1])"
+  It "fails closed on a non-positive-integer staleness threshold (value=[$1])"
     printf "primary" > "${DATA_DIR}/.galera-role"
     export GALERA_ROLE_MAX_STALE_SECONDS="$1"
 

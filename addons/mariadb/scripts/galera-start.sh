@@ -139,6 +139,16 @@ _mariadbd_pids() {
 
 _restart_mariadbd_for_self_heal() {
   local reason="$1"
+  # Graceful-shutdown guard: the preStop hook drops .galera-shutting-down
+  # before it sets wsrep_on=OFF (which makes the node non-Primary) and runs a
+  # clean shutdown that can take tens of seconds toward the 120s grace. Without
+  # this guard the watcher would count that as a stuck non-Primary and SIGKILL
+  # mariadbd mid-shutdown, aborting the safe_to_bootstrap write the preStop
+  # exists to produce. Never self-heal-kill while shutting down.
+  if [ -f "${DATA_DIR}/.galera-shutting-down" ]; then
+    echo "SELF-HEALING skipped (${reason}): graceful shutdown in progress."
+    return 0
+  fi
   local pids
   pids=$(_mariadbd_pids)
   if [ -z "${pids}" ]; then
@@ -299,19 +309,10 @@ main() {
     NO_SOCKET_COUNT=0
     NO_SOCKET_THRESHOLD="${GALERA_SOCKETLESS_MARIADBD_THRESHOLD:-30}"  # 30 × 3s = 90s
     while true; do
-      # Graceful-shutdown guard: the preStop hook sets wsrep_on=OFF (node
-      # leaves Primary → wsrep_cluster_status != Primary) and then runs a
-      # clean mysqladmin shutdown that can take tens of seconds toward the
-      # 120s termination grace. The NON_PRIMARY self-heal below would count
-      # that as a "stuck non-Primary" and SIGKILL mariadbd at 90s, aborting
-      # the clean shutdown that writes safe_to_bootstrap=1 — defeating the
-      # very deadlock the preStop prevents. Skip self-heal while shutting down.
-      if [ -f "${DATA_DIR}/.galera-shutting-down" ]; then
-        NON_PRIMARY_COUNT=0
-        NO_SOCKET_COUNT=0
-        sleep 3
-        continue
-      fi
+      # The graceful-shutdown guard lives inside _restart_mariadbd_for_self_heal
+      # so every self-heal call site is covered (and unit-testable): while
+      # .galera-shutting-down exists the helper no-ops instead of SIGKILLing
+      # mariadbd mid clean-shutdown.
       STATE=""
       CLUSTER_STATUS=""
       if [ -S "${SOCK}" ]; then
