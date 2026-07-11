@@ -193,6 +193,10 @@ cleanup_mysql_binlogs() {
 
     # Get synced binlog files from all replicas
     function get_synced_binlogs() {
+        # Reset per call: this is invoked repeatedly in the long-lived archiver
+        # process, and a leaked value from a previous call would let a purge
+        # proceed on a stale synced position when replica discovery fails.
+        local min_synced_file=""
 
         readarray -t all_binlogs < <(ls -1 "$LOG_DIR"/*-bin.[0-9]* | sort -V)
 
@@ -344,9 +348,12 @@ cleanup_mysql_binlogs() {
     # `if [ $? -ne 0 ]` below reflects get_synced_binlogs' exit code and not
     # the always-zero exit of `local` -- this is what keeps the fail-closed
     # "don't purge when replica sync is unknown" guard actually closed.
+    # Use `if ! ...` so a non-zero get_synced_binlogs does not trip the
+    # actionset-wide `set -e` before this fail-closed guard runs (a plain
+    # `synced_binlogs=$(...)` assignment aborts the whole archiver under set -e;
+    # the `if !` context suppresses that and still catches the failure).
     local synced_binlogs
-    synced_binlogs=$(get_synced_binlogs)
-    if [ $? -ne 0 ] || [ -z "$synced_binlogs" ]; then
+    if ! synced_binlogs=$(get_synced_binlogs) || [ -z "$synced_binlogs" ]; then
         echo "No synced binlog files found"
         return 0
     fi
