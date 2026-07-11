@@ -41,7 +41,15 @@ _file_age_seconds() {
   _fas_now="$(date +%s 2>/dev/null)" || return 1
   _fas_mtime="$(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null)" || return 1
   [ -n "${_fas_mtime}" ] || return 1
-  echo $(( _fas_now - _fas_mtime ))
+  _fas_age=$(( _fas_now - _fas_mtime ))
+  # A future mtime (clock skew / NTP step) yields a negative age. That is an
+  # anomalous, not a fresh, state — a naive "age > threshold" test would pass
+  # it and defeat the staleness gate. Clamp to a value that always reads stale.
+  if [ "${_fas_age}" -lt 0 ]; then
+    echo 2147483647
+    return 0
+  fi
+  echo "${_fas_age}"
 }
 
 if [ -f "${ROLE_FILE}" ]; then

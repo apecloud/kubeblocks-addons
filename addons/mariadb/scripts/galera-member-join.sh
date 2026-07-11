@@ -32,7 +32,14 @@ _file_age_seconds() {
     _fas_now="$(date +%s 2>/dev/null)" || return 1
     _fas_mtime="$(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null)" || return 1
     [ -n "${_fas_mtime}" ] || return 1
-    echo $(( _fas_now - _fas_mtime ))
+    _fas_age=$(( _fas_now - _fas_mtime ))
+    # Future mtime (clock skew) → negative age is anomalous, not fresh; clamp
+    # to always-stale so the freshness gate stays fail-closed.
+    if [ "${_fas_age}" -lt 0 ]; then
+        echo 2147483647
+        return 0
+    fi
+    echo "${_fas_age}"
 }
 
 galera_member_join_diagnose_not_ready() {

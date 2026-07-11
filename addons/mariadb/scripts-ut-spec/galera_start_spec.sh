@@ -220,6 +220,24 @@ EOF
       When call should_bootstrap
       The status should be failure
     End
+
+    It "does not treat a malformed safe_to_bootstrap value as safe (anchored match)"
+      # A torn/corrupt write leaving 'safe_to_bootstrap: 10' must NOT satisfy
+      # the safe=1 guard via substring match; pod-0 defers rather than
+      # bootstrapping possibly-stale data.
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate 7 10
+      _any_peer_alive() {
+        return 1
+      }
+      mariadbd() {
+        printf "WSREP: Recovered position: 631a68d0-7697-11f1-923e-42be04dfa95f:7\n"
+      }
+
+      When call should_bootstrap
+      The status should be failure
+      The output should include "Refusing automatic Galera crash recovery bootstrap"
+    End
   End
 
   Describe "socketless mariadbd self-heal"

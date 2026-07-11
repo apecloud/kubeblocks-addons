@@ -121,7 +121,11 @@ _wsrep_recover_seqno() {
   local recover_output
   recover_output=$(mariadbd --wsrep-recover 2>&1) || true
   local recovered_seqno
-  recovered_seqno=$(echo "$recover_output" | grep 'Recovered position' | sed 's/.*://' | tail -1)
+  # `|| true`: a no-match grep returns 1 and, under set -eo pipefail, would
+  # abort the script if this function is ever called outside an if/&&/||
+  # context. The crash-recovery path is exactly where "Recovered position" may
+  # be absent (empty/corrupt datadir), so keep it robust regardless of caller.
+  recovered_seqno=$(echo "$recover_output" | grep 'Recovered position' | sed 's/.*://' | tail -1 || true)
   echo "wsrep-recover: seqno=${recovered_seqno:-unknown}"
 }
 
@@ -194,7 +198,7 @@ should_bootstrap() {
     local grastate_seqno
     grastate_seqno=$(_grastate_seqno)
     if [ "${grastate_seqno}" = "-1" ] \
-      && grep -q "^safe_to_bootstrap: 1" "${DATA_DIR}/grastate.dat"; then
+      && grep -qE "^safe_to_bootstrap:[[:space:]]+1[[:space:]]*$" "${DATA_DIR}/grastate.dat"; then
       if [ "$pod_index" = "0" ]; then
         echo "Fresh grastate.dat seqno=-1 safe_to_bootstrap=1, pod-0 will bootstrap."
         return 0
@@ -203,7 +207,7 @@ should_bootstrap() {
       return 1
     fi
 
-    if grep -q "^safe_to_bootstrap: 1" "${DATA_DIR}/grastate.dat"; then
+    if grep -qE "^safe_to_bootstrap:[[:space:]]+1[[:space:]]*$" "${DATA_DIR}/grastate.dat"; then
       echo "grastate.dat: safe_to_bootstrap=1, ${POD_NAME} will bootstrap."
     else
       if [ "$pod_index" = "0" ]; then
@@ -285,7 +289,9 @@ main() {
   # stable Primary cluster.
   (
     set +e
-    rm -f "${DATA_DIR}/.galera-synced" "${DATA_DIR}/.galera-role"
+    # Clear stale markers on start, including any .galera-shutting-down left by
+    # a previous graceful shutdown — this is a live container again.
+    rm -f "${DATA_DIR}/.galera-synced" "${DATA_DIR}/.galera-role" "${DATA_DIR}/.galera-shutting-down"
     SOCK=/run/mysqld/mysqld.sock
     SYNCED_ONCE=0
     NON_PRIMARY_COUNT=0
@@ -293,6 +299,19 @@ main() {
     NO_SOCKET_COUNT=0
     NO_SOCKET_THRESHOLD="${GALERA_SOCKETLESS_MARIADBD_THRESHOLD:-30}"  # 30 × 3s = 90s
     while true; do
+      # Graceful-shutdown guard: the preStop hook sets wsrep_on=OFF (node
+      # leaves Primary → wsrep_cluster_status != Primary) and then runs a
+      # clean mysqladmin shutdown that can take tens of seconds toward the
+      # 120s termination grace. The NON_PRIMARY self-heal below would count
+      # that as a "stuck non-Primary" and SIGKILL mariadbd at 90s, aborting
+      # the clean shutdown that writes safe_to_bootstrap=1 — defeating the
+      # very deadlock the preStop prevents. Skip self-heal while shutting down.
+      if [ -f "${DATA_DIR}/.galera-shutting-down" ]; then
+        NON_PRIMARY_COUNT=0
+        NO_SOCKET_COUNT=0
+        sleep 3
+        continue
+      fi
       STATE=""
       CLUSTER_STATUS=""
       if [ -S "${SOCK}" ]; then
@@ -309,10 +328,15 @@ main() {
       if [ "${STATE}" = "4" ] && [ "${CLUSTER_STATUS}" = "Primary" ]; then
         printf "primary" > "${DATA_DIR}/.galera-role.tmp" \
           && chown mysql:mysql "${DATA_DIR}/.galera-role.tmp" 2>/dev/null \
-          ; mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
+          && mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
+        # Re-touch .galera-synced every tick (not once): the roleprobe and
+        # memberJoin freshness gates reject markers older than 30s to detect a
+        # dead writer, so a live-and-synced node MUST keep refreshing the
+        # marker's mtime or memberJoin would wrongly report it stale and never
+        # close. SYNCED_ONCE only gates the one-time "first reached Synced" log.
+        touch "${DATA_DIR}/.galera-synced"
+        chown mysql:mysql "${DATA_DIR}/.galera-synced" 2>/dev/null || true
         if [ "${SYNCED_ONCE}" = "0" ]; then
-          touch "${DATA_DIR}/.galera-synced"
-          chown mysql:mysql "${DATA_DIR}/.galera-synced" 2>/dev/null || true
           SYNCED_ONCE=1
         fi
         NON_PRIMARY_COUNT=0
@@ -321,7 +345,7 @@ main() {
         SYNCED_ONCE=0
         printf "secondary" > "${DATA_DIR}/.galera-role.tmp" \
           && chown mysql:mysql "${DATA_DIR}/.galera-role.tmp" 2>/dev/null \
-          ; mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
+          && mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
         if [ -S "${SOCK}" ] && [ -n "${CLUSTER_STATUS}" ] && [ "${CLUSTER_STATUS}" != "Primary" ]; then
           NON_PRIMARY_COUNT=$((NON_PRIMARY_COUNT + 1))
           if [ ${NON_PRIMARY_COUNT} -ge ${NON_PRIMARY_THRESHOLD} ]; then
