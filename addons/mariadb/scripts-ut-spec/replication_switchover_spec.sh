@@ -1606,6 +1606,148 @@ EOF
     End
   End
 
+  # Regression: the two staged bounded-probe loops
+  # (wait_candidate_promoted_via_syncerctl, wait_candidate_remote_root_primary_ready)
+  # checked the stage budget BEFORE the first probe. now_epoch() has whole-second
+  # granularity, so a sub-probe budget (stage_deadline=1s) that crosses an
+  # integer-second boundary during setup reads as already-exhausted on the first
+  # iteration and the loop broke with attempts=0 -- never performing a single
+  # real probe. On a fast machine the boundary is never crossed so it passes
+  # locally, but under CI load it fails deterministically. The fix gates the
+  # budget break on attempt>0 so exactly one probe always runs; these tests pin
+  # attempts>=1 under the crossed-second condition and the >=1s per-call clamp.
+  Describe "staged probe loops perform at least one probe under sub-probe budget"
+    setup_crossed_second_clock() {
+      export SWITCHOVER_POLL_SECONDS=0
+      export SWITCHOVER_HAS_TIMEOUT=1
+      # now_epoch: first call (stage start capture) = 1000; every subsequent
+      # call = 1001. So the FIRST in-loop read already shows elapsed=1 >=
+      # stage_deadline=1 -- the exact crossed-integer-second condition. With the
+      # pre-fix while-break-before-probe this yields attempts=0; with the fix the
+      # attempt>0 gate forces one probe (attempt=1) before the budget break.
+      : > "${TEST_DIR}/now_calls"
+      now_epoch() {
+        local n
+        n=$(cat "${TEST_DIR}/now_calls" 2>/dev/null || echo 0)
+        n=$((n + 1))
+        printf '%s' "${n}" > "${TEST_DIR}/now_calls"
+        if [ "${n}" -le 1 ]; then printf '1000'; else printf '1001'; fi
+      }
+    }
+    Before "setup_crossed_second_clock"
+
+    It "promote loop probes once (attempts=1) instead of attempts=0 when budget=1 crosses a second"
+      : > "${TEST_DIR}/getrole.calls"
+      run_syncerctl_getrole_with_timeout() {
+        # Record the per-call timeout argument to assert the >=1s clamp, then
+        # report a still-secondary role so the loop does not converge.
+        printf 'timeout=%s\n' "$2" >> "${TEST_DIR}/getrole.calls"
+        printf 'secondary'
+        return 0
+      }
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 1
+      The status should be failure
+      The output should include "promotion poll attempt=1"
+      The stderr should include "reason=candidate_not_promoted_via_dcs_in_budget"
+      The stderr should include "attempts=1"
+      The stderr should not include "attempts=0"
+      # The probe ran at least once, and its per-call timeout was clamped to >=1s
+      # (never 0 or negative) despite the budget already reading exhausted.
+      The contents of file "${TEST_DIR}/getrole.calls" should include "timeout=1"
+    End
+
+    It "primary-ready loop probes once (attempts=1) instead of attempts=0 when budget=1 crosses a second"
+      : > "${TEST_DIR}/probe.calls"
+      remote_root_primary_ready() {
+        printf 'x' >> "${TEST_DIR}/probe.calls"
+        return 1
+      }
+      # The non-converged read-only capture must not hang; stub the client.
+      cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+printf '1'
+EOF
+      chmod +x "${MARIADB_CLIENT_BIN}"
+      When call wait_candidate_remote_root_primary_ready "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 1
+      The status should be failure
+      The output should include "primary-readiness probe attempt=1"
+      The stderr should include "reason=candidate_remote_root_primary_not_ready_in_budget"
+      The stderr should include "attempts=1"
+      The stderr should not include "attempts=0"
+      The contents of file "${TEST_DIR}/probe.calls" should equal "x"
+    End
+
+    It "promote loop returns success on the guaranteed first probe when already primary"
+      run_syncerctl_getrole_with_timeout() {
+        printf 'primary'
+        return 0
+      }
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 1
+      The status should be success
+      The output should include "Switchover candidate promoted via DCS observed"
+      The output should include "attempt=1"
+    End
+
+    It "primary-ready loop returns success on the guaranteed first probe when already ready"
+      remote_root_primary_ready() { return 0; }
+      When call wait_candidate_remote_root_primary_ready "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 1
+      The status should be success
+      The output should include "primary-readiness probe converged"
+      The output should include "attempt=1"
+    End
+  End
+
+  # With a larger budget and a controlled clock that only crosses the deadline
+  # after several ticks, the loops must keep probing across multiple attempts
+  # before converging or failing -- confirming the attempt>0 gate did not turn
+  # the bounded loop into a single-probe loop.
+  Describe "staged probe loops still poll multiple attempts under a larger budget"
+    setup_multi_tick_clock() {
+      export SWITCHOVER_POLL_SECONDS=0
+      export SWITCHOVER_HAS_TIMEOUT=1
+      # start=1000; then 1000,1000,1001,1002,1003,... so elapsed reaches the
+      # deadline only after several in-loop reads.
+      : > "${TEST_DIR}/now_calls"
+      now_epoch() {
+        local n
+        n=$(cat "${TEST_DIR}/now_calls" 2>/dev/null || echo 0)
+        n=$((n + 1))
+        printf '%s' "${n}" > "${TEST_DIR}/now_calls"
+        # calls: 1->1000(start) 2->1000 3->1000 4->1001 5->1002 ...
+        if [ "${n}" -le 3 ]; then printf '1000'; else printf '%s' "$(( 1000 + n - 3 ))"; fi
+      }
+    }
+    Before "setup_multi_tick_clock"
+
+    It "promote loop converges after several attempts when candidate flips to primary mid-window"
+      : > "${TEST_DIR}/getrole.count"
+      run_syncerctl_getrole_with_timeout() {
+        n=$(cat "${TEST_DIR}/getrole.count" 2>/dev/null || echo 0)
+        n=$((n + 1))
+        printf '%s' "${n}" > "${TEST_DIR}/getrole.count"
+        if [ "${n}" -ge 3 ]; then printf 'primary'; else printf 'secondary'; fi
+        return 0
+      }
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 30
+      The status should be success
+      The output should include "Switchover candidate promoted via DCS observed"
+      The output should include "attempt=3"
+    End
+
+    It "promote loop fails closed with multi-attempt count when it never promotes within a larger budget"
+      run_syncerctl_getrole_with_timeout() {
+        printf 'secondary'
+        return 0
+      }
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 3
+      The status should be failure
+      The output should include "promotion poll attempt="
+      The stderr should include "reason=candidate_not_promoted_via_dcs_in_budget"
+      The stderr should not include "attempts=0"
+      The stderr should not include "attempts=1"
+    End
+  End
+
   # alpha.61 v2 (Jack 02:00 review): POSIX wall-clock helpers + 5-stage deadline.
   # These Describes lock the runtime contract that v1 silently broke under
   # /bin/sh: now_epoch must be a real wall clock, remaining_action_budget must

@@ -2060,11 +2060,23 @@ wait_candidate_promoted_via_syncerctl() {
       return 1
     fi
     stage_elapsed=$(( now - stage_started_epoch ))
-    if [ "${stage_elapsed}" -ge "${stage_deadline}" ]; then
+    # Probe at least once before honoring the stage budget. now_epoch() has
+    # whole-second granularity, so a sub-probe budget (e.g. stage_deadline=1s)
+    # can already read as "exhausted" on the very first iteration if setup
+    # crossed an integer-second boundary. Under load that fails with attempts=0,
+    # never performing a single real probe. Gate the budget break on attempt>0
+    # so the first probe always runs; later iterations honor the budget normally.
+    if [ "${attempt}" -gt 0 ] && [ "${stage_elapsed}" -ge "${stage_deadline}" ]; then
       break
     fi
     attempt=$((attempt + 1))
     local per_call_remaining=$(( stage_deadline - stage_elapsed ))
+    # Clamp the per-call timeout to >=1s: on the guaranteed first probe
+    # stage_elapsed may already be >= stage_deadline, making this <=0, which
+    # would otherwise pass a zero/negative timeout to the syncerctl call.
+    if [ "${per_call_remaining}" -lt 1 ]; then
+      per_call_remaining=1
+    fi
     last_stderr=$(run_syncerctl_getrole_with_timeout "${candidate_fqdn}" "${per_call_remaining}")
     last_rc=$?
     last_role=$(extract_syncerctl_role "${last_stderr}")
@@ -2119,7 +2131,13 @@ wait_candidate_remote_root_primary_ready() {
       return 1
     fi
     stage_elapsed=$(( now - stage_started_epoch ))
-    if [ "${stage_elapsed}" -ge "${stage_deadline}" ]; then
+    # Probe at least once before honoring the stage budget (see
+    # wait_candidate_promoted_via_syncerctl): a sub-probe stage_deadline (e.g.
+    # 1s) crossing a whole-second boundary during setup must still perform one
+    # real readiness probe instead of failing with attempts=0. The probe below
+    # is bounded by MARIADB_CONNECT_TIMEOUT_SECONDS, so one extra probe cannot
+    # blow the global action deadline.
+    if [ "${attempt}" -gt 0 ] && [ "${stage_elapsed}" -ge "${stage_deadline}" ]; then
       break
     fi
     attempt=$((attempt + 1))
