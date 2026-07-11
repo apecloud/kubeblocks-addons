@@ -22,7 +22,7 @@ Describe "dataprotection/pg-basebackup-restore.sh"
     DP_BACKUP_NAME="backup-test"
     export PATH CALL_LOG VOLUME_DATA_DIR DATA_DIR RESTORE_SCRIPT_DIR DP_DATASAFED_BIN_PATH \
       DP_BACKUP_BASE_PATH DP_BACKUP_NAME
-    unset DATASAFED_LIST_OUT TAR_CREATE_PGDATA 2>/dev/null || true
+    unset DATASAFED_LIST_OUT TAR_CREATE_PGDATA DP_RESTORE_TIMESTAMP DP_RESTORE_TIME 2>/dev/null || true
     write_stubs
   }
 
@@ -132,6 +132,21 @@ EOF
     The path "${DATA_DIR}/pg_wal" should be directory
     The path "${DATA_DIR}/standby.signal" should not be exist
     The path "${DATA_DIR}/recovery.signal" should not be exist
+  End
+
+  It "leaves data in DATA_DIR for the archive-wal Continuous stage when a restore timestamp is set"
+    export DATASAFED_LIST_OUT="backup-test.tar.zst"
+    export DP_RESTORE_TIMESTAMP="1783500000"
+    When run bash "$(script_path)"
+    The status should eq 0
+    The output should include "done!"
+    # PITR hand-off contract: postgresql-pitr-restore.sh reads ${DATA_DIR}/pg_wal
+    # next, so the base payload must stay unstaged and no hook/signal may arm.
+    The path "${DATA_DIR}/PG_VERSION" should be exist
+    The path "${DATA_DIR}/pg_wal" should be directory
+    The path "${DATA_DIR}.old" should not be exist
+    The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should not be exist
+    The path "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should not be exist
   End
 
   It "keeps the restore signal when the primary hook fails before commit"
