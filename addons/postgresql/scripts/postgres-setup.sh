@@ -12,11 +12,12 @@ function wait_pod_restarted() {
   done
 }
 
-function pending_restart_parameters_values() {
-  sql="select setting from pg_settings where name in ('max_connections','max_locks_per_transaction','max_worker_processes','max_prepared_transactions','wal_level','track_commit_timestamp')"
-  result=$(psql "host=$1 dbname=postgres user=${POSTGRES_USER}  connect_timeout=5" -t -c "${sql}" 2>/dev/null)
-  echo $result
-}
+# NOTE: this loop used to compare a 6-parameter whitelist against the primary
+# and skip the restart when those values matched — which starved every OTHER
+# restart-class parameter (shared_buffers, max_wal_senders, archive_mode, ...):
+# secondaries kept the old value and stayed pending_restart forever. Patroni's
+# own per-member pending_restart flag (already checked at the top of the loop)
+# is the ground truth for "this node needs a restart"; no extra gate is needed.
 
 # decide whether the current pod should restart now: only when it has
 # pending_restart, and either no leader is pending or the pending leader
@@ -60,15 +61,13 @@ function restart_for_pending_restart_flag() {
     rm -f ${result_tmp_path}
 
     leader_pending_restart_pod=$(echo ${result} | jq -r ".members[] | select(.role == \"leader\" and .pending_restart == true) | .name")
-    if [[ -z "$leader_pending_restart_pod"  ]]; then
-      # check if the pending_restart parameters are inconsistent
-      primary_pod_ip=$(echo $result | jq -r ".members[] | select(.role == \"leader\") | .host")
-      primary_parameter_values=$(pending_restart_parameters_values ${primary_pod_ip})
-      curr_parameter_values=$(pending_restart_parameters_values localhost)
-      if [[ -z "${primary_parameter_values}" || "${curr_parameter_values}" == "${primary_parameter_values}" ]]; then
-         continue
-      fi
-      echo "$(date) primary parameters values: ${primary_parameter_values}, current parameters values: ${curr_parameter_values}"
+    # Serialize member restarts: if any member is already mid-restart, wait
+    # for the next loop iteration instead of taking a second replica down in
+    # the same window (a simultaneous secondary restart leaves zero live
+    # replicas and blocks commits under synchronous mode).
+    restarting_member=$(echo ${result} | jq -r '.members[] | select(.state == "restarting") | .name' | head -n 1)
+    if [[ -n "${restarting_member}" && "${restarting_member}" != "${CURRENT_POD_NAME}" ]]; then
+      continue
     fi
     # Re-check pending_restart to avoid duplicate restarts
     sleep 5
@@ -76,7 +75,7 @@ function restart_for_pending_restart_flag() {
     if need_restart_for_pending "${pending_restart}" "${leader_pending_restart_pod}"; then
       # if leader pod is not pending_restart or current pod is leader pod, restart it
       echo "$(date) ${CURRENT_POD_NAME} is pending restart, restart it"
-      curl -XPOST http://localhost:8008/restart
+      curl -m 30 -XPOST http://localhost:8008/restart
       wait_pod_restarted
     fi
   done
