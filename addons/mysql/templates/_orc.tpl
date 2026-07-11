@@ -198,15 +198,24 @@ roleProbe:
       - |
         exec /orc-scripts/role-probe.sh
 memberLeave:
+  # Three sequential client calls at 10s plus a 1s kill grace and a 3s settle
+  # window fit in 36s, leaving 14s for diagnostics under the 50s action limit.
+  timeoutSeconds: {{ .Values.memberLeave.timeoutSeconds }}
   exec:
+    env:
+      - name: MYSQL_ORC_MEMBER_LEAVE_CLIENT_TIMEOUT_SECONDS
+        value: "{{ .Values.memberLeave.clientTimeoutSeconds }}"
+      - name: MYSQL_ORC_MEMBER_LEAVE_SETTLE_SECONDS
+        value: "{{ .Values.memberLeave.settleSeconds }}"
     command:
       - /bin/bash
       - -c
       - |
-        /orc-scripts/member-leave.sh 2>> /tmp/member-leave.log
-        if [ $? -ne 0 ]; then
-          echo "ERROR: Failed to member leave"
-          exit 1
+        /orc-scripts/member-leave.sh 2> >(tee -a /tmp/member-leave.log >&2)
+        rc=$?
+        if [ $rc -ne 0 ]; then
+          echo "ERROR: Failed to member leave (rc=${rc})" >&2
+          exit $rc
         fi
 switchover:
   timeoutSeconds: {{ .Values.switchover.timeoutSeconds }}
