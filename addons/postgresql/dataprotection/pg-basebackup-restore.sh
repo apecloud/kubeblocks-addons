@@ -234,6 +234,18 @@ EOF
 function finish_restore() {
     assert_pgdata_restored
     save_backup_end_lsn
+    # PITR chain hand-off: when a restore timestamp is set, the archive-wal
+    # Continuous prepareData (postgresql-pitr-restore.sh) runs next and
+    # expects the base data to still live in DATA_DIR. Staging into
+    # DATA_DIR.old and arming the kb_restore hook/signal here would make
+    # that script fail on an empty pg_wal and leak a signal its legacy hook
+    # cannot clear. Mirror wal-g-restore.sh: leave the data in place and
+    # let the Continuous stage own recovery configuration.
+    if [[ -n "${DP_RESTORE_TIMESTAMP:-}${DP_RESTORE_TIME:-}" ]]; then
+        sync
+        echo "done!";
+        exit 0
+    fi
     write_restore_hook
     rm -rf "${DATA_DIR}.old"
     mv "${DATA_DIR}" "${DATA_DIR}.old"
