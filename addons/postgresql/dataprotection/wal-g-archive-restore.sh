@@ -91,11 +91,14 @@ if [[ -d "${DATA_DIR}.old" ]]; then
     echo "Restoring data from ${DATA_DIR}.old..."
     mkdir -p "${DATA_DIR}"
     mv -f ${DATA_DIR}.old/* ${DATA_DIR}/
-    rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal
+    # Durability barrier BEFORE removing the signal: the signal is the retry
+    # marker for this hook, so it must be the FINAL commit action. If sync
+    # (or the mv) fails, the signal survives and the bootstrap re-runs the
+    # hook instead of losing the restore marker with a half-durable DATA_DIR.
+    sync
+    rm -f ${RESTORE_SCRIPT_DIR}/kb_restore.signal
     echo "Data restore completed successfully"
 fi
-
-sync
 EOF
 
 # Replace variables in the generated script
