@@ -21,6 +21,19 @@
 DATA_DIR="${DATA_DIR:-/var/lib/mysql}"
 SYNCED_FILE="${DATA_DIR}/.galera-synced"
 ROLE_FILE="${DATA_DIR}/.galera-role"
+# The watcher refreshes .galera-role every ~3s and re-touches .galera-synced
+# while the mariadb container is alive. If that container dies the markers
+# survive on the PV; memberJoin must not close on a stale "synced primary"
+# left by a dead writer. Reject markers older than this window (30s = 10 ticks).
+GALERA_ROLE_MAX_STALE_SECONDS="${GALERA_ROLE_MAX_STALE_SECONDS:-30}"
+
+# Portable file-age in seconds (GNU/busybox `stat -c %Y`, BSD `stat -f %m`).
+_file_age_seconds() {
+    _fas_now="$(date +%s 2>/dev/null)" || return 1
+    _fas_mtime="$(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null)" || return 1
+    [ -n "${_fas_mtime}" ] || return 1
+    echo $(( _fas_now - _fas_mtime ))
+}
 
 galera_member_join_diagnose_not_ready() {
     phase="$1"
@@ -48,9 +61,21 @@ if [ ! -d "${DATA_DIR}" ]; then
 fi
 
 if [ -f "${SYNCED_FILE}" ]; then
+    synced_age="$(_file_age_seconds "${SYNCED_FILE}" || echo "")"
+    if [ -z "${synced_age}" ] || [ "${synced_age}" -gt "${GALERA_ROLE_MAX_STALE_SECONDS}" ]; then
+        galera_member_join_diagnose_not_ready \
+            "synced-marker-stale" \
+            "  data_dir_exists: yes
+  synced_marker_present: yes
+  synced_marker_age_seconds: ${synced_age:-unknown}
+  max_stale_seconds: ${GALERA_ROLE_MAX_STALE_SECONDS}
+  hint: marker not refreshed within the staleness window; the writing mariadb container is likely dead. Do not close memberJoin on a stale marker." \
+            "yes"
+        exit 1
+    fi
     role="$(cat "${ROLE_FILE}" 2>/dev/null || true)"
     if [ "${role}" = "primary" ]; then
-        echo "Galera node synced (${SYNCED_FILE} present, role=primary). Member join complete."
+        echo "Galera node synced (${SYNCED_FILE} present, role=primary, marker fresh). Member join complete."
         exit 0
     fi
 

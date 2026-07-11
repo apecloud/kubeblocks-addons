@@ -32,4 +32,17 @@ Describe "galera-member-join.sh"
     The error should include "phase: synced-marker-stale-or-role-not-primary"
     The error should include "next-retry-safe: yes"
   End
+
+  It "does not close on a stale synced marker left by a dead writer"
+    # Both markers present and role=primary, but the mariadb container that
+    # writes them has died — the marker mtime is old.
+    printf "primary" > "${DATA_DIR}/.galera-role"
+    touch "${DATA_DIR}/.galera-synced"
+    touch -t 202001010000 "${DATA_DIR}/.galera-synced"
+
+    When run sh ../scripts/galera-member-join.sh
+    The status should be failure
+    The error should include "phase: synced-marker-stale"
+    The error should include "next-retry-safe: yes"
+  End
 End

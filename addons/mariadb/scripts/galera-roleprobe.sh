@@ -27,8 +27,33 @@ set -eu
 
 DATA_DIR="${DATA_DIR:-/var/lib/mysql}"
 ROLE_FILE="${DATA_DIR}/.galera-role"
+# The watcher rewrites .galera-role every ~3s while the mariadb container is
+# alive. If the mariadb container dies (crash-loop, OOM, node loss) the file
+# stops being refreshed but survives on the PV, and kbagent — a separate
+# container that stays up and runs this probe — would keep reading a stale
+# "primary" and route writes to a dead node. Reject a role file that has not
+# been refreshed within this staleness window (default 30s = 10 watcher ticks).
+GALERA_ROLE_MAX_STALE_SECONDS="${GALERA_ROLE_MAX_STALE_SECONDS:-30}"
+
+# Portable file-age in seconds (GNU/busybox `stat -c %Y`, BSD `stat -f %m`).
+# Prints the age; returns non-zero if the mtime cannot be read.
+_file_age_seconds() {
+  _fas_now="$(date +%s 2>/dev/null)" || return 1
+  _fas_mtime="$(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null)" || return 1
+  [ -n "${_fas_mtime}" ] || return 1
+  echo $(( _fas_now - _fas_mtime ))
+}
 
 if [ -f "${ROLE_FILE}" ]; then
+  age="$(_file_age_seconds "${ROLE_FILE}" || echo "")"
+  if [ -z "${age}" ]; then
+    echo "galera role not ready: cannot determine ${ROLE_FILE} freshness" >&2
+    exit 1
+  fi
+  if [ "${age}" -gt "${GALERA_ROLE_MAX_STALE_SECONDS}" ]; then
+    echo "galera role stale: ${ROLE_FILE} not refreshed for ${age}s (> ${GALERA_ROLE_MAX_STALE_SECONDS}s); writer likely dead" >&2
+    exit 1
+  fi
   role=$(cat "${ROLE_FILE}" 2>/dev/null || true)
   if [ "${role}" = "primary" ]; then
     printf "%s" "${role}"

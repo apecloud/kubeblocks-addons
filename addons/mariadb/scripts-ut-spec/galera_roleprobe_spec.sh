@@ -22,6 +22,16 @@ Describe "galera-roleprobe.sh"
     The output should eq "primary"
   End
 
+  It "refuses a stale primary marker left by a dead writer"
+    # mariadb container died; kbagent keeps probing the PV-resident marker.
+    printf "primary" > "${DATA_DIR}/.galera-role"
+    touch -t 202001010000 "${DATA_DIR}/.galera-role"
+
+    When run sh ../scripts/galera-roleprobe.sh
+    The status should be failure
+    The stderr should include "stale"
+  End
+
   It "does not publish secondary while the Galera member is still joining"
     printf "secondary" > "${DATA_DIR}/.galera-role"
 

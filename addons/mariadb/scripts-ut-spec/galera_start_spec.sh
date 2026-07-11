@@ -75,6 +75,38 @@ EOF
       The contents of file "${TEST_DIR}/timeout.args" should include "--ssl=0"
       The contents of file "${TEST_DIR}/timeout.args" should include "-P3306"
     End
+
+    It "treats a port-open-but-unqueryable peer as possibly-alive (fail closed against split-brain)"
+      # Port 3306 open, but the wsrep status query returns nothing (auth error
+      # / SST / load). This must NOT be read as "no peer" — a live Primary we
+      # cannot read would let this node bootstrap a second Primary.
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 0 ;;      # port open
+          *" mariadb "*) return 0 ;;      # query "runs" but prints no status
+        esac
+        return 1
+      }
+      sleep() { :; }
+
+      When call _any_peer_alive
+      The status should be success
+      The output should include "unreadable after retries"
+    End
+
+    It "skips a peer that gives a clean non-Primary answer"
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 0 ;;
+          *" mariadb "*) printf "wsrep_cluster_status\tnon-Primary\n"; return 0 ;;
+        esac
+        return 1
+      }
+
+      When call _any_peer_alive
+      The status should be failure
+      The output should include "not Primary, skipping"
+    End
   End
 
   Describe "_wait_for_primary_peer()"

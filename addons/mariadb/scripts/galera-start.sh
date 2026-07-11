@@ -34,19 +34,48 @@ _any_peer_alive() {
   [ -z "$fqdns" ] && return 1
   local peer
   for peer in $(echo "$fqdns" | tr ',' ' '); do
-    echo "$peer" | grep -q "${POD_NAME}" && continue
+    # Boundary self-match: "pod-1" must not match "pod-10". Compare the FQDN
+    # host segment (up to the first dot) exactly against POD_NAME.
+    case "${peer}" in
+      "${POD_NAME}."*|"${POD_NAME}") continue ;;
+    esac
     if timeout 3 bash -c "echo > /dev/tcp/${peer}/3306" 2>/dev/null; then
-      local cluster_status
-      cluster_status=$(timeout 5 mariadb \
-        -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
-        -h "${peer}" -P3306 --ssl=0 -N -s \
-        -e "SHOW STATUS LIKE 'wsrep_cluster_status';" 2>/dev/null \
-        | awk '{print $2}')
+      # Port 3306 is open — something is listening. Query wsrep_cluster_status
+      # to classify. A refused/dead peer never reaches here (TCP connect
+      # fails), so an open port means the peer is up; the only question is
+      # whether it is a functioning Primary we must join, or a co-restarting
+      # non-Primary node we may ignore.
+      #
+      # Sentinel discipline (fail closed against split-brain): an EMPTY result
+      # is NOT the same as a clean "not Primary" answer. Empty means the query
+      # failed (auth error, SST with SQL not yet accepting, load timeout) —
+      # the peer could be a live Primary we simply cannot read. Treating that
+      # as "no peer" would let this node bootstrap a SECOND Primary. So we
+      # retry briefly, and if the status is still unknown while the port stays
+      # open, we conservatively treat the peer as alive (block bootstrap).
+      local cluster_status="" attempt
+      for attempt in 1 2 3; do
+        cluster_status=$(timeout 5 mariadb \
+          -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
+          -h "${peer}" -P3306 --ssl=0 -N -s \
+          -e "SHOW STATUS LIKE 'wsrep_cluster_status';" 2>/dev/null \
+          | awk '{print $2}')
+        [ -n "${cluster_status}" ] && break
+        sleep 1
+      done
       if [ "${cluster_status}" = "Primary" ]; then
         echo "Peer ${peer} is alive with wsrep_cluster_status=Primary."
         return 0
       fi
-      [ -z "${quiet}" ] && echo "Peer ${peer} port 3306 open but wsrep_cluster_status=${cluster_status:-unreachable} (not Primary, skipping)."
+      if [ -z "${cluster_status}" ]; then
+        # Port open but status unreadable after retries → a possibly-live
+        # Primary. Do NOT enable bootstrap; join/wait instead (fail closed).
+        [ -z "${quiet}" ] && echo "Peer ${peer} port 3306 open but wsrep_cluster_status unreadable after retries; treating as possibly-alive to avoid split-brain bootstrap."
+        return 0
+      fi
+      # Non-empty, non-Primary (e.g. non-Primary / Disconnected): a definitive
+      # answer that the peer is not in a functioning cluster — safe to skip.
+      [ -z "${quiet}" ] && echo "Peer ${peer} port 3306 open but wsrep_cluster_status=${cluster_status} (not Primary, skipping)."
     fi
   done
   return 1
