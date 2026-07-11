@@ -47,8 +47,11 @@ switchover_diagnose_not_ready() {
 
 # Prints the name of the current leader as seen by patroni. Matches both
 # "leader" and "standby_leader" so switchover works in standby clusters too.
+# Optional $1 overrides the curl timeout: the verification loop passes 3s so
+# the bounded-wait budget stays under the action timeout (see comment above).
 get_current_leader() {
-  curl -s -m 5 http://localhost:8008/cluster 2>/dev/null \
+  local timeout=${1:-5}
+  curl -s -m "${timeout}" http://localhost:8008/cluster 2>/dev/null \
     | jq -r '[.members[] | select(.role == "leader" or .role == "standby_leader") | .name] | first // empty' 2>/dev/null
 }
 
@@ -101,7 +104,7 @@ verify_switchover() {
   local attempt new_leader
 
   for attempt in $(seq 1 "${SWITCHOVER_VERIFY_ATTEMPTS}"); do
-    new_leader=$(get_current_leader)
+    new_leader=$(get_current_leader 3)
     if [ -n "${new_leader}" ] && [ "${new_leader}" != "${old_leader}" ]; then
       if [ -n "${candidate}" ] && [ "${new_leader}" != "${candidate}" ]; then
         switchover_diagnose_not_ready "switchover-wrong-leader" "  expected_leader: ${candidate}
