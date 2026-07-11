@@ -107,6 +107,20 @@ init_etcd_dcs_config_if_needed() {
   export SCOPE
 }
 
+# Standby (DR) clusters replicate from a REMOTE primary whose credentials
+# arrive via the remote-instances serviceRef (KB_PGUSER_STANDBY /
+# KB_PGPASSWORD_STANDBY). Without this override spilo authenticates with the
+# LOCAL cluster's randomly generated password (PGPASSWORD_STANDBY is wired to
+# POSTGRES_PASSWORD in the cmpd), which never matches the remote cluster's —
+# the standby loops on "password authentication failed" and never bootstraps.
+init_standby_credentials_if_needed() {
+  if ! is_empty "${STANDBY_HOST:-}" && ! is_empty "${KB_PGPASSWORD_STANDBY:-}"; then
+    echo "$(date) standby cluster: using remote replication credentials from serviceRef"
+    export PGUSER_STANDBY="${KB_PGUSER_STANDBY:-standby}"
+    export PGPASSWORD_STANDBY="${KB_PGPASSWORD_STANDBY}"
+  fi
+}
+
 regenerate_spilo_configuration_and_start_postgres() {
   restart_for_pending_restart_flag >> /home/postgres/.kb_set_up.log 2>&1 &
   echo "$(date) restart_for_pending_restart_flag PID=$!" >> /home/postgres/.kb_set_up.log
@@ -115,7 +129,19 @@ regenerate_spilo_configuration_and_start_postgres() {
   fi
   # Ensure postgres user owns the entire config directory (Patroni needs to write pg_hba.conf, etc.)
   chown -R postgres:postgres /home/postgres/pgdata/conf
-  python3 /kb-scripts/generate_patroni_yaml.py $tmp_patroni_yaml
+  # Fail closed on config-generation errors: launching spilo with an empty
+  # SPILO_CONFIGURATION silently drops custom_conf, the pg_hba template and
+  # the kb_restore bootstrap method — on a restore pod that turns the restore
+  # into a fresh empty initdb reported as success. A CrashLoop with an
+  # attributable log line is strictly better.
+  if ! python3 /kb-scripts/generate_patroni_yaml.py $tmp_patroni_yaml; then
+    echo "$(date) FATAL: generate_patroni_yaml.py failed; refusing to start with an empty SPILO_CONFIGURATION" >&2
+    exit 1
+  fi
+  if [ ! -s "$tmp_patroni_yaml" ]; then
+    echo "$(date) FATAL: generated patroni configuration is missing or empty: $tmp_patroni_yaml" >&2
+    exit 1
+  fi
   # SPILO_CONFIGURATION is defined by spilo image
   SPILO_CONFIGURATION=$(cat $tmp_patroni_yaml)
   export SPILO_CONFIGURATION
@@ -132,4 +158,5 @@ ${__SOURCED__:+false} : || return 0
 # main
 load_common_library
 init_etcd_dcs_config_if_needed
+init_standby_credentials_if_needed
 regenerate_spilo_configuration_and_start_postgres
