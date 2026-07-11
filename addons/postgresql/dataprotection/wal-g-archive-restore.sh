@@ -27,6 +27,16 @@ function config_wal_g_for_fetch_wal_log() {
     fi
 }
 
+# Retry guard: the final step of a successful run is `mv DATA_DIR DATA_DIR.old`.
+# On a Job re-run after that point DATA_DIR no longer exists, so the very next
+# command (touch into DATA_DIR) fails under set -e — and keeps failing on every
+# retry, wedging the restore permanently. The fully-staged state is exactly
+# ".old populated + DATA_DIR absent": all work below is already done.
+if [[ -d ${DATA_DIR}.old ]] && [[ ! -d ${DATA_DIR} ]]; then
+  echo "restore already staged in ${DATA_DIR}.old; nothing to do"
+  exit 0
+fi
+
 # 1. config restore script
 touch ${DATA_DIR}/recovery.signal;
 mkdir -p ${RESTORE_SCRIPT_DIR}
