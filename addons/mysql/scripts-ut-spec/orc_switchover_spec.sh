@@ -4,6 +4,45 @@
 Describe "ORC switchover script tests"
   Include ../scripts/orc-switchover.sh
 
+  Describe "Orchestrator master precheck parsing"
+    It "keeps retry stderr out of a final successful master token"
+      run_orchestrator_client_with_budget() {
+        printf '%s\n' 'mysql-1:3306'
+        printf '%s\n' 'jq: error: transient response parse failed' >&2
+      }
+
+      When call resolve_orchestrator_master_with_budget 3 mysql-0
+      The status should be success
+      The variable ORC_PRECHECK_MASTER should equal "mysql-1:3306"
+      The variable ORC_PRECHECK_STDERR should include "transient response parse failed"
+    End
+
+    It "fails closed when the client emits only stderr noise"
+      run_orchestrator_client_with_budget() {
+        printf '%s\n' 'jq: error: transient response parse failed' >&2
+      }
+
+      When call resolve_orchestrator_master_with_budget 3 mysql-0
+      The status should be failure
+      The variable ORC_PRECHECK_MASTER should equal ""
+      The variable ORC_PRECHECK_STDERR should include "transient response parse failed"
+    End
+
+    It "selects the last valid host-port token from stdout"
+      run_orchestrator_client_with_budget() {
+        printf '%s\n' \
+          'retrying request' \
+          'mysql-stale:3306' \
+          'not a master token' \
+          'mysql-current:3306'
+      }
+
+      When call resolve_orchestrator_master_with_budget 3 mysql-0
+      The status should be success
+      The variable ORC_PRECHECK_MASTER should equal "mysql-current:3306"
+    End
+  End
+
   Describe "MySQL read flag parsing"
     It "recognizes writable flags after mysql client stderr noise"
       output=$(printf '%s\n%s\n' \
