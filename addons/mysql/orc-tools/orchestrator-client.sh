@@ -145,7 +145,7 @@ function universal_sed {
 }
 
 function fail {
-  message="$myname[$$]: $1"
+  message="${myname}[$$]: $1"
   >&2 echo "$message"
   exit 1
 }
