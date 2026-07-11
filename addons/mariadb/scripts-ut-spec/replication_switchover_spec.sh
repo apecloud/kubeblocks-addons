@@ -1590,7 +1590,11 @@ EOF
       The output should include "Switchover candidate promoted via DCS observed"
     End
 
-    It "fails closed with reason=candidate_not_promoted_via_dcs_in_budget when stage budget exhausts"
+    It "probes once even at budget=0, then fails closed with reason=candidate_not_promoted_via_dcs_in_budget"
+      # Contract change (probe-at-least-once): budget=0 no longer returns
+      # attempts=0. The loop performs exactly one probe (attempt=1) before
+      # honoring the exhausted budget, so it still fails closed but with
+      # attempts=1 and one poll log line on stdout.
       cat > "${SYNCERCTL_BIN}" <<'EOF'
 #!/bin/sh
 echo "$@" >> "${MOCK_SYNCERCTL_CALLS}"
@@ -1600,8 +1604,11 @@ EOF
       chmod +x "${SYNCERCTL_BIN}"
       When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 0
       The status should be failure
+      The output should include "promotion poll attempt=1"
       The stderr should include "reason=candidate_not_promoted_via_dcs_in_budget"
       The stderr should include "stage_budget=0s"
+      The stderr should include "attempts=1"
+      The stderr should not include "attempts=0"
       The stderr should include "fail-closed"
     End
   End
