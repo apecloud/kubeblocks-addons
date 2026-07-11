@@ -238,6 +238,30 @@ Describe "valkey-cluster-manage.sh"
       The stdout should not include "WRITE-CALLED"
     End
 
+    It "defers before writes when known-node count is below the engine domain"
+      known_nodes_of() { echo 0; }
+      assigned_slots_of() { echo 0; }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-probe"
+      The stderr should include "known-node count 0 must be at least 1"
+      The stdout should not include "WRITE-CALLED"
+    End
+
+    It "defers before writes when assigned slots exceed the engine domain"
+      known_nodes_of() { echo 1; }
+      assigned_slots_of() { echo 16385; }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-probe"
+      The stderr should include "outside 0..16384"
+      The stdout should not include "WRITE-CALLED"
+    End
+
     It "drives a mixed configured/fresh primary set across two re-entries"
       _joined_marker=$(mktemp)
       _balanced_marker=$(mktemp)
@@ -361,6 +385,49 @@ ADD"
       The stderr should include "retry_safe=yes"
       The stderr should include "one-way"
       The stdout should not include "WRITE-CALLED"
+    End
+
+    It "defers without writes when star-shaped views omit configured peers"
+      known_nodes_of() { echo 3; }
+      assigned_slots_of() { echo 5461; }
+      cluster_nodes_of() {
+        case "$1" in
+          vk-shard-abc-0.h.ns.svc)
+            printf 'id-abc a:6379@16379 master - 0 0 1 connected 0-5460\n'
+            printf 'id-def b:6379@16379 master - 0 0 2 connected 5461-10922\n'
+            printf 'id-ghi c:6379@16379 master - 0 0 3 connected 10923-16383\n' ;;
+          vk-shard-def-0.h.ns.svc)
+            printf 'id-abc a:6379@16379 master - 0 0 1 connected 0-5460\n'
+            printf 'id-def b:6379@16379 master - 0 0 2 connected 5461-10922\n' ;;
+          vk-shard-ghi-0.h.ns.svc)
+            printf 'id-abc a:6379@16379 master - 0 0 1 connected 0-5460\n'
+            printf 'id-ghi c:6379@16379 master - 0 0 3 connected 10923-16383\n' ;;
+        esac
+      }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      attach_all_replicas() { echo "ATTACH-WRITE-REACHED"; return 0; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-resume-topology"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "different node-ID set"
+      The stdout should not include "WRITE-CALLED"
+      The stdout should not include "ATTACH-WRITE-REACHED"
+    End
+
+    It "defers without writes when CLUSTER NODES returns malformed output"
+      known_nodes_of() { echo 3; }
+      assigned_slots_of() { echo 5461; }
+      cluster_nodes_of() { echo "ERR cluster state unavailable"; }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-resume-topology"
+      The stderr should include "malformed CLUSTER NODES"
+      The stdout should not include "WRITE-CALLED"
+      The stdout should not include "ATTACH-DRIVEN"
     End
 
     It "defers before rebalance when owned-slot evidence is invalid"

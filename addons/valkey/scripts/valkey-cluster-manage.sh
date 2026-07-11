@@ -113,6 +113,26 @@ cluster_nodes_of() {
   "${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r'
 }
 
+cluster_node_id_set() {
+  local nodes
+  nodes=$(cat)
+  printf '%s\n' "${nodes}" | awk '
+    NF == 0 {next}
+    NF < 8 || $3 !~ /(^|,)(master|slave)(,|$)/ {bad=1; next}
+    END {exit bad ? 1 : 0}
+  ' >/dev/null || return 1
+  printf '%s\n' "${nodes}" | awk 'NF > 0 {print $1}' | LC_ALL=C sort -u
+}
+
+node_id_sets_overlap() {
+  local left="${1}" right="${2}" id
+  while IFS= read -r id; do
+    [ -n "${id}" ] || continue
+    printf '%s\n' "${right}" | grep -Fqx "${id}" && return 0
+  done <<< "${left}"
+  return 1
+}
+
 # Slot count currently owned by the master whose id is $2, read from $1's
 # view of CLUSTER NODES. Prints the count of slot ranges' total slots.
 slots_owned_by() {
@@ -309,6 +329,14 @@ form_cluster() {
     }
     case "${slots}" in ''|*[!0-9]*) classify formation-probe yes "invalid assigned slots '${slots}' from ${phost}"; return 1 ;; esac
     case "${known}" in ''|*[!0-9]*) classify formation-probe yes "invalid known-node count '${known}' from ${phost}"; return 1 ;; esac
+    if [ "${slots}" -gt 16384 ]; then
+      classify formation-probe yes "assigned slots ${slots} outside 0..16384 on ${phost}"
+      return 1
+    fi
+    if [ "${known}" -lt 1 ]; then
+      classify formation-probe yes "known-node count ${known} must be at least 1 on ${phost}"
+      return 1
+    fi
     [ -n "${node_id}" ] || {
       classify formation-probe yes "empty CLUSTER MYID from designated primary ${phost}"
       return 1
@@ -323,13 +351,12 @@ form_cluster() {
   # skipping create on the first configured node leaves fresh shard masters
   # forever outside that cluster, while blindly merging two configured
   # clusters risks combining unrelated slot/config-epoch histories.
-  local resume="" resume_id="" resume_nodes="" other_nodes=""
+  local resume="" resume_nodes="" other_nodes="" resume_node_ids="" other_node_ids=""
   local fresh_count=0 i resume_index=-1
   for ((i=0; i<${#primary_hosts[@]}; i++)); do
     if [ "${primary_slots[$i]}" -gt 0 ] || [ "${primary_known[$i]}" -gt 1 ]; then
       if [ -z "${resume}" ]; then
         resume="${primary_hosts[$i]}"
-        resume_id="${primary_ids[$i]}"
         resume_index=$i
       fi
     else
@@ -347,10 +374,18 @@ form_cluster() {
       classify formation-resume-topology yes "empty CLUSTER NODES from resume host ${resume}"
       return 1
     }
+    resume_node_ids=$(printf '%s\n' "${resume_nodes}" | cluster_node_id_set) || {
+      classify formation-resume-topology yes "malformed CLUSTER NODES from resume host ${resume}"
+      return 1
+    }
+    [ -n "${resume_node_ids}" ] || {
+      classify formation-resume-topology yes "empty node-ID set from resume host ${resume}"
+      return 1
+    }
 
-    # Every already-configured primary must be in the SAME cluster. One-way
-    # visibility is a transient gossip state; zero-way visibility means two
-    # independently configured clusters and is never auto-merged.
+    # Every already-configured primary must expose the SAME complete node-ID
+    # set. A partially overlapping set is transient gossip; a disjoint set is
+    # an independently configured cluster and is never auto-merged.
     for ((i=0; i<${#primary_hosts[@]}; i++)); do
       [ "$i" -eq "${resume_index}" ] && continue
       if [ "${primary_slots[$i]}" -gt 0 ] || [ "${primary_known[$i]}" -gt 1 ]; then
@@ -358,17 +393,27 @@ form_cluster() {
           classify formation-resume-topology yes "cannot read CLUSTER NODES from configured primary ${primary_hosts[$i]}"
           return 1
         }
-        local resume_sees=0 other_sees=0
-        echo "${resume_nodes}" | awk -v id="${primary_ids[$i]}" '$1 == id {found=1} END {exit !found}' && resume_sees=1
-        echo "${other_nodes}" | awk -v id="${resume_id}" '$1 == id {found=1} END {exit !found}' && other_sees=1
-        if [ "${resume_sees}" -eq 0 ] && [ "${other_sees}" -eq 0 ]; then
+        [ -n "${other_nodes}" ] || {
+          classify formation-resume-topology yes "empty CLUSTER NODES from configured primary ${primary_hosts[$i]}"
+          return 1
+        }
+        other_node_ids=$(printf '%s\n' "${other_nodes}" | cluster_node_id_set) || {
+          classify formation-resume-topology yes "malformed CLUSTER NODES from configured primary ${primary_hosts[$i]}"
+          return 1
+        }
+        [ -n "${other_node_ids}" ] || {
+          classify formation-resume-topology yes "empty node-ID set from configured primary ${primary_hosts[$i]}"
+          return 1
+        }
+        if [ "${resume_node_ids}" = "${other_node_ids}" ]; then
+          continue
+        fi
+        if ! node_id_sets_overlap "${resume_node_ids}" "${other_node_ids}"; then
           classify formation-resume-topology no "configured primary ${primary_hosts[$i]} is not in resume cluster ${resume}; refusing automatic cluster merge"
           return 1
         fi
-        if [ "${resume_sees}" -eq 0 ] || [ "${other_sees}" -eq 0 ]; then
-          classify formation-resume-topology yes "membership gossip between ${resume} and ${primary_hosts[$i]} is one-way; deferring before mutation"
-          return 1
-        fi
+        classify formation-resume-topology yes "membership gossip between ${resume} and ${primary_hosts[$i]} has a different node-ID set (possibly one-way); deferring before mutation"
+        return 1
       fi
     done
 
