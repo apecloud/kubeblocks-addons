@@ -57,6 +57,23 @@ validate_manage_env() {
   return 0
 }
 
+validate_restore_data_dir() {
+  local canonical_data_dir
+  case "${VALKEY_DATA_DIR:-}" in
+    /*) ;;
+    *) classify restore-env no "VALKEY_DATA_DIR must be an existing canonical absolute directory"; return 1 ;;
+  esac
+  [ "${VALKEY_DATA_DIR}" != "/" ] && [ -d "${VALKEY_DATA_DIR}" ] && [ ! -L "${VALKEY_DATA_DIR}" ] || {
+    classify restore-env no "VALKEY_DATA_DIR must be an existing canonical non-root directory"
+    return 1
+  }
+  canonical_data_dir=$(cd -P "${VALKEY_DATA_DIR}" 2>/dev/null && pwd -P) || return 1
+  [ "${canonical_data_dir}" = "${VALKEY_DATA_DIR}" ] || {
+    classify restore-env no "VALKEY_DATA_DIR contains a symlink or dot-segment alias"
+    return 1
+  }
+}
+
 # ── cli helpers ──────────────────────────────────────────────────────────────
 
 build_cli() {
@@ -420,6 +437,88 @@ cluster_restore_meta_path() {
   echo "${VALKEY_DATA_DIR}/cluster-meta"
 }
 
+cluster_restore_state_path() {
+  echo "${VALKEY_DATA_DIR}/.kb-cluster-restore-state"
+}
+
+local_cluster_restore_state_matches_meta() {
+  local meta="${1}" state actual meta_sha256 expected_prepared expected_formed
+  state=$(cluster_restore_state_path) || return 1
+  [ -f "${meta}" ] && [ -f "${state}" ] && [ ! -L "${state}" ] || {
+    classify restore-state no "cluster-meta lacks its exact local restore-state contract"
+    return 1
+  }
+  meta_sha256=$(sha256sum "${meta}" 2>/dev/null | awk '{print $1}')
+  [ "${#meta_sha256}" -eq 64 ] || {
+    classify restore-state no "cannot identify local cluster-meta"
+    return 1
+  }
+  actual=$(cat "${state}" 2>/dev/null) || return 1
+  expected_prepared=$(printf 'phase=prepared\nmeta_sha256=%s' "${meta_sha256}")
+  expected_formed=$(printf 'phase=formed\nmeta_sha256=%s' "${meta_sha256}")
+  [ "${actual}" = "${expected_prepared}" ] || [ "${actual}" = "${expected_formed}" ] || {
+    classify restore-state no "local cluster restore state does not match cluster-meta"
+    return 1
+  }
+}
+
+mark_local_cluster_restore_formed() {
+  local meta="${1}" state actual meta_sha256 tmp expected_prepared expected_formed
+  state=$(cluster_restore_state_path) || return 1
+  [ ! -L "${meta}" ] || {
+    classify restore-state no "cluster-meta is not a safe regular file"
+    return 1
+  }
+  [ -f "${state}" ] && [ ! -L "${state}" ] || {
+    classify restore-state no "local cluster restore state is missing or unsafe"
+    return 1
+  }
+  actual=$(cat "${state}" 2>/dev/null) || return 1
+  if [ -f "${meta}" ]; then
+    meta_sha256=$(sha256sum "${meta}" 2>/dev/null | awk '{print $1}')
+    [ "${#meta_sha256}" -eq 64 ] || {
+      classify restore-state no "cannot identify local cluster-meta before formed commit"
+      return 1
+    }
+    expected_prepared=$(printf 'phase=prepared\nmeta_sha256=%s' "${meta_sha256}")
+    expected_formed=$(printf 'phase=formed\nmeta_sha256=%s' "${meta_sha256}")
+    [ "${actual}" = "${expected_prepared}" ] || [ "${actual}" = "${expected_formed}" ] || {
+      classify restore-state no "local cluster restore state does not match cluster-meta"
+      return 1
+    }
+  else
+    case "${actual}" in phase=formed$'\n'meta_sha256=*) ;;
+      *) classify restore-state no "cluster-meta disappeared before the local formed-state commit"; return 1 ;;
+    esac
+    meta_sha256=${actual#*$'\n'meta_sha256=}
+    case "${meta_sha256}" in ''|*[!0-9a-fA-F]*) meta_sha256="" ;; esac
+    [ "${#meta_sha256}" -eq 64 ] || {
+      classify restore-state no "invalid local formed-state metadata identity"
+      return 1
+    }
+    expected_formed=$(printf 'phase=formed\nmeta_sha256=%s' "${meta_sha256}")
+    [ "${actual}" = "${expected_formed}" ] || return 1
+  fi
+  if [ "${actual}" != "${expected_formed}" ]; then
+    tmp=$(mktemp "${state}.tmp.XXXXXX") || {
+      classify restore-state yes "cannot allocate local formed-state commit"
+      return 1
+    }
+    printf '%s\n' "${expected_formed}" > "${tmp}" && mv -f "${tmp}" "${state}" && sync || {
+      rm -f "${tmp}"
+      classify restore-state yes "cannot persist local formed-state commit"
+      return 1
+    }
+  fi
+  rm -f "${meta}" \
+    "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepare" \
+    "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared" && sync || {
+      classify restore-state yes "cannot remove local restore preparation residue"
+      return 1
+    }
+  echo "committed local cluster restore formed state and removed preparation residue."
+}
+
 load_cluster_restore_meta() {
   local meta="$1" source_count master_count ranges_count digest_count
   source_count=$(grep -c '^source_shards=' "${meta}" || true)
@@ -460,7 +559,7 @@ load_cluster_restore_meta() {
   fi
 }
 
-restored_primary_cluster_ready_for_replica_reset() {
+restored_primary_cluster_ready_for_replica_attach() {
   local roster shard_line fqdns host id nodes observed expected="" primary_id
   local primary_hosts=() primary_ids=()
   roster=$(each_shard_fqdn_list) || return 1
@@ -501,6 +600,7 @@ restore_cluster_from_meta() {
   local primary_hosts=() primary_ids=() meet_hosts=() meet_addresses=()
 
   load_cluster_restore_meta "${meta}" || return 1
+  local_cluster_restore_state_matches_meta "${meta}" || return 1
   roster=$(each_shard_fqdn_list) || return 1
   while read -r shard_line; do
     shard="${shard_line%% *}"
@@ -535,6 +635,8 @@ restore_cluster_from_meta() {
       return 1
     }
     prepare_local_restored_replica_for_attach "${meta}" "${self_first}" "${host}" "${other_id}" "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" || return 1
+    ensure_replica_bound "${self_first}" "${host}" "${other_id}" "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" || return 1
+    classify restore-replica-converge yes "offline-prepared replica ${host} attached; waiting for complete restored membership"
     return 1
   fi
 
@@ -686,8 +788,8 @@ restore_cluster_from_meta() {
     return 1
   fi
 
-  restored_primary_cluster_ready_for_replica_reset || {
-    classify restore-attach yes "restored primary views have not all converged to state=ok, 16384 slots and one exact id set before replica reset"
+  restored_primary_cluster_ready_for_replica_attach || {
+    classify restore-attach yes "restored primary views have not all converged to state=ok, 16384 slots and one exact id set before replica attach"
     return 1
   }
 
@@ -696,7 +798,7 @@ restore_cluster_from_meta() {
     classify restore-converge yes "archived slots assigned but restored membership not complete"
     return 1
   }
-  rm -f "${meta}"
+  mark_local_cluster_restore_formed "${meta}" || return 1
   echo "restored cluster formed with archived slot ownership and complete membership."
 }
 
@@ -995,8 +1097,9 @@ form_cluster() {
   echo "cluster formed: state ok, 16384/16384 slots assigned."
 }
 
-# Attach every non-first pod of every shard as a replica of that shard's
-# master (identified by engine node id, resolved fresh each invocation).
+# In ordinary formation, attach every non-first pod to its shard master. In
+# restore mode, this coordinator path is observation-only: each non-first pod
+# must validate its PVC-local offline marker and attach itself.
 attach_all_replicas() {
   local mode="${1:-ordinary}"
   local shard_line shard fqdns first rest fqdn master_id add_out roster
@@ -1219,10 +1322,18 @@ ensure_replica_bound() {
   local line flags parent out
   build_cli "${via}"
   line=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | grep -F "${fqdn}" | head -1)
-  if [ -z "${line}" ]; then
-    if [ "${mode}" = "restore" ]; then
-      restored_replica_ready_for_attach "${fqdn}" "${shard}" || return 1
+  if [ "${mode}" = "restore" ]; then
+    if [ -n "${line}" ]; then
+      flags=$(echo "${line}" | awk '{print $3}')
+      parent=$(echo "${line}" | awk '{print $4}')
+      if echo "${flags}" | grep -q slave && [ "${parent}" = "${master_id}" ]; then
+        return 0
+      fi
     fi
+    classify restore-replica-wait yes "restored replica ${fqdn} must validate its local offline marker and attach itself to shard ${shard}"
+    return 1
+  fi
+  if [ -z "${line}" ]; then
     build_cluster_cli
     out=$("${_ccli[@]}" --cluster add-node "${fqdn}:${SERVICE_PORT}" "${via}:${SERVICE_PORT}" --cluster-slave --cluster-master-id "${master_id}" 2>&1) || {
       classify attach-add-node yes "add replica ${fqdn} to shard ${shard} failed (re-entry re-drives): ${out}"
@@ -1245,77 +1356,45 @@ ensure_replica_bound() {
   echo "repaired ${fqdn}: now replicating shard ${shard} master ${master_id}."
 }
 
-# The coordinator never clears a remote pod. It only attaches a restored
-# replica after that pod's own postProvision action has positively reduced it
-# to one empty, slotless node.
-restored_replica_ready_for_attach() {
-  local fqdn="${1}" shard="${2}" nodes line flags parent ranges size
-  nodes=$(cluster_nodes_of "${fqdn}") || return 1
-  [ "$(printf '%s\n' "${nodes}" | awk 'NF {n++} END {print n+0}')" -eq 1 ] && \
-    [ "$(known_nodes_of "${fqdn}")" = "1" ] || {
-      classify restore-replica-wait yes "restored replica ${fqdn} has not prepared one isolated node for shard ${shard}"
-      return 1
-    }
-  line=$(printf '%s\n' "${nodes}" | awk 'NF {print; exit}')
-  flags=$(printf '%s\n' "${line}" | awk '{print $3}')
-  parent=$(printf '%s\n' "${line}" | awk '{print $4}')
-  ranges=$(printf '%s\n' "${line}" | cut -d' ' -f9-)
-  size=$(dbsize_of "${fqdn}") || true
-  case "${flags}:${parent}:${ranges}:${size}" in
-    *myself*master*:-::0) return 0 ;;
-  esac
-  classify restore-replica-wait yes "restored replica ${fqdn} is not yet empty and slotless for shard ${shard}"
-  return 1
+offline_prepared_marker_matches() {
+  local fqdn="${1}" expected_rdb_sha256="${2}" meta="${3}" marker prepare_marker actual expected meta_sha256
+  marker="${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared"
+  prepare_marker="${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepare"
+  [ -f "${marker}" ] && [ ! -L "${marker}" ] || return 1
+  meta_sha256=$(sha256sum "${meta}" 2>/dev/null | awk '{print $1}')
+  [ "${#meta_sha256}" -eq 64 ] || return 1
+  expected=$(printf 'rdb_sha256=%s\nmeta_sha256=%s\npod=%s' \
+    "${expected_rdb_sha256}" "${meta_sha256}" "${fqdn%%.*}")
+  actual=$(cat "${marker}" 2>/dev/null) || return 1
+  [ "${actual}" = "${expected}" ] || return 1
+  if [ -e "${prepare_marker}" ] || [ -L "${prepare_marker}" ]; then
+    [ -f "${prepare_marker}" ] && [ ! -L "${prepare_marker}" ] || return 1
+    actual=$(cat "${prepare_marker}" 2>/dev/null) || return 1
+    [ "${actual}" = "${expected}" ] || return 1
+  fi
 }
 
-local_restored_aof_is_pristine() {
-  local expected_rdb_sha256="${1}"
-  local append_dirname="${VALKEY_APPEND_DIRNAME:-appendonlydir}"
-  local append_filename="${VALKEY_APPEND_FILENAME:-appendonly.aof}"
-  local append_dir="${VALKEY_DATA_DIR}/${append_dirname}"
-  local base="${append_dir}/${append_filename}.1.base.rdb"
-  local incr="${append_dir}/${append_filename}.1.incr.aof"
-  local manifest="${append_dir}/${append_filename}.manifest"
-  local expected_manifest actual_manifest unexpected base_sha256
-
-  [ -f "${base}" ] && [ -f "${incr}" ] && [ -f "${manifest}" ] || return 1
-  [ ! -s "${incr}" ] || return 1
-  base_sha256=$(sha256sum "${base}" 2>/dev/null | awk '{print $1}')
-  [ "${base_sha256}" = "${expected_rdb_sha256}" ] || return 1
-  expected_manifest=$(printf 'file %s seq 1 type b\nfile %s seq 1 type i' \
-    "$(basename "${base}")" "$(basename "${incr}")")
-  actual_manifest=$(cat "${manifest}" 2>/dev/null) || return 1
-  [ "${actual_manifest}" = "${expected_manifest}" ] || return 1
-  unexpected=$(find "${append_dir}" -mindepth 1 -maxdepth 1 \
-    ! -name "$(basename "${base}")" \
-    ! -name "$(basename "${incr}")" \
-    ! -name "$(basename "${manifest}")" -print) || return 1
-  [ -z "${unexpected}" ]
-}
-
-# prepareData restores the same per-shard archive onto every PVC. Each
-# ordinal>0 action clears only its own redundant copy, and only after proving:
-# the ordinal-0 primary is authoritative, local slots are a subset of that
-# master, dump.rdb matches backup-recorded restore metadata, and no post-restore AOF
-# writes exist. Before FLUSHALL it persists an exact local authorization
-# marker; an empty DB with shadow slots is a valid re-entry state only when
-# that marker still matches this archive, pod, shard and intended master.
+# A restored non-first pod must already have discarded its redundant archive
+# in the server entrypoint, before valkey-server accepted any client. The
+# lifecycle action never clears online data; it only proves the empty,
+# slotless singleton and waits for the coordinator to attach it.
 prepare_local_restored_replica_for_attach() {
   local meta="${1}" via="${2}" fqdn="${3}" master_id="${4}" shard="${5}"
   local primary_nodes target_nodes primary_line target_line target_count
-  local flags parent primary_ranges target_ranges target_size actual_rdb_sha256
-  local bound_line bound_flags bound_parent out reset_nodes reset_line reset_ranges
-  local reset_marker expected_marker actual_marker marker_tmp
+  local flags parent primary_ranges target_ranges target_size
+  local bound_line bound_flags bound_parent
 
   load_cluster_restore_meta "${meta}" || return 1
-
-  restored_primary_cluster_ready_for_replica_reset || {
-    classify restore-replica-primary yes "all restored primary views are not fully converged before clearing ${fqdn}"
+  offline_prepared_marker_matches "${fqdn}" "${_restore_rdb_sha256}" "${meta}" || {
+    classify restore-replica-data no "restored replica ${fqdn} lacks the exact offline-prepared marker"
     return 1
   }
-
+  restored_primary_cluster_ready_for_replica_attach || {
+    classify restore-replica-primary yes "all restored primary views are not fully converged before attaching ${fqdn}"
+    return 1
+  }
   if [ "$(cluster_state_of "${via}")" != "ok" ] || [ "$(assigned_slots_of "${via}")" != "16384" ]; then
-    classify restore-replica-primary yes "primary ${via} is not state=ok with 16384 slots before clearing ${fqdn}"
+    classify restore-replica-primary yes "primary ${via} is not state=ok with 16384 slots before attaching ${fqdn}"
     return 1
   fi
   primary_nodes=$(cluster_nodes_of "${via}") || return 1
@@ -1329,9 +1408,6 @@ prepare_local_restored_replica_for_attach() {
     *) classify restore-replica-primary no "intended node ${master_id} is not a master in ${via} view"; return 1 ;;
   esac
 
-  # The coordinator can attach this pod between local retries. Once the
-  # primary view proves the intended binding, local cleanup must never run
-  # again; the next positive full-formation observation removes the marker.
   bound_line=$(printf '%s\n' "${primary_nodes}" | grep -F "${fqdn}" | head -1)
   if [ -n "${bound_line}" ]; then
     bound_flags=$(printf '%s\n' "${bound_line}" | awk '{print $3}')
@@ -1357,116 +1433,55 @@ prepare_local_restored_replica_for_attach() {
     *myself*master*:-) ;;
     *) classify restore-replica-shape no "restore target ${fqdn} is not a singleton myself,master"; return 1 ;;
   esac
-
   primary_ranges=$(printf '%s\n' "${primary_line}" | cut -d' ' -f9-)
   target_ranges=$(printf '%s\n' "${target_line}" | cut -d' ' -f9-)
   if ! slot_ranges_are_subset "${target_ranges}" "${primary_ranges}"; then
     classify restore-replica-slots no "restore target ${fqdn} claims slots outside shard ${shard} master ${master_id}"
     return 1
   fi
-
   target_size=$(dbsize_of "${fqdn}") || true
   case "${target_size}" in
-    ''|*[!0-9]*) classify restore-replica-data yes "cannot read numeric DBSIZE from restored duplicate ${fqdn}"; return 1 ;;
+    ''|*[!0-9]*) classify restore-replica-data yes "cannot read numeric DBSIZE from restored replica ${fqdn}"; return 1 ;;
   esac
-
-  reset_marker="${VALKEY_DATA_DIR}/.kb-restored-replica-reset-authorized"
-  expected_marker=$(printf 'rdb_sha256=%s\nmaster_id=%s\nshard=%s\npod=%s' \
-    "${_restore_rdb_sha256}" "${master_id}" "${shard}" "${fqdn%%.*}")
-  actual_marker=""
-  if [ -e "${reset_marker}" ]; then
-    [ -f "${reset_marker}" ] || {
-      classify restore-replica-data no "local reset authorization marker is not a regular file"
-      return 1
-    }
-    actual_marker=$(cat "${reset_marker}" 2>/dev/null) || {
-      classify restore-replica-data no "cannot read local reset authorization marker"
-      return 1
-    }
-    [ "${actual_marker}" = "${expected_marker}" ] || {
-      classify restore-replica-data no "local reset authorization marker does not match this restore target"
-      return 1
-    }
-  fi
-
-  if [ "${target_size}" -eq 0 ] && [ -z "${target_ranges}" ]; then
-    rm -f "${reset_marker}" && sync
-    echo "restored duplicate ${fqdn} is already empty and slotless for shard ${shard}."
-    return 0
-  fi
-  if [ "${target_size}" -eq 0 ] && [ "${actual_marker}" != "${expected_marker}" ]; then
-    classify restore-replica-data no "empty restored duplicate ${fqdn} still owns slots without reset authorization"
-    return 1
-  fi
-  if [ "${target_size}" -gt 0 ]; then
-    actual_rdb_sha256=$(sha256sum "${VALKEY_DATA_DIR}/dump.rdb" 2>/dev/null | awk '{print $1}')
-    [ "${actual_rdb_sha256}" = "${_restore_rdb_sha256}" ] || {
-      classify restore-replica-data no "local dump.rdb on ${fqdn} does not match restore metadata"
-      return 1
-    }
-    local_restored_aof_is_pristine "${_restore_rdb_sha256}" || {
-      classify restore-replica-data no "local multipart AOF is not the pristine restore seed; refusing to clear ${fqdn}"
-      return 1
-    }
-    if [ -z "${actual_marker}" ]; then
-      marker_tmp="${reset_marker}.tmp.$$"
-      if ! printf '%s\n' "${expected_marker}" > "${marker_tmp}" || \
-         ! mv -f "${marker_tmp}" "${reset_marker}" || ! sync; then
-        rm -f "${marker_tmp}"
-        classify restore-replica-data yes "cannot persist local reset authorization marker for ${fqdn}"
-        return 1
-      fi
-    fi
-    build_cli "${fqdn}"
-    out=$("${_cli[@]}" FLUSHALL 2>&1) || {
-      classify restore-replica-flush yes "FLUSHALL on verified duplicate ${fqdn} failed: ${out}"
-      return 1
-    }
-    case "${out}" in '(error)'*|'ERR '*) classify restore-replica-flush yes "FLUSHALL on ${fqdn} returned protocol error: ${out}"; return 1 ;; esac
-    [ "$(dbsize_of "${fqdn}")" = "0" ] || {
-      classify restore-replica-flush yes "verified duplicate ${fqdn} is not empty after FLUSHALL"
-      return 1
-    }
-  fi
-
-  build_cli "${fqdn}"
-  out=$("${_cli[@]}" CLUSTER RESET HARD 2>&1) || {
-    classify restore-replica-reset yes "CLUSTER RESET HARD on ${fqdn} failed: ${out}"
+  [ "${target_size}" -eq 0 ] && [ -z "${target_ranges}" ] || {
+    classify restore-replica-data no "restored replica ${fqdn} was not prepared offline; refusing online cleanup"
     return 1
   }
-  case "${out}" in '(error)'*|'ERR '*) classify restore-replica-reset yes "CLUSTER RESET HARD on ${fqdn} returned protocol error: ${out}"; return 1 ;; esac
-
-  reset_nodes=$(cluster_nodes_of "${fqdn}") || return 1
-  [ "$(printf '%s\n' "${reset_nodes}" | awk 'NF {n++} END {print n+0}')" -eq 1 ] && \
-    [ "$(known_nodes_of "${fqdn}")" = "1" ] && [ "$(dbsize_of "${fqdn}")" = "0" ] || {
-      classify restore-replica-reset yes "${fqdn} did not converge to one empty node after hard reset"
-      return 1
-    }
-  reset_line=$(printf '%s\n' "${reset_nodes}" | awk 'NF {print; exit}')
-  reset_ranges=$(printf '%s\n' "${reset_line}" | cut -d' ' -f9-)
-  [ -z "${reset_ranges}" ] || {
-    classify restore-replica-reset yes "${fqdn} still claims slots after hard reset"
-    return 1
-  }
-  rm -f "${reset_marker}" && sync
-  echo "prepared local restored duplicate ${fqdn} for replica attach to shard ${shard}."
+  echo "restored replica ${fqdn} is empty, slotless and offline-prepared for shard ${shard}."
 }
-
 post_provision() {
   validate_manage_env || exit 1
-  local restore_meta
+  validate_restore_data_dir || exit 1
+  local restore_meta restore_state restore_prepare restore_prepared path
   restore_meta=$(cluster_restore_meta_path) || exit 1
+  restore_state=$(cluster_restore_state_path) || exit 1
+  restore_prepare="${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepare"
+  restore_prepared="${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared"
+  for path in "${restore_meta}" "${restore_state}" "${restore_prepare}" "${restore_prepared}"; do
+    if [ -L "${path}" ]; then
+      classify restore-state no "local restore artifact ${path} is a symlink"
+      exit 1
+    fi
+  done
   if cluster_formed_from_self; then
-    if [ -f "${restore_meta}" ]; then
-      rm -f "${restore_meta}"
-      echo "removed local cluster restore metadata after positive formation proof."
+    if [ -e "${restore_state}" ] || [ -e "${restore_meta}" ] || \
+       [ -e "${restore_prepare}" ] || [ -e "${restore_prepared}" ]; then
+      mark_local_cluster_restore_formed "${restore_meta}" || exit 1
     fi
     echo "cluster already formed (state ok, 16384 slots) — nothing to do."
     exit 0
   fi
-  if [ -f "${restore_meta}" ]; then
+  if [ -e "${restore_meta}" ]; then
+    [ -f "${restore_meta}" ] || {
+      classify restore-state no "cluster-meta is not a safe regular file"
+      exit 1
+    }
     restore_cluster_from_meta "${restore_meta}" || exit 1
     exit 0
+  fi
+  if [ -e "${restore_state}" ] || [ -e "${restore_prepare}" ] || [ -e "${restore_prepared}" ]; then
+    classify restore-state no "local restore state exists without cluster-meta before formation"
+    exit 1
   fi
   local coord
   coord=$(coordinator_shard) || exit 1

@@ -108,8 +108,9 @@ spec:
       value: "6379"
     - name: CLUSTER_BUS_PORT
       value: "16379"
-    # prepareData leaves validated cluster-meta on the restored ordinal-0
-    # volume. postProvision consumes it to rebuild source slot ownership.
+    # prepareData leaves validated cluster-meta plus an exact restore-state
+    # marker on every restored volume. Non-first pods discard their redundant
+    # payload offline before server start; postProvision commits formed state.
     - name: VALKEY_DATA_DIR
       value: {{ $.Values.dataMountPath | quote }}
     - name: VALKEY_DEFAULT_USER

@@ -11,7 +11,29 @@ set -o pipefail
 [ -n "${DP_DATASAFED_BIN_PATH}" ] && export PATH="${PATH}:${DP_DATASAFED_BIN_PATH}"
 export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_BASE_PATH}"
 
-mkdir -p "${DATA_DIR}"
+case "${DATA_DIR:-}" in
+  /*) ;;
+  *) echo "ERROR: DATA_DIR must be an existing canonical absolute directory." >&2; exit 1 ;;
+esac
+[ "${DATA_DIR}" != "/" ] && [ -d "${DATA_DIR}" ] && [ ! -L "${DATA_DIR}" ] || {
+  echo "ERROR: DATA_DIR must be an existing canonical non-root directory." >&2
+  exit 1
+}
+canonical_data_dir=$(cd -P "${DATA_DIR}" 2>/dev/null && pwd -P) || exit 1
+[ "${canonical_data_dir}" = "${DATA_DIR}" ] || {
+  echo "ERROR: DATA_DIR must not contain symlink or dot-segment aliases." >&2
+  exit 1
+}
+case "${VALKEY_APPEND_DIRNAME-appendonlydir}" in
+  ''|*/*|.|..) echo "ERROR: unsafe VALKEY_APPEND_DIRNAME for restore." >&2; exit 1 ;;
+esac
+case "${VALKEY_APPEND_FILENAME-appendonly.aof}" in
+  ''|*/*|.|..) echo "ERROR: unsafe VALKEY_APPEND_FILENAME for restore." >&2; exit 1 ;;
+esac
+
+cleanup_restored_payload() {
+  find "${DATA_DIR}" -mindepth 1 -maxdepth 1 ! -name ".kb-data-protection" ! -name "lost+found" -exec rm -rf {} +
+}
 
 # Safety check: refuse to restore into a non-empty data directory.
 # Use -maxdepth 1 to check for any real data entry directly inside DATA_DIR.
@@ -21,16 +43,23 @@ if [ -n "${unexpected_entries}" ]; then
   echo "ERROR: ${DATA_DIR} is not empty. Remove all data before restoring." >&2
   exit 1
 fi
-if [ -e "${placeholder}" ] && [ ! -f "${placeholder}" ]; then
-  echo "ERROR: ${placeholder} exists but is not a file." >&2
-  exit 1
+if [ -e "${placeholder}" ] || [ -L "${placeholder}" ]; then
+  [ -f "${placeholder}" ] && [ ! -L "${placeholder}" ] || {
+    echo "ERROR: ${placeholder} is not a safe regular file." >&2
+    exit 1
+  }
+else
+  touch "${placeholder}"
 fi
-touch "${placeholder}"
 
 archive="${DP_BACKUP_NAME}.tar.zst"
 if datasafed list "${archive}" 2>/dev/null | grep -qF "${archive}"; then
   echo "INFO: Restoring from ${archive}..."
-  datasafed pull -d zstd-fastest "${archive}" - | tar -xvf - -C "${DATA_DIR}"
+  if ! datasafed pull -d zstd-fastest "${archive}" - | tar -xvf - -C "${DATA_DIR}"; then
+    echo "ERROR: restore archive extraction failed; removing partial payload." >&2
+    cleanup_restored_payload
+    exit 1
+  fi
 else
   echo "ERROR: backup archive '${archive}' not found in repository." >&2
   exit 1
@@ -38,17 +67,17 @@ fi
 
 seed_multipart_aof_from_rdb() {
   local rdb="${DATA_DIR}/dump.rdb"
-  local append_dirname="${VALKEY_APPEND_DIRNAME:-appendonlydir}"
-  local append_filename="${VALKEY_APPEND_FILENAME:-appendonly.aof}"
+  local append_dirname="${VALKEY_APPEND_DIRNAME-appendonlydir}"
+  local append_filename="${VALKEY_APPEND_FILENAME-appendonly.aof}"
   local append_dir="${DATA_DIR}/${append_dirname}"
   local base_file="${append_dir}/${append_filename}.1.base.rdb"
   local incr_file="${append_dir}/${append_filename}.1.incr.aof"
   local manifest_file="${append_dir}/${append_filename}.manifest"
   local restored_aof_state=""
 
-  if [ ! -s "${rdb}" ]; then
-    echo "ERROR: restored archive must contain a non-empty dump.rdb." >&2
-    exit 1
+  if [ ! -f "${rdb}" ] || [ -L "${rdb}" ] || [ ! -s "${rdb}" ]; then
+    echo "ERROR: restored archive must contain a safe regular non-empty dump.rdb." >&2
+    return 1
   fi
 
   restored_aof_state=$(find "${DATA_DIR}" -mindepth 1 \( \
@@ -59,7 +88,7 @@ seed_multipart_aof_from_rdb() {
   \) -print -quit)
   if [ -n "${restored_aof_state}" ]; then
     echo "ERROR: restored archive already contains AOF state at ${restored_aof_state}; refusing to synthesize AOF from dump.rdb." >&2
-    exit 1
+    return 1
   fi
 
   mkdir -p "${append_dir}"
@@ -70,14 +99,6 @@ seed_multipart_aof_from_rdb() {
     printf 'file %s seq 1 type i\n' "$(basename "${incr_file}")"
   } > "${manifest_file}"
   echo "INFO: Seeded multipart AOF manifest from restored dump.rdb."
-}
-
-# Cluster archives retain cluster-meta until postProvision has rebuilt the
-# engine membership with the archived slot ownership. prepareData validates
-# the local shard metadata here; cluster-wide overlap/gap checks happen while
-# slots are assigned by valkey-cluster-manage.sh.
-cleanup_restored_payload() {
-  find "${DATA_DIR}" -mindepth 1 -maxdepth 1 ! -name ".kb-data-protection" ! -name "lost+found" -exec rm -rf {} +
 }
 
 validate_restore_slot_ranges() {
@@ -164,12 +185,40 @@ validate_cluster_restore_meta() {
 }
 
 cluster_meta="${DATA_DIR}/cluster-meta"
-if [ -f "${cluster_meta}" ] && ! validate_cluster_restore_meta "${cluster_meta}"; then
+if [ -e "${cluster_meta}" ] || [ -L "${cluster_meta}" ]; then
+  if [ ! -f "${cluster_meta}" ] || [ -L "${cluster_meta}" ]; then
+    echo "ERROR: restored cluster-meta is not a safe regular file." >&2
+    cleanup_restored_payload
+    exit 1
+  fi
+  if ! validate_cluster_restore_meta "${cluster_meta}"; then
+    cleanup_restored_payload
+    exit 1
+  fi
+fi
+
+if ! seed_multipart_aof_from_rdb; then
   cleanup_restored_payload
   exit 1
 fi
 
-seed_multipart_aof_from_rdb
+if [ -f "${cluster_meta}" ]; then
+  restore_state="${DATA_DIR}/.kb-cluster-restore-state"
+  restore_state_tmp=$(mktemp "${restore_state}.tmp.XXXXXX") || {
+    echo "ERROR: cannot allocate cluster restore intent file." >&2
+    cleanup_restored_payload
+    exit 1
+  }
+  cluster_meta_sha256=$(sha256sum "${cluster_meta}" 2>/dev/null | awk '{print $1}')
+  if [ "${#cluster_meta_sha256}" -ne 64 ] || \
+     ! printf 'phase=prepared\nmeta_sha256=%s\n' "${cluster_meta_sha256}" > "${restore_state_tmp}" || \
+     ! mv -f "${restore_state_tmp}" "${restore_state}" || ! sync; then
+    rm -f "${restore_state_tmp}"
+    echo "ERROR: cannot persist cluster restore intent." >&2
+    cleanup_restored_payload
+    exit 1
+  fi
+fi
 
 rm -f "${placeholder}" && sync
 echo "INFO: Restore complete."

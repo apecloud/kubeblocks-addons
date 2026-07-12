@@ -37,25 +37,31 @@ Describe "valkey-cluster-server-start.sh behavior"
   Include ../scripts/valkey-cluster-server-start.sh
 
   setup_env() {
+    start_tmp=$(mktemp -d "${TMPDIR:-/tmp}/valkey-cluster-start.XXXXXX")
+    start_tmp=$(cd -P "${start_tmp}" && pwd -P)
     export CURRENT_POD_NAME="vk-shard-a1x-0"
     export CURRENT_POD_IP="10.0.0.11"
     export CURRENT_SHARD_POD_FQDN_LIST="vk-shard-a1x-0.vk-shard-a1x-headless.ns.svc.cluster.local,vk-shard-a1x-1.vk-shard-a1x-headless.ns.svc.cluster.local"
     export SERVICE_PORT="6379"
-    unset CLUSTER_BUS_PORT VALKEY_DEFAULT_PASSWORD
+    export VALKEY_DATA_DIR="${start_tmp}/data"
+    mkdir -p "${VALKEY_DATA_DIR}"
+    unset CLUSTER_BUS_PORT VALKEY_DEFAULT_PASSWORD VALKEY_APPEND_DIRNAME VALKEY_APPEND_FILENAME
   }
   cleanup() {
-    unset CURRENT_POD_NAME CURRENT_POD_IP CURRENT_SHARD_POD_FQDN_LIST SERVICE_PORT CLUSTER_BUS_PORT VALKEY_DEFAULT_PASSWORD
+    rm -rf "${start_tmp:-}"
+    unset CURRENT_POD_NAME CURRENT_POD_IP CURRENT_SHARD_POD_FQDN_LIST SERVICE_PORT CLUSTER_BUS_PORT VALKEY_DEFAULT_PASSWORD VALKEY_DATA_DIR VALKEY_APPEND_DIRNAME VALKEY_APPEND_FILENAME
   }
   Before "setup_env"
   After "cleanup"
 
   Describe "validate_required_env()"
     It "fails fast listing every missing required variable"
-      unset CURRENT_POD_IP CURRENT_SHARD_POD_FQDN_LIST
+      unset CURRENT_POD_IP CURRENT_SHARD_POD_FQDN_LIST VALKEY_DATA_DIR
       When call validate_required_env
       The status should be failure
       The stderr should include "CURRENT_POD_IP"
       The stderr should include "CURRENT_SHARD_POD_FQDN_LIST"
+      The stderr should include "VALKEY_DATA_DIR"
       The stderr should include "refusing to start"
     End
 
@@ -69,6 +75,30 @@ Describe "valkey-cluster-server-start.sh behavior"
     It "passes with the full contract inputs"
       When call validate_required_env
       The status should be success
+    End
+
+    It "rejects a data directory that could make offline cleanup escape its volume"
+      export VALKEY_DATA_DIR="/"
+      When call validate_required_env
+      The status should be failure
+      The stderr should include "must not be the filesystem root"
+    End
+
+    It "rejects dot segments in the destructive data path"
+      mkdir -p "${start_tmp}/other"
+      export VALKEY_DATA_DIR="${start_tmp}/data/../other"
+      When call validate_required_env
+      The status should be failure
+      The stderr should include "canonical path"
+    End
+
+    It "rejects a symlinked destructive data path"
+      mkdir -p "${start_tmp}/real-data"
+      ln -s "${start_tmp}/real-data" "${start_tmp}/linked-data"
+      export VALKEY_DATA_DIR="${start_tmp}/linked-data"
+      When call validate_required_env
+      The status should be failure
+      The stderr should include "canonical path"
     End
 
     It "rejects SERVICE_PORT=0 (out of 1..65535)"
@@ -90,6 +120,247 @@ Describe "valkey-cluster-server-start.sh behavior"
       When call validate_required_env
       The status should be failure
       The stderr should include "1..65535"
+    End
+  End
+
+
+  Describe "prepare_restored_replica_offline()"
+    seed_restored_archive() {
+      printf 'snapshot\n' > "${VALKEY_DATA_DIR}/dump.rdb"
+      digest=$(sha256sum "${VALKEY_DATA_DIR}/dump.rdb" | awk '{print $1}')
+      printf 'source_shards=3\nshard_master_id=source-id\nshard_slot_ranges=0-5460\nrdb_sha256=%s\n' "${digest}" \
+        > "${VALKEY_DATA_DIR}/cluster-meta"
+      meta_digest=$(sha256sum "${VALKEY_DATA_DIR}/cluster-meta" | awk '{print $1}')
+      printf 'phase=prepared\nmeta_sha256=%s\n' "${meta_digest}" \
+        > "${VALKEY_DATA_DIR}/.kb-cluster-restore-state"
+      mkdir -p "${VALKEY_DATA_DIR}/appendonlydir"
+      cp "${VALKEY_DATA_DIR}/dump.rdb" "${VALKEY_DATA_DIR}/appendonlydir/appendonly.aof.1.base.rdb"
+      : > "${VALKEY_DATA_DIR}/appendonlydir/appendonly.aof.1.incr.aof"
+      printf 'file appendonly.aof.1.base.rdb seq 1 type b\nfile appendonly.aof.1.incr.aof seq 1 type i\n' \
+        > "${VALKEY_DATA_DIR}/appendonlydir/appendonly.aof.manifest"
+    }
+
+    It "preserves the restored payload on the shard first pod"
+      seed_restored_archive
+      When call prepare_restored_replica_offline
+      The status should be success
+      The file "${VALKEY_DATA_DIR}/dump.rdb" should be exist
+      The dir "${VALKEY_DATA_DIR}/appendonlydir" should be exist
+      The file "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared" should not be exist
+    End
+
+    It "refuses a prepared restore when cluster-meta is missing"
+      printf 'snapshot\n' > "${VALKEY_DATA_DIR}/dump.rdb"
+      printf 'phase=prepared\nmeta_sha256=%064d\n' 0 \
+        > "${VALKEY_DATA_DIR}/.kb-cluster-restore-state"
+      When call prepare_restored_replica_offline
+      The status should be failure
+      The stderr should include "lacks cluster-meta"
+      The stderr should include "refusing ordinary startup"
+      The file "${VALKEY_DATA_DIR}/dump.rdb" should be exist
+    End
+
+    It "allows a formed restore restart without cluster-meta"
+      printf 'replicated\n' > "${VALKEY_DATA_DIR}/dump.rdb"
+      printf 'phase=formed\nmeta_sha256=%064d\n' 0 \
+        > "${VALKEY_DATA_DIR}/.kb-cluster-restore-state"
+      When call prepare_restored_replica_offline
+      The status should be success
+      The contents of file "${VALKEY_DATA_DIR}/dump.rdb" should include "replicated"
+    End
+
+    It "refuses a symlinked formed restore state without cluster-meta"
+      outside_state="${SHELLSPEC_TMPBASE}/outside-restore-state"
+      printf 'phase=formed\nmeta_sha256=%064d\n' 0 > "${outside_state}"
+      ln -s "${outside_state}" "${VALKEY_DATA_DIR}/.kb-cluster-restore-state"
+
+      When call prepare_restored_replica_offline
+      The status should be failure
+      The stderr should include "not a safe regular file"
+    End
+
+
+    It "does not classify an ordinary data-bearing restart as restore"
+      printf 'ordinary\n' > "${VALKEY_DATA_DIR}/dump.rdb"
+      When call prepare_restored_replica_offline
+      The status should be success
+      The contents of file "${VALKEY_DATA_DIR}/dump.rdb" should include "ordinary"
+    End
+
+    It "discards a verified non-first payload before server start"
+      export CURRENT_POD_NAME="vk-shard-a1x-1"
+      seed_restored_archive
+      When call prepare_restored_replica_offline
+      The status should be success
+      The stdout should include "Prepared restored replica"
+      The file "${VALKEY_DATA_DIR}/dump.rdb" should not be exist
+      The dir "${VALKEY_DATA_DIR}/appendonlydir" should not be exist
+      The file "${VALKEY_DATA_DIR}/cluster-meta" should be exist
+      The contents of file "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared" should include "pod=vk-shard-a1x-1"
+      The file "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepare" should not be exist
+    End
+
+    It "fails closed before deletion when the archive digest differs"
+      export CURRENT_POD_NAME="vk-shard-a1x-1"
+      seed_restored_archive
+      printf 'tampered\n' > "${VALKEY_DATA_DIR}/dump.rdb"
+      When call prepare_restored_replica_offline
+      The status should be failure
+      The stderr should include "does not match cluster-meta"
+      The file "${VALKEY_DATA_DIR}/dump.rdb" should be exist
+      The dir "${VALKEY_DATA_DIR}/appendonlydir" should be exist
+    End
+
+    It "refuses a symlinked dump.rdb before destructive cleanup"
+      export CURRENT_POD_NAME="vk-shard-a1x-1"
+      seed_restored_archive
+      mv "${VALKEY_DATA_DIR}/dump.rdb" "${start_tmp}/outside-rdb"
+      ln -s "${start_tmp}/outside-rdb" "${VALKEY_DATA_DIR}/dump.rdb"
+
+      When call prepare_restored_replica_offline
+      The status should be failure
+      The stderr should include "dump.rdb is not a safe regular file"
+      The file "${start_tmp}/outside-rdb" should be exist
+      The dir "${VALKEY_DATA_DIR}/appendonlydir" should be exist
+    End
+
+    It "rejects an unsafe AOF directory contract before deletion"
+      export CURRENT_POD_NAME="vk-shard-a1x-1"
+      export VALKEY_APPEND_DIRNAME=".."
+      seed_restored_archive
+      When call prepare_restored_replica_offline
+      The status should be failure
+      The stderr should include "unsafe restored replica AOF directory"
+      The file "${VALKEY_DATA_DIR}/dump.rdb" should be exist
+      The dir "${VALKEY_DATA_DIR}/appendonlydir" should be exist
+    End
+
+    It "rejects an explicitly empty AOF directory contract before deletion"
+      export CURRENT_POD_NAME="vk-shard-a1x-1"
+      export VALKEY_APPEND_DIRNAME=""
+      seed_restored_archive
+
+      When call prepare_restored_replica_offline
+      The status should be failure
+      The stderr should include "unsafe restored replica AOF directory"
+      The file "${VALKEY_DATA_DIR}/dump.rdb" should be exist
+    End
+
+    It "rejects an explicitly empty AOF filename contract before deletion"
+      export CURRENT_POD_NAME="vk-shard-a1x-1"
+      export VALKEY_APPEND_FILENAME=""
+      seed_restored_archive
+
+      When call prepare_restored_replica_offline
+      The status should be failure
+      The stderr should include "unsafe restored replica AOF path contract"
+      The file "${VALKEY_DATA_DIR}/dump.rdb" should be exist
+    End
+
+
+    It "refuses a symlinked AOF directory without touching its target"
+      export CURRENT_POD_NAME="vk-shard-a1x-1"
+      seed_restored_archive
+      mv "${VALKEY_DATA_DIR}/appendonlydir" "${start_tmp}/outside-aof"
+      ln -s "${start_tmp}/outside-aof" "${VALKEY_DATA_DIR}/appendonlydir"
+      When call prepare_restored_replica_offline
+      The status should be failure
+      The stderr should include "multipart AOF is not the pristine restore seed"
+      The file "${start_tmp}/outside-aof/appendonly.aof.1.base.rdb" should be exist
+      The file "${VALKEY_DATA_DIR}/dump.rdb" should be exist
+    End
+
+    It "resumes an authorized deletion interrupted before the prepared marker"
+      export CURRENT_POD_NAME="vk-shard-a1x-1"
+      seed_restored_archive
+      printf 'rdb_sha256=%s\nmeta_sha256=%s\npod=%s\n' \
+        "${digest}" "${meta_digest}" "${CURRENT_POD_NAME}" \
+        > "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepare"
+      rm -f "${VALKEY_DATA_DIR}/dump.rdb"
+      When call prepare_restored_replica_offline
+      The status should be success
+      The stdout should include "Prepared restored replica"
+      The dir "${VALKEY_DATA_DIR}/appendonlydir" should not be exist
+      The file "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared" should be exist
+      The file "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepare" should not be exist
+    End
+
+    It "refuses a symlinked prepare marker before destructive cleanup"
+      export CURRENT_POD_NAME="vk-shard-a1x-1"
+      seed_restored_archive
+      outside_marker="${start_tmp}/outside-prepare-marker"
+      printf 'rdb_sha256=%s\nmeta_sha256=%s\npod=%s\n' \
+        "${digest}" "${meta_digest}" "${CURRENT_POD_NAME}" > "${outside_marker}"
+      ln -s "${outside_marker}" \
+        "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepare"
+
+      When call prepare_restored_replica_offline
+      The status should be failure
+      The stderr should include "not a safe regular file"
+      The file "${VALKEY_DATA_DIR}/dump.rdb" should be exist
+      The dir "${VALKEY_DATA_DIR}/appendonlydir" should be exist
+    End
+
+    It "never clears replicated data after the prepared marker exists"
+      export CURRENT_POD_NAME="vk-shard-a1x-1"
+      seed_restored_archive
+      printf 'rdb_sha256=%s\nmeta_sha256=%s\npod=%s\n' \
+        "${digest}" "${meta_digest}" "${CURRENT_POD_NAME}" \
+        > "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared"
+      printf 'replicated-later\n' > "${VALKEY_DATA_DIR}/dump.rdb"
+      printf 'replicated-aof\n' > "${VALKEY_DATA_DIR}/appendonlydir/appendonly.aof.1.incr.aof"
+      When call prepare_restored_replica_offline
+      The status should be success
+      The contents of file "${VALKEY_DATA_DIR}/dump.rdb" should include "replicated-later"
+      The contents of file "${VALKEY_DATA_DIR}/appendonlydir/appendonly.aof.1.incr.aof" should include "replicated-aof"
+    End
+
+    It "refuses a symlinked prepared marker without clearing replicated data"
+      export CURRENT_POD_NAME="vk-shard-a1x-1"
+      seed_restored_archive
+      outside_marker="${start_tmp}/outside-prepared-marker"
+      printf 'rdb_sha256=%s\nmeta_sha256=%s\npod=%s\n' \
+        "${digest}" "${meta_digest}" "${CURRENT_POD_NAME}" > "${outside_marker}"
+      ln -s "${outside_marker}" \
+        "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared"
+      printf 'replicated-later\n' > "${VALKEY_DATA_DIR}/dump.rdb"
+
+      When call prepare_restored_replica_offline
+      The status should be failure
+      The stderr should include "not a safe regular file"
+      The contents of file "${VALKEY_DATA_DIR}/dump.rdb" should include "replicated-later"
+    End
+
+    It "refuses a valid prepared marker that coexists with a symlinked prepare marker"
+      export CURRENT_POD_NAME="vk-shard-a1x-1"
+      seed_restored_archive
+      printf 'rdb_sha256=%s\nmeta_sha256=%s\npod=%s\n' \
+        "${digest}" "${meta_digest}" "${CURRENT_POD_NAME}" \
+        > "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared"
+      outside_marker="${start_tmp}/outside-prepare-marker"
+      printf 'rdb_sha256=%s\nmeta_sha256=%s\npod=%s\n' \
+        "${digest}" "${meta_digest}" "${CURRENT_POD_NAME}" > "${outside_marker}"
+      ln -s "${outside_marker}" \
+        "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepare"
+
+      When call prepare_restored_replica_offline
+      The status should be failure
+      The stderr should include "offline prepare marker is not a safe regular file"
+    End
+
+
+    It "fails closed when the restore metadata changes after offline authorization"
+      export CURRENT_POD_NAME="vk-shard-a1x-1"
+      seed_restored_archive
+      printf 'rdb_sha256=%s\nmeta_sha256=%s\npod=%s\n' \
+        "${digest}" "${meta_digest}" "${CURRENT_POD_NAME}" \
+        > "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared"
+      printf '# changed after authorization\n' >> "${VALKEY_DATA_DIR}/cluster-meta"
+      printf 'replicated-later\n' > "${VALKEY_DATA_DIR}/dump.rdb"
+      When call prepare_restored_replica_offline
+      The status should be failure
+      The stderr should include "restore state does not match cluster-meta"
+      The contents of file "${VALKEY_DATA_DIR}/dump.rdb" should include "replicated-later"
     End
   End
 
@@ -183,6 +454,31 @@ Describe "Valkey cluster template contracts"
     # Ports must come from SERVICE_PORT / CLUSTER_BUS_PORT vars.
     When call grep -E "(^|[^0-9])(6379|16379)([^0-9]|$)" "${start_script}"
     The status should be failure
+  End
+
+  It "provides the persistent data directory required by offline restore preparation"
+    When call grep -c "name: VALKEY_DATA_DIR" "${cmpd}"
+    The status should be success
+    The stdout should equal "1"
+  End
+
+  It "uses same-directory mktemp files instead of predictable PID temp paths"
+    When call grep -E '\.tmp\.\$\$' "${start_script}" ../dataprotection/restore.sh ../scripts/valkey-cluster-manage.sh
+    The status should be failure
+  End
+
+  restored_prepare_precedes_server_start() {
+    awk '
+      /^prepare_restored_replica_offline \|\| exit 1$/ { prepare = NR }
+      /^conf_file=\$\(build_cluster_conf / { config = NR }
+      /^start_cluster_server / { start = NR }
+      END { exit !(prepare > 0 && prepare < config && config < start) }
+    ' "$1"
+  }
+
+  It "prepares restored replicas before config rendering and server exec"
+    When call restored_prepare_precedes_server_start "${start_script}"
+    The status should be success
   End
 
   It "wires postProvision preCondition at the action level (KB Action API shape)"
