@@ -153,6 +153,29 @@ slots_owned_by() {
   echo "${total}"
 }
 
+# Pure slot count for one CLUSTER NODES line. Formation's positive goal uses
+# this on the already-captured view so state/16384/member presence cannot hide
+# a configured shard master that still owns zero slots.
+slots_owned_in_node_line() {
+  local line="${1}" ranges total=0 range start end
+  ranges=$(echo "${line}" | cut -d' ' -f9-)
+  for range in ${ranges}; do
+    case "${range}" in
+      \[*\]) continue ;;
+      *-*)
+        start="${range%-*}"
+        end="${range#*-}"
+        case "${start}:${end}" in *[!0-9:]*|:|*:) return 1 ;; esac
+        [ "${start}" -le "${end}" ] && [ "${end}" -le 16383 ] || return 1
+        total=$((total + end - start + 1))
+        ;;
+      ''|*[!0-9]*) return 1 ;;
+      *) [ "${range}" -le 16383 ] || return 1; total=$((total + 1)) ;;
+    esac
+  done
+  echo "${total}"
+}
+
 # ── deterministic coordinator ────────────────────────────────────────────────
 
 # Prints the coordinator shard short name. Hard-fails on empty/duplicate
@@ -248,7 +271,7 @@ all_expected_members_present() {
 # a stray master or a cross-shard replica pass as success.
 shard_membership_bound() {
   local nodes="${1}" shard="${2}" fqdns="${3}"
-  local pattern="" fqdn line master_line master_id master_count flags parent
+  local pattern="" fqdn line master_line master_id master_count master_slots flags parent
   for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$'); do
     pattern="${pattern:+${pattern}|}${fqdn}"
   done
@@ -259,6 +282,14 @@ shard_membership_bound() {
   fi
   master_line=$(echo "${nodes}" | grep -E "${pattern}" | awk '$3 ~ /master/ {print; exit}')
   master_id=$(echo "${master_line}" | awk '{print $1}')
+  master_slots=$(slots_owned_in_node_line "${master_line}") || {
+    echo "membership incomplete: shard ${shard} master has invalid slot evidence."
+    return 1
+  }
+  if [ "${master_slots}" -le 0 ]; then
+    echo "membership incomplete: shard ${shard} master owns ${master_slots} slots."
+    return 1
+  fi
   local bad=0
   for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$'); do
     line=$(echo "${nodes}" | grep -F "${fqdn}" | head -1)

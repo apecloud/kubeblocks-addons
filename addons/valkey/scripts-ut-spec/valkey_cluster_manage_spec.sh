@@ -492,6 +492,48 @@ ADD"
     End
   End
 
+  Describe "cluster_formed_from_self positive goal"
+    formed_goal_cleanup() {
+      unset ALL_SHARDS_POD_FQDN_LIST_SHARD_ABC \
+            ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF \
+            ALL_SHARDS_POD_FQDN_LIST_SHARD_GHI
+    }
+    After "formed_goal_cleanup"
+
+    It "rejects a full-slot view when expected shard masters own zero slots"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_ABC="vk-abc-0.h.ns.svc"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF="vk-def-0.h.ns.svc"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_GHI="vk-ghi-0.h.ns.svc"
+      cluster_state_of() { echo ok; }
+      assigned_slots_of() { echo 16384; }
+      build_cli() { _cli=(mock_zero_shard_masters); }
+      mock_zero_shard_masters() {
+        printf 'a vk-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-16383\n'
+        printf 'd vk-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected\n'
+        printf 'g vk-ghi-0.h.ns.svc:6379@16379 master - 0 0 3 connected\n'
+      }
+      When call cluster_formed_from_self
+      The status should be failure
+      The stdout should include "shard SHARD_DEF master owns 0 slots"
+    End
+
+    It "accepts only when every expected shard master owns positive slots"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_ABC="vk-abc-0.h.ns.svc"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF="vk-def-0.h.ns.svc"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_GHI="vk-ghi-0.h.ns.svc"
+      cluster_state_of() { echo ok; }
+      assigned_slots_of() { echo 16384; }
+      build_cli() { _cli=(mock_positive_shard_masters); }
+      mock_positive_shard_masters() {
+        printf 'a vk-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-5460\n'
+        printf 'd vk-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected 5461-10922\n'
+        printf 'g vk-ghi-0.h.ns.svc:6379@16379 master - 0 0 3 connected 10923-16383\n'
+      }
+      When call cluster_formed_from_self
+      The status should be success
+    End
+  End
+
   Describe "shard removal drain gate"
     It "refuses node deletion while slots remain (positive zero proof required)"
       # Simulate: drain issued but 5 slots still owned afterwards.
