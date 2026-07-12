@@ -2,7 +2,10 @@
 set -Eeuo pipefail
 
 DATA_DIR="${DATA_DIR:-/var/lib/rabbitmq}"
-TARGET_POD_NAME="${DP_TARGET_POD_NAME:?DP_TARGET_POD_NAME is required}"
+# Backup jobs inject DP_TARGET_POD_NAME. Volume-populator AsDataSource prepareData
+# may only inject DP_TARGET_RELATIVE_PATH (= pod identity / archive stem). Prefer
+# POD_NAME when present; otherwise accept RELATIVE_PATH so KB12 dataSource restore works.
+TARGET_POD_NAME="${DP_TARGET_POD_NAME:-${DP_TARGET_RELATIVE_PATH:?DP_TARGET_POD_NAME or DP_TARGET_RELATIVE_PATH is required}}"
 ARCHIVE_NAME="${TARGET_POD_NAME}.tar.zst"
 
 [ -n "${DP_DATASAFED_BIN_PATH:-}" ] && export PATH="${PATH}:${DP_DATASAFED_BIN_PATH}"
