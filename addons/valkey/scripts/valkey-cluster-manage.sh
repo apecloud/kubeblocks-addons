@@ -344,6 +344,26 @@ self_is_coordinator_pod() {
   [ "${my_shard_first%%.*}" = "${CURRENT_POD_NAME}" ]
 }
 
+# Valkey CLUSTER MEET requires a numeric address; regular client connections
+# may use pod FQDNs, but MEET rejects them. Accept only a resolved IPv4 address.
+resolve_cluster_meet_address() {
+  local host="$1" address
+  command -v getent >/dev/null 2>&1 || return 1
+  address=$(getent ahostsv4 "${host}" 2>/dev/null | awk 'NF > 0 {print $1; exit}') || true
+  if [ -z "${address}" ]; then
+    address=$(getent hosts "${host}" 2>/dev/null | awk 'NF > 0 {print $1; exit}') || true
+  fi
+  [ -n "${address}" ] || return 1
+  printf '%s\n' "${address}" | awk -F. '
+    NF != 4 { exit 1 }
+    {
+      for (i = 1; i <= 4; i++) {
+        if ($i !~ /^[0-9]+$/ || $i < 0 || $i > 255) exit 1
+      }
+    }' || return 1
+  printf '%s\n' "${address}"
+}
+
 cluster_restore_meta_path() {
   if [ -z "${VALKEY_DATA_DIR:-}" ]; then
     classify restore-env no "VALKEY_DATA_DIR is required; no data-path fallback"
@@ -390,9 +410,9 @@ load_cluster_restore_meta() {
 restore_cluster_from_meta() {
   local meta="$1" roster shard_line shard fqdns first self_first
   local coord primary_count=0 coord_host="" current_nodes current_ids
-  local host other_known other_nodes other_ids other_id met=0
+  local host other_known other_nodes other_ids other_id meet_address met=0
   local self_id missing range out total i
-  local primary_hosts=() primary_ids=()
+  local primary_hosts=() primary_ids=() meet_hosts=() meet_addresses=()
 
   load_cluster_restore_meta "${meta}" || return 1
   roster=$(each_shard_fqdn_list) || return 1
@@ -452,8 +472,9 @@ restore_cluster_from_meta() {
     return 1
   }
 
-  # Only the deterministic coordinator writes MEET. A fresh node (known=1)
-  # may be introduced; an independently configured disjoint node is refused.
+  # Only the deterministic coordinator writes MEET. Materialize and validate
+  # every pending peer address before the first mutation, so a DNS gap cannot
+  # leave a partially introduced roster. Disjoint configured nodes are refused.
   if self_is_coordinator_pod "${coord}"; then
     for ((i=0; i<${#primary_hosts[@]}; i++)); do
       host="${primary_hosts[$i]}"; other_id="${primary_ids[$i]}"
@@ -477,13 +498,23 @@ restore_cluster_from_meta() {
         classify restore-meet yes "membership gossip with ${host} is incomplete; deferring before mutation"
         return 1
       fi
+      meet_address=$(resolve_cluster_meet_address "${host}") || {
+        classify restore-dns yes "cannot resolve restored primary ${host} to an IPv4 address for CLUSTER MEET"
+        return 1
+      }
+      meet_hosts+=("${host}")
+      meet_addresses+=("${meet_address}")
+    done
+    for ((i=0; i<${#meet_hosts[@]}; i++)); do
+      host="${meet_hosts[$i]}"
+      meet_address="${meet_addresses[$i]}"
       build_cli "${coord_host}"
-      out=$("${_cli[@]}" CLUSTER MEET "${host}" "${SERVICE_PORT}" 2>&1) || {
-        classify restore-meet yes "CLUSTER MEET ${host} failed: ${out}"
+      out=$("${_cli[@]}" CLUSTER MEET "${meet_address}" "${SERVICE_PORT}" 2>&1) || {
+        classify restore-meet yes "CLUSTER MEET ${host} (${meet_address}) failed: ${out}"
         return 1
       }
       case "${out}" in '(error)'*|'ERR '*)
-        classify restore-meet yes "CLUSTER MEET ${host} returned protocol error: ${out}"
+        classify restore-meet yes "CLUSTER MEET ${host} (${meet_address}) returned protocol error: ${out}"
         return 1 ;;
       esac
       met=$((met + 1))

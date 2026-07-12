@@ -100,6 +100,59 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
 
   It "uses only the deterministic coordinator to MEET fresh restored primaries"
     meet_log=$(mktemp)
+    resolve_cluster_meet_address() {
+      case "$1" in
+        vk-shard-def-0.h) echo 10.0.0.2 ;;
+        vk-shard-ghi-0.h) echo 10.0.0.3 ;;
+      esac
+    }
+    build_cli() { _cli=(mock_restore_cli "$1" "${meet_log}"); }
+    mock_restore_cli() {
+      host="$1" log="$2"; shift 2
+      case "$1" in
+        PING) echo PONG ;;
+        CLUSTER)
+          if [ "$2" = MEET ]; then
+            case "$3" in
+              *[!0-9.]*) echo "ERR Invalid node address specified: $3:$4" ;;
+              *) printf '%s\n' "$3" >> "${log}"; echo OK ;;
+            esac
+          fi ;;
+      esac
+    }
+    cluster_nodes_of() { printf 'id-abc vk-shard-abc-0.h:6379@16379 master - 0 0 1 connected\n'; }
+    known_nodes_of() { echo 1; }
+    When call restore_cluster_from_meta "${restore_meta}"
+    The status should be failure
+    The stderr should include "phase=restore-meet"
+    The stderr should include "retry_safe=yes"
+    The contents of file "${meet_log}" should equal "10.0.0.2
+10.0.0.3"
+  End
+
+  It "resolves a restored peer FQDN to an IPv4 address for CLUSTER MEET"
+    getent() {
+      [ "$1" = ahostsv4 ] || return 1
+      printf '10.0.0.2 STREAM %s\n' "$2"
+      printf '10.0.0.2 DGRAM %s\n' "$2"
+    }
+    When call resolve_cluster_meet_address "vk-shard-def-0.h"
+    The status should be success
+    The stdout should equal "10.0.0.2"
+  End
+
+  It "rejects DNS output that is not a numeric IPv4 address"
+    getent() { printf 'not-an-ip STREAM %s\n' "$2"; }
+    When call resolve_cluster_meet_address "vk-shard-def-0.h"
+    The status should be failure
+    The stdout should be blank
+  End
+
+  It "does zero MEET writes when any fresh restored peer cannot resolve"
+    meet_log=$(mktemp)
+    resolve_cluster_meet_address() {
+      [ "$1" = vk-shard-def-0.h ] && echo 10.0.0.2
+    }
     build_cli() { _cli=(mock_restore_cli "$1" "${meet_log}"); }
     mock_restore_cli() {
       host="$1" log="$2"; shift 2
@@ -113,10 +166,9 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     known_nodes_of() { echo 1; }
     When call restore_cluster_from_meta "${restore_meta}"
     The status should be failure
-    The stderr should include "phase=restore-meet"
+    The stderr should include "phase=restore-dns"
     The stderr should include "retry_safe=yes"
-    The contents of file "${meet_log}" should equal "vk-shard-def-0.h
-vk-shard-ghi-0.h"
+    The file "${meet_log}" should be empty file
   End
 
   It "assigns only this archive's missing ranges after all primaries are mutually visible"
