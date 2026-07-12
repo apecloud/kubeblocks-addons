@@ -583,12 +583,13 @@ verify_or_join() {
   # Same design language as formation's deterministic coordinator: among
   # the currently-INCOMPLETE shards (engine truth), only the sorted-first
   # one may perform write actions; the rest defer retry-safe and take
-  # their turn on a later re-entry. Completed shards are never gated.
+  # their turn on a later re-entry. A shard that became complete must also
+  # defer while another holder remains incomplete: its completion driver
+  # can still run global fix/rebalance and collide with the current holder.
   local first_incomplete
   first_incomplete=$(first_incomplete_shard "${any_formed_host}") || return 1
   if [ -n "${first_incomplete}" ] && \
-     [ "${first_incomplete}" != "$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_')" ] && \
-     ! shard_complete_in_view "${any_formed_host}" "$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_')"; then
+     [ "${first_incomplete}" != "$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_')" ]; then
     classify join-queue yes "holder=${first_incomplete} current=$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_') — waiting for earlier joining shard (deterministic multi-join serialization)"
     return 1
   fi

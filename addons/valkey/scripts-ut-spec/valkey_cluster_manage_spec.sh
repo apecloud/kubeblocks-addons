@@ -914,15 +914,33 @@ ADDNODE"
       The stdout should include "DRIVEN self=vk-k74-0.h"
     End
 
-    It "never gates a shard that is already complete in the view"
-      # all complete; self included -> gate must not fire, flow verifies via driver
-      shard_complete_in_view() { return 0; }
+    It "gates a completed non-holder while a later shard owns the join turn"
+      # HX7 already owns slots, but K74 is now the first incomplete shard.
+      # HX7 must not re-enter global fix/rebalance concurrently with K74.
+      export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-hx7"
+      export CURRENT_SHARD_POD_FQDN_LIST="vk-hx7-0.h,vk-hx7-1.h"
+      shard_complete_in_view() { [ "${2}" != "SHARD_K74" ]; }
       build_cli() { _cli=(mock_self_present2); }
-      mock_self_present2() { printf 'kid vk-k74-0.h:6379@16379 master - 0 0 9 connected 5461-10922\n'; }
+      mock_self_present2() { printf 'hid vk-hx7-0.h:6379@16379 master - 0 0 8 connected 5461-10922\n'; }
+      build_cluster_cli() { echo "WRITE-PATH-REACHED" >&2; _ccli=(true); }
+      drive_shard_completion() { echo "DRIVE-REACHED" >&2; return 0; }
+      When call verify_or_join
+      The status should be failure
+      The stderr should include "phase=join-queue"
+      The stderr should include "holder=SHARD_K74"
+      The stderr should include "current=SHARD_HX7"
+      The stderr should not include "WRITE-PATH-REACHED"
+      The stderr should not include "DRIVE-REACHED"
+    End
+
+    It "lets a completed shard verify after every joiner is complete"
+      shard_complete_in_view() { return 0; }
+      build_cli() { _cli=(mock_all_complete); }
+      mock_all_complete() { printf 'kid vk-k74-0.h:6379@16379 master - 0 0 9 connected 5461-10922\n'; }
       drive_shard_completion() { echo "VERIFIED self=${2}"; }
       When call verify_or_join
       The status should be success
-      The stdout should include "VERIFIED"
+      The stdout should include "VERIFIED self=vk-k74-0.h"
     End
 
     It "shard_complete_in_view requires bound membership AND owned slots"
