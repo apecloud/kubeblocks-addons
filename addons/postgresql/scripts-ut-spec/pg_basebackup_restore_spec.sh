@@ -100,7 +100,7 @@ EOF
   }
 
   mode_of_data_dir() {
-    stat -f "%Lp" "${DATA_DIR}" 2>/dev/null || stat -c "%a" "${DATA_DIR}"
+    stat -c "%a" "${DATA_DIR}" 2>/dev/null || stat -f "%Lp" "${DATA_DIR}"
   }
 
   It "stages the modern zstd archive for Patroni bootstrap and leaves the volume root clean"
