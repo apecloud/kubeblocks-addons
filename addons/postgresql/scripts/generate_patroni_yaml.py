@@ -68,7 +68,6 @@ def main(filename):
         local_config['bootstrap']['kb_restore'] = {
             'command': 'bash {}'.format(os.path.join(restore_dir, 'kb_restore.sh')),
             'keep_existing_recovery_conf': False,
-            'recovery_conf': {},
         }
 
     # point in time recovery(PITR)
