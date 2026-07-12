@@ -143,6 +143,63 @@ DATASAFED
     The stdout should include "restore prepareData completed"
   End
 
+  It "falls back to DP_TARGET_RELATIVE_PATH when volume-populator omits DP_TARGET_POD_NAME"
+    When call bash -c '
+      set -Eeuo pipefail
+      restore_script="$1"
+      tmp_dir="$(mktemp -d)"
+      trap "rm -rf \"${tmp_dir}\"" EXIT
+      data_dir="${tmp_dir}/data"
+      bin_dir="${tmp_dir}/bin"
+      payload_dir="${tmp_dir}/payload"
+      mkdir -p "${data_dir}" "${bin_dir}" "${payload_dir}"
+      printf "restored-via-relative\n" > "${payload_dir}/restored.txt"
+      tar -cf "${tmp_dir}/payload.tar" -C "${payload_dir}" .
+      cat > "${bin_dir}/datasafed" <<'"'"'DATASAFED'"'"'
+#!/bin/bash
+set -e
+case "$1" in
+  list)
+    # Archive key matches the relative path / pod identity injected by volume populator.
+    printf "%s\n" "${DP_TARGET_RELATIVE_PATH}.tar.zst"
+    ;;
+  pull)
+    cat "${FAKE_ARCHIVE_PATH}"
+    ;;
+  *)
+    echo "unexpected datasafed command: $*" >&2
+    exit 1
+    ;;
+esac
+DATASAFED
+      printf "#!/bin/bash\nexit 0\n" > "${bin_dir}/chown"
+      chmod +x "${bin_dir}/datasafed"
+      chmod +x "${bin_dir}/chown"
+      unset DP_TARGET_POD_NAME || true
+      PATH="${bin_dir}:${PATH}" \
+        DATA_DIR="${data_dir}" \
+        DP_TARGET_RELATIVE_PATH="rmq-br-5400-rabbitmq-2" \
+        DP_BACKUP_BASE_PATH="/backup/base" \
+        FAKE_ARCHIVE_PATH="${tmp_dir}/payload.tar" \
+        bash "${restore_script}"
+      test -f "${data_dir}/restored.txt"
+      test ! -f "${data_dir}/.kb-data-protection"
+    ' _ "${restore_script}"
+    The status should be success
+    The stdout should include "restore prepareData completed"
+  End
+
+  It "fails closed when neither DP_TARGET_POD_NAME nor DP_TARGET_RELATIVE_PATH is set"
+    When call bash -c '
+      set -Eeuo pipefail
+      restore_script="$1"
+      unset DP_TARGET_POD_NAME DP_TARGET_RELATIVE_PATH || true
+      DATA_DIR="$(mktemp -d)" DP_BACKUP_BASE_PATH="/backup/base" bash "${restore_script}"
+    ' _ "${restore_script}"
+    The status should be failure
+    The stderr should include "DP_TARGET_POD_NAME or DP_TARGET_RELATIVE_PATH is required"
+  End
+
   It "reconciles the restored system account idempotently after RabbitMQ is ready"
     When call grep -E "await_startup|ensure_system_user|change_password|add_user|set_user_tags|set_permissions" "${post_restore_script}"
     The status should be success
