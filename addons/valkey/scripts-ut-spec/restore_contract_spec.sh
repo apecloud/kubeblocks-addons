@@ -37,7 +37,13 @@ case "$1" in
       printf 'existing aof\n' > "${tmp}/src/appendonly.aof"
     fi
     if [ -n "${FAKE_DATASAFED_CLUSTER_META:-}" ]; then
-      printf 'source_shards=%s\n' "${FAKE_DATASAFED_CLUSTER_META}" > "${tmp}/src/cluster-meta"
+      {
+        printf 'source_shards=%s\n' "${FAKE_DATASAFED_CLUSTER_META}"
+        [ "${FAKE_DATASAFED_OMIT_MASTER_ID:-0}" = "1" ] || \
+          printf 'shard_master_id=%s\n' "${FAKE_DATASAFED_MASTER_ID:-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}"
+        [ "${FAKE_DATASAFED_OMIT_SLOT_RANGES:-0}" = "1" ] || \
+          printf 'shard_slot_ranges=%s\n' "${FAKE_DATASAFED_SLOT_RANGES:-0-5460}"
+      } > "${tmp}/src/cluster-meta"
     fi
     tar -cf - -C "${tmp}/src" .
     rm -rf "${tmp}"
@@ -81,6 +87,10 @@ SH
     unset FAKE_DATASAFED_OMIT_RDB
     unset FAKE_DATASAFED_EMPTY_RDB
     unset FAKE_DATASAFED_CLUSTER_META
+    unset FAKE_DATASAFED_MASTER_ID
+    unset FAKE_DATASAFED_SLOT_RANGES
+    unset FAKE_DATASAFED_OMIT_MASTER_ID
+    unset FAKE_DATASAFED_OMIT_SLOT_RANGES
     unset RESTORE_TARGET_SHARDS
   }
   After "cleanup"
@@ -162,40 +172,40 @@ SH
     The stderr should include "ERROR: restored archive already contains AOF state"
     The stderr should include "appendonly.aof"
   End
-  It "refuses any cluster archive outright (v1: cluster restore unsupported)"
+  It "prepares a valid cluster archive and preserves slot metadata for postProvision"
     export FAKE_DATASAFED_CLUSTER_META=3
 
     When run bash ../dataprotection/restore.sh
-    The status should be failure
+    The status should be success
     The stdout should include "INFO: Restoring from restore-test.tar.zst..."
-    The stderr should include "CLUSTER (sharding) backup (source_shards=3)"
-    The stderr should include "NOT supported in v1"
-    The file "${data_dir}/cluster-meta" should not be exist
+    The stdout should include "Validated cluster restore metadata"
+    The file "${data_dir}/cluster-meta" should be exist
+    The contents of file "${data_dir}/cluster-meta" should include "shard_slot_ranges=0-5460"
+    The file "${data_dir}/appendonlydir/appendonly.aof.manifest" should be exist
   End
 
-  It "re-emits the TRUE refusal reason on retry (cleanup leaves no extraction residue)"
-    # CT11 focused-rerun live finding: refusal used to leave its own
-    # extracted files in DATA_DIR, so every retried prepareData pod hit
-    # the '/data is not empty' guard and the real reason was masked.
+  It "fails malformed cluster metadata and re-emits the true reason on retry"
     export FAKE_DATASAFED_CLUSTER_META=3
+    export FAKE_DATASAFED_OMIT_SLOT_RANGES=1
     When run bash -c "bash ../dataprotection/restore.sh; bash ../dataprotection/restore.sh"
     The status should be failure
-    # BOTH invocations must speak the true refusal, never the guard error
     The stdout should include "INFO: Restoring from restore-test.tar.zst..."
     The stderr should not include "is not empty"
-    The stderr should include "CLUSTER (sharding) backup (source_shards=3)"
+    The stderr should include "cluster-meta missing shard_slot_ranges"
     The file "${data_dir}/dump.rdb" should not be exist
     The file "${data_dir}/cluster-meta" should not be exist
   End
 
-  It "refusal cleanup spares the placeholder and lost+found (never real pre-existing entries)"
+  It "rejects overlapping or out-of-domain slot ranges without leaving extracted data"
     export FAKE_DATASAFED_CLUSTER_META=3
+    export FAKE_DATASAFED_SLOT_RANGES="0-100,100-5460"
     mkdir -p "${data_dir}/lost+found"
     When run bash ../dataprotection/restore.sh
     The status should be failure
     The stdout should include "INFO: Restoring from restore-test.tar.zst..."
-    The stderr should include "NOT supported in v1"
+    The stderr should include "invalid shard_slot_ranges"
     The file "${data_dir}/.kb-data-protection" should be exist
+    The file "${data_dir}/dump.rdb" should not be exist
     The dir "${data_dir}/lost+found" should be exist
   End
 

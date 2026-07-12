@@ -30,7 +30,7 @@ case "${args}" in
   *BGSAVE*)             echo "Background saving started"; exit 0 ;;
   *"INFO cluster"*)     printf 'cluster_enabled:1\n'; exit 0 ;;
   *"CLUSTER NODES"*)
-    printf 'mid001 10.0.0.1:6379@16379 master - 0 0 5 connected 0-5460\n'
+    printf 'mid001 10.0.0.1:6379@16379 master - 0 0 5 connected %s\n' "${FAKE_CLUSTER_RANGE:-0-5460}"
     printf 'sid002 10.0.0.2:6379@16379 myself,slave mid001 0 0 5 connected\n'
     printf 'mid003 10.0.0.3:6379@16379 master - 0 0 6 connected 5461-10922\n'
     printf 'mid004 10.0.0.4:6379@16379 master - 0 0 7 connected 10923-16383\n'
@@ -112,5 +112,15 @@ STUB
     The contents of file "${workdir}/extracted/cluster-meta" should include "source_shards=3"
     The contents of file "${workdir}/extracted/cluster-meta" should include "shard_master_id=mid001"
     The contents of file "${workdir}/extracted/cluster-meta" should include "shard_slot_ranges=0-5460"
+  End
+
+
+  It "fails before archiving when the engine view contains migration markers"
+    export FAKE_CLUSTER_RANGE='0-5460 [123->-peer]'
+    When call run_backup
+    The status should be failure
+    The stdout should include "INFO: Archiving consistent snapshot artifacts..."
+    The stderr should include "invalid slot ranges"
+    The file "${data_dir}/cluster-meta" should not be exist
   End
 End

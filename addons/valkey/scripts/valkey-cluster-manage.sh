@@ -176,6 +176,114 @@ slots_owned_in_node_line() {
   echo "${total}"
 }
 
+# Restore metadata uses comma-separated slots/ranges (for example
+# 0-5460,6000). The parser is deliberately strict: overlap, malformed tokens,
+# or values outside the engine domain must fail before any slot mutation.
+validate_restore_slot_ranges() {
+  awk -v raw="$1" 'BEGIN {
+    if (raw == "") exit 1
+    n = split(raw, parts, ",")
+    for (i = 1; i <= n; i++) {
+      token = parts[i]
+      if (token ~ /^[0-9]+$/) {
+        start = token + 0; end = start
+      } else if (token ~ /^[0-9]+-[0-9]+$/) {
+        split(token, bounds, "-")
+        start = bounds[1] + 0; end = bounds[2] + 0
+      } else {
+        exit 1
+      }
+      if (start < 0 || end > 16383 || start > end) exit 1
+      for (slot = start; slot <= end; slot++) {
+        if (seen[slot]++) exit 1
+      }
+    }
+  }'
+}
+
+# Prints the comma-separated portions of $3 that are still unassigned.
+# Existing ownership by this node is idempotent. Ownership by another node,
+# or this node owning anything outside its archived ranges, is a hard conflict.
+missing_restore_slot_ranges() {
+  local nodes="$1" self_id="$2" desired="$3"
+  printf '%s\n' "${nodes}" | awk -v self="${self_id}" -v desired="${desired}" '
+    function mark_range(token, owner,    b, start, end, slot) {
+      if (token ~ /^\[/) {
+        print "open migrating/importing slot marker present: " token > "/dev/stderr"
+        bad = 1; return
+      }
+      if (token ~ /^[0-9]+$/) {
+        start = token + 0; end = start
+      } else if (token ~ /^[0-9]+-[0-9]+$/) {
+        split(token, b, "-"); start = b[1] + 0; end = b[2] + 0
+      } else {
+        print "invalid CLUSTER NODES slot token: " token > "/dev/stderr"
+        bad = 1; return
+      }
+      if (start < 0 || end > 16383 || start > end) {
+        print "invalid CLUSTER NODES slot range: " token > "/dev/stderr"
+        bad = 1; return
+      }
+      for (slot = start; slot <= end; slot++) {
+        if (owner_of[slot] != "" && owner_of[slot] != owner) {
+          print "slot " slot " has multiple owners" > "/dev/stderr"
+          bad = 1
+        }
+        owner_of[slot] = owner
+      }
+    }
+    BEGIN {
+      n = split(desired, parts, ",")
+      for (i = 1; i <= n; i++) {
+        token = parts[i]
+        if (token ~ /^[0-9]+$/) {
+          start = token + 0; end = start
+        } else if (token ~ /^[0-9]+-[0-9]+$/) {
+          split(token, b, "-"); start = b[1] + 0; end = b[2] + 0
+        } else {
+          bad = 1; start = 1; end = 0
+        }
+        if (start < 0 || end > 16383 || start > end) {
+          bad = 1
+        } else {
+          for (slot = start; slot <= end; slot++) {
+            if (wanted[slot]++) bad = 1
+          }
+        }
+      }
+    }
+    NF > 0 {
+      owner = $1
+      for (i = 9; i <= NF; i++) mark_range($i, owner)
+    }
+    END {
+      if (bad) exit 1
+      for (slot = 0; slot <= 16383; slot++) {
+        if (owner_of[slot] == self && !wanted[slot]) {
+          print "self node owns slot " slot " outside archived ranges" > "/dev/stderr"
+          bad = 1
+        }
+        if (wanted[slot] && owner_of[slot] != "" && owner_of[slot] != self) {
+          print "slot " slot " is already owned by " owner_of[slot] ", not " self > "/dev/stderr"
+          bad = 1
+        }
+      }
+      if (bad) exit 1
+      output = ""; start = -1
+      for (slot = 0; slot <= 16384; slot++) {
+        missing = (slot < 16384 && wanted[slot] && owner_of[slot] == "")
+        if (missing && start < 0) start = slot
+        if (!missing && start >= 0) {
+          end = slot - 1
+          range = (start == end ? start : start "-" end)
+          output = output (output == "" ? "" : ",") range
+          start = -1
+        }
+      }
+      print output
+    }'
+}
+
 # ── deterministic coordinator ────────────────────────────────────────────────
 
 # Prints the coordinator shard short name. Hard-fails on empty/duplicate
@@ -234,6 +342,231 @@ self_is_coordinator_pod() {
   local my_shard_first
   my_shard_first=$(first_fqdn_of_list "${CURRENT_SHARD_POD_FQDN_LIST}")
   [ "${my_shard_first%%.*}" = "${CURRENT_POD_NAME}" ]
+}
+
+cluster_restore_meta_path() {
+  if [ -z "${VALKEY_DATA_DIR:-}" ]; then
+    classify restore-env no "VALKEY_DATA_DIR is required; no data-path fallback"
+    return 1
+  fi
+  echo "${VALKEY_DATA_DIR}/cluster-meta"
+}
+
+load_cluster_restore_meta() {
+  local meta="$1" source_count master_count ranges_count
+  source_count=$(grep -c '^source_shards=' "${meta}" || true)
+  master_count=$(grep -c '^shard_master_id=' "${meta}" || true)
+  ranges_count=$(grep -c '^shard_slot_ranges=' "${meta}" || true)
+  if [ "${source_count}" -ne 1 ] || [ "${master_count}" -ne 1 ] || [ "${ranges_count}" -ne 1 ]; then
+    classify restore-meta no "cluster-meta requires exactly one source_shards, shard_master_id and shard_slot_ranges entry"
+    return 1
+  fi
+  _restore_source_shards=$(grep '^source_shards=' "${meta}" | cut -d= -f2-)
+  _restore_source_master_id=$(grep '^shard_master_id=' "${meta}" | cut -d= -f2-)
+  _restore_slot_ranges=$(grep '^shard_slot_ranges=' "${meta}" | cut -d= -f2-)
+  case "${_restore_source_shards}" in ''|*[!0-9]*)
+    classify restore-meta no "invalid source_shards '${_restore_source_shards}'"
+    return 1 ;;
+  esac
+  if [ "${_restore_source_shards}" -lt 3 ] || [ "${_restore_source_shards}" -gt 32 ]; then
+    classify restore-meta no "source_shards ${_restore_source_shards} outside 3..32"
+    return 1
+  fi
+  case "${_restore_source_master_id}" in ''|*[!A-Za-z0-9]*)
+    classify restore-meta no "invalid shard_master_id in cluster-meta"
+    return 1 ;;
+  esac
+  if ! validate_restore_slot_ranges "${_restore_slot_ranges}"; then
+    classify restore-meta no "invalid shard_slot_ranges '${_restore_slot_ranges}'"
+    return 1
+  fi
+}
+
+# Same-shard-count cluster restore. Each restored shard's ordinal-0 PVC carries
+# its own archived slot ranges. The deterministic coordinator first connects
+# the fresh masters with CLUSTER MEET; then every shard independently claims
+# only still-unassigned ranges from its own metadata. Engine ownership rejects
+# overlap, and the global 16384 positive gate rejects gaps before replicas bind.
+restore_cluster_from_meta() {
+  local meta="$1" roster shard_line shard fqdns first self_first
+  local coord primary_count=0 coord_host="" current_nodes current_ids
+  local host other_known other_nodes other_ids other_id met=0
+  local self_id missing range out total i
+  local primary_hosts=() primary_ids=()
+
+  load_cluster_restore_meta "${meta}" || return 1
+  roster=$(each_shard_fqdn_list) || return 1
+  while read -r shard_line; do
+    shard="${shard_line%% *}"
+    fqdns="${shard_line#* }"
+    first=$(first_fqdn_of_list "${fqdns}")
+    [ -n "${first}" ] || {
+      classify restore-roster no "shard ${shard} has no designated primary"
+      return 1
+    }
+    if ! build_cli "${first}" || ! "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
+      classify restore-wait-primaries yes "restored shard ${shard} primary ${first} not answering yet"
+      return 1
+    fi
+    primary_hosts+=("${first}")
+    primary_count=$((primary_count + 1))
+  done <<< "${roster}"
+
+  if [ "${primary_count}" -ne "${_restore_source_shards}" ]; then
+    classify restore-shard-count no "source_shards=${_restore_source_shards} target_shards=${primary_count}; cross-shard-count restore is unsupported"
+    return 1
+  fi
+
+  self_first=$(first_fqdn_of_list "${CURRENT_SHARD_POD_FQDN_LIST}")
+  if [ "${self_first%%.*}" != "${CURRENT_POD_NAME}" ]; then
+    classify restore-target yes "cluster-meta is handled only by restored shard first pod ${self_first%%.*}; current=${CURRENT_POD_NAME}"
+    return 1
+  fi
+
+  coord=$(coordinator_shard) || return 1
+  while read -r shard_line; do
+    shard="${shard_line%% *}"
+    fqdns="${shard_line#* }"
+    first=$(first_fqdn_of_list "${fqdns}")
+    if [ "${shard}" = "$(echo "${coord}" | tr '[:lower:]-' '[:upper:]_')" ]; then
+      coord_host="${first}"
+    fi
+    other_id=$(node_id_of "${first}") || true
+    [ -n "${other_id}" ] || {
+      classify restore-myid yes "cannot read CLUSTER MYID from restored primary ${first}"
+      return 1
+    }
+    primary_ids+=("${other_id}")
+  done <<< "${roster}"
+  [ -n "${coord_host}" ] || {
+    classify restore-roster no "coordinator ${coord} missing from restored roster"
+    return 1
+  }
+
+  current_nodes=$(cluster_nodes_of "${coord_host}") || {
+    classify restore-meet yes "cannot read coordinator CLUSTER NODES from ${coord_host}"
+    return 1
+  }
+  current_ids=$(printf '%s\n' "${current_nodes}" | cluster_node_id_set) || {
+    classify restore-meet yes "malformed coordinator CLUSTER NODES from ${coord_host}"
+    return 1
+  }
+
+  # Only the deterministic coordinator writes MEET. A fresh node (known=1)
+  # may be introduced; an independently configured disjoint node is refused.
+  if self_is_coordinator_pod "${coord}"; then
+    for ((i=0; i<${#primary_hosts[@]}; i++)); do
+      host="${primary_hosts[$i]}"; other_id="${primary_ids[$i]}"
+      [ "${host}" = "${coord_host}" ] && continue
+      printf '%s\n' "${current_ids}" | grep -Fqx "${other_id}" && continue
+      other_known=$(known_nodes_of "${host}") || {
+        classify restore-meet yes "cannot read known-node count from ${host}"
+        return 1
+      }
+      case "${other_known}" in ''|*[!0-9]*)
+        classify restore-meet yes "invalid known-node count '${other_known}' from ${host}"
+        return 1 ;;
+      esac
+      if [ "${other_known}" -ne 1 ]; then
+        other_nodes=$(cluster_nodes_of "${host}") || return 1
+        other_ids=$(printf '%s\n' "${other_nodes}" | cluster_node_id_set) || return 1
+        if ! node_id_sets_overlap "${current_ids}" "${other_ids}"; then
+          classify restore-meet no "restored primary ${host} belongs to a disjoint configured cluster"
+          return 1
+        fi
+        classify restore-meet yes "membership gossip with ${host} is incomplete; deferring before mutation"
+        return 1
+      fi
+      build_cli "${coord_host}"
+      out=$("${_cli[@]}" CLUSTER MEET "${host}" "${SERVICE_PORT}" 2>&1) || {
+        classify restore-meet yes "CLUSTER MEET ${host} failed: ${out}"
+        return 1
+      }
+      case "${out}" in '(error)'*|'ERR '*)
+        classify restore-meet yes "CLUSTER MEET ${host} returned protocol error: ${out}"
+        return 1 ;;
+      esac
+      met=$((met + 1))
+    done
+    if [ "${met}" -gt 0 ]; then
+      classify restore-meet yes "introduced ${met} restored primary node(s); deferring for mutual visibility"
+      return 1
+    fi
+  fi
+
+  # Every primary must see every designated primary before any slot write.
+  for ((i=0; i<${#primary_hosts[@]}; i++)); do
+    host="${primary_hosts[$i]}"
+    other_nodes=$(cluster_nodes_of "${host}") || {
+      classify restore-membership yes "cannot read CLUSTER NODES from ${host}"
+      return 1
+    }
+    other_ids=$(printf '%s\n' "${other_nodes}" | cluster_node_id_set) || {
+      classify restore-membership yes "malformed CLUSTER NODES from ${host}"
+      return 1
+    }
+    for other_id in "${primary_ids[@]}"; do
+      if ! printf '%s\n' "${other_ids}" | grep -Fqx "${other_id}"; then
+        classify restore-membership yes "${host} does not yet see restored primary ${other_id}"
+        return 1
+      fi
+    done
+  done
+
+  self_id=$(node_id_of "${self_first}") || true
+  [ -n "${self_id}" ] || {
+    classify restore-myid yes "cannot read local restored primary id from ${self_first}"
+    return 1
+  }
+  current_nodes=$(cluster_nodes_of "${self_first}") || return 1
+  if ! missing=$(missing_restore_slot_ranges "${current_nodes}" "${self_id}" "${_restore_slot_ranges}"); then
+    classify restore-slots no "archived slot ownership conflicts with current cluster view for ${self_first}"
+    return 1
+  fi
+  if [ -n "${missing}" ]; then
+    build_cli "${self_first}"
+    for range in $(echo "${missing}" | tr ',' ' '); do
+      if echo "${range}" | grep -q -- '-'; then
+        out=$("${_cli[@]}" CLUSTER ADDSLOTSRANGE "${range%-*}" "${range#*-}" 2>&1) || {
+          classify restore-slots yes "ADDSLOTSRANGE ${range} failed: ${out}"
+          return 1
+        }
+      else
+        out=$("${_cli[@]}" CLUSTER ADDSLOTS "${range}" 2>&1) || {
+          classify restore-slots yes "ADDSLOTS ${range} failed: ${out}"
+          return 1
+        }
+      fi
+      case "${out}" in '(error)'*|'ERR '*)
+        classify restore-slots yes "slot assignment ${range} returned protocol error: ${out}"
+        return 1 ;;
+      esac
+    done
+    classify restore-slots yes "assigned archived ranges ${missing} to ${self_first}; deferring for cluster-wide coverage"
+    return 1
+  fi
+
+  total=$(assigned_slots_of "${self_first}")
+  case "${total}" in ''|*[!0-9]*)
+    classify restore-coverage yes "invalid assigned-slot total '${total}'"
+    return 1 ;;
+  esac
+  if [ "${total}" -ne 16384 ]; then
+    classify restore-coverage yes "local archived ranges restored; cluster coverage ${total}/16384"
+    return 1
+  fi
+  if ! self_is_coordinator_pod "${coord}"; then
+    classify restore-attach yes "slot coverage complete; waiting for coordinator ${coord} to attach replicas"
+    return 1
+  fi
+
+  attach_all_replicas || return 1
+  cluster_formed_from_self || {
+    classify restore-converge yes "archived slots assigned but restored membership not complete"
+    return 1
+  }
+  rm -f "${meta}"
+  echo "restored cluster formed with archived slot ownership and complete membership."
 }
 
 # ── formation ────────────────────────────────────────────────────────────────
@@ -778,8 +1111,18 @@ ensure_replica_bound() {
 
 post_provision() {
   validate_manage_env || exit 1
+  local restore_meta
+  restore_meta=$(cluster_restore_meta_path) || exit 1
   if cluster_formed_from_self; then
+    if [ -f "${restore_meta}" ]; then
+      rm -f "${restore_meta}"
+      echo "removed local cluster restore metadata after positive formation proof."
+    fi
     echo "cluster already formed (state ok, 16384 slots) — nothing to do."
+    exit 0
+  fi
+  if [ -f "${restore_meta}" ]; then
+    restore_cluster_from_meta "${restore_meta}" || exit 1
     exit 0
   fi
   local coord

@@ -135,13 +135,35 @@ fi
 backup_files=("./dump.rdb")
 [ -f "./users.acl" ] && backup_files+=("./users.acl")
 
+validate_cluster_slot_ranges() {
+  awk -v raw="$1" 'BEGIN {
+    if (raw == "") exit 1
+    n = split(raw, parts, ",")
+    for (i = 1; i <= n; i++) {
+      token = parts[i]
+      if (token ~ /^[0-9]+$/) {
+        start = token + 0; end = start
+      } else if (token ~ /^[0-9]+-[0-9]+$/) {
+        split(token, bounds, "-")
+        start = bounds[1] + 0; end = bounds[2] + 0
+      } else {
+        exit 1
+      }
+      if (start < 0 || end > 16383 || start > end) exit 1
+      for (slot = start; slot <= end; slot++) {
+        if (seen[slot]++) exit 1
+      }
+    }
+  }'
+}
+
 # Cluster (sharding) mode: embed the source shard count as engine truth
 # (master lines in CLUSTER NODES) so restore can verify the same-shard-count
 # v1 boundary. Sentinel/standalone targets skip this (cluster_enabled:0).
 _cluster_enabled=$("${connect_base[@]}" INFO cluster 2>/dev/null | grep "^cluster_enabled:" | tr -d "\\r" | cut -d: -f2)
 if [ "${_cluster_enabled}" = "1" ]; then
   _source_shards=$("${connect_base[@]}" CLUSTER NODES 2>/dev/null | tr -d "\r" | awk '$3 ~ /master/' | grep -c . || true)
-  if [ -z "${_source_shards}" ] || [ "${_source_shards}" -lt 1 ]; then
+  if [ -z "${_source_shards}" ] || [ "${_source_shards}" -lt 3 ] || [ "${_source_shards}" -gt 32 ]; then
     echo "ERROR: cluster mode detected but could not count source shards from CLUSTER NODES." >&2
     exit 1
   fi
@@ -166,6 +188,10 @@ if [ "${_cluster_enabled}" = "1" ]; then
   _shard_slot_ranges=$(echo "${_master_line}" | cut -d' ' -f9- | tr ' ' ',')
   if [ -z "${_shard_slot_ranges}" ]; then
     echo "ERROR: cluster mode — this shard's master ${_shard_master_id} owns no slot ranges; refusing to write empty metadata." >&2
+    exit 1
+  fi
+  if ! validate_cluster_slot_ranges "${_shard_slot_ranges}"; then
+    echo "ERROR: cluster mode — invalid slot ranges '${_shard_slot_ranges}' (migration markers, overlap, malformed or out-of-domain); refusing backup metadata." >&2
     exit 1
   fi
   {
