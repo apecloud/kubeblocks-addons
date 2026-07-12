@@ -511,6 +511,17 @@ Describe "Valkey cluster template contracts"
     The stdout should equal "1"
   End
 
+  post_provision_targets_all_pods() {
+    awk '/^    postProvision:/,/^      retryPolicy:/' "$1" \
+      | grep -c '^        targetPodSelector: All$'
+  }
+
+  It "requires postProvision success on every pod before Component completion"
+    When call post_provision_targets_all_pods "${cmpd}"
+    The status should be success
+    The stdout should equal "1"
+  End
+
   It "pins CURRENT_POD_NAME on the shardRemove ACTION env (not just runtime)"
     When call action_env_has_pod_name "${shardingdef}" "shardRemove"
     The status should be success

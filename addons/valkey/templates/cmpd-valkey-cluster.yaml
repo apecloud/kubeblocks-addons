@@ -237,6 +237,9 @@ spec:
     postProvision:
       exec:
         container: valkey-cluster
+        # Restore completion is PVC-local. Any-pod success can mark the
+        # Component complete while a sibling PVC still holds prepared state.
+        targetPodSelector: All
         command:
           - /bin/bash
           - -c
