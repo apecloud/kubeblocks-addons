@@ -219,6 +219,7 @@ if [[ "\$(id -u)" == "0" ]]; then
     chown -R postgres:postgres "\${DATA_DIR}.old" "\${RESTORE_SCRIPT_DIR}" 2>/dev/null \
         || chown -R postgres "\${DATA_DIR}.old" "\${RESTORE_SCRIPT_DIR}"
 fi
+chmod 0700 "\${DATA_DIR}.old"
 
 sync
 echo "Basebackup restored data accepted at \${DATA_DIR}"

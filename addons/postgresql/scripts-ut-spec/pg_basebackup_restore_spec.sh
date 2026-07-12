@@ -99,6 +99,10 @@ EOF
     printf "%s" "$?"
   }
 
+  mode_of_data_dir() {
+    stat -f "%Lp" "${DATA_DIR}" 2>/dev/null || stat -c "%a" "${DATA_DIR}"
+  }
+
   It "stages the modern zstd archive for Patroni bootstrap and leaves the volume root clean"
     export DATASAFED_LIST_OUT="backup-test.tar.zst"
     When run bash "$(script_path)"
@@ -147,6 +151,26 @@ EOF
     The path "${DATA_DIR}.old" should not be exist
     The path "${RESTORE_SCRIPT_DIR}/kb_restore.signal" should not be exist
     The path "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should not be exist
+  End
+
+  It "normalizes group-writable restored PGDATA permissions before primary handoff"
+    export DATASAFED_LIST_OUT="backup-test.tar.zst"
+    When run bash "$(script_path)"
+    The status should eq 0
+    chmod 0775 "${DATA_DIR}.old"
+    The result of function restore_hook_primary_status should eq 0
+    The result of function mode_of_data_dir should eq 700
+    The path "${DATA_DIR}/PG_VERSION" should be exist
+  End
+
+  It "normalizes setgid group-writable restored PGDATA permissions before primary handoff"
+    export DATASAFED_LIST_OUT="backup-test.tar.zst"
+    When run bash "$(script_path)"
+    The status should eq 0
+    chmod 2775 "${DATA_DIR}.old"
+    The result of function restore_hook_primary_status should eq 0
+    The result of function mode_of_data_dir should eq 700
+    The path "${DATA_DIR}/PG_VERSION" should be exist
   End
 
   It "keeps the restore signal when the primary hook fails before commit"
