@@ -103,12 +103,13 @@ validate_restore_slot_ranges() {
 }
 
 validate_cluster_restore_meta() {
-  local meta="$1" source_shards shard_master_id shard_slot_ranges
-  local source_count master_count ranges_count
+  local meta="$1" source_shards shard_master_id shard_slot_ranges rdb_sha256 actual_rdb_sha256
+  local source_count master_count ranges_count digest_count
 
   source_count=$(grep -c '^source_shards=' "${meta}" || true)
   master_count=$(grep -c '^shard_master_id=' "${meta}" || true)
   ranges_count=$(grep -c '^shard_slot_ranges=' "${meta}" || true)
+  digest_count=$(grep -c '^rdb_sha256=' "${meta}" || true)
   if [ "${source_count}" -ne 1 ]; then
     echo "ERROR: cluster-meta must contain exactly one source_shards entry." >&2
     return 1
@@ -121,10 +122,15 @@ validate_cluster_restore_meta() {
     echo "ERROR: cluster-meta missing shard_slot_ranges or contains duplicates." >&2
     return 1
   fi
+  if [ "${digest_count}" -ne 1 ]; then
+    echo "ERROR: cluster-meta missing rdb_sha256 or contains duplicates." >&2
+    return 1
+  fi
 
   source_shards=$(grep '^source_shards=' "${meta}" | cut -d= -f2-)
   shard_master_id=$(grep '^shard_master_id=' "${meta}" | cut -d= -f2-)
   shard_slot_ranges=$(grep '^shard_slot_ranges=' "${meta}" | cut -d= -f2-)
+  rdb_sha256=$(grep '^rdb_sha256=' "${meta}" | cut -d= -f2-)
   case "${source_shards}" in ''|*[!0-9]*)
     echo "ERROR: invalid source_shards '${source_shards}' in cluster-meta." >&2
     return 1 ;;
@@ -139,6 +145,19 @@ validate_cluster_restore_meta() {
   esac
   if ! validate_restore_slot_ranges "${shard_slot_ranges}"; then
     echo "ERROR: invalid shard_slot_ranges '${shard_slot_ranges}' in cluster-meta." >&2
+    return 1
+  fi
+  case "${rdb_sha256}" in ''|*[!0-9a-fA-F]*)
+    echo "ERROR: invalid rdb_sha256 in cluster-meta." >&2
+    return 1 ;;
+  esac
+  if [ "${#rdb_sha256}" -ne 64 ]; then
+    echo "ERROR: invalid rdb_sha256 length in cluster-meta." >&2
+    return 1
+  fi
+  actual_rdb_sha256=$(sha256sum "${DATA_DIR}/dump.rdb" 2>/dev/null | awk '{print $1}')
+  if [ "${actual_rdb_sha256}" != "${rdb_sha256}" ]; then
+    echo "ERROR: restored dump.rdb does not match cluster-meta rdb_sha256." >&2
     return 1
   fi
   echo "INFO: Validated cluster restore metadata (source_shards=${source_shards}, shard_slot_ranges=${shard_slot_ranges})."

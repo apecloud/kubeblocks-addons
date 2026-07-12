@@ -194,10 +194,21 @@ if [ "${_cluster_enabled}" = "1" ]; then
     echo "ERROR: cluster mode — invalid slot ranges '${_shard_slot_ranges}' (migration markers, overlap, malformed or out-of-domain); refusing backup metadata." >&2
     exit 1
   fi
+  _rdb_sha256=$(sha256sum ./dump.rdb 2>/dev/null | awk '{print $1}')
+  case "${_rdb_sha256}" in
+    ''|*[!0-9a-fA-F]* )
+      echo "ERROR: cluster mode — cannot compute dump.rdb SHA-256 for restore identity." >&2
+      exit 1 ;;
+  esac
+  [ "${#_rdb_sha256}" -eq 64 ] || {
+    echo "ERROR: cluster mode — invalid dump.rdb SHA-256 length." >&2
+    exit 1
+  }
   {
     printf 'source_shards=%s\n' "${_source_shards}"
     printf 'shard_master_id=%s\n' "${_shard_master_id}"
     printf 'shard_slot_ranges=%s\n' "${_shard_slot_ranges}"
+    printf 'rdb_sha256=%s\n' "${_rdb_sha256}"
   } > ./cluster-meta
   backup_files+=("./cluster-meta")
   # cluster-meta is backup metadata, not engine data: it must not remain

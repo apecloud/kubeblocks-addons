@@ -112,6 +112,7 @@ STUB
     The contents of file "${workdir}/extracted/cluster-meta" should include "source_shards=3"
     The contents of file "${workdir}/extracted/cluster-meta" should include "shard_master_id=mid001"
     The contents of file "${workdir}/extracted/cluster-meta" should include "shard_slot_ranges=0-5460"
+    The contents of file "${workdir}/extracted/cluster-meta" should include "rdb_sha256="
   End
 
 

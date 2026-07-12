@@ -43,6 +43,8 @@ case "$1" in
           printf 'shard_master_id=%s\n' "${FAKE_DATASAFED_MASTER_ID:-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}"
         [ "${FAKE_DATASAFED_OMIT_SLOT_RANGES:-0}" = "1" ] || \
           printf 'shard_slot_ranges=%s\n' "${FAKE_DATASAFED_SLOT_RANGES:-0-5460}"
+        [ "${FAKE_DATASAFED_OMIT_RDB_SHA:-0}" = "1" ] || \
+          printf 'rdb_sha256=%s\n' "${FAKE_DATASAFED_RDB_SHA:-$(sha256sum "${tmp}/src/dump.rdb" | awk '{print $1}')}"
       } > "${tmp}/src/cluster-meta"
     fi
     tar -cf - -C "${tmp}/src" .
@@ -91,6 +93,8 @@ SH
     unset FAKE_DATASAFED_SLOT_RANGES
     unset FAKE_DATASAFED_OMIT_MASTER_ID
     unset FAKE_DATASAFED_OMIT_SLOT_RANGES
+    unset FAKE_DATASAFED_OMIT_RDB_SHA
+    unset FAKE_DATASAFED_RDB_SHA
     unset RESTORE_TARGET_SHARDS
   }
   After "cleanup"
@@ -181,7 +185,30 @@ SH
     The stdout should include "Validated cluster restore metadata"
     The file "${data_dir}/cluster-meta" should be exist
     The contents of file "${data_dir}/cluster-meta" should include "shard_slot_ranges=0-5460"
+    The contents of file "${data_dir}/cluster-meta" should include "rdb_sha256="
     The file "${data_dir}/appendonlydir/appendonly.aof.manifest" should be exist
+  End
+
+  It "rejects cluster metadata whose dump.rdb digest does not match the archive"
+    export FAKE_DATASAFED_CLUSTER_META=3
+    export FAKE_DATASAFED_RDB_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    When run bash ../dataprotection/restore.sh
+    The status should be failure
+    The stdout should include "INFO: Restoring from restore-test.tar.zst..."
+    The stderr should include "dump.rdb does not match cluster-meta rdb_sha256"
+    The file "${data_dir}/dump.rdb" should not be exist
+    The file "${data_dir}/cluster-meta" should not be exist
+  End
+
+  It "rejects old cluster metadata that lacks the restored RDB identity"
+    export FAKE_DATASAFED_CLUSTER_META=3
+    export FAKE_DATASAFED_OMIT_RDB_SHA=1
+    When run bash ../dataprotection/restore.sh
+    The status should be failure
+    The stdout should include "INFO: Restoring from restore-test.tar.zst..."
+    The stderr should include "cluster-meta missing rdb_sha256"
+    The file "${data_dir}/dump.rdb" should not be exist
+    The file "${data_dir}/cluster-meta" should not be exist
   End
 
   It "fails malformed cluster metadata and re-emits the true reason on retry"

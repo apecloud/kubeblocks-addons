@@ -113,6 +113,12 @@ cluster_nodes_of() {
   "${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r'
 }
 
+dbsize_of() {
+  local host="${1}"
+  build_cli "${host}"
+  "${_cli[@]}" DBSIZE 2>/dev/null | tr -d '\r\n'
+}
+
 cluster_node_id_set() {
   local nodes
   nodes=$(cat)
@@ -174,6 +180,37 @@ slots_owned_in_node_line() {
     esac
   done
   echo "${total}"
+}
+
+# Every slot claimed by the restored replica must already be owned by its
+# intended primary. This makes the replica's local claims provably redundant
+# before any destructive reset.
+slot_ranges_are_subset() {
+  local child="${1}" parent="${2}"
+  awk -v child="${child}" -v parent="${parent}" 'BEGIN {
+    n = split(parent, pt, /[[:space:]]+/)
+    for (i = 1; i <= n; i++) {
+      token = pt[i]
+      if (token == "") continue
+      if (token ~ /^[0-9]+$/) {start = token + 0; end = start}
+      else if (token ~ /^[0-9]+-[0-9]+$/) {
+        split(token, b, "-"); start = b[1] + 0; end = b[2] + 0
+      } else exit 1
+      if (start < 0 || start > end || end > 16383) exit 1
+      for (s = start; s <= end; s++) parent_seen[s] = 1
+    }
+    n = split(child, ct, /[[:space:]]+/)
+    for (i = 1; i <= n; i++) {
+      token = ct[i]
+      if (token == "") continue
+      if (token ~ /^[0-9]+$/) {start = token + 0; end = start}
+      else if (token ~ /^[0-9]+-[0-9]+$/) {
+        split(token, b, "-"); start = b[1] + 0; end = b[2] + 0
+      } else exit 1
+      if (start < 0 || start > end || end > 16383) exit 1
+      for (s = start; s <= end; s++) if (!parent_seen[s]) exit 1
+    }
+  }'
 }
 
 # Restore metadata uses comma-separated slots/ranges (for example
@@ -332,6 +369,17 @@ first_fqdn_of_list() {
   echo "${1}" | tr ',' '\n' | grep -v '^$' | sort | head -1
 }
 
+current_pod_fqdn_of_list() {
+  local list="${1}" fqdn found=""
+  for fqdn in $(echo "${list}" | tr ',' '\n' | grep -v '^$'); do
+    [ "${fqdn%%.*}" = "${CURRENT_POD_NAME}" ] || continue
+    [ -z "${found}" ] || return 1
+    found="${fqdn}"
+  done
+  [ -n "${found}" ] || return 1
+  printf '%s\n' "${found}"
+}
+
 self_is_coordinator_pod() {
   local coord_shard="${1}"
   local self_short_upper coord_upper
@@ -373,17 +421,19 @@ cluster_restore_meta_path() {
 }
 
 load_cluster_restore_meta() {
-  local meta="$1" source_count master_count ranges_count
+  local meta="$1" source_count master_count ranges_count digest_count
   source_count=$(grep -c '^source_shards=' "${meta}" || true)
   master_count=$(grep -c '^shard_master_id=' "${meta}" || true)
   ranges_count=$(grep -c '^shard_slot_ranges=' "${meta}" || true)
-  if [ "${source_count}" -ne 1 ] || [ "${master_count}" -ne 1 ] || [ "${ranges_count}" -ne 1 ]; then
-    classify restore-meta no "cluster-meta requires exactly one source_shards, shard_master_id and shard_slot_ranges entry"
+  digest_count=$(grep -c '^rdb_sha256=' "${meta}" || true)
+  if [ "${source_count}" -ne 1 ] || [ "${master_count}" -ne 1 ] || [ "${ranges_count}" -ne 1 ] || [ "${digest_count}" -ne 1 ]; then
+    classify restore-meta no "cluster-meta requires exactly one source_shards, shard_master_id, shard_slot_ranges and rdb_sha256 entry"
     return 1
   fi
   _restore_source_shards=$(grep '^source_shards=' "${meta}" | cut -d= -f2-)
   _restore_source_master_id=$(grep '^shard_master_id=' "${meta}" | cut -d= -f2-)
   _restore_slot_ranges=$(grep '^shard_slot_ranges=' "${meta}" | cut -d= -f2-)
+  _restore_rdb_sha256=$(grep '^rdb_sha256=' "${meta}" | cut -d= -f2-)
   case "${_restore_source_shards}" in ''|*[!0-9]*)
     classify restore-meta no "invalid source_shards '${_restore_source_shards}'"
     return 1 ;;
@@ -400,6 +450,42 @@ load_cluster_restore_meta() {
     classify restore-meta no "invalid shard_slot_ranges '${_restore_slot_ranges}'"
     return 1
   fi
+  case "${_restore_rdb_sha256}" in ''|*[!0-9a-fA-F]*)
+    classify restore-meta no "invalid rdb_sha256 in cluster-meta"
+    return 1 ;;
+  esac
+  if [ "${#_restore_rdb_sha256}" -ne 64 ]; then
+    classify restore-meta no "invalid rdb_sha256 length in cluster-meta"
+    return 1
+  fi
+}
+
+restored_primary_cluster_ready_for_replica_reset() {
+  local roster shard_line fqdns host id nodes observed expected="" primary_id
+  local primary_hosts=() primary_ids=()
+  roster=$(each_shard_fqdn_list) || return 1
+  while read -r shard_line; do
+    fqdns="${shard_line#* }"
+    host=$(first_fqdn_of_list "${fqdns}")
+    id=$(node_id_of "${host}") || true
+    [ -n "${id}" ] || return 1
+    primary_hosts+=("${host}")
+    primary_ids+=("${id}")
+  done <<< "${roster}"
+  [ "$(printf '%s\n' "${primary_ids[@]}" | LC_ALL=C sort -u | awk 'NF {n++} END {print n+0}')" -eq "${#primary_hosts[@]}" ] || return 1
+  for host in "${primary_hosts[@]}"; do
+    [ "$(cluster_state_of "${host}")" = "ok" ] && [ "$(assigned_slots_of "${host}")" = "16384" ] || return 1
+    nodes=$(cluster_nodes_of "${host}") || return 1
+    observed=$(printf '%s\n' "${nodes}" | cluster_node_id_set) || return 1
+    if [ -z "${expected}" ]; then
+      expected="${observed}"
+    else
+      [ "${observed}" = "${expected}" ] || return 1
+    fi
+    for primary_id in "${primary_ids[@]}"; do
+      printf '%s\n' "${observed}" | grep -Fxq "${primary_id}" || return 1
+    done
+  done
 }
 
 # Same-shard-count cluster restore. Each restored shard's ordinal-0 PVC carries
@@ -439,7 +525,16 @@ restore_cluster_from_meta() {
 
   self_first=$(first_fqdn_of_list "${CURRENT_SHARD_POD_FQDN_LIST}")
   if [ "${self_first%%.*}" != "${CURRENT_POD_NAME}" ]; then
-    classify restore-target yes "cluster-meta is handled only by restored shard first pod ${self_first%%.*}; current=${CURRENT_POD_NAME}"
+    host=$(current_pod_fqdn_of_list "${CURRENT_SHARD_POD_FQDN_LIST}") || {
+      classify restore-target no "current pod ${CURRENT_POD_NAME} is not uniquely present in its shard roster"
+      return 1
+    }
+    other_id=$(node_id_of "${self_first}") || true
+    [ -n "${other_id}" ] || {
+      classify restore-replica-primary yes "cannot read intended restored primary id from ${self_first}"
+      return 1
+    }
+    prepare_local_restored_replica_for_attach "${meta}" "${self_first}" "${host}" "${other_id}" "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" || return 1
     return 1
   fi
 
@@ -591,7 +686,12 @@ restore_cluster_from_meta() {
     return 1
   fi
 
-  attach_all_replicas || return 1
+  restored_primary_cluster_ready_for_replica_reset || {
+    classify restore-attach yes "restored primary views have not all converged to state=ok, 16384 slots and one exact id set before replica reset"
+    return 1
+  }
+
+  attach_all_replicas restore || return 1
   cluster_formed_from_self || {
     classify restore-converge yes "archived slots assigned but restored membership not complete"
     return 1
@@ -898,6 +998,7 @@ form_cluster() {
 # Attach every non-first pod of every shard as a replica of that shard's
 # master (identified by engine node id, resolved fresh each invocation).
 attach_all_replicas() {
+  local mode="${1:-ordinary}"
   local shard_line shard fqdns first rest fqdn master_id add_out roster
   roster=$(each_shard_fqdn_list) || return 1
   while read -r shard_line; do
@@ -911,7 +1012,7 @@ attach_all_replicas() {
     fi
     for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$' | sort); do
       [ "${fqdn}" = "${first}" ] && continue
-      ensure_replica_bound "${first}" "${fqdn}" "${master_id}" "${shard}" || return 1
+      ensure_replica_bound "${first}" "${fqdn}" "${master_id}" "${shard}" "${mode}" || return 1
     done
   done <<< "${roster}"
 }
@@ -1114,10 +1215,14 @@ attach_shard_replicas_to() {
 # the engine if it did). Present and bound -> done.
 ensure_replica_bound() {
   local via="${1}" fqdn="${2}" master_id="${3}" shard="${4}"
+  local mode="${5:-ordinary}"
   local line flags parent out
   build_cli "${via}"
   line=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | grep -F "${fqdn}" | head -1)
   if [ -z "${line}" ]; then
+    if [ "${mode}" = "restore" ]; then
+      restored_replica_ready_for_attach "${fqdn}" "${shard}" || return 1
+    fi
     build_cluster_cli
     out=$("${_ccli[@]}" --cluster add-node "${fqdn}:${SERVICE_PORT}" "${via}:${SERVICE_PORT}" --cluster-slave --cluster-master-id "${master_id}" 2>&1) || {
       classify attach-add-node yes "add replica ${fqdn} to shard ${shard} failed (re-entry re-drives): ${out}"
@@ -1138,6 +1243,213 @@ ensure_replica_bound() {
     return 1
   }
   echo "repaired ${fqdn}: now replicating shard ${shard} master ${master_id}."
+}
+
+# The coordinator never clears a remote pod. It only attaches a restored
+# replica after that pod's own postProvision action has positively reduced it
+# to one empty, slotless node.
+restored_replica_ready_for_attach() {
+  local fqdn="${1}" shard="${2}" nodes line flags parent ranges size
+  nodes=$(cluster_nodes_of "${fqdn}") || return 1
+  [ "$(printf '%s\n' "${nodes}" | awk 'NF {n++} END {print n+0}')" -eq 1 ] && \
+    [ "$(known_nodes_of "${fqdn}")" = "1" ] || {
+      classify restore-replica-wait yes "restored replica ${fqdn} has not prepared one isolated node for shard ${shard}"
+      return 1
+    }
+  line=$(printf '%s\n' "${nodes}" | awk 'NF {print; exit}')
+  flags=$(printf '%s\n' "${line}" | awk '{print $3}')
+  parent=$(printf '%s\n' "${line}" | awk '{print $4}')
+  ranges=$(printf '%s\n' "${line}" | cut -d' ' -f9-)
+  size=$(dbsize_of "${fqdn}") || true
+  case "${flags}:${parent}:${ranges}:${size}" in
+    *myself*master*:-::0) return 0 ;;
+  esac
+  classify restore-replica-wait yes "restored replica ${fqdn} is not yet empty and slotless for shard ${shard}"
+  return 1
+}
+
+local_restored_aof_is_pristine() {
+  local expected_rdb_sha256="${1}"
+  local append_dirname="${VALKEY_APPEND_DIRNAME:-appendonlydir}"
+  local append_filename="${VALKEY_APPEND_FILENAME:-appendonly.aof}"
+  local append_dir="${VALKEY_DATA_DIR}/${append_dirname}"
+  local base="${append_dir}/${append_filename}.1.base.rdb"
+  local incr="${append_dir}/${append_filename}.1.incr.aof"
+  local manifest="${append_dir}/${append_filename}.manifest"
+  local expected_manifest actual_manifest unexpected base_sha256
+
+  [ -f "${base}" ] && [ -f "${incr}" ] && [ -f "${manifest}" ] || return 1
+  [ ! -s "${incr}" ] || return 1
+  base_sha256=$(sha256sum "${base}" 2>/dev/null | awk '{print $1}')
+  [ "${base_sha256}" = "${expected_rdb_sha256}" ] || return 1
+  expected_manifest=$(printf 'file %s seq 1 type b\nfile %s seq 1 type i' \
+    "$(basename "${base}")" "$(basename "${incr}")")
+  actual_manifest=$(cat "${manifest}" 2>/dev/null) || return 1
+  [ "${actual_manifest}" = "${expected_manifest}" ] || return 1
+  unexpected=$(find "${append_dir}" -mindepth 1 -maxdepth 1 \
+    ! -name "$(basename "${base}")" \
+    ! -name "$(basename "${incr}")" \
+    ! -name "$(basename "${manifest}")" -print) || return 1
+  [ -z "${unexpected}" ]
+}
+
+# prepareData restores the same per-shard archive onto every PVC. Each
+# ordinal>0 action clears only its own redundant copy, and only after proving:
+# the ordinal-0 primary is authoritative, local slots are a subset of that
+# master, dump.rdb matches backup-recorded restore metadata, and no post-restore AOF
+# writes exist. Before FLUSHALL it persists an exact local authorization
+# marker; an empty DB with shadow slots is a valid re-entry state only when
+# that marker still matches this archive, pod, shard and intended master.
+prepare_local_restored_replica_for_attach() {
+  local meta="${1}" via="${2}" fqdn="${3}" master_id="${4}" shard="${5}"
+  local primary_nodes target_nodes primary_line target_line target_count
+  local flags parent primary_ranges target_ranges target_size actual_rdb_sha256
+  local bound_line bound_flags bound_parent out reset_nodes reset_line reset_ranges
+  local reset_marker expected_marker actual_marker marker_tmp
+
+  load_cluster_restore_meta "${meta}" || return 1
+
+  restored_primary_cluster_ready_for_replica_reset || {
+    classify restore-replica-primary yes "all restored primary views are not fully converged before clearing ${fqdn}"
+    return 1
+  }
+
+  if [ "$(cluster_state_of "${via}")" != "ok" ] || [ "$(assigned_slots_of "${via}")" != "16384" ]; then
+    classify restore-replica-primary yes "primary ${via} is not state=ok with 16384 slots before clearing ${fqdn}"
+    return 1
+  fi
+  primary_nodes=$(cluster_nodes_of "${via}") || return 1
+  primary_line=$(printf '%s\n' "${primary_nodes}" | awk -v id="${master_id}" '$1 == id')
+  [ "$(printf '%s\n' "${primary_line}" | awk 'NF {n++} END {print n+0}')" -eq 1 ] || {
+    classify restore-replica-primary no "intended master ${master_id} is not unique in ${via} view"
+    return 1
+  }
+  case "$(printf '%s\n' "${primary_line}" | awk '{print $3}')" in
+    *master*) ;;
+    *) classify restore-replica-primary no "intended node ${master_id} is not a master in ${via} view"; return 1 ;;
+  esac
+
+  # The coordinator can attach this pod between local retries. Once the
+  # primary view proves the intended binding, local cleanup must never run
+  # again; the next positive full-formation observation removes the marker.
+  bound_line=$(printf '%s\n' "${primary_nodes}" | grep -F "${fqdn}" | head -1)
+  if [ -n "${bound_line}" ]; then
+    bound_flags=$(printf '%s\n' "${bound_line}" | awk '{print $3}')
+    bound_parent=$(printf '%s\n' "${bound_line}" | awk '{print $4}')
+    if echo "${bound_flags}" | grep -q slave && [ "${bound_parent}" = "${master_id}" ]; then
+      echo "restored replica ${fqdn} is already bound to shard ${shard} master ${master_id}."
+      return 0
+    fi
+    classify restore-replica-wait yes "primary ${via} sees ${fqdn}, but its replica binding has not converged"
+    return 1
+  fi
+
+  target_nodes=$(cluster_nodes_of "${fqdn}") || return 1
+  target_count=$(printf '%s\n' "${target_nodes}" | awk 'NF {n++} END {print n+0}')
+  [ "${target_count}" -eq 1 ] && [ "$(known_nodes_of "${fqdn}")" = "1" ] || {
+    classify restore-replica-shape no "restore target ${fqdn} is not an isolated single-node cluster"
+    return 1
+  }
+  target_line=$(printf '%s\n' "${target_nodes}" | awk 'NF {print; exit}')
+  flags=$(printf '%s\n' "${target_line}" | awk '{print $3}')
+  parent=$(printf '%s\n' "${target_line}" | awk '{print $4}')
+  case "${flags}:${parent}" in
+    *myself*master*:-) ;;
+    *) classify restore-replica-shape no "restore target ${fqdn} is not a singleton myself,master"; return 1 ;;
+  esac
+
+  primary_ranges=$(printf '%s\n' "${primary_line}" | cut -d' ' -f9-)
+  target_ranges=$(printf '%s\n' "${target_line}" | cut -d' ' -f9-)
+  if ! slot_ranges_are_subset "${target_ranges}" "${primary_ranges}"; then
+    classify restore-replica-slots no "restore target ${fqdn} claims slots outside shard ${shard} master ${master_id}"
+    return 1
+  fi
+
+  target_size=$(dbsize_of "${fqdn}") || true
+  case "${target_size}" in
+    ''|*[!0-9]*) classify restore-replica-data yes "cannot read numeric DBSIZE from restored duplicate ${fqdn}"; return 1 ;;
+  esac
+
+  reset_marker="${VALKEY_DATA_DIR}/.kb-restored-replica-reset-authorized"
+  expected_marker=$(printf 'rdb_sha256=%s\nmaster_id=%s\nshard=%s\npod=%s' \
+    "${_restore_rdb_sha256}" "${master_id}" "${shard}" "${fqdn%%.*}")
+  actual_marker=""
+  if [ -e "${reset_marker}" ]; then
+    [ -f "${reset_marker}" ] || {
+      classify restore-replica-data no "local reset authorization marker is not a regular file"
+      return 1
+    }
+    actual_marker=$(cat "${reset_marker}" 2>/dev/null) || {
+      classify restore-replica-data no "cannot read local reset authorization marker"
+      return 1
+    }
+    [ "${actual_marker}" = "${expected_marker}" ] || {
+      classify restore-replica-data no "local reset authorization marker does not match this restore target"
+      return 1
+    }
+  fi
+
+  if [ "${target_size}" -eq 0 ] && [ -z "${target_ranges}" ]; then
+    rm -f "${reset_marker}" && sync
+    echo "restored duplicate ${fqdn} is already empty and slotless for shard ${shard}."
+    return 0
+  fi
+  if [ "${target_size}" -eq 0 ] && [ "${actual_marker}" != "${expected_marker}" ]; then
+    classify restore-replica-data no "empty restored duplicate ${fqdn} still owns slots without reset authorization"
+    return 1
+  fi
+  if [ "${target_size}" -gt 0 ]; then
+    actual_rdb_sha256=$(sha256sum "${VALKEY_DATA_DIR}/dump.rdb" 2>/dev/null | awk '{print $1}')
+    [ "${actual_rdb_sha256}" = "${_restore_rdb_sha256}" ] || {
+      classify restore-replica-data no "local dump.rdb on ${fqdn} does not match restore metadata"
+      return 1
+    }
+    local_restored_aof_is_pristine "${_restore_rdb_sha256}" || {
+      classify restore-replica-data no "local multipart AOF is not the pristine restore seed; refusing to clear ${fqdn}"
+      return 1
+    }
+    if [ -z "${actual_marker}" ]; then
+      marker_tmp="${reset_marker}.tmp.$$"
+      if ! printf '%s\n' "${expected_marker}" > "${marker_tmp}" || \
+         ! mv -f "${marker_tmp}" "${reset_marker}" || ! sync; then
+        rm -f "${marker_tmp}"
+        classify restore-replica-data yes "cannot persist local reset authorization marker for ${fqdn}"
+        return 1
+      fi
+    fi
+    build_cli "${fqdn}"
+    out=$("${_cli[@]}" FLUSHALL 2>&1) || {
+      classify restore-replica-flush yes "FLUSHALL on verified duplicate ${fqdn} failed: ${out}"
+      return 1
+    }
+    case "${out}" in '(error)'*|'ERR '*) classify restore-replica-flush yes "FLUSHALL on ${fqdn} returned protocol error: ${out}"; return 1 ;; esac
+    [ "$(dbsize_of "${fqdn}")" = "0" ] || {
+      classify restore-replica-flush yes "verified duplicate ${fqdn} is not empty after FLUSHALL"
+      return 1
+    }
+  fi
+
+  build_cli "${fqdn}"
+  out=$("${_cli[@]}" CLUSTER RESET HARD 2>&1) || {
+    classify restore-replica-reset yes "CLUSTER RESET HARD on ${fqdn} failed: ${out}"
+    return 1
+  }
+  case "${out}" in '(error)'*|'ERR '*) classify restore-replica-reset yes "CLUSTER RESET HARD on ${fqdn} returned protocol error: ${out}"; return 1 ;; esac
+
+  reset_nodes=$(cluster_nodes_of "${fqdn}") || return 1
+  [ "$(printf '%s\n' "${reset_nodes}" | awk 'NF {n++} END {print n+0}')" -eq 1 ] && \
+    [ "$(known_nodes_of "${fqdn}")" = "1" ] && [ "$(dbsize_of "${fqdn}")" = "0" ] || {
+      classify restore-replica-reset yes "${fqdn} did not converge to one empty node after hard reset"
+      return 1
+    }
+  reset_line=$(printf '%s\n' "${reset_nodes}" | awk 'NF {print; exit}')
+  reset_ranges=$(printf '%s\n' "${reset_line}" | cut -d' ' -f9-)
+  [ -z "${reset_ranges}" ] || {
+    classify restore-replica-reset yes "${fqdn} still claims slots after hard reset"
+    return 1
+  }
+  rm -f "${reset_marker}" && sync
+  echo "prepared local restored duplicate ${fqdn} for replica attach to shard ${shard}."
 }
 
 post_provision() {
