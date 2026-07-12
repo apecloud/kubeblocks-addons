@@ -839,6 +839,13 @@ shard_remove() {
   fi
   local own
   own=$(slots_owned_by "${remaining_host}" "${master_id}")
+  case "${own}" in
+    ''|*[!0-9]*) classify remove-drain yes "invalid owned-slot count '${own}' for departing master ${master_id} — deferring drain"; exit 1 ;;
+  esac
+  if [ "${own}" -gt 16384 ]; then
+    classify remove-drain yes "invalid owned-slot count '${own}' for departing master ${master_id} — deferring drain"
+    exit 1
+  fi
   if [ "${own}" -gt 0 ]; then
     # CONCURRENT SCALE-IN CONTRACT (round-2 external review): the drain
     # must zero-weight not only this shard's master but EVERY master that
@@ -850,11 +857,20 @@ shard_remove() {
     # concurrent multi-shard drains terminate instead of re-polluting each
     # other. 0-slot masters are engine-observable truth; "is departing" is
     # not, so this is the strongest gate available from CLUSTER NODES.
-    local drain_nodes wline wid wown
+    local drain_nodes drain_master_rows wline wid wown
     local weight_args=("--cluster-weight" "${master_id}=0")
     drain_nodes=$(cluster_nodes_of "${remaining_host}")
     if [ -z "${drain_nodes}" ]; then
       classify remove-drain yes "cannot read CLUSTER NODES from ${remaining_host} to build drain weights — deferring"
+      exit 1
+    fi
+    if ! printf '%s\n' "${drain_nodes}" | cluster_node_id_set >/dev/null; then
+      classify remove-drain yes "invalid CLUSTER NODES structure from ${remaining_host} — deferring drain"
+      exit 1
+    fi
+    drain_master_rows=$(echo "${drain_nodes}" | awk '$3 ~ /(^|,)master(,|$)/')
+    if [ -z "${drain_master_rows}" ]; then
+      classify remove-drain yes "CLUSTER NODES from ${remaining_host} contains no master rows — deferring drain"
       exit 1
     fi
     while read -r wline; do
@@ -868,11 +884,15 @@ shard_remove() {
         continue
       fi
       wown=$(slots_owned_by "${remaining_host}" "${wid}")
-      case "${wown}" in ''|*[!0-9-]*) classify remove-drain yes "invalid owned-slot count '${wown}' for master ${wid} — deferring drain"; exit 1 ;; esac
+      case "${wown}" in ''|*[!0-9]*) classify remove-drain yes "invalid owned-slot count '${wown}' for master ${wid} — deferring drain"; exit 1 ;; esac
+      if [ "${wown}" -gt 16384 ]; then
+        classify remove-drain yes "invalid owned-slot count '${wown}' for master ${wid} — deferring drain"
+        exit 1
+      fi
       if [ "${wown}" -eq 0 ]; then
         weight_args+=("--cluster-weight" "${wid}=0")
       fi
-    done <<< "$(echo "${drain_nodes}" | awk '$3 ~ /master/')"
+    done <<< "${drain_master_rows}"
     build_cluster_cli
     local reb_out
     reb_out=$("${_ccli[@]}" --cluster rebalance "${remaining_host}:${SERVICE_PORT}" "${weight_args[@]}" 2>&1) || {

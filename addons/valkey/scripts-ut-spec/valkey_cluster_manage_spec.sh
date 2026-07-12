@@ -637,6 +637,84 @@ ADD"
       The stderr should include "invalid owned-slot count"
       The stdout should not include "REBALANCE-CALLED"
     End
+
+    It "defers before rebalance when nonempty CLUSTER NODES is structurally invalid"
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() { printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'; }
+      cluster_state_of() { echo ok; }
+      shard_master_id_via() { echo id-self; }
+      slots_owned_by() { echo 500; }
+      cluster_nodes_of() { echo 'ERR transient topology read'; }
+      _write_log=$(mktemp)
+      build_cluster_cli() { _ccli=(mock_never "${_write_log}"); }
+      mock_never() { local log="${1}"; shift; case "$*" in *"--cluster rebalance"*) echo "REBALANCE-CALLED" >>"${log}" ;; esac; }
+      When run shard_remove
+      The status should be failure
+      The stderr should include "phase=remove-drain"
+      The stderr should include "invalid CLUSTER NODES structure"
+      The contents of file "${_write_log}" should equal ""
+    End
+
+    It "defers before rebalance when CLUSTER NODES contains no master rows"
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() { printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'; }
+      cluster_state_of() { echo ok; }
+      shard_master_id_via() { echo id-self; }
+      slots_owned_by() { echo 500; }
+      cluster_nodes_of() {
+        printf 'id-slave vk-shard-def-1.h.ns.svc:6379@16379 slave id-master 0 0 1 connected\n'
+      }
+      _write_log=$(mktemp)
+      build_cluster_cli() { _ccli=(mock_never "${_write_log}"); }
+      mock_never() { local log="${1}"; shift; case "$*" in *"--cluster rebalance"*) echo "REBALANCE-CALLED" >>"${log}" ;; esac; }
+      When run shard_remove
+      The status should be failure
+      The stderr should include "phase=remove-drain"
+      The stderr should include "no master rows"
+      The contents of file "${_write_log}" should equal ""
+    End
+
+    It "defers before rebalance when a receiver slot count is negative"
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() { printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'; }
+      cluster_state_of() { echo ok; }
+      shard_master_id_via() { echo id-self; }
+      slots_owned_by() {
+        case "${2}" in id-self) echo 500 ;; *) echo -1 ;; esac
+      }
+      cluster_nodes_of() {
+        printf 'id-self vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-499\n'
+        printf 'id-other vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected 500-16383\n'
+      }
+      _write_log=$(mktemp)
+      build_cluster_cli() { _ccli=(mock_never "${_write_log}"); }
+      mock_never() { local log="${1}"; shift; case "$*" in *"--cluster rebalance"*) echo "REBALANCE-CALLED" >>"${log}" ;; esac; }
+      When run shard_remove
+      The status should be failure
+      The stderr should include "invalid owned-slot count '-1'"
+      The contents of file "${_write_log}" should equal ""
+    End
+
+    It "defers before rebalance when a receiver slot count exceeds the engine domain"
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() { printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'; }
+      cluster_state_of() { echo ok; }
+      shard_master_id_via() { echo id-self; }
+      slots_owned_by() {
+        case "${2}" in id-self) echo 500 ;; *) echo 16385 ;; esac
+      }
+      cluster_nodes_of() {
+        printf 'id-self vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-499\n'
+        printf 'id-other vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected 500-16383\n'
+      }
+      _write_log=$(mktemp)
+      build_cluster_cli() { _ccli=(mock_never "${_write_log}"); }
+      mock_never() { local log="${1}"; shift; case "$*" in *"--cluster rebalance"*) echo "REBALANCE-CALLED" >>"${log}" ;; esac; }
+      When run shard_remove
+      The status should be failure
+      The stderr should include "invalid owned-slot count '16385'"
+      The contents of file "${_write_log}" should equal ""
+    End
   End
   Describe "drive_shard_completion() — r3 CT05 livelock fix"
     # r3 live evidence: after one failed replica attach, the old
