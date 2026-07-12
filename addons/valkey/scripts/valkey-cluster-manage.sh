@@ -970,7 +970,7 @@ open_slots_present() {
 repair_open_slots() {
   local via="${1}" fix_out
   build_cluster_cli
-  fix_out=$(echo yes | "${_ccli[@]}" --cluster fix "${via}:${SERVICE_PORT}" 2>&1) || {
+  fix_out=$("${_ccli[@]}" --cluster fix "${via}:${SERVICE_PORT}" <<< yes 2>&1) || {
     classify join-fix yes "cluster fix for open slots failed (re-entry re-drives): $(echo "${fix_out}" | tail -2 | tr '\n' ';')"
     return 1
   }
