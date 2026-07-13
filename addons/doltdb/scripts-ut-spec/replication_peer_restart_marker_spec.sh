@@ -79,6 +79,7 @@ func main() {
 		"DOLT_MAX_CONNECTIONS_TIMEOUT_MILLIS":    "60000",
 		"DOLT_READ_TIMEOUT_MILLIS":               "28800000",
 		"DOLT_WRITE_TIMEOUT_MILLIS":              "28800000",
+		"DOLT_DATA_DIR":                          "/custom/dolt",
 		"TLS_ENABLED":                            "false",
 	}
 
@@ -112,6 +113,9 @@ EOF
   It "renders in a standalone config context without replication vars"
     When call render_template_with_standalone_context
     The status should be success
+    The output should include "data_dir: /custom/dolt"
+    The output should include "cfg_dir: /custom/dolt/.doltcfg"
+    The output should include "privilege_file: /custom/dolt/.doltcfg/privileges.db"
     The output should include "# DOLT_CLUSTER_MODE=false"
     The output should include "# DOLT_CLUSTER_REPLICAS=1"
     The output should include "# DOLT_POD_FQDN_LIST="

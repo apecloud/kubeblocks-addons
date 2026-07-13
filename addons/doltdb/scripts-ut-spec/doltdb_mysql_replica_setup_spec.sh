@@ -62,17 +62,17 @@ EOF
     export DOLT_MYSQL_SOURCE_HOST="mysql-source.demo.svc"
     export DOLT_MYSQL_SOURCE_PORT="3306"
     export DOLT_MYSQL_SOURCE_USER="repl_user"
-    export DOLT_MYSQL_SOURCE_PASSWORD="pa'ss word"
+    export DOLT_MYSQL_SOURCE_PASSWORD="pa\\'ss word"
     export DOLT_MYSQL_REPLICA_SERVER_ID="123"
     export DOLT_MYSQL_REPLICATION_FILTER="REPLICATE_DO_TABLE=(testdb.kb_smoke)"
 
     When run sh ../scripts/doltdb-mysql-replica-setup.sh
     The status should be success
     The output should include "Dolt MySQL replication source configured"
-    The contents of file "${TEST_DIR}/dolt-argv" should not include "pa'ss word"
+    The contents of file "${TEST_DIR}/dolt-argv" should not include "pa\\'ss word"
     The contents of file "${TEST_DIR}/dolt-argv" should include "--query=SET @@PERSIST.server_id=123;"
     The contents of file "${TEST_DIR}/dolt-stdin" should include "SOURCE_HOST='mysql-source.demo.svc'"
-    The contents of file "${TEST_DIR}/dolt-stdin" should include "SOURCE_PASSWORD='pa''ss word'"
+    The contents of file "${TEST_DIR}/dolt-stdin" should include "SOURCE_PASSWORD='pa\\\\''ss word'"
     The contents of file "${TEST_DIR}/dolt-argv" should include "--query=CHANGE REPLICATION FILTER REPLICATE_DO_TABLE=(testdb.kb_smoke);"
     The contents of file "${TEST_DIR}/dolt-argv" should include "--query=START REPLICA;"
     The contents of file "${TEST_DIR}/dolt-argv" should include "--query=SHOW REPLICA STATUS;"

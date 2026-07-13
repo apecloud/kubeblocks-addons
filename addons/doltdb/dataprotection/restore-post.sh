@@ -5,6 +5,7 @@ DATA_DIR="${DATA_DIR:-/var/lib/dolt}"
 STAGING_ROOT="${DOLT_RESTORE_STAGING_DIR:-${DATA_DIR}/.kb-doltdb-restore}"
 WORK_DIR="${STAGING_ROOT}/current"
 MANIFEST="${WORK_DIR}/manifest.tsv"
+: "${DOLT_REPLICATION_RESTORE:=false}"
 
 if [[ "$DATA_DIR" != /* || "$DATA_DIR" == "/" ]]; then
   echo "invalid DATA_DIR: ${DATA_DIR}" >&2
@@ -20,7 +21,7 @@ if [ ! -f "$MANIFEST" ]; then
 fi
 
 sql_quote() {
-  printf "%s" "$1" | sed "s/'/''/g"
+  printf "%s" "$1" | sed -e 's/\\/\\\\/g' -e "s/'/''/g"
 }
 
 run_dolt_sql() {
@@ -59,16 +60,37 @@ is_replication_primary_database() {
   local query result
 
   query="SELECT role FROM dolt_cluster.dolt_cluster_status WHERE \`database\` = '$(sql_quote "$db_name")';"
-  result="$(run_dolt_sql "$db_name" "$query" 2>/dev/null || true)"
-  echo "$result" | awk 'NR > 1 && $0 == "primary" {found = 1} END {exit !found}'
+  if ! result="$(run_dolt_sql "$db_name" "$query")"; then
+    echo "failed to query Dolt cluster role for ${db_name}; refusing to skip replication trigger" >&2
+    return 2
+  fi
+  if echo "$result" | awk 'NR > 1 && $0 == "primary" {found = 1} END {exit !found}'; then
+    return 0
+  fi
+  if echo "$result" | awk 'NR > 1 && $0 == "standby" {found = 1} END {exit !found}'; then
+    return 1
+  fi
+  echo "unexpected Dolt cluster role status for ${db_name}; refusing to skip replication trigger" >&2
+  return 2
 }
 
 trigger_replication_after_restore() {
   local db_name="$1"
+  local status
 
-  if ! is_replication_primary_database "$db_name"; then
-    return
+  if [ "$DOLT_REPLICATION_RESTORE" != "true" ]; then
+    return 0
   fi
+
+  set +e
+  is_replication_primary_database "$db_name"
+  status=$?
+  set -e
+  case "$status" in
+    0) ;;
+    1) return 0 ;;
+    *) exit "$status" ;;
+  esac
 
   echo "creating empty Dolt commit for ${db_name} to trigger post-restore replication"
   run_dolt_sql "$db_name" "CALL DOLT_COMMIT('--allow-empty', '-m', 'kb restore replication trigger');"

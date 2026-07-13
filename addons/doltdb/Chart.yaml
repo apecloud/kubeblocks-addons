@@ -24,6 +24,6 @@ maintainers:
     url: https://github.com/apecloud/kubeblocks-addons
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.1.0-beta.7"
   addon.kubeblocks.io/model: "database"
   addon.kubeblocks.io/provider: "community"

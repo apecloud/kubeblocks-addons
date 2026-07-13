@@ -105,6 +105,10 @@ spec:
       value: {{ $.Values.rootHost | quote }}
     - name: DOLT_SQL_PORT
       value: {{ $.Values.port | quote }}
+    - name: DATA_DIR
+      value: {{ $.Values.dataMountPath | quote }}
+    - name: DOLT_DATA_DIR
+      value: {{ $.Values.dataMountPath | quote }}
     - name: DOLT_METRICS_HOST
       value: {{ $.Values.metrics.host | quote }}
     - name: DOLT_METRICS_PORT

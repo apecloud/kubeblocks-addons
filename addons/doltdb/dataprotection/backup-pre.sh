@@ -14,7 +14,7 @@ if [[ "$DATA_DIR" != /* || "$DATA_DIR" == "/" ]]; then
 fi
 
 sql_quote() {
-  printf "%s" "$1" | sed "s/'/''/g"
+  printf "%s" "$1" | sed -e 's/\\/\\\\/g' -e "s/'/''/g"
 }
 
 copy_if_exists() {
@@ -84,6 +84,12 @@ mkdir -p "$WORK_DIR/repos"
 touch "$MANIFEST"
 capture_metadata
 
+DATABASE_LIST="${WORK_DIR}/databases.txt"
+if ! list_databases >"$DATABASE_LIST"; then
+  echo "failed to list Dolt databases; refusing to create a successful empty backup" >&2
+  exit 1
+fi
+
 found=0
 while IFS= read -r db_name; do
   [ -n "$db_name" ] || continue
@@ -112,7 +118,7 @@ while IFS= read -r db_name; do
   run_dolt_sql "$db_name" "CALL dolt_backup('sync-url', '$(sql_quote "$backup_url")');"
   printf '%s\t%s\n' "$db_name" "repos/$db_name" >>"$MANIFEST"
   found=1
-done < <(list_databases)
+done <"$DATABASE_LIST"
 
 if [ "$found" -eq 0 ]; then
   echo "no Dolt databases found under ${DATA_DIR}; creating an empty backup archive"

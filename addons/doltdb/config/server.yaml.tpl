@@ -3,12 +3,13 @@
 # DOLT_CLUSTER_MODE={{ default "false" (index . "DOLT_CLUSTER_MODE") }}
 # DOLT_CLUSTER_REPLICAS={{ default "1" (index . "DOLT_CLUSTER_REPLICAS") }}
 # DOLT_POD_FQDN_LIST={{ default "" (index . "DOLT_POD_FQDN_LIST") }}
+{{- $dataDir := default "/var/lib/dolt" (index . "DOLT_DATA_DIR") }}
 log_level: {{ default "info" .DOLT_LOG_LEVEL }}
 log_format: {{ default "text" .DOLT_LOG_FORMAT }}
-data_dir: /var/lib/dolt
-cfg_dir: /var/lib/dolt/.doltcfg
-privilege_file: /var/lib/dolt/.doltcfg/privileges.db
-branch_control_file: /var/lib/dolt/.doltcfg/branch_control.db
+data_dir: {{ $dataDir }}
+cfg_dir: {{ $dataDir }}/.doltcfg
+privilege_file: {{ $dataDir }}/.doltcfg/privileges.db
+branch_control_file: {{ $dataDir }}/.doltcfg/branch_control.db
 
 behavior:
   read_only: {{ default "false" .DOLT_READ_ONLY }}
