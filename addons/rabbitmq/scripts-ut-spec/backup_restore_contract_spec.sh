@@ -143,7 +143,7 @@ DATASAFED
     The stdout should include "restore prepareData completed"
   End
 
-  It "falls back to DP_TARGET_RELATIVE_PATH when volume-populator omits DP_TARGET_POD_NAME"
+  It "uses only the pod-name stem from the volume-populator target relative path"
     When call bash -c '
       set -Eeuo pipefail
       restore_script="$1"
@@ -160,8 +160,8 @@ DATASAFED
 set -e
 case "$1" in
   list)
-    # Archive key matches the relative path / pod identity injected by volume populator.
-    printf "%s\n" "${DP_TARGET_RELATIVE_PATH}.tar.zst"
+    test "${DATASAFED_BACKEND_BASE_PATH}" = "${EXPECTED_BACKUP_BASE_PATH}"
+    printf "%s\n" "${EXPECTED_TARGET_POD_NAME}.tar.zst"
     ;;
   pull)
     cat "${FAKE_ARCHIVE_PATH}"
@@ -178,8 +178,10 @@ DATASAFED
       unset DP_TARGET_POD_NAME || true
       PATH="${bin_dir}:${PATH}" \
         DATA_DIR="${data_dir}" \
-        DP_TARGET_RELATIVE_PATH="rmq-br-5400-rabbitmq-2" \
-        DP_BACKUP_BASE_PATH="/backup/base" \
+        DP_TARGET_RELATIVE_PATH="rabbitmq/rmq-br-5400-rabbitmq-2" \
+        DP_BACKUP_BASE_PATH="/backup/base/rabbitmq/rmq-br-5400-rabbitmq-2" \
+        EXPECTED_BACKUP_BASE_PATH="/backup/base/rabbitmq/rmq-br-5400-rabbitmq-2" \
+        EXPECTED_TARGET_POD_NAME="rmq-br-5400-rabbitmq-2" \
         FAKE_ARCHIVE_PATH="${tmp_dir}/payload.tar" \
         bash "${restore_script}"
       test -f "${data_dir}/restored.txt"
@@ -198,6 +200,20 @@ DATASAFED
     ' _ "${restore_script}"
     The status should be failure
     The stderr should include "DP_TARGET_POD_NAME or DP_TARGET_RELATIVE_PATH is required"
+  End
+
+  It "fails closed when the target relative path has no pod-name segment"
+    When call bash -c '
+      set -Eeuo pipefail
+      restore_script="$1"
+      unset DP_TARGET_POD_NAME || true
+      DATA_DIR="$(mktemp -d)" \
+        DP_TARGET_RELATIVE_PATH="rabbitmq/" \
+        DP_BACKUP_BASE_PATH="/backup/base/rabbitmq" \
+        bash "${restore_script}"
+    ' _ "${restore_script}"
+    The status should be failure
+    The stderr should include "must be <target-name>/<target-pod-name>"
   End
 
   It "reconciles the restored system account idempotently after RabbitMQ is ready"
