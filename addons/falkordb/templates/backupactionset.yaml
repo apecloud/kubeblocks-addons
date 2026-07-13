@@ -16,7 +16,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "falkordb4.image" . }}
+      image: $(FALKORDB_IMAGE)
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -28,7 +28,7 @@ spec:
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "falkordb4.image" . }}
+      image: $(FALKORDB_IMAGE)
       command:
       - bash
       - -c
@@ -42,7 +42,7 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
-        image: {{ include "falkordb4.image" . }}
+        image: $(FALKORDB_IMAGE)
         onError: Fail
         runOnTargetPodNode: true
 ---
@@ -66,7 +66,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "falkordb4.image" . }}
+      image: $(FALKORDB_IMAGE)
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -78,7 +78,7 @@ spec:
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "falkordb4.image" . }}
+      image: $(FALKORDB_IMAGE)
       command:
       - bash
       - -c
@@ -91,7 +91,7 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/wait-for-cluster-ready.sh" | nindent 10 }}
-        image: {{ include "falkordb4.image" . }}
+        image: $(FALKORDB_IMAGE)
         onError: Fail
         runOnTargetPodNode: true
     - job:
@@ -124,7 +124,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "falkordb4.image" . }}
+      image: $(FALKORDB_IMAGE)
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -138,7 +138,7 @@ spec:
         {{- .Files.Get "dataprotection/pitr-backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "falkordb4.image" . }}
+      image: $(FALKORDB_IMAGE)
       command:
       - bash
       - -c
@@ -154,7 +154,7 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
-        image: {{ include "falkordb4.image" . }}
+        image: $(FALKORDB_IMAGE)
         onError: Fail
         runOnTargetPodNode: true
     baseBackupRequired: false

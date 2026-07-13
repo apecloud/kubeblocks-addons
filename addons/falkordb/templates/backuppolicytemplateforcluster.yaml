@@ -20,6 +20,18 @@ spec:
       volumeMounts:
         - name: data
           mountPath: {{ .Values.dataMountPath }}
+    env:
+      - name: FALKORDB_IMAGE
+        valueFrom:
+          versionMapping:
+            {{- $repository := printf "%s/%s" (.Values.image.registry | default "docker.io") .Values.image.repository }}
+            {{- range .Values.falkordbVersions }}
+            {{- range .mirrorVersions }}
+            - serviceVersions:
+                - {{ .version }}
+              mappedValue: {{ $repository }}:{{ .imageTag }}
+            {{- end }}
+            {{- end }}
   - name: backup-for-rebuild-instance
     actionSetName: falkordb-for-rebuild-instance
     env:

@@ -20,6 +20,18 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+      env:
+        - name: FALKORDB_IMAGE
+          valueFrom:
+            versionMapping:
+              {{- $repository := printf "%s/%s" (.Values.image.registry | default "docker.io") .Values.image.repository }}
+              {{- range .Values.falkordbVersions }}
+              {{- range .mirrorVersions }}
+              - serviceVersions:
+                  - {{ .version }}
+                mappedValue: {{ $repository }}:{{ .imageTag }}
+              {{- end }}
+              {{- end }}
     - name: aof
       snapshotVolumes: false
       actionSetName: falkordb-for-pitr
@@ -27,6 +39,18 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+      env:
+        - name: FALKORDB_IMAGE
+          valueFrom:
+            versionMapping:
+              {{- $repository := printf "%s/%s" (.Values.image.registry | default "docker.io") .Values.image.repository }}
+              {{- range .Values.falkordbVersions }}
+              {{- range .mirrorVersions }}
+              - serviceVersions:
+                  - {{ .version }}
+                mappedValue: {{ $repository }}:{{ .imageTag }}
+              {{- end }}
+              {{- end }}
     - name: volume-snapshot
       snapshotVolumes: true
       targetVolumes:
