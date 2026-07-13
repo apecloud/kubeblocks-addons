@@ -9,27 +9,27 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - vmstorage-1.0.0
+        - vmstorage-1.101.0
       compDefs:
         - {{ include "vmstorage.cmpdRegexpPattern" . }}
     - releases:
-        - vmselect-1.0.0
+        - vmselect-1.101.0
       compDefs:
         - {{ include "vmselect.cmpdRegexpPattern" . }}
     - releases:
-        - vminsert-1.0.0
+        - vminsert-1.101.0
       compDefs:
         - {{ include "vminsert.cmpdRegexpPattern" . }}
   releases:
-    - name: vmstorage-1.0.0
-      serviceVersion: 1.0.0
+    - name: vmstorage-1.101.0
+      serviceVersion: 1.101.0
       images:
         vmstorage: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.vmstorage.repository }}:{{ .Values.images.vmstorage.tag }}
-    - name: vmselect-1.0.0
-      serviceVersion: 1.0.0
+    - name: vmselect-1.101.0
+      serviceVersion: 1.101.0
       images:
         vmselect: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.vmselect.repository }}:{{ .Values.images.vmselect.tag }}
-    - name: vminsert-1.0.0
-      serviceVersion: 1.0.0
+    - name: vminsert-1.101.0
+      serviceVersion: 1.101.0
       images:
         vminsert: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.vminsert.repository }}:{{ .Values.images.vminsert.tag }}

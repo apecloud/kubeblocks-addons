@@ -23,7 +23,7 @@ FalkorDB is an open source (SSPL licensed) in-memory graph database based on Red
 
 | Major Versions | Description |
 |---------------|-------------|
-| 4.0           | 4.12.5 |
+| 4.x           | 4.12.5, 4.14.12 |
 
 ## Prerequisites
 

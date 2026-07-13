@@ -14,7 +14,7 @@ NebulaGraph is a popular open-source graph database that can handle large volume
 
 | Versions |
 |----------|
-| 3.5.0    |
+| v3.5.0, v3.8.0 |
 
 ## Prerequisites
 

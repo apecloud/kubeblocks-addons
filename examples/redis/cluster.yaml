@@ -24,7 +24,7 @@ spec:
     - name: redis
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [7.0.6,7.2.4]
+      # Valid options are: [5.0.12,6.2.14,6.2.17,6.2.18,6.2.19,6.2.22,7.0.6,7.2.4,7.2.7,7.4.2,7.2.10,7.2.11,7.2.12,7.2.14,7.4.5,7.4.6,7.4.7,7.4.9,8.0.1,8.0.3,8.0.4,8.0.5,8.2.1,8.2.2,8.2.3,8.2.6,8.4.0,8.4.3,8.6.3]
       serviceVersion: "7.2.4"
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.

@@ -15,13 +15,13 @@ There are two key components in the ClickHouse cluster:
 
 | Topology           | Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
 | ------------------ | ------------------ | ---------------- | ------------- | ------- | ---------- | --------- | ------ | ---------- |
-| standalone/cluster | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | Yes    | N/A        |
+| standalone/cluster | Yes                | Yes              | Yes           | Yes     | Yes        | No        | Yes    | N/A        |
 
 #### ClickHouse Keeper
 
 | Topology | Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
 | -------- | ------------------ | ---------------- | ------------- | ------- | ---------- | --------- | ------ | ---------- |
-| cluster  | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | N/A    | Yes        |
+| cluster  | Yes                | Yes              | Yes           | Yes     | Yes        | No        | N/A    | Yes        |
 
 ### Backup and Restore
 
@@ -340,74 +340,6 @@ Increase size of volume storage with the specified components in the cluster
 ```bash
 kubectl apply -f examples/clickhouse/volumeexpand.yaml
 ```
-
-### [Reconfigure](configure.yaml)
-
-> [!NOTE]
-> This reconfigure section is applicable for ClickHouse Addons v1.0.1.
-> Those who are using ClickHouse Addons v1.0.2 and above, please refer to [Using Config Templates](../addons/clickhouse/README.md#using-config-templates) for more details.
-
-
-Reconfigure parameters with the specified components in the cluster
-
-```bash
-kubectl apply -f examples/clickhouse/configure.yaml
-```
-
-This example will change the `max_bytes_to_read` to `200000000000`.
-To verify the configuration, you can connect to the ClickHouse server and run the following command:
-
-```bash
-# connect to the clickhouse pod
-kubectl exec -it clickhouse-cluster-clickhouse-0 -- /bin/bash
-```
-
-and check the configuration:
-
-```bash
-# connect to the clickhouse server
-clickhouse-client --user $CLICKHOUSE_ADMIN_USER --password $CLICKHOUSE_ADMIN_PASSWORD
-> set profile='web';
-> select name,value from system.settings where name like 'max_bytes%';
-```
-
-<details>
-<summary>Explanation of the configuration</summary>
-The `user.xml` file is an xml file that contains the configuration of the ClickHouse server.
-
-```xml
-<clickhouse>
-  <profiles>
-    <default>
-      <!-- The maximum number of threads when running a single query. -->
-      <max_threads>8</max_threads>
-    </default>
-    <web>
-      <max_rows_to_read>1000000000</max_rows_to_read>
-      <max_bytes_to_read>100000000000</max_bytes_to_read>
-    </web>
-  </profiles>
-</clickhouse>
-```
-
-When updating the configuration, the key we set in the `configure.yaml` file should be the same as the key in the `user.xml` file, for example:
-
-```yaml
-# snippet of configure.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-spec:
-  reconfigures:
-  - componentName: clickhouse
-    parameters:
-    - key: clickhouse.profiles.web.max_bytes_to_read
-      value: '200000000000'
-```
-
-To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profiles.web.max_bytes_to_read` w.r.t the `user.xml` file.
-
-</details>
-
 
 ### Using Config Templates
 

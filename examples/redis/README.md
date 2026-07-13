@@ -21,10 +21,19 @@ Redis is an open source (BSD licensed), in-memory data structure store, used as 
 
 ### Versions
 
-| Major Versions | Description |
-|---------------|-------------|
-| 7.0           | 7.0.6 |
-| 7.2           | 7.2.4 |
+| Major Versions | Service Versions |
+|---------------|------------------|
+| 5.0 | 5.0.12 |
+| 6.2 | 6.2.14, 6.2.17, 6.2.18, 6.2.19, 6.2.22 |
+| 7.0 | 7.0.6 |
+| 7.2 | 7.2.4, 7.2.7, 7.2.10, 7.2.11, 7.2.12, 7.2.14 |
+| 7.4 | 7.4.2, 7.4.5, 7.4.6, 7.4.7, 7.4.9 |
+| 8.0 | 8.0.1, 8.0.3, 8.0.4, 8.0.5 |
+| 8.2 | 8.2.1, 8.2.2, 8.2.3, 8.2.6 |
+| 8.4 | 8.4.0, 8.4.3 |
+| 8.6 | 8.6.3 |
+
+The Redis versions above apply to Redis, Redis Cluster, and Redis Sentinel ComponentVersions. The Redis Twemproxy ComponentVersion supports service version `0.5.0`.
 
 ## Prerequisites
 

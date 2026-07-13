@@ -24,10 +24,11 @@ Apache Kafka is a distributed streaming platform designed to build real-time pip
 
 ### Versions
 
-| Versions |
-|----------|
-| 3.3.2 |
-| 2.8.2 |
+| Component | Service Versions |
+|-----------|------------------|
+| Kafka Broker | 2.7.0, 2.8.2, 3.3.2, 3.7.1, 3.8.1, 3.9.0 |
+| Kafka Combine / Controller | 3.3.2, 3.7.1, 3.8.1, 3.9.0 |
+| Kafka Exporter | 1.6.0 |
 
 ## Prerequisites
 

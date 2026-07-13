@@ -20,13 +20,14 @@ PostgreSQL (Postgres) is an open source object-relational database known for rel
 
 ### Versions
 
-| Major Versions | Description |
-|---------------|-------------|
-| 12            | 12.14.0,12.14.1,12.15.0,12.22.0|
-| 14            | 14.7.2,14.8.0,14.18.0|
-| 15            | 15.7.0,15.13.0|
-| 16            | 16.4.0,16.9.0|
-| 17            | 17.5.0|
+| Major Versions | Service Versions |
+|---------------|------------------|
+| 12 | 12.14.0, 12.14.1, 12.15.0, 12.22.0 |
+| 14 | 14.7.2, 14.8.0, 14.18.0, 14.23.0 |
+| 15 | 15.7.0, 15.13.0, 15.18.0 |
+| 16 | 16.4.0, 16.9.0, 16.14.0 |
+| 17 | 17.5.0, 17.10.0 |
+| 18 | 18.1.0, 18.4.0 |
 
 ## Prerequisites
 
@@ -80,7 +81,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,14.7.2,14.8.0,14.18.0,15.7.0,15.13.0,16.4.0,16.9.0,17.5.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,14.7.2,14.8.0,14.18.0,14.23.0,15.7.0,15.13.0,15.18.0,16.4.0,16.9.0,16.14.0,17.5.0,17.10.0,18.1.0,18.4.0]
       serviceVersion: "14.7.2"
 ```
 
