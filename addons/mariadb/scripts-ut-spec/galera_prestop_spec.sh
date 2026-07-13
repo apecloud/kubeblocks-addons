@@ -216,6 +216,37 @@ Describe "galera-prestop.sh"
     The contents of file "${TEST_DIR}/sql.log" should include "mysqladmin"
   End
 
+  It "degrades a stuck higher-ordinal peer but still shuts down locally and exits successfully"
+    GALERA_PRESTOP_ORDER_WAIT_SECONDS=2
+    GALERA_PRESTOP_POLL_SECONDS=30
+    printf '0\n' > "${TEST_DIR}/clock"
+    monotonic_seconds() {
+      local now
+      now="$(cat "${TEST_DIR}/clock")"
+      printf '%s\n' "$((now + 1))" > "${TEST_DIR}/clock"
+      printf '%s' "${now}"
+    }
+    peer_sql_port_state() {
+      printf 'open'
+    }
+    local_sql() {
+      printf '%s\n' "$1" >> "${TEST_DIR}/sql.log"
+      return 0
+    }
+    mysqladmin() {
+      printf 'mysqladmin %s\n' "$*" >> "${TEST_DIR}/sql.log"
+      return 0
+    }
+
+    When call main
+    The status should be success
+    The output should include "reason=order_wait_timeout"
+    The contents of file "${GALERA_PRESTOP_DEGRADED_LOG}" should include "reason=order_wait_timeout"
+    The contents of file "${TEST_DIR}/sql.log" should include "SET GLOBAL wsrep_desync=ON;"
+    The contents of file "${TEST_DIR}/sql.log" should include "SET GLOBAL wsrep_on=OFF;"
+    The contents of file "${TEST_DIR}/sql.log" should include "mysqladmin -uroot -psecret -h127.0.0.1 shutdown"
+  End
+
   It "runs desync, wsrep disable, and mysqladmin shutdown in order"
     local_sql() {
       printf '%s\n' "$1" >> "${TEST_DIR}/sql.log"
