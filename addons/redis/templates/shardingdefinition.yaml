@@ -19,17 +19,23 @@ spec:
       shared: true
   lifecycleActions:
     shardRemove:
-      timeoutSeconds: 600
+      timeoutSeconds: 50
       exec:
         container: redis-cluster
         command:
           - /bin/bash
           - -c
           - |
+            log=/tmp/pre-terminate.log
             if [ "$LEGACY_REDIS" == "true" ]; then
-               /scripts/redis-cluster6-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
+              /scripts/redis-cluster6-manage.sh --pre-terminate >"$log" 2>&1
             else
-               /scripts/redis-cluster-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
+              /scripts/redis-cluster-manage.sh --pre-terminate >"$log" 2>&1
             fi
+            rc=$?
+            if [ "$rc" -ne 0 ]; then
+              cat "$log" >&2
+            fi
+            exit "$rc"
       retryPolicy:
         maxRetries: 10
