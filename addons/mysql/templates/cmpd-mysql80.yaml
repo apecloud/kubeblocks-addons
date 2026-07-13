@@ -8,6 +8,7 @@ metadata:
     {{- include "mysql.annotations" . | nindent 4 }}
 spec:
   {{- include "mysql.spec.common" . | nindent 2 }}
+  {{- include "mysql.spec.roles.semisync" . | nindent 2 }}
   serviceVersion: 8.0.46
   configs:
     - name: mysql-replication-config

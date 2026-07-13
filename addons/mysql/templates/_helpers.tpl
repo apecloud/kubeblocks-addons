@@ -250,6 +250,9 @@ tls:
   caFile: ca.pem
   certFile: cert.pem
   keyFile: key.pem
+{{- end }}
+
+{{- define "mysql.spec.roles.semisync" -}}
 roles:
   - name: primary
     updatePriority: 2
@@ -258,6 +261,22 @@ roles:
   - name: secondary
     updatePriority: 1
     participatesInQuorum: false
+{{- end }}
+
+{{/*
+Group Replication is a majority-based protocol: members participate in quorum
+so KubeBlocks will not take down a majority at once during rolling updates,
+scale-in, stop, or failure recovery.
+*/}}
+{{- define "mysql.spec.roles.mgr" -}}
+roles:
+  - name: primary
+    updatePriority: 2
+    participatesInQuorum: true
+    isExclusive: true
+  - name: secondary
+    updatePriority: 1
+    participatesInQuorum: true
 {{- end }}
 
 {{- define "mysql.spec.runtime.entrypoint" -}}
