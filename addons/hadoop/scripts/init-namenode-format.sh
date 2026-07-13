@@ -31,8 +31,8 @@ fi
 NAMESERVICES=$("${HADOOP_HOME}/bin/hdfs" getconf -confKey dfs.nameservices 2>/dev/null || echo "")
 if [[ -z "$NAMESERVICES" ]]; then
   echo "No dfs.nameservices configured (standalone mode), using default format"
-  echo "N" | "${HADOOP_HOME}/bin/hdfs" namenode -format || true
+  echo "N" | "${HADOOP_HOME}/bin/hdfs" namenode -format
 else
   echo "Formatting NameNode for nameservice ${NAMESERVICES}"
-  echo "N" | "${HADOOP_HOME}/bin/hdfs" namenode -format "$NAMESERVICES" || true
+  echo "N" | "${HADOOP_HOME}/bin/hdfs" namenode -format "$NAMESERVICES"
 fi

@@ -134,6 +134,12 @@ helm install hbase-cluster ./addons-cluster/hbase \
   --set serviceRefs.hdfsNamenode.clusterServiceSelector.cluster=hdfs
 ```
 
+如果外部 HDFS 的 logical nameservice 与所选 KubeBlocks cluster 名不同，需要显式覆盖：
+
+```bash
+--set hdfs.nameservice=<logical-nameservice>
+```
+
 Standalone 模式：
 
 ```bash
@@ -144,6 +150,18 @@ helm install hbase-standalone ./addons-cluster/hbase \
   --set serviceRefs.hbaseZookeeper.namespace=kubeblocks \
   --set serviceRefs.hbaseZookeeper.clusterServiceSelector.cluster=zk
 ```
+
+### Smoke 验证
+
+按上面的示例完成部署后，可以执行下面的最小就绪性与连通性验证：
+
+```bash
+bash ./hack/verify-hbase-hadoop-smoke.sh \
+  --namespace demo \
+  --cases hbase-standalone,hbase-cluster
+```
+
+如果只想先审查命令序列，可以追加 `--dry-run`。
 
 ## 原生 Cluster API 示例
 

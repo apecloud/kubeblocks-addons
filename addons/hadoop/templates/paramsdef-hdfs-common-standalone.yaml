@@ -1,12 +1,12 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: hdfs-common-config-constraints
+  name: hdfs-common-standalone-config-constraints
   labels:
     {{- include "hadoop.labels" . | nindent 4 }}
 spec:
-  componentDef: ^hdfs-(namenode|datanode|journalnode)$
-  templateName: hdfs-common-config-template
+  componentDef: ^hdfs-(namenode|datanode)-standalone$
+  templateName: hdfs-common-standalone-config-template
   fileName: core-site.xml
   fileFormatConfig:
     format: xml

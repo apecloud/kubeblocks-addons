@@ -5,7 +5,11 @@ metadata:
   labels:
     {{- include "hadoop.labels" . | nindent 4 }}
 spec:
+  componentDef: hdfs-journalnode
+  templateName: journalnode-config-template
   fileName: hdfs-site.xml
+  fileFormatConfig:
+    format: xml
   parametersSchema:
     topLevelKey: JournalNodeParameter
     cue: |-

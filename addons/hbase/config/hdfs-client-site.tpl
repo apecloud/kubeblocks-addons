@@ -13,21 +13,24 @@
     </property>
 
 {{- $nodes := splitList "," .HDFS_NAMENODE_NODES }}
-{{- $rpcPort := .HDFS_NAMENODE_RPC_PORT }}
+{{- $rpcEndpoints := splitList "," .HDFS_NAMENODE_RPC_ENDPOINTS }}
+{{- $hosts := splitList "," .HDFS_NAMENODE_HOSTS }}
 {{- $httpPort := .HDFS_NAMENODE_HTTP_PORT }}
 {{- $ns := .HDFS_NAMESERVICE }}
-{{- $clusterDomain := .CLUSTER_DOMAIN }}
-{{- $namespace := .NAMESPACE }}
-{{- $headlessSvc := printf "%s-namenode-headless" $ns }}
-{{- range $nn := $nodes }}
-{{- $ordinal := trimPrefix "nn" $nn }}
+{{- if ne (len $nodes) (len $rpcEndpoints) }}
+{{- fail "HDFS_NAMENODE_NODES and HDFS_NAMENODE_RPC_ENDPOINTS must have the same number of entries" }}
+{{- end }}
+{{- if ne (len $nodes) (len $hosts) }}
+{{- fail "HDFS_NAMENODE_NODES and HDFS_NAMENODE_HOSTS must have the same number of entries" }}
+{{- end }}
+{{- range $i, $nn := $nodes }}
     <property>
         <name>dfs.namenode.rpc-address.{{ $ns }}.{{ $nn }}</name>
-        <value>{{ $ns }}-namenode-{{ $ordinal }}.{{ $headlessSvc }}.{{ $namespace }}.svc.{{ $clusterDomain }}:{{ $rpcPort }}</value>
+        <value>{{ trim (index $rpcEndpoints $i) }}</value>
     </property>
     <property>
         <name>dfs.namenode.http-address.{{ $ns }}.{{ $nn }}</name>
-        <value>{{ $ns }}-namenode-{{ $ordinal }}.{{ $headlessSvc }}.{{ $namespace }}.svc.{{ $clusterDomain }}:{{ $httpPort }}</value>
+        <value>{{ trim (index $hosts $i) }}:{{ $httpPort }}</value>
     </property>
 {{- end }}
 

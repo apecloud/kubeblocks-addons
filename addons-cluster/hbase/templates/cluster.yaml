@@ -32,7 +32,7 @@
       configs:
         - name: hbase-config
           variables:
-            HDFS_NAMESERVICE: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.cluster | quote }}
+            HDFS_NAMESERVICE: {{ default .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.cluster .Values.hdfs.nameservice | quote }}
             HDFS_NAMENODE_NODES: {{ .Values.hdfs.namenodeNodes | quote }}
             HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.namenodeRpcPort | quote }}
             HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.namenodeHttpPort | quote }}
@@ -117,7 +117,7 @@
       configs:
         - name: hbase-config
           variables:
-            HDFS_NAMESERVICE: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.cluster | quote }}
+            HDFS_NAMESERVICE: {{ default .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.cluster .Values.hdfs.nameservice | quote }}
             HDFS_NAMENODE_NODES: {{ .Values.hdfs.namenodeNodes | quote }}
             HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.namenodeRpcPort | quote }}
             HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.namenodeHttpPort | quote }}

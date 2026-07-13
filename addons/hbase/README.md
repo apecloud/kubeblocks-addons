@@ -131,6 +131,12 @@ helm install hbase-cluster ./addons-cluster/hbase \
   --set serviceRefs.hdfsNamenode.clusterServiceSelector.cluster=hdfs
 ```
 
+If the external HDFS logical nameservice is different from the selected KubeBlocks cluster name, set it explicitly:
+
+```bash
+--set hdfs.nameservice=<logical-nameservice>
+```
+
 Standalone topology:
 
 ```bash
@@ -141,6 +147,18 @@ helm install hbase-standalone ./addons-cluster/hbase \
   --set serviceRefs.hbaseZookeeper.namespace=kubeblocks \
   --set serviceRefs.hbaseZookeeper.clusterServiceSelector.cluster=zk
 ```
+
+### Smoke Validation
+
+After provisioning the demo releases above, run the minimal readiness and connectivity checks with:
+
+```bash
+bash ./hack/verify-hbase-hadoop-smoke.sh \
+  --namespace demo \
+  --cases hbase-standalone,hbase-cluster
+```
+
+Use `--dry-run` to review the command sequence before executing it against a live cluster.
 
 ## Raw Cluster Examples
 

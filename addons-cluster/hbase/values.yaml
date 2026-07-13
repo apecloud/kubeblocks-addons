@@ -51,6 +51,7 @@ serviceRefs:
         port: fs
 
 hdfs:
+  nameservice: ""
   namenodeNodes: nn0,nn1
   namenodeRpcPort: 8020
   namenodeHttpPort: 9870

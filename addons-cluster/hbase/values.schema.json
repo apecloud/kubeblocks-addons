@@ -71,6 +71,10 @@
     "hdfs": {
       "type": "object",
       "properties": {
+          "nameservice": {
+            "type": "string",
+            "default": ""
+          },
         "namenodeNodes": {
           "type": "string",
           "default": "nn0,nn1"

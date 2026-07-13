@@ -14,7 +14,6 @@
 - 可配置的 DataNode `hostNetwork`
 - Addon 内置的标准参数管理链路：
   - `ParametersDefinition`
-  - `ParamConfigRenderer`
   - CUE config constraints
 - `addons-cluster/hadoop` 中额外暴露的一批部署阶段可覆盖项
 
@@ -44,10 +43,13 @@
 - NameNode、DataNode、JournalNode、ZKFC 的启动和初始化脚本
 - 标准参数管理资源：
   - `paramsdef-hdfs-common.yaml`
+  - `paramsdef-hdfs-common-standalone.yaml`
   - `paramsdef-hdfs-namenode.yaml`
+  - `paramsdef-hdfs-namenode-standalone.yaml`
   - `paramsdef-hdfs-datanode.yaml`
+  - `paramsdef-hdfs-datanode-standalone.yaml`
   - `paramsdef-hdfs-journalnode.yaml`
-  - 对应的 `pcr-*` 资源
+  - 直接在 `ParametersDefinition` 中声明的 standalone / cluster 模板绑定
 
 `addons-cluster/hadoop` 目录则提供了一个可直接部署的 cluster chart，并通过 `values.yaml` 暴露了一批部署阶段参数。
 
@@ -102,13 +104,15 @@ kubectl create ns demo
 `addons/hadoop` 本身已经包含标准 KubeBlocks 参数链路：
 
 - `ParametersDefinition`
-- `ParamConfigRenderer`
 - CUE constraints
 
 这些资源定义在：
 
 - `addons/hadoop/templates/paramsdef-*`
-- `addons/hadoop/templates/pcr-*`
+
+当前 KubeBlocks 的参数链路会直接根据 `ParametersDefinition` 上的
+`componentDef`、`templateName`、`fileName`、`fileFormatConfig`
+来解析 Hadoop 的参数模板绑定，而不是再依赖 legacy `ParamConfigRenderer` 资源。
 
 因此，README 不能简单理解成“只有静态配置模板”。Addon 自身已经具备标准参数管理能力，覆盖的配置集合包括：
 
@@ -257,6 +261,18 @@ helm install hdfs-standalone ./addons-cluster/hadoop \
   --create-namespace \
   --set topology=standalone
 ```
+
+### Smoke 验证
+
+按上面的示例完成部署后，可以执行下面的最小就绪性与连通性验证：
+
+```bash
+bash ./hack/verify-hbase-hadoop-smoke.sh \
+  --namespace demo \
+  --cases hdfs-standalone,hdfs-ha
+```
+
+如果只想先审查命令序列，可以追加 `--dry-run`。
 
 ### 部署阶段参数覆盖示例
 

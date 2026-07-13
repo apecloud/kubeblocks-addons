@@ -244,6 +244,16 @@ spec:
       value: {{ .Values.hdfs.nameservice | quote }}
     - name: HDFS_NAMENODE_NODES
       value: {{ .Values.hdfs.namenodeNodes | quote }}
+    - name: HDFS_NAMENODE_HOSTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hdfs-namenode
+          host: Required
+    - name: HDFS_NAMENODE_RPC_ENDPOINTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hdfs-namenode
+          endpoint: Required
     - name: HDFS_NAMENODE_RPC_PORT
       value: {{ .Values.hdfs.namenodeRpcPort | quote }}
     - name: HDFS_NAMENODE_HTTP_PORT

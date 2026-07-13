@@ -14,7 +14,6 @@ The Hadoop addon under `addons/hadoop` provides HDFS on KubeBlocks with:
 - configurable DataNode `hostNetwork`
 - standard parameter management resources in the addon itself:
   - `ParametersDefinition`
-  - `ParamConfigRenderer`
   - CUE config constraints
 - an additional deploy-time configuration surface in `addons-cluster/hadoop`
 
@@ -44,10 +43,13 @@ The addon package under `addons/hadoop` defines:
 - startup and init scripts for NameNode, DataNode, JournalNode, and ZKFC
 - parameter management resources:
   - `paramsdef-hdfs-common.yaml`
+  - `paramsdef-hdfs-common-standalone.yaml`
   - `paramsdef-hdfs-namenode.yaml`
+  - `paramsdef-hdfs-namenode-standalone.yaml`
   - `paramsdef-hdfs-datanode.yaml`
+  - `paramsdef-hdfs-datanode-standalone.yaml`
   - `paramsdef-hdfs-journalnode.yaml`
-  - corresponding `pcr-*` resources
+  - standalone and cluster template bindings declared directly in `ParametersDefinition`
 
 The deployable cluster chart under `addons-cluster/hadoop` provides a ready-to-use `Cluster` manifest and exposes a first batch of deploy-time overrides through `values.yaml`.
 
@@ -102,10 +104,12 @@ There are two different configuration surfaces in this repository.
 The addon itself already contains standard parameter-management artifacts:
 
 - `ParametersDefinition`
-- `ParamConfigRenderer`
 - CUE constraints
 
-These resources are defined in `addons/hadoop/templates/paramsdef-*` and `addons/hadoop/templates/pcr-*`.
+These resources are defined in `addons/hadoop/templates/paramsdef-*`.
+
+The current KubeBlocks parameter pipeline resolves Hadoop parameter definitions directly from `ParametersDefinition` metadata
+(`componentDef`, `templateName`, `fileName`, `fileFormatConfig`) instead of legacy `ParamConfigRenderer` resources.
 
 This means the addon is not limited to raw static config templates. The standard KubeBlocks parameter chain already exists for addon-managed configuration files such as:
 
@@ -254,6 +258,18 @@ helm install hdfs-standalone ./addons-cluster/hadoop \
   --create-namespace \
   --set topology=standalone
 ```
+
+### Smoke Validation
+
+After provisioning the demo releases above, run the minimal readiness and connectivity checks with:
+
+```bash
+bash ./hack/verify-hbase-hadoop-smoke.sh \
+  --namespace demo \
+  --cases hdfs-standalone,hdfs-ha
+```
+
+Use `--dry-run` to review the command sequence before executing it against a live cluster.
 
 ### Example Deploy-Time Overrides
 

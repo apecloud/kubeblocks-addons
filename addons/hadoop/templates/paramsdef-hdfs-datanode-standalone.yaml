@@ -1,12 +1,12 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: datanode-config-constraints
+  name: datanode-standalone-config-constraints
   labels:
     {{- include "hadoop.labels" . | nindent 4 }}
 spec:
-  componentDef: hdfs-datanode
-  templateName: datanode-config-template
+  componentDef: hdfs-datanode-standalone
+  templateName: datanode-standalone-config-template
   fileName: hdfs-site.xml
   fileFormatConfig:
     format: xml
