@@ -143,7 +143,7 @@ DATASAFED
     The stdout should include "restore prepareData completed"
   End
 
-  It "uses only the pod-name stem from the volume-populator target relative path"
+  It "accepts the single-segment volume-populator target path as the archive stem"
     When call bash -c '
       set -Eeuo pipefail
       restore_script="$1"
@@ -178,9 +178,9 @@ DATASAFED
       unset DP_TARGET_POD_NAME || true
       PATH="${bin_dir}:${PATH}" \
         DATA_DIR="${data_dir}" \
-        DP_TARGET_RELATIVE_PATH="rabbitmq/rmq-br-5400-rabbitmq-2" \
-        DP_BACKUP_BASE_PATH="/backup/base/rabbitmq/rmq-br-5400-rabbitmq-2" \
-        EXPECTED_BACKUP_BASE_PATH="/backup/base/rabbitmq/rmq-br-5400-rabbitmq-2" \
+        DP_TARGET_RELATIVE_PATH="rmq-br-5400-rabbitmq-2" \
+        DP_BACKUP_BASE_PATH="/backup/base/rmq-br-5400-rabbitmq-2" \
+        EXPECTED_BACKUP_BASE_PATH="/backup/base/rmq-br-5400-rabbitmq-2" \
         EXPECTED_TARGET_POD_NAME="rmq-br-5400-rabbitmq-2" \
         FAKE_ARCHIVE_PATH="${tmp_dir}/payload.tar" \
         bash "${restore_script}"
@@ -200,20 +200,6 @@ DATASAFED
     ' _ "${restore_script}"
     The status should be failure
     The stderr should include "DP_TARGET_POD_NAME or DP_TARGET_RELATIVE_PATH is required"
-  End
-
-  It "fails closed when the target relative path has no pod-name segment"
-    When call bash -c '
-      set -Eeuo pipefail
-      restore_script="$1"
-      unset DP_TARGET_POD_NAME || true
-      DATA_DIR="$(mktemp -d)" \
-        DP_TARGET_RELATIVE_PATH="rabbitmq/" \
-        DP_BACKUP_BASE_PATH="/backup/base/rabbitmq" \
-        bash "${restore_script}"
-    ' _ "${restore_script}"
-    The status should be failure
-    The stderr should include "must be <target-name>/<target-pod-name>"
   End
 
   It "reconciles the restored system account idempotently after RabbitMQ is ready"
