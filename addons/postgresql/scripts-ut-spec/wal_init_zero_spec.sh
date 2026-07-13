@@ -13,7 +13,7 @@ Describe "PostgreSQL wal_init_zero configuration"
     local cue="../config/pg${major}-config-constraint.cue"
 
     # exact expected type: string enum accepting both PG and bool spellings
-    grep -Fq 'wal_init_zero?: string & ("on" | "off" | "true" | "false")' "${cue}"
+    grep -Fq 'wal_init_zero?: string & "on" | "off" | "true" | "false"' "${cue}"
     # guard against regression to any bool-kind participation for this GUC
     if grep -E 'wal_init_zero\?:.*bool' "${cue}"; then
       echo "wal_init_zero must not include a bool branch (BoolKind wins kind classification and breaks on/off)" >&2
