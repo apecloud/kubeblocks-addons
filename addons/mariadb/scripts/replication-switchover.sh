@@ -358,7 +358,9 @@ is_semisync_mode() {
 }
 
 sql_quote() {
-  printf "%s" "$1" | sed "s/'/''/g"
+  # Escape backslashes first, then single quotes (default sql_mode has no
+  # NO_BACKSLASH_ESCAPES). Matches _helpers.tpl sql_value_literal.
+  printf "%s" "$1" | sed -e 's/\\/\\\\/g' -e "s/'/''/g"
 }
 
 query_slave_status() {

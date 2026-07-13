@@ -264,6 +264,25 @@ Describe "galera-prestop.sh"
     The contents of file "${TEST_DIR}/sql.log" should include "mysqladmin -uroot -psecret -h127.0.0.1 shutdown"
   End
 
+  It "marks graceful shutdown before changing wsrep state"
+    local_sql() {
+      if [ ! -f "${DATA_DIR}/.galera-shutting-down" ]; then
+        return 9
+      fi
+      printf '%s\n' "$1" >> "${TEST_DIR}/sql.log"
+      return 0
+    }
+    mysqladmin() {
+      printf 'mysqladmin %s\n' "$*" >> "${TEST_DIR}/sql.log"
+      return 0
+    }
+
+    When call graceful_shutdown
+    The status should be success
+    The path "${DATA_DIR}/.galera-shutting-down" should be file
+    The contents of file "${TEST_DIR}/sql.log" should include "SET GLOBAL wsrep_desync=ON;"
+  End
+
   It "does not fail the hook when SQL cleanup commands fail"
     local_sql() {
       return 1
