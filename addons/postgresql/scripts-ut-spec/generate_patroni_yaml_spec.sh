@@ -21,8 +21,7 @@ restore_data:
   command: bash /home/postgres/pgdata/kb_restore/kb_restore.sh --replica
 EOF
     cat > "${conf_dir}/patroni.yaml" <<'EOF'
-postgresql:
-  use_pg_rewind: true
+ttl: 30
 EOF
     cat > "${conf_dir}/kb_pitr.conf" <<'EOF'
 method: kb_restore_from_time
@@ -38,7 +37,8 @@ EOF
     export SPILO_CONFIGURATION='bootstrap:
   initdb:
   - auth-host: md5
-postgresql: {}'
+postgresql:
+  use_pg_rewind: true'
   }
 
   cleanup() {
@@ -54,6 +54,20 @@ import yaml
 with open(sys.argv[1], 'r') as stream:
     config = yaml.safe_load(stream)
 sys.exit(0 if 'recovery_conf' not in config['bootstrap']['kb_restore'] else 1)
+PY
+    printf "%s" "$?"
+  }
+
+  rewind_failure_reinitializes_replica() {
+    python3 - "${out}" <<'PY'
+import sys
+import yaml
+
+with open(sys.argv[1], 'r') as stream:
+    postgresql = yaml.safe_load(stream)['postgresql']
+
+assert postgresql['use_pg_rewind'] is True
+assert postgresql['remove_data_directory_on_rewind_failure'] is True
 PY
     printf "%s" "$?"
   }
@@ -81,6 +95,12 @@ PY
     The status should eq 0
     The contents of file "${out}" should not include "method: kb_restore"
     The contents of file "${out}" should not include "create_replica_methods:"
+  End
+
+  It "reinitializes a replica when pg_rewind fails"
+    When run python3 ../scripts/generate_patroni_yaml.py "${out}"
+    The status should eq 0
+    The result of function rewind_failure_reinitializes_replica should eq 0
   End
 
   It "keeps the recovery configuration for point-in-time restore"

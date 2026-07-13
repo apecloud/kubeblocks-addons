@@ -51,6 +51,7 @@ def main(filename):
     postgresql = local_config['postgresql']
     postgresql['config_dir'] = '/home/postgres/pgdata/conf'
     postgresql['custom_conf'] = '/home/postgres/conf/postgresql.conf'
+    postgresql['remove_data_directory_on_rewind_failure'] = True
 
     # add pg_hba.conf
     with open(os.path.join(conf_dir, 'pg_hba.conf'), 'r') as f:
