@@ -12,21 +12,19 @@ Describe "Qdrant Setup Bash Script Tests"
   Include ../scripts/qdrant-setup.sh
 
   cleanup() {
-    unset QDRANT_SETUP_UNIT_TEST CURRENT_POD_NAME KB_NAMESPACE CLUSTER_DOMAIN CLUSTER_COMPONENT_NAME QDRANT_SERVICE_NAME
+    unset QDRANT_SETUP_UNIT_TEST CURRENT_POD_NAME
+    unset QDRANT_COMPONENT_SERVICE_HOST QDRANT_HEADLESS_SERVICE_HOST
   }
   After "cleanup"
 
   Describe "qdrant_current_pod_fqdn()"
     setup() {
       export CURRENT_POD_NAME="qdrant-rollout-replace-qdrant-6"
-      export KB_NAMESPACE="default"
-      export CLUSTER_DOMAIN="cluster.local"
-      export CLUSTER_COMPONENT_NAME="qdrant-rollout-replace-qdrant"
-      export QDRANT_SERVICE_NAME="qdrant"
+      export QDRANT_HEADLESS_SERVICE_HOST="qdrant-rollout-replace-qdrant-headless.default.svc.cluster.local"
     }
     Before "setup"
 
-    It "derives current pod FQDN from pod identity and cluster DNS settings"
+    It "uses the KubeBlocks-resolved headless service host for the current pod FQDN"
       When call qdrant_current_pod_fqdn
       The status should be success
       The output should eq "qdrant-rollout-replace-qdrant-6.qdrant-rollout-replace-qdrant-headless.default.svc.cluster.local"
@@ -36,14 +34,11 @@ Describe "Qdrant Setup Bash Script Tests"
   Describe "qdrant_bootstrap_service_host()"
     setup() {
       export CURRENT_POD_NAME="qdrant-rollout-replace-qdrant-6"
-      export KB_NAMESPACE="default"
-      export CLUSTER_DOMAIN="cluster.local"
-      export CLUSTER_COMPONENT_NAME="qdrant-rollout-replace-qdrant"
-      export QDRANT_SERVICE_NAME="qdrant"
+      export QDRANT_COMPONENT_SERVICE_HOST="qdrant-rollout-replace-qdrant-qdrant.default.svc.cluster.local"
     }
     Before "setup"
 
-    It "derives the component Service host used for joining replacement or scale-out pods"
+    It "uses the KubeBlocks-resolved ComponentService host for joining replacement or scale-out pods"
       When call qdrant_bootstrap_service_host
       The status should be success
       The output should eq "qdrant-rollout-replace-qdrant-qdrant.default.svc.cluster.local"
@@ -52,12 +47,16 @@ Describe "Qdrant Setup Bash Script Tests"
 
   Describe "qdrant_start_mode()"
     setup() {
-      export KB_NAMESPACE="default"
-      export CLUSTER_DOMAIN="cluster.local"
       export QDRANT_STORAGE_PATH="./qdrant-test-storage"
       rm -rf "$QDRANT_STORAGE_PATH"
       mkdir -p "$QDRANT_STORAGE_PATH"
+      qdrant_curl_call_count=0
       qdrant_curl() {
+        qdrant_curl_call_count=$((qdrant_curl_call_count + 1))
+        if [ -n "${BOOTSTRAP_SERVICE_SUCCEEDS_ON_ATTEMPT:-}" ] &&
+          [ "$qdrant_curl_call_count" -ge "$BOOTSTRAP_SERVICE_SUCCEEDS_ON_ATTEMPT" ]; then
+          return 0
+        fi
         [ "${BOOTSTRAP_SERVICE_AVAILABLE:-false}" = "true" ]
       }
     }
@@ -65,16 +64,29 @@ Describe "Qdrant Setup Bash Script Tests"
 
     cleanup_storage() {
       rm -rf "$QDRANT_STORAGE_PATH"
-      unset BOOTSTRAP_SERVICE_AVAILABLE QDRANT_STORAGE_PATH
+      unset BOOTSTRAP_SERVICE_AVAILABLE BOOTSTRAP_SERVICE_SUCCEEDS_ON_ATTEMPT QDRANT_STORAGE_PATH
+      unset QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_ATTEMPTS QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_SLEEP_SECONDS
     }
     After "cleanup_storage"
 
-    It "bootstraps the initial empty ordinal zero pod when no service endpoint exists"
+    It "bootstraps the initial empty ordinal zero pod only after discovery attempts are exhausted"
       CURRENT_POD_NAME="qdrant-provision-qdrant-0"
       BOOTSTRAP_SERVICE_AVAILABLE=false
+      QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_ATTEMPTS=1
       When call qdrant_start_mode "http://qdrant-provision-qdrant-qdrant.default.svc.cluster.local:6333"
       The status should be success
       The output should eq "bootstrap"
+    End
+
+    It "joins when a reused empty ordinal zero observes an existing service during discovery"
+      CURRENT_POD_NAME="qdrant-rollout-replace-qdrant-0"
+      BOOTSTRAP_SERVICE_AVAILABLE=false
+      BOOTSTRAP_SERVICE_SUCCEEDS_ON_ATTEMPT=2
+      QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_ATTEMPTS=3
+      QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_SLEEP_SECONDS=0
+      When call qdrant_start_mode "http://qdrant-rollout-replace-qdrant-qdrant.default.svc.cluster.local:6333"
+      The status should be success
+      The output should eq "join"
     End
 
     It "joins an existing cluster even when KubeBlocks reuses ordinal zero"

@@ -11,9 +11,26 @@ Describe "Qdrant Member Leave Bash Script Tests"
   Include ../scripts/qdrant-member-leave.sh
 
   cleanup() {
-    unset QDRANT_MEMBER_LEAVE_UNIT_TEST
+    unset QDRANT_MEMBER_LEAVE_UNIT_TEST KB_LEAVE_MEMBER_POD_NAME
   }
   After "cleanup"
+
+  Describe "peer pod URI matching"
+    cluster_info='{"result":{"peers":{"1":{"uri":"http://qdrant-cluster-qdrant-1.qdrant-cluster-qdrant-headless.default.svc.cluster.local:6335/"},"10":{"uri":"http://qdrant-cluster-qdrant-10.qdrant-cluster-qdrant-headless.default.svc.cluster.local:6335/"}}}}'
+
+    It "matches the exact pod host and does not also match ordinal 10"
+      When call qdrant_peer_id_for_pod "$cluster_info" "qdrant-cluster-qdrant-1"
+      The status should be success
+      The output should eq "1"
+    End
+
+    It "keeps ordinal 10 as a surviving control endpoint when ordinal 1 leaves"
+      KB_LEAVE_MEMBER_POD_NAME="qdrant-cluster-qdrant-1"
+      When call qdrant_control_uris_from_cluster_info "$cluster_info"
+      The status should be success
+      The output should eq "http://qdrant-cluster-qdrant-10.qdrant-cluster-qdrant-headless.default.svc.cluster.local:6333"
+    End
+  End
 
   Describe "qdrant_select_target_peer_id()"
     cluster_info='{"result":{"peers":{"1":{"uri":"http://qdrant-0:6335/"},"2":{"uri":"http://qdrant-1:6335/"},"3":{"uri":"http://qdrant-2:6335/"}}}}'

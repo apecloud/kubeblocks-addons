@@ -26,7 +26,16 @@ qdrant_peer_id_for_pod() {
 
   echo "$cluster_info" | "$jq_bin" -r \
     --arg name "$pod_name" \
-    '.result.peers | to_entries[] | select(.value.uri | contains($name)) | .key'
+    'def peer_host:
+       (. // "")
+       | sub("^[^:]+://"; "")
+       | split("/")[0]
+       | split(":")[0];
+     .result.peers
+     | to_entries[]
+     | select((.value.uri | peer_host) as $host
+       | ($host == $name or ($host | startswith($name + "."))))
+     | .key'
 }
 
 qdrant_peer_exists() {
@@ -102,9 +111,15 @@ qdrant_control_uris_from_cluster_info() {
 
   echo "$cluster_info" | "$jq_bin" -r \
     --arg name "$KB_LEAVE_MEMBER_POD_NAME" \
-    '.result.peers
+    'def peer_host:
+       (. // "")
+       | sub("^[^:]+://"; "")
+       | split("/")[0]
+       | split(":")[0];
+     .result.peers
      | to_entries[]
-     | select(.value.uri | contains($name) | not)
+     | select(((.value.uri | peer_host) as $host
+       | ($host == $name or ($host | startswith($name + ".")))) | not)
      | .value.uri
      | sub(":6335/?$"; ":6333")'
 }
@@ -400,13 +415,7 @@ qdrant_select_control_endpoint() {
   local cluster_info="$1"
   local surviving_control_uri
 
-  surviving_control_uri="$(echo "$cluster_info" | "$JQ" -r \
-    --arg name "$KB_LEAVE_MEMBER_POD_NAME" \
-    '.result.peers
-     | to_entries
-     | map(select(.value.uri | contains($name) | not))
-     | .[0].value.uri // ""
-     | sub(":6335/?$"; ":6333")')"
+  surviving_control_uri="$(qdrant_control_uris_from_cluster_info "$cluster_info" | head -n 1)"
   if [ -n "$surviving_control_uri" ]; then
     control_uri="$surviving_control_uri"
   fi

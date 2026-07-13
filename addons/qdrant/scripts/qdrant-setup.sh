@@ -35,6 +35,27 @@ qdrant_bootstrap_service_available() {
     "${bootstrap_service_http_uri}/cluster" >/dev/null 2>&1
 }
 
+qdrant_existing_bootstrap_service_observed() {
+  bootstrap_service_http_uri="$1"
+  bootstrap_discovery_attempts="${QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_ATTEMPTS:-10}"
+  bootstrap_discovery_sleep_seconds="${QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_SLEEP_SECONDS:-3}"
+  bootstrap_discovery_attempt=1
+
+  while [ "$bootstrap_discovery_attempt" -le "$bootstrap_discovery_attempts" ]; do
+    if qdrant_bootstrap_service_available "$bootstrap_service_http_uri"; then
+      return 0
+    fi
+
+    if [ "$bootstrap_discovery_attempt" -lt "$bootstrap_discovery_attempts" ]; then
+      echo "INFO: bootstrap service is not reachable yet; retrying before initial bootstrap decision (${bootstrap_discovery_attempt}/${bootstrap_discovery_attempts})" >&2
+      sleep "$bootstrap_discovery_sleep_seconds"
+    fi
+    bootstrap_discovery_attempt=$((bootstrap_discovery_attempt + 1))
+  done
+
+  return 1
+}
+
 qdrant_start_mode() {
   bootstrap_service_http_uri="$1"
 
@@ -49,6 +70,10 @@ qdrant_start_mode() {
   fi
 
   if qdrant_should_self_bootstrap; then
+    if qdrant_existing_bootstrap_service_observed "$bootstrap_service_http_uri"; then
+      echo "join"
+      return 0
+    fi
     echo "bootstrap"
     return 0
   fi

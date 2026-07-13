@@ -37,62 +37,20 @@ qdrant_pod_ordinal() {
   printf "%s" "$qdrant_ordinal"
 }
 
-# Derive the component pod name prefix by stripping the ordinal suffix.
+# Build the resolved headless-service FQDN for a Qdrant pod.
 # Args: $1 - pod name (defaults to CURRENT_POD_NAME)
-# Prints the prefix (e.g. "my-qdrant" from "my-qdrant-0"); returns 1 on failure.
-qdrant_pod_prefix() {
-  qdrant_prefix_pod_name="${1:-${CURRENT_POD_NAME:-}}"
-  qdrant_prefix_ordinal="$(qdrant_pod_ordinal "$qdrant_prefix_pod_name")" || return 1
-  qdrant_prefix="${qdrant_prefix_pod_name%-${qdrant_prefix_ordinal}}"
-  if [ -z "$qdrant_prefix" ] || [ "$qdrant_prefix" = "$qdrant_prefix_pod_name" ]; then
-    echo "ERROR: failed to derive component pod prefix from pod ${qdrant_prefix_pod_name}." >&2
-    return 1
-  fi
-  printf "%s" "$qdrant_prefix"
-}
-
-# Resolve the Kubernetes cluster DNS domain.
-# Uses CLUSTER_DOMAIN when set, otherwise "cluster.local"; strips leading/trailing dots.
-# Prints the normalized domain; returns 1 if the result is empty.
-qdrant_cluster_domain() {
-  qdrant_domain="${CLUSTER_DOMAIN:-cluster.local}"
-  qdrant_domain="${qdrant_domain#.}"
-  qdrant_domain="${qdrant_domain%.}"
-  if [ -z "$qdrant_domain" ]; then
-    echo "ERROR: CLUSTER_DOMAIN resolved to an empty value." >&2
-    return 1
-  fi
-  printf "%s" "$qdrant_domain"
-}
-
-# Build the headless-service FQDN for a Qdrant pod.
-# Args: $1 - pod name (defaults to CURRENT_POD_NAME)
-# Prints: <pod>.<prefix>-headless.<namespace>.svc.<domain>
+# Prints: <pod>.<QDRANT_HEADLESS_SERVICE_HOST>
 qdrant_current_pod_fqdn() {
   qdrant_current_pod_name="${1:-$(qdrant_required_env CURRENT_POD_NAME)}" || return 1
-  qdrant_current_prefix="$(qdrant_pod_prefix "$qdrant_current_pod_name")" || return 1
-  qdrant_current_namespace="$(qdrant_required_env KB_NAMESPACE)" || return 1
-  qdrant_current_domain="$(qdrant_cluster_domain)" || return 1
-  printf "%s.%s-headless.%s.svc.%s" \
+  qdrant_headless_service_host="$(qdrant_required_env QDRANT_HEADLESS_SERVICE_HOST)" || return 1
+  printf "%s.%s" \
     "$qdrant_current_pod_name" \
-    "$qdrant_current_prefix" \
-    "$qdrant_current_namespace" \
-    "$qdrant_current_domain"
+    "$qdrant_headless_service_host"
 }
 
-# Build the cluster Service host used to reach the bootstrap (ordinal-0) node.
-# Args: $1 - pod name used only to derive the component prefix (defaults to CURRENT_POD_NAME)
-# Prints: <prefix>-qdrant.<namespace>.svc.<domain>
+# Return the ComponentService host used to discover or join the cluster.
 qdrant_bootstrap_service_host() {
-  qdrant_cluster_component_name="$(qdrant_required_env CLUSTER_COMPONENT_NAME)" || return 1
-  qdrant_service_name="$(qdrant_required_env QDRANT_SERVICE_NAME)" || return 1
-  qdrant_bootstrap_namespace="$(qdrant_required_env KB_NAMESPACE)" || return 1
-  qdrant_bootstrap_domain="$(qdrant_cluster_domain)" || return 1
-  printf "%s-%s.%s.svc.%s" \
-    "$qdrant_cluster_component_name" \
-    "$qdrant_service_name" \
-    "$qdrant_bootstrap_namespace" \
-    "$qdrant_bootstrap_domain"
+  qdrant_required_env QDRANT_COMPONENT_SERVICE_HOST
 }
 
 # Return whether this pod should bootstrap a new cluster (ordinal 0 with no peers).
