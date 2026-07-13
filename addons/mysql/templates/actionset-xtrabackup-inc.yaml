@@ -11,13 +11,15 @@ spec:
     value: "{{ .Values.dataMountPath }}/data"
   - name: MYSQL_DIR
     value: {{ .Values.dataMountPath }}
+  - name: IMAGE_TAG
+    value: "8.0"
   - name: BACKUP_FOR_STANDBY
     value: "false"
   backup:
     preBackup: []
     postBackup: []
     backupData:
-      image: $(XTRABACKUP_IMAGE)
+      image: {{ .Values.image.xtraBackup.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackup.repository }}:$(IMAGE_TAG)
       runOnTargetPodNode: true
       command:
       - bash
@@ -29,7 +31,7 @@ spec:
         intervalSeconds: 5
   restore:
     prepareData:
-      image: $(XTRABACKUP_IMAGE)
+      image: {{ .Values.image.xtraBackup.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackup.repository }}:$(IMAGE_TAG)
       command:
       - bash
       - -c
