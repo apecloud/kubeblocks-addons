@@ -18,14 +18,16 @@ Describe "MySQL xtrabackup action image contract"
     helm template test "$(chart_path)" --show-only "templates/${template}" "$@"
   }
 
-  mapped_xtrabackup_image() {
+  mapped_method_env() {
     template=$1
     method=$2
-    service_version=$3
-    shift 3
+    env_name=$3
+    service_version=$4
+    shift 4
 
     render_template "$template" "$@" | awk \
       -v method="$method" \
+      -v env_name="$env_name" \
       -v service_version="$service_version" '
         /^  - name: / {
           current_method = $3
@@ -33,7 +35,7 @@ Describe "MySQL xtrabackup action image contract"
           in_image_mapping = 0
           candidate = 0
         }
-        in_method && /- name: XTRABACKUP_IMAGE$/ {
+        in_method && $1 == "-" && $2 == "name:" && $3 == env_name {
           in_image_mapping = 1
           next
         }
@@ -58,6 +60,14 @@ Describe "MySQL xtrabackup action image contract"
       '
   }
 
+  mapped_xtrabackup_image() {
+    template=$1
+    method=$2
+    service_version=$3
+    shift 3
+    mapped_method_env "$template" "$method" XTRABACKUP_IMAGE "$service_version" "$@"
+  }
+
   resolve_action_image() {
     policy_template=$1
     method=$2
@@ -69,6 +79,48 @@ Describe "MySQL xtrabackup action image contract"
       awk '/^      image: / { sub(/^      image: /, ""); print; exit }') || return 1
     [ "$action_image" = '$(XTRABACKUP_IMAGE)' ] || return 1
     mapped_xtrabackup_image "$policy_template" "$method" "$service_version" "$@"
+  }
+
+  resolve_lock_flag_from_script() {
+    script=$1
+    image_tag=$2
+    block=$(awk '/^lock_per_table_ddl=""$/, /^fi$/' "$(chart_path)/dataprotection/${script}") || return 1
+    [ -n "$block" ] || return 1
+    IMAGE_TAG="$image_tag" bash -c "${block}
+printf '%s' \"\${lock_per_table_ddl}\""
+  }
+
+  resolve_method_lock_flag() {
+    policy_template=$1
+    method=$2
+    script=$3
+    service_version=$4
+    shift 4
+
+    image_tag=$(mapped_method_env "$policy_template" "$method" IMAGE_TAG "$service_version" "$@") || return 1
+    resolve_lock_flag_from_script "$script" "$image_tag"
+  }
+
+  verify_nonlegacy_tool_versions() {
+    [ "$(mapped_method_env backuppolicytemplate.yaml xtrabackup IMAGE_TAG 8.0.46)" = "8.0.35" ] || return 1
+    [ "$(mapped_method_env backuppolicytemplate-orc.yaml xtrabackup-inc IMAGE_TAG 8.4.10)" = "8.4.0" ] || return 1
+    [ -z "$(resolve_method_lock_flag backuppolicytemplate.yaml xtrabackup backup.sh 8.0.46)" ] || return 1
+    [ -z "$(resolve_method_lock_flag backuppolicytemplate-orc.yaml xtrabackup-inc xtrabackup-incremental-backup.sh 8.4.10)" ]
+  }
+
+  verify_all_tool_version_mappings() {
+    for template in backuppolicytemplate.yaml backuppolicytemplate-orc.yaml; do
+      for method in xtrabackup xtrabackup-inc; do
+        [ "$(mapped_method_env "$template" "$method" IMAGE_TAG 5.7.44)" = "2.4" ] || return 1
+        [ "$(mapped_method_env "$template" "$method" IMAGE_TAG 8.0.46)" = "8.0.35" ] || return 1
+        [ "$(mapped_method_env "$template" "$method" IMAGE_TAG 8.4.10)" = "8.4.0" ] || return 1
+      done
+    done
+  }
+
+  reject_empty_tool_versions() {
+    ! resolve_lock_flag_from_script backup.sh "" 2>/dev/null || return 1
+    ! resolve_lock_flag_from_script xtrabackup-incremental-backup.sh "" 2>/dev/null
   }
 
   It "resolves the exact MySQL 5.7 full-backup Job image"
@@ -139,6 +191,39 @@ Describe "MySQL xtrabackup action image contract"
       ! printf "%s\n" "$output" | grep -q "name: IMAGE_TAG"
       ! printf "%s\n" "$output" | grep -q "name: XTRABACKUP_IMAGE"
     ' sh "$(chart_path)"
+    The status should be success
+  End
+
+  It "maps the standard MySQL 5.7 full-backup method into the 2.4 script branch"
+    When call resolve_method_lock_flag backuppolicytemplate.yaml xtrabackup backup.sh 5.7.44
+    The status should be success
+    The output should equal "--lock-ddl-per-table"
+  End
+
+  It "maps the ORC MySQL 5.7 incremental method into the 2.4 script branch"
+    When call resolve_method_lock_flag backuppolicytemplate-orc.yaml xtrabackup-inc xtrabackup-incremental-backup.sh 5.7.44
+    The status should be success
+    The output should equal "--lock-ddl-per-table"
+  End
+
+  It "maps exact non-legacy tool versions without entering the 2.4 script branch"
+    When call verify_nonlegacy_tool_versions
+    The status should be success
+  End
+
+  It "maps exact tool versions for full and incremental methods in standard and ORC policies"
+    When call verify_all_tool_version_mappings
+    The status should be success
+  End
+
+  It "fails closed when the service version has no tool-version mapping"
+    When call resolve_method_lock_flag backuppolicytemplate.yaml xtrabackup backup.sh 9.0.0
+    The status should be failure
+    The output should be blank
+  End
+
+  It "makes both backup scripts reject an empty tool version"
+    When call reject_empty_tool_versions
     The status should be success
   End
 End
