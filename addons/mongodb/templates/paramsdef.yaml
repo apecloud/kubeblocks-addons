@@ -2,13 +2,13 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: {{ printf "mongodb-config-pd-%s" .Chart.Version }}
+  name: {{ printf "%smongodb-config-pd-%s" (include "mongodb.parametersDefinitionNamePrefix" .) (include "mongodb.parametersDefinitionVersion" .) }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
   annotations:
     {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
-  componentDef: {{ printf "^(%s|%s|%s)$" (include "mongodb.compDefName" .) (include "mongodbShard.compDefName" .) (include "cfgServer.compDefName" .) | quote }}
+  componentDef: {{ printf "^(%s|%s|%s)$" (include "mongodb.compDefName" . | regexQuoteMeta) (include "mongodbShard.compDefName" . | regexQuoteMeta) (include "cfgServer.compDefName" . | regexQuoteMeta) | quote }}
   templateName: mongodb-config
   fileName: mongodb.conf
   fileFormatConfig:
@@ -31,13 +31,13 @@ spec:
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: {{ printf "mongos-config-pd-%s" .Chart.Version }}
+  name: {{ printf "%smongos-config-pd-%s" (include "mongodb.parametersDefinitionNamePrefix" .) (include "mongodb.parametersDefinitionVersion" .) }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
   annotations:
     {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
-  componentDef: {{ printf "^%s$" (include "mongos.compDefName" .) | quote }}
+  componentDef: {{ printf "^%s$" (include "mongos.compDefName" . | regexQuoteMeta) | quote }}
   templateName: mongodb-config
   fileName: mongos.conf
   fileFormatConfig:
