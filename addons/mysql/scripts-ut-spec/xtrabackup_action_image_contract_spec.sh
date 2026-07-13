@@ -136,6 +136,32 @@ Describe "MySQL xtrabackup action image contract"
     esac
   }
 
+  resolve_restore_image_from_legacy_backup_status() {
+    action_template=$1
+    persisted_action_set=$2
+    persisted_image_tag=$3
+    shift 3
+
+    backup_status_env=$(printf '%s\n' \
+      'env:' \
+      '  - name: IMAGE_TAG' \
+      "    value: \"${persisted_image_tag}\"") || return 1
+    ! printf '%s\n' "$backup_status_env" | grep -q XTRABACKUP_IMAGE || return 1
+    [ "$(action_set_name "$action_template" "$@")" = "$persisted_action_set" ] || return 1
+    image_tag=$(printf '%s\n' "$backup_status_env" | awk '
+      $1 == "-" && $2 == "name:" { is_image_tag = ($3 == "IMAGE_TAG"); next }
+      is_image_tag && $1 == "value:" {
+        value = $2
+        gsub(/"/, "", value)
+        print value
+        found = 1
+        exit
+      }
+      END { if (!found) exit 1 }
+    ') || return 1
+    resolve_legacy_restore_image "$action_template" "$image_tag" "$@"
+  }
+
   resolve_lock_flag_from_script() {
     script=$1
     image_tag=$2
@@ -251,13 +277,15 @@ printf '%s' \"\${lock_per_table_ddl}\""
 
 
   It "keeps an old full Backup restorable after the chart upgrade"
-    When call resolve_legacy_restore_image actionset-xtrabackup.yaml 8.0
+    When call resolve_restore_image_from_legacy_backup_status \
+      actionset-xtrabackup.yaml mysql-xtrabackup-br 8.0
     The status should be success
     The output should equal "docker.io/apecloud/percona-xtrabackup:8.0"
   End
 
   It "keeps an old incremental Backup restorable after the chart upgrade"
-    When call resolve_legacy_restore_image actionset-xtrabackup-inc.yaml 2.4
+    When call resolve_restore_image_from_legacy_backup_status \
+      actionset-xtrabackup-inc.yaml mysql-xtrabackup-inc-br 2.4
     The status should be success
     The output should equal "docker.io/apecloud/percona-xtrabackup:2.4"
   End
