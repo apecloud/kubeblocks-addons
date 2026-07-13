@@ -199,4 +199,27 @@ EOF
       The output should equal "OK"
     End
   End
+
+  Describe "wsrep_sst_auth is not persisted (H11)"
+    # rsync SST does not use wsrep_sst_auth; writing it to DATA_DIR (a
+    # needSnapshot volume) leaked the plaintext root password into snapshots.
+
+    It "does not write wsrep_sst_auth to any file"
+      When run sh -c "grep -nE 'wsrep_sst_auth=.*>|> +\"?\\\$?\\{?sst_conf' \"$(script_file)\" || true"
+      The status should be success
+      The output should equal ""
+    End
+
+    It "does not load a defaults-extra-file for SST auth"
+      When run sh -c "grep -F 'defaults-extra-file=' \"$(script_file)\" | grep -F 'sst' || true"
+      The status should be success
+      The output should equal ""
+    End
+
+    It "removes any stale .galera-sst-auth.cnf left by a previous chart version"
+      When call script_contains "rm -f \"\${DATA_DIR}/.galera-sst-auth.cnf\""
+      The status should be success
+      The output should include ".galera-sst-auth.cnf"
+    End
+  End
 End
