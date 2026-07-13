@@ -163,11 +163,14 @@ public final class KafkaConfigCue {
         validateDisabledConfigs(disabledConfigs, keys);
         renderDefinition(out, "Shared", keys.get(Scope.SHARED), disabledConfigs);
         out.append('\n');
-        renderRoleDefinition(out, "Controller", keys.get(Scope.CONTROLLER), disabledConfigs);
+        renderRoleDefinition(out, "Controller", keys.get(Scope.SHARED), keys.get(Scope.CONTROLLER), disabledConfigs);
         out.append('\n');
-        renderRoleDefinition(out, "Broker", keys.get(Scope.BROKER), disabledConfigs);
+        renderRoleDefinition(out, "Broker", keys.get(Scope.SHARED), keys.get(Scope.BROKER), disabledConfigs);
         out.append('\n');
-        out.append("#Combined: #Controller & #Broker\n");
+        Map<String, ConfigDef.ConfigKey> combinedKeys = new LinkedHashMap<>();
+        combinedKeys.putAll(keys.get(Scope.CONTROLLER));
+        combinedKeys.putAll(keys.get(Scope.BROKER));
+        renderRoleDefinition(out, "Combined", keys.get(Scope.SHARED), combinedKeys, disabledConfigs);
     }
 
     private static Map<Scope, Map<String, ConfigDef.ConfigKey>> collectConfigKeys(List<ScopedConfigSource> sources) {
@@ -227,10 +230,15 @@ public final class KafkaConfigCue {
     private static void renderRoleDefinition(
         StringBuilder out,
         String definitionName,
+        Map<String, ConfigDef.ConfigKey> sharedKeys,
         Map<String, ConfigDef.ConfigKey> keys,
         Set<String> disabledConfigs) {
-        out.append("#").append(definitionName).append(": #Shared & {\n");
-        renderKeys(out, keys, disabledConfigs);
+        Map<String, ConfigDef.ConfigKey> roleKeys = new LinkedHashMap<>();
+        roleKeys.putAll(sharedKeys);
+        roleKeys.putAll(keys);
+
+        out.append("#").append(definitionName).append(": {\n");
+        renderKeys(out, roleKeys, disabledConfigs);
         out.append("\t...\n");
         out.append("}\n");
     }

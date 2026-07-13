@@ -82,14 +82,20 @@ class KafkaConfigCueTest {
         String cue = KafkaConfigCue.renderScopedDefinitionsForTest(shared, controller, broker);
 
         assertTrue(cue.contains("#Shared: {"));
-        assertTrue(cue.contains("#Controller: #Shared & {"));
-        assertTrue(cue.contains("#Broker: #Shared & {"));
-        assertTrue(cue.contains("#Combined: #Controller & #Broker"));
+        assertFalse(cue.contains("#Controller: #Shared & {"));
+        assertFalse(cue.contains("#Broker: #Shared & {"));
+        assertFalse(cue.contains("#Combined: #Controller & #Broker"));
         assertTrue(section(cue, "#Shared:", "#Controller:").contains("\"shared.string\""));
+        assertTrue(section(cue, "#Controller:", "#Broker:").contains("\"shared.string\""));
+        assertTrue(section(cue, "#Broker:", "#Combined:").contains("\"shared.string\""));
+        assertTrue(section(cue, "#Combined:", "}\n").contains("\"shared.string\""));
         assertTrue(section(cue, "#Controller:", "#Broker:").contains("\"controller.string\""));
         assertTrue(section(cue, "#Broker:", "#Combined:").contains("\"broker.string\""));
+        assertTrue(section(cue, "#Combined:", "}\n").contains("\"controller.string\""));
+        assertTrue(section(cue, "#Combined:", "}\n").contains("\"broker.string\""));
         assertTrue(section(cue, "#Controller:", "#Broker:").contains("\t...\n"));
         assertTrue(section(cue, "#Broker:", "#Combined:").contains("\t...\n"));
+        assertTrue(section(cue, "#Combined:", "}\n").contains("\t...\n"));
     }
 
     @Test
@@ -102,14 +108,27 @@ class KafkaConfigCueTest {
         assertTrue(cue.contains("#Shared"));
         assertTrue(cue.contains("#Controller"));
         assertTrue(cue.contains("#Broker"));
-        assertTrue(cue.contains("#Combined: #Controller & #Broker"));
+        assertFalse(cue.contains("#Controller: #Shared & {"));
+        assertFalse(cue.contains("#Broker: #Shared & {"));
+        assertFalse(cue.contains("#Combined: #Controller & #Broker"));
         assertTrue(section(cue, "#Shared:", "#Controller:").contains("\"num.network.threads\""));
+        assertTrue(section(cue, "#Controller:", "#Broker:").contains("\"num.network.threads\""));
+        assertTrue(section(cue, "#Broker:", "#Combined:").contains("\"num.network.threads\""));
+        assertTrue(section(cue, "#Combined:", "}\n").contains("\"num.network.threads\""));
+        assertTrue(section(cue, "#Controller:", "#Broker:").contains("\"sasl.enabled.mechanisms\""));
+        assertTrue(section(cue, "#Broker:", "#Combined:").contains("\"sasl.enabled.mechanisms\""));
+        assertTrue(section(cue, "#Combined:", "}\n").contains("\"sasl.enabled.mechanisms\""));
         assertTrue(section(cue, "#Controller:", "#Broker:").contains("\"controller.quorum.voters\""));
         assertTrue(section(cue, "#Controller:", "#Broker:").contains("\"metadata.log.dir\""));
         assertTrue(section(cue, "#Controller:", "#Broker:").contains("\"delete.topic.enable\""));
+        assertFalse(section(cue, "#Controller:", "#Broker:").contains("\"log.retention.ms\""));
         assertTrue(section(cue, "#Broker:", "#Combined:").contains("\"log.retention.ms\""));
         assertTrue(section(cue, "#Broker:", "#Combined:").contains("\"group.initial.rebalance.delay.ms\""));
         assertFalse(section(cue, "#Broker:", "#Combined:").contains("\"delete.topic.enable\""));
+        assertFalse(section(cue, "#Broker:", "#Combined:").contains("\"controller.quorum.voters\""));
+        assertTrue(section(cue, "#Combined:", "}\n").contains("\"controller.quorum.voters\""));
+        assertTrue(section(cue, "#Combined:", "}\n").contains("\"log.retention.ms\""));
+        assertFalse(cue.contains("\"unknown.config\""));
         assertTrue(cue.contains("// \"advertised.listeners\"?: *null | string | null"));
         assertTrue(cue.contains("// \"process.roles\"?: *[] | [...(\"broker\" | \"controller\")]"));
         assertTrue(cue.contains("// \"ssl.keystore.type\"?: *\"JKS\" | string"));
