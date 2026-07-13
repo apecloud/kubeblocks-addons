@@ -68,6 +68,46 @@ Describe "MySQL xtrabackup action image contract"
     mapped_method_env "$template" "$method" XTRABACKUP_IMAGE "$service_version" "$@"
   }
 
+  method_action_set_name() {
+    template=$1
+    method=$2
+    shift 2
+
+    render_template "$template" "$@" | awk \
+      -v method="$method" '
+        /^  - name: / { in_method = ($3 == method) }
+        in_method && $1 == "actionSetName:" { print $2; found = 1; exit }
+        END { if (!found) exit 1 }
+      '
+  }
+
+  action_set_name() {
+    template=$1
+    shift
+
+    render_template "$template" "$@" | awk '
+      /^metadata:$/ { in_metadata = 1; next }
+      in_metadata && $1 == "name:" { print $2; found = 1; exit }
+      END { if (!found) exit 1 }
+    '
+  }
+
+  action_restore_image() {
+    template=$1
+    shift
+
+    render_template "$template" "$@" | awk '
+      /^  restore:$/ { in_restore = 1; next }
+      in_restore && /^      image: / {
+        sub(/^      image: /, "")
+        print
+        found = 1
+        exit
+      }
+      END { if (!found) exit 1 }
+    '
+  }
+
   resolve_action_image() {
     policy_template=$1
     method=$2
@@ -77,8 +117,23 @@ Describe "MySQL xtrabackup action image contract"
 
     action_image=$(render_template "$action_template" "$@" |
       awk '/^      image: / { sub(/^      image: /, ""); print; exit }') || return 1
+    [ "$(method_action_set_name "$policy_template" "$method" "$@")" = \
+      "$(action_set_name "$action_template" "$@")" ] || return 1
     [ "$action_image" = '$(XTRABACKUP_IMAGE)' ] || return 1
     mapped_xtrabackup_image "$policy_template" "$method" "$service_version" "$@"
+  }
+
+  resolve_legacy_restore_image() {
+    action_template=$1
+    image_tag=$2
+    shift 2
+
+    image=$(action_restore_image "$action_template" "$@") || return 1
+    case "$image" in
+      *'$(XTRABACKUP_IMAGE)'*) return 1 ;;
+      *'$(IMAGE_TAG)'*) printf "%s" "${image%'$(IMAGE_TAG)'}${image_tag}" ;;
+      *) return 1 ;;
+    esac
   }
 
   resolve_lock_flag_from_script() {
@@ -124,43 +179,43 @@ printf '%s' \"\${lock_per_table_ddl}\""
   }
 
   It "resolves the exact MySQL 5.7 full-backup Job image"
-    When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup.yaml 5.7.44
+    When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 5.7.44
     The status should be success
     The output should equal "docker.io/apecloud/percona-xtrabackup:2.4"
   End
 
   It "resolves the exact MySQL 8.0 full-backup Job image"
-    When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup.yaml 8.0.46
+    When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 8.0.46
     The status should be success
     The output should equal "docker.io/apecloud/xtrabackup-minimal:8.0.35"
   End
 
   It "resolves the exact MySQL 8.4 full-backup Job image"
-    When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup.yaml 8.4.10
+    When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 8.4.10
     The status should be success
     The output should equal "docker.io/apecloud/xtrabackup-minimal:8.4.0"
   End
 
   It "uses the exact MySQL 8.0 image for incremental backup Jobs"
-    When call resolve_action_image backuppolicytemplate.yaml xtrabackup-inc actionset-xtrabackup-inc.yaml 8.0.46
+    When call resolve_action_image backuppolicytemplate.yaml xtrabackup-inc actionset-xtrabackup-inc-v2.yaml 8.0.46
     The status should be success
     The output should equal "docker.io/apecloud/xtrabackup-minimal:8.0.35"
   End
 
   It "uses the exact MySQL 8.4 image for ORC full-backup Jobs"
-    When call resolve_action_image backuppolicytemplate-orc.yaml xtrabackup actionset-xtrabackup.yaml 8.4.10
+    When call resolve_action_image backuppolicytemplate-orc.yaml xtrabackup actionset-xtrabackup-v2.yaml 8.4.10
     The status should be success
     The output should equal "docker.io/apecloud/xtrabackup-minimal:8.4.0"
   End
 
   It "uses the exact MySQL 5.7 image for ORC incremental backup Jobs"
-    When call resolve_action_image backuppolicytemplate-orc.yaml xtrabackup-inc actionset-xtrabackup-inc.yaml 5.7.44
+    When call resolve_action_image backuppolicytemplate-orc.yaml xtrabackup-inc actionset-xtrabackup-inc-v2.yaml 5.7.44
     The status should be success
     The output should equal "docker.io/apecloud/percona-xtrabackup:2.4"
   End
 
   It "preserves the minimal-image override in the final MySQL 8.0 Job image"
-    When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup.yaml 8.0.46 \
+    When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 8.0.46 \
       --set image.xtraBackup.registry=registry.example.com \
       --set image.xtraBackup.minimalRepository=team/xtrabackup-minimal
     The status should be success
@@ -168,7 +223,7 @@ printf '%s' \"\${lock_per_table_ddl}\""
   End
 
   It "preserves the legacy-image override in the final MySQL 5.7 Job image"
-    When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup.yaml 5.7.44 \
+    When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 5.7.44 \
       --set image.xtraBackup.registry=registry.example.com \
       --set image.xtraBackup.repository=team/xtrabackup
     The status should be success
@@ -176,7 +231,7 @@ printf '%s' \"\${lock_per_table_ddl}\""
   End
 
   It "fails closed when the service version has no xtrabackup image mapping"
-    When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup.yaml 9.0.0
+    When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 9.0.0
     The status should be failure
     The output should be blank
   End
@@ -185,13 +240,26 @@ printf '%s' \"\${lock_per_table_ddl}\""
     When call sh -c '
       set -e
       output=$(helm template test "$1" \
-        --show-only templates/actionset-xtrabackup.yaml \
-        --show-only templates/actionset-xtrabackup-inc.yaml)
+        --show-only templates/actionset-xtrabackup-v2.yaml \
+        --show-only templates/actionset-xtrabackup-inc-v2.yaml)
       [ "$(printf "%s\n" "$output" | grep -c "image: \$(XTRABACKUP_IMAGE)")" -eq 4 ]
       ! printf "%s\n" "$output" | grep -q "name: IMAGE_TAG"
       ! printf "%s\n" "$output" | grep -q "name: XTRABACKUP_IMAGE"
     ' sh "$(chart_path)"
     The status should be success
+  End
+
+
+  It "keeps an old full Backup restorable after the chart upgrade"
+    When call resolve_legacy_restore_image actionset-xtrabackup.yaml 8.0
+    The status should be success
+    The output should equal "docker.io/apecloud/percona-xtrabackup:8.0"
+  End
+
+  It "keeps an old incremental Backup restorable after the chart upgrade"
+    When call resolve_legacy_restore_image actionset-xtrabackup-inc.yaml 2.4
+    The status should be success
+    The output should equal "docker.io/apecloud/percona-xtrabackup:2.4"
   End
 
   It "maps the standard MySQL 5.7 full-backup method into the 2.4 script branch"

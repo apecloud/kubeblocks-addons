@@ -17,7 +17,7 @@ spec:
   backupMethods:
   - name: xtrabackup
     snapshotVolumes: false
-    actionSetName: mysql-xtrabackup-br
+    actionSetName: mysql-xtrabackup-br-v2
     env:
       - name: XTRABACKUP_IMAGE
         valueFrom:
@@ -50,7 +50,7 @@ spec:
   - name: xtrabackup-inc
     compatibleMethod: xtrabackup
     snapshotVolumes: false
-    actionSetName: mysql-xtrabackup-inc-br
+    actionSetName: mysql-xtrabackup-inc-br-v2
     env:
       - name: XTRABACKUP_IMAGE
         valueFrom:
