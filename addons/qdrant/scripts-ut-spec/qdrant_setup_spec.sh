@@ -13,21 +13,32 @@ Describe "Qdrant Setup Bash Script Tests"
 
   cleanup() {
     unset QDRANT_SETUP_UNIT_TEST CURRENT_POD_NAME
-    unset QDRANT_COMPONENT_SERVICE_HOST QDRANT_HEADLESS_SERVICE_HOST
+    unset QDRANT_COMPONENT_SERVICE_HOST
   }
   After "cleanup"
 
   Describe "qdrant_current_pod_fqdn()"
     setup() {
-      export CURRENT_POD_NAME="qdrant-rollout-replace-qdrant-6"
-      export QDRANT_HEADLESS_SERVICE_HOST="qdrant-rollout-replace-qdrant-headless.default.svc.cluster.local"
+      qdrant_runtime_pod_fqdn() {
+        printf "%s" "qdrant-rollout-replace-qdrant-6.qdrant-rollout-replace-qdrant-headless.default.svc.cluster.local"
+      }
     }
     Before "setup"
 
-    It "uses the KubeBlocks-resolved headless service host for the current pod FQDN"
+    It "uses the runtime pod FQDN for the advertised peer URI"
       When call qdrant_current_pod_fqdn
       The status should be success
       The output should eq "qdrant-rollout-replace-qdrant-6.qdrant-rollout-replace-qdrant-headless.default.svc.cluster.local"
+    End
+
+    It "fails when the runtime pod FQDN is empty"
+      qdrant_runtime_pod_fqdn() {
+        printf "%s" ""
+      }
+
+      When call qdrant_current_pod_fqdn
+      The status should be failure
+      The stderr should include "empty current pod FQDN"
     End
   End
 

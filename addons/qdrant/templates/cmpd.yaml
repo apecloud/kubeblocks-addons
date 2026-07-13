@@ -57,12 +57,6 @@ spec:
           name: qdrant
           optional: false
           host: Required
-    - name: QDRANT_HEADLESS_SERVICE_HOST
-      valueFrom:
-        serviceVarRef:
-          name: headless
-          optional: false
-          host: Required
     - name: TLS_ENABLED
       valueFrom:
         tlsVarRef:

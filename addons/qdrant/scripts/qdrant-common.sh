@@ -37,15 +37,22 @@ qdrant_pod_ordinal() {
   printf "%s" "$qdrant_ordinal"
 }
 
-# Build the resolved headless-service FQDN for a Qdrant pod.
-# Args: $1 - pod name (defaults to CURRENT_POD_NAME)
-# Prints: <pod>.<QDRANT_HEADLESS_SERVICE_HOST>
+# Resolve this pod's Kubernetes FQDN from the runtime hostname.
+qdrant_runtime_pod_fqdn() {
+  hostname -f
+}
+
+# Return this pod's FQDN for Qdrant's advertised peer URI.
 qdrant_current_pod_fqdn() {
-  qdrant_current_pod_name="${1:-$(qdrant_required_env CURRENT_POD_NAME)}" || return 1
-  qdrant_headless_service_host="$(qdrant_required_env QDRANT_HEADLESS_SERVICE_HOST)" || return 1
-  printf "%s.%s" \
-    "$qdrant_current_pod_name" \
-    "$qdrant_headless_service_host"
+  qdrant_current_fqdn="$(qdrant_runtime_pod_fqdn)" || {
+    echo "ERROR: failed to resolve current pod FQDN with hostname -f." >&2
+    return 1
+  }
+  if [ -z "$qdrant_current_fqdn" ]; then
+    echo "ERROR: hostname -f returned an empty current pod FQDN." >&2
+    return 1
+  fi
+  printf "%s" "$qdrant_current_fqdn"
 }
 
 # Return the ComponentService host used to discover or join the cluster.
