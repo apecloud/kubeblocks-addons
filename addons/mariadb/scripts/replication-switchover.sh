@@ -2060,11 +2060,23 @@ wait_candidate_promoted_via_syncerctl() {
       return 1
     fi
     stage_elapsed=$(( now - stage_started_epoch ))
-    if [ "${stage_elapsed}" -ge "${stage_deadline}" ]; then
+    # Probe at least once before honoring the stage budget. now_epoch() has
+    # whole-second granularity, so a sub-probe budget (e.g. stage_deadline=1s)
+    # can already read as "exhausted" on the very first iteration if setup
+    # crossed an integer-second boundary. Under load that fails with attempts=0,
+    # never performing a single real probe. Gate the budget break on attempt>0
+    # so the first probe always runs; later iterations honor the budget normally.
+    if [ "${attempt}" -gt 0 ] && [ "${stage_elapsed}" -ge "${stage_deadline}" ]; then
       break
     fi
     attempt=$((attempt + 1))
     local per_call_remaining=$(( stage_deadline - stage_elapsed ))
+    # Clamp the per-call timeout to >=1s: on the guaranteed first probe
+    # stage_elapsed may already be >= stage_deadline, making this <=0, which
+    # would otherwise pass a zero/negative timeout to the syncerctl call.
+    if [ "${per_call_remaining}" -lt 1 ]; then
+      per_call_remaining=1
+    fi
     last_stderr=$(run_syncerctl_getrole_with_timeout "${candidate_fqdn}" "${per_call_remaining}")
     last_rc=$?
     last_role=$(extract_syncerctl_role "${last_stderr}")
@@ -2119,7 +2131,13 @@ wait_candidate_remote_root_primary_ready() {
       return 1
     fi
     stage_elapsed=$(( now - stage_started_epoch ))
-    if [ "${stage_elapsed}" -ge "${stage_deadline}" ]; then
+    # Probe at least once before honoring the stage budget (see
+    # wait_candidate_promoted_via_syncerctl): a sub-probe stage_deadline (e.g.
+    # 1s) crossing a whole-second boundary during setup must still perform one
+    # real readiness probe instead of failing with attempts=0. The probe below
+    # is bounded by MARIADB_CONNECT_TIMEOUT_SECONDS, so one extra probe cannot
+    # blow the global action deadline.
+    if [ "${attempt}" -gt 0 ] && [ "${stage_elapsed}" -ge "${stage_deadline}" ]; then
       break
     fi
     attempt=$((attempt + 1))
@@ -2263,12 +2281,36 @@ run_switchover() {
   if ! wait_candidate_promoted_via_syncerctl "${candidate_name}" "${candidate_fqdn}" "${promoted_budget}"; then
     return 1
   fi
+  # Post-stage overrun check (mirrors prepare/dcs/fence). The promote loop is
+  # guaranteed to run at least one probe even when its stage budget already read
+  # as exhausted (probe-at-least-once), so its wall clock can push past the
+  # global deadline. Fail closed with a distinct sentinel BEFORE the ready stage
+  # so ready never runs with negative remaining time.
+  local remaining_after_promote
+  remaining_after_promote=$(remaining_action_budget)
+  if [ $? -ne 0 ] || [ "${remaining_after_promote}" -le 0 ]; then
+    log_switchover_error "Switchover failed: reason=action_deadline_exhausted_promote_overrun elapsed=$(action_elapsed_seconds)s deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}s; fail-closed (stage body exceeded budget)"
+    return 1
+  fi
 
   # Stage 6: candidate remote root primary-readiness probe
   local ready_budget
   ready_budget=$(stage_budget_or_exit "ready" "${CANDIDATE_REMOTE_ROOT_PRIMARY_READY_WAIT_SECONDS}") || return 1
   log_switchover_info "Switchover stage candidate_primary_ready budget=${ready_budget}s remaining_before=$(remaining_action_budget)s"
   if ! wait_candidate_remote_root_primary_ready "${candidate_name}" "${candidate_fqdn}" "${ready_budget}"; then
+    return 1
+  fi
+  # Final-stage overrun check, BEFORE the success log/return. ready is the last
+  # stage, so no downstream stage-entry gate would otherwise catch an overrun.
+  # The probe-at-least-once guarantee means the readiness probe (a composite of
+  # a read_only check plus, when open, several connect-timeout-bounded grant
+  # verification SQLs) can run once even at zero remaining budget and exceed the
+  # global deadline. We accept at most that one bounded overrun, but must never
+  # report success once the global deadline is blown -- fail closed here instead.
+  local remaining_after_ready
+  remaining_after_ready=$(remaining_action_budget)
+  if [ $? -ne 0 ] || [ "${remaining_after_ready}" -le 0 ]; then
+    log_switchover_error "Switchover failed: reason=action_deadline_exhausted_ready_overrun elapsed=$(action_elapsed_seconds)s deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}s; fail-closed (stage body exceeded budget)"
     return 1
   fi
 
