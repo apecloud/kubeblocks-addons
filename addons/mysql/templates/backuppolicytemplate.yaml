@@ -19,18 +19,18 @@ spec:
     snapshotVolumes: false
     actionSetName: mysql-xtrabackup-br
     env:
-      - name: IMAGE_TAG
+      - name: XTRABACKUP_IMAGE
         valueFrom:
           versionMapping:
           - serviceVersions:
             - "8.4"
-            mappedValue: "8.4"
+            mappedValue: "{{ include "mysql.xtrabackup.minimalRepository" . }}:8.4.0"
           - serviceVersions:
             - "8.0"
-            mappedValue: "8.0"
+            mappedValue: "{{ include "mysql.xtrabackup.minimalRepository" . }}:8.0.35"
           - serviceVersions:
             - "5.7"
-            mappedValue: "2.4"
+            mappedValue: "{{ include "mysql.xtrabackup.legacyRepository" . }}:2.4"
     targetVolumes:
       volumeMounts:
       - name: data
@@ -40,18 +40,18 @@ spec:
     snapshotVolumes: false
     actionSetName: mysql-xtrabackup-inc-br
     env:
-      - name: IMAGE_TAG
+      - name: XTRABACKUP_IMAGE
         valueFrom:
           versionMapping:
           - serviceVersions:
             - "8.4"
-            mappedValue: "8.4"
+            mappedValue: "{{ include "mysql.xtrabackup.minimalRepository" . }}:8.4.0"
           - serviceVersions:
             - "8.0"
-            mappedValue: "8.0"
+            mappedValue: "{{ include "mysql.xtrabackup.minimalRepository" . }}:8.0.35"
           - serviceVersions:
             - "5.7"
-            mappedValue: "2.4"
+            mappedValue: "{{ include "mysql.xtrabackup.legacyRepository" . }}:2.4"
     targetVolumes:
       volumeMounts:
       - name: data
