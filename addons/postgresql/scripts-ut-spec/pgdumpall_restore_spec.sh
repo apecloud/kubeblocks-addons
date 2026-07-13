@@ -22,7 +22,7 @@ Describe "dataprotection/pgdumpall-restore.sh"
     DP_DB_PORT="5432"
     export PATH CALL_LOG DP_DATASAFED_BIN_PATH DP_BACKUP_BASE_PATH \
       DP_BACKUP_NAME DP_DB_PASSWORD DP_DB_USER DP_DB_HOST DP_DB_PORT
-    unset DATASAFED_LIST_OUT DATASAFED_PULL_EXIT PSQL_EXIT 2>/dev/null || true
+    unset DATASAFED_LIST_OUT DATASAFED_PULL_EXIT PSQL_EXIT PSQL_STDERR 2>/dev/null || true
     write_stubs
   }
 
@@ -52,6 +52,7 @@ EOF
 #!/bin/sh
 printf 'psql %s\n' "$*" >> "${CALL_LOG}"
 cat > /dev/null
+[ -z "${PSQL_STDERR:-}" ] || printf '%s\n' "${PSQL_STDERR}" >&2
 exit "${PSQL_EXIT:-0}"
 EOF
     chmod +x "${bindir}/datasafed" "${bindir}/psql"
@@ -84,6 +85,7 @@ EOF
     When run bash "$(script_path)"
     The status should be failure
     The output should not include "restore complete!"
+    The error should include "pgdumpall restore pipeline failed"
   End
 
   It "fails when datasafed pull fails mid-stream"
@@ -92,5 +94,24 @@ EOF
     When run bash "$(script_path)"
     The status should be failure
     The output should not include "restore complete!"
+    The error should include "pgdumpall restore pipeline failed"
+  End
+
+  It "allows pre-provisioned objects that already exist"
+    export DATASAFED_LIST_OUT="backup-test.sql.zst"
+    export PSQL_STDERR='ERROR: role "postgres" already exists'
+    When run bash "$(script_path)"
+    The status should eq 0
+    The output should include "restore complete!"
+    The error should include "already exists"
+  End
+
+  It "fails when psql reports a non-conflict SQL error"
+    export DATASAFED_LIST_OUT="backup-test.sql.zst"
+    export PSQL_STDERR='ERROR: permission denied for schema public'
+    When run bash "$(script_path)"
+    The status should be failure
+    The output should not include "restore complete!"
+    The error should include "non-conflict SQL errors"
   End
 End
