@@ -22,7 +22,8 @@ Describe "dataprotection/pgdumpall-restore.sh"
     DP_DB_PORT="5432"
     export PATH CALL_LOG DP_DATASAFED_BIN_PATH DP_BACKUP_BASE_PATH \
       DP_BACKUP_NAME DP_DB_PASSWORD DP_DB_USER DP_DB_HOST DP_DB_PORT
-    unset DATASAFED_LIST_OUT DATASAFED_PULL_EXIT PSQL_EXIT PSQL_STDERR 2>/dev/null || true
+    unset DATASAFED_LIST_OUT DATASAFED_PULL_EXIT PSQL_EXIT PSQL_STDERR \
+      PSQL_STDERR_REPEAT 2>/dev/null || true
     write_stubs
   }
 
@@ -52,7 +53,12 @@ EOF
 #!/bin/sh
 printf 'psql %s\n' "$*" >> "${CALL_LOG}"
 cat > /dev/null
-[ -z "${PSQL_STDERR:-}" ] || printf '%s\n' "${PSQL_STDERR}" >&2
+if [ -n "${PSQL_STDERR_REPEAT:-}" ]; then
+  awk -v line="${PSQL_STDERR:-}" -v count="${PSQL_STDERR_REPEAT}" \
+    'BEGIN { for (i = 0; i < count; i++) print line }' >&2
+elif [ -n "${PSQL_STDERR:-}" ]; then
+  printf '%s\n' "${PSQL_STDERR}" >&2
+fi
 exit "${PSQL_EXIT:-0}"
 EOF
     chmod +x "${bindir}/datasafed" "${bindir}/psql"
@@ -109,6 +115,16 @@ EOF
   It "fails when psql reports a non-conflict SQL error"
     export DATASAFED_LIST_OUT="backup-test.sql.zst"
     export PSQL_STDERR='ERROR: permission denied for schema public'
+    When run bash "$(script_path)"
+    The status should be failure
+    The output should not include "restore complete!"
+    The error should include "non-conflict SQL errors"
+  End
+
+  It "fails when a large psql error stream closes grep -q early"
+    export DATASAFED_LIST_OUT="backup-test.sql.zst"
+    export PSQL_STDERR='ERROR: x'
+    export PSQL_STDERR_REPEAT=4096
     When run bash "$(script_path)"
     The status should be failure
     The output should not include "restore complete!"

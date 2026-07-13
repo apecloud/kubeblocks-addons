@@ -33,7 +33,8 @@ if ! datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.sql.zst" - \
   exit 1
 fi
 cat "${errlog}" >&2
-if grep "^ERROR:" "${errlog}" | grep -vE "already exists" | grep -q .; then
+if awk '/^ERROR:/ && $0 !~ /already exists/ { found = 1; exit }
+        END { exit !found }' "${errlog}"; then
   echo "ERROR: pgdumpall restore hit non-conflict SQL errors (see above); data may be partially restored" >&2
   exit 1
 fi
