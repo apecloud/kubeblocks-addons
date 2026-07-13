@@ -4,7 +4,7 @@ Describe "PostgreSQL wal_compression configuration"
   assert_pg15_plus_wal_compression_contract() {
     local major="$1"
 
-    grep -Fq 'wal_compression: string & (*"pglz" | "lz4" | "zstd" | "on" | "off")' "../config/pg${major}-config-constraint.cue"
+    grep -Fq 'wal_compression: string & (*"pglz" | "lz4" | "zstd" | "on" | "off" | "True" | "False" | "true" | "false")' "../config/pg${major}-config-constraint.cue"
     grep -Fq "wal_compression = 'pglz'" "../config/pg${major}-config.tpl"
   }
 
