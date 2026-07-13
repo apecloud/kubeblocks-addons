@@ -10,52 +10,6 @@ default_pass = ${RABBITMQ_DEFAULT_PASS}
 EOF
 }
 
-sync_default_user_password() {
-  if [ -z "${RABBITMQ_DEFAULT_USER:-}" ] || [ -z "${RABBITMQ_DEFAULT_PASS:-}" ]; then
-    echo "ERROR: RABBITMQ_DEFAULT_USER and RABBITMQ_DEFAULT_PASS are required" >&2
-    return 1
-  fi
-
-  rabbitmq-diagnostics -q ping >/dev/null 2>&1 || return 1
-
-  if rabbitmqctl -q authenticate_user "$RABBITMQ_DEFAULT_USER" "$RABBITMQ_DEFAULT_PASS" >/dev/null 2>&1; then
-    echo "RabbitMQ default user password is already synchronized."
-    return 0
-  fi
-
-  if rabbitmqctl -q list_users | awk '{print $1}' | grep -Fxq "$RABBITMQ_DEFAULT_USER"; then
-    rabbitmqctl -q change_password "$RABBITMQ_DEFAULT_USER" "$RABBITMQ_DEFAULT_PASS" >/dev/null
-    echo "RabbitMQ default user password synchronized."
-    return 0
-  fi
-
-  return 1
-}
-
-sync_default_user_password_until_ready() {
-  attempts="${RABBITMQ_PASSWORD_SYNC_ATTEMPTS:-0}"
-  interval="${RABBITMQ_PASSWORD_SYNC_INTERVAL_SECONDS:-2}"
-  i=0
-
-  while [ "$attempts" -le 0 ] || [ "$i" -lt "$attempts" ]; do
-    if sync_default_user_password; then
-      return 0
-    fi
-    i=$((i + 1))
-    sleep "$interval"
-  done
-
-  echo "WARN: RabbitMQ default user password sync did not complete after ${attempts} attempts" >&2
-  return 1
-}
-
-start_default_user_password_sync() {
-  (
-    set +e
-    sync_default_user_password_until_ready
-  ) &
-}
-
 # if test by shellspec include, just return 0
 if [ "${__SOURCED__:+x}" ]; then
   return 0
@@ -80,7 +34,5 @@ if [ "${TLS_ENABLED:-false}" = "true" ]; then
     fi
   done
 fi
-
-start_default_user_password_sync
 
 exec /opt/rabbitmq/sbin/rabbitmq-server
