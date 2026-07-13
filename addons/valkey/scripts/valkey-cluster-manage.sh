@@ -462,6 +462,30 @@ local_cluster_restore_state_matches_meta() {
   }
 }
 
+local_cluster_restore_formed_without_meta() {
+  local state actual meta_sha256 expected_formed
+  state=$(cluster_restore_state_path) || return 1
+  [ -f "${state}" ] && [ ! -L "${state}" ] || {
+    classify restore-state no "local formed-state tombstone is missing or unsafe"
+    return 1
+  }
+  actual=$(cat "${state}" 2>/dev/null) || return 1
+  case "${actual}" in phase=formed$'\n'meta_sha256=*) ;;
+    *) classify restore-state no "invalid local formed-state tombstone"; return 1 ;;
+  esac
+  meta_sha256=${actual#*$'\n'meta_sha256=}
+  case "${meta_sha256}" in ''|*[!0-9a-fA-F]*) meta_sha256="" ;; esac
+  [ "${#meta_sha256}" -eq 64 ] || {
+    classify restore-state no "invalid local formed-state metadata identity"
+    return 1
+  }
+  expected_formed=$(printf 'phase=formed\nmeta_sha256=%s' "${meta_sha256}")
+  [ "${actual}" = "${expected_formed}" ] || {
+    classify restore-state no "invalid local formed-state tombstone"
+    return 1
+  }
+}
+
 mark_local_cluster_restore_formed() {
   local meta="${1}" state actual meta_sha256 tmp expected_prepared expected_formed
   state=$(cluster_restore_state_path) || return 1
@@ -636,8 +660,10 @@ restore_cluster_from_meta() {
     }
     prepare_local_restored_replica_for_attach "${meta}" "${self_first}" "${host}" "${other_id}" "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" || return 1
     ensure_replica_bound "${self_first}" "${host}" "${other_id}" "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" || return 1
-    classify restore-replica-converge yes "offline-prepared replica ${host} attached; waiting for complete restored membership"
-    return 1
+    ensure_replica_bound "${self_first}" "${host}" "${other_id}" "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" restore || return 1
+    mark_local_cluster_restore_formed "${meta}" || return 1
+    echo "restored replica duties complete for ${host}; local binding is committed."
+    return 0
   fi
 
   coord=$(coordinator_shard) || return 1
@@ -783,23 +809,13 @@ restore_cluster_from_meta() {
     classify restore-coverage yes "local archived ranges restored; cluster coverage ${total}/16384"
     return 1
   fi
-  if ! self_is_coordinator_pod "${coord}"; then
-    classify restore-attach yes "slot coverage complete; waiting for coordinator ${coord} to attach replicas"
-    return 1
-  fi
-
   restored_primary_cluster_ready_for_replica_attach || {
-    classify restore-attach yes "restored primary views have not all converged to state=ok, 16384 slots and one exact id set before replica attach"
+    classify restore-primary-converge yes "restored primary views have not all converged to state=ok, 16384 slots and one exact id set"
     return 1
   }
 
-  attach_all_replicas restore || return 1
-  cluster_formed_from_self || {
-    classify restore-converge yes "archived slots assigned but restored membership not complete"
-    return 1
-  }
   mark_local_cluster_restore_formed "${meta}" || return 1
-  echo "restored cluster formed with archived slot ownership and complete membership."
+  echo "restored primary duties complete with archived slot ownership and converged primary views."
 }
 
 # ── formation ────────────────────────────────────────────────────────────────
@@ -1376,8 +1392,8 @@ offline_prepared_marker_matches() {
 
 # A restored non-first pod must already have discarded its redundant archive
 # in the server entrypoint, before valkey-server accepted any client. The
-# lifecycle action never clears online data; it only proves the empty,
-# slotless singleton and waits for the coordinator to attach it.
+# lifecycle action never clears online data; it proves the empty, slotless
+# singleton, attaches only this pod, and commits only this pod's formed state.
 prepare_local_restored_replica_for_attach() {
   local meta="${1}" via="${2}" fqdn="${3}" master_id="${4}" shard="${5}"
   local primary_nodes target_nodes primary_line target_line target_count
@@ -1463,6 +1479,14 @@ post_provision() {
       exit 1
     fi
   done
+  # A formed state is a durable per-pod completion tombstone. With selector=All,
+  # an earlier pod can be invoked again while later pods are still converging.
+  if [ ! -e "${restore_meta}" ] && [ -f "${restore_state}" ] && \
+     grep -qx 'phase=formed' "${restore_state}"; then
+    local_cluster_restore_formed_without_meta || exit 1
+    echo "local restore duties already complete — allowing the next pod action to proceed."
+    exit 0
+  fi
   if cluster_formed_from_self; then
     if [ -e "${restore_state}" ] || [ -e "${restore_meta}" ] || \
        [ -e "${restore_prepare}" ] || [ -e "${restore_prepared}" ]; then

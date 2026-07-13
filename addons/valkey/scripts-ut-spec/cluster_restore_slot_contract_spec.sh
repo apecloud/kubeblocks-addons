@@ -259,7 +259,7 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     The file "${write_log}" should be empty file
   End
 
-  It "attaches replicas and removes metadata only after exact full-slot proof"
+  It "closes restored primary duties without waiting for later replica actions"
     attach_log=$(mktemp)
     build_cli() { _cli=(mock_full_cli); }
     mock_full_cli() { [ "$1" = PING ] && echo PONG; }
@@ -270,14 +270,16 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     }
     cluster_state_of() { echo ok; }
     assigned_slots_of() { echo 16384; }
-    attach_all_replicas() { echo "ATTACH:$1" >> "${attach_log}"; }
-    cluster_formed_from_self() { return 0; }
+    restored_primary_cluster_ready_for_replica_attach() { return 0; }
+    attach_all_replicas() { echo "FORBIDDEN-ATTACH:$1" >> "${attach_log}"; return 99; }
+    cluster_formed_from_self() { echo FORBIDDEN-FULL-ROSTER; return 99; }
     When call restore_cluster_from_meta "${restore_meta}"
     The status should be success
-    The contents of file "${attach_log}" should equal "ATTACH:restore"
+    The file "${attach_log}" should be empty file
     The file "${restore_meta}" should not be exist
     The contents of file "${VALKEY_DATA_DIR}/.kb-cluster-restore-state" should include "phase=formed"
-    The stdout should include "restored cluster formed with archived slot ownership"
+    The stdout should include "restored primary duties complete"
+    The stdout should not include "FORBIDDEN-FULL-ROSTER"
   End
 
   It "accepts only an empty slotless replica with the exact offline-prepared marker"
@@ -477,7 +479,7 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     The status should be success
   End
 
-  It "defers replica attach until every restored primary view is fully converged"
+  It "defers primary completion until every restored primary view is fully converged"
     attach_log=$(mktemp)
     build_cli() { _cli=(mock_full_cli); }
     mock_full_cli() { [ "$1" = PING ] && echo PONG; }
@@ -491,8 +493,8 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     attach_all_replicas() { echo ATTACH >> "${attach_log}"; }
     When call restore_cluster_from_meta "${restore_meta}"
     The status should be failure
-    The stderr should include "phase=restore-attach"
-    The stderr should include "before replica attach"
+    The stderr should include "phase=restore-primary-converge"
+    The stderr should include "one exact id set"
     The file "${attach_log}" should be empty file
   End
 
@@ -535,7 +537,7 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     The stdout should not include "ORDINARY-CREATE-PATH"
   End
 
-  It "routes a restored non-first pod through local replica preparation"
+  It "lets a restored non-first pod attach and close only its local formed state"
     export CURRENT_POD_NAME="vk-shard-abc-1"
     build_cli() { _cli=(mock_ping); }
     mock_ping() { [ "$1" = PING ] && echo PONG; }
@@ -545,14 +547,16 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
       return 0
     }
     ensure_replica_bound() {
-      echo "LOCAL-ATTACH:$1:$2:$3:$4"
+      echo "LOCAL-ATTACH:$1:$2:$3:$4:${5:-ordinary}"
       return 0
     }
     When call restore_cluster_from_meta "${restore_meta}"
-    The status should be failure
+    The status should be success
     The stdout should include "LOCAL-PREP:vk-shard-abc-0.h:vk-shard-abc-1.h:id-abc:shard-abc"
-    The stdout should include "LOCAL-ATTACH:vk-shard-abc-0.h:vk-shard-abc-1.h:id-abc:shard-abc"
-    The stderr should include "phase=restore-replica-converge"
+    The stdout should include "LOCAL-ATTACH:vk-shard-abc-0.h:vk-shard-abc-1.h:id-abc:shard-abc:ordinary"
+    The stdout should include "LOCAL-ATTACH:vk-shard-abc-0.h:vk-shard-abc-1.h:id-abc:shard-abc:restore"
+    The stdout should include "restored replica duties complete"
+    The contents of file "${VALKEY_DATA_DIR}/.kb-cluster-restore-state" should include "phase=formed"
   End
 
   It "removes the local restore marker only after positive cluster formation"
@@ -573,7 +577,7 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
   End
 
 
-  It "removes offline marker residue after interrupted metadata cleanup"
+  It "accepts a formed local tombstone without global convergence or new writes"
     export VALKEY_DATA_DIR="${restore_tmp}"
     meta_digest=$(sha256sum "${restore_meta}" | awk '{print $1}')
     printf 'phase=formed\nmeta_sha256=%s\n' "${meta_digest}" \
@@ -581,11 +585,28 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     rm -f "${restore_meta}"
     : > "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared"
     validate_manage_env() { return 0; }
-    cluster_formed_from_self() { return 0; }
+    cluster_formed_from_self() { return 1; }
+    mark_local_cluster_restore_formed() { echo FORBIDDEN-MUTATION; return 99; }
     When run post_provision
     The status should be success
-    The file "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared" should not be exist
-    The stdout should include "committed local cluster restore formed state"
+    The file "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared" should be exist
+    The stdout should include "local restore duties already complete"
+    The stdout should not include "FORBIDDEN-MUTATION"
+  End
+
+  It "rejects a malformed local formed tombstone without cluster-meta"
+    export VALKEY_DATA_DIR="${restore_tmp}"
+    printf 'phase=formed\nmeta_sha256=short\n' \
+      > "${VALKEY_DATA_DIR}/.kb-cluster-restore-state"
+    rm -f "${restore_meta}"
+    validate_manage_env() { return 0; }
+    cluster_formed_from_self() { return 1; }
+    form_cluster() { echo ORDINARY-FORMATION; return 99; }
+
+    When run post_provision
+    The status should be failure
+    The stderr should include "invalid local formed-state metadata identity"
+    The stdout should not include "ORDINARY-FORMATION"
   End
 
   It "rejects a symlinked cluster-meta on the already-formed fast path"
