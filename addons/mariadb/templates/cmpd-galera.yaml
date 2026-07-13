@@ -168,19 +168,8 @@ spec:
           preStop:
             exec:
               command:
-                - bash
-                - -c
-                - |
-                  # Gracefully leave the Galera cluster before the container stops.
-                  # SET wsrep_on=OFF causes Galera to write the final seqno to
-                  # grastate.dat and set safe_to_bootstrap on the last clean node.
-                  # This prevents the all-nodes-crashed deadlock after KB Stop OpsRequest.
-                  mariadb -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
-                    -P3306 -h127.0.0.1 \
-                    -e "SET GLOBAL wsrep_on=OFF;" 2>/dev/null || true
-                  # Trigger a clean MariaDB shutdown so InnoDB flushes all pages.
-                  mysqladmin -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
-                    -h127.0.0.1 shutdown 2>/dev/null || true
+                - /bin/bash
+                - /scripts/galera-prestop.sh
         command:
           - bash
           - -c
