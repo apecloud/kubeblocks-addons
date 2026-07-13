@@ -10,8 +10,6 @@ export_pbm_env_vars
 
 set_backup_config_env
 
-export_logs_start_time_env
-
 trap handle_backup_exit EXIT
 
 wait_for_other_operations
@@ -63,5 +61,3 @@ else
 fi
 total_size=$(echo "$describe_result" | jq -r '.size // 0')
 DP_save_backup_status_info "$total_size" "$start_time" "$end_time" "" "{$extras}"
-
-print_pbm_logs_by_event "backup"

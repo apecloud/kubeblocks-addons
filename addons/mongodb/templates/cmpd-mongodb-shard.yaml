@@ -134,18 +134,6 @@ spec:
           - sh
           - -c
           - |
-            mkdir -p {{ .Values.dataMountPath }}/tmp/bin
-            cp -r /opt/bitnami/kubectl/bin/kubectl {{ .Values.dataMountPath }}/tmp/bin
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        name: init-kubectl
-        volumeMounts:
-          - mountPath: {{ .Values.dataMountPath }}
-            name: data
-      - command:
-          - sh
-          - -c
-          - |
             cp -r /usr/bin/pbm /tools
             cp -r /usr/bin/pbm-agent /tools
             cp -r /usr/bin/pbm-agent-entrypoint /tools

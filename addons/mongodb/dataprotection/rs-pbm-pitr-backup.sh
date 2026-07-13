@@ -118,8 +118,6 @@ export_pbm_env_vars_for_rs
 
 set_backup_config_env
 
-export_logs_start_time_env
-
 trap handle_pitr_exit EXIT
 
 # Apply storage once. Re-applying the storage file in the loop clears PBM PITR settings
@@ -134,10 +132,6 @@ while true; do
   purge_pitr_chunks
 
   upload_continuous_backup_info
-
-  print_pbm_logs_by_event "pitr"
-
-  export_logs_start_time_env
 
   sleep 30
 done

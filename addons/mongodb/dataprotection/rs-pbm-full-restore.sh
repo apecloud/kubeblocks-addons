@@ -8,13 +8,11 @@ export_pbm_env_vars_for_rs
 
 set_backup_config_env
 
-export_logs_start_time_env
-
 trap handle_restore_exit EXIT
 
 wait_for_other_operations
 
-ensure_restore_coord_storage_config
+prepare_restore_storage_config
 
 extras=$(cat /dp_downward/status_extras)
 backup_name=$(echo "$extras" | jq -r '.[0].backup_name // empty')
@@ -42,12 +40,15 @@ mappings="$MONGODB_REPLICA_SET_NAME=$rs_name"
 echo "INFO: Replica set mappings: $mappings"
 
 echo "INFO: Starting syncer physical restore..."
-if ! restore_result=$(syncerctl_cmd restore start --backup-name "$backup_name" --type physical --replset-remapping "$mappings" 2>&1); then
+if ! restore_result=$(syncerctl_cmd restore start --backup-name "$backup_name" --type physical --replset-remapping "$mappings" --storage-config-file "$RESTORE_STORAGE_CONFIG_FILE" 2>&1); then
+    rm -f "$RESTORE_STORAGE_CONFIG_FILE"
     echo "ERROR: Syncer restore start failed: $restore_result"
     exit 1
 fi
+rm -f "$RESTORE_STORAGE_CONFIG_FILE"
 echo "INFO: Syncer restore start result: $restore_result"
+request_id=$(echo "$restore_result" | jq -r '.request_id // empty')
 
-wait_for_syncer_restore_completion
+wait_for_syncer_restore_completion "$request_id"
 
 echo "INFO: Restore completed."

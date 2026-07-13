@@ -65,18 +65,6 @@ spec:
         volumeMounts:
           - mountPath: /kubeblocks
             name: kubeblocks
-      - command:
-          - sh
-          - -c
-          - |
-            mkdir -p {{ .Values.dataMountPath }}/tmp/bin
-            cp -r /opt/bitnami/kubectl/bin/kubectl {{ .Values.dataMountPath }}/tmp/bin
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        name: init-kubectl
-        volumeMounts:
-          - mountPath: {{ .Values.dataMountPath }}
-            name: data
     containers:
       - name: mongos
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}

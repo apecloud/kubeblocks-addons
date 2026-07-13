@@ -31,7 +31,6 @@ spec:
       memberLeave: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
       mongodb-backup-agent: {{ $imageRegistry }}/{{ $.Values.image.percona.backup.repository }}:{{ index . 3 }}
       init-syncer: {{ $imageRegistry }}/{{ $.Values.image.syncer.repository }}:{{ $.Values.image.syncer.tag }}
-      init-kubectl: {{ $imageRegistry }}/{{ $.Values.image.kubectl.repository }}:{{ $.Values.image.kubectl.tag }}
       init-pbm-agent: {{ $imageRegistry }}/{{ $.Values.image.percona.backup.repository }}:{{ index . 3 }}
       exporter: {{ $imageRegistry }}/{{ $.Values.image.exporter.repository }}:{{ $.Values.image.exporter.tag }}
 {{- end }}
