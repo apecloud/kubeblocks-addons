@@ -14,9 +14,10 @@ image:
     # if the value of image.xtraBackup.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
     repository: apecloud/percona-xtrabackup
+    minimalRepository: apecloud/xtrabackup-minimal
   syncer:
     repository: apecloud/syncer
-    tag: 0.6.8
+    tag: 0.7.7
   # refer: addons/mysql/orc-tools/Dockerfile
   orcTools:
     repository: apecloud/orc-tools
