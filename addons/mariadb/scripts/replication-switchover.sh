@@ -1224,6 +1224,42 @@ rollback_current_primary_switchover_guard() {
   [ "${failed}" -eq 0 ]
 }
 
+fence_current_primary_after_uncertain_dcs() {
+  # H2 split-brain guard for the Stage-3 (DCS switchover) failure path.
+  #
+  # syncerctl_switchover is invoked with --force and wrapped by timeout(1). A
+  # non-zero or timeout(1) (rc 124/125/137) return does NOT prove the DCS
+  # switchover record was never persisted: syncer can accept and persist the
+  # switchover request, begin asynchronously promoting the candidate, and then
+  # have its client (syncerctl) SIGTERM'd by the wall-clock budget. Under the
+  # alpha.79 minimalist model the current primary is still fully writable here
+  # (prepare is a no-op; the Stage-4 post-DCS fence has not run yet).
+  #
+  # The legacy rollback (rollback_current_primary_switchover_guard, which sets
+  # read_only=0 and restores remote-root write grants) would then leave BOTH
+  # the old primary AND the newly-promoted candidate accepting writes =
+  # split-brain. Rollback-to-writable is only safe BEFORE syncerctl is ever
+  # invoked (the Stage-2 pre-DCS path), where no DCS record can exist.
+  #
+  # First principles: once the DCS write cannot be proven to have not landed,
+  # fail closed. Fence the current primary (read_only=1) so that if syncer
+  # completes the switchover there is never a second writable primary. If the
+  # DCS record truly did not persist, KB roleProbe + reconcile converge the
+  # still-read_only old primary (and the failed OpsRequest may retry the whole
+  # switchover) — a bounded, recoverable availability blip. That is always
+  # preferable to unbounded split-brain writes.
+  log_switchover_info "Switchover fail-closed after uncertain DCS switchover: fencing current primary read_only=1 (never unfencing — the DCS switchover record may have persisted and syncer may be promoting the candidate)"
+  if ! set_local_read_only "ON"; then
+    log_switchover_error "Switchover fail-closed fence: could not set current primary read_only=1 after uncertain DCS switchover; manual verification required to avoid split-brain"
+    return 1
+  fi
+  if ! local_read_only_is "1"; then
+    log_switchover_error "Switchover fail-closed fence: current primary read_only did not reach 1 after uncertain DCS switchover; manual verification required to avoid split-brain"
+    return 1
+  fi
+  return 0
+}
+
 prepare_current_primary_for_switchover() {
   # alpha.79 v1 (Helen TL, per westonnnn 21:50 `48a132e2`/`b9a62176`
   # directive: "学 MySQL semisync 的极简思路，来改，现在 / 改完之后再测"):
@@ -2245,8 +2281,14 @@ run_switchover() {
     if switchover_final_state_already_reached "${current_name}" "${candidate_name}" "${candidate_fqdn}"; then
       return 0
     fi
-    rollback_current_primary_switchover_guard || true
-    log_switchover_error "Switchover failed: syncerctl could not create DCS switchover"
+    # H2: do NOT roll the current primary back to writable here. syncerctl runs
+    # with --force under a timeout(1) wrapper, so a non-zero/timeout return does
+    # not prove the DCS switchover record was not persisted — syncer may already
+    # be promoting the candidate. Unfencing the current primary would then make
+    # two writable primaries (split-brain). Fail closed by fencing instead; see
+    # fence_current_primary_after_uncertain_dcs for the full rationale.
+    fence_current_primary_after_uncertain_dcs || true
+    log_switchover_error "Switchover failed: syncerctl could not create DCS switchover; current primary fenced fail-closed (not rolled back to writable) to avoid split-brain if syncer completes the switchover"
     return 1
   fi
   # Defensive overrun guard mirrors prepare (DCS is bounded by the timeout(1)
