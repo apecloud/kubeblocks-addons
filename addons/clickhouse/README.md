@@ -38,6 +38,7 @@ There are two key components in the ClickHouse cluster:
 | 22             | 22.3.18, 22.3.20, 22.6.1, 22.8.21, 22.9.4 |
 | 24             | 24.7.2, 24.8.3, 24.12.2   |
 | 25             | 25.4.4, 25.9.7            |
+| 26             | 26.5.3                     |
 
 ## Prerequisites
 
