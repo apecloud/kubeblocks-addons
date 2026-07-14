@@ -66,7 +66,7 @@ spec:
       # The serviceVersion is used to determine the version of the Cluster. If the serviceVersion is not specified, the default value is the ServiceVersion defined in ComponentDefinition.
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [3.8.34,3.9.29,3.10.25,3.11.28,3.12.14,3.13.7,4.0.9,4.1.6,4.2.1,4.3.1]
+      # Valid options are: [4.3.1,4.2.1,4.1.6,4.0.9,3.13.7,3.12.14,3.11.28,3.10.25,3.9.29,3.8.34]
       serviceVersion: 3.13.7
       # Recommended to set `replicas` to [3,5,7]
       # All data/state is replicated across all replicas.

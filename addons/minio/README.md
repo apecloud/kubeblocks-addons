@@ -14,7 +14,7 @@ Minio is a high performance open source relational database management system th
 
 | Versions |
 |----------|
-| 2024-06-29T01-20-47Z |
+| 2024.6.29, 2025.10.15 |
 
 ## Prerequisites
 

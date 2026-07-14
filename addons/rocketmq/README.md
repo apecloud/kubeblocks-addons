@@ -12,9 +12,11 @@ Apache RocketMQ is a distributed messaging and streaming platform with low laten
 
 ### Versions
 
-| Major Versions | Description |
-|---------------|-------------|
-| 4.x | 4.9.6 |
+| Component | Service Versions |
+|-----------|------------------|
+| Broker / NameServer | 4.9.6 |
+| Dashboard | 2.0.1 |
+| Exporter | 0.0.3 |
 
 ## Prerequisites
 
@@ -586,3 +588,4 @@ To access the RocketMQ Management console , you can port-forward the dashboard s
 kubectl port-forward svc/rocketmq-cluster-dashboard 18080:8080
 ```
 
+Then access the RocketMQ Management console at `http://localhost:18080/`.

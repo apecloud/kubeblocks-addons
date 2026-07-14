@@ -8,7 +8,7 @@ Apache Zookeeper is a centralized service for maintaining configuration informat
 
 | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | No      |
+| Yes                    | Yes                   | Yes              | Yes       | Yes        | No        | Yes    | No      |
 
 ### Backup and Restore
 
@@ -20,7 +20,7 @@ Apache Zookeeper is a centralized service for maintaining configuration informat
 
 | Versions |
 |----------|
-|3.6.4,3.7.2,3.8.4,3.9.2 |
+| 3.6.4, 3.7.2, 3.8.4, 3.9.2, 3.9.4 |
 
 ## Prerequisites
 
@@ -63,7 +63,7 @@ spec:
       componentDef: zookeeper
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [3.6.4,3.7.2,3.8.4,3.9.2]
+      # Valid options are: [3.6.4,3.7.2,3.8.4,3.9.2,3.9.4]
       serviceVersion: "3.9.2"
       # Update `replicas` to your need.
       replicas: 3

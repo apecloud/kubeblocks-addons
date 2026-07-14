@@ -10,7 +10,7 @@ In Weaviate, metadata replication and data replication are separate. For the met
 
 | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| No                     | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | N/A      |
+| No                     | Yes                   | Yes              | Yes       | Yes        | No        | Yes    | N/A      |
 
 ### Versions
 

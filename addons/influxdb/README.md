@@ -12,9 +12,10 @@ InfluxDB enables real-time analytics by serving as a purpose-built database that
 
 ### Versions
 
-| Versions |
-|----------|
-| 2.7.11   |
+| Component | Service Versions |
+|-----------|------------------|
+| InfluxDB | 2.7.11 |
+| InfluxDB Data / Meta | 1.8.10 |
 
 ## Prerequisites
 

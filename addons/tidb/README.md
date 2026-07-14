@@ -17,7 +17,7 @@ TiDB is an open-source, cloud-native, distributed, MySQL-Compatible database for
 | 8.4.0  |
 | 7.5.2  |
 | 7.1.5  |
-| 6.5.10 |
+| 6.5.12 |
 
 ## Prerequisites
 
@@ -308,6 +308,40 @@ spec:
 ```bash
 kubectl apply -f examples/tidb/start.yaml
 ```
+
+### Switchover
+
+A switchover in database clusters is a planned operation that transfers the primary (leader) role from one database instance to another. The goal of a switchover is to ensure that the database cluster remains available and operational during the transition.
+
+TiDB's PD (Placement Driver) component uses leader election. To transfer the leader role to another PD instance:
+
+```yaml
+# cat examples/tidb/switchover.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: tidb-switchover
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: tidb-cluster
+  type: Switchover
+  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
+  switchover:
+    # Specifies the name of the Component.
+    # PD (Placement Driver) is the metadata management component with leader election.
+  - componentName: tidb-pd
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: tidb-cluster-tidb-pd-0
+
+```
+
+```bash
+kubectl apply -f examples/tidb/switchover.yaml
+```
+
+You may need to update the `opsrequest.spec.switchover.instanceName` field to the name of the current PD leader instance.
 
 ### Delete
 

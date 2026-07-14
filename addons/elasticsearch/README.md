@@ -25,10 +25,10 @@ Each Elasticsearch cluster consists of one or more nodes, and each node in a clu
 
 ### Versions
 
-| Major Versions | Description               |
-|---------------|---------------------------|
-| 7.x | 7.7.1,7.8.1,7.10.1,7.10.2 |
-| 8.x | 8.1.3, 8.8.2              |
+| Component | Service Versions |
+|-----------|------------------|
+| Elasticsearch | 6.8.23, 7.7.1, 7.8.1, 7.10.1, 7.10.2, 8.1.3, 8.8.2, 8.15.5 |
+| Kibana | 6.8.23, 7.7.1, 7.8.1, 7.10.1, 7.10.2, 8.1.3, 8.8.2, 8.9.1, 8.15.5 |
 
 ## Prerequisites
 
