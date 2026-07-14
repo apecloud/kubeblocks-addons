@@ -265,6 +265,30 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     The file "${write_log}" should be empty file
   End
 
+  It "does zero slot writes when restored primaries share one node identity"
+    write_log=$(mktemp)
+    node_id_of() { echo id-shared; }
+    build_cli() { _cli=(mock_duplicate_id_cli "$1" "${write_log}"); }
+    mock_duplicate_id_cli() {
+      host="$1" log="$2"; shift 2
+      [ "$1" = PING ] && echo PONG
+      [ "$1" = CLUSTER ] && [ "$2" = ADDSLOTSRANGE ] && printf 'WRITE %s\n' "$*" >> "${log}"
+    }
+    cluster_nodes_of() {
+      case "$1" in
+        vk-shard-abc-0.h) printf 'id-shared vk-shard-abc-0.h:6379@16379 master - 0 0 1 connected\n' ;;
+        vk-shard-def-0.h) printf 'id-shared vk-shard-def-0.h:6379@16379 master - 0 0 1 connected\n' ;;
+        vk-shard-ghi-0.h) printf 'id-shared vk-shard-ghi-0.h:6379@16379 master - 0 0 1 connected\n' ;;
+      esac
+    }
+    When call restore_cluster_from_meta "${restore_meta}"
+    The status should be failure
+    The stderr should include "phase=restore-membership"
+    The stderr should include "retry_safe=no"
+    The stderr should include "unique CLUSTER MYID"
+    The file "${write_log}" should be empty file
+  End
+
   It "does zero slot writes when every primary sees the same foreign slotless node"
     write_log=$(mktemp)
     build_cli() { _cli=(mock_foreign_cli "$1" "${write_log}"); }

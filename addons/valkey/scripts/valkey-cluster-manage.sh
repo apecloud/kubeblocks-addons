@@ -684,7 +684,7 @@ restore_cluster_from_meta() {
   local meta="$1" roster shard_line shard fqdns first self_first
   local coord primary_count=0 coord_host="" current_nodes current_ids
   local host other_known other_nodes other_ids other_id meet_address met=0
-  local self_id missing range out total i
+  local self_id missing range out total i unique_primary_count
   local primary_hosts=() primary_ids=() meet_hosts=() meet_addresses=()
 
   load_cluster_restore_meta "${meta}" || return 1
@@ -749,6 +749,12 @@ restore_cluster_from_meta() {
     classify restore-roster no "coordinator ${coord} missing from restored roster"
     return 1
   }
+  unique_primary_count=$(printf '%s\n' "${primary_ids[@]}" | LC_ALL=C sort -u |
+    awk 'NF {n++} END {print n+0}')
+  if [ "${unique_primary_count}" -ne "${primary_count}" ]; then
+    classify restore-membership no "restored primaries must have unique CLUSTER MYID values"
+    return 1
+  fi
 
   current_nodes=$(cluster_nodes_of "${coord_host}") || {
     classify restore-meet yes "cannot read coordinator CLUSTER NODES from ${coord_host}"
