@@ -24,10 +24,12 @@ Describe "RabbitMQ managed account provisioning"
     rm -rf "${MOCK_BIN}" "${MOCK_STATE}"
   }
 
-  It "declares the controller-managed update statement and action"
-    When call grep -E 'update: rabbitmqctl change_password \$\{KB_ACCOUNT_NAME\} \$\{KB_ACCOUNT_PASSWORD\}|accountProvision:|/scripts/account-provision.sh|targetPodSelector: Any|name: RABBITMQ_NODENAME' "${cmpd_file}"
+  It "routes first reconciliation and later rotations through the managed action"
+    When call grep -E 'initAccount: false|create: rabbitmqctl change_password \$\{KB_ACCOUNT_NAME\} \$\{KB_ACCOUNT_PASSWORD\}|update: rabbitmqctl change_password \$\{KB_ACCOUNT_NAME\} \$\{KB_ACCOUNT_PASSWORD\}|accountProvision:|/scripts/account-provision.sh|targetPodSelector: Any|name: RABBITMQ_NODENAME' "${cmpd_file}"
     The status should be success
-    The line 1 should include 'update: rabbitmqctl change_password ${KB_ACCOUNT_NAME} ${KB_ACCOUNT_PASSWORD}'
+    The line 1 should include "initAccount: false"
+    The line 2 should include 'create: rabbitmqctl change_password ${KB_ACCOUNT_NAME} ${KB_ACCOUNT_PASSWORD}'
+    The line 3 should include 'update: rabbitmqctl change_password ${KB_ACCOUNT_NAME} ${KB_ACCOUNT_PASSWORD}'
     The output should include "accountProvision:"
     The output should include "/scripts/account-provision.sh"
     The output should include "targetPodSelector: Any"
@@ -38,6 +40,14 @@ Describe "RabbitMQ managed account provisioning"
     When call grep -F 'accountProvision: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}' "${cmpv_file}"
     The status should be success
     The output should include "accountProvision:"
+  End
+
+  It "keeps the root secret injected into RabbitMQ bootstrap"
+    When call grep -A13 -- '- name: RABBITMQ_DEFAULT_USER' "${cmpd_file}"
+    The status should be success
+    The output should include "credentialVarRef:"
+    The output should include "name: root"
+    The output should include "- name: RABBITMQ_DEFAULT_PASS"
   End
 
   It "changes and verifies the password before reporting success"

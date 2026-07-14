@@ -52,8 +52,9 @@ spec:
       defaultMode: 0555
   systemAccounts:
     - name: root
-      initAccount: true
+      initAccount: false
       statement:
+        create: rabbitmqctl change_password ${KB_ACCOUNT_NAME} ${KB_ACCOUNT_PASSWORD}
         update: rabbitmqctl change_password ${KB_ACCOUNT_NAME} ${KB_ACCOUNT_PASSWORD}
       passwordGenerationPolicy:
         length: 16
