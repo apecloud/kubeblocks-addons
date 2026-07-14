@@ -35,13 +35,16 @@ Describe "replication full-primary acceptance user fence"
       extract_function read_only_internal_admin_gate_is_active
       extract_function set_internal_admin_gate_read_only
       extract_function primary_write_gates_ready
+      extract_function read_only_is_strongest_fail_closed
       extract_function rollback_fenced_primary_accept
       extract_function set_primary_read_write
       cat <<'HARNESS'
 if [ "${MODE}" = "entry-not-fenced" ]; then
   GLOBAL_READ_ONLY=0
+  READ_ONLY_MODE=OFF
 else
   GLOBAL_READ_ONLY=1
+  READ_ONLY_MODE=NO_LOCK_NO_ADMIN
 fi
 LOCAL_ROOT_LOCKED=1
 REMOTE_ROOT_LOCKED=1
@@ -83,11 +86,7 @@ read_only_is_fail_closed() {
   [ "${GLOBAL_READ_ONLY}" -eq 1 ]
 }
 read_only_value() {
-  if [ "${GLOBAL_READ_ONLY}" -eq 1 ]; then
-    printf '%s\n' ON
-  else
-    printf '%s\n' OFF
-  fi
+  printf '%s\n' "${READ_ONLY_MODE}"
 }
 sql_quote() {
   printf '%s\n' "$1"
@@ -103,11 +102,15 @@ primary_internal_root_write_ready() {
     trace_event required-gate-failed
     return 1
   fi
+  if [ "${MODE}" = "gate-prestop" ]; then
+    command touch "${DATA_DIR}/.prestop-fence-started"
+    trace_event prestop-started-inside-required-gate
+  fi
   REQUIRED_GATES_PASSED=1
   trace_event required-gate-pass
 }
 query_local_syncer_role() {
-  if [ "${MODE}" = "role-drift" ]; then
+  if [ "${MODE}" = "role-drift" ] || [ "${MODE}" = "role-drift-rollback-failure" ] || [ "${MODE}" = "role-drift-strongest-failure" ]; then
     printf '%s\n' secondary
   else
     printf '%s\n' primary
@@ -129,6 +132,7 @@ local_sql() {
         return 1
       fi
       GLOBAL_READ_ONLY=1
+      READ_ONLY_MODE=ON
       trace_event internal-admin-gate-read-only-on
       ;;
     *"SET GLOBAL read_only = 0;"*|*"SET GLOBAL read_only = 'OFF';"*)
@@ -165,7 +169,7 @@ lock_local_root_writes() {
   trace_event local-root-locked
 }
 lock_remote_root_writes() {
-  if [ "${MODE}" = "rollback-failure" ]; then
+  if [ "${MODE}" = "rollback-failure" ] || [ "${MODE}" = "role-drift-rollback-failure" ]; then
     trace_event remote-root-relock-failed
     return 1
   fi
@@ -174,7 +178,13 @@ lock_remote_root_writes() {
 }
 set_fail_closed_read_only() {
   GLOBAL_READ_ONLY=1
-  trace_event global-read-only-on
+  if [ "${MODE}" = "role-drift-strongest-failure" ]; then
+    READ_ONLY_MODE=ON
+    trace_event global-read-only-fallback-on
+  else
+    READ_ONLY_MODE=NO_LOCK_NO_ADMIN
+    trace_event global-read-only-strongest
+  fi
 }
 mark_replication_pending() {
   rm -f "${DATA_DIR}/.primary-read-write-ready"
@@ -222,20 +232,17 @@ case "${MODE}" in
     grep -q '^local-root-writable$' "${TRACE_FILE}"
     grep -q '^remote-root-writable$' "${TRACE_FILE}"
     ;;
-  prestop|entry-not-fenced|bypass-failure|bypass-super|bypass-all|gate-mode-failure|gate-failure|open-failure|local-unlock-failure|remote-unlock-failure|ready-publish-failure)
+  prestop|gate-prestop|entry-not-fenced|bypass-failure|bypass-super|bypass-all|gate-mode-failure|gate-failure|open-failure|local-unlock-failure|remote-unlock-failure|ready-publish-failure|role-drift)
     [ "${accept_rc}" -eq 2 ]
     grep -q '^ordinary-business-rejected$' "${TRACE_FILE}"
     grep -q '^local-root-rejected$' "${TRACE_FILE}"
     grep -q '^remote-root-rejected$' "${TRACE_FILE}"
+    [ "${READ_ONLY_MODE}" = "NO_LOCK_NO_ADMIN" ]
+    [ "${LOCAL_ROOT_LOCKED}" -eq 1 ]
+    [ "${REMOTE_ROOT_LOCKED}" -eq 1 ]
     ! grep -q '^ready-published$' "${TRACE_FILE}"
     ;;
-  role-drift)
-    [ "${accept_rc}" -eq 1 ]
-    ! grep -q '^global-read-only-off$' "${TRACE_FILE}"
-    grep -q '^ordinary-business-rejected$' "${TRACE_FILE}"
-    ! grep -q '^ready-published$' "${TRACE_FILE}"
-    ;;
-  rollback-failure)
+  rollback-failure|role-drift-rollback-failure|role-drift-strongest-failure)
     [ "${accept_rc}" -eq 3 ]
     grep -q 'fail_closed=false' "${TRACE_FILE}"
     ! grep -q '^ready-published$' "${TRACE_FILE}"
@@ -291,14 +298,14 @@ HARNESS
     When call run_accept_case gate-mode-failure
     The status should be success
     The output should include "internal-admin-gate-read-only-failed"
-    The output should include "global-read-only-on"
+    The output should include "global-read-only-strongest"
     The output should not include "ready-published"
   End
 
   It "repairs and rejects an entry state that is not fail-closed before running a gate"
     When call run_accept_case entry-not-fenced
     The status should be success
-    The output should include "global-read-only-on"
+    The output should include "global-read-only-strongest"
     The output should not include "required-gate-begin"
     The output should not include "ready-published"
   End
@@ -306,22 +313,54 @@ HARNESS
   It "keeps every user writer fenced when preStop interrupts acceptance"
     When call run_accept_case prestop
     The status should be success
-    The output should include "global-read-only-on"
+    The output should include "global-read-only-strongest"
     The output should not include "required-gate-begin"
     The output should not include "ready-published"
   End
 
-  It "keeps the fence held when DCS leadership drifts after the internal gate"
+  It "freshly rechecks preStop after the internal gate and rolls back the narrowed fence"
+    When call run_accept_case gate-prestop
+    The status should be success
+    The output should include "prestop-started-inside-required-gate"
+    The output should include "global-read-only-strongest"
+    The output should include "local-root-locked"
+    The output should include "remote-root-locked"
+    The output should not include "global-read-only-off"
+    The output should not include "ready-published"
+  End
+
+  It "rolls the narrowed fence back to strongest when DCS leadership drifts after the internal gate"
     When call run_accept_case role-drift
     The status should be success
+    The output should include "global-read-only-strongest"
+    The output should include "local-root-locked"
+    The output should include "remote-root-locked"
     The output should include "ordinary-business-rejected"
     The output should not include "global-read-only-off"
+  End
+
+  It "surfaces rollback failure after post-gate DCS drift as rc3"
+    When call run_accept_case role-drift-rollback-failure
+    The status should be success
+    The output should include "remote-root-relock-failed"
+    The output should include "fail_closed=false"
+    The output should not include "global-read-only-off"
+    The output should not include "ready-published"
+  End
+
+  It "surfaces failure to restore NO_LOCK_NO_ADMIN after DCS drift as rc3"
+    When call run_accept_case role-drift-strongest-failure
+    The status should be success
+    The output should include "global-read-only-fallback-on"
+    The output should include "fail_closed=false"
+    The output should not include "global-read-only-off"
+    The output should not include "ready-published"
   End
 
   It "rolls all user writers back to fenced when remote-root unlock fails after global open"
     When call run_accept_case remote-unlock-failure
     The status should be success
-    The output should include "global-read-only-on"
+    The output should include "global-read-only-strongest"
     The output should include "ordinary-business-rejected"
     The output should include "local-root-rejected"
     The output should include "remote-root-rejected"
@@ -331,7 +370,7 @@ HARNESS
     When call run_accept_case open-failure
     The status should be success
     The output should include "global-read-only-open-failed"
-    The output should include "global-read-only-on"
+    The output should include "global-read-only-strongest"
     The output should not include "ready-published"
   End
 
@@ -339,7 +378,7 @@ HARNESS
     When call run_accept_case local-unlock-failure
     The status should be success
     The output should include "local-root-unlock-failed"
-    The output should include "global-read-only-on"
+    The output should include "global-read-only-strongest"
     The output should not include "ready-published"
   End
 
@@ -347,7 +386,7 @@ HARNESS
     When call run_accept_case ready-publish-failure
     The status should be success
     The output should include "ready-publish-failed"
-    The output should include "global-read-only-on"
+    The output should include "global-read-only-strongest"
     The output should not include "ready-published"
   End
 

@@ -265,6 +265,11 @@ read_only_is_fail_closed() {
   esac
   return 1
 }
+read_only_is_strongest_fail_closed() {
+  local value
+  value="$(read_only_value || true)"
+  [ "${value}" = "NO_LOCK_NO_ADMIN" ]
+}
 set_fail_closed_read_only() {
   local label="${1:-fail-closed}"
   if "${LOCAL[@]}" -e "SET GLOBAL read_only = NO_LOCK_NO_ADMIN;" 2>/dev/null && read_only_is_fail_closed; then
@@ -519,13 +524,34 @@ set_primary_read_write() {
     return 3
   fi
 
+  # The internal gate deliberately narrows NO_LOCK_NO_ADMIN to ON so the
+  # addon-owned admin can probe the local write plane.  ON is an intermediate
+  # state, not a safe early-exit state: preStop may have started while the
+  # gate was running, and DCS leadership may have changed after the caller's
+  # earlier role decision.  Re-read both immediately before the first
+  # user/global open and restore the full fence on either change.
+  if [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
+    if rollback_fenced_primary_accept "${label}" "prestop-after-internal-gate"; then
+      return 2
+    fi
+    return 3
+  fi
   if [ "${role_guard}" = "require-dcs-primary" ]; then
     role="$(query_local_syncer_role || true)"
     if [ "${role}" != "primary" ]; then
-      mark_replication_pending
-      prestop_watchdog_log "primary-read-write-defer label=${label} rc=1 reason=dcs-primary-changed global-read-only=held"
-      return 1
+      if rollback_fenced_primary_accept "${label}" "dcs-primary-changed"; then
+        return 2
+      fi
+      return 3
     fi
+  fi
+  # Close the marker window while the DCS read above was in flight.  This is
+  # the final commit-point check before any user-facing write capability opens.
+  if [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
+    if rollback_fenced_primary_accept "${label}" "prestop-before-user-open"; then
+      return 2
+    fi
+    return 3
   fi
 
   if ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null && \
@@ -568,6 +594,11 @@ rollback_fenced_primary_accept() {
   mark_replication_pending
   [ ! -f "${DATA_DIR}/.primary-read-write-ready" ] || rc=1
   set_fail_closed_read_only "${label}-${reason}" || rc=1
+  # ON is sufficient for ordinary replica writers, but not for this rollback:
+  # the pre-open gate has already proved and used the addon-owned READ_ONLY
+  # ADMIN bypass.  A non-primary early exit must restore NO_LOCK_NO_ADMIN so
+  # that internal admin cannot keep writing either.
+  read_only_is_strongest_fail_closed || rc=1
   lock_remote_root_writes "${label}-${reason}" || rc=1
   lock_local_root_writes "${label}-${reason}" || rc=1
   if [ "${rc}" -ne 0 ]; then
