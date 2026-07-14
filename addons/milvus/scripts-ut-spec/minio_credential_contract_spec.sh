@@ -82,6 +82,7 @@ client_contract=true"
       puts "definitions=#{names.grep(/milvus-(minio|standalone)-/).sort.join(",")}"
     '
 
+    helm dependency build ../../../addons-cluster/milvus >/dev/null
     helm template milvus-cluster ../../../addons-cluster/milvus --set mode=standalone | ruby -ryaml -e '
       cluster = YAML.load_stream(ARGF.read).compact.find { |document| document["kind"] == "Cluster" }
       abort "standalone Cluster not rendered" unless cluster
