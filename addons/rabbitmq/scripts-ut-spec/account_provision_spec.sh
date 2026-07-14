@@ -2,6 +2,9 @@
 
 Describe "RabbitMQ managed account provisioning"
   account_script="../scripts/account-provision.sh"
+  addon_chart_file="../Chart.yaml"
+  cluster_chart_file="../../../addons-cluster/rabbitmq/Chart.yaml"
+  cluster_template_file="../../../addons-cluster/rabbitmq/templates/cluster.yaml"
   cmpd_file="../templates/cmpd.yaml"
   cmpv_file="../templates/cmpv.yaml"
 
@@ -40,6 +43,20 @@ Describe "RabbitMQ managed account provisioning"
     When call grep -F 'accountProvision: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}' "${cmpv_file}"
     The status should be success
     The output should include "accountProvision:"
+  End
+
+  It "delivers the immutable account contract through a new ComponentDefinition"
+    addon_version=$(awk '$1 == "version:" { print $2; exit }' "${addon_chart_file}")
+    cluster_version=$(awk '$1 == "version:" { print $2; exit }' "${cluster_chart_file}")
+
+    When call sh -c '
+      test "$1" = "1.2.0-alpha.2" &&
+      test "$2" = "$1" &&
+      grep -Fq "{{ include \"rabbitmq.cmpdName\" . }}" "$3" &&
+      grep -Fq "componentDef: rabbitmq-{{ .Chart.Version }}" "$4" &&
+      ! grep -Fq "apps.kubeblocks.io/skip-immutable-check" "$3"
+    ' sh "${addon_version}" "${cluster_version}" "${cmpd_file}" "${cluster_template_file}"
+    The status should be success
   End
 
   It "keeps the root secret injected into RabbitMQ bootstrap"
