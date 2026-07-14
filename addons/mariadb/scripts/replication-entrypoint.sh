@@ -563,9 +563,37 @@ accept_syncer_primary_promotion_from_replica_path() {
   role="$(query_local_syncer_role || true)"
   [ "${role}" = "primary" ] || return 1
   prestop_watchdog_log "replica-path-accept-dcs-primary label=${label} action=accept-primary-promotion"
+
+  # r9 first-red: replica fencing can begin while syncer still reports
+  # secondary, then race with syncer promoting this same Pod. The slow
+  # full-primary path below must restore account grants and run write
+  # gates, which took long enough for syncer writecheck to observe the
+  # temporary read_only fence and release its freshly acquired lease.
+  #
+  # Open only the internal write plane immediately after confirming the
+  # authoritative DCS primary. User-facing local/remote accounts remain
+  # fenced until expose_sql_listener_for_primary_role completes all
+  # existing primary gates. Re-check DCS after opening to close the
+  # role-change window; any failure restores fail-closed read_only.
+  if ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null; then
+    prestop_watchdog_log "replica-path-primary-internal-write-open label=${label} rc=1"
+    return 2
+  fi
+  role="$(query_local_syncer_role || true)"
+  if [ "${role}" != "primary" ]; then
+    "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = ON;" 2>/dev/null || true
+    prestop_watchdog_log "replica-path-primary-internal-write-open label=${label} rc=1 reason=dcs-primary-changed rollback=read-only-on"
+    return 1
+  fi
+  prestop_watchdog_log "replica-path-primary-internal-write-open label=${label} rc=0 user_accounts=fenced"
   if expose_sql_listener_for_primary_role "syncer-primary-during-${label}"; then
     mark_replication_ready
     return 0
+  fi
+  if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = ON;" 2>/dev/null; then
+    prestop_watchdog_log "replica-path-primary-internal-write-rollback label=${label} rc=0 reason=full-primary-accept-failed"
+  else
+    prestop_watchdog_log "replica-path-primary-internal-write-rollback label=${label} rc=1 reason=full-primary-accept-failed"
   fi
   return 2
 }
