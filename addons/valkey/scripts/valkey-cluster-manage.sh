@@ -156,6 +156,69 @@ node_id_sets_overlap() {
   return 1
 }
 
+cluster_node_address_matches_fqdn() {
+  local line="${1}" fqdn="${2}" address primary token
+  local -a _cluster_address_parts
+  address=$(printf '%s\n' "${line}" | awk '{print $2}')
+  [ -n "${address}" ] || return 1
+  primary="${address%%:*}"
+  [ "${primary}" = "${fqdn}" ] && return 0
+  IFS=',' read -ra _cluster_address_parts <<< "${address}"
+  for token in "${_cluster_address_parts[@]:1}"; do
+    token="${token#hostname=}"
+    [ "${token}" = "${fqdn}" ] && return 0
+  done
+  return 1
+}
+
+# A restore view may contain any already-attached configured replica, but it
+# must not contain a node outside the KubeBlocks roster. Identical views alone
+# are insufficient: every primary could agree on the same stale foreign node.
+cluster_view_contains_only_configured_members() {
+  local nodes="${1}" roster="${2}" shard_line fqdns fqdn configured=""
+  local line matched address seen=""
+
+  while IFS= read -r shard_line; do
+    fqdns="${shard_line#* }"
+    for fqdn in $(printf '%s\n' "${fqdns}" | tr ',' '\n' | grep -v '^$'); do
+      if printf '%s\n' "${configured}" | grep -Fqx "${fqdn}"; then
+        echo "duplicate configured restore member ${fqdn}" >&2
+        return 1
+      fi
+      configured="${configured}${configured:+$'\n'}${fqdn}"
+    done
+  done <<< "${roster}"
+  [ -n "${configured}" ] || {
+    echo "configured restore roster is empty" >&2
+    return 1
+  }
+
+  printf '%s\n' "${nodes}" | cluster_node_id_set >/dev/null || return 1
+  while IFS= read -r line; do
+    [ -n "${line}" ] || continue
+    matched=""
+    while IFS= read -r fqdn; do
+      [ -n "${fqdn}" ] || continue
+      cluster_node_address_matches_fqdn "${line}" "${fqdn}" || continue
+      [ -z "${matched}" ] || {
+        echo "cluster node address matches multiple configured members: ${line}" >&2
+        return 1
+      }
+      matched="${fqdn}"
+    done <<< "${configured}"
+    if [ -z "${matched}" ]; then
+      address=$(printf '%s\n' "${line}" | awk '{print $2}')
+      echo "cluster view contains foreign node ${address:-unknown}" >&2
+      return 1
+    fi
+    if printf '%s\n' "${seen}" | grep -Fqx "${matched}"; then
+      echo "cluster view contains duplicate configured member ${matched}" >&2
+      return 1
+    fi
+    seen="${seen}${seen:+$'\n'}${matched}"
+  done <<< "${nodes}"
+}
+
 # Slot count currently owned by the master whose id is $2, read from $1's
 # view of CLUSTER NODES. Prints the count of slot ranges' total slots.
 slots_owned_by() {
@@ -599,6 +662,7 @@ restored_primary_cluster_ready_for_replica_attach() {
   for host in "${primary_hosts[@]}"; do
     [ "$(cluster_state_of "${host}")" = "ok" ] && [ "$(assigned_slots_of "${host}")" = "16384" ] || return 1
     nodes=$(cluster_nodes_of "${host}") || return 1
+    cluster_view_contains_only_configured_members "${nodes}" "${roster}" || return 1
     observed=$(printf '%s\n' "${nodes}" | cluster_node_id_set) || return 1
     if [ -z "${expected}" ]; then
       expected="${observed}"
@@ -694,6 +758,10 @@ restore_cluster_from_meta() {
     classify restore-meet yes "malformed coordinator CLUSTER NODES from ${coord_host}"
     return 1
   }
+  if ! cluster_view_contains_only_configured_members "${current_nodes}" "${roster}"; then
+    classify restore-membership no "coordinator ${coord_host} sees a node outside the configured restore roster"
+    return 1
+  fi
 
   # Only the deterministic coordinator writes MEET. Materialize and validate
   # every pending peer address before the first mutation, so a DNS gap cannot
@@ -759,6 +827,10 @@ restore_cluster_from_meta() {
       classify restore-membership yes "malformed CLUSTER NODES from ${host}"
       return 1
     }
+    if ! cluster_view_contains_only_configured_members "${other_nodes}" "${roster}"; then
+      classify restore-membership no "${host} sees a node outside the configured restore roster"
+      return 1
+    fi
     for other_id in "${primary_ids[@]}"; do
       if ! printf '%s\n' "${other_ids}" | grep -Fqx "${other_id}"; then
         classify restore-membership yes "${host} does not yet see restored primary ${other_id}"

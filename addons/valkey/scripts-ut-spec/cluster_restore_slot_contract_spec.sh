@@ -193,6 +193,12 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     The stdout should be blank
   End
 
+  It "maps an engine node address through its announced hostname"
+    line='id-abc 10.0.0.1:6379@16379,vk-shard-abc-0.h master - 0 0 1 connected'
+    When call cluster_node_address_matches_fqdn "${line}" "vk-shard-abc-0.h"
+    The status should be success
+  End
+
   It "does zero MEET writes when any fresh restored peer cannot resolve"
     meet_log=$(mktemp)
     resolve_cluster_meet_address() {
@@ -256,6 +262,28 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     The status should be failure
     The stderr should include "phase=restore-slots"
     The stderr should include "retry_safe=no"
+    The file "${write_log}" should be empty file
+  End
+
+  It "does zero slot writes when every primary sees the same foreign slotless node"
+    write_log=$(mktemp)
+    build_cli() { _cli=(mock_foreign_cli "$1" "${write_log}"); }
+    mock_foreign_cli() {
+      host="$1" log="$2"; shift 2
+      [ "$1" = PING ] && echo PONG
+      [ "$1" = CLUSTER ] && [ "$2" = ADDSLOTSRANGE ] && printf 'WRITE %s\n' "$*" >> "${log}"
+    }
+    cluster_nodes_of() {
+      printf 'id-abc vk-shard-abc-0.h:6379@16379 master - 0 0 1 connected\n'
+      printf 'id-def vk-shard-def-0.h:6379@16379 master - 0 0 2 connected\n'
+      printf 'id-ghi vk-shard-ghi-0.h:6379@16379 master - 0 0 3 connected\n'
+      printf 'id-foreign foreign-0.h:6379@16379 master - 0 0 4 connected\n'
+    }
+    When call restore_cluster_from_meta "${restore_meta}"
+    The status should be failure
+    The stderr should include "phase=restore-membership"
+    The stderr should include "retry_safe=no"
+    The stderr should include "foreign-0.h"
     The file "${write_log}" should be empty file
   End
 
