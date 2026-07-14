@@ -11,7 +11,8 @@ rendered_metadata_name() {
 
   printf '%s\n' "$rendered" | awk '
     $0 == "metadata:" { in_metadata = 1; next }
-    in_metadata && $1 == "name:" { print $2; exit }
+    in_metadata && $1 == "name:" && name == "" { name = $2; in_metadata = 0 }
+    END { print name }
   '
 }
 
@@ -22,8 +23,9 @@ rendered_role_quorum_value() {
 
   printf '%s\n' "$rendered" | awk -v role="$role" '
     $0 ~ "^[[:space:]]*- name: " role "$" { in_role = 1; next }
-    in_role && $0 ~ "^[[:space:]]*- name:" { exit }
-    in_role && $1 == "participatesInQuorum:" { print $2; exit }
+    in_role && $0 ~ "^[[:space:]]*- name:" { in_role = 0 }
+    in_role && $1 == "participatesInQuorum:" && value == "" { value = $2; in_role = 0 }
+    END { print value }
   '
 }
 
@@ -31,7 +33,8 @@ rendered_component_def_reference() {
   local rendered
   rendered=$(render_clickhouse_template "$1") || return
 
-  printf '%s\n' "$rendered" | awk '$1 == "componentDef:" { print $2; exit }'
+  printf '%s\n' "$rendered" |
+    awk '$1 == "componentDef:" && value == "" { value = $2 } END { print value }'
 }
 
 rendered_keeper_selector_contract() {
@@ -40,9 +43,9 @@ rendered_keeper_selector_contract() {
   component_version=$(render_clickhouse_template templates/cmpv.yaml) || return
 
   cluster_selector=$(printf '%s\n' "$cluster_definition" |
-    awk '$1 == "compDef:" && $2 ~ /^\^clickhouse-keeper-/ { print $2; exit }')
+    awk '$1 == "compDef:" && $2 ~ /^\^clickhouse-keeper-/ && value == "" { value = $2 } END { print value }')
   version_selector=$(printf '%s\n' "$component_version" |
-    awk '$1 == "-" && $2 ~ /^\^clickhouse-keeper-/ { print $2; exit }')
+    awk '$1 == "-" && $2 ~ /^\^clickhouse-keeper-/ && value == "" { value = $2 } END { print value }')
   printf '%s|%s\n' "$cluster_selector" "$version_selector"
 }
 
