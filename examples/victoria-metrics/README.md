@@ -28,7 +28,7 @@ VictoriaMetrics can run in two modes:
 
 | Versions |
 |----------|
-| 1.101.0 |
+| 1.0.0 |
 
 ## Prerequisites
 

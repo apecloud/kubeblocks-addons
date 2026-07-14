@@ -9,37 +9,37 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - write-2.9.4
+        - write-1.0.0
       compDefs:
         - {{ include "loki.writeCmpdRegexpPattern" . }}
     - releases:
-        - read-2.9.4
+        - read-1.0.0
       compDefs:
         - {{ include "loki.readCmpdRegexpPattern" . }}
     - releases:
-        - backend-2.9.4
+        - backend-1.0.0
       compDefs:
         - {{ include "loki.backendCmpdRegexpPattern" . }}
     - releases:
-        - gateway-2.9.4
+        - gateway-1.0.0
       compDefs:
         - {{ include "loki.gatewayCmpdRegexpPattern" . }}
   releases:
-    - name: write-2.9.4
-      serviceVersion: 2.9.4
+    - name: write-1.0.0
+      serviceVersion: 1.0.0
       images:
         write: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}
         wait-index-gateway: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.curl.repository }}:{{ .Values.images.curl.tag }}
-    - name: read-2.9.4
-      serviceVersion: 2.9.4
+    - name: read-1.0.0
+      serviceVersion: 1.0.0
       images:
         read: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}
         wait-index-gateway: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.curl.repository }}:{{ .Values.images.curl.tag }}
-    - name: backend-2.9.4
-      serviceVersion: 2.9.4
+    - name: backend-1.0.0
+      serviceVersion: 1.0.0
       images:
         backend: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag }}
-    - name: gateway-2.9.4
-      serviceVersion: 2.9.4
+    - name: gateway-1.0.0
+      serviceVersion: 1.0.0
       images:
         gateway: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.gateway.repository }}:{{ .Values.images.gateway.tag }}

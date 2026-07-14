@@ -37,7 +37,7 @@ KubeBlocks provides the **Simple Scalable Mode** Loki Cluster, and there are thr
 
 | Versions |
 |----------|
-| 2.9.4    |
+| 1.0.0    |
 
 ## Prerequisites
 

@@ -10,7 +10,7 @@ spec:
   provider: kubeblocks
   description: A VictoriaMetrics component definition for Kubernetes
   serviceKind: vminsert
-  serviceVersion: 1.101.0
+  serviceVersion: 1.0.0
   services:
     - name: vminsert
       spec:
