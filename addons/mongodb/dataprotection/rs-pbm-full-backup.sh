@@ -13,7 +13,7 @@ trap handle_backup_exit EXIT
 prepare_pbm_operation_storage_config
 
 echo "INFO: Starting $PBM_BACKUP_TYPE backup for MongoDB through syncer..."
-backup_result=$(syncerctl_cmd backup start --type="$PBM_BACKUP_TYPE" --compression="$PBM_COMPRESSION" --storage-config-token "$PBM_STORAGE_CONFIG_TOKEN")
+backup_result=$(syncerctl_cmd backup start --option "type=$PBM_BACKUP_TYPE" --option "compression=$PBM_COMPRESSION" --option "storage_config_token=$PBM_STORAGE_CONFIG_TOKEN")
 rm -f "$PBM_STORAGE_CONFIG_FILE"
 PBM_STORAGE_CONFIG_FILE=""
 PBM_STORAGE_CONFIG_TOKEN=""

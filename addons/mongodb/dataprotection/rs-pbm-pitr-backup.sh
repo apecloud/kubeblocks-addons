@@ -23,9 +23,9 @@ function enable_pitr() {
 
   if [ -n "${PBM_STORAGE_CONFIG_TOKEN:-}" ] || [ "$current_pitr_enabled" != "true" ] || [ "$current_oplog_span_min" != "$PBM_OPLOG_SPAN_MIN_MINUTES" ] || [ "$current_pitr_compression" != "$PBM_COMPRESSION" ] || [ "$current_purge_interval_seconds" != "$PBM_PURGE_INTERVAL_SECONDS" ]; then
     echo "INFO: Applying desired PITR configuration through syncer..."
-    local args=(pitr enable --oplog-span-min "$PBM_OPLOG_SPAN_MIN_MINUTES" --compression "$PBM_COMPRESSION" --purge-interval-seconds "$PBM_PURGE_INTERVAL_SECONDS")
+    local args=(pitr enable --option "oplog_span_min=$PBM_OPLOG_SPAN_MIN_MINUTES" --option "compression=$PBM_COMPRESSION" --option "purge_interval_seconds=$PBM_PURGE_INTERVAL_SECONDS")
     if [ -n "${PBM_STORAGE_CONFIG_TOKEN:-}" ]; then
-      args+=(--storage-config-token "$PBM_STORAGE_CONFIG_TOKEN")
+      args+=(--option "storage_config_token=$PBM_STORAGE_CONFIG_TOKEN")
     fi
     syncerctl_cmd "${args[@]}"
     if [ -n "${PBM_STORAGE_CONFIG_FILE:-}" ]; then

@@ -224,7 +224,7 @@ function wait_for_syncer_backup_completion() {
   local attempt=0
   describe_result=""
   while true; do
-    describe_result=$(syncerctl_cmd backup status --op-id "$backup_name")
+    describe_result=$(syncerctl_cmd backup status --option "op_id=$backup_name")
     local found
     local status
     found=$(echo "$describe_result" | jq -r '.found // false')
@@ -275,7 +275,7 @@ function wait_for_syncer_restore_completion() {
   while true; do
     local restore_status
     set +e
-    restore_status=$(syncerctl_cmd restore status --request-id "$request_id" 2>&1)
+    restore_status=$(syncerctl_cmd restore status --option "request_id=$request_id" 2>&1)
     local status_exit=$?
     set -e
     if [ $status_exit -eq 0 ]; then

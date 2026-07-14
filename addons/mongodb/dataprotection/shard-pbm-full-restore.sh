@@ -20,7 +20,7 @@ if [ -z "$backup_type" ] || [ -z "$backup_name" ]; then
 fi
 
 echo "INFO: Starting syncer physical restore..."
-if ! restore_result=$(syncerctl_cmd restore start --backup-name "$backup_name" --type physical --storage-config-token "$RESTORE_STORAGE_CONFIG_TOKEN" 2>&1); then
+if ! restore_result=$(syncerctl_cmd restore start --option "backup_name=$backup_name" --option type=physical --option "storage_config_token=$RESTORE_STORAGE_CONFIG_TOKEN" 2>&1); then
     echo "ERROR: Syncer restore start failed: $restore_result"
     exit 1
 fi
