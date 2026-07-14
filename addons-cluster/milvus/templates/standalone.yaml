@@ -11,6 +11,7 @@ spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
     - name: etcd
+      componentDef: etcd-
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- if .Values.persistence.enabled }}

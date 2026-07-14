@@ -88,6 +88,7 @@ client_contract=true"
       abort "standalone Cluster not rendered" unless cluster
 
       components = cluster.dig("spec", "componentSpecs").to_h { |item| [item["name"], item] }
+      puts "etcd=#{components.dig("etcd", "componentDef")}"
       puts "minio=#{components.dig("minio", "componentDef")}"
       puts "milvus=#{components.dig("milvus", "componentDef")}"
     '
@@ -97,6 +98,7 @@ client_contract=true"
     When call render_upgrade_contract
     The output should eq "versions=1.2.0-alpha.1,1.2.0-alpha.1
 definitions=milvus-minio-1.2.0-alpha.1,milvus-standalone-1.2.0-alpha.1
+etcd=etcd-
 minio=milvus-minio-
 milvus=milvus-standalone-"
     The status should be success
