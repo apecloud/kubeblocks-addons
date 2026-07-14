@@ -184,7 +184,15 @@ function replaceK8sSVC() {
     fi
     if [[ ${host} == *.svc || ${host} == *.svc.* ]]; then
        local hostIP
-       hostIP=$(getent hosts "${host}" 2>/dev/null | awk '{print $1}')
+       hostIP=$(getent hosts "${host}" 2>/dev/null | awk '
+         $1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ {
+           split($1, octets, ".")
+           if (octets[1] <= 255 && octets[2] <= 255 && octets[3] <= 255 && octets[4] <= 255) {
+             print $1
+             exit
+           }
+         }
+       ')
        if [[ -n ${hostIP} ]]; then
           if [[ -n ${port} ]]; then
              echo "${scheme}${hostIP}:${port}"
