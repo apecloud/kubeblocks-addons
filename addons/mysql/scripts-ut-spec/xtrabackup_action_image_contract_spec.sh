@@ -199,6 +199,35 @@ printf '%s' \"\${lock_per_table_ddl}\""
     done
   }
 
+  verify_all_action_image_mappings() {
+    for template in backuppolicytemplate.yaml backuppolicytemplate-orc.yaml; do
+      for method in xtrabackup xtrabackup-inc; do
+        for service_version in 5.7.44 8.0.46 8.4.10; do
+          case "$service_version" in
+            5.7.44) expected="docker.io/apecloud/percona-xtrabackup:2.4" ;;
+            8.0.46) expected="docker.io/apecloud/percona-xtrabackup:8.0" ;;
+            8.4.10) expected="docker.io/apecloud/percona-xtrabackup:8.4" ;;
+          esac
+          actual=$(mapped_xtrabackup_image "$template" "$method" "$service_version") || return 1
+          [ "$actual" = "$expected" ] || return 1
+        done
+      done
+    done
+  }
+
+  reject_minimal_images_for_v2_methods() {
+    for template in backuppolicytemplate.yaml backuppolicytemplate-orc.yaml; do
+      for method in xtrabackup xtrabackup-inc; do
+        for service_version in 5.7.44 8.0.46 8.4.10; do
+          image=$(mapped_xtrabackup_image "$template" "$method" "$service_version") || return 1
+          case "$image" in
+            *xtrabackup-minimal*) return 1 ;;
+          esac
+        done
+      done
+    done
+  }
+
   reject_empty_tool_versions() {
     ! resolve_lock_flag_from_script backup.sh "" 2>/dev/null || return 1
     ! resolve_lock_flag_from_script xtrabackup-incremental-backup.sh "" 2>/dev/null
@@ -321,6 +350,16 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "maps exact tool versions for full and incremental methods in standard and ORC policies"
     When call verify_all_tool_version_mappings
+    The status should be success
+  End
+
+  It "maps bash-capable images for all 12 policy, method, and MySQL version cells"
+    When call verify_all_action_image_mappings
+    The status should be success
+  End
+
+  It "keeps xtrabackup-minimal out of every v2 backup method"
+    When call reject_minimal_images_for_v2_methods
     The status should be success
   End
 
