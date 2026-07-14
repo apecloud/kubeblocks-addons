@@ -206,11 +206,11 @@ spec:
   roles:
     - name: leader
       updatePriority: 3
-      participatesInQuorum: false
+      participatesInQuorum: true
       isExclusive: true
     - name: follower
       updatePriority: 2
-      participatesInQuorum: false
+      participatesInQuorum: true
     - name: observer
       updatePriority: 1
       participatesInQuorum: false
