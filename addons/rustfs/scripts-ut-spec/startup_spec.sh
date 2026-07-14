@@ -51,6 +51,45 @@ Describe "RustFS startup bash script tests"
     End
   End
 
+  Describe "drives_per_set()"
+    It "returns pool_size for small pools (4)"
+      When call drives_per_set 4
+      The output should equal "4"
+      The status should be success
+    End
+
+    It "returns pool_size for pools up to 16"
+      When call drives_per_set 16
+      The output should equal "16"
+      The status should be success
+    End
+
+    It "returns largest factor in [2,16] for 24 drives"
+      When call drives_per_set 24
+      The output should equal "12"
+      The status should be success
+    End
+
+    It "returns 5 for 25 drives (25=5x5)"
+      When call drives_per_set 25
+      The output should equal "5"
+      The status should be success
+    End
+
+    It "returns 16 for 32 drives"
+      When call drives_per_set 32
+      The output should equal "16"
+      The status should be success
+    End
+
+    It "fails for 17 drives (prime, no factor in [2,16])"
+      When call drives_per_set 17
+      The output should equal "0"
+      The status should be failure
+      The error should include "not divisible"
+    End
+  End
+
   Describe "validate_pool_sizes()"
     It "passes for single pool with 4 drives"
       When call validate_pool_sizes "4"
@@ -102,6 +141,16 @@ Describe "RustFS startup bash script tests"
 
     It "passes for 1 (single node, parity=0)"
       When call validate_pool_sizes "1"
+      The status should be success
+    End
+
+    It "passes for 25,28 (pool0 dps=5 parity=2, pool1=3 dps=3, data=1)"
+      When call validate_pool_sizes "25,28"
+      The status should be success
+    End
+
+    It "passes for 16,32 (pool0 dps=16 parity=4, pool1=16 dps=16, data=12)"
+      When call validate_pool_sizes "16,32"
       The status should be success
     End
   End
