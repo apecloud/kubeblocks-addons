@@ -72,6 +72,28 @@ default_parity_count() {
   esac
 }
 
+# RustFS splits each pool into erasure sets whose size is the largest
+# factor of pool_size in [2,16].  Parity is derived from that set size,
+# not from the raw pool drive count.
+drives_per_set() {
+  local pool_size=$1
+  if [ "$pool_size" -le 16 ]; then
+    echo "$pool_size"
+    return 0
+  fi
+  local d=16
+  while [ $d -ge 2 ]; do
+    if [ $((pool_size % d)) -eq 0 ]; then
+      echo "$d"
+      return 0
+    fi
+    d=$((d - 1))
+  done
+  echo "FATAL: pool has $pool_size drives which is not divisible by any erasure set size in [2,16]." >&2
+  echo 0
+  return 1
+}
+
 validate_pool_sizes() {
   local replicas=$1
   local prev=0
@@ -81,13 +103,18 @@ validate_pool_sizes() {
   IFS=','
   for cur in $replicas; do
     local pool_size=$((cur - prev))
+    local set_size
+    set_size=$(drives_per_set "$pool_size") || {
+      IFS="$old_ifs"
+      return 1
+    }
     if [ $pool_index -eq 0 ]; then
-      first_pool_parity=$(default_parity_count "$pool_size")
+      first_pool_parity=$(default_parity_count "$set_size")
     fi
-    if [ "$pool_size" -le "$first_pool_parity" ]; then
-      echo "FATAL: erasure pool $pool_index has $pool_size drive(s) but inherited parity is $first_pool_parity (from pool 0)." >&2
-      echo "data_blocks would be $((pool_size - first_pool_parity)) which causes TooFewDataShards panic." >&2
-      echo "Scale to a replica count where every pool has at least $((first_pool_parity + 1)) drives." >&2
+    if [ "$set_size" -le "$first_pool_parity" ]; then
+      echo "FATAL: erasure pool $pool_index has drives_per_set=$set_size but inherited parity is $first_pool_parity (from pool 0)." >&2
+      echo "data_blocks would be $((set_size - first_pool_parity)) which causes TooFewDataShards panic." >&2
+      echo "Scale to a replica count where every pool's erasure set has at least $((first_pool_parity + 1)) drives." >&2
       IFS="$old_ifs"
       return 1
     fi
